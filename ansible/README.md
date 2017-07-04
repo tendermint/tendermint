@@ -45,10 +45,17 @@ sudo yum install ansible
 ```
 
 Mac OSX:
+If you have (Homebrew)[https://brew.sh] installed, then it's simply
+```
+brew install ansible
+```
+
+If not, you can install it using `pip`:
 ```
 sudo easy_install pip
 sudo pip install ansible
 ```
+
 
 To make life easier, you can start an SSH Agent and load your SSH key(s). This way ansible will have an uninterrupted way of connecting to your servers.
 
