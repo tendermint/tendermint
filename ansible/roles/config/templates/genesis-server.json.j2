@@ -10,7 +10,7 @@
     {
       "pub_key": {
         "data": "{{hostvars[host]["pubkey"]["data"]}}",
-        "type": "ed25519"
+        "type": "{{hostvars[host]["pubkey"]["type"]}}"
       },
       "amount":10,
       "name":"{{hostvars[host]["ansible_hostname"]}}"
