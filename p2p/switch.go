@@ -166,10 +166,7 @@ func (sw *Switch) OnStart() error {
 			return err
 		}
 	}
-	// Start peers
-	for _, peer := range sw.peers.List() {
-		sw.startInitPeer(peer)
-	}
+	
 	// Start listeners
 	for _, listener := range sw.listeners {
 		go sw.listenerRoutine(listener)
