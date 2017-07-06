@@ -1,5 +1,5 @@
 #!/bin/sh
-# prerm script for basecoin
+# prerm script for trackomatron
 #
 
 set -e
