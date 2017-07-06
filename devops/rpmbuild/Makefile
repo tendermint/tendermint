@@ -32,12 +32,12 @@ endif
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint
-build-binaries = build-tendermint build-basecoin build-ethermint
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint 
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint 
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint
+binaries = tendermint basecoin ethermint trackomatron
+build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron
+package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron
+install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron
+package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron
+install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron
 
 all: $(binaries)
 build: $(build-binaries)
