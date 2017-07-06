@@ -76,6 +76,13 @@ build-ethermint: git-branch
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/build/ethermint $(GOPATH)/bin
 	@echo "*** Built ethermint"
 
+build-trackomatron: git-branch
+	@echo "*** Building trackomatron"
+	go get -d -u go github.com/tendermint/trackomatron || echo "Workaround so there is no error message."
+	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
+	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
+	@echo "*** Built trackomatron"
+
 version-%: $(GOPATH)/bin/%
 	if [ -z "$(BUILD_NUMBER)" ]; then echo "BUILD_NUMBER not set" ; false ; fi
 	$(eval $*_version=$(shell $< version | cut -d- -f1 ))
@@ -224,10 +231,13 @@ distclean: clean
 	rm -rf $(GOPATH)/src/github.com/tendermint/tendermint
 	rm -rf $(GOPATH)/src/github.com/tendermint/basecoin 
 	rm -rf $(GOPATH)/src/github.com/tendermint/ethermint 
+	rm -rf $(GOPATH)/src/github.com/tendermint/trackomatron 
 	rm -rf $(GOPATH)/bin/tendermint
 	rm -rf $(GOPATH)/bin/basecoin
 	rm -rf $(GOPATH)/bin/basecli
 	rm -rf $(GOPATH)/bin/ethermint
+	rm -rf $(GOPATH)/bin/tracko
+	rm -rf $(GOPATH)/bin/trackocli
 
 .PHONY : clean
 
