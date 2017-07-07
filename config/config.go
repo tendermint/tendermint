@@ -199,23 +199,41 @@ func TestRPCConfig() *RPCConfig {
 
 // P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
 type P2PConfig struct {
-	RootDir        string `mapstructure:"home"`
-	ListenAddress  string `mapstructure:"laddr"`
-	Seeds          string `mapstructure:"seeds"`
-	SkipUPNP       bool   `mapstructure:"skip_upnp"`
-	AddrBook       string `mapstructure:"addr_book_file"`
-	AddrBookStrict bool   `mapstructure:"addr_book_strict"`
-	PexReactor     bool   `mapstructure:"pex"`
-	MaxNumPeers    int    `mapstructure:"max_num_peers"`
+	RootDir string `mapstructure:"home"`
+
+	// Address to listen for incoming connections
+	ListenAddress string `mapstructure:"laddr"`
+
+	// Comma separated list of seed nodes to connect to
+	Seeds string `mapstructure:"seeds"`
+
+	// Skip UPNP port forwarding
+	SkipUPNP bool `mapstructure:"skip_upnp"`
+
+	// Path to address book
+	AddrBook string `mapstructure:"addr_book_file"`
+
+	// Set true for strict address routability rules
+	AddrBookStrict bool `mapstructure:"addr_book_strict"`
+
+	// Set true to enable the peer-exchange reactor
+	PexReactor bool `mapstructure:"pex"`
+
+	// Maximum number of peers to connect to
+	MaxNumPeers int `mapstructure:"max_num_peers"`
+
+	// Time to wait before flushing messages out on the connection. In ms
+	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:  "tcp://0.0.0.0:46656",
-		AddrBook:       "addrbook.json",
-		AddrBookStrict: true,
-		MaxNumPeers:    50,
+		ListenAddress:        "tcp://0.0.0.0:46656",
+		AddrBook:             "addrbook.json",
+		AddrBookStrict:       true,
+		MaxNumPeers:          50,
+		FlushThrottleTimeout: 100,
 	}
 }
 

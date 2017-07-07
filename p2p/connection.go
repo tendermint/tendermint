@@ -89,13 +89,16 @@ type MConnection struct {
 type MConnConfig struct {
 	SendRate int64 `mapstructure:"send_rate"`
 	RecvRate int64 `mapstructure:"recv_rate"`
+
+	flushThrottle time.Duration
 }
 
 // DefaultMConnConfig returns the default config.
 func DefaultMConnConfig() *MConnConfig {
 	return &MConnConfig{
-		SendRate: defaultSendRate,
-		RecvRate: defaultRecvRate,
+		SendRate:      defaultSendRate,
+		RecvRate:      defaultRecvRate,
+		flushThrottle: flushThrottle,
 	}
 }
 
@@ -148,7 +151,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 func (c *MConnection) OnStart() error {
 	c.BaseService.OnStart()
 	c.quit = make(chan struct{})
-	c.flushTimer = cmn.NewThrottleTimer("flush", flushThrottle)
+	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateState)
 	go c.sendRoutine()
