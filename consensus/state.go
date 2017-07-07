@@ -912,16 +912,17 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 }
 
 func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
+	logger := cs.Logger.With("height", height, "round", round)
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		cs.Logger.Info("enterPrevote: Block was locked")
+		logger.Info("enterPrevote: Block was locked")
 		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
-		cs.Logger.Info("enterPrevote: ProposalBlock is nil")
+		logger.Info("enterPrevote: ProposalBlock is nil")
 		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
@@ -930,7 +931,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 	err := cs.state.ValidateBlock(cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		cs.Logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
+		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
 		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
