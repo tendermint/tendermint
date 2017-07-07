@@ -21,9 +21,7 @@ const (
 	VoteChannel        = byte(0x22)
 	VoteSetBitsChannel = byte(0x23)
 
-	peerGossipSleepDuration     = 100 * time.Millisecond // Time to sleep if there's nothing to send.
-	peerQueryMaj23SleepDuration = 2 * time.Second        // Time to sleep after each VoteSetMaj23Message sent
-	maxConsensusMessageSize     = 1048576                // 1MB; NOTE: keep in sync with types.PartSet sizes.
+	maxConsensusMessageSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
 )
 
 //-----------------------------------------------------------------------------
@@ -413,12 +411,12 @@ OUTER_LOOP:
 				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
 				if blockMeta == nil {
 					logger.Error("Failed to load block meta", "peer height", prs.Height, "ourHeight", rs.Height, "blockstoreHeight", conR.conS.blockStore.Height(), "pv", conR.conS.privValidator)
-					time.Sleep(peerGossipSleepDuration)
+					time.Sleep(conR.conS.config.PeerGossipSleep())
 					continue OUTER_LOOP
 				} else if !blockMeta.BlockID.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
 					logger.Info("Peer ProposalBlockPartsHeader mismatch, sleeping",
 						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
-					time.Sleep(peerGossipSleepDuration)
+					time.Sleep(conR.conS.config.PeerGossipSleep())
 					continue OUTER_LOOP
 				}
 				// Load the part
@@ -426,7 +424,7 @@ OUTER_LOOP:
 				if part == nil {
 					logger.Error("Could not load part", "index", index,
 						"peerHeight", prs.Height, "blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
-					time.Sleep(peerGossipSleepDuration)
+					time.Sleep(conR.conS.config.PeerGossipSleep())
 					continue OUTER_LOOP
 				}
 				// Send the part
@@ -441,7 +439,7 @@ OUTER_LOOP:
 				continue OUTER_LOOP
 			} else {
 				//logger.Info("No parts to send in catch-up, sleeping")
-				time.Sleep(peerGossipSleepDuration)
+				time.Sleep(conR.conS.config.PeerGossipSleep())
 				continue OUTER_LOOP
 			}
 		}
@@ -449,7 +447,7 @@ OUTER_LOOP:
 		// If height and round don't match, sleep.
 		if (rs.Height != prs.Height) || (rs.Round != prs.Round) {
 			//logger.Info("Peer Height|Round mismatch, sleeping", "peerHeight", prs.Height, "peerRound", prs.Round, "peer", peer)
-			time.Sleep(peerGossipSleepDuration)
+			time.Sleep(conR.conS.config.PeerGossipSleep())
 			continue OUTER_LOOP
 		}
 
@@ -483,7 +481,7 @@ OUTER_LOOP:
 		}
 
 		// Nothing to do. Sleep.
-		time.Sleep(peerGossipSleepDuration)
+		time.Sleep(conR.conS.config.PeerGossipSleep())
 		continue OUTER_LOOP
 	}
 }
@@ -581,7 +579,7 @@ OUTER_LOOP:
 			sleeping = 1
 		}
 
-		time.Sleep(peerGossipSleepDuration)
+		time.Sleep(conR.conS.config.PeerGossipSleep())
 		continue OUTER_LOOP
 	}
 }
@@ -611,7 +609,7 @@ OUTER_LOOP:
 						Type:    types.VoteTypePrevote,
 						BlockID: maj23,
 					}})
-					time.Sleep(peerQueryMaj23SleepDuration)
+					time.Sleep(conR.conS.config.PeerQueryMaj23Sleep())
 				}
 			}
 		}
@@ -628,7 +626,7 @@ OUTER_LOOP:
 						Type:    types.VoteTypePrecommit,
 						BlockID: maj23,
 					}})
-					time.Sleep(peerQueryMaj23SleepDuration)
+					time.Sleep(conR.conS.config.PeerQueryMaj23Sleep())
 				}
 			}
 		}
@@ -645,7 +643,7 @@ OUTER_LOOP:
 						Type:    types.VoteTypePrevote,
 						BlockID: maj23,
 					}})
-					time.Sleep(peerQueryMaj23SleepDuration)
+					time.Sleep(conR.conS.config.PeerQueryMaj23Sleep())
 				}
 			}
 		}
@@ -664,11 +662,11 @@ OUTER_LOOP:
 					Type:    types.VoteTypePrecommit,
 					BlockID: commit.BlockID,
 				}})
-				time.Sleep(peerQueryMaj23SleepDuration)
+				time.Sleep(conR.conS.config.PeerQueryMaj23Sleep())
 			}
 		}
 
-		time.Sleep(peerQueryMaj23SleepDuration)
+		time.Sleep(conR.conS.config.PeerQueryMaj23Sleep())
 
 		continue OUTER_LOOP
 	}

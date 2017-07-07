@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.2 (TBD)
+
+FEATURES:
+- Add consensus reactor sleep durations to the config
+
 ## 0.10.1 (June 28, 2017)
 
 FEATURES:
