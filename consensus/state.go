@@ -1331,19 +1331,14 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		if err == ErrVoteHeightMismatch {
 			return err
 		} else if _, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			if peerKey == "" {
+			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.GetAddress()) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
 			}
-			cs.Logger.Error("Found conflicting vote. Publish evidence (TODO)")
-			/* TODO
-			evidenceTx := &types.DupeoutTx{
-				Address: address,
-				VoteA:   *errDupe.VoteA,
-				VoteB:   *errDupe.VoteB,
-			}
-			cs.mempool.BroadcastTx(struct{???}{evidenceTx}) // shouldn't need to check returned err
-			*/
+			cs.Logger.Error("Found conflicting vote. Publish evidence (TODO)", "height", vote.Height, "round", vote.Round, "type", vote.Type, "valAddr", vote.ValidatorAddress, "valIndex", vote.ValidatorIndex)
+
+			// TODO: track evidence for inclusion in a block
+
 			return err
 		} else {
 			// Probably an invalid signature. Bad peer.
