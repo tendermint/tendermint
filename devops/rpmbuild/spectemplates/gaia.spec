@@ -71,5 +71,6 @@ systemctl daemon-reload
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/*
 %dir %{_defaultlicensedir}/%{name}
-%doc %{_defaultlicensedir}/%{name}/LICENSE
+#Workaround until https://github.com/cosmos/gaia/issues/2
+#%doc %{_defaultlicensedir}/%{name}/LICENSE
 
