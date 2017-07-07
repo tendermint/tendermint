@@ -3,16 +3,16 @@
 %define debug_package       %{nil}
 %define __os_install_post   %{nil}
 
-Name: ethermint
-Summary: ethermint enables ethereum as an ABCI application on tendermint and the COSMOS hub
+Name: gaia
+Summary: gaia - Tendermint Cosmos delegation game chain
 License: Apache 2.0
-URL: https://tendermint.com/
+URL: https://cosmos.network/
 Packager: Greg Szabo
 Requires: tendermint >= 0.10.0
 Requires(pre): /sbin/useradd
 
 %description
-Ethermint enables ethereum to run as an ABCI application on tendermint and the COSMOS hub. This application allows you to get all the benefits of ethereum without having to run your own miners.
+Gaia description comes later.
 
 %pre
 if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
@@ -22,15 +22,14 @@ fi
 %prep
 test -d "$GOPATH" || echo "GOPATH not set"
 test -d "$GOPATH"
+
 %{__mkdir_p} %{name}-%{version}
 cd %{name}-%{version}
 
-%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint .%{_sysconfdir}/systemd/system .%{_sysconfdir}/systemd/system-preset
+%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint
 
 %{__cp} $GOPATH/bin/%{name} .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
-%{__cp} $GOPATH/src/github.com/tendermint/%{name}/setup/genesis.json .%{_sysconfdir}/%{name}/genesis.json
-%{__cp} -r $GOPATH/src/github.com/tendermint/%{name}/setup/keystore .%{_sysconfdir}/%{name}
 
 cp -r %{_topdir}/extrafiles/%{name}/* ./
 
@@ -44,8 +43,15 @@ cd %{name}-%{version}
 %{__cp} -a * %{buildroot}
 
 %post
-sudo -Hu %{name} %{_bindir}/%{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
+sudo -Hu %{name} gaia init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
+#The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
+#The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
+
+#Temporary until https://github.com/tendermint/basecoin/issues/123
+rm -f %{_sysconfdir}/%{name}/key.json
+rm -f %{_sysconfdir}/%{name}/key2.json
+
 systemctl daemon-reload
 
 %preun
@@ -53,18 +59,16 @@ systemctl stop %{name} 2> /dev/null || :
 systemctl stop %{name}-service 2> /dev/null || :
 
 %postun
-#userdel %{name}
 systemctl daemon-reload
 
 %files
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}
-%config(noreplace) %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/genesis.json
-%attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/keystore
-%attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/keystore/*
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*
+%dir %{_datadir}/%{name}
+%{_datadir}/%{name}/*
 %dir %{_defaultlicensedir}/%{name}
 %doc %{_defaultlicensedir}/%{name}/LICENSE
 

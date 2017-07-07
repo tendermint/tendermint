@@ -18,7 +18,7 @@ test -d "$GOPATH"
 %{__mkdir_p} %{name}-%{version}
 cd %{name}-%{version}
 %{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name}
-%{__cp} $GOPATH/bin/tendermint .%{_bindir}
+%{__cp} $GOPATH/bin/%{name} .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/tendermint/LICENSE .%{_defaultlicensedir}/%{name}
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 

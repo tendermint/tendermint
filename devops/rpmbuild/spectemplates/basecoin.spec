@@ -32,7 +32,7 @@ cd %{name}-%{version}
 %{__cp} $GOPATH/bin/%{name} $GOPATH/bin/basecli .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
 
-cp -r %{_topdir}/extrafiles/basecoin/* ./
+cp -r %{_topdir}/extrafiles/%{name}/* ./
 
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 

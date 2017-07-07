@@ -1,0 +1,6 @@
+gaia (@VERSION@) @STABILITY@; urgency=medium
+
+  * Automatic build. See https://github.com/tendermint/basecoin for more information.
+
+ -- Greg Szabo <greg@philosobear.com>  @DATETIMESTAMP@
+

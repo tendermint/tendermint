@@ -31,7 +31,7 @@ cd %{name}-%{version}
 %{__cp} $GOPATH/bin/tracko $GOPATH/bin/trackocli .%{_bindir}
 %{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
 
-cp -r %{_topdir}/extrafiles/trackomatron/* ./
+cp -r %{_topdir}/extrafiles/%{name}/* ./
 
 %{__chmod} -Rf a+rX,u+w,g-w,o-w .
 

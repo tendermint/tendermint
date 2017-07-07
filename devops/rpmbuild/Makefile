@@ -32,12 +32,12 @@ endif
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint trackomatron
-build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron
+binaries = tendermint basecoin ethermint trackomatron gaia
+build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia
+package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia
+install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia
+package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia
+install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia
 
 all: $(binaries)
 build: $(build-binaries)
@@ -83,6 +83,13 @@ build-trackomatron: git-branch
 	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
 	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed to get the version number" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
 	@echo "*** Built trackomatron"
+
+build-gaia: git-branch
+	@echo "*** Building gaia"
+	go get -d -u go github.com/cosmos/gaia || echo "Workaround so there is no error message."
+	cd $(GOPATH)/src/github.com/cosmos/gaia && git checkout "$(GIT_BRANCH)" && git pull
+	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
+	@echo "*** Built gaia"
 
 version-%: $(GOPATH)/bin/%
 	if [ -z "$(BUILD_NUMBER)" ]; then echo "BUILD_NUMBER not set" ; false ; fi
