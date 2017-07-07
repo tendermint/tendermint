@@ -29,7 +29,8 @@ cd %{name}-%{version}
 %{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint
 
 %{__cp} $GOPATH/bin/%{name} .%{_bindir}
-%{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
+#Workaround until https://github.com/cosmos/gaia/issues/2
+#%{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
 
 cp -r %{_topdir}/extrafiles/%{name}/* ./
 
