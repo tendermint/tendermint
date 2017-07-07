@@ -14,12 +14,11 @@ PropagatesReloadTo=trackomatron-server.service
 ReloadPropagatedFrom=trackomatron-server.service
 
 [Service]
-Environment="BCHOME=/etc/trackomatron"
 Restart=on-failure
 User=trackomatron
 Group=trackomatron
 PermissionsStartOnly=true
-ExecStart=/usr/bin/trackomatron start --without-tendermint
+ExecStart=/usr/bin/tracko start --without-tendermint --home /etc/trackomatron
 ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
