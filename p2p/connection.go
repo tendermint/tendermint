@@ -148,6 +148,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	return mconn
 }
 
+// OnStart implements BaseService
 func (c *MConnection) OnStart() error {
 	c.BaseService.OnStart()
 	c.quit = make(chan struct{})
@@ -159,6 +160,7 @@ func (c *MConnection) OnStart() error {
 	return nil
 }
 
+// OnStop implements BaseService
 func (c *MConnection) OnStop() {
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()

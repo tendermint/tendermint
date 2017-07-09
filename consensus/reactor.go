@@ -60,6 +60,7 @@ func (conR *ConsensusReactor) OnStart() error {
 	return nil
 }
 
+// OnStop implements BaseService
 func (conR *ConsensusReactor) OnStop() {
 	conR.BaseReactor.OnStop()
 	conR.conS.Stop()
@@ -77,7 +78,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	conR.conS.Start()
 }
 
-// Implements Reactor
+// GetChannels implements Reactor
 func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
@@ -107,7 +108,7 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
-// Implements Reactor
+// ConsensusReactor implements Reactor
 func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 	if !conR.IsRunning() {
 		return
@@ -129,7 +130,7 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 	}
 }
 
-// Implements Reactor
+// RemovePeer implements Reactor
 func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
@@ -138,7 +139,7 @@ func (conR *ConsensusReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
 	//peer.Data.Get(PeerStateKey).(*PeerState).Disconnect()
 }
 
-// Implements Reactor
+// Receive implements Reactor
 // NOTE: We process these messages even when we're fast_syncing.
 // Messages affect either a peer state or the consensus state.
 // Peer state updates can happen in parallel, but processing of

@@ -95,7 +95,7 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 	return sw
 }
 
-// Not goroutine safe.
+// AddReactor is not goroutine safe.
 func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	// Validate the reactor.
 	// No two reactors can share the same channel.
@@ -113,42 +113,42 @@ func (sw *Switch) AddReactor(name string, reactor Reactor) Reactor {
 	return reactor
 }
 
-// Not goroutine safe.
+// Reactors is not goroutine safe.
 func (sw *Switch) Reactors() map[string]Reactor {
 	return sw.reactors
 }
 
-// Not goroutine safe.
+// Reactor is not goroutine safe.
 func (sw *Switch) Reactor(name string) Reactor {
 	return sw.reactors[name]
 }
 
-// Not goroutine safe.
+// AddListener is not goroutine safe.
 func (sw *Switch) AddListener(l Listener) {
 	sw.listeners = append(sw.listeners, l)
 }
 
-// Not goroutine safe.
+// Listeners is not goroutine safe.
 func (sw *Switch) Listeners() []Listener {
 	return sw.listeners
 }
 
-// Not goroutine safe.
+// IsListening is not goroutine safe.
 func (sw *Switch) IsListening() bool {
 	return len(sw.listeners) > 0
 }
 
-// Not goroutine safe.
+// SetNodeInfo is not goroutine safe.
 func (sw *Switch) SetNodeInfo(nodeInfo *NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
-// Not goroutine safe.
+// NodeInfo is not goroutine safe.
 func (sw *Switch) NodeInfo() *NodeInfo {
 	return sw.nodeInfo
 }
 
-// Not goroutine safe.
+// SetNodePrivKey is not goroutine safe.
 // NOTE: Overwrites sw.nodeInfo.PubKey
 func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
 	sw.nodePrivKey = nodePrivKey
@@ -273,7 +273,7 @@ func (sw *Switch) startInitPeer(peer *Peer) {
 	}
 }
 
-// Dial a list of seeds asynchronously in random order
+// DialSeeds dials a list of seeds asynchronously in random order
 func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 
 	netAddrs, err := NewNetAddressStrings(seeds)
@@ -360,7 +360,7 @@ func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
 	return successChan
 }
 
-// Returns the count of outbound/inbound and outbound-dialing peers.
+// NumPeers returns the count of outbound/inbound and outbound-dialing peers.
 func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	peers := sw.peers.List()
 	for _, peer := range peers {
@@ -378,7 +378,7 @@ func (sw *Switch) Peers() IPeerSet {
 	return sw.peers
 }
 
-// Disconnect from a peer due to external error, retry if it is a persistent peer.
+// StopPeerForError disconnect from a peer due to external error, retry if it is a persistent peer.
 // TODO: make record depending on reason.
 func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	addr := NewNetAddress(peer.Addr())
@@ -411,7 +411,7 @@ func (sw *Switch) StopPeerForError(peer *Peer, reason interface{}) {
 	}
 }
 
-// Disconnect from a peer gracefully.
+// StopPeerGracefully disconnect from a peer gracefully.
 // TODO: handle graceful disconnects.
 func (sw *Switch) StopPeerGracefully(peer *Peer) {
 	sw.Logger.Info("Stopping peer gracefully")
@@ -469,7 +469,7 @@ type SwitchEventDonePeer struct {
 //------------------------------------------------------------------
 // Switches connected via arbitrary net.Conn; useful for testing
 
-// Returns n switches, connected according to the connect func.
+// MakeConnectedSwitches returns n switches, connected according to the connect func.
 // If connect==Connect2Switches, the switches will be fully connected.
 // initSwitch defines how the ith switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
@@ -494,7 +494,7 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 
 var PanicOnAddPeerErr = false
 
-// Will connect switches i and j via net.Pipe()
+// Connect2Switches will connect switches i and j via net.Pipe()
 // Blocks until a conection is established.
 // NOTE: caller ensures i and j are within bounds
 func Connect2Switches(switches []*Switch, i, j int) {
