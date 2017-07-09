@@ -6,7 +6,9 @@ FEATURES:
 - Enable lower latency block commits by adding consensus reactor sleep durations and p2p flush throttle timeout to the config
 
 IMPROVEMENTS:
-- Better consensus logging
+- More detailed logging in the consensus reactor and state machine
+- More in-code documentation for many exposed functions, especially in consensus/reactor.go and p2p/switch.go
+- Improved readability for some function definitions and code blocks with long lines
 
 ## 0.10.1 (June 28, 2017)
 
