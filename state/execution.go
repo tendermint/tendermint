@@ -309,6 +309,8 @@ func (s *State) validateBlock(b *types.Block) error {
 		}
 	}
 
+	// TODO: Validate evidence
+
 	return nil
 }
 

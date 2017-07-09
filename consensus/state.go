@@ -863,7 +863,9 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
-	return cs.state.MakeBlock(cs.Height, txs, commit)
+	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
+	block.AddEvidence(cs.Evidence)
+	return block, parts
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1231,6 +1233,10 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
+	// TODO: remove included evidence
+	// and persist remaining evidence
+	// ... is this the right spot? need to ensure we never lose evidence
+
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
 
@@ -1327,15 +1333,14 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		// If it's otherwise invalid, punish peer.
 		if err == ErrVoteHeightMismatch {
 			return err
-		} else if _, ok := err.(*types.ErrVoteConflictingVotes); ok {
+		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
 			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.GetAddress()) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
 			}
-			cs.Logger.Error("Found conflicting vote. Publish evidence (TODO)", "height", vote.Height, "round", vote.Round, "type", vote.Type, "valAddr", vote.ValidatorAddress, "valIndex", vote.ValidatorIndex)
+			cs.Logger.Error("Found conflicting vote. Recording evidence in the RoundState", "height", vote.Height, "round", vote.Round, "type", vote.Type, "valAddr", vote.ValidatorAddress, "valIndex", vote.ValidatorIndex)
 
-			// TODO: track evidence for inclusion in a block
-
+			cs.Evidence = append(cs.Evidence, &types.DuplicateVoteEvidence{voteErr.VoteA, voteErr.VoteB})
 			return err
 		} else {
 			// Probably an invalid signature / Bad peer.
