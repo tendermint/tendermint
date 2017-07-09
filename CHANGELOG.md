@@ -5,6 +5,9 @@
 FEATURES:
 - Enable lower latency block commits by adding consensus reactor sleep durations and p2p flush throttle timeout to the config
 
+IMPROVEMENTS:
+- Better consensus logging
+
 ## 0.10.1 (June 28, 2017)
 
 FEATURES:
