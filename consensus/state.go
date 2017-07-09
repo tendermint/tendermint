@@ -939,7 +939,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 	// Prevote cs.ProposalBlock
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
-	logger.Info("enterPrevote: ProposalBlock is valid and voted on")
+	logger.Info("enterPrevote: ProposalBlock is valid")
 	cs.signAddVote(types.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 }
 

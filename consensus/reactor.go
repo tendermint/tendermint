@@ -108,7 +108,7 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	}
 }
 
-// ConsensusReactor implements Reactor
+// AddPeer implements Reactor
 func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 	if !conR.IsRunning() {
 		return
