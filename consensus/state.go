@@ -912,16 +912,17 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 }
 
 func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
+	logger := cs.Logger.With("height", height, "round", round)
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
-		cs.Logger.Info("enterPrevote: Block was locked")
+		logger.Info("enterPrevote: Block was locked")
 		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
-		cs.Logger.Info("enterPrevote: ProposalBlock is nil")
+		logger.Info("enterPrevote: ProposalBlock is nil")
 		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
@@ -930,7 +931,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 	err := cs.state.ValidateBlock(cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
-		cs.Logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
+		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
 		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
@@ -938,6 +939,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 	// Prevote cs.ProposalBlock
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
+	logger.Info("enterPrevote: ProposalBlock is valid")
 	cs.signAddVote(types.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 }
 
@@ -1331,19 +1333,14 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		if err == ErrVoteHeightMismatch {
 			return err
 		} else if _, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			if peerKey == "" {
+			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.GetAddress()) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
 			}
-			cs.Logger.Error("Found conflicting vote. Publish evidence (TODO)")
-			/* TODO
-			evidenceTx := &types.DupeoutTx{
-				Address: address,
-				VoteA:   *errDupe.VoteA,
-				VoteB:   *errDupe.VoteB,
-			}
-			cs.mempool.BroadcastTx(struct{???}{evidenceTx}) // shouldn't need to check returned err
-			*/
+			cs.Logger.Error("Found conflicting vote. Publish evidence (TODO)", "height", vote.Height, "round", vote.Round, "type", vote.Type, "valAddr", vote.ValidatorAddress, "valIndex", vote.ValidatorIndex)
+
+			// TODO: track evidence for inclusion in a block
+
 			return err
 		} else {
 			// Probably an invalid signature. Bad peer.

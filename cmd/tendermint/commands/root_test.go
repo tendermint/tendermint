@@ -23,8 +23,14 @@ const (
 )
 
 // isolate provides a clean setup and returns a copy of RootCmd you can
-// modify in the test cases
+// modify in the test cases.
+// NOTE: it unsets all TM* env variables.
 func isolate(cmds ...*cobra.Command) cli.Executable {
+	os.Unsetenv("TMHOME")
+	os.Unsetenv("TM_HOME")
+	os.Unsetenv("TMROOT")
+	os.Unsetenv("TM_ROOT")
+
 	viper.Reset()
 	config = cfg.DefaultConfig()
 	r := &cobra.Command{

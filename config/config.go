@@ -5,9 +5,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/types" // TODO: remove
 )
 
+// Config defines the top level configuration for a Tendermint node
 type Config struct {
 	// Top level options use an anonymous struct
 	BaseConfig `mapstructure:",squash"`
@@ -19,6 +20,7 @@ type Config struct {
 	Consensus *ConsensusConfig `mapstructure:"consensus"`
 }
 
+// DefaultConfig returns a default configuration for a Tendermint node
 func DefaultConfig() *Config {
 	return &Config{
 		BaseConfig: DefaultBaseConfig(),
@@ -29,6 +31,7 @@ func DefaultConfig() *Config {
 	}
 }
 
+// TestConfig returns a configuration that can be used for testing
 func TestConfig() *Config {
 	return &Config{
 		BaseConfig: TestBaseConfig(),
@@ -39,7 +42,7 @@ func TestConfig() *Config {
 	}
 }
 
-// Set the RootDir for all Config structs
+// SetRoot sets the RootDir for all Config structs
 func (cfg *Config) SetRoot(root string) *Config {
 	cfg.BaseConfig.RootDir = root
 	cfg.RPC.RootDir = root
@@ -52,7 +55,7 @@ func (cfg *Config) SetRoot(root string) *Config {
 //-----------------------------------------------------------------------------
 // BaseConfig
 
-// BaseConfig struct for a Tendermint node
+// BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct {
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
@@ -102,6 +105,7 @@ type BaseConfig struct {
 	DBPath string `mapstructure:"db_dir"`
 }
 
+// DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:           "genesis.json",
@@ -119,6 +123,7 @@ func DefaultBaseConfig() BaseConfig {
 	}
 }
 
+// TestBaseConfig returns a base configuration for testing a Tendermint node
 func TestBaseConfig() BaseConfig {
 	conf := DefaultBaseConfig()
 	conf.ChainID = "tendermint_test"
@@ -128,22 +133,27 @@ func TestBaseConfig() BaseConfig {
 	return conf
 }
 
+// GenesisFile returns the full path to the genesis.json file
 func (b BaseConfig) GenesisFile() string {
 	return rootify(b.Genesis, b.RootDir)
 }
 
+// PrivValidatorFile returns the full path to the priv_validator.json file
 func (b BaseConfig) PrivValidatorFile() string {
 	return rootify(b.PrivValidator, b.RootDir)
 }
 
+// DBDir returns the full path to the database directory
 func (b BaseConfig) DBDir() string {
 	return rootify(b.DBPath, b.RootDir)
 }
 
+// DefaultLogLevel returns a default log level of "error"
 func DefaultLogLevel() string {
 	return "error"
 }
 
+// DefaultPackageLogLevels returns a default log level setting so all packages log at "error", while the `state` package logs at "info"
 func DefaultPackageLogLevels() string {
 	return fmt.Sprintf("state:info,*:%s", DefaultLogLevel())
 }
@@ -151,6 +161,7 @@ func DefaultPackageLogLevels() string {
 //-----------------------------------------------------------------------------
 // RPCConfig
 
+// RPCConfig defines the configuration options for the Tendermint RPC server
 type RPCConfig struct {
 	RootDir string `mapstructure:"home"`
 
@@ -165,6 +176,7 @@ type RPCConfig struct {
 	Unsafe bool `mapstructure:"unsafe"`
 }
 
+// DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
 		ListenAddress:     "tcp://0.0.0.0:46657",
@@ -173,6 +185,7 @@ func DefaultRPCConfig() *RPCConfig {
 	}
 }
 
+// TestRPCConfig returns a configuration for testing the RPC server
 func TestRPCConfig() *RPCConfig {
 	conf := DefaultRPCConfig()
 	conf.ListenAddress = "tcp://0.0.0.0:36657"
@@ -184,26 +197,47 @@ func TestRPCConfig() *RPCConfig {
 //-----------------------------------------------------------------------------
 // P2PConfig
 
+// P2PConfig defines the configuration options for the Tendermint peer-to-peer networking layer
 type P2PConfig struct {
-	RootDir        string `mapstructure:"home"`
-	ListenAddress  string `mapstructure:"laddr"`
-	Seeds          string `mapstructure:"seeds"`
-	SkipUPNP       bool   `mapstructure:"skip_upnp"`
-	AddrBook       string `mapstructure:"addr_book_file"`
-	AddrBookStrict bool   `mapstructure:"addr_book_strict"`
-	PexReactor     bool   `mapstructure:"pex"`
-	MaxNumPeers    int    `mapstructure:"max_num_peers"`
+	RootDir string `mapstructure:"home"`
+
+	// Address to listen for incoming connections
+	ListenAddress string `mapstructure:"laddr"`
+
+	// Comma separated list of seed nodes to connect to
+	Seeds string `mapstructure:"seeds"`
+
+	// Skip UPNP port forwarding
+	SkipUPNP bool `mapstructure:"skip_upnp"`
+
+	// Path to address book
+	AddrBook string `mapstructure:"addr_book_file"`
+
+	// Set true for strict address routability rules
+	AddrBookStrict bool `mapstructure:"addr_book_strict"`
+
+	// Set true to enable the peer-exchange reactor
+	PexReactor bool `mapstructure:"pex"`
+
+	// Maximum number of peers to connect to
+	MaxNumPeers int `mapstructure:"max_num_peers"`
+
+	// Time to wait before flushing messages out on the connection. In ms
+	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
 }
 
+// DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:  "tcp://0.0.0.0:46656",
-		AddrBook:       "addrbook.json",
-		AddrBookStrict: true,
-		MaxNumPeers:    50,
+		ListenAddress:        "tcp://0.0.0.0:46656",
+		AddrBook:             "addrbook.json",
+		AddrBookStrict:       true,
+		MaxNumPeers:          50,
+		FlushThrottleTimeout: 100,
 	}
 }
 
+// TestP2PConfig returns a configuration for testing the peer-to-peer layer
 func TestP2PConfig() *P2PConfig {
 	conf := DefaultP2PConfig()
 	conf.ListenAddress = "tcp://0.0.0.0:36656"
@@ -211,6 +245,7 @@ func TestP2PConfig() *P2PConfig {
 	return conf
 }
 
+// AddrBookFile returns the full path to the address bool
 func (p *P2PConfig) AddrBookFile() string {
 	return rootify(p.AddrBook, p.RootDir)
 }
@@ -218,6 +253,7 @@ func (p *P2PConfig) AddrBookFile() string {
 //-----------------------------------------------------------------------------
 // MempoolConfig
 
+// MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
 	RootDir      string `mapstructure:"home"`
 	Recheck      bool   `mapstructure:"recheck"`
@@ -226,6 +262,7 @@ type MempoolConfig struct {
 	WalPath      string `mapstructure:"wal_dir"`
 }
 
+// DefaultMempoolConfig returns a default configuration for the Tendermint mempool
 func DefaultMempoolConfig() *MempoolConfig {
 	return &MempoolConfig{
 		Recheck:      true,
@@ -235,6 +272,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 	}
 }
 
+// WalDir returns the full path to the mempool's write-ahead log
 func (m *MempoolConfig) WalDir() string {
 	return rootify(m.WalPath, m.RootDir)
 }
@@ -242,8 +280,8 @@ func (m *MempoolConfig) WalDir() string {
 //-----------------------------------------------------------------------------
 // ConsensusConfig
 
-// ConsensusConfig holds timeouts and details about the WAL, the block structure,
-// and timeouts in the consensus protocol.
+// ConsensusConfig defines the confuguration for the Tendermint consensus service,
+// including timeouts and details about the WAL and the block structure.
 type ConsensusConfig struct {
 	RootDir  string `mapstructure:"home"`
 	WalPath  string `mapstructure:"wal_file"`
@@ -269,46 +307,64 @@ type ConsensusConfig struct {
 	// TODO: This probably shouldn't be exposed but it makes it
 	// easy to write tests for the wal/replay
 	BlockPartSize int `mapstructure:"block_part_size"`
+
+	// Reactor sleep duration parameters are in ms
+	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
+	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
 }
 
-// Wait this long for a proposal
+// Propose returns the amount of time to wait for a proposal
 func (cfg *ConsensusConfig) Propose(round int) time.Duration {
 	return time.Duration(cfg.TimeoutPropose+cfg.TimeoutProposeDelta*round) * time.Millisecond
 }
 
-// After receiving any +2/3 prevote, wait this long for stragglers
+// Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
 func (cfg *ConsensusConfig) Prevote(round int) time.Duration {
 	return time.Duration(cfg.TimeoutPrevote+cfg.TimeoutPrevoteDelta*round) * time.Millisecond
 }
 
-// After receiving any +2/3 precommits, wait this long for stragglers
+// Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
 func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
 	return time.Duration(cfg.TimeoutPrecommit+cfg.TimeoutPrecommitDelta*round) * time.Millisecond
 }
 
-// After receiving +2/3 precommits for a single block (a commit), wait this long for stragglers in the next height's RoundStepNewHeight
+// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
 func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
 	return t.Add(time.Duration(cfg.TimeoutCommit) * time.Millisecond)
 }
 
+// PeerGossipSleep returns the amount of time to sleep if there is nothing to send from the ConsensusReactor
+func (cfg *ConsensusConfig) PeerGossipSleep() time.Duration {
+	return time.Duration(cfg.PeerGossipSleepDuration) * time.Millisecond
+}
+
+// PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
+func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
+	return time.Duration(cfg.PeerQueryMaj23SleepDuration) * time.Millisecond
+}
+
+// DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
-		WalPath:               "data/cs.wal/wal",
-		WalLight:              false,
-		TimeoutPropose:        3000,
-		TimeoutProposeDelta:   500,
-		TimeoutPrevote:        1000,
-		TimeoutPrevoteDelta:   500,
-		TimeoutPrecommit:      1000,
-		TimeoutPrecommitDelta: 500,
-		TimeoutCommit:         1000,
-		SkipTimeoutCommit:     false,
-		MaxBlockSizeTxs:       10000,
-		MaxBlockSizeBytes:     1,                          // TODO
-		BlockPartSize:         types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
+		WalPath:                     "data/cs.wal/wal",
+		WalLight:                    false,
+		TimeoutPropose:              3000,
+		TimeoutProposeDelta:         500,
+		TimeoutPrevote:              1000,
+		TimeoutPrevoteDelta:         500,
+		TimeoutPrecommit:            1000,
+		TimeoutPrecommitDelta:       500,
+		TimeoutCommit:               1000,
+		SkipTimeoutCommit:           false,
+		MaxBlockSizeTxs:             10000,
+		MaxBlockSizeBytes:           1,                          // TODO
+		BlockPartSize:               types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
+		PeerGossipSleepDuration:     100,
+		PeerQueryMaj23SleepDuration: 2000,
 	}
 }
 
+// TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
 	config := DefaultConsensusConfig()
 	config.TimeoutPropose = 2000
@@ -322,6 +378,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	return config
 }
 
+// WalFile returns the full path to the write-ahead log file
 func (c *ConsensusConfig) WalFile() string {
 	if c.walFile != "" {
 		return c.walFile
@@ -329,6 +386,7 @@ func (c *ConsensusConfig) WalFile() string {
 	return rootify(c.WalPath, c.RootDir)
 }
 
+// SetWalFile sets the path to the write-ahead log file
 func (c *ConsensusConfig) SetWalFile(walFile string) {
 	c.walFile = walFile
 }

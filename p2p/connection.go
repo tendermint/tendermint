@@ -21,7 +21,11 @@ const (
 	minWriteBufferSize = 65536
 	updateState        = 2 * time.Second
 	pingTimeout        = 40 * time.Second
-	flushThrottle      = 100 * time.Millisecond
+
+	// flushThrottle used here as a default.
+	// overwritten by the user config.
+	// TODO: remove
+	flushThrottle = 100 * time.Millisecond
 
 	defaultSendQueueCapacity   = 1
 	defaultSendRate            = int64(512000) // 500KB/s
@@ -89,13 +93,16 @@ type MConnection struct {
 type MConnConfig struct {
 	SendRate int64 `mapstructure:"send_rate"`
 	RecvRate int64 `mapstructure:"recv_rate"`
+
+	flushThrottle time.Duration
 }
 
 // DefaultMConnConfig returns the default config.
 func DefaultMConnConfig() *MConnConfig {
 	return &MConnConfig{
-		SendRate: defaultSendRate,
-		RecvRate: defaultRecvRate,
+		SendRate:      defaultSendRate,
+		RecvRate:      defaultRecvRate,
+		flushThrottle: flushThrottle,
 	}
 }
 
@@ -145,10 +152,11 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	return mconn
 }
 
+// OnStart implements BaseService
 func (c *MConnection) OnStart() error {
 	c.BaseService.OnStart()
 	c.quit = make(chan struct{})
-	c.flushTimer = cmn.NewThrottleTimer("flush", flushThrottle)
+	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateState)
 	go c.sendRoutine()
@@ -156,6 +164,7 @@ func (c *MConnection) OnStart() error {
 	return nil
 }
 
+// OnStop implements BaseService
 func (c *MConnection) OnStop() {
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()
