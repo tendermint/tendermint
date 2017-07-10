@@ -1,0 +1,46 @@
+\section{Definitions}
+\label{sec:definitions}
+
+
+\subsection{Model}
+
+We consider a system composed of $n$ server processes $\Pi = \{ 1, \dots, n\}$ that communicate by exchanging messages.
+All messages sent between processes are digitally signed.
+Processes can be \emph{correct} or \emph{faulty}, where correct processes
+follow the algorithm and the faulty one may behave in an arbitrary way, i.e., we consider Byzantine faults.
+We assume than the number of faulty servers is limited to $f$.
+
+We consider a partially synchronous system model:
+in all executions of the system, there is a bound $\Delta$
+and an instant $GST$ (Global Stabilization Time) such that all
+communication among correct processes after $GST$ is reliable and $\Delta$-timely, i.e., if a correct process
+$p$ sends message $m$ at time $t\ge GST$ to correct process $q$, then $q$ will receive $m$
+before $t+\Delta$.
+We do not make any assumption
+before $GST$. For example, messages among correct processes can be
+delayed, dropped or duplicated before $GST$. Spoofing/impersonation attacks are
+assumed to be impossible also before $GST$.
+
+We assume that process steps (which might include
+sending and receiving messages)
+take zero time.
+Processes are equipped with clocks able to measure local timeouts.
+
+ \subsection{Consensus}
+ \label{sec:consensus}
+
+ \newcommand{\propose}{\mathsf{Propose}}
+ \newcommand{\decide}{\mathsf{Decide}}
+
+ In the consensus problem, every process has an initial value from a
+      set $V$ and has eventually to irrevocably decide on a value from
+      $V$.
+ The problem is defined by an agreement, a termination, and a validity
+      property.
+
+ \begin{itemize}
+ \item \emph{Agreement:} No two correct processes decide differently.
+ \item \emph{Termination:} All correct processes eventually decide.
+ \item \emph{Validity:} If all correct processes have the same initial value, and no process
+ is faulty, then this is the only possible decision value.
+ \end{itemize}

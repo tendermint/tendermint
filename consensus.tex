@@ -1,0 +1,142 @@
+
+\section{Tendermint}
+\label{sec:consensus}
+
+\newcommand\Propose{\mathsf{PROPOSE}}
+\newcommand\PrePrepare{\mathsf{INIT}}
+\newcommand\Prepare{\mathsf{PREVOTE}}
+\newcommand\Commit{\mathsf{PRECOMMIT}}
+\newcommand\Decision{\mathsf{DECISION}}
+
+\newcommand\ViewChange{\mathsf{VC}}
+\newcommand\ViewChangeAck{\mathsf{VC\mbox{-}ACK}}
+\newcommand\NewPrePrepare{\mathsf{VC\mbox{-}INIT}}
+\newcommand\coord{\mathsf{proposer}}
+
+
+\begin{algorithm}[htb!]
+\def\baselinestretch{1}
+\scriptsize\raggedright
+\begin{algorithmic}[1]
+\SHORTSPACE
+\INIT{}
+  \STATE $v_p := v \in V$ \COMMENT{value considered for consensus} 
+  \STATE $round_p := 0$   \COMMENT{current round number} 
+  \STATE $vote_p := null$ \COMMENT{locked value}
+  \STATE $ts_p := -1$ \COMMENT{ if $ts_p \ge 0$, it represents round in which $vote_p$ has been locked}
+  \STATE $proof_p := \emptyset$ \COMMENT{set of signed messages as a proof that $vote_p$ has been locked in round $ts_p$}
+  \STATE $state_p \in \set{init=0,prepared=1,comitted=2}$, initially $init$
+  \STATE $decision_p = null$
+\ENDINIT
+
+\SPACE
+\UPON{start}
+  \STATE $StartRound(0)$
+\ENDUPON
+
+\SPACE
+\UPON{receiving $\li{\Propose,round_p, vote, ts, proof}$ \From\ $\coord(round_p)$ \With\ $state_p = init$} \label{line:tab:recvInit}
+ \IF{$isValidProposal(vote,ts,proof)$}
+   \STATE \PBroadcast \ $\li{\Prepare,round_p,vote}$ to all \label{line:tab:send-echo}
+   \STATE $state_p \assign prepared$ \label{line:tab:setStateToEchoed}
+   \IF{$vote \neq vote_p \wedge ts > ts_p$}
+     \STATE $vote_p \assign null$
+     \STATE $ts_p \assign -1$
+    \ENDIF
+ \ENDIF
+\ENDUPON
+
+\SPACE
+\UPON{receiving $\li{\Prepare,round_p,vote}$  \From\ $2f+1$ processes \With\
+$state_p \le prepared$} \label{line:tab:recvEcho}
+ \STATE $vote_p \assign vote$   \label{line:tab:setV}
+ \STATE $ts_p \assign round_p$ \label{line:tab:setTs}
+ \STATE \PBroadcast \ $\li{\Commit,round_p,vote_p}$ to all \label{line:tab:send-commit}
+ \STATE $state_p \assign committed$ \label{line:tab:setStateToCommitted}
+ \STATE $proof_p \assign$ \{set of received signed messages\}
+\ENDUPON
+
+\SPACE
+\UPON{receiving ($\li{\Commit,round,vote}$ \From\ $2f+1$ processes \With\ $decision_p \neq null$} \label{line:tab:recvCommit}
+  \STATE $decision_p \assign vote$ \label{line:tab:setStateToDecided}
+\ENDUPON
+
+\SPACE
+\UPON{receiving message \textbf{with} $round > round_p$ \From\ $f+1$ processes} \label{line:tab:skipViews}
+\STATE $StartRound(round)$
+\ENDUPON
+
+
+\SPACE
+\FUNCTION{$StartRound(round)$} \label{line:tab:startRound}
+ \STATE $round_p \assign round$
+ \STATE $state_p \assign init$
+ \IF{$\coord(round_p) = p$} 
+   \IF{$ts_p \ge 0$}
+     \STATE $proposal \assign vote_p$
+   \ELSE 
+   	 \STATE $proposal \assign v_p$
+   \ENDIF	  	  
+   \STATE \PBroadcast\ $\li{\Propose,round_p,proposal,ts_p, proof_p}$ to all \label{line:tab:send-propose}
+ \ENDIF
+  \STATE \textbf{after} $timeout$ execute $OnTimeout(round_p)$
+\ENDFUNCTION
+
+\SPACE
+\FUNCTION{$OnTimeout(round)$} \label{line:tab:onTimeoutStart}
+  \IF{$round = round_p$}
+   \STATE $StartRound(round+1)$ \label{line:tab:onTimeout}
+  \ENDIF	
+\ENDFUNCTION
+
+\SPACE
+\FUNCTION{$isValidProposal(vote, ts, proof)$} \label{line:tab:isValidProposal}
+\IF{$vote = vote_p \vee ts_p = -1$}
+  \STATE \textbf{return} true
+\ENDIF
+\IF{$ts > ts_p$ \textbf{and} $proof$ confirms that $vote$ was locked at round $ts$} 
+  \STATE \textbf{return} true
+\ENDIF
+\STATE \textbf{return} false
+\ENDFUNCTION
+
+\end{algorithmic}
+\caption{Tendermint consensus algorithm}
+\label{alg:tendermint}
+\end{algorithm}
+
+
+In this section we present a new Byzantine consensus algorithm called Tendermint\footnote{https://github.com/tendermint/tendermint} 
+(see Algorithm~\ref{alg:tendermint}). 
+The algorithm requires $n > 3f$ processes to tolerate at most f Byzantine faults, but for simplicity we present the algorithm for the case $n = 3f + 1$. The upon rules of Algorithm~\ref{alg:tendermint} are executed atomically. 
+
+It shares the basic mechanisms called locking and unlocking of a value with DSL algorithm for authenticated faults (Algorithm 2 from \cite{DLS88:jacm}), but algorithm structure and implementation of these mechanisms is different in Tendermint. 
+
+The algorithm proceeds in a sequence of rounds, where each round has a dedicated coordinator (called also proposer), that is defined with a deterministic function $\coord$. A correct process moves to a higher round either if a round timeout has expired (line 37) or if process receives a message from a correct process that is in a higher round (lines 26-27). We assume that messages from higher rounds are internally stored by the messaging layer (in case the rule from line 26 is satisfied, round transition is triggered), and then delivered to a process when it enters the corresponding round. Messages from lower rounds are dropped.  
+
+The locking mechanism has a role in ensuring agreement property of consensus, while the unlocking mechanism is related to termination property. Locking guarantees that two correct processes can lock only single value in some round $r$ (they can however potentially lock different values in distinct rounds). A correct process can have only a single value locked at a particular point of algorithm execution. In Algorithm~\ref{alg:tendermint}, a correct process $p$ locks a value $v$ in round $r$ by setting a variable $vote_p$ to $v$ and a variable $ts_p$ to $r$. The unlocking mechanism ensures that eventually (after GST) all correct processes can have only single value $v$ locked. This helps to bring system into univalent configuration~\cite{FLP85:jacm}. In Algorithm~\ref{alg:tendermint}, a process $p$ unlocks a value by setting $vote_p$ to $null$ and $ts_p$ to -1. Initially, all correct process do not lock any value.
+
+Each round is composed of three phases (steps) called propose, prepare and commit. A round starts with a propose phase (lines 28-37) in which a dedicated proposer sends its proposal to all processes. If a proposer $p$ has locked some value $v$, then it proposes $v$; otherwise it proposes it's initial value $v_p$ (lines 32-35). In addition to proposed value, $\Propose$ message also contains $ts$ and a proof of locking a value (in case proposal is equal to locked value), that consist of a set of signed messages received by the process $p$ in the round in which the value was locked. 
+
+When a correct process receives a proposal message from a designated proposer (lines 11-17), it checks if the message is a valid proposal (lines 41-46). A correct process $p$ considers proposal as valid if (i) proposal value is equal to process locked value ($vote_p$) or if $p$ hasn't locked any value ($ts_p = -1$), or (ii) if proposal is different value but from a higher round and with a valid proof of locking. If a process accepts proposal as valid, it enters prepare phase by sending proposed value in $PREVOTE$ message to all processes. In case (ii), as there is a valid locked value in a higher round, the process unlocks it's value.  
+
+When a correct process $p$ receives $2f+1$ $PREVOTE$ messages for the same value $v$, then the process locks a value $v$ (and saves a proof of locking into variable $proof_p$) and enters commit step by sending $v$ in $PRECOMMIT$ message (lines 18-23). When process received $2f+1$ $PRECOMMIT$ messages for some value $v$, it decides value $v$. 
+
+Note that algorithm relies on $state$ variable to prevent correct processes from sending more than one $PREVOTE$ and $PRECOMMIT$ messages in a single round $r$. For simplicity, the current version of the algorithm does not provide termination condition, i.e., processes continue round execution even after deciding. We also assume that round timeout is being incremented in each round so that eventually all correct processes are able to receive all messages from correct processes in a round, before the round timeout expires.  
+Furthermore, the algorithm solves only single instance consensus problem. The multi-instance version of Tendermint will be addressed in the next version of the document. However, it should be relatively straightforward to modify Algorithm~\ref{alg:tendermint} to get multi-instance version with the following modifications: (i) adding consensus instance number in each message, (ii) having per instance algorithm state variables and (iii) adding logic for starting next consensus instance.
+
+\subsection{Proof of correctness (sketch)}
+
+\textbf{Agreement} Let assume that a first correct process that decides is $p$ and that $p$ decides value $v$ in round $r$. As $p$ decided $v$ this means that $p$ receives at least $2f+1$ $PRECOMMIT$ messages with value $v$ in the round $r$ (line 24). This means that at least $f+1$ correct processes have locked value $v$ in round $r$ and have it's variable $vote$ set to $v$ and $ts$ variable set to $r$. As correct processes can send only single $PRECOMMIT$ message per round, and there are at most $f$ faulty processes, then no correct process can receive $2f+1$ $PRECOMMIT$ messages in the round $r$ for some other value $v' \neq v$. Therefore, no correct process can decide value different than $v$ in the round $r$. 
+
+Now let consider the smallest round $r' > r$ in which correct process $q$ locks some value $v'$. As $q$ locks value $v'$ this means that $q$ has received at least $2f+1$ $PREVOTE$ messages equal to $v'$ in the round $r'$. Therefore, at least $f+1$ correct processes has sent $v'$ in $PREVOTE$ message in the round $r'$. As $f+1$ correct process $q'$ locked value $v$ in the round $r$, this means that one of those processes sent $PROPOSE$ message with value $v'$ in the round $r'$. According to function $isValidProposal$, $q'$ received valid proof of locking for value $v'$. This is in contradiction with the assumption that $r'$ is the smallest round in which some correct process locks some value (TODO: improve this part, it is not very precise as it could be reasoned that a Byzantine process could create correct proof of locking for some value $v'$ and round greater than $r'$ which can be proved impossible with the similar reasoning). As no correct process can lock any value different from $v$ in rounds $r' > r$, then no correct process can decide value different from $v$. 
+
+\textbf{Termination} 
+
+The Algorithm~\ref{alg:tendermint} does not terminate as the following scenario is possible: we consider rounds after GST, starting from round $r$ and at round $r$ a correct process $p$ is the only process that locks some value $v$ among the correct processes ($0 \le ts_p \le r$). Assume that no correct process has decided. Let assume that $p$ would coordinate the round $r'>r$. In rounds smaller than $r'$ $p$ will reject any proposal from correct processes if it's not equal to $v$ (which is possible if all correct processes have different initial values), so it will not send $PREPARE$ message. As faulty processes could decide not to send any message, no correct processes will be able to lock a value and to decide in those rounds. Now let assume that in round $r'-1$ some correct process $q$ locks value $v' \neq v$ because a faulty process (together with all correct processes except $p$) sends $PREVOTE$ message with $v'$ to $q$. As $q$ locks value $v'$ in round higher than $r$, $q$ will reject proposal from $p$ in round $r'$ so if faulty processes stay silent, again no correct processes can decide in that round. This scenario can be repeated also with the rounds $k-1$ and $k$, in which the process $q$ is proposer.
+
+The property that needs to be ensured is the following: after GST, there exist a round such that a proposal from a correct process is accepted by all correct processes. The solution could be adding one more step (lock-release step) at the end of each round where correct processes would send it's locked value (together with ts and proof) to all processes, and then a correct process will release lock upon reception of proof of locking for a different value from higher round. We will also need to modify lines 35 and 36 to propose the value with the valid proof of locking from the highest round (if process is aware of such value) or initial value.
+
+            
+
+
