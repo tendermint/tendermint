@@ -2,6 +2,7 @@ package core
 
 import (
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	p2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
@@ -45,6 +46,7 @@ var (
 	genDoc    *types.GenesisDoc // cache the genesis structure
 	addrBook  *p2p.AddrBook
 	txIndexer txindex.TxIndexer
+	bcReactor *blockchain.BlockchainReactor
 
 	logger log.Logger
 )
@@ -87,6 +89,10 @@ func SetProxyAppQuery(appConn proxy.AppConnQuery) {
 
 func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
+}
+
+func SetBlockchainReactor(bc *blockchain.BlockchainReactor) {
+	bcReactor = bc
 }
 
 func SetLogger(l log.Logger) {

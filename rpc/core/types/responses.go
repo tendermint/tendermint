@@ -38,6 +38,7 @@ type ResultStatus struct {
 	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
 	LatestBlockHeight int           `json:"latest_block_height"`
 	LatestBlockTime   int64         `json:"latest_block_time"` // nano
+	Syncing           bool          `json:"syncing"`
 }
 
 func (s *ResultStatus) TxIndexEnabled() bool {

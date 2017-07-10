@@ -267,6 +267,11 @@ func (bcR *BlockchainReactor) SetEventSwitch(evsw types.EventSwitch) {
 	bcR.evsw = evsw
 }
 
+// FastSync returns whether the blockchain reactor is currently fast syncing
+func (bcR *BlockchainReactor) FastSync() bool {
+	return bcR.fastSync
+}
+
 //-----------------------------------------------------------------------------
 // Messages
 
