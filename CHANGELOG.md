@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.2 (TBD)
+## 0.10.2 (July 10, 2017)
 
 FEATURES:
 - Enable lower latency block commits by adding consensus reactor sleep durations and p2p flush throttle timeout to the config
