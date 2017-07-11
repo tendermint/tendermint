@@ -804,7 +804,7 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		return
 	}
 
-	if !bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress()) {
+	if !cs.isProposer() {
 		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 			cs.Logger.Debug("This node is a validator")
@@ -816,6 +816,10 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		cs.Logger.Debug("This node is a validator")
 		cs.decideProposal(height, round)
 	}
+}
+
+func (cs *ConsensusState) isProposer() bool {
+	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress())
 }
 
 func (cs *ConsensusState) defaultDecideProposal(height, round int) {
