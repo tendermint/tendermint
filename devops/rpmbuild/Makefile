@@ -78,7 +78,7 @@ build-ethermint: git-branch
 
 build-trackomatron: git-branch
 	@echo "*** Building trackomatron"
-	go get -d -u go github.com/tendermint/trackomatron || echo "Workaround so there is no error message."
+	go get -d -u go github.com/tendermint/trackomatron/cmd/tracko
 	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
 	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
 	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed to get the version number" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
@@ -86,7 +86,7 @@ build-trackomatron: git-branch
 
 build-gaia: git-branch
 	@echo "*** Building gaia"
-	go get -d -u go github.com/cosmos/gaia || echo "Workaround so there is no error message."
+	go get -d -u go github.com/cosmos/gaia
 	cd $(GOPATH)/src/github.com/cosmos/gaia && git checkout "$(GIT_BRANCH)" && git pull
 	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
@@ -103,6 +103,7 @@ prepare-spec-%: version-%
 
 package-rpm-%: prepare-spec-%
 	@echo "*** Packaging RPM $* version $($*_version)"
+	script
 	rpmbuild -bb SPECS/$*.spec
 	./sign RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm
 	rpm -Kv RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm
