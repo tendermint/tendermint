@@ -72,6 +72,10 @@ type Mempool struct {
 	// A log of mempool txs
 	wal *auto.AutoFile
 
+	// fires once for each height, when the mempool is not empty
+	txsAvailable         chan struct{}
+	notifiedTxsAvailable bool
+
 	logger log.Logger
 }
 
@@ -88,6 +92,7 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *M
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
 		cache:         newTxCache(cacheSize),
+		txsAvailable:  make(chan struct{}, 1),
 	}
 	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
@@ -215,6 +220,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      req.GetCheckTx().Tx,
 			}
 			mem.txs.PushBack(memTx)
+			mem.alertIfTxsAvailable()
 		} else {
 			// ignore bad transaction
 			mem.logger.Info("Bad Transaction", "res", r)
@@ -256,10 +262,23 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Done!
 			atomic.StoreInt32(&mem.rechecking, 0)
 			mem.logger.Info("Done rechecking txs")
+
+			mem.alertIfTxsAvailable()
 		}
 	default:
 		// ignore other messages
 	}
+}
+
+func (mem *Mempool) alertIfTxsAvailable() {
+	if !mem.notifiedTxsAvailable && mem.Size() > 0 {
+		mem.notifiedTxsAvailable = true
+		mem.txsAvailable <- struct{}{}
+	}
+}
+
+func (mem *Mempool) TxsAvailable() chan struct{} {
+	return mem.txsAvailable
 }
 
 // Reap returns a list of transactions currently in the mempool.
@@ -307,13 +326,15 @@ func (mem *Mempool) Update(height int, txs types.Txs) {
 
 	// Set height
 	mem.height = height
+	mem.notifiedTxsAvailable = false
+
 	// Remove transactions that are already in txs.
 	goodTxs := mem.filterTxs(txsMap)
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
 	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
-		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs))
+		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.

@@ -10,13 +10,15 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
+
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 //-----------------------------------------------------------------------------
@@ -225,6 +227,9 @@ type ConsensusState struct {
 	doPrevote      func(height, round int)
 	setProposal    func(proposal *types.Proposal) error
 
+	// signifies that txs are available for proposal
+	txsAvailable chan RoundState
+
 	// closed when we finish shutting down
 	done chan struct{}
 }
@@ -239,6 +244,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
+		txsAvailable:     make(chan RoundState),
 		done:             make(chan struct{}),
 	}
 	// set function defaults (may be overwritten before calling Start)
@@ -619,6 +625,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
+		case rs_ := <-cs.txsAvailable:
+			cs.enterPropose(rs_.Height, rs_.Round)
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
@@ -770,11 +778,41 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 
 	types.FireEventNewRound(cs.evsw, cs.RoundStateEvent())
 
-	// Immediately go to enterPropose.
-	cs.enterPropose(height, round)
+	// Wait for txs to be available in the mempool
+	// before we enterPropose
+	go cs.waitForTxs(height, round)
 }
 
-// Enter: from enterNewRound(height,round).
+func (cs *ConsensusState) waitForTxs(height, round int) {
+	// if we're the proposer, start a heartbeat routine
+	// to tell other peers we're just waiting for txs (for debugging)
+	done := make(chan struct{})
+	defer close(done)
+	if cs.isProposer() {
+		go cs.proposerHeartbeat(done)
+	}
+
+	// wait for the mempool to have some txs
+	<-cs.mempool.TxsAvailable()
+
+	// now we can enterPropose
+	cs.txsAvailable <- RoundState{Height: height, Round: round}
+}
+
+func (cs *ConsensusState) proposerHeartbeat(done chan struct{}) {
+	for {
+		select {
+		case <-done:
+			return
+		default:
+			// TODO: broadcast heartbeat
+
+			time.Sleep(time.Second)
+		}
+	}
+}
+
+// Enter: from enter NewRound(height,round), once txs are in the mempool
 func (cs *ConsensusState) enterPropose(height int, round int) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPropose <= cs.Step) {
 		cs.Logger.Debug(cmn.Fmt("enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))

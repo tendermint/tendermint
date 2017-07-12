@@ -139,6 +139,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	mempoolLogger := logger.With("module", "mempool")
 	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool())
 	mempool.SetLogger(mempoolLogger)
+	mempool.Update(state.LastBlockHeight, nil)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
