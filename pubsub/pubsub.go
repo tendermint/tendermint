@@ -26,6 +26,7 @@ package pubsub
 
 import (
 	"errors"
+	"fmt"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -174,7 +175,7 @@ func (s *Server) PublishWithTags(msg interface{}, tags map[string]interface{}) e
 		select {
 		case s.cmds <- pubCmd:
 		default:
-			s.Logger.Error("Server overflowed, dropping message...", "msg", msg)
+			s.Logger.Error("Server overflowed, dropping message...", "msg", msg, "tags", fmt.Sprintf("%v", tags))
 			return ErrorOverflow
 		}
 	case wait:
@@ -297,7 +298,7 @@ func (state *state) send(msg interface{}, tags map[string]interface{}, slowClien
 					select {
 					case ch <- msg:
 					default:
-						logger.Error("Client is busy, skipping...", "clientID", clientID)
+						logger.Error("Wanted to send a message, but the client is busy", "msg", msg, "tags", fmt.Sprintf("%v", tags), "clientID", clientID)
 					}
 				case wait:
 					ch <- msg
