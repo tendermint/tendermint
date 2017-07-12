@@ -1,18 +1,20 @@
+Version: @VERSION@
+Release: @BUILD_NUMBER@
 
 %define __spec_install_post %{nil}
 %define debug_package       %{nil}
 %define __os_install_post   %{nil}
 
-Name: trackomatron
-Summary: Trackomatron - Track invoices on the blockchain
+Name: gaia
+Summary: gaia - Tendermint Cosmos delegation game chain
 License: Apache 2.0
-URL: https://tendermint.com/
+URL: https://cosmos.network/
 Packager: Greg Szabo
 Requires: tendermint >= 0.10.0
 Requires(pre): /sbin/useradd
 
 %description
-This software is intended to create a space to easily send invoices between and within institutions. Firstly, the commands of trackmatron are separated into two broad categories: submitting information to the blockchain (transactions), and retrieving information from the blockchain (query).
+Gaia description comes later.
 
 %pre
 if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
@@ -20,30 +22,17 @@ if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
 fi
 
 %prep
-test -d "$GOPATH" || echo "GOPATH not set"
-test -d "$GOPATH"
-
-%{__mkdir_p} %{name}-%{version}
-cd %{name}-%{version}
-
-%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint
-
-%{__cp} $GOPATH/bin/tracko $GOPATH/bin/trackocli .%{_bindir}
-%{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
-
-cp -r %{_topdir}/extrafiles/%{name}/* ./
-
-%{__chmod} -Rf a+rX,u+w,g-w,o-w .
+# Nothing to do here. - It is done in the Makefile.
 
 %build
 # Nothing to do here.
 
 %install
-cd %{name}-%{version}
+cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
-sudo -Hu %{name} tracko init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
+sudo -Hu %{name} gaia init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
 #The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
 #The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
@@ -62,8 +51,8 @@ systemctl stop %{name}-service 2> /dev/null || :
 systemctl daemon-reload
 
 %files
-%attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}
-%attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
+%ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}
+%ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*

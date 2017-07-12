@@ -1,3 +1,5 @@
+Version: @VERSION@
+Release: @BUILD_NUMBER@
 
 %define __spec_install_post %{nil}
 %define debug_package       %{nil}
@@ -13,20 +15,13 @@ Packager: Greg Szabo
 Tendermint is software for securely and consistently replicating an application on many machines. By securely, we mean that Tendermint works even if up to 1/3 of machines fail in arbitrary ways. By consistently, we mean that every non-faulty machine sees the same transaction log and computes the same state.
 
 %prep
-test -d "$GOPATH" || echo "GOPATH not set"
-test -d "$GOPATH"
-%{__mkdir_p} %{name}-%{version}
-cd %{name}-%{version}
-%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name}
-%{__cp} $GOPATH/bin/%{name} .%{_bindir}
-%{__cp} $GOPATH/src/github.com/tendermint/tendermint/LICENSE .%{_defaultlicensedir}/%{name}
-%{__chmod} -Rf a+rX,u+w,g-w,o-w .
+# Nothing to do here. - It is done in the Makefile.
 
 %build
 # Nothing to do here.
 
 %install
-cd %{name}-%{version}
+cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %files

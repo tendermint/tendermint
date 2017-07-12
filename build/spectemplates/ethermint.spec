@@ -1,3 +1,5 @@
+Version: @VERSION@
+Release: @BUILD_NUMBER@
 
 %define __spec_install_post %{nil}
 %define debug_package       %{nil}
@@ -20,27 +22,13 @@ if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
 fi
 
 %prep
-test -d "$GOPATH" || echo "GOPATH not set"
-test -d "$GOPATH"
-%{__mkdir_p} %{name}-%{version}
-cd %{name}-%{version}
-
-%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint .%{_sysconfdir}/systemd/system .%{_sysconfdir}/systemd/system-preset
-
-%{__cp} $GOPATH/bin/%{name} .%{_bindir}
-%{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
-%{__cp} $GOPATH/src/github.com/tendermint/%{name}/setup/genesis.json .%{_sysconfdir}/%{name}/genesis.json
-%{__cp} -r $GOPATH/src/github.com/tendermint/%{name}/setup/keystore .%{_sysconfdir}/%{name}
-
-cp -r %{_topdir}/extrafiles/%{name}/* ./
-
-%{__chmod} -Rf a+rX,u+w,g-w,o-w .
+# Nothing to do here. - It is done in the Makefile.
 
 %build
 # Nothing to do here.
 
 %install
-cd %{name}-%{version}
+cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
@@ -53,7 +41,6 @@ systemctl stop %{name} 2> /dev/null || :
 systemctl stop %{name}-service 2> /dev/null || :
 
 %postun
-#userdel %{name}
 systemctl daemon-reload
 
 %files
@@ -61,7 +48,7 @@ systemctl daemon-reload
 %config(noreplace) %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/genesis.json
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/keystore
 %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/keystore/*
-%attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
+%ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*

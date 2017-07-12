@@ -1,0 +1,6 @@
+%_topdir %(echo $WORKSPACE)/tools/build
+%_tmppath %(echo $WORKSPACE)/tools/build/tmp
+%_signature gpg
+%_gpg_name 2122CBE9
+%_gpgbin /usr/bin/gpg
+

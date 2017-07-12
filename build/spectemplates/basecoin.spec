@@ -1,3 +1,5 @@
+Version: @VERSION@
+Release: @BUILD_NUMBER@
 
 %define __spec_install_post %{nil}
 %define debug_package       %{nil}
@@ -21,26 +23,13 @@ if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
 fi
 
 %prep
-test -d "$GOPATH" || echo "GOPATH not set"
-test -d "$GOPATH"
-
-%{__mkdir_p} %{name}-%{version}
-cd %{name}-%{version}
-
-%{__mkdir_p} .%{_bindir} .%{_defaultlicensedir}/%{name} .%{_sysconfdir}/%{name}/tendermint
-
-%{__cp} $GOPATH/bin/%{name} $GOPATH/bin/basecli .%{_bindir}
-%{__cp} $GOPATH/src/github.com/tendermint/%{name}/LICENSE .%{_defaultlicensedir}/%{name}
-
-cp -r %{_topdir}/extrafiles/%{name}/* ./
-
-%{__chmod} -Rf a+rX,u+w,g-w,o-w .
+# Nothing to do here. - It is done in the Makefile.
 
 %build
 # Nothing to do here.
 
 %install
-cd %{name}-%{version}
+cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
@@ -63,8 +52,8 @@ systemctl stop %{name}-service 2> /dev/null || :
 systemctl daemon-reload
 
 %files
-%attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}
-%attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
+%ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}
+%ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*
