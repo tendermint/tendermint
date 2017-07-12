@@ -91,7 +91,7 @@ build-gaia: git-branch
 	@echo "*** Built gaia"
 
 ###
-# Prepare package build
+# Prepare package files
 ###
 
 # set app_version
@@ -99,40 +99,35 @@ version-%: $(GOPATH)/bin/%
 	if [ -z "$(BUILD_NUMBER)" ]; then echo "BUILD_NUMBER not set" ; false ; fi
 	$(eval $*_version=$(shell $< version | cut -d- -f1 ))
 
+# set build_folder
 folder-%: version-%
 	$(eval build_folder=BUILD/$*-$($*_version)-$(BUILD_NUMBER))
 
-# Copy files - generic
-prepare-files-%: folder-%
-	rm -rf $(build_folder)
-	mkdir -p $(build_folder)
-	cp -r ./$*/* $(build_folder)
-	mkdir -p $(build_folder)/usr/bin
-	cp $(GOPATH)/bin/$* $(build_folder)/usr/bin
+# clean up folder structure for package files
+prepare-files = rm -rf $(build_folder) && mkdir -p $(build_folder) && cp -r ./$(1)/* $(build_folder) && mkdir -p $(build_folder)/usr/bin && cp $(GOPATH)/bin/$(1) $(build_folder)/usr/bin
 
-prepare-custom-tendermint: prepare-files-tendermint
+##
+## Package customizations for the different applications
+##
 
-prepare-custom-basecoin: prepare-files-basecoin
-	cp $(GOPATH)/bin/basecli $(build_folder)/usr/bin
-
-prepare-custom-ethermint: prepare-files-ethermint
-	mkdir -p $(build_folder)/etc/ethermint
-	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json
+prepare-tendermint =
+prepare-basecoin = cp $(GOPATH)/bin/basecli $(build_folder)/usr/bin
+prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
+	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
-
-prepare-custom-trackomatron: prepare-files-trackomatron
-	rm -f $(build_folder)/usr/bin/trackomatron
-	cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
-
-prepare-custom-gaia: prepare-files-gaia
+prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
+prepare-gaia =
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
 ###
 
 # Depends on rpmbuild, sorry, this can only be built on CentOS/RedHat machines.
-package-rpm-%: prepare-custom-%
+package-rpm-%: folder-%
 	@echo "*** Packaging RPM $* version $($*_version)"
+
+	$(call prepare-files,$*)
+	$(call prepare-$*)
 
 	rm -rf $(build_folder)/DEBIAN
 	mkdir -p $(build_folder)/usr/share/licenses/$*
@@ -150,8 +145,11 @@ package-rpm-%: prepare-custom-%
 	rpm -Kv RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm
 	@echo "*** Packaged RPM $* version $($*_version)"
 
-package-deb-%: prepare-custom-%
+package-deb-%: folder-%
 	@echo "*** Packaging DEB $* version $($*_version)-$(BUILD_NUMBER)"
+
+	$(call prepare-files,$*)
+	$(call prepare-$*)
 
 	mkdir -p $(build_folder)/usr/share/doc/$*
 	cp $(build_folder)/DEBIAN/copyright $(build_folder)/usr/share/doc/$*
