@@ -193,13 +193,21 @@ func Benchmark10Clients(b *testing.B)   { benchmarkNClients(10, b) }
 func Benchmark100Clients(b *testing.B)  { benchmarkNClients(100, b) }
 func Benchmark1000Clients(b *testing.B) { benchmarkNClients(1000, b) }
 
+func Benchmark10ClientsOneQuery(b *testing.B)   { benchmarkNClientsOneQuery(10, b) }
+func Benchmark100ClientsOneQuery(b *testing.B)  { benchmarkNClientsOneQuery(100, b) }
+func Benchmark1000ClientsOneQuery(b *testing.B) { benchmarkNClientsOneQuery(1000, b) }
+
 func benchmarkNClients(n int, b *testing.B) {
-	s := pubsub.NewServer(pubsub.BufferCapacity(b.N))
+	s := pubsub.NewServer()
 	s.Start()
 	defer s.Stop()
 
 	for i := 0; i < n; i++ {
 		ch := make(chan interface{})
+		go func() {
+			for range ch {
+			}
+		}()
 		s.Subscribe(clientID, query.MustParse(fmt.Sprintf("abci.Account.Owner = Ivan AND abci.Invoices.Number = %d", i)), ch)
 	}
 
@@ -207,6 +215,28 @@ func benchmarkNClients(n int, b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		s.PublishWithTags("Gamora", map[string]interface{}{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": i})
+	}
+}
+
+func benchmarkNClientsOneQuery(n int, b *testing.B) {
+	s := pubsub.NewServer()
+	s.Start()
+	defer s.Stop()
+
+	q := query.MustParse("abci.Account.Owner = Ivan AND abci.Invoices.Number = 1")
+	for i := 0; i < n; i++ {
+		ch := make(chan interface{})
+		go func() {
+			for range ch {
+			}
+		}()
+		s.Subscribe(clientID, q, ch)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		s.PublishWithTags("Gamora", map[string]interface{}{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": 1})
 	}
 }
 

@@ -290,11 +290,8 @@ func (state *state) removeAll(clientID string) {
 
 func (state *state) send(msg interface{}, tags map[string]interface{}, slowClientStrategy overflowStrategy, logger log.Logger) {
 	for q, clientToChannelMap := range state.queries {
-		// NOTE we can use LRU cache to speed up common cases like query = "
-		// tm.events.type=NewBlock" and tags = {"tm.events.type": "NewBlock"}
 		if q.Matches(tags) {
 			for clientID, ch := range clientToChannelMap {
-				logger.Info("Sending message to client", "msg", msg, "client", clientID)
 				switch slowClientStrategy {
 				case drop:
 					select {
