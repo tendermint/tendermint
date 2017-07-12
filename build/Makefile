@@ -140,8 +140,8 @@ package-rpm-%: folder-%
 	sed -i "s/@VERSION@/$($*_version)/" SPECS/$*.spec
 	sed -i "s/@BUILD_NUMBER@/$(BUILD_NUMBER)/" SPECS/$*.spec
 
-	rpmbuild -bb SPECS/$*.spec
-	./sign RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm
+	rpmbuild -bb SPECS/$*.spec --define "_topdir `pwd`" --define "_tmppath `pwd`/tmp"
+	./sign RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm "$(gpg_key)" "`which gpg`"
 	rpm -Kv RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm
 	@echo "*** Packaged RPM $* version $($*_version)"
 
