@@ -1,34 +1,115 @@
 package mempool
 
 import (
+	"crypto/rand"
 	"encoding/binary"
 	"testing"
+	"time"
 
 	"github.com/tendermint/abci/example/counter"
+	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/tmlibs/log"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/log"
 )
 
-func TestSerialReap(t *testing.T) {
+func newMempoolWithApp(t *testing.T, cc proxy.ClientCreator) *Mempool {
 	config := cfg.ResetTestRoot("mempool_test")
 
-	app := counter.NewCounterApplication(true)
-	app.SetOption("serial", "on")
-	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	if _, err := appConnMem.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
+	mempool := NewMempool(config.Mempool, appConnMem)
+	mempool.SetLogger(log.TestingLogger())
+	return mempool
+}
+
+func ensureNoFire(t *testing.T, ch chan struct{}, timeoutMS int) {
+	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
+	select {
+	case <-ch:
+		t.Fatal("Expected not to fire")
+	case <-timer.C:
+	}
+}
+
+func ensureFire(t *testing.T, ch chan struct{}, timeoutMS int) {
+	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
+	select {
+	case <-ch:
+	case <-timer.C:
+		t.Fatal("Expected to fire")
+	}
+}
+
+func sendTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
+	txs := make(types.Txs, count)
+	for i := 0; i < count; i++ {
+		txBytes := make([]byte, 20)
+		txs[i] = txBytes
+		rand.Read(txBytes)
+		err := mempool.CheckTx(txBytes, nil)
+		if err != nil {
+			t.Fatal("Error after CheckTx: %v", err)
+		}
+	}
+	return txs
+}
+
+func TestTxsAvailable(t *testing.T) {
+	app := dummy.NewDummyApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(t, cc)
+	mempool.FireOnTxsAvailable()
+
+	timeoutMS := 500
+
+	// with no txs, it shouldnt fire
+	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
+
+	// send a bunch of txs, it should only fire once
+	txs := sendTxs(t, mempool, 100)
+	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
+	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
+
+	// call update with half the txs.
+	// it should fire once now for the new height
+	// since there are still txs left
+	committedTxs, txs := txs[:50], txs[50:]
+	mempool.Update(1, committedTxs)
+	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
+	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
+
+	// send a bunch more txs. we already fired for this height so it shouldnt fire again
+	moreTxs := sendTxs(t, mempool, 50)
+	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
+
+	// now call update with all the txs. it should not fire as there are no txs left
+	committedTxs = append(txs, moreTxs...)
+	mempool.Update(2, committedTxs)
+	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
+
+	// send a bunch more txs, it should only fire once
+	sendTxs(t, mempool, 100)
+	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
+	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
+}
+
+func TestSerialReap(t *testing.T) {
+	app := counter.NewCounterApplication(true)
+	app.SetOption("serial", "on")
+	cc := proxy.NewLocalClientCreator(app)
+
+	mempool := newMempoolWithApp(t, cc)
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	if _, err := appConnCon.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
-	mempool := NewMempool(config.Mempool, appConnMem)
-	mempool.SetLogger(log.TestingLogger())
 
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.

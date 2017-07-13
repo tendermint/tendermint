@@ -294,12 +294,22 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 //-------------------------------------------------------------------------------
 
 func ensureNoNewStep(stepCh chan interface{}) {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
+	timer := time.NewTimer(ensureTimeout * time.Second)
 	select {
-	case <-timeout.C:
+	case <-timer.C:
 		break
 	case <-stepCh:
-		panic("We should be stuck waiting for more votes, not moving to the next step")
+		panic("We should be stuck waiting, not moving to the next step")
+	}
+}
+
+func ensureNewStep(stepCh chan interface{}) {
+	timer := time.NewTimer(ensureTimeout * time.Second)
+	select {
+	case <-timer.C:
+		panic("We shouldnt be stuck waiting")
+	case <-stepCh:
+		break
 	}
 }
 

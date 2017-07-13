@@ -25,6 +25,7 @@ type Mempool interface {
 	Flush()
 
 	TxsAvailable() chan struct{}
+	FireOnTxsAvailable()
 }
 
 type MockMempool struct {
@@ -38,6 +39,7 @@ func (m MockMempool) Reap(n int) Txs                               { return Txs{
 func (m MockMempool) Update(height int, txs Txs)                   {}
 func (m MockMempool) Flush()                                       {}
 func (m MockMempool) TxsAvailable() chan struct{}                  { return make(chan struct{}) }
+func (m MockMempool) FireOnTxsAvailable()                          {}
 
 //------------------------------------------------------
 // blockstore

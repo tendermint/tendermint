@@ -15,6 +15,34 @@ func init() {
 	config = ResetConfig("consensus_mempool_test")
 }
 
+func TestTxsAvailable(t *testing.T) {
+	config := ResetConfig("consensus_mempool_txs_available_test")
+	config.Consensus.NoEmptyBlocks = true
+	state, privVals := randGenesisState(1, false, 10)
+	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs.mempool.FireOnTxsAvailable()
+	height, round := cs.Height, cs.Round
+	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	startTestRound(cs, height, round)
+
+	// we shouldnt make progress until theres a tx
+	ensureNoNewStep(newBlockCh)
+	deliverTxsRange(cs, 0, 100)
+	ensureNewStep(newBlockCh)
+}
+
+func deliverTxsRange(cs *ConsensusState, start, end int) {
+	// Deliver some txs.
+	for i := start; i < end; i++ {
+		txBytes := make([]byte, 8)
+		binary.BigEndian.PutUint64(txBytes, uint64(i))
+		err := cs.mempool.CheckTx(txBytes, nil)
+		if err != nil {
+			panic(Fmt("Error after CheckTx: %v", err))
+		}
+	}
+}
+
 func TestTxConcurrentWithCommit(t *testing.T) {
 
 	state, privVals := randGenesisState(1, false, 10)
@@ -22,21 +50,8 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 
-	deliverTxsRange := func(start, end int) {
-		// Deliver some txs.
-		for i := start; i < end; i++ {
-			txBytes := make([]byte, 8)
-			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			err := cs.mempool.CheckTx(txBytes, nil)
-			if err != nil {
-				panic(Fmt("Error after CheckTx: %v", err))
-			}
-			//	time.Sleep(time.Microsecond * time.Duration(rand.Int63n(3000)))
-		}
-	}
-
 	NTxs := 10000
-	go deliverTxsRange(0, NTxs)
+	go deliverTxsRange(cs, 0, NTxs)
 
 	startTestRound(cs, height, round)
 	ticker := time.NewTicker(time.Second * 20)
