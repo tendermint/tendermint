@@ -301,8 +301,9 @@ type ConsensusConfig struct {
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
 
 	// BlockSize
-	MaxBlockSizeTxs   int `mapstructure:"max_block_size_txs"`
-	MaxBlockSizeBytes int `mapstructure:"max_block_size_bytes"`
+	MaxBlockSizeTxs   int  `mapstructure:"max_block_size_txs"`
+	MaxBlockSizeBytes int  `mapstructure:"max_block_size_bytes"`
+	NoEmptyBlocks     bool `mapstructure:"no_empty_blocks"`
 
 	// TODO: This probably shouldn't be exposed but it makes it
 	// easy to write tests for the wal/replay
@@ -357,7 +358,8 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutCommit:               1000,
 		SkipTimeoutCommit:           false,
 		MaxBlockSizeTxs:             10000,
-		MaxBlockSizeBytes:           1,                          // TODO
+		MaxBlockSizeBytes:           1, // TODO
+		NoEmptyBlocks:               true,
 		BlockPartSize:               types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
@@ -375,6 +377,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	config.TimeoutPrecommitDelta = 1
 	config.TimeoutCommit = 10
 	config.SkipTimeoutCommit = true
+	config.NoEmptyBlocks = false
 	return config
 }
 

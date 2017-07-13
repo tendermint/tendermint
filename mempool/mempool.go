@@ -92,11 +92,16 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *M
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
 		cache:         newTxCache(cacheSize),
-		txsAvailable:  make(chan struct{}, 1),
 	}
 	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
+}
+
+// FireOnTxsAvailable initializes the TxsAvailable channel,
+// ensuring it will trigger once every height when transactions are available.
+func (mem *Mempool) FireOnTxsAvailable() {
+	mem.txsAvailable = make(chan struct{}, 1)
 }
 
 // SetLogger sets the Logger.
@@ -277,8 +282,23 @@ func (mem *Mempool) alertIfTxsAvailable() {
 	}
 }
 
+// TxsAvailable returns a channel which fires once for every height,
+// and only when transactions are available in the mempool.
+// XXX: Will panic if mem.FireOnTxsAvailable() has not been called.
 func (mem *Mempool) TxsAvailable() chan struct{} {
+	if mem.txsAvailable == nil {
+		panic("mem.txsAvailable is nil")
+	}
 	return mem.txsAvailable
+}
+
+func (mem *Mempool) alertIfTxsAvailable() {
+	if mem.txsAvailable != nil &&
+		!mem.notifiedTxsAvailable && mem.Size() > 0 {
+
+		mem.notifiedTxsAvailable = true
+		mem.txsAvailable <- struct{}{}
+	}
 }
 
 // Reap returns a list of transactions currently in the mempool.

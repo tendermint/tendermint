@@ -780,7 +780,11 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 
 	// Wait for txs to be available in the mempool
 	// before we enterPropose
-	go cs.waitForTxs(height, round)
+	if cs.config.NoEmptyBlocks {
+		go cs.waitForTxs(height, round)
+	} else {
+		cs.enterPropose(height, round)
+	}
 }
 
 func (cs *ConsensusState) waitForTxs(height, round int) {
