@@ -32,17 +32,17 @@ Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Install
 
-To download pre-built binaries, see our [downloads page](https://tendermint.com/intro/getting-started/download).
+To download pre-built binaries, see our [downloads page](https://tendermint.com/download).
 
 To install from source, you should be able to:
 
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install).
+For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install-from-source).
 
 ## Contributing
 
-Yay open source! Please see our [contributing guidelines](https://tendermint.com/docs/guides/contributing).
+Yay open source! Please see our [contributing guidelines](CONTRIBUTING.md).
 
 ## Resources
 
