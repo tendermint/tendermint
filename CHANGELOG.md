@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.3 (TBD)
+
+FEATURES:
+- New `--consensus.no_empty_blocks` flag prevents the creation of blocks until there are transactions available
+
 ## 0.10.2 (July 10, 2017)
 
 FEATURES:
