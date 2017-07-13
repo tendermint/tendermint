@@ -129,11 +129,11 @@ spec:
             # wait until validator generates priv/pub key pair
             set +e
 
-            curl -s "http://$v.$fqdn_suffix/pub_key.json" > /dev/null
+            curl -s --fail "http://$v.$fqdn_suffix/pub_key.json" > /dev/null
             ERR=$?
             while [ "$ERR" != 0 ]; do
               sleep 5
-              curl -s "http://$v.$fqdn_suffix/pub_key.json" > /dev/null
+              curl -s --fail "http://$v.$fqdn_suffix/pub_key.json" > /dev/null
               ERR=$?
             done
             set -e
