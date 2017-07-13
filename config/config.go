@@ -359,7 +359,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		SkipTimeoutCommit:           false,
 		MaxBlockSizeTxs:             10000,
 		MaxBlockSizeBytes:           1, // TODO
-		NoEmptyBlocks:               true,
+		NoEmptyBlocks:               false,
 		BlockPartSize:               types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
@@ -377,7 +377,6 @@ func TestConsensusConfig() *ConsensusConfig {
 	config.TimeoutPrecommitDelta = 1
 	config.TimeoutCommit = 10
 	config.SkipTimeoutCommit = true
-	config.NoEmptyBlocks = false
 	return config
 }
 
