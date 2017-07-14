@@ -126,30 +126,6 @@ func TestUnsubscribeAll(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestOverflowStrategyDrop(t *testing.T) {
-	s := pubsub.NewServer(pubsub.OverflowStrategyDrop())
-	s.SetLogger(log.TestingLogger())
-
-	err := s.Publish("Veda")
-	if assert.Error(t, err) {
-		assert.Equal(t, pubsub.ErrorOverflow, err)
-	}
-}
-
-func TestOverflowStrategyWait(t *testing.T) {
-	s := pubsub.NewServer(pubsub.OverflowStrategyWait())
-	s.SetLogger(log.TestingLogger())
-
-	go func() {
-		time.Sleep(1 * time.Second)
-		s.Start()
-		defer s.Stop()
-	}()
-
-	err := s.Publish("Veda")
-	assert.NoError(t, err)
-}
-
 func TestBufferCapacity(t *testing.T) {
 	s := pubsub.NewServer(pubsub.BufferCapacity(2))
 	s.SetLogger(log.TestingLogger())
@@ -158,35 +134,6 @@ func TestBufferCapacity(t *testing.T) {
 	require.NoError(t, err)
 	err = s.Publish("Sage")
 	require.NoError(t, err)
-}
-
-func TestWaitSlowClients(t *testing.T) {
-	s := pubsub.NewServer(pubsub.WaitSlowClients())
-	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
-
-	ch := make(chan interface{})
-	s.Subscribe(clientID, query.Empty{}, ch)
-	err := s.Publish("Wonderwoman")
-	require.NoError(t, err)
-
-	time.Sleep(1 * time.Second)
-
-	assertReceive(t, "Wonderwoman", ch)
-}
-
-func TestSkipSlowClients(t *testing.T) {
-	s := pubsub.NewServer(pubsub.SkipSlowClients())
-	s.SetLogger(log.TestingLogger())
-	s.Start()
-	defer s.Stop()
-
-	ch := make(chan interface{})
-	s.Subscribe(clientID, query.Empty{}, ch)
-	err := s.Publish("Cyclops")
-	require.NoError(t, err)
-	assert.Zero(t, len(ch))
 }
 
 func Benchmark10Clients(b *testing.B)   { benchmarkNClients(10, b) }
