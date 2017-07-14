@@ -14,8 +14,7 @@
 package pubsub
 
 import (
-	"errors"
-	"time"
+	"context"
 
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -27,12 +26,6 @@ const (
 	pub
 	unsub
 	shutdown
-)
-
-const subscribeTimeout = 10 * time.Millisecond
-
-var (
-	ErrorOverflow = errors.New("server overflowed")
 )
 
 type cmd struct {
@@ -97,37 +90,53 @@ func (s Server) BufferCapacity() int {
 
 // Subscribe returns a channel on which messages matching the given query can
 // be received. If the subscription already exists old channel will be closed
-// and new one returned. Error will be returned to the caller if the server is
-// overflowed.
-func (s *Server) Subscribe(clientID string, query Query, out chan<- interface{}) error {
+// and new one returned. Error will be returned to the caller if the context is
+// cancelled.
+func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, out chan<- interface{}) error {
 	select {
 	case s.cmds <- cmd{op: sub, clientID: clientID, query: query, ch: out}:
 		return nil
-	case <-time.After(subscribeTimeout):
-		return ErrorOverflow
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
-// Unsubscribe unsubscribes the given client from the query. Blocking.
-func (s *Server) Unsubscribe(clientID string, query Query) {
-	s.cmds <- cmd{op: unsub, clientID: clientID, query: query}
+// Unsubscribe unsubscribes the given client from the query. Error will be
+// returned to the caller if the context is cancelled.
+func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) error {
+	select {
+	case s.cmds <- cmd{op: unsub, clientID: clientID, query: query}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // Unsubscribe unsubscribes the given channel. Blocking.
-func (s *Server) UnsubscribeAll(clientID string) {
-	s.cmds <- cmd{op: unsub, clientID: clientID}
+func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
+	select {
+	case s.cmds <- cmd{op: unsub, clientID: clientID}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // Publish publishes the given message. Blocking.
-func (s *Server) Publish(msg interface{}) {
-	s.PublishWithTags(msg, make(map[string]interface{}))
+func (s *Server) Publish(ctx context.Context, msg interface{}) error {
+	return s.PublishWithTags(ctx, msg, make(map[string]interface{}))
 }
 
 // PublishWithTags publishes the given message with a set of tags. This set of
 // tags will be matched with client queries. If there is a match, the message
 // will be sent to a client. Blocking.
-func (s *Server) PublishWithTags(msg interface{}, tags map[string]interface{}) {
-	s.cmds <- cmd{op: pub, msg: msg, tags: tags}
+func (s *Server) PublishWithTags(ctx context.Context, msg interface{}, tags map[string]interface{}) error {
+	select {
+	case s.cmds <- cmd{op: pub, msg: msg, tags: tags}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 // OnStop implements Service.OnStop by shutting down the server.
