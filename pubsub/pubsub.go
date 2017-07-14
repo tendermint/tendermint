@@ -15,6 +15,7 @@ package pubsub
 
 import (
 	"errors"
+	"time"
 
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -28,8 +29,10 @@ const (
 	shutdown
 )
 
+const subscribeTimeout = 10 * time.Millisecond
+
 var (
-	ErrorOverflow = errors.New("Server overflowed")
+	ErrorOverflow = errors.New("server overflowed")
 )
 
 type cmd struct {
@@ -51,7 +54,8 @@ type Query interface {
 type Server struct {
 	cmn.BaseService
 
-	cmds chan cmd
+	cmds    chan cmd
+	cmdsCap int
 }
 
 // Option sets a parameter for the server.
@@ -68,9 +72,8 @@ func NewServer(options ...Option) *Server {
 		option(s)
 	}
 
-	if s.cmds == nil { // if BufferCapacity was not set, create unbuffered channel
-		s.cmds = make(chan cmd)
-	}
+	// if BufferCapacity option was not set, the channel is unbuffered
+	s.cmds = make(chan cmd, s.cmdsCap)
 
 	return s
 }
@@ -82,40 +85,49 @@ func NewServer(options ...Option) *Server {
 func BufferCapacity(cap int) Option {
 	return func(s *Server) {
 		if cap > 0 {
-			s.cmds = make(chan cmd, cap)
+			s.cmdsCap = cap
 		}
 	}
 }
 
-// Subscribe returns a channel on which messages matching the given query can
-// be received. If the subscription already exists old channel will be closed
-// and new one returned.
-func (s *Server) Subscribe(clientID string, query Query, out chan<- interface{}) {
-	s.cmds <- cmd{op: sub, clientID: clientID, query: query, ch: out}
+// Returns capacity of the internal server's queue.
+func (s Server) BufferCapacity() int {
+	return s.cmdsCap
 }
 
-// Unsubscribe unsubscribes the given client from the query.
+// Subscribe returns a channel on which messages matching the given query can
+// be received. If the subscription already exists old channel will be closed
+// and new one returned. Error will be returned to the caller if the server is
+// overflowed.
+func (s *Server) Subscribe(clientID string, query Query, out chan<- interface{}) error {
+	select {
+	case s.cmds <- cmd{op: sub, clientID: clientID, query: query, ch: out}:
+		return nil
+	case <-time.After(subscribeTimeout):
+		return ErrorOverflow
+	}
+}
+
+// Unsubscribe unsubscribes the given client from the query. Blocking.
 func (s *Server) Unsubscribe(clientID string, query Query) {
 	s.cmds <- cmd{op: unsub, clientID: clientID, query: query}
 }
 
-// Unsubscribe unsubscribes the given channel.
+// Unsubscribe unsubscribes the given channel. Blocking.
 func (s *Server) UnsubscribeAll(clientID string) {
 	s.cmds <- cmd{op: unsub, clientID: clientID}
 }
 
-// Publish publishes the given message.
-func (s *Server) Publish(msg interface{}) error {
-	return s.PublishWithTags(msg, make(map[string]interface{}))
+// Publish publishes the given message. Blocking.
+func (s *Server) Publish(msg interface{}) {
+	s.PublishWithTags(msg, make(map[string]interface{}))
 }
 
 // PublishWithTags publishes the given message with a set of tags. This set of
 // tags will be matched with client queries. If there is a match, the message
-// will be sent to a client.
-func (s *Server) PublishWithTags(msg interface{}, tags map[string]interface{}) error {
-	pubCmd := cmd{op: pub, msg: msg, tags: tags}
-	s.cmds <- pubCmd
-	return nil
+// will be sent to a client. Blocking.
+func (s *Server) PublishWithTags(msg interface{}, tags map[string]interface{}) {
+	s.cmds <- cmd{op: pub, msg: msg, tags: tags}
 }
 
 // OnStop implements Service.OnStop by shutting down the server.
