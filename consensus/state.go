@@ -270,12 +270,7 @@ func (cs *ConsensusState) GetState() *sm.State {
 func (cs *ConsensusState) GetRoundState() *RoundState {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	return cs.getRoundState()
-}
-
-func (cs *ConsensusState) getRoundState() *RoundState {
-	rs := cs.RoundState // copy
-	return &rs
+	return &cs.RoundState
 }
 
 func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
