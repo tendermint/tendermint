@@ -153,6 +153,13 @@ func TestBufferCapacity(t *testing.T) {
 	require.NoError(t, err)
 	err = s.Publish(ctx, "Sage")
 	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Millisecond)
+	defer cancel()
+	err = s.Publish(ctx, "Ironclad")
+	if assert.Error(t, err) {
+		assert.Equal(t, context.DeadlineExceeded, err)
+	}
 }
 
 func Benchmark10Clients(b *testing.B)   { benchmarkNClients(10, b) }
