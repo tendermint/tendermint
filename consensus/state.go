@@ -790,9 +790,9 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 func (cs *ConsensusState) waitForTxs(height, round int) {
 	// if we're the proposer, start a heartbeat routine
 	// to tell other peers we're just waiting for txs (for debugging)
-	done := make(chan struct{})
-	defer close(done)
 	if cs.isProposer() {
+		done := make(chan struct{})
+		defer close(done)
 		go cs.proposerHeartbeat(done)
 	}
 
@@ -816,7 +816,8 @@ func (cs *ConsensusState) proposerHeartbeat(done chan struct{}) {
 	}
 }
 
-// Enter: from enter NewRound(height,round), once txs are in the mempool
+// Enter (!NoEmptyBlocks): from enterNewRound(height,round)
+// Enter (NoEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *ConsensusState) enterPropose(height int, round int) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPropose <= cs.Step) {
 		cs.Logger.Debug(cmn.Fmt("enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))

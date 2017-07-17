@@ -47,7 +47,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("p2p.pex", config.P2P.PexReactor, "Enable Peer-Exchange (dev feature)")
 
 	// consensus flags
-	cmd.Flags().Bool("consensus.no_empty_blocks", config.Consensus.NoEmptyBlocks, "Prevent empty blocks from being proposed by correct processes")
+	cmd.Flags().Bool("consensus.no_empty_blocks", config.Consensus.NoEmptyBlocks, "Only produce blocks when there are txs and when the AppHash changes")
 }
 
 // Users wishing to:
