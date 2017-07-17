@@ -2,7 +2,6 @@ package core
 
 import (
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/blockchain"
 	"github.com/tendermint/tendermint/consensus"
 	p2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
@@ -42,11 +41,11 @@ var (
 	p2pSwitch      P2P
 
 	// objects
-	pubKey    crypto.PubKey
-	genDoc    *types.GenesisDoc // cache the genesis structure
-	addrBook  *p2p.AddrBook
-	txIndexer txindex.TxIndexer
-	bcReactor *blockchain.BlockchainReactor
+	pubKey           crypto.PubKey
+	genDoc           *types.GenesisDoc // cache the genesis structure
+	addrBook         *p2p.AddrBook
+	txIndexer        txindex.TxIndexer
+	consensusReactor *consensus.ConsensusReactor
 
 	logger log.Logger
 )
@@ -91,8 +90,8 @@ func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
 }
 
-func SetBlockchainReactor(bc *blockchain.BlockchainReactor) {
-	bcReactor = bc
+func SetConsensusReactor(conR *consensus.ConsensusReactor) {
+	consensusReactor = conR
 }
 
 func SetLogger(l log.Logger) {

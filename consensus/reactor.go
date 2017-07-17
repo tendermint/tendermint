@@ -290,6 +290,11 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
 	conR.conS.SetEventSwitch(evsw)
 }
 
+// FastSync returns whether the consensus reactor is currently fast syncing
+func (conR *ConsensusReactor) FastSync() bool {
+	return conR.fastSync
+}
+
 //--------------------------------------
 
 // Listens for new steps and votes,
