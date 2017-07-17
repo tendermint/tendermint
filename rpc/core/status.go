@@ -28,5 +28,5 @@ func Status() (*ctypes.ResultStatus, error) {
 		LatestAppHash:     latestAppHash,
 		LatestBlockHeight: latestHeight,
 		LatestBlockTime:   latestBlockTime,
-		Syncing:           bcReactor.FastSync()}, nil
+		Syncing:           consensusReactor.FastSync()}, nil
 }
