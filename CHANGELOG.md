@@ -10,34 +10,35 @@ BREAKING CHANGES:
 
 FEATURES:
 - Peer reputation management
-- Use the chain as its own CA for nodes and validators     
-- Tooling to run multiple blockchains/apps, possibly in a single process      
-- State syncing (without transaction replay)      
-- Improved support for querying history and state        
+- Use the chain as its own CA for nodes and validators
+- Tooling to run multiple blockchains/apps, possibly in a single process
+- State syncing (without transaction replay)
+- Improved support for querying history and state
 - Add authentication and rate-limitting to the RPC
 
 IMPROVEMENTS:
-- Improve subtleties around mempool caching and logic		
-- Consensus optimizations: 		
+- Improve subtleties around mempool caching and logic
+- Consensus optimizations:
 	- cache block parts for faster agreement after round changes
 	- propagate block parts rarest first
-- Better testing of the consensus state machine (ie. use a DSL)		
+- Better testing of the consensus state machine (ie. use a DSL)
 - Auto compiled serialization/deserialization code instead of go-wire reflection
 
-BUG FIXES:		
-- Graceful handling/recovery for apps that have non-determinism or fail to halt		
+BUG FIXES:
+- Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
 ## 0.11.0 (Date)
 
 IMPROVEMENTS:
  - docs: Added documentation from the tools repo to Read The Docs pipeline
+ - rpc: updated json response to match http://www.jsonrpc.org/specification spec
 
 ## 0.10.4 (September 5, 2017)
 
 IMPROVEMENTS:
-- docs: Added Slate docs to each rpc function (see rpc/core) 
-- docs: Ported all website docs to Read The Docs 
+- docs: Added Slate docs to each rpc function (see rpc/core)
+- docs: Ported all website docs to Read The Docs
 - config: expose some p2p params to tweak performance: RecvRate, SendRate, and MaxMsgPacketPayloadSize
 - rpc: Upgrade the websocket client and server, including improved auto reconnect, and proper ping/pong
 
@@ -77,7 +78,7 @@ IMPROVEMENTS:
 
 FEATURES:
 - Use `--trace` to get stack traces for logged errors
-- types: GenesisDoc.ValidatorHash returns the hash of the genesis validator set 
+- types: GenesisDoc.ValidatorHash returns the hash of the genesis validator set
 - types: GenesisDocFromFile parses a GenesiDoc from a JSON file
 
 IMPROVEMENTS:
@@ -101,7 +102,7 @@ Also includes the Grand Repo-Merge of 2017.
 BREAKING CHANGES:
 
 - Config and Flags:
-  - The `config` map is replaced with a [`Config` struct](https://github.com/tendermint/tendermint/blob/master/config/config.go#L11), 
+  - The `config` map is replaced with a [`Config` struct](https://github.com/tendermint/tendermint/blob/master/config/config.go#L11),
 containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusConfig`, `RPCConfig`
   - This affects the following flags:
     - `--seeds` is now `--p2p.seeds`
@@ -114,16 +115,16 @@ containing substructs: `BaseConfig`, `P2PConfig`, `MempoolConfig`, `ConsensusCon
     ```
     [p2p]
     laddr="tcp://1.2.3.4:46656"
-    
+
     [consensus]
     timeout_propose=1000
     ```
   - Use viper and `DefaultConfig() / TestConfig()` functions to handle defaults, and remove `config/tendermint` and `config/tendermint_test`
-  - Change some function and method signatures to 
+  - Change some function and method signatures to
   - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) accomodate new config
 
 - Logger
-  - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`. 
+  - Replace static `log15` logger with a simple interface, and provide a new implementation using `go-kit`.
 See our new [logging library](https://github.com/tendermint/tmlibs/log) and [blog post](https://tendermint.com/blog/abstracting-the-logger-interface-in-go) for more details
   - Levels `warn` and `notice` are removed (you may need to change them in your `config.toml`!)
   - Change some [function and method signatures](https://gist.github.com/ebuchman/640d5fc6c2605f73497992fe107ebe0b) to accept a logger
@@ -166,7 +167,7 @@ IMPROVEMENTS:
 - Limit `/blockchain_info` call to return a maximum of 20 blocks
 - Use `.Wrap()` and `.Unwrap()` instead of eg. `PubKeyS` for `go-crypto` types
 - RPC JSON responses use pretty printing (via `json.MarshalIndent`)
-- Color code different instances of the consensus for tests 
+- Color code different instances of the consensus for tests
 - Isolate viper to `cmd/tendermint/commands` and do not read config from file for tests
 
 
@@ -194,7 +195,7 @@ IMPROVEMENTS:
 - WAL uses #ENDHEIGHT instead of #HEIGHT (#HEIGHT will stop working in 0.10.0)
 - Peers included via `--seeds`, under `seeds` in the config, or in `/dial_seeds` are now persistent, and will be reconnected to if the connection breaks
 
-BUG FIXES: 
+BUG FIXES:
 
 - Fix bug in fast-sync where we stop syncing after a peer is removed, even if they're re-added later
 - Fix handshake replay to handle validator set changes and results of DeliverTx when we crash after app.Commit but before state.Save()
@@ -210,7 +211,7 @@ message RequestQuery{
 	bytes data = 1;
 	string path = 2;
 	uint64 height = 3;
-	bool prove = 4; 
+	bool prove = 4;
 }
 
 message ResponseQuery{
@@ -234,7 +235,7 @@ type BlockMeta struct {
 }
 ```
 
-- `ValidatorSet.Proposer` is exposed as a field and persisted with the `State`. Use `GetProposer()` to initialize or update after validator-set changes. 
+- `ValidatorSet.Proposer` is exposed as a field and persisted with the `State`. Use `GetProposer()` to initialize or update after validator-set changes.
 
 - `tendermint gen_validator` command output is now pure JSON
 
@@ -277,7 +278,7 @@ type BlockID struct {
 }
 ```
 
-- `Vote` data type now includes validator address and index: 
+- `Vote` data type now includes validator address and index:
 
 ```
 type Vote struct {
@@ -297,7 +298,7 @@ type Vote struct {
 
 FEATURES:
 
-- New message type on the ConsensusReactor, `Maj23Msg`, for peers to alert others they've seen a Maj23, 
+- New message type on the ConsensusReactor, `Maj23Msg`, for peers to alert others they've seen a Maj23,
 in order to track and handle conflicting votes intelligently to prevent Byzantine faults from causing halts:
 
 ```
@@ -320,7 +321,7 @@ IMPROVEMENTS:
 - Less verbose logging
 - Better test coverage (37% -> 49%)
 - Canonical SignBytes for signable types
-- Write-Ahead Log for Mempool and Consensus via tmlibs/autofile 
+- Write-Ahead Log for Mempool and Consensus via tmlibs/autofile
 - Better in-process testing for the consensus reactor and byzantine faults
 - Better crash/restart testing for individual nodes at preset failure points, and of networks at arbitrary points
 - Better abstraction over timeout mechanics
@@ -400,7 +401,7 @@ FEATURES:
 - TMSP and RPC support TCP and UNIX sockets
 - Addition config options including block size and consensus parameters
 - New WAL mode `cswal_light`; logs only the validator's own votes
-- New RPC endpoints: 
+- New RPC endpoints:
 	- for starting/stopping profilers, and for updating config
 	- `/broadcast_tx_commit`, returns when tx is included in a block, else an error
 	- `/unsafe_flush_mempool`, empties the mempool
@@ -421,14 +422,14 @@ BUG FIXES:
 
 Strict versioning only began with the release of v0.7.0, in late summer 2016.
 The project itself began in early summer 2014 and was workable decentralized cryptocurrency software by the end of that year.
-Through the course of 2015, in collaboration with Eris Industries (now Monax Indsutries), 
+Through the course of 2015, in collaboration with Eris Industries (now Monax Indsutries),
 many additional features were integrated, including an implementation from scratch of the Ethereum Virtual Machine.
 That implementation now forms the heart of [Burrow](https://github.com/hyperledger/burrow).
 In the later half of 2015, the consensus algorithm was upgraded with a more asynchronous design and a more deterministic and robust implementation.
 
-By late 2015, frustration with the difficulty of forking a large monolithic stack to create alternative cryptocurrency designs led to the 
+By late 2015, frustration with the difficulty of forking a large monolithic stack to create alternative cryptocurrency designs led to the
 invention of the Application Blockchain Interface (ABCI), then called the Tendermint Socket Protocol (TMSP).
 The Ethereum Virtual Machine and various other transaction features were removed, and Tendermint was whittled down to a core consensus engine
-driving an application running in another process. 
+driving an application running in another process.
 The ABCI interface and implementation were iterated on and improved over the course of 2016,
 until versioned history kicked in with v0.7.0.
