@@ -146,7 +146,7 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 	if err != nil {
 		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
 	}
-	if response.Error != nil && response.Error.Message != "" {
+	if response.Error != nil {
 		return nil, errors.Errorf("Response error: %v", response.Error.Message)
 	}
 	// unmarshal the RawMessage into the result
