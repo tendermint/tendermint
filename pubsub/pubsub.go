@@ -110,8 +110,8 @@ func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) 
 	}
 }
 
-// Unsubscribe removes all client subscriptions. An error will be returned to
-// the caller if the context is canceled.
+// UnsubscribeAll removes all client subscriptions. An error will be returned
+// to the caller if the context is canceled.
 func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 	select {
 	case s.cmds <- cmd{op: unsub, clientID: clientID}:
@@ -172,7 +172,7 @@ loop:
 				state.removeAll(cmd.clientID)
 			}
 		case shutdown:
-			for clientID, _ := range state.clients {
+			for clientID := range state.clients {
 				state.removeAll(clientID)
 			}
 			break loop
@@ -232,7 +232,7 @@ func (state *state) removeAll(clientID string) {
 		return
 	}
 
-	for q, _ := range queryMap {
+	for q := range queryMap {
 		ch := state.queries[q][clientID]
 		close(ch)
 
