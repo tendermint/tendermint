@@ -309,7 +309,7 @@ func NewNode(config *cfg.Config,
 // OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
 	// Create & add listener
-	protocol, address := ProtocolAndAddress(n.config.P2P.ListenAddress)
+	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
@@ -533,17 +533,6 @@ func (n *Node) NodeInfo() *p2p.NodeInfo {
 // DialSeeds dials the given seeds on the Switch.
 func (n *Node) DialSeeds(seeds []string) error {
 	return n.sw.DialSeeds(n.addrBook, seeds)
-}
-
-// ProtocolAndAddress returns the transport protocol
-// and the ip address from the given string. Defaults to tcp.
-func ProtocolAndAddress(listenAddr string) (string, string) {
-	protocol, address := "tcp", listenAddr
-	parts := strings.SplitN(address, "://", 2)
-	if len(parts) == 2 {
-		protocol, address = parts[0], parts[1]
-	}
-	return protocol, address
 }
 
 //------------------------------------------------------------------------------
