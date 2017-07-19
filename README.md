@@ -1,7 +1,7 @@
 # Tendermint
 
 [Byzantine-Fault Tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance)
-[State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication). 
+[State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication).
 Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
 
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
@@ -32,13 +32,13 @@ Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Install
 
-To download pre-built binaries, see our [downloads page](https://tendermint.com/intro/getting-started/download).
+To download pre-built binaries, see our [downloads page](https://tendermint.com/downloads).
 
 To install from source, you should be able to:
 
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install).
+For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install-from-source).
 
 ## Contributing
 
@@ -56,7 +56,7 @@ Yay open source! Please see our [contributing guidelines](https://tendermint.com
 
 * [ABCI](http://github.com/tendermint/abci), the Application Blockchain Interface
 * [Go-Wire](http://github.com/tendermint/go-wire), a deterministic serialization library
-* [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library 
+* [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library
 * [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries
 * [Merkleeyes](http://github.com/tendermint/merkleeyes), a balanced, binary Merkle tree for ABCI apps
 
@@ -68,10 +68,9 @@ Yay open source! Please see our [contributing guidelines](https://tendermint.com
 * [Ethermint](http://github.com/tendermint/ethermint): Ethereum on Tendermint
 * [Basecoin](http://github.com/tendermint/basecoin), a cryptocurrency application framework
 
-### More 
+### More
 
-* [Tendermint Blog](https://tendermint.com/blog)
-* [Cosmos Blog](https://cosmos.network/blog)
+* [Tendermint Blog](https://blog.cosmos.network/tendermint/home)
+* [Cosmos Blog](https://blog.cosmos.network)
 * [Original Whitepaper (out-of-date)](http://www.the-blockchain.com/docs/Tendermint%20Consensus%20without%20Mining.pdf)
 * [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
-
