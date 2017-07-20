@@ -779,12 +779,27 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	types.FireEventNewRound(cs.evsw, cs.RoundStateEvent())
 
 	// Wait for txs to be available in the mempool
-	// before we enterPropose
-	if cs.config.NoEmptyBlocks {
+	// before we enterPropose. If the last block changed the app hash,
+	// we may need an empty "proof" block, and enterPropose immediately.
+	if cs.config.NoEmptyBlocks && !cs.needProofBlock(height) {
 		go cs.waitForTxs(height, round)
 	} else {
 		cs.enterPropose(height, round)
 	}
+}
+
+// needProofBlock returns true on the first height (so the genesis app hash is signed right away)
+// and where the last block (height-1) caused the app hash to change
+func (cs *ConsensusState) needProofBlock(height int) bool {
+	if height == 1 {
+		return true
+	}
+
+	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
+	if !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash) {
+		return true
+	}
+	return false
 }
 
 func (cs *ConsensusState) waitForTxs(height, round int) {

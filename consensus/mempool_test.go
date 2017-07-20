@@ -15,7 +15,7 @@ func init() {
 	config = ResetConfig("consensus_mempool_test")
 }
 
-func TestTxsAvailable(t *testing.T) {
+func TestNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.NoEmptyBlocks = true
 	state, privVals := randGenesisState(1, false, 10)
@@ -25,10 +25,12 @@ func TestTxsAvailable(t *testing.T) {
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 	startTestRound(cs, height, round)
 
-	// we shouldnt make progress until theres a tx
+	ensureNewStep(newBlockCh) // first block gets committed
 	ensureNoNewStep(newBlockCh)
-	deliverTxsRange(cs, 0, 100)
-	ensureNewStep(newBlockCh)
+	deliverTxsRange(cs, 0, 2)
+	ensureNewStep(newBlockCh) // commit txs
+	ensureNewStep(newBlockCh) // commit updated app hash
+	ensureNoNewStep(newBlockCh)
 }
 
 func deliverTxsRange(cs *ConsensusState, start, end int) {
