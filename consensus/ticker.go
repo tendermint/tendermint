@@ -3,7 +3,7 @@ package consensus
 import (
 	"time"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -29,24 +29,26 @@ type TimeoutTicker interface {
 // Timeouts are scheduled along the tickChan,
 // and fired on the tockChan.
 type timeoutTicker struct {
-	BaseService
+	cmn.BaseService
 
 	timer    *time.Timer
-	tickChan chan timeoutInfo
-	tockChan chan timeoutInfo
+	tickChan chan timeoutInfo // for scheduling timeouts
+	tockChan chan timeoutInfo // for notifying about them
 }
 
+// NewTimeoutTicker returns a new TimeoutTicker.
 func NewTimeoutTicker() TimeoutTicker {
 	tt := &timeoutTicker{
 		timer:    time.NewTimer(0),
 		tickChan: make(chan timeoutInfo, tickTockBufferSize),
 		tockChan: make(chan timeoutInfo, tickTockBufferSize),
 	}
-	tt.BaseService = *NewBaseService(nil, "TimeoutTicker", tt)
+	tt.BaseService = *cmn.NewBaseService(nil, "TimeoutTicker", tt)
 	tt.stopTimer() // don't want to fire until the first scheduled timeout
 	return tt
 }
 
+// OnStart implements cmn.Service. It starts the timeout routine.
 func (t *timeoutTicker) OnStart() error {
 
 	go t.timeoutRoutine()
@@ -54,16 +56,19 @@ func (t *timeoutTicker) OnStart() error {
 	return nil
 }
 
+// OnStop implements cmn.Service. It stops the timeout routine.
 func (t *timeoutTicker) OnStop() {
 	t.BaseService.OnStop()
 	t.stopTimer()
 }
 
+// Chan returns a channel on which timeouts are sent.
 func (t *timeoutTicker) Chan() <-chan timeoutInfo {
 	return t.tockChan
 }
 
-// The timeoutRoutine is alwaya available to read from tickChan (it won't block).
+// ScheduleTimeout schedules a new timeout by sending on the internal tickChan.
+// The timeoutRoutine is alwaya available to read from tickChan, so this won't block.
 // The scheduling may fail if the timeoutRoutine has already scheduled a timeout for a later height/round/step.
 func (t *timeoutTicker) ScheduleTimeout(ti timeoutInfo) {
 	t.tickChan <- ti

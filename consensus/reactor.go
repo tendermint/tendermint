@@ -242,7 +242,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
 
-			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key}
+			cs.peerMsgQueue <- msgInfo{msg, src.Key}
 
 		default:
 			// don't punish (leave room for soft upgrades)
