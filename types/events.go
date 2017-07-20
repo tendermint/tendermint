@@ -31,6 +31,8 @@ func EventStringRelock() string           { return "Relock" }
 func EventStringTimeoutWait() string      { return "TimeoutWait" }
 func EventStringVote() string             { return "Vote" }
 
+func EventStringProposerHeartbeat() string { return "ProposerHeartbeat" }
+
 //----------------------------------------
 
 var (
@@ -39,6 +41,8 @@ var (
 	EventDataNameTx             = "tx"
 	EventDataNameRoundState     = "round_state"
 	EventDataNameVote           = "vote"
+
+	EventDataNameProposerHeartbeat = "proposer_heartbeat"
 )
 
 //----------------------------------------
@@ -84,6 +88,8 @@ const (
 
 	EventDataTypeRoundState = byte(0x11)
 	EventDataTypeVote       = byte(0x12)
+
+	EventDataTypeProposerHeartbeat = byte(0x20)
 )
 
 var tmEventDataMapper = data.NewMapper(TMEventData{}).
@@ -91,7 +97,8 @@ var tmEventDataMapper = data.NewMapper(TMEventData{}).
 	RegisterImplementation(EventDataNewBlockHeader{}, EventDataNameNewBlockHeader, EventDataTypeNewBlockHeader).
 	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
 	RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
-	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote)
+	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote).
+	RegisterImplementation(EventDataProposerHeartbeat{}, EventDataNameProposerHeartbeat, EventDataTypeProposerHeartbeat)
 
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic
@@ -115,6 +122,13 @@ type EventDataTx struct {
 	Error  string        `json:"error"` // this is redundant information for now
 }
 
+type EventDataProposerHeartbeat struct {
+	EventDataRoundState
+
+	Proposer []byte `json:"proposer"`
+	Sequence int    `json:"sequence"`
+}
+
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
 	Height int    `json:"height"`
@@ -134,6 +148,8 @@ func (_ EventDataNewBlockHeader) AssertIsTMEventData() {}
 func (_ EventDataTx) AssertIsTMEventData()             {}
 func (_ EventDataRoundState) AssertIsTMEventData()     {}
 func (_ EventDataVote) AssertIsTMEventData()           {}
+
+func (_ EventDataProposerHeartbeat) AssertIsTMEventData() {}
 
 //----------------------------------------
 // Wrappers for type safety
@@ -231,4 +247,8 @@ func FireEventRelock(fireable events.Fireable, rs EventDataRoundState) {
 
 func FireEventLock(fireable events.Fireable, rs EventDataRoundState) {
 	fireEvent(fireable, EventStringLock(), TMEventData{rs})
+}
+
+func FireEventProposerHeartbeat(fireable events.Fireable, rs EventDataProposerHeartbeat) {
+	fireEvent(fireable, EventStringProposerHeartbeat(), TMEventData{rs})
 }

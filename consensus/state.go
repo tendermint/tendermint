@@ -808,11 +808,17 @@ func (cs *ConsensusState) needProofBlock(height int) bool {
 }
 
 func (cs *ConsensusState) proposalHeartbeat() {
+	counter := 0
+	addr := cs.privValidator.GetAddress()
 	for {
 		select {
 		default:
-			// TODO: broadcast heartbeat
-
+			if cs.evsw != nil {
+				rs := cs.RoundStateEvent()
+				heartbeat := types.EventDataProposerHeartbeat{rs, addr, counter}
+				types.FireEventProposerHeartbeat(cs.evsw, heartbeat)
+				counter += 1
+			}
 			time.Sleep(time.Second)
 		}
 	}

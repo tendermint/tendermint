@@ -311,6 +311,21 @@ func (conR *ConsensusReactor) registerEventCallbacks() {
 		edv := data.Unwrap().(types.EventDataVote)
 		conR.broadcastHasVoteMessage(edv.Vote)
 	})
+
+	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringProposerHeartbeat(), func(data types.TMEventData) {
+		heartbeat := data.Unwrap().(types.EventDataProposerHeartbeat)
+		conR.broadcastProposerHeartbeatMessage(heartbeat)
+	})
+}
+
+func (conR *ConsensusReactor) broadcastProposerHeartbeatMessage(heartbeat types.EventDataProposerHeartbeat) {
+	msg := &ProposerHeartbeatMessage{
+		Height:   heartbeat.Height,
+		Round:    heartbeat.Round,
+		Proposer: heartbeat.Proposer,
+		Sequence: heartbeat.Sequence,
+	}
+	conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{msg})
 }
 
 func (conR *ConsensusReactor) broadcastNewRoundStep(rs *RoundState) {
@@ -1304,4 +1319,19 @@ type VoteSetBitsMessage struct {
 // String returns a string representation.
 func (m *VoteSetBitsMessage) String() string {
 	return fmt.Sprintf("[VSB %v/%02d/%v %v %v]", m.Height, m.Round, m.Type, m.BlockID, m.Votes)
+}
+
+//-------------------------------------
+
+// ProposerHeartbeatMessage is sent to signal that the proposer is alive and waiting for transactions
+type ProposerHeartbeatMessage struct {
+	Height   int
+	Round    int
+	Proposer []byte
+	Sequence int
+}
+
+// String returns a string representation.
+func (m *ProposerHeartbeatMessage) String() string {
+	return fmt.Sprintf("[HEARTBEAT %v/%02d %X %d]", m.Height, m.Round, m.Proposer, m.Sequence)
 }
