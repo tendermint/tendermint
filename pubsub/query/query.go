@@ -94,9 +94,12 @@ func (q *Query) Matches(tags map[string]interface{}) bool {
 		case rulecontains:
 			op = opContains
 		case rulevalue:
+			// strip single quotes from value (i.e. "'NewBlock'" -> "NewBlock")
+			valueWithoutSingleQuotes := buffer[begin+1 : end-1]
+
 			// see if the triplet (tag, operator, operand) matches any tag
 			// "tx.gas", "=", "7", { "tx.gas": 7, "tx.ID": "4AE393495334" }
-			if !match(tag, op, reflect.ValueOf(buffer[begin:end]), tags) {
+			if !match(tag, op, reflect.ValueOf(valueWithoutSingleQuotes), tags) {
 				return false
 			}
 		case rulenumber:
