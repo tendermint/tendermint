@@ -101,3 +101,14 @@ func (vote *Vote) String() string {
 		cmn.Fingerprint(vote.BlockID.Hash), vote.Signature,
 		CanonicalTime(vote.Timestamp))
 }
+
+func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
+	if !bytes.Equal(pubKey.Address(), v.ValidatorAddress) {
+		return ErrVoteInvalidValidatorAddress
+	}
+
+	if !pubKey.VerifyBytes(SignBytes(chainID, vote), vote.Signature) {
+		return ErrVoteInvalidSignature
+	}
+	return nil
+}

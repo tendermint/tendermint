@@ -178,9 +178,8 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if !val.PubKey.VerifyBytes(SignBytes(voteSet.chainID, vote), vote.Signature) {
-		// Bad signature.
-		return false, ErrVoteInvalidSignature
+	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+		return false, err
 	}
 
 	// Add vote and get conflicting vote if any

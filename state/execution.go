@@ -309,7 +309,14 @@ func (s *State) validateBlock(b *types.Block) error {
 		}
 	}
 
-	// TODO: Validate evidence
+	for _, ev := range block.Evidence.Evidence {
+		if err := ev.VoteA.Verify(s.ChainID, ev.PubKey); err != nil {
+			return types.ErrEvidenceInvalid(ev, err)
+		}
+		if err := ev.VoteB.Verify(s.ChainID, ev.PubKey); err != nil {
+			return types.ErrEvidenceInvalid(ev, err)
+		}
+	}
 
 	return nil
 }

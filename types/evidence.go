@@ -7,6 +7,15 @@ import (
 	"github.com/tendermint/go-crypto"
 )
 
+type ErrEvidenceInvalid struct {
+	Evidence Evidence
+	Error    error
+}
+
+func (err *ErrEvidenceInvalid) Error() string {
+	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.Error, err.Evidence)
+}
+
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
 	Verify() error
@@ -49,7 +58,9 @@ func (dve *DuplicateVoteEvidence) Verify() error {
 	}
 
 	// Signatures must be valid
-	// TODO
+	if !dve.PubKey.Verify(SignBytes(chainID, dve.VoteA), dve.VoteA.Signature) {
+		return ErrVoteInvalidSignature
+	}
 
 	return nil
 }
