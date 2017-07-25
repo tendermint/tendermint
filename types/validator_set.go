@@ -320,12 +320,14 @@ func (valSet *ValidatorSet) VerifyCommitAny(newVals *ValidatorSet, chainID strin
 			newVotingPower += newVal.VotingPower
 		}
 
-		if curVotingPower <= valSet.TotalVotingPower()*2/3 {
-			return fmt.Errorf("Invalid commit -- insufficient current voting power: got %v, needed %v", curVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
-		} else if newVotingPower <= newVals.TotalVotingPower()*2/3 {
-			return fmt.Errorf("Invalid commit -- insufficient new voting power: got %v, needed %v", newVotingPower, (newVals.TotalVotingPower()*2/3 + 1))
-		}
 	}
+
+	if curVotingPower <= valSet.TotalVotingPower()*2/3 {
+		return fmt.Errorf("Invalid commit -- insufficient current voting power: got %v, needed %v", curVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
+	} else if newVotingPower <= newVals.TotalVotingPower()*2/3 {
+		return fmt.Errorf("Invalid commit -- insufficient new voting power: got %v, needed %v", newVotingPower, (newVals.TotalVotingPower()*2/3 + 1))
+	}
+
 	return nil
 }
 
