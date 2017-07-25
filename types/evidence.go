@@ -3,6 +3,8 @@ package types
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/tendermint/go-crypto"
 )
 
 // Evidence represents any provable malicious activity by a validator
@@ -14,13 +16,14 @@ type Evidence interface {
 //-------------------------------------------
 
 type DuplicateVoteEvidence struct {
-	VoteA *Vote
-	VoteB *Vote
+	PubKey crypto.PubKey
+	VoteA  *Vote
+	VoteB  *Vote
 }
 
 // Address returns the address of the validator
 func (dve *DuplicateVoteEvidence) Address() []byte {
-	return dve.VoteA.ValidatorAddress
+	return dve.PubKey.Address()
 }
 
 // Verify returns an error if the two votes aren't from the same validator, for the same H/R/S, but for different blocks

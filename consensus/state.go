@@ -1340,7 +1340,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 			}
 			cs.Logger.Error("Found conflicting vote. Recording evidence in the RoundState", "height", vote.Height, "round", vote.Round, "type", vote.Type, "valAddr", vote.ValidatorAddress, "valIndex", vote.ValidatorIndex)
 
-			cs.Evidence = append(cs.Evidence, &types.DuplicateVoteEvidence{voteErr.VoteA, voteErr.VoteB})
+			cs.Evidence = append(cs.Evidence, voteErr.DuplicateVoteEvidence)
 			return err
 		} else {
 			// Probably an invalid signature / Bad peer.

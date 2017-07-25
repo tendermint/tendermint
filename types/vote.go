@@ -22,12 +22,21 @@ var (
 )
 
 type ErrVoteConflictingVotes struct {
-	VoteA *Vote
-	VoteB *Vote
+	*DuplicateVoteEvidence
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
-	return "Conflicting votes"
+	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
+}
+
+func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflictingVotes {
+	return &ErrVoteConflictingVotes{
+		&DuplicateVoteEvidence{
+			PubKey: val.PubKey,
+			VoteA:  voteA,
+			VoteB:  voteB,
+		},
+	}
 }
 
 // Types of votes
