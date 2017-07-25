@@ -814,7 +814,7 @@ func (cs *ConsensusState) proposalHeartbeat() {
 		select {
 		default:
 			if cs.evsw != nil {
-				rs := cs.RoundStateEvent()
+				rs := cs.GetRoundState().RoundStateEvent()
 				heartbeat := types.EventDataProposerHeartbeat{rs, addr, counter}
 				types.FireEventProposerHeartbeat(cs.evsw, heartbeat)
 				counter += 1
