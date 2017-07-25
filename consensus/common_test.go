@@ -240,8 +240,11 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem)
+	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+	if thisConfig.Consensus.NoEmptyBlocks {
+		mempool.EnableTxsAvailable()
+	}
 
 	// Make ConsensusReactor
 	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool)

@@ -227,9 +227,6 @@ type ConsensusState struct {
 	doPrevote      func(height, round int)
 	setProposal    func(proposal *types.Proposal) error
 
-	// signifies that txs are available for proposal
-	txsAvailable chan RoundState
-
 	// closed when we finish shutting down
 	done chan struct{}
 }
@@ -244,7 +241,6 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
-		txsAvailable:     make(chan RoundState),
 		done:             make(chan struct{}),
 	}
 	// set function defaults (may be overwritten before calling Start)
@@ -626,10 +622,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case <-cs.txsAvailable:
-			// use nil for this special internal message signalling txs are available.
-			// no need to write this to the wal
-			// cs.handleMsg(msgInfo{nil, ""}, rs_)
+		case height := <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable(height)
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
@@ -669,9 +663,6 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	var err error
 	msg, peerKey := mi.Msg, mi.PeerKey
 	switch msg := msg.(type) {
-	case nil:
-		// transactions are available, so enterPropose
-		// cs.enterPropose(rs.Height, rs.Round)
 	case *ProposalMessage:
 		// will not cause transition.
 		// once proposal is set, we can receive block parts
@@ -737,6 +728,13 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 
 }
 
+func (cs *ConsensusState) handleTxsAvailable(height int) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	// we only need to do this for round 0
+	cs.enterPropose(height, 0)
+}
+
 //-----------------------------------------------------------------------------
 // State functions
 // Used internally by handleTimeout and handleMsg to make state transitions
@@ -785,10 +783,11 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	types.FireEventNewRound(cs.evsw, cs.RoundStateEvent())
 
 	// Wait for txs to be available in the mempool
-	// before we enterPropose. If the last block changed the app hash,
+	// before we enterPropose in round 0. If the last block changed the app hash,
 	// we may need an empty "proof" block, and enterPropose immediately.
-	if cs.config.NoEmptyBlocks && !cs.needProofBlock(height) {
-		go cs.waitForTxs(height, round)
+	waitForTxs := cs.config.NoEmptyBlocks && round == 0 && !cs.needProofBlock(height)
+	if waitForTxs {
+		go cs.proposalHeartbeat()
 	} else {
 		cs.enterPropose(height, round)
 	}
@@ -808,27 +807,9 @@ func (cs *ConsensusState) needProofBlock(height int) bool {
 	return false
 }
 
-func (cs *ConsensusState) waitForTxs(height, round int) {
-	// if we're the proposer, start a heartbeat routine
-	// to tell other peers we're just waiting for txs (for debugging)
-	if cs.isProposer() {
-		done := make(chan struct{})
-		defer close(done)
-		go cs.proposerHeartbeat(done)
-	}
-
-	// wait for the mempool to have some txs
-	<-cs.mempool.TxsAvailable()
-
-	// now we can enterPropose
-	cs.txsAvailable <- RoundState{Height: height, Round: round}
-}
-
-func (cs *ConsensusState) proposerHeartbeat(done chan struct{}) {
+func (cs *ConsensusState) proposalHeartbeat() {
 	for {
 		select {
-		case <-done:
-			return
 		default:
 			// TODO: broadcast heartbeat
 

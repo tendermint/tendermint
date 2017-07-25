@@ -23,12 +23,12 @@ func newMempoolWithApp(t *testing.T, cc proxy.ClientCreator) *Mempool {
 	if _, err := appConnMem.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
-	mempool := NewMempool(config.Mempool, appConnMem)
+	mempool := NewMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
 	return mempool
 }
 
-func ensureNoFire(t *testing.T, ch chan struct{}, timeoutMS int) {
+func ensureNoFire(t *testing.T, ch chan int, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -37,7 +37,7 @@ func ensureNoFire(t *testing.T, ch chan struct{}, timeoutMS int) {
 	}
 }
 
-func ensureFire(t *testing.T, ch chan struct{}, timeoutMS int) {
+func ensureFire(t *testing.T, ch chan int, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -64,7 +64,7 @@ func TestTxsAvailable(t *testing.T) {
 	app := dummy.NewDummyApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool := newMempoolWithApp(t, cc)
-	mempool.FireOnTxsAvailable()
+	mempool.EnableTxsAvailable()
 
 	timeoutMS := 500
 

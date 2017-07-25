@@ -20,7 +20,7 @@ func TestNoProgressUntilTxsAvailable(t *testing.T) {
 	config.Consensus.NoEmptyBlocks = true
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
-	cs.mempool.FireOnTxsAvailable()
+	cs.mempool.EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 	startTestRound(cs, height, round)
