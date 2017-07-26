@@ -38,6 +38,8 @@ sudo -Hu %{name} tracko init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168D
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
 #The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
 
+chmod 755 %{_sysconfdir}/%{name}/tendermint
+
 #Temporary until https://github.com/tendermint/basecoin/issues/123
 rm -f %{_sysconfdir}/%{name}/key.json
 rm -f %{_sysconfdir}/%{name}/key2.json

@@ -25,6 +25,9 @@ case "$1" in
     #The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
     sudo -Hu trackomatron tendermint init --home /etc/trackomatron/tendermint
     #The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
+
+    chmod 755 /etc/trackomatron/tendermint
+
     systemctl daemon-reload
     ;;
 

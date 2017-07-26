@@ -35,6 +35,9 @@ cd %{name}-%{version}-%{release}
 %post
 sudo -Hu %{name} %{_bindir}/%{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
+
+chmod 755 %{_sysconfdir}/%{name}/tendermint
+
 systemctl daemon-reload
 
 %preun
