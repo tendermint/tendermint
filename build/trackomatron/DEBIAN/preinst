@@ -17,6 +17,7 @@ case "$1" in
     install|upgrade)
     if ! grep -q '^trackomatron:' /etc/passwd ; then
       useradd -k /dev/null -r -m -b /etc trackomatron
+      chmod 755 /etc/trackomatron
     fi
     ;;
 

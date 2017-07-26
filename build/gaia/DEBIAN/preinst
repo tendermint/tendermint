@@ -17,6 +17,7 @@ case "$1" in
     install|upgrade)
     if ! grep -q '^gaia:' /etc/passwd ; then
       useradd -k /dev/null -r -m -b /etc gaia
+      chmod 755 /etc/gaia
     fi
     ;;
 

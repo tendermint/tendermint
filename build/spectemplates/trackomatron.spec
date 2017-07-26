@@ -19,6 +19,7 @@ This software is intended to create a space to easily send invoices between and 
 %pre
 if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
   useradd -k /dev/null -r -m -b %{_sysconfdir} %{name}
+  chmod 755 %{_sysconfdir}/%{name}
 fi
 
 %prep

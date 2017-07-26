@@ -20,6 +20,7 @@ Basecoin is an ABCI application designed to be used with the Tendermint consensu
 %pre
 if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
   useradd -k /dev/null -r -m -b %{_sysconfdir} %{name}
+  chmod 755 %{_sysconfdir}/%{name}
 fi
 
 %prep
