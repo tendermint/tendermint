@@ -11,7 +11,7 @@ License: Apache 2.0
 URL: https://tendermint.com/
 Packager: Greg Szabo
 Requires: tendermint >= 0.10.0
-Requires(pre): useradd
+#Requires(pre): useradd
 
 %description
 Ethermint enables ethereum to run as an ABCI application on tendermint and the COSMOS hub. This application allows you to get all the benefits of ethereum without having to run your own miners.

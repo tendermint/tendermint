@@ -12,7 +12,7 @@ URL: https://tendermint.com/
 Packager: Greg Szabo
 Requires: tendermint >= 0.10.0
 Provides: basecli
-Requires(pre): useradd
+#Requires(pre): useradd
 
 %description
 Basecoin is an ABCI application designed to be used with the Tendermint consensus engine to form a Proof-of-Stake cryptocurrency. It also provides a general purpose framework for extending the feature-set of the cryptocurrency by implementing plugins.

@@ -11,7 +11,7 @@ License: Apache 2.0
 URL: https://cosmos.network/
 Packager: Greg Szabo
 Requires: tendermint >= 0.10.0
-Requires(pre): useradd
+#Requires(pre): useradd
 
 %description
 Gaia description comes later.
