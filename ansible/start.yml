@@ -2,7 +2,7 @@
 
 #variable "service" is required
 
-- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
+- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}:tag_Environment_{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
   roles:
     - start
 

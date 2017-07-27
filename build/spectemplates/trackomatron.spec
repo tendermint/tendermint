@@ -11,7 +11,7 @@ License: Apache 2.0
 URL: https://tendermint.com/
 Packager: Greg Szabo
 Requires: tendermint >= 0.10.0
-Requires(pre): /sbin/useradd
+Requires(pre): useradd
 
 %description
 This software is intended to create a space to easily send invoices between and within institutions. Firstly, the commands of trackmatron are separated into two broad categories: submitting information to the blockchain (transactions), and retrieving information from the blockchain (query).
