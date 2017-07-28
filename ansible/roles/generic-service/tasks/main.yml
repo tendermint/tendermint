@@ -15,3 +15,11 @@
 - name: Reload systemd services
   systemd: "name={{service}} daemon_reload=yes enabled=no"
 
+- name: Create tendermint directory
+  file: "path=/etc/{{service}}/tendermint state=directory mode=0755 owner={{service}} group={{service}}"
+
+- name: Initialize tendermint
+  command: "/usr/bin/tendermint init --home /etc/{{service}}/tendermint"
+  become: yes
+  become_user: "{{service}}"
+
