@@ -96,17 +96,6 @@ func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {
 // WriteFileAtomic writes newBytes to temp and atomically moves to filePath
 // when everything else succeeds.
 func WriteFileAtomic(filePath string, newBytes []byte, mode os.FileMode) error {
-	// If a file already exists there, copy to filePath+".bak" (overwrite anything)
-	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
-		fileBytes, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			return fmt.Errorf("Could not read file %v. %v", filePath, err)
-		}
-		err = ioutil.WriteFile(filePath+".bak", fileBytes, mode)
-		if err != nil {
-			return fmt.Errorf("Could not write file %v. %v", filePath+".bak", err)
-		}
-	}
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
 		return err
