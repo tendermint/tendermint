@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
 	rpctypes "github.com/tendermint/go-rpc/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -91,7 +91,7 @@ func (t *transacter) receiveLoop(connIndex int) {
 		_, _, err := c.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
-				t.logger.Log("err", errors.Wrap(err, "failed to read response"))
+				t.logger.Error("failed to read response", "err", err)
 			}
 			return
 		}
@@ -104,7 +104,7 @@ func (t *transacter) receiveLoop(connIndex int) {
 // sendLoop generates transactions at a given rate.
 func (t *transacter) sendLoop(connIndex int) {
 	c := t.conns[connIndex]
-	logger := log.With(t.logger, "addr", c.RemoteAddr())
+	logger := t.logger.With("addr", c.RemoteAddr())
 
 	var txNumber = 0
 
@@ -142,12 +142,12 @@ func (t *transacter) sendLoop(connIndex int) {
 
 			timeToSend := time.Now().Sub(startTime)
 			time.Sleep(time.Second - timeToSend)
-			logger.Log("event", fmt.Sprintf("sent %d transactions", t.Rate), "took", timeToSend)
+			logger.Info(fmt.Sprintf("sent %d transactions", t.Rate), "took", timeToSend)
 		case <-pingsTicker.C:
 			// Right now go-rpc server closes the connection in the absence of pings
 			c.SetWriteDeadline(time.Now().Add(sendTimeout))
 			if err := c.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				logger.Log("err", errors.Wrap(err, "failed to write ping message"))
+				logger.Error("failed to write ping message", "err", err)
 			}
 		}
 
@@ -157,7 +157,7 @@ func (t *transacter) sendLoop(connIndex int) {
 			c.SetWriteDeadline(time.Now().Add(sendTimeout))
 			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
-				logger.Log("err", errors.Wrap(err, "failed to write close message"))
+				logger.Error("failed to write close message", "err", err)
 			}
 
 			return

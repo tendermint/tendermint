@@ -8,10 +8,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/term"
 	metrics "github.com/rcrowley/go-metrics"
+
 	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 	"github.com/tendermint/tools/tm-monitor/monitor"
 )
 
@@ -63,7 +64,7 @@ Examples:
 			}
 			return term.FgBgColor{}
 		}
-		logger = term.NewLogger(os.Stdout, log.NewLogfmtLogger, colorFn)
+		logger = log.NewTMLoggerWithColorFn(log.NewSyncWriter(os.Stdout), colorFn)
 	}
 
 	fmt.Printf("Running %ds test @ %s\n", duration, flag.Arg(0))
@@ -123,7 +124,7 @@ func startNodes(endpoints []string, blockCh chan<- tmtypes.Header, blockLatencyC
 
 	for i, e := range endpoints {
 		n := monitor.NewNode(e)
-		n.SetLogger(log.With(logger, "node", e))
+		n.SetLogger(logger.With("node", e))
 		n.SendBlocksTo(blockCh)
 		n.SendBlockLatenciesTo(blockLatencyCh)
 		if err := n.Start(); err != nil {
