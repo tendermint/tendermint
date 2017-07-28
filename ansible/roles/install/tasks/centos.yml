@@ -1,5 +1,9 @@
 ---
 
+- name: Set timezone
+  when: timezone is defined
+  file: path=/etc/localtime state=link src=/usr/share/zoneinfo/{{timezone}} force=yes
+
 #Three commands to install a service on CentOS/RedHat
 #wget -O - http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint | rpm --import -
 #wget -O /etc/yum.repos.d/tendermint.repo http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/tendermint.repo
