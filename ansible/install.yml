@@ -5,6 +5,8 @@
 - hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}:tag_Environment_{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
   roles:
     - install
+    - {role: generic-service-prepare, when: service == 'tendermint'}
     - {role: config, testnet_name: "{{lookup('env','TF_VAR_TESTNET_NAME')}}"}
+    - {role: generic-service-config, when: service == 'tendermint'}
     - start
 

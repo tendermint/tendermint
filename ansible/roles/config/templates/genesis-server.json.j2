@@ -5,7 +5,7 @@
   [
 {% if validators == true %}
 {% set comma = joiner(",") %}
-{% for host in groups[testnet_name] %}
+{% for host in (groups[testnet_name]|default([]))+(groups['tag_Environment_'~testnet_name]|default([])) %}
     {{ comma() }}
     {
       "pub_key": {
