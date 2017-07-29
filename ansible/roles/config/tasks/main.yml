@@ -2,9 +2,9 @@
 
 - name: gather tendermint public keys
   when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
-  command: "tendermint show_validator --home /etc/{{service}}/tendermint --log_level error"
-  become: yes
-  become_user: "{{service}}"
+  command: "sudo -Hu {{service}} tendermint show_validator --home /etc/{{service}}/tendermint --log_level error"
+#  become: yes
+#  become_user: "{{service}}"
   register: pubkeys
   changed_when: false
 
