@@ -15,6 +15,9 @@
   set_fact: "pubkey='{{pubkeys.stdout}}'"
   connection: local
 
+- debug: var=hostvars[inventory_hostname]["pubkey"]
+- debug: var=hostvars[inventory_hostname]["pubkey"]["data"]
+
 - name: copy generated tendermint genesis.json - genesis_time will be updated
   when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
   template:
