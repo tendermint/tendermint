@@ -49,9 +49,17 @@
 
 - name: Copy validator network files for non-validators
   when: validators == false or validators == 'false'
-  copy: "src={{item['src']}} dest={{item['dst']}} owner={{service}} group={{service}}"
+  get_url: "url={{item['src']}} dest={{item['dst']}} force=yes"
   with_items:
     - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/{{service}}/genesis.json" , dst: "/etc/{{service}}/genesis.json" }
     - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/tendermint/genesis.json" , dst: "/etc/{{service}}/tendermint/genesis.json" }
     - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/tendermint/config.toml" , dst: "/etc/{{service}}/tendermint/config.toml" }
 
+- name: Set validator network files permissions for non-validators
+  when: validators == false or validators == 'false'
+  file: "path={{item}} owner={{service}} group={{service}}"
+  with_itmes:
+  - "/etc/{{service}}/genesis.json"
+  - "/etc/{{service}}/tendermint/genesis.json"
+  - "/etc/{{service}}/tendermint/config.toml"
+"
