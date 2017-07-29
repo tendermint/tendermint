@@ -16,7 +16,7 @@
   connection: local
 
 - name: copy generated tendermint genesis.json - genesis_time will be updated
-  when: tendermint_genesis_file is not defined
+  when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
   template:
     src: genesis-server.json.j2
     dest: "/etc/{{service}}/tendermint/genesis.json"
@@ -24,7 +24,7 @@
     group: "{{service}}"
 
 - name: copy generated service genesis.json - genesis_time will be updated
-  when: (service_genesis_file is not defined) and (service != 'ethermint')
+  when: (validators == true or validators == 'true') and (service_genesis_file is not defined) and (service != 'ethermint')
   template:
     src: genesis-service.json.j2
     dest: "/etc/{{service}}/genesis.json"
@@ -40,9 +40,18 @@
   copy: "src={{service_genesis_file}} dest=/etc/{{service}}/genesis.json owner={{service}} group={{service}}"
 
 - name: copy tendermint config.toml
+  when: validators == true
   template:
     src: config.toml.j2
     dest: "/etc/{{service}}/tendermint/config.toml"
     owner: "{{service}}"
     group: "{{service}}"
+
+- name: Copy validator network files for non-validators
+  when: validators == false or validators == 'false'
+  copy: "src={{item['src']}} dest={{item['dst']}} owner={{service}} group={{service}}"
+  with_items:
+    - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/{{service}}/genesis.json" , dst: "/etc/{{service}}/genesis.json" }
+    - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/tendermint/genesis.json" , dst: "/etc/{{service}}/tendermint/genesis.json" }
+    - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/tendermint/config.toml" , dst: "/etc/{{service}}/tendermint/config.toml" }
 
