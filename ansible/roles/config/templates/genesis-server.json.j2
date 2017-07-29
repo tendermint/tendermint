@@ -3,7 +3,7 @@
   "chain_id":"{{testnet_name}}",
   "validators":
   [
-{% if validators == true %}
+{% if (validators == true or validators == 'true') %}
 {% set comma = joiner(",") %}
 {% for host in (groups[testnet_name]|default([]))+(groups['tag_Environment_'~testnet_name]|default([])) %}
     {{ comma() }}
