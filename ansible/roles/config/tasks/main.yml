@@ -1,7 +1,7 @@
 ---
 
 - name: gather tendermint public keys
-  when: validators == true and tendermint_genesis_file is not defined
+  when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
   command: "tendermint show_validator --home /etc/{{service}}/tendermint --log_level error"
   become: yes
   become_user: "{{service}}"
@@ -11,7 +11,7 @@
 - debug: var=pubkeys
 
 - name: register tendermint public keys as host facts
-  when: validators == true and tendermint_genesis_file is not defined
+  when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
   set_fact: "pubkey='{{pubkeys.stdout}}'"
   connection: local
 
@@ -40,7 +40,7 @@
   copy: "src={{service_genesis_file}} dest=/etc/{{service}}/genesis.json owner={{service}} group={{service}}"
 
 - name: copy tendermint config.toml
-  when: validators == true
+  when: validators == true or validators == 'true'
   template:
     src: config.toml.j2
     dest: "/etc/{{service}}/tendermint/config.toml"
