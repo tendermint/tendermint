@@ -85,7 +85,7 @@ build-trackomatron: git-branch
 
 build-gaia: git-branch
 	@echo "*** Building gaia"
-	go get -d -u go github.com/cosmos/gaia
+	go get -d -u go github.com/cosmos/gaia || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/gaia && git checkout "$(GIT_BRANCH)" && git pull
 	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
