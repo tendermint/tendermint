@@ -2,22 +2,17 @@
 
 - name: gather tendermint public keys
   when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
-  command: "sudo -Hu {{service}} tendermint show_validator --home /etc/{{service}}/tendermint --log_level error"
-#  become: yes
-#  become_user: "{{service}}"
+  command: "/usr/bin/tendermint show_validator --home /etc/{{service}}/tendermint --log_level error"
   register: pubkeys
   changed_when: false
 
-- debug: var=((groups[testnet_name]|default([]))+(groups['tag_Environment_'~testnet_name]|default([])))
-- debug: var=pubkeys
+- name: resetting permissions from root after gathering public keys
+  file: "path=/etc/{{service}}/tendermint owner={{service}} group={{service}} recurse=yes"
 
 - name: register tendermint public keys as host facts
   when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
   set_fact: "pubkey='{{pubkeys.stdout}}'"
   connection: local
-
-- debug: var=hostvars[inventory_hostname]["pubkey"]
-- debug: var=hostvars[inventory_hostname]["pubkey"]["data"]
 
 - name: copy generated tendermint genesis.json - genesis_time will be updated
   when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined

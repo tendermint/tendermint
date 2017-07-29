@@ -3,6 +3,7 @@
 #variable "service" is required
 
 - hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}:tag_Environment_{{ lookup('env','TF_VAR_TESTNET_NAME') }}"
+  any_errors_fatal: true
   roles:
     - install
     - {role: generic-service, when: service == 'tendermint'}
