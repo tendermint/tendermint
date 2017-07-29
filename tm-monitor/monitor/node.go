@@ -125,7 +125,7 @@ func (n *Node) Stop() {
 
 // implements eventmeter.EventCallbackFunc
 func newBlockCallback(n *Node) em.EventCallbackFunc {
-	return func(metric *em.EventMetric, data events.EventData) {
+	return func(metric *em.EventMetric, data interface{}) {
 		block := data.(tmtypes.TMEventData).Unwrap().(tmtypes.EventDataNewBlockHeader).Header
 
 		n.Height = uint64(block.Height)

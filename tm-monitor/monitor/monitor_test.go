@@ -61,10 +61,10 @@ func startMonitor(t *testing.T) *monitor.Monitor {
 func createValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter) {
 	emMock = &mock.EventMeter{}
 
-	stubs := make(map[string]ctypes.TMResult)
+	stubs := make(map[string]interface{})
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
-	stubs["validators"] = &ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
-	stubs["status"] = &ctypes.ResultStatus{PubKey: pubKey}
+	stubs["validators"] = ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
+	stubs["status"] = ctypes.ResultStatus{PubKey: pubKey}
 	rpcClientMock := &mock.RpcClient{stubs}
 
 	n = monitor.NewNodeWithEventMeterAndRpcClient("tcp://127.0.0.1:46657", emMock, rpcClientMock)
