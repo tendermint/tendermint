@@ -58,7 +58,7 @@
 - name: Set validator network files permissions for non-validators
   when: validators == false or validators == 'false'
   file: "path={{item}} owner={{service}} group={{service}}"
-  with_itmes:
+  with_items:
     - "/etc/{{service}}/genesis.json"
     - "/etc/{{service}}/tendermint/genesis.json"
     - "/etc/{{service}}/tendermint/config.toml"
