@@ -34,8 +34,8 @@ service: basecoin
 ## app_options_file contains a path and filename which will be included in a generated service genesis.json file on all nodes. The content will be dumped into the app_options dictionary in the service genesis.json..
 #app_options_file: "app_options_files/dev_money"
 
-## validators indicates if the nodes are validator nodes. The tendermint genesis.json will contain their public keys.
+## Internal use only. validators indicates if the nodes are validator nodes. The tendermint genesis.json will contain their public keys.
 #validators: true
 
-## seeds contain the list of servers (with ports) that are validators in a testnet. Only effective if validators == false. If validators == true, then all nodes will be automatically included here.
+## Internal use only. seeds contain the list of servers (with ports) that are validators in a testnet. Only effective if validators == false. If validators == true, then all nodes will be automatically included here.
 #seeds: ""
