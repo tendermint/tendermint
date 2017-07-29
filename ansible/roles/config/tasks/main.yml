@@ -8,6 +8,7 @@
   register: pubkeys
   changed_when: false
 
+- debug: var=((groups[testnet_name]|default([]))+(groups['tag_Environment_'~testnet_name]|default([])))
 - debug: var=pubkeys
 
 - name: register tendermint public keys as host facts
