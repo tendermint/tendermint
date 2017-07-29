@@ -1,5 +1,5 @@
-hash: 795aa94747f3d877df3ea1ec134e9a34e1c46713dd6eb59b6fdd6a33cb698234
-updated: 2017-07-28T22:01:53.225543833Z
+hash: b963733b341869e0667dde0c93f9be17fdf002ab4e92ae8778562a2b94580de8
+updated: 2017-07-29T18:52:35.221739544Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 47885ab8702485be6b6f87a03d4f3be0bc5c982c
@@ -11,7 +11,6 @@ imports:
   - log
   - log/level
   - log/term
-  - term
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
@@ -35,6 +34,8 @@ imports:
 - name: github.com/tendermint/abci
   version: 864d1f80b36b440bde030a5c18d8ac3aa8c2949d
   subpackages:
+  - client
+  - example/dummy
   - types
 - name: github.com/tendermint/ed25519
   version: 1f52c6f8b8a5c7908aff4497c186af344b428925
@@ -46,7 +47,6 @@ imports:
 - name: github.com/tendermint/go-rpc
   version: 15d5b2ac497da95cd2dceb9c087910ccec4dacb2
   subpackages:
-  - client
   - types
 - name: github.com/tendermint/go-wire
   version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
@@ -63,7 +63,7 @@ imports:
   - rpc/lib/types
   - types
 - name: github.com/tendermint/tmlibs
-  version: 2f6f3e6aa70bb19b70a6e73210273fa127041070
+  version: 7ce4da1eee6004d627e780c8fe91e96d9b99e459
   subpackages:
   - common
   - events
@@ -71,7 +71,7 @@ imports:
   - log
   - merkle
 - name: github.com/tendermint/tools
-  version: f427590622211c845626493e2adfb09e12c15e61
+  version: d205ae1f98c946b2a057f62bfcd505b40ea52031
   subpackages:
   - tm-monitor/eventmeter
   - tm-monitor/monitor
