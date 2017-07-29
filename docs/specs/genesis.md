@@ -16,7 +16,8 @@ NOTE: This does not (yet) specify the application state (e.g. initial distributi
 
 ### Sample genesis.json
 
-This example is from the Basecoin mintnet example ([link to file](https://github.com/tendermint/mintnet/blob/master/examples/basecoin/mach1/core/genesis.json)).
+This example is from the Basecoin mintnet example:
+
 ```json
 {
   "genesis_time": "2016-02-05T06:02:31.526Z",

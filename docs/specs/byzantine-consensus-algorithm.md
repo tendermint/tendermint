@@ -7,7 +7,7 @@ _The draft 0.6 whitepaper is outdated. The new algorithm is detailed below.  See
 - The consensus process in deciding the next block (at some _height_ `H`) is composed of one or many _rounds_.
 - `NewHeight`, `Propose`, `Prevote`, `Precommit`, and `Commit` represent state machine states of a round. (aka `RoundStep` or just "step").
 - A node is said to be _at_ a given height, round, and step, or at `(H,R,S)`, or at `(H,R)` in short to omit the step.
-- To _prevote_ or _precommit_ something means to broadcast a [prevote vote](/docs/specs/block-structure#vote) or [precommit vote](/docs/specs/block-structure#precommit-vote) for something.
+- To _prevote_ or _precommit_ something means to broadcast a [prevote vote](https://godoc.org/github.com/tendermint/tendermint/types#Vote) or [first precommit vote](https://godoc.org/github.com/tendermint/tendermint/types#FirstPrecommit) for something.
 - A vote _at_ `(H,R)` is a vote signed with the bytes for `H` and `R` included in its [`sign-bytes`](/docs/specs/block-structure#vote-sign-bytes).
 - _+2/3_ is short for "more than 2/3"
 - _1/3+_ is short for "1/3 or more"
@@ -20,11 +20,12 @@ the next block. Each round is composed of three _steps_ (`Propose`, `Prevote`, a
 `Precommit`), along with two special steps `Commit` and `NewHeight`.
 
 In the optimal scenario, the order of steps is:
+
 ```
 NewHeight -> (Propose -> Prevote -> Precommit)+ -> Commit -> NewHeight ->...
 ```
 
-The sequence `(Propose -> Prevote -> Precommit)` is called a _round_. There may be more than one round required to commit a block at a given height.  Examples for why more rounds may be required include:
+The sequence `(Propose -> Prevote -> Precommit)` is called a _round_. There may be more than one round required to commit a block at a given height. Examples for why more rounds may be required include:
 
 - The designated proposer was not online.
 - The block proposed by the designated proposer was not valid.
@@ -35,6 +36,7 @@ The sequence `(Propose -> Prevote -> Precommit)` is called a _round_. There may 
 Some of these problems are resolved by moving onto the next round & proposer.  Others are resolved by increasing certain round timeout parameters over each successive round.
 
 ## State Machine Diagram
+
 ```
                             +-------------------------------------+
                             v                                     |(Wait til `CommmitTime+timeoutCommit`)
@@ -58,14 +60,14 @@ Some of these problems are resolved by moving onto the next round & proposer.  O
 
 ## Background Gossip
 
-A node may not have a corresponding validator private key, but it nevertheless plays an active role in the consensus process by relaying relevant meta-data, proposals, blocks, and votes to its peers.  A node that has the private keys of an active validator and is engaged in signing votes is called a _validator-node_.  All nodes (not just validator-nodes) have an associated state (the current height, round, and step) and work to make progress.
+A node may not have a corresponding validator private key, but it nevertheless plays an active role in the consensus process by relaying relevant meta-data, proposals, blocks, and votes to its peers. A node that has the private keys of an active validator and is engaged in signing votes is called a _validator-node_. All nodes (not just validator-nodes) have an associated state (the current height, round, and step) and work to make progress.
 
-Between two nodes there exists a `Connection`, and multiplexed on top of this connection are fairly throttled `Channel`s of information.  An epidemic gossip protocol is implemented among some of these channels to bring peers up to speed on the most recent state of consensus.  For example,
+Between two nodes there exists a `Connection`, and multiplexed on top of this connection are fairly throttled `Channel`s of information. An epidemic gossip protocol is implemented among some of these channels to bring peers up to speed on the most recent state of consensus. For example,
 
 - Nodes gossip `PartSet` parts of the current round's proposer's proposed block.  A LibSwift inspired algorithm is used to quickly broadcast blocks across the gossip network.
 - Nodes gossip prevote/precommit votes.  A node NODE_A that is ahead of NODE_B can send NODE_B prevotes or precommits for NODE_B's current (or future) round to enable it to progress forward.
 - Nodes gossip prevotes for the proposed PoLC (proof-of-lock-change) round if one is proposed.
-- Nodes gossip to nodes lagging in blockchain height with block [commits](/docs/specs/block-structure/commit) for older blocks.
+- Nodes gossip to nodes lagging in blockchain height with block [commits](https://godoc.org/github.com/tendermint/tendermint/types#Commit) for older blocks.
 - Nodes opportunistically gossip `HasVote` messages to hint peers what votes it already has.
 - Nodes broadcast their current state to all neighboring peers. (but is not gossiped further)
 
@@ -73,7 +75,7 @@ There's more, but let's not get ahead of ourselves here.
 
 ## Proposals
 
-A proposal is signed and published by the designated proposer at each round.  The proposer is chosen by a deterministic and non-choking round robin selection algorithm that selects proposers in proportion to their voting power. (see [implementation](https://github.com/tendermint/tendermint/blob/develop/types/validator_set.go#L49))
+A proposal is signed and published by the designated proposer at each round. The proposer is chosen by a deterministic and non-choking round robin selection algorithm that selects proposers in proportion to their voting power. (see [implementation](https://github.com/tendermint/tendermint/blob/develop/types/validator_set.go))
 
 A proposal at `(H,R)` is composed of a block and an optional latest `PoLC-Round < R` which is included iff the proposer knows of one.  This hints the network to allow nodes to unlock (when safe) to ensure the liveness property.
 
@@ -187,9 +189,3 @@ there are no significant network partitions, to avoid situations where two
 conflicting reorg-proposals are signed.
 
 Assuming that the external coordination medium and protocol is robust, it follows that forks are less of a concern than [censorship attacks](#censorship-attacks).
-
-### Revisions
-
-#### 0.6 -> 0.7 (current)
-1. Reduced the minimum number of signature steps from 3 to 2 by removing the "commit" vote and step.
-2. The protocol is more asynchronous: instead of each round taking a predetermined duration of time, each step of a round progresses after +2/3 of the step's votes are found and a timeout is reached, or immediately after +2/3 of matching votes (e.g. a PoLC for prevotes, or a commit for precommits).
