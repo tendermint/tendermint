@@ -181,6 +181,7 @@ type PrivValidator interface {
 	GetAddress() []byte
 	SignVote(chainID string, vote *types.Vote) error
 	SignProposal(chainID string, proposal *types.Proposal) error
+	SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error
 }
 
 // ConsensusState handles execution of the consensus algorithm.
@@ -810,13 +811,26 @@ func (cs *ConsensusState) needProofBlock(height int) bool {
 func (cs *ConsensusState) proposalHeartbeat() {
 	counter := 0
 	addr := cs.privValidator.GetAddress()
+	valIndex, v := cs.Validators.GetByAddress(addr)
+	if v == nil {
+		// not a validator
+		valIndex = -1
+	}
 	for {
 		select {
 		default:
 			if cs.evsw != nil {
 				rs := cs.GetRoundState().RoundStateEvent()
-				heartbeat := types.EventDataProposerHeartbeat{rs, addr, counter}
-				types.FireEventProposerHeartbeat(cs.evsw, heartbeat)
+				heartbeat := &types.Heartbeat{
+					Height:           rs.Height,
+					Round:            rs.Round,
+					Sequence:         counter,
+					ValidatorAddress: addr,
+					ValidatorIndex:   valIndex,
+				}
+				cs.privValidator.SignHeartbeat(cs.state.ChainID, heartbeat)
+				heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
+				types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
 				counter += 1
 			}
 			time.Sleep(time.Second)
