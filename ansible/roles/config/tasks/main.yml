@@ -59,7 +59,7 @@
   when: validators == false or validators == 'false'
   file: "path={{item}} owner={{service}} group={{service}}"
   with_itmes:
-  - "/etc/{{service}}/genesis.json"
-  - "/etc/{{service}}/tendermint/genesis.json"
-  - "/etc/{{service}}/tendermint/config.toml"
-"
+    - "/etc/{{service}}/genesis.json"
+    - "/etc/{{service}}/tendermint/genesis.json"
+    - "/etc/{{service}}/tendermint/config.toml"
+
