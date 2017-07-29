@@ -22,7 +22,7 @@ import (
 // Meter for a particular event
 
 // Closure to enable side effects from receiving an event
-type EventCallbackFunc func(em *EventMetric, data events.EventData)
+type EventCallbackFunc func(em *EventMetric, data interface{})
 
 // Metrics for a given event
 type EventMetric struct {
