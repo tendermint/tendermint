@@ -5,7 +5,7 @@
   [
 {% if (validators == true) or (validators == 'true') %}
 {% set comma = joiner(",") %}
-{% for host in (groups[testnet_name]|default([]))+(groups['tag_Environment_'~testnet_name]|default([])) %}
+{% for host in (groups[testnet_name]|default([]))+(groups['tag_Environment_'~(testnet_name|regex_replace('-','_'))]|default([])) %}
     {{ comma() }}
     {
       "pub_key": {

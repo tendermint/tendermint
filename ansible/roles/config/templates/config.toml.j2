@@ -13,7 +13,7 @@ laddr = "tcp://0.0.0.0:46657"
 [p2p]
 laddr = "tcp://0.0.0.0:46656"
 {% if validators == true or validators == 'true' %}
-{% set comma = joiner(",") %}seeds = "{% for host in ((groups[testnet_name]|default([]))+(groups['tag_Environment_'~testnet_name]|default([])))|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["inventory_hostname"]}}:46656{% endfor %}"
+{% set comma = joiner(",") %}seeds = "{% for host in ((groups[testnet_name]|default([]))+(groups['tag_Environment_'~(testnet_name|regex_replace('-','_'))]|default([])))|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["inventory_hostname"]}}:46656{% endfor %}"
 {% else %}
 seeds = "{{ seeds | default() }}"
 {% endif %}
