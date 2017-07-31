@@ -48,9 +48,9 @@ type EventMetric struct {
 }
 
 func (metric *EventMetric) Copy() *EventMetric {
-	metric2 := *metric
-	metric2.meter = metric.meter.Snapshot()
-	return &metric2
+	metricCopy := *metric
+	metricCopy.meter = metric.meter.Snapshot()
+	return &metricCopy
 }
 
 // called on GetMetric
