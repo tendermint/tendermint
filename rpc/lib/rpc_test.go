@@ -2,15 +2,18 @@ package rpc
 
 import (
 	"bytes"
+	"context"
 	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"os/exec"
 	"testing"
 	"time"
 
+	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/go-wire/data"
@@ -75,8 +78,29 @@ func EchoDataBytesResult(v data.Bytes) (*ResultEchoDataBytes, error) {
 	return &ResultEchoDataBytes{v}, nil
 }
 
+func TestMain(m *testing.M) {
+	setup()
+	code := m.Run()
+	os.Exit(code)
+}
+
+var colorFn = func(keyvals ...interface{}) term.FgBgColor {
+	for i := 0; i < len(keyvals)-1; i += 2 {
+		if keyvals[i] == "socket" {
+			if keyvals[i+1] == "tcp" {
+				return term.FgBgColor{Fg: term.DarkBlue}
+			} else if keyvals[i+1] == "unix" {
+				return term.FgBgColor{Fg: term.DarkCyan}
+			}
+		}
+	}
+	return term.FgBgColor{}
+}
+
 // launch unix and tcp servers
-func init() {
+func setup() {
+	logger := log.NewTMLoggerWithColorFn(log.NewSyncWriter(os.Stdout), colorFn)
+
 	cmd := exec.Command("rm", "-f", unixSocket)
 	err := cmd.Start()
 	if err != nil {
@@ -86,25 +110,27 @@ func init() {
 		panic(err)
 	}
 
+	tcpLogger := logger.With("socket", "tcp")
 	mux := http.NewServeMux()
-	server.RegisterRPCFuncs(mux, Routes, log.TestingLogger())
+	server.RegisterRPCFuncs(mux, Routes, tcpLogger)
 	wm := server.NewWebsocketManager(Routes, nil)
-	wm.SetLogger(log.TestingLogger())
+	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := server.StartHTTPServer(tcpAddr, mux, log.TestingLogger())
+		_, err := server.StartHTTPServer(tcpAddr, mux, tcpLogger)
 		if err != nil {
 			panic(err)
 		}
 	}()
 
+	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
-	server.RegisterRPCFuncs(mux2, Routes, log.TestingLogger())
+	server.RegisterRPCFuncs(mux2, Routes, unixLogger)
 	wm = server.NewWebsocketManager(Routes, nil)
-	wm.SetLogger(log.TestingLogger())
+	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := server.StartHTTPServer(unixAddr, mux2, log.TestingLogger())
+		_, err := server.StartHTTPServer(unixAddr, mux2, unixLogger)
 		if err != nil {
 			panic(err)
 		}
@@ -184,7 +210,7 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err := cl.Call("echo", params)
+	err := cl.Call(context.Background(), "echo", params)
 	if err != nil {
 		return "", err
 	}
@@ -206,7 +232,7 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
-	err := cl.Call("echo_bytes", params)
+	err := cl.Call(context.Background(), "echo_bytes", params)
 	if err != nil {
 		return []byte{}, err
 	}
@@ -252,6 +278,7 @@ func TestServersAndClientsBasic(t *testing.T) {
 		cl3 := client.NewWSClient(addr, websocketEndpoint)
 		_, err := cl3.Start()
 		require.Nil(t, err)
+		cl3.SetLogger(log.TestingLogger())
 		fmt.Printf("=== testing server on %s using %v client", addr, cl3)
 		testWithWSClient(t, cl3)
 		cl3.Stop()
@@ -280,13 +307,14 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
 	_, err := cl.Start()
 	require.Nil(t, err)
+	cl.SetLogger(log.TestingLogger())
 	defer cl.Stop()
 
 	val := "acbd"
 	params := map[string]interface{}{
 		"arg": val,
 	}
-	err = cl.Call("echo_ws", params)
+	err = cl.Call(context.Background(), "echo_ws", params)
 	require.Nil(t, err)
 
 	select {
@@ -305,13 +333,12 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
 	_, err := cl.Start()
 	require.Nil(t, err)
+	cl.SetLogger(log.TestingLogger())
 	defer cl.Stop()
 
 	val := "acbd"
 	params := []interface{}{val}
-	request, err := types.ArrayToRequest("", "echo_ws", params)
-	require.Nil(t, err)
-	err = cl.WriteJSON(request)
+	err = cl.CallWithArrayParams(context.Background(), "echo_ws", params)
 	require.Nil(t, err)
 
 	select {
@@ -324,6 +351,22 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	case err := <-cl.ErrorsCh:
 		t.Fatalf("%+v", err)
 	}
+}
+
+// TestWSClientPingPong checks that a client & server exchange pings
+// & pongs so connection stays alive.
+func TestWSClientPingPong(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping ping pong in short mode")
+	}
+
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+	_, err := cl.Start()
+	require.Nil(t, err)
+	cl.SetLogger(log.TestingLogger())
+	defer cl.Stop()
+
+	time.Sleep(35 * time.Second)
 }
 
 func randBytes(t *testing.T) []byte {

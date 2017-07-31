@@ -9,6 +9,9 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 # Change into that dir because we expect that.
 pushd "$DIR"
 
+echo "==> Installing deps"
+go get -v
+
 echo "==> Building the server"
 go build -o rpcserver main.go
 
