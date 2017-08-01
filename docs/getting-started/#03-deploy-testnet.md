@@ -28,13 +28,11 @@ For more information, see the Tendermint Networks section of [the guide to using
 ## Automated Deployments
 
 While the manual deployment is easy enough, an automated deployment is always better.
-For this, we have the [mintnet-kubernetes tool](https://github.com/tendermint/mintnet-kubernetes),
+For this, we have the [mintnet-kubernetes tool](https://github.com/tendermint/tools/tree/master/mintnet-kubernetes),
 which allows us to automate the deployment of a Tendermint network on an already provisioned kubernetes cluster.
 
-For more details, see the [mintnet-kubernetes repo](https://github.com/tendermint/mintnet-kubernetes),
+For more details, see the [mintnet-kubernetes directory](https://github.com/tendermint/tools/tree/master/mintnet-kubernetes),
 and check out [Google Cloud Platform](https://cloud.google.com/) for simple provisioning of kubernetes clusters.
-
-TODO: a better tutorial here, and Ansible/Terraform.
 
 ## Next Steps
 
