@@ -49,7 +49,7 @@ The `abci-cli` tool lets us send ABCI messages to our application, to help build
 The most important messages are `deliver_tx`, `check_tx`, and `commit`,
 but there are others for convenience, configuration, and information purposes.
 
-Let's start a dummy application. The dummy just stores transactions in a merkle tree:
+Let's start a dummy application, which was installed at the same time as `abci-cli` above. The dummy just stores transactions in a merkle tree:
 
 ```
 dummy
@@ -190,7 +190,7 @@ In another window, start the `abci-cli console`:
 ```
 
 This is a very simple application, but between `counter` and `dummy`, its easy to see how you can build out arbitrary application states on top of the ABCI.
-In the near future, `erisdb` of Eris Industries will also run atop ABCI, bringing with it Ethereum-like accounts, the Ethereum virtual-machine, Eris's permissioning scheme, and native contracts extensions.
+[Hyperledger's Burrow](https://github.com/hyperledger/burrow) also runs atop ABCI, bringing with it Ethereum-like accounts, the Ethereum virtual-machine, Monax's permissioning scheme, and native contracts extensions.
 
 But the ultimate flexibility comes from being able to write the application easily in any language.
 
@@ -217,4 +217,3 @@ each with its own pattern of messages.
 
 For more information, see the [application developers guide](/docs/guides/app-development).
 For examples of running an ABCI app with Tendermint, see the [introductory guide](/docs/getting-started/first-abci-app).
-

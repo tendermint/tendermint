@@ -19,9 +19,9 @@ The ABCI design has a few distinct components:
 - blockchain protocol
     - abci is connection oriented
     - Tendermint Core maintains three connections:
-        - [mempool connection](#mempool-connection): for checking if transactions should be relayed before they are committed. only uses `CheckTx`
-        - [consensus connection](#consensus-connection): for executing transactions that have been committed. Message sequence is, for every block, `BeginBlock, [DeliverTx, ...], EndBlock, Commit`
-        - [query connection](#query-connection): for querying the application state.  only uses Query and Info
+        - [mempool connection](#mempool-connection): for checking if transactions should be relayed before they are committed; only uses `CheckTx`
+        - [consensus connection](#consensus-connection): for executing transactions that have been committed. Message sequence is - for every block - `BeginBlock, [DeliverTx, ...], EndBlock, Commit`
+        - [query connection](#query-connection): for querying the application state; only uses Query and Info
 
 <img src="../assets/images/abci.png">
 
@@ -153,5 +153,3 @@ Using this information, Tendermint will determine what needs to be replayed, if 
 to ensure both Tendermint and the app are synced to the latest block height.
 
 If the app returns a LastBlockHeight of 0, Tendermint will just replay all blocks.
-
-Note this functionality is only available in v0.8.0 and up.

@@ -8,6 +8,8 @@ and just forwards transactions to the application when they need to be validated
 
 In this guide, we show you some examples of how to run an application using Tendermint.
 
+**Note:** It is highly recommended to read the [Using Tendermint Guide](/docs/guides/using-tendermint) prior to working through this tutorial.
+
 ## Install
 
 First, make sure you have [installed Tendermint](/download).
@@ -21,7 +23,7 @@ Then run
 go get -u github.com/tendermint/abci/cmd/...
 ```
 
-If there is an error, download the `glide` tool to pin the dependencies:
+If there is an error, install and run the `glide` tool to pin the dependencies:
 
 ```
 go get github.com/Masterminds/glide
@@ -30,27 +32,16 @@ glide install
 go install ./cmd/...
 ```
 
-Now you should have two apps installed: 
+Now you should have the `abci-cli` plus two apps installed: 
 
 ```
 dummy --help
 counter --help
 ```
 
-Both of these applications are in Go. 
-But we also want to run an application in another language - 
-in this case, we'll run a Javascript version of the `counter`.
-To run it, you'll need to [install node](https://nodejs.org/en/download/).
+These binaries are installed on `$GOPATH/bin` and all come from within the `./cmd/...` directory of the abci repository.
 
-You'll also need to fetch the relevant repository, from https://github.com/tendermint/js-abci.
-Since I keep all my code under the `$GOPATH`, I just `go get github.com/tendermint/js-abci &> /dev/null`.
-Then `cd` into the `example` directory within that repository and run `npm install`.
-For instance, if you used `go get`, 
-
-```
-cd $GOPATH/src/github.com/tendermint/js-abci/example
-npm install
-```
+Both of these example applications are in Go. See below for an application written in Javascript.
 
 Now, let's run some apps!
 
@@ -61,7 +52,7 @@ If the transaction contains an `=`, eg. `key=value`,
 then the `value` is stored under the `key` in the Merkle tree.
 Otherwise, the full transaction bytes are stored as the key and the value.
 
-Let's start a dummy application. 
+Let's start a dummy application.
 
 ```
 dummy
@@ -159,14 +150,14 @@ before they are stored in memory or gossipped to other peers.
 
 In this instance of the counter app, with `serial=on`, `CheckTx` only allows transactions whose integer is greater than the last committed one.
 
-Let's kill the previous instance of tendermint and the dummy application, and start the counter app.
+Let's kill the previous instance of `tendermint` and the `dummy` application, and start the counter app.
 We can enable `serial=on` with a flag:
 
 ```
 counter --serial
 ```
 
-In another window, reset and start Tendermint:
+In another window, reset then start Tendermint:
 
 ```
 tendermint unsafe_reset_all
@@ -180,7 +171,7 @@ Since we have set `serial=on`, the first transaction must be the number `0`:
 curl localhost:46657/broadcast_tx_commit?tx=0x00
 ```
 
-Note the empty, hence successful, response.
+Note the empty (hence successful) response.
 The next transaction must be the number `1`. If instead, we try to send a `5`, we get an error:
 
 ```
@@ -200,19 +191,19 @@ see [the guide on using Tendermint](/docs/guides/using-tendermint).
 
 ## Example in Another Language - CounterJS
 
-The ultimate flexibility in Tendermint comes from being able to easily write the application in any language.
-While we already used the implementation written in Go, 
-let's now try the Counter application written in Javascript!
+We also want to run applications in another language - in this case, we'll run a Javascript version of the `counter`.
+To run it, you'll need to [install node](https://nodejs.org/en/download/).
 
-Kill the previous `counter` and `tendermint` processes.
-Change directory to the location of the `github.com/tendermint/js-abci`.
-If you fetched the repository with `go get`, it would be 
+You'll also need to fetch the relevant repository, from https://github.com/tendermint/js-abci then install it.
+As go devs, we keep all our code under the `$GOPATH`, so run:
 
 ```
-cd $GOPATH/src/github.com/tendermint/js-abci
+go get github.com/tendermint/js-abci &> /dev/null
+cd $GOPATH/src/github.com/tendermint/js-abci/example
+npm install
 ```
 
-Now run the app:
+Kill the previous `counter` and `tendermint` processes. Now run the app:
 
 ```
 node example/app.js
@@ -226,7 +217,7 @@ tendermint node
 ```
 
 Once again, you should see blocks streaming by - but now, our application is written in javascript!
-Try sending some transasctions, like before - the results should be the same:
+Try sending some transactions, and like before - the results should be the same:
 
 ```
 curl localhost:46657/broadcast_tx_commit?tx=0x00 # ok
@@ -244,7 +235,6 @@ Unlike the `dummy` and `counter`, which are strictly for example purposes,
 
 The default `basecoin` application is a multi-asset cryptocurrency that supports inter-blockchain communication.
 For more details on how basecoin works and how to use it, see our [basecoin guide](https://github.com/tendermint/basecoin/blob/develop/docs/guide/basecoin-basics.md)
-
 
 ## Next Step
 
