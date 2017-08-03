@@ -129,7 +129,7 @@ func newBlockCallback(n *Node) em.EventCallbackFunc {
 		block := data.(tmtypes.TMEventData).Unwrap().(tmtypes.EventDataNewBlockHeader).Header
 
 		n.Height = uint64(block.Height)
-		n.logger.Info("event", "new block", "height", block.Height, "numTxs", block.NumTxs)
+		n.logger.Info("new block", "height", block.Height, "numTxs", block.NumTxs)
 
 		if n.blockCh != nil {
 			n.blockCh <- *block
@@ -141,7 +141,7 @@ func newBlockCallback(n *Node) em.EventCallbackFunc {
 func latencyCallback(n *Node) em.LatencyCallbackFunc {
 	return func(latency float64) {
 		n.BlockLatency = latency / 1000000.0 // ns to ms
-		n.logger.Info("event", "new block latency", "latency", n.BlockLatency)
+		n.logger.Info("new block latency", "latency", n.BlockLatency)
 
 		if n.blockLatencyCh != nil {
 			n.blockLatencyCh <- latency
@@ -158,17 +158,6 @@ func disconnectCallback(n *Node) em.DisconnectCallbackFunc {
 		if n.disconnectCh != nil {
 			n.disconnectCh <- true
 		}
-
-		if err := n.RestartEventMeterBackoff(); err != nil {
-			n.logger.Info("err", errors.Wrap(err, "restart failed"))
-		} else {
-			n.Online = true
-			n.logger.Info("status", "online")
-
-			if n.disconnectCh != nil {
-				n.disconnectCh <- false
-			}
-		}
 	}
 }
 
@@ -180,7 +169,7 @@ func (n *Node) RestartEventMeterBackoff() error {
 		time.Sleep(d * time.Second)
 
 		if err := n.em.Start(); err != nil {
-			n.logger.Info("err", errors.Wrap(err, "restart failed"))
+			n.logger.Info("restart failed", "err", err)
 		} else {
 			// TODO: authenticate pubkey
 			return nil
@@ -231,7 +220,7 @@ func (n *Node) checkIsValidator() {
 			}
 		}
 	} else {
-		n.logger.Info("err", errors.Wrap(err, "check is validator failed"))
+		n.logger.Info("check is validator failed", "err", err)
 	}
 }
 

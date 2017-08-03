@@ -47,7 +47,7 @@ Examples:
 	}
 
 	if noton {
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "tm-monitor")
+		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	}
 
 	m := startMonitor(flag.Arg(0))

@@ -1,5 +1,5 @@
-hash: 30b649bc544a4ebd2b2a6188ce314cb72e6c28be8f3e57ec22e7cb83fd974814
-updated: 2017-07-29T18:47:33.199177142Z
+hash: 3e3601085c1862570e37cfa6c7024df03e3921a43dc78be08372b1e9fbb1620d
+updated: 2017-08-04T14:44:28.484044469Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -13,6 +13,12 @@ imports:
   - log/term
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
+- name: github.com/go-playground/locales
+  version: 1e5f1161c6416a5ff48840eb8724a394e48cc534
+  subpackages:
+  - currency
+- name: github.com/go-playground/universal-translator
+  version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
@@ -45,7 +51,7 @@ imports:
   subpackages:
   - data
 - name: github.com/tendermint/tendermint
-  version: e9b7221292afe25ce956ea85ab83bb5708eb2992
+  version: 0013053fae3fb7611c392ebcff15352bb7ec717b
   subpackages:
   - config
   - p2p
@@ -56,7 +62,7 @@ imports:
   - rpc/lib/types
   - types
 - name: github.com/tendermint/tmlibs
-  version: 2f6f3e6aa70bb19b70a6e73210273fa127041070
+  version: 75372988e737a9f672c0e7f6308042620bd3e151
   subpackages:
   - common
   - events
@@ -97,6 +103,8 @@ imports:
   - stats
   - tap
   - transport
+- name: gopkg.in/go-playground/validator.v9
+  version: 0f6f568263a1ab5105b57f66f446d2625e4f545c
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
