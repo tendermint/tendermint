@@ -1,5 +1,5 @@
-hash: 2c988aae9517b386ee911e4da5deb9f5034359b7e2ccf448952a3ddb9771222d
-updated: 2017-06-28T13:04:20.907047164+02:00
+hash: 41581813ff97225a7feb86b5accb0fe4acb3e198b64592d7452240e9473c479f
+updated: 2017-08-03T19:17:16.410522485Z
 imports:
 - name: github.com/btcsuite/btcd
   version: b8df516b4b267acf2de46be593a9d948d1d2c420
@@ -61,6 +61,8 @@ imports:
   version: 5ccdfb18c776b740aecaf085c4d9a2779199c279
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: github.com/rcrowley/go-metrics
+  version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/spf13/afero
   version: 9be650865eab0c12963d8753212f4f9c66cdcf12
   subpackages:
@@ -126,7 +128,6 @@ imports:
   - clist
   - common
   - db
-  - events
   - flowrate
   - log
   - merkle

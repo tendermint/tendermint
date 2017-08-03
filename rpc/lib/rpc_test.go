@@ -276,9 +276,9 @@ func TestServersAndClientsBasic(t *testing.T) {
 		testWithHTTPClient(t, cl2)
 
 		cl3 := client.NewWSClient(addr, websocketEndpoint)
+    cl3.SetLogger(log.TestingLogger())
 		_, err := cl3.Start()
 		require.Nil(t, err)
-		cl3.SetLogger(log.TestingLogger())
 		fmt.Printf("=== testing server on %s using %v client", addr, cl3)
 		testWithWSClient(t, cl3)
 		cl3.Stop()
@@ -305,9 +305,9 @@ func TestQuotedStringArg(t *testing.T) {
 
 func TestWSNewWSRPCFunc(t *testing.T) {
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+  cl.SetLogger(log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
-	cl.SetLogger(log.TestingLogger())
 	defer cl.Stop()
 
 	val := "acbd"
@@ -331,9 +331,9 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 
 func TestWSHandlesArrayParams(t *testing.T) {
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+  cl.SetLogger(log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
-	cl.SetLogger(log.TestingLogger())
 	defer cl.Stop()
 
 	val := "acbd"
@@ -361,9 +361,9 @@ func TestWSClientPingPong(t *testing.T) {
 	}
 
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
+  cl.SetLogger(log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
-	cl.SetLogger(log.TestingLogger())
 	defer cl.Stop()
 
 	time.Sleep(35 * time.Second)

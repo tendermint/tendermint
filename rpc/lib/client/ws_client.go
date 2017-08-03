@@ -12,6 +12,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
+	metrics "github.com/rcrowley/go-metrics"
+
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -39,6 +41,9 @@ type WSClient struct {
 	Endpoint string // /websocket/url/endpoint
 	Dialer   func(string, string) (net.Conn, error)
 
+	PingPongLatencyTimer metrics.Timer
+	sentLastPingAt       time.Time
+
 	// user facing channels, closed only when the client is being stopped.
 	ResultsCh chan json.RawMessage
 	ErrorsCh  chan error
@@ -49,16 +54,18 @@ type WSClient struct {
 	reconnectAfter     chan error            // reconnect requests
 	receiveRoutineQuit chan struct{}         // a way for receiveRoutine to close writeRoutine
 
-	wg sync.WaitGroup
+	wg  sync.WaitGroup
+	mtx sync.RWMutex
 }
 
 // NewWSClient returns a new client.
 func NewWSClient(remoteAddr, endpoint string) *WSClient {
 	addr, dialer := makeHTTPDialer(remoteAddr)
 	wsClient := &WSClient{
-		Address:  addr,
-		Dialer:   dialer,
-		Endpoint: endpoint,
+		Address:              addr,
+		Dialer:               dialer,
+		Endpoint:             endpoint,
+		PingPongLatencyTimer: metrics.NewTimer(),
 	}
 	wsClient.BaseService = *cmn.NewBaseService(nil, "WSClient", wsClient)
 	return wsClient
@@ -263,6 +270,9 @@ func (c *WSClient) writeRoutine() {
 				c.reconnectAfter <- err
 				return
 			}
+			c.mtx.Lock()
+			c.sentLastPingAt = time.Now()
+			c.mtx.Unlock()
 			c.Logger.Debug("sent ping")
 		case <-c.receiveRoutineQuit:
 			return
@@ -284,6 +294,9 @@ func (c *WSClient) receiveRoutine() {
 	c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
 		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		c.mtx.RLock()
+		c.PingPongLatencyTimer.UpdateSince(c.sentLastPingAt)
+		c.mtx.RUnlock()
 		c.Logger.Debug("got pong")
 		return nil
 	})

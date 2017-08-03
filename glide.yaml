@@ -7,11 +7,10 @@ import:
 - package: github.com/golang/protobuf
   subpackages:
   - proto
-- package: github.com/pelletier/go-toml
-  version: ^1.0.0
 - package: github.com/gorilla/websocket
 - package: github.com/pkg/errors
   version: ~0.8.0
+- package: github.com/rcrowley/go-metrics
 - package: github.com/spf13/cobra
 - package: github.com/spf13/viper
 - package: github.com/tendermint/abci
@@ -26,21 +25,15 @@ import:
   version: ~0.6.2
   subpackages:
   - data
-- package: github.com/tendermint/merkleeyes
-  version: ~0.2.4
-  subpackages:
-  - app
-  - iavl
-  - testutil
 - package: github.com/tendermint/tmlibs
   version: ~0.2.2
   subpackages:
   - autofile
   - cli
+  - cli/flags
   - clist
   - common
   - db
-  - events
   - flowrate
   - log
   - merkle
@@ -53,7 +46,16 @@ import:
   subpackages:
   - context
 - package: google.golang.org/grpc
+- package: github.com/tendermint/merkleeyes
+  version: ~0.2.4
+  subpackages:
+  - app
+  - iavl
+  - testutil
 testImport:
+- package: github.com/go-kit/kit
+  subpackages:
+  - log/term
 - package: github.com/stretchr/testify
   subpackages:
   - assert
