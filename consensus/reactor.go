@@ -1318,7 +1318,7 @@ func (m *VoteSetBitsMessage) String() string {
 
 //-------------------------------------
 
-// ProposalHeartbeatMessage is sent to signal that the proposer is alive and waiting for transactions
+// ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions for a proposal.
 type ProposalHeartbeatMessage struct {
 	Heartbeat *types.Heartbeat
 }

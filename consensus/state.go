@@ -788,7 +788,7 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	// we may need an empty "proof" block, and enterPropose immediately.
 	waitForTxs := cs.config.NoEmptyBlocks && round == 0 && !cs.needProofBlock(height)
 	if waitForTxs {
-		go cs.proposalHeartbeat()
+		go cs.proposalHeartbeat(height, round)
 	} else {
 		cs.enterPropose(height, round)
 	}
@@ -808,7 +808,7 @@ func (cs *ConsensusState) needProofBlock(height int) bool {
 	return false
 }
 
-func (cs *ConsensusState) proposalHeartbeat() {
+func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 	counter := 0
 	addr := cs.privValidator.GetAddress()
 	valIndex, v := cs.Validators.GetByAddress(addr)
@@ -817,24 +817,23 @@ func (cs *ConsensusState) proposalHeartbeat() {
 		valIndex = -1
 	}
 	for {
-		select {
-		default:
-			if cs.evsw != nil {
-				rs := cs.GetRoundState().RoundStateEvent()
-				heartbeat := &types.Heartbeat{
-					Height:           rs.Height,
-					Round:            rs.Round,
-					Sequence:         counter,
-					ValidatorAddress: addr,
-					ValidatorIndex:   valIndex,
-				}
-				cs.privValidator.SignHeartbeat(cs.state.ChainID, heartbeat)
-				heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
-				types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
-				counter += 1
-			}
-			time.Sleep(time.Second)
+		rs := cs.GetRoundState()
+		// if we've already moved on, no need to send more heartbeats
+		if rs.Step > RoundStepNewRound || rs.Round > round || rs.Height > height {
+			return
 		}
+		heartbeat := &types.Heartbeat{
+			Height:           rs.Height,
+			Round:            rs.Round,
+			Sequence:         counter,
+			ValidatorAddress: addr,
+			ValidatorIndex:   valIndex,
+		}
+		cs.privValidator.SignHeartbeat(cs.state.ChainID, heartbeat)
+		heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
+		types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
+		counter += 1
+		time.Sleep(time.Second)
 	}
 }
 
