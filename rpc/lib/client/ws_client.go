@@ -54,6 +54,8 @@ type WSClient struct {
 	reconnectAfter     chan error            // reconnect requests
 	receiveRoutineQuit chan struct{}         // a way for receiveRoutine to close writeRoutine
 
+	reconnecting bool
+
 	wg  sync.WaitGroup
 	mtx sync.RWMutex
 }
@@ -115,6 +117,16 @@ func (c *WSClient) Stop() bool {
 	return success
 }
 
+// IsReconnecting returns true if the client is reconnecting right now.
+func (c *WSClient) IsReconnecting() bool {
+	return c.reconnecting
+}
+
+// IsActive returns true if the client is running and not reconnecting.
+func (c *WSClient) IsActive() bool {
+	return c.IsRunning() && !c.IsReconnecting()
+}
+
 // Send asynchronously sends the given RPCRequest to the server. Results will
 // be available on ResultsCh, errors, if any, on ErrorsCh.
 func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
@@ -169,6 +181,11 @@ func (c *WSClient) dial() error {
 // backoff.
 func (c *WSClient) reconnect() error {
 	attempt := 0
+
+	c.reconnecting = true
+	defer func() {
+		c.reconnecting = false
+	}()
 
 	for {
 		c.Logger.Info("reconnecting", "attempt", attempt+1)
