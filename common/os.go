@@ -48,7 +48,12 @@ func EnsureDir(dir string, mode os.FileMode) error {
 func IsDirEmpty(name string) (bool, error) {
 	f, err := os.Open(name)
 	if err != nil {
-		return true, err //folder is non-existent
+		if os.IsNotExist(err) {
+			return true, err
+		}
+		// Otherwise perhaps a permission
+		// error or some other error.
+		return false, err
 	}
 	defer f.Close()
 
