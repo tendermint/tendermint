@@ -6,17 +6,15 @@ import:
 - package: github.com/gorilla/websocket
 - package: github.com/pkg/errors
 - package: github.com/rcrowley/go-metrics
-- package: github.com/tendermint/go-rpc
-  version: develop
-  subpackages:
-  - types
 - package: github.com/tendermint/tendermint
+  version: 0013053fae3fb7611c392ebcff15352bb7ec717b
   subpackages:
+  - rpc/lib/types
   - types
 - package: github.com/tendermint/tmlibs
   subpackages:
   - log
 - package: github.com/tendermint/tools
-  version: develop
+  version: 0b1866f431f544592a5db4789859cf451b8250c4
   subpackages:
   - tm-monitor/monitor

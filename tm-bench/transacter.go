@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -14,12 +15,12 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
-	rpctypes "github.com/tendermint/go-rpc/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tmlibs/log"
 )
 
 const (
-	sendTimeout = 500 * time.Millisecond
+	sendTimeout = 10 * time.Second
 	// see https://github.com/tendermint/go-rpc/blob/develop/server/handlers.go#L313
 	pingPeriod = (30 * 9 / 10) * time.Second
 )
@@ -124,13 +125,19 @@ func (t *transacter) sendLoop(connIndex int) {
 			for i := 0; i < t.Rate; i++ {
 				// each transaction embeds connection index and tx number
 				tx := generateTx(connIndex, txNumber)
+				paramsJson, err := json.Marshal(map[string]interface{}{"tx": hex.EncodeToString(tx)})
+				if err != nil {
+					fmt.Printf("failed to encode params: %v\n", err)
+					os.Exit(1)
+				}
+				rawParamsJson := json.RawMessage(paramsJson)
 
 				c.SetWriteDeadline(time.Now().Add(sendTimeout))
-				err := c.WriteJSON(rpctypes.RPCRequest{
+				err = c.WriteJSON(rpctypes.RPCRequest{
 					JSONRPC: "2.0",
 					ID:      "",
 					Method:  "broadcast_tx_async",
-					Params:  []interface{}{hex.EncodeToString(tx)},
+					Params:  &rawParamsJson,
 				})
 				if err != nil {
 					fmt.Printf("%v. Try increasing the connections count and reducing the rate.\n", errors.Wrap(err, "txs send failed"))

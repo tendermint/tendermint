@@ -1,12 +1,12 @@
-hash: b963733b341869e0667dde0c93f9be17fdf002ab4e92ae8778562a2b94580de8
-updated: 2017-07-29T18:52:35.221739544Z
+hash: c6b00494f233e07baa1f506054b4a17fbd9230b7a7cf83469ddf32c1afb0aa6f
+updated: 2017-08-04T16:23:50.471665666Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 47885ab8702485be6b6f87a03d4f3be0bc5c982c
   subpackages:
   - btcec
 - name: github.com/go-kit/kit
-  version: 19463ea8b215413a29c3513aa3a76181f4bac58d
+  version: 8e03b4c61a9cf94dd91cd842c7cdc669729e873f
   subpackages:
   - log
   - log/level
@@ -44,16 +44,12 @@ imports:
   - extra25519
 - name: github.com/tendermint/go-crypto
   version: 95b7c9e09c49b91bfbb71bb63dd514eb55450f16
-- name: github.com/tendermint/go-rpc
-  version: 15d5b2ac497da95cd2dceb9c087910ccec4dacb2
-  subpackages:
-  - types
 - name: github.com/tendermint/go-wire
   version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
   subpackages:
   - data
 - name: github.com/tendermint/tendermint
-  version: b467515719e686e4678e6da4e102f32a491b85a0
+  version: 0013053fae3fb7611c392ebcff15352bb7ec717b
   subpackages:
   - config
   - p2p
@@ -71,12 +67,12 @@ imports:
   - log
   - merkle
 - name: github.com/tendermint/tools
-  version: d205ae1f98c946b2a057f62bfcd505b40ea52031
+  version: 0b1866f431f544592a5db4789859cf451b8250c4
   subpackages:
   - tm-monitor/eventmeter
   - tm-monitor/monitor
 - name: golang.org/x/crypto
-  version: 558b6879de74bc843225cde5686419267ff707ca
+  version: 42ff06aea7c329876e5a0fe94acc96902accf0ad
   subpackages:
   - curve25519
   - nacl/box
@@ -97,18 +93,18 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
+  version: 3bd178b88a8180be2df394a1fbb81313916f0e7b
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: b0a3dcfcd1a9bd48e63634bd8802960804cf8315
+  version: 09f6ed296fc66555a25fe4ce95173148778dfa85
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 971efedc2078cb1efd8111d12432813084bc628d
+  version: 53ae6b7e909cb0bc4525c4c4454756a43da867dd
   subpackages:
   - codes
   - credentials
