@@ -238,7 +238,6 @@ func (c *WSClient) reconnectRoutine() {
 					}
 				}
 				c.startReadWriteRoutines()
-				return
 			}
 		case <-c.Quit:
 			return
