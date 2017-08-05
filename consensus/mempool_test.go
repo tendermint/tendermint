@@ -17,7 +17,7 @@ func init() {
 
 func TestNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
-	config.Consensus.NoEmptyBlocks = true
+	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
@@ -36,7 +36,7 @@ func TestNoProgressUntilTxsAvailable(t *testing.T) {
 
 func TestProgressInHigherRound(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
-	config.Consensus.NoEmptyBlocks = true
+	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()

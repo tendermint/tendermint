@@ -142,7 +142,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
-	if config.Consensus.NoEmptyBlocks {
+	if config.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
 

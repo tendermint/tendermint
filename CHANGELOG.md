@@ -3,7 +3,8 @@
 ## 0.10.3 (TBD)
 
 FEATURES:
-- New `--consensus.no_empty_blocks` flag prevents the creation of blocks until there are transactions available
+- New `--consensus.create_empty_blocks` flag; when set to false, only creates blocks when there are txs or when the AppHash changes
+- New `consensus.create_empty_blocks_interval` config option; when greater than 0, will create an empty block after waiting that many seconds
 
 ## 0.10.2 (July 10, 2017)
 

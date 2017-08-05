@@ -301,9 +301,12 @@ type ConsensusConfig struct {
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
 
 	// BlockSize
-	MaxBlockSizeTxs   int  `mapstructure:"max_block_size_txs"`
-	MaxBlockSizeBytes int  `mapstructure:"max_block_size_bytes"`
-	NoEmptyBlocks     bool `mapstructure:"no_empty_blocks"`
+	MaxBlockSizeTxs   int `mapstructure:"max_block_size_txs"`
+	MaxBlockSizeBytes int `mapstructure:"max_block_size_bytes"`
+
+	// EmptyBlocks mode and possible interval between empty blocks in seconds
+	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
+	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
 
 	// TODO: This probably shouldn't be exposed but it makes it
 	// easy to write tests for the wal/replay
@@ -312,6 +315,16 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters are in ms
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+}
+
+// WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
+func (cfg *ConsensusConfig) WaitForTxs() bool {
+	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
+}
+
+// EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
+func (cfg *ConsensusConfig) EmptyBlocks() time.Duration {
+	return time.Duration(cfg.CreateEmptyBlocksInterval) * time.Second
 }
 
 // Propose returns the amount of time to wait for a proposal
@@ -359,7 +372,8 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		SkipTimeoutCommit:           false,
 		MaxBlockSizeTxs:             10000,
 		MaxBlockSizeBytes:           1, // TODO
-		NoEmptyBlocks:               false,
+		CreateEmptyBlocks:           true,
+		CreateEmptyBlocksInterval:   0,
 		BlockPartSize:               types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
