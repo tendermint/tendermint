@@ -24,6 +24,10 @@ import (
 //-----------------------------------------------------------------------------
 // Config
 
+const (
+	proposalHeartbeatIntervalSeconds = 2
+)
+
 //-----------------------------------------------------------------------------
 // Errors
 
@@ -833,7 +837,7 @@ func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 		heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
 		types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
 		counter += 1
-		time.Sleep(time.Second)
+		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 	}
 }
 

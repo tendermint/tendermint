@@ -224,7 +224,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      req.GetCheckTx().Tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.notifyIfTxsAvailable()
+			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
 			mem.logger.Info("Bad Transaction", "res", r)
@@ -267,7 +267,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			atomic.StoreInt32(&mem.rechecking, 0)
 			mem.logger.Info("Done rechecking txs")
 
-			mem.notifyIfTxsAvailable()
+			mem.notifyTxsAvailable()
 		}
 	default:
 		// ignore other messages
@@ -281,7 +281,7 @@ func (mem *Mempool) TxsAvailable() chan int {
 	return mem.txsAvailable
 }
 
-func (mem *Mempool) notifyIfTxsAvailable() {
+func (mem *Mempool) notifyTxsAvailable() {
 	if mem.Size() == 0 {
 		panic("notified txs available but mempool is empty!")
 	}
