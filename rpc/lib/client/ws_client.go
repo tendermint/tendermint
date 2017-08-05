@@ -39,22 +39,23 @@ type WSClient struct {
 	Dialer   func(string, string) (net.Conn, error)
 
 	PingPongLatencyTimer metrics.Timer
-	sentLastPingAt       time.Time
 
 	// user facing channels, closed only when the client is being stopped.
 	ResultsCh chan json.RawMessage
 	ErrorsCh  chan error
 
 	// internal channels
-	send               chan types.RPCRequest // user requests
-	backlog            chan types.RPCRequest // stores a single user request received during a conn failure
-	reconnectAfter     chan error            // reconnect requests
-	receiveRoutineQuit chan struct{}         // a way for receiveRoutine to close writeRoutine
+	send            chan types.RPCRequest // user requests
+	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
+	reconnectAfter  chan error            // reconnect requests
+	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
 
 	reconnecting bool
 
-	wg  sync.WaitGroup
-	mtx sync.RWMutex
+	wg sync.WaitGroup
+
+	mtx            sync.RWMutex
+	sentLastPingAt time.Time
 
 	// Time allowed to read the next pong message from the server.
 	pongWait time.Duration
@@ -147,8 +148,9 @@ func (c *WSClient) IsActive() bool {
 	return c.IsRunning() && !c.IsReconnecting()
 }
 
-// Send asynchronously sends the given RPCRequest to the server. Results will
-// be available on ResultsCh, errors, if any, on ErrorsCh.
+// Send the given RPC request to the server. Results will be available on
+// ResultsCh, errors, if any, on ErrorsCh. Will block until send succeeds or
+// ctx.Done is closed.
 func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 	select {
 	case c.send <- request:
@@ -159,8 +161,7 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 	}
 }
 
-// Call asynchronously calls a given method by sending an RPCRequest to the
-// server. Results will be available on ResultsCh, errors, if any, on ErrorsCh.
+// Call the given method. See Send description.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
 	request, err := types.MapToRequest("", method, params)
 	if err != nil {
@@ -169,9 +170,8 @@ func (c *WSClient) Call(ctx context.Context, method string, params map[string]in
 	return c.Send(ctx, request)
 }
 
-// CallWithArrayParams asynchronously calls a given method by sending an
-// RPCRequest to the server. Results will be available on ResultsCh, errors, if
-// any, on ErrorsCh.
+// CallWithArrayParams the given method with params in a form of array. See
+// Send description.
 func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
 	request, err := types.ArrayToRequest("", method, params)
 	if err != nil {
@@ -231,8 +231,8 @@ func (c *WSClient) reconnect() error {
 
 func (c *WSClient) startReadWriteRoutines() {
 	c.wg.Add(2)
-	c.receiveRoutineQuit = make(chan struct{})
-	go c.receiveRoutine()
+	c.readRoutineQuit = make(chan struct{})
+	go c.readRoutine()
 	go c.writeRoutine()
 }
 
@@ -240,7 +240,7 @@ func (c *WSClient) reconnectRoutine() {
 	for {
 		select {
 		case originalError := <-c.reconnectAfter:
-			// wait until writeRoutine and receiveRoutine finish
+			// wait until writeRoutine and readRoutine finish
 			c.wg.Wait()
 			err := c.reconnect()
 			if err != nil {
@@ -310,7 +310,7 @@ func (c *WSClient) writeRoutine() {
 			c.sentLastPingAt = time.Now()
 			c.mtx.Unlock()
 			c.Logger.Debug("sent ping")
-		case <-c.receiveRoutineQuit:
+		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit:
 			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
@@ -321,13 +321,14 @@ func (c *WSClient) writeRoutine() {
 
 // The client ensures that there is at most one reader to a connection by
 // executing all reads from this goroutine.
-func (c *WSClient) receiveRoutine() {
+func (c *WSClient) readRoutine() {
 	defer func() {
 		c.conn.Close()
 		c.wg.Done()
 	}()
 
 	c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
+
 	c.conn.SetPongHandler(func(string) error {
 		c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
 		c.mtx.RLock()
@@ -336,6 +337,7 @@ func (c *WSClient) receiveRoutine() {
 		c.Logger.Debug("got pong")
 		return nil
 	})
+
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
@@ -344,7 +346,7 @@ func (c *WSClient) receiveRoutine() {
 			}
 
 			c.Logger.Error("failed to read response", "err", err)
-			close(c.receiveRoutineQuit)
+			close(c.readRoutineQuit)
 			c.reconnectAfter <- err
 			return
 		}

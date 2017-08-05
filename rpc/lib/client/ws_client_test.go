@@ -65,28 +65,13 @@ func TestWSClientReconnectsAfterReadFailure(t *testing.T) {
 	defer c.Stop()
 
 	wg.Add(1)
-	go func() {
-		for {
-			select {
-			case res := <-c.ResultsCh:
-				if res != nil {
-					wg.Done()
-				}
-			case err := <-c.ErrorsCh:
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-			case <-c.Quit:
-				return
-			}
-		}
-	}()
+	go callWgDoneOnResult(t, c, &wg)
 
 	h.mtx.Lock()
 	h.closeConnAfterRead = true
 	h.mtx.Unlock()
 
-	// results in error
+	// results in WS read error, no send retry because write succeeded
 	call(t, "a", c)
 
 	// expect to reconnect almost immediately
@@ -112,27 +97,12 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	defer c.Stop()
 
 	wg.Add(2)
-	go func() {
-		for {
-			select {
-			case res := <-c.ResultsCh:
-				if res != nil {
-					wg.Done()
-				}
-			case err := <-c.ErrorsCh:
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-			case <-c.Quit:
-				return
-			}
-		}
-	}()
+	go callWgDoneOnResult(t, c, &wg)
 
 	// hacky way to abort the connection before write
 	c.conn.Close()
 
-	// results in error, the client should resend on reconnect
+	// results in WS write error, the client should resend on reconnect
 	call(t, "a", c)
 
 	// expect to reconnect almost immediately
@@ -167,7 +137,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	c.conn.Close()
 	s.Close()
 
-	// results in error
+	// results in WS write error
 	call(t, "a", c)
 
 	// expect to reconnect almost immediately
@@ -204,8 +174,23 @@ func startClient(t *testing.T, addr net.Addr) *WSClient {
 }
 
 func call(t *testing.T, method string, c *WSClient) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err := c.Call(ctx, method, make(map[string]interface{}))
+	err := c.Call(context.Background(), method, make(map[string]interface{}))
 	require.NoError(t, err)
+}
+
+func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
+	for {
+		select {
+		case res := <-c.ResultsCh:
+			if res != nil {
+				wg.Done()
+			}
+		case err := <-c.ErrorsCh:
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		case <-c.Quit:
+			return
+		}
+	}
 }
