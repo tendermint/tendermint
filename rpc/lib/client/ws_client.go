@@ -29,6 +29,8 @@ const (
 	defaultPingPeriod = (defaultPongWait * 9) / 10
 )
 
+// WSClient is a WebSocket client. The methods of WSClient are safe for use by
+// multiple goroutines.
 type WSClient struct {
 	cmn.BaseService
 
@@ -50,12 +52,11 @@ type WSClient struct {
 	reconnectAfter  chan error            // reconnect requests
 	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
 
-	reconnecting bool
-
 	wg sync.WaitGroup
 
 	mtx            sync.RWMutex
 	sentLastPingAt time.Time
+	reconnecting   bool
 
 	// Time allowed to read the next pong message from the server.
 	pongWait time.Duration
@@ -64,7 +65,9 @@ type WSClient struct {
 	pingPeriod time.Duration
 }
 
-// NewWSClient returns a new client.
+// NewWSClient returns a new client. See the commentary on the func(*WSClient)
+// functions for a detailed description of how to configure ping period and
+// pong wait time.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
 	addr, dialer := makeHTTPDialer(remoteAddr)
 	c := &WSClient{
@@ -140,6 +143,8 @@ func (c *WSClient) Stop() bool {
 
 // IsReconnecting returns true if the client is reconnecting right now.
 func (c *WSClient) IsReconnecting() bool {
+	c.mtx.RLock()
+	defer c.mtx.RUnlock()
 	return c.reconnecting
 }
 
@@ -202,9 +207,13 @@ func (c *WSClient) dial() error {
 func (c *WSClient) reconnect() error {
 	attempt := 0
 
+	c.mtx.Lock()
 	c.reconnecting = true
+	c.mtx.Unlock()
 	defer func() {
+		c.mtx.Lock()
 		c.reconnecting = false
+		c.mtx.Unlock()
 	}()
 
 	for {
