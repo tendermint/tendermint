@@ -31,6 +31,8 @@ const (
 	unixAddr   = "unix://" + unixSocket
 
 	websocketEndpoint = "/websocket/endpoint"
+
+	testPongWait = 2 * time.Second
 )
 
 type ResultEcho struct {
@@ -113,7 +115,7 @@ func setup() {
 	tcpLogger := logger.With("socket", "tcp")
 	mux := http.NewServeMux()
 	server.RegisterRPCFuncs(mux, Routes, tcpLogger)
-	wm := server.NewWebsocketManager(Routes, nil)
+	wm := server.NewWebsocketManager(Routes, nil, server.PingPong((testPongWait*9)/10, testPongWait))
 	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
@@ -276,7 +278,7 @@ func TestServersAndClientsBasic(t *testing.T) {
 		testWithHTTPClient(t, cl2)
 
 		cl3 := client.NewWSClient(addr, websocketEndpoint)
-    cl3.SetLogger(log.TestingLogger())
+		cl3.SetLogger(log.TestingLogger())
 		_, err := cl3.Start()
 		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using %v client", addr, cl3)
@@ -305,7 +307,7 @@ func TestQuotedStringArg(t *testing.T) {
 
 func TestWSNewWSRPCFunc(t *testing.T) {
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
-  cl.SetLogger(log.TestingLogger())
+	cl.SetLogger(log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
@@ -331,7 +333,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 
 func TestWSHandlesArrayParams(t *testing.T) {
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
-  cl.SetLogger(log.TestingLogger())
+	cl.SetLogger(log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
@@ -356,17 +358,13 @@ func TestWSHandlesArrayParams(t *testing.T) {
 // TestWSClientPingPong checks that a client & server exchange pings
 // & pongs so connection stays alive.
 func TestWSClientPingPong(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping ping pong in short mode")
-	}
-
 	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
-  cl.SetLogger(log.TestingLogger())
+	cl.SetLogger(log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
 
-	time.Sleep(35 * time.Second)
+	time.Sleep((testPongWait * 11) / 10)
 }
 
 func randBytes(t *testing.T) []byte {
