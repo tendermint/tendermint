@@ -10,17 +10,23 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
+
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 //-----------------------------------------------------------------------------
 // Config
+
+const (
+	proposalHeartbeatIntervalSeconds = 2
+)
 
 //-----------------------------------------------------------------------------
 // Errors
@@ -179,6 +185,7 @@ type PrivValidator interface {
 	GetAddress() []byte
 	SignVote(chainID string, vote *types.Vote) error
 	SignProposal(chainID string, proposal *types.Proposal) error
+	SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error
 }
 
 // ConsensusState handles execution of the consensus algorithm.
@@ -605,7 +612,8 @@ func (cs *ConsensusState) newStep() {
 // receiveRoutine handles messages which may cause state transitions.
 // it's argument (n) is the number of messages to process before exiting - use 0 to run forever
 // It keeps the RoundState and is the only thing that updates it.
-// Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities
+// Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities.
+// ConsensusState must be locked before any internal state is updated.
 func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 	for {
 		if maxSteps > 0 {
@@ -619,15 +627,17 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
+		case height := <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable(height)
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
-			cs.handleMsg(mi, rs)
+			cs.handleMsg(mi)
 		case mi = <-cs.internalMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
-			cs.handleMsg(mi, rs)
+			cs.handleMsg(mi)
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
 			cs.wal.Save(ti)
 			// if the timeout is relevant to the rs
@@ -651,7 +661,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 }
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
-func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
+func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -708,6 +718,8 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 		// NewRound event fired from enterNewRound.
 		// XXX: should we fire timeout here (for timeout commit)?
 		cs.enterNewRound(ti.Height, 0)
+	case RoundStepNewRound:
+		cs.enterPropose(ti.Height, 0)
 	case RoundStepPropose:
 		types.FireEventTimeoutPropose(cs.evsw, cs.RoundStateEvent())
 		cs.enterPrevote(ti.Height, ti.Round)
@@ -721,6 +733,13 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 		panic(cmn.Fmt("Invalid timeout step: %v", ti.Step))
 	}
 
+}
+
+func (cs *ConsensusState) handleTxsAvailable(height int) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	// we only need to do this for round 0
+	cs.enterPropose(height, 0)
 }
 
 //-----------------------------------------------------------------------------
@@ -770,11 +789,66 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 
 	types.FireEventNewRound(cs.evsw, cs.RoundStateEvent())
 
-	// Immediately go to enterPropose.
-	cs.enterPropose(height, round)
+	// Wait for txs to be available in the mempool
+	// before we enterPropose in round 0. If the last block changed the app hash,
+	// we may need an empty "proof" block, and enterPropose immediately.
+	waitForTxs := cs.config.WaitForTxs() && round == 0 && !cs.needProofBlock(height)
+	if waitForTxs {
+		if cs.config.CreateEmptyBlocksInterval > 0 {
+			cs.scheduleTimeout(cs.config.EmptyBlocksInterval(), height, round, RoundStepNewRound)
+		}
+		go cs.proposalHeartbeat(height, round)
+	} else {
+		cs.enterPropose(height, round)
+	}
 }
 
-// Enter: from enterNewRound(height,round).
+// needProofBlock returns true on the first height (so the genesis app hash is signed right away)
+// and where the last block (height-1) caused the app hash to change
+func (cs *ConsensusState) needProofBlock(height int) bool {
+	if height == 1 {
+		return true
+	}
+
+	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
+	if !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash) {
+		return true
+	}
+	return false
+}
+
+func (cs *ConsensusState) proposalHeartbeat(height, round int) {
+	counter := 0
+	addr := cs.privValidator.GetAddress()
+	valIndex, v := cs.Validators.GetByAddress(addr)
+	if v == nil {
+		// not a validator
+		valIndex = -1
+	}
+	for {
+		rs := cs.GetRoundState()
+		// if we've already moved on, no need to send more heartbeats
+		if rs.Step > RoundStepNewRound || rs.Round > round || rs.Height > height {
+			return
+		}
+		heartbeat := &types.Heartbeat{
+			Height:           rs.Height,
+			Round:            rs.Round,
+			Sequence:         counter,
+			ValidatorAddress: addr,
+			ValidatorIndex:   valIndex,
+		}
+		cs.privValidator.SignHeartbeat(cs.state.ChainID, heartbeat)
+		heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
+		types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
+		counter += 1
+		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
+	}
+}
+
+// Enter (CreateEmptyBlocks): from enterNewRound(height,round)
+// Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ): after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
+// Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *ConsensusState) enterPropose(height int, round int) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPropose <= cs.Step) {
 		cs.Logger.Debug(cmn.Fmt("enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
@@ -804,7 +878,7 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		return
 	}
 
-	if !bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress()) {
+	if !cs.isProposer() {
 		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 			cs.Logger.Debug("This node is a validator")
@@ -816,6 +890,10 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		cs.Logger.Debug("This node is a validator")
 		cs.decideProposal(height, round)
 	}
+}
+
+func (cs *ConsensusState) isProposer() bool {
+	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress())
 }
 
 func (cs *ConsensusState) defaultDecideProposal(height, round int) {

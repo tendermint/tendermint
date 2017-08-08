@@ -304,6 +304,10 @@ type ConsensusConfig struct {
 	MaxBlockSizeTxs   int `mapstructure:"max_block_size_txs"`
 	MaxBlockSizeBytes int `mapstructure:"max_block_size_bytes"`
 
+	// EmptyBlocks mode and possible interval between empty blocks in seconds
+	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
+	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
+
 	// TODO: This probably shouldn't be exposed but it makes it
 	// easy to write tests for the wal/replay
 	BlockPartSize int `mapstructure:"block_part_size"`
@@ -311,6 +315,16 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters are in ms
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+}
+
+// WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
+func (cfg *ConsensusConfig) WaitForTxs() bool {
+	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
+}
+
+// EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
+func (cfg *ConsensusConfig) EmptyBlocksInterval() time.Duration {
+	return time.Duration(cfg.CreateEmptyBlocksInterval) * time.Second
 }
 
 // Propose returns the amount of time to wait for a proposal
@@ -357,7 +371,9 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutCommit:               1000,
 		SkipTimeoutCommit:           false,
 		MaxBlockSizeTxs:             10000,
-		MaxBlockSizeBytes:           1,                          // TODO
+		MaxBlockSizeBytes:           1, // TODO
+		CreateEmptyBlocks:           true,
+		CreateEmptyBlocksInterval:   0,
 		BlockPartSize:               types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,

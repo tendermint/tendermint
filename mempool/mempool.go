@@ -56,14 +56,16 @@ const cacheSize = 100000
 type Mempool struct {
 	config *cfg.MempoolConfig
 
-	proxyMtx      sync.Mutex
-	proxyAppConn  proxy.AppConnMempool
-	txs           *clist.CList    // concurrent linked-list of good txs
-	counter       int64           // simple incrementing counter
-	height        int             // the last block Update()'d to
-	rechecking    int32           // for re-checking filtered txs on Update()
-	recheckCursor *clist.CElement // next expected response
-	recheckEnd    *clist.CElement // re-checking stops here
+	proxyMtx             sync.Mutex
+	proxyAppConn         proxy.AppConnMempool
+	txs                  *clist.CList    // concurrent linked-list of good txs
+	counter              int64           // simple incrementing counter
+	height               int             // the last block Update()'d to
+	rechecking           int32           // for re-checking filtered txs on Update()
+	recheckCursor        *clist.CElement // next expected response
+	recheckEnd           *clist.CElement // re-checking stops here
+	notifiedTxsAvailable bool            // true if fired on txsAvailable for this height
+	txsAvailable         chan int        // fires the next height once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -76,13 +78,13 @@ type Mempool struct {
 }
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
 		counter:       0,
-		height:        0,
+		height:        height,
 		rechecking:    0,
 		recheckCursor: nil,
 		recheckEnd:    nil,
@@ -92,6 +94,13 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *M
 	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
+}
+
+// EnableTxsAvailable initializes the TxsAvailable channel,
+// ensuring it will trigger once every height when transactions are available.
+// NOTE: not thread safe - should only be called once, on startup
+func (mem *Mempool) EnableTxsAvailable() {
+	mem.txsAvailable = make(chan int, 1)
 }
 
 // SetLogger sets the Logger.
@@ -215,6 +224,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      req.GetCheckTx().Tx,
 			}
 			mem.txs.PushBack(memTx)
+			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
 			mem.logger.Info("Bad Transaction", "res", r)
@@ -256,9 +266,30 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Done!
 			atomic.StoreInt32(&mem.rechecking, 0)
 			mem.logger.Info("Done rechecking txs")
+
+			mem.notifyTxsAvailable()
 		}
 	default:
 		// ignore other messages
+	}
+}
+
+// TxsAvailable returns a channel which fires once for every height,
+// and only when transactions are available in the mempool.
+// NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
+func (mem *Mempool) TxsAvailable() chan int {
+	return mem.txsAvailable
+}
+
+func (mem *Mempool) notifyTxsAvailable() {
+	if mem.Size() == 0 {
+		panic("notified txs available but mempool is empty!")
+	}
+	if mem.txsAvailable != nil &&
+		!mem.notifiedTxsAvailable {
+
+		mem.notifiedTxsAvailable = true
+		mem.txsAvailable <- mem.height + 1
 	}
 }
 
@@ -307,13 +338,15 @@ func (mem *Mempool) Update(height int, txs types.Txs) {
 
 	// Set height
 	mem.height = height
+	mem.notifiedTxsAvailable = false
+
 	// Remove transactions that are already in txs.
 	goodTxs := mem.filterTxs(txsMap)
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
 	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
-		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs))
+		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.

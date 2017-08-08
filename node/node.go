@@ -137,10 +137,14 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
-	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool())
+	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight)
 	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
+
+	if config.Consensus.WaitForTxs() {
+		mempool.EnableTxsAvailable()
+	}
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
