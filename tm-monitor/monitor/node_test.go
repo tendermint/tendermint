@@ -68,10 +68,7 @@ func TestNodeConnectionLost(t *testing.T) {
 	emMock.Call("disconnectCallback")
 
 	assert.Equal(true, <-disconnectCh)
-	assert.Equal(false, <-disconnectCh)
-
-	// we're back in a race
-	assert.Equal(true, n.Online)
+	assert.Equal(false, n.Online)
 }
 
 func TestNumValidators(t *testing.T) {
