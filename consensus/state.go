@@ -795,7 +795,7 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	waitForTxs := cs.config.WaitForTxs() && round == 0 && !cs.needProofBlock(height)
 	if waitForTxs {
 		if cs.config.CreateEmptyBlocksInterval > 0 {
-			cs.scheduleTimeout(cs.config.EmptyBlocks(), height, round, RoundStepNewRound)
+			cs.scheduleTimeout(cs.config.EmptyBlocksInterval(), height, round, RoundStepNewRound)
 		}
 		go cs.proposalHeartbeat(height, round)
 	} else {

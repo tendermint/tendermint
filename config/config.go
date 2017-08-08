@@ -323,7 +323,7 @@ func (cfg *ConsensusConfig) WaitForTxs() bool {
 }
 
 // EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
-func (cfg *ConsensusConfig) EmptyBlocks() time.Duration {
+func (cfg *ConsensusConfig) EmptyBlocksInterval() time.Duration {
 	return time.Duration(cfg.CreateEmptyBlocksInterval) * time.Second
 }
 
