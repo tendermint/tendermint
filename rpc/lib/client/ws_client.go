@@ -324,7 +324,7 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit:
-			c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			return
 		}
 	}
@@ -352,7 +352,7 @@ func (c *WSClient) readRoutine() {
 	for {
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			if !websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway) {
+			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				return
 			}
 
