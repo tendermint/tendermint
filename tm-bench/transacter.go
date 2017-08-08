@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -91,7 +92,7 @@ func (t *transacter) receiveLoop(connIndex int) {
 	for {
 		_, _, err := c.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
+			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 				t.logger.Error("failed to read response", "err", err)
 			}
 			return
@@ -105,6 +106,17 @@ func (t *transacter) receiveLoop(connIndex int) {
 // sendLoop generates transactions at a given rate.
 func (t *transacter) sendLoop(connIndex int) {
 	c := t.conns[connIndex]
+
+	c.SetPingHandler(func(message string) error {
+		err := c.WriteControl(websocket.PongMessage, []byte(message), time.Now().Add(sendTimeout))
+		if err == websocket.ErrCloseSent {
+			return nil
+		} else if e, ok := err.(net.Error); ok && e.Temporary() {
+			return nil
+		}
+		return err
+	})
+
 	logger := t.logger.With("addr", c.RemoteAddr())
 
 	var txNumber = 0
