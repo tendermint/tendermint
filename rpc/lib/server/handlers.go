@@ -502,12 +502,16 @@ func (wsc *wsConnection) readRoutine() {
 			// We use `readTimeout` to handle read timeouts.
 			_, in, err := wsc.baseConn.ReadMessage()
 			if err != nil {
-				wsc.Logger.Info("Failed to read from connection", "remote", wsc.remoteAddr, "err", err.Error())
-				// an error reading the connection,
-				// kill the connection
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+					wsc.Logger.Info("Client closed the connection", "remote", wsc.remoteAddr)
+				} else {
+					wsc.Logger.Info("Failed to read from connection", "remote", wsc.remoteAddr, "err", err.Error())
+				}
 				wsc.Stop()
 				return
 			}
+			wsc.readTimeout.Reset(wsc.pongWait)
+
 			var request types.RPCRequest
 			err = json.Unmarshal(in, &request)
 			if err != nil {
