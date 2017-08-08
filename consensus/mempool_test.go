@@ -34,6 +34,21 @@ func TestNoProgressUntilTxsAvailable(t *testing.T) {
 
 }
 
+func TestProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
+	config := ResetConfig("consensus_mempool_txs_available_test")
+	config.Consensus.CreateEmptyBlocksInterval = int(ensureTimeout.Seconds())
+	state, privVals := randGenesisState(1, false, 10)
+	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
+	cs.mempool.EnableTxsAvailable()
+	height, round := cs.Height, cs.Round
+	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	startTestRound(cs, height, round)
+
+	ensureNewStep(newBlockCh)   // first block gets committed
+	ensureNoNewStep(newBlockCh) // then we dont make a block ...
+	ensureNewStep(newBlockCh)   // until the CreateEmptyBlocksInterval has passed
+}
+
 func TestProgressInHigherRound(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocks = false

@@ -31,7 +31,7 @@ import (
 
 // genesis, chain_id, priv_val
 var config *cfg.Config // NOTE: must be reset for each _test.go file
-var ensureTimeout = time.Duration(2)
+var ensureTimeout = time.Second * 2
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := EnsureDir(dir, mode); err != nil {
@@ -297,7 +297,7 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 //-------------------------------------------------------------------------------
 
 func ensureNoNewStep(stepCh chan interface{}) {
-	timer := time.NewTimer(ensureTimeout * time.Second)
+	timer := time.NewTimer(ensureTimeout)
 	select {
 	case <-timer.C:
 		break
@@ -307,7 +307,7 @@ func ensureNoNewStep(stepCh chan interface{}) {
 }
 
 func ensureNewStep(stepCh chan interface{}) {
-	timer := time.NewTimer(ensureTimeout * time.Second)
+	timer := time.NewTimer(ensureTimeout)
 	select {
 	case <-timer.C:
 		panic("We shouldnt be stuck waiting")
