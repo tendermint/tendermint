@@ -340,7 +340,7 @@ const (
 	writeChanCapacity   = 1000
 	wsWriteWait         = 30 * time.Second // each write times out after this.
 	defaultWSPongWait   = 30 * time.Second
-	defaultWSPingPeriod = 10 * time.Second
+	defaultWSPingPeriod = (defaultWSPongWait * 9) / 10
 )
 
 // a single websocket connection
