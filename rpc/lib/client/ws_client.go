@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	// Time allowed to write a message to the peer.
+	// Time allowed to write a message to the server.
 	writeWait = 10 * time.Second
 
 	// Maximum reconnect attempts
@@ -40,6 +40,8 @@ type WSClient struct {
 	Endpoint string // /websocket/url/endpoint
 	Dialer   func(string, string) (net.Conn, error)
 
+	// Time between sending a ping and receiving a pong. See
+	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
 	PingPongLatencyTimer metrics.Timer
 
 	// user facing channels, closed only when the client is being stopped.
