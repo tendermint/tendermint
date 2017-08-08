@@ -69,7 +69,7 @@ type WSClient struct {
 
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
-// pong wait time.
+// pong wait time. The endpoint argument must begin with a `/`.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
 	addr, dialer := makeHTTPDialer(remoteAddr)
 	c := &WSClient{
