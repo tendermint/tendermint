@@ -138,7 +138,10 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	s.Close()
 
 	// results in WS write error
-	call(t, "a", c)
+	// provide timeout to avoid blocking
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	c.Call(ctx, "a", make(map[string]interface{}))
 
 	// expect to reconnect almost immediately
 	time.Sleep(10 * time.Millisecond)

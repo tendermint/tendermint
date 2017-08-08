@@ -247,6 +247,24 @@ func (c *WSClient) startReadWriteRoutines() {
 	go c.writeRoutine()
 }
 
+func (c *WSClient) processBacklog() error {
+	select {
+	case request := <-c.backlog:
+		c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		err := c.conn.WriteJSON(request)
+		if err != nil {
+			c.Logger.Error("failed to resend request", "err", err)
+			c.reconnectAfter <- err
+			// requeue request
+			c.backlog <- request
+			return err
+		}
+		c.Logger.Info("resend a request", "req", request)
+	default:
+	}
+	return nil
+}
+
 func (c *WSClient) reconnectRoutine() {
 	for {
 		select {
@@ -268,7 +286,10 @@ func (c *WSClient) reconnectRoutine() {
 						break LOOP
 					}
 				}
-				c.startReadWriteRoutines()
+				err = c.processBacklog()
+				if err == nil {
+					c.startReadWriteRoutines()
+				}
 			}
 		case <-c.Quit:
 			return
@@ -288,17 +309,6 @@ func (c *WSClient) writeRoutine() {
 
 	for {
 		select {
-		case request := <-c.backlog:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
-			err := c.conn.WriteJSON(request)
-			if err != nil {
-				c.Logger.Error("failed to resend request", "err", err)
-				c.reconnectAfter <- err
-				// add request to the backlog, so we don't lose it
-				c.backlog <- request
-				return
-			}
-			c.Logger.Info("resend a request", "req", request)
 		case request := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			err := c.conn.WriteJSON(request)
