@@ -140,18 +140,6 @@ func (em *EventMeter) Stop() {
 	}
 }
 
-// StopAndCallDisconnectCallback stops the EventMeter and calls
-// disconnectCallback if present.
-func (em *EventMeter) StopAndCallDisconnectCallback() {
-	em.Stop()
-
-	em.mtx.Lock()
-	defer em.mtx.Unlock()
-	if em.disconnectCallback != nil {
-		go em.disconnectCallback()
-	}
-}
-
 // Subscribe for the given event type. Callback function will be called upon
 // receiving an event.
 func (em *EventMeter) Subscribe(eventType string, cb EventCallbackFunc) error {
@@ -245,11 +233,9 @@ func (em *EventMeter) receiveRoutine() {
 			}
 		case <-latencyTicker.C:
 			if em.wsc.IsActive() {
-				em.latencyCallback(em.wsc.PingPongLatencyTimer.Mean())
+				em.callLatencyCallback(em.wsc.PingPongLatencyTimer.Mean())
 			}
 		case <-em.wsc.Quit:
-			em.logger.Error("WebSocket client closed unexpectedly")
-			em.StopAndCallDisconnectCallback()
 			return
 		case <-em.quit:
 			return
@@ -263,16 +249,14 @@ func (em *EventMeter) disconnectRoutine() {
 		select {
 		case <-ticker.C:
 			if em.wsc.IsReconnecting() && em.subscribed { // notify user about disconnect only once
-				em.mtx.Lock()
-				if em.disconnectCallback != nil {
-					go em.disconnectCallback()
-				}
-				em.mtx.Unlock()
+				em.callDisconnectCallback()
 				em.subscribed = false
 			} else if !em.wsc.IsReconnecting() && !em.subscribed { // resubscribe
 				em.subscribe()
 				em.subscribed = true
 			}
+		case <-em.wsc.Quit:
+			return
 		case <-em.quit:
 			return
 		}
@@ -303,4 +287,20 @@ func (em *EventMeter) updateMetric(eventType string, data events.EventData) {
 	if metric.callback != nil {
 		go metric.callback(metric.Copy(), data)
 	}
+}
+
+func (em *EventMeter) callDisconnectCallback() {
+	em.mtx.Lock()
+	if em.disconnectCallback != nil {
+		go em.disconnectCallback()
+	}
+	em.mtx.Unlock()
+}
+
+func (em *EventMeter) callLatencyCallback(meanLatencyNanoSeconds float64) {
+	em.mtx.Lock()
+	if em.latencyCallback != nil {
+		go em.latencyCallback(meanLatencyNanoSeconds)
+	}
+	em.mtx.Unlock()
 }

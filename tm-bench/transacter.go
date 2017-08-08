@@ -152,7 +152,7 @@ func (t *transacter) sendLoop(connIndex int) {
 					Params:  &rawParamsJson,
 				})
 				if err != nil {
-					fmt.Printf("%v. Try increasing the connections count and reducing the rate.\n", errors.Wrap(err, "txs send failed"))
+					fmt.Printf("%v. Try reducing the connections count and increasing the rate.\n", errors.Wrap(err, "txs send failed"))
 					os.Exit(1)
 				}
 
@@ -163,7 +163,7 @@ func (t *transacter) sendLoop(connIndex int) {
 			time.Sleep(time.Second - timeToSend)
 			logger.Info(fmt.Sprintf("sent %d transactions", t.Rate), "took", timeToSend)
 		case <-pingsTicker.C:
-			// Right now go-rpc server closes the connection in the absence of pings
+			// go-rpc server closes the connection in the absence of pings
 			c.SetWriteDeadline(time.Now().Add(sendTimeout))
 			if err := c.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				logger.Error("failed to write ping message", "err", err)
