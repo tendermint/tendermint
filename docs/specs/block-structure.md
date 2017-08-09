@@ -8,36 +8,36 @@ But what exactly is stored in these blocks?
 
 ### Block
 
-A [Block](/docs/specs/tendermint-types#Block) contains:
+A [Block](https://godoc.org/github.com/tendermint/tendermint/types#Block) contains:
 
 * a [Header](#header) contains merkle hashes for various chain states
-* the [Data]((/docs/specs/tendermint-types#Data) is all transactions which are to be processed
+* the [Data](https://godoc.org/github.com/tendermint/tendermint/types#Data) is all transactions which are to be processed
 * the [LastCommit](#commit) > 2/3 signatures for the last block
 
 The signatures returned along with block `H` are those validating block `H-1`.
 This can be a little confusing, but we must also consider that the
-[Header](/docs/specs/tendermint-types#Header) also contains the `LastCommitHash`.
+`Header` also contains the `LastCommitHash`.
 It would be impossible for a Header to include the commits that sign it, as it
 would cause an infinite loop here. But when we get block `H`, we find
 `Header.LastCommitHash`, which must match the hash of `LastCommit`.
 
 ### Header
 
-The [Header](/docs/specs/tendermint-types#Header) contains lots of information (follow
+The [Header](https://godoc.org/github.com/tendermint/tendermint/types#Header) contains lots of information (follow
 link for up-to-date info).  Notably, it maintains the `Height`, the `LastBlockID`
 (to make it a chain), and hashes of the data, the app state, and the validator set.
 This is important as the only item that is signed by the validators is the `Header`,
 and all other data must be validated against one of the merkle hashes in the `Header`.
 
-The `DataHash` can provide a nice check on the [Data](/docs/specs/tendermint-types#Data)
+The `DataHash` can provide a nice check on the [Data](https://godoc.org/github.com/tendermint/tendermint/types#Data)
 returned in this same block. If you are subscribed to new blocks, via tendermint RPC, in order to display or process the new transactions
 you should at least validate that the `DataHash` is valid.
 If it is important to verify autheniticity, you must wait for the `LastCommit` from the next block to make sure the block header (including `DataHash`) was properly signed.
 
 The `ValidatorHash` contains a hash of the current
-[Validators](/docs/specs/tendermint-types#Validator). Tracking all changes in the
+[Validators](https://godoc.org/github.com/tendermint/tendermint/types#Validator). Tracking all changes in the
 validator set is complex, but a client can quickly compare this hash
-with the [hash of the currently known validators](/docs/specs/tendermint-types#ValidatorSet.Hash)
+with the [hash of the currently known validators](https://godoc.org/github.com/tendermint/tendermint/types#ValidatorSet.Hash)
 to see if there have been changes.
 
 The `AppHash` serves as the basis for validating any merkle proofs that come
@@ -58,29 +58,28 @@ immutability of the block chain, as the application only applies transactions
 
 ### Commit
 
-The [Commit](/docs/specs/tendermint-types#Commit) contains a set of
-[Votes](/docs/specs/tendermint-types#Vote) that were made by the validator set to
+The [Commit](https://godoc.org/github.com/tendermint/tendermint/types#Commit) contains a set of
+[Votes](https://godoc.org/github.com/tendermint/tendermint/types#Vote) that were made by the validator set to
 reach consensus on this block. This is the key to the security in any PoS
 system, and actually no data that cannot be traced back to a block header
 with a valid set of Votes can be trusted. Thus, getting the Commit data
 and verifying the votes is extremely important.
 
 As mentioned above, in order to find the `precommit votes` for block header `H`,
-we need to query block `H+1`.  Then we need to check the votes, make sure they
+we need to query block `H+1`. Then we need to check the votes, make sure they
 really are for that block, and properly formatted. Much of this code is implemented
-in Go in the [light-client](https://github.com/tendermint/light-client) package,
-especially [Node.SignedHeader](https://github.com/tendermint/light-client/blob/develop/rpc/node.go#L117).
+in Go in the [light-client](https://github.com/tendermint/light-client) package.
 If you look at the code, you will notice that we need to provide the `chainID`
-of the blockchain in order to properly calculate the votes.  This is to protect
+of the blockchain in order to properly calculate the votes. This is to protect
 anyone from swapping votes between chains to fake (or frame) a validator.
 Also note that this `chainID` is in the `genesis.json` from _Tendermint_,
 not the `genesis.json` from the basecoin app ([that is a different chainID...](https://github.com/tendermint/basecoin/issues/32)).
 
 Once we have those votes,
-and we calculated the proper [sign bytes](/docs/specs/tendermint-types#Vote.WriteSignBytes)
-using the chainID and a [nice helper function](/docs/specs/tendermint-types#SignBytes),
-we can verify them.  The light client is responsible for maintaining a set of
-validators that we trust.  Each vote only stores the validators `Address`, as well
+and we calculated the proper [sign bytes](https://godoc.org/github.com/tendermint/tendermint/types#Vote.WriteSignBytes)
+using the chainID and a [nice helper function](https://godoc.org/github.com/tendermint/tendermint/types#SignBytes),
+we can verify them. The light client is responsible for maintaining a set of
+validators that we trust. Each vote only stores the validators `Address`, as well
 as the `Signature`. Assuming we have a local copy of the trusted validator set,
 we can look up the `Public Key` of the validator given its `Address`, then
 verify that the `Signature` matches the `SignBytes` and `Public Key`.
@@ -88,13 +87,6 @@ Then we sum up the total voting power of all validators, whose votes fulfilled
 all these stringent requirements. If the total number of voting power for a single block is greater
 than 2/3 of all voting power, then we can finally trust the
 block header, the AppHash, and the proof we got from the ABCI application.
-
-To make this a bit more concrete, you can take a look at a
-[StaticCertifier](https://github.com/tendermint/light-client/blob/develop/rpc/certifier.go#L23)
-to see how this logic works, given a static set of validators. And you can see
-an example of how one can perform the entire chain of validation in the
-proxy server [proof call](https://github.com/tendermint/light-client/blob/develop/proxy/viewer.go#L61)
-or the [test code for auditing](https://github.com/tendermint/light-client/blob/develop/rpc/tests/node_test.go#L102).
 
 #### Vote Sign Bytes
 The `sign-bytes` of a vote is produced by taking a [`stable-json`](https://github.com/substack/json-stable-stringify)-like deterministic JSON [`wire`](/docs/specs/wire-protocol) encoding of the vote (excluding the `Signature` field), and wrapping it with `{"chain_id":"my_chain","vote":...}`.
@@ -107,15 +99,15 @@ For example, a precommit vote might have the following `sign-bytes`:
 
 ### Block Hash
 
-The [block hash](/docs/specs/tendermint-types#Block.Hash) is the [Simple Tree hash](Merkle-Trees#simple-tree-with-dictionaries) of the fields of the block `Header` encoded as a list of `KVPair`s.
+The [block hash](https://godoc.org/github.com/tendermint/tendermint/types#Block.Hash) is the [Simple Tree hash](Merkle-Trees#simple-tree-with-dictionaries) of the fields of the block `Header` encoded as a list of `KVPair`s.
 
 ### Transaction
 
-A transaction is any sequence of bytes.  It is up to your [ABCI](https://github.com/tendermint/abci) application to accept or reject transactions.
+A transaction is any sequence of bytes. It is up to your [ABCI](https://github.com/tendermint/abci) application to accept or reject transactions.
 
 ### BlockID
 
-Many of these data structures refer to the [BlockID](/docs/specs/tendermint-types#BlockID),
+Many of these data structures refer to the [BlockID](https://godoc.org/github.com/tendermint/tendermint/types#BlockID),
 which is the `BlockHash` (hash of the block header, also referred to by the next block)
 along with the `PartSetHeader`.  The `PartSetHeader` is explained below and is used internally
 to orchestrate the p2p propogation.  For clients, it is basically opaque bytes,
@@ -123,7 +115,7 @@ but they must match for all votes.
 
 ### PartSetHeader
 
-The [PartSetHeader](/docs/specs/tendermint-types#PartSetHeader) contains the total number of pieces in a [PartSet](/docs/specs/tendermint-types#PartSet), and the Merkle root hash of those pieces.
+The [PartSetHeader](https://godoc.org/github.com/tendermint/tendermint/types#PartSetHeader) contains the total number of pieces in a [PartSet](https://godoc.org/github.com/tendermint/tendermint/types#PartSet), and the Merkle root hash of those pieces.
 
 ### PartSet
 
@@ -137,7 +129,7 @@ PartSet was inspired by the LibSwift project.
 
 Usage:
 
-```Go
+```go
 data := RandBytes(2 << 20) // Something large
 
 partSet := NewPartSetFromData(data)
