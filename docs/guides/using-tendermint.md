@@ -21,8 +21,7 @@ tendermint init
 This will create a new private key (`priv_validator.json`), and a genesis file (`genesis.json`) containing the associated public key.
 This is all that's necessary to run a local testnet with one validator.
 
-For more elaborate initialization, see our quick and dirty deployment tool, [mintnet](https://github.com/tendermint/mintnet).
-
+For more elaborate initialization, see our [testnet deployment tool](https://github.com/tendermint/tools/tree/master/mintnet-kubernetes).
 
 ## Run
 
@@ -42,7 +41,7 @@ tendermint node --proxy_app=dummy
 
 After a few seconds you should see blocks start streaming in.
 Note that blocks are produced regularly, even if there are no transactions.
-Hopefully we will change this.
+This changes [with this pull request](https://github.com/tendermint/tendermint/pull/584).
 
 Tendermint supports in-process versions of the dummy, counter, and nil apps that ship as examples in the [ABCI repository](https://github.com/tendermint/abci).
 It's easy to compile your own app in-process with tendermint if it's written in Go.
@@ -54,7 +53,6 @@ and use the `--proxy_app` flag to specify the address of the socket it is listen
 tendermint node --proxy_app=/var/run/abci.sock
 ```
 
-
 ## Transactions
 
 To send a transaction, use `curl` to make requests to the Tendermint RPC server:
@@ -63,7 +61,7 @@ To send a transaction, use `curl` to make requests to the Tendermint RPC server:
 curl http://localhost:46657/broadcast_tx_commit?tx=\"abcd\"
 ```
 
-For handling responses, we recommend you [install the `jsonpp` tool](http://jmhodges.github.io/jsonpp/) to pretty print the JSON
+For handling responses, we recommend you [install the jsonpp tool](http://jmhodges.github.io/jsonpp/) to pretty print the JSON.
 
 We can see the chain's status at the `/status` end-point:
 
@@ -82,7 +80,7 @@ Some take no arguments (like `/status`), while others specify the argument name 
 
 ## Reset
 
-WARNING: UNSAFE. Only do this in development and only if you can afford to lose all blockchain data!
+**WARNING: UNSAFE** Only do this in development and only if you can afford to lose all blockchain data!
 
 To reset a blockchain, stop the node, remove the `~/.tendermint/data` directory and run
 
@@ -93,7 +91,7 @@ tendermint unsafe_reset_priv_validator
 This final step is necessary to reset the `priv_validator.json`,
 which otherwise prevents you from making conflicting votes in the consensus
 (something that could get you in trouble if you do it on a real blockchain).
-If you don't reset the priv_validator, your fresh new blockchain will not make any blocks.
+If you don't reset the `priv_validator.json`, your fresh new blockchain will not make any blocks.
 
 ## Configuration
 
@@ -129,12 +127,8 @@ but will return right away if the transaction does not pass `CheckTx`.
 The return value for `broadcast_tx_commit` includes two fields, `check_tx` and `deliver_tx`, pertaining to the result of running
 the transaction through those ABCI messages.
 
-The benefit of using `broadcast_tx_commit` is that the request returns after the transaction is committed (ie. included in a block),
-but that can take on the order of a second.
-For a quick result, use `broadcast_tx_sync`,
+The benefit of using `broadcast_tx_commit` is that the request returns after the transaction is committed (ie. included in a block), but that can take on the order of a second. For a quick result, use `broadcast_tx_sync`,
 but the transaction will not be committed until later, and by that point its effect on the state may change.
-
-We are working to improve the API and add more ways to track the status of a transaction and get its results.
 
 ## Tendermint Networks
 
@@ -180,15 +174,15 @@ And the `priv_validator.json`:
 }
 ```
 
-The `priv_validator.json` actually contains a private key, and should be kept absolutely secret,
-but for now we work with the plain text.
-Note the `last_` fields, which prevent us from signing conflicting messages.
+The `priv_validator.json` actually contains a private key, and should thus be kept absolutely secret;
+for now we work with the plain text.
+Note the `last_` fields, which are used to prevent us from signing conflicting messages.
 
 Note also that the `pub_key` (the public key) in the `priv_validator.json` is also present in the `genesis.json`.
 
 The genesis file contains the list of public keys which may participate in the consensus,
 and their corresponding voting power.
-More than 2/3 of the voting power must be active (ie. the corresponding private keys must be producing signatures)
+Greater than 2/3 of the voting power must be active (ie. the corresponding private keys must be producing signatures)
 for the consensus to make progress.
 In our case, the genesis file contains the public key of our `priv_validator.json`,
 so a tendermint node started with the default root directory will be able to make new blocks,
@@ -217,9 +211,8 @@ curl --data-urlencode "seeds=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46
 ```
 
 Additionally, the peer-exchange protocol can be enabled using the `--pex` flag,
-though this feature is still under development (beware of dragons!).
+though this feature is [still under development](https://github.com/tendermint/tendermint/issues/598)
 If `--pex` is enabled, peers will gossip about known peers and form a more resilient network.
-
 
 ### Adding a Non-Validator
 
@@ -292,11 +285,11 @@ Update the `genesis.json` in `~/.tendermint`. Copy the genesis file and the new 
 to the `~/.tendermint` on a new machine.
 
 Now run `tendermint node` on both machines, and use either `--p2p.seeds` or the `/dial_seeds` to get them to peer up.
-They should start making blocks, and will only continue to do so so long as both of them are online.
+They should start making blocks, and will only continue to do so as long as both of them are online.
 
-To make a Tendermint network that can tolerate one of the validators failing, you need at least four validator nodes.
+To make a Tendermint network that can tolerate one of the validators failing, you need at least four validator nodes (> 2/3).
 
-Updating validators in a live network is supported as of v0.8, but it must be explicitly programmed by the application developer.
+Updating validators in a live network is supported but must be explicitly programmed by the application developer.
 See the [application developers guide](/docs/guides/app-development#Handshake) for more details.
 
 ### Local Network
@@ -311,4 +304,3 @@ otherwise Tendermint's p2p library will deny making connections to peers with th
 Got a couple nodes talking to each other using the dummy app?
 Try a more sophisticated app like [Ethermint](https://github.com/tendermint/ethermint),
 or learn more about building your own in the [Application Developer's Guide](/docs/guides/app-development).
-
