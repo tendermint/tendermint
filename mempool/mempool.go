@@ -277,7 +277,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 // TxsAvailable returns a channel which fires once for every height,
 // and only when transactions are available in the mempool.
 // NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
-func (mem *Mempool) TxsAvailable() chan int {
+func (mem *Mempool) TxsAvailable() <-chan int {
 	return mem.txsAvailable
 }
 

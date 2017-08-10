@@ -24,7 +24,7 @@ type Mempool interface {
 	Update(height int, txs Txs)
 	Flush()
 
-	TxsAvailable() chan int
+	TxsAvailable() <-chan int
 	EnableTxsAvailable()
 }
 
@@ -38,7 +38,7 @@ func (m MockMempool) CheckTx(tx Tx, cb func(*abci.Response)) error { return nil 
 func (m MockMempool) Reap(n int) Txs                               { return Txs{} }
 func (m MockMempool) Update(height int, txs Txs)                   {}
 func (m MockMempool) Flush()                                       {}
-func (m MockMempool) TxsAvailable() chan int                       { return make(chan int) }
+func (m MockMempool) TxsAvailable() <-chan int                     { return make(chan int) }
 func (m MockMempool) EnableTxsAvailable()                          {}
 
 //------------------------------------------------------

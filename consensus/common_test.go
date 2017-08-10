@@ -332,7 +332,7 @@ func consensusLogger() log.Logger {
 	})
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application, configOpts ...func(*cfg.Config)) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
 	logger := consensusLogger()
@@ -342,6 +342,9 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state.SetLogger(logger.With("module", "state", "validator", i))
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
+		for _, opt := range configOpts {
+			opt(thisConfig)
+		}
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
 		css[i].SetLogger(logger.With("validator", i))

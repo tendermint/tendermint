@@ -28,7 +28,7 @@ func newMempoolWithApp(t *testing.T, cc proxy.ClientCreator) *Mempool {
 	return mempool
 }
 
-func ensureNoFire(t *testing.T, ch chan int, timeoutMS int) {
+func ensureNoFire(t *testing.T, ch <-chan int, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -37,7 +37,7 @@ func ensureNoFire(t *testing.T, ch chan int, timeoutMS int) {
 	}
 }
 
-func ensureFire(t *testing.T, ch chan int, timeoutMS int) {
+func ensureFire(t *testing.T, ch <-chan int, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
