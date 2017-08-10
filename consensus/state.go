@@ -10,17 +10,23 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
+
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 //-----------------------------------------------------------------------------
 // Config
+
+const (
+	proposalHeartbeatIntervalSeconds = 2
+)
 
 //-----------------------------------------------------------------------------
 // Errors
@@ -35,6 +41,7 @@ var (
 //-----------------------------------------------------------------------------
 // RoundStepType enum type
 
+// RoundStepType enumerates the state of the consensus state machine
 type RoundStepType uint8 // These must be numeric, ordered.
 
 const (
@@ -49,6 +56,7 @@ const (
 	// NOTE: RoundStepNewHeight acts as RoundStepCommitWait.
 )
 
+// String returns a string
 func (rs RoundStepType) String() string {
 	switch rs {
 	case RoundStepNewHeight:
@@ -74,7 +82,8 @@ func (rs RoundStepType) String() string {
 
 //-----------------------------------------------------------------------------
 
-// Immutable when returned from ConsensusState.GetRoundState()
+// RoundState defines the internal consensus state.
+// It is Immutable when returned from ConsensusState.GetRoundState()
 // TODO: Actually, only the top pointer is copied,
 // so access to field pointers is still racey
 type RoundState struct {
@@ -96,6 +105,7 @@ type RoundState struct {
 	LastValidators     *types.ValidatorSet
 }
 
+// RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	edrs := types.EventDataRoundState{
 		Height:     rs.Height,
@@ -106,10 +116,12 @@ func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	return edrs
 }
 
+// String returns a string
 func (rs *RoundState) String() string {
 	return rs.StringIndented("")
 }
 
+// StringIndented returns a string
 func (rs *RoundState) StringIndented(indent string) string {
 	return fmt.Sprintf(`RoundState{
 %s  H:%v R:%v S:%v
@@ -138,6 +150,7 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent)
 }
 
+// StringShort returns a string
 func (rs *RoundState) StringShort() string {
 	return fmt.Sprintf(`RoundState{H:%v R:%v S:%v ST:%v}`,
 		rs.Height, rs.Round, rs.Step, rs.StartTime)
@@ -167,13 +180,18 @@ func (ti *timeoutInfo) String() string {
 	return fmt.Sprintf("%v ; %d/%d %v", ti.Duration, ti.Height, ti.Round, ti.Step)
 }
 
+// PrivValidator is a validator that can sign votes and proposals.
 type PrivValidator interface {
 	GetAddress() []byte
 	SignVote(chainID string, vote *types.Vote) error
 	SignProposal(chainID string, proposal *types.Proposal) error
+	SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error
 }
 
-// Tracks consensus state across block heights and rounds.
+// ConsensusState handles execution of the consensus algorithm.
+// It processes votes and proposals, and upon reaching agreement,
+// commits blocks to the chain and executes them against the application.
+// The internal state machine receives input from peers, the internal validator, and from a timer.
 type ConsensusState struct {
 	cmn.BaseService
 
@@ -218,6 +236,7 @@ type ConsensusState struct {
 	done chan struct{}
 }
 
+// NewConsensusState returns a new ConsensusState.
 func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
@@ -256,17 +275,20 @@ func (cs *ConsensusState) SetEventSwitch(evsw types.EventSwitch) {
 	cs.evsw = evsw
 }
 
+// String returns a string.
 func (cs *ConsensusState) String() string {
 	// better not to access shared variables
 	return cmn.Fmt("ConsensusState") //(H:%v R:%v S:%v", cs.Height, cs.Round, cs.Step)
 }
 
+// GetState returns a copy of the chain state.
 func (cs *ConsensusState) GetState() *sm.State {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	return cs.state.Copy()
 }
 
+// GetRoundState returns a copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *RoundState {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -278,26 +300,28 @@ func (cs *ConsensusState) getRoundState() *RoundState {
 	return &rs
 }
 
+// GetValidators returns a copy of the current validators.
 func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
-// Sets our private validator account for signing votes.
+// SetPrivValidator sets the private validator account for signing votes.
 func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
 }
 
-// Set the local timer
+// SetTimeoutTicker sets the local timer. It may be useful to overwrite for testing.
 func (cs *ConsensusState) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.timeoutTicker = timeoutTicker
 }
 
+// LoadCommit loads the commit for a given height.
 func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
@@ -307,6 +331,8 @@ func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
 	return cs.blockStore.LoadBlockCommit(height)
 }
 
+// OnStart implements cmn.Service.
+// It loads the latest state via the WAL, and starts the timeout and receive routines.
 func (cs *ConsensusState) OnStart() error {
 
 	walFile := cs.config.WalFile()
@@ -347,6 +373,7 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 	go cs.receiveRoutine(maxSteps)
 }
 
+// OnStop implements cmn.Service. It stops all routines and waits for the WAL to finish.
 func (cs *ConsensusState) OnStop() {
 	cs.BaseService.OnStop()
 
@@ -358,13 +385,14 @@ func (cs *ConsensusState) OnStop() {
 	}
 }
 
+// Wait waits for the the main routine to return.
 // NOTE: be sure to Stop() the event switch and drain
 // any event channels or this may deadlock
 func (cs *ConsensusState) Wait() {
 	<-cs.done
 }
 
-// Open file to log all consensus messages and timeouts for deterministic accountability
+// OpenWAL opens a file to log all consensus messages and timeouts for deterministic accountability
 func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
 	err = cmn.EnsureDir(path.Dir(walFile), 0700)
 	if err != nil {
@@ -387,11 +415,13 @@ func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
 }
 
 //------------------------------------------------------------
-// Public interface for passing messages into the consensus state,
-// possibly causing a state transition
+// Public interface for passing messages into the consensus state, possibly causing a state transition.
+// If peerKey == "", the msg is considered internal.
+// Messages are added to the appropriate queue (peer or internal).
+// If the queue is full, the function may block.
 // TODO: should these return anything or let callers just use events?
 
-// May block on send if queue is full.
+// AddVote inputs a vote.
 func (cs *ConsensusState) AddVote(vote *types.Vote, peerKey string) (added bool, err error) {
 	if peerKey == "" {
 		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
@@ -403,7 +433,7 @@ func (cs *ConsensusState) AddVote(vote *types.Vote, peerKey string) (added bool,
 	return false, nil
 }
 
-// May block on send if queue is full.
+// SetProposal inputs a proposal.
 func (cs *ConsensusState) SetProposal(proposal *types.Proposal, peerKey string) error {
 
 	if peerKey == "" {
@@ -416,7 +446,7 @@ func (cs *ConsensusState) SetProposal(proposal *types.Proposal, peerKey string) 
 	return nil
 }
 
-// May block on send if queue is full.
+// AddProposalBlockPart inputs a part of the proposal block.
 func (cs *ConsensusState) AddProposalBlockPart(height, round int, part *types.Part, peerKey string) error {
 
 	if peerKey == "" {
@@ -429,7 +459,7 @@ func (cs *ConsensusState) AddProposalBlockPart(height, round int, part *types.Pa
 	return nil
 }
 
-// May block on send if queue is full.
+// SetProposalAndBlock inputs the proposal and all block parts.
 func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *types.Block, parts *types.PartSet, peerKey string) error {
 	cs.SetProposal(proposal, peerKey)
 	for i := 0; i < parts.Total(); i++ {
@@ -582,7 +612,8 @@ func (cs *ConsensusState) newStep() {
 // receiveRoutine handles messages which may cause state transitions.
 // it's argument (n) is the number of messages to process before exiting - use 0 to run forever
 // It keeps the RoundState and is the only thing that updates it.
-// Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities
+// Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities.
+// ConsensusState must be locked before any internal state is updated.
 func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 	for {
 		if maxSteps > 0 {
@@ -596,15 +627,17 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
+		case height := <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable(height)
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
-			cs.handleMsg(mi, rs)
+			cs.handleMsg(mi)
 		case mi = <-cs.internalMsgQueue:
 			cs.wal.Save(mi)
 			// handles proposals, block parts, votes
-			cs.handleMsg(mi, rs)
+			cs.handleMsg(mi)
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
 			cs.wal.Save(ti)
 			// if the timeout is relevant to the rs
@@ -628,7 +661,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 }
 
 // state transitions on complete-proposal, 2/3-any, 2/3-one
-func (cs *ConsensusState) handleMsg(mi msgInfo, rs RoundState) {
+func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 
@@ -685,6 +718,8 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 		// NewRound event fired from enterNewRound.
 		// XXX: should we fire timeout here (for timeout commit)?
 		cs.enterNewRound(ti.Height, 0)
+	case RoundStepNewRound:
+		cs.enterPropose(ti.Height, 0)
 	case RoundStepPropose:
 		types.FireEventTimeoutPropose(cs.evsw, cs.RoundStateEvent())
 		cs.enterPrevote(ti.Height, ti.Round)
@@ -700,13 +735,22 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs RoundState) {
 
 }
 
+func (cs *ConsensusState) handleTxsAvailable(height int) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+	// we only need to do this for round 0
+	cs.enterPropose(height, 0)
+}
+
 //-----------------------------------------------------------------------------
 // State functions
 // Used internally by handleTimeout and handleMsg to make state transitions
 
-// Enter: +2/3 precommits for nil at (height,round-1)
+// Enter: `timeoutNewHeight` by startTime (commitTime+timeoutCommit),
+// 	or, if SkipTimeout==true, after receiving all precommits from (height,round-1)
 // Enter: `timeoutPrecommits` after any +2/3 precommits from (height,round-1)
-// Enter: `startTime = commitTime+timeoutCommit` from NewHeight(height)
+// Enter: +2/3 precommits for nil at (height,round-1)
+// Enter: +2/3 prevotes any or +2/3 precommits for block or any from (height, round)
 // NOTE: cs.StartTime was already set for height.
 func (cs *ConsensusState) enterNewRound(height int, round int) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && cs.Step != RoundStepNewHeight) {
@@ -745,11 +789,66 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 
 	types.FireEventNewRound(cs.evsw, cs.RoundStateEvent())
 
-	// Immediately go to enterPropose.
-	cs.enterPropose(height, round)
+	// Wait for txs to be available in the mempool
+	// before we enterPropose in round 0. If the last block changed the app hash,
+	// we may need an empty "proof" block, and enterPropose immediately.
+	waitForTxs := cs.config.WaitForTxs() && round == 0 && !cs.needProofBlock(height)
+	if waitForTxs {
+		if cs.config.CreateEmptyBlocksInterval > 0 {
+			cs.scheduleTimeout(cs.config.EmptyBlocksInterval(), height, round, RoundStepNewRound)
+		}
+		go cs.proposalHeartbeat(height, round)
+	} else {
+		cs.enterPropose(height, round)
+	}
 }
 
-// Enter: from NewRound(height,round).
+// needProofBlock returns true on the first height (so the genesis app hash is signed right away)
+// and where the last block (height-1) caused the app hash to change
+func (cs *ConsensusState) needProofBlock(height int) bool {
+	if height == 1 {
+		return true
+	}
+
+	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
+	if !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash) {
+		return true
+	}
+	return false
+}
+
+func (cs *ConsensusState) proposalHeartbeat(height, round int) {
+	counter := 0
+	addr := cs.privValidator.GetAddress()
+	valIndex, v := cs.Validators.GetByAddress(addr)
+	if v == nil {
+		// not a validator
+		valIndex = -1
+	}
+	for {
+		rs := cs.GetRoundState()
+		// if we've already moved on, no need to send more heartbeats
+		if rs.Step > RoundStepNewRound || rs.Round > round || rs.Height > height {
+			return
+		}
+		heartbeat := &types.Heartbeat{
+			Height:           rs.Height,
+			Round:            rs.Round,
+			Sequence:         counter,
+			ValidatorAddress: addr,
+			ValidatorIndex:   valIndex,
+		}
+		cs.privValidator.SignHeartbeat(cs.state.ChainID, heartbeat)
+		heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
+		types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
+		counter += 1
+		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
+	}
+}
+
+// Enter (CreateEmptyBlocks): from enterNewRound(height,round)
+// Enter (CreateEmptyBlocks, CreateEmptyBlocksInterval > 0 ): after enterNewRound(height,round), after timeout of CreateEmptyBlocksInterval
+// Enter (!CreateEmptyBlocks) : after enterNewRound(height,round), once txs are in the mempool
 func (cs *ConsensusState) enterPropose(height int, round int) {
 	if cs.Height != height || round < cs.Round || (cs.Round == round && RoundStepPropose <= cs.Step) {
 		cs.Logger.Debug(cmn.Fmt("enterPropose(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
@@ -779,7 +878,7 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		return
 	}
 
-	if !bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress()) {
+	if !cs.isProposer() {
 		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 			cs.Logger.Debug("This node is a validator")
@@ -791,6 +890,10 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 		cs.Logger.Debug("This node is a validator")
 		cs.decideProposal(height, round)
 	}
+}
+
+func (cs *ConsensusState) isProposer() bool {
+	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress())
 }
 
 func (cs *ConsensusState) defaultDecideProposal(height, round int) {
@@ -927,7 +1030,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int, round int) {
 		return
 	}
 
-	// Valdiate proposal block
+	// Validate proposal block
 	err := cs.state.ValidateBlock(cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
@@ -964,8 +1067,8 @@ func (cs *ConsensusState) enterPrevoteWait(height int, round int) {
 	cs.scheduleTimeout(cs.config.Prevote(round), height, round, RoundStepPrevoteWait)
 }
 
-// Enter: +2/3 precomits for block or nil.
 // Enter: `timeoutPrevote` after any +2/3 prevotes.
+// Enter: +2/3 precomits for block or nil.
 // Enter: any +2/3 precommits for next round.
 // Lock & precommit the ProposalBlock if we have enough prevotes for it (a POL in this round)
 // else, unlock an existing lock and precommit nil if +2/3 of prevotes were nil,

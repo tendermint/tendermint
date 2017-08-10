@@ -50,17 +50,22 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 
 const cacheSize = 100000
 
+// Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus round.
+// Transaction validity is checked using the CheckTx abci message before the transaction is added to the pool.
+// The Mempool uses a concurrent list structure for storing transactions that can be efficiently accessed by multiple concurrent readers.
 type Mempool struct {
 	config *cfg.MempoolConfig
 
-	proxyMtx      sync.Mutex
-	proxyAppConn  proxy.AppConnMempool
-	txs           *clist.CList    // concurrent linked-list of good txs
-	counter       int64           // simple incrementing counter
-	height        int             // the last block Update()'d to
-	rechecking    int32           // for re-checking filtered txs on Update()
-	recheckCursor *clist.CElement // next expected response
-	recheckEnd    *clist.CElement // re-checking stops here
+	proxyMtx             sync.Mutex
+	proxyAppConn         proxy.AppConnMempool
+	txs                  *clist.CList    // concurrent linked-list of good txs
+	counter              int64           // simple incrementing counter
+	height               int             // the last block Update()'d to
+	rechecking           int32           // for re-checking filtered txs on Update()
+	recheckCursor        *clist.CElement // next expected response
+	recheckEnd           *clist.CElement // re-checking stops here
+	notifiedTxsAvailable bool            // true if fired on txsAvailable for this height
+	txsAvailable         chan int        // fires the next height once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -72,13 +77,14 @@ type Mempool struct {
 	logger log.Logger
 }
 
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *Mempool {
+// NewMempool returns a new Mempool with the given configuration and connection to an application.
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
 		txs:           clist.New(),
 		counter:       0,
-		height:        0,
+		height:        height,
 		rechecking:    0,
 		recheckCursor: nil,
 		recheckEnd:    nil,
@@ -90,7 +96,14 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool) *M
 	return mempool
 }
 
-// SetLogger allows you to set your own Logger.
+// EnableTxsAvailable initializes the TxsAvailable channel,
+// ensuring it will trigger once every height when transactions are available.
+// NOTE: not thread safe - should only be called once, on startup
+func (mem *Mempool) EnableTxsAvailable() {
+	mem.txsAvailable = make(chan int, 1)
+}
+
+// SetLogger sets the Logger.
 func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
@@ -110,21 +123,22 @@ func (mem *Mempool) initWAL() {
 	}
 }
 
-// consensus must be able to hold lock to safely update
+// Lock locks the mempool. The consensus must be able to hold lock to safely update.
 func (mem *Mempool) Lock() {
 	mem.proxyMtx.Lock()
 }
 
+// Unlock unlocks the mempool.
 func (mem *Mempool) Unlock() {
 	mem.proxyMtx.Unlock()
 }
 
-// Number of transactions in the mempool clist
+// Size returns the number of transactions in the mempool.
 func (mem *Mempool) Size() int {
 	return mem.txs.Len()
 }
 
-// Remove all transactions from mempool and cache
+// Flush removes all transactions from the mempool and cache
 func (mem *Mempool) Flush() {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
@@ -137,14 +151,15 @@ func (mem *Mempool) Flush() {
 	}
 }
 
-// Return the first element of mem.txs for peer goroutines to call .NextWait() on.
-// Blocks until txs has elements.
+// TxsFrontWait returns the first transaction in the ordered list for peer goroutines to call .NextWait() on.
+// It blocks until the mempool is not empty (ie. until the internal `mem.txs` has at least one element)
 func (mem *Mempool) TxsFrontWait() *clist.CElement {
 	return mem.txs.FrontWait()
 }
 
-// Try a new transaction in the mempool.
-// Potentially blocking if we're blocking on Update() or Reap().
+// CheckTx executes a new transaction against the application to determine its validity
+// and whether it should be added to the mempool.
+// It blocks if we're waiting on Update() or Reap().
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
 // CONTRACT: Either cb will get called, or err returned.
@@ -209,6 +224,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      req.GetCheckTx().Tx,
 			}
 			mem.txs.PushBack(memTx)
+			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
 			mem.logger.Info("Bad Transaction", "res", r)
@@ -250,14 +266,35 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Done!
 			atomic.StoreInt32(&mem.rechecking, 0)
 			mem.logger.Info("Done rechecking txs")
+
+			mem.notifyTxsAvailable()
 		}
 	default:
 		// ignore other messages
 	}
 }
 
-// Get the valid transactions remaining
-// If maxTxs is -1, there is no cap on returned transactions.
+// TxsAvailable returns a channel which fires once for every height,
+// and only when transactions are available in the mempool.
+// NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
+func (mem *Mempool) TxsAvailable() <-chan int {
+	return mem.txsAvailable
+}
+
+func (mem *Mempool) notifyTxsAvailable() {
+	if mem.Size() == 0 {
+		panic("notified txs available but mempool is empty!")
+	}
+	if mem.txsAvailable != nil &&
+		!mem.notifiedTxsAvailable {
+
+		mem.notifiedTxsAvailable = true
+		mem.txsAvailable <- mem.height + 1
+	}
+}
+
+// Reap returns a list of transactions currently in the mempool.
+// If maxTxs is -1, there is no cap on the number of returned transactions.
 func (mem *Mempool) Reap(maxTxs int) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
@@ -286,8 +323,7 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 	return txs
 }
 
-// Tell mempool that these txs were committed.
-// Mempool will discard these txs.
+// Update informs the mempool that the given txs were committed and can be discarded.
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
 func (mem *Mempool) Update(height int, txs types.Txs) {
@@ -302,13 +338,15 @@ func (mem *Mempool) Update(height int, txs types.Txs) {
 
 	// Set height
 	mem.height = height
+	mem.notifiedTxsAvailable = false
+
 	// Remove transactions that are already in txs.
 	goodTxs := mem.filterTxs(txsMap)
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
 	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
-		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs))
+		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
@@ -354,19 +392,21 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 
 //--------------------------------------------------------------------------------
 
-// A transaction that successfully ran
+// mempoolTx is a transaction that successfully ran
 type mempoolTx struct {
 	counter int64    // a simple incrementing counter
 	height  int64    // height that this tx had been validated in
 	tx      types.Tx //
 }
 
+// Height returns the height for this transaction
 func (memTx *mempoolTx) Height() int {
 	return int(atomic.LoadInt64(&memTx.height))
 }
 
 //--------------------------------------------------------------------------------
 
+// txCache maintains a cache of transactions.
 type txCache struct {
 	mtx  sync.Mutex
 	size int
@@ -374,6 +414,7 @@ type txCache struct {
 	list *list.List // to remove oldest tx when cache gets too big
 }
 
+// newTxCache returns a new txCache.
 func newTxCache(cacheSize int) *txCache {
 	return &txCache{
 		size: cacheSize,
@@ -382,6 +423,7 @@ func newTxCache(cacheSize int) *txCache {
 	}
 }
 
+// Reset resets the txCache to empty.
 func (cache *txCache) Reset() {
 	cache.mtx.Lock()
 	cache.map_ = make(map[string]struct{}, cacheSize)
@@ -389,6 +431,7 @@ func (cache *txCache) Reset() {
 	cache.mtx.Unlock()
 }
 
+// Exists returns true if the given tx is cached.
 func (cache *txCache) Exists(tx types.Tx) bool {
 	cache.mtx.Lock()
 	_, exists := cache.map_[string(tx)]
@@ -396,7 +439,7 @@ func (cache *txCache) Exists(tx types.Tx) bool {
 	return exists
 }
 
-// Returns false if tx is in cache.
+// Push adds the given tx to the txCache. It returns false if tx is already in the cache.
 func (cache *txCache) Push(tx types.Tx) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
@@ -418,6 +461,7 @@ func (cache *txCache) Push(tx types.Tx) bool {
 	return true
 }
 
+// Remove removes the given tx from the cache.
 func (cache *txCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
 	delete(cache.map_, string(tx))

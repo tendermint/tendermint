@@ -293,6 +293,15 @@ func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *ty
 	return nil
 }
 
+func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
+
+	// Sign
+	heartbeat.Signature = privVal.Sign(types.SignBytes(chainID, heartbeat))
+	return nil
+}
+
 func (privVal *ByzantinePrivValidator) String() string {
 	return Fmt("PrivValidator{%X}", privVal.Address)
 }

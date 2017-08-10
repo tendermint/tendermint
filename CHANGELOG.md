@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.10.3 (August 10, 2017)
+
+FEATURES:
+- control over empty block production:
+  - new flag, `--consensus.create_empty_blocks`; when set to false, blocks are only created when there are txs or when the AppHash changes.
+  - new config option, `consensus.create_empty_blocks_interval`; an empty block is created after this many seconds.
+  - in normal operation, `create_empty_blocks = true` and `create_empty_blocks_interval = 0`, so blocks are being created all the time (as in all previous versions of tendermint). The number of empty blocks can be reduced by increasing `create_empty_blocks_interval` or by setting `create_empty_blocks = false`.
+  - new `TxsAvailable()` method added to Mempool that returns a channel which fires when txs are available.
+  - new heartbeat message added to consensus reactor to notify peers that a node is waiting for txs before entering propose step.
+- rpc: Add `syncing` field to response returned by `/status`. Is `true` while in fast-sync mode.
+
+IMPROVEMENTS:
+- various improvements to documentation and code comments
+
+BUG FIXES:
+- mempool: pass height into constructor so it doesn't always start at 0
+
 ## 0.10.2 (July 10, 2017)
 
 FEATURES:
@@ -360,7 +377,7 @@ Strict versioning only began with the release of v0.7.0, in late summer 2016.
 The project itself began in early summer 2014 and was workable decentralized cryptocurrency software by the end of that year.
 Through the course of 2015, in collaboration with Eris Industries (now Monax Indsutries), 
 many additional features were integrated, including an implementation from scratch of the Ethereum Virtual Machine.
-That implementation now forms the heart of [ErisDB](https://github.com/eris-ltd/eris-db).
+That implementation now forms the heart of [Burrow](https://github.com/hyperledger/burrow).
 In the later half of 2015, the consensus algorithm was upgraded with a more asynchronous design and a more deterministic and robust implementation.
 
 By late 2015, frustration with the difficulty of forking a large monolithic stack to create alternative cryptocurrency designs led to the 

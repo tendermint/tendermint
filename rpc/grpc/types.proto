@@ -10,20 +10,20 @@ import "github.com/tendermint/abci/types/types.proto";
 // Request types
 
 message RequestBroadcastTx {
-	bytes tx = 1;
+  bytes tx = 1;
 }
 
 //----------------------------------------
 // Response types
 
 message ResponseBroadcastTx{
-	types.ResponseCheckTx check_tx = 1;
-	types.ResponseDeliverTx deliver_tx = 2;
+  types.ResponseCheckTx check_tx = 1;
+  types.ResponseDeliverTx deliver_tx = 2;
 }
 
 //----------------------------------------
 // Service Definition
 
 service BroadcastAPI {
-	rpc BroadcastTx(RequestBroadcastTx) returns (ResponseBroadcastTx) ;
+  rpc BroadcastTx(RequestBroadcastTx) returns (ResponseBroadcastTx) ;
 }

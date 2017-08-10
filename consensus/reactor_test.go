@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/tmlibs/events"
+
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/events"
 )
 
 func init() {
@@ -69,6 +71,35 @@ func TestReactor(t *testing.T) {
 	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	reactors, eventChans := startConsensusNet(t, css, N, false)
 	defer stopConsensusNet(reactors)
+	// wait till everyone makes the first new block
+	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+		<-eventChans[j]
+		wg.Done()
+	}, css)
+}
+
+// Ensure a testnet sends proposal heartbeats and makes blocks when there are txs
+func TestReactorProposalHeartbeats(t *testing.T) {
+	N := 4
+	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter,
+		func(c *cfg.Config) {
+			c.Consensus.CreateEmptyBlocks = false
+		})
+	reactors, eventChans := startConsensusNet(t, css, N, false)
+	defer stopConsensusNet(reactors)
+	heartbeatChans := make([]chan interface{}, N)
+	for i := 0; i < N; i++ {
+		heartbeatChans[i] = subscribeToEvent(css[i].evsw, "tester", types.EventStringProposalHeartbeat(), 1)
+	}
+	// wait till everyone sends a proposal heartbeat
+	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+		<-heartbeatChans[j]
+		wg.Done()
+	}, css)
+
+	// send a tx
+	css[3].mempool.CheckTx([]byte{1, 2, 3}, nil)
+
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
 		<-eventChans[j]

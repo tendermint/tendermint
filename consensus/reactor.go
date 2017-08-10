@@ -32,9 +32,11 @@ const (
 type ConsensusReactor struct {
 	p2p.BaseReactor // BaseService + p2p.Switch
 
-	conS     *ConsensusState
+	conS *ConsensusState
+	evsw types.EventSwitch
+
+	mtx      sync.RWMutex
 	fastSync bool
-	evsw     types.EventSwitch
 }
 
 // NewConsensusReactor returns a new ConsensusReactor with the given consensusState.
@@ -49,14 +51,14 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *Consens
 
 // OnStart implements BaseService.
 func (conR *ConsensusReactor) OnStart() error {
-	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.fastSync)
+	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
 	conR.BaseReactor.OnStart()
 
 	// callbacks for broadcasting new steps and votes to peers
 	// upon their respective events (ie. uses evsw)
 	conR.registerEventCallbacks()
 
-	if !conR.fastSync {
+	if !conR.FastSync() {
 		_, err := conR.conS.Start()
 		if err != nil {
 			return err
@@ -79,7 +81,11 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	// NOTE: The line below causes broadcastNewRoundStepRoutine() to
 	// broadcast a NewRoundStepMessage.
 	conR.conS.updateToState(state)
+
+	conR.mtx.Lock()
 	conR.fastSync = false
+	conR.mtx.Unlock()
+
 	conR.conS.Start()
 }
 
@@ -130,7 +136,7 @@ func (conR *ConsensusReactor) AddPeer(peer *p2p.Peer) {
 
 	// Send our state to peer.
 	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
-	if !conR.fastSync {
+	if !conR.FastSync() {
 		conR.sendNewRoundStepMessages(peer)
 	}
 }
@@ -205,12 +211,17 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 				BlockID: msg.BlockID,
 				Votes:   ourVotes,
 			}})
+		case *ProposalHeartbeatMessage:
+			hb := msg.Heartbeat
+			conR.Logger.Debug("Received proposal heartbeat message",
+				"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence,
+				"valIdx", hb.ValidatorIndex, "valAddr", hb.ValidatorAddress)
 		default:
 			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
 
 	case DataChannel:
-		if conR.fastSync {
+		if conR.FastSync() {
 			conR.Logger.Info("Ignoring message received during fastSync", "msg", msg)
 			return
 		}
@@ -228,7 +239,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		}
 
 	case VoteChannel:
-		if conR.fastSync {
+		if conR.FastSync() {
 			conR.Logger.Info("Ignoring message received during fastSync", "msg", msg)
 			return
 		}
@@ -242,7 +253,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
 
-			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key}
+			cs.peerMsgQueue <- msgInfo{msg, src.Key}
 
 		default:
 			// don't punish (leave room for soft upgrades)
@@ -250,7 +261,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		}
 
 	case VoteSetBitsChannel:
-		if conR.fastSync {
+		if conR.FastSync() {
 			conR.Logger.Info("Ignoring message received during fastSync", "msg", msg)
 			return
 		}
@@ -296,6 +307,13 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
 	conR.conS.SetEventSwitch(evsw)
 }
 
+// FastSync returns whether the consensus reactor is in fast-sync mode.
+func (conR *ConsensusReactor) FastSync() bool {
+	conR.mtx.RLock()
+	defer conR.mtx.RUnlock()
+	return conR.fastSync
+}
+
 //--------------------------------------
 
 // Listens for new steps and votes,
@@ -311,6 +329,19 @@ func (conR *ConsensusReactor) registerEventCallbacks() {
 		edv := data.Unwrap().(types.EventDataVote)
 		conR.broadcastHasVoteMessage(edv.Vote)
 	})
+
+	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringProposalHeartbeat(), func(data types.TMEventData) {
+		heartbeat := data.Unwrap().(types.EventDataProposalHeartbeat)
+		conR.broadcastProposalHeartbeatMessage(heartbeat)
+	})
+}
+
+func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.EventDataProposalHeartbeat) {
+	hb := heartbeat.Heartbeat
+	conR.Logger.Debug("Broadcasting proposal heartbeat message",
+		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence)
+	msg := &ProposalHeartbeatMessage{hb}
+	conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{msg})
 }
 
 func (conR *ConsensusReactor) broadcastNewRoundStep(rs *RoundState) {
@@ -1147,6 +1178,8 @@ const (
 	msgTypeHasVote      = byte(0x15)
 	msgTypeVoteSetMaj23 = byte(0x16)
 	msgTypeVoteSetBits  = byte(0x17)
+
+	msgTypeProposalHeartbeat = byte(0x20)
 )
 
 // ConsensusMessage is a message that can be sent and received on the ConsensusReactor
@@ -1163,6 +1196,7 @@ var _ = wire.RegisterInterface(
 	wire.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
 	wire.ConcreteType{&VoteSetMaj23Message{}, msgTypeVoteSetMaj23},
 	wire.ConcreteType{&VoteSetBitsMessage{}, msgTypeVoteSetBits},
+	wire.ConcreteType{&ProposalHeartbeatMessage{}, msgTypeProposalHeartbeat},
 )
 
 // DecodeMessage decodes the given bytes into a ConsensusMessage.
@@ -1304,4 +1338,16 @@ type VoteSetBitsMessage struct {
 // String returns a string representation.
 func (m *VoteSetBitsMessage) String() string {
 	return fmt.Sprintf("[VSB %v/%02d/%v %v %v]", m.Height, m.Round, m.Type, m.BlockID, m.Votes)
+}
+
+//-------------------------------------
+
+// ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions for a proposal.
+type ProposalHeartbeatMessage struct {
+	Heartbeat *types.Heartbeat
+}
+
+// String returns a string representation.
+func (m *ProposalHeartbeatMessage) String() string {
+	return fmt.Sprintf("[HEARTBEAT %v]", m.Heartbeat)
 }

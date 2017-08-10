@@ -252,6 +252,13 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 
 }
 
+func (privVal *PrivValidator) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
+	heartbeat.Signature = privVal.Sign(SignBytes(chainID, heartbeat))
+	return nil
+}
+
 func (privVal *PrivValidator) String() string {
 	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", privVal.Address, privVal.LastHeight, privVal.LastRound, privVal.LastStep)
 }
