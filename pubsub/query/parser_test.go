@@ -75,6 +75,9 @@ func TestParser(t *testing.T) {
 		{"account.balance >= -300", false},
 		{"account.balance >>= 400", false},
 		{"account.balance=33.22.1", false},
+
+		{"hash='136E18F7E4C348B780CF873A0BF43922E5BAFA63'", true},
+		{"hash=136E18F7E4C348B780CF873A0BF43922E5BAFA63", false},
 	}
 
 	for _, c := range cases {
