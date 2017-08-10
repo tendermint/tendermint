@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tmlibs/log"
 
@@ -160,12 +159,6 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Log("All good")
 	}
-}
-
-func TestWSClientPingPongOption(t *testing.T) {
-	assert.Panics(t, func() {
-		NewWSClient("tcp://localhost:8080", "/websocket", PingPong(2*time.Second, 2*time.Second))
-	})
 }
 
 func startClient(t *testing.T, addr net.Addr) *WSClient {

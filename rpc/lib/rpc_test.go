@@ -31,8 +31,6 @@ const (
 	unixAddr   = "unix://" + unixSocket
 
 	websocketEndpoint = "/websocket/endpoint"
-
-	testPongWait = 2 * time.Second
 )
 
 type ResultEcho struct {
@@ -115,7 +113,7 @@ func setup() {
 	tcpLogger := logger.With("socket", "tcp")
 	mux := http.NewServeMux()
 	server.RegisterRPCFuncs(mux, Routes, tcpLogger)
-	wm := server.NewWebsocketManager(Routes, nil, server.PingPong((testPongWait*9)/10, testPongWait))
+	wm := server.NewWebsocketManager(Routes, nil, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
 	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
@@ -364,7 +362,7 @@ func TestWSClientPingPong(t *testing.T) {
 	require.Nil(t, err)
 	defer cl.Stop()
 
-	time.Sleep((testPongWait * 11) / 10)
+	time.Sleep(3 * time.Second)
 }
 
 func randBytes(t *testing.T) []byte {

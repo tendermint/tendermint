@@ -19,14 +19,10 @@ import (
 )
 
 const (
-	// Time allowed to write a message to the server.
-	writeWait = 10 * time.Second
-
-	// Maximum reconnect attempts
-	maxReconnectAttempts = 25
-
-	defaultPongWait   = 30 * time.Second
-	defaultPingPeriod = (defaultPongWait * 9) / 10
+	defaultMaxReconnectAttempts = 25
+	defaultWriteWait            = 0
+	defaultReadWait             = 0
+	defaultPingPeriod           = 0
 )
 
 // WSClient is a WebSocket client. The methods of WSClient are safe for use by
@@ -60,10 +56,16 @@ type WSClient struct {
 	sentLastPingAt time.Time
 	reconnecting   bool
 
-	// Time allowed to read the next pong message from the server.
-	pongWait time.Duration
+	// Maximum reconnect attempts (0 or greater; default: 25).
+	maxReconnectAttempts int
 
-	// Send pings to server with this period. Must be less than pongWait.
+	// Time allowed to write a message to the server. 0 means block until operation succeeds.
+	writeWait time.Duration
+
+	// Time allowed to read the next message from the server. 0 means block until operation succeeds.
+	readWait time.Duration
+
+	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
 }
 
@@ -77,7 +79,10 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 		Dialer:               dialer,
 		Endpoint:             endpoint,
 		PingPongLatencyTimer: metrics.NewTimer(),
-		pongWait:             defaultPongWait,
+
+		maxReconnectAttempts: defaultMaxReconnectAttempts,
+		readWait:             defaultReadWait,
+		writeWait:            defaultWriteWait,
 		pingPeriod:           defaultPingPeriod,
 	}
 	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
@@ -87,15 +92,27 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	return c
 }
 
-// PingPong allows changing ping period and pong wait time. If ping period
-// greater or equal to pong wait time, panic will be thrown.
-func PingPong(pingPeriod, pongWait time.Duration) func(*WSClient) {
+func MaxReconnectAttempts(max int) func(*WSClient) {
 	return func(c *WSClient) {
-		if pingPeriod >= pongWait {
-			panic(fmt.Sprintf("ping period (%v) must be less than pong wait time (%v)", pingPeriod, pongWait))
-		}
+		c.maxReconnectAttempts = max
+	}
+}
+
+func ReadWait(readWait time.Duration) func(*WSClient) {
+	return func(c *WSClient) {
+		c.readWait = readWait
+	}
+}
+
+func WriteWait(writeWait time.Duration) func(*WSClient) {
+	return func(c *WSClient) {
+		c.writeWait = writeWait
+	}
+}
+
+func PingPeriod(pingPeriod time.Duration) func(*WSClient) {
+	return func(c *WSClient) {
 		c.pingPeriod = pingPeriod
-		c.pongWait = pongWait
 	}
 }
 
@@ -234,7 +251,7 @@ func (c *WSClient) reconnect() error {
 
 		attempt++
 
-		if attempt > maxReconnectAttempts {
+		if attempt > c.maxReconnectAttempts {
 			return errors.Wrap(err, "reached maximum reconnect attempts")
 		}
 	}
@@ -250,7 +267,9 @@ func (c *WSClient) startReadWriteRoutines() {
 func (c *WSClient) processBacklog() error {
 	select {
 	case request := <-c.backlog:
-		c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+		if c.writeWait > 0 {
+			c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+		}
 		err := c.conn.WriteJSON(request)
 		if err != nil {
 			c.Logger.Error("failed to resend request", "err", err)
@@ -300,7 +319,15 @@ func (c *WSClient) reconnectRoutine() {
 // The client ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
 func (c *WSClient) writeRoutine() {
-	ticker := time.NewTicker(c.pingPeriod)
+	var ticker *time.Ticker
+	if c.pingPeriod > 0 {
+		// ticker with a predefined period
+		ticker = time.NewTicker(c.pingPeriod)
+	} else {
+		// ticker that never fires
+		ticker = &time.Ticker{C: make(<-chan time.Time)}
+	}
+
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()
@@ -310,7 +337,9 @@ func (c *WSClient) writeRoutine() {
 	for {
 		select {
 		case request := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if c.writeWait > 0 {
+				c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+			}
 			err := c.conn.WriteJSON(request)
 			if err != nil {
 				c.Logger.Error("failed to send request", "err", err)
@@ -320,7 +349,9 @@ func (c *WSClient) writeRoutine() {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if c.writeWait > 0 {
+				c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+			}
 			err := c.conn.WriteMessage(websocket.PingMessage, []byte{})
 			if err != nil {
 				c.Logger.Error("failed to write ping", "err", err)
@@ -348,21 +379,25 @@ func (c *WSClient) readRoutine() {
 		c.wg.Done()
 	}()
 
-	c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
-
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
+		// gather latency stats
 		c.mtx.RLock()
-		c.PingPongLatencyTimer.UpdateSince(c.sentLastPingAt)
+		t := c.sentLastPingAt
 		c.mtx.RUnlock()
+		c.PingPongLatencyTimer.UpdateSince(t)
+
 		c.Logger.Debug("got pong")
 		return nil
 	})
 
 	for {
+		// reset deadline for every message type (control or data)
+		if c.readWait > 0 {
+			c.conn.SetReadDeadline(time.Now().Add(c.readWait))
+		}
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+			if !websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure) {
 				return
 			}
 
