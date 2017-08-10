@@ -1,10 +1,21 @@
 # Changelog
 
-## 0.10.3 (TBD)
+## 0.10.3 (August 10, 2017)
 
 FEATURES:
-- New `--consensus.create_empty_blocks` flag; when set to false, only creates blocks when there are txs or when the AppHash changes
-- New `consensus.create_empty_blocks_interval` config option; when greater than 0, will create an empty block after waiting that many seconds
+- control over empty block production:
+  - new flag, `--consensus.create_empty_blocks`; when set to false, blocks are only created when there are txs or when the AppHash changes.
+  - new config option, `consensus.create_empty_blocks_interval`; an empty block is created after this many seconds.
+  - in normal operation, `create_empty_blocks = true` and `create_empty_blocks_interval = 0`, so blocks are being created all the time (as in all previous versions of tendermint). The number of empty blocks can be reduced by increasing `create_empty_blocks_interval` or by setting `create_empty_blocks = false`.
+  - new `TxsAvailable()` method added to Mempool that returns a channel which fires when txs are available.
+  - new heartbeat message added to consensus reactor to notify peers that a node is waiting for txs before entering propose step.
+- rpc: Add `syncing` field to response returned by `/status`. Is `true` while in fast-sync mode.
+
+IMPROVEMENTS:
+- various improvements to documentation and code comments
+
+BUG FIXES:
+- mempool: pass height into constructor so it doesn't always start at 0
 
 ## 0.10.2 (July 10, 2017)
 
