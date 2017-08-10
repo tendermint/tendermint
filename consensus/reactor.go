@@ -211,6 +211,11 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 				BlockID: msg.BlockID,
 				Votes:   ourVotes,
 			}})
+		case *ProposalHeartbeatMessage:
+			hb := msg.Heartbeat
+			conR.Logger.Debug("Received proposal heartbeat message",
+				"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence,
+				"valIdx", hb.ValidatorIndex, "valAddr", hb.ValidatorAddress)
 		default:
 			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
@@ -332,7 +337,10 @@ func (conR *ConsensusReactor) registerEventCallbacks() {
 }
 
 func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.EventDataProposalHeartbeat) {
-	msg := &ProposalHeartbeatMessage{heartbeat.Heartbeat}
+	hb := heartbeat.Heartbeat
+	conR.Logger.Debug("Broadcasting proposal heartbeat message",
+		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence)
+	msg := &ProposalHeartbeatMessage{hb}
 	conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{msg})
 }
 
