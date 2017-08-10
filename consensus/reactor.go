@@ -296,7 +296,7 @@ func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
 	conR.conS.SetEventSwitch(evsw)
 }
 
-// FastSync returns whether the consensus reactor is currently fast syncing
+// FastSync returns whether the consensus reactor is in fast-sync mode.
 func (conR *ConsensusReactor) FastSync() bool {
 	conR.mtx.RLock()
 	defer conR.mtx.RUnlock()

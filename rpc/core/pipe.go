@@ -28,6 +28,8 @@ type P2P interface {
 }
 
 //----------------------------------------------
+// These package level globals come with setters
+// that are expected to be called only once, on startup
 
 var (
 	// external, thread safe interfaces
