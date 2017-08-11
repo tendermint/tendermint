@@ -19,14 +19,17 @@ var (
 
 func init() {
 	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
+	RootCmd.PersistentFlags().Bool(verifyFlag, false, "if set, verifies that all the fields in the config file match up with those in the main struct")
 }
 
 // ParseConfig retrieves the default environment configuration,
 // sets up the Tendermint root and ensures that the root exists
 func ParseConfig() (*cfg.Config, error) {
-	conf := cfg.DefaultConfig()
-	err := viper.Unmarshal(conf)
+	conf, err := handleConfigVerification(cfg.DefaultConfig())
 	if err != nil {
+		return nil, err
+	}
+	if err := viper.Unmarshal(conf); err != nil {
 		return nil, err
 	}
 	conf.SetRoot(conf.RootDir)
