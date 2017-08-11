@@ -47,13 +47,13 @@ func TestWriteError(t *testing.T) {
 		assert.Equal(t, w.Code, http.StatusBadRequest, "#%d: should get a 400", i)
 		blob, err := ioutil.ReadAll(w.Body)
 		if err != nil {
-			assert.Failf(t, "expecting a successful ioutil.ReadAll", "#%d", i)
+			assert.Fail(t, "expecting a successful ioutil.ReadAll", "#%d", i)
 			continue
 		}
 
 		recv := new(common.ErrorResponse)
 		if err := json.Unmarshal(blob, recv); err != nil {
-			assert.Failf(t, "expecting a successful json.Unmarshal", "#%d", i)
+			assert.Fail(t, "expecting a successful json.Unmarshal", "#%d", i)
 			continue
 		}
 
