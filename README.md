@@ -8,7 +8,7 @@ Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/tendermint/tendermint)
-[![chat](https://img.shields.io/badge/slack-join%20chat-pink.svg)](http://forum.tendermint.com:3000/)
+[![Rocket.Chat](https://demo.rocket.chat/images/join-chat.svg)](https://cosmos.rocket.chat/)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
