@@ -13,30 +13,37 @@ func TestParser(t *testing.T) {
 		query string
 		valid bool
 	}{
-		{"tm.events.type=NewBlock", true},
-		{"tm.events.type = NewBlock", true},
-		{"tm.events.type=TIME", true},
-		{"tm.events.type=DATE", true},
+		{"tm.events.type='NewBlock'", true},
+		{"tm.events.type = 'NewBlock'", true},
+		{"tm.events.name = ''", true},
+		{"tm.events.type='TIME'", true},
+		{"tm.events.type='DATE'", true},
+		{"tm.events.type='='", true},
+		{"tm.events.type='TIME", false},
+		{"tm.events.type=TIME'", false},
 		{"tm.events.type==", false},
+		{"tm.events.type=NewBlock", false},
 		{">==", false},
-		{"tm.events.type NewBlock =", false},
-		{"tm.events.type>NewBlock", false},
+		{"tm.events.type 'NewBlock' =", false},
+		{"tm.events.type>'NewBlock'", false},
 		{"", false},
 		{"=", false},
-		{"=NewBlock", false},
+		{"='NewBlock'", false},
 		{"tm.events.type=", false},
 
 		{"tm.events.typeNewBlock", false},
+		{"tm.events.type'NewBlock'", false},
+		{"'NewBlock'", false},
 		{"NewBlock", false},
 		{"", false},
 
-		{"tm.events.type=NewBlock AND abci.account.name=Igor", true},
-		{"tm.events.type=NewBlock AND", false},
-		{"tm.events.type=NewBlock AN", false},
-		{"tm.events.type=NewBlock AN tm.events.type=NewBlockHeader", false},
-		{"AND tm.events.type=NewBlock ", false},
+		{"tm.events.type='NewBlock' AND abci.account.name='Igor'", true},
+		{"tm.events.type='NewBlock' AND", false},
+		{"tm.events.type='NewBlock' AN", false},
+		{"tm.events.type='NewBlock' AN tm.events.type='NewBlockHeader'", false},
+		{"AND tm.events.type='NewBlock' ", false},
 
-		{"abci.account.name CONTAINS Igor", true},
+		{"abci.account.name CONTAINS 'Igor'", true},
 
 		{"tx.date > DATE 2013-05-03", true},
 		{"tx.date < DATE 2013-05-03", true},
@@ -68,6 +75,9 @@ func TestParser(t *testing.T) {
 		{"account.balance >= -300", false},
 		{"account.balance >>= 400", false},
 		{"account.balance=33.22.1", false},
+
+		{"hash='136E18F7E4C348B780CF873A0BF43922E5BAFA63'", true},
+		{"hash=136E18F7E4C348B780CF873A0BF43922E5BAFA63", false},
 	}
 
 	for _, c := range cases {

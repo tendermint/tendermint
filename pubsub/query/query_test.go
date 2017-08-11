@@ -22,7 +22,7 @@ func TestMatches(t *testing.T) {
 		err     bool
 		matches bool
 	}{
-		{"tm.events.type=NewBlock", map[string]interface{}{"tm.events.type": "NewBlock"}, false, true},
+		{"tm.events.type='NewBlock'", map[string]interface{}{"tm.events.type": "NewBlock"}, false, true},
 
 		{"tx.gas > 7", map[string]interface{}{"tx.gas": 8}, false, true},
 		{"tx.gas > 7 AND tx.gas < 9", map[string]interface{}{"tx.gas": 8}, false, true},
@@ -40,8 +40,8 @@ func TestMatches(t *testing.T) {
 		{"tx.time >= TIME 2013-05-03T14:45:00Z", map[string]interface{}{"tx.time": time.Now()}, false, true},
 		{"tx.time = TIME 2013-05-03T14:45:00Z", map[string]interface{}{"tx.time": txTime}, false, false},
 
-		{"abci.owner.name CONTAINS Igor", map[string]interface{}{"abci.owner.name": "Igor,Ivan"}, false, true},
-		{"abci.owner.name CONTAINS Igor", map[string]interface{}{"abci.owner.name": "Pavel,Ivan"}, false, false},
+		{"abci.owner.name CONTAINS 'Igor'", map[string]interface{}{"abci.owner.name": "Igor,Ivan"}, false, true},
+		{"abci.owner.name CONTAINS 'Igor'", map[string]interface{}{"abci.owner.name": "Pavel,Ivan"}, false, false},
 	}
 
 	for _, tc := range testCases {
@@ -60,5 +60,5 @@ func TestMatches(t *testing.T) {
 
 func TestMustParse(t *testing.T) {
 	assert.Panics(t, func() { query.MustParse("=") })
-	assert.NotPanics(t, func() { query.MustParse("tm.events.type=NewBlock") })
+	assert.NotPanics(t, func() { query.MustParse("tm.events.type='NewBlock'") })
 }

@@ -13,8 +13,8 @@ condition <- tag ' '* (le ' '* (number / time / date)
                       / contains ' '* value
                       )
 
-tag <- < (![ \t\n\r\\()"=><] .)+ >
-value <- < (![ \t\n\r\\()"=><] .)+ >
+tag <- < (![ \t\n\r\\()"'=><] .)+ >
+value <- < '\'' (!["'] .)* '\''>
 number <- < ('0'
            / [1-9] digit* ('.' digit*)?) >
 digit <- [0-9]
