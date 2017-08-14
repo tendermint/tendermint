@@ -1,12 +1,12 @@
-hash: c6b00494f233e07baa1f506054b4a17fbd9230b7a7cf83469ddf32c1afb0aa6f
-updated: 2017-08-04T16:23:50.471665666Z
+hash: 87a19f23803b3b2d23693942bf43dc598e5475dc92b87cd6f534b2ce8d664602
+updated: 2017-08-14T18:50:15.367518383Z
 imports:
 - name: github.com/btcsuite/btcd
-  version: 47885ab8702485be6b6f87a03d4f3be0bc5c982c
+  version: fd081f5ae4bfe9430189ceff89606213d827c7bc
   subpackages:
   - btcec
 - name: github.com/go-kit/kit
-  version: 8e03b4c61a9cf94dd91cd842c7cdc669729e873f
+  version: bcc4b7720576e21b922974d4a4397f576ba7ef35
   subpackages:
   - log
   - log/level
@@ -16,7 +16,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/golang/protobuf
-  version: 748d386b5c1ea99658fd69fe9f03991ce86a90c1
+  version: 1909bc2f63dc92bb931deace8b8312c4db72d12f
   subpackages:
   - proto
   - ptypes
@@ -49,7 +49,7 @@ imports:
   subpackages:
   - data
 - name: github.com/tendermint/tendermint
-  version: 0013053fae3fb7611c392ebcff15352bb7ec717b
+  version: 2fd8496bc109d010c6c2e415604131b500550e37
   subpackages:
   - config
   - p2p
@@ -67,12 +67,12 @@ imports:
   - log
   - merkle
 - name: github.com/tendermint/tools
-  version: 0b1866f431f544592a5db4789859cf451b8250c4
+  version: 4368c04d98487f4d733618ba7ac32933e8fb7d04
   subpackages:
   - tm-monitor/eventmeter
   - tm-monitor/monitor
 - name: golang.org/x/crypto
-  version: 42ff06aea7c329876e5a0fe94acc96902accf0ad
+  version: b176d7def5d71bdd214203491f89843ed217f420
   subpackages:
   - curve25519
   - nacl/box
@@ -83,7 +83,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: f5079bd7f6f74e23c4d65efa0f4ce14cbd6a3c0f
+  version: 1c05540f6879653db88113bc4a2b70aec4bd491f
   subpackages:
   - context
   - http2
@@ -93,7 +93,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 3bd178b88a8180be2df394a1fbb81313916f0e7b
+  version: e56139fd9c5bc7244c76116c68e500765bb6db6b
   subpackages:
   - secure/bidirule
   - transform
@@ -104,9 +104,10 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 53ae6b7e909cb0bc4525c4c4454756a43da867dd
+  version: 43d1787a0c69bbee488da207f010368a8f4d980d
   subpackages:
   - codes
+  - connectivity
   - credentials
   - grpclb/grpc_lb_v1
   - grpclog
