@@ -95,7 +95,7 @@ type EventMeter struct {
 
 func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
 	return &EventMeter{
-		wsc:            client.NewWSClient(addr, "/websocket", client.PingPong(1*time.Second, 2*time.Second)),
+		wsc:            client.NewWSClient(addr, "/websocket", client.PingPeriod(1*time.Second)),
 		events:         make(map[string]*EventMetric),
 		unmarshalEvent: unmarshalEvent,
 		logger:         log.NewNopLogger(),

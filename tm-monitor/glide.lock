@@ -1,5 +1,5 @@
-hash: 3e3601085c1862570e37cfa6c7024df03e3921a43dc78be08372b1e9fbb1620d
-updated: 2017-08-04T14:44:28.484044469Z
+hash: 93b135dd9e360743acb6d8f82fea7b86f5a318e627a7479f41a5f3ad96b86b0b
+updated: 2017-08-10T21:56:38.148200545Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -51,7 +51,7 @@ imports:
   subpackages:
   - data
 - name: github.com/tendermint/tendermint
-  version: 0013053fae3fb7611c392ebcff15352bb7ec717b
+  version: 2fd8496bc109d010c6c2e415604131b500550e37
   subpackages:
   - config
   - p2p
@@ -104,7 +104,7 @@ imports:
   - tap
   - transport
 - name: gopkg.in/go-playground/validator.v9
-  version: 0f6f568263a1ab5105b57f66f446d2625e4f545c
+  version: d529ee1b0f30352444f507cc6cdac96bfd12decc
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
