@@ -9,7 +9,7 @@ import (
 // Subscribe for events via WebSocket.
 //
 // ```go
-// import 'github.com/tendermint/tendermint/types'
+// import "github.com/tendermint/tendermint/types"
 //
 // client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
 // result, err := client.AddListenerForEvent(types.EventStringNewBlock())

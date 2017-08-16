@@ -9,7 +9,7 @@ import (
 )
 
 // Tx allows you to query the transaction results. `nil` could mean the
-// transaction is in the mempool, invalidated, or was not send in the first
+// transaction is in the mempool, invalidated, or was not sent in the first
 // place.
 //
 // ```shell
