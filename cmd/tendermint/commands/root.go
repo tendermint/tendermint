@@ -21,7 +21,8 @@ func init() {
 	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
 }
 
-// ParseConfig will setup the tendermint configuration properly
+// ParseConfig retrieves the default environment configuration,
+// sets up the Tendermint root and ensures that the root exists
 func ParseConfig() (*cfg.Config, error) {
 	conf := cfg.DefaultConfig()
 	err := viper.Unmarshal(conf)
