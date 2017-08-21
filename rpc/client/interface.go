@@ -44,7 +44,7 @@ type ABCIClient interface {
 type SignClient interface {
 	Block(height int) (*ctypes.ResultBlock, error)
 	Commit(height int) (*ctypes.ResultCommit, error)
-	Validators() (*ctypes.ResultValidators, error)
+	Validators(height *int) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
 }
 

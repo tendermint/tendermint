@@ -124,6 +124,6 @@ func (c Client) Commit(height int) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 
-func (c Client) Validators() (*ctypes.ResultValidators, error) {
-	return core.Validators()
+func (c Client) Validators(height *int) (*ctypes.ResultValidators, error) {
+	return core.Validators(height)
 }

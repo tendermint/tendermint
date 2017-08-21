@@ -85,6 +85,7 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 }
 
 // Get block at a given height.
+// If no height is provided, it will fetch the latest block.
 //
 // ```shell
 // curl 'localhost:46657/block?height=10'
@@ -196,7 +197,8 @@ func Block(height int) (*ctypes.ResultBlock, error) {
 	return &ctypes.ResultBlock{blockMeta, block}, nil
 }
 
-// Get block commit at a given height.
+// Get block commit at a given height. If the height is left out, it
+// If no height is provided, it will fetch the commit for the latest block.
 //
 // ```shell
 // curl 'localhost:46657/commit?height=11'

@@ -101,8 +101,8 @@ func (c Local) Commit(height int) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 
-func (c Local) Validators() (*ctypes.ResultValidators, error) {
-	return core.Validators()
+func (c Local) Validators(height *int) (*ctypes.ResultValidators, error) {
+	return core.Validators(height)
 }
 
 func (c Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {

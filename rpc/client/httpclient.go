@@ -174,9 +174,11 @@ func (c *HTTP) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return result, nil
 }
 
-func (c *HTTP) Validators() (*ctypes.ResultValidators, error) {
+func (c *HTTP) Validators(height *int) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
-	_, err := c.rpc.Call("validators", map[string]interface{}{}, result)
+	_, err := c.rpc.Call("validators", map[string]interface{}{
+		"height": height,
+	}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Validators")
 	}
