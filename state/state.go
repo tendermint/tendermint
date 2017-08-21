@@ -24,6 +24,9 @@ var (
 
 //-----------------------------------------------------------------------------
 
+// State represents the latest committed state of the Tendermint consensus,
+// including the last committed block and validator set.
+// Newly committed blocks are validated and executed against the State.
 // NOTE: not goroutine-safe.
 type State struct {
 	// mtx for writing to db
@@ -49,6 +52,7 @@ type State struct {
 	logger log.Logger
 }
 
+// LoadState loads the State from the database.
 func LoadState(db dbm.DB) *State {
 	return loadState(db, stateKey)
 }
@@ -70,10 +74,12 @@ func loadState(db dbm.DB, key []byte) *State {
 	return s
 }
 
+// SetLogger sets the logger on the State.
 func (s *State) SetLogger(l log.Logger) {
 	s.logger = l
 }
 
+// Copy makes a copy of the State for mutating.
 func (s *State) Copy() *State {
 	return &State{
 		db:              s.db,
@@ -90,19 +96,20 @@ func (s *State) Copy() *State {
 	}
 }
 
+// Save persists the State to the database.
 func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
 	s.db.SetSync(stateKey, s.Bytes())
 }
 
-// Sets the ABCIResponses in the state and writes them to disk
-// in case we crash after app.Commit and before s.Save()
+// SaveABCIResponses persists the ABCIResponses to the database.
+// This is useful in case we crash after app.Commit and before s.Save().
 func (s *State) SaveABCIResponses(abciResponses *ABCIResponses) {
-	// save the validators to the db
 	s.db.SetSync(abciResponsesKey, abciResponses.Bytes())
 }
 
+// LoadABCIResponses loads the ABCIResponses from the database.
 func (s *State) LoadABCIResponses() *ABCIResponses {
 	abciResponses := new(ABCIResponses)
 
@@ -119,21 +126,17 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 	return abciResponses
 }
 
+// Equals returns true if the States are identical.
 func (s *State) Equals(s2 *State) bool {
 	return bytes.Equal(s.Bytes(), s2.Bytes())
 }
 
+// Bytes serializes the State using go-wire.
 func (s *State) Bytes() []byte {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(s, buf, n, err)
-	if *err != nil {
-		cmn.PanicCrisis(*err)
-	}
-	return buf.Bytes()
+	return wire.BinaryBytes(s)
 }
 
-// Mutate state variables to match block and validators
-// after running EndBlock
+// SetBlockAndValidators mutates State variables to update block and validators after running EndBlock.
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader, abciResponses *ABCIResponses) {
 
 	// copy the valset so we can apply changes from EndBlock
@@ -141,7 +144,6 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	prevValSet := s.Validators.Copy()
 	nextValSet := prevValSet.Copy()
 
-	// update the validator set with the latest abciResponses
 	err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
 	if err != nil {
 		s.logger.Error("Error changing validator set", "err", err)
@@ -154,6 +156,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	s.setBlockAndValidators(header.Height,
 		types.BlockID{header.Hash(), blockPartsHeader}, header.Time,
 		prevValSet, nextValSet)
+
 }
 
 func (s *State) setBlockAndValidators(
@@ -167,12 +170,14 @@ func (s *State) setBlockAndValidators(
 	s.LastValidators = prevValSet
 }
 
+// GetValidators returns the last and current validator sets.
 func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
 }
 
-// Load the most recent state from "state" db,
-// or create a new one (and save) from genesis.
+// GetState loads the most recent state from the database,
+// or creates a new one from the given genesisFile and persists the result
+// to the database.
 func GetState(stateDB dbm.DB, genesisFile string) *State {
 	state := LoadState(stateDB)
 	if state == nil {
@@ -184,8 +189,9 @@ func GetState(stateDB dbm.DB, genesisFile string) *State {
 }
 
 //--------------------------------------------------
-// ABCIResponses holds intermediate state during block processing
 
+// ABCIResponses retains the responses of the various ABCI calls during block processing.
+// It is persisted to disk before calling Commit.
 type ABCIResponses struct {
 	Height int
 
@@ -195,6 +201,7 @@ type ABCIResponses struct {
 	txs types.Txs // reference for indexing results by hash
 }
 
+// NewABCIResponses returns a new ABCIResponses
 func NewABCIResponses(block *types.Block) *ABCIResponses {
 	return &ABCIResponses{
 		Height:    block.Height,
@@ -203,14 +210,9 @@ func NewABCIResponses(block *types.Block) *ABCIResponses {
 	}
 }
 
-// Serialize the ABCIResponse
+// Bytes serializes the ABCIResponse using go-wire
 func (a *ABCIResponses) Bytes() []byte {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(*a, buf, n, err)
-	if *err != nil {
-		cmn.PanicCrisis(*err)
-	}
-	return buf.Bytes()
+	return wire.BinaryBytes(*a)
 }
 
 //-----------------------------------------------------------------------------
