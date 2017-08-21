@@ -22,6 +22,10 @@ var (
 	abciResponsesKey = []byte("abciResponsesKey")
 )
 
+func calcValidatorsKey(height int) []byte {
+	return []byte(cmn.Fmt("validatorsKey:%v", height))
+}
+
 //-----------------------------------------------------------------------------
 
 // State represents the latest committed state of the Tendermint consensus,
@@ -47,7 +51,10 @@ type State struct {
 	// AppHash is updated after Commit
 	AppHash []byte
 
+	// XXX: do we need this json tag ?
 	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
+
+	lastHeightValidatorsChanged int
 
 	logger log.Logger
 }
@@ -71,6 +78,14 @@ func loadState(db dbm.DB, key []byte) *State {
 		}
 		// TODO: ensure that buf is completely read.
 	}
+
+	v := s.loadValidators(s.LastBlockHeight)
+	if v != nil {
+		s.lastHeightValidatorsChanged = v.LastHeightChanged
+	} else {
+		s.lastHeightValidatorsChanged = 1
+	}
+
 	return s
 }
 
@@ -93,6 +108,8 @@ func (s *State) Copy() *State {
 		AppHash:         s.AppHash,
 		TxIndexer:       s.TxIndexer, // pointer here, not value
 		logger:          s.logger,
+
+		lastHeightValidatorsChanged: s.lastHeightValidatorsChanged,
 	}
 }
 
@@ -126,6 +143,56 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 	return abciResponses
 }
 
+// SaveValidators persists the validator set for the next block to disk.
+// It should be called after the validator set is updated with the results of EndBlock.
+// If the validator set did not change after processing the latest block,
+// only the last height for which the validators changed is persisted.
+func (s *State) SaveValidators() {
+	lastHeight := s.lastHeightValidatorsChanged
+	nextHeight := s.LastBlockHeight + 1
+	v := &Validators{
+		LastHeightChanged: lastHeight,
+	}
+	if lastHeight == nextHeight {
+		v.ValidatorSet = s.Validators
+	}
+	s.db.SetSync(calcValidatorsKey(nextHeight), v.Bytes())
+}
+
+// LoadValidators loads the ValidatorSet for a given height.
+func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
+	v := s.loadValidators(height)
+	if v == nil {
+		return nil, ErrNoValSetForHeight{height}
+	}
+
+	if v.ValidatorSet == nil {
+		v = s.loadValidators(v.LastHeightChanged)
+		if v == nil {
+			return nil, ErrNoValSetForHeight{height}
+		}
+	}
+
+	return v.ValidatorSet, nil
+}
+
+func (s *State) loadValidators(height int) *Validators {
+	buf := s.db.Get(calcValidatorsKey(height))
+	if len(buf) == 0 {
+		return nil
+	}
+
+	v := new(Validators)
+	r, n, err := bytes.NewReader(buf), new(int), new(error)
+	wire.ReadBinaryPtr(v, r, 0, n, err)
+	if *err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(cmn.Fmt("LoadValidators: Data has been corrupted or its spec has changed: %v\n", *err))
+	}
+	// TODO: ensure that buf is completely read.
+	return v
+}
+
 // Equals returns true if the States are identical.
 func (s *State) Equals(s2 *State) bool {
 	return bytes.Equal(s.Bytes(), s2.Bytes())
@@ -144,10 +211,15 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	prevValSet := s.Validators.Copy()
 	nextValSet := prevValSet.Copy()
 
-	err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
-	if err != nil {
-		s.logger.Error("Error changing validator set", "err", err)
-		// TODO: err or carry on?
+	// update the validator set with the latest abciResponses
+	if len(abciResponses.EndBlock.Diffs) > 0 {
+		err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
+		if err != nil {
+			s.logger.Error("Error changing validator set", "err", err)
+			// TODO: err or carry on?
+		}
+		// change results from this height but only applies to the next height
+		s.lastHeightValidatorsChanged = header.Height + 1
 	}
 
 	// Update validator accums and set state variables
@@ -182,6 +254,7 @@ func GetState(stateDB dbm.DB, genesisFile string) *State {
 	state := LoadState(stateDB)
 	if state == nil {
 		state = MakeGenesisStateFromFile(stateDB, genesisFile)
+		state.SaveValidators() // save the validators right away for height 1
 		state.Save()
 	}
 
@@ -213,6 +286,19 @@ func NewABCIResponses(block *types.Block) *ABCIResponses {
 // Bytes serializes the ABCIResponse using go-wire
 func (a *ABCIResponses) Bytes() []byte {
 	return wire.BinaryBytes(*a)
+}
+
+//-----------------------------------------------------------------------------
+
+// Validators represents the latest validator set, or the last time it changed
+type Validators struct {
+	ValidatorSet      *types.ValidatorSet
+	LastHeightChanged int
+}
+
+// Bytes serializes the Validators using go-wire
+func (v *Validators) Bytes() []byte {
+	return wire.BinaryBytes(*v)
 }
 
 //-----------------------------------------------------------------------------
@@ -260,15 +346,16 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 	}
 
 	return &State{
-		db:              db,
-		GenesisDoc:      genDoc,
-		ChainID:         genDoc.ChainID,
-		LastBlockHeight: 0,
-		LastBlockID:     types.BlockID{},
-		LastBlockTime:   genDoc.GenesisTime,
-		Validators:      types.NewValidatorSet(validators),
-		LastValidators:  types.NewValidatorSet(nil),
-		AppHash:         genDoc.AppHash,
-		TxIndexer:       &null.TxIndex{}, // we do not need indexer during replay and in tests
+		db:                          db,
+		GenesisDoc:                  genDoc,
+		ChainID:                     genDoc.ChainID,
+		LastBlockHeight:             0,
+		LastBlockID:                 types.BlockID{},
+		LastBlockTime:               genDoc.GenesisTime,
+		Validators:                  types.NewValidatorSet(validators),
+		LastValidators:              types.NewValidatorSet(nil),
+		AppHash:                     genDoc.AppHash,
+		TxIndexer:                   &null.TxIndex{}, // we do not need indexer during replay and in tests
+		lastHeightValidatorsChanged: 1,
 	}
 }
