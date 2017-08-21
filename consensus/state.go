@@ -615,6 +615,12 @@ func (cs *ConsensusState) newStep() {
 // Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities.
 // ConsensusState must be locked before any internal state is updated.
 func (cs *ConsensusState) receiveRoutine(maxSteps int) {
+	defer func() {
+		if r := recover(); r != nil {
+			cs.Logger.Error("CONSENSUS FAILURE!!!", "err", r)
+		}
+	}()
+
 	for {
 		if maxSteps > 0 {
 			if cs.nSteps >= maxSteps {

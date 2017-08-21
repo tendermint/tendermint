@@ -918,7 +918,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 
 func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *cmn.BitArray {
 	if !types.IsVoteTypeValid(type_) {
-		cmn.PanicSanity("Invalid vote type")
+		return nil
 	}
 
 	if ps.Height == height {
@@ -1029,7 +1029,10 @@ func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
 	logger.Debug("setHasVote(LastCommit)", "lastCommit", ps.LastCommit, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
-	ps.getVoteBitArray(height, round, type_).SetIndex(index, true)
+	psVotes := ps.getVoteBitArray(height, round, type_)
+	if psVotes != nil {
+		psVotes.SetIndex(index, true)
+	}
 }
 
 // ApplyNewRoundStepMessage updates the peer state for the new round.
