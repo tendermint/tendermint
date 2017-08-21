@@ -44,10 +44,11 @@ func (dve *DuplicateVoteEvidence) Verify() error {
 		return fmt.Errorf("DuplicateVoteEvidence Error: H/R/S does not match. Got %v and %v", dve.VoteA, dve.VoteB)
 	}
 
-	// Address and Index must be the same
+	// Address must be the same
 	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
 		return fmt.Errorf("DuplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X", dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress)
 	}
+	// XXX: Should we enforce index is the same ?
 	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
 		return fmt.Errorf("DuplicateVoteEvidence Error: Validator indices do not match. Got %d and %d", dve.VoteA.ValidatorIndex, dve.VoteB.ValidatorIndex)
 	}
@@ -59,6 +60,9 @@ func (dve *DuplicateVoteEvidence) Verify() error {
 
 	// Signatures must be valid
 	if !dve.PubKey.Verify(SignBytes(chainID, dve.VoteA), dve.VoteA.Signature) {
+		return ErrVoteInvalidSignature
+	}
+	if !dve.PubKey.Verify(SignBytes(chainID, dve.VoteB), dve.VoteB.Signature) {
 		return ErrVoteInvalidSignature
 	}
 
