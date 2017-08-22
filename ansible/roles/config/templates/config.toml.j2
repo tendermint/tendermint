@@ -13,6 +13,11 @@ laddr = "tcp://0.0.0.0:46657"
 [mempool]
 recheck = false
 
+[consensus]
+max_block_size_txs = 1000
+create_empty_blocks = false
+#timeout_propose = 10000
+
 [p2p]
 laddr = "tcp://0.0.0.0:46656"
 {% if validators == true or validators == 'true' %}
