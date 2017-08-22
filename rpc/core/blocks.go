@@ -184,8 +184,16 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 //   "jsonrpc": "2.0"
 // }
 // ```
-func Block(height int) (*ctypes.ResultBlock, error) {
-	if height == 0 {
+func Block(heightPtr *int) (*ctypes.ResultBlock, error) {
+	if heightPtr == nil {
+		height := blockStore.Height()
+		blockMeta := blockStore.LoadBlockMeta(height)
+		block := blockStore.LoadBlock(height)
+		return &ctypes.ResultBlock{blockMeta, block}, nil
+	}
+
+	height := *heightPtr
+	if height <= 0 {
 		return nil, fmt.Errorf("Height must be greater than 0")
 	}
 	if height > blockStore.Height() {
@@ -267,8 +275,16 @@ func Block(height int) (*ctypes.ResultBlock, error) {
 //   "jsonrpc": "2.0"
 // }
 // ```
-func Commit(height int) (*ctypes.ResultCommit, error) {
-	if height == 0 {
+func Commit(heightPtr *int) (*ctypes.ResultCommit, error) {
+	if heightPtr == nil {
+		height := blockStore.Height()
+		header := blockStore.LoadBlockMeta(height).Header
+		commit := blockStore.LoadSeenCommit(height)
+		return &ctypes.ResultCommit{header, commit, false}, nil
+	}
+
+	height := *heightPtr
+	if height <= 0 {
 		return nil, fmt.Errorf("Height must be greater than 0")
 	}
 	storeHeight := blockStore.Height()

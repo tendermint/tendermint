@@ -93,11 +93,11 @@ func (c Local) Genesis() (*ctypes.ResultGenesis, error) {
 	return core.Genesis()
 }
 
-func (c Local) Block(height int) (*ctypes.ResultBlock, error) {
+func (c Local) Block(height *int) (*ctypes.ResultBlock, error) {
 	return core.Block(height)
 }
 
-func (c Local) Commit(height int) (*ctypes.ResultCommit, error) {
+func (c Local) Commit(height *int) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 

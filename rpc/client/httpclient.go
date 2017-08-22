@@ -143,7 +143,7 @@ func (c *HTTP) Genesis() (*ctypes.ResultGenesis, error) {
 	return result, nil
 }
 
-func (c *HTTP) Block(height int) (*ctypes.ResultBlock, error) {
+func (c *HTTP) Block(height *int) (*ctypes.ResultBlock, error) {
 	result := new(ctypes.ResultBlock)
 	_, err := c.rpc.Call("block", map[string]interface{}{"height": height}, result)
 	if err != nil {
@@ -152,7 +152,7 @@ func (c *HTTP) Block(height int) (*ctypes.ResultBlock, error) {
 	return result, nil
 }
 
-func (c *HTTP) Commit(height int) (*ctypes.ResultCommit, error) {
+func (c *HTTP) Commit(height *int) (*ctypes.ResultCommit, error) {
 	result := new(ctypes.ResultCommit)
 	_, err := c.rpc.Call("commit", map[string]interface{}{"height": height}, result)
 	if err != nil {
@@ -176,9 +176,7 @@ func (c *HTTP) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 func (c *HTTP) Validators(height *int) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
-	_, err := c.rpc.Call("validators", map[string]interface{}{
-		"height": height,
-	}, result)
+	_, err := c.rpc.Call("validators", map[string]interface{}{"height": height}, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Validators")
 	}

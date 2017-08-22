@@ -110,7 +110,8 @@ func TestAppCalls(t *testing.T) {
 		sh := s.LatestBlockHeight
 
 		// look for the future
-		_, err = c.Block(sh + 2)
+		h := sh + 2
+		_, err = c.Block(&h)
 		assert.NotNil(err) // no block yet
 
 		// write something
@@ -137,7 +138,7 @@ func TestAppCalls(t *testing.T) {
 		assert.EqualValues(tx, ptx.Tx)
 
 		// and we can even check the block is added
-		block, err := c.Block(apph)
+		block, err := c.Block(&apph)
 		require.Nil(err, "%d: %+v", i, err)
 		appHash := block.BlockMeta.Header.AppHash
 		assert.True(len(appHash) > 0)
@@ -158,14 +159,15 @@ func TestAppCalls(t *testing.T) {
 		}
 
 		// and get the corresponding commit with the same apphash
-		commit, err := c.Commit(apph)
+		commit, err := c.Commit(&apph)
 		require.Nil(err, "%d: %+v", i, err)
 		cappHash := commit.Header.AppHash
 		assert.Equal(appHash, cappHash)
 		assert.NotNil(commit.Commit)
 
 		// compare the commits (note Commit(2) has commit from Block(3))
-		commit2, err := c.Commit(apph - 1)
+		h = apph - 1
+		commit2, err := c.Commit(&h)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 

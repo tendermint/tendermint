@@ -42,17 +42,19 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Validators(height *int) (*ctypes.ResultValidators, error) {
-	if height == nil {
+func Validators(heightPtr *int) (*ctypes.ResultValidators, error) {
+	if heightPtr == nil {
 		blockHeight, validators := consensusState.GetValidators()
 		return &ctypes.ResultValidators{blockHeight, validators}, nil
 	}
+
+	height := *heightPtr
 	state := consensusState.GetState()
-	validators, err := state.LoadValidators(*height)
+	validators, err := state.LoadValidators(height)
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultValidators{*height, validators.Validators}, nil
+	return &ctypes.ResultValidators{height, validators.Validators}, nil
 }
 
 // Dump consensus state.
