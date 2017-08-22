@@ -10,6 +10,9 @@ log_level = "debug"
 [rpc]
 laddr = "tcp://0.0.0.0:46657"
 
+[mempool]
+recheck = false
+
 [p2p]
 laddr = "tcp://0.0.0.0:46656"
 {% if validators == true or validators == 'true' %}
