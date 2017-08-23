@@ -30,6 +30,7 @@ type transacter struct {
 	Target      string
 	Rate        int
 	Connections int
+	HostHash	[16]byte
 
 	conns   []*websocket.Conn
 	wg      sync.WaitGroup
@@ -38,11 +39,12 @@ type transacter struct {
 	logger log.Logger
 }
 
-func newTransacter(target string, connections int, rate int) *transacter {
+func newTransacter(target string, connections int, rate int, hosthash [16]byte) *transacter {
 	return &transacter{
 		Target:      target,
 		Rate:        rate,
 		Connections: connections,
+		HostHash:    hosthash,
 		conns:       make([]*websocket.Conn, connections),
 		logger:      log.NewNopLogger(),
 	}
@@ -136,7 +138,7 @@ func (t *transacter) sendLoop(connIndex int) {
 
 			for i := 0; i < t.Rate; i++ {
 				// each transaction embeds connection index and tx number
-				tx := generateTx(connIndex, txNumber)
+				tx := generateTx(connIndex, txNumber, t.HostHash)
 				paramsJson, err := json.Marshal(map[string]interface{}{"tx": hex.EncodeToString(tx)})
 				if err != nil {
 					fmt.Printf("failed to encode params: %v\n", err)
@@ -189,11 +191,26 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }
 
-func generateTx(a int, b int) []byte {
-	tx := make([]byte, 250)
-	binary.PutUvarint(tx[:32], uint64(a))
-	binary.PutUvarint(tx[32:64], uint64(b))
-	if _, err := rand.Read(tx[234:]); err != nil {
+func generateTx(a int, b int, hosthash [16]byte) []byte {
+	// 64 byte transaction
+	tx := make([]byte, 64)
+
+	// 0-8 connection number
+	binary.PutUvarint(tx[:8], uint64(a))
+
+	// 8-16 transaction number
+	binary.PutUvarint(tx[8:16], uint64(b))
+
+	// 16-32 hostname hash
+	for i:=0; i < 16 ; i++ {
+		tx[16+i] = hosthash[i]
+	}
+
+	// 32-40 current time
+	PutUvarint(tx[32:40], uint64(time.Now().Unix()))
+
+	// 40-64 random data
+	if _, err := rand.Read(tx[40:]); err != nil {
 		panic(errors.Wrap(err, "failed to generate transaction"))
 	}
 	return tx
