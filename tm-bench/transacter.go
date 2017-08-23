@@ -207,7 +207,7 @@ func generateTx(a int, b int, hosthash [16]byte) []byte {
 	}
 
 	// 32-40 current time
-	PutUvarint(tx[32:40], uint64(time.Now().Unix()))
+	binary.PutUvarint(tx[32:40], uint64(time.Now().Unix()))
 
 	// 40-64 random data
 	if _, err := rand.Read(tx[40:]); err != nil {
