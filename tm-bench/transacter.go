@@ -192,8 +192,8 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 }
 
 func generateTx(a int, b int, hosthash [16]byte) []byte {
-	// 64 byte transaction
-	tx := make([]byte, 64)
+	// 250 byte transaction
+	tx := make([]byte, 250)
 
 	// 0-8 connection number
 	binary.PutUvarint(tx[:8], uint64(a))
@@ -209,7 +209,7 @@ func generateTx(a int, b int, hosthash [16]byte) []byte {
 	// 32-40 current time
 	binary.PutUvarint(tx[32:40], uint64(time.Now().Unix()))
 
-	// 40-64 random data
+	// 40- random data
 	if _, err := rand.Read(tx[40:]); err != nil {
 		panic(errors.Wrap(err, "failed to generate transaction"))
 	}
