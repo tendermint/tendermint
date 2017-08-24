@@ -92,24 +92,32 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 	return c
 }
 
+// MaxReconnectAttempts sets the maximum number of reconnect attempts before returning an error.
+// It should only be used in the constructor and is not Goroutine-safe.
 func MaxReconnectAttempts(max int) func(*WSClient) {
 	return func(c *WSClient) {
 		c.maxReconnectAttempts = max
 	}
 }
 
+// ReadWait sets the amount of time to wait before a websocket read times out.
+// It should only be used in the constructor and is not Goroutine-safe.
 func ReadWait(readWait time.Duration) func(*WSClient) {
 	return func(c *WSClient) {
 		c.readWait = readWait
 	}
 }
 
+// WriteWait sets the amount of time to wait before a websocket write times out.
+// It should only be used in the constructor and is not Goroutine-safe.
 func WriteWait(writeWait time.Duration) func(*WSClient) {
 	return func(c *WSClient) {
 		c.writeWait = writeWait
 	}
 }
 
+// PingPeriod sets the duration for sending websocket pings.
+// It should only be used in the constructor - not Goroutine-safe.
 func PingPeriod(pingPeriod time.Duration) func(*WSClient) {
 	return func(c *WSClient) {
 		c.pingPeriod = pingPeriod

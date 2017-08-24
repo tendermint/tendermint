@@ -32,6 +32,7 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+	defer conn.Close()
 	for {
 		messageType, _, err := conn.ReadMessage()
 		if err != nil {
