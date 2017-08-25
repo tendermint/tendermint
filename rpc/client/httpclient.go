@@ -1,13 +1,14 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/pkg/errors"
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/rpc/lib/client"
+	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
 	events "github.com/tendermint/tmlibs/events"
 )
@@ -349,14 +350,14 @@ func (w *WSEvents) parseEvent(data []byte) (err error) {
 // no way of exposing these failures, so we panic.
 // is this right?  or silently ignore???
 func (w *WSEvents) subscribe(event string) {
-	err := w.ws.Subscribe(event)
+	err := w.ws.Subscribe(context.TODO(), event)
 	if err != nil {
 		panic(err)
 	}
 }
 
 func (w *WSEvents) unsubscribe(event string) {
-	err := w.ws.Unsubscribe(event)
+	err := w.ws.Unsubscribe(context.TODO(), event)
 	if err != nil {
 		panic(err)
 	}
