@@ -82,7 +82,7 @@ func newMemDBIterator() *memDBIterator {
 }
 
 func (it *memDBIterator) Next() bool {
-	if it.last >= len(it.keys) {
+	if it.last >= len(it.keys)-1 {
 		return false
 	}
 	it.last++
