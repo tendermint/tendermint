@@ -1,17 +1,24 @@
 # Changelog
 
-## Develop-Branch changes (unreleased)
+## 0.3.0 (August 25, 2017)
 
 BREAKING CHANGES:
 
-- [run] NewBaseService takes the new logger
+- [common] NewBaseService takes the new logger
 - [cli] RunCaptureWithArgs now captures stderr and stdout
   - +func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (stdout, stderr string, err error)
   - -func RunCaptureWithArgs(cmd Executable, args []string, env map[string]string) (output string, err error) 
 
 FEATURES:
 
+- [common] various common HTTP functionality
 - [common] Date range parsing from string (ex. "2015-12-31:2017-12-31") 
+- [pubsub] New package for publish-subscribe with more advanced filtering
+
+BUG FIXES:
+
+- [common] fix atomicity of WriteFileAtomic by calling fsync
+- [db] fix memDb iteration index out of range
 
 ## 0.2.2 (June 16, 2017)
 
