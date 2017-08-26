@@ -27,6 +27,7 @@ type peerSetItem struct {
 	index int
 }
 
+// NewPeerSet creates a new peerSet with a list of initial capacity of 256 items.
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
 		lookup: make(map[string]*peerSetItem),
@@ -34,7 +35,8 @@ func NewPeerSet() *PeerSet {
 	}
 }
 
-// Returns false if peer with key (PubKeyEd25519) is already set
+// Add returns false if the peer's Key (PubKeyEd25519) is already memoized.
+// If the peer was already added, it returns ErrSwitchDuplicatePeer.
 func (ps *PeerSet) Add(peer *Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -50,13 +52,16 @@ func (ps *PeerSet) Add(peer *Peer) error {
 	return nil
 }
 
+// Has returns true iff the peerset contains
+// the peer referred to by this peerKey.
 func (ps *PeerSet) Has(peerKey string) bool {
 	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
 	_, ok := ps.lookup[peerKey]
+	ps.mtx.Unlock()
 	return ok
 }
 
+// Get looks up a peer by the provided peerKey.
 func (ps *PeerSet) Get(peerKey string) *Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -68,6 +73,7 @@ func (ps *PeerSet) Get(peerKey string) *Peer {
 	}
 }
 
+// Remove discards peer by its Key, if the peer was previously memoized.
 func (ps *PeerSet) Remove(peer *Peer) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -77,8 +83,8 @@ func (ps *PeerSet) Remove(peer *Peer) {
 	}
 
 	index := item.index
-	// Copy the list but without the last element.
-	// (we must copy because we're mutating the list)
+	// Create a new copy of the list but with one less item.
+	// (we must copy because we'll be mutating the list).
 	newList := make([]*Peer, len(ps.list)-1)
 	copy(newList, ps.list)
 	// If it's the last peer, that's an easy special case.
@@ -88,7 +94,7 @@ func (ps *PeerSet) Remove(peer *Peer) {
 		return
 	}
 
-	// Move the last item from ps.list to "index" in list.
+	// Replace the popped item with the last item in the old list.
 	lastPeer := ps.list[len(ps.list)-1]
 	lastPeerKey := lastPeer.Key
 	lastPeerItem := ps.lookup[lastPeerKey]
@@ -96,16 +102,16 @@ func (ps *PeerSet) Remove(peer *Peer) {
 	lastPeerItem.index = index
 	ps.list = newList
 	delete(ps.lookup, peer.Key)
-
 }
 
+// Size returns the number of unique items in the peerSet.
 func (ps *PeerSet) Size() int {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return len(ps.list)
 }
 
-// threadsafe list of peers.
+// List returns the threadsafe list of peers.
 func (ps *PeerSet) List() []*Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
