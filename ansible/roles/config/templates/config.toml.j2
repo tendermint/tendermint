@@ -12,11 +12,13 @@ laddr = "tcp://0.0.0.0:46657"
 
 [mempool]
 recheck = false
+broadcast = false
+wal_dir = ""
 
 [consensus]
 max_block_size_txs = 10000
 create_empty_blocks = false
-#timeout_propose = 10000
+timeout_propose = 10000
 skip_timeout_commit = true
 
 [p2p]
