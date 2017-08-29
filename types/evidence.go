@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -22,10 +23,34 @@ func (err *ErrEvidenceInvalid) Error() string {
 	return fmt.Sprintf("Invalid evidence: %v. Evidence: %v", err.ErrorValue, err.Evidence)
 }
 
+//-------------------------------------------
+
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
-	Verify(chainID string) error
 	Address() []byte
+	Hash() []byte
+	Verify(chainID string) error
+
+	String() string
+}
+
+//-------------------------------------------
+
+type Evidences []Evidence
+
+func (evs Evidences) Hash() []byte {
+	// Recursive impl.
+	// Copied from tmlibs/merkle to avoid allocations
+	switch len(evs) {
+	case 0:
+		return nil
+	case 1:
+		return evs[0].Hash()
+	default:
+		left := Evidences(evs[:(len(evs)+1)/2]).Hash()
+		right := Evidences(evs[(len(evs)+1)/2:]).Hash()
+		return merkle.SimpleHashFromTwoHashes(left, right)
+	}
 }
 
 //-------------------------------------------
@@ -37,9 +62,20 @@ type DuplicateVoteEvidence struct {
 	VoteB  *Vote
 }
 
+// String returns a string representation of the evidence.
+func (dve *DuplicateVoteEvidence) String() string {
+	return fmt.Sprintf("VoteA: %v; VoteB: %v", dve.VoteA, dve.VoteB)
+
+}
+
 // Address returns the address of the validator.
 func (dve *DuplicateVoteEvidence) Address() []byte {
 	return dve.PubKey.Address()
+}
+
+// Hash returns the hash of the evidence.
+func (dve *DuplicateVoteEvidence) Hash() []byte {
+	return merkle.SimpleHashFromBinary(dve)
 }
 
 // Verify returns an error if the two votes aren't conflicting.

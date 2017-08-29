@@ -43,7 +43,7 @@ func MakeBlock(height int64, txs []Tx, commit *Commit) *Block {
 
 // AddEvidence appends the given evidence to the block
 func (b *Block) AddEvidence(evidence []Evidence) {
-	b.Evidence.Evidence = append(b.Evidence.Evidence, evidence...)
+	b.Evidence.Evidences = append(b.Evidence.Evidences, evidence...)
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -438,26 +438,38 @@ func (data *Data) StringIndented(indent string) string {
 
 // EvidenceData contains any evidence of malicious wrong-doing by validators
 type EvidenceData struct {
-	Evidence []Evidence `json:"evidence"`
+	Evidences Evidences `json:"evidence"`
 
 	// Volatile
 	hash data.Bytes
 }
 
-// Hash returns the hash of the data
+// Hash returns the hash of the data.
 func (data *EvidenceData) Hash() data.Bytes {
 	if data.hash == nil {
-		// TODO
+		data.hash = data.Evidences.Hash()
 	}
 	return data.hash
 }
 
-// StringIndented returns a string representation of the transactions
+// StringIndented returns a string representation of the evidence.
 func (data *EvidenceData) StringIndented(indent string) string {
 	if data == nil {
-		return "nil-Data"
+		return "nil-Evidence"
 	}
-	// TODO
+	evStrings := make([]string, cmn.MinInt(len(data.Evidences), 21))
+	for i, ev := range data.Evidences {
+		if i == 20 {
+			evStrings[i] = fmt.Sprintf("... (%v total)", len(data.Evidences))
+			break
+		}
+		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
+	}
+	return fmt.Sprintf(`Data{
+%s  %v
+%s}#%v`,
+		indent, strings.Join(evStrings, "\n"+indent+"  "),
+		indent, data.hash)
 	return ""
 }
 
