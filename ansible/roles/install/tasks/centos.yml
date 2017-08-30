@@ -36,7 +36,3 @@
   when: ansible_os_family == "RedHat"
   yum: "pkg={{service}} update_cache=yes state=latest"
 
-- name: Install rsyslog on CentOS/RedHat
-  when: ansible_os_family == "RedHat"
-  yum: "pkg=rsyslog state=latest"
-
