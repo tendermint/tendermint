@@ -1,4 +1,41 @@
-Documentation
+.. Tendermint documentation master file, created by
+   sphinx-quickstart on Mon Aug  7 04:55:09 2017.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to Tendermint's documentation!
+=====================================
+
+Tendermint 101:
+
+.. maxdepth set to 2 for sexiness
+.. but use 4 to upgrade documentation
+.. toctree::
+   :maxdepth: 4
+
+   introduction.rst
+   install-from-source.rst
+   getting-started.rst
+   deploy-testnets.rst
+   using-tendermint.rst
+
+Tendermint 102:
+
+.. toctree::
+   :maxdepth: 4
+
+   abci-cli.rst
+   app-architecture.rst
+   app-development.rst
+
+Tendermint 201:
+
+.. toctree::
+   :maxdepth: 4
+
+   specification
+
+Documentation (to refactor)
 -------------
 
 If you're new here, start with the [Tendermint Intro](/intro).
@@ -32,3 +69,9 @@ Next Steps
 ----------
 
 
+
+
+Indices and tables
+==================
+
+:ref:`Keyword Index <genindex>`, :ref:`Search Page <search>`
