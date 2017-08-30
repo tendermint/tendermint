@@ -8,14 +8,10 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-var versionCmd = &cobra.Command{
+var VersionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Show version info",
+	Short: "Show version infoooooooo",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(version.Version)
 	},
-}
-
-func init() {
-	RootCmd.AddCommand(versionCmd)
 }

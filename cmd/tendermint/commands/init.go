@@ -9,14 +9,10 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-var initFilesCmd = &cobra.Command{
+var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Tendermint",
 	Run:   initFiles,
-}
-
-func init() {
-	RootCmd.AddCommand(initFilesCmd)
 }
 
 func initFiles(cmd *cobra.Command, args []string) {

@@ -9,14 +9,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var showValidatorCmd = &cobra.Command{
+var ShowValidatorCmd = &cobra.Command{
 	Use:   "show_validator",
 	Short: "Show this node's validator info",
 	Run:   showValidator,
-}
-
-func init() {
-	RootCmd.AddCommand(showValidatorCmd)
 }
 
 func showValidator(cmd *cobra.Command, args []string) {

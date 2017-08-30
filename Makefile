@@ -17,6 +17,10 @@ build:
 	go build \
 		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`"  -o build/tendermint ./cmd/tendermint/
 
+build_hsm:
+	go build \
+		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`" -o build/tendermint ./cmd/hsm/
+
 build_race:
 	go build -race -o build/tendermint ./cmd/tendermint
 
