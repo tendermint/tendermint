@@ -1,4 +1,5 @@
-# Documentation
+Documentation
+-------------
 
 If you're new here, start with the [Tendermint Intro](/intro).
 
