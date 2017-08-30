@@ -2,13 +2,23 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+)
+
+var (
+	config = cfg.DefaultConfig()
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
 )
 
 var RunNodeCmd = &cobra.Command{
@@ -74,7 +84,16 @@ func runNode(cmd *cobra.Command, args []string) error {
 	config.ChainID = genDoc.ChainID
 
 	// Create & start node
-	n := node.NewNodeDefault(config, logger.With("module", "node"))
+	// n := node.NewNodeDefault(config, logger.With("module", "node"))
+
+	// TODO: Make types.PrivValidator an interface so that it can be provided
+	// by a hardware wallet or any other wallet provider.
+
+	// The next two lines show how a private validator is setup.
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
+	privValidator.SetSigner(types.NewDefaultSigner(privValidator.PrivKey))
+
+	n := node.NewNode(config, privValidator, proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
 	if _, err := n.Start(); err != nil {
 		return fmt.Errorf("Failed to start node: %v", err)
 	} else {

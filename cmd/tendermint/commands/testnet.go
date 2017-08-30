@@ -7,11 +7,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
-var testnetFilesCmd = &cobra.Command{
+var TestnetFilesCmd = &cobra.Command{
 	Use:   "testnet",
 	Short: "Initialize files for a Tendermint testnet",
 	Run:   testnetFiles,
@@ -24,12 +24,10 @@ var (
 )
 
 func init() {
-	testnetFilesCmd.Flags().IntVar(&nValidators, "n", 4,
+	TestnetFilesCmd.Flags().IntVar(&nValidators, "n", 4,
 		"Number of validators to initialize the testnet with")
-	testnetFilesCmd.Flags().StringVar(&dataDir, "dir", "mytestnet",
+	TestnetFilesCmd.Flags().StringVar(&dataDir, "dir", "mytestnet",
 		"Directory to store initialization data for the testnet")
-
-	RootCmd.AddCommand(testnetFilesCmd)
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) {

@@ -9,21 +9,16 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
-var resetAllCmd = &cobra.Command{
+var ResetAllCmd = &cobra.Command{
 	Use:   "unsafe_reset_all",
 	Short: "(unsafe) Remove all the data and WAL, reset this node's validator",
 	Run:   resetAll,
 }
 
-var resetPrivValidatorCmd = &cobra.Command{
+var ResetPrivValidatorCmd = &cobra.Command{
 	Use:   "unsafe_reset_priv_validator",
 	Short: "(unsafe) Reset this node's validator",
 	Run:   resetPrivValidator,
-}
-
-func init() {
-	RootCmd.AddCommand(resetAllCmd)
-	RootCmd.AddCommand(resetPrivValidatorCmd)
 }
 
 // XXX: this is totally unsafe.

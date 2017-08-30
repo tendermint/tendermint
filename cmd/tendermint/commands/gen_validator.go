@@ -9,14 +9,10 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var genValidatorCmd = &cobra.Command{
+var GenValidatorCmd = &cobra.Command{
 	Use:   "gen_validator",
 	Short: "Generate new validator keypair",
 	Run:   genValidator,
-}
-
-func init() {
-	RootCmd.AddCommand(genValidatorCmd)
 }
 
 func genValidator(cmd *cobra.Command, args []string) {
