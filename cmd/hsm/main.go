@@ -3,10 +3,17 @@ package main
 import (
 	"os"
 
-	tc "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	"github.com/tendermint/tmlibs/cli"
+	"github.com/tendermint/tmlibs/log"
 
-	"github.com/tendermint/tendermint/cmd/hsm/commands"
+	tc "github.com/tendermint/tendermint/cmd/tendermint/commands"
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/types"
+)
+
+var (
+	config = cfg.DefaultConfig()
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
 )
 
 func main() {
@@ -28,7 +35,9 @@ func main() {
 	rootCmd.AddCommand(tc.TestnetFilesCmd)
 	rootCmd.AddCommand(tc.VersionCmd)
 
-	rootCmd.AddCommand(commands.RunNodeCmd)
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
+	privValidator.SetSigner(types.NewDefaultSigner(privValidator.PrivKey))
+	rootCmd.AddCommand(tc.NewRunNodeCmd(privValidator))
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))
 	cmd.Execute()
