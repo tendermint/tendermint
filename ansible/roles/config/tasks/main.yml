@@ -39,6 +39,7 @@
   copy: "src={{service_genesis_file}} dest=/etc/{{service}}/genesis.json owner={{service}} group={{service}}"
 
 - name: copy tendermint config.toml
+  tags: reconfig
   when: validators == true or validators == 'true'
   template:
     src: config.toml.j2
