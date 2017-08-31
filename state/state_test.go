@@ -8,7 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	abci "github.com/tendermint/abci/types"
+
 	crypto "github.com/tendermint/go-crypto"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -17,31 +19,35 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func TestStateCopyEquals(t *testing.T) {
-	assert := assert.New(t)
-	config := cfg.ResetTestRoot("state_")
+func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, *State) {
 
-	// Get State db
+	config := cfg.ResetTestRoot("state_")
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := GetState(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger())
+
+	tearDown := func(t *testing.T) {}
+
+	return tearDown, stateDB, state
+}
+
+func TestStateCopy(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+	assert := assert.New(t)
 
 	stateCopy := state.Copy()
 
 	assert.True(state.Equals(stateCopy), cmn.Fmt("expected state and its copy to be identical. got %v\n expected %v\n", stateCopy, state))
-	stateCopy.LastBlockHeight += 1
+	stateCopy.LastBlockHeight++
 	assert.False(state.Equals(stateCopy), cmn.Fmt("expected states to be different. got same %v", state))
 }
 
 func TestStateSaveLoad(t *testing.T) {
-	assert := assert.New(t)
-	config := cfg.ResetTestRoot("state_")
-	// Get State db
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
-	state := GetState(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger())
+	tearDown, stateDB, state := setupTestCase(t)
+	defer tearDown(t)
 
-	state.LastBlockHeight += 1
+	state.LastBlockHeight++
 	state.Save()
 
 	loadedState := LoadState(stateDB)
@@ -49,14 +55,11 @@ func TestStateSaveLoad(t *testing.T) {
 }
 
 func TestABCIResponsesSaveLoad(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
 	assert := assert.New(t)
 
-	config := cfg.ResetTestRoot("state_")
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
-	state := GetState(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger())
-
-	state.LastBlockHeight += 1
+	state.LastBlockHeight++
 
 	// build mock responses
 	block := makeBlock(2, state)
@@ -77,12 +80,9 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 }
 
 func TestValidatorSimpleSaveLoad(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
 	assert := assert.New(t)
-	config := cfg.ResetTestRoot("state_")
-	// Get State db
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
-	state := GetState(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger())
 
 	// cant load anything for height 0
 	v, err := state.LoadValidators(0)
@@ -94,7 +94,7 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// increment height, save; should be able to load for next height
-	state.LastBlockHeight += 1
+	state.LastBlockHeight++
 	state.saveValidatorsInfo()
 	v, err = state.LoadValidators(state.LastBlockHeight + 1)
 	assert.Nil(err, "expected no err")
@@ -113,12 +113,9 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 }
 
 func TestValidatorChangesSaveLoad(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
 	assert := assert.New(t)
-	config := cfg.ResetTestRoot("state_")
-	// Get State db
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
-	state := GetState(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger())
 
 	// change vals at these heights
 	changeHeights := []int{1, 2, 4, 5, 10, 15, 16, 17, 20}
@@ -141,7 +138,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 		// when we get to a change height,
 		// use the next pubkey
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
-			changeIndex += 1
+			changeIndex++
 			pubkey = pubkeys[changeIndex]
 		}
 		header, parts, responses := makeHeaderPartsResponses(state, i, pubkey)
@@ -157,7 +154,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 		// we we get to the height after a change height
 		// use the next pubkey (note our counter starts at 0 this time)
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
-			changeIndex += 1
+			changeIndex++
 			pubkey = pubkeys[changeIndex]
 		}
 		testCases[i-1] = valChangeTestCase{i, pubkey}
