@@ -1,6 +1,8 @@
 RPC
 ===
 
+Coming soon: RPC docs powered by `slate <https://github.com/lord/slate>`__. Until then, read on.
+
 Tendermint supports the following RPC protocols:
 
 -  URI over HTTP
