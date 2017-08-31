@@ -5,7 +5,7 @@ As a general purpose blockchain engine, Tendermint is agnostic to the
 application you want to run. So, to run a complete blockchain that does
 something useful, you must start two programs: one is Tendermint Core,
 the other is your application, which can be written in any programming
-language. Recall from `the intro to ABCI </intro/abci-overview>`__ that
+language. Recall from `the intro to ABCI <introduction.rst#ABCI-Overview>`__ that
 Tendermint Core handles all the p2p and consensus stuff, and just
 forwards transactions to the application when they need to be validated,
 or when they're ready to be committed to a block.
@@ -13,18 +13,13 @@ or when they're ready to be committed to a block.
 In this guide, we show you some examples of how to run an application
 using Tendermint.
 
-**Note:** It is highly recommended to read the `Using Tendermint
-Guide <./using-tendermint>`__ prior to working through this
-tutorial.
-
 Install
 -------
 
-First, make sure you have `installed Tendermint </download>`__. The
-first apps we will work with are written in Go. To install them, you
-need to `install Go <https://golang.org/doc/install>`__ and `put
+The first apps we will work with are written in Go. To install them, you
+need to `install Go <https://golang.org/doc/install>`__ and put
 ``$GOPATH/bin`` in your
-``$PATH`` <https://github.com/tendermint/tendermint/wiki/Setting-GOPATH>`__.
+``$PATH``; see `here <https://github.com/tendermint/tendermint/wiki/Setting-GOPATH>`__ for more info.
 
 Then run
 
@@ -85,7 +80,7 @@ If you have used Tendermint, you may want to reset the data for a new
 blockchain by running ``tendermint unsafe_reset_all``. Then you can run
 ``tendermint node`` to start Tendermint, and connect to the app. For
 more details, see `the guide on using
-Tendermint </docs/guides/using-tendermint>`__.
+Tendermint <using-tendermint.rst>`__.
 
 You should see Tendermint making blocks! We can get the status of our
 Tendermint node as follows:
@@ -219,7 +214,7 @@ But if we send a ``1``, it works again:
     {"jsonrpc":"2.0","id":"","result":[98,{"check_tx":{},"deliver_tx":{}}],"error":""}
 
 For more details on the ``broadcast_tx`` API, see `the guide on using
-Tendermint </docs/guides/using-tendermint>`__.
+Tendermint <using-tendermint.rst>`__.
 
 Example in Another Language - CounterJS
 ---------------------------------------
@@ -228,8 +223,7 @@ We also want to run applications in another language - in this case,
 we'll run a Javascript version of the ``counter``. To run it, you'll
 need to `install node <https://nodejs.org/en/download/>`__.
 
-You'll also need to fetch the relevant repository, from
-https://github.com/tendermint/js-abci then install it. As go devs, we
+You'll also need to fetch the relevant repository, from `here <https://github.com/tendermint/js-abci>`__ then install it. As go devs, we
 keep all our code under the ``$GOPATH``, so run:
 
 ::
@@ -267,25 +261,16 @@ Neat, eh?
 A More Interesting Example - Basecoin
 -------------------------------------
 
-Before concluding, we'd like to introduce you to our star application,
-`Basecoin <https://github.com/tendermint/basecoin>`__. Unlike the
-``dummy`` and ``counter``, which are strictly for example purposes,
-``basecoin`` is designed to be actually useful - it's a general purpose
-framework for building cryptocurrencies.
+We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the``dummy`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
 
 The default ``basecoin`` application is a multi-asset cryptocurrency
 that supports inter-blockchain communication. For more details on how
 basecoin works and how to use it, see our `basecoin
-guide <https://github.com/tendermint/basecoin/blob/develop/docs/guide/basecoin-basics.md>`__
+guide <https://github.com/cosmos/cosmos-sdk/blob/develop/docs/guide/basecoin-basics.md>`__
 
-Next Step
----------
-
-In this tutorial you learned how to run applications using Tendermint on
-a single node. You saw how applications could be written in different
+In this tutorial you learned how to run applications using Tendermint on a single node. You saw how applications could be written in different
 languages, and how to send transactions and query for the latest state.
 But the true power of Tendermint comes from its ability to securely and
 efficiently run an application across a distributed network of nodes,
 while keeping them all in sync using its state-of-the-art consensus
-protocol. This is the subject of the next tutorial, where we show you
-`how to deploy Tendermint networks <deploy-testnets.rst>`__.
+protocol. Next, we show you how to deploy Tendermint testnets.

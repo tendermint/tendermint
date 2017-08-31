@@ -226,6 +226,6 @@ This adds an economic element to the security of the protocol, allowing one to q
 
 The `Cosmos Network <http://cosmos.network>`__ is designed to use this Proof-of-Stake mechanism across an array of cryptocurrencies implemented as ABCI applications.
 
-The following diagram is Tendermint in a (technical) nutshell
+The following diagram is Tendermint in a (technical) nutshell. `See here for high resolution version <https://github.com/mobfoundry/hackatom/blob/master/tminfo.pdf>`__.
 
 .. figure:: images/tm-transaction-flow.png

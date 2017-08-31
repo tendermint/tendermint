@@ -105,9 +105,3 @@ See the `App Development </docs/guides/app-development>`__ guide for
 more details on building applications, and the `Using
 Tendermint </docs/guides/using-tendermint>`__ guide for more details
 about using the ``tendermint`` program.
-
-Next Step
----------
-
-Learn how to `create your first ABCI
-app </docs/getting-started/first-abci-app>`__.
