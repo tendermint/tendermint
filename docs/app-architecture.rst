@@ -58,7 +58,7 @@ Tendermint Core RPC
 
 The concept is that the ABCI app is completely hidden from the outside
 world and only communicated through a tested and secured `interface
-exposed by the tendermint core </docs/specs/rpc>`__. This interface
+exposed by the tendermint core <./rpc.html>`__. This interface
 exposes a lot of data on the block header and consensus process, which
 is quite useful for externally verifying the system. It also includes
 3(!) methods to broadcast a transaction (propose it for the blockchain,
@@ -122,7 +122,6 @@ the number of validators, one should be able to scale our read
 performance to quite an extent (until the replication process drains too
 many resources from the validator nodes).
 
-Example Code
-------------
 
--  `TMChat <https://github.com/wolfposd/TMChat>`__
+`TMChat <https://github.com/wolfposd/TMChat>`__ is an example of an ABCI
+application.

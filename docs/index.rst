@@ -11,7 +11,7 @@ Tendermint 101:
 .. maxdepth set to 2 for sexiness
 .. but use 4 to upgrade documentation
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    introduction.rst
    install-from-source.rst
@@ -22,7 +22,7 @@ Tendermint 101:
 Tendermint 102:
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    abci-cli.rst
    app-architecture.rst

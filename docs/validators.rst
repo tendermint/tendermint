@@ -25,7 +25,7 @@ Becoming a Validator
 There are two ways to become validator.
 
 1. They can be pre-established in the `genesis
-   state </docs/specs/genesis>`__
+   state <./genesis.html>`__
 2. The `ABCI app responds to the EndBlock
    message <https://github.com/tendermint/abci>`__ with changes to the
    existing validator set.
@@ -36,9 +36,9 @@ Committing a Block
 *+2/3 is short for "more than 2/3"*
 
 A block is committed when +2/3 of the validator set sign `precommit
-votes </docs/specs/block-structure#vote>`__ for that block at the same
-`round </docs/specs/consensus>`__. The +2/3 set of precommit votes is
-called a `*commit* </docs/specs/block-structure#commit>`__. While any
+votes <./block-structure.html#vote>`__ for that block at the same
+``round``. The +2/3 set of precommit votes is
+called a `*commit* <./block-structure.html#commit>`__. While any
 +2/3 set of precommits for the same block at the same height&round can
 serve as validation, the canonical commit is included in the next block
-(see `LastCommit </docs/specs/block-structure>`__.
+(see `LastCommit <./block-structure.html>`__).

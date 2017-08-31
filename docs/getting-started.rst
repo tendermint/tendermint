@@ -52,7 +52,7 @@ application written in Javascript.
 
 Now, let's run some apps!
 
-A First Example - Dummy
+Dummy - A First Example
 -----------------------
 
 The dummy app is a `Merkle
@@ -80,7 +80,7 @@ If you have used Tendermint, you may want to reset the data for a new
 blockchain by running ``tendermint unsafe_reset_all``. Then you can run
 ``tendermint node`` to start Tendermint, and connect to the app. For
 more details, see `the guide on using
-Tendermint <using-tendermint.rst>`__.
+Tendermint <./using-tendermint.html>`__.
 
 You should see Tendermint making blocks! We can get the status of our
 Tendermint node as follows:
@@ -149,7 +149,7 @@ Now if we query for ``name``, we should get ``satoshi``, or
 Try some other transactions and queries to make sure everything is
 working!
 
-Another Example - Counter
+Counter - Another Example
 -------------------------
 
 Now that we've got the hang of it, let's try another application, the
@@ -214,9 +214,9 @@ But if we send a ``1``, it works again:
     {"jsonrpc":"2.0","id":"","result":[98,{"check_tx":{},"deliver_tx":{}}],"error":""}
 
 For more details on the ``broadcast_tx`` API, see `the guide on using
-Tendermint <using-tendermint.rst>`__.
+Tendermint <./using-tendermint.html>`__.
 
-Example in Another Language - CounterJS
+CounterJS - Example in Another Language
 ---------------------------------------
 
 We also want to run applications in another language - in this case,
@@ -258,7 +258,7 @@ like before - the results should be the same:
 
 Neat, eh?
 
-A More Interesting Example - Basecoin
+Basecoin - A More Interesting Example
 -------------------------------------
 
 We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the``dummy`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
@@ -268,7 +268,8 @@ that supports inter-blockchain communication. For more details on how
 basecoin works and how to use it, see our `basecoin
 guide <https://github.com/cosmos/cosmos-sdk/blob/develop/docs/guide/basecoin-basics.md>`__
 
-In this tutorial you learned how to run applications using Tendermint on a single node. You saw how applications could be written in different
+In this tutorial you learned how to run applications using Tendermint
+on a single node. You saw how applications could be written in different
 languages, and how to send transactions and query for the latest state.
 But the true power of Tendermint comes from its ability to securely and
 efficiently run an application across a distributed network of nodes,

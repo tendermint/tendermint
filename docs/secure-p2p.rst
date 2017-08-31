@@ -62,8 +62,8 @@ such as the Web-of-Trust or Certificate Authorities. In our case, we can
 use the blockchain itself as a certificate authority to ensure that we
 are connected to at least one validator.
 
-Links
------
+Additional Reading
+------------------
 
 -  `Implementation <https://github.com/tendermint/go-p2p/blob/master/secret_connection.go#L49>`__
 -  `Original STS paper by Whitfield Diffie, Paul C. van Oorschot and

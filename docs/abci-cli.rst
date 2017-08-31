@@ -48,7 +48,7 @@ Now run ``abci-cli --help`` to see the list of commands:
        --help, -h                           show help
        --version, -v                        print the version
 
-First Example - Dummy
+Dummy - First Example
 ---------------------
 
 The ``abci-cli`` tool lets us send ABCI messages to our application, to
@@ -148,7 +148,7 @@ but if we do ``deliver_tx "abc=efg"`` it will store ``(abc, efg)``.
 Similarly, you could put the commands in a file and run
 ``abci-cli --verbose batch < myfile``.
 
-Another Example - Counter
+Counter - Another Example
 -------------------------
 
 Now that we've got the hang of it, let's try another application, the
@@ -238,13 +238,13 @@ To run the Node JS version, ``cd`` to ``example/js`` and run
 window, run the console and those previous ABCI commands. You should get
 the same results as for the Go version.
 
+Bounties
+--------
+
 Want to write the counter app in your favorite language?! We'd be happy
 to add you to our `ecosystem <https://tendermint.com/ecosystem>`__!
 We're also offering `bounties <https://tendermint.com/bounties>`__ for
 implementations in new languages!
-
-Notes
------
 
 The ``abci-cli`` is designed strictly for testing and debugging. In a
 real deployment, the role of sending messages is taken by Tendermint,
@@ -252,6 +252,6 @@ which connects to the app using three separate connections, each with
 its own pattern of messages.
 
 For more information, see the `application developers
-guide </docs/guides/app-development>`__. For examples of running an ABCI
-app with Tendermint, see the `introductory
-guide </docs/getting-started/first-abci-app>`__.
+guide <./app-development.html>`__. For examples of running an ABCI
+app with Tendermint, see the `getting started
+guide <./getting-started.html>`__.

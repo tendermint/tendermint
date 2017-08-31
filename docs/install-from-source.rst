@@ -2,7 +2,7 @@ Install from Source
 ===================
 
 This page provides instructions on installing Tendermint from source. To
-download pre-built binaries, see the `Download page </download>`__.
+download pre-built binaries, see the `Download page <https://tendermint.com/download>`__.
 
 Install Go
 ----------
@@ -100,8 +100,3 @@ To start a one-node blockchain with a simple in-process application:
 
     tendermint init
     tendermint node --proxy_app=dummy
-
-See the `App Development </docs/guides/app-development>`__ guide for
-more details on building applications, and the `Using
-Tendermint </docs/guides/using-tendermint>`__ guide for more details
-about using the ``tendermint`` program.

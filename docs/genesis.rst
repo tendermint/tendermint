@@ -30,8 +30,6 @@ Fields
 Sample genesis.json
 ~~~~~~~~~~~~~~~~~~~
 
-This example is from the Basecoin mintnet example:
-
 .. code:: json
 
     {

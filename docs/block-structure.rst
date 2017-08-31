@@ -120,8 +120,8 @@ Vote Sign Bytes
 ^^^^^^^^^^^^^^^
 
 The ``sign-bytes`` of a vote is produced by taking a
-```stable-json`` <https://github.com/substack/json-stable-stringify>`__-like
-deterministic JSON ```wire`` </docs/specs/wire-protocol>`__ encoding of
+`stable-json <https://github.com/substack/json-stable-stringify>`__-like
+deterministic JSON `wire <./wire-protocol.html>`__ encoding of
 the vote (excluding the ``Signature`` field), and wrapping it with
 ``{"chain_id":"my_chain","vote":...}``.
 

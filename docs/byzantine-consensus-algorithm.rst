@@ -1,9 +1,6 @@
 Byzantine Consensus Algorithm
 =============================
 
-*The draft 0.6 whitepaper is outdated. The new algorithm is detailed
-below. See `revisions <#revisions>`__*
-
 Terms
 -----
 
@@ -23,7 +20,7 @@ Terms
    for something.
 -  A vote *at* ``(H,R)`` is a vote signed with the bytes for ``H`` and
    ``R`` included in its
-   ```sign-bytes`` </docs/specs/block-structure#vote-sign-bytes>`__.
+   `sign-bytes <block-structure.html#vote-sign-bytes>`__.
 -  *+2/3* is short for "more than 2/3"
 -  *1/3+* is short for "1/3 or more"
 -  A set of +2/3 of prevotes for a particular block or ``<nil>`` at
@@ -261,7 +258,7 @@ in the commit-set) are each justified in the JSet with no duplicitous
 vote signatures (by the committers).
 
 -  **Lemma**: When a fork is detected by the existence of two
-   conflicting `commits </docs/specs/validators#commiting-a-block>`__,
+   conflicting `commits <./validators.html#commiting-a-block>`__,
    the union of the JSets for both commits (if they can be compiled)
    must include double-signing by at least 1/3+ of the validator set.
    **Proof**: The commit cannot be at the same round, because that would
@@ -304,7 +301,7 @@ Censorship Attacks
 ~~~~~~~~~~~~~~~~~~
 
 Due to the definition of a block
-`commit </docs/specs/validators#commiting-a-block>`__, any 1/3+
+`commit <validators.html#commiting-a-block>`__, any 1/3+
 coalition of validators can halt the blockchain by not broadcasting
 their votes. Such a coalition can also censor particular transactions by
 rejecting blocks that include these transactions, though this would

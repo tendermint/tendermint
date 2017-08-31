@@ -12,18 +12,18 @@ Overview
 --------
 
 The objective of the light client protocol is to get a
-`commit </docs/specs/validators#committing-a-block>`__ for a recent
-`block hash </docs/specs/block-structure#block-hash>`__ where the commit
+`commit <./validators.html#committing-a-block>`__ for a recent
+`block hash <./block-structure.html#block-hash>`__ where the commit
 includes a majority of signatures from the last known validator set.
 From there, all the application state is verifiable with `merkle
-proofs </docs/specs/merkle-trees#iavl-tree>`__.
+proofs <./merkle-trees#iavl-tree>`__.
 
 Properties
 ----------
 
 -  You get the full collateralized security benefits of Tendermint; No
    need to wait for confirmations.
--  You get the full speed benefits of Tendermint; Transactions commit
+-  You get the full speed benefits of Tendermint; transactions commit
    instantly.
 -  You can get the most recent version of the application state
    non-interactively (without committing anything to the blockchain).

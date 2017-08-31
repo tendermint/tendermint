@@ -34,7 +34,7 @@ Here are the steps to setting up a testnet manually:
 
 After a few seconds, all the nodes should connect to eachother and start
 making blocks! For more information, see the Tendermint Networks section
-of `the guide to using Tendermint </docs/guides/using-tendermint>`__.
+of `the guide to using Tendermint <using-tendermint.html>`__.
 
 Automated Deployments
 ---------------------
@@ -43,15 +43,5 @@ While the manual deployment is easy enough, an automated deployment is
 always better. For this, we have the `mintnet-kubernetes
 tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__,
 which allows us to automate the deployment of a Tendermint network on an
-already provisioned kubernetes cluster.
-
-For more details, see the `mintnet-kubernetes
-directory <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__,
-and check out `Google Cloud Platform <https://cloud.google.com/>`__ for
-simple provisioning of kubernetes clusters.
-
-Next Steps
-----------
-
-Done trying out the testnet? Continue
-`onwards </docs/getting-started/next-steps>`__.
+already provisioned kubernetes cluster. And for simple provisioning of kubernetes
+cluster, check out the `Google Cloud Platform <https://cloud.google.com/>`__.

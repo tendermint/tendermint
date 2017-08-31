@@ -2,7 +2,7 @@ Using Tendermint
 ================
 
 This is a guide to using the ``tendermint`` program from the command
-line. It assumes only that you `have tendermint installed </download>`__
+line. It assumes only that you have the ``tendermint`` binary installed
 and have some rudimentary idea of what Tendermint and ABCI are.
 
 You can see the help menu with ``tendermint --help``, and the version
@@ -117,7 +117,7 @@ Configuration
 -------------
 
 Tendermint uses a ``config.toml`` for configutation. For details, see
-`the documentation </docs/specs/configuration>`__.
+`the documentation <./configuration.html>`__.
 
 Notable options include the socket address of the application
 (``proxy_app``), the listenting address of the tendermint peer
@@ -342,7 +342,7 @@ failing, you need at least four validator nodes (> 2/3).
 
 Updating validators in a live network is supported but must be
 explicitly programmed by the application developer. See the `application
-developers guide </docs/guides/app-development#Handshake>`__ for more
+developers guide <./app-development.html#Handshake>`__ for more
 details.
 
 Local Network
@@ -354,12 +354,3 @@ the listening addresses of the various sockets don't conflict.
 Additionally, you must set ``addrbook_strict=false`` in the
 ``config.toml``, otherwise Tendermint's p2p library will deny making
 connections to peers with the same IP address.
-
-More
-----
-
-Got a couple nodes talking to each other using the dummy app? Try a more
-sophisticated app like
-`Ethermint <https://github.com/tendermint/ethermint>`__, or learn more
-about building your own in the `Application Developer's
-Guide </docs/guides/app-development>`__.
