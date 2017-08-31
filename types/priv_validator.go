@@ -35,6 +35,7 @@ func voteToStep(vote *Vote) int8 {
 	}
 }
 
+// PrivValidator implements the functionality for signing blocks.
 type PrivValidator struct {
 	Address       data.Bytes       `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
@@ -58,26 +59,29 @@ type PrivValidator struct {
 // It is the caller's duty to verify the msg before calling Sign,
 // eg. to avoid double signing.
 // Currently, the only callers are SignVote and SignProposal
+// Signer is an interface that describes how to sign votes.
 type Signer interface {
 	PubKey() crypto.PubKey
 	Sign(msg []byte) (crypto.Signature, error)
 }
 
-// Implements Signer
+// DefaultSigner implements Signer.
 type DefaultSigner struct {
 	priv crypto.PrivKey
 }
 
+// NewDefaultSigner returns an instance of DefaultSigner.
 func NewDefaultSigner(priv crypto.PrivKey) *DefaultSigner {
 	return &DefaultSigner{priv: priv}
 }
 
-// Implements Signer
+// Sign implements Signer. It signs the byte slice with a private key.
 func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
 	return ds.priv.Sign(msg), nil
 }
 
-// Implements Signer
+// PubKey implements Signer. It should return the public key that corresponds
+// to the private key used for signing.
 func (ds *DefaultSigner) PubKey() crypto.PubKey {
 	return ds.priv.PubKey()
 }
