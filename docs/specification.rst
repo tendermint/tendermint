@@ -16,6 +16,5 @@ Here you'll details of the Tendermint specification. See `the spec repo <https:/
    merkle.rst
    rpc.rst
    secure-p2p.rst
-   tendermint-types.rst
    validators.rst
    wire-protocol.rst

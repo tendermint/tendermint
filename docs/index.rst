@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to Tendermint's documentation!
-=====================================
+======================================
 
 Tendermint 101:
 
@@ -36,7 +36,7 @@ Tendermint 201:
    specification
 
 Documentation (to refactor)
--------------
+---------------------------
 
 If you're new here, start with the [Tendermint Intro](/intro).
 
