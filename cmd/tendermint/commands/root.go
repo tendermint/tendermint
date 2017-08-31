@@ -38,7 +38,7 @@ var RootCmd = &cobra.Command{
 	Use:   "tendermint",
 	Short: "Tendermint Core (BFT Consensus) in Go",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
-		if cmd.Name() == versionCmd.Name() {
+		if cmd.Name() == VersionCmd.Name() {
 			return nil
 		}
 		config, err = ParseConfig()
