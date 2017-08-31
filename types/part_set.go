@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"sync"
 
 	"golang.org/x/crypto/ripemd160"
@@ -88,6 +89,8 @@ type PartSet struct {
 	parts         []*Part
 	partsBitArray *cmn.BitArray
 	count         int
+
+	Abundance *PartCounts // how many peers have each part
 }
 
 // Returns an immutable, full PartSet from the data bytes.
@@ -118,6 +121,7 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 		parts:         parts,
 		partsBitArray: partsBitArray,
 		count:         total,
+		Abundance:     NewPartCounts(total),
 	}
 }
 
@@ -129,6 +133,7 @@ func NewPartSetFromHeader(header PartSetHeader) *PartSet {
 		parts:         make([]*Part, header.Total),
 		partsBitArray: cmn.NewBitArray(header.Total),
 		count:         0,
+		Abundance:     NewPartCounts(header.Total),
 	}
 }
 
@@ -273,4 +278,75 @@ func (ps *PartSet) StringShort() string {
 		defer ps.mtx.Unlock()
 		return fmt.Sprintf("(%v of %v)", ps.Count(), ps.Total())
 	}
+}
+
+//--------------------------------------
+// for gossiping parts rarest first
+
+// TODO: access individual counts atomically instead
+type PartCounts struct {
+	mtx    sync.Mutex
+	counts []uint32
+
+	lowestIndices []int // allocated once, used to randomly choose one of the lowest indices each time
+}
+
+func NewPartCounts(size int) *PartCounts {
+	return &PartCounts{
+		counts:        make([]uint32, size),
+		lowestIndices: make([]int, size),
+	}
+}
+
+// check() checks that the peer is hearing about the part for the first time.
+// the check/update must happen atomically on PartCounts since peer parts
+// are updated concurrently
+func (pc *PartCounts) CheckAndIncrementIndex(index int, check func() bool) {
+	pc.mtx.Lock()
+	defer pc.mtx.Unlock()
+	if check() {
+		pc.counts[index] += 1
+	}
+}
+
+// panics if index >= len(pc.counts)
+func (pc *PartCounts) IncrementIndex(index int) {
+	pc.mtx.Lock()
+	defer pc.mtx.Unlock()
+	pc.counts[index] += 1
+}
+
+// Pick the first index from the bit array with the lowest count, increment the index,
+// and pass it to the setFunc.
+// Index must be incremented so that multiple concurrent calls don't pick the same value,
+// and passed to setFunc so the abundance doesnt get accidentally incremented again
+// Assumes possibleParts.Size() == len(pc.counts)
+func (pc *PartCounts) PickRarest(possibleParts *cmn.BitArray, setFunc func(int)) int {
+	pc.mtx.Lock()
+	defer pc.mtx.Unlock()
+
+	var lowest uint32 = 2 << 30 // lowest abundance
+	var lowestCount int         // degeneracy of the lowest abundance
+	for i, count := range pc.counts {
+		if possibleParts.GetIndex(i) {
+			if count < lowest {
+				lowest = count
+				pc.lowestIndices[0] = i
+				lowestCount = 1
+			} else if count == lowest {
+				pc.lowestIndices[lowestCount] = i
+				lowestCount += 1
+			}
+		}
+	}
+	var lowestIndex int
+	if lowestCount > 1 {
+		// pick a random one
+		lowestIndex = pc.lowestIndices[rand.Intn(lowestCount)]
+	} else {
+		lowestIndex = pc.lowestIndices[0]
+	}
+	pc.counts[lowestIndex] += 1
+	setFunc(lowestIndex)
+	return lowestIndex
 }
