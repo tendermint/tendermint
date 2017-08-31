@@ -31,7 +31,7 @@ Tendermint 102:
 Tendermint 201:
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    specification
 
