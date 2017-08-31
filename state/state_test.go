@@ -19,8 +19,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// setupTestCase does setup common to all test cases
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, *State) {
-
 	config := cfg.ResetTestRoot("state_")
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
 	state := GetState(stateDB, config.GenesisFile())
@@ -38,7 +38,8 @@ func TestStateCopy(t *testing.T) {
 
 	stateCopy := state.Copy()
 
-	assert.True(state.Equals(stateCopy), cmn.Fmt("expected state and its copy to be identical. got %v\n expected %v\n", stateCopy, state))
+	assert.True(state.Equals(stateCopy),
+		cmn.Fmt("exppppppected state and its copy to be identical. got %v\n expected %v\n", stateCopy, state))
 	stateCopy.LastBlockHeight++
 	assert.False(state.Equals(stateCopy), cmn.Fmt("expected states to be different. got same %v", state))
 }
@@ -51,7 +52,8 @@ func TestStateSaveLoad(t *testing.T) {
 	state.Save()
 
 	loadedState := LoadState(stateDB)
-	assert.True(state.Equals(loadedState), cmn.Fmt("expected state and its copy to be identical. got %v\n expected %v\n", loadedState, state))
+	assert.True(state.Equals(loadedState),
+		cmn.Fmt("expected state and its copy to be identical. got %v\n expected %v\n", loadedState, state))
 }
 
 func TestABCIResponsesSaveLoad(t *testing.T) {
@@ -76,7 +78,8 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 
 	state.SaveABCIResponses(abciResponses)
 	abciResponses2 := state.LoadABCIResponses()
-	assert.Equal(abciResponses, abciResponses2, cmn.Fmt("ABCIResponses don't match: Got %v, Expected %v", abciResponses2, abciResponses))
+	assert.Equal(abciResponses, abciResponses2,
+		cmn.Fmt("ABCIResponses don't match: Got %v, Expected %v", abciResponses2, abciResponses))
 }
 
 func TestValidatorSimpleSaveLoad(t *testing.T) {
@@ -170,7 +173,9 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeHeaderPartsResponses(state *State, height int, pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
+func makeHeaderPartsResponses(state *State, height int,
+	pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
+
 	block := makeBlock(height, state)
 	_, val := state.Validators.GetByIndex(0)
 	abciResponses := &ABCIResponses{

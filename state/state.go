@@ -42,17 +42,18 @@ type State struct {
 	GenesisDoc *types.GenesisDoc
 	ChainID    string
 
-	// updated at end of SetBlockAndValidators
-	LastBlockHeight int // Genesis state has this set to 0.  So, Block(H=0) does not exist.
+	// Updated at end of SetBlockAndValidators
+	// Genesis state has this set to 0.  So, Block(H=0) does not exist
+	LastBlockHeight int
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
-	LastValidators  *types.ValidatorSet // block.LastCommit validated against this
-
+	// block.LastCommit validated against LastValidators
+	LastValidators *types.ValidatorSet
 	// AppHash is updated after Commit
 	AppHash []byte
 
-	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
+	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer
 
 	// When a block returns a validator set change via EndBlock,
 	// the change only applies to the next block.
@@ -224,7 +225,8 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	nextValSet.IncrementAccum(1)
 
 	s.setBlockAndValidators(header.Height,
-		types.BlockID{header.Hash(), blockPartsHeader}, header.Time,
+		types.BlockID{header.Hash(), blockPartsHeader},
+		header.Time,
 		prevValSet, nextValSet)
 
 }
@@ -258,7 +260,7 @@ func GetState(stateDB dbm.DB, genesisFile string) *State {
 	return state
 }
 
-//--------------------------------------------------
+//------------------------------------------------------------------------
 
 // ABCIResponses retains the responses of the various ABCI calls during block processing.
 // It is persisted to disk before calling Commit.
@@ -298,10 +300,11 @@ func (vi *ValidatorsInfo) Bytes() []byte {
 	return wire.BinaryBytes(*vi)
 }
 
-//-----------------------------------------------------------------------------
+//------------------------------------------------------------------------
 // Genesis
 
-// MakeGenesisStateFromFile reads and unmarshals state from the given file.
+// MakeGenesisStateFromFile reads and unmarshals state from the given
+// file.
 //
 // Used during replay and in tests.
 func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
