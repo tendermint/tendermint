@@ -111,6 +111,10 @@ func GenPrivValidator() *PrivValidator {
 }
 
 func LoadPrivValidator(filePath string) *PrivValidator {
+	return LoadPrivValidatorWithSigner(filePath, nil)
+}
+
+func LoadPrivValidatorWithSigner(filePath string, signer Signer) *PrivValidator {
 	privValJSONBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		Exit(err.Error())
@@ -122,7 +126,11 @@ func LoadPrivValidator(filePath string) *PrivValidator {
 	}
 
 	privVal.filePath = filePath
-	privVal.Signer = NewDefaultSigner(privVal.PrivKey)
+	if signer == nil {
+		privVal.Signer = NewDefaultSigner(privVal.PrivKey)
+	} else {
+		privVal.Signer = signer
+	}
 	privVal.setPubKeyAndAddress()
 	return &privVal
 }
