@@ -35,8 +35,12 @@ func main() {
 	rootCmd.AddCommand(tc.TestnetFilesCmd)
 	rootCmd.AddCommand(tc.VersionCmd)
 
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
-	privValidator.SetSigner(types.NewDefaultSigner(privValidator.PrivKey))
+	// Override with HSM implementation, otherwise nil will trigger default
+	// software signer:
+	var signer types.Signer = nil
+
+	privValidator := types.LoadPrivValidatorWithSigner(config.PrivValidatorFile(),
+		signer)
 	rootCmd.AddCommand(tc.NewRunNodeCmd(privValidator))
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))
