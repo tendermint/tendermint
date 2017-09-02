@@ -8,9 +8,7 @@ command line.
 Install
 -------
 
-Make sure you `have Go installed <https://golang.org/doc/install>`__ and
-`put ``$GOPATH/bin`` in your
-``$PATH`` <https://github.com/tendermint/tendermint/wiki/Setting-GOPATH>`__.
+Make sure you `have Go installed <https://golang.org/doc/install>`__.
 
 Next, install the ``abci-cli`` tool and example applications:
 

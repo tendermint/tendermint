@@ -65,11 +65,13 @@ is quite useful for externally verifying the system. It also includes
 and possibly await a response). And one method to query app-specific
 data from the ABCI application.
 
-Pros: \* Server code already written \* Access to block headers to
-validate merkle proofs (nice for light clients) \* Basic read/write
-functionality is supported
+Pros:
+* Server code already written
+* Access to block headers to validate merkle proofs (nice for light clients)
+* Basic read/write functionality is supported
 
-Cons: \* Limited interface to app. All queries must be serialized into
+Cons:
+* Limited interface to app. All queries must be serialized into
 []byte (less expressive than JSON over HTTP) and there is no way to push
 data from ABCI app to the client (eg. notify me if account X receives a
 transaction)
@@ -106,9 +108,9 @@ Likely the least secure but most versatile. The client can access both
 the tendermint node for all blockchain info, as well as a custom app
 server, for complex queries and pub-sub on the abci app.
 
-Pros: \* All from both above solutions
+Pros: All from both above solutions
 
-Cons: \* Even more complexity \* Even more attack vectors (less
+Cons: Even more complexity; even more attack vectors (less
 security)
 
 Scalability
@@ -121,7 +123,3 @@ transaction-processing speed is limited by the speed of the abci app and
 the number of validators, one should be able to scale our read
 performance to quite an extent (until the replication process drains too
 many resources from the validator nodes).
-
-
-`TMChat <https://github.com/wolfposd/TMChat>`__ is an example of an ABCI
-application.

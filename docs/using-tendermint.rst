@@ -342,7 +342,7 @@ failing, you need at least four validator nodes (> 2/3).
 
 Updating validators in a live network is supported but must be
 explicitly programmed by the application developer. See the `application
-developers guide <./app-development.html#Handshake>`__ for more
+developers guide <./app-development.html>`__ for more
 details.
 
 Local Network
