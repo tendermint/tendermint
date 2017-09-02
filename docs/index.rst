@@ -7,7 +7,7 @@ Welcome to Tendermint!
 ======================
 
 
-.. image:: images/tmint-logo-blue.png
+.. image:: assets/tmint-logo-blue.png
    :height: 500px
    :width: 500px
    :align: center
