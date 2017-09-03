@@ -12,6 +12,7 @@ import (
 
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+	cfg "github.com/tendermint/tendermint/config"
 	flow "github.com/tendermint/tmlibs/flowrate"
 )
 
@@ -22,16 +23,9 @@ const (
 	updateState        = 2 * time.Second
 	pingTimeout        = 40 * time.Second
 
-	// flushThrottle used here as a default.
-	// overwritten by the user config.
-	// TODO: remove
-	flushThrottle = 100 * time.Millisecond
-
 	defaultSendQueueCapacity   = 1
-	defaultSendRate            = int64(512000) // 500KB/s
 	defaultRecvBufferCapacity  = 4096
 	defaultRecvMessageCapacity = 22020096      // 21MB
-	defaultRecvRate            = int64(512000) // 500KB/s
 	defaultSendTimeout         = 10 * time.Second
 )
 
@@ -98,22 +92,22 @@ type MConnConfig struct {
 }
 
 // DefaultMConnConfig returns the default config.
-func DefaultMConnConfig() *MConnConfig {
+func DefaultMConnConfig(config *cfg.P2PConfig) *MConnConfig {
 	return &MConnConfig{
-		SendRate:      defaultSendRate,
-		RecvRate:      defaultRecvRate,
-		flushThrottle: flushThrottle,
+		SendRate:      config.SendRate,
+		RecvRate:      config.RecvRate,
+		flushThrottle: time.Duration(config.FlushThrottleTimeout) * time.Millisecond,
 	}
 }
 
 // NewMConnection wraps net.Conn and creates multiplex connection
-func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
+func NewMConnection(config *cfg.P2PConfig, conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
 	return NewMConnectionWithConfig(
 		conn,
 		chDescs,
 		onReceive,
 		onError,
-		DefaultMConnConfig())
+		DefaultMConnConfig(config))
 }
 
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config

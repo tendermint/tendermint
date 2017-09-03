@@ -224,6 +224,15 @@ type P2PConfig struct {
 
 	// Time to wait before flushing messages out on the connection. In ms
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
+
+	// max_msg_packet_payload_size
+	MaxMsgPacketPayloadSize int `mapstructure:"max_msg_packet_payload_size"`
+
+	// send_rate
+	SendRate int64 `mapstructure:"send_rate"`
+
+	// recv_rate
+	RecvRate int64 `mapstructure:"recv_rate"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -234,6 +243,9 @@ func DefaultP2PConfig() *P2PConfig {
 		AddrBookStrict:       true,
 		MaxNumPeers:          50,
 		FlushThrottleTimeout: 100,
+		MaxMsgPacketPayloadSize: 65536,
+		SendRate:             512000,
+		RecvRate:             512000,
 	}
 }
 

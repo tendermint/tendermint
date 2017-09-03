@@ -10,6 +10,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 // Peer could be marked as persistent, in which case you can use
@@ -48,12 +49,12 @@ type PeerConfig struct {
 }
 
 // DefaultPeerConfig returns the default config.
-func DefaultPeerConfig() *PeerConfig {
+func DefaultPeerConfig(config *cfg.P2PConfig) *PeerConfig {
 	return &PeerConfig{
 		AuthEnc:          true,
 		HandshakeTimeout: 20, // * time.Second,
 		DialTimeout:      3,  // * time.Second,
-		MConfig:          DefaultMConnConfig(),
+		MConfig:          DefaultMConnConfig(config),
 		Fuzz:             false,
 		FuzzConfig:       DefaultFuzzConnConfig(),
 	}

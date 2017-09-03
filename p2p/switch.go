@@ -82,7 +82,7 @@ var (
 func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw := &Switch{
 		config:       config,
-		peerConfig:   DefaultPeerConfig(),
+		peerConfig:   DefaultPeerConfig(config),
 		reactors:     make(map[string]Reactor),
 		chDescs:      make([]*ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
@@ -176,7 +176,7 @@ func (sw *Switch) OnStart() error {
 			return err
 		}
 	}
-	
+
 	// Start listeners
 	for _, listener := range sw.listeners {
 		go sw.listenerRoutine(listener)
