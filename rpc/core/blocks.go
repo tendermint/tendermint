@@ -205,7 +205,7 @@ func Block(heightPtr *int) (*ctypes.ResultBlock, error) {
 	return &ctypes.ResultBlock{blockMeta, block}, nil
 }
 
-// Get block commit at a given height. If the height is left out, it
+// Get block commit at a given height.
 // If no height is provided, it will fetch the commit for the latest block.
 //
 // ```shell

@@ -83,7 +83,7 @@ func TestValidatorsSaveLoad(t *testing.T) {
 
 	// cant load anything for height 0
 	v, err := state.LoadValidators(0)
-	assert.NotNil(err, "expected err at height 0")
+	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at height 0")
 
 	// should be able to load for height 1
 	v, err = state.LoadValidators(1)
@@ -92,19 +92,19 @@ func TestValidatorsSaveLoad(t *testing.T) {
 
 	// increment height, save; should be able to load for next height
 	state.LastBlockHeight += 1
-	state.SaveValidators()
+	state.saveValidatorsInfo()
 	v, err = state.LoadValidators(state.LastBlockHeight + 1)
 	assert.Nil(err, "expected no err")
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// increment height, save; should be able to load for next height
 	state.LastBlockHeight += 10
-	state.SaveValidators()
+	state.saveValidatorsInfo()
 	v, err = state.LoadValidators(state.LastBlockHeight + 1)
 	assert.Nil(err, "expected no err")
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// should be able to load for next next height
 	_, err = state.LoadValidators(state.LastBlockHeight + 2)
-	assert.NotNil(err, "expected err")
+	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
 }

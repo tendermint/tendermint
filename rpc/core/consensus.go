@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Get the validator set at a give block height.
+// Get the validator set at the given block height.
 // If no height is provided, it will fetch the current validator set.
 //
 // ```shell
