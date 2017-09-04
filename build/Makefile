@@ -195,7 +195,7 @@ install-rpm-%: version-%
 	cp ./RPM-GPG-KEY-Tendermint tmp/s3/7/os/x86_64/
 	cp ./tendermint.repo tmp/s3/7/os/x86_64/
 	rm -f tmp/s3/7/os/x86_64/repodata/*.bz2 tmp/s3/7/os/x86_64/repodata/*.gz tmp/s3/7/os/x86_64/repodata/repomd.xml.asc
-	createrepo tmp/s3/7/os/x86_64/Packages -u http://tendermint-packages.s3-website-us-west-1.amazonaws.com/centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
+	createrepo tmp/s3/7/os/x86_64/Packages -u https://do9rmxapsag1v.cloudfront.net/centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --detach-sign -a tmp/s3/7/os/x86_64/repodata/repomd.xml
 	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --delete --acl public-read
 	@echo "*** Uploaded $* to AWS CentOS repository"
@@ -207,6 +207,7 @@ install-deb-%: version-%
 	aws s3 sync s3://tendermint-packages/debian/ tmp/debian-s3/ --delete
 	@echo "Testing if $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb is already uploaded"
 	test ! -f tmp/debian-s3/pool/$*-$($*_version)-$(BUILD_NUMBER)_amd64.deb
+	cp ./tendermint.list tmp/debian-s3/
 	mkdir -p tmp/debian-s3/pool tmp/debian-s3/dists/stable/main/binary-amd64
 	cp RPMS/$*-$($*_version)-$(BUILD_NUMBER)_amd64.deb tmp/debian-s3/pool
 	cp ./Release_amd64 tmp/debian-s3/dists/stable/main/binary-amd64/Release
