@@ -90,7 +90,13 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		dialing:      cmn.NewCMap(),
 		nodeInfo:     nil,
 	}
-	sw.peerConfig.MConfig.flushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond // TODO: collapse the peerConfig into the config ?
+
+	// TODO: collapse the peerConfig into the config ?
+	sw.peerConfig.MConfig.flushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
+	sw.peerConfig.MConfig.SendRate = config.SendRate
+	sw.peerConfig.MConfig.RecvRate = config.RecvRate
+	sw.peerConfig.MConfig.maxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
+
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 	return sw
 }
@@ -176,7 +182,7 @@ func (sw *Switch) OnStart() error {
 			return err
 		}
 	}
-	
+
 	// Start listeners
 	for _, listener := range sw.listeners {
 		go sw.listenerRoutine(listener)
