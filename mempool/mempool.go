@@ -179,7 +179,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 				},
 			})
 		}
-		return nil
+		return nil // TODO: return an error
 	}
 	mem.cache.Push(tx)
 	// END CACHE

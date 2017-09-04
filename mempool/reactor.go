@@ -9,6 +9,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -38,6 +39,12 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
+}
+
+// SetLogger sets the Logger on the reactor and the underlying Mempool.
+func (memR *MempoolReactor) SetLogger(l log.Logger) {
+	memR.Logger = l
+	memR.Mempool.SetLogger(l)
 }
 
 // GetChannels implements Reactor.
@@ -129,7 +136,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 		batchSize = 1 // TODO: enforce >1 when we load config ?
 	}
 
-	// next tx in mempool and possible list of next txs
+	// Next tx in mempool and possible list of next txs
 	var next *clist.CElement
 	memTxs := make(types.Txs, batchSize)
 	for {
@@ -144,7 +151,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 		}
 		memTx := next.Value.(*mempoolTx)
 
-		// make sure the peer is up to date
+		// Make sure the peer is up to date
 		height := memTx.Height()
 		if peerState_i := peer.Get(types.PeerStateKey); peerState_i != nil {
 			peerState := peerState_i.(PeerState)
@@ -154,16 +161,16 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 			}
 		}
 
-		var msg MempoolMessage
-
-		// fetch txs to send
-		// for backwards compatibility, if theres only one Tx we send the TxMessage,
-		// otherwise use TxsMessage
+		// Fetch txs to send.
+		// If there's only one, we send the TxMessage (for backwards compat).
+		// Otherwise, use TxsMessage to send many txs.
+		last := next
 		nTxs := 0
 		for i := 0; i < batchSize; i++ {
 			nTxs += 1
 			memTxs[i] = memTx.tx
-			next = next.Next()
+			last = next
+			next = last.Next()
 
 			if next == nil {
 				break
@@ -171,6 +178,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 			memTx = next.Value.(*mempoolTx)
 		}
 
+		var msg MempoolMessage
 		if nTxs > 1 {
 			msg = &TxsMessage{Txs: memTxs[:nTxs]}
 		} else {
@@ -183,7 +191,9 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 			continue
 		}
 
-		continue
+		if next == nil {
+			next = last.NextWait()
+		}
 	}
 }
 

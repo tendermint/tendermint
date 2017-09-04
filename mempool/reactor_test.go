@@ -59,7 +59,7 @@ func waitForTxs(t *testing.T, txs types.Txs, reactors []*MempoolReactor) {
 	wg := new(sync.WaitGroup)
 	for i := 0; i < len(reactors); i++ {
 		wg.Add(1)
-		go _waitForTxs(t, wg, txs, reactors[i].Mempool)
+		go _waitForTxs(t, wg, txs, i, reactors)
 	}
 
 	done := make(chan struct{})
@@ -77,14 +77,16 @@ func waitForTxs(t *testing.T, txs types.Txs, reactors []*MempoolReactor) {
 }
 
 // wait for all txs on a single mempool
-func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, mempool *Mempool) {
+func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int, reactors []*MempoolReactor) {
 
+	mempool := reactors[reactorIdx].Mempool
 	for mempool.Size() != len(txs) {
+		time.Sleep(time.Second)
 	}
 
 	reapedTxs := mempool.Reap(len(txs))
 	for i, tx := range txs {
-		assert.Equal(t, tx, reapedTxs[i], fmt.Sprintf("txs at index %d don't match: %X vs %X", i, tx, reapedTxs[i]))
+		assert.Equal(t, tx, reapedTxs[i], fmt.Sprintf("txs at index %d on reactor %d don't match: %v vs %v", i, reactorIdx, tx, reapedTxs[i]))
 	}
 	wg.Done()
 }
@@ -106,8 +108,12 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 }
 
 func TestReactorBroadcastBatchTxsMessage(t *testing.T) {
-	batchSizes := []int{1, 10, 100, 1000, 10000} // , 20000}
+	batchSizes := []int{1, 10, 100, 1000, 10000}
 	for _, batchSize := range batchSizes {
+		logger := log.TestingLogger()
+		logger.Info("----------------------------------------------------------------")
+		logger.Info("RUNNING TEST", "BATCH_SIZE", batchSize)
+		logger.Info("----------------------------------------------------------------")
 		config := cfg.TestConfig()
 		config.Mempool.TxBatchSize = batchSize
 		N := 4
