@@ -71,7 +71,7 @@ func (v *Validator) String() string {
 }
 
 // Hash computes the unique ID of a validator with a given voting power.
-// It exludes the Accum value, which changes with every round.
+// It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
 	return wire.BinaryRipemd160(struct {
 		Address     data.Bytes

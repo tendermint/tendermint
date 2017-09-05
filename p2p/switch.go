@@ -511,7 +511,7 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 }
 
 // Connect2Switches will connect switches i and j via net.Pipe().
-// Blocks until a conection is established.
+// Blocks until a connection is established.
 // NOTE: caller ensures i and j are within bounds.
 func Connect2Switches(switches []*Switch, i, j int) {
 	switchI := switches[i]
