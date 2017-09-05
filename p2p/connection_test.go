@@ -22,7 +22,7 @@ func createMConnection(conn net.Conn) *p2p.MConnection {
 }
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *p2p.MConnection {
-	chDescs := []*p2p.ChannelDescriptor{&p2p.ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
+	chDescs := []*p2p.ChannelDescriptor{{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	c := p2p.NewMConnection(conn, chDescs, onReceive, onError)
 	c.SetLogger(log.TestingLogger())
 	return c

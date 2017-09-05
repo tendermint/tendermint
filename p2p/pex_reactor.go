@@ -82,7 +82,7 @@ func (r *PEXReactor) OnStop() {
 // GetChannels implements Reactor
 func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 	return []*ChannelDescriptor{
-		&ChannelDescriptor{
+		{
 			ID:                PexChannel,
 			Priority:          1,
 			SendQueueCapacity: 10,
