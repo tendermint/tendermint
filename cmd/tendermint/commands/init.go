@@ -28,7 +28,7 @@ func initFiles(cmd *cobra.Command, args []string) {
 			genDoc := types.GenesisDoc{
 				ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
 			}
-			genDoc.Validators = []types.GenesisValidator{types.GenesisValidator{
+			genDoc.Validators = []types.GenesisValidator{{
 				PubKey: privValidator.GetPubKey(),
 				Power:  10,
 			}}

@@ -102,24 +102,24 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State, blocksSynced in
 func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:                StateChannel,
 			Priority:          5,
 			SendQueueCapacity: 100,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 DataChannel, // maybe split between gossiping current block and catchup stuff
 			Priority:           10,          // once we gossip the whole block there's nothing left to send until next height or round
 			SendQueueCapacity:  100,
 			RecvBufferCapacity: 50 * 4096,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 VoteChannel,
 			Priority:           5,
 			SendQueueCapacity:  100,
 			RecvBufferCapacity: 100 * 100,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 VoteSetBitsChannel,
 			Priority:           1,
 			SendQueueCapacity:  2,

@@ -100,12 +100,12 @@ func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 func initSwitchFunc(i int, sw *Switch) *Switch {
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
-		&ChannelDescriptor{ID: byte(0x00), Priority: 10},
-		&ChannelDescriptor{ID: byte(0x01), Priority: 10},
+		{ID: byte(0x00), Priority: 10},
+		{ID: byte(0x01), Priority: 10},
 	}, true))
 	sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
-		&ChannelDescriptor{ID: byte(0x02), Priority: 10},
-		&ChannelDescriptor{ID: byte(0x03), Priority: 10},
+		{ID: byte(0x02), Priority: 10},
+		{ID: byte(0x03), Priority: 10},
 	}, true))
 	return sw
 }
@@ -295,12 +295,12 @@ func BenchmarkSwitches(b *testing.B) {
 	s1, s2 := makeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
 		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
-			&ChannelDescriptor{ID: byte(0x00), Priority: 10},
-			&ChannelDescriptor{ID: byte(0x01), Priority: 10},
+			{ID: byte(0x00), Priority: 10},
+			{ID: byte(0x01), Priority: 10},
 		}, false))
 		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
-			&ChannelDescriptor{ID: byte(0x02), Priority: 10},
-			&ChannelDescriptor{ID: byte(0x03), Priority: 10},
+			{ID: byte(0x02), Priority: 10},
+			{ID: byte(0x03), Priority: 10},
 		}, false))
 		return sw
 	})

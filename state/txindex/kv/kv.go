@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	db "github.com/tendermint/tmlibs/db"
 )
 
 // TxIndex is the simplest possible indexer, backed by Key-Value storage (levelDB).

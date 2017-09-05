@@ -78,7 +78,7 @@ func TestPeerSend(t *testing.T) {
 
 func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
 	chDescs := []*ChannelDescriptor{
-		&ChannelDescriptor{ID: 0x01, Priority: 1},
+		{ID: 0x01, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519()

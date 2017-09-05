@@ -108,7 +108,7 @@ func (bcR *BlockchainReactor) OnStop() {
 // GetChannels implements Reactor
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:                BlockchainChannel,
 			Priority:          10,
 			SendQueueCapacity: 1000,
