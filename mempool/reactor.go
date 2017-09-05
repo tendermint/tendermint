@@ -9,6 +9,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -38,6 +39,12 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
+}
+
+// SetLogger sets the Logger on the reactor and the underlying Mempool.
+func (memR *MempoolReactor) SetLogger(l log.Logger) {
+	memR.Logger = l
+	memR.Mempool.SetLogger(l)
 }
 
 // GetChannels implements Reactor.
@@ -76,11 +83,7 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 	case *TxMessage:
 		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
-			// Bad, seen, or conflicting tx.
-			memR.Logger.Info("Could not add tx", "tx", msg.Tx)
-			return
-		} else {
-			memR.Logger.Info("Added valid tx", "tx", msg.Tx)
+			memR.Logger.Info("Could not check tx", "tx", msg.Tx, "err", err)
 		}
 		// broadcasting happens from go routines per peer
 	default:
