@@ -13,7 +13,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	// start a tendermint node (and merkleeyes) in the background to test against
+	// start a tendermint node in the background to test against
 	app := dummy.NewDummyApplication()
 	node := rpctest.StartTendermint(app)
 	code := m.Run()
