@@ -9,6 +9,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -38,6 +39,12 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
 	return memR
+}
+
+// SetLogger sets the Logger on the reactor and the underlying Mempool.
+func (memR *MempoolReactor) SetLogger(l log.Logger) {
+	memR.Logger = l
+	memR.Mempool.SetLogger(l)
 }
 
 // GetChannels implements Reactor.
@@ -83,6 +90,17 @@ func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
 			memR.Logger.Info("Added valid tx", "tx", msg.Tx)
 		}
 		// broadcasting happens from go routines per peer
+	case *TxsMessage:
+		for _, tx := range msg.Txs {
+			err := memR.Mempool.CheckTx(tx, nil)
+			if err != nil {
+				// Bad, seen, or conflicting tx.
+				memR.Logger.Info("Could not add tx", "tx", tx)
+			} else {
+				memR.Logger.Info("Added valid tx", "tx", tx)
+			}
+		}
+		// broadcasting happens from go routines per peer
 	default:
 		memR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -113,7 +131,14 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 		return
 	}
 
+	batchSize := memR.config.TxBatchSize
+	if batchSize <= 0 {
+		batchSize = 1 // TODO: enforce >1 when we load config ?
+	}
+
+	// Next tx in mempool and possible list of next txs
 	var next *clist.CElement
+	memTxs := make(types.Txs, batchSize)
 	for {
 		if !memR.IsRunning() || !peer.IsRunning() {
 			return // Quit!
@@ -125,7 +150,8 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 			next = memR.Mempool.TxsFrontWait() // Wait until a tx is available
 		}
 		memTx := next.Value.(*mempoolTx)
-		// make sure the peer is up to date
+
+		// Make sure the peer is up to date
 		height := memTx.Height()
 		if peerState_i := peer.Get(types.PeerStateKey); peerState_i != nil {
 			peerState := peerState_i.(PeerState)
@@ -134,16 +160,40 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 				continue
 			}
 		}
-		// send memTx
-		msg := &TxMessage{Tx: memTx.tx}
+
+		// Fetch txs to send.
+		// If there's only one, we send the TxMessage (for backwards compat).
+		// Otherwise, use TxsMessage to send many txs.
+		last := next
+		nTxs := 0
+		for i := 0; i < batchSize; i++ {
+			nTxs += 1
+			memTxs[i] = memTx.tx
+			last = next
+			next = last.Next()
+
+			if next == nil {
+				break
+			}
+			memTx = next.Value.(*mempoolTx)
+		}
+
+		var msg MempoolMessage
+		if nTxs > 1 {
+			msg = &TxsMessage{Txs: memTxs[:nTxs]}
+		} else {
+			msg = &TxMessage{Tx: memTxs[0]}
+		}
+
 		success := peer.Send(MempoolChannel, struct{ MempoolMessage }{msg})
 		if !success {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
 
-		next = next.NextWait()
-		continue
+		if next == nil {
+			next = last.NextWait()
+		}
 	}
 }
 
@@ -156,7 +206,8 @@ func (memR *MempoolReactor) SetEventSwitch(evsw types.EventSwitch) {
 // Messages
 
 const (
-	msgTypeTx = byte(0x01)
+	msgTypeTx  = byte(0x01)
+	msgTypeTxs = byte(0x02)
 )
 
 // MempoolMessage is a message sent or received by the MempoolReactor.
@@ -165,6 +216,7 @@ type MempoolMessage interface{}
 var _ = wire.RegisterInterface(
 	struct{ MempoolMessage }{},
 	wire.ConcreteType{&TxMessage{}, msgTypeTx},
+	wire.ConcreteType{&TxsMessage{}, msgTypeTxs},
 )
 
 // DecodeMessage decodes a byte-array into a MempoolMessage.
@@ -186,4 +238,16 @@ type TxMessage struct {
 // String returns a string representation of the TxMessage.
 func (m *TxMessage) String() string {
 	return fmt.Sprintf("[TxMessage %v]", m.Tx)
+}
+
+//-------------------------------------
+
+// TxsMessage is a MempoolMessage containing many transactions.
+type TxsMessage struct {
+	Txs types.Txs
+}
+
+// String returns a string representation of the TxMessage.
+func (m *TxsMessage) String() string {
+	return fmt.Sprintf("[TxsMessage %v]", m.Txs)
 }
