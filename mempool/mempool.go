@@ -179,7 +179,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 				},
 			})
 		}
-		return nil
+		return nil // TODO: return an error (?)
 	}
 	mem.cache.Push(tx)
 	// END CACHE
@@ -216,21 +216,23 @@ func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
+		tx := req.GetCheckTx().Tx
 		if r.CheckTx.Code == abci.CodeType_OK {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter: mem.counter,
 				height:  int64(mem.height),
-				tx:      req.GetCheckTx().Tx,
+				tx:      tx,
 			}
 			mem.txs.PushBack(memTx)
+			mem.logger.Info("Added good transaction", "tx", tx, "res", r)
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("Bad Transaction", "res", r)
+			mem.logger.Info("Rejected bad transaction", "tx", tx, "res", r)
 
 			// remove from cache (it might be good later)
-			mem.cache.Remove(req.GetCheckTx().Tx)
+			mem.cache.Remove(tx)
 
 			// TODO: handle other retcodes
 		}

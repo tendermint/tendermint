@@ -15,14 +15,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func newMempoolWithApp(t *testing.T, cc proxy.ClientCreator) *Mempool {
+func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 	config := cfg.ResetTestRoot("mempool_test")
 
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
-	if _, err := appConnMem.Start(); err != nil {
-		t.Fatalf("Error starting ABCI client: %v", err.Error())
-	}
+	appConnMem.Start()
 	mempool := NewMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
 	return mempool
@@ -46,7 +44,7 @@ func ensureFire(t *testing.T, ch <-chan int, timeoutMS int) {
 	}
 }
 
-func sendTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
+func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 	txs := make(types.Txs, count)
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
@@ -63,7 +61,7 @@ func sendTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 func TestTxsAvailable(t *testing.T) {
 	app := dummy.NewDummyApplication()
 	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(t, cc)
+	mempool := newMempoolWithApp(cc)
 	mempool.EnableTxsAvailable()
 
 	timeoutMS := 500
@@ -72,7 +70,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch of txs, it should only fire once
-	txs := sendTxs(t, mempool, 100)
+	txs := checkTxs(t, mempool, 100)
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
@@ -85,7 +83,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs. we already fired for this height so it shouldnt fire again
-	moreTxs := sendTxs(t, mempool, 50)
+	moreTxs := checkTxs(t, mempool, 50)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left
@@ -94,7 +92,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs, it should only fire once
-	sendTxs(t, mempool, 100)
+	checkTxs(t, mempool, 100)
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 }
@@ -104,7 +102,7 @@ func TestSerialReap(t *testing.T) {
 	app.SetOption("serial", "on")
 	cc := proxy.NewLocalClientCreator(app)
 
-	mempool := newMempoolWithApp(t, cc)
+	mempool := newMempoolWithApp(cc)
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	if _, err := appConnCon.Start(); err != nil {

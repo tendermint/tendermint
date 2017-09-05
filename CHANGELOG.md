@@ -1,5 +1,46 @@
 # Changelog
 
+## Roadmap
+
+BREAKING CHANGES:
+- Upgrade the header to support better proves on validtors, results, evidence, and possibly more
+- Better support for injecting randomness
+- Pass evidence/voteInfo through ABCI
+- Upgrade consensus for more real-time use of evidence
+
+FEATURES:
+- Peer reputation management
+- Use the chain as its own CA for nodes and validators     
+- Tooling to run multiple blockchains/apps, possibly in a single process      
+- State syncing (without transaction replay)      
+- Improved support for querying history and state        
+- Add authentication and rate-limitting to the RPC
+
+IMPROVEMENTS:
+- Improve subtleties around mempool caching and logic		
+- Consensus optimizations: 		
+	- cache block parts for faster agreement after round changes
+	- propagate block parts rarest first
+- Better testing of the consensus state machine (ie. use a DSL)		
+- Auto compiled serialization/deserialization code instead of go-wire reflection
+
+BUG FIXES:		
+- Graceful handling/recovery for apps that have non-determinism or fail to halt		
+- Graceful handling/recovery for violations of safety, or liveness
+
+## 0.10.4 (Septemeber 5, 2017)
+
+IMPROVEMENTS:
+- docs: Added Slate docs to each rpc function (see rpc/core) 
+- docs: Ported all website docs to Read The Docs 
+- config: expose some p2p params to tweak performance: RecvRate, SendRate, and MaxMsgPacketPayloadSize
+- rpc: Upgrade the websocket client and server, including improved auto reconnect, and proper ping/pong
+
+BUG FIXES:
+- consensus: fix panic on getVoteBitArray
+- consensus: hang instead of panicking on byzantine consensus failures
+- cmd: dont load config for version command
+
 ## 0.10.3 (August 10, 2017)
 
 FEATURES:
