@@ -11,7 +11,7 @@
   - { regexp: "^#RateLimitBurst", line: "RateLimitBurst=0" }
 
 - name: Restart journald
-  system: name=systemd-journald state=restarted
+  service: name=systemd-journald state=restarted
 
 - include: debian.yml
   when: ansible_os_family == "Debian"
