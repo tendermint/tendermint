@@ -222,16 +222,16 @@ type P2PConfig struct {
 	// Maximum number of peers to connect to
 	MaxNumPeers int `mapstructure:"max_num_peers"`
 
-	// Time to wait before flushing messages out on the connection. In ms
+	// Time to wait before flushing messages out on the connection, in ms
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
 
-	// Maximum size of a message packet payload
+	// Maximum size of a message packet payload, in bytes
 	MaxMsgPacketPayloadSize int `mapstructure:"max_msg_packet_payload_size"`
 
-	// Rate at which packets can be sent (in bytes/second)
+	// Rate at which packets can be sent, in bytes/second
 	SendRate int64 `mapstructure:"send_rate"`
 
-	// Rate at which packets can be received (in bytes/second)
+	// Rate at which packets can be received, in bytes/second
 	RecvRate int64 `mapstructure:"recv_rate"`
 }
 
