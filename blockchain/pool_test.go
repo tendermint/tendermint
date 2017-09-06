@@ -36,7 +36,12 @@ func TestBasic(t *testing.T) {
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.SetLogger(log.TestingLogger())
-	pool.Start()
+
+	_, err := pool.Start()
+	if err != nil {
+		t.Error(err)
+	}
+
 	defer pool.Stop()
 
 	// Introduce each peer.
@@ -88,7 +93,10 @@ func TestTimeout(t *testing.T) {
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.SetLogger(log.TestingLogger())
-	pool.Start()
+	_, err := pool.Start()
+	if err != nil {
+		t.Error(err)
+	}
 	defer pool.Stop()
 
 	for _, peer := range peers {

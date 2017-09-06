@@ -26,10 +26,18 @@ const (
 // modify in the test cases.
 // NOTE: it unsets all TM* env variables.
 func isolate(cmds ...*cobra.Command) cli.Executable {
-	os.Unsetenv("TMHOME")
-	os.Unsetenv("TM_HOME")
-	os.Unsetenv("TMROOT")
-	os.Unsetenv("TM_ROOT")
+	if err := os.Unsetenv("TMHOME"); err != nil {
+		panic(err)
+	}
+	if err := os.Unsetenv("TM_HOME"); err != nil {
+		panic(err)
+	}
+	if err := os.Unsetenv("TMROOT"); err != nil {
+		panic(err)
+	}
+	if err := os.Unsetenv("TM_ROOT"); err != nil {
+		panic(err)
+	}
 
 	viper.Reset()
 	config = cfg.DefaultConfig()

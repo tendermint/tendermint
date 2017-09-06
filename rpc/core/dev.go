@@ -29,7 +29,9 @@ func UnsafeStartCPUProfiler(filename string) (*ctypes.ResultUnsafeProfile, error
 
 func UnsafeStopCPUProfiler() (*ctypes.ResultUnsafeProfile, error) {
 	pprof.StopCPUProfile()
-	profFile.Close()
+	if err := profFile.Close(); err != nil {
+		return nil, err
+	}
 	return &ctypes.ResultUnsafeProfile{}, nil
 }
 
@@ -38,8 +40,12 @@ func UnsafeWriteHeapProfile(filename string) (*ctypes.ResultUnsafeProfile, error
 	if err != nil {
 		return nil, err
 	}
-	pprof.WriteHeapProfile(memProfFile)
-	memProfFile.Close()
+	if err := pprof.WriteHeapProfile(memProfFile); err != nil {
+		return nil, err
+	}
+	if err := memProfFile.Close(); err != nil {
+		return nil, err
+	}
 
 	return &ctypes.ResultUnsafeProfile{}, nil
 }

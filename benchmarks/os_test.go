@@ -18,12 +18,16 @@ func BenchmarkFileWrite(b *testing.B) {
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {
-		file.Write([]byte(testString))
+		_, err := file.Write([]byte(testString))
+		if err != nil {
+			b.Error(err)
+		}
 	}
 
-	file.Close()
-	err = os.Remove("benchmark_file_write.out")
-	if err != nil {
+	if err := file.Close(); err != nil {
+		b.Error(err)
+	}
+	if err := os.Remove("benchmark_file_write.out"); err != nil {
 		b.Error(err)
 	}
 }

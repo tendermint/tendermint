@@ -82,7 +82,9 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, 
 
 // OnStart implements BaseService
 func (bcR *BlockchainReactor) OnStart() error {
-	bcR.BaseReactor.OnStart()
+	if err := bcR.BaseReactor.OnStart(); err != nil {
+		return err
+	}
 	if bcR.fastSync {
 		_, err := bcR.pool.Start()
 		if err != nil {

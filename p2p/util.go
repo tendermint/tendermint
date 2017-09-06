@@ -7,9 +7,15 @@ import (
 // doubleSha256 calculates sha256(sha256(b)) and returns the resulting bytes.
 func doubleSha256(b []byte) []byte {
 	hasher := sha256.New()
-	hasher.Write(b)
+	_, err := hasher.Write(b)
+	if err != nil {
+		panic(err)
+	}
 	sum := hasher.Sum(nil)
 	hasher.Reset()
-	hasher.Write(sum)
+	_, err = hasher.Write(sum)
+	if err != nil {
+		panic(err)
+	}
 	return hasher.Sum(nil)
 }

@@ -63,7 +63,9 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 	// Write genesis file.
 	for i := 0; i < nValidators; i++ {
 		mach := cmn.Fmt("mach%d", i)
-		genDoc.SaveAs(path.Join(dataDir, mach, "genesis.json"))
+		if err := genDoc.SaveAs(path.Join(dataDir, mach, "genesis.json")); err != nil {
+			panic(err)
+		}
 	}
 
 	fmt.Println(cmn.Fmt("Successfully initialized %v node directories", nValidators))

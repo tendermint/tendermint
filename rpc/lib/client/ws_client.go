@@ -276,10 +276,11 @@ func (c *WSClient) processBacklog() error {
 	select {
 	case request := <-c.backlog:
 		if c.writeWait > 0 {
-			c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
+				panic(err)
+			}
 		}
-		err := c.conn.WriteJSON(request)
-		if err != nil {
+		if err := c.conn.WriteJSON(request); err != nil {
 			c.Logger.Error("failed to resend request", "err", err)
 			c.reconnectAfter <- err
 			// requeue request
@@ -298,8 +299,7 @@ func (c *WSClient) reconnectRoutine() {
 		case originalError := <-c.reconnectAfter:
 			// wait until writeRoutine and readRoutine finish
 			c.wg.Wait()
-			err := c.reconnect()
-			if err != nil {
+			if err := c.reconnect(); err != nil {
 				c.Logger.Error("failed to reconnect", "err", err, "original_err", originalError)
 				c.Stop()
 				return
@@ -338,7 +338,9 @@ func (c *WSClient) writeRoutine() {
 
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			// panic(err) FIXME: this panic will trigger in tests
+		}
 		c.wg.Done()
 	}()
 
@@ -346,10 +348,11 @@ func (c *WSClient) writeRoutine() {
 		select {
 		case request := <-c.send:
 			if c.writeWait > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+				if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
+					panic(err)
+				}
 			}
-			err := c.conn.WriteJSON(request)
-			if err != nil {
+			if err := c.conn.WriteJSON(request); err != nil {
 				c.Logger.Error("failed to send request", "err", err)
 				c.reconnectAfter <- err
 				// add request to the backlog, so we don't lose it
@@ -358,10 +361,11 @@ func (c *WSClient) writeRoutine() {
 			}
 		case <-ticker.C:
 			if c.writeWait > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+				if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
+					panic(err)
+				}
 			}
-			err := c.conn.WriteMessage(websocket.PingMessage, []byte{})
-			if err != nil {
+			if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				c.Logger.Error("failed to write ping", "err", err)
 				c.reconnectAfter <- err
 				return
@@ -373,7 +377,9 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit:
-			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+				panic(err)
+			}
 			return
 		}
 	}
@@ -383,7 +389,9 @@ func (c *WSClient) writeRoutine() {
 // executing all reads from this goroutine.
 func (c *WSClient) readRoutine() {
 	defer func() {
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			// panic(err) FIXME: this panic will trigger in tests
+		}
 		c.wg.Done()
 	}()
 
@@ -401,7 +409,9 @@ func (c *WSClient) readRoutine() {
 	for {
 		// reset deadline for every message type (control or data)
 		if c.readWait > 0 {
-			c.conn.SetReadDeadline(time.Now().Add(c.readWait))
+			if err := c.conn.SetReadDeadline(time.Now().Add(c.readWait)); err != nil {
+				panic(err)
+			}
 		}
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
