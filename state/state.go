@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -21,6 +22,10 @@ var (
 	stateKey         = []byte("stateKey")
 	abciResponsesKey = []byte("abciResponsesKey")
 )
+
+func calcValidatorsKey(height int) []byte {
+	return []byte(cmn.Fmt("validatorsKey:%v", height))
+}
 
 //-----------------------------------------------------------------------------
 
@@ -49,6 +54,12 @@ type State struct {
 
 	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
 
+	// When a block returns a validator set change via EndBlock,
+	// the change only applies to the next block.
+	// So, if s.LastBlockHeight causes a valset change,
+	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
+	LastHeightValidatorsChanged int
+
 	logger log.Logger
 }
 
@@ -71,6 +82,7 @@ func loadState(db dbm.DB, key []byte) *State {
 		}
 		// TODO: ensure that buf is completely read.
 	}
+
 	return s
 }
 
@@ -82,17 +94,18 @@ func (s *State) SetLogger(l log.Logger) {
 // Copy makes a copy of the State for mutating.
 func (s *State) Copy() *State {
 	return &State{
-		db:              s.db,
-		GenesisDoc:      s.GenesisDoc,
-		ChainID:         s.ChainID,
-		LastBlockHeight: s.LastBlockHeight,
-		LastBlockID:     s.LastBlockID,
-		LastBlockTime:   s.LastBlockTime,
-		Validators:      s.Validators.Copy(),
-		LastValidators:  s.LastValidators.Copy(),
-		AppHash:         s.AppHash,
-		TxIndexer:       s.TxIndexer, // pointer here, not value
-		logger:          s.logger,
+		db:                          s.db,
+		GenesisDoc:                  s.GenesisDoc,
+		ChainID:                     s.ChainID,
+		LastBlockHeight:             s.LastBlockHeight,
+		LastBlockID:                 s.LastBlockID,
+		LastBlockTime:               s.LastBlockTime,
+		Validators:                  s.Validators.Copy(),
+		LastValidators:              s.LastValidators.Copy(),
+		AppHash:                     s.AppHash,
+		TxIndexer:                   s.TxIndexer, // pointer here, not value
+		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
+		logger: s.logger,
 	}
 }
 
@@ -100,6 +113,7 @@ func (s *State) Copy() *State {
 func (s *State) Save() {
 	s.mtx.Lock()
 	defer s.mtx.Unlock()
+	s.saveValidatorsInfo()
 	s.db.SetSync(stateKey, s.Bytes())
 }
 
@@ -126,6 +140,57 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 	return abciResponses
 }
 
+// LoadValidators loads the ValidatorSet for a given height.
+func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
+	v := s.loadValidators(height)
+	if v == nil {
+		return nil, ErrNoValSetForHeight{height}
+	}
+
+	if v.ValidatorSet == nil {
+		v = s.loadValidators(v.LastHeightChanged)
+		if v == nil {
+			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at 
+			height %d as last changed from height %d`, v.LastHeightChanged, height))
+		}
+	}
+
+	return v.ValidatorSet, nil
+}
+
+func (s *State) loadValidators(height int) *ValidatorsInfo {
+	buf := s.db.Get(calcValidatorsKey(height))
+	if len(buf) == 0 {
+		return nil
+	}
+
+	v := new(ValidatorsInfo)
+	r, n, err := bytes.NewReader(buf), new(int), new(error)
+	wire.ReadBinaryPtr(v, r, 0, n, err)
+	if *err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(cmn.Fmt("LoadValidators: Data has been corrupted or its spec has changed: %v\n", *err))
+	}
+	// TODO: ensure that buf is completely read.
+	return v
+}
+
+// saveValidatorsInfo persists the validator set for the next block to disk.
+// It should be called from s.Save(), right before the state itself is persisted.
+// If the validator set did not change after processing the latest block,
+// only the last height for which the validators changed is persisted.
+func (s *State) saveValidatorsInfo() {
+	changeHeight := s.LastHeightValidatorsChanged
+	nextHeight := s.LastBlockHeight + 1
+	vi := &ValidatorsInfo{
+		LastHeightChanged: changeHeight,
+	}
+	if changeHeight == nextHeight {
+		vi.ValidatorSet = s.Validators
+	}
+	s.db.SetSync(calcValidatorsKey(nextHeight), vi.Bytes())
+}
+
 // Equals returns true if the States are identical.
 func (s *State) Equals(s2 *State) bool {
 	return bytes.Equal(s.Bytes(), s2.Bytes())
@@ -144,10 +209,15 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	prevValSet := s.Validators.Copy()
 	nextValSet := prevValSet.Copy()
 
-	err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
-	if err != nil {
-		s.logger.Error("Error changing validator set", "err", err)
-		// TODO: err or carry on?
+	// update the validator set with the latest abciResponses
+	if len(abciResponses.EndBlock.Diffs) > 0 {
+		err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
+		if err != nil {
+			s.logger.Error("Error changing validator set", "err", err)
+			// TODO: err or carry on?
+		}
+		// change results from this height but only applies to the next height
+		s.LastHeightValidatorsChanged = header.Height + 1
 	}
 
 	// Update validator accums and set state variables
@@ -216,6 +286,19 @@ func (a *ABCIResponses) Bytes() []byte {
 }
 
 //-----------------------------------------------------------------------------
+
+// ValidatorsInfo represents the latest validator set, or the last time it changed
+type ValidatorsInfo struct {
+	ValidatorSet      *types.ValidatorSet
+	LastHeightChanged int
+}
+
+// Bytes serializes the ValidatorsInfo using go-wire
+func (vi *ValidatorsInfo) Bytes() []byte {
+	return wire.BinaryBytes(*vi)
+}
+
+//-----------------------------------------------------------------------------
 // Genesis
 
 // MakeGenesisStateFromFile reads and unmarshals state from the given file.
@@ -260,15 +343,16 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 	}
 
 	return &State{
-		db:              db,
-		GenesisDoc:      genDoc,
-		ChainID:         genDoc.ChainID,
-		LastBlockHeight: 0,
-		LastBlockID:     types.BlockID{},
-		LastBlockTime:   genDoc.GenesisTime,
-		Validators:      types.NewValidatorSet(validators),
-		LastValidators:  types.NewValidatorSet(nil),
-		AppHash:         genDoc.AppHash,
-		TxIndexer:       &null.TxIndex{}, // we do not need indexer during replay and in tests
+		db:                          db,
+		GenesisDoc:                  genDoc,
+		ChainID:                     genDoc.ChainID,
+		LastBlockHeight:             0,
+		LastBlockID:                 types.BlockID{},
+		LastBlockTime:               genDoc.GenesisTime,
+		Validators:                  types.NewValidatorSet(validators),
+		LastValidators:              types.NewValidatorSet(nil),
+		AppHash:                     genDoc.AppHash,
+		TxIndexer:                   &null.TxIndex{}, // we do not need indexer during replay and in tests
+		LastHeightValidatorsChanged: 1,
 	}
 }

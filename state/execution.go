@@ -239,7 +239,7 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 
 	fail.Fail() // XXX
 
-	// save the state
+	// save the state and the validators
 	s.Save()
 
 	return nil

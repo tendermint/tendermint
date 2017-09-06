@@ -7,7 +7,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Get current validators set along with a block height.
+// Get the validator set at the given block height.
+// If no height is provided, it will fetch the current validator set.
 //
 // ```shell
 // curl 'localhost:46657/validators'
@@ -41,9 +42,19 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Validators() (*ctypes.ResultValidators, error) {
-	blockHeight, validators := consensusState.GetValidators()
-	return &ctypes.ResultValidators{blockHeight, validators}, nil
+func Validators(heightPtr *int) (*ctypes.ResultValidators, error) {
+	if heightPtr == nil {
+		blockHeight, validators := consensusState.GetValidators()
+		return &ctypes.ResultValidators{blockHeight, validators}, nil
+	}
+
+	height := *heightPtr
+	state := consensusState.GetState()
+	validators, err := state.LoadValidators(height)
+	if err != nil {
+		return nil, err
+	}
+	return &ctypes.ResultValidators{height, validators.Validators}, nil
 }
 
 // Dump consensus state.

@@ -324,8 +324,11 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
+	//
 	// Note that we don't have an old version of the state,
 	// so we by-pass state validation/mutation using sm.ExecCommitBlock.
+	// This also means we won't be saving validator sets if they change during this period.
+	//
 	// If mutateState == true, the final block is replayed with h.replayBlock()
 
 	var appHash []byte

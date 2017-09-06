@@ -116,14 +116,14 @@ func (c Client) Genesis() (*ctypes.ResultGenesis, error) {
 	return core.Genesis()
 }
 
-func (c Client) Block(height int) (*ctypes.ResultBlock, error) {
+func (c Client) Block(height *int) (*ctypes.ResultBlock, error) {
 	return core.Block(height)
 }
 
-func (c Client) Commit(height int) (*ctypes.ResultCommit, error) {
+func (c Client) Commit(height *int) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 
-func (c Client) Validators() (*ctypes.ResultValidators, error) {
-	return core.Validators()
+func (c Client) Validators(height *int) (*ctypes.ResultValidators, error) {
+	return core.Validators(height)
 }
