@@ -1,6 +1,8 @@
 package state
 
 import (
+	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +14,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestStateCopyEquals(t *testing.T) {
@@ -73,7 +76,7 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 	assert.Equal(abciResponses, abciResponses2, cmn.Fmt("ABCIResponses don't match: Got %v, Expected %v", abciResponses2, abciResponses))
 }
 
-func TestValidatorsSaveLoad(t *testing.T) {
+func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 	config := cfg.ResetTestRoot("state_")
 	// Get State db
@@ -107,4 +110,90 @@ func TestValidatorsSaveLoad(t *testing.T) {
 	// should be able to load for next next height
 	_, err = state.LoadValidators(state.LastBlockHeight + 2)
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
+}
+
+func TestValidatorChangesSaveLoad(t *testing.T) {
+	assert := assert.New(t)
+	config := cfg.ResetTestRoot("state_")
+	// Get State db
+	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
+	state := GetState(stateDB, config.GenesisFile())
+	state.SetLogger(log.TestingLogger())
+
+	// change vals at these heights
+	changeHeights := []int{1, 2, 4, 5, 10, 15, 16, 17, 20}
+	N := len(changeHeights)
+
+	// each valset is just one validator.
+	// create list of them
+	pubkeys := make([]crypto.PubKey, N+1)
+	pubkeys[0] = state.GenesisDoc.Validators[0].PubKey
+	for i := 1; i < N+1; i++ {
+		pubkeys[i] = crypto.GenPrivKeyEd25519().PubKey()
+	}
+
+	// build the validator history by running SetBlockAndValidators
+	// with the right validator set for each height
+	highestHeight := changeHeights[N-1] + 5
+	changeIndex := 0
+	pubkey := pubkeys[changeIndex]
+	for i := 1; i < highestHeight; i++ {
+		// when we get to a change height,
+		// use the next pubkey
+		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
+			changeIndex += 1
+			pubkey = pubkeys[changeIndex]
+		}
+		header, parts, responses := makeHeaderPartsResponses(state, i, pubkey)
+		state.SetBlockAndValidators(header, parts, responses)
+		state.saveValidatorsInfo()
+	}
+
+	// make all the test cases by using the same validator until after the change
+	testCases := make([]valChangeTestCase, highestHeight)
+	changeIndex = 0
+	pubkey = pubkeys[changeIndex]
+	for i := 1; i < highestHeight+1; i++ {
+		// we we get to the height after a change height
+		// use the next pubkey (note our counter starts at 0 this time)
+		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
+			changeIndex += 1
+			pubkey = pubkeys[changeIndex]
+		}
+		testCases[i-1] = valChangeTestCase{i, pubkey}
+	}
+
+	for _, testCase := range testCases {
+		v, err := state.LoadValidators(testCase.height)
+		assert.Nil(err, fmt.Sprintf("expected no err at height %d", testCase.height))
+		assert.Equal(v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
+		addr, _ := v.GetByIndex(0)
+
+		assert.Equal(addr, testCase.vals.Address(), fmt.Sprintf("unexpected pubkey at height %d", testCase.height))
+	}
+}
+
+func makeHeaderPartsResponses(state *State, height int, pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
+	block := makeBlock(height, state)
+	_, val := state.Validators.GetByIndex(0)
+	abciResponses := &ABCIResponses{
+		Height: height,
+	}
+
+	// if the pubkey is new, remove the old and add the new
+	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
+		abciResponses.EndBlock = abci.ResponseEndBlock{
+			Diffs: []*abci.Validator{
+				{val.PubKey.Bytes(), 0},
+				{pubkey.Bytes(), 10},
+			},
+		}
+	}
+
+	return block.Header, types.PartSetHeader{}, abciResponses
+}
+
+type valChangeTestCase struct {
+	height int
+	vals   crypto.PubKey
 }

@@ -2,6 +2,7 @@ package state
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -53,6 +54,10 @@ type State struct {
 
 	TxIndexer txindex.TxIndexer `json:"-"` // Transaction indexer.
 
+	// When a block returns a validator set change via EndBlock,
+	// the change only applies to the next block.
+	// So, if s.LastBlockHeight causes a valset change,
+	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
 	LastHeightValidatorsChanged int
 
 	logger log.Logger
@@ -145,7 +150,8 @@ func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
 	if v.ValidatorSet == nil {
 		v = s.loadValidators(v.LastHeightChanged)
 		if v == nil {
-			return nil, ErrNoValSetForHeight{height}
+			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at 
+			height %d as last changed from height %d`, v.LastHeightChanged, height))
 		}
 	}
 
@@ -170,7 +176,7 @@ func (s *State) loadValidators(height int) *ValidatorsInfo {
 }
 
 // saveValidatorsInfo persists the validator set for the next block to disk.
-// It should be called after the validator set is updated with the results of EndBlock.
+// It should be called from s.Save(), right before the state itself is persisted.
 // If the validator set did not change after processing the latest block,
 // only the last height for which the validators changed is persisted.
 func (s *State) saveValidatorsInfo() {
