@@ -35,8 +35,8 @@ func NewPeerSet() *PeerSet {
 	}
 }
 
-// Add returns false if the peer's Key (PubKeyEd25519) is already memoized.
-// If the peer was already added, it returns ErrSwitchDuplicatePeer.
+// Add adds the peer to the PeerSet.
+// It returns ErrSwitchDuplicatePeer if the peer is already present.
 func (ps *PeerSet) Add(peer *Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -52,7 +52,7 @@ func (ps *PeerSet) Add(peer *Peer) error {
 	return nil
 }
 
-// Has returns true iff the peerset contains
+// Has returns true iff the PeerSet contains
 // the peer referred to by this peerKey.
 func (ps *PeerSet) Has(peerKey string) bool {
 	ps.mtx.Lock()
