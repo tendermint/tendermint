@@ -93,7 +93,12 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 	if err != nil {
 		return nil, err
 	}
-	defer httpResponse.Body.Close()
+	defer func() {
+		if err := httpResponse.Body.Close(); err != nil {
+			panic(err)
+			return
+		}
+	}()
 	responseBytes, err := ioutil.ReadAll(httpResponse.Body)
 	if err != nil {
 		return nil, err
@@ -128,7 +133,12 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			panic(err)
+			return
+		}
+	}()
 	responseBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err

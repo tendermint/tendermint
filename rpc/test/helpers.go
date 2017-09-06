@@ -92,7 +92,10 @@ func GetGRPCClient() core_grpc.BroadcastAPIClient {
 // StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
 func StartTendermint(app abci.Application) *nm.Node {
 	node := NewTendermint(app)
-	node.Start()
+	_, err := node.Start()
+	if err != nil {
+		panic(err)
+	}
 
 	// wait for rpc
 	waitForRPC()

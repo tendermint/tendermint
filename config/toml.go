@@ -12,8 +12,12 @@ import (
 /****** these are for production settings ***********/
 
 func EnsureRoot(rootDir string) {
-	cmn.EnsureDir(rootDir, 0700)
-	cmn.EnsureDir(rootDir+"/data", 0700)
+	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
+		panic(err)
+	}
+	if err := cmn.EnsureDir(rootDir+"/data", 0700); err != nil {
+		panic(err)
+	}
 
 	configFilePath := path.Join(rootDir, "config.toml")
 
@@ -53,21 +57,23 @@ func ResetTestRoot(testName string) *Config {
 	rootDir = filepath.Join(rootDir, testName)
 	// Remove ~/.tendermint_test_bak
 	if cmn.FileExists(rootDir + "_bak") {
-		err := os.RemoveAll(rootDir + "_bak")
-		if err != nil {
+		if err := os.RemoveAll(rootDir + "_bak"); err != nil {
 			cmn.PanicSanity(err.Error())
 		}
 	}
 	// Move ~/.tendermint_test to ~/.tendermint_test_bak
 	if cmn.FileExists(rootDir) {
-		err := os.Rename(rootDir, rootDir+"_bak")
-		if err != nil {
+		if err := os.Rename(rootDir, rootDir+"_bak"); err != nil {
 			cmn.PanicSanity(err.Error())
 		}
 	}
 	// Create new dir
-	cmn.EnsureDir(rootDir, 0700)
-	cmn.EnsureDir(rootDir+"/data", 0700)
+	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
+		panic(err)
+	}
+	if err := cmn.EnsureDir(rootDir+"/data", 0700); err != nil {
+		panic(err)
+	}
 
 	configFilePath := path.Join(rootDir, "config.toml")
 	genesisFilePath := path.Join(rootDir, "genesis.json")

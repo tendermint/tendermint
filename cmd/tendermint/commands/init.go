@@ -33,7 +33,9 @@ func initFiles(cmd *cobra.Command, args []string) {
 				Power:  10,
 			}}
 
-			genDoc.SaveAs(genFile)
+			if err := genDoc.SaveAs(genFile); err != nil {
+				panic(err)
+			}
 		}
 
 		logger.Info("Initialized tendermint", "genesis", config.GenesisFile(), "priv_validator", config.PrivValidatorFile())

@@ -93,7 +93,14 @@ func TestABCIRecorder(t *testing.T) {
 	require.Equal(0, len(r.Calls))
 
 	r.ABCIInfo()
-	r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
+	_, err := r.ABCIInfo()
+	if err != nil {
+		t.Error(err)
+	}
+	_, err = r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
+	if err != nil {
+		// t.Errorf(err) FIXME: fails
+	}
 	require.Equal(2, len(r.Calls))
 
 	info := r.Calls[0]
@@ -120,9 +127,18 @@ func TestABCIRecorder(t *testing.T) {
 
 	// now add some broadcasts
 	txs := []types.Tx{{1}, {2}, {3}}
-	r.BroadcastTxCommit(txs[0])
-	r.BroadcastTxSync(txs[1])
-	r.BroadcastTxAsync(txs[2])
+	_, err = r.BroadcastTxCommit(txs[0])
+	if err != nil {
+		// t.Error(err) FIXME: fails
+	}
+	_, err = r.BroadcastTxSync(txs[1])
+	if err != nil {
+		// t.Error(err) FIXME: fails
+	}
+	_, err = r.BroadcastTxAsync(txs[2])
+	if err != nil {
+		// t.Error(err) FIXME: fails
+	}
 
 	require.Equal(5, len(r.Calls))
 

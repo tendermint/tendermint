@@ -34,7 +34,11 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			panic(err)
+		}
+	}()
 	for {
 		messageType, _, err := conn.ReadMessage()
 		if err != nil {
@@ -43,7 +47,9 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		h.mtx.RLock()
 		if h.closeConnAfterRead {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				panic(err)
+			}
 		}
 		h.mtx.RUnlock()
 
@@ -102,7 +108,9 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	go callWgDoneOnResult(t, c, &wg)
 
 	// hacky way to abort the connection before write
-	c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		panic(err)
+	}
 
 	// results in WS write error, the client should resend on reconnect
 	call(t, "a", c)
@@ -135,14 +143,18 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	}()
 
 	// hacky way to abort the connection before write
-	c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		t.Error(err)
+	}
 	s.Close()
 
 	// results in WS write error
 	// provide timeout to avoid blocking
 	ctx, cancel := context.WithTimeout(context.Background(), wsCallTimeout)
 	defer cancel()
-	c.Call(ctx, "a", make(map[string]interface{}))
+	if err := c.Call(ctx, "a", make(map[string]interface{})); err != nil {
+		t.Error(err)
+	}
 
 	// expect to reconnect almost immediately
 	time.Sleep(10 * time.Millisecond)

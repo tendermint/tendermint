@@ -270,14 +270,18 @@ func (s *State) indexTxs(abciResponses *ABCIResponses) {
 	batch := txindex.NewBatch(len(abciResponses.DeliverTx))
 	for i, d := range abciResponses.DeliverTx {
 		tx := abciResponses.txs[i]
-		batch.Add(types.TxResult{
+		if err := batch.Add(types.TxResult{
 			Height: uint64(abciResponses.Height),
 			Index:  uint32(i),
 			Tx:     tx,
 			Result: *d,
-		})
+		}); err != nil {
+			panic(err)
+		}
 	}
-	s.TxIndexer.AddBatch(batch)
+	if err := s.TxIndexer.AddBatch(batch); err != nil {
+		panic(err)
+	}
 }
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
