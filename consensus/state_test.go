@@ -209,7 +209,9 @@ func TestBadProposal(t *testing.T) {
 	}
 
 	// set the proposal block
-	cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer")
+	if err := cs1.SetProposalAndBlock(proposal, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
 
 	// start the machine
 	startTestRound(cs1, height, round)
@@ -478,7 +480,9 @@ func TestLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and not the proposer
 	// so set the proposal block
-	cs1.SetProposalAndBlock(prop, propBlock, propBlock.MakePartSet(partSize), "")
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlock.MakePartSet(partSize), ""); err != nil {
+		t.Fatal(err)
+	}
 
 	<-proposalCh
 	<-voteCh // prevote
@@ -555,7 +559,9 @@ func TestLockPOLRelock(t *testing.T) {
 	<-timeoutWaitCh
 
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer")
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
 
 	<-newRoundCh
 	t.Log("### ONTO ROUND 1")
@@ -667,7 +673,9 @@ func TestLockPOLUnlock(t *testing.T) {
 	lockedBlockHash := rs.LockedBlock.Hash()
 
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer")
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
 
 	<-newRoundCh
 	t.Log("#### ONTO ROUND 1")
@@ -754,7 +762,9 @@ func TestLockPOLSafety1(t *testing.T) {
 	incrementRound(vs2, vs3, vs4)
 
 	//XXX: this isnt guaranteed to get there before the timeoutPropose ...
-	cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer")
+	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
+		t.Fatal(err)
+	}
 
 	<-newRoundCh
 	t.Log("### ONTO ROUND 1")
@@ -866,7 +876,9 @@ func TestLockPOLSafety2(t *testing.T) {
 	startTestRound(cs1, height, 1)
 	<-newRoundCh
 
-	cs1.SetProposalAndBlock(prop1, propBlock1, propBlockParts1, "some peer")
+	if err := cs1.SetProposalAndBlock(prop1, propBlock1, propBlockParts1, "some peer"); err != nil {
+		t.Fatal(err)
+	}
 	<-proposalCh
 
 	<-voteCh // prevote
@@ -891,7 +903,9 @@ func TestLockPOLSafety2(t *testing.T) {
 	if err := vs3.SignProposal(config.ChainID, newProp); err != nil {
 		t.Fatal(err)
 	}
-	cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer")
+	if err := cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer"); err != nil {
+		t.Fatal(err)
+	}
 
 	// Add the pol votes
 	addVotes(cs1, prevotes...)

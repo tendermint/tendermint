@@ -24,7 +24,10 @@ func TestEnsureRoot(t *testing.T) {
 	// setup temp dir for test
 	tmpDir, err := ioutil.TempDir("", "config-test")
 	require.Nil(err)
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		err := os.RemoveAll(tmpDir)
+		require.Nil(err)
+	}()
 
 	// create root dir
 	EnsureRoot(tmpDir)

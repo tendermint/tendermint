@@ -55,7 +55,9 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *Consens
 // OnStart implements BaseService.
 func (conR *ConsensusReactor) OnStart() error {
 	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
-	conR.BaseReactor.OnStart()
+	if err := conR.BaseReactor.OnStart(); err != nil {
+		return err
+	}
 
 	err := conR.startBroadcastRoutine()
 	if err != nil {

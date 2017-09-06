@@ -189,8 +189,14 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	// WAL
 	if mem.wal != nil {
 		// TODO: Notify administrators when WAL fails
-		mem.wal.Write([]byte(tx))
-		mem.wal.Write([]byte("\n"))
+		_, err := mem.wal.Write([]byte(tx))
+		if err != nil {
+			return err
+		}
+		_, err = mem.wal.Write([]byte("\n"))
+		if err != nil {
+			return err
+		}
 	}
 	// END WAL
 
@@ -332,9 +338,9 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
 func (mem *Mempool) Update(height int, txs types.Txs) {
-	// TODO: check err ?
-	mem.proxyAppConn.FlushSync() // To flush async resCb calls e.g. from CheckTx
-
+	if err := mem.proxyAppConn.FlushSync(); err != nil { // To flush async resCb calls e.g. from CheckTx
+		panic(err)
+	}
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{})
 	for _, tx := range txs {

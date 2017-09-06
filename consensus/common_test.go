@@ -268,7 +268,6 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.
 	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
 	eventBus.Start()
 	cs.SetEventBus(eventBus)
-
 	return cs
 }
 
