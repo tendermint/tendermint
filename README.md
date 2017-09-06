@@ -8,6 +8,15 @@ and the state machine (the application).
 By using a socket protocol, we enable a consensus engine running in one process
 to manage an application state running in another.
 
+# Install
+
+```
+go get github.com/tendermint/abci
+cd $GOPATH/src/github.com/tendermint/abci
+glide install
+go install ./cmd/...
+```
+
 For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/abci-the-application-blockchain-interface),
 and the more detailed [application developer's guide](https://tendermint.com/docs/guides/app-development).
 
