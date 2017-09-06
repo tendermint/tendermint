@@ -49,9 +49,11 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
 		txs[i] = txBytes
-		rand.Read(txBytes)
-		err := mempool.CheckTx(txBytes, nil)
+		_, err := rand.Read(txBytes)
 		if err != nil {
+			t.Error(err)
+		}
+		if err := mempool.CheckTx(txBytes, nil); err != nil {
 			t.Fatal("Error after CheckTx: %v", err)
 		}
 	}

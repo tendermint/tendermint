@@ -286,7 +286,10 @@ func (pool *BlockPool) makeNextRequester() {
 	pool.requesters[nextHeight] = request
 	pool.numPending++
 
-	request.Start()
+	_, err := request.Start()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func (pool *BlockPool) sendRequest(height int, peerID string) {

@@ -98,7 +98,9 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 	}, css)
 
 	// send a tx
-	css[3].mempool.CheckTx([]byte{1, 2, 3}, nil)
+	if err := css[3].mempool.CheckTx([]byte{1, 2, 3}, nil); err != nil {
+		t.Fatal(err)
+	}
 
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
@@ -286,12 +288,13 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 		newBlockI := <-eventChans[j]
 		newBlock := newBlockI.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block
 		t.Logf("[WARN] Got block height=%v validator=%v", newBlock.Height, j)
-		err := validateBlock(newBlock, activeVals)
-		if err != nil {
+		if err := validateBlock(newBlock, activeVals); err != nil {
 			t.Fatal(err)
 		}
 		for _, tx := range txs {
-			css[j].mempool.CheckTx(tx, nil)
+			if err := css[j].mempool.CheckTx(tx, nil); err != nil {
+				t.Fatal(err)
+			}
 		}
 
 		eventChans[j] <- struct{}{}

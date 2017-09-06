@@ -398,7 +398,9 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 	}
 
 	validators := types.TM2PB.Validators(state.Validators)
-	proxyApp.Consensus().InitChainSync(validators)
+	if err := proxyApp.Consensus().InitChainSync(validators); err != nil {
+		panic(err)
+	}
 
 	defer proxyApp.Stop()
 	switch mode {
@@ -432,7 +434,9 @@ func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.B
 	defer proxyApp.Stop()
 
 	validators := types.TM2PB.Validators(state.Validators)
-	proxyApp.Consensus().InitChainSync(validators)
+	if err := proxyApp.Consensus().InitChainSync(validators); err != nil {
+		panic(err)
+	}
 
 	var latestAppHash []byte
 
@@ -473,7 +477,11 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 	if !found {
 		return nil, nil, errors.New(cmn.Fmt("WAL does not contain height %d.", 1))
 	}
-	defer gr.Close()
+	defer func() {
+		if err := gr.Close(); err != nil {
+			return
+		}
+	}()
 
 	// log.Notice("Build a blockchain by reading from the WAL")
 

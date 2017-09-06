@@ -105,7 +105,9 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
 	gr, found, err := cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight))
 	if gr != nil {
-		gr.Close()
+		if err := gr.Close(); err != nil {
+			return err
+		}
 	}
 	if found {
 		return errors.New(cmn.Fmt("WAL should not contain #ENDHEIGHT %d.", csHeight))
@@ -118,7 +120,11 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	} else if err != nil {
 		return err
 	} else {
-		defer gr.Close()
+		defer func() {
+			if err := gr.Close(); err != nil {
+				return
+			}
+		}()
 	}
 	if !found {
 		return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
@@ -235,7 +241,9 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(h.state.Validators)
-		proxyApp.Consensus().InitChainSync(validators)
+		if err := proxyApp.Consensus().InitChainSync(validators); err != nil {
+			return nil, err
+		}
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight
@@ -369,7 +377,10 @@ func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppC
 		abciResponses: abciResponses,
 	})
 	cli, _ := clientCreator.NewABCIClient()
-	cli.Start()
+	_, err := cli.Start()
+	if err != nil {
+		panic(err)
+	}
 	return proxy.NewAppConnConsensus(cli)
 }
 

@@ -50,7 +50,11 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	}
 
 	pb := newPlayback(file, fp, cs, cs.state.Copy())
-	defer pb.fp.Close()
+	defer func() {
+		if err := pb.fp.Close(); err != nil {
+			return
+		}
+	}()
 
 	var nextN int // apply N msgs in a row
 	for pb.scanner.Scan() {
@@ -105,7 +109,9 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	newCS.SetEventSwitch(pb.cs.evsw)
 	newCS.startForReplay()
 
-	pb.fp.Close()
+	if err := pb.fp.Close(); err != nil {
+		return err
+	}
 	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0666)
 	if err != nil {
 		return err
@@ -183,7 +189,9 @@ func (pb *playback) replayConsoleLoop() int {
 			// ensure all new step events are regenerated as expected
 			newStepCh := subscribeToEvent(pb.cs.evsw, "replay-test", types.EventStringNewRoundStep(), 1)
 			if len(tokens) == 1 {
-				pb.replayReset(1, newStepCh)
+				if err := pb.replayReset(1, newStepCh); err != nil {
+					panic(err)
+				}
 			} else {
 				i, err := strconv.Atoi(tokens[1])
 				if err != nil {
@@ -191,7 +199,9 @@ func (pb *playback) replayConsoleLoop() int {
 				} else if i > pb.count {
 					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
 				} else {
-					pb.replayReset(i, newStepCh)
+					if err := pb.replayReset(i, newStepCh); err != nil {
+						panic(err)
+					}
 				}
 			}
 
