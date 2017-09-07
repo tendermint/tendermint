@@ -99,7 +99,7 @@
         "pubkey": {
           "type": "ed25519",
           "data": "E1FFBD187FA2A922CE1B367532CEAC1AD8E606D576AB0D2E2CAA7EC6B7DAC10F"
-        },        "address": "0767FF644453E38FBDB16A238D383AC8EFA87518",
+        },
         "coins": [
           {
             "denom": "mycoin",
