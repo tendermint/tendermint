@@ -17,7 +17,7 @@ glide install
 go install ./cmd/...
 ```
 
-For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://tendermint.com/blog/abci-the-application-blockchain-interface),
+For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://blog.cosmos.network/abci-the-application-blockchain-interface-f1bd8278cdd7),
 and the more detailed [application developer's guide](https://tendermint.com/docs/guides/app-development).
 
 Previously, the ABCI was referred to as TMSP.
