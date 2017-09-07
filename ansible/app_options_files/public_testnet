@@ -94,20 +94,24 @@
         ]
       },
       {
-        "name": "phomer",
-        "address": "BAA67E0346AF48A05330149A3A72D9B974E9EBD2",
-        "pub_key": {
+        "name": "gregkey",
+        "address": "B01C264BFE9CBD45458256E613A6F07061A3A6B6",
+        "pubkey": {
           "type": "ed25519",
-          "data": "F5DF27FD625800D971A9E9B2607F0052480E49A12BE85E17336F773FE6FB9BC9"
-        },
+          "data": "E1FFBD187FA2A922CE1B367532CEAC1AD8E606D576AB0D2E2CAA7EC6B7DAC10F"
+        },        "address": "0767FF644453E38FBDB16A238D383AC8EFA87518",
         "coins": [
           {
-            "denom": "antipho",
-            "amount": 33
+            "denom": "mycoin",
+            "amount": 3478765434568
           },
           {
-            "denom": "pho",
+            "denom": "buckyball",
             "amount": 8367251830291
+          },
+          {
+            "denom": "playmoney",
+            "amount": 9999999999999
           }
         ]
       },
