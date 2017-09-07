@@ -1,0 +1,8 @@
+---
+#tendermint_genesis_file: "<undefined>"
+#service_genesis_file: "<undefined>"
+app_options_file: "app_options_files/dev_money"
+seeds: ""
+testnet_name: testnet1
+validators: true
+

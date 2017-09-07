@@ -1,3 +1,0 @@
----
-consul_upstart_start_on: (local-filesystems and net-device-up IFACE!=lo)
-consul_upstart_stop_on: runlevel [016]

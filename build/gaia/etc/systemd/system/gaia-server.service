@@ -1,0 +1,23 @@
+[Unit]
+Description=Gaia server
+Requires=network-online.target
+BindTo=gaia.service
+PartOf=gaia.service
+After=network-online.target gaia.service
+PropagatesReloadTo=gaia.service
+ReloadPropagatedFrom=gaia.service
+
+[Service]
+Environment="TMHOME=/etc/gaia/tendermint"
+Restart=on-failure
+User=gaia
+Group=gaia
+PermissionsStartOnly=true
+ExecStart=/usr/bin/tendermint node
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target gaia.service
+Also=gaia.service
+

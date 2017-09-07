@@ -1,0 +1,3 @@
+disable trackomatron.service
+disable trackomatron-server.service
+

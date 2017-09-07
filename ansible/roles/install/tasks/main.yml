@@ -1,0 +1,28 @@
+---
+
+- name: Set timezone
+  when: timezone is defined
+  file: path=/etc/localtime state=link src=/usr/share/zoneinfo/{{timezone}} force=yes
+
+- name: Disable journald rate-limiting
+  lineinfile: "path=/etc/systemd/journald.conf regexp={{item.regexp}} line='{{item.line}}'"
+  with_items:
+  - { regexp: "^#RateLimitInterval", line: "RateLimitInterval=0s" }
+  - { regexp: "^#RateLimitBurst", line: "RateLimitBurst=0" }
+
+- name: Restart journald
+  service: name=systemd-journald state=restarted
+
+- include: debian.yml
+  when: ansible_os_family == "Debian"
+
+- include: centos.yml
+  when: ansible_os_family == "RedHat"
+
+- name: copy compiled binary
+  when: not release_install|bool
+  copy:
+    src: "{{binary}}"
+    dest: /usr/local/bin
+    mode: 0755
+
