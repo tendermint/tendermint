@@ -1,14 +1,13 @@
 package main
 
 import (
-	"os"
-
-	"github.com/tendermint/tmlibs/cli"
-	"github.com/tendermint/tmlibs/log"
-
+	tcrypto "github.com/tendermint/go-crypto"
 	tc "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/cli"
+	"github.com/tendermint/tmlibs/log"
+	"os"
 )
 
 var (
@@ -35,12 +34,12 @@ func main() {
 	rootCmd.AddCommand(tc.TestnetFilesCmd)
 	rootCmd.AddCommand(tc.VersionCmd)
 
-	// Override with HSM implementation, otherwise nil will trigger default
-	// software signer:
-	var signer types.Signer = nil
+	signerGenerator := func(pk tcrypto.PrivKey) types.Signer {
+		// Return your own signer implementation here
+		return types.NewDefaultSigner(pk)
+	}
 
-	privValidator := types.LoadPrivValidatorWithSigner(config.PrivValidatorFile(),
-		signer)
+	privValidator := types.LoadPrivValidatorWithSigner(config.PrivValidatorFile(), signerGenerator)
 	rootCmd.AddCommand(tc.NewRunNodeCmd(privValidator))
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))

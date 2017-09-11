@@ -54,6 +54,10 @@ type PrivValidator struct {
 	mtx      sync.Mutex
 }
 
+
+type SignerGenerator func(pk crypto.PrivKey) (Signer)
+
+
 // This is used to sign votes.
 // It is the caller's duty to verify the msg before calling Sign,
 // eg. to avoid double signing.
@@ -111,10 +115,12 @@ func GenPrivValidator() *PrivValidator {
 }
 
 func LoadPrivValidator(filePath string) *PrivValidator {
-	return LoadPrivValidatorWithSigner(filePath, nil)
+	return LoadPrivValidatorWithSigner(filePath, func(pk crypto.PrivKey) Signer {
+		return NewDefaultSigner(pk)
+	})
 }
 
-func LoadPrivValidatorWithSigner(filePath string, signer Signer) *PrivValidator {
+func LoadPrivValidatorWithSigner(filePath string, generator SignerGenerator) *PrivValidator {
 	privValJSONBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		Exit(err.Error())
@@ -126,11 +132,8 @@ func LoadPrivValidatorWithSigner(filePath string, signer Signer) *PrivValidator 
 	}
 
 	privVal.filePath = filePath
-	if signer == nil {
-		privVal.Signer = NewDefaultSigner(privVal.PrivKey)
-	} else {
-		privVal.Signer = signer
-	}
+	privVal.Signer = generator(privVal.PrivKey)
+
 	privVal.setPubKeyAndAddress()
 	return &privVal
 }
