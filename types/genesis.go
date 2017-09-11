@@ -13,11 +13,6 @@ import (
 )
 
 //------------------------------------------------------------
-// we store the gendoc in the db
-
-var GenDocKey = []byte("GenDocKey")
-
-//------------------------------------------------------------
 // core types for a genesis definition
 
 // GenesisValidator is an initial validator.

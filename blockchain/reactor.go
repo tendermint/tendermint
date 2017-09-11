@@ -28,7 +28,7 @@ const (
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
 	switchToConsensusIntervalSeconds = 1
-	maxBlockchainResponseSize        = types.MaxBlockSize + 2
+	maxBlockchainResponseSize        = types.MaxBlockSize + 2 // TODO
 )
 
 type consensusReactor interface {
