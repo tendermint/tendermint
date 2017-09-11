@@ -2,6 +2,26 @@ package log
 
 import "fmt"
 
+type level byte
+
+const (
+	levelDebug level = 1 << iota
+	levelInfo
+	levelError
+)
+
+type filter struct {
+	next           Logger
+	allowed        level            // XOR'd levels for default case
+	allowedKeyvals map[keyval]level // When key-value match, use this level
+	errNotAllowed  error
+}
+
+type keyval struct {
+	key   interface{}
+	value interface{}
+}
+
 // NewFilter wraps next and implements filtering. See the commentary on the
 // Option functions for a detailed description of how to configure levels. If
 // no options are provided, all leveled log events created with Debug, Info or
@@ -15,35 +35,6 @@ func NewFilter(next Logger, options ...Option) Logger {
 		option(l)
 	}
 	return l
-}
-
-// AllowLevel returns an option for the given level or error if no option exist
-// for such level.
-func AllowLevel(lvl string) (Option, error) {
-	switch lvl {
-	case "debug":
-		return AllowDebug(), nil
-	case "info":
-		return AllowInfo(), nil
-	case "error":
-		return AllowError(), nil
-	case "none":
-		return AllowNone(), nil
-	default:
-		return nil, fmt.Errorf("Expected either \"info\", \"debug\", \"error\" or \"none\" level, given %s", lvl)
-	}
-}
-
-type filter struct {
-	next           Logger
-	allowed        level
-	allowedKeyvals map[keyval]level
-	errNotAllowed  error
-}
-
-type keyval struct {
-	key   interface{}
-	value interface{}
 }
 
 func (l *filter) Info(msg string, keyvals ...interface{}) error {
@@ -96,8 +87,27 @@ func (l *filter) With(keyvals ...interface{}) Logger {
 	return &filter{next: l.next.With(keyvals...), allowed: l.allowed, errNotAllowed: l.errNotAllowed, allowedKeyvals: l.allowedKeyvals}
 }
 
+//--------------------------------------------------------------------------------
+
 // Option sets a parameter for the filter.
 type Option func(*filter)
+
+// AllowLevel returns an option for the given level or error if no option exist
+// for such level.
+func AllowLevel(lvl string) (Option, error) {
+	switch lvl {
+	case "debug":
+		return AllowDebug(), nil
+	case "info":
+		return AllowInfo(), nil
+	case "error":
+		return AllowError(), nil
+	case "none":
+		return AllowNone(), nil
+	default:
+		return nil, fmt.Errorf("Expected either \"info\", \"debug\", \"error\" or \"none\" level, given %s", lvl)
+	}
+}
 
 // AllowAll is an alias for AllowDebug.
 func AllowAll() Option {
@@ -155,11 +165,3 @@ func AllowErrorWith(key interface{}, value interface{}) Option {
 func AllowNoneWith(key interface{}, value interface{}) Option {
 	return func(l *filter) { l.allowedKeyvals[keyval{key, value}] = 0 }
 }
-
-type level byte
-
-const (
-	levelDebug level = 1 << iota
-	levelInfo
-	levelError
-)
