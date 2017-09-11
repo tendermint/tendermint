@@ -4,3 +4,5 @@
 *.log
 *.pdf
 *.gz
+*.dvi
+.idea
