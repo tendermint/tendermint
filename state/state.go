@@ -324,12 +324,9 @@ func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 //
 // Used in tests.
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
-	if len(genDoc.Validators) == 0 {
-		cmn.Exit(cmn.Fmt("The genesis file has no validators"))
-	}
-
-	if genDoc.GenesisTime.IsZero() {
-		genDoc.GenesisTime = time.Now()
+	err := genDoc.ValidateAndComplete()
+	if err != nil {
+		cmn.Exit(cmn.Fmt("Error in genesis file: %v", err))
 	}
 
 	// Make validators slice

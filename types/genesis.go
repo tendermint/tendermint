@@ -52,6 +52,33 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 	return vset.Hash()
 }
 
+// ValidateAndComplete checks that all necessary fields are present
+// and fills in defaults for optional fields left empty
+func (genDoc *GenesisDoc) ValidateAndComplete() error {
+
+	if genDoc.ChainID == "" {
+		return errors.Errorf("Genesis doc must include non-empty chain_id")
+	}
+
+	if genDoc.ConsensusParams == nil {
+		genDoc.ConsensusParams = cfg.DefaultConsensusParams()
+	} else {
+		if err := genDoc.ConsensusParams.Validate(); err != nil {
+			return err
+		}
+	}
+
+	if len(genDoc.Validators) == 0 {
+		return errors.Errorf("The genesis file must have at least one validator")
+	}
+
+	if genDoc.GenesisTime.IsZero() {
+		genDoc.GenesisTime = time.Now()
+	}
+
+	return nil
+}
+
 //------------------------------------------------------------
 // Make genesis state from file
 
@@ -59,17 +86,12 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 	genDoc := GenesisDoc{}
 	err := json.Unmarshal(jsonBlob, &genDoc)
-
-	// validate genesis
-	if genDoc.ChainID == "" {
-		return nil, errors.Errorf("Genesis doc must include non-empty chain_id")
+	if err != nil {
+		return nil, err
 	}
-	if genDoc.ConsensusParams == nil {
-		genDoc.ConsensusParams = cfg.DefaultConsensusParams()
-	} else {
-		if err := genDoc.ConsensusParams.Validate(); err != nil {
-			return nil, err
-		}
+
+	if err := genDoc.ValidateAndComplete(); err != nil {
+		return nil, err
 	}
 
 	return &genDoc, err
