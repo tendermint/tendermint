@@ -14,11 +14,6 @@ import (
 	"github.com/tendermint/tmlibs/merkle"
 )
 
-const (
-	MaxBlockSize         = 22020096 // 21MB TODO make it configurable
-	DefaultBlockPartSize = 65536    // 64kB TODO: put part size in parts header?
-)
-
 // Block defines the atomic unit of a Tendermint blockchain
 type Block struct {
 	*Header    `json:"header"`

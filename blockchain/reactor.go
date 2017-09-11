@@ -28,7 +28,6 @@ const (
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
 	switchToConsensusIntervalSeconds = 1
-	maxBlockchainResponseSize        = types.MaxBlockSize + 2 // TODO
 )
 
 type consensusReactor interface {
@@ -124,7 +123,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 
 // Receive implements Reactor by handling 4 types of messages (look below).
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes)
+	_, msg, err := DecodeMessage(msgBytes, bcR.maxMsgSize())
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "err", err)
 		return
@@ -161,6 +160,12 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	default:
 		bcR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
+}
+
+// maxMsgSize returns the maximum allowable size of a
+// message on the blockchain reactor.
+func (bcR *BlockchainReactor) maxMsgSize() int {
+	return bcR.state.GenesisDoc.ConsensusParams.MaxBlockSizeBytes + 2
 }
 
 // Handle messages from the poolReactor telling the reactor what to do.
@@ -221,7 +226,7 @@ FOR_LOOP:
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet(types.DefaultBlockPartSize)
+				firstParts := first.MakePartSet(bcR.state.GenesisDoc.ConsensusParams.BlockPartSizeBytes)
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
 				// NOTE: we can probably make this more efficient, but note that calling
@@ -290,11 +295,11 @@ var _ = wire.RegisterInterface(
 
 // DecodeMessage decodes BlockchainMessage.
 // TODO: ensure that bz is completely read.
-func DecodeMessage(bz []byte) (msgType byte, msg BlockchainMessage, err error) {
+func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage, err error) {
 	msgType = bz[0]
 	n := int(0)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxBlockchainResponseSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
+	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
 	if err != nil && n != len(bz) {
 		err = errors.New("DecodeMessage() had bytes left over")
 	}

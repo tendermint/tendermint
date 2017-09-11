@@ -10,6 +10,8 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
+
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 //------------------------------------------------------------
@@ -24,10 +26,11 @@ type GenesisValidator struct {
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
-	GenesisTime time.Time          `json:"genesis_time"`
-	ChainID     string             `json:"chain_id"`
-	Validators  []GenesisValidator `json:"validators"`
-	AppHash     data.Bytes         `json:"app_hash"`
+	GenesisTime     time.Time            `json:"genesis_time"`
+	ChainID         string               `json:"chain_id"`
+	ConsensusParams *cfg.ConsensusParams `json:"consensus_params"`
+	Validators      []GenesisValidator   `json:"validators"`
+	AppHash         data.Bytes           `json:"app_hash"`
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
@@ -56,6 +59,19 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 	genDoc := GenesisDoc{}
 	err := json.Unmarshal(jsonBlob, &genDoc)
+
+	// validate genesis
+	if genDoc.ChainID == "" {
+		return nil, errors.Errorf("Genesis doc must include non-empty chain_id")
+	}
+	if genDoc.ConsensusParams == nil {
+		genDoc.ConsensusParams = cfg.DefaultConsensusParams()
+	} else {
+		if err := genDoc.ConsensusParams.Validate(); err != nil {
+			return nil, err
+		}
+	}
+
 	return &genDoc, err
 }
 
@@ -67,10 +83,7 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	}
 	genDoc, err := GenesisDocFromJSON(jsonBlob)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error reading GenesisDoc")
-	}
-	if genDoc.ChainID == "" {
-		return nil, errors.Errorf("Genesis doc %v must include non-empty chain_id", genDocFile)
+		return nil, errors.Wrap(err, cmn.Fmt("Error reading GenesisDoc at %v", genDocFile))
 	}
 	return genDoc, nil
 }

@@ -267,8 +267,6 @@ func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum in
 var (
 	NUM_BLOCKS = 6 // number of blocks in the test_data/many_blocks.cswal
 	mempool    = types.MockMempool{}
-
-	testPartSize int
 )
 
 //---------------------------------------
@@ -320,7 +318,6 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	config.Consensus.SetWalFile(walFile)
 
 	privVal := types.LoadPrivValidator(config.PrivValidatorFile())
-	testPartSize = config.Consensus.BlockPartSize
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {
@@ -384,6 +381,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 }
 
 func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
+	testPartSize := st.GenesisDoc.ConsensusParams.BlockPartSizeBytes
 	err := st.ApplyBlock(nil, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
 	if err != nil {
 		panic(err)
@@ -503,7 +501,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 			// if its not the first one, we have a full block
 			if blockParts != nil {
 				var n int
-				block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
+				block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), 0, &n, &err).(*types.Block)
 				blocks = append(blocks, block)
 			}
 			blockParts = types.NewPartSetFromHeader(*p)
@@ -524,7 +522,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 	}
 	// grab the last block too
 	var n int
-	block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
+	block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), 0, &n, &err).(*types.Block)
 	blocks = append(blocks, block)
 	return blocks, commits, nil
 }
@@ -563,7 +561,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
-	store := NewMockBlockStore(config)
+	store := NewMockBlockStore(config, state.GenesisDoc.ConsensusParams)
 	return state, store
 }
 
@@ -572,13 +570,14 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 
 type mockBlockStore struct {
 	config  *cfg.Config
+	params  *cfg.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *cfg.Config) *mockBlockStore {
-	return &mockBlockStore{config, nil, nil}
+func NewMockBlockStore(config *cfg.Config, params *cfg.ConsensusParams) *mockBlockStore {
+	return &mockBlockStore{config, params, nil, nil}
 }
 
 func (bs *mockBlockStore) Height() int                       { return len(bs.chain) }
@@ -586,7 +585,7 @@ func (bs *mockBlockStore) LoadBlock(height int) *types.Block { return bs.chain[h
 func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
-		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.config.Consensus.BlockPartSize).Header()},
+		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.params.BlockPartSizeBytes).Header()},
 		Header:  block.Header,
 	}
 }
