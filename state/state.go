@@ -65,6 +65,19 @@ type State struct {
 	logger log.Logger
 }
 
+// GetState loads the most recent state from the database,
+// or creates a new one from the given genesisFile and persists the result
+// to the database.
+func GetState(stateDB dbm.DB, genesisFile string) *State {
+	state := LoadState(stateDB)
+	if state == nil {
+		state = MakeGenesisStateFromFile(stateDB, genesisFile)
+		state.Save()
+	}
+
+	return state
+}
+
 // LoadState loads the State from the database.
 func LoadState(db dbm.DB) *State {
 	return loadState(db, stateKey)
@@ -248,17 +261,10 @@ func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
 }
 
-// GetState loads the most recent state from the database,
-// or creates a new one from the given genesisFile and persists the result
-// to the database.
-func GetState(stateDB dbm.DB, genesisFile string) *State {
-	state := LoadState(stateDB)
-	if state == nil {
-		state = MakeGenesisStateFromFile(stateDB, genesisFile)
-		state.Save()
-	}
-
-	return state
+// Params returns the consensus parameters used for
+// validating blocks
+func (s *State) Params() *types.ConsensusParams {
+	return s.GenesisDoc.ConsensusParams
 }
 
 //------------------------------------------------------------------------

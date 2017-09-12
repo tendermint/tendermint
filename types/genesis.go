@@ -10,8 +10,6 @@ import (
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
-
-	cfg "github.com/tendermint/tendermint/config"
 )
 
 //------------------------------------------------------------
@@ -26,11 +24,11 @@ type GenesisValidator struct {
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
 type GenesisDoc struct {
-	GenesisTime     time.Time            `json:"genesis_time"`
-	ChainID         string               `json:"chain_id"`
-	ConsensusParams *cfg.ConsensusParams `json:"consensus_params"`
-	Validators      []GenesisValidator   `json:"validators"`
-	AppHash         data.Bytes           `json:"app_hash"`
+	GenesisTime     time.Time          `json:"genesis_time"`
+	ChainID         string             `json:"chain_id"`
+	ConsensusParams *ConsensusParams   `json:"consensus_params"`
+	Validators      []GenesisValidator `json:"validators"`
+	AppHash         data.Bytes         `json:"app_hash"`
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
@@ -61,7 +59,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	}
 
 	if genDoc.ConsensusParams == nil {
-		genDoc.ConsensusParams = cfg.DefaultConsensusParams()
+		genDoc.ConsensusParams = DefaultConsensusParams()
 	} else {
 		if err := genDoc.ConsensusParams.Validate(); err != nil {
 			return err

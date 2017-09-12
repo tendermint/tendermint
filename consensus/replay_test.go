@@ -381,7 +381,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 }
 
 func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
-	testPartSize := st.GenesisDoc.ConsensusParams.BlockPartSizeBytes
+	testPartSize := st.Params().BlockPartSizeBytes
 	err := st.ApplyBlock(nil, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
 	if err != nil {
 		panic(err)
@@ -561,7 +561,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
-	store := NewMockBlockStore(config, state.GenesisDoc.ConsensusParams)
+	store := NewMockBlockStore(config, state.Params())
 	return state, store
 }
 
@@ -570,13 +570,13 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 
 type mockBlockStore struct {
 	config  *cfg.Config
-	params  *cfg.ConsensusParams
+	params  *types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *cfg.Config, params *cfg.ConsensusParams) *mockBlockStore {
+func NewMockBlockStore(config *cfg.Config, params *types.ConsensusParams) *mockBlockStore {
 	return &mockBlockStore{config, params, nil, nil}
 }
 
