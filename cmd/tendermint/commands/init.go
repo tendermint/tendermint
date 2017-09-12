@@ -9,6 +9,7 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+// InitFilesCmd initialises a fresh Tendermint Core instance.
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Tendermint",

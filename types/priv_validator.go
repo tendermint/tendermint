@@ -12,7 +12,6 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
 	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 // TODO: type ?
@@ -34,30 +33,6 @@ func voteToStep(vote *Vote) int8 {
 		return 0
 	}
 }
-
-// PrivValidator implements the functionality for signing blocks.
-type PrivValidator struct {
-	Address       data.Bytes       `json:"address"`
-	PubKey        crypto.PubKey    `json:"pub_key"`
-	LastHeight    int              `json:"last_height"`
-	LastRound     int              `json:"last_round"`
-	LastStep      int8             `json:"last_step"`
-	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
-	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
-
-	// PrivKey should be empty if a Signer other than the default is being used.
-	PrivKey crypto.PrivKey `json:"priv_key"`
-	Signer  `json:"-"`
-
-	// For persistence.
-	// Overloaded for testing.
-	filePath string
-	mtx      sync.Mutex
-}
-
-
-type SignerGenerator func(pk crypto.PrivKey) (Signer)
-
 
 // This is used to sign votes.
 // It is the caller's duty to verify the msg before calling Sign,
@@ -90,15 +65,53 @@ func (ds *DefaultSigner) PubKey() crypto.PubKey {
 	return ds.priv.PubKey()
 }
 
-func (privVal *PrivValidator) SetSigner(s Signer) {
-	privVal.Signer = s
-	privVal.setPubKeyAndAddress()
+// PrivValidator implements the functionality for signing blocks.
+type PrivValidator struct {
+	Address       data.Bytes       `json:"address"`
+	PubKey        crypto.PubKey    `json:"pub_key"`
+	LastHeight    int              `json:"last_height"`
+	LastRound     int              `json:"last_round"`
+	LastStep      int8             `json:"last_step"`
+	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
+	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
+
+	// PrivKey should be empty if a Signer other than the default is being used.
+	PrivKey crypto.PrivKey `json:"priv_key"`
+	Signer  `json:"-"`
+
+	// For persistence.
+	// Overloaded for testing.
+	filePath string
+	mtx      sync.Mutex
 }
 
-// Overwrite address and pubkey for convenience
-func (privVal *PrivValidator) setPubKeyAndAddress() {
-	privVal.PubKey = privVal.Signer.PubKey()
-	privVal.Address = privVal.PubKey.Address()
+func LoadOrGenPrivValidator(filePath string) *PrivValidator {
+	var privValidator *PrivValidator
+	if _, err := os.Stat(filePath); err == nil {
+		privValidator = LoadPrivValidator(filePath)
+	} else {
+		privValidator = GenPrivValidator()
+		privValidator.SetFile(filePath)
+		privValidator.Save()
+	}
+	return privValidator
+}
+
+func LoadPrivValidator(filePath string) *PrivValidator {
+	privValJSONBytes, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		Exit(err.Error())
+	}
+	privVal := PrivValidator{}
+	err = json.Unmarshal(privValJSONBytes, &privVal)
+	if err != nil {
+		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
+	}
+
+	privVal.filePath = filePath
+	privVal.Signer = NewDefaultSigner(privVal.PrivKey)
+	privVal.setPubKeyAndAddress()
+	return &privVal
 }
 
 // Generates a new validator with private key.
@@ -115,43 +128,25 @@ func GenPrivValidator() *PrivValidator {
 	}
 }
 
-func LoadPrivValidator(filePath string) *PrivValidator {
-	return LoadPrivValidatorWithSigner(filePath, func(pk crypto.PrivKey) Signer {
-		return NewDefaultSigner(pk)
-	})
+func LoadPrivValidatorWithSigner(signer Signer) *PrivValidator {
+	return &PrivValidator{
+		Address:  signer.PubKey().Address(),
+		PubKey:   signer.PubKey(),
+		LastStep: stepNone,
+		filePath: "",
+		Signer:   signer,
+	}
 }
 
-func LoadPrivValidatorWithSigner(filePath string, generator SignerGenerator) *PrivValidator {
-	privValJSONBytes, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		Exit(err.Error())
-	}
-	privVal := PrivValidator{}
-	err = json.Unmarshal(privValJSONBytes, &privVal)
-	if err != nil {
-		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
-	}
-
-	privVal.filePath = filePath
-	privVal.Signer = generator(privVal.PrivKey)
-
+func (privVal *PrivValidator) SetSigner(s Signer) {
+	privVal.Signer = s
 	privVal.setPubKeyAndAddress()
-	return &privVal
 }
 
-func LoadOrGenPrivValidator(filePath string, logger log.Logger) *PrivValidator {
-	var privValidator *PrivValidator
-	if _, err := os.Stat(filePath); err == nil {
-		privValidator = LoadPrivValidator(filePath)
-		logger.Info("Loaded PrivValidator",
-			"file", filePath, "privValidator", privValidator)
-	} else {
-		privValidator = GenPrivValidator()
-		privValidator.SetFile(filePath)
-		privValidator.Save()
-		logger.Info("Generated PrivValidator", "file", filePath)
-	}
-	return privValidator
+// Overwrite address and pubkey for convenience
+func (privVal *PrivValidator) setPubKeyAndAddress() {
+	privVal.PubKey = privVal.Signer.PubKey()
+	privVal.Address = privVal.PubKey.Address()
 }
 
 func (privVal *PrivValidator) SetFile(filePath string) {

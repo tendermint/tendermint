@@ -9,6 +9,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// GenValidatorCmd allows the generation of a keypair for a
+// validator.
 var GenValidatorCmd = &cobra.Command{
 	Use:   "gen_validator",
 	Short: "Generate new validator keypair",

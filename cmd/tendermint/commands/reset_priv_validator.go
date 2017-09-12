@@ -9,16 +9,27 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+// ResetAllCmd removes the database of this Tendermint core
+// instance.
 var ResetAllCmd = &cobra.Command{
 	Use:   "unsafe_reset_all",
 	Short: "(unsafe) Remove all the data and WAL, reset this node's validator",
 	Run:   resetAll,
 }
 
+// ResetPrivValidatorCmd resets the private validator files.
 var ResetPrivValidatorCmd = &cobra.Command{
 	Use:   "unsafe_reset_priv_validator",
 	Short: "(unsafe) Reset this node's validator",
 	Run:   resetPrivValidator,
+}
+
+// ResetAll removes the privValidator files.
+// Exported so other CLI tools can use  it
+func ResetAll(dbDir, privValFile string, logger log.Logger) {
+	resetPrivValidatorLocal(privValFile, logger)
+	os.RemoveAll(dbDir)
+	logger.Info("Removed all data", "dir", dbDir)
 }
 
 // XXX: this is totally unsafe.
@@ -31,13 +42,6 @@ func resetAll(cmd *cobra.Command, args []string) {
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
 	resetPrivValidatorLocal(config.PrivValidatorFile(), logger)
-}
-
-// Exported so other CLI tools can use  it
-func ResetAll(dbDir, privValFile string, logger log.Logger) {
-	resetPrivValidatorLocal(privValFile, logger)
-	os.RemoveAll(dbDir)
-	logger.Info("Removed all data", "dir", dbDir)
 }
 
 func resetPrivValidatorLocal(privValFile string, logger log.Logger) {

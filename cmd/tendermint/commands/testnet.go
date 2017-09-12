@@ -11,12 +11,6 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-var TestnetFilesCmd = &cobra.Command{
-	Use:   "testnet",
-	Short: "Initialize files for a Tendermint testnet",
-	Run:   testnetFiles,
-}
-
 //flags
 var (
 	nValidators int
@@ -28,6 +22,14 @@ func init() {
 		"Number of validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().StringVar(&dataDir, "dir", "mytestnet",
 		"Directory to store initialization data for the testnet")
+}
+
+// TestnetFilesCmd allows initialisation of files for a
+// Tendermint testnet.
+var TestnetFilesCmd = &cobra.Command{
+	Use:   "testnet",
+	Short: "Initialize files for a Tendermint testnet",
+	Run:   testnetFiles,
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) {

@@ -60,7 +60,7 @@ type Node struct {
 
 func NewNodeDefault(config *cfg.Config, logger log.Logger) *Node {
 	// Get PrivValidator
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
 	return NewNode(config, privValidator,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
 }

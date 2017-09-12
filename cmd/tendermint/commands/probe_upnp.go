@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/p2p/upnp"
 )
 
+// ProbeUpnpCmd adds capabilities to test the UPnP functionality.
 var ProbeUpnpCmd = &cobra.Command{
 	Use:   "probe_upnp",
 	Short: "Test UPnP functionality",

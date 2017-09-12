@@ -261,7 +261,7 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 func loadPrivValidator(config *cfg.Config) *types.PrivValidator {
 	privValidatorFile := config.PrivValidatorFile()
 	ensureDir(path.Dir(privValidatorFile), 0700)
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile, log.TestingLogger())
+	privValidator := types.LoadOrGenPrivValidator(privValidatorFile)
 	privValidator.Reset()
 	return privValidator
 }

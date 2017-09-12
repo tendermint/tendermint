@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// ShowValidatorCmd adds capabilities for showing the validator info.
 var ShowValidatorCmd = &cobra.Command{
 	Use:   "show_validator",
 	Short: "Show this node's validator info",
@@ -16,7 +17,7 @@ var ShowValidatorCmd = &cobra.Command{
 }
 
 func showValidator(cmd *cobra.Command, args []string) {
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
 	pubKeyJSONBytes, _ := data.ToJSON(privValidator.PubKey)
 	fmt.Println(string(pubKeyJSONBytes))
 }

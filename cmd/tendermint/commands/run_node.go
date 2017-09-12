@@ -12,52 +12,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// RunNodeCmd creates and starts a tendermint node.
-var RunNodeCmd = &cobra.Command{
-	Use:   "node",
-	Short: "Run the tendermint node",
-	RunE:  runNode,
-}
-
-// NewRunNodeCmd creates and starts a tendermint node. It allows the user to
-// use a custom PrivValidator.
-func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
-	return &cobra.Command{
-		Use:   "node",
-		Short: "Run the tendermint node",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			// Wait until the genesis doc becomes available
-			// This is for Mintnet compatibility.
-			// TODO: If Mintnet gets deprecated or genesis_file is
-			// always available, remove.
-			genDocFile := config.GenesisFile()
-			for !cmn.FileExists(genDocFile) {
-				logger.Info(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
-				time.Sleep(time.Second)
-			}
-
-			genDoc, err := types.GenesisDocFromFile(genDocFile)
-			if err != nil {
-				return err
-			}
-			config.ChainID = genDoc.ChainID
-
-			// Create & start node
-			n := node.NewNode(config, privVal, proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
-			if _, err := n.Start(); err != nil {
-				return fmt.Errorf("Failed to start node: %v", err)
-			} else {
-				logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
-			}
-
-			// Trap signal, run forever.
-			n.RunForever()
-
-			return nil
-		},
-	}
-}
-
 func init() {
 	AddNodeFlags(RunNodeCmd)
 }
@@ -88,6 +42,57 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	// consensus flags
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
+}
+
+// RunNodeCmd creates and starts a tendermint node.
+var RunNodeCmd = &cobra.Command{
+	Use:   "node",
+	Short: "Run the tendermint node",
+	RunE:  runNode,
+}
+
+// NewRunNodeCmd returns the command that allows the CLI to start a
+// node. It can be used with a custom PrivValidator.
+func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
+	return &cobra.Command{
+		Use:   "node",
+		Short: "Run the tendermint node",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Wait until the genesis doc becomes available
+			// This is for Mintnet compatibility.
+			// TODO: If Mintnet gets deprecated or genesis_file is
+			// always available, remove.
+			genDocFile := config.GenesisFile()
+			for !cmn.FileExists(genDocFile) {
+				logger.Info(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
+				time.Sleep(time.Second)
+			}
+
+			genDoc, err := types.GenesisDocFromFile(genDocFile)
+			if err != nil {
+				return err
+			}
+			config.ChainID = genDoc.ChainID
+
+			// Create & start node
+			var n *node.Node
+			if privVal == nil {
+				n = node.NewNodeDefault(config, logger.With("module", "node"))
+			}
+			n = node.NewNode(config, privVal, proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
+
+			if _, err := n.Start(); err != nil {
+				return fmt.Errorf("Failed to start node: %v", err)
+			} else {
+				logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
+			}
+
+			// Trap signal, run forever.
+			n.RunForever()
+
+			return nil
+		},
+	}
 }
 
 // Users wishing to:
