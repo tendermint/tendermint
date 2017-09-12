@@ -95,6 +95,7 @@ build-cosmossdk: git-branch
 	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
 	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
+	@echo "Workaround: cosmos-sdk does not have a binary that gives the cosmos-sdk version number." && rm -rf $(GOPATH)/bin/cosmossdk && ln -s $(GOPATH)/bin/basecoin $(GOPATH)/bin/cosmossdk
 	@echo "*** Built cosmossdk"
 
 ###
@@ -124,13 +125,8 @@ prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
 prepare-gaia =
-prepare-cosmossdk = cp $(GOPATH)/bin/basecli $(build_folder)/usr/bin && \
-	cp $(GOPATH)/bin/basecoin $(build_folder)/usr/bin && \
-	cp $(GOPATH)/bin/baseserver $(build_folder)/usr/bin && \
-	cp $(GOPATH)/bin/counter $(build_folder)/usr/bin && \
-	cp $(GOPATH)/bin/countercli $(build_folder)/usr/bin && \
-	cp $(GOPATH)/bin/eyes $(build_folder)/usr/bin && \
-	cp $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
+prepare-cosmossdk = rm -f $(build_folder)/usr/bin/cosmossdk && \
+	cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
