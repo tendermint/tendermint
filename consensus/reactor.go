@@ -232,7 +232,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
-			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
+			// NOTE: this may update abundance before checking part validity,
+			// enabling an adversary to mess with rarest first.
+			// can solve by tracking peer states block parts bitarrays in ConsensusState
+			conR.updateBlockPartAbundance(ps, msg.Height, msg.Round, msg.Part.Index)
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key}
 		default:
 			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
@@ -312,6 +315,26 @@ func (conR *ConsensusReactor) FastSync() bool {
 	conR.mtx.RLock()
 	defer conR.mtx.RUnlock()
 	return conR.fastSync
+}
+
+// String returns a string representation of the ConsensusReactor.
+// NOTE: For now, it is just a hard-coded string to avoid accessing unprotected shared variables.
+// TODO: improve!
+func (conR *ConsensusReactor) String() string {
+	// better not to access shared variables
+	return "ConsensusReactor" // conR.StringIndented("")
+}
+
+// StringIndented returns an indented string representation of the ConsensusReactor
+func (conR *ConsensusReactor) StringIndented(indent string) string {
+	s := "ConsensusReactor{\n"
+	s += indent + "  " + conR.conS.StringIndented(indent+"  ") + "\n"
+	for _, peer := range conR.Switch.Peers().List() {
+		ps := peer.Data.Get(types.PeerStateKey).(*PeerState)
+		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
+	}
+	s += indent + "}"
+	return s
 }
 
 //--------------------------------------
@@ -410,6 +433,19 @@ func (conR *ConsensusReactor) sendNewRoundStepMessages(peer *p2p.Peer) {
 	}
 }
 
+func (conR *ConsensusReactor) updateBlockPartAbundance(ps *PeerState, height, round, index int) {
+	blockParts := conR.conS.GetRoundState().ProposalBlockParts
+	if blockParts != nil {
+		blockParts.Abundance.CheckAndIncrementIndex(index, func() bool {
+			// abundance will increment if we didn't know peer had part until now
+			return ps.SetHasProposalBlockPart(height, round, index)
+		})
+	}
+}
+
+// block parts are gossiped rarest first.
+// a part's abundance is updated atomically here when we send a part,
+// or in Receive, the first time we hear a peer has it,
 func (conR *ConsensusReactor) gossipDataRoutine(peer *p2p.Peer, ps *PeerState) {
 	logger := conR.Logger.With("peer", peer)
 
@@ -425,14 +461,21 @@ OUTER_LOOP:
 
 		// Send proposal Block parts?
 		if rs.ProposalBlockParts.HasHeader(prs.ProposalBlockPartsHeader) {
-			if index, ok := rs.ProposalBlockParts.BitArray().Sub(prs.ProposalBlockParts.Copy()).PickRandom(); ok {
+			possibleParts := rs.ProposalBlockParts.BitArray().Sub(prs.ProposalBlockParts.Copy())
+			if !possibleParts.IsEmpty() {
+				index := rs.ProposalBlockParts.Abundance.PickRarest(possibleParts, func(setIndex int) {
+					// TODO: but what if Send fails?
+					ps.SetHasProposalBlockPart(prs.Height, prs.Round, setIndex)
+				})
+				// log.Notice("picked index", "index", index, "peer", peer)
+
 				part := rs.ProposalBlockParts.GetPart(index)
 				msg := &BlockPartMessage{
 					Height: rs.Height, // This tells peer that this part applies to us.
 					Round:  rs.Round,  // This tells peer that this part applies to us.
 					Part:   part,
 				}
-				logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round)
+				logger.Debug("Sending block part", "height", prs.Height, "round", prs.Round, "index", index)
 				if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
 					ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 				}
@@ -517,6 +560,7 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *RoundS
 			return
 		}
 		// Send the part
+		// no need to track abundance for previous heights - they should be well replicated!
 		msg := &BlockPartMessage{
 			Height: prs.Height, // Not our height, so it doesn't matter.
 			Round:  prs.Round,  // Not our height, so it doesn't matter.
@@ -730,26 +774,6 @@ OUTER_LOOP:
 	}
 }
 
-// String returns a string representation of the ConsensusReactor.
-// NOTE: For now, it is just a hard-coded string to avoid accessing unprotected shared variables.
-// TODO: improve!
-func (conR *ConsensusReactor) String() string {
-	// better not to access shared variables
-	return "ConsensusReactor" // conR.StringIndented("")
-}
-
-// StringIndented returns an indented string representation of the ConsensusReactor
-func (conR *ConsensusReactor) StringIndented(indent string) string {
-	s := "ConsensusReactor{\n"
-	s += indent + "  " + conR.conS.StringIndented(indent+"  ") + "\n"
-	for _, peer := range conR.Switch.Peers().List() {
-		ps := peer.Data.Get(types.PeerStateKey).(*PeerState)
-		s += indent + "  " + ps.StringIndented(indent+"  ") + "\n"
-	}
-	s += indent + "}"
-	return s
-}
-
 //-----------------------------------------------------------------------------
 
 // PeerRoundState contains the known state of a peer.
@@ -865,15 +889,21 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 }
 
 // SetHasProposalBlockPart sets the given block part index as known for the peer.
-func (ps *PeerState) SetHasProposalBlockPart(height int, round int, index int) {
+// Returns true if correct height/round and the peer did not already have the part.
+func (ps *PeerState) SetHasProposalBlockPart(height int, round int, index int) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
 	if ps.Height != height || ps.Round != round {
-		return
+		return false
+	}
+
+	if ps.ProposalBlockParts.GetIndex(index) {
+		return false
 	}
 
 	ps.ProposalBlockParts.SetIndex(index, true)
+	return true
 }
 
 // PickSendVote picks a vote and sends it to the peer.
