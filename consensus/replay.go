@@ -82,7 +82,7 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 				"blockID", v.BlockID, "peer", peerKey)
 		}
 
-		cs.handleMsg(m, cs.RoundState)
+		cs.handleMsg(m)
 	case timeoutInfo:
 		cs.Logger.Info("Replay: Timeout", "height", m.Height, "round", m.Round, "step", m.Step, "dur", m.Duration)
 		cs.handleTimeout(m, cs.RoundState)
@@ -115,35 +115,13 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	gr, found, err = cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight-1))
 	if err == io.EOF {
 		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
-		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
-		// TODO (0.10.0): remove this
-		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
-		if err == io.EOF {
-			cs.Logger.Error("Replay: wal.group.Search returned EOF", "#HEIGHT", csHeight)
-			return nil
-		} else if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	} else {
 		defer gr.Close()
 	}
 	if !found {
-		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
-		// TODO (0.10.0): remove this
-		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
-		if err == io.EOF {
-			cs.Logger.Error("Replay: wal.group.Search returned EOF", "#HEIGHT", csHeight)
-			return nil
-		} else if err != nil {
-			return err
-		} else {
-			defer gr.Close()
-		}
-
-		// TODO (0.10.0): uncomment
-		// return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
+		return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
 	}
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
@@ -324,8 +302,11 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
+	//
 	// Note that we don't have an old version of the state,
 	// so we by-pass state validation/mutation using sm.ExecCommitBlock.
+	// This also means we won't be saving validator sets if they change during this period.
+	//
 	// If mutateState == true, the final block is replayed with h.replayBlock()
 
 	var appHash []byte

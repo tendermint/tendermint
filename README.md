@@ -1,14 +1,14 @@
 # Tendermint
 
 [Byzantine-Fault Tolerant](https://en.wikipedia.org/wiki/Byzantine_fault_tolerance)
-[State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication). 
+[State Machine Replication](https://en.wikipedia.org/wiki/State_machine_replication).
 Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
 
 [![version](https://img.shields.io/github/tag/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/releases/latest)
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/tendermint/tendermint)
-[![chat](https://img.shields.io/badge/slack-join%20chat-pink.svg)](http://forum.tendermint.com:3000/)
+[![Rocket.Chat](https://demo.rocket.chat/images/join-chat.svg)](https://cosmos.rocket.chat/)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
@@ -27,19 +27,22 @@ For more background, see the [introduction](https://tendermint.com/intro).
 
 To get started developing applications, see the [application developers guide](https://tendermint.com/docs/guides/app-development).
 
+### Code of Conduct
+Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
+
 ## Install
 
-To download pre-built binaries, see our [downloads page](https://tendermint.com/intro/getting-started/download).
+To download pre-built binaries, see our [downloads page](https://tendermint.com/downloads).
 
 To install from source, you should be able to:
 
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install).
+For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install-from-source).
 
 ## Contributing
 
-Yay open source! Please see our [contributing guidelines](https://tendermint.com/docs/guides/contributing).
+Yay open source! Please see our [contributing guidelines](CONTRIBUTING.md).
 
 ## Resources
 
@@ -53,7 +56,7 @@ Yay open source! Please see our [contributing guidelines](https://tendermint.com
 
 * [ABCI](http://github.com/tendermint/abci), the Application Blockchain Interface
 * [Go-Wire](http://github.com/tendermint/go-wire), a deterministic serialization library
-* [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library 
+* [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library
 * [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries
 * [Merkleeyes](http://github.com/tendermint/merkleeyes), a balanced, binary Merkle tree for ABCI apps
 
@@ -65,10 +68,9 @@ Yay open source! Please see our [contributing guidelines](https://tendermint.com
 * [Ethermint](http://github.com/tendermint/ethermint): Ethereum on Tendermint
 * [Basecoin](http://github.com/tendermint/basecoin), a cryptocurrency application framework
 
-### More 
+### More
 
-* [Tendermint Blog](https://tendermint.com/blog)
-* [Cosmos Blog](https://cosmos.network/blog)
+* [Tendermint Blog](https://blog.cosmos.network/tendermint/home)
+* [Cosmos Blog](https://blog.cosmos.network)
 * [Original Whitepaper (out-of-date)](http://www.the-blockchain.com/docs/Tendermint%20Consensus%20without%20Mining.pdf)
 * [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
-

@@ -137,10 +137,14 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
-	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool())
+	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight)
 	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
+
+	if config.Consensus.WaitForTxs() {
+		mempool.EnableTxsAvailable()
+	}
 
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
@@ -205,7 +209,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	if profileHost != "" {
 
 		go func() {
-			logger.Error("Profile server", "error", http.ListenAndServe(profileHost, nil))
+			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
 		}()
 	}
 
@@ -276,7 +280,7 @@ func (n *Node) OnStop() {
 	for _, l := range n.rpcListeners {
 		n.Logger.Info("Closing rpc listener", "listener", l)
 		if err := l.Close(); err != nil {
-			n.Logger.Error("Error closing listener", "listener", l, "error", err)
+			n.Logger.Error("Error closing listener", "listener", l, "err", err)
 		}
 	}
 }
@@ -315,6 +319,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
+	rpccore.SetConsensusReactor(n.consensusReactor)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
 }
 
@@ -330,9 +335,9 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	listeners := make([]net.Listener, len(listenAddrs))
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wm.SetLogger(rpcLogger)
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
+		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
 		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)

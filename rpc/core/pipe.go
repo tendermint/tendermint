@@ -2,18 +2,21 @@ package core
 
 import (
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tmlibs/log"
+
 	"github.com/tendermint/tendermint/consensus"
 	p2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/log"
 )
 
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
 type Consensus interface {
+	GetState() *sm.State
 	GetValidators() (int, []*types.Validator)
 	GetRoundState() *consensus.RoundState
 }
@@ -28,6 +31,8 @@ type P2P interface {
 }
 
 //----------------------------------------------
+// These package level globals come with setters
+// that are expected to be called only once, on startup
 
 var (
 	// external, thread safe interfaces
@@ -41,10 +46,11 @@ var (
 	p2pSwitch      P2P
 
 	// objects
-	pubKey    crypto.PubKey
-	genDoc    *types.GenesisDoc // cache the genesis structure
-	addrBook  *p2p.AddrBook
-	txIndexer txindex.TxIndexer
+	pubKey           crypto.PubKey
+	genDoc           *types.GenesisDoc // cache the genesis structure
+	addrBook         *p2p.AddrBook
+	txIndexer        txindex.TxIndexer
+	consensusReactor *consensus.ConsensusReactor
 
 	logger log.Logger
 )
@@ -87,6 +93,10 @@ func SetProxyAppQuery(appConn proxy.AppConnQuery) {
 
 func SetTxIndexer(indexer txindex.TxIndexer) {
 	txIndexer = indexer
+}
+
+func SetConsensusReactor(conR *consensus.ConsensusReactor) {
+	consensusReactor = conR
 }
 
 func SetLogger(l log.Logger) {

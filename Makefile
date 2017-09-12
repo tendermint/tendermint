@@ -1,6 +1,8 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
-					github.com/Masterminds/glide
+					github.com/Masterminds/glide \
+					honnef.co/go/tools/cmd/megacheck
+
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
@@ -71,6 +73,11 @@ tools:
 
 ensure_tools:
 	go get $(GOTOOLS)
+
+### Formatting, linting, and vetting
+
+megacheck:
+	@for pkg in ${PACKAGES}; do megacheck "$$pkg"; done
 
 
 .PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools

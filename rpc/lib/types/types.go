@@ -2,6 +2,7 @@ package rpctypes
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	events "github.com/tendermint/tmlibs/events"
@@ -21,6 +22,10 @@ func NewRPCRequest(id string, method string, params json.RawMessage) RPCRequest 
 		Method:  method,
 		Params:  &params,
 	}
+}
+
+func (req RPCRequest) String() string {
+	return fmt.Sprintf("[%s %s]", req.ID, req.Method)
 }
 
 func MapToRequest(id string, method string, params map[string]interface{}) (RPCRequest, error) {
@@ -67,6 +72,14 @@ func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
 		ID:      id,
 		Result:  raw,
 		Error:   err,
+	}
+}
+
+func (resp RPCResponse) String() string {
+	if resp.Error == "" {
+		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
+	} else {
+		return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
 	}
 }
 

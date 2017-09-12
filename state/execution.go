@@ -85,7 +85,7 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	// Begin block
 	err := proxyAppConn.BeginBlockSync(block.Hash(), types.TM2PB.Header(block.Header))
 	if err != nil {
-		logger.Error("Error in proxyAppConn.BeginBlock", "error", err)
+		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
 	}
 
@@ -100,13 +100,13 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	// End block
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(uint64(block.Height))
 	if err != nil {
-		logger.Error("Error in proxyAppConn.EndBlock", "error", err)
+		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
 	}
 
 	valDiff := abciResponses.EndBlock.Diffs
 
-	logger.Info("Executed block", "height", block.Height, "valid txs", validTxs, "invalid txs", invalidTxs)
+	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 	if len(valDiff) > 0 {
 		logger.Info("Update to validator set", "updates", abci.ValidatorsString(valDiff))
 	}
@@ -170,6 +170,7 @@ func commitBitArrayFromBlock(block *types.Block) *cmn.BitArray {
 //-----------------------------------------------------
 // Validate block
 
+// ValidateBlock validates the block against the state.
 func (s *State) ValidateBlock(block *types.Block) error {
 	return s.validateBlock(block)
 }
@@ -206,7 +207,9 @@ func (s *State) validateBlock(block *types.Block) error {
 // then commits and updates the mempool atomically, then saves state.
 // Transaction results are optionally indexed.
 
-// Validate, execute, and commit block against app, save block and state
+// ApplyBlock validates the block against the state, executes it against the app,
+// commits it, and saves the block and state. It's the only function that needs to be called
+// from outside this package to process and commit an entire block.
 func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConnConsensus,
 	block *types.Block, partsHeader types.PartSetHeader, mempool types.Mempool) error {
 
@@ -236,15 +239,15 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 
 	fail.Fail() // XXX
 
-	// save the state
+	// save the state and the validators
 	s.Save()
 
 	return nil
 }
 
-// mempool must be locked during commit and update
-// because state is typically reset on Commit and old txs must be replayed
-// against committed state before new txs are run in the mempool, lest they be invalid
+// CommitStateUpdateMempool locks the mempool, runs the ABCI Commit message, and updates the mempool.
+// The Mempool must be locked during commit and update because state is typically reset on Commit and old txs must be replayed
+// against committed state before new txs are run in the mempool, lest they be invalid.
 func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, block *types.Block, mempool types.Mempool) error {
 	mempool.Lock()
 	defer mempool.Unlock()
@@ -252,7 +255,7 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	// Commit block, get hash back
 	res := proxyAppConn.CommitSync()
 	if res.IsErr() {
-		s.logger.Error("Error in proxyAppConn.CommitSync", "error", res)
+		s.logger.Error("Error in proxyAppConn.CommitSync", "err", res)
 		return res
 	}
 	if res.Log != "" {
@@ -286,8 +289,8 @@ func (s *State) indexTxs(abciResponses *ABCIResponses) {
 	s.TxIndexer.AddBatch(batch)
 }
 
-// Exec and commit a block on the proxyApp without validating or mutating the state
-// Returns the application root hash (result of abci.Commit)
+// ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
+// It returns the application root hash (result of abci.Commit).
 func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger) ([]byte, error) {
 	var eventCache types.Fireable // nil
 	_, err := execBlockOnProxyApp(eventCache, appConnConsensus, block, logger)
@@ -298,7 +301,7 @@ func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block
 	// Commit block, get hash back
 	res := appConnConsensus.CommitSync()
 	if res.IsErr() {
-		logger.Error("Error in proxyAppConn.CommitSync", "error", res)
+		logger.Error("Error in proxyAppConn.CommitSync", "err", res)
 		return nil, res
 	}
 	if res.Log != "" {

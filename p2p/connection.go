@@ -21,12 +21,16 @@ const (
 	minWriteBufferSize = 65536
 	updateState        = 2 * time.Second
 	pingTimeout        = 40 * time.Second
-	flushThrottle      = 100 * time.Millisecond
+
+	// some of these defaults are written in the user config
+	// flushThrottle, sendRate, recvRate
+	// TODO: remove values present in config
+	defaultFlushThrottle = 100 * time.Millisecond
 
 	defaultSendQueueCapacity   = 1
-	defaultSendRate            = int64(512000) // 500KB/s
 	defaultRecvBufferCapacity  = 4096
 	defaultRecvMessageCapacity = 22020096      // 21MB
+	defaultSendRate            = int64(512000) // 500KB/s
 	defaultRecvRate            = int64(512000) // 500KB/s
 	defaultSendTimeout         = 10 * time.Second
 )
@@ -89,13 +93,23 @@ type MConnection struct {
 type MConnConfig struct {
 	SendRate int64 `mapstructure:"send_rate"`
 	RecvRate int64 `mapstructure:"recv_rate"`
+
+	maxMsgPacketPayloadSize int
+
+	flushThrottle time.Duration
+}
+
+func (cfg *MConnConfig) maxMsgPacketTotalSize() int {
+	return cfg.maxMsgPacketPayloadSize + maxMsgPacketOverheadSize
 }
 
 // DefaultMConnConfig returns the default config.
 func DefaultMConnConfig() *MConnConfig {
 	return &MConnConfig{
-		SendRate: defaultSendRate,
-		RecvRate: defaultRecvRate,
+		SendRate:                defaultSendRate,
+		RecvRate:                defaultRecvRate,
+		maxMsgPacketPayloadSize: defaultMaxMsgPacketPayloadSize,
+		flushThrottle:           defaultFlushThrottle,
 	}
 }
 
@@ -145,10 +159,11 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	return mconn
 }
 
+// OnStart implements BaseService
 func (c *MConnection) OnStart() error {
 	c.BaseService.OnStart()
 	c.quit = make(chan struct{})
-	c.flushTimer = cmn.NewThrottleTimer("flush", flushThrottle)
+	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateState)
 	go c.sendRoutine()
@@ -156,6 +171,7 @@ func (c *MConnection) OnStart() error {
 	return nil
 }
 
+// OnStop implements BaseService
 func (c *MConnection) OnStop() {
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()
@@ -180,7 +196,7 @@ func (c *MConnection) flush() {
 	c.Logger.Debug("Flush", "conn", c)
 	err := c.bufWriter.Flush()
 	if err != nil {
-		c.Logger.Error("MConnection flush failed", "error", err)
+		c.Logger.Error("MConnection flush failed", "err", err)
 	}
 }
 
@@ -318,7 +334,7 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 		if err != nil {
-			c.Logger.Error("Connection failed @ sendRoutine", "conn", c, "error", err)
+			c.Logger.Error("Connection failed @ sendRoutine", "conn", c, "err", err)
 			c.stopForError(err)
 			break FOR_LOOP
 		}
@@ -333,7 +349,7 @@ func (c *MConnection) sendSomeMsgPackets() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.config.SendRate), true)
+	c.sendMonitor.Limit(c.config.maxMsgPacketTotalSize(), atomic.LoadInt64(&c.config.SendRate), true)
 
 	// Now send some msgPackets.
 	for i := 0; i < numBatchMsgPackets; i++ {
@@ -373,7 +389,7 @@ func (c *MConnection) sendMsgPacket() bool {
 	// Make & send a msgPacket from this channel
 	n, err := leastChannel.writeMsgPacketTo(c.bufWriter)
 	if err != nil {
-		c.Logger.Error("Failed to write msgPacket", "error", err)
+		c.Logger.Error("Failed to write msgPacket", "err", err)
 		c.stopForError(err)
 		return true
 	}
@@ -391,7 +407,7 @@ func (c *MConnection) recvRoutine() {
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(maxMsgPacketTotalSize, atomic.LoadInt64(&c.config.RecvRate), true)
+		c.recvMonitor.Limit(c.config.maxMsgPacketTotalSize(), atomic.LoadInt64(&c.config.RecvRate), true)
 
 		/*
 			// Peek into bufReader for debugging
@@ -401,7 +417,7 @@ FOR_LOOP:
 					if err == nil {
 						return bytes
 					} else {
-						log.Warn("Error peeking connection buffer", "error", err)
+						log.Warn("Error peeking connection buffer", "err", err)
 						return nil
 					}
 				}})
@@ -415,7 +431,7 @@ FOR_LOOP:
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if c.IsRunning() {
-				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "error", err)
+				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
 				c.stopForError(err)
 			}
 			break FOR_LOOP
@@ -432,11 +448,11 @@ FOR_LOOP:
 			c.Logger.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
-			wire.ReadBinaryPtr(&pkt, c.bufReader, maxMsgPacketTotalSize, &n, &err)
+			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
-					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "error", err)
+					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 					c.stopForError(err)
 				}
 				break FOR_LOOP
@@ -448,13 +464,14 @@ FOR_LOOP:
 			msgBytes, err := channel.recvMsgPacket(pkt)
 			if err != nil {
 				if c.IsRunning() {
-					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "error", err)
+					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 					c.stopForError(err)
 				}
 				break FOR_LOOP
 			}
 			if msgBytes != nil {
 				c.Logger.Debug("Received bytes", "chID", pkt.ChannelID, "msgBytes", msgBytes)
+				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(pkt.ChannelID, msgBytes)
 			}
 		default:
@@ -468,7 +485,7 @@ FOR_LOOP:
 
 	// Cleanup
 	close(c.pong)
-	for _ = range c.pong {
+	for range c.pong {
 		// Drain
 	}
 }
@@ -538,6 +555,8 @@ type Channel struct {
 	sending       []byte
 	priority      int
 	recentlySent  int64 // exponential moving average
+
+	maxMsgPacketPayloadSize int
 }
 
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
@@ -546,12 +565,13 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 		cmn.PanicSanity("Channel default priority must be a postive integer")
 	}
 	return &Channel{
-		conn:      conn,
-		desc:      desc,
-		id:        desc.ID,
-		sendQueue: make(chan []byte, desc.SendQueueCapacity),
-		recving:   make([]byte, 0, desc.RecvBufferCapacity),
-		priority:  desc.Priority,
+		conn:                    conn,
+		desc:                    desc,
+		id:                      desc.ID,
+		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
+		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
+		priority:                desc.Priority,
+		maxMsgPacketPayloadSize: conn.config.maxMsgPacketPayloadSize,
 	}
 }
 
@@ -610,14 +630,15 @@ func (ch *Channel) isSendPending() bool {
 func (ch *Channel) nextMsgPacket() msgPacket {
 	packet := msgPacket{}
 	packet.ChannelID = byte(ch.id)
-	packet.Bytes = ch.sending[:cmn.MinInt(maxMsgPacketPayloadSize, len(ch.sending))]
-	if len(ch.sending) <= maxMsgPacketPayloadSize {
+	maxSize := ch.maxMsgPacketPayloadSize
+	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
+	if len(ch.sending) <= maxSize {
 		packet.EOF = byte(0x01)
 		ch.sending = nil
 		atomic.AddInt32(&ch.sendQueueSize, -1) // decrement sendQueueSize
 	} else {
 		packet.EOF = byte(0x00)
-		ch.sending = ch.sending[cmn.MinInt(maxMsgPacketPayloadSize, len(ch.sending)):]
+		ch.sending = ch.sending[cmn.MinInt(maxSize, len(ch.sending)):]
 	}
 	return packet
 }
@@ -666,9 +687,9 @@ func (ch *Channel) updateStats() {
 //-----------------------------------------------------------------------------
 
 const (
-	maxMsgPacketPayloadSize  = 1024
+	defaultMaxMsgPacketPayloadSize = 1024
+
 	maxMsgPacketOverheadSize = 10 // It's actually lower but good enough
-	maxMsgPacketTotalSize    = maxMsgPacketPayloadSize + maxMsgPacketOverheadSize
 	packetTypePing           = byte(0x01)
 	packetTypePong           = byte(0x02)
 	packetTypeMsg            = byte(0x03)

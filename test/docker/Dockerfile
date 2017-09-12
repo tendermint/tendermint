@@ -1,5 +1,4 @@
-# Pull base image.
-FROM golang:1.7.4
+FROM golang:1.8.3
 
 # Add testing deps for curl
 RUN echo 'deb http://httpredir.debian.org/debian testing main non-free contrib' >> /etc/apt/sources.list
@@ -9,7 +8,7 @@ RUN apt-get update && \
   apt-get install -y --no-install-recommends \
   jq bsdmainutils vim-common psmisc netcat curl
 
-# Setup tendermint repo 
+# Setup tendermint repo
 ENV REPO $GOPATH/src/github.com/tendermint/tendermint
 WORKDIR $REPO
 

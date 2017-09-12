@@ -31,7 +31,7 @@ import (
 
 // genesis, chain_id, priv_val
 var config *cfg.Config // NOTE: must be reset for each _test.go file
-var ensureTimeout = time.Duration(2)
+var ensureTimeout = time.Second * 2
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := EnsureDir(dir, mode); err != nil {
@@ -222,17 +222,6 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	return voteCh
 }
 
-func readVotes(ch chan interface{}, reads int) chan struct{} {
-	wg := make(chan struct{})
-	go func() {
-		for i := 0; i < reads; i++ {
-			<-ch // read the precommit event
-		}
-		close(wg)
-	}()
-	return wg
-}
-
 //-------------------------------------------------------------------------------
 // consensus states
 
@@ -251,8 +240,11 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem)
+	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0)
 	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+	if thisConfig.Consensus.WaitForTxs() {
+		mempool.EnableTxsAvailable()
+	}
 
 	// Make ConsensusReactor
 	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool)
@@ -272,16 +264,6 @@ func loadPrivValidator(config *cfg.Config) *types.PrivValidator {
 	privValidator := types.LoadOrGenPrivValidator(privValidatorFile, log.TestingLogger())
 	privValidator.Reset()
 	return privValidator
-}
-
-func fixedConsensusState() *ConsensusState {
-	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger().With("module", "state"))
-	privValidator := loadPrivValidator(config)
-	cs := newConsensusState(state, privValidator, counter.NewCounterApplication(true))
-	cs.SetLogger(log.TestingLogger())
-	return cs
 }
 
 func fixedConsensusStateDummy() *ConsensusState {
@@ -315,12 +297,22 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 //-------------------------------------------------------------------------------
 
 func ensureNoNewStep(stepCh chan interface{}) {
-	timeout := time.NewTicker(ensureTimeout * time.Second)
+	timer := time.NewTimer(ensureTimeout)
 	select {
-	case <-timeout.C:
+	case <-timer.C:
 		break
 	case <-stepCh:
-		panic("We should be stuck waiting for more votes, not moving to the next step")
+		panic("We should be stuck waiting, not moving to the next step")
+	}
+}
+
+func ensureNewStep(stepCh chan interface{}) {
+	timer := time.NewTimer(ensureTimeout)
+	select {
+	case <-timer.C:
+		panic("We shouldnt be stuck waiting")
+	case <-stepCh:
+		break
 	}
 }
 
@@ -340,7 +332,7 @@ func consensusLogger() log.Logger {
 	})
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application, configOpts ...func(*cfg.Config)) []*ConsensusState {
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
 	logger := consensusLogger()
@@ -350,6 +342,9 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state.SetLogger(logger.With("module", "state", "validator", i))
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
+		for _, opt := range configOpts {
+			opt(thisConfig)
+		}
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
 		css[i].SetLogger(logger.With("validator", i))

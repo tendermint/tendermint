@@ -1,5 +1,93 @@
 # Changelog
 
+## Roadmap
+
+BREAKING CHANGES:
+- Upgrade the header to support better proves on validtors, results, evidence, and possibly more
+- Better support for injecting randomness
+- Pass evidence/voteInfo through ABCI
+- Upgrade consensus for more real-time use of evidence
+
+FEATURES:
+- Peer reputation management
+- Use the chain as its own CA for nodes and validators     
+- Tooling to run multiple blockchains/apps, possibly in a single process      
+- State syncing (without transaction replay)      
+- Improved support for querying history and state        
+- Add authentication and rate-limitting to the RPC
+
+IMPROVEMENTS:
+- Improve subtleties around mempool caching and logic		
+- Consensus optimizations: 		
+	- cache block parts for faster agreement after round changes
+	- propagate block parts rarest first
+- Better testing of the consensus state machine (ie. use a DSL)		
+- Auto compiled serialization/deserialization code instead of go-wire reflection
+
+BUG FIXES:		
+- Graceful handling/recovery for apps that have non-determinism or fail to halt		
+- Graceful handling/recovery for violations of safety, or liveness
+
+## 0.10.4 (Septemeber 5, 2017)
+
+IMPROVEMENTS:
+- docs: Added Slate docs to each rpc function (see rpc/core) 
+- docs: Ported all website docs to Read The Docs 
+- config: expose some p2p params to tweak performance: RecvRate, SendRate, and MaxMsgPacketPayloadSize
+- rpc: Upgrade the websocket client and server, including improved auto reconnect, and proper ping/pong
+
+BUG FIXES:
+- consensus: fix panic on getVoteBitArray
+- consensus: hang instead of panicking on byzantine consensus failures
+- cmd: dont load config for version command
+
+## 0.10.3 (August 10, 2017)
+
+FEATURES:
+- control over empty block production:
+  - new flag, `--consensus.create_empty_blocks`; when set to false, blocks are only created when there are txs or when the AppHash changes.
+  - new config option, `consensus.create_empty_blocks_interval`; an empty block is created after this many seconds.
+  - in normal operation, `create_empty_blocks = true` and `create_empty_blocks_interval = 0`, so blocks are being created all the time (as in all previous versions of tendermint). The number of empty blocks can be reduced by increasing `create_empty_blocks_interval` or by setting `create_empty_blocks = false`.
+  - new `TxsAvailable()` method added to Mempool that returns a channel which fires when txs are available.
+  - new heartbeat message added to consensus reactor to notify peers that a node is waiting for txs before entering propose step.
+- rpc: Add `syncing` field to response returned by `/status`. Is `true` while in fast-sync mode.
+
+IMPROVEMENTS:
+- various improvements to documentation and code comments
+
+BUG FIXES:
+- mempool: pass height into constructor so it doesn't always start at 0
+
+## 0.10.2 (July 10, 2017)
+
+FEATURES:
+- Enable lower latency block commits by adding consensus reactor sleep durations and p2p flush throttle timeout to the config
+
+IMPROVEMENTS:
+- More detailed logging in the consensus reactor and state machine
+- More in-code documentation for many exposed functions, especially in consensus/reactor.go and p2p/switch.go
+- Improved readability for some function definitions and code blocks with long lines
+
+## 0.10.1 (June 28, 2017)
+
+FEATURES:
+- Use `--trace` to get stack traces for logged errors
+- types: GenesisDoc.ValidatorHash returns the hash of the genesis validator set 
+- types: GenesisDocFromFile parses a GenesiDoc from a JSON file
+
+IMPROVEMENTS:
+- Add a Code of Conduct
+- Variety of improvements as suggested by `megacheck` tool
+- rpc: deduplicate tests between rpc/client and rpc/tests
+- rpc: addresses without a protocol prefix default to `tcp://`. `http://` is also accepted as an alias for `tcp://`
+- cmd: commands are more easily reuseable from other tools
+- DOCKER: automate build/push
+
+BUG FIXES:
+- Fix log statements using keys with spaces (logger does not currently support spaces)
+- rpc: set logger on websocket connection
+- rpc: fix ws connection stability by setting write deadline on pings
+
 ## 0.10.0 (June 2, 2017)
 
 Includes major updates to configuration, logging, and json serialization.
@@ -330,7 +418,7 @@ Strict versioning only began with the release of v0.7.0, in late summer 2016.
 The project itself began in early summer 2014 and was workable decentralized cryptocurrency software by the end of that year.
 Through the course of 2015, in collaboration with Eris Industries (now Monax Indsutries), 
 many additional features were integrated, including an implementation from scratch of the Ethereum Virtual Machine.
-That implementation now forms the heart of [ErisDB](https://github.com/eris-ltd/eris-db).
+That implementation now forms the heart of [Burrow](https://github.com/hyperledger/burrow).
 In the later half of 2015, the consensus algorithm was upgraded with a more asynchronous design and a more deterministic and robust implementation.
 
 By late 2015, frustration with the difficulty of forking a large monolithic stack to create alternative cryptocurrency designs led to the 

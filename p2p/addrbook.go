@@ -68,9 +68,6 @@ const (
 	// max addresses returned by GetSelection
 	// NOTE: this must match "maxPexMessageSize"
 	maxGetSelection = 250
-
-	// current version of the on-disk format.
-	serializationVersion = 1
 )
 
 const (
@@ -340,7 +337,7 @@ func (a *AddrBook) saveToFile(filePath string) {
 	}
 	err = cmn.WriteFileAtomic(filePath, jsonBytes, 0644)
 	if err != nil {
-		a.Logger.Error("Failed to save AddrBook to file", "file", filePath, "error", err)
+		a.Logger.Error("Failed to save AddrBook to file", "file", filePath, "err", err)
 	}
 }
 

@@ -174,7 +174,6 @@ func (na *NetAddress) ReachabilityTo(o *NetAddress) int {
 		Ipv6_weak
 		Ipv4
 		Ipv6_strong
-		Private
 	)
 	if !na.Routable() {
 		return Unreachable

@@ -10,6 +10,7 @@ import (
 	merktest "github.com/tendermint/merkleeyes/testutil"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/types"
 )
 
 func getHTTPClient() *client.HTTP {
@@ -86,7 +87,7 @@ func TestGenesisAndValidators(t *testing.T) {
 		gval := gen.Genesis.Validators[0]
 
 		// get the current validators
-		vals, err := c.Validators()
+		vals, err := c.Validators(nil)
 		require.Nil(t, err, "%d: %+v", i, err)
 		require.Equal(t, 1, len(vals.Validators))
 		val := vals.Validators[0]
@@ -109,7 +110,8 @@ func TestAppCalls(t *testing.T) {
 		sh := s.LatestBlockHeight
 
 		// look for the future
-		_, err = c.Block(sh + 2)
+		h := sh + 2
+		_, err = c.Block(&h)
 		assert.NotNil(err) // no block yet
 
 		// write something
@@ -136,7 +138,7 @@ func TestAppCalls(t *testing.T) {
 		assert.EqualValues(tx, ptx.Tx)
 
 		// and we can even check the block is added
-		block, err := c.Block(apph)
+		block, err := c.Block(&apph)
 		require.Nil(err, "%d: %+v", i, err)
 		appHash := block.BlockMeta.Header.AppHash
 		assert.True(len(appHash) > 0)
@@ -157,14 +159,15 @@ func TestAppCalls(t *testing.T) {
 		}
 
 		// and get the corresponding commit with the same apphash
-		commit, err := c.Commit(apph)
+		commit, err := c.Commit(&apph)
 		require.Nil(err, "%d: %+v", i, err)
 		cappHash := commit.Header.AppHash
 		assert.Equal(appHash, cappHash)
 		assert.NotNil(commit.Commit)
 
 		// compare the commits (note Commit(2) has commit from Block(3))
-		commit2, err := c.Commit(apph - 1)
+		h = apph - 1
+		commit2, err := c.Commit(&h)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
@@ -178,6 +181,96 @@ func TestAppCalls(t *testing.T) {
 				assert.EqualValues(appHash, proof.RootHash)
 				valid := proof.Verify(key, value, appHash)
 				assert.True(valid)
+			}
+		}
+	}
+}
+
+func TestBroadcastTxSync(t *testing.T) {
+	require := require.New(t)
+
+	mempool := node.MempoolReactor().Mempool
+	initMempoolSize := mempool.Size()
+
+	for i, c := range GetClients() {
+		_, _, tx := merktest.MakeTxKV()
+		bres, err := c.BroadcastTxSync(tx)
+		require.Nil(err, "%d: %+v", i, err)
+		require.True(bres.Code.IsOK())
+
+		require.Equal(initMempoolSize+1, mempool.Size())
+
+		txs := mempool.Reap(1)
+		require.EqualValues(tx, txs[0])
+		mempool.Flush()
+	}
+}
+
+func TestBroadcastTxCommit(t *testing.T) {
+	require := require.New(t)
+
+	mempool := node.MempoolReactor().Mempool
+	for i, c := range GetClients() {
+		_, _, tx := merktest.MakeTxKV()
+		bres, err := c.BroadcastTxCommit(tx)
+		require.Nil(err, "%d: %+v", i, err)
+		require.True(bres.CheckTx.Code.IsOK())
+		require.True(bres.DeliverTx.Code.IsOK())
+
+		require.Equal(0, mempool.Size())
+	}
+}
+
+func TestTx(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	// first we broadcast a tx
+	c := getHTTPClient()
+	_, _, tx := merktest.MakeTxKV()
+	bres, err := c.BroadcastTxCommit(tx)
+	require.Nil(err, "%+v", err)
+
+	txHeight := bres.Height
+	txHash := bres.Hash
+
+	anotherTxHash := types.Tx("a different tx").Hash()
+
+	cases := []struct {
+		valid bool
+		hash  []byte
+		prove bool
+	}{
+		// only valid if correct hash provided
+		{true, txHash, false},
+		{true, txHash, true},
+		{false, anotherTxHash, false},
+		{false, anotherTxHash, true},
+		{false, nil, false},
+		{false, nil, true},
+	}
+
+	for i, c := range GetClients() {
+		for j, tc := range cases {
+			t.Logf("client %d, case %d", i, j)
+
+			// now we query for the tx.
+			// since there's only one tx, we know index=0.
+			ptx, err := c.Tx(tc.hash, tc.prove)
+
+			if !tc.valid {
+				require.NotNil(err)
+			} else {
+				require.Nil(err, "%+v", err)
+				assert.Equal(txHeight, ptx.Height)
+				assert.EqualValues(tx, ptx.Tx)
+				assert.Equal(0, ptx.Index)
+				assert.True(ptx.TxResult.Code.IsOK())
+
+				// time to verify the proof
+				proof := ptx.Proof
+				if tc.prove && assert.EqualValues(tx, proof.Data) {
+					assert.True(proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+				}
 			}
 		}
 	}

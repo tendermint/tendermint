@@ -120,7 +120,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
 	defer os.RemoveAll(dir)
-	book := NewAddrBook(dir+"addrbook.json", true)
+	book := NewAddrBook(dir+"addrbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)

@@ -13,7 +13,6 @@ import (
 
 	"github.com/pkg/errors"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // HTTPClient is a common interface for JSONRPCClient and URIClient.
@@ -23,13 +22,23 @@ type HTTPClient interface {
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
 func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, error)) {
-
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
-	if len(parts) != 2 {
-		cmn.PanicSanity(fmt.Sprintf("Expected fully formed listening address, including the tcp:// or unix:// prefix, given %s", remoteAddr))
-	} else {
+	if len(parts) == 1 {
+		// default to tcp if nothing specified
+		protocol, address = "tcp", remoteAddr
+	} else if len(parts) == 2 {
 		protocol, address = parts[0], parts[1]
+	} else {
+		// return a invalid message
+		msg := fmt.Sprintf("Invalid addr: %s", remoteAddr)
+		return msg, func(_ string, _ string) (net.Conn, error) {
+			return nil, errors.New(msg)
+		}
+	}
+	// accept http as an alias for tcp
+	if protocol == "http" {
+		protocol = "tcp"
 	}
 
 	trimmedAddress := strings.Replace(address, "/", ".", -1) // replace / with . for http requests (dummy domain)
