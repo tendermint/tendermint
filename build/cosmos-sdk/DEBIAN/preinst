@@ -15,9 +15,9 @@ set -e
 
 case "$1" in
     install|upgrade)
-    if ! grep -q '^basecoin:' /etc/passwd ; then
-      useradd -k /dev/null -r -m -b /etc basecoin
-      chmod 755 /etc/basecoin
+    if ! grep -q '^cosmos-sdk:' /etc/passwd ; then
+      useradd -k /dev/null -r -m -b /etc cosmos-sdk
+      chmod 755 /etc/cosmos-sdk
     fi
     ;;
 

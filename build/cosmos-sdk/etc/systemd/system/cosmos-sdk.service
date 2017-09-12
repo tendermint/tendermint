@@ -14,10 +14,10 @@ PropagatesReloadTo=cosmos-sdk-server.service
 ReloadPropagatedFrom=cosmos-sdk-server.service
 
 [Service]
-Environment="BCHOME=/etc/basecoin"
+Environment="BCHOME=/etc/cosmos-sdk"
 Restart=on-failure
-User=basecoin
-Group=basecoin
+User=cosmos-sdk
+Group=cosmos-sdk
 PermissionsStartOnly=true
 ExecStart=/usr/bin/basecoin start --without-tendermint
 ExecReload=/bin/kill -HUP $MAINPID

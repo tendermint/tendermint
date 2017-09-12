@@ -8,10 +8,10 @@ PropagatesReloadTo=cosmos-sdk.service
 ReloadPropagatedFrom=cosmos-sdk.service
 
 [Service]
-Environment="TMHOME=/etc/basecoin/tendermint"
+Environment="TMHOME=/etc/cosmos-sdk/tendermint"
 Restart=on-failure
-User=basecoin
-Group=basecoin
+User=cosmos-sdk
+Group=cosmos-sdk
 PermissionsStartOnly=true
 ExecStart=/usr/bin/tendermint node
 ExecReload=/bin/kill -HUP $MAINPID
