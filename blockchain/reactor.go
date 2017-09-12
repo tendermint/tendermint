@@ -137,18 +137,15 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 	case *bcBlockRequestMessage:
 		// Got a request for a block. Respond with block if we have it.
 		block := bcR.store.LoadBlock(msg.Height)
-		if block != nil {
-			msg := &bcBlockResponseMessage{Block: block}
-			queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
-			if !queued {
-				// queue is full, just ignore.
-			}
-		} else {
-			// TODO peer is asking for things we don't have.
+		resp := &bcBlockResponseMessage{Block: block}
+		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{resp})
+		if !queued {
+			// queue is full, just ignore.
 		}
 	case *bcBlockResponseMessage:
-		// Got a block.
-		bcR.pool.AddBlock(src.Key, msg.Block, len(msgBytes))
+		if msg.Block != nil { // Got a block.
+			bcR.pool.AddBlock(src.Key, msg.Block, len(msgBytes))
+		}
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
