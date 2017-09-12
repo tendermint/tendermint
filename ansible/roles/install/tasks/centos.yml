@@ -13,7 +13,7 @@
 #Workaround
 - name: Download repository key for CentOS/RedHat
   when: ansible_os_family == "RedHat"
-  get_url: "url=https://tendermint-packages.interblock.io/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint dest=/root/RPM-GPG-KEY-Tendermint force=yes checksum=sha256:a8c61d4061697d2595562c703dbafbdfdcfa7f0c75a523ac84d5609d1b444abe"
+  get_url: "url=https://tendermint-packages.interblock.io/{{ (devops_path | default(false) | bool) | ternary('devops/','') }}centos/7/os/x86_64/RPM-GPG-KEY-Tendermint dest=/root/RPM-GPG-KEY-Tendermint force=yes checksum=sha256:a8c61d4061697d2595562c703dbafbdfdcfa7f0c75a523ac84d5609d1b444abe"
 - name: Import repository key for CentOS/RedHat
   when: ansible_os_family == "RedHat"
   command: "rpm --import /root/RPM-GPG-KEY-Tendermint"
@@ -22,10 +22,10 @@
   when: ansible_os_family == "RedHat"
   yum_repository:
     name: tendermint
-    baseurl: https://tendermint-packages.interblock.io/centos/7/os/x86_64
+    baseurl: https://tendermint-packages.interblock.io/{{ (devops_path | default(false) | bool) | ternary('devops/','') }}centos/7/os/x86_64
     description: "Tendermint repo"
     gpgcheck: yes
-    gpgkey: https://tendermint-packages.interblock.io/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
+    gpgkey: https://tendermint-packages.interblock.io/{{ (devops_path | default(false) | bool) | ternary('devops/','') }}centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
 #    repo_gpgcheck: yes
 
 - name: Install package on CentOS/RedHat
