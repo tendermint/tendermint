@@ -263,10 +263,11 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 	}
 }
 
-// Verify that +2/3 of this set had signed the given signBytes.
+// VerifyCommitAny verifies that +2/3 of this set had signed the given signBytes.
 // Unlike VerifyCommit(), this function can verify commits with different sets.
-// VerifyCommitAny verifies that more than 2/3 of the old validator set have signed this block, as well as whether
-// more than 2/3 of the validator set have signed this block.
+// VerifyCommitAny verifies that more than 2/3 of the old validator set have
+// signed this block, as well as whether more than 2/3 of the new validator set
+// have signed this block.
 func (valSet *ValidatorSet) VerifyCommitAny(newVals *ValidatorSet, chainID string, blockID BlockID, height int, commit *Commit) error {
 	if newVals.Size() != len(commit.Precommits) {
 		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", newVals.Size(), len(commit.Precommits))
