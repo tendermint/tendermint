@@ -32,12 +32,12 @@ endif
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint trackomatron gaia
-build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia
+binaries = tendermint basecoin ethermint trackomatron gaia cosmos-sdk
+build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia build-cosmos-sdk
+package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia package-rpm-cosmos-sdk
+install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia package-rpm-cosmos-sdk
+package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia package-deb-cosmos-sdk
+install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia install-deb-cosmos-sdk
 
 all: $(binaries)
 build: $(build-binaries)
@@ -90,6 +90,13 @@ build-gaia: git-branch
 	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
 
+build-cosmos-sdk: git-branch
+	@echo "*** Building cosmos-sdk"
+	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
+	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
+	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
+	@echo "*** Built cosmos-sdk"
+
 ###
 # Prepare package files
 ###
@@ -117,6 +124,13 @@ prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
 prepare-gaia =
+prepare-cosmos-sdk = cp $(GOPATH)/bin/basecli $(build_folder)/usr/bin && \
+	cp $(GOPATH)/bin/basecoin $(build_folder)/usr/bin && \
+	cp $(GOPATH)/bin/baseserver $(build_folder)/usr/bin && \
+	cp $(GOPATH)/bin/counter $(build_folder)/usr/bin && \
+	cp $(GOPATH)/bin/countercli $(build_folder)/usr/bin && \
+	cp $(GOPATH)/bin/eyes $(build_folder)/usr/bin && \
+	cp $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
