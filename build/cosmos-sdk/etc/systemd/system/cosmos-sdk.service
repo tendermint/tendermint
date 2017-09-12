@@ -3,7 +3,7 @@ Description=Cosmos-SDK Basecoin
 #propagates activation, deactivation and activation fails.
 Requires=network-online.target
 #propagates activation, deactivation, activation fails and stops
-BindTo=basecoin-server.service
+BindTo=cosmos-sdk-server.service
 #propagates stop and restart (one-way)
 PartOf=cosmos-sdk-server.service
 #order
