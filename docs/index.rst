@@ -23,8 +23,15 @@ Tendermint 101
    introduction.rst
    install.rst
    getting-started.rst
-   deploy-testnets.rst
    using-tendermint.rst
+
+Tendermint Tools
+----------------
+
+.. toctree::
+   :maxdepth: 2
+
+   deploy-testnets.rst
 
 Tendermint 102
 --------------
