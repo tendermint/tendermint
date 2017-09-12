@@ -1,0 +1,3 @@
+disable cosmos-sdk.service
+disable cosmos-sdk-server.service
+

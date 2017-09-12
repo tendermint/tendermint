@@ -1,17 +1,17 @@
 [Unit]
-Description=Basecoin
+Description=Cosmos-SDK Basecoin
 #propagates activation, deactivation and activation fails.
 Requires=network-online.target
 #propagates activation, deactivation, activation fails and stops
 BindTo=basecoin-server.service
 #propagates stop and restart (one-way)
-PartOf=basecoin-server.service
+PartOf=cosmos-sdk-server.service
 #order
-Before=basecoin-server.service
+Before=cosmos-sdk-server.service
 After=network-online.target
 #propagates reload
-PropagatesReloadTo=basecoin-server.service
-ReloadPropagatedFrom=basecoin-server.service
+PropagatesReloadTo=cosmos-sdk-server.service
+ReloadPropagatedFrom=cosmos-sdk-server.service
 
 [Service]
 Environment="BCHOME=/etc/basecoin"
@@ -25,5 +25,5 @@ KillSignal=SIGTERM
 
 [Install]
 WantedBy=multi-user.target
-Also=basecoin-server.service
+Also=cosmos-sdk-server.service
 
