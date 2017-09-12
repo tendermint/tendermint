@@ -42,14 +42,15 @@ type State struct {
 	GenesisDoc *types.GenesisDoc
 	ChainID    string
 
-	// Updated at end of SetBlockAndValidators
-	// Genesis state has this set to 0.  So, Block(H=0) does not exist
+	// These fields are updated by SetBlockAndValidators.
+	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
+	// LastValidators is used to validate block.LastCommit.
 	LastBlockHeight int
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
-	// block.LastCommit validated against LastValidators
-	LastValidators *types.ValidatorSet
+	LastValidators  *types.ValidatorSet
+
 	// AppHash is updated after Commit
 	AppHash []byte
 
