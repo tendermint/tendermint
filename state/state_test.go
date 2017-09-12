@@ -39,7 +39,7 @@ func TestStateCopy(t *testing.T) {
 	stateCopy := state.Copy()
 
 	assert.True(state.Equals(stateCopy),
-		cmn.Fmt("exppppppected state and its copy to be identical. got %v\n expected %v\n", stateCopy, state))
+		cmn.Fmt("expected state and its copy to be identical. got %v\n expected %v\n", stateCopy, state))
 	stateCopy.LastBlockHeight++
 	assert.False(state.Equals(stateCopy), cmn.Fmt("expected states to be different. got same %v", state))
 }
@@ -47,6 +47,7 @@ func TestStateCopy(t *testing.T) {
 func TestStateSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
+	assert := assert.New(t)
 
 	state.LastBlockHeight++
 	state.Save()
