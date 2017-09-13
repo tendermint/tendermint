@@ -40,8 +40,51 @@ Automated Deployments
 ---------------------
 
 While the manual deployment is easy enough, an automated deployment is
-always better. For this, we have the `mintnet-kubernetes
-tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__,
-which allows us to automate the deployment of a Tendermint network on an
-already provisioned kubernetes cluster. And for simple provisioning of kubernetes
+usually quicker. The below examples show different tools that can be used
+for automated deployments.
+
+Automated Deployment using Kubernetes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `mintnet-kubernetes tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__
+allows automating the deployment of a Tendermint network on an already
+provisioned kubernetes cluster. For simple provisioning of a kubernetes
 cluster, check out the `Google Cloud Platform <https://cloud.google.com/>`__.
+
+Automated Deployment using Terraform and Ansible
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The `terraform-digitalocean tool <https://github.com/tendermint/tools/tree/master/terraform-digitalocean>`__
+allows creating a set of servers on the DigitalOcean cloud.
+
+The `ansible playbooks <https://github.com/tendermint/tools/tree/master/ansible>`__
+allow creating and managing a ``basecoin`` or ``ethermint`` testnet on provisioned servers.
+
+Package Deployment on Linux for developers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``tendermint`` and ``basecoin`` applications can be installed from RPM or DEB packages on
+Linux machines for development purposes. The packages are configured to be validators on the
+one-node network that the machine represents. The services are not started after installation,
+this way giving an opportunity to reconfigure the applications before starting.
+
+The Ansible playbooks in the previous section use this repository to install ``basecoin``.
+After installation, additional steps are executed to make sure that the multi-node testnet has
+the right configuration before start.
+
+Install from the CentOS/RedHat repository:
+
+::
+
+    rpm --import https://tendermint-packages.interblock.io/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
+    wget -O /etc/yum.repos.d/tendermint.repo https://tendermint-packages.interblock.io/centos/7/os/x86_64/tendermint.repo
+    yum install basecoin
+
+Install from the Debian/Ubuntu repository:
+
+::
+
+    wget -O - https://tendermint-packages.interblock.io/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint | apt-key add -
+    wget -O /etc/apt/sources.list.d/tendermint.list https://tendermint-packages.interblock.io/debian/tendermint.list
+    apt-get update && apt-get install basecoin
+
