@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -11,10 +12,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
-
-func init() {
-	AddNodeFlags(RunNodeCmd)
-}
 
 // AddNodeFlags exposes some common configuration options on the command-line
 // These are exposed for convenience of commands embedding a tendermint node
@@ -44,24 +41,13 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 }
 
-// RunNodeCmd creates and starts a tendermint node.
-var RunNodeCmd = &cobra.Command{
-	Use:   "node",
-	Short: "Run the tendermint node",
-	RunE:  runNode,
-}
-
 // NewRunNodeCmd returns the command that allows the CLI to start a
 // node. It can be used with a custom PrivValidator.
 func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Wait until the genesis doc becomes available
-			// This is for Mintnet compatibility.
-			// TODO: If Mintnet gets deprecated or genesis_file is
-			// always available, remove.
 			genDocFile := config.GenesisFile()
 			for !cmn.FileExists(genDocFile) {
 				logger.Info(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
@@ -79,7 +65,8 @@ func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
 			if privVal == nil {
 				n = node.NewNodeDefault(config, logger.With("module", "node"))
 			}
-			n = node.NewNode(config, privVal, proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
+			n = node.NewNode(config, privVal, proxy.DefaultClientCreator(config.ProxyApp,
+				config.ABCI, config.DBDir()), logger.With("module", "node"))
 
 			if _, err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
@@ -93,6 +80,9 @@ func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
 			return nil
 		},
 	}
+
+	AddNodeFlags(cmd)
+	return cmd
 }
 
 // Users wishing to:
@@ -101,25 +91,3 @@ func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
 // should import github.com/tendermint/tendermint/node and implement
 // their own run_node to call node.NewNode (instead of node.NewNodeDefault)
 // with their custom priv validator and/or custom proxy.ClientCreator
-func runNode(cmd *cobra.Command, args []string) error {
-
-	genDocFile := config.GenesisFile()
-	genDoc, err := types.GenesisDocFromFile(genDocFile)
-	if err != nil {
-		return err
-	}
-	config.ChainID = genDoc.ChainID
-
-	// Create & start node
-	n := node.NewNodeDefault(config, logger.With("module", "node"))
-	if _, err := n.Start(); err != nil {
-		return fmt.Errorf("Failed to start node: %v", err)
-	} else {
-		logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
-	}
-
-	// Trap signal, run forever.
-	n.RunForever()
-
-	return nil
-}

@@ -128,12 +128,16 @@ func GenPrivValidator() *PrivValidator {
 	}
 }
 
-func LoadPrivValidatorWithSigner(signer Signer) *PrivValidator {
+// LoadPrivValidatorWithSigner instantiates a private validator with a custom
+// signer object. Tendermint tracks state in the PrivValidator that might be
+// saved to disk. Please supply a filepath where Tendermint can save the
+// private validator.
+func LoadPrivValidatorWithSigner(signer Signer, filePath string) *PrivValidator {
 	return &PrivValidator{
 		Address:  signer.PubKey().Address(),
 		PubKey:   signer.PubKey(),
 		LastStep: stepNone,
-		filePath: "",
+		filePath: filePath,
 		Signer:   signer,
 	}
 }

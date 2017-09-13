@@ -19,12 +19,14 @@ func main() {
 
 	// NOTE: Implement your own type that implements the Signer interface
 	// and then instantiate it here.
-	// signer := types.NewDefaultSigner(pk)
-	// privValidator := types.LoadPrivValidatorWithSigner(signer)
-	// rootCmd.AddCommand(NewRunNodeCmd(privValidator))
+	/*
+	signer := types.NewDefaultSigner(pk)
+	privValidator := types.LoadPrivValidatorWithSigner(signer)
+	rootCmd.AddCommand(NewRunNodeCmd(privValidator))
+	*/
 
 	// Create & start node
-	rootCmd.AddCommand(RunNodeCmd)
+	rootCmd.AddCommand(NewRunNodeCmd(nil))
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))
 	cmd.Execute()
