@@ -1,7 +1,7 @@
 Ansible playbook for Tendermint applications
 ============================================
 
-.. figure:: img/a_plus_t.png
+.. figure:: assets/a_plus_t.png
    :alt: Ansible plus Tendermint
 
    Ansible plus Tendermint

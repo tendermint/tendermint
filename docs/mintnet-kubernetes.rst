@@ -1,7 +1,7 @@
 Tendermint network powered by Kubernetes
 ========================================
 
-.. figure:: img/t_plus_k.png
+.. figure:: assets/t_plus_k.png
    :alt: Tendermint plus Kubernetes
 
    Tendermint plus Kubernetes
@@ -236,7 +236,7 @@ Resources:
 Starting process
 ----------------
 
-.. figure:: img/statefulset.png
+.. figure:: assets/statefulset.png
    :alt: StatefulSet
 
    StatefulSet
