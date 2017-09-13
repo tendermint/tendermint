@@ -88,9 +88,57 @@ Setup a Kubernetes cluster
 
 Please refer to `the official
 documentation <https://kubernetes.io/docs/getting-started-guides/>`__
-for overview and comparison of different options. See our guides for
-`Google Cloud Engine <docs/SETUP_K8S_ON_GCE.md>`__ or `Digital
-Ocean <docs/SETUP_K8S_ON_DO.md>`__.
+for overview and comparison of different options. 
+
+Kubernetes on Digital Ocean
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Available options:
+
+- `kubeadm (alpha) <https://kubernetes.io/docs/getting-started-guides/kubeadm/>`__
+- `kargo <https://kubernetes.io/docs/getting-started-guides/kargo/>`__
+- `rancher <http://rancher.com/>`__
+- `terraform <https://github.com/hermanjunge/kubernetes-digitalocean-terraform>`__
+
+As you can see, there is no single tool for creating a cluster on DO.
+Therefore, choose the one you know and comfortable working with. If you know
+and used `terraform <https://www.terraform.io/>`__ before, then choose it. If you
+know Ansible, then pick kargo. If none of these seem familiar to you, go with
+``kubeadm``. Rancher is a beautiful UI for deploying and managing containers in
+production.
+
+Kubernetes on Google Cloud Engine
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Review the `Official Documentation <https://kubernetes.io/docs/getting-started-guides/gce/>`__ for Kubernetes on Google Compute
+Engine. 
+
+**Create a cluster**
+
+The recommended way is to use `Google Container
+Engine <https://cloud.google.com/container-engine/>`__. You should be able
+to create a fully fledged cluster with just a few clicks.
+
+**Connect to it**
+
+Install ``gcloud`` as a part of `Google Cloud SDK <https://cloud.google.com/sdk/>`__.
+
+Make sure you have credentials for GCloud by running ``gcloud auth login``.
+
+In order to make API calls against GCE, you must also run ``gcloud auth
+application-default login``.
+
+Press ``Connect``:
+
+.. figure:: assets/gce1.png
+
+and execute the first command in your shell. Then start a proxy by
+executing ``kubectl` proxy``.
+
+.. figure:: assets/gce2.png
+
+Now you should be able to run ``kubectl`` command to create resources, get
+resource info, logs, etc.
 
 **Make sure you have Kubernetes >= 1.5, because you will be using
 StatefulSets, which is a beta feature in 1.5.**
@@ -128,14 +176,14 @@ Observe your cluster
 
 `web UI <https://github.com/kubernetes/dashboard>`__
 
-The easiest way to access Dashboard is to use kubectl. Run the following
+The easiest way to access Dashboard is to use ``kubectl``. Run the following
 command in your desktop environment:
 
 ::
 
     kubectl proxy
 
-kubectl will handle authentication with apiserver and make Dashboard
+``kubectl`` will handle authentication with apiserver and make Dashboard
 available at http://localhost:8001/ui
 
 **shell**
@@ -238,4 +286,4 @@ Init containers (``tm-gen-validator``) are run before all other
 containers, creating public-private key pair for each pod. Every ``tm``
 container then asks other pods for their public keys, which are served
 with nginx (``pub-key`` container). When ``tm`` container have all the
-keys, it forms a genesis file and starts Tendermint process.
+keys, it forms a genesis file and starts the Tendermint process.
