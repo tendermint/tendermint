@@ -1,17 +1,13 @@
-Ansible playbook for Tendermint applications
-============================================
+Using Ansible
+=============
 
 .. figure:: assets/a_plus_t.png
    :alt: Ansible plus Tendermint
 
    Ansible plus Tendermint
 
--  `Prerequisites <#Prerequisites>`__
--  `Ansible setup <#Ansible%20setup>`__
--  `Running the playbook <#Running%20the%20playbook>`__
-
-The playbooks in this folder run `ansible <http://www.ansible.com/>`__
-roles which:
+The playbooks in `our ansible directory <https://github.com/tendermint/tools/tree/master/ansible>`__ 
+run ansible `roles <http://www.ansible.com/>`__ which:
 
 -  install and configure basecoin or ethermint
 -  start/stop basecoin or ethermint and reset their configuration
@@ -25,19 +21,18 @@ Prerequisites
 Optional for DigitalOcean droplets: \* DigitalOcean API Token \* python
 dopy package
 
-Head over to the `Terraform
-folder <https://github.com/tendermint/tools/tree/master/terraform-digitalocean>`__
-for a description on how to get a DigitalOcean API Token.
+For a description on how to get a DigitalOcean API Token, see the explanation
+in the `using terraform tutorial <terraform-digitalocean.rst>`__.
 
 Optional for Amazon AWS instances: \* Amazon AWS API access key ID and
 secret access key.
 
 The cloud inventory scripts come from the ansible team at their
 `GitHub <https://github.com/ansible/ansible>`__ page. You can get the
-latest version from the contrib/inventory folder.
+latest version from the ``contrib/inventory`` folder.
 
-Ansible setup
--------------
+Setup
+-----
 
 Ansible requires a "command machine" or "local machine" or "orchestrator
 machine" to run on. This can be your laptop or any machine that can run
@@ -61,8 +56,7 @@ CentOS/RedHat:
     sudo yum install epel-release
     sudo yum install ansible
 
-Mac OSX: If you have (Homebrew)[https://brew.sh] installed, then it's
-simply
+Mac OSX: If you have `Homebrew <https://brew.sh>`__ installed, then it's:
 
 ::
 
@@ -143,7 +137,7 @@ Mac OSX:
     sudo pip install boto
 
 Refreshing the DigitalOcean inventory
--------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you just finished creating droplets, the local DigitalOcean inventory
 cache is not up-to-date. To refresh it, run:
@@ -154,7 +148,7 @@ cache is not up-to-date. To refresh it, run:
     python -u inventory/digital_ocean.py --refresh-cache 1> /dev/null
 
 Refreshing the Amazon AWS inventory
------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you just finished creating Amazon AWS EC2 instances, the local AWS
 inventory cache is not up-to-date. To refresh it, run:

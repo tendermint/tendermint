@@ -1,17 +1,10 @@
-Tendermint network powered by Kubernetes
-========================================
+Using Kubernetes
+================
 
 .. figure:: assets/t_plus_k.png
    :alt: Tendermint plus Kubernetes
 
    Tendermint plus Kubernetes
-
--  `QuickStart (MacOS) <#quickstart-macos>`__
--  `QuickStart (Linux) <#quickstart-linux>`__
--  `Usage <#usage>`__
--  `Security <#security>`__
--  `Fault tolerance <#fault-tolerance>`__
--  `Starting process <#starting-process>`__
 
 This should primarily be used for testing purposes or for
 tightly-defined chains operated by a single stakeholder (see `the
@@ -19,10 +12,13 @@ security precautions <#security>`__). If your desire is to launch an
 application with many stakeholders, consider using our set of Ansible
 scripts.
 
-QuickStart (MacOS)
-------------------
+Quick Start
+-----------
 
-`Requirements <https://github.com/kubernetes/minikube#requirements>`__
+For either platform, see the `requirements <https://github.com/kubernetes/minikube#requirements>`__
+
+MacOS
+^^^^^
 
 ::
 
@@ -32,10 +28,8 @@ QuickStart (MacOS)
 
     git clone https://github.com/tendermint/tools.git && cd tools/mintnet-kubernetes/examples/basecoin && make create
 
-QuickStart (Linux)
-------------------
-
-`Requirements <https://github.com/kubernetes/minikube#requirements>`__
+Linux
+^^^^^
 
 ::
 
@@ -45,23 +39,22 @@ QuickStart (Linux)
 
     git clone https://github.com/tendermint/tools.git && cd tools/mintnet-kubernetes/examples/basecoin && make create
 
-Verify everything works
-~~~~~~~~~~~~~~~~~~~~~~~
+Verify it worked
+~~~~~~~~~~~~~~~~
 
 **Using a shell:**
 
-1. wait until all the pods are ``Running``.
+First wait until all the pods are ``Running``:
 
 ``kubectl get pods -w -o wide -L tm``
 
-2. query the Tendermint app logs from the first pod.
+then query the Tendermint app logs from the first pod:
 
 ``kubectl logs -c tm -f tm-0``
 
-3. use `Rest API <https://tendermint.com/docs/internals/rpc>`__ to fetch
-   the status of the second pod's Tendermint app. Note we are using
-   ``kubectl exec`` because pods are not exposed (and should not be) to
-   the outer network.
+finally, use `Rest API <rpc.html>`__ to fetch the status of the second pod's Tendermint app.
+Note we are using ``kubectl exec`` because pods are not exposed (and should not be) to the
+outer network:
 
 ``kubectl exec -c tm tm-0 -- curl -s http://tm-1.basecoin:46657/status | json_pp``
 
@@ -81,8 +74,8 @@ Clean up
 Usage
 -----
 
-(1/4) Setup a Kubernetes cluster
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Setup a Kubernetes cluster
+^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 -  locally using `Minikube <https://github.com/kubernetes/minikube>`__
 -  on GCE with a single click in the web UI
@@ -102,8 +95,8 @@ Ocean <docs/SETUP_K8S_ON_DO.md>`__.
 **Make sure you have Kubernetes >= 1.5, because you will be using
 StatefulSets, which is a beta feature in 1.5.**
 
-(2/4) Create a configuration file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create a configuration file
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Download a template:
 
@@ -123,17 +116,17 @@ update ``validators`` set in ConfigMap. You will be able to scale the
 cluster up or down later, but new pods (nodes) won't become validators
 automatically.
 
-(3/4) Deploy your application
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Deploy your application
+^^^^^^^^^^^^^^^^^^^^^^^
 
 ::
 
     kubectl create -f ./app.yaml
 
-(4/4) Observe your cluster
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Observe your cluster
+^^^^^^^^^^^^^^^^^^^^
 
-**web UI** <-> https://github.com/kubernetes/dashboard
+`web UI <https://github.com/kubernetes/dashboard>`__
 
 The easiest way to access Dashboard is to use kubectl. Run the following
 command in your desktop environment:
@@ -246,8 +239,3 @@ containers, creating public-private key pair for each pod. Every ``tm``
 container then asks other pods for their public keys, which are served
 with nginx (``pub-key`` container). When ``tm`` container have all the
 keys, it forms a genesis file and starts Tendermint process.
-
-TODO
-----
-
--  [ ] run tendermint from tmuser ``securityContext: fsGroup: 999``

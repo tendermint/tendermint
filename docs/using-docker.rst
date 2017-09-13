@@ -1,18 +1,10 @@
-Docker container description for Tendermint applications
-========================================================
+Using Docker
+============
 
--  Overview (#Overview)
--  Tendermint (#Tendermint)
--  Basecoin (#Basecoin)
--  Ethermint (#Ethermint)
-
-Overview
---------
-
-This folder contains Docker container descriptions. Using this folder
+`This folder <https://github.com/tendermint/tools/tree/master/docker>`__ contains Docker container descriptions. Using this folder
 you can build your own Docker images with the tendermint application.
 
-It is assumed that you set up docker already.
+It is assumed that you have already setup docker.
 
 If you don't want to build the images yourself, you should be able to
 download them from Docker Hub.

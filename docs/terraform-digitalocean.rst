@@ -1,11 +1,13 @@
-Terraform for Digital Ocean
-===========================
+Using Terraform
+===============
 
 This is a generic `Terraform <https://www.terraform.io/>`__
-configuration that sets up DigitalOcean droplets.
+configuration that sets up DigitalOcean droplets. See the
+`terraform-digitalocean <https://github.com/tendermint/tools/tree/master/terraform-digitalocean>`__
+for the required files.
 
 Prerequisites
-=============
+-------------
 
 -  Install `HashiCorp Terraform <https://www.terraform.io>`__ on a linux
    machine.
@@ -26,9 +28,6 @@ Prerequisites
 
     DO_API_TOKEN="<The API token received from DigitalOcean>"
     curl -X GET -H "Content-Type: application/json" -H "Authorization: Bearer $DO_API_TOKEN" "https://api.digitalocean.com/v2/account/keys"
-
-How to run
-==========
 
 Initialization
 --------------
@@ -110,10 +109,3 @@ define the testnet name in the firewall rule. It is not necessary to add
 the nodes one-by-one. Also, the firewall rule "remembers" the testnet
 name tag so if you change the servers but keep the name, the firewall
 rules will still apply.
-
-What's next
-===========
-
-After setting up the nodes, head over to the `ansible
-folder <https://github.com/tendermint/tools/tree/master/ansible>`__ to
-set up tendermint and basecoin.
