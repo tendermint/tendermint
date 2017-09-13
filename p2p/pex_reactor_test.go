@@ -129,7 +129,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	peer := createRandomPeer(false)
 
 	size := book.Size()
-	netAddr, _ := NewNetAddressString(peer.ListenAddr)
+	netAddr, _ := NewNetAddressString(peer.NodeInfo().ListenAddr)
 	addrs := []*NetAddress{netAddr}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 	r.Receive(PexChannel, peer, msg)
@@ -159,16 +159,17 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 		r.Receive(PexChannel, peer, msg)
 	}
 
-	assert.True(r.ReachedMaxMsgCountForPeer(peer.ListenAddr))
+	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ListenAddr))
 }
 
-func createRandomPeer(outbound bool) *Peer {
+func createRandomPeer(outbound bool) *peer {
 	addr := cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
 	netAddr, _ := NewNetAddressString(addr)
-	p := &Peer{
-		Key: cmn.RandStr(12),
-		NodeInfo: &NodeInfo{
+	p := &peer{
+		key: cmn.RandStr(12),
+		nodeInfo: &NodeInfo{
 			ListenAddr: addr,
+			RemoteAddr: netAddr.String(),
 		},
 		outbound: outbound,
 		mconn:    &MConnection{RemoteAddress: netAddr},

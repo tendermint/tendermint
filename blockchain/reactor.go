@@ -111,19 +111,19 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 }
 
 // AddPeer implements Reactor by sending our state to peer.
-func (bcR *BlockchainReactor) AddPeer(peer *p2p.Peer) {
+func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	if !peer.Send(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
 		// doing nothing, will try later in `poolRoutine`
 	}
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
-func (bcR *BlockchainReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
-	bcR.pool.RemovePeer(peer.Key)
+func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	bcR.pool.RemovePeer(peer.Key())
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
-func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
+func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "err", err)
@@ -148,7 +148,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		}
 	case *bcBlockResponseMessage:
 		// Got a block.
-		bcR.pool.AddBlock(src.Key, msg.Block, len(msgBytes))
+		bcR.pool.AddBlock(src.Key(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
@@ -157,7 +157,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte)
 		}
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
-		bcR.pool.SetPeerHeight(src.Key, msg.Height)
+		bcR.pool.SetPeerHeight(src.Key(), msg.Height)
 	default:
 		bcR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}

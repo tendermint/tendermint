@@ -76,13 +76,13 @@ func TestPeerSend(t *testing.T) {
 	assert.True(p.Send(0x01, "Asylum"))
 }
 
-func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*Peer, error) {
+func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
 	chDescs := []*ChannelDescriptor{
 		&ChannelDescriptor{ID: 0x01, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519()
-	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p *Peer, r interface{}) {}, pk, config)
+	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
-		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p *Peer, r interface{}) {}, p.PrivKey, p.Config)
+		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p Peer, r interface{}) {}, p.PrivKey, p.Config)
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}

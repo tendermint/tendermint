@@ -92,7 +92,7 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 
 // AddPeer implements Reactor by adding peer to the address book (if inbound)
 // or by requesting more addresses (if outbound).
-func (r *PEXReactor) AddPeer(p *Peer) {
+func (r *PEXReactor) AddPeer(p Peer) {
 	if p.IsOutbound() {
 		// For outbound peers, the address is already in the books.
 		// Either it was added in DialSeeds or when we
@@ -101,10 +101,10 @@ func (r *PEXReactor) AddPeer(p *Peer) {
 			r.RequestPEX(p)
 		}
 	} else { // For inbound connections, the peer is its own source
-		addr, err := NewNetAddressString(p.ListenAddr)
+		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
 		if err != nil {
 			// this should never happen
-			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.ListenAddr, "err", err)
+			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
 			return
 		}
 		r.book.AddAddress(addr, addr)
@@ -112,15 +112,15 @@ func (r *PEXReactor) AddPeer(p *Peer) {
 }
 
 // RemovePeer implements Reactor.
-func (r *PEXReactor) RemovePeer(p *Peer, reason interface{}) {
+func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 	// If we aren't keeping track of local temp data for each peer here, then we
 	// don't have to do anything.
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
-func (r *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
-	srcAddr := src.Connection().RemoteAddress
-	srcAddrStr := srcAddr.String()
+func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
+	srcAddrStr := src.NodeInfo().RemoteAddr
+	srcAddr, _ := NewNetAddressString(srcAddrStr)
 
 	r.IncrementMsgCountForPeer(srcAddrStr)
 	if r.ReachedMaxMsgCountForPeer(srcAddrStr) {
@@ -154,12 +154,12 @@ func (r *PEXReactor) Receive(chID byte, src *Peer, msgBytes []byte) {
 }
 
 // RequestPEX asks peer for more addresses.
-func (r *PEXReactor) RequestPEX(p *Peer) {
+func (r *PEXReactor) RequestPEX(p Peer) {
 	p.Send(PexChannel, struct{ PexMessage }{&pexRequestMessage{}})
 }
 
 // SendAddrs sends addrs to the peer.
-func (r *PEXReactor) SendAddrs(p *Peer, addrs []*NetAddress) {
+func (r *PEXReactor) SendAddrs(p Peer, addrs []*NetAddress) {
 	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 }
 
