@@ -36,6 +36,7 @@ Tendermint Tools
    using-docker.rst
    mintnet-kubernetes.rst
    terraform-digitalocean.rst
+   benchmarking-and-monitoring.rst
 
 
 Tendermint 102
