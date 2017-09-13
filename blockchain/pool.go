@@ -110,7 +110,8 @@ func (pool *BlockPool) removeTimedoutPeers() {
 		if !peer.didTimeout && peer.numPending > 0 {
 			curRate := peer.recvMonitor.Status().CurRate
 			// XXX remove curRate != 0
-			// curRate can be safely removed, since it will only be 0 if the peer is offline, but then the 2nd condition would also be true
+			// curRate can be safely removed, since it will only be 0 if the peer is
+			// offline, but then the 2nd condition would also be true
 			if curRate != 0 && curRate < minRecvRate {
 				pool.sendTimeout(peer.id)
 				pool.Logger.Error("SendTimeout", "peer", peer.id, "reason", "curRate too low")
@@ -152,7 +153,8 @@ func (pool *BlockPool) IsCaughtUp() bool {
 	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
 	ourChainIsLongestAmongPeers := maxPeerHeight == 0 || pool.height >= maxPeerHeight
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
-	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height, "maxPeerHeight", maxPeerHeight)
+	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height,
+		"maxPeerHeight", maxPeerHeight)
 	return isCaughtUp
 }
 
