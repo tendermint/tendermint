@@ -2,17 +2,9 @@
 
 - name: Update config.toml with json
   when: jsonconfig is defined
-  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml json='{{jsonconfig}}'"
+  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml json='{{jsonconfig}}' state={{(remove | default(false) | bool) | ternary('absent','present')}}"
 
 - name: Update config.toml with toml
   when: tomlconfig is defined
-  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml toml='{{tomlconfig}}'"
-
-- name: Update config.toml with json - removal
-  when: jsonconfigremove is defined
-  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml json='{{jsonconfigremove}}'"
-
-- name: Update config.toml with toml - removal
-  when: tomlconfigremove is defined
-  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml toml='{{tomlconfigremove}}'"
+  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml toml='{{tomlconfig}}' state={{(remove | default(false) | bool) | ternary('absent','present')}}"
 
