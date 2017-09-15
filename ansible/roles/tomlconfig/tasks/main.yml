@@ -1,0 +1,24 @@
+---
+
+- include: debian.yml
+  when: ansible_os_family == "Debian"
+
+- include: centos.yml
+  when: ansible_os_family == "RedHat"
+
+- name: Update config.toml with json
+  when: jsonconfig is defined
+  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml json='{{jsonconfig}}'"
+
+- name: Update config.toml with toml
+  when: tomlconfig is defined
+  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml toml='{{tomlconfig}}'"
+
+- name: Update config.toml with json - removal
+  when: jsonconfigremove is defined
+  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml json='{{jsonconfigremove}}'"
+
+- name: Update config.toml with toml - removal
+  when: tomlconfigremove is defined
+  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml toml='{{tomlconfigremove}}'"
+

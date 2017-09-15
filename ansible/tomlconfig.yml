@@ -1,0 +1,9 @@
+---
+
+#variable "service" is required
+
+- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}:tag_Environment_{{ lookup('env','TF_VAR_TESTNET_NAME') | regex_replace('-','_') }}"
+  any_errors_fatal: "{{validators | default(true) | bool}}"
+  roles:
+    - tomlconfig
+

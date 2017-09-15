@@ -1,0 +1,6 @@
+---
+
+- name: Install package on Debian/Ubuntu
+  when: ansible_os_family == "Debian"
+  apt: "pkg=python-toml state=latest"
+
