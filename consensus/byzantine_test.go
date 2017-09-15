@@ -188,7 +188,7 @@ func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusS
 	}
 }
 
-func sendProposalAndParts(height, round int, cs *ConsensusState, peer *p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
+func sendProposalAndParts(height, round int, cs *ConsensusState, peer p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
 	peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
@@ -231,14 +231,14 @@ func NewByzantineReactor(conR *ConsensusReactor) *ByzantineReactor {
 
 func (br *ByzantineReactor) SetSwitch(s *p2p.Switch)               { br.reactor.SetSwitch(s) }
 func (br *ByzantineReactor) GetChannels() []*p2p.ChannelDescriptor { return br.reactor.GetChannels() }
-func (br *ByzantineReactor) AddPeer(peer *p2p.Peer) {
+func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	if !br.reactor.IsRunning() {
 		return
 	}
 
 	// Create peerState for peer
-	peerState := NewPeerState(peer)
-	peer.Data.Set(types.PeerStateKey, peerState)
+	peerState := NewPeerState(peer).SetLogger(br.reactor.Logger)
+	peer.Set(types.PeerStateKey, peerState)
 
 	// Send our state to peer.
 	// If we're fast_syncing, broadcast a RoundStepMessage later upon SwitchToConsensus().
@@ -246,10 +246,10 @@ func (br *ByzantineReactor) AddPeer(peer *p2p.Peer) {
 		br.reactor.sendNewRoundStepMessages(peer)
 	}
 }
-func (br *ByzantineReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
+func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	br.reactor.RemovePeer(peer, reason)
 }
-func (br *ByzantineReactor) Receive(chID byte, peer *p2p.Peer, msgBytes []byte) {
+func (br *ByzantineReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 	br.reactor.Receive(chID, peer, msgBytes)
 }
 

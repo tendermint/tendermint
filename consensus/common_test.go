@@ -380,9 +380,9 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	return css
 }
 
-func getSwitchIndex(switches []*p2p.Switch, peer *p2p.Peer) int {
+func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 	for i, s := range switches {
-		if bytes.Equal(peer.NodeInfo.PubKey.Address(), s.NodeInfo().PubKey.Address()) {
+		if bytes.Equal(peer.NodeInfo().PubKey.Address(), s.NodeInfo().PubKey.Address()) {
 			return i
 		}
 	}

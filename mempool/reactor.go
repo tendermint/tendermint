@@ -60,18 +60,18 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
-func (memR *MempoolReactor) AddPeer(peer *p2p.Peer) {
+func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
 	go memR.broadcastTxRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
-func (memR *MempoolReactor) RemovePeer(peer *p2p.Peer, reason interface{}) {
+func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	// broadcast routine checks if peer is gone and returns
 }
 
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
-func (memR *MempoolReactor) Receive(chID byte, src *p2p.Peer, msgBytes []byte) {
+func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		memR.Logger.Error("Error decoding message", "err", err)
