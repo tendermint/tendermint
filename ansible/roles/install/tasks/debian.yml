@@ -20,3 +20,9 @@
   when: ansible_os_family == "Debian"
   apt: "pkg={{service}} update_cache=yes state=latest"
 
+# The below command is required to use the tomlconfig playbook.
+
+- name: Install package on Debian/Ubuntu
+  when: ansible_os_family == "Debian"
+  apt: "pkg=python-toml state=latest"
+

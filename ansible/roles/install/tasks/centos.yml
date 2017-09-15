@@ -32,3 +32,20 @@
   when: ansible_os_family == "RedHat"
   yum: "pkg={{service}} update_cache=yes state=latest"
 
+# The below commands are required so that the tomlconfig playbook can run.
+
+- name: Install epel-release on CentOS/RedHat
+  when: ansible_os_family == "RedHat"
+  yum: "pkg=epel-release update_cache=yes state=latest"
+
+- name: Install pip on CentOS/RedHat
+  when: ansible_os_family == "RedHat"
+  yum: "pkg={{item}} state=latest"
+  with_items:
+  - python2-pip
+  - python-virtualenv
+
+- name: Install toml 
+  when: ansible_os_family == "RedHat"
+  pip: name=toml
+

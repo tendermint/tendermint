@@ -1,11 +1,5 @@
 ---
 
-- include: debian.yml
-  when: ansible_os_family == "Debian"
-
-- include: centos.yml
-  when: ansible_os_family == "RedHat"
-
 - name: Update config.toml with json
   when: jsonconfig is defined
   tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml json='{{jsonconfig}}'"
