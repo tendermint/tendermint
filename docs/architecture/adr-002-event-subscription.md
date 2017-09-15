@@ -1,4 +1,4 @@
-# ADR 2: Indexing
+# ADR 2: Event Subscription
 
 ## Context
 
