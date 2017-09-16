@@ -117,7 +117,7 @@ Configuration
 -------------
 
 Tendermint uses a ``config.toml`` for configutation. For details, see
-`the documentation <./configuration.html>`__.
+`the documentation <./specification/configuration.html>`__.
 
 Notable options include the socket address of the application
 (``proxy_app``), the listenting address of the tendermint peer
