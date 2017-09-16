@@ -16,9 +16,10 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
+import urllib
 
 import sphinx_rtd_theme
 
@@ -169,3 +170,13 @@ texinfo_documents = [
      author, 'Tendermint', 'Byzantine Fault Tolerant Consensus.',
      'Database'),
 ]
+
+os.mkdir('./tools')
+urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/ansible/README.rst', filename='tools/ansible.rst')
+urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/docker/README.rst', filename='tools/docker.rst')
+urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/mintnet-kubernetes/README.rst', filename='tools/mintnet-kubernetes.rst')
+urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/terraform-digitalocean/README.rst', filename='tools/terraform-digitalocean.rst')
+urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-bench/README.rst', filename='tools/benchmarking-and-monitoring.rst')
+# the readme for below is included in tm-bench
+# urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-monitor/README.rst', filename='tools/tm-monitor.rst')
+

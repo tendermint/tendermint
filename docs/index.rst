@@ -32,11 +32,11 @@ Tendermint Tools
    :maxdepth: 2
 
    deploy-testnets.rst
-   using-ansible.rst
-   using-docker.rst
-   mintnet-kubernetes.rst
-   terraform-digitalocean.rst
-   benchmarking-and-monitoring.rst
+   tools/ansible.rst
+   tools/docker.rst
+   tools/mintnet-kubernetes.rst
+   tools/terraform-digitalocean.rst
+   tools/benchmarking-and-monitoring.rst
 
 
 Tendermint 102
