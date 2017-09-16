@@ -171,12 +171,29 @@ texinfo_documents = [
      'Database'),
 ]
 
-os.mkdir('./tools')
-urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/ansible/README.rst', filename='tools/ansible.rst')
-urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/docker/README.rst', filename='tools/docker.rst')
-urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/mintnet-kubernetes/README.rst', filename='tools/mintnet-kubernetes.rst')
-urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/terraform-digitalocean/README.rst', filename='tools/terraform-digitalocean.rst')
-urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-bench/README.rst', filename='tools/benchmarking-and-monitoring.rst')
+repo = "https://raw.githubusercontent.com/tendermint/tools/"
+branch = "cleanup-and-move-docs"
+
+tools = "./tools"
+assets = tools + "/assets"
+
+if os.path.isdir(tools) != True:
+    os.mkdir(tools)
+if os.path.isdir(assets) != True:
+    os.mkdir(assets)
+
+urllib.urlretrieve(repo+branch+'/ansible/README.rst', filename=tools+'/ansible.rst')
+urllib.urlretrieve(repo+branch+'/ansible/assets/a_plus_t.png', filename=assets+'/a_plus_t.png')
+
+urllib.urlretrieve(repo+branch+'/docker/README.rst', filename=tools+'/docker.rst')
+
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/README.rst', filename=tools+'/mintnet-kubernetes.rst')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/gce1.png', filename=assets+'/gce1.png')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/gce2.png', filename=assets+'/gce2.png')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/statefulset.png', filename=assets+'/statefulset.png')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/t_plus_k.png', filename=assets+'/t_plus_k.png')
+
+urllib.urlretrieve(repo+branch+'/terraform-digitalocean/README.rst', filename=tools+'/terraform-digitalocean.rst')
+urllib.urlretrieve(repo+branch+'/tm-bench/README.rst', filename=tools+'/benchmarking-and-monitoring.rst')
 # the readme for below is included in tm-bench
 # urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-monitor/README.rst', filename='tools/tm-monitor.rst')
-
