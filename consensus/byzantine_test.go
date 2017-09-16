@@ -275,30 +275,30 @@ func (privVal *ByzantinePrivValidator) GetAddress() []byte {
 	return privVal.Address
 }
 
-func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) error {
+func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) (err error) {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 
 	// Sign
-	vote.Signature = privVal.Sign(types.SignBytes(chainID, vote))
+	vote.Signature, err = privVal.Sign(types.SignBytes(chainID, vote))
+	return err
+}
+
+func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) (err error) {
+	privVal.mtx.Lock()
+	defer privVal.mtx.Unlock()
+
+	// Sign
+	proposal.Signature, err = privVal.Sign(types.SignBytes(chainID, proposal))
 	return nil
 }
 
-func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) error {
+func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) (err error) {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 
 	// Sign
-	proposal.Signature = privVal.Sign(types.SignBytes(chainID, proposal))
-	return nil
-}
-
-func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-
-	// Sign
-	heartbeat.Signature = privVal.Sign(types.SignBytes(chainID, heartbeat))
+	heartbeat.Signature, err = privVal.Sign(types.SignBytes(chainID, heartbeat))
 	return nil
 }
 

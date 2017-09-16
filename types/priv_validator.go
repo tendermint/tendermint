@@ -59,7 +59,7 @@ type PrivValidator struct {
 // Currently, the only callers are SignVote and SignProposal
 type Signer interface {
 	PubKey() crypto.PubKey
-	Sign(msg []byte) crypto.Signature
+	Sign(msg []byte) (crypto.Signature, error)
 }
 
 // Implements Signer
@@ -72,8 +72,8 @@ func NewDefaultSigner(priv crypto.PrivKey) *DefaultSigner {
 }
 
 // Implements Signer
-func (ds *DefaultSigner) Sign(msg []byte) crypto.Signature {
-	return ds.priv.Sign(msg)
+func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
+	return ds.priv.Sign(msg), nil
 }
 
 // Implements Signer
@@ -238,7 +238,10 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 	}
 
 	// Sign
-	sig = privVal.Sign(signBytes)
+	sig, err := privVal.Sign(signBytes)
+	if err != nil {
+		return sig, err
+	}
 
 	// Persist height/round/step
 	privVal.LastHeight = height
@@ -255,8 +258,9 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 func (privVal *PrivValidator) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
-	heartbeat.Signature = privVal.Sign(SignBytes(chainID, heartbeat))
-	return nil
+	var err error
+	heartbeat.Signature, err = privVal.Sign(SignBytes(chainID, heartbeat))
+	return err
 }
 
 func (privVal *PrivValidator) String() string {
