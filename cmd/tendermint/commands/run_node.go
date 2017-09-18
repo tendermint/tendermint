@@ -2,11 +2,8 @@ package commands
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
-
-	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
@@ -49,11 +46,6 @@ func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			genDocFile := config.GenesisFile()
-			for !cmn.FileExists(genDocFile) {
-				logger.Info(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
-				time.Sleep(time.Second)
-			}
-
 			genDoc, err := types.GenesisDocFromFile(genDocFile)
 			if err != nil {
 				return err
