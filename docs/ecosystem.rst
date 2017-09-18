@@ -91,4 +91,4 @@ Deployment Tools
 
 See `deploy testnets <./deploy-testnets.html>`__ for information about all the tools built by Tendermint. We have Kubernetes, Ansible, and Terraform integrations.
 
-Cloudsoft built `brooklyn-tendermint <https://github.com/cloudsoft/brooklyn-tendermint>`__ for deploying a tendermint testnet in docker continers. It used Clocker for Apache Brooklyn.
+Cloudsoft built `brooklyn-tendermint <https://github.com/cloudsoft/brooklyn-tendermint>`__ for deploying a tendermint testnet in docker continers. It uses Clocker for Apache Brooklyn.

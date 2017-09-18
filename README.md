@@ -13,22 +13,17 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
 
-Branch    | Tests | Coverage | Report Card
-----------|-------|----------|-------------
-develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/develop.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/develop) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/develop/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint) | [![Go Report Card](https://goreportcard.com/badge/github.com/tendermint/tendermint/tree/develop)](https://goreportcard.com/report/github.com/tendermint/tendermint/tree/develop)
-master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/master/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint) | [![Go Report Card](https://goreportcard.com/badge/github.com/tendermint/tendermint/tree/master)](https://goreportcard.com/report/github.com/tendermint/tendermint/tree/master)
+Branch    | Tests |
+----------|-------|
+master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master)
+develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/develop.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/develop)
 
 _NOTE: This is alpha software. Please contact us if you intend to run it in production._
 
-Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language,
+Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For more background, see the [introduction](https://tendermint.com/intro).
-
-To get started developing applications, see the [application developers guide](https://tendermint.com/docs/guides/app-development).
-
-### Code of Conduct
-Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
+For more information, from introduction to install to application development, [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master/index.html).
 
 ## Install
 
@@ -38,39 +33,72 @@ To install from source, you should be able to:
 
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details (or if it fails), see the [install guide](https://tendermint.com/docs/guides/install-from-source).
-
-## Contributing
-
-Yay open source! Please see our [contributing guidelines](CONTRIBUTING.md).
+For more details (or if it fails), [read the docs](http://tendermint.readthedocs.io/projects/tools/en/master/install.html).
 
 ## Resources
 
 ### Tendermint Core
 
-- [Introduction](https://tendermint.com/intro)
-- [Docs](https://tendermint.com/docs)
-- [Software using Tendermint](https://tendermint.com/ecosystem)
+All resources involving the use of, building application on, or developing for, tendermint, can be found at [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master/index.html). Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
 
 ### Sub-projects
 
 * [ABCI](http://github.com/tendermint/abci), the Application Blockchain Interface
 * [Go-Wire](http://github.com/tendermint/go-wire), a deterministic serialization library
 * [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library
-* [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries
-* [Merkleeyes](http://github.com/tendermint/merkleeyes), a balanced, binary Merkle tree for ABCI apps
+* [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries used internally
+* [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
 
 ### Tools
-* [Deployment, Benchmarking, and Monitoring](https://github.com/tendermint/tools)
+* [Deployment, Benchmarking, and Monitoring](http://tendermint.readthedocs.io/projects/tools/en/develop/index.html#tendermint-tools)
 
 ### Applications
 
-* [Ethermint](http://github.com/tendermint/ethermint): Ethereum on Tendermint
-* [Basecoin](http://github.com/tendermint/basecoin), a cryptocurrency application framework
+* [Ethermint](http://github.com/tendermint/ethermint); Ethereum on Tendermint
+* [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
 
 ### More
 
+* [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
+* [Original Whitepaper](https://tendermint.com/static/docs/tendermint.pdf)
 * [Tendermint Blog](https://blog.cosmos.network/tendermint/home)
 * [Cosmos Blog](https://blog.cosmos.network)
-* [Original Whitepaper (out-of-date)](http://www.the-blockchain.com/docs/Tendermint%20Consensus%20without%20Mining.pdf)
-* [Master's Thesis on Tendermint](https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769)
+
+## Contributing
+
+Yay open source! Please see our [contributing guidelines](CONTRIBUTING.md).
+
+## Versioning
+
+### SemVer
+
+Tendermint uses [SemVer](http://semver.org/) to determine when and how the version changes.
+According to SemVer, anything in the public API can change at any time before version 1.0.0
+
+To provide some stability to Tendermint users in these 0.X.X days, the MINOR version is used
+to signal breaking changes across a subset of the total public API. This subset includes all
+interfaces exposed to other processes (cli, rpc, p2p, etc.), as well as parts of the following packages:
+
+- types
+- rpc/client
+- config
+- node
+
+Exported objects in these packages that are not covered by the versioning scheme
+are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any time.
+Functions, types, and values in any other package may also change at any time.
+
+### Upgrades
+
+In an effort to avoid accumulating technical debt prior to 1.0.0,
+we do not guarantee that breaking changes (ie. bumps in the MINOR version)
+will work with existing tendermint blockchains. In these cases you will
+have to start a new blockchain, or write something custom to get the old
+data into the new chain.
+
+However, any bump in the PATCH version should be compatible with existing histories
+(if not please open an [issue](https://github.com/tendermint/tendermint/issues)).
+
+### Code of Conduct
+
+Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).

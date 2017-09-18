@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering making contributions to Tendermint and related repositories (Basecoin, Merkleeyes, etc.)!
+Thank you for considering making contributions to Tendermint and related repositories! Start by taking a look at the [coding repo](https://github.com/tendermint/coding) for overall information on repository workflow and standards.
 
 Please follow standard github best practices: fork the repo, branch from the tip of develop, make some commits, and submit a pull request to develop. See the [open issues](https://github.com/tendermint/tendermint/issues) for things we need help with!
 
