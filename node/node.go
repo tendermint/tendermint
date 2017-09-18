@@ -38,8 +38,8 @@ type Node struct {
 
 	// config
 	config        *cfg.Config
-	genesisDoc    *types.GenesisDoc    // initial validator set
-	privValidator *types.PrivValidator // local node's validator key
+	genesisDoc    *types.GenesisDoc   // initial validator set
+	privValidator types.PrivValidator // local node's validator key
 
 	// network
 	privKey  crypto.PrivKeyEd25519 // local node's p2p key
@@ -65,7 +65,7 @@ func NewNodeDefault(config *cfg.Config, logger log.Logger) *Node {
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
 }
 
-func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator, logger log.Logger) *Node {
+func NewNode(config *cfg.Config, privValidator types.PrivValidator, clientCreator proxy.ClientCreator, logger log.Logger) *Node {
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -119,13 +119,13 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.Address, addr) {
+		if bytes.Equal(privValidator.Address(), addr) {
 			fastSync = false
 		}
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.Address) {
+	if state.Validators.HasAddress(privValidator.PubKey().Address()) {
 		consensusLogger.Info("This node is a validator")
 	} else {
 		consensusLogger.Info("This node is not a validator")
@@ -314,7 +314,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetMempool(n.mempoolReactor.Mempool)
 	rpccore.SetSwitch(n.sw)
-	rpccore.SetPubKey(n.privValidator.PubKey)
+	rpccore.SetPubKey(n.privValidator.PubKey())
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
@@ -385,7 +385,7 @@ func (n *Node) EventSwitch() types.EventSwitch {
 }
 
 // XXX: for convenience
-func (n *Node) PrivValidator() *types.PrivValidator {
+func (n *Node) PrivValidator() types.PrivValidator {
 	return n.privValidator
 }
 
