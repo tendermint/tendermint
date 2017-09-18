@@ -1,177 +1,99 @@
-{
-  "abciApps": [
-    {
-      "name": "Cosmos SDK",
-      "url": "https://github.com/cosmos/cosmos-sdk",
-      "language": "Go",
-      "author": "Cosmos",
-      "description": "A prototypical account based crypto currency state machine supporting plugins"
-    },
-    {
-      "name": "cb-ledger",
-      "url": "https://github.com/block-finance/cpp-abci",
-      "language": "C++",
-      "author": "Block Finance",
-      "description": "Custodian Bank Ledger, integrating central banking with the blockchains of tomorrow."
-    },
-    {
-      "name": "Clearchain",
-      "url": "https://github.com/tendermint/clearchain",
-      "language": "Go",
-      "author": "Alessio Treglia",
-      "description": "Application to manage a distributed ledger for money transfers that support multi-currency accounts."
-    },
-    {
-      "name": "Ethermint",
-      "url": "https://github.com/tendermint/ethermint",
-      "language": "Go",
-      "author": "Tendermint",
-      "description": "The go-ethereum state machine run as a ABCI app"
-    },
-    {
-      "name": "Merkle AVL Tree",
-      "url": "https://github.com/tendermint/merkleeyes",
-      "language": "Go",
-      "author": "Tendermint",
-      "description": "Tendermint IAVL tree implemented as an abci app"
-    },
-    {
-      "name": "Burrow",
-      "url": "https://github.com/hyperledger/burrow",
-      "language": "Go",
-      "author": "Monax Industries",
-      "description": "Ethereum Virtual Machine augmented with native permissioning scheme and global key-value store"
-    },
-    {
-      "name": "Merkle AVL Tree",
-      "url": "https://github.com/jTMSP/MerkleTree",
-      "language": "Java",
-      "author": "jTMSP",
-      "description": "Tendermint IAVL tree implemented as an abci app"
-    },
-    {
-      "name": "TMChat",
-      "url": "https://github.com/wolfposd/TMChat",
-      "language": "Java",
-      "author": "jTMSP",
-      "description": "P2P chat using Tendermint"
-    },
-    {
-      "name": "Comit",
-      "url": "https://github.com/zballs/comit",
-      "language": "Go",
-      "author": "Zach Balder",
-      "description": "Public service reporting and tracking"
-    },
-    {
-      "name": "Passwerk",
-      "url": "https://github.com/rigelrozanski/passwerk",
-      "language": "Go",
-      "author": "Rigel Rozanski",
-      "description": "Encrypted storage web-utility backed by Tendermint"
-    }
-  ],
-  "abciServers": [
-    {
-      "name": "abci",
-      "url": "https://github.com/tendermint/abci",
-      "language": "Go",
-      "author": "Tendermint"
-    },
-    {
-      "name": "js-abci",
-      "url": "https://github.com/tendermint/js-abci",
-      "language": "Javascript",
-      "author": "Tendermint"
-    },
-    {
-      "name": "cpp-tmsp",
-      "url": "https://github.com/mdyring/cpp-tmsp",
-      "language": "C++",
-      "author": "Martin Dyring"
-    },
-    {
-      "name": "jabci",
-      "url": "https://github.com/jTendermint/jabci",
-      "language": "Java",
-      "author": "jTendermint"
-    },
-    {
-      "name": "Spearmint",
-      "url": "https://github.com/dennismckinnon/spearmint",
-      "language": "Javascript",
-      "author": "Dennis McKinnon"
-    },
-    {
-      "name": "ocaml-tmsp",
-      "url": "https://github.com/zballs/ocaml-tmsp",
-      "language": "Ocaml",
-      "author": "Zach Balder"
-    },
-    {
-      "name": "abci_server",
-      "url": "https://github.com/KrzysiekJ/abci_server",
-      "language": "Erlang",
-      "author": "Krzysztof Jurewicz"
-    }
-  ],
-  "deploymentTools": [
-    {
-      "name": "mintnet-kubernetes",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Docker and Kubernetes",
-      "author": "Tendermint",
-      "description": "Deploy a Tendermint test network using Google's kubernetes"
-    },
-    {
-      "name": "terraforce",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Terraform",
-      "author": "Tendermint",
-      "description": "Terraform + our custom terraforce tool; deploy a production Tendermint network with load balancing over multiple AWS availability zones"
-    },    {
-      "name": "ansible-tendermint",
-      "url": "https://github.com/tendermint/tools",
-      "technology": "Ansible",
-      "author": "Tendermint",
-      "description": "Ansible playbooks + Tendermint"
-    },
-    {
-      "name": "brooklyn-tendermint",
-      "url": "https://github.com/cloudsoft/brooklyn-tendermint",
-      "technology": "Clocker for Apache Brooklyn ",
-      "author": "Cloudsoft",
-      "description": "Deploy a tendermint test network in docker containers "
-    }
-  ],
-  "competitors": [
-    {
-      "name": "Hyperledger",
-      "url": "https://github.com/hyperledger/fabric",
-      "language": "Go",
-      "author": "Linux Foundation",
-      "description": "PBFT state machine replication for dynamic set of simple dockerized applications"
-    },
-    {
-      "name": "Hydrachain",
-      "url": "https://github.com/HydraChain/hydrachain",
-      "language": "Python",
-      "author": "HydraChain",
-      "description": "Pyethereum adapted to a non-BFT consensus algorithm modelled on Tendermint."
-    },
-    {
-      "name": "Juno",
-      "url": "https://github.com/kadena-io/juno",
-      "language": "Haskell",
-      "author": "Kadena",
-      "description": "Variant of Tangaroa, a BFT version of Raft"
-    },
-    {
-      "name": "HoneyBadgerBFT",
-      "url": "https://github.com/amiller/HoneyBadgerBFT",
-      "language": "Python",
-      "author": "Andrew Miller",
-      "description": "Fully asynchronous and highly optimized BFT using secret-sharing"
-    }
-  ]
-}
+Tendermint Ecosystem
+====================
+
+Below are the many applications built using various pieces of the Tendermint stack. We thank the community for their contributions thus far  and welcome the addition of new projects. Feel free to submit a pull request to add your project!
+
+ABCI Applications
+-----------------
+
+Burrow
+^^^^^^
+
+Ethereum Virtual Machine augmented with native permissioning scheme and global key-value store, written in Go, authored by Monax Industries, and incubated `by Hyperledger <https://github.com/hyperledger/burrow>`__.
+
+cb-ledger
+^^^^^^^^^
+
+Custodian Bank Ledger, integrating central banking with the blockchains of tomorrow, written in C++, and `authored by Block Finance <https://github.com/block-finance/cpp-abci>`__.
+      
+Clearchain
+^^^^^^^^^^
+
+Application to manage a distributed ledger for money transfers that support multi-currency accounts, written in Go, and `authored by Allession Treglia <https://github.com/tendermint/clearchain>`__.
+
+Comit
+^^^^^
+
+Public service reporting and tracking, written in Go, and `authored by Zach Balder <https://github.com/zbo14/comit>`__.
+     
+Cosmos SDK
+^^^^^^^^^^
+
+A prototypical account based crypto currency state machine supporting plugins, written in Go, and `authored by Cosmos <https://github.com/cosmos/cosmos-sdk>`__.
+
+Ethermint
+^^^^^^^^^
+
+The go-ethereum state machine run as a ABCI app, written in Go, `authored by Tendermint <https://github.com/tendermint/ethermint>`__.
+
+
+Merkle AVL Tree
+^^^^^^^^^^^^^^^
+
+The following are implementations of the Tendermint IAVL tree as an ABCI application
+
+Merkleeyes
+~~~~~~~~~~
+
+Written in Go, `authored by Tendermint <https://github.com/tendermint/merkleeyes>`__.
+
+MerkleTree
+~~~~~~~~~~
+
+Written in Java, `authored by jTendermint <https://github.com/jTendermint/MerkleTree>`__.
+
+
+TMChat
+^^^^^^
+
+P2P chat using Tendermint, written in Java, `authored by woldposd <https://github.com/wolfposd/TMChat>`__.
+      
+Passwerk
+^^^^^^^^
+
+Encrypted storage web-utility backed by Tendermint, written in Go, `authored by Rigel Rozanski <https://github.com/rigelrozanski/passwerk>`__.
+
+ABCI Servers
+------------
+
+
++-------------------------------------------------------------+--------------------+--------------+
+| **Name**                                                    | **Author**         | **Language** |       
+|                                                             |                    |              |      
++-------------------------------------------------------------+--------------------+--------------+
+| `abci <https://github.com/tendermint/abci>`__               | Tendermint         | Go           |
++-------------------------------------------------------------+--------------------+--------------+
+| `js abci <https://github.com/tendermint/js-abci>`__         | Tendermint         | Javascript   |                       
++-------------------------------------------------------------+--------------------+--------------+
+| `cpp-tmsp <https://github.com/mdyring/cpp-tmsp>`__          | Martin Dyring      | C++          |
++-------------------------------------------------------------+--------------------+--------------+
+| `jabci <https://github.com/jTendermint/jabci>`__            | jTendermint        | Java         |
++-------------------------------------------------------------+--------------------+--------------+
+| `Spearmint <https://github.com/dennismckinnon/spearmint>`__ | Dennis Mckinnon    | Javascript   |
++-------------------------------------------------------------+--------------------+--------------+
+| `ocaml-tmsp <https://github.com/zbo14/ocaml-tmsp>`__        | Zach Balder        | Ocaml        |
++-------------------------------------------------------------+--------------------+--------------+
+| `abci_server <https://github.com/KrzysiekJ/abci_server>`__  | Krzysztof Jurewicz | Erlang       |
++-------------------------------------------------------------+--------------------+--------------+
+
+Deployment Tools
+----------------
+
+See `deploy testnets <./deploy-testnets.html>`__ for information about all the tools built by Tendermint. We have Kubernetes, Ansible, and Terraform integrations.
+
+Cloudsoft built `brooklyn-tendermint <https://github.com/cloudsoft/brooklyn-tendermint>`__ for deploying a tendermint testnet in docker continers. It used Clocker for Apache Brooklyn.
+
+Competitors (Collaborators?)
+----------------------------
+
+See `the introduction <./introduction.html>`__ for a comparison of software similar to Tendermint built by members of the blockchain community.

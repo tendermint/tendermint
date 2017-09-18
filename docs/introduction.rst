@@ -86,10 +86,10 @@ And we plan to do the same for Bitcoin, ZCash, and various other deterministic a
 
 Another example of a cryptocurrency application built on Tendermint is `the Cosmos network <http://cosmos.network>`__.
 
-Fabric, Burrow
-~~~~~~~~~~~~~~
+Other Blockchain Projects
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`Fabric <https://github.com/hyperledger/fabric>`__, takes a similar approach to Tendermint, but is more opinionated about how the state is managed,
+`Fabric <https://github.com/hyperledger/fabric>`__ takes a similar approach to Tendermint, but is more opinionated about how the state is managed,
 and requires that all application behaviour runs in potentially many docker containers, modules it calls "chaincode". 
 It uses an implementation of `PBFT <http://pmg.csail.mit.edu/papers/osdi99.pdf>`__.
 from a team at IBM that is 
@@ -100,6 +100,12 @@ though extending Tendermint to handle non-determinism remains for future work.
 `Burrow <https://github.com/hyperledger/burrow>`__ is an implementation of the Ethereum Virtual Machine and Ethereum transaction mechanics,
 with additional features for a name-registry, permissions, and native contracts, and an alternative blockchain API.
 It uses Tendermint as its consensus engine, and provides a particular application state.
+
+`Hydrachain <https://github.com/HydraChain/hydrachain>`__ is a Pyethereum adapted to a non-BFT consensus algorithm modelled on Tendermint.
+      
+`Juno <https://github.com/kadena-io/juno>`__ is written in Haskell by Kadena and is a variant of Tangaroa, a BFT version of Raft.
+
+`HoneyBadgerBFT <https://github.com/amiller/HoneyBadgerBFT>`__ is written in Python by Andrew Miller and is a fully asynchronous and highly optimized BFT using secret-sharing.
 
 ABCI Overview
 -------------
