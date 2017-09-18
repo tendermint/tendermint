@@ -1,5 +1,5 @@
-Using ABCI
-==========
+Using ABCI-CLI
+==============
 
 To facilitate testing and debugging of ABCI servers and simple apps, we
 built a CLI, the ``abci-cli``, for sending ABCI messages from the
