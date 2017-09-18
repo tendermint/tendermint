@@ -156,7 +156,7 @@ There can be multiple ABCI socket connections to an application. Tendermint Core
 
 It's probably evident that applications designers need to very carefully design their message handlers to create a blockchain that does anything useful but this architecture provides a place to start. The diagram below illustrates the flow of messages via ABCI.
 
-.. figure:: images/abci.png
+.. figure:: assets/abci.png
 
 A Note on Determinism
 ~~~~~~~~~~~~~~~~~~~~~
@@ -180,7 +180,7 @@ Consensus Overview
 Tendermint is an easy-to-understand, mostly asynchronous, BFT consensus protocol.
 The protocol follows a simple state machine that looks like this:
 
-.. figure:: images/consensus_logic.png
+.. figure:: assets/consensus_logic.png
 
 Participants in the protocol are called "validators";
 they take turns proposing blocks of transactions and voting on them.
@@ -228,4 +228,4 @@ The `Cosmos Network <http://cosmos.network>`__ is designed to use this Proof-of-
 
 The following diagram is Tendermint in a (technical) nutshell. `See here for high resolution version <https://github.com/mobfoundry/hackatom/blob/master/tminfo.pdf>`__.
 
-.. figure:: images/tm-transaction-flow.png
+.. figure:: assets/tm-transaction-flow.png

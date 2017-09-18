@@ -32,6 +32,12 @@ Tendermint Tools
    :maxdepth: 2
 
    deploy-testnets.rst
+   tools/ansible.rst
+   tools/docker.rst
+   tools/mintnet-kubernetes.rst
+   tools/terraform-digitalocean.rst
+   tools/benchmarking-and-monitoring.rst
+
 
 Tendermint Ecosystem
 --------------------

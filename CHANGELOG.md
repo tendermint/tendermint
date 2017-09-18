@@ -28,7 +28,12 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt		
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.10.4 (Septemeber 5, 2017)
+## 0.11.0 (Date)
+
+IMPROVEMENTS:
+ - docs: Added documentation from the tools repo to Read The Docs pipeline
+
+## 0.10.4 (September 5, 2017)
 
 IMPROVEMENTS:
 - docs: Added Slate docs to each rpc function (see rpc/core) 
