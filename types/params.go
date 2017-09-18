@@ -4,6 +4,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+const (
+	maxBlockSizeBytes = 104857600 // 100MB
+)
+
 // ConsensusParams contains consensus critical parameters
 // that determine the validity of blocks.
 type ConsensusParams struct {
@@ -66,11 +70,18 @@ func DefaultBlockGossipParams() *BlockGossipParams {
 // Validate validates the ConsensusParams to ensure all values
 // are within their allowed limits, and returns an error if they are not.
 func (params *ConsensusParams) Validate() error {
+	// ensure some values are greater than 0
 	if params.BlockSizeParams.MaxBytes <= 0 {
 		return errors.Errorf("BlockSizeParams.MaxBytes must be greater than 0. Got %d", params.BlockSizeParams.MaxBytes)
 	}
 	if params.BlockGossipParams.BlockPartSizeBytes <= 0 {
 		return errors.Errorf("BlockGossipParams.BlockPartSizeBytes must be greater than 0. Got %d", params.BlockGossipParams.BlockPartSizeBytes)
+	}
+
+	// ensure blocks aren't too big
+	if cp.BlockSizeParams.MaxBytes > maxBlockSizeBytes {
+		return errors.Errorf("BlockSizeParams.MaxBytes is too big. %d > %d",
+			cp.BlockSizeParams.MaxBytes, maxBlockSizeBytes)
 	}
 	return nil
 }
