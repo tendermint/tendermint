@@ -86,10 +86,10 @@ And we plan to do the same for Bitcoin, ZCash, and various other deterministic a
 
 Another example of a cryptocurrency application built on Tendermint is `the Cosmos network <http://cosmos.network>`__.
 
-Fabric, Burrow
-~~~~~~~~~~~~~~
+Other Blockchain Projects
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`Fabric <https://github.com/hyperledger/fabric>`__, takes a similar approach to Tendermint, but is more opinionated about how the state is managed,
+`Fabric <https://github.com/hyperledger/fabric>`__ takes a similar approach to Tendermint, but is more opinionated about how the state is managed,
 and requires that all application behaviour runs in potentially many docker containers, modules it calls "chaincode". 
 It uses an implementation of `PBFT <http://pmg.csail.mit.edu/papers/osdi99.pdf>`__.
 from a team at IBM that is 

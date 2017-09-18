@@ -33,6 +33,14 @@ Tendermint Tools
 
    deploy-testnets.rst
 
+Tendermint Ecosystem
+--------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   ecosystem.rst
+
 Tendermint 102
 --------------
 
