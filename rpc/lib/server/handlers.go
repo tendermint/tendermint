@@ -123,12 +123,8 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			return
 		}
 		rpcFunc := funcMap[request.Method]
-		if rpcFunc == nil {
+		if rpcFunc == nil || rpcFunc.ws {
 			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
-			return
-		}
-		if rpcFunc.ws {
-			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, errors.New("Trying to use Websocket method in non-ws context")))
 			return
 		}
 		args, err := jsonParamsToArgsRPC(rpcFunc, request.Params)
@@ -234,7 +230,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
-			WriteRPCResponseHTTP(w, types.RPCInternalError("", errors.New("Trying to use Websocket method in non-ws context")))
+			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(""))
 		}
 	}
 	// All other endpoints
