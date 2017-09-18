@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/go-wire/data"
 )
 
+// Result is a common result object for ABCI calls.
 // CONTRACT: a zero Result is OK.
 type Result struct {
 	Code CodeType   `json:"code"`

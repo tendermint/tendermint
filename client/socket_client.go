@@ -255,12 +255,12 @@ func (cli *socketClient) CommitAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestCommit())
 }
 
-func (cli *socketClient) InitChainAsync(validators []*types.Validator) *ReqRes {
-	return cli.queueRequest(types.ToRequestInitChain(validators))
+func (cli *socketClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
+	return cli.queueRequest(types.ToRequestInitChain(params))
 }
 
-func (cli *socketClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
-	return cli.queueRequest(types.ToRequestBeginBlock(hash, header))
+func (cli *socketClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
+	return cli.queueRequest(types.ToRequestBeginBlock(params))
 }
 
 func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
@@ -352,8 +352,8 @@ func (cli *socketClient) CommitSync() (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error) {
-	cli.queueRequest(types.ToRequestInitChain(validators))
+func (cli *socketClient) InitChainSync(params types.RequestInitChain) (err error) {
+	cli.queueRequest(types.ToRequestInitChain(params))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return err
@@ -361,8 +361,8 @@ func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error
 	return nil
 }
 
-func (cli *socketClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
-	cli.queueRequest(types.ToRequestBeginBlock(hash, header))
+func (cli *socketClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
+	cli.queueRequest(types.ToRequestBeginBlock(params))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return err

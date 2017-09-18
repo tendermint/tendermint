@@ -190,8 +190,8 @@ func (cli *grpcClient) CommitAsync() *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Commit{res}})
 }
 
-func (cli *grpcClient) InitChainAsync(validators []*types.Validator) *ReqRes {
-	req := types.ToRequestInitChain(validators)
+func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
+	req := types.ToRequestInitChain(params)
 	res, err := cli.client.InitChain(context.Background(), req.GetInitChain(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -199,8 +199,8 @@ func (cli *grpcClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_InitChain{res}})
 }
 
-func (cli *grpcClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
-	req := types.ToRequestBeginBlock(hash, header)
+func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
+	req := types.ToRequestBeginBlock(params)
 	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -319,13 +319,13 @@ func (cli *grpcClient) CommitSync() (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *grpcClient) InitChainSync(validators []*types.Validator) (err error) {
-	cli.InitChainAsync(validators)
+func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (err error) {
+	cli.InitChainAsync(params)
 	return cli.Error()
 }
 
-func (cli *grpcClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
-	cli.BeginBlockAsync(hash, header)
+func (cli *grpcClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
+	cli.BeginBlockAsync(params)
 	return cli.Error()
 }
 

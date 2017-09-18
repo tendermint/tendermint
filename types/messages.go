@@ -55,15 +55,15 @@ func ToRequestQuery(reqQuery RequestQuery) *Request {
 	}
 }
 
-func ToRequestInitChain(validators []*Validator) *Request {
+func ToRequestInitChain(reqInitChain RequestInitChain) *Request {
 	return &Request{
-		Value: &Request_InitChain{&RequestInitChain{validators}},
+		Value: &Request_InitChain{&reqInitChain},
 	}
 }
 
-func ToRequestBeginBlock(hash []byte, header *Header) *Request {
+func ToRequestBeginBlock(reqBeginBlock RequestBeginBlock) *Request {
 	return &Request{
-		Value: &Request_BeginBlock{&RequestBeginBlock{hash, header}},
+		Value: &Request_BeginBlock{&reqBeginBlock},
 	}
 }
 

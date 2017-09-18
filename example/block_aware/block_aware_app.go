@@ -55,7 +55,7 @@ func (app *ChainAwareApplication) Query(reqQuery types.RequestQuery) (resQuery t
 	}
 }
 
-func (app *ChainAwareApplication) BeginBlock(hash []byte, header *types.Header) {
+func (app *ChainAwareApplication) BeginBlock(reqBeginBlock types.RequestBeginBlock) {
 	app.beginCount++
 	return
 }

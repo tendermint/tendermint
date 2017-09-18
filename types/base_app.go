@@ -31,10 +31,10 @@ func (app *BaseApplication) Query(reqQuery RequestQuery) (resQuery ResponseQuery
 	return
 }
 
-func (app *BaseApplication) InitChain(validators []*Validator) {
+func (app *BaseApplication) InitChain(reqInitChain RequestInitChain) {
 }
 
-func (app *BaseApplication) BeginBlock(hash []byte, header *Header) {
+func (app *BaseApplication) BeginBlock(reqBeginBlock RequestBeginBlock) {
 }
 
 func (app *BaseApplication) EndBlock(height uint64) (resEndBlock ResponseEndBlock) {
