@@ -172,7 +172,7 @@ texinfo_documents = [
 ]
 
 repo = "https://raw.githubusercontent.com/tendermint/tools/"
-branch = "cleanup-and-move-docs"
+branch = "master"
 
 tools = "./tools"
 assets = tools + "/assets"
