@@ -113,6 +113,11 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			WriteRPCResponseHTTP(w, types.RPCParseError("", errors.Wrap(err, "Error unmarshalling request")))
 			return
 		}
+		// A Notification is a Request object without an "id" member.
+		// The Server MUST NOT reply to a Notification, including those that are within a batch request.
+		if request.ID == "" {
+			return
+		}
 		if len(r.URL.Path) > 1 {
 			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError(request.ID, errors.Errorf("Path %s is invalid", r.URL.Path)))
 			return
@@ -510,6 +515,12 @@ func (wsc *wsConnection) readRoutine() {
 			err = json.Unmarshal(in, &request)
 			if err != nil {
 				wsc.WriteRPCResponse(types.RPCParseError("", errors.Wrap(err, "Error unmarshaling request")))
+				continue
+			}
+
+			// A Notification is a Request object without an "id" member.
+			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
+			if request.ID == "" {
 				continue
 			}
 
