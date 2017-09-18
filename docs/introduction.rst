@@ -101,12 +101,6 @@ though extending Tendermint to handle non-determinism remains for future work.
 with additional features for a name-registry, permissions, and native contracts, and an alternative blockchain API.
 It uses Tendermint as its consensus engine, and provides a particular application state.
 
-`Hydrachain <https://github.com/HydraChain/hydrachain>`__ is a Pyethereum adapted to a non-BFT consensus algorithm modelled on Tendermint.
-      
-`Juno <https://github.com/kadena-io/juno>`__ is written in Haskell by Kadena and is a variant of Tangaroa, a BFT version of Raft.
-
-`HoneyBadgerBFT <https://github.com/amiller/HoneyBadgerBFT>`__ is written in Python by Andrew Miller and is a fully asynchronous and highly optimized BFT using secret-sharing.
-
 ABCI Overview
 -------------
 
