@@ -13,17 +13,17 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
 
-Branch    | Tests |
-----------|-------|
-master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master)
-develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/develop.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/develop)
+Branch    | Tests | Coverage 
+----------|-------|----------
+master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/master/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
+develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/develop.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/develop) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/develop/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
 
 _NOTE: This is alpha software. Please contact us if you intend to run it in production._
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For more information, from introduction to install to application development, [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master/index.html).
+For more information, from introduction to install to application development, [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master).
 
 ## Install
 
@@ -39,7 +39,7 @@ For more details (or if it fails), [read the docs](http://tendermint.readthedocs
 
 ### Tendermint Core
 
-All resources involving the use of, building application on, or developing for, tendermint, can be found at [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master/index.html). Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
+All resources involving the use of, building application on, or developing for, tendermint, can be found at [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master). Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
 
 ### Sub-projects
 
@@ -99,6 +99,6 @@ data into the new chain.
 However, any bump in the PATCH version should be compatible with existing histories
 (if not please open an [issue](https://github.com/tendermint/tendermint/issues)).
 
-### Code of Conduct
+## Code of Conduct
 
 Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
