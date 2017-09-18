@@ -1,0 +1,6 @@
+---
+
+- name: Get config.toml from node
+  fetch: "dest={{ destination | default('.') }} flat=yes src=/etc/{{service}}/tendermint/config.toml"
+  run_once: yes
+
