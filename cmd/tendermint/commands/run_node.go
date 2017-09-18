@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -38,9 +39,19 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 }
 
+// FuncSignerAndApp takes a config and returns a PrivValidator and ClientCreator.
+// It allows other projects to make Tendermint binaries with custom signers and applications.
+type FuncSignerAndApp func(*cfg.Config) (*types.PrivValidator, proxy.ClientCreator)
+
+func DefaultSignerAndApp(config *cfg.Config) (*types.PrivValidator, proxy.ClientCreator) {
+	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
+	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
+	return privValidator, clientCreator
+}
+
 // NewRunNodeCmd returns the command that allows the CLI to start a
-// node. It can be used with a custom PrivValidator.
-func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
+// node. It can be used with a custom PrivValidator and in-process ABCI application.
+func NewRunNodeCmd(signerAndApp FuncSignerAndApp) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
 		Short: "Run the tendermint node",
@@ -53,12 +64,8 @@ func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
 			config.ChainID = genDoc.ChainID
 
 			// Create & start node
-			var n *node.Node
-			if privVal == nil {
-				n = node.NewNodeDefault(config, logger.With("module", "node"))
-			}
-			n = node.NewNode(config, privVal, proxy.DefaultClientCreator(config.ProxyApp,
-				config.ABCI, config.DBDir()), logger.With("module", "node"))
+			privVal, clientCreator := signerAndApp(config)
+			n := node.NewNode(config, privVal, clientCreator, logger.With("module", "node"))
 
 			if _, err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
@@ -76,10 +83,3 @@ func NewRunNodeCmd(privVal *types.PrivValidator) *cobra.Command {
 	AddNodeFlags(cmd)
 	return cmd
 }
-
-// Users wishing to:
-//	* Use an external signer for their validators
-//	* Supply an in-proc abci app
-// should import github.com/tendermint/tendermint/node and implement
-// their own run_node to call node.NewNode (instead of node.NewNodeDefault)
-// with their custom priv validator and/or custom proxy.ClientCreator

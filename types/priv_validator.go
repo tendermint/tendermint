@@ -34,17 +34,17 @@ func voteToStep(vote *Vote) int8 {
 	}
 }
 
-// This is used to sign votes.
+// Signer is an interface that defines how to sign votes.
 // It is the caller's duty to verify the msg before calling Sign,
 // eg. to avoid double signing.
-// Currently, the only callers are SignVote and SignProposal
-// Signer is an interface that describes how to sign votes.
+// Currently, the only callers are SignVote and SignProposal.
 type Signer interface {
 	PubKey() crypto.PubKey
 	Sign(msg []byte) (crypto.Signature, error)
 }
 
 // DefaultSigner implements Signer.
+// It uses a standard crypto.PrivKey.
 type DefaultSigner struct {
 	priv crypto.PrivKey
 }

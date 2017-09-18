@@ -3,30 +3,35 @@ package main
 import (
 	"os"
 
-	// crypto "github.com/tendermint/go-crypto"
-
 	"github.com/tendermint/tmlibs/cli"
 
-	. "github.com/tendermint/tendermint/cmd/tendermint/commands"
-	// "github.com/tendermint/tendermint/types"
+	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 )
 
 func main() {
-	rootCmd := RootCmd
-	rootCmd.AddCommand(GenValidatorCmd, InitFilesCmd, ProbeUpnpCmd,
-		ReplayCmd, ReplayConsoleCmd, ResetAllCmd, ResetPrivValidatorCmd,
-		ShowValidatorCmd, TestnetFilesCmd, VersionCmd)
+	rootCmd := cmd.RootCmd
+	rootCmd.AddCommand(
+		cmd.GenValidatorCmd,
+		cmd.InitFilesCmd,
+		cmd.ProbeUpnpCmd,
+		cmd.ReplayCmd,
+		cmd.ReplayConsoleCmd,
+		cmd.ResetAllCmd,
+		cmd.ResetPrivValidatorCmd,
+		cmd.ShowValidatorCmd,
+		cmd.TestnetFilesCmd,
+		cmd.VersionCmd)
 
-	// NOTE: Implement your own type that implements the Signer interface
-	// and then instantiate it here.
-	/*
-	signer := types.NewDefaultSigner(pk)
-	privValidator := types.LoadPrivValidatorWithSigner(signer)
-	rootCmd.AddCommand(NewRunNodeCmd(privValidator))
-	*/
+	// NOTE:
+	// Users wishing to:
+	//	* Use an external signer for their validators
+	//	* Supply an in-proc abci app
+	// can copy this file and use something other than the
+	// default SignerAndApp function
+	signerAndApp := cmd.DefaultSignerAndApp
 
 	// Create & start node
-	rootCmd.AddCommand(NewRunNodeCmd(nil))
+	rootCmd.AddCommand(cmd.NewRunNodeCmd(signerAndApp))
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))
 	cmd.Execute()
