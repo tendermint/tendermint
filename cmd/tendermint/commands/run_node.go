@@ -44,7 +44,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 type FuncSignerAndApp func(*cfg.Config) (types.PrivValidator, proxy.ClientCreator)
 
 func DefaultSignerAndApp(config *cfg.Config) (types.PrivValidator, proxy.ClientCreator) {
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
+	privValidator := types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
 	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	return privValidator, clientCreator
 }

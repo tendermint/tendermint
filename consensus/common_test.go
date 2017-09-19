@@ -368,9 +368,8 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			privVal = types.GenPrivValidator()
 			_, tempFilePath := Tempfile("priv_validator_")
-			privVal.SetFile(tempFilePath)
+			privVal = types.GenPrivValidator(tempFilePath)
 		}
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, appFunc())

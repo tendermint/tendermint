@@ -60,7 +60,7 @@ type Node struct {
 
 func NewNodeDefault(config *cfg.Config, logger log.Logger) *Node {
 	// Get PrivValidator
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile())
+	privValidator := types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
 	return NewNode(config, privValidator,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
 }
@@ -125,7 +125,7 @@ func NewNode(config *cfg.Config, privValidator types.PrivValidator, clientCreato
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.PubKey().Address()) {
+	if state.Validators.HasAddress(privValidator.Address()) {
 		consensusLogger.Info("This node is a validator")
 	} else {
 		consensusLogger.Info("This node is not a validator")

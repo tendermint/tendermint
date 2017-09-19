@@ -369,9 +369,9 @@ func (ac accumComparable) Less(o interface{}) bool {
 // For testing
 
 // NOTE: PrivValidator are in order.
-func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*DefaultPrivValidator) {
+func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*PrivValidatorFS) {
 	vals := make([]*Validator, numValidators)
-	privValidators := make([]*DefaultPrivValidator, numValidators)
+	privValidators := make([]*PrivValidatorFS, numValidators)
 	for i := 0; i < numValidators; i++ {
 		val, privValidator := RandValidator(false, votingPower)
 		vals[i] = val
