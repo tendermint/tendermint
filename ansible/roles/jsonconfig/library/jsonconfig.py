@@ -181,7 +181,7 @@ def deepdiff(d1, d2):
         return None
     
 
-def present(module, dest, conf, jsonbool, merge, create, backup):
+def present(module, dest, conf, merge, create, backup):
 
     diff = {'before': '',
             'after': '',
@@ -226,7 +226,7 @@ def present(module, dest, conf, jsonbool, merge, create, backup):
     else:
         mergedconfig = deepmerge(jsonconfig,config)
         if jsonconfig != mergedconfig:
-            b_lines_new = to_bytes(json.dumps(mergedconfig), sort_keys=True, indent=4, separators=(',', ': ')))
+            b_lines_new = to_bytes(json.dumps(mergedconfig, sort_keys=True, indent=4, separators=(',', ': ')))
             msg = 'config merged'
             changed = True
 
@@ -252,7 +252,7 @@ def present(module, dest, conf, jsonbool, merge, create, backup):
     module.exit_json(changed=changed, msg=msg, backup=backupdest, diff=difflist)
 
 
-def absent(module, dest, conf, jsonbool, backup):
+def absent(module, dest, conf, backup):
 
     b_dest = to_bytes(dest, errors='surrogate_or_strict')
     if not os.path.exists(b_dest):
@@ -351,9 +351,9 @@ def main():
     conf = params['json']
 
     if params['state'] == 'present':
-        present(module, dest, conf, jsonbool, merge, create, backup)
+        present(module, dest, conf, merge, create, backup)
     else:
-        absent(module, dest, conf, jsonbool, backup)
+        absent(module, dest, conf, backup)
     
 if __name__ == '__main__':
     main()
