@@ -29,12 +29,14 @@ func TestLoadValidator(t *testing.T) {
 	require.Nil(err, "%+v", err)
 
 	serialized := fmt.Sprintf(`{
-  "info": {
+  "id": {
     "address": "%s",
     "pub_key": {
       "type": "ed25519",
       "data": "%s"
-    },
+    }
+  },
+  "info": {
     "last_height": 0,
     "last_round": 0,
     "last_step": 0,
@@ -48,14 +50,14 @@ func TestLoadValidator(t *testing.T) {
   }
 }`, addrStr, pubStr, privStr)
 
-	val := DefaultPrivValidator{}
+	val := PrivValidatorFS{}
 	err = json.Unmarshal([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
 	assert.EqualValues(addrBytes, val.Address())
 	assert.EqualValues(pubKey, val.PubKey())
-	valPrivKey := val.Signer.PrivKey
+	valPrivKey := val.Signer.(*DefaultSigner).PrivKey
 	assert.EqualValues(privKey, valPrivKey)
 
 	// export it and make sure it is the same

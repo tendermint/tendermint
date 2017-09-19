@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	crypto "github.com/tendermint/go-crypto"
+	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	. "github.com/tendermint/tmlibs/common"
@@ -53,7 +55,7 @@ func TestByzantine(t *testing.T) {
 	eventLogger := logger.With("module", "events")
 	for i := 0; i < N; i++ {
 		if i == 0 {
-			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator.(*types.PrivValidator))
+			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator)
 			// make byzantine
 			css[i].decideProposal = func(j int) func(int, int) {
 				return func(height, round int) {
@@ -257,47 +259,38 @@ func (br *ByzantineReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 // byzantine privValidator
 
 type ByzantinePrivValidator struct {
-	Address      []byte `json:"address"`
-	types.Signer `json:"-"`
+	types.Signer
 
-	mtx sync.Mutex
+	pv types.PrivValidator
 }
 
 // Return a priv validator that will sign anything
-func NewByzantinePrivValidator(pv *types.PrivValidator) *ByzantinePrivValidator {
+func NewByzantinePrivValidator(pv types.PrivValidator) *ByzantinePrivValidator {
 	return &ByzantinePrivValidator{
-		Address: pv.Address,
-		Signer:  pv.Signer,
+		Signer: pv.(*types.PrivValidatorFS).Signer,
+		pv:     pv,
 	}
 }
 
-func (privVal *ByzantinePrivValidator) GetAddress() []byte {
-	return privVal.Address
+func (privVal *ByzantinePrivValidator) Address() data.Bytes {
+	return privVal.pv.Address()
+}
+
+func (privVal *ByzantinePrivValidator) PubKey() crypto.PubKey {
+	return privVal.pv.PubKey()
 }
 
 func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) (err error) {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-
-	// Sign
 	vote.Signature, err = privVal.Sign(types.SignBytes(chainID, vote))
 	return err
 }
 
 func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) (err error) {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-
-	// Sign
 	proposal.Signature, err = privVal.Sign(types.SignBytes(chainID, proposal))
 	return nil
 }
 
 func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) (err error) {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-
-	// Sign
 	heartbeat.Signature, err = privVal.Sign(types.SignBytes(chainID, heartbeat))
 	return nil
 }

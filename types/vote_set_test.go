@@ -11,7 +11,7 @@ import (
 )
 
 // NOTE: privValidators are in order
-func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*DefaultPrivValidator) {
+func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidatorFS) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
 	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators
 }
@@ -59,7 +59,7 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 	return vote
 }
 
-func signAddVote(privVal *DefaultPrivValidator, vote *Vote, voteSet *VoteSet) (bool, error) {
+func signAddVote(privVal *PrivValidatorFS, vote *Vote, voteSet *VoteSet) (bool, error) {
 	var err error
 	vote.Signature, err = privVal.Signer.Sign(SignBytes(voteSet.ChainID(), vote))
 	if err != nil {

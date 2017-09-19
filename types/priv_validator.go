@@ -157,6 +157,30 @@ func (privVal *PrivValidatorFS) save() {
 	}
 }
 
+// UnmarshalJSON unmarshals the given jsonString
+// into a PrivValidatorFS using a DefaultSigner.
+func (pv *PrivValidatorFS) UnmarshalJSON(jsonString []byte) error {
+	idAndInfo := &struct {
+		ID   ValidatorID    `json:"id"`
+		Info LastSignedInfo `json:"info"`
+	}{}
+	if err := json.Unmarshal(jsonString, idAndInfo); err != nil {
+		return err
+	}
+
+	signer := &struct {
+		Signer *DefaultSigner `json:"signer"`
+	}{}
+	if err := json.Unmarshal(jsonString, signer); err != nil {
+		return err
+	}
+
+	pv.ID = idAndInfo.ID
+	pv.Info = idAndInfo.Info
+	pv.Signer = signer.Signer
+	return nil
+}
+
 // Reset resets all fields in the PrivValidatorFS.Info.
 // NOTE: Unsafe!
 func (privVal *PrivValidatorFS) Reset() {

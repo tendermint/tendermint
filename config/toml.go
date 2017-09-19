@@ -127,16 +127,22 @@ var testGenesis = `{
 }`
 
 var testPrivValidator = `{
-  "address": "D028C9981F7A87F3093672BF0D5B0E2A1B3ED456",
-  "pub_key": {
-    "type": "ed25519",
-    "data": "3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+  "id": {
+    "address": "D028C9981F7A87F3093672BF0D5B0E2A1B3ED456",
+    "pub_key": {
+      "type": "ed25519",
+      "data": "3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+    }
   },
-  "priv_key": {
-    "type": "ed25519",
-    "data": "27F82582AEFAE7AB151CFB01C48BB6C1A0DA78F9BDDA979A9F70A84D074EB07D3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+  "signer": {
+    "priv_key": {
+      "type": "ed25519",
+      "data": "27F82582AEFAE7AB151CFB01C48BB6C1A0DA78F9BDDA979A9F70A84D074EB07D3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+    }
   },
-  "last_height": 0,
-  "last_round": 0,
-  "last_step": 0
+  "info": {
+    "last_height": 0,
+    "last_round": 0,
+    "last_step": 0
+  }
 }`
