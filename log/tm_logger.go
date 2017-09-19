@@ -50,21 +50,21 @@ func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) te
 }
 
 // Info logs a message at level Info.
-func (l *tmLogger) Info(msg string, keyvals ...interface{}) error {
+func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Info(l.srcLogger)
-	return kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
+	kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
 }
 
 // Debug logs a message at level Debug.
-func (l *tmLogger) Debug(msg string, keyvals ...interface{}) error {
+func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
-	return kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
+	kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
 }
 
 // Error logs a message at level Error.
-func (l *tmLogger) Error(msg string, keyvals ...interface{}) error {
+func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)
-	return kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
+	kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
 }
 
 // With returns a new contextual logger with keyvals prepended to those passed

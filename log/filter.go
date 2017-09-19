@@ -14,7 +14,6 @@ type filter struct {
 	next           Logger
 	allowed        level            // XOR'd levels for default case
 	allowedKeyvals map[keyval]level // When key-value match, use this level
-	errNotAllowed  error
 }
 
 type keyval struct {
@@ -37,28 +36,28 @@ func NewFilter(next Logger, options ...Option) Logger {
 	return l
 }
 
-func (l *filter) Info(msg string, keyvals ...interface{}) error {
+func (l *filter) Info(msg string, keyvals ...interface{}) {
 	levelAllowed := l.allowed&levelInfo != 0
 	if !levelAllowed {
-		return l.errNotAllowed
+		return
 	}
-	return l.next.Info(msg, keyvals...)
+	l.next.Info(msg, keyvals...)
 }
 
-func (l *filter) Debug(msg string, keyvals ...interface{}) error {
+func (l *filter) Debug(msg string, keyvals ...interface{}) {
 	levelAllowed := l.allowed&levelDebug != 0
 	if !levelAllowed {
-		return l.errNotAllowed
+		return
 	}
-	return l.next.Debug(msg, keyvals...)
+	l.next.Debug(msg, keyvals...)
 }
 
-func (l *filter) Error(msg string, keyvals ...interface{}) error {
+func (l *filter) Error(msg string, keyvals ...interface{}) {
 	levelAllowed := l.allowed&levelError != 0
 	if !levelAllowed {
-		return l.errNotAllowed
+		return
 	}
-	return l.next.Error(msg, keyvals...)
+	l.next.Error(msg, keyvals...)
 }
 
 // With implements Logger by constructing a new filter with a keyvals appended
@@ -80,11 +79,11 @@ func (l *filter) With(keyvals ...interface{}) Logger {
 	for i := len(keyvals) - 2; i >= 0; i -= 2 {
 		for kv, allowed := range l.allowedKeyvals {
 			if keyvals[i] == kv.key && keyvals[i+1] == kv.value {
-				return &filter{next: l.next.With(keyvals...), allowed: allowed, errNotAllowed: l.errNotAllowed, allowedKeyvals: l.allowedKeyvals}
+				return &filter{next: l.next.With(keyvals...), allowed: allowed, allowedKeyvals: l.allowedKeyvals}
 			}
 		}
 	}
-	return &filter{next: l.next.With(keyvals...), allowed: l.allowed, errNotAllowed: l.errNotAllowed, allowedKeyvals: l.allowedKeyvals}
+	return &filter{next: l.next.With(keyvals...), allowed: l.allowed, allowedKeyvals: l.allowedKeyvals}
 }
 
 //--------------------------------------------------------------------------------
@@ -136,14 +135,6 @@ func AllowNone() Option {
 
 func allowed(allowed level) Option {
 	return func(l *filter) { l.allowed = allowed }
-}
-
-// ErrNotAllowed sets the error to return from Log when it squelches a log
-// event disallowed by the configured Allow[Level] option. By default,
-// ErrNotAllowed is nil; in this case the log event is squelched with no
-// error.
-func ErrNotAllowed(err error) Option {
-	return func(l *filter) { l.errNotAllowed = err }
 }
 
 // AllowDebugWith allows error, info and debug level log events to pass for a specific key value pair.

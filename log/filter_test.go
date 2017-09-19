@@ -2,7 +2,6 @@ package log_test
 
 import (
 	"bytes"
-	"errors"
 	"strings"
 	"testing"
 
@@ -68,23 +67,6 @@ func TestVariousLevels(t *testing.T) {
 				t.Errorf("\nwant:\n%s\nhave:\n%s", want, have)
 			}
 		})
-	}
-}
-
-func TestErrNotAllowed(t *testing.T) {
-	myError := errors.New("squelched!")
-	opts := []log.Option{
-		log.AllowError(),
-		log.ErrNotAllowed(myError),
-	}
-	logger := log.NewFilter(log.NewNopLogger(), opts...)
-
-	if want, have := myError, logger.Info("foo", "bar", "baz"); want != have {
-		t.Errorf("want %#+v, have %#+v", want, have)
-	}
-
-	if want, have := error(nil), logger.Error("foo", "bar", "baz"); want != have {
-		t.Errorf("want %#+v, have %#+v", want, have)
 	}
 }
 
