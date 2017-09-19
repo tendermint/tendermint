@@ -43,6 +43,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 // It allows other projects to make Tendermint binaries with custom signers and applications.
 type FuncSignerAndApp func(*cfg.Config) (types.PrivValidator, proxy.ClientCreator)
 
+// DefaultSignerAndApp is a default FuncSignerAndApp that returns a PrivValidatorFS
+// and a DefaultClientCreator using the relevant fields from the config.
 func DefaultSignerAndApp(config *cfg.Config) (types.PrivValidator, proxy.ClientCreator) {
 	privValidator := types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
 	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())

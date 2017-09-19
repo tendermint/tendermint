@@ -27,7 +27,7 @@ func main() {
 	//	* Use an external signer for their validators
 	//	* Supply an in-proc abci app
 	// can copy this file and use something other than the
-	// default SignerAndApp function
+	// DefaultSignerAndApp function
 	signerAndApp := cmd.DefaultSignerAndApp
 
 	// Create & start node
