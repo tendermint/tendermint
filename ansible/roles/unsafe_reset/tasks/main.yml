@@ -9,3 +9,5 @@
 - shell: "export TMHOME=/etc/{{service}}/tendermint ; tendermint unsafe_reset_all"
   become_user: "{{service}}"
 
+- file: "path=/etc/{{service}}/data state=absent"
+
