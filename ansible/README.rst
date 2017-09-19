@@ -18,13 +18,17 @@ Prerequisites
 -  Ansible 2.0 or higher
 -  SSH key to the servers
 
-Optional for DigitalOcean droplets: \* DigitalOcean API Token \* python
-dopy package
+Optional for DigitalOcean droplets:
+
+- DigitalOcean API Token
+- python dopy package
 
 For a description on how to get a DigitalOcean API Token, see the explanation
-in the `using terraform tutorial <terraform-digitalocean.rst>`__.
+in the `using terraform tutorial <./terraform-digitalocean.html>`__.
 
-Optional for Amazon AWS instances: \* Amazon AWS API access key ID and
+Optional for Amazon AWS instances: 
+
+- Amazon AWS API access key ID and
 secret access key.
 
 The cloud inventory scripts come from the ansible team at their
