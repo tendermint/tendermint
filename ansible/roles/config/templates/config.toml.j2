@@ -4,7 +4,8 @@
 proxy_app = "tcp://127.0.0.1:46658"
 moniker = "{{inventory_hostname}}"
 fast_sync = true
-db_backend = "memdb"
+db_backend = "leveldb"
+#db_backend = "memdb"
 #log_level = "mempool:error,*:debug"
 log_level = "state:info,*:error"
 
