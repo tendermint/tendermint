@@ -1,0 +1,3 @@
+---
+destination: /etc/{{service}}/tendermint/config.toml
+

@@ -8,14 +8,14 @@ ANSIBLE_METADATA = {
 
 DOCUMENTATION = '''
 ---
-module: tomlconfig
+module: jsonconfig
 
-short_description: Ensure a particular configuration is added to a toml-formatted configuration file
+short_description: Ensure a particular configuration is added to a json-formatted configuration file
 
 version_added: "2.4"
 
 description:
-    - This module will add configuration to a toml-formatted configuration file.
+    - This module will add configuration to a json-formatted configuration file.
 
 options:
     dest:
@@ -25,13 +25,9 @@ options:
         aliases: [ name, destfile ]
     json:
         description:
-            - The configuration in json format to apply. Either C(json) or C(toml) has to be present.
+            - The configuration in json format to apply.
         required: false
         default: '{}'
-    toml:
-        description:
-            - The configuration in toml format to apply. Either C(json) or C(toml) has to be present.
-        default: ''
     merge:
         description:
             - Used with C(state=present). If specified, it will merge the configuration. Othwerwise
@@ -74,16 +70,16 @@ author:
 '''
 
 EXAMPLES = '''
-# Add a new section to a toml file
+# Add a new section to a json file
 - name: Add comment section
-  tomlconfig:
-    dest: /etc/config.toml
+  jsonconfig:
+    dest: /etc/something.json
     json: '{ "comment": { "comment1": "mycomment" } }'
 
-# Rewrite a toml file with the configuration
-- name: Create or overwrite config.toml
-  tomlconfig:
-    dest: /etc/config.toml
+# Rewrite a json file with the configuration
+- name: Create or overwrite config.json
+  jsonconfig:
+    dest: /etc/config.json
     json: '{ "regedit": { "freshfile": true } }'
     merge: no
     create: yes
@@ -103,7 +99,6 @@ from ansible.module_utils.basic import AnsibleModule
 from ansible.module_utils.six import b
 from ansible.module_utils._text import to_bytes, to_native
 import tempfile
-import toml as pytoml
 import json
 import copy
 import os
@@ -213,32 +208,25 @@ def present(module, dest, conf, jsonbool, merge, create, backup):
 
     b_conf = to_bytes(conf, errors='surrogate_or_strict')
 
-    tomlconfig = pytoml.loads(lines)
-    config = {}
-    if jsonbool:
-        config = eval(b_conf)
-    else:
-        config = pytoml.loads(b_conf)
+    jsonconfig = json.loads(lines)
+    config = eval(b_conf)
 
     if not isinstance(config, dict):
-        if jsonbool:
-            module.fail_json(msg="Invalid value in json parameter: {0}".format(config))
-        else:
-            module.fail_json(msg="Invalid value in toml parameter: {0}".format(config))
+        module.fail_json(msg="Invalid value in json parameter: {0}".format(config))
 
     b_lines_new = b_lines
     msg = ''
     changed = False
 
     if not merge:
-        if tomlconfig != config:
-            b_lines_new = to_bytes(pytoml.dumps(config))
+        if jsonconfig != config:
+            b_lines_new = to_bytes(json.dumps(config, sort_keys=True, indent=4, separators=(',', ': ')))
             msg = 'config overwritten'
             changed = True
     else:
-        mergedconfig = deepmerge(tomlconfig,config)
-        if tomlconfig != mergedconfig:
-            b_lines_new = to_bytes(pytoml.dumps(mergedconfig))
+        mergedconfig = deepmerge(jsonconfig,config)
+        if jsonconfig != mergedconfig:
+            b_lines_new = to_bytes(json.dumps(mergedconfig), sort_keys=True, indent=4, separators=(',', ': ')))
             msg = 'config merged'
             changed = True
 
@@ -284,18 +272,11 @@ def absent(module, dest, conf, jsonbool, backup):
     b_conf = to_bytes(conf, errors='surrogate_or_strict')
 
     lines = to_native(b('').join(b_lines))
-    tomlconfig = pytoml.loads(lines)
-    config = {}
-    if jsonbool:
-        config = eval(b_conf)
-    else:
-        config = pytoml.loads(b_conf)
+    jsonconfig = json.loads(lines)
+    config = eval(b_conf)
 
     if not isinstance(config, dict):
-        if jsonbool:
-            module.fail_json(msg="Invalid value in json parameter: {0}".format(config))
-        else:
-            module.fail_json(msg="Invalid value in toml parameter: {0}".format(config))
+        module.fail_json(msg="Invalid value in json parameter: {0}".format(config))
 
     if module._diff:
         diff['before'] = to_native(b('').join(b_lines))
@@ -304,11 +285,11 @@ def absent(module, dest, conf, jsonbool, backup):
     msg = ''
     changed = False
 
-    diffconfig = deepdiff(tomlconfig,config)
+    diffconfig = deepdiff(jsonconfig,config)
     if diffconfig is None:
         diffconfig = {}
-    if tomlconfig != diffconfig:
-        b_lines_new = to_bytes(pytoml.dumps(diffconfig))
+    if jsonconfig != diffconfig:
+        b_lines_new = to_bytes(json.dumps(diffconfig, sort_keys=True, indent=4, separators=(',', ': ')))
         msg = 'config removed'
         changed = True
 
@@ -338,8 +319,7 @@ def main():
     # the module
     module_args = dict(
         dest=dict(type='str', required=True),
-        json=dict(default=None),
-        toml=dict(default=None),
+        json=dict(default=None, required=True),
         merge=dict(type='bool', default=True),
         state=dict(default='present', choices=['absent', 'present']),
         create=dict(type='bool', default=False),
@@ -353,7 +333,6 @@ def main():
     # supports check mode
     module = AnsibleModule(
         argument_spec=module_args,
-        mutually_exclusive=[['json', 'toml']],
         add_file_common_args=True,
         supports_check_mode=True
     )
@@ -369,12 +348,7 @@ def main():
     if os.path.isdir(b_dest):
         module.fail_json(rc=256, msg='Destination %s is a directory !' % dest)
 
-    par_json, par_toml, jsonbool = params['json'], params['toml'], False
-    if par_json is None:
-       conf = par_toml
-    else:
-       conf = par_json
-       jsonbool = True
+    conf = params['json']
 
     if params['state'] == 'present':
         present(module, dest, conf, jsonbool, merge, create, backup)

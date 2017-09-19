@@ -2,9 +2,9 @@
 
 - name: Update config.toml with json
   when: jsonconfig is defined
-  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml json='{{jsonconfig}}' state={{(remove | default(false) | bool) | ternary('absent','present')}}"
+  tomlconfig: "dest='{{destination}}' json='{{jsonconfig}}' state={{(remove | default(false) | bool) | ternary('absent','present')}}"
 
 - name: Update config.toml with toml
   when: tomlconfig is defined
-  tomlconfig: "dest=/etc/{{service}}/tendermint/config.toml toml='{{tomlconfig}}' state={{(remove | default(false) | bool) | ternary('absent','present')}}"
+  tomlconfig: "dest='{{destination}}' toml='{{tomlconfig}}' state={{(remove | default(false) | bool) | ternary('absent','present')}}"
 
