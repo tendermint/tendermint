@@ -68,14 +68,17 @@ type State struct {
 // GetState loads the most recent state from the database,
 // or creates a new one from the given genesisFile and persists the result
 // to the database.
-func GetState(stateDB dbm.DB, genesisFile string) *State {
+func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
+	var err error
 	state := LoadState(stateDB)
 	if state == nil {
-		state = MakeGenesisStateFromFile(stateDB, genesisFile)
+		state, err = MakeGenesisStateFromFile(stateDB, genesisFile)
+		if err != nil {
+			return nil, err
+		}
 		state.Save()
 	}
-
-	return state
+	return state, nil
 }
 
 // LoadState loads the State from the database.
@@ -316,25 +319,34 @@ func (vi *ValidatorsInfo) Bytes() []byte {
 // file.
 //
 // Used during replay and in tests.
-func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
+func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) (*State, error) {
+	genDoc, err := MakeGenesisDocFromFile(genDocFile)
+	if err != nil {
+		return nil, err
+	}
+	return MakeGenesisState(db, genDoc)
+}
+
+// MakeGenesisDocFromFile reads and unmarshals genesis doc from the given file.
+func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 	genDocJSON, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		cmn.Exit(cmn.Fmt("Couldn't read GenesisDoc file: %v", err))
+		return nil, fmt.Errorf("Couldn't read GenesisDoc file: %v", err)
 	}
 	genDoc, err := types.GenesisDocFromJSON(genDocJSON)
 	if err != nil {
-		cmn.Exit(cmn.Fmt("Error reading GenesisDoc: %v", err))
+		return nil, fmt.Errorf("Error reading GenesisDoc: %v", err)
 	}
-	return MakeGenesisState(db, genDoc)
+	return genDoc, nil
 }
 
 // MakeGenesisState creates state from types.GenesisDoc.
 //
 // Used in tests.
-func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
+func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		cmn.Exit(cmn.Fmt("Error in genesis file: %v", err))
+		return nil, fmt.Errorf("Error in genesis file: %v", err)
 	}
 
 	// Make validators slice
@@ -363,5 +375,5 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		AppHash:                     genDoc.AppHash,
 		TxIndexer:                   &null.TxIndex{}, // we do not need indexer during replay and in tests
 		LastHeightValidatorsChanged: 1,
-	}
+	}, nil
 }

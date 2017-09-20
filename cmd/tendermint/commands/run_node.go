@@ -67,7 +67,15 @@ func NewRunNodeCmd(signerAndApp FuncSignerAndApp) *cobra.Command {
 
 			// Create & start node
 			privVal, clientCreator := signerAndApp(config)
-			n := node.NewNode(config, privVal, clientCreator, logger.With("module", "node"))
+			n, err := node.NewNode(config,
+				privVal,
+				clientCreator,
+				node.DefaultGenesisDocProviderFunc(config),
+				node.DefaultDBProvider,
+				logger.With("module", "node"))
+			if err != nil {
+				return fmt.Errorf("Failed to create node: %v", err)
+			}
 
 			if _, err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)

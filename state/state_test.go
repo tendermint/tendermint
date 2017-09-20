@@ -23,7 +23,8 @@ import (
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, *State) {
 	config := cfg.ResetTestRoot("state_")
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
-	state := GetState(stateDB, config.GenesisFile())
+	state, err := GetState(stateDB, config.GenesisFile())
+	assert.NoError(t, err, "expected no error on GetState")
 	state.SetLogger(log.TestingLogger())
 
 	tearDown := func(t *testing.T) {}

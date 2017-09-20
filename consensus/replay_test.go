@@ -558,7 +558,7 @@ func readPieceFromWAL(msgBytes []byte) (interface{}, error) {
 // fresh state and mock store
 func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
 	store := NewMockBlockStore(config, state.Params())
