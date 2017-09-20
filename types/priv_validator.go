@@ -11,7 +11,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // TODO: type ?
@@ -29,7 +29,7 @@ func voteToStep(vote *Vote) int8 {
 	case VoteTypePrecommit:
 		return stepPrecommit
 	default:
-		PanicSanity("Unknown vote type")
+		cmn.PanicSanity("Unknown vote type")
 		return 0
 	}
 }
@@ -78,12 +78,12 @@ func LoadOrGenPrivValidatorFS(filePath string) *PrivValidatorFS {
 func LoadPrivValidatorFS(filePath string) *PrivValidatorFS {
 	privValJSONBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	privVal := PrivValidatorFS{}
 	err = json.Unmarshal(privValJSONBytes, &privVal)
 	if err != nil {
-		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
+		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
 
 	privVal.filePath = filePath
@@ -111,12 +111,12 @@ func GenPrivValidatorFS(filePath string) *PrivValidatorFS {
 func LoadPrivValidatorFSWithSigner(filePath string, signerFunc func(ValidatorID) Signer) *PrivValidatorFS {
 	privValJSONBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
 	privVal := PrivValidatorFS{}
 	err = json.Unmarshal(privValJSONBytes, &privVal)
 	if err != nil {
-		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
+		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
 
 	privVal.filePath = filePath
@@ -143,17 +143,17 @@ func (privVal *PrivValidatorFS) Save() {
 
 func (privVal *PrivValidatorFS) save() {
 	if privVal.filePath == "" {
-		PanicSanity("Cannot save PrivValidator: filePath not set")
+		cmn.PanicSanity("Cannot save PrivValidator: filePath not set")
 	}
 	jsonBytes, err := json.Marshal(privVal)
 	if err != nil {
 		// `@; BOOM!!!
-		PanicCrisis(err)
+		cmn.PanicCrisis(err)
 	}
-	err = WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
+	err = cmn.WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
 	if err != nil {
 		// `@; BOOM!!!
-		PanicCrisis(err)
+		cmn.PanicCrisis(err)
 	}
 }
 
@@ -198,7 +198,7 @@ func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
 	defer privVal.mtx.Unlock()
 	signature, err := privVal.signBytesHRS(vote.Height, vote.Round, voteToStep(vote), SignBytes(chainID, vote))
 	if err != nil {
-		return errors.New(Fmt("Error signing vote: %v", err))
+		return errors.New(cmn.Fmt("Error signing vote: %v", err))
 	}
 	vote.Signature = signature
 	return nil
@@ -246,7 +246,7 @@ func (privVal *PrivValidatorFS) signBytesHRS(height, round int, step int8, signB
 			} else if info.LastStep == step {
 				if info.LastSignBytes != nil {
 					if info.LastSignature.Empty() {
-						PanicSanity("privVal: LastSignature is nil but LastSignBytes is not!")
+						cmn.PanicSanity("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					// so we dont sign a conflicting vote or proposal
 					// NOTE: proposals are non-deterministic (include time),
