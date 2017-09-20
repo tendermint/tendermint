@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"hash/crc32"
 	"io"
 	"reflect"
 	"strconv"
@@ -46,6 +47,18 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 	if err != nil {
 		fmt.Println("MsgBytes:", msgBytes, string(msgBytes))
 		return fmt.Errorf("Error reading json data: %v", err)
+	}
+	// check checksum
+	innerMsgBytes := wire.JSONBytes(msg.Msg)
+	crc32c := crc32.MakeTable(crc32.Castagnoli)
+	crc := crc32.Checksum(innerMsgBytes, crc32c)
+	if crc != msg.CRC {
+		return fmt.Errorf("Checksums do not match. Original: %v, but calculated: %v", msg.CRC, crc)
+	}
+	// check msg size (optional)
+	msgSize := uint32(len(innerMsgBytes))
+	if msgSize != msg.MsgSize {
+		return fmt.Errorf("Sizes do not match. Original: %v, but calculated: %v", msg.MsgSize, msgSize)
 	}
 
 	// for logging

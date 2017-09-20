@@ -1,6 +1,7 @@
 package consensus
 
 import (
+	"hash/crc32"
 	"time"
 
 	wire "github.com/tendermint/go-wire"
@@ -13,8 +14,10 @@ import (
 // types and functions for savings consensus messages
 
 type TimedWALMessage struct {
-	Time time.Time  `json:"time"`
-	Msg  WALMessage `json:"msg"`
+	Time    time.Time  `json:"time"` // for debugging purposes
+	CRC     uint32     `json:"crc"`
+	MsgSize uint32     `json:"msg_size"`
+	Msg     WALMessage `json:"msg"`
 }
 
 type WALMessage interface{}
@@ -83,7 +86,11 @@ func (wal *WAL) Save(wmsg WALMessage) {
 		}
 	}
 	// Write the wal message
-	var wmsgBytes = wire.JSONBytes(TimedWALMessage{time.Now(), wmsg})
+	innerMsgBytes := wire.JSONBytes(wmsg)
+	crc32c := crc32.MakeTable(crc32.Castagnoli)
+	crc := crc32.Checksum(innerMsgBytes, crc32c)
+	wmsgSize := uint32(len(innerMsgBytes))
+	var wmsgBytes = wire.JSONBytes(TimedWALMessage{time.Now(), crc, wmsgSize, wmsg})
 	err := wal.group.WriteLine(string(wmsgBytes))
 	if err != nil {
 		cmn.PanicQ(cmn.Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, wmsg))

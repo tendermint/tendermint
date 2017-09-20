@@ -1,4 +1,5 @@
 #ENDHEIGHT: 0
+<<<<<<< HEAD
 {"time":"2017-10-23T13:26:29.560Z","msg":[3,{"duration":-2002220818,"height":1,"round":0,"step":1}]}
 {"time":"2017-10-23T13:26:29.561Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
 {"time":"2017-10-23T13:26:29.562Z","msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"B8A47B357210D59E0170747FF4ACDB366C706D57"},"pol_round":-1,"pol_block_id":{"hash":"","parts":{"total":0,"hash":""}},"signature":[1,"AFCEA71535E0DF9E5D58DEE0F412903AC87C4DD09FCED3FC0267FCDE9E6069758C42B5C934DF514E898C7D30BA68815245005E99DDD9924BC182C11C5447180A"]}}],"peer_key":""}]}
@@ -8,3 +9,14 @@
 {"time":"2017-10-23T13:26:29.564Z","msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
 {"time":"2017-10-23T13:26:29.564Z","msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":2,"block_id":{"hash":"B2ABE6C01E098186990295E19E2F80B23A6B3D97","parts":{"total":1,"hash":"B8A47B357210D59E0170747FF4ACDB366C706D57"}},"signature":[1,"E08C7C03E44B8A2DE4807BCD16C35688AA042ED7AE46FA3572759B9CBAE3E14DB6FD7AD14954BAAFCFB080DC6B45075602C865C123E77799DB0896DF07869103"]}}],"peer_key":""}]}
 {"time":"2017-10-23T13:26:29.565Z","msg":[1,{"height":1,"round":0,"step":"RoundStepCommit"}]}
+=======
+{"time":"2017-09-21T21:02:21.324Z","crc":2662164156,"msg_size":54,"msg":[3,{"duration":-2001855698,"height":1,"round":0,"step":1}]}
+{"time":"2017-09-21T21:02:21.327Z","crc":1757077690,"msg_size":48,"msg":[1,{"height":1,"round":0,"step":"RoundStepPropose"}]}
+{"time":"2017-09-21T21:02:21.327Z","crc":3823114220,"msg_size":364,"msg":[2,{"msg":[17,{"Proposal":{"height":1,"round":0,"block_parts_header":{"total":1,"hash":"4FBDB1EEEED075D82DA06FB5AF43F868EC369AAA"},"pol_round":-1,"pol_block_id":{"hash":"","parts":{"total":0,"hash":""}},"signature":[1,"575362A80587D7F1F14F320EE19DDAF9BA565CBEDF902A6DE52E99461E7D8C69683694DCCEB656A2B9614EF0DA1A587C571AA078F727FD0B505777EC9C9F300C"]}}],"peer_key":""}]}
+{"time":"2017-09-21T21:02:21.327Z","crc":2999219296,"msg_size":230,"msg":[2,{"msg":[19,{"Height":1,"Round":0,"Part":{"index":0,"bytes":"0101010F74656E6465726D696E745F74657374010114E67C405F803B0000000000000001147297262C6CD96190E46846C9A0DE1227E76077CF0001000100000000","proof":{"aunts":[]}}}],"peer_key":""}]}
+{"time":"2017-09-21T21:02:21.331Z","crc":2263378695,"msg_size":48,"msg":[1,{"height":1,"round":0,"step":"RoundStepPrevote"}]}
+{"time":"2017-09-21T21:02:21.331Z","crc":3984981327,"msg_size":430,"msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":1,"block_id":{"hash":"6AD76FBC533267511F70830EC7D02C1B2EC11EB5","parts":{"total":1,"hash":"4FBDB1EEEED075D82DA06FB5AF43F868EC369AAA"}},"signature":[1,"D47083E71D5D953190899A4082AFFBC3B1497F07291895D1375AB892ED52EC43E77E6EC139DFB3362E8621840E735194FEA1665EC0A3B359E5BE0BC274F8FE02"]}}],"peer_key":""}]}
+{"time":"2017-09-21T21:02:21.332Z","crc":568814784,"msg_size":50,"msg":[1,{"height":1,"round":0,"step":"RoundStepPrecommit"}]}
+{"time":"2017-09-21T21:02:21.332Z","crc":4002880845,"msg_size":430,"msg":[2,{"msg":[20,{"Vote":{"validator_address":"D028C9981F7A87F3093672BF0D5B0E2A1B3ED456","validator_index":0,"height":1,"round":0,"type":2,"block_id":{"hash":"6AD76FBC533267511F70830EC7D02C1B2EC11EB5","parts":{"total":1,"hash":"4FBDB1EEEED075D82DA06FB5AF43F868EC369AAA"}},"signature":[1,"FED53EF2E110E04A8FE004A100C00E9518942D99BECA3281403A4FC42A3C0BCECE15FE67BBAFDCC6DDAEA00DE597D4E6952183070B6D823A24D7447AC0B8C60A"]}}],"peer_key":""}]}
+{"time":"2017-09-21T21:02:21.340Z","crc":864216102,"msg_size":47,"msg":[1,{"height":1,"round":0,"step":"RoundStepCommit"}]}
+>>>>>>> add checksum and msg size to TimedWALMessage
