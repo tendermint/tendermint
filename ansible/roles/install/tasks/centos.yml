@@ -44,6 +44,8 @@
   with_items:
   - python2-pip
   - python-virtualenv
+  - unzip
+  - tar
 
 - name: Install toml 
   when: ansible_os_family == "RedHat"

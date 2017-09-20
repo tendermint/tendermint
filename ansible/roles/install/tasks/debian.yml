@@ -24,5 +24,8 @@
 
 - name: Install package on Debian/Ubuntu
   when: ansible_os_family == "Debian"
-  apt: "pkg=python-toml state=latest"
-
+  apt: "pkg={{item}} state=latest"
+  with_items:
+  - python-toml
+  - unzip
+  - tar
