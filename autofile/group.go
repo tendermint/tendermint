@@ -153,7 +153,11 @@ func (g *Group) WriteLine(line string) error {
 func (g *Group) Flush() error {
 	g.mtx.Lock()
 	defer g.mtx.Unlock()
-	return g.headBuf.Flush()
+	err := g.headBuf.Flush()
+	if err == nil {
+		err = g.Head.Sync()
+	}
+	return err
 }
 
 func (g *Group) processTicks() {
