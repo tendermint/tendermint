@@ -720,7 +720,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	_, err = con.Start() // Blocking
 	if err != nil {
-		panic(err)
+		wm.logger.Error("Error starting connection", "err", err)
 	}
 }
 

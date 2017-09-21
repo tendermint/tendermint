@@ -313,7 +313,7 @@ func (pool *BlockPool) makeNextRequester() {
 
 	_, err := request.Start()
 	if err != nil {
-		panic(err)
+		pool.Logger.Error("Error starting block pool", "err", err)
 	}
 }
 

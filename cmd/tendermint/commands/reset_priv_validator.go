@@ -48,7 +48,7 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 func ResetAll(dbDir, privValFile string, logger log.Logger) {
 	resetPrivValidatorLocal(privValFile, logger)
 	if err := os.RemoveAll(dbDir); err != nil {
-		panic(err)
+		logger.Error("Error removing directory", "err", err)
 	}
 	logger.Info("Removed all data", "dir", dbDir)
 }

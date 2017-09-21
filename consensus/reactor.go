@@ -97,7 +97,10 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State, blocksSynced in
 		// dont bother with the WAL if we fast synced
 		conR.conS.doWALCatchup = false
 	}
-	conR.conS.Start()
+	_, err := conR.conS.Start()
+	if err != nil {
+		conR.Logger.Error("Error starting conR", "err", err)
+	}
 }
 
 // GetChannels implements Reactor

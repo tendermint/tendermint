@@ -259,7 +259,7 @@ func (cs *ConsensusState) OnStart() error {
 func (cs *ConsensusState) startRoutines(maxSteps int) {
 	_, err := cs.timeoutTicker.Start()
 	if err != nil {
-		panic(err)
+		cs.Logger.Error("Error starting timeout ticker", "err", err)
 	}
 	go cs.receiveRoutine(maxSteps)
 }

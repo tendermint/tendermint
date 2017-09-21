@@ -101,7 +101,7 @@ func Probe(logger log.Logger) (caps UPNPCapabilities, err error) {
 			logger.Error(cmn.Fmt("Port mapping delete error: %v", err))
 		}
 		if err := listener.Close(); err != nil {
-			panic(err)
+			logger.Error(cmn.Fmt("Listener closing error: %v", err))
 		}
 	}()
 

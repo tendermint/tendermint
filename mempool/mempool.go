@@ -3,7 +3,6 @@ package mempool
 import (
 	"bytes"
 	"container/list"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -192,11 +191,11 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 		// TODO: Notify administrators when WAL fails
 		_, err := mem.wal.Write([]byte(tx))
 		if err != nil {
-			mem.logger.Error(fmt.Sprintf("Error writing to WAL: %v", err))
+			mem.logger.Error("Error writing to WAL", "err", err)
 		}
 		_, err = mem.wal.Write([]byte("\n"))
 		if err != nil {
-			mem.logger.Error(fmt.Sprintf("Error writing to WAL: %v", err))
+			mem.logger.Error("Error writing to WAL", "err", err)
 		}
 	}
 	// END WAL
