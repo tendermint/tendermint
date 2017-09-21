@@ -26,7 +26,7 @@ type GenesisValidator struct {
 type GenesisDoc struct {
 	GenesisTime     time.Time          `json:"genesis_time"`
 	ChainID         string             `json:"chain_id"`
-	ConsensusParams ConsensusParams    `json:"consensus_params"`
+	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
 	Validators      []GenesisValidator `json:"validators"`
 	AppHash         data.Bytes         `json:"app_hash"`
 }
@@ -58,8 +58,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		return errors.Errorf("Genesis doc must include non-empty chain_id")
 	}
 
-	var emptyParams ConsensusParams
-	if genDoc.ConsensusParams == emptyParams {
+	if genDoc.ConsensusParams == nil {
 		genDoc.ConsensusParams = DefaultConsensusParams()
 	} else {
 		if err := genDoc.ConsensusParams.Validate(); err != nil {

@@ -35,8 +35,8 @@ type BlockGossipParams struct {
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
-func DefaultConsensusParams() ConsensusParams {
-	return ConsensusParams{
+func DefaultConsensusParams() *ConsensusParams {
+	return &ConsensusParams{
 		DefaultBlockSizeParams(),
 		DefaultTxSizeParams(),
 		DefaultBlockGossipParams(),
