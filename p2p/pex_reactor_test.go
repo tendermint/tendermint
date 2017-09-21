@@ -20,7 +20,11 @@ func TestPEXReactorBasic(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}()
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
@@ -36,7 +40,11 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}()
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
@@ -69,7 +77,11 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}()
 	book := NewAddrBook(dir+"addrbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
@@ -139,7 +151,11 @@ func TestPEXReactorReceive(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}()
 	book := NewAddrBook(dir+"addrbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
@@ -164,7 +180,11 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}()
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 

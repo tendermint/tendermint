@@ -197,7 +197,7 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 	if err != nil {
 		return
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() // nolint (errcheck)
 
 	if r.StatusCode >= 400 {
 		err = errors.New(string(r.StatusCode))

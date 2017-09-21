@@ -174,7 +174,9 @@ func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
 
 // OnStart implements BaseService. It starts all the reactors, peers, and listeners.
 func (sw *Switch) OnStart() error {
-	sw.BaseService.OnStart()
+	if err := sw.BaseService.OnStart(); err != nil {
+		return err
+	}
 	// Start reactors
 	for _, reactor := range sw.reactors {
 		_, err := reactor.Start()
@@ -287,7 +289,11 @@ func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKeyEd25519) error) {
 }
 
 func (sw *Switch) startInitPeer(peer *peer) {
-	peer.Start() // spawn send/recv routines
+	_, err := peer.Start() // spawn send/recv routines
+	if err != nil {
+		sw.Logger.Error("Error starting peer", "err", err)
+	}
+
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)
 	}
@@ -568,7 +574,9 @@ func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
 	if err != nil {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			sw.Logger.Error("Error closing connection", "err", err)
+		}
 		return err
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
@@ -583,7 +591,9 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConfig) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
 	if err != nil {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			sw.Logger.Error("Error closing connection", "err", err)
+		}
 		return err
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))

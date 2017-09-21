@@ -23,7 +23,8 @@ func TestPeerBasic(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), DefaultPeerConfig())
 	require.Nil(err)
 
-	p.Start()
+	_, err = p.Start()
+	require.Nil(err)
 	defer p.Stop()
 
 	assert.True(p.IsRunning())
@@ -49,7 +50,8 @@ func TestPeerWithoutAuthEnc(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
 	require.Nil(err)
 
-	p.Start()
+	_, err = p.Start()
+	require.Nil(err)
 	defer p.Stop()
 
 	assert.True(p.IsRunning())
@@ -69,7 +71,9 @@ func TestPeerSend(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
 	require.Nil(err)
 
-	p.Start()
+	_, err = p.Start()
+	require.Nil(err)
+
 	defer p.Stop()
 
 	assert.True(p.CanSend(0x01))
@@ -148,7 +152,9 @@ func (p *remotePeer) accept(l net.Listener) {
 		}
 		select {
 		case <-p.quit:
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				golog.Fatal(err)
+			}
 			return
 		default:
 		}

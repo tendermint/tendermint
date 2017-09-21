@@ -230,7 +230,9 @@ func (p *peer) PubKey() crypto.PubKeyEd25519 {
 
 // OnStart implements BaseService.
 func (p *peer) OnStart() error {
-	p.BaseService.OnStart()
+	if err := p.BaseService.OnStart(); err != nil {
+		return err
+	}
 	_, err := p.mconn.Start()
 	return err
 }
