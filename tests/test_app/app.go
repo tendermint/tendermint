@@ -59,7 +59,7 @@ func commit(client abcicli.Client, hashExp []byte) {
 	res := client.CommitSync()
 	_, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
-		panic(fmt.Sprintf("committing %v\nlog: %v", log))
+		panic(fmt.Sprintf("committing %v\nlog: %v", log, res.Log))
 	}
 	if !bytes.Equal(res.Data, hashExp) {
 		panic(fmt.Sprintf("Commit hash was unexpected. Got %X expected %X",

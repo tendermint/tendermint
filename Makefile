@@ -61,28 +61,28 @@ metalinter_test: tools
 		--enable=aligncheck \
 		--enable=deadcode \
 		--enable=gas \
+		--enable=goconst \
 		--enable=goimports \
 		--enable=gosimple \
 		--enable=gotype \
 	 	--enable=ineffassign \
+		--enable=megacheck \
 	 	--enable=misspell \
+	   	--enable=staticcheck \
 		--enable=safesql \
 	   	--enable=structcheck \
+	   	--enable=unconvert \
+		--enable=unused \
 	   	--enable=varcheck \
+		--enable=vetshadow \
 		./...
 
 		#--enable=dupl \
 		#--enable=errcheck \
-		#--enable=goconst \
 		#--enable=gocyclo \
 		#--enable=golint \ <== comments on anything exported
 	   	#--enable=interfacer \
-	   	#--enable=megacheck \
-	   	#--enable=staticcheck \
-	   	#--enable=unconvert \
 	   	#--enable=unparam \
-		#--enable=unused \
 		#--enable=vet \
-		#--enable=vetshadow \
 
 .PHONY: all build test fmt lint get_deps tools
