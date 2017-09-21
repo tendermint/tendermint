@@ -272,12 +272,12 @@ func NewByzantinePrivValidator(pv types.PrivValidator) *ByzantinePrivValidator {
 	}
 }
 
-func (privVal *ByzantinePrivValidator) Address() data.Bytes {
-	return privVal.pv.Address()
+func (privVal *ByzantinePrivValidator) GetAddress() data.Bytes {
+	return privVal.pv.GetAddress()
 }
 
-func (privVal *ByzantinePrivValidator) PubKey() crypto.PubKey {
-	return privVal.pv.PubKey()
+func (privVal *ByzantinePrivValidator) GetPubKey() crypto.PubKey {
+	return privVal.pv.GetPubKey()
 }
 
 func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) (err error) {
@@ -296,5 +296,5 @@ func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *
 }
 
 func (privVal *ByzantinePrivValidator) String() string {
-	return Fmt("PrivValidator{%X}", privVal.Address)
+	return Fmt("PrivValidator{%X}", privVal.GetAddress())
 }

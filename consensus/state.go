@@ -817,7 +817,7 @@ func (cs *ConsensusState) needProofBlock(height int) bool {
 
 func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 	counter := 0
-	addr := cs.privValidator.Address()
+	addr := cs.privValidator.GetAddress()
 	valIndex, v := cs.Validators.GetByAddress(addr)
 	if v == nil {
 		// not a validator
@@ -878,7 +878,7 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 
 	if !cs.isProposer() {
 		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
-		if cs.Validators.HasAddress(cs.privValidator.Address()) {
+		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 			cs.Logger.Debug("This node is a validator")
 		} else {
 			cs.Logger.Debug("This node is not a validator")
@@ -891,7 +891,7 @@ func (cs *ConsensusState) enterPropose(height int, round int) {
 }
 
 func (cs *ConsensusState) isProposer() bool {
-	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.Address())
+	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress())
 }
 
 func (cs *ConsensusState) defaultDecideProposal(height, round int) {
@@ -1436,7 +1436,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		if err == ErrVoteHeightMismatch {
 			return err
 		} else if _, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.Address()) {
+			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.GetAddress()) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
 			}
@@ -1565,7 +1565,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	addr := cs.privValidator.Address()
+	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
 		ValidatorAddress: addr,
@@ -1582,7 +1582,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
 	// if we don't have a key or we're not in the validator set, do nothing
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.Address()) {
+	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 		return nil
 	}
 	vote, err := cs.signVote(type_, hash, header)

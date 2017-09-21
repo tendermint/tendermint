@@ -38,7 +38,7 @@ func BenchmarkProposalVerifySignature(b *testing.B) {
 	signBytes := SignBytes("test_chain_id", testProposal)
 	privVal := GenPrivValidatorFS("")
 	signature, _ := privVal.Signer.Sign(signBytes)
-	pubKey := privVal.PubKey()
+	pubKey := privVal.GetPubKey()
 
 	for i := 0; i < b.N; i++ {
 		pubKey.VerifyBytes(SignBytes("test_chain_id", testProposal), signature)

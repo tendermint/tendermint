@@ -184,10 +184,10 @@ func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bo
 	cs := fixedConsensusStateDummy()
 
 	// set the last step according to when we crashed vs the wal
-	toPV(cs.privValidator).Info.LastHeight = 1 // first block
-	toPV(cs.privValidator).Info.LastStep = thisCase.stepMap[lineStep]
+	toPV(cs.privValidator).LastHeight = 1 // first block
+	toPV(cs.privValidator).LastStep = thisCase.stepMap[lineStep]
 
-	t.Logf("[WARN] setupReplayTest LastStep=%v", toPV(cs.privValidator).Info.LastStep)
+	t.Logf("[WARN] setupReplayTest LastStep=%v", toPV(cs.privValidator).LastStep)
 
 	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
 
@@ -230,8 +230,8 @@ func TestWALCrashBeforeWritePropose(t *testing.T) {
 		msg := readTimedWALMessage(t, proposalMsg)
 		proposal := msg.Msg.(msgInfo).Msg.(*ProposalMessage)
 		// Set LastSig
-		toPV(cs.privValidator).Info.LastSignBytes = types.SignBytes(cs.state.ChainID, proposal.Proposal)
-		toPV(cs.privValidator).Info.LastSignature = proposal.Proposal.Signature
+		toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, proposal.Proposal)
+		toPV(cs.privValidator).LastSignature = proposal.Proposal.Signature
 		runReplayTest(t, cs, walFile, newBlockCh, thisCase, lineNum)
 	}
 }
@@ -255,8 +255,8 @@ func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum in
 		msg := readTimedWALMessage(t, voteMsg)
 		vote := msg.Msg.(msgInfo).Msg.(*VoteMessage)
 		// Set LastSig
-		toPV(cs.privValidator).Info.LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
-		toPV(cs.privValidator).Info.LastSignature = vote.Vote.Signature
+		toPV(cs.privValidator).LastSignBytes = types.SignBytes(cs.state.ChainID, vote.Vote)
+		toPV(cs.privValidator).LastSignature = vote.Vote.Signature
 	})
 	runReplayTest(t, cs, walFile, newBlockCh, thisCase, lineNum)
 }
@@ -332,7 +332,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatalf(err.Error())
 	}
 
-	state, store := stateAndStore(config, privVal.PubKey())
+	state, store := stateAndStore(config, privVal.GetPubKey())
 	store.chain = chain
 	store.commits = commits
 
@@ -346,7 +346,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, nil)
-		state, _ := stateAndStore(config, privVal.PubKey())
+		state, _ := stateAndStore(config, privVal.GetPubKey())
 		buildAppStateFromChain(proxyApp, state, chain, nBlocks, mode)
 	}
 

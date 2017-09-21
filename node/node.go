@@ -188,13 +188,13 @@ func NewNode(config *cfg.Config,
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.Address(), addr) {
+		if bytes.Equal(privValidator.GetAddress(), addr) {
 			fastSync = false
 		}
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.Address()) {
+	if state.Validators.HasAddress(privValidator.GetAddress()) {
 		consensusLogger.Info("This node is a validator")
 	} else {
 		consensusLogger.Info("This node is not a validator")
@@ -386,7 +386,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetMempool(n.mempoolReactor.Mempool)
 	rpccore.SetSwitch(n.sw)
-	rpccore.SetPubKey(n.privValidator.PubKey())
+	rpccore.SetPubKey(n.privValidator.GetPubKey())
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())

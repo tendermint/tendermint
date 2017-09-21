@@ -47,7 +47,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 		privValFile := path.Join(dataDir, mach, "priv_validator.json")
 		privVal := types.LoadPrivValidatorFS(privValFile)
 		genVals[i] = types.GenesisValidator{
-			PubKey: privVal.PubKey(),
+			PubKey: privVal.GetPubKey(),
 			Power:  1,
 			Name:   mach,
 		}
