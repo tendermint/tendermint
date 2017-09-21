@@ -492,6 +492,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	}
 	defer func() {
 		if err := gr.Close(); err != nil {
+			wal.Logger.Error("Error closing wal Search", "err", err)
 			return
 		}
 	}()

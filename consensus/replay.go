@@ -117,6 +117,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	} else {
 		defer func() {
 			if err := gr.Close(); err != nil {
+				cs.Logger.Error("Error closing wal Search", "err", err)
 				return
 			}
 		}()

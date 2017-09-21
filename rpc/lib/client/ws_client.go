@@ -291,7 +291,7 @@ func (c *WSClient) processBacklog() error {
 	case request := <-c.backlog:
 		if c.writeWait > 0 {
 			if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
-				panic(err)
+				c.Logger.Error("failed to set write deadline", "err", err)
 			}
 		}
 		if err := c.conn.WriteJSON(request); err != nil {
@@ -363,7 +363,7 @@ func (c *WSClient) writeRoutine() {
 		case request := <-c.send:
 			if c.writeWait > 0 {
 				if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
-					panic(err)
+					c.Logger.Error("failed to set write deadline", "err", err)
 				}
 			}
 			if err := c.conn.WriteJSON(request); err != nil {
@@ -376,7 +376,7 @@ func (c *WSClient) writeRoutine() {
 		case <-ticker.C:
 			if c.writeWait > 0 {
 				if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
-					panic(err)
+					c.Logger.Error("failed to set write deadline", "err", err)
 				}
 			}
 			if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
@@ -392,7 +392,7 @@ func (c *WSClient) writeRoutine() {
 			return
 		case <-c.Quit:
 			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
-				panic(err)
+				c.Logger.Error("failed to write message", "err", err)
 			}
 			return
 		}
@@ -424,7 +424,7 @@ func (c *WSClient) readRoutine() {
 		// reset deadline for every message type (control or data)
 		if c.readWait > 0 {
 			if err := c.conn.SetReadDeadline(time.Now().Add(c.readWait)); err != nil {
-				panic(err)
+				c.Logger.Error("failed to set read deadline", "err", err)
 			}
 		}
 		_, data, err := c.conn.ReadMessage()

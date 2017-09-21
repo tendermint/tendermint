@@ -288,10 +288,11 @@ func (s *State) indexTxs(abciResponses *ABCIResponses) {
 			Tx:     tx,
 			Result: *d,
 		}); err != nil {
-			panic(err)
+			s.logger.Error("Error with batch.Add", "err", err)
 		}
 	}
 	if err := s.TxIndexer.AddBatch(batch); err != nil {
+		s.logger.Error("Error adding batch", "err", err)
 		panic(err)
 	}
 }

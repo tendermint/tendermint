@@ -3,6 +3,7 @@ package mempool
 import (
 	"bytes"
 	"container/list"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -191,11 +192,11 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 		// TODO: Notify administrators when WAL fails
 		_, err := mem.wal.Write([]byte(tx))
 		if err != nil {
-			return err
+			mem.logger.Error(fmt.Sprintf("Error writing to WAL: %v", err))
 		}
 		_, err = mem.wal.Write([]byte("\n"))
 		if err != nil {
-			return err
+			mem.logger.Error(fmt.Sprintf("Error writing to WAL: %v", err))
 		}
 	}
 	// END WAL
@@ -337,9 +338,9 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 // Update informs the mempool that the given txs were committed and can be discarded.
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
-func (mem *Mempool) Update(height int, txs types.Txs) {
+func (mem *Mempool) Update(height int, txs types.Txs) error {
 	if err := mem.proxyAppConn.FlushSync(); err != nil { // To flush async resCb calls e.g. from CheckTx
-		panic(err)
+		return err
 	}
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{})
@@ -363,6 +364,7 @@ func (mem *Mempool) Update(height int, txs types.Txs) {
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
 	}
+	return nil
 }
 
 func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
