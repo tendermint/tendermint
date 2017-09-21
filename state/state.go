@@ -263,7 +263,9 @@ func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 
 // Params returns the consensus parameters used for
 // validating blocks
-func (s *State) Params() *types.ConsensusParams {
+func (s *State) Params() types.ConsensusParams {
+	// TODO: this should move into the State proper
+	// when we allow the app to change it
 	return s.GenesisDoc.ConsensusParams
 }
 

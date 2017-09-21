@@ -60,10 +60,10 @@ func TestGenesis(t *testing.T) {
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
 }
 
-func newConsensusParams(blockSize, partSize int) *ConsensusParams {
-	return &ConsensusParams{
-		BlockSizeParams:   &BlockSizeParams{MaxBytes: blockSize},
-		BlockGossipParams: &BlockGossipParams{BlockPartSizeBytes: partSize},
+func newConsensusParams(blockSize, partSize int) ConsensusParams {
+	return ConsensusParams{
+		BlockSizeParams:   BlockSizeParams{MaxBytes: blockSize},
+		BlockGossipParams: BlockGossipParams{BlockPartSizeBytes: partSize},
 	}
 
 }
@@ -71,7 +71,7 @@ func newConsensusParams(blockSize, partSize int) *ConsensusParams {
 func TestConsensusParams(t *testing.T) {
 
 	testCases := []struct {
-		params *ConsensusParams
+		params ConsensusParams
 		valid  bool
 	}{
 		{newConsensusParams(1, 1), true},

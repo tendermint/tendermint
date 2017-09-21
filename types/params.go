@@ -11,9 +11,9 @@ const (
 // ConsensusParams contains consensus critical parameters
 // that determine the validity of blocks.
 type ConsensusParams struct {
-	*BlockSizeParams   `json:"block_size_params"`
-	*TxSizeParams      `json:"tx_size_params"`
-	*BlockGossipParams `json:"block_gossip_params"`
+	BlockSizeParams   `json:"block_size_params"`
+	TxSizeParams      `json:"tx_size_params"`
+	BlockGossipParams `json:"block_gossip_params"`
 }
 
 // BlockSizeParams contain limits on the block size.
@@ -35,8 +35,8 @@ type BlockGossipParams struct {
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
-func DefaultConsensusParams() *ConsensusParams {
-	return &ConsensusParams{
+func DefaultConsensusParams() ConsensusParams {
+	return ConsensusParams{
 		DefaultBlockSizeParams(),
 		DefaultTxSizeParams(),
 		DefaultBlockGossipParams(),
@@ -44,8 +44,8 @@ func DefaultConsensusParams() *ConsensusParams {
 }
 
 // DefaultBlockSizeParams returns a default BlockSizeParams.
-func DefaultBlockSizeParams() *BlockSizeParams {
-	return &BlockSizeParams{
+func DefaultBlockSizeParams() BlockSizeParams {
+	return BlockSizeParams{
 		MaxBytes: 22020096, // 21MB
 		MaxTxs:   100000,
 		MaxGas:   -1,
@@ -53,16 +53,16 @@ func DefaultBlockSizeParams() *BlockSizeParams {
 }
 
 // DefaultTxSizeParams returns a default TxSizeParams.
-func DefaultTxSizeParams() *TxSizeParams {
-	return &TxSizeParams{
+func DefaultTxSizeParams() TxSizeParams {
+	return TxSizeParams{
 		MaxBytes: 10240, // 10kB
 		MaxGas:   -1,
 	}
 }
 
 // DefaultBlockGossipParams returns a default BlockGossipParams.
-func DefaultBlockGossipParams() *BlockGossipParams {
-	return &BlockGossipParams{
+func DefaultBlockGossipParams() BlockGossipParams {
+	return BlockGossipParams{
 		BlockPartSizeBytes: 65536, // 64kB,
 	}
 }
@@ -79,9 +79,9 @@ func (params *ConsensusParams) Validate() error {
 	}
 
 	// ensure blocks aren't too big
-	if cp.BlockSizeParams.MaxBytes > maxBlockSizeBytes {
+	if params.BlockSizeParams.MaxBytes > maxBlockSizeBytes {
 		return errors.Errorf("BlockSizeParams.MaxBytes is too big. %d > %d",
-			cp.BlockSizeParams.MaxBytes, maxBlockSizeBytes)
+			params.BlockSizeParams.MaxBytes, maxBlockSizeBytes)
 	}
 	return nil
 }

@@ -570,13 +570,13 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 
 type mockBlockStore struct {
 	config  *cfg.Config
-	params  *types.ConsensusParams
+	params  types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *cfg.Config, params *types.ConsensusParams) *mockBlockStore {
+func NewMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
 	return &mockBlockStore{config, params, nil, nil}
 }
 
