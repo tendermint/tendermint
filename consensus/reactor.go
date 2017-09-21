@@ -90,7 +90,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 
 	_, err := conR.conS.Start()
 	if err != nil {
-		panic(err)
+		conR.Logger.Error("Error starting conR", "err", err)
 	}
 }
 

@@ -13,10 +13,10 @@ import (
 
 func EnsureRoot(rootDir string) {
 	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
-		panic(err)
+		cmn.PanicSanity(err.Error())
 	}
 	if err := cmn.EnsureDir(rootDir+"/data", 0700); err != nil {
-		panic(err)
+		cmn.PanicSanity(err.Error())
 	}
 
 	configFilePath := path.Join(rootDir, "config.toml")
@@ -69,10 +69,10 @@ func ResetTestRoot(testName string) *Config {
 	}
 	// Create new dir
 	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
-		panic(err)
+		cmn.PanicSanity(err.Error())
 	}
 	if err := cmn.EnsureDir(rootDir+"/data", 0700); err != nil {
-		panic(err)
+		cmn.PanicSanity(err.Error())
 	}
 
 	configFilePath := path.Join(rootDir, "config.toml")
