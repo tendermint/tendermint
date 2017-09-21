@@ -187,10 +187,7 @@ func MakeValSetChangeTx(pubkey []byte, power uint64) []byte {
 }
 
 func isValidatorTx(tx []byte) bool {
-	if strings.HasPrefix(string(tx), ValidatorSetChangePrefix) {
-		return true
-	}
-	return false
+	return strings.HasPrefix(string(tx), ValidatorSetChangePrefix)
 }
 
 // format is "val:pubkey1/power1,addr2/power2,addr3/power3"tx
@@ -232,7 +229,7 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 		app.app.state.Set(key, value.Bytes())
 	}
 
-	// we only update the changes array if we succesfully updated the tree
+	// we only update the changes array if we successfully updated the tree
 	app.changes = append(app.changes, v)
 
 	return types.OK

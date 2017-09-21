@@ -166,7 +166,7 @@ func TestValSetChanges(t *testing.T) {
 
 	makeApplyBlock(t, dummy, 3, diff, tx1)
 
-	vals1 = append([]*types.Validator{v1}, vals1[1:len(vals1)]...)
+	vals1 = append([]*types.Validator{v1}, vals1[1:]...)
 	vals2 = dummy.Validators()
 	valsEqual(t, vals1, vals2)
 

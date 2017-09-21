@@ -57,7 +57,6 @@ func (app *ChainAwareApplication) Query(reqQuery types.RequestQuery) (resQuery t
 
 func (app *ChainAwareApplication) BeginBlock(reqBeginBlock types.RequestBeginBlock) {
 	app.beginCount++
-	return
 }
 
 func (app *ChainAwareApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {

@@ -113,7 +113,7 @@ func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 //----------------------------------------
 // GRPC calls are synchronous, but some callbacks expect to be called asynchronously
 // (eg. the mempool expects to be able to lock to remove bad txs from cache).
-// To accomodate, we finish each call in its own go-routine,
+// To accommodate, we finish each call in its own go-routine,
 // which is expensive, but easy - if you want something better, use the socket protocol!
 // maybe one day, if people really want it, we use grpc streams,
 // but hopefully not :D

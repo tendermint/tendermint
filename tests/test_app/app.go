@@ -80,7 +80,7 @@ func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 	}
 }
 
-func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+/*func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	res := client.CheckTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
@@ -94,4 +94,4 @@ func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, data
 		panic(fmt.Sprintf("CheckTx response data was unexpected. Got %X expected %X",
 			data, dataExp))
 	}
-}
+}*/

@@ -183,12 +183,12 @@ func badCmd(c *cli.Context, cmd string) {
 //Generates new Args array based off of previous call args to maintain flag persistence
 func persistentArgs(line []byte) []string {
 
-	//generate the arguments to run from orginal os.Args
+	// generate the arguments to run from original os.Args
 	// to maintain flag arguments
 	args := os.Args
 	args = args[:len(args)-1] // remove the previous command argument
 
-	if len(line) > 0 { //prevents introduction of extra space leading to argument parse errors
+	if len(line) > 0 { // prevents introduction of extra space leading to argument parse errors
 		args = append(args, strings.Split(string(line), " ")...)
 	}
 	return args

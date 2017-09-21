@@ -19,9 +19,9 @@ const (
 	LOG = ""
 )
 
-const reqQueueSize = 256        // TODO make configurable
-const maxResponseSize = 1048576 // 1MB TODO make configurable
-const flushThrottleMS = 20      // Don't wait longer than...
+const reqQueueSize = 256 // TODO make configurable
+// const maxResponseSize = 1048576 // 1MB TODO make configurable
+const flushThrottleMS = 20 // Don't wait longer than...
 
 // This is goroutine-safe, but users should beware that
 // the application in general is not meant to be interfaced
@@ -355,19 +355,13 @@ func (cli *socketClient) CommitSync() (res types.Result) {
 func (cli *socketClient) InitChainSync(params types.RequestInitChain) (err error) {
 	cli.queueRequest(types.ToRequestInitChain(params))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return err
-	}
-	return nil
+	return cli.Error()
 }
 
 func (cli *socketClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
 	cli.queueRequest(types.ToRequestBeginBlock(params))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return err
-	}
-	return nil
+	return cli.Error()
 }
 
 func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
