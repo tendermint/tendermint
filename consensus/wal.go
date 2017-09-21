@@ -96,7 +96,7 @@ func (wal *WAL) Save(wmsg WALMessage) {
 
 func (wal *WAL) writeEndHeight(height int) {
 	if err := wal.group.WriteLine(Fmt("#ENDHEIGHT: %v", height)); err != nil {
-		panic(err)
+		PanicQ(Fmt("Error writing line: %v\n", err))
 	}
 
 	// TODO: only flush when necessary

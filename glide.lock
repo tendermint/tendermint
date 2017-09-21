@@ -120,7 +120,7 @@ imports:
   - iavl
   - testutil
 - name: github.com/tendermint/tmlibs
-  version: 7ce4da1eee6004d627e780c8fe91e96d9b99e459
+  version: 246082368a06552c217803f12aa04c41eed64c0d
   subpackages:
   - autofile
   - cli

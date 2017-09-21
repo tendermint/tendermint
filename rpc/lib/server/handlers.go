@@ -484,11 +484,7 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
-	defer func() {
-		if err := wsc.baseConn.Close(); err != nil {
-			panic(err)
-		}
-	}()
+	defer wsc.baseConn.Close()
 
 	for {
 		select {
@@ -497,7 +493,7 @@ func (wsc *wsConnection) readRoutine() {
 		default:
 			// reset deadline for every type of message (control or data)
 			if err := wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait)); err != nil {
-				panic(err)
+				wsc.Logger.Error("failed to set read deadline", "err", err)
 			}
 			var in []byte
 			_, in, err := wsc.baseConn.ReadMessage()
@@ -565,9 +561,7 @@ func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
 	defer func() {
 		pingTicker.Stop()
-		if err := wsc.baseConn.Close(); err != nil {
-			panic(err)
-		}
+		wsc.baseConn.Close()
 	}()
 
 	// https://github.com/gorilla/websocket/issues/97
@@ -728,6 +722,6 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	w.WriteHeader(200)
 	_, err := w.Write(buf.Bytes())
 	if err != nil {
-		panic(err)
+		// ignore error
 	}
 }
