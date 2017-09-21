@@ -347,7 +347,7 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		validators[i] = &types.Validator{
 			Address:     address,
 			PubKey:      pubKey,
-			VotingPower: val.Amount,
+			VotingPower: val.Power,
 		}
 	}
 

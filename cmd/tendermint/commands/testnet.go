@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var testnetFilesCmd = &cobra.Command{
@@ -48,7 +48,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 		privVal := types.LoadPrivValidator(privValFile)
 		genVals[i] = types.GenesisValidator{
 			PubKey: privVal.PubKey,
-			Amount: 1,
+			Power:  1,
 			Name:   mach,
 		}
 	}

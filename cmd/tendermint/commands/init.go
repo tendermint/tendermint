@@ -34,7 +34,7 @@ func initFiles(cmd *cobra.Command, args []string) {
 			}
 			genDoc.Validators = []types.GenesisValidator{types.GenesisValidator{
 				PubKey: privValidator.PubKey,
-				Amount: 10,
+				Power:  10,
 			}}
 
 			genDoc.SaveAs(genFile)

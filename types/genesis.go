@@ -18,7 +18,7 @@ import (
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
 	PubKey crypto.PubKey `json:"pub_key"`
-	Amount int64         `json:"amount"`
+	Power  int64         `json:"power"`
 	Name   string        `json:"name"`
 }
 
@@ -44,7 +44,7 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 func (genDoc *GenesisDoc) ValidatorHash() []byte {
 	vals := make([]*Validator, len(genDoc.Validators))
 	for i, v := range genDoc.Validators {
-		vals[i] = NewValidator(v.PubKey, v.Amount)
+		vals[i] = NewValidator(v.PubKey, v.Power)
 	}
 	vset := NewValidatorSet(vals)
 	return vset.Hash()
@@ -69,6 +69,12 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	if len(genDoc.Validators) == 0 {
 		return errors.Errorf("The genesis file must have at least one validator")
+	}
+
+	for _, v := range genDoc.Validators {
+		if v.Power == 0 {
+			return errors.Errorf("The genesis file cannot contain validators with no voting power: %v", v)
+		}
 	}
 
 	if genDoc.GenesisTime.IsZero() {

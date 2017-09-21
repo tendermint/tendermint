@@ -177,7 +177,7 @@ When ``tendermint init`` is run, both a ``genesis.json`` and
         "genesis_time": "0001-01-01T00:00:00.000Z",
         "validators": [
             {
-                "amount": 10,
+                "power": 10,
                 "name": "",
                 "pub_key": [
                     1,
@@ -310,7 +310,7 @@ then the new ``genesis.json`` will be:
         "genesis_time": "0001-01-01T00:00:00.000Z",
         "validators": [
             {
-                "amount": 10,
+                "power": 10,
                 "name": "",
                 "pub_key": [
                     1,
@@ -318,7 +318,7 @@ then the new ``genesis.json`` will be:
                 ]
             },
             {
-                "amount": 10,
+                "power": 10,
                 "name": "",
                 "pub_key": [
                     1,
