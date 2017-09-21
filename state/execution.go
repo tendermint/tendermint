@@ -160,6 +160,7 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.
 
 // return a bit array of validators that signed the last commit
 // NOTE: assumes commits have already been authenticated
+/* function is currently unused
 func commitBitArrayFromBlock(block *types.Block) *cmn.BitArray {
 	signed := cmn.NewBitArray(len(block.LastCommit.Precommits))
 	for i, precommit := range block.LastCommit.Precommits {
@@ -169,6 +170,7 @@ func commitBitArrayFromBlock(block *types.Block) *cmn.BitArray {
 	}
 	return signed
 }
+*/
 
 //-----------------------------------------------------
 // Validate block

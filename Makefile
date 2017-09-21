@@ -84,4 +84,8 @@ metalinter: ensure_tools
 	@gometalinter --install
 	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
+metalinter_test: ensure_tools
+	@gometalinter --install
+	gometalinter --vendor --deadline=600s --disable-all --enable=deadcode dupl ./...
+
 .PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools
