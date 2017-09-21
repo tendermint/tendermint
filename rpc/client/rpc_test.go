@@ -93,7 +93,7 @@ func TestGenesisAndValidators(t *testing.T) {
 		val := vals.Validators[0]
 
 		// make sure the current set is also the genesis set
-		assert.Equal(t, gval.Amount, val.VotingPower)
+		assert.Equal(t, gval.Power, val.VotingPower)
 		assert.Equal(t, gval.PubKey, val.PubKey)
 	}
 }

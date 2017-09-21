@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+// TODO: type ?
 const (
 	stepNone      = 0 // Used to distinguish the initial state
 	stepPropose   = 1

@@ -65,6 +65,19 @@ type State struct {
 	logger log.Logger
 }
 
+// GetState loads the most recent state from the database,
+// or creates a new one from the given genesisFile and persists the result
+// to the database.
+func GetState(stateDB dbm.DB, genesisFile string) *State {
+	state := LoadState(stateDB)
+	if state == nil {
+		state = MakeGenesisStateFromFile(stateDB, genesisFile)
+		state.Save()
+	}
+
+	return state
+}
+
 // LoadState loads the State from the database.
 func LoadState(db dbm.DB) *State {
 	return loadState(db, stateKey)
@@ -248,17 +261,12 @@ func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
 }
 
-// GetState loads the most recent state from the database,
-// or creates a new one from the given genesisFile and persists the result
-// to the database.
-func GetState(stateDB dbm.DB, genesisFile string) *State {
-	state := LoadState(stateDB)
-	if state == nil {
-		state = MakeGenesisStateFromFile(stateDB, genesisFile)
-		state.Save()
-	}
-
-	return state
+// Params returns the consensus parameters used for
+// validating blocks
+func (s *State) Params() types.ConsensusParams {
+	// TODO: this should move into the State proper
+	// when we allow the app to change it
+	return *s.GenesisDoc.ConsensusParams
 }
 
 //------------------------------------------------------------------------
@@ -324,12 +332,9 @@ func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) *State {
 //
 // Used in tests.
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
-	if len(genDoc.Validators) == 0 {
-		cmn.Exit(cmn.Fmt("The genesis file has no validators"))
-	}
-
-	if genDoc.GenesisTime.IsZero() {
-		genDoc.GenesisTime = time.Now()
+	err := genDoc.ValidateAndComplete()
+	if err != nil {
+		cmn.Exit(cmn.Fmt("Error in genesis file: %v", err))
 	}
 
 	// Make validators slice
@@ -342,7 +347,7 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) *State {
 		validators[i] = &types.Validator{
 			Address:     address,
 			PubKey:      pubKey,
-			VotingPower: val.Amount,
+			VotingPower: val.Power,
 		}
 	}
 

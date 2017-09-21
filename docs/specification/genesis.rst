@@ -21,7 +21,7 @@ Fields
 -  ``validators``:
 -  ``pub_key``: The first element specifies the pub\_key type. 1 ==
    Ed25519. The second element are the pubkey bytes.
--  ``amount``: The validator's voting power.
+-  ``power``: The validator's voting power.
 -  ``name``: Name of the validator (optional).
 -  ``app_hash``: The expected application hash (as returned by the
    ``Commit`` ABCI message) upon genesis. If the app's hash does not
@@ -41,7 +41,7 @@ Sample genesis.json
             1,
             "9BC5112CB9614D91CE423FA8744885126CD9D08D9FC9D1F42E552D662BAA411E"
           ],
-          "amount": 1,
+          "power": 1,
           "name": "mach1"
         },
         {
@@ -49,7 +49,7 @@ Sample genesis.json
             1,
             "F46A5543D51F31660D9F59653B4F96061A740FF7433E0DC1ECBC30BE8494DE06"
           ],
-          "amount": 1,
+          "power": 1,
           "name": "mach2"
         },
         {
@@ -57,7 +57,7 @@ Sample genesis.json
             1,
             "0E7B423C1635FD07C0FC3603B736D5D27953C1C6CA865BB9392CD79DE1A682BB"
           ],
-          "amount": 1,
+          "power": 1,
           "name": "mach3"
         },
         {
@@ -65,7 +65,7 @@ Sample genesis.json
             1,
             "4F49237B9A32EB50682EDD83C48CE9CDB1D02A7CFDADCFF6EC8C1FAADB358879"
           ],
-          "amount": 1,
+          "power": 1,
           "name": "mach4"
         }
       ],
