@@ -209,11 +209,11 @@ func (sw *Switch) OnStop() {
 	}
 }
 
-// AddPeer checks the given peer's validity, performs a handshake, and adds the peer to the switch
+// addPeer checks the given peer's validity, performs a handshake, and adds the peer to the switch
 // and to all registered reactors.
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: If error is returned, peer is nil, and conn is immediately closed.
-func (sw *Switch) AddPeer(peer *peer) error {
+func (sw *Switch) addPeer(peer *peer) error {
 
 	if err := sw.FilterConnByAddr(peer.Addr()); err != nil {
 		return err
@@ -336,7 +336,7 @@ func (sw *Switch) dialSeed(addr *NetAddress) {
 	}
 }
 
-// DialPeerWithAddress dials the given peer and runs sw.AddPeer if it connects successfully.
+// DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, error) {
 	sw.dialing.Set(addr.IP.String(), addr)
@@ -352,7 +352,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, 
 	if persistent {
 		peer.makePersistent()
 	}
-	err = sw.AddPeer(peer)
+	err = sw.addPeer(peer)
 	if err != nil {
 		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
 		peer.CloseConn()
@@ -582,7 +582,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		return err
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
-	if err = sw.AddPeer(peer); err != nil {
+	if err = sw.addPeer(peer); err != nil {
 		conn.Close()
 		return err
 	}
@@ -597,7 +597,7 @@ func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConf
 		return err
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
-	if err = sw.AddPeer(peer); err != nil {
+	if err = sw.addPeer(peer); err != nil {
 		conn.Close()
 		return err
 	}

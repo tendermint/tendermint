@@ -246,7 +246,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 
 	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
 	require.Nil(err)
-	err = sw.AddPeer(peer)
+	err = sw.addPeer(peer)
 	require.Nil(err)
 
 	// simulate failure by closing connection
@@ -273,7 +273,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
 	peer.makePersistent()
 	require.Nil(err)
-	err = sw.AddPeer(peer)
+	err = sw.addPeer(peer)
 	require.Nil(err)
 
 	// simulate failure by closing connection
