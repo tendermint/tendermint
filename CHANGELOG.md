@@ -3,7 +3,7 @@
 ## Roadmap
 
 BREAKING CHANGES:
-- Upgrade the header to support better proves on validtors, results, evidence, and possibly more
+- Upgrade the header to support better proofs on validtors, results, evidence, and possibly more
 - Better support for injecting randomness
 - Pass evidence/voteInfo through ABCI
 - Upgrade consensus for more real-time use of evidence
@@ -30,9 +30,24 @@ BUG FIXES:
 
 ## 0.11.0 (Date)
 
+BREAKING:
+ - state: every validator set change is persisted to disk, which required some changes to the `State` structure.
+ - cmd: if there is no genesis, exit immediately instead of waiting around for one to show.
+ - p2p: new `p2p.Peer` interface used for all reactor methods (instead of `*p2p.Peer` struct).
+ - types: `Signer.Sign` returns an error.
+ - rpc: various changes to match JSONRPC spec (http://www.jsonrpc.org/specification), including breaking ones:
+    - requests that previously returned HTTP code 4XX now return 200 with an error code in the JSONRPC.
+    - `rpctypes.RPCResponse` uses new `RPCError` type instead of `string`.
+
+FEATURES:
+ - rpc: `/validators?height=X` allows querying of validators at previous heights.
+ - rpc: Leaving the `height` param empty for `/block`, `/validators`, and `/commit` will return the value for the latest height.
+
 IMPROVEMENTS:
- - docs: Added documentation from the tools repo to Read The Docs pipeline
- - rpc: updated json response to match http://www.jsonrpc.org/specification spec
+ - docs: Moved all docs from the website and tools repo in, converted to `.rst`, and cleaned up for presentation on `tendermint.readthedocs.io`
+
+BUG FIXES:
+ - fix WAL openning issue on Windows
 
 ## 0.10.4 (September 5, 2017)
 
