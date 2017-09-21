@@ -58,6 +58,7 @@ metalinter: tools
 metalinter_test: tools
 	@gometalinter --install
 	gometalinter --vendor --deadline=600s --disable-all  \
+		--enable=aligncheck \
 		--enable=deadcode \
 		--enable=gas \
 		--enable=goimports \
@@ -70,7 +71,6 @@ metalinter_test: tools
 	   	--enable=varcheck \
 		./...
 
-		#--enable=aligncheck \
 		#--enable=dupl \
 		#--enable=errcheck \
 		#--enable=goconst \

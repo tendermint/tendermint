@@ -44,7 +44,9 @@ func NewSocketServer(protoAddr string, app types.Application) cmn.Service {
 }
 
 func (s *SocketServer) OnStart() error {
-	s.BaseService.OnStart()
+	if err := s.BaseService.OnStart(); err != nil {
+		return err
+	}
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {
 		return err

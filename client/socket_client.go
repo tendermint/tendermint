@@ -57,7 +57,9 @@ func NewSocketClient(addr string, mustConnect bool) *socketClient {
 }
 
 func (cli *socketClient) OnStart() error {
-	cli.BaseService.OnStart()
+	if err := cli.BaseService.OnStart(); err != nil {
+		return err
+	}
 
 	var err error
 	var conn net.Conn

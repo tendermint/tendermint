@@ -41,7 +41,9 @@ func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 }
 
 func (cli *grpcClient) OnStart() error {
-	cli.BaseService.OnStart()
+	if err := cli.BaseService.OnStart(); err != nil {
+		return err
+	}
 RETRY_LOOP:
 
 	for {
