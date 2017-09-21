@@ -86,6 +86,32 @@ metalinter: ensure_tools
 
 metalinter_test: ensure_tools
 	@gometalinter --install
-	gometalinter --vendor --deadline=600s --disable-all --enable=deadcode dupl ./...
+	gometalinter --vendor --deadline=600s --disable-all  \
+		--enable=deadcode \
+		--enable=gas \
+		--enable=goimports \
+		--enable=gosimple \
+		--enable=gotype \
+	 	--enable=ineffassign \
+	 	--enable=misspell \
+		--enable=safesql \
+	   	--enable=structcheck \
+	   	--enable=varcheck \
+		./...
+
+		#--enable=aligncheck \
+		#--enable=dupl \
+		#--enable=errcheck \
+		#--enable=goconst \
+		#--enable=gocyclo \
+		#--enable=golint \ <== comments on anything exported
+	   	#--enable=interfacer \
+	   	#--enable=megacheck \
+	   	#--enable=staticcheck \
+	   	#--enable=unconvert \
+	   	#--enable=unparam \
+		#--enable=unused \
+		#--enable=vet \
+		#--enable=vetshadow \
 
 .PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools

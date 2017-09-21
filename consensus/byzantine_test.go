@@ -70,7 +70,7 @@ func TestByzantine(t *testing.T) {
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
-		var conRI p2p.Reactor
+		var conRI p2p.Reactor // nolint (gotype)
 		conRI = conR
 
 		if i == 0 {

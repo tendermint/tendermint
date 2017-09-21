@@ -1,4 +1,4 @@
-package node
+package node // nolint (goimports)
 
 import (
 	"time"
