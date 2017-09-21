@@ -24,9 +24,9 @@ dependencies:
 
 test:
   override:
+    - cd "$PROJECT_PATH" && make metalinter_test
     - cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
         timeout: 1800
-    - cd "$PROJECT_PATH" && make metalinter_test
   post:
     - cd "$PROJECT_PATH" && mv test_integrations.log "${CIRCLE_ARTIFACTS}"
     - cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
