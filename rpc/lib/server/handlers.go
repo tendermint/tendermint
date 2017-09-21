@@ -620,7 +620,9 @@ func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
 	defer func() {
 		pingTicker.Stop()
-		wsc.baseConn.Close()
+		if err := wsc.baseConn.Close(); err != nil {
+			wsc.Logger.Error("Error closing connection", "err", err)
+		}
 	}()
 
 	// https://github.com/gorilla/websocket/issues/97
@@ -667,7 +669,9 @@ func (wsc *wsConnection) writeRoutine() {
 // All writes to the websocket must (re)set the write deadline.
 // If some writes don't set it while others do, they may timeout incorrectly (https://github.com/tendermint/tendermint/issues/553)
 func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error {
-	wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait))
+	if err := wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait)); err != nil {
+		return err
+	}
 	return wsc.baseConn.WriteMessage(msgType, msg)
 }
 

@@ -271,9 +271,7 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	s.AppHash = res.Data
 
 	// Update mempool.
-	mempool.Update(block.Height, block.Txs)
-
-	return nil
+	return mempool.Update(block.Height, block.Txs)
 }
 
 func (s *State) indexTxs(abciResponses *ABCIResponses) {

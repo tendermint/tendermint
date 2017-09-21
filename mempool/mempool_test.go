@@ -20,7 +20,10 @@ func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
-	appConnMem.Start()
+	_, err := appConnMem.Start()
+	if err != nil {
+		panic(err)
+	}
 	mempool := NewMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
 	return mempool
@@ -80,7 +83,9 @@ func TestTxsAvailable(t *testing.T) {
 	// it should fire once now for the new height
 	// since there are still txs left
 	committedTxs, txs := txs[:50], txs[50:]
-	mempool.Update(1, committedTxs)
+	if err := mempool.Update(1, committedTxs); err != nil {
+		t.Error(err)
+	}
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
@@ -90,7 +95,9 @@ func TestTxsAvailable(t *testing.T) {
 
 	// now call update with all the txs. it should not fire as there are no txs left
 	committedTxs = append(txs, moreTxs...)
-	mempool.Update(2, committedTxs)
+	if err := mempool.Update(2, committedTxs); err != nil {
+		t.Error(err)
+	}
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs, it should only fire once
@@ -148,7 +155,9 @@ func TestSerialReap(t *testing.T) {
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
-		mempool.Update(0, txs)
+		if err := mempool.Update(0, txs); err != nil {
+			t.Error(err)
+		}
 	}
 
 	commitRange := func(start, end int) {
