@@ -125,7 +125,9 @@ func (a *AddrBook) init() {
 
 // OnStart implements Service.
 func (a *AddrBook) OnStart() error {
-	a.BaseService.OnStart()
+	if err := a.BaseService.OnStart(); err != nil {
+		return err
+	}
 	a.loadFromFile(a.filePath)
 	a.wg.Add(1)
 	go a.saveRoutine()
@@ -355,7 +357,7 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 	if err != nil {
 		cmn.PanicCrisis(cmn.Fmt("Error opening file %s: %v", filePath, err))
 	}
-	defer r.Close()
+	defer r.Close() // nolint (errcheck)
 	aJSON := &addrBookJSON{}
 	dec := json.NewDecoder(r)
 	err = dec.Decode(aJSON)

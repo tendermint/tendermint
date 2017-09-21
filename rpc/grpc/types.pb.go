@@ -52,7 +52,7 @@ func (m *RequestBroadcastTx) GetTx() []byte {
 }
 
 type ResponseBroadcastTx struct {
-	CheckTx  *types.ResponseCheckTx  `protobuf:"bytes,1,opt,name=check_tx,json=checkTx" json:"check_tx,omitempty"`
+	CheckTx   *types.ResponseCheckTx   `protobuf:"bytes,1,opt,name=check_tx,json=checkTx" json:"check_tx,omitempty"`
 	DeliverTx *types.ResponseDeliverTx `protobuf:"bytes,2,opt,name=deliver_tx,json=deliverTx" json:"deliver_tx,omitempty"`
 }
 

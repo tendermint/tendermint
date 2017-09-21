@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func randPubKey() crypto.PubKey {

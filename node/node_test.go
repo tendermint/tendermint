@@ -13,7 +13,10 @@ func TestNodeStartStop(t *testing.T) {
 
 	// Create & start node
 	n := NewNodeDefault(config, log.TestingLogger())
-	n.Start()
+	_, err := n.Start()
+	if err != nil {
+		t.Error(err)
+	}
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// Wait a bit to initialize

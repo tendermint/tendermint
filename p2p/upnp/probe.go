@@ -97,11 +97,12 @@ func Probe(logger log.Logger) (caps UPNPCapabilities, err error) {
 
 	// Deferred cleanup
 	defer func() {
-		err = nat.DeletePortMapping("tcp", intPort, extPort)
-		if err != nil {
+		if err := nat.DeletePortMapping("tcp", intPort, extPort); err != nil {
 			logger.Error(cmn.Fmt("Port mapping delete error: %v", err))
 		}
-		listener.Close()
+		if err := listener.Close(); err != nil {
+			logger.Error(cmn.Fmt("Listener closing error: %v", err))
+		}
 	}()
 
 	supportsHairpin := testHairpin(listener, fmt.Sprintf("%v:%v", ext, extPort), logger)

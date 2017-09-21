@@ -58,7 +58,7 @@ func state() *State {
 	return MakeGenesisState(dbm.NewMemDB(), &types.GenesisDoc{
 		ChainID: chainID,
 		Validators: []types.GenesisValidator{
-			types.GenesisValidator{privKey.PubKey(), 10000, "test"},
+			{privKey.PubKey(), 10000, "test"},
 		},
 		AppHash: nil,
 	})

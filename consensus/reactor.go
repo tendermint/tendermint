@@ -52,7 +52,9 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *Consens
 // OnStart implements BaseService.
 func (conR *ConsensusReactor) OnStart() error {
 	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
-	conR.BaseReactor.OnStart()
+	if err := conR.BaseReactor.OnStart(); err != nil {
+		return err
+	}
 
 	// callbacks for broadcasting new steps and votes to peers
 	// upon their respective events (ie. uses evsw)
@@ -86,31 +88,34 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State) {
 	conR.fastSync = false
 	conR.mtx.Unlock()
 
-	conR.conS.Start()
+	_, err := conR.conS.Start()
+	if err != nil {
+		conR.Logger.Error("Error starting conR", "err", err)
+	}
 }
 
 // GetChannels implements Reactor
 func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:                StateChannel,
 			Priority:          5,
 			SendQueueCapacity: 100,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 DataChannel, // maybe split between gossiping current block and catchup stuff
 			Priority:           10,          // once we gossip the whole block there's nothing left to send until next height or round
 			SendQueueCapacity:  100,
 			RecvBufferCapacity: 50 * 4096,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 VoteChannel,
 			Priority:           5,
 			SendQueueCapacity:  100,
 			RecvBufferCapacity: 100 * 100,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 VoteSetBitsChannel,
 			Priority:           1,
 			SendQueueCapacity:  2,

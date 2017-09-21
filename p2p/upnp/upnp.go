@@ -42,11 +42,10 @@ func Discover() (nat NAT, err error) {
 		return
 	}
 	socket := conn.(*net.UDPConn)
-	defer socket.Close()
+	defer socket.Close() // nolint (errcheck)
 
-	err = socket.SetDeadline(time.Now().Add(3 * time.Second))
-	if err != nil {
-		return
+	if err := socket.SetDeadline(time.Now().Add(3 * time.Second)); err != nil {
+		return nil, err
 	}
 
 	st := "InternetGatewayDevice:1"
@@ -200,7 +199,8 @@ func getServiceURL(rootURL string) (url, urnDomain string, err error) {
 	if err != nil {
 		return
 	}
-	defer r.Body.Close()
+	defer r.Body.Close() // nolint (errcheck)
+
 	if r.StatusCode >= 400 {
 		err = errors.New(string(r.StatusCode))
 		return
@@ -298,15 +298,21 @@ func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
 	var response *http.Response
 	response, err = soapRequest(n.serviceURL, "GetExternalIPAddress", message, n.urnDomain)
 	if response != nil {
-		defer response.Body.Close()
+		defer response.Body.Close() // nolint (errcheck)
 	}
 	if err != nil {
 		return
 	}
 	var envelope Envelope
 	data, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return
+	}
 	reader := bytes.NewReader(data)
-	xml.NewDecoder(reader).Decode(&envelope)
+	err = xml.NewDecoder(reader).Decode(&envelope)
+	if err != nil {
+		return
+	}
 
 	info = statusInfo{envelope.Soap.ExternalIP.IPAddress}
 
@@ -341,7 +347,7 @@ func (n *upnpNAT) AddPortMapping(protocol string, externalPort, internalPort int
 	var response *http.Response
 	response, err = soapRequest(n.serviceURL, "AddPortMapping", message, n.urnDomain)
 	if response != nil {
-		defer response.Body.Close()
+		defer response.Body.Close() // nolint (errcheck)
 	}
 	if err != nil {
 		return
@@ -367,7 +373,7 @@ func (n *upnpNAT) DeletePortMapping(protocol string, externalPort, internalPort 
 	var response *http.Response
 	response, err = soapRequest(n.serviceURL, "DeletePortMapping", message, n.urnDomain)
 	if response != nil {
-		defer response.Body.Close()
+		defer response.Body.Close() // nolint (errcheck)
 	}
 	if err != nil {
 		return

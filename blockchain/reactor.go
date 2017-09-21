@@ -82,7 +82,9 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, 
 
 // OnStart implements BaseService
 func (bcR *BlockchainReactor) OnStart() error {
-	bcR.BaseReactor.OnStart()
+	if err := bcR.BaseReactor.OnStart(); err != nil {
+		return err
+	}
 	if bcR.fastSync {
 		_, err := bcR.pool.Start()
 		if err != nil {
@@ -102,7 +104,7 @@ func (bcR *BlockchainReactor) OnStop() {
 // GetChannels implements Reactor
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:                BlockchainChannel,
 			Priority:          5,
 			SendQueueCapacity: 100,
@@ -195,7 +197,7 @@ FOR_LOOP:
 			}
 		case <-statusUpdateTicker.C:
 			// ask for status updates
-			go bcR.BroadcastStatusRequest()
+			go bcR.BroadcastStatusRequest() // nolint (errcheck)
 		case <-switchToConsensusTicker.C:
 			height, numPending, _ := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()

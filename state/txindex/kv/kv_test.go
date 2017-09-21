@@ -21,7 +21,9 @@ func TestTxIndex(t *testing.T) {
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
-	batch.Add(*txResult)
+	if err := batch.Add(*txResult); err != nil {
+		t.Error(err)
+	}
 	err := indexer.AddBatch(batch)
 	require.Nil(t, err)
 
@@ -38,14 +40,20 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil {
+			b.Fatal(err)
+		}
+	}()
 
 	store := db.NewDB("tx_index", "leveldb", dir)
 	indexer := &TxIndex{store: store}
 
 	batch := txindex.NewBatch(txsCount)
 	for i := 0; i < txsCount; i++ {
-		batch.Add(*txResult)
+		if err := batch.Add(*txResult); err != nil {
+			b.Fatal(err)
+		}
 		txResult.Index += 1
 	}
 

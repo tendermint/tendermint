@@ -66,8 +66,13 @@ func NewPEXReactor(b *AddrBook) *PEXReactor {
 
 // OnStart implements BaseService
 func (r *PEXReactor) OnStart() error {
-	r.BaseReactor.OnStart()
-	r.book.Start()
+	if err := r.BaseReactor.OnStart(); err != nil {
+		return err
+	}
+	_, err := r.book.Start()
+	if err != nil {
+		return err
+	}
 	go r.ensurePeersRoutine()
 	go r.flushMsgCountByPeer()
 	return nil
@@ -82,7 +87,7 @@ func (r *PEXReactor) OnStop() {
 // GetChannels implements Reactor
 func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 	return []*ChannelDescriptor{
-		&ChannelDescriptor{
+		{
 			ID:                PexChannel,
 			Priority:          1,
 			SendQueueCapacity: 10,

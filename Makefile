@@ -1,7 +1,7 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
-					honnef.co/go/tools/cmd/megacheck
+					github.com/alecthomas/gometalinter
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
@@ -76,8 +76,8 @@ ensure_tools:
 
 ### Formatting, linting, and vetting
 
-megacheck:
-	@for pkg in ${PACKAGES}; do megacheck "$$pkg"; done
-
+metalinter: ensure_tools
+	@gometalinter --install
+	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
 .PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools

@@ -34,7 +34,7 @@ func (part *Part) Hash() []byte {
 		return part.hash
 	} else {
 		hasher := ripemd160.New()
-		hasher.Write(part.Bytes) // doesn't err
+		_, _ = hasher.Write(part.Bytes) // ignoring error
 		part.hash = hasher.Sum(nil)
 		return part.hash
 	}
