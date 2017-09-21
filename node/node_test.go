@@ -15,8 +15,8 @@ func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
 
 	// Create & start node
-	n, err := NewNodeDefault(config, log.TestingLogger())
-	assert.NoError(t, err, "expected no err on NewNodeDefault")
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	assert.NoError(t, err, "expected no err on DefaultNewNode")
 	n.Start()
 	t.Logf("Started node %v", n.sw.NodeInfo())
 

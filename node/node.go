@@ -65,6 +65,21 @@ func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
 	}
 }
 
+// NodeProvider takes a config and a logger and returns a ready to go Node.
+type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
+
+// DefaultNewNode returns a Tendermint node with default settings for the
+// PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
+// It implements NodeProvider.
+func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+	return NewNode(config,
+		types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile()),
+		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		DefaultGenesisDocProviderFunc(config),
+		DefaultDBProvider,
+		logger)
+}
+
 //------------------------------------------------------------------------------
 
 // Node is the highest level interface to a full Tendermint node.
@@ -92,19 +107,6 @@ type Node struct {
 	proxyApp         proxy.AppConns              // connection to the application
 	rpcListeners     []net.Listener              // rpc servers
 	txIndexer        txindex.TxIndexer
-}
-
-// NewNodeDefault returns a Tendermint node with default settings for the
-// PrivValidator, ClientCreator, GenesisDoc, and DBProvider,
-func NewNodeDefault(config *cfg.Config, logger log.Logger) (*Node, error) {
-	// Get PrivValidator
-	privValidator := types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
-	return NewNode(config,
-		privValidator,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
-		DefaultGenesisDocProviderFunc(config),
-		DefaultDBProvider,
-		logger)
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.

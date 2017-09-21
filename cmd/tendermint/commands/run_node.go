@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/node"
+	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -53,26 +53,13 @@ func DefaultSignerAndApp(config *cfg.Config) (types.PrivValidator, proxy.ClientC
 
 // NewRunNodeCmd returns the command that allows the CLI to start a
 // node. It can be used with a custom PrivValidator and in-process ABCI application.
-func NewRunNodeCmd(signerAndApp FuncSignerAndApp) *cobra.Command {
+func NewRunNodeCmd(nodeFunc nm.NodeProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			genDocFile := config.GenesisFile()
-			genDoc, err := types.GenesisDocFromFile(genDocFile)
-			if err != nil {
-				return err
-			}
-			config.ChainID = genDoc.ChainID
-
 			// Create & start node
-			privVal, clientCreator := signerAndApp(config)
-			n, err := node.NewNode(config,
-				privVal,
-				clientCreator,
-				node.DefaultGenesisDocProviderFunc(config),
-				node.DefaultDBProvider,
-				logger.With("module", "node"))
+			n, err := nodeFunc(config, logger)
 			if err != nil {
 				return fmt.Errorf("Failed to create node: %v", err)
 			}

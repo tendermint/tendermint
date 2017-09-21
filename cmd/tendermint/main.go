@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tmlibs/cli"
 
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
+	nm "github.com/tendermint/tendermint/node"
 )
 
 func main() {
@@ -26,12 +27,14 @@ func main() {
 	// Users wishing to:
 	//	* Use an external signer for their validators
 	//	* Supply an in-proc abci app
+	//	* Supply a genesis doc file from another source
+	//  * Provide their own DB implementation
 	// can copy this file and use something other than the
-	// DefaultSignerAndApp function
-	signerAndApp := cmd.DefaultSignerAndApp
+	// DefaultNewNode function
+	nodeFunc := nm.DefaultNewNode
 
 	// Create & start node
-	rootCmd.AddCommand(cmd.NewRunNodeCmd(signerAndApp))
+	rootCmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc))
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))
 	cmd.Execute()
