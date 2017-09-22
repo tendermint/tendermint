@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.1 (September 22, 2017)
+
+BUG FIXES:
+
+- [common] fix WriteFileAtomic to not use /tmp, which can be on another device
+
 ## 0.3.0 (September 22, 2017)
 
 BREAKING CHANGES:
