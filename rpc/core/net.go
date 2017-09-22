@@ -42,9 +42,9 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 	peers := []ctypes.Peer{}
 	for _, peer := range p2pSwitch.Peers().List() {
 		peers = append(peers, ctypes.Peer{
-			NodeInfo:         *peer.NodeInfo,
+			NodeInfo:         *peer.NodeInfo(),
 			IsOutbound:       peer.IsOutbound(),
-			ConnectionStatus: peer.Connection().Status(),
+			ConnectionStatus: peer.Status(),
 		})
 	}
 	return &ctypes.ResultNetInfo{
@@ -90,7 +90,7 @@ func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 // 			"validators": [
 // 				{
 // 					"name": "",
-// 					"amount": 10,
+// 					"power": 10,
 // 					"pub_key": {
 // 						"data": "68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D",
 // 						"type": "ed25519"

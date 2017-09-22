@@ -16,9 +16,10 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
+import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
+import urllib
 
 import sphinx_rtd_theme
 
@@ -169,3 +170,30 @@ texinfo_documents = [
      author, 'Tendermint', 'Byzantine Fault Tolerant Consensus.',
      'Database'),
 ]
+
+repo = "https://raw.githubusercontent.com/tendermint/tools/"
+branch = "master"
+
+tools = "./tools"
+assets = tools + "/assets"
+
+if os.path.isdir(tools) != True:
+    os.mkdir(tools)
+if os.path.isdir(assets) != True:
+    os.mkdir(assets)
+
+urllib.urlretrieve(repo+branch+'/ansible/README.rst', filename=tools+'/ansible.rst')
+urllib.urlretrieve(repo+branch+'/ansible/assets/a_plus_t.png', filename=assets+'/a_plus_t.png')
+
+urllib.urlretrieve(repo+branch+'/docker/README.rst', filename=tools+'/docker.rst')
+
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/README.rst', filename=tools+'/mintnet-kubernetes.rst')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/gce1.png', filename=assets+'/gce1.png')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/gce2.png', filename=assets+'/gce2.png')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/statefulset.png', filename=assets+'/statefulset.png')
+urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/t_plus_k.png', filename=assets+'/t_plus_k.png')
+
+urllib.urlretrieve(repo+branch+'/terraform-digitalocean/README.rst', filename=tools+'/terraform-digitalocean.rst')
+urllib.urlretrieve(repo+branch+'/tm-bench/README.rst', filename=tools+'/benchmarking-and-monitoring.rst')
+# the readme for below is included in tm-bench
+# urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-monitor/README.rst', filename='tools/tm-monitor.rst')

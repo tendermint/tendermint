@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 // Functionality to replay blocks and messages on recovery from a crash.
@@ -115,35 +116,13 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	gr, found, err = cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight-1))
 	if err == io.EOF {
 		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
-		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
-		// TODO (0.10.0): remove this
-		gr, found, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
-		if err == io.EOF {
-			cs.Logger.Error("Replay: wal.group.Search returned EOF", "#HEIGHT", csHeight)
-			return nil
-		} else if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	} else {
 		defer gr.Close()
 	}
 	if !found {
-		// if we upgraded from 0.9 to 0.9.1, we may have #HEIGHT instead
-		// TODO (0.10.0): remove this
-		gr, _, err = cs.wal.group.Search("#HEIGHT: ", makeHeightSearchFunc(csHeight))
-		if err == io.EOF {
-			cs.Logger.Error("Replay: wal.group.Search returned EOF", "#HEIGHT", csHeight)
-			return nil
-		} else if err != nil {
-			return err
-		} else {
-			defer gr.Close()
-		}
-
-		// TODO (0.10.0): uncomment
-		// return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
+		return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
 	}
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
@@ -221,7 +200,7 @@ func (h *Handshaker) NBlocks() int {
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
-	res, err := proxyApp.Query().InfoSync()
+	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{version.Version})
 	if err != nil {
 		return errors.New(cmn.Fmt("Error calling Info: %v", err))
 	}
@@ -257,7 +236,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(h.state.Validators)
-		proxyApp.Consensus().InitChainSync(validators)
+		proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators})
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight
@@ -324,8 +303,11 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
+	//
 	// Note that we don't have an old version of the state,
 	// so we by-pass state validation/mutation using sm.ExecCommitBlock.
+	// This also means we won't be saving validator sets if they change during this period.
+	//
 	// If mutateState == true, the final block is replayed with h.replayBlock()
 
 	var appHash []byte

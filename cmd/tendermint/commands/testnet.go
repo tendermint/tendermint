@@ -7,15 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
-
-var testnetFilesCmd = &cobra.Command{
-	Use:   "testnet",
-	Short: "Initialize files for a Tendermint testnet",
-	Run:   testnetFiles,
-}
 
 //flags
 var (
@@ -24,12 +18,18 @@ var (
 )
 
 func init() {
-	testnetFilesCmd.Flags().IntVar(&nValidators, "n", 4,
+	TestnetFilesCmd.Flags().IntVar(&nValidators, "n", 4,
 		"Number of validators to initialize the testnet with")
-	testnetFilesCmd.Flags().StringVar(&dataDir, "dir", "mytestnet",
+	TestnetFilesCmd.Flags().StringVar(&dataDir, "dir", "mytestnet",
 		"Directory to store initialization data for the testnet")
+}
 
-	RootCmd.AddCommand(testnetFilesCmd)
+// TestnetFilesCmd allows initialisation of files for a
+// Tendermint testnet.
+var TestnetFilesCmd = &cobra.Command{
+	Use:   "testnet",
+	Short: "Initialize files for a Tendermint testnet",
+	Run:   testnetFiles,
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) {
@@ -45,10 +45,10 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 		}
 		// Read priv_validator.json to populate vals
 		privValFile := path.Join(dataDir, mach, "priv_validator.json")
-		privVal := types.LoadPrivValidator(privValFile)
+		privVal := types.LoadPrivValidatorFS(privValFile)
 		genVals[i] = types.GenesisValidator{
-			PubKey: privVal.PubKey,
-			Amount: 1,
+			PubKey: privVal.GetPubKey(),
+			Power:  1,
 			Name:   mach,
 		}
 	}
@@ -87,7 +87,6 @@ func ensurePrivValidator(file string) {
 	if cmn.FileExists(file) {
 		return
 	}
-	privValidator := types.GenPrivValidator()
-	privValidator.SetFile(file)
+	privValidator := types.GenPrivValidatorFS(file)
 	privValidator.Save()
 }

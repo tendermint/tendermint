@@ -4,15 +4,19 @@ import (
 	"testing"
 	"time"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/tendermint/tmlibs/log"
+
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
 
 	// Create & start node
-	n := NewNodeDefault(config, log.TestingLogger())
+	n, err := DefaultNewNode(config, log.TestingLogger())
+	assert.NoError(t, err, "expected no err on DefaultNewNode")
 	n.Start()
 	t.Logf("Started node %v", n.sw.NodeInfo())
 

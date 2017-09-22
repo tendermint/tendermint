@@ -93,16 +93,16 @@ func (c Local) Genesis() (*ctypes.ResultGenesis, error) {
 	return core.Genesis()
 }
 
-func (c Local) Block(height int) (*ctypes.ResultBlock, error) {
+func (c Local) Block(height *int) (*ctypes.ResultBlock, error) {
 	return core.Block(height)
 }
 
-func (c Local) Commit(height int) (*ctypes.ResultCommit, error) {
+func (c Local) Commit(height *int) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 
-func (c Local) Validators() (*ctypes.ResultValidators, error) {
-	return core.Validators()
+func (c Local) Validators(height *int) (*ctypes.ResultValidators, error) {
+	return core.Validators(height)
 }
 
 func (c Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {

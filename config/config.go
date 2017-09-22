@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"time"
-
-	"github.com/tendermint/tendermint/types" // TODO: remove
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -320,10 +318,6 @@ type ConsensusConfig struct {
 	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
 	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
 
-	// TODO: This probably shouldn't be exposed but it makes it
-	// easy to write tests for the wal/replay
-	BlockPartSize int `mapstructure:"block_part_size"`
-
 	// Reactor sleep duration parameters are in ms
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
@@ -386,7 +380,6 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		MaxBlockSizeBytes:           1, // TODO
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0,
-		BlockPartSize:               types.DefaultBlockPartSize, // TODO: we shouldnt be importing types
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
 	}

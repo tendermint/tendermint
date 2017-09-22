@@ -9,18 +9,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-var genValidatorCmd = &cobra.Command{
+// GenValidatorCmd allows the generation of a keypair for a
+// validator.
+var GenValidatorCmd = &cobra.Command{
 	Use:   "gen_validator",
 	Short: "Generate new validator keypair",
 	Run:   genValidator,
 }
 
-func init() {
-	RootCmd.AddCommand(genValidatorCmd)
-}
-
 func genValidator(cmd *cobra.Command, args []string) {
-	privValidator := types.GenPrivValidator()
+	privValidator := types.GenPrivValidatorFS("")
 	privValidatorJSONBytes, _ := json.MarshalIndent(privValidator, "", "\t")
 	fmt.Printf(`%v
 `, string(privValidatorJSONBytes))

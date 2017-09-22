@@ -5,8 +5,13 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	events "github.com/tendermint/tmlibs/events"
 )
+
+//----------------------------------------
+// REQUEST
 
 type RPCRequest struct {
 	JSONRPC string           `json:"jsonrpc"`
@@ -47,40 +52,75 @@ func ArrayToRequest(id string, method string, params []interface{}) (RPCRequest,
 }
 
 //----------------------------------------
+// RESPONSE
+
+type RPCError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    string `json:"data,omitempty"`
+}
 
 type RPCResponse struct {
 	JSONRPC string           `json:"jsonrpc"`
 	ID      string           `json:"id"`
-	Result  *json.RawMessage `json:"result"`
-	Error   string           `json:"error"`
+	Result  *json.RawMessage `json:"result,omitempty"`
+	Error   *RPCError        `json:"error,omitempty"`
 }
 
-func NewRPCResponse(id string, res interface{}, err string) RPCResponse {
+func NewRPCSuccessResponse(id string, res interface{}) RPCResponse {
 	var raw *json.RawMessage
+
 	if res != nil {
 		var js []byte
-		js, err2 := json.Marshal(res)
-		if err2 == nil {
-			rawMsg := json.RawMessage(js)
-			raw = &rawMsg
-		} else {
-			err = err2.Error()
+		js, err := json.Marshal(res)
+		if err != nil {
+			return RPCInternalError(id, errors.Wrap(err, "Error marshalling response"))
 		}
+		rawMsg := json.RawMessage(js)
+		raw = &rawMsg
 	}
+
+	return RPCResponse{JSONRPC: "2.0", ID: id, Result: raw}
+}
+
+func NewRPCErrorResponse(id string, code int, msg string, data string) RPCResponse {
 	return RPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
-		Result:  raw,
-		Error:   err,
+		Error:   &RPCError{Code: code, Message: msg, Data: data},
 	}
 }
 
 func (resp RPCResponse) String() string {
-	if resp.Error == "" {
+	if resp.Error == nil {
 		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
 	} else {
 		return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
 	}
+}
+
+func RPCParseError(id string, err error) RPCResponse {
+	return NewRPCErrorResponse(id, -32700, "Parse error. Invalid JSON", err.Error())
+}
+
+func RPCInvalidRequestError(id string, err error) RPCResponse {
+	return NewRPCErrorResponse(id, -32600, "Invalid Request", err.Error())
+}
+
+func RPCMethodNotFoundError(id string) RPCResponse {
+	return NewRPCErrorResponse(id, -32601, "Method not found", "")
+}
+
+func RPCInvalidParamsError(id string, err error) RPCResponse {
+	return NewRPCErrorResponse(id, -32602, "Invalid params", err.Error())
+}
+
+func RPCInternalError(id string, err error) RPCResponse {
+	return NewRPCErrorResponse(id, -32603, "Internal error", err.Error())
+}
+
+func RPCServerError(id string, err error) RPCResponse {
+	return NewRPCErrorResponse(id, -32000, "Server error", err.Error())
 }
 
 //----------------------------------------
@@ -100,10 +140,11 @@ type WSRPCContext struct {
 }
 
 //----------------------------------------
-// sockets
+// SOCKETS
 //
 // Determine if its a unix or tcp socket.
 // If tcp, must specify the port; `0.0.0.0` will return incorrectly as "unix" since there's no port
+// TODO: deprecate
 func SocketType(listenAddr string) string {
 	socketType := "unix"
 	if len(strings.Split(listenAddr, ":")) >= 2 {

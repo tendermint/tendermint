@@ -10,6 +10,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+// Heartbeat is a simple vote-like structure so validators can alert others that
+// they are alive and waiting for transactions.
 type Heartbeat struct {
 	ValidatorAddress data.Bytes       `json:"validator_address"`
 	ValidatorIndex   int              `json:"validator_index"`
@@ -19,6 +21,7 @@ type Heartbeat struct {
 	Signature        crypto.Signature `json:"signature"`
 }
 
+// WriteSignBytes writes the Heartbeat for signing.
 func (heartbeat *Heartbeat) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
 	wire.WriteJSON(CanonicalJSONOnceHeartbeat{
 		chainID,
@@ -26,11 +29,13 @@ func (heartbeat *Heartbeat) WriteSignBytes(chainID string, w io.Writer, n *int, 
 	}, w, n, err)
 }
 
+// Copy makes a copy of the Heartbeat.
 func (heartbeat *Heartbeat) Copy() *Heartbeat {
 	heartbeatCopy := *heartbeat
 	return &heartbeatCopy
 }
 
+// String returns a string representation of the Heartbeat.
 func (heartbeat *Heartbeat) String() string {
 	if heartbeat == nil {
 		return "nil-heartbeat"

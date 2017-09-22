@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"path"
+	"path/filepath"
 	"reflect"
 	"sync"
 	"time"
@@ -180,14 +180,6 @@ func (ti *timeoutInfo) String() string {
 	return fmt.Sprintf("%v ; %d/%d %v", ti.Duration, ti.Height, ti.Round, ti.Step)
 }
 
-// PrivValidator is a validator that can sign votes and proposals.
-type PrivValidator interface {
-	GetAddress() []byte
-	SignVote(chainID string, vote *types.Vote) error
-	SignProposal(chainID string, proposal *types.Proposal) error
-	SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error
-}
-
 // ConsensusState handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
 // commits blocks to the chain and executes them against the application.
@@ -197,7 +189,7 @@ type ConsensusState struct {
 
 	// config details
 	config        *cfg.ConsensusConfig
-	privValidator PrivValidator // for signing votes
+	privValidator types.PrivValidator // for signing votes
 
 	// services for creating and executing blocks
 	proxyAppConn proxy.AppConnConsensus
@@ -308,7 +300,7 @@ func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
 }
 
 // SetPrivValidator sets the private validator account for signing votes.
-func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
+func (cs *ConsensusState) SetPrivValidator(priv types.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
@@ -394,7 +386,7 @@ func (cs *ConsensusState) Wait() {
 
 // OpenWAL opens a file to log all consensus messages and timeouts for deterministic accountability
 func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
-	err = cmn.EnsureDir(path.Dir(walFile), 0700)
+	err = cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		cs.Logger.Error("Error ensuring ConsensusState wal dir", "err", err.Error())
 		return err
@@ -983,7 +975,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
 
 	return types.MakeBlock(cs.Height, cs.state.ChainID, txs, commit,
-		cs.state.LastBlockID, cs.state.Validators.Hash(), cs.state.AppHash, cs.config.BlockPartSize)
+		cs.state.LastBlockID, cs.state.Validators.Hash(),
+		cs.state.AppHash, cs.state.Params().BlockPartSizeBytes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1417,7 +1410,8 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part, ver
 		// Added and completed!
 		var n int
 		var err error
-		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
+		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
+			cs.state.Params().BlockSizeParams.MaxBytes, &n, &err).(*types.Block)
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == RoundStepPropose && cs.isProposalComplete() {

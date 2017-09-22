@@ -16,7 +16,7 @@ The objective of the light client protocol is to get a
 `block hash <./block-structure.html#block-hash>`__ where the commit
 includes a majority of signatures from the last known validator set.
 From there, all the application state is verifiable with `merkle
-proofs <./merkle-trees#iavl-tree>`__.
+proofs <./merkle.html#iavl-tree>`__.
 
 Properties
 ----------

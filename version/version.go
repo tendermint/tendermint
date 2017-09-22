@@ -1,12 +1,12 @@
 package version
 
 const Maj = "0"
-const Min = "10"
-const Fix = "4"
+const Min = "11"
+const Fix = "0"
 
 var (
 	// The full version string
-	Version = "0.10.4"
+	Version = "0.11.0"
 
 	// GitCommit is set with --ldflags "-X main.gitCommit=$(git rev-parse HEAD)"
 	GitCommit string

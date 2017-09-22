@@ -10,22 +10,26 @@ import (
 	"github.com/tendermint/tmlibs/merkle"
 )
 
+// Tx represents a transaction, which may contain arbitrary bytes.
 type Tx []byte
 
-// NOTE: this is the hash of the go-wire encoded Tx.
-// Tx has no types at this level, so just length-prefixed.
-// Alternatively, it may make sense to add types here and let
-// []byte be type 0x1 so we can have versioned txs if need be in the future.
+// Hash returns the hash of the go-wire encoded Tx.
+// Tx has no types at this level, so go-wire encoding only adds length-prefix.
+// NOTE: It may make sense to add types here one day and let []byte be type 0x1
+// so we can have versioned txs if need be in the future.
 func (tx Tx) Hash() []byte {
 	return merkle.SimpleHashFromBinary(tx)
 }
 
+// String returns a string representation of the Tx.
 func (tx Tx) String() string {
 	return fmt.Sprintf("Tx{%X}", []byte(tx))
 }
 
+// Txs is a slice of Tx.
 type Txs []Tx
 
+// Hash returns the simple Merkle root hash of the Txs.
 func (txs Txs) Hash() []byte {
 	// Recursive impl.
 	// Copied from tmlibs/merkle to avoid allocations
@@ -51,7 +55,7 @@ func (txs Txs) Index(tx Tx) int {
 	return -1
 }
 
-// Index returns the index of this transaction hash in the list, or -1 if not found
+// IndexByHash returns the index of this transaction hash in the list, or -1 if not found
 func (txs Txs) IndexByHash(hash []byte) int {
 	for i := range txs {
 		if bytes.Equal(txs[i].Hash(), hash) {

@@ -87,7 +87,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 	}
 	// Otherwise just use the local address...
 	if extAddr == nil {
-		extAddr = getNaiveExternalAddress(listenerPort)
+		extAddr = getNaiveExternalAddress(listenerPort, false, logger)
 	}
 	if extAddr == nil {
 		cmn.PanicCrisis("Could not determine external address!")
@@ -197,7 +197,7 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 }
 
 // TODO: use syscalls: http://pastebin.com/9exZG4rh
-func getNaiveExternalAddress(port int) *NetAddress {
+func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		cmn.PanicCrisis(cmn.Fmt("Could not fetch interface addresses: %v", err))
@@ -209,10 +209,13 @@ func getNaiveExternalAddress(port int) *NetAddress {
 			continue
 		}
 		v4 := ipnet.IP.To4()
-		if v4 == nil || v4[0] == 127 {
+		if v4 == nil || (!settleForLocal && v4[0] == 127) {
 			continue
 		} // loopback
 		return NewNetAddressIPPort(ipnet.IP, uint16(port))
 	}
-	return nil
+
+	// try again, but settle for local
+	logger.Info("Node may not be connected to internet. Settling for local address")
+	return getNaiveExternalAddress(port, true, logger)
 }

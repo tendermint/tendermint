@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/example/dummy"
+	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -162,8 +163,8 @@ LOOP:
 	cs.Wait()
 }
 
-func toPV(pv PrivValidator) *types.PrivValidator {
-	return pv.(*types.PrivValidator)
+func toPV(pv types.PrivValidator) *types.PrivValidatorFS {
+	return pv.(*types.PrivValidatorFS)
 }
 
 func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
@@ -267,8 +268,6 @@ func testReplayCrashBeforeWriteVote(t *testing.T, thisCase *testCase, lineNum in
 var (
 	NUM_BLOCKS = 6 // number of blocks in the test_data/many_blocks.cswal
 	mempool    = types.MockMempool{}
-
-	testPartSize int
 )
 
 //---------------------------------------
@@ -319,8 +318,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := writeWAL(string(walBody))
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := types.LoadPrivValidator(config.PrivValidatorFile())
-	testPartSize = config.Consensus.BlockPartSize
+	privVal := types.LoadPrivValidatorFS(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {
@@ -335,7 +333,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatalf(err.Error())
 	}
 
-	state, store := stateAndStore(config, privVal.PubKey)
+	state, store := stateAndStore(config, privVal.GetPubKey())
 	store.chain = chain
 	store.commits = commits
 
@@ -349,7 +347,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, nil)
-		state, _ := stateAndStore(config, privVal.PubKey)
+		state, _ := stateAndStore(config, privVal.GetPubKey())
 		buildAppStateFromChain(proxyApp, state, chain, nBlocks, mode)
 	}
 
@@ -361,7 +359,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	}
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Query().InfoSync()
+	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -384,6 +382,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 }
 
 func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
+	testPartSize := st.Params().BlockPartSizeBytes
 	err := st.ApplyBlock(nil, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
 	if err != nil {
 		panic(err)
@@ -398,7 +397,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 	}
 
 	validators := types.TM2PB.Validators(state.Validators)
-	proxyApp.Consensus().InitChainSync(validators)
+	proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators})
 
 	defer proxyApp.Stop()
 	switch mode {
@@ -432,7 +431,7 @@ func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.B
 	defer proxyApp.Stop()
 
 	validators := types.TM2PB.Validators(state.Validators)
-	proxyApp.Consensus().InitChainSync(validators)
+	proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators})
 
 	var latestAppHash []byte
 
@@ -503,7 +502,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 			// if its not the first one, we have a full block
 			if blockParts != nil {
 				var n int
-				block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
+				block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), 0, &n, &err).(*types.Block)
 				blocks = append(blocks, block)
 			}
 			blockParts = types.NewPartSetFromHeader(*p)
@@ -524,7 +523,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 	}
 	// grab the last block too
 	var n int
-	block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), types.MaxBlockSize, &n, &err).(*types.Block)
+	block := wire.ReadBinary(&types.Block{}, blockParts.GetReader(), 0, &n, &err).(*types.Block)
 	blocks = append(blocks, block)
 	return blocks, commits, nil
 }
@@ -560,10 +559,10 @@ func readPieceFromWAL(msgBytes []byte) (interface{}, error) {
 // fresh state and mock store
 func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
-	store := NewMockBlockStore(config)
+	store := NewMockBlockStore(config, state.Params())
 	return state, store
 }
 
@@ -572,13 +571,14 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 
 type mockBlockStore struct {
 	config  *cfg.Config
+	params  types.ConsensusParams
 	chain   []*types.Block
 	commits []*types.Commit
 }
 
 // TODO: NewBlockStore(db.NewMemDB) ...
-func NewMockBlockStore(config *cfg.Config) *mockBlockStore {
-	return &mockBlockStore{config, nil, nil}
+func NewMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBlockStore {
+	return &mockBlockStore{config, params, nil, nil}
 }
 
 func (bs *mockBlockStore) Height() int                       { return len(bs.chain) }
@@ -586,7 +586,7 @@ func (bs *mockBlockStore) LoadBlock(height int) *types.Block { return bs.chain[h
 func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
-		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.config.Consensus.BlockPartSize).Header()},
+		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.params.BlockPartSizeBytes).Header()},
 		Header:  block.Header,
 	}
 }

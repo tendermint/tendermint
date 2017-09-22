@@ -132,7 +132,7 @@ func TestVotingPowerChange(t *testing.T) {
 	//---------------------------------------------------------------------------
 	t.Log("---------------------------- Testing changing the voting power of one validator a few times")
 
-	val1PubKey := css[0].privValidator.(*types.PrivValidator).PubKey
+	val1PubKey := css[0].privValidator.GetPubKey()
 	updateValidatorTx := dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 25)
 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
 
@@ -193,7 +193,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	t.Log("---------------------------- Testing adding one validator")
 
-	newValidatorPubKey1 := css[nVals].privValidator.(*types.PrivValidator).PubKey
+	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
 	newValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), uint64(testMinPower))
 
 	// wait till everyone makes block 2
@@ -219,7 +219,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	t.Log("---------------------------- Testing changing the voting power of one validator")
 
-	updateValidatorPubKey1 := css[nVals].privValidator.(*types.PrivValidator).PubKey
+	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
 	updateValidatorTx1 := dummy.MakeValSetChangeTx(updateValidatorPubKey1.Bytes(), 25)
 	previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
 
@@ -235,10 +235,10 @@ func TestValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	t.Log("---------------------------- Testing adding two validators at once")
 
-	newValidatorPubKey2 := css[nVals+1].privValidator.(*types.PrivValidator).PubKey
+	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
 	newValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), uint64(testMinPower))
 
-	newValidatorPubKey3 := css[nVals+2].privValidator.(*types.PrivValidator).PubKey
+	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
 	newValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), uint64(testMinPower))
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)

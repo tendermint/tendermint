@@ -33,6 +33,10 @@ type (
 		Got      *State
 		Expected *State
 	}
+
+	ErrNoValSetForHeight struct {
+		Height int
+	}
 )
 
 func (e ErrUnknownBlock) Error() string {
@@ -52,4 +56,8 @@ func (e ErrLastStateMismatch) Error() string {
 
 func (e ErrStateMismatch) Error() string {
 	return cmn.Fmt("State after replay does not match saved state. Got ----\n%v\nExpected ----\n%v\n", e.Got, e.Expected)
+}
+
+func (e ErrNoValSetForHeight) Error() string {
+	return cmn.Fmt("Could not find validator set for height #%d", e.Height)
 }

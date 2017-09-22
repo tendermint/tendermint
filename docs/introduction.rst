@@ -86,10 +86,10 @@ And we plan to do the same for Bitcoin, ZCash, and various other deterministic a
 
 Another example of a cryptocurrency application built on Tendermint is `the Cosmos network <http://cosmos.network>`__.
 
-Fabric, Burrow
-~~~~~~~~~~~~~~
+Other Blockchain Projects
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`Fabric <https://github.com/hyperledger/fabric>`__, takes a similar approach to Tendermint, but is more opinionated about how the state is managed,
+`Fabric <https://github.com/hyperledger/fabric>`__ takes a similar approach to Tendermint, but is more opinionated about how the state is managed,
 and requires that all application behaviour runs in potentially many docker containers, modules it calls "chaincode". 
 It uses an implementation of `PBFT <http://pmg.csail.mit.edu/papers/osdi99.pdf>`__.
 from a team at IBM that is 
@@ -156,7 +156,7 @@ There can be multiple ABCI socket connections to an application. Tendermint Core
 
 It's probably evident that applications designers need to very carefully design their message handlers to create a blockchain that does anything useful but this architecture provides a place to start. The diagram below illustrates the flow of messages via ABCI.
 
-.. figure:: images/abci.png
+.. figure:: assets/abci.png
 
 A Note on Determinism
 ~~~~~~~~~~~~~~~~~~~~~
@@ -180,7 +180,7 @@ Consensus Overview
 Tendermint is an easy-to-understand, mostly asynchronous, BFT consensus protocol.
 The protocol follows a simple state machine that looks like this:
 
-.. figure:: images/consensus_logic.png
+.. figure:: assets/consensus_logic.png
 
 Participants in the protocol are called "validators";
 they take turns proposing blocks of transactions and voting on them.
@@ -228,4 +228,4 @@ The `Cosmos Network <http://cosmos.network>`__ is designed to use this Proof-of-
 
 The following diagram is Tendermint in a (technical) nutshell. `See here for high resolution version <https://github.com/mobfoundry/hackatom/blob/master/tminfo.pdf>`__.
 
-.. figure:: images/tm-transaction-flow.png
+.. figure:: assets/tm-transaction-flow.png

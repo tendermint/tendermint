@@ -5,10 +5,19 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	merktest "github.com/tendermint/merkleeyes/testutil"
+
+	cmn "github.com/tendermint/tmlibs/common"
+
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/types"
 )
+
+// MakeTxKV returns a text transaction, allong with expected key, value pair
+func MakeTxKV() ([]byte, []byte, []byte) {
+	k := []byte(cmn.RandStr(8))
+	v := []byte(cmn.RandStr(8))
+	return k, v, append(k, append([]byte("="), v...)...)
+}
 
 func TestHeaderEvents(t *testing.T) {
 	require := require.New(t)
@@ -76,7 +85,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 		}
 
 		// make the tx
-		_, _, tx := merktest.MakeTxKV()
+		_, _, tx := MakeTxKV()
 		evtTyp := types.EventStringTx(types.Tx(tx))
 
 		// send async
@@ -109,7 +118,7 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		}
 
 		// make the tx
-		_, _, tx := merktest.MakeTxKV()
+		_, _, tx := MakeTxKV()
 		evtTyp := types.EventStringTx(types.Tx(tx))
 
 		// send async

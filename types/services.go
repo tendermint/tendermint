@@ -4,6 +4,8 @@ import (
 	abci "github.com/tendermint/abci/types"
 )
 
+// NOTE: all types in this file are considered UNSTABLE
+
 //------------------------------------------------------
 // blockchain services types
 // NOTE: Interfaces used by RPC must be thread safe!
@@ -12,8 +14,10 @@ import (
 //------------------------------------------------------
 // mempool
 
+// Mempool defines the mempool interface.
 // Updates to the mempool need to be synchronized with committing a block
 // so apps can reset their transient state on Commit
+// UNSTABLE
 type Mempool interface {
 	Lock()
 	Unlock()
@@ -28,6 +32,8 @@ type Mempool interface {
 	EnableTxsAvailable()
 }
 
+// MockMempool is an empty implementation of a Mempool, useful for testing.
+// UNSTABLE
 type MockMempool struct {
 }
 
@@ -44,6 +50,8 @@ func (m MockMempool) EnableTxsAvailable()                          {}
 //------------------------------------------------------
 // blockstore
 
+// BlockStoreRPC is the block store interface used by the RPC.
+// UNSTABLE
 type BlockStoreRPC interface {
 	Height() int
 
@@ -55,6 +63,8 @@ type BlockStoreRPC interface {
 	LoadSeenCommit(height int) *Commit
 }
 
+// BlockStore defines the BlockStore interface.
+// UNSTABLE
 type BlockStore interface {
 	BlockStoreRPC
 	SaveBlock(block *Block, blockParts *PartSet, seenCommit *Commit)

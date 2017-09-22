@@ -2,25 +2,11 @@ package commands
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
+	nm "github.com/tendermint/tendermint/node"
 )
-
-var runNodeCmd = &cobra.Command{
-	Use:   "node",
-	Short: "Run the tendermint node",
-	RunE:  runNode,
-}
-
-func init() {
-	AddNodeFlags(runNodeCmd)
-	RootCmd.AddCommand(runNodeCmd)
-}
 
 // AddNodeFlags exposes some common configuration options on the command-line
 // These are exposed for convenience of commands embedding a tendermint node
@@ -50,40 +36,32 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 }
 
-// Users wishing to:
-//	* Use an external signer for their validators
-//	* Supply an in-proc abci app
-// should import github.com/tendermint/tendermint/node and implement
-// their own run_node to call node.NewNode (instead of node.NewNodeDefault)
-// with their custom priv validator and/or custom proxy.ClientCreator
-func runNode(cmd *cobra.Command, args []string) error {
+// NewRunNodeCmd returns the command that allows the CLI to start a
+// node. It can be used with a custom PrivValidator and in-process ABCI application.
+func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "node",
+		Short: "Run the tendermint node",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Create & start node
+			n, err := nodeProvider(config, logger)
+			if err != nil {
+				return fmt.Errorf("Failed to create node: %v", err)
+			}
 
-	// Wait until the genesis doc becomes available
-	// This is for Mintnet compatibility.
-	// TODO: If Mintnet gets deprecated or genesis_file is
-	// always available, remove.
-	genDocFile := config.GenesisFile()
-	for !cmn.FileExists(genDocFile) {
-		logger.Info(cmn.Fmt("Waiting for genesis file %v...", genDocFile))
-		time.Sleep(time.Second)
+			if _, err := n.Start(); err != nil {
+				return fmt.Errorf("Failed to start node: %v", err)
+			} else {
+				logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
+			}
+
+			// Trap signal, run forever.
+			n.RunForever()
+
+			return nil
+		},
 	}
 
-	genDoc, err := types.GenesisDocFromFile(genDocFile)
-	if err != nil {
-		return err
-	}
-	config.ChainID = genDoc.ChainID
-
-	// Create & start node
-	n := node.NewNodeDefault(config, logger.With("module", "node"))
-	if _, err := n.Start(); err != nil {
-		return fmt.Errorf("Failed to start node: %v", err)
-	} else {
-		logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
-	}
-
-	// Trap signal, run forever.
-	n.RunForever()
-
-	return nil
+	AddNodeFlags(cmd)
+	return cmd
 }

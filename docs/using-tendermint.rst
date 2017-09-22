@@ -117,7 +117,7 @@ Configuration
 -------------
 
 Tendermint uses a ``config.toml`` for configutation. For details, see
-`the documentation <./configuration.html>`__.
+`the documentation <./specification/configuration.html>`__.
 
 Notable options include the socket address of the application
 (``proxy_app``), the listenting address of the tendermint peer
@@ -177,7 +177,7 @@ When ``tendermint init`` is run, both a ``genesis.json`` and
         "genesis_time": "0001-01-01T00:00:00.000Z",
         "validators": [
             {
-                "amount": 10,
+                "power": 10,
                 "name": "",
                 "pub_key": [
                     1,
@@ -310,7 +310,7 @@ then the new ``genesis.json`` will be:
         "genesis_time": "0001-01-01T00:00:00.000Z",
         "validators": [
             {
-                "amount": 10,
+                "power": 10,
                 "name": "",
                 "pub_key": [
                     1,
@@ -318,7 +318,7 @@ then the new ``genesis.json`` will be:
                 ]
             },
             {
-                "amount": 10,
+                "power": 10,
                 "name": "",
                 "pub_key": [
                     1,

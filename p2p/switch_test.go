@@ -37,8 +37,8 @@ type TestReactor struct {
 
 	mtx          sync.Mutex
 	channels     []*ChannelDescriptor
-	peersAdded   []*Peer
-	peersRemoved []*Peer
+	peersAdded   []Peer
+	peersRemoved []Peer
 	logMessages  bool
 	msgsCounter  int
 	msgsReceived map[byte][]PeerMessage
@@ -59,24 +59,24 @@ func (tr *TestReactor) GetChannels() []*ChannelDescriptor {
 	return tr.channels
 }
 
-func (tr *TestReactor) AddPeer(peer *Peer) {
+func (tr *TestReactor) AddPeer(peer Peer) {
 	tr.mtx.Lock()
 	defer tr.mtx.Unlock()
 	tr.peersAdded = append(tr.peersAdded, peer)
 }
 
-func (tr *TestReactor) RemovePeer(peer *Peer, reason interface{}) {
+func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {
 	tr.mtx.Lock()
 	defer tr.mtx.Unlock()
 	tr.peersRemoved = append(tr.peersRemoved, peer)
 }
 
-func (tr *TestReactor) Receive(chID byte, peer *Peer, msgBytes []byte) {
+func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 	if tr.logMessages {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
 		//fmt.Printf("Received: %X, %X\n", chID, msgBytes)
-		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.Key, msgBytes, tr.msgsCounter})
+		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.Key(), msgBytes, tr.msgsCounter})
 		tr.msgsCounter++
 	}
 }
@@ -246,7 +246,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 
 	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
 	require.Nil(err)
-	err = sw.AddPeer(peer)
+	err = sw.addPeer(peer)
 	require.Nil(err)
 
 	// simulate failure by closing connection
@@ -273,7 +273,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
 	peer.makePersistent()
 	require.Nil(err)
-	err = sw.AddPeer(peer)
+	err = sw.addPeer(peer)
 	require.Nil(err)
 
 	// simulate failure by closing connection

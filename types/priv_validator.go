@@ -11,10 +11,10 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
-	. "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
+// TODO: type ?
 const (
 	stepNone      = 0 // Used to distinguish the initial state
 	stepPropose   = 1
@@ -29,12 +29,26 @@ func voteToStep(vote *Vote) int8 {
 	case VoteTypePrecommit:
 		return stepPrecommit
 	default:
-		PanicSanity("Unknown vote type")
+		cmn.PanicSanity("Unknown vote type")
 		return 0
 	}
 }
 
-type PrivValidator struct {
+// PrivValidator defines the functionality of a local Tendermint validator
+// that signs votes, proposals, and heartbeats, and never double signs.
+type PrivValidator interface {
+	GetAddress() data.Bytes // redundant since .PubKey().Address()
+	GetPubKey() crypto.PubKey
+
+	SignVote(chainID string, vote *Vote) error
+	SignProposal(chainID string, proposal *Proposal) error
+	SignHeartbeat(chainID string, heartbeat *Heartbeat) error
+}
+
+// PrivValidatorFS implements PrivValidator using data persisted to disk
+// to prevent double signing. The Signer itself can be mutated to use
+// something besides the default, for instance a hardware signer.
+type PrivValidatorFS struct {
 	Address       data.Bytes       `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
 	LastHeight    int              `json:"last_height"`
@@ -53,121 +67,124 @@ type PrivValidator struct {
 	mtx      sync.Mutex
 }
 
-// This is used to sign votes.
+// Signer is an interface that defines how to sign messages.
 // It is the caller's duty to verify the msg before calling Sign,
 // eg. to avoid double signing.
-// Currently, the only callers are SignVote and SignProposal
+// Currently, the only callers are SignVote, SignProposal, and SignHeartbeat.
 type Signer interface {
-	PubKey() crypto.PubKey
-	Sign(msg []byte) crypto.Signature
+	Sign(msg []byte) (crypto.Signature, error)
 }
 
-// Implements Signer
+// DefaultSigner implements Signer.
+// It uses a standard, unencrypted crypto.PrivKey.
 type DefaultSigner struct {
-	priv crypto.PrivKey
+	PrivKey crypto.PrivKey `json:"priv_key"`
 }
 
+// NewDefaultSigner returns an instance of DefaultSigner.
 func NewDefaultSigner(priv crypto.PrivKey) *DefaultSigner {
-	return &DefaultSigner{priv: priv}
+	return &DefaultSigner{
+		PrivKey: priv,
+	}
 }
 
-// Implements Signer
-func (ds *DefaultSigner) Sign(msg []byte) crypto.Signature {
-	return ds.priv.Sign(msg)
+// Sign implements Signer. It signs the byte slice with a private key.
+func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
+	return ds.PrivKey.Sign(msg), nil
 }
 
-// Implements Signer
-func (ds *DefaultSigner) PubKey() crypto.PubKey {
-	return ds.priv.PubKey()
+// GetAddress returns the address of the validator.
+// Implements PrivValidator.
+func (pv *PrivValidatorFS) GetAddress() data.Bytes {
+	return pv.Address
 }
 
-func (privVal *PrivValidator) SetSigner(s Signer) {
-	privVal.Signer = s
-	privVal.setPubKeyAndAddress()
+// GetPubKey returns the public key of the validator.
+// Implements PrivValidator.
+func (pv *PrivValidatorFS) GetPubKey() crypto.PubKey {
+	return pv.PubKey
 }
 
-// Overwrite address and pubkey for convenience
-func (privVal *PrivValidator) setPubKeyAndAddress() {
-	privVal.PubKey = privVal.Signer.PubKey()
-	privVal.Address = privVal.PubKey.Address()
-}
-
-// Generates a new validator with private key.
-func GenPrivValidator() *PrivValidator {
+// GenPrivValidatorFS generates a new validator with randomly generated private key
+// and sets the filePath, but does not call Save().
+func GenPrivValidatorFS(filePath string) *PrivValidatorFS {
 	privKey := crypto.GenPrivKeyEd25519().Wrap()
-	pubKey := privKey.PubKey()
-	return &PrivValidator{
-		Address:  pubKey.Address(),
-		PubKey:   pubKey,
+	return &PrivValidatorFS{
+		Address:  privKey.PubKey().Address(),
+		PubKey:   privKey.PubKey(),
 		PrivKey:  privKey,
 		LastStep: stepNone,
-		filePath: "",
 		Signer:   NewDefaultSigner(privKey),
+		filePath: filePath,
 	}
 }
 
-func LoadPrivValidator(filePath string) *PrivValidator {
+// LoadPrivValidatorFS loads a PrivValidatorFS from the filePath.
+func LoadPrivValidatorFS(filePath string) *PrivValidatorFS {
+	return LoadPrivValidatorFSWithSigner(filePath, func(privVal PrivValidator) Signer {
+		return NewDefaultSigner(privVal.(*PrivValidatorFS).PrivKey)
+	})
+}
+
+// LoadOrGenPrivValidatorFS loads a PrivValidatorFS from the given filePath
+// or else generates a new one and saves it to the filePath.
+func LoadOrGenPrivValidatorFS(filePath string) *PrivValidatorFS {
+	var privVal *PrivValidatorFS
+	if _, err := os.Stat(filePath); err == nil {
+		privVal = LoadPrivValidatorFS(filePath)
+	} else {
+		privVal = GenPrivValidatorFS(filePath)
+		privVal.Save()
+	}
+	return privVal
+}
+
+// LoadPrivValidatorWithSigner loads a PrivValidatorFS with a custom
+// signer object. The PrivValidatorFS handles double signing prevention by persisting
+// data to the filePath, while the Signer handles the signing.
+// If the filePath does not exist, the PrivValidatorFS must be created manually and saved.
+func LoadPrivValidatorFSWithSigner(filePath string, signerFunc func(PrivValidator) Signer) *PrivValidatorFS {
 	privValJSONBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		Exit(err.Error())
+		cmn.Exit(err.Error())
 	}
-	privVal := PrivValidator{}
+	privVal := &PrivValidatorFS{}
 	err = json.Unmarshal(privValJSONBytes, &privVal)
 	if err != nil {
-		Exit(Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
+		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
 
 	privVal.filePath = filePath
-	privVal.Signer = NewDefaultSigner(privVal.PrivKey)
-	privVal.setPubKeyAndAddress()
-	return &privVal
+	privVal.Signer = signerFunc(privVal)
+	return privVal
 }
 
-func LoadOrGenPrivValidator(filePath string, logger log.Logger) *PrivValidator {
-	var privValidator *PrivValidator
-	if _, err := os.Stat(filePath); err == nil {
-		privValidator = LoadPrivValidator(filePath)
-		logger.Info("Loaded PrivValidator",
-			"file", filePath, "privValidator", privValidator)
-	} else {
-		privValidator = GenPrivValidator()
-		privValidator.SetFile(filePath)
-		privValidator.Save()
-		logger.Info("Generated PrivValidator", "file", filePath)
-	}
-	return privValidator
-}
-
-func (privVal *PrivValidator) SetFile(filePath string) {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-	privVal.filePath = filePath
-}
-
-func (privVal *PrivValidator) Save() {
+// Save persists the PrivValidatorFS to disk.
+func (privVal *PrivValidatorFS) Save() {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	privVal.save()
 }
 
-func (privVal *PrivValidator) save() {
+func (privVal *PrivValidatorFS) save() {
 	if privVal.filePath == "" {
-		PanicSanity("Cannot save PrivValidator: filePath not set")
+		cmn.PanicSanity("Cannot save PrivValidator: filePath not set")
 	}
 	jsonBytes, err := json.Marshal(privVal)
 	if err != nil {
 		// `@; BOOM!!!
-		PanicCrisis(err)
+		cmn.PanicCrisis(err)
 	}
-	err = WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
+	err = cmn.WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
 	if err != nil {
 		// `@; BOOM!!!
-		PanicCrisis(err)
+		cmn.PanicCrisis(err)
 	}
 }
 
+// Reset resets all fields in the PrivValidatorFS.
 // NOTE: Unsafe!
-func (privVal *PrivValidator) Reset() {
+func (privVal *PrivValidatorFS) Reset() {
 	privVal.LastHeight = 0
 	privVal.LastRound = 0
 	privVal.LastStep = 0
@@ -176,22 +193,22 @@ func (privVal *PrivValidator) Reset() {
 	privVal.Save()
 }
 
-func (privVal *PrivValidator) GetAddress() []byte {
-	return privVal.Address
-}
-
-func (privVal *PrivValidator) SignVote(chainID string, vote *Vote) error {
+// SignVote signs a canonical representation of the vote, along with the chainID.
+// Implements PrivValidator.
+func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	signature, err := privVal.signBytesHRS(vote.Height, vote.Round, voteToStep(vote), SignBytes(chainID, vote))
 	if err != nil {
-		return errors.New(Fmt("Error signing vote: %v", err))
+		return errors.New(cmn.Fmt("Error signing vote: %v", err))
 	}
 	vote.Signature = signature
 	return nil
 }
 
-func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) error {
+// SignProposal signs a canonical representation of the proposal, along with the chainID.
+// Implements PrivValidator.
+func (privVal *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	signature, err := privVal.signBytesHRS(proposal.Height, proposal.Round, stepPropose, SignBytes(chainID, proposal))
@@ -202,8 +219,11 @@ func (privVal *PrivValidator) SignProposal(chainID string, proposal *Proposal) e
 	return nil
 }
 
-// check if there's a regression. Else sign and write the hrs+signature to disk
-func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signBytes []byte) (crypto.Signature, error) {
+// signBytesHRS signs the given signBytes if the height/round/step (HRS)
+// are greater than the latest state. If the HRS are equal,
+// it returns the privValidator.LastSignature.
+func (privVal *PrivValidatorFS) signBytesHRS(height, round int, step int8, signBytes []byte) (crypto.Signature, error) {
+
 	sig := crypto.Signature{}
 	// If height regression, err
 	if privVal.LastHeight > height {
@@ -222,7 +242,7 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 			} else if privVal.LastStep == step {
 				if privVal.LastSignBytes != nil {
 					if privVal.LastSignature.Empty() {
-						PanicSanity("privVal: LastSignature is nil but LastSignBytes is not!")
+						cmn.PanicSanity("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					// so we dont sign a conflicting vote or proposal
 					// NOTE: proposals are non-deterministic (include time),
@@ -238,7 +258,10 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 	}
 
 	// Sign
-	sig = privVal.Sign(signBytes)
+	sig, err := privVal.Sign(signBytes)
+	if err != nil {
+		return sig, err
+	}
 
 	// Persist height/round/step
 	privVal.LastHeight = height
@@ -249,30 +272,33 @@ func (privVal *PrivValidator) signBytesHRS(height, round int, step int8, signByt
 	privVal.save()
 
 	return sig, nil
-
 }
 
-func (privVal *PrivValidator) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
+// SignHeartbeat signs a canonical representation of the heartbeat, along with the chainID.
+// Implements PrivValidator.
+func (privVal *PrivValidatorFS) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
-	heartbeat.Signature = privVal.Sign(SignBytes(chainID, heartbeat))
-	return nil
+	var err error
+	heartbeat.Signature, err = privVal.Sign(SignBytes(chainID, heartbeat))
+	return err
 }
 
-func (privVal *PrivValidator) String() string {
-	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", privVal.Address, privVal.LastHeight, privVal.LastRound, privVal.LastStep)
+// String returns a string representation of the PrivValidatorFS.
+func (privVal *PrivValidatorFS) String() string {
+	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", privVal.GetAddress(), privVal.LastHeight, privVal.LastRound, privVal.LastStep)
 }
 
 //-------------------------------------
 
-type PrivValidatorsByAddress []*PrivValidator
+type PrivValidatorsByAddress []*PrivValidatorFS
 
 func (pvs PrivValidatorsByAddress) Len() int {
 	return len(pvs)
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(pvs[i].Address, pvs[j].Address) == -1
+	return bytes.Compare(pvs[i].GetAddress(), pvs[j].GetAddress()) == -1
 }
 
 func (pvs PrivValidatorsByAddress) Swap(i, j int) {

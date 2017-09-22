@@ -23,8 +23,29 @@ Tendermint 101
    introduction.rst
    install.rst
    getting-started.rst
-   deploy-testnets.rst
    using-tendermint.rst
+
+Tendermint Tools
+----------------
+
+.. toctree::
+   :maxdepth: 2
+
+   deploy-testnets.rst
+   tools/ansible.rst
+   tools/docker.rst
+   tools/mintnet-kubernetes.rst
+   tools/terraform-digitalocean.rst
+   tools/benchmarking-and-monitoring.rst
+
+
+Tendermint Ecosystem
+--------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   ecosystem.rst
 
 Tendermint 102
 --------------

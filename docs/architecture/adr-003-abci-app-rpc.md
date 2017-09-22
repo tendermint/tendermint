@@ -1,4 +1,4 @@
-# ADR 1: Must an ABCI-app have an RPC server?
+# ADR 3: Must an ABCI-app have an RPC server?
 
 ## Context
 

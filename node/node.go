@@ -3,6 +3,7 @@ package node
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -10,11 +11,15 @@ import (
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
-	p2p "github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -26,20 +31,66 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
 
 	_ "net/http/pprof"
 )
 
+//------------------------------------------------------------------------------
+
+// DBContext specifies config information for loading a new DB.
+type DBContext struct {
+	ID     string
+	Config *cfg.Config
+}
+
+// DBProvider takes a DBContext and returns an instantiated DB.
+type DBProvider func(*DBContext) (dbm.DB, error)
+
+// DefaultDBProvider returns a database using the DBBackend and DBDir
+// specified in the ctx.Config.
+func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
+	return dbm.NewDB(ctx.ID, ctx.Config.DBBackend, ctx.Config.DBDir()), nil
+}
+
+// GenesisDocProvider returns a GenesisDoc.
+// It allows the GenesisDoc to be pulled from sources other than the
+// filesystem, for instance from a distributed key-value store cluster.
+type GenesisDocProvider func() (*types.GenesisDoc, error)
+
+// DefaultGenesisDocProviderFunc returns a GenesisDocProvider that loads
+// the GenesisDoc from the config.GenesisFile() on the filesystem.
+func DefaultGenesisDocProviderFunc(config *cfg.Config) GenesisDocProvider {
+	return func() (*types.GenesisDoc, error) {
+		return types.GenesisDocFromFile(config.GenesisFile())
+	}
+}
+
+// NodeProvider takes a config and a logger and returns a ready to go Node.
+type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
+
+// DefaultNewNode returns a Tendermint node with default settings for the
+// PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
+// It implements NodeProvider.
+func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+	return NewNode(config,
+		types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile()),
+		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
+		DefaultGenesisDocProviderFunc(config),
+		DefaultDBProvider,
+		logger)
+}
+
+//------------------------------------------------------------------------------
+
+// Node is the highest level interface to a full Tendermint node.
+// It includes all configuration information and running services.
 type Node struct {
 	cmn.BaseService
 
 	// config
 	config        *cfg.Config
-	genesisDoc    *types.GenesisDoc    // initial validator set
-	privValidator *types.PrivValidator // local node's validator key
+	genesisDoc    *types.GenesisDoc   // initial validator set
+	privValidator types.PrivValidator // local node's validator key
 
 	// network
 	privKey  crypto.PrivKeyEd25519 // local node's p2p key
@@ -58,24 +109,42 @@ type Node struct {
 	txIndexer        txindex.TxIndexer
 }
 
-func NewNodeDefault(config *cfg.Config, logger log.Logger) *Node {
-	// Get PrivValidator
-	privValidator := types.LoadOrGenPrivValidator(config.PrivValidatorFile(), logger)
-	return NewNode(config, privValidator,
-		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()), logger)
-}
+// NewNode returns a new, ready to go, Tendermint Node.
+func NewNode(config *cfg.Config,
+	privValidator types.PrivValidator,
+	clientCreator proxy.ClientCreator,
+	genesisDocProvider GenesisDocProvider,
+	dbProvider DBProvider,
+	logger log.Logger) (*Node, error) {
 
-func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreator proxy.ClientCreator, logger log.Logger) *Node {
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
+	blockStoreDB, err := dbProvider(&DBContext{"blockstore", config})
+	if err != nil {
+		return nil, err
+	}
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	consensusLogger := logger.With("module", "consensus")
 	stateLogger := logger.With("module", "state")
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
-	state := sm.GetState(stateDB, config.GenesisFile())
+	stateDB, err := dbProvider(&DBContext{"state", config})
+	if err != nil {
+		return nil, err
+	}
+	state := sm.LoadState(stateDB)
+	if state == nil {
+		genDoc, err := genesisDocProvider()
+		if err != nil {
+			return nil, err
+		}
+		state, err = sm.MakeGenesisState(stateDB, genDoc)
+		if err != nil {
+			return nil, err
+		}
+		state.Save()
+	}
+
 	state.SetLogger(stateLogger)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
@@ -85,7 +154,7 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if _, err := proxyApp.Start(); err != nil {
-		cmn.Exit(cmn.Fmt("Error starting proxy app connections: %v", err))
+		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
 
 	// reload the state (it may have been updated by the handshake)
@@ -96,7 +165,10 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	var txIndexer txindex.TxIndexer
 	switch config.TxIndex {
 	case "kv":
-		store := dbm.NewDB("tx_index", config.DBBackend, config.DBDir())
+		store, err := dbProvider(&DBContext{"tx_index", config})
+		if err != nil {
+			return nil, err
+		}
 		txIndexer = kv.NewTxIndex(store)
 	default:
 		txIndexer = &null.TxIndex{}
@@ -109,9 +181,8 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	// Make event switch
 	eventSwitch := types.NewEventSwitch()
 	eventSwitch.SetLogger(logger.With("module", "types"))
-	_, err := eventSwitch.Start()
-	if err != nil {
-		cmn.Exit(cmn.Fmt("Failed to start switch: %v", err))
+	if _, err := eventSwitch.Start(); err != nil {
+		return nil, fmt.Errorf("Failed to start switch: %v", err)
 	}
 
 	// Decide whether to fast-sync or not
@@ -119,13 +190,13 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.Address, addr) {
+		if bytes.Equal(privValidator.GetAddress(), addr) {
 			fastSync = false
 		}
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.Address) {
+	if state.Validators.HasAddress(privValidator.GetAddress()) {
 		consensusLogger.Info("This node is a validator")
 	} else {
 		consensusLogger.Info("This node is not a validator")
@@ -232,12 +303,13 @@ func NewNode(config *cfg.Config, privValidator *types.PrivValidator, clientCreat
 		txIndexer:        txIndexer,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
-	return node
+	return node, nil
 }
 
+// OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
 	// Create & add listener
-	protocol, address := ProtocolAndAddress(n.config.P2P.ListenAddress)
+	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
@@ -270,6 +342,7 @@ func (n *Node) OnStart() error {
 	return nil
 }
 
+// OnStop stops the Node. It implements cmn.Service.
 func (n *Node) OnStop() {
 	n.BaseService.OnStop()
 
@@ -285,6 +358,7 @@ func (n *Node) OnStop() {
 	}
 }
 
+// RunForever waits for an interupt signal and stops the node.
 func (n *Node) RunForever() {
 	// Sleep forever and then...
 	cmn.TrapSignal(func() {
@@ -292,15 +366,15 @@ func (n *Node) RunForever() {
 	})
 }
 
-// Add the event switch to reactors, mempool, etc.
+// SetEventSwitch adds the event switch to reactors, mempool, etc.
 func SetEventSwitch(evsw types.EventSwitch, eventables ...types.Eventable) {
 	for _, e := range eventables {
 		e.SetEventSwitch(evsw)
 	}
 }
 
-// Add a Listener to accept inbound peer connections.
-// Add listeners before starting the Node.
+// AddListener adds a listener to accept inbound peer connections.
+// It should be called before starting the Node.
 // The first listener is the primary listener (in NodeInfo)
 func (n *Node) AddListener(l p2p.Listener) {
 	n.sw.AddListener(l)
@@ -314,7 +388,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetMempool(n.mempoolReactor.Mempool)
 	rpccore.SetSwitch(n.sw)
-	rpccore.SetPubKey(n.privValidator.PubKey)
+	rpccore.SetPubKey(n.privValidator.GetPubKey())
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
@@ -360,39 +434,48 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	return listeners, nil
 }
 
+// Switch returns the Node's Switch.
 func (n *Node) Switch() *p2p.Switch {
 	return n.sw
 }
 
+// BlockStore returns the Node's BlockStore.
 func (n *Node) BlockStore() *bc.BlockStore {
 	return n.blockStore
 }
 
+// ConsensusState returns the Node's ConsensusState.
 func (n *Node) ConsensusState() *consensus.ConsensusState {
 	return n.consensusState
 }
 
+// ConsensusReactor returns the Node's ConsensusReactor.
 func (n *Node) ConsensusReactor() *consensus.ConsensusReactor {
 	return n.consensusReactor
 }
 
+// MempoolReactor returns the Node's MempoolReactor.
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
+// EventSwitch returns the Node's EventSwitch.
 func (n *Node) EventSwitch() types.EventSwitch {
 	return n.evsw
 }
 
-// XXX: for convenience
-func (n *Node) PrivValidator() *types.PrivValidator {
+// PrivValidator returns the Node's PrivValidator.
+// XXX: for convenience only!
+func (n *Node) PrivValidator() types.PrivValidator {
 	return n.privValidator
 }
 
+// GenesisDoc returns the Node's GenesisDoc.
 func (n *Node) GenesisDoc() *types.GenesisDoc {
 	return n.genesisDoc
 }
 
+// ProxyApp returns the Node's AppConns, representing its connections to the ABCI application.
 func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
@@ -442,22 +525,14 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 
 //------------------------------------------------------------------------------
 
+// NodeInfo returns the Node's Info from the Switch.
 func (n *Node) NodeInfo() *p2p.NodeInfo {
 	return n.sw.NodeInfo()
 }
 
+// DialSeeds dials the given seeds on the Switch.
 func (n *Node) DialSeeds(seeds []string) error {
 	return n.sw.DialSeeds(n.addrBook, seeds)
-}
-
-// Defaults to tcp
-func ProtocolAndAddress(listenAddr string) (string, string) {
-	protocol, address := "tcp", listenAddr
-	parts := strings.SplitN(address, "://", 2)
-	if len(parts) == 2 {
-		protocol, address = parts[0], parts[1]
-	}
-	return protocol, address
 }
 
 //------------------------------------------------------------------------------

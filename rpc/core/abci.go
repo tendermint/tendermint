@@ -4,6 +4,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 // Query the application for some information.
@@ -86,7 +87,7 @@ func ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuer
 // }
 // ```
 func ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	resInfo, err := proxyAppQuery.InfoSync()
+	resInfo, err := proxyAppQuery.InfoSync(abci.RequestInfo{version.Version})
 	if err != nil {
 		return nil, err
 	}

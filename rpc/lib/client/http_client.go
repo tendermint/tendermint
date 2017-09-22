@@ -75,7 +75,7 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 }
 
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request, err := types.MapToRequest("", method, params)
+	request, err := types.MapToRequest("jsonrpc-client", method, params)
 	if err != nil {
 		return nil, err
 	}
@@ -146,9 +146,8 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 	if err != nil {
 		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
 	}
-	errorStr := response.Error
-	if errorStr != "" {
-		return nil, errors.Errorf("Response error: %v", errorStr)
+	if response.Error != nil {
+		return nil, errors.Errorf("Response error: %v", response.Error.Message)
 	}
 	// unmarshal the RawMessage into the result
 	err = json.Unmarshal(*response.Result, result)

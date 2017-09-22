@@ -83,7 +83,10 @@ func execBlockOnProxyApp(eventCache types.Fireable, proxyAppConn proxy.AppConnCo
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	// Begin block
-	err := proxyAppConn.BeginBlockSync(block.Hash(), types.TM2PB.Header(block.Header))
+	err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
+		block.Hash(),
+		types.TM2PB.Header(block.Header),
+	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
 		return nil, err
@@ -239,7 +242,7 @@ func (s *State) ApplyBlock(eventCache types.Fireable, proxyAppConn proxy.AppConn
 
 	fail.Fail() // XXX
 
-	// save the state
+	// save the state and the validators
 	s.Save()
 
 	return nil

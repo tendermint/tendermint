@@ -28,17 +28,17 @@ func BenchmarkProposalWriteSignBytes(b *testing.B) {
 }
 
 func BenchmarkProposalSign(b *testing.B) {
-	privVal := GenPrivValidator()
+	privVal := GenPrivValidatorFS("")
 	for i := 0; i < b.N; i++ {
-		privVal.Sign(SignBytes("test_chain_id", testProposal))
+		privVal.Signer.Sign(SignBytes("test_chain_id", testProposal))
 	}
 }
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
 	signBytes := SignBytes("test_chain_id", testProposal)
-	privVal := GenPrivValidator()
-	signature := privVal.Sign(signBytes)
-	pubKey := privVal.PubKey
+	privVal := GenPrivValidatorFS("")
+	signature, _ := privVal.Signer.Sign(signBytes)
+	pubKey := privVal.GetPubKey()
 
 	for i := 0; i < b.N; i++ {
 		pubKey.VerifyBytes(SignBytes("test_chain_id", testProposal), signature)

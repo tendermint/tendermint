@@ -119,7 +119,7 @@ var testGenesis = `{
         "type": "ed25519",
         "data":"3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
       },
-      "amount": 10,
+      "power": 10,
       "name": ""
     }
   ],

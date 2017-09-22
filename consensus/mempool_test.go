@@ -183,7 +183,7 @@ func NewCounterApplication() *CounterApplication {
 	return &CounterApplication{}
 }
 
-func (app *CounterApplication) Info() abci.ResponseInfo {
+func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{Data: Fmt("txs:%v", app.txCount)}
 }
 

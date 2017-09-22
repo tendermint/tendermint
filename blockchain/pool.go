@@ -352,7 +352,7 @@ func (peer *bpPeer) setLogger(l log.Logger) {
 
 func (peer *bpPeer) resetMonitor() {
 	peer.recvMonitor = flow.New(time.Second, time.Second*40)
-	var initialValue = float64(minRecvRate) * math.E
+	initialValue := float64(minRecvRate) * math.E
 	peer.recvMonitor.SetREMA(initialValue)
 }
 
