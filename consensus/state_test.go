@@ -79,7 +79,7 @@ func TestProposerSelection0(t *testing.T) {
 	<-newRoundCh
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
-	if !bytes.Equal(prop.Address, vss[1].Address) {
+	if !bytes.Equal(prop.Address, vss[1].GetAddress()) {
 		panic(Fmt("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
 }
@@ -100,7 +100,7 @@ func TestProposerSelection2(t *testing.T) {
 	// everyone just votes nil. we get a new proposer each round
 	for i := 0; i < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].Address) {
+		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].GetAddress()) {
 			panic(Fmt("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
 		}
 
@@ -501,8 +501,6 @@ func TestLockPOLRelock(t *testing.T) {
 	voteCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringVote(), 1)
 	newRoundCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewRound(), 1)
 	newBlockCh := subscribeToEvent(cs1.evsw, "tester", types.EventStringNewBlockHeader(), 1)
-
-	t.Logf("vs2 last round %v", vs2.PrivValidator.LastRound)
 
 	// everything done from perspective of cs1
 

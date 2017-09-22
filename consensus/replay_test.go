@@ -162,8 +162,8 @@ LOOP:
 	cs.Wait()
 }
 
-func toPV(pv PrivValidator) *types.PrivValidator {
-	return pv.(*types.PrivValidator)
+func toPV(pv types.PrivValidator) *types.PrivValidatorFS {
+	return pv.(*types.PrivValidatorFS)
 }
 
 func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bool) (*ConsensusState, chan interface{}, string, string) {
@@ -317,7 +317,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := writeWAL(string(walBody))
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := types.LoadPrivValidator(config.PrivValidatorFile())
+	privVal := types.LoadPrivValidatorFS(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {
@@ -332,7 +332,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatalf(err.Error())
 	}
 
-	state, store := stateAndStore(config, privVal.PubKey)
+	state, store := stateAndStore(config, privVal.GetPubKey())
 	store.chain = chain
 	store.commits = commits
 
@@ -346,7 +346,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, nil)
-		state, _ := stateAndStore(config, privVal.PubKey)
+		state, _ := stateAndStore(config, privVal.GetPubKey())
 		buildAppStateFromChain(proxyApp, state, chain, nBlocks, mode)
 	}
 
@@ -558,7 +558,7 @@ func readPieceFromWAL(msgBytes []byte) (interface{}, error) {
 // fresh state and mock store
 func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
 	store := NewMockBlockStore(config, state.Params())

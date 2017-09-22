@@ -180,14 +180,6 @@ func (ti *timeoutInfo) String() string {
 	return fmt.Sprintf("%v ; %d/%d %v", ti.Duration, ti.Height, ti.Round, ti.Step)
 }
 
-// PrivValidator is a validator that can sign votes and proposals.
-type PrivValidator interface {
-	GetAddress() []byte
-	SignVote(chainID string, vote *types.Vote) error
-	SignProposal(chainID string, proposal *types.Proposal) error
-	SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error
-}
-
 // ConsensusState handles execution of the consensus algorithm.
 // It processes votes and proposals, and upon reaching agreement,
 // commits blocks to the chain and executes them against the application.
@@ -197,7 +189,7 @@ type ConsensusState struct {
 
 	// config details
 	config        *cfg.ConsensusConfig
-	privValidator PrivValidator // for signing votes
+	privValidator types.PrivValidator // for signing votes
 
 	// services for creating and executing blocks
 	proxyAppConn proxy.AppConnConsensus
@@ -308,7 +300,7 @@ func (cs *ConsensusState) GetValidators() (int, []*types.Validator) {
 }
 
 // SetPrivValidator sets the private validator account for signing votes.
-func (cs *ConsensusState) SetPrivValidator(priv PrivValidator) {
+func (cs *ConsensusState) SetPrivValidator(priv types.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv

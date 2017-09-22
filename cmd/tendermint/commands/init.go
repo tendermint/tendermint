@@ -9,21 +9,17 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-var initFilesCmd = &cobra.Command{
+// InitFilesCmd initialises a fresh Tendermint Core instance.
+var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Tendermint",
 	Run:   initFiles,
 }
 
-func init() {
-	RootCmd.AddCommand(initFilesCmd)
-}
-
 func initFiles(cmd *cobra.Command, args []string) {
 	privValFile := config.PrivValidatorFile()
 	if _, err := os.Stat(privValFile); os.IsNotExist(err) {
-		privValidator := types.GenPrivValidator()
-		privValidator.SetFile(privValFile)
+		privValidator := types.GenPrivValidatorFS(privValFile)
 		privValidator.Save()
 
 		genFile := config.GenesisFile()
@@ -33,7 +29,7 @@ func initFiles(cmd *cobra.Command, args []string) {
 				ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
 			}
 			genDoc.Validators = []types.GenesisValidator{types.GenesisValidator{
-				PubKey: privValidator.PubKey,
+				PubKey: privValidator.GetPubKey(),
 				Power:  10,
 			}}
 

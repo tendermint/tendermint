@@ -9,14 +9,11 @@ import (
 	"github.com/tendermint/tendermint/p2p/upnp"
 )
 
-var probeUpnpCmd = &cobra.Command{
+// ProbeUpnpCmd adds capabilities to test the UPnP functionality.
+var ProbeUpnpCmd = &cobra.Command{
 	Use:   "probe_upnp",
 	Short: "Test UPnP functionality",
 	RunE:  probeUpnp,
-}
-
-func init() {
-	RootCmd.AddCommand(probeUpnpCmd)
 }
 
 func probeUpnp(cmd *cobra.Command, args []string) error {

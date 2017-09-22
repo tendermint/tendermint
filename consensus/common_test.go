@@ -50,12 +50,12 @@ type validatorStub struct {
 	Index  int // Validator index. NOTE: we don't assume validator set changes.
 	Height int
 	Round  int
-	*types.PrivValidator
+	types.PrivValidator
 }
 
 var testMinPower = 10
 
-func NewValidatorStub(privValidator *types.PrivValidator, valIndex int) *validatorStub {
+func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
 		Index:         valIndex,
 		PrivValidator: privValidator,
@@ -65,7 +65,7 @@ func NewValidatorStub(privValidator *types.PrivValidator, valIndex int) *validat
 func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
-		ValidatorAddress: vs.PrivValidator.Address,
+		ValidatorAddress: vs.PrivValidator.GetAddress(),
 		Height:           vs.Height,
 		Round:            vs.Round,
 		Type:             voteType,
@@ -142,7 +142,7 @@ func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.P
 func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
 	prevotes := cs.Votes.Prevotes(round)
 	var vote *types.Vote
-	if vote = prevotes.GetByAddress(privVal.Address); vote == nil {
+	if vote = prevotes.GetByAddress(privVal.GetAddress()); vote == nil {
 		panic("Failed to find prevote from validator")
 	}
 	if blockHash == nil {
@@ -159,7 +159,7 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub, blockHash []byte) {
 	votes := cs.LastCommit
 	var vote *types.Vote
-	if vote = votes.GetByAddress(privVal.Address); vote == nil {
+	if vote = votes.GetByAddress(privVal.GetAddress()); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 	if !bytes.Equal(vote.BlockID.Hash, blockHash) {
@@ -170,7 +170,7 @@ func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorS
 func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
 	precommits := cs.Votes.Precommits(thisRound)
 	var vote *types.Vote
-	if vote = precommits.GetByAddress(privVal.Address); vote == nil {
+	if vote = precommits.GetByAddress(privVal.GetAddress()); vote == nil {
 		panic("Failed to find precommit from validator")
 	}
 
@@ -225,11 +225,11 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newConsensusState(state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusState(state *sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
-func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
 	// Get BlockStore
 	blockDB := dbm.NewMemDB()
 	blockStore := bc.NewBlockStore(blockDB)
@@ -258,17 +258,17 @@ func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv *ty
 	return cs
 }
 
-func loadPrivValidator(config *cfg.Config) *types.PrivValidator {
+func loadPrivValidator(config *cfg.Config) *types.PrivValidatorFS {
 	privValidatorFile := config.PrivValidatorFile()
 	ensureDir(path.Dir(privValidatorFile), 0700)
-	privValidator := types.LoadOrGenPrivValidator(privValidatorFile, log.TestingLogger())
+	privValidator := types.LoadOrGenPrivValidatorFS(privValidatorFile)
 	privValidator.Reset()
 	return privValidator
 }
 
 func fixedConsensusStateDummy() *ConsensusState {
 	stateDB := dbm.NewMemDB()
-	state := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 	privValidator := loadPrivValidator(config)
 	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
@@ -338,7 +338,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
-		state := sm.MakeGenesisState(db, genDoc)
+		state, _ := sm.MakeGenesisState(db, genDoc)
 		state.SetLogger(logger.With("module", "state", "validator", i))
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
@@ -359,18 +359,17 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	css := make([]*ConsensusState, nPeers)
 	for i := 0; i < nPeers; i++ {
 		db := dbm.NewMemDB() // each state needs its own db
-		state := sm.MakeGenesisState(db, genDoc)
+		state, _ := sm.MakeGenesisState(db, genDoc)
 		state.SetLogger(log.TestingLogger().With("module", "state"))
 		state.Save()
 		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		var privVal *types.PrivValidator
+		var privVal types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			privVal = types.GenPrivValidator()
 			_, tempFilePath := Tempfile("priv_validator_")
-			privVal.SetFile(tempFilePath)
+			privVal = types.GenPrivValidatorFS(tempFilePath)
 		}
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, appFunc())
@@ -393,9 +392,9 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 //-------------------------------------------------------------------------------
 // genesis
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*types.PrivValidator) {
+func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*types.PrivValidatorFS) {
 	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]*types.PrivValidator, numValidators)
+	privValidators := make([]*types.PrivValidatorFS, numValidators)
 	for i := 0; i < numValidators; i++ {
 		val, privVal := types.RandValidator(randPower, minPower)
 		validators[i] = types.GenesisValidator{
@@ -412,10 +411,10 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}, privValidators
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidator) {
+func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidatorFS) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	db := dbm.NewMemDB()
-	s0 := sm.MakeGenesisState(db, genDoc)
+	s0, _ := sm.MakeGenesisState(db, genDoc)
 	s0.SetLogger(log.TestingLogger().With("module", "state"))
 	s0.Save()
 	return s0, privValidators
