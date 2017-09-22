@@ -6,6 +6,7 @@ BREAKING CHANGES:
 
 - [types/client] app.BeginBlock takes RequestBeginBlock
 - [types/client] app.InitChain takes RequestInitChain
+- [types/client] app.Info takes RequestInfo
 
 IMPROVEMENTS:
 
