@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.0 (September 22, 2017)
+
+BREAKING CHANGES:
+
+- [types/client] app.BeginBlock takes RequestBeginBlock
+- [types/client] app.InitChain takes RequestInitChain
+
+IMPROVEMENTS:
+
+- various linting
+
 ## 0.5.0 (May 18, 2017)
 
 BREAKING CHANGES:
