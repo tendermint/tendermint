@@ -368,7 +368,9 @@ func (ac accumComparable) Less(o interface{}) bool {
 //----------------------------------------
 // For testing
 
+// RandValidatorSet returns a randomized validator set, useful for testing.
 // NOTE: PrivValidator are in order.
+// UNSTABLE
 func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*PrivValidatorFS) {
 	vals := make([]*Validator, numValidators)
 	privValidators := make([]*PrivValidatorFS, numValidators)

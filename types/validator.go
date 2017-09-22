@@ -106,6 +106,8 @@ func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
 //--------------------------------------------------------------------------------
 // For testing...
 
+// RandValidator returns a randomized validator, useful for testing.
+// UNSTABLE
 func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidatorFS) {
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	privVal := GenPrivValidatorFS(tempFilePath)
