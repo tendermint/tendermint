@@ -144,6 +144,7 @@ type WSRPCContext struct {
 //
 // Determine if its a unix or tcp socket.
 // If tcp, must specify the port; `0.0.0.0` will return incorrectly as "unix" since there's no port
+// TODO: deprecate
 func SocketType(listenAddr string) string {
 	socketType := "unix"
 	if len(strings.Split(listenAddr, ":")) >= 2 {
