@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (September 21, 2017_
+## 0.3.0 (September 22, 2017)
 
 BREAKING CHANGES:
 
@@ -14,12 +14,14 @@ FEATURES:
 
 - [common] various common HTTP functionality
 - [common] Date range parsing from string (ex. "2015-12-31:2017-12-31")
+- [common] ProtocolAndAddress function
 - [pubsub] New package for publish-subscribe with more advanced filtering
 
 BUG FIXES:
 
 - [common] fix atomicity of WriteFileAtomic by calling fsync
 - [db] fix memDb iteration index out of range
+- [autofile] fix Flush by calling fsync
 
 ## 0.2.2 (June 16, 2017)
 
