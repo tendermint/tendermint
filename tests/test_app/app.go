@@ -57,7 +57,7 @@ func setOption(client abcicli.Client, key, value string) {
 
 func commit(client abcicli.Client, hashExp []byte) {
 	res := client.CommitSync()
-	_, data, log := res.Code, res.Data, res.Log
+	_, data, _ := res.Code, res.Data, res.Log
 	if res.IsErr() {
 		panic(fmt.Sprintf("committing err %v\n", res))
 	}
