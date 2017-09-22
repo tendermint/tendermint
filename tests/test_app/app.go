@@ -57,9 +57,9 @@ func setOption(client abcicli.Client, key, value string) {
 
 func commit(client abcicli.Client, hashExp []byte) {
 	res := client.CommitSync()
-	_, data, log := res.Code, res.Data, res.Log
+	_, data, _ := res.Code, res.Data, res.Log
 	if res.IsErr() {
-		panic(fmt.Sprintf("committing %v\nlog: %v", log))
+		panic(fmt.Sprintf("committing err %v\n", res))
 	}
 	if !bytes.Equal(res.Data, hashExp) {
 		panic(fmt.Sprintf("Commit hash was unexpected. Got %X expected %X",
@@ -80,7 +80,7 @@ func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 	}
 }
 
-func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+/*func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
 	res := client.CheckTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if res.IsErr() {
@@ -94,4 +94,4 @@ func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, data
 		panic(fmt.Sprintf("CheckTx response data was unexpected. Got %X expected %X",
 			data, dataExp))
 	}
-}
+}*/

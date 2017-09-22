@@ -1,6 +1,7 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
-					github.com/Masterminds/glide
+					github.com/Masterminds/glide \
+					github.com/alecthomas/gometalinter
 
 all: protoc install test
 
@@ -49,5 +50,39 @@ tools:
 get_vendor_deps:
 	@ go get github.com/Masterminds/glide
 	@ glide install
+
+metalinter: tools
+	@gometalinter --install
+	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
+
+metalinter_test: tools
+	@gometalinter --install
+	gometalinter --vendor --deadline=600s --disable-all  \
+		--enable=aligncheck \
+		--enable=deadcode \
+		--enable=gas \
+		--enable=goconst \
+		--enable=goimports \
+		--enable=gosimple \
+		--enable=gotype \
+	 	--enable=ineffassign \
+		--enable=megacheck \
+	 	--enable=misspell \
+	   	--enable=staticcheck \
+		--enable=safesql \
+	   	--enable=structcheck \
+	   	--enable=unconvert \
+		--enable=unused \
+	   	--enable=varcheck \
+		--enable=vetshadow \
+		./...
+
+		#--enable=dupl \
+		#--enable=errcheck \
+		#--enable=gocyclo \
+		#--enable=golint \ <== comments on anything exported
+	   	#--enable=interfacer \
+	   	#--enable=unparam \
+		#--enable=vet \
 
 .PHONY: all build test fmt lint get_deps tools
