@@ -106,8 +106,8 @@ func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.
 }
 
 // Save the validators in the merkle tree
-func (app *PersistentDummyApplication) InitChain(validators []*types.Validator) {
-	for _, v := range validators {
+func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
+	for _, v := range params.Validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
 			app.logger.Error("Error updating validators", "r", r)
@@ -116,9 +116,9 @@ func (app *PersistentDummyApplication) InitChain(validators []*types.Validator) 
 }
 
 // Track the block hash and header information
-func (app *PersistentDummyApplication) BeginBlock(hash []byte, header *types.Header) {
+func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
 	// update latest block info
-	app.blockHeader = header
+	app.blockHeader = params.Header
 
 	// reset valset changes
 	app.changes = make([]*types.Validator, 0)
