@@ -91,7 +91,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 	header := &types.Header{
 		Height: uint64(height),
 	}
-	dummy.BeginBlock(hash, header)
+	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
 	dummy.EndBlock(height)
 	dummy.Commit()
 
@@ -120,7 +120,7 @@ func TestValSetChanges(t *testing.T) {
 		vals[i] = &types.Validator{pubkey, uint64(power)}
 	}
 	// iniitalize with the first nInit
-	dummy.InitChain(vals[:nInit])
+	dummy.InitChain(types.RequestInitChain{vals[:nInit]})
 
 	vals1, vals2 := vals[:nInit], dummy.Validators()
 	valsEqual(t, vals1, vals2)
@@ -180,7 +180,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 		Height: height,
 	}
 
-	dummy.BeginBlock(hash, header)
+	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
 	for _, tx := range txs {
 		if r := dummy.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)

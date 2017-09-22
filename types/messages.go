@@ -49,21 +49,21 @@ func ToRequestCommit() *Request {
 	}
 }
 
-func ToRequestQuery(reqQuery RequestQuery) *Request {
+func ToRequestQuery(req RequestQuery) *Request {
 	return &Request{
-		Value: &Request_Query{&reqQuery},
+		Value: &Request_Query{&req},
 	}
 }
 
-func ToRequestInitChain(reqInitChain RequestInitChain) *Request {
+func ToRequestInitChain(req RequestInitChain) *Request {
 	return &Request{
-		Value: &Request_InitChain{&reqInitChain},
+		Value: &Request_InitChain{&req},
 	}
 }
 
-func ToRequestBeginBlock(reqBeginBlock RequestBeginBlock) *Request {
+func ToRequestBeginBlock(req RequestBeginBlock) *Request {
 	return &Request{
-		Value: &Request_BeginBlock{&reqBeginBlock},
+		Value: &Request_BeginBlock{&req},
 	}
 }
 
