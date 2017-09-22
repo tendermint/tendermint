@@ -12,9 +12,9 @@ type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
 	Error() error
 
-	InitChainSync(validators []*types.Validator) (err error)
+	InitChainSync(types.RequestInitChain) (err error)
 
-	BeginBlockSync(hash []byte, header *types.Header) (err error)
+	BeginBlockSync(types.RequestBeginBlock) (err error)
 	DeliverTxAsync(tx []byte) *abcicli.ReqRes
 	EndBlockSync(height uint64) (types.ResponseEndBlock, error)
 	CommitSync() (res types.Result)
@@ -34,8 +34,8 @@ type AppConnQuery interface {
 	Error() error
 
 	EchoSync(string) (res types.Result)
-	InfoSync() (resInfo types.ResponseInfo, err error)
-	QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error)
+	InfoSync(types.RequestInfo) (types.ResponseInfo, error)
+	QuerySync(types.RequestQuery) (types.ResponseQuery, error)
 
 	//	SetOptionSync(key string, value string) (res types.Result)
 }
@@ -61,12 +61,12 @@ func (app *appConnConsensus) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnConsensus) InitChainSync(validators []*types.Validator) (err error) {
-	return app.appConn.InitChainSync(validators)
+func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (err error) {
+	return app.appConn.InitChainSync(req)
 }
 
-func (app *appConnConsensus) BeginBlockSync(hash []byte, header *types.Header) (err error) {
-	return app.appConn.BeginBlockSync(hash, header)
+func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) (err error) {
+	return app.appConn.BeginBlockSync(req)
 }
 
 func (app *appConnConsensus) DeliverTxAsync(tx []byte) *abcicli.ReqRes {
@@ -135,8 +135,8 @@ func (app *appConnQuery) EchoSync(msg string) (res types.Result) {
 	return app.appConn.EchoSync(msg)
 }
 
-func (app *appConnQuery) InfoSync() (types.ResponseInfo, error) {
-	return app.appConn.InfoSync()
+func (app *appConnQuery) InfoSync(req types.RequestInfo) (types.ResponseInfo, error) {
+	return app.appConn.InfoSync(req)
 }
 
 func (app *appConnQuery) QuerySync(reqQuery types.RequestQuery) (types.ResponseQuery, error) {

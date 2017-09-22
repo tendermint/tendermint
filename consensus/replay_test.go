@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/example/dummy"
+	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -358,7 +359,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	}
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Query().InfoSync()
+	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -396,7 +397,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 	}
 
 	validators := types.TM2PB.Validators(state.Validators)
-	proxyApp.Consensus().InitChainSync(validators)
+	proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators})
 
 	defer proxyApp.Stop()
 	switch mode {
@@ -430,7 +431,7 @@ func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.B
 	defer proxyApp.Stop()
 
 	validators := types.TM2PB.Validators(state.Validators)
-	proxyApp.Consensus().InitChainSync(validators)
+	proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators})
 
 	var latestAppHash []byte
 

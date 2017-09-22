@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 // ABCIApp will send all abci related request to the named app,
@@ -20,7 +21,7 @@ func (a ABCIApp) _assertABCIClient() client.ABCIClient {
 }
 
 func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	return &ctypes.ResultABCIInfo{a.App.Info()}, nil
+	return &ctypes.ResultABCIInfo{a.App.Info(abci.RequestInfo{version.Version})}, nil
 }
 
 func (a ABCIApp) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {

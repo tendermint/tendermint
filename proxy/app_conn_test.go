@@ -17,7 +17,7 @@ import (
 type AppConnTest interface {
 	EchoAsync(string) *abcicli.ReqRes
 	FlushSync() error
-	InfoSync() (types.ResponseInfo, error)
+	InfoSync(types.RequestInfo) (types.ResponseInfo, error)
 }
 
 type appConnTest struct {
@@ -36,8 +36,8 @@ func (app *appConnTest) FlushSync() error {
 	return app.appConn.FlushSync()
 }
 
-func (app *appConnTest) InfoSync() (types.ResponseInfo, error) {
-	return app.appConn.InfoSync()
+func (app *appConnTest) InfoSync(req types.RequestInfo) (types.ResponseInfo, error) {
+	return app.appConn.InfoSync(req)
 }
 
 //----------------------------------------
@@ -109,7 +109,7 @@ func BenchmarkEcho(b *testing.B) {
 	proxy.FlushSync()
 
 	b.StopTimer()
-	// info := proxy.InfoSync()
+	// info := proxy.InfoSync(types.RequestInfo{""})
 	//b.Log("N: ", b.N, info)
 }
 
@@ -138,7 +138,7 @@ func TestInfo(t *testing.T) {
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")
 
-	resInfo, err := proxy.InfoSync()
+	resInfo, err := proxy.InfoSync(types.RequestInfo{""})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}

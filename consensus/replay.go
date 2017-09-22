@@ -19,6 +19,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 )
 
 // Functionality to replay blocks and messages on recovery from a crash.
@@ -199,7 +200,7 @@ func (h *Handshaker) NBlocks() int {
 // TODO: retry the handshake/replay if it fails ?
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
-	res, err := proxyApp.Query().InfoSync()
+	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{version.Version})
 	if err != nil {
 		return errors.New(cmn.Fmt("Error calling Info: %v", err))
 	}
@@ -235,7 +236,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(h.state.Validators)
-		proxyApp.Consensus().InitChainSync(validators)
+		proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators})
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight
