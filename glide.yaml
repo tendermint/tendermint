@@ -25,6 +25,10 @@ import:
   version: ~0.6.2
   subpackages:
   - data
+- package: github.com/tendermint/merkleeyes
+  version: master
+  subpackages:
+  - iavl
 - package: github.com/tendermint/tmlibs
   version: ~0.3.0
   subpackages:
