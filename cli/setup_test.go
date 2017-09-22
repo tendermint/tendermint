@@ -223,9 +223,11 @@ func TestSetupTrace(t *testing.T) {
 
 		viper.Reset()
 		args := append([]string{cmd.Use}, tc.args...)
-		out, err := RunCaptureWithArgs(cmd, args, tc.env)
+		stdout, stderr, err := RunCaptureWithArgs(cmd, args, tc.env)
 		require.NotNil(err, i)
-		msg := strings.Split(out, "\n")
+		require.Equal("", stdout, i)
+		require.NotEqual("", stderr, i)
+		msg := strings.Split(stderr, "\n")
 		desired := fmt.Sprintf("ERROR: %s", tc.expected)
 		assert.Equal(desired, msg[0], i)
 		if tc.long && assert.True(len(msg) > 2, i) {

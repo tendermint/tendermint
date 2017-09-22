@@ -48,7 +48,12 @@ func EnsureDir(dir string, mode os.FileMode) error {
 func IsDirEmpty(name string) (bool, error) {
 	f, err := os.Open(name)
 	if err != nil {
-		return true, err //folder is non-existent
+		if os.IsNotExist(err) {
+			return true, err
+		}
+		// Otherwise perhaps a permission
+		// error or some other error.
+		return false, err
 	}
 	defer f.Close()
 
@@ -93,28 +98,30 @@ func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {
 	}
 }
 
-// Writes to newBytes to filePath.
-// Guaranteed not to lose *both* oldBytes and newBytes,
-// (assuming that the OS is perfect)
+// WriteFileAtomic writes newBytes to temp and atomically moves to filePath
+// when everything else succeeds.
 func WriteFileAtomic(filePath string, newBytes []byte, mode os.FileMode) error {
-	// If a file already exists there, copy to filePath+".bak" (overwrite anything)
-	if _, err := os.Stat(filePath); !os.IsNotExist(err) {
-		fileBytes, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			return fmt.Errorf("Could not read file %v. %v", filePath, err)
-		}
-		err = ioutil.WriteFile(filePath+".bak", fileBytes, mode)
-		if err != nil {
-			return fmt.Errorf("Could not write file %v. %v", filePath+".bak", err)
-		}
-	}
-	// Write newBytes to filePath.new
-	err := ioutil.WriteFile(filePath+".new", newBytes, mode)
+	f, err := ioutil.TempFile("", "")
 	if err != nil {
-		return fmt.Errorf("Could not write file %v. %v", filePath+".new", err)
+		return err
 	}
-	// Move filePath.new to filePath
-	err = os.Rename(filePath+".new", filePath)
+	_, err = f.Write(newBytes)
+	if err == nil {
+		err = f.Sync()
+	}
+	if closeErr := f.Close(); err == nil {
+		err = closeErr
+	}
+	if permErr := os.Chmod(f.Name(), mode); err == nil {
+		err = permErr
+	}
+	if err == nil {
+		err = os.Rename(f.Name(), filePath)
+	}
+	// any err should result in full cleanup
+	if err != nil {
+		os.Remove(f.Name())
+	}
 	return err
 }
 

@@ -1,5 +1,5 @@
-hash: 69359a39dbb6957c9f09167520317ad72d4bfa75f37a614b347e2510768c8a42
-updated: 2017-05-05T17:46:34.975369143Z
+hash: 6efda1f3891a7211fc3dc1499c0079267868ced9739b781928af8e225420f867
+updated: 2017-08-11T20:28:34.550901198Z
 imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
@@ -11,6 +11,12 @@ imports:
   - log/term
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
+- name: github.com/go-playground/locales
+  version: 1e5f1161c6416a5ff48840eb8724a394e48cc534
+  subpackages:
+  - currency
+- name: github.com/go-playground/universal-translator
+  version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/go-stack/stack
   version: 7a2f19628aabfe68f0766b59e74d6315f8347d22
 - name: github.com/golang/snappy
@@ -97,11 +103,13 @@ imports:
   subpackages:
   - transform
   - unicode/norm
+- name: gopkg.in/go-playground/validator.v9
+  version: d529ee1b0f30352444f507cc6cdac96bfd12decc
 - name: gopkg.in/yaml.v2
   version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
@@ -109,7 +117,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 4d4bfba8f1d1027c4fdbe371823030df51419987
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
   - require
