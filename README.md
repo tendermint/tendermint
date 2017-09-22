@@ -8,7 +8,7 @@ and the state machine (the application).
 By using a socket protocol, we enable a consensus engine running in one process
 to manage an application state running in another.
 
-# Install
+## Install
 
 ```
 go get github.com/tendermint/abci
@@ -17,18 +17,54 @@ glide install
 go install ./cmd/...
 ```
 
-For more information on ABCI, motivations, and tutorials, please visit [our blog post](https://blog.cosmos.network/abci-the-application-blockchain-interface-f1bd8278cdd7),
-and the more detailed [application developer's guide](https://tendermint.com/docs/guides/app-development).
+For background information on ABCI, motivations, and tendermint, please visit [the documentation](http://tendermint.readthedocs.io/en/master/).
+The two guides to focus on are the `Application Development Guide` and `Using ABCI-CLI`.
 
 Previously, the ABCI was referred to as TMSP.
 
-Other implementations:
-* C++ [cpp-tmsp](https://github.com/mdyring/cpp-tmsp) by Martin Dyring-Andersen
-* JavaScript [js-abci](https://github.com/tendermint/js-abci)
-* Java [jABCI](https://github.com/jTendermint/jabci)
-* Erlang [abci_server](https://github.com/KrzysiekJ/abci_server) by Krzysztof Jurewicz
+The community has provided a number of addtional implementations, see the `Tendermint Ecosystem` in [the documentation](http://tendermint.readthedocs.io/en/master/).
 
-# Specification
+## Implementation
+
+We provide three implementations of the ABCI in Go:
+
+- ABCI-socket
+- GRPC
+- Golang in-process
+
+### Socket
+
+ABCI is best implemented as a streaming protocol.
+The socket implementation provides for asynchronous, ordered message passing over unix or tcp.
+Messages are serialized using Protobuf3 and length-prefixed.
+Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
+
+For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded ABCI message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
+
+### GRPC
+
+GRPC is an rpc framework native to Protocol Buffers with support in many languages.
+Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than
+the ordered, asynchronous socket protocol.
+
+Note the length-prefixing used in the socket implementation does not apply for GRPC.
+
+### In Process
+
+The simplest implementation just uses function calls within Go.
+This means ABCI applications written in Golang can be compiled with TendermintCore and run as a single binary.
+
+## Example Apps
+
+The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an ABCI application.
+See [the documentation](http://tendermint.readthedocs.io/en/master/) for more details.
+
+Multiple example apps are included:
+- the `counter` application, which illustrates nonce checking in txs
+- the `dummy` application, which illustrates a simple key-value merkle tree
+- the `dummy --persistent` application, which augments the dummy with persistence and validator set changes
+
+## Specification
 
 The [primary specification](https://github.com/tendermint/abci/blob/master/types/types.proto) is made using Protocol Buffers.
 To build it, run
@@ -42,7 +78,7 @@ Note we also include a [GRPC](http://www.grpc.io/docs) service definition.
 
 For the specification as an interface in Go, see the [types/application.go file](https://github.com/tendermint/abci/blob/master/types/application.go).
 
-## Message Types
+### Message Types
 
 ABCI requests/responses are defined as simple Protobuf messages in [this schema file](https://github.com/tendermint/abci/blob/master/types/types.proto).
 TendermintCore sends the requests, and the ABCI application sends the responses.
@@ -148,49 +184,6 @@ Here, we describe the requests and responses as function arguments and return va
   * __Usage__:<br/>
     * Echo a string to test an abci client/server implementation
 
-
 #### Flush
   * __Usage__:<br/>
     * Signals that messages queued on the client should be flushed to the server. It is called periodically by the client implementation to ensure asynchronous requests are actually sent, and is called immediately to make a synchronous request, which returns when the Flush response comes back.
-
-
-# Implementation
-
-We provide three implementations of the ABCI in Go:
-
-1. ABCI-socket
-2. GRPC
-3. Golang in-process
-
-## Socket
-
-ABCI is best implemented as a streaming protocol.
-The socket implementation provides for asynchronous, ordered message passing over unix or tcp.
-Messages are serialized using Protobuf3 and length-prefixed.
-Protobuf3 doesn't have an official length-prefix standard, so we use our own.  The first byte represents the length of the big-endian encoded length.
-
-For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), the length-prefixed message is `0x0104DEADBEEF`.  If the Protobuf3 encoded ABCI message is 65535 bytes long, the length-prefixed message would be like `0x02FFFF...`.
-
-## GRPC
-
-GRPC is an rpc framework native to Protocol Buffers with support in many languages.
-Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than
-the ordered, asynchronous socket protocol.
-
-Note the length-prefixing used in the socket implementation does not apply for GRPC.
-
-## In Process
-
-The simplest implementation just uses function calls within Go.
-This means ABCI applications written in Golang can be compiled with TendermintCore and run as a single binary.
-
-
-# Tools and Apps
-
-The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an ABCI application.
-See the [guide](https://tendermint.com/docs/guides/abci-cli) for more details.
-
-Multiple example apps are included:
-- the `counter` application, which illustrates nonce checking in txs
-- the `dummy` application, which illustrates a simple key-value merkle tree
-- the `dummy --persistent` application, which augments the dummy with persistence and validator set changes
