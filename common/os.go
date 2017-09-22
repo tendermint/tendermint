@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 )
 
@@ -101,7 +102,8 @@ func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {
 // WriteFileAtomic writes newBytes to temp and atomically moves to filePath
 // when everything else succeeds.
 func WriteFileAtomic(filePath string, newBytes []byte, mode os.FileMode) error {
-	f, err := ioutil.TempFile("", "")
+	dir := filepath.Dir(filePath)
+	f, err := ioutil.TempFile(dir, "")
 	if err != nil {
 		return err
 	}
