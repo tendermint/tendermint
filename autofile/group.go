@@ -567,8 +567,8 @@ func (gr *GroupReader) ReadLine() (string, error) {
 		bytesRead, err := gr.curReader.ReadBytes('\n')
 		if err == io.EOF {
 			// Open the next file
-			if err := gr.openFile(gr.curIndex + 1); err != nil {
-				return "", err
+			if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
+				return "", err1
 			}
 			if len(bytesRead) > 0 && bytesRead[len(bytesRead)-1] == byte('\n') {
 				return linePrefix + string(bytesRead[:len(bytesRead)-1]), nil

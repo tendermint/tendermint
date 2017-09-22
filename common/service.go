@@ -151,7 +151,7 @@ func (bs *BaseService) Reset() (bool, error) {
 		return false, nil
 	}
 	// never happens
-	return false, nil
+	return false, nil // nolint: vet
 }
 
 // Implements Service

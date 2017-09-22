@@ -45,7 +45,6 @@ metalinter_test: ensure_tools
 	   	--enable=varcheck \
 		--enable=vetshadow \
 	   	--enable=interfacer \
-	   	--enable=unparam \
 		--enable=vet \
 		./...
 

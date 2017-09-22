@@ -1,6 +1,4 @@
-// nolint: megacheck
-// nolint: varcheck
-// nolint: deadcode
+// nolint
 package query
 
 import (
