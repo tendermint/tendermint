@@ -35,6 +35,7 @@ metalinter_test: ensure_tools
 		--enable=gosimple \
 		--enable=gotype \
 	 	--enable=ineffassign \
+	   	--enable=interfacer \
 		--enable=megacheck \
 	 	--enable=misspell \
 	   	--enable=staticcheck \
@@ -44,7 +45,6 @@ metalinter_test: ensure_tools
 		--enable=unused \
 	   	--enable=varcheck \
 		--enable=vetshadow \
-	   	--enable=interfacer \
 		--enable=vet \
 		./...
 
@@ -53,6 +53,4 @@ metalinter_test: ensure_tools
 		#--enable=errcheck \
 		#--enable=gocyclo \
 		#--enable=golint \ <== comments on anything exported
-	   	#--enable=interfacer \
 	   	#--enable=unparam \
-		#--enable=vet \
