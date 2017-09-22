@@ -1,22 +1,23 @@
-package types
+package types // nolint: goimports
 
 import (
 	context "golang.org/x/net/context"
 )
 
-// Applications
+// Application is an interface that enables any finite, deterministic state machine
+// to be driven by a blockchain-based replication engine via the ABCI
 type Application interface {
 	// Info/Query Connection
-	Info() ResponseInfo                              // Return application info
+	Info(RequestInfo) ResponseInfo                   // Return application info
 	SetOption(key string, value string) (log string) // Set application option
-	Query(reqQuery RequestQuery) ResponseQuery       // Query for state
+	Query(RequestQuery) ResponseQuery                // Query for state
 
 	// Mempool Connection
 	CheckTx(tx []byte) Result // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(validators []*Validator)       // Initialize blockchain with validators from TendermintCore
-	BeginBlock(hash []byte, header *Header)  // Signals the beginning of a block
+	InitChain(RequestInitChain)              // Initialize blockchain with validators and other info from TendermintCore
+	BeginBlock(RequestBeginBlock)            // Signals the beginning of a block
 	DeliverTx(tx []byte) Result              // Deliver a tx for full processing
 	EndBlock(height uint64) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
 	Commit() Result                          // Commit the state and return the application Merkle root hash
@@ -24,7 +25,7 @@ type Application interface {
 
 //------------------------------------
 
-// GRPC wrapper for application
+// GRPCApplication is a GRPC wrapper for Application
 type GRPCApplication struct {
 	app Application
 }
@@ -42,7 +43,7 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 }
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
-	resInfo := app.app.Info()
+	resInfo := app.app.Info(*req)
 	return &resInfo, nil
 }
 
@@ -71,12 +72,12 @@ func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*Re
 }
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
-	app.app.InitChain(req.Validators)
+	app.app.InitChain(*req)
 	return &ResponseInitChain{}, nil // NOTE: empty return
 }
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
-	app.app.BeginBlock(req.Hash, req.Header)
+	app.app.BeginBlock(*req)
 	return &ResponseBeginBlock{}, nil // NOTE: empty return
 }
 

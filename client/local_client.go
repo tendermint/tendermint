@@ -49,12 +49,12 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 	)
 }
 
-func (app *localClient) InfoAsync() *ReqRes {
+func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	app.mtx.Lock()
-	resInfo := app.Application.Info()
+	resInfo := app.Application.Info(req)
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestInfo(),
+		types.ToRequestInfo(req),
 		types.ToResponseInfo(resInfo),
 	)
 }
@@ -109,23 +109,23 @@ func (app *localClient) CommitAsync() *ReqRes {
 	)
 }
 
-func (app *localClient) InitChainAsync(validators []*types.Validator) *ReqRes {
+func (app *localClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
 	app.mtx.Lock()
-	app.Application.InitChain(validators)
+	app.Application.InitChain(params)
 	reqRes := app.callback(
-		types.ToRequestInitChain(validators),
+		types.ToRequestInitChain(params),
 		types.ToResponseInitChain(),
 	)
 	app.mtx.Unlock()
 	return reqRes
 }
 
-func (app *localClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
+func (app *localClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
 	app.mtx.Lock()
-	app.Application.BeginBlock(hash, header)
+	app.Application.BeginBlock(params)
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestBeginBlock(hash, header),
+		types.ToRequestBeginBlock(params),
 		types.ToResponseBeginBlock(),
 	)
 }
@@ -150,10 +150,10 @@ func (app *localClient) EchoSync(msg string) (res types.Result) {
 	return types.OK.SetData([]byte(msg))
 }
 
-func (app *localClient) InfoSync() (resInfo types.ResponseInfo, err error) {
+func (app *localClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	resInfo = app.Application.Info()
+	resInfo = app.Application.Info(req)
 	return resInfo, nil
 }
 
@@ -192,16 +192,16 @@ func (app *localClient) CommitSync() (res types.Result) {
 	return res
 }
 
-func (app *localClient) InitChainSync(validators []*types.Validator) (err error) {
+func (app *localClient) InitChainSync(params types.RequestInitChain) (err error) {
 	app.mtx.Lock()
-	app.Application.InitChain(validators)
+	app.Application.InitChain(params)
 	app.mtx.Unlock()
 	return nil
 }
 
-func (app *localClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
+func (app *localClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
 	app.mtx.Lock()
-	app.Application.BeginBlock(hash, header)
+	app.Application.BeginBlock(params)
 	app.mtx.Unlock()
 	return nil
 }

@@ -18,4 +18,5 @@ checkout:
 test:
   override:
     - "go version"
+    - "cd $REPO && make get_vendor_deps && make metalinter_test"
     - "cd $REPO && make test_integrations"

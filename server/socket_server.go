@@ -44,7 +44,9 @@ func NewSocketServer(protoAddr string, app types.Application) cmn.Service {
 }
 
 func (s *SocketServer) OnStart() error {
-	s.BaseService.OnStart()
+	if err := s.BaseService.OnStart(); err != nil {
+		return err
+	}
 	ln, err := net.Listen(s.proto, s.addr)
 	if err != nil {
 		return err
@@ -167,7 +169,7 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Flush:
 		responses <- types.ToResponseFlush()
 	case *types.Request_Info:
-		resInfo := s.app.Info()
+		resInfo := s.app.Info(*r.Info)
 		responses <- types.ToResponseInfo(resInfo)
 	case *types.Request_SetOption:
 		so := r.SetOption
@@ -186,10 +188,10 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		resQuery := s.app.Query(*r.Query)
 		responses <- types.ToResponseQuery(resQuery)
 	case *types.Request_InitChain:
-		s.app.InitChain(r.InitChain.Validators)
+		s.app.InitChain(*r.InitChain)
 		responses <- types.ToResponseInitChain()
 	case *types.Request_BeginBlock:
-		s.app.BeginBlock(r.BeginBlock.Hash, r.BeginBlock.Header)
+		s.app.BeginBlock(*r.BeginBlock)
 		responses <- types.ToResponseBeginBlock()
 	case *types.Request_EndBlock:
 		resEndBlock := s.app.EndBlock(r.EndBlock.Height)

@@ -41,7 +41,9 @@ func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
 }
 
 func (cli *grpcClient) OnStart() error {
-	cli.BaseService.OnStart()
+	if err := cli.BaseService.OnStart(); err != nil {
+		return err
+	}
 RETRY_LOOP:
 
 	for {
@@ -113,7 +115,7 @@ func (cli *grpcClient) SetResponseCallback(resCb Callback) {
 //----------------------------------------
 // GRPC calls are synchronous, but some callbacks expect to be called asynchronously
 // (eg. the mempool expects to be able to lock to remove bad txs from cache).
-// To accomodate, we finish each call in its own go-routine,
+// To accommodate, we finish each call in its own go-routine,
 // which is expensive, but easy - if you want something better, use the socket protocol!
 // maybe one day, if people really want it, we use grpc streams,
 // but hopefully not :D
@@ -136,8 +138,8 @@ func (cli *grpcClient) FlushAsync() *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Flush{res}})
 }
 
-func (cli *grpcClient) InfoAsync() *ReqRes {
-	req := types.ToRequestInfo()
+func (cli *grpcClient) InfoAsync(params types.RequestInfo) *ReqRes {
+	req := types.ToRequestInfo(params)
 	res, err := cli.client.Info(context.Background(), req.GetInfo(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -172,8 +174,8 @@ func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckTx{res}})
 }
 
-func (cli *grpcClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
-	req := types.ToRequestQuery(reqQuery)
+func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
+	req := types.ToRequestQuery(params)
 	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -190,8 +192,8 @@ func (cli *grpcClient) CommitAsync() *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Commit{res}})
 }
 
-func (cli *grpcClient) InitChainAsync(validators []*types.Validator) *ReqRes {
-	req := types.ToRequestInitChain(validators)
+func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
+	req := types.ToRequestInitChain(params)
 	res, err := cli.client.InitChain(context.Background(), req.GetInitChain(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -199,8 +201,8 @@ func (cli *grpcClient) InitChainAsync(validators []*types.Validator) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_InitChain{res}})
 }
 
-func (cli *grpcClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
-	req := types.ToRequestBeginBlock(hash, header)
+func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
+	req := types.ToRequestBeginBlock(params)
 	res, err := cli.client.BeginBlock(context.Background(), req.GetBeginBlock(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -261,8 +263,8 @@ func (cli *grpcClient) FlushSync() error {
 	return nil
 }
 
-func (cli *grpcClient) InfoSync() (resInfo types.ResponseInfo, err error) {
-	reqres := cli.InfoAsync()
+func (cli *grpcClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
+	reqres := cli.InfoAsync(req)
 	if err = cli.Error(); err != nil {
 		return resInfo, err
 	}
@@ -319,13 +321,13 @@ func (cli *grpcClient) CommitSync() (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *grpcClient) InitChainSync(validators []*types.Validator) (err error) {
-	cli.InitChainAsync(validators)
+func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (err error) {
+	cli.InitChainAsync(params)
 	return cli.Error()
 }
 
-func (cli *grpcClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
-	cli.BeginBlockAsync(hash, header)
+func (cli *grpcClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
+	cli.BeginBlockAsync(params)
 	return cli.Error()
 }
 

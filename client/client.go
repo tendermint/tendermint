@@ -16,28 +16,28 @@ type Client interface {
 
 	FlushAsync() *ReqRes
 	EchoAsync(msg string) *ReqRes
-	InfoAsync() *ReqRes
+	InfoAsync(types.RequestInfo) *ReqRes
 	SetOptionAsync(key string, value string) *ReqRes
 	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
-	QueryAsync(reqQuery types.RequestQuery) *ReqRes
+	QueryAsync(types.RequestQuery) *ReqRes
 	CommitAsync() *ReqRes
 
 	FlushSync() error
 	EchoSync(msg string) (res types.Result)
-	InfoSync() (resInfo types.ResponseInfo, err error)
+	InfoSync(types.RequestInfo) (resInfo types.ResponseInfo, err error)
 	SetOptionSync(key string, value string) (res types.Result)
 	DeliverTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)
-	QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error)
+	QuerySync(types.RequestQuery) (resQuery types.ResponseQuery, err error)
 	CommitSync() (res types.Result)
 
-	InitChainAsync(validators []*types.Validator) *ReqRes
-	BeginBlockAsync(hash []byte, header *types.Header) *ReqRes
+	InitChainAsync(types.RequestInitChain) *ReqRes
+	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
 	EndBlockAsync(height uint64) *ReqRes
 
-	InitChainSync(validators []*types.Validator) (err error)
-	BeginBlockSync(hash []byte, header *types.Header) (err error)
+	InitChainSync(types.RequestInitChain) (err error)
+	BeginBlockSync(types.RequestBeginBlock) (err error)
 	EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error)
 }
 

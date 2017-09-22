@@ -19,9 +19,9 @@ func ToRequestFlush() *Request {
 	}
 }
 
-func ToRequestInfo() *Request {
+func ToRequestInfo(req RequestInfo) *Request {
 	return &Request{
-		Value: &Request_Info{&RequestInfo{}},
+		Value: &Request_Info{&req},
 	}
 }
 
@@ -49,21 +49,21 @@ func ToRequestCommit() *Request {
 	}
 }
 
-func ToRequestQuery(reqQuery RequestQuery) *Request {
+func ToRequestQuery(req RequestQuery) *Request {
 	return &Request{
-		Value: &Request_Query{&reqQuery},
+		Value: &Request_Query{&req},
 	}
 }
 
-func ToRequestInitChain(validators []*Validator) *Request {
+func ToRequestInitChain(req RequestInitChain) *Request {
 	return &Request{
-		Value: &Request_InitChain{&RequestInitChain{validators}},
+		Value: &Request_InitChain{&req},
 	}
 }
 
-func ToRequestBeginBlock(hash []byte, header *Header) *Request {
+func ToRequestBeginBlock(req RequestBeginBlock) *Request {
 	return &Request{
-		Value: &Request_BeginBlock{&RequestBeginBlock{hash, header}},
+		Value: &Request_BeginBlock{&req},
 	}
 }
 

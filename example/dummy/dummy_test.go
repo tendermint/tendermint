@@ -80,7 +80,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 	dummy := NewPersistentDummyApplication(dir)
 	height := uint64(0)
 
-	resInfo := dummy.Info()
+	resInfo := dummy.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -91,11 +91,11 @@ func TestPersistentDummyInfo(t *testing.T) {
 	header := &types.Header{
 		Height: uint64(height),
 	}
-	dummy.BeginBlock(hash, header)
+	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
 	dummy.EndBlock(height)
 	dummy.Commit()
 
-	resInfo = dummy.Info()
+	resInfo = dummy.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -120,7 +120,7 @@ func TestValSetChanges(t *testing.T) {
 		vals[i] = &types.Validator{pubkey, uint64(power)}
 	}
 	// iniitalize with the first nInit
-	dummy.InitChain(vals[:nInit])
+	dummy.InitChain(types.RequestInitChain{vals[:nInit]})
 
 	vals1, vals2 := vals[:nInit], dummy.Validators()
 	valsEqual(t, vals1, vals2)
@@ -166,7 +166,7 @@ func TestValSetChanges(t *testing.T) {
 
 	makeApplyBlock(t, dummy, 3, diff, tx1)
 
-	vals1 = append([]*types.Validator{v1}, vals1[1:len(vals1)]...)
+	vals1 = append([]*types.Validator{v1}, vals1[1:]...)
 	vals2 = dummy.Validators()
 	valsEqual(t, vals1, vals2)
 
@@ -180,7 +180,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 		Height: height,
 	}
 
-	dummy.BeginBlock(hash, header)
+	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
 	for _, tx := range txs {
 		if r := dummy.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)

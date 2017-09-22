@@ -7,7 +7,7 @@ func NewBaseApplication() *BaseApplication {
 	return &BaseApplication{}
 }
 
-func (app *BaseApplication) Info() (resInfo ResponseInfo) {
+func (app *BaseApplication) Info(req RequestInfo) (resInfo ResponseInfo) {
 	return
 }
 
@@ -27,14 +27,14 @@ func (app *BaseApplication) Commit() Result {
 	return NewResultOK([]byte("nil"), "")
 }
 
-func (app *BaseApplication) Query(reqQuery RequestQuery) (resQuery ResponseQuery) {
+func (app *BaseApplication) Query(req RequestQuery) (resQuery ResponseQuery) {
 	return
 }
 
-func (app *BaseApplication) InitChain(validators []*Validator) {
+func (app *BaseApplication) InitChain(req RequestInitChain) {
 }
 
-func (app *BaseApplication) BeginBlock(hash []byte, header *Header) {
+func (app *BaseApplication) BeginBlock(req RequestBeginBlock) {
 }
 
 func (app *BaseApplication) EndBlock(height uint64) (resEndBlock ResponseEndBlock) {

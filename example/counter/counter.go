@@ -19,7 +19,7 @@ func NewCounterApplication(serial bool) *CounterApplication {
 	return &CounterApplication{serial: serial}
 }
 
-func (app *CounterApplication) Info() types.ResponseInfo {
+func (app *CounterApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{Data: cmn.Fmt("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 

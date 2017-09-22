@@ -19,9 +19,9 @@ const (
 	LOG = ""
 )
 
-const reqQueueSize = 256        // TODO make configurable
-const maxResponseSize = 1048576 // 1MB TODO make configurable
-const flushThrottleMS = 20      // Don't wait longer than...
+const reqQueueSize = 256 // TODO make configurable
+// const maxResponseSize = 1048576 // 1MB TODO make configurable
+const flushThrottleMS = 20 // Don't wait longer than...
 
 // This is goroutine-safe, but users should beware that
 // the application in general is not meant to be interfaced
@@ -57,7 +57,9 @@ func NewSocketClient(addr string, mustConnect bool) *socketClient {
 }
 
 func (cli *socketClient) OnStart() error {
-	cli.BaseService.OnStart()
+	if err := cli.BaseService.OnStart(); err != nil {
+		return err
+	}
 
 	var err error
 	var conn net.Conn
@@ -231,8 +233,8 @@ func (cli *socketClient) FlushAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestFlush())
 }
 
-func (cli *socketClient) InfoAsync() *ReqRes {
-	return cli.queueRequest(types.ToRequestInfo())
+func (cli *socketClient) InfoAsync(req types.RequestInfo) *ReqRes {
+	return cli.queueRequest(types.ToRequestInfo(req))
 }
 
 func (cli *socketClient) SetOptionAsync(key string, value string) *ReqRes {
@@ -255,12 +257,12 @@ func (cli *socketClient) CommitAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestCommit())
 }
 
-func (cli *socketClient) InitChainAsync(validators []*types.Validator) *ReqRes {
-	return cli.queueRequest(types.ToRequestInitChain(validators))
+func (cli *socketClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
+	return cli.queueRequest(types.ToRequestInitChain(params))
 }
 
-func (cli *socketClient) BeginBlockAsync(hash []byte, header *types.Header) *ReqRes {
-	return cli.queueRequest(types.ToRequestBeginBlock(hash, header))
+func (cli *socketClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
+	return cli.queueRequest(types.ToRequestBeginBlock(params))
 }
 
 func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
@@ -288,8 +290,8 @@ func (cli *socketClient) FlushSync() error {
 	return cli.Error()
 }
 
-func (cli *socketClient) InfoSync() (resInfo types.ResponseInfo, err error) {
-	reqres := cli.queueRequest(types.ToRequestInfo())
+func (cli *socketClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
+	reqres := cli.queueRequest(types.ToRequestInfo(req))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return resInfo, err
@@ -352,22 +354,16 @@ func (cli *socketClient) CommitSync() (res types.Result) {
 	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
 }
 
-func (cli *socketClient) InitChainSync(validators []*types.Validator) (err error) {
-	cli.queueRequest(types.ToRequestInitChain(validators))
+func (cli *socketClient) InitChainSync(params types.RequestInitChain) (err error) {
+	cli.queueRequest(types.ToRequestInitChain(params))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return err
-	}
-	return nil
+	return cli.Error()
 }
 
-func (cli *socketClient) BeginBlockSync(hash []byte, header *types.Header) (err error) {
-	cli.queueRequest(types.ToRequestBeginBlock(hash, header))
+func (cli *socketClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
+	cli.queueRequest(types.ToRequestBeginBlock(params))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return err
-	}
-	return nil
+	return cli.Error()
 }
 
 func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {

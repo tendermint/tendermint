@@ -37,7 +37,7 @@ func TestChainAware(t *testing.T) {
 	hash := []byte("fake block hash")
 	header := &types.Header{}
 	for i := uint64(0); i < n; i++ {
-		client.BeginBlockSync(hash, header)
+		client.BeginBlockSync(types.RequestBeginBlock{hash, header})
 		client.EndBlockSync(i)
 		client.CommitSync()
 	}

@@ -55,8 +55,8 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
 
-func (app *PersistentDummyApplication) Info() (resInfo types.ResponseInfo) {
-	resInfo = app.app.Info()
+func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+	resInfo = app.app.Info(req)
 	lastBlock := LoadLastBlock(app.db)
 	resInfo.LastBlockHeight = lastBlock.Height
 	resInfo.LastBlockAppHash = lastBlock.AppHash
@@ -106,8 +106,8 @@ func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.
 }
 
 // Save the validators in the merkle tree
-func (app *PersistentDummyApplication) InitChain(validators []*types.Validator) {
-	for _, v := range validators {
+func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
+	for _, v := range params.Validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
 			app.logger.Error("Error updating validators", "r", r)
@@ -116,9 +116,9 @@ func (app *PersistentDummyApplication) InitChain(validators []*types.Validator) 
 }
 
 // Track the block hash and header information
-func (app *PersistentDummyApplication) BeginBlock(hash []byte, header *types.Header) {
+func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
 	// update latest block info
-	app.blockHeader = header
+	app.blockHeader = params.Header
 
 	// reset valset changes
 	app.changes = make([]*types.Validator, 0)
@@ -187,10 +187,7 @@ func MakeValSetChangeTx(pubkey []byte, power uint64) []byte {
 }
 
 func isValidatorTx(tx []byte) bool {
-	if strings.HasPrefix(string(tx), ValidatorSetChangePrefix) {
-		return true
-	}
-	return false
+	return strings.HasPrefix(string(tx), ValidatorSetChangePrefix)
 }
 
 // format is "val:pubkey1/power1,addr2/power2,addr3/power3"tx
@@ -232,7 +229,7 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 		app.app.state.Set(key, value.Bytes())
 	}
 
-	// we only update the changes array if we succesfully updated the tree
+	// we only update the changes array if we successfully updated the tree
 	app.changes = append(app.changes, v)
 
 	return types.OK
