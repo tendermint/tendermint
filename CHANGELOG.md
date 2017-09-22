@@ -28,7 +28,7 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.11.0 (Date)
+## 0.11.0 (September 22, 2017)
 
 BREAKING:
  - state: every validator set change is persisted to disk, which required some changes to the `State` structure.
@@ -38,6 +38,7 @@ BREAKING:
  - rpc: various changes to match JSONRPC spec (http://www.jsonrpc.org/specification), including breaking ones:
     - requests that previously returned HTTP code 4XX now return 200 with an error code in the JSONRPC.
     - `rpctypes.RPCResponse` uses new `RPCError` type instead of `string`.
+ - abci: Info, BeginBlock, InitChain all take structs
 
 FEATURES:
  - rpc: `/validators?height=X` allows querying of validators at previous heights.
