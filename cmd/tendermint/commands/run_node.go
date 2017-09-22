@@ -5,10 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 )
 
 // AddNodeFlags exposes some common configuration options on the command-line
@@ -39,27 +36,15 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 }
 
-// FuncSignerAndApp takes a config and returns a PrivValidator and ClientCreator.
-// It allows other projects to make Tendermint binaries with custom signers and applications.
-type FuncSignerAndApp func(*cfg.Config) (types.PrivValidator, proxy.ClientCreator)
-
-// DefaultSignerAndApp is a default FuncSignerAndApp that returns a PrivValidatorFS
-// and a DefaultClientCreator using the relevant fields from the config.
-func DefaultSignerAndApp(config *cfg.Config) (types.PrivValidator, proxy.ClientCreator) {
-	privValidator := types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
-	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	return privValidator, clientCreator
-}
-
 // NewRunNodeCmd returns the command that allows the CLI to start a
 // node. It can be used with a custom PrivValidator and in-process ABCI application.
-func NewRunNodeCmd(nodeFunc nm.NodeProvider) *cobra.Command {
+func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
 		Short: "Run the tendermint node",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Create & start node
-			n, err := nodeFunc(config, logger)
+			n, err := nodeProvider(config, logger)
 			if err != nil {
 				return fmt.Errorf("Failed to create node: %v", err)
 			}

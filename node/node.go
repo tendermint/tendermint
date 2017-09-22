@@ -113,7 +113,7 @@ type Node struct {
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
 	clientCreator proxy.ClientCreator,
-	genDocProvider GenesisDocProvider,
+	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
 	logger log.Logger) (*Node, error) {
 
@@ -134,7 +134,7 @@ func NewNode(config *cfg.Config,
 	}
 	state := sm.LoadState(stateDB)
 	if state == nil {
-		genDoc, err := genDocProvider()
+		genDoc, err := genesisDocProvider()
 		if err != nil {
 			return nil, err
 		}

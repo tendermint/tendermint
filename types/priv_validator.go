@@ -258,7 +258,7 @@ func (privVal *PrivValidatorFS) signBytesHRS(height, round int, step int8, signB
 	}
 
 	// Sign
-	sig, err := privVal.Signer.Sign(signBytes)
+	sig, err := privVal.Sign(signBytes)
 	if err != nil {
 		return sig, err
 	}
@@ -280,7 +280,7 @@ func (privVal *PrivValidatorFS) SignHeartbeat(chainID string, heartbeat *Heartbe
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	var err error
-	heartbeat.Signature, err = privVal.Signer.Sign(SignBytes(chainID, heartbeat))
+	heartbeat.Signature, err = privVal.Sign(SignBytes(chainID, heartbeat))
 	return err
 }
 

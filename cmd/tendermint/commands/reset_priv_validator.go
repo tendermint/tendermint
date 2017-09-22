@@ -27,7 +27,7 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // ResetAll removes the privValidator files.
 // Exported so other CLI tools can use  it
 func ResetAll(dbDir, privValFile string, logger log.Logger) {
-	resetPrivValidatorLocal(privValFile, logger)
+	resetPrivValidatorFS(privValFile, logger)
 	os.RemoveAll(dbDir)
 	logger.Info("Removed all data", "dir", dbDir)
 }
@@ -41,10 +41,10 @@ func resetAll(cmd *cobra.Command, args []string) {
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
-	resetPrivValidatorLocal(config.PrivValidatorFile(), logger)
+	resetPrivValidatorFS(config.PrivValidatorFile(), logger)
 }
 
-func resetPrivValidatorLocal(privValFile string, logger log.Logger) {
+func resetPrivValidatorFS(privValFile string, logger log.Logger) {
 	// Get PrivValidator
 	if _, err := os.Stat(privValFile); err == nil {
 		privValidator := types.LoadPrivValidatorFS(privValFile)
