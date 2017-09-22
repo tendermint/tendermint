@@ -73,6 +73,7 @@ message RequestFlush {
 }
 
 message RequestInfo {
+    string version = 1;
 }
 
 message RequestSetOption{

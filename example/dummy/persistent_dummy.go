@@ -55,8 +55,8 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
 
-func (app *PersistentDummyApplication) Info() (resInfo types.ResponseInfo) {
-	resInfo = app.app.Info()
+func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+	resInfo = app.app.Info(req)
 	lastBlock := LoadLastBlock(app.db)
 	resInfo.LastBlockHeight = lastBlock.Height
 	resInfo.LastBlockAppHash = lastBlock.AppHash

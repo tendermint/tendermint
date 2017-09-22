@@ -138,8 +138,8 @@ func (cli *grpcClient) FlushAsync() *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_Flush{res}})
 }
 
-func (cli *grpcClient) InfoAsync() *ReqRes {
-	req := types.ToRequestInfo()
+func (cli *grpcClient) InfoAsync(params types.RequestInfo) *ReqRes {
+	req := types.ToRequestInfo(params)
 	res, err := cli.client.Info(context.Background(), req.GetInfo(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -174,8 +174,8 @@ func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckTx{res}})
 }
 
-func (cli *grpcClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
-	req := types.ToRequestQuery(reqQuery)
+func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
+	req := types.ToRequestQuery(params)
 	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.FailFast(true))
 	if err != nil {
 		cli.StopForError(err)
@@ -263,8 +263,8 @@ func (cli *grpcClient) FlushSync() error {
 	return nil
 }
 
-func (cli *grpcClient) InfoSync() (resInfo types.ResponseInfo, err error) {
-	reqres := cli.InfoAsync()
+func (cli *grpcClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
+	reqres := cli.InfoAsync(req)
 	if err = cli.Error(); err != nil {
 		return resInfo, err
 	}

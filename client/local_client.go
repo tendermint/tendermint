@@ -49,12 +49,12 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 	)
 }
 
-func (app *localClient) InfoAsync() *ReqRes {
+func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	app.mtx.Lock()
-	resInfo := app.Application.Info()
+	resInfo := app.Application.Info(req)
 	app.mtx.Unlock()
 	return app.callback(
-		types.ToRequestInfo(),
+		types.ToRequestInfo(req),
 		types.ToResponseInfo(resInfo),
 	)
 }
@@ -150,10 +150,10 @@ func (app *localClient) EchoSync(msg string) (res types.Result) {
 	return types.OK.SetData([]byte(msg))
 }
 
-func (app *localClient) InfoSync() (resInfo types.ResponseInfo, err error) {
+func (app *localClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
 	app.mtx.Lock()
 	defer app.mtx.Unlock()
-	resInfo = app.Application.Info()
+	resInfo = app.Application.Info(req)
 	return resInfo, nil
 }
 

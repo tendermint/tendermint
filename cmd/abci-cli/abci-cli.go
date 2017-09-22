@@ -250,7 +250,12 @@ func cmdEcho(c *cli.Context) error {
 
 // Get some info from the application
 func cmdInfo(c *cli.Context) error {
-	resInfo, err := client.InfoSync()
+	args := c.Args()
+	var version string
+	if len(args) == 1 {
+		version = args[0]
+	}
+	resInfo, err := client.InfoSync(types.RequestInfo{version})
 	if err != nil {
 		return err
 	}

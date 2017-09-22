@@ -8,7 +8,7 @@ import (
 // to be driven by a blockchain-based replication engine via the ABCI
 type Application interface {
 	// Info/Query Connection
-	Info() ResponseInfo                              // Return application info
+	Info(RequestInfo) ResponseInfo                   // Return application info
 	SetOption(key string, value string) (log string) // Set application option
 	Query(RequestQuery) ResponseQuery                // Query for state
 
@@ -43,7 +43,7 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 }
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
-	resInfo := app.app.Info()
+	resInfo := app.app.Info(*req)
 	return &resInfo, nil
 }
 

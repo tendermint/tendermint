@@ -233,8 +233,8 @@ func (cli *socketClient) FlushAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestFlush())
 }
 
-func (cli *socketClient) InfoAsync() *ReqRes {
-	return cli.queueRequest(types.ToRequestInfo())
+func (cli *socketClient) InfoAsync(req types.RequestInfo) *ReqRes {
+	return cli.queueRequest(types.ToRequestInfo(req))
 }
 
 func (cli *socketClient) SetOptionAsync(key string, value string) *ReqRes {
@@ -290,8 +290,8 @@ func (cli *socketClient) FlushSync() error {
 	return cli.Error()
 }
 
-func (cli *socketClient) InfoSync() (resInfo types.ResponseInfo, err error) {
-	reqres := cli.queueRequest(types.ToRequestInfo())
+func (cli *socketClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
+	reqres := cli.queueRequest(types.ToRequestInfo(req))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
 		return resInfo, err

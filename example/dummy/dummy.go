@@ -20,7 +20,7 @@ func NewDummyApplication() *DummyApplication {
 	return &DummyApplication{state: state}
 }
 
-func (app *DummyApplication) Info() (resInfo types.ResponseInfo) {
+func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
 }
 

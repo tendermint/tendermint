@@ -169,7 +169,7 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Flush:
 		responses <- types.ToResponseFlush()
 	case *types.Request_Info:
-		resInfo := s.app.Info()
+		resInfo := s.app.Info(*r.Info)
 		responses <- types.ToResponseInfo(resInfo)
 	case *types.Request_SetOption:
 		so := r.SetOption

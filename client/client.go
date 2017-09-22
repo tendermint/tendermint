@@ -16,7 +16,7 @@ type Client interface {
 
 	FlushAsync() *ReqRes
 	EchoAsync(msg string) *ReqRes
-	InfoAsync() *ReqRes
+	InfoAsync(types.RequestInfo) *ReqRes
 	SetOptionAsync(key string, value string) *ReqRes
 	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
@@ -25,7 +25,7 @@ type Client interface {
 
 	FlushSync() error
 	EchoSync(msg string) (res types.Result)
-	InfoSync() (resInfo types.ResponseInfo, err error)
+	InfoSync(types.RequestInfo) (resInfo types.ResponseInfo, err error)
 	SetOptionSync(key string, value string) (res types.Result)
 	DeliverTxSync(tx []byte) (res types.Result)
 	CheckTxSync(tx []byte) (res types.Result)

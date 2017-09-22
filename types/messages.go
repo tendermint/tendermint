@@ -19,9 +19,9 @@ func ToRequestFlush() *Request {
 	}
 }
 
-func ToRequestInfo() *Request {
+func ToRequestInfo(req RequestInfo) *Request {
 	return &Request{
-		Value: &Request_Info{&RequestInfo{}},
+		Value: &Request_Info{&req},
 	}
 }
 
