@@ -33,12 +33,6 @@ test: install
 fmt:
 	@ go fmt ./...
 
-lint:
-	@ go get -u github.com/golang/lint/golint
-	@ for file in $$(find "." -name '*.go' | grep -v '/vendor/' | grep -v '\.pb\.go'); do \
-		golint -set_exit_status $${file}; \
-		done;
-
 test_integrations: get_vendor_deps install test
 
 get_deps:
@@ -85,4 +79,4 @@ metalinter_test: tools
 	   	#--enable=unparam \
 		#--enable=vet \
 
-.PHONY: all build test fmt lint get_deps tools
+.PHONY: all build test fmt get_deps tools
