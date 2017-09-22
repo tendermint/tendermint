@@ -100,8 +100,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		err := g.WriteLine(RandStr(999))
-		if err != nil {
+		if err := g.WriteLine(RandStr(999)); err != nil {
 			t.Fatal("Error appending to head", err)
 		}
 	}

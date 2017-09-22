@@ -1,12 +1,14 @@
+// nolint: goimports
 package autofile
 
 import (
-	. "github.com/tendermint/tmlibs/common"
 	"os"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
+
+	. "github.com/tendermint/tmlibs/common"
 )
 
 func TestSIGHUP(t *testing.T) {

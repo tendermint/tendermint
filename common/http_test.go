@@ -95,7 +95,7 @@ func TestWriteCode(t *testing.T) {
 		common.WriteCode(w, &marshalFailer{}, code)
 		wantCode := http.StatusBadRequest
 		assert.Equal(t, w.Code, wantCode, "#%d", i)
-		assert.True(t, strings.Contains(string(w.Body.Bytes()), errFooFailed.Error()),
+		assert.True(t, strings.Contains(w.Body.String(), errFooFailed.Error()),
 			"#%d: expected %q in the error message", i, errFooFailed)
 	}
 }
