@@ -129,14 +129,14 @@ func LoadPrivValidatorFS(filePath string) *PrivValidatorFS {
 // LoadOrGenPrivValidatorFS loads a PrivValidatorFS from the given filePath
 // or else generates a new one and saves it to the filePath.
 func LoadOrGenPrivValidatorFS(filePath string) *PrivValidatorFS {
-	var PrivValidatorFS *PrivValidatorFS
+	var privVal *PrivValidatorFS
 	if _, err := os.Stat(filePath); err == nil {
-		PrivValidatorFS = LoadPrivValidatorFS(filePath)
+		privVal = LoadPrivValidatorFS(filePath)
 	} else {
-		PrivValidatorFS = GenPrivValidatorFS(filePath)
-		PrivValidatorFS.Save()
+		privVal = GenPrivValidatorFS(filePath)
+		privVal.Save()
 	}
-	return PrivValidatorFS
+	return privVal
 }
 
 // LoadPrivValidatorWithSigner loads a PrivValidatorFS with a custom
