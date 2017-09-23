@@ -146,6 +146,10 @@ func NewNode(config *cfg.Config,
 	}
 
 	state.SetLogger(stateLogger)
+	genesisDoc, err := state.GenesisDoc()
+	if err != nil {
+		return nil, err
+	}
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
@@ -286,7 +290,7 @@ func NewNode(config *cfg.Config,
 
 	node := &Node{
 		config:        config,
-		genesisDoc:    state.GenesisDoc,
+		genesisDoc:    genesisDoc,
 		privValidator: privValidator,
 
 		privKey:  privKey,
@@ -485,11 +489,15 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
+	chainID, err := n.consensusState.GetState().ChainID()
+	if err != nil {
+		cmn.PanicSanity(cmn.Fmt("failed ot get chainID: %v", err))
+	}
 
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker: n.config.Moniker,
-		Network: n.consensusState.GetState().ChainID,
+		Network: chainID,
 		Version: version.Version,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),

@@ -242,8 +242,14 @@ FOR_LOOP:
 				// NOTE: we can probably make this more efficient, but note that calling
 				// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 				// currently necessary.
-				err := bcR.state.Validators.VerifyCommit(
-					bcR.state.ChainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
+				chainID, err := bcR.state.ChainID()
+				if err != nil {
+					bcR.Logger.Info("error in retrieving chainID", "err", err)
+					bcR.pool.RedoRequest(first.Height)
+					break SYNC_LOOP
+				}
+				err = bcR.state.Validators.VerifyCommit(
+					chainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
 				if err != nil {
 					bcR.Logger.Error("Error in validation", "err", err)
 					bcR.pool.RedoRequest(first.Height)

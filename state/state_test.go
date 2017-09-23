@@ -2,16 +2,21 @@ package state
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
+
+	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -127,7 +132,9 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	// each valset is just one validator.
 	// create list of them
 	pubkeys := make([]crypto.PubKey, N+1)
-	pubkeys[0] = state.GenesisDoc.Validators[0].PubKey
+	genDoc, err := state.GenesisDoc()
+	assert.Nil(err, "want successful genDoc retrieval")
+	pubkeys[0] = genDoc.Validators[0].PubKey
 	for i := 1; i < N+1; i++ {
 		pubkeys[i] = crypto.GenPrivKeyEd25519().PubKey()
 	}
@@ -198,4 +205,105 @@ func makeHeaderPartsResponses(state *State, height int,
 type valChangeTestCase struct {
 	height int
 	vals   crypto.PubKey
+}
+
+var (
+	aPrivKey       = crypto.GenPrivKeyEd25519()
+	_1stGenesisDoc = &types.GenesisDoc{
+		GenesisTime: time.Now().Add(-60 * time.Minute).Round(time.Second),
+		ChainID:     "tendermint_state_test",
+		AppHash:     data.Bytes{},
+		ConsensusParams: &types.ConsensusParams{
+			BlockSizeParams: types.BlockSizeParams{
+				MaxBytes: 100,
+				MaxGas:   2000,
+				MaxTxs:   56,
+			},
+
+			BlockGossipParams: types.BlockGossipParams{
+				BlockPartSizeBytes: 65336,
+			},
+		},
+		Validators: []types.GenesisValidator{
+			{PubKey: aPrivKey.PubKey(), Power: 10000, Name: "TendermintFoo"},
+		},
+	}
+	_2ndGenesisDoc = func() *types.GenesisDoc {
+		copy := new(types.GenesisDoc)
+		*copy = *_1stGenesisDoc
+		copy.GenesisTime = time.Now().Round(time.Second)
+		return copy
+	}()
+)
+
+// See Issue https://github.com/tendermint/tendermint/issues/671.
+func TestGenesisDocAndChainIDAccessorsAndSetter(t *testing.T) {
+	tearDown, dbm, state := setupTestCase(t)
+	defer tearDown(t)
+	require := require.New(t)
+
+	// Fire up the initial genesisDoc
+	_, err := state.GenesisDoc()
+	require.Nil(err, "expecting no error on first load of genesisDoc")
+
+	// By contract, state doesn't expose the dbm, however we need to change
+	// it to test out that the respective chainID and genesisDoc will be changed
+	state.cachedGenesisDoc = nil
+	_1stBlob, err := json.Marshal(_1stGenesisDoc)
+	require.Nil(err, "expecting no error serializing _1stGenesisDoc")
+	dbm.Set(genesisDBKey, _1stBlob)
+
+	retrGenDoc, err := state.GenesisDoc()
+	require.Nil(err, "unexpected error")
+	require.Equal(retrGenDoc, _1stGenesisDoc, "expecting the newly set-in-Db genesis doc")
+	chainID, err := state.ChainID()
+	require.Nil(err, "unexpected error")
+	require.Equal(chainID, _1stGenesisDoc.ChainID, "expecting the chainIDs to be equal")
+
+	require.NotNil(state.cachedGenesisDoc, "after retrieval expecting a non-nil cachedGenesisDoc")
+	// Save should not discard the previous cachedGenesisDoc
+	// which was the point of filing https://github.com/tendermint/tendermint/issues/671.
+	state.Save()
+	require.NotNil(state.cachedGenesisDoc, "even after flush with .Save(), expecting a non-nil cachedGenesisDoc")
+
+	// Now change up the data but ensure
+	// that a Save discards the old validator
+	_2ndBlob, err := json.Marshal(_2ndGenesisDoc)
+	require.Nil(err, "unexpected error")
+	dbm.Set(genesisDBKey, _2ndBlob)
+
+	refreshGenDoc, err := state.GenesisDoc()
+	require.Nil(err, "unexpected error")
+	require.Equal(refreshGenDoc, _1stGenesisDoc, "despite setting the new genesisDoc in DB, it shouldn't affect the one in state")
+	state.SetGenesisDoc(_2ndGenesisDoc)
+
+	refreshGenDoc, err = state.GenesisDoc()
+	require.Nil(err, "unexpected error")
+	require.Equal(refreshGenDoc, _2ndGenesisDoc, "expecting the newly set-in-Db genesis doc to have been reloaded after a .Save()")
+
+	// Test that .Save() should never overwrite the currently set content in the DB
+	dbm.Set(genesisDBKey, _1stBlob)
+	state.Save()
+	require.Equal(dbm.Get(genesisDBKey), _1stBlob, ".Save() should NEVER serialize back the current genesisDoc")
+
+	// ChainID on a nil cachedGenesisDoc should do a DB fetch
+	state.SetGenesisDoc(nil)
+	dbm.Set(genesisDBKey, _2ndBlob)
+	chainID, err = state.ChainID()
+	require.Nil(err, "unexpected error")
+	require.Equal(chainID, _2ndGenesisDoc.ChainID, "expecting the 2ndGenesisDoc.ChainID")
+
+	// Now test what happens if we cannot find the genesis doc in the DB
+	// Checkpoint and discard
+	state.Save()
+	dbm.Set(genesisDBKey, nil)
+	state.SetGenesisDoc(nil)
+	gotGenDoc, err := state.GenesisDoc()
+	require.NotNil(err, "could not parse out a genesisDoc from the DB")
+	require.Nil(gotGenDoc, "since we couldn't parse the genesis doc, expecting a nil genesis doc")
+
+	dbm.Set(genesisDBKey, []byte(`{}`))
+	gotGenDoc, err = state.GenesisDoc()
+	require.NotNil(err, "despite {}, that's not a valid serialization for a genesisDoc")
+	require.Nil(gotGenDoc, "since we couldn't parse the genesis doc, expecting a nil genesis doc")
 }
