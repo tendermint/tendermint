@@ -63,9 +63,13 @@ Passwerk
 
 Encrypted storage web-utility backed by Tendermint, written in Go, `authored by Rigel Rozanski <https://github.com/rigelrozanski/passwerk>`__.
 
+Py-Tendermint
+^^^^^^^^^^^^^
+
+A Python microframework for building blockchain applications with Tendermint, written in Python, `authored by Dave Bryson <https://github.com/davebryson/py-tendermint>`__.
+
 ABCI Servers
 ------------
-
 
 +-------------------------------------------------------------+--------------------+--------------+
 | **Name**                                                    | **Author**         | **Language** |       
@@ -75,7 +79,9 @@ ABCI Servers
 +-------------------------------------------------------------+--------------------+--------------+
 | `js abci <https://github.com/tendermint/js-abci>`__         | Tendermint         | Javascript   |                       
 +-------------------------------------------------------------+--------------------+--------------+
-| `cpp-tmsp <https://github.com/mdyring/cpp-tmsp>`__          | Martin Dyring      | C++          |
+| `cpp-tmsp <https://github.com/block-finance/cpp-abci>`__    | Martin Dyring      | C++          |
++-------------------------------------------------------------+--------------------+--------------+
+| `c-abci` <https://github.com/chainx-org/c-abci>`__          | ChainX             | C            |
 +-------------------------------------------------------------+--------------------+--------------+
 | `jabci <https://github.com/jTendermint/jabci>`__            | jTendermint        | Java         |
 +-------------------------------------------------------------+--------------------+--------------+
@@ -86,6 +92,10 @@ ABCI Servers
 | `abci_server <https://github.com/KrzysiekJ/abci_server>`__  | Krzysztof Jurewicz | Erlang       |
 +-------------------------------------------------------------+--------------------+--------------+
 | `abci_server <https://github.com/tendermint/rust-tsp>`__    | Adrian Brink       | Rust         |
++-------------------------------------------------------------+--------------------+--------------+
+| `hs-abci <https://github.com/albertov/hs-abci>`__           | Alberto Gonzalez   | Haskell      |
++-------------------------------------------------------------+--------------------+--------------+
+| `haskell-abci <https://github.com/cwgoes/haskell-abci>`__   | Christoper Goes    | Haskell      |
 +-------------------------------------------------------------+--------------------+--------------+
 
 Deployment Tools
