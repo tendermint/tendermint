@@ -13,7 +13,7 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
 
-Branch    | Tests | Coverage 
+Branch    | Tests | Coverage
 ----------|-------|----------
 master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/master/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
 develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/develop.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/develop) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/develop/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
@@ -56,6 +56,7 @@ All resources involving the use of, building application on, or developing for, 
 
 * [Ethermint](http://github.com/tendermint/ethermint); Ethereum on Tendermint
 * [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
+* [Passchain](http://github.com/trusch/passchain); a secret sharing system for teams
 
 ### More
 
