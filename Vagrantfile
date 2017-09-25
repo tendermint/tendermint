@@ -17,11 +17,11 @@ Vagrant.configure("2") do |config|
     usermod -a -G docker vagrant
     apt-get autoremove -y
 
-    curl -O https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz
-    tar -xvf go1.8.linux-amd64.tar.gz
+    curl -O https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz
+    tar -xvf go1.9.linux-amd64.tar.gz
     rm -rf /usr/local/go
     mv go /usr/local
-    rm -f go1.8.linux-amd64.tar.gz
+    rm -f go1.9.linux-amd64.tar.gz
     mkdir -p /home/vagrant/go/bin
     echo 'export PATH=$PATH:/usr/local/go/bin:/home/vagrant/go/bin' >> /home/vagrant/.bash_profile
     echo 'export GOPATH=/home/vagrant/go' >> /home/vagrant/.bash_profile
