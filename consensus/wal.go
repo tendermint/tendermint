@@ -87,7 +87,6 @@ func (wal *WAL) Save(wmsg WALMessage) {
 	}
 	// Write the wal message
 	innerMsgBytes := wire.JSONBytes(wmsg)
-	crc32c := crc32.MakeTable(crc32.Castagnoli)
 	crc := crc32.Checksum(innerMsgBytes, crc32c)
 	wmsgSize := uint32(len(innerMsgBytes))
 	var wmsgBytes = wire.JSONBytes(TimedWALMessage{time.Now(), crc, wmsgSize, wmsg})

@@ -23,6 +23,8 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
+var crc32c = crc32.MakeTable(crc32.Castagnoli)
+
 // Functionality to replay blocks and messages on recovery from a crash.
 // There are two general failure scenarios: failure during consensus, and failure while applying the block.
 // The former is handled by the WAL, the latter by the proxyApp Handshake on restart,
@@ -50,7 +52,6 @@ func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan inte
 	}
 	// check checksum
 	innerMsgBytes := wire.JSONBytes(msg.Msg)
-	crc32c := crc32.MakeTable(crc32.Castagnoli)
 	crc := crc32.Checksum(innerMsgBytes, crc32c)
 	if crc != msg.CRC {
 		return fmt.Errorf("Checksums do not match. Original: %v, but calculated: %v", msg.CRC, crc)
