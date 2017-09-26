@@ -488,6 +488,10 @@ func (wsc *wsConnection) readRoutine() {
 		wsc.baseConn.Close()
 	}()
 
+	wsc.baseConn.SetPongHandler(func(m string) error {
+		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
+	})
+
 	for {
 		select {
 		case <-wsc.Quit:
