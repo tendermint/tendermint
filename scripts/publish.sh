@@ -12,6 +12,7 @@ if [ -z "$VERSION" ]; then
     echo "Please specify a version."
     exit 1
 fi
+echo "==> Copying ${DIST_DIR} to S3..."
 
 # copy to s3
 aws s3 cp --recursive ${DIST_DIR} s3://tendermint/binaries/tendermint/v${VERSION} --acl public-read 
