@@ -1,4 +1,4 @@
-FROM golang:1.8.3
+FROM golang:1.9.0
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
 		zip \
