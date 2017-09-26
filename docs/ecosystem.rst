@@ -68,6 +68,11 @@ Py-Tendermint
 
 A Python microframework for building blockchain applications with Tendermint, written in Python, `authored by Dave Bryson <https://github.com/davebryson/py-tendermint>`__.
 
+Passchain
+^^^^^^^^^
+
+Passchain is a tool to securely store and share passwords, tokens and other short secrets, `authored by trusch <https://github.com/trusch/passchain>`__.
+
 ABCI Servers
 ------------
 
