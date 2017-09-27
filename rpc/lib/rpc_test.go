@@ -362,7 +362,7 @@ func TestWSClientPingPong(t *testing.T) {
 	require.Nil(t, err)
 	defer cl.Stop()
 
-	time.Sleep(3 * time.Second)
+	time.Sleep(6 * time.Second)
 }
 
 func randBytes(t *testing.T) []byte {
