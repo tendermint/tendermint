@@ -97,6 +97,16 @@ func (it *memDBIterator) Value() []byte {
 	return it.db.Get(it.Key())
 }
 
+func (it *memDBIterator) Release() {
+	it.db = nil
+	it.keys = nil
+	return
+}
+
+func (it *memDBIterator) Error() error {
+	return nil
+}
+
 func (db *MemDB) Iterator() Iterator {
 	it := newMemDBIterator()
 	it.db = db
