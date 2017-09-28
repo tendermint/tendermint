@@ -11,6 +11,7 @@ type DB interface {
 	Close()
 	NewBatch() Batch
 	Iterator() Iterator
+	IteratorPrefix([]byte) Iterator
 
 	// For debugging
 	Print()
