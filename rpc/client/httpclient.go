@@ -305,6 +305,14 @@ func (w *WSEvents) RemoveListener(listenerID string) {
 	w.EventSwitch.RemoveListener(listenerID)
 }
 
+// After being reconnected, it is necessary to redo subscription
+// to server otherwise no data will be automatically received
+func (w *WSEvents) redoSubscriptions() {
+	for event, _ := range w.evtCount {
+		w.subscribe(event)
+	}
+}
+
 // eventListener is an infinite loop pulling all websocket events
 // and pushing them to the EventSwitch.
 //
@@ -327,6 +335,8 @@ func (w *WSEvents) eventListener() {
 			// before cleaning up the w.ws stuff
 			w.done <- true
 			return
+		case <-w.ws.ReconnectCh:
+			w.redoSubscriptions()
 		}
 	}
 }
