@@ -41,9 +41,11 @@ type WSClient struct {
 	PingPongLatencyTimer metrics.Timer
 
 	// user facing channels, closed only when the client is being stopped.
-	ResultsCh   chan json.RawMessage
-	ErrorsCh    chan error
-	ReconnectCh chan bool
+	ResultsCh chan json.RawMessage
+	ErrorsCh  chan error
+
+	// Callback, which will be called each time after successful reconnect.
+	onReconnect func()
 
 	// internal channels
 	send            chan types.RPCRequest // user requests
@@ -125,6 +127,14 @@ func PingPeriod(pingPeriod time.Duration) func(*WSClient) {
 	}
 }
 
+// OnReconnect sets the callback, which will be called every time after
+// successful reconnect.
+func OnReconnect(cb func()) func(*WSClient) {
+	return func(c *WSClient) {
+		c.onReconnect = cb
+	}
+}
+
 // String returns WS client full address.
 func (c *WSClient) String() string {
 	return fmt.Sprintf("%s (%s)", c.Address, c.Endpoint)
@@ -140,7 +150,6 @@ func (c *WSClient) OnStart() error {
 
 	c.ResultsCh = make(chan json.RawMessage)
 	c.ErrorsCh = make(chan error)
-	c.ReconnectCh = make(chan bool)
 
 	c.send = make(chan types.RPCRequest)
 	// 1 additional error may come from the read/write
@@ -256,7 +265,9 @@ func (c *WSClient) reconnect() error {
 			c.Logger.Error("failed to redial", "err", err)
 		} else {
 			c.Logger.Info("reconnected")
-			c.ReconnectCh <- true
+			if c.onReconnect != nil {
+				go c.onReconnect()
+			}
 			return nil
 		}
 

@@ -186,8 +186,6 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-		case <-c.ReconnectCh:
-			t.Log("Reconnected")
 		case <-c.Quit:
 			return
 		}

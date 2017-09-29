@@ -226,7 +226,9 @@ func (w *WSEvents) Start() (bool, error) {
 	st, err := w.EventSwitch.Start()
 	// if we did start, then OnStart here...
 	if st && err == nil {
-		ws := rpcclient.NewWSClient(w.remote, w.endpoint)
+		ws := rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+			w.redoSubscriptions()
+		}))
 		_, err = ws.Start()
 		if err == nil {
 			w.ws = ws
@@ -335,8 +337,6 @@ func (w *WSEvents) eventListener() {
 			// before cleaning up the w.ws stuff
 			w.done <- true
 			return
-		case <-w.ws.ReconnectCh:
-			w.redoSubscriptions()
 		}
 	}
 }
