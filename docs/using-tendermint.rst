@@ -116,7 +116,7 @@ new blockchain will not make any blocks.
 Configuration
 -------------
 
-Tendermint uses a ``config.toml`` for configutation. For details, see
+Tendermint uses a ``config.toml`` for configuration. For details, see
 `the documentation <./specification/configuration.html>`__.
 
 Notable options include the socket address of the application
