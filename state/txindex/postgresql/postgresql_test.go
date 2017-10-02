@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -13,8 +14,12 @@ import (
 )
 
 func TestTxIndex(t *testing.T) {
-	db, err := sql.Open("postgres", "user=tendermint password=mysecretpassword dbname=tendermint sslmode=disable")
+	db, err := sql.Open("postgres", "user=postgres password=mysecretpassword dbname=tendermint sslmode=disable")
 	require.NoError(t, err)
+	err = db.Ping()
+	if err != nil {
+		t.Skip(fmt.Sprintf("this test requires PG database. got error: %v", err))
+	}
 
 	indexer := &TxIndex{db: db}
 
