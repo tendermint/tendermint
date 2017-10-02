@@ -86,7 +86,7 @@ ABCI Servers
 +-------------------------------------------------------------+--------------------+--------------+
 | `cpp-tmsp <https://github.com/block-finance/cpp-abci>`__    | Martin Dyring      | C++          |
 +-------------------------------------------------------------+--------------------+--------------+
-| `c-abci` <https://github.com/chainx-org/c-abci>`__          | ChainX             | C            |
+| `c-abci <https://github.com/chainx-org/c-abci>`__          | ChainX             | C            |
 +-------------------------------------------------------------+--------------------+--------------+
 | `jabci <https://github.com/jTendermint/jabci>`__            | jTendermint        | Java         |
 +-------------------------------------------------------------+--------------------+--------------+
@@ -96,7 +96,7 @@ ABCI Servers
 +-------------------------------------------------------------+--------------------+--------------+
 | `abci_server <https://github.com/KrzysiekJ/abci_server>`__  | Krzysztof Jurewicz | Erlang       |
 +-------------------------------------------------------------+--------------------+--------------+
-| `abci_server <https://github.com/tendermint/rust-tsp>`__    | Adrian Brink       | Rust         |
+| `rust-tsp <https://github.com/tendermint/rust-tsp>`__       | Adrian Brink       | Rust         |
 +-------------------------------------------------------------+--------------------+--------------+
 | `hs-abci <https://github.com/albertov/hs-abci>`__           | Alberto Gonzalez   | Haskell      |
 +-------------------------------------------------------------+--------------------+--------------+
