@@ -1,5 +1,5 @@
-hash: e3649cac7b1b9a23c024a9d1bbebd5a147861d55da2bca77c95129b6021850b4
-updated: 2017-09-22T13:24:29.443800586-04:00
+hash: 10d19e24afe94fa198156ccecf167569796015ca42adaa132a8710606f78ff51
+updated: 2017-10-02T14:25:03.611259161-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 4803a8291c92a1d2d41041b942a9a9e37deab065
@@ -10,7 +10,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: 0d313fb5fb3a94d87d61e6434785264e87a5d740
+  version: 9ed37433947b357910facd0e38a8ec110fda62c1
   subpackages:
   - log
   - log/level
@@ -26,7 +26,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/gogo/protobuf
-  version: 2adc21fd136931e0388e278825291678e1d98309
+  version: f7f1376d9d231a646d4e62fe1075623ced6db327
   subpackages:
   - proto
 - name: github.com/golang/protobuf
@@ -40,7 +40,7 @@ imports:
 - name: github.com/golang/snappy
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/gorilla/websocket
-  version: 6f34763140ed8887aed6a044912009832b4733d7
+  version: 4201258b820c74ac8e6922fc9e6b52f71fe46f8d
 - name: github.com/hashicorp/hcl
   version: 68e816d1c783414e79bc65b3994d9ab6b0a722ab
   subpackages:
@@ -63,7 +63,7 @@ imports:
 - name: github.com/mitchellh/mapstructure
   version: d0303fe809921458f417bcf828397a65db30a7e4
 - name: github.com/pelletier/go-toml
-  version: 1d6b12b7cb290426e27e6b4e38b89fcda3aeef03
+  version: 2009e44b6f182e34d8ce081ac2767622937ea3d4
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/rcrowley/go-metrics
@@ -75,13 +75,13 @@ imports:
 - name: github.com/spf13/cast
   version: acbeb36b902d72a7a4c18e8f3241075e7ab763e4
 - name: github.com/spf13/cobra
-  version: b78744579491c1ceeaaa3b40205e56b0591b93a3
+  version: 0dacccfbaabc71b872087c1719c5380d3e185173
 - name: github.com/spf13/jwalterweatherman
   version: 12bd96e66386c1960ab0f74ced1362f66f552f7b
 - name: github.com/spf13/pflag
-  version: 7aff26db30c1be810f9de5038ec5ef96ac41fd7c
+  version: be7121dd7a937a85e1e4b1ddda6a3edce3466110
 - name: github.com/spf13/viper
-  version: 25b30aa063fc18e48662b86996252eabdcf2f0c7
+  version: d9cca5ef33035202efb1586825bdbb15ff9ec3ba
 - name: github.com/syndtr/goleveldb
   version: b89cc31ef7977104127d34c1bd31ebd1a9db2199
   subpackages:
@@ -122,7 +122,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: 9997e3a3b46db1d2f88aa9816ed0e7915dad6ac1
+  version: 0948343a6fd4efce07894c312d8e96c5f277c608
   subpackages:
   - autofile
   - cli
@@ -136,7 +136,7 @@ imports:
   - merkle
   - test
 - name: golang.org/x/crypto
-  version: 7d9177d70076375b9a59c8fde23d52d9c4a7ecd5
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   subpackages:
   - curve25519
   - nacl/box
@@ -147,7 +147,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 0744d001aa8470aaa53df28d32e5ceeb8af9bd70
+  version: 0a9397675ba34b2845f758fe3cd68828369c6517
   subpackages:
   - context
   - http2
@@ -157,7 +157,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 429f518978ab01db8bb6f44b66785088e7fba58b
+  version: 314a259e304ff91bd6985da2a7149bbf91237993
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -172,7 +172,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: d4b75ebd4f9f8c4a2b1cdadbdbe0d7920431ccca
+  version: 4bbdf230d757b0e3854d4d248d6f749c0bedb256
   subpackages:
   - balancer
   - codes
