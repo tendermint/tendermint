@@ -1,18 +1,22 @@
 package postgresql
 
 import (
-	"database/sql/driver"
+	"database/sql"
 
+	"github.com/lib/pq"
+	"github.com/pkg/errors"
+
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
 type TxIndex struct {
-	db driver.Conn
+	db *sql.DB
 }
 
 // NewTxIndex returns new instance of TxIndex.
-func NewTxIndex(db driver.Conn) *TxIndex {
+func NewTxIndex(db *sql.DB) *TxIndex {
 	return &TxIndex{db: db}
 }
 
@@ -23,7 +27,8 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 		return nil, txindex.ErrorEmptyHash
 	}
 
-	rows, err := txi.db.Query("SELECT height, index, tx, result_data, result_code, result_log FROM txs WHERE hash = $1 LIMIT 0, 1", hash)
+	rows, err := txi.db.Query("SELECT height, index, tx, result_data, result_code, result_log FROM txs WHERE hash = $1 LIMIT 0, 1", string(hash))
+	defer rows.Close()
 
 	for rows.Next() {
 		var height int64
@@ -40,7 +45,7 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 			uint64(height),
 			uint32(index),
 			tx,
-			abci.ResponseDeliverTx{resultData, abci.CodeType(resultCode), resultLog}}, nil
+			abci.ResponseDeliverTx{abci.CodeType(resultCode), resultData, resultLog}}, nil
 	}
 
 	return nil, txindex.ErrorNotFound
@@ -53,13 +58,13 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		return errors.Wrap(err, "failed to begin PG transaction")
 	}
 
-	stmt, err := txn.Prepare(pq.CopyIn("txs", "height", "index", "tx", "result_data", "result_code", "result_log"))
+	stmt, err := txn.Prepare(pq.CopyIn("txs", "hash", "height", "index", "tx", "result_data", "result_code", "result_log"))
 	if err != nil {
 		return errors.Wrap(err, "failed to prepare PG statement")
 	}
 
-	for _, txResult := range b {
-		_, err = stmt.Exec(int64(txResult.Height), int64(txResult.Index), txResult.Tx, txResult.Result.Data, int64(txResult.Result.Code), txResult.Result.Log)
+	for _, result := range b.Ops {
+		_, err = stmt.Exec(result.Tx.Hash(), int64(result.Height), int64(result.Index), result.Tx, result.Result.Data, int64(result.Result.Code), result.Result.Log)
 		if err != nil {
 			return errors.Wrap(err, "failed to execute PG statement")
 		}
