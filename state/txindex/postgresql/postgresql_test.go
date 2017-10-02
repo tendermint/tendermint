@@ -13,7 +13,7 @@ import (
 )
 
 func TestTxIndex(t *testing.T) {
-	db, err := sql.Open("postgres", "user=tendermint password=tendermint dbname=tendermint sslmode=disable")
+	db, err := sql.Open("postgres", "user=tendermint password=mysecretpassword dbname=tendermint sslmode=disable")
 	require.NoError(t, err)
 
 	indexer := &TxIndex{db: db}

@@ -2,6 +2,7 @@ package postgresql
 
 import (
 	"database/sql"
+	"fmt"
 
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
@@ -27,7 +28,10 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 		return nil, txindex.ErrorEmptyHash
 	}
 
-	rows, err := txi.db.Query("SELECT height, index, tx, result_data, result_code, result_log FROM txs WHERE hash = $1 LIMIT 0, 1", string(hash))
+	rows, err := txi.db.Query("SELECT height, index, tx, result_data, result_code, result_log FROM txs WHERE hash = $1 LIMIT 1", fmt.Sprintf("%X", hash))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to query PG")
+	}
 	defer rows.Close()
 
 	for rows.Next() {
@@ -64,7 +68,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	}
 
 	for _, result := range b.Ops {
-		_, err = stmt.Exec(result.Tx.Hash(), int64(result.Height), int64(result.Index), result.Tx, result.Result.Data, int64(result.Result.Code), result.Result.Log)
+		_, err = stmt.Exec(fmt.Sprintf("%X", result.Tx.Hash()), int64(result.Height), int64(result.Index), result.Tx, result.Result.Data, int64(result.Result.Code), result.Result.Log)
 		if err != nil {
 			return errors.Wrap(err, "failed to execute PG statement")
 		}
