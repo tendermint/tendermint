@@ -235,7 +235,7 @@ FOR_LOOP:
 				err := bcR.state.Validators.VerifyCommit(
 					bcR.state.ChainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
 				if err != nil {
-					bcR.Logger.Info("error in validation", "err", err)
+					bcR.Logger.Error("Error in validation", "err", err)
 					bcR.pool.RedoRequest(first.Height)
 					break SYNC_LOOP
 				} else {
