@@ -31,14 +31,16 @@ BUG FIXES:
 ## 0.11.0 (September 22, 2017)
 
 BREAKING:
- - state: every validator set change is persisted to disk, which required some changes to the `State` structure.
- - cmd: if there is no genesis, exit immediately instead of waiting around for one to show.
- - p2p: new `p2p.Peer` interface used for all reactor methods (instead of `*p2p.Peer` struct).
- - types: `Signer.Sign` returns an error.
+ - genesis file: validator `amount` is now `power`
+ - abci: Info, BeginBlock, InitChain all take structs
  - rpc: various changes to match JSONRPC spec (http://www.jsonrpc.org/specification), including breaking ones:
     - requests that previously returned HTTP code 4XX now return 200 with an error code in the JSONRPC.
     - `rpctypes.RPCResponse` uses new `RPCError` type instead of `string`.
- - abci: Info, BeginBlock, InitChain all take structs
+
+ - cmd: if there is no genesis, exit immediately instead of waiting around for one to show.
+ - types: `Signer.Sign` returns an error.
+ - state: every validator set change is persisted to disk, which required some changes to the `State` structure.
+ - p2p: new `p2p.Peer` interface used for all reactor methods (instead of `*p2p.Peer` struct).
 
 FEATURES:
  - rpc: `/validators?height=X` allows querying of validators at previous heights.
