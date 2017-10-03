@@ -36,28 +36,31 @@ Ethermint
 
 The go-ethereum state machine run as a ABCI app, written in Go, `authored by Tendermint <https://github.com/tendermint/ethermint>`__.
 
+Lotion
+^^^^^^^^^^^^^
 
-Merkle AVL Tree
-^^^^^^^^^^^^^^^
+A Javascript microframework for building blockchain applications with Tendermint, written in Javascript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>` and `lotion-coin <https://github.com/keppel/lotion-coin>` apps written using Lotion.
 
-The following are implementations of the Tendermint IAVL tree as an ABCI application
-
-Merkleeyes
+IAVL
 ~~~~~~~~~~
 
-Written in Go, `authored by Tendermint <https://github.com/tendermint/merkleeyes>`__.
+Immutable AVL+ tree with Merkle proofs, Written in Go, `authored by Tendermint <https://github.com/tendermint/iavl>`__.
 
 MerkleTree
 ~~~~~~~~~~
 
-Written in Java, `authored by jTendermint <https://github.com/jTendermint/MerkleTree>`__.
-
+Immutable AVL+ tree with Merkle proofs, Written in Java, `authored by jTendermint <https://github.com/jTendermint/MerkleTree>`__.
 
 TMChat
 ^^^^^^
 
-P2P chat using Tendermint, written in Java, `authored by woldposd <https://github.com/wolfposd/TMChat>`__.
+P2P chat using Tendermint, written in Java, `authored by wolfposd <https://github.com/wolfposd/TMChat>`__.
       
+Passchain
+^^^^^^^^^
+
+Passchain is a tool to securely store and share passwords, tokens and other short secrets, `authored by trusch <https://github.com/trusch/passchain>`__.
+
 Passwerk
 ^^^^^^^^
 
@@ -67,11 +70,6 @@ Py-Tendermint
 ^^^^^^^^^^^^^
 
 A Python microframework for building blockchain applications with Tendermint, written in Python, `authored by Dave Bryson <https://github.com/davebryson/py-tendermint>`__.
-
-Passchain
-^^^^^^^^^
-
-Passchain is a tool to securely store and share passwords, tokens and other short secrets, `authored by trusch <https://github.com/trusch/passchain>`__.
 
 ABCI Servers
 ------------

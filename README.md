@@ -56,7 +56,7 @@ All resources involving the use of, building application on, or developing for, 
 
 * [Ethermint](http://github.com/tendermint/ethermint); Ethereum on Tendermint
 * [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
-* [Passchain](http://github.com/trusch/passchain); a secret sharing system for teams
+* [Many more](https://tendermint.readthedocs.io/en/master/ecosystem.html#abci-applications)
 
 ### More
 
