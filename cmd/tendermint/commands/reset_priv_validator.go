@@ -49,6 +49,7 @@ func ResetAll(dbDir, privValFile string, logger log.Logger) {
 	resetPrivValidatorLocal(privValFile, logger)
 	if err := os.RemoveAll(dbDir); err != nil {
 		logger.Error("Error removing directory", "err", err)
+		return
 	}
 	logger.Info("Removed all data", "dir", dbDir)
 }
