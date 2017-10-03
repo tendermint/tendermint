@@ -28,8 +28,7 @@ in the `using terraform tutorial <./terraform-digitalocean.html>`__.
 
 Optional for Amazon AWS instances: 
 
-- Amazon AWS API access key ID and
-secret access key.
+- Amazon AWS API access key ID and secret access key.
 
 The cloud inventory scripts come from the ansible team at their
 `GitHub <https://github.com/ansible/ansible>`__ page. You can get the
