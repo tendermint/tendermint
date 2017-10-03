@@ -34,7 +34,9 @@ func TestLoadOrGenValidator(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	os.Remove(tempFilePath)
+	if err := os.Remove(tempFilePath); err != nil {
+		t.Error(err)
+	}
 	privVal := LoadOrGenPrivValidatorFS(tempFilePath)
 	addr := privVal.GetAddress()
 	privVal = LoadOrGenPrivValidatorFS(tempFilePath)

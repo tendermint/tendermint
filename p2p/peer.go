@@ -88,7 +88,9 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 
 	peer, err := newPeerFromConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
 	if err != nil {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 	return peer, nil
@@ -146,7 +148,7 @@ func (p *peer) SetLogger(l log.Logger) {
 
 // CloseConn should be used when the peer was created, but never started.
 func (p *peer) CloseConn() {
-	p.conn.Close()
+	p.conn.Close() // nolint: errcheck
 }
 
 // makePersistent marks the peer as persistent.
