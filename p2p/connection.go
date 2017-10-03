@@ -184,7 +184,7 @@ func (c *MConnection) OnStop() {
 	if c.quit != nil {
 		close(c.quit)
 	}
-	c.conn.Close() // nolint (errcheck)
+	c.conn.Close() // nolint: errcheck
 	// We can't close pong safely here because
 	// recvRoutine may write to it after we've stopped.
 	// Though it doesn't need to get closed at all,

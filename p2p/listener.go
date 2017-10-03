@@ -117,7 +117,7 @@ func (l *DefaultListener) OnStart() error {
 
 func (l *DefaultListener) OnStop() {
 	l.BaseService.OnStop()
-	l.listener.Close() // nolint (errcheck)
+	l.listener.Close() // nolint: errcheck
 }
 
 // Accept connections and pass on the channel

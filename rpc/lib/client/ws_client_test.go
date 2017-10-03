@@ -105,7 +105,7 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 
 	// hacky way to abort the connection before write
 	if err := c.conn.Close(); err != nil {
-		panic(err)
+		t.Error(err)
 	}
 
 	// results in WS write error, the client should resend on reconnect
