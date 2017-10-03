@@ -142,9 +142,12 @@ It is unlikely that you will need to implement a client. For details of
 our client, see
 `here <https://github.com/tendermint/abci/tree/master/client>`__.
 
-All examples below are from `persistent-dummy application
-<https://github.com/tendermint/abci/blob/master/example/dummy/persistent_dummy.go>`__,
-which is a part of the abci repo.
+Most of the examples below are from `dummy application
+<https://github.com/tendermint/abci/blob/master/example/dummy/dummy.go>`__,
+which is a part of the abci repo. `persistent_dummy application
+<https://github.com/tendermint/abci/blob/master/example/dummy/persistent_dummy.go>`__
+application is used to show ``BeginBlock``, ``EndBlock`` and ``InitChain``
+example implementations.
 
 Blockchain Protocol
 -------------------
@@ -193,8 +196,8 @@ mempool state.
 
 ::
 
-    func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
-      return app.app.CheckTx(tx)
+    func (app *DummyApplication) CheckTx(tx []byte) types.Result {
+      return types.OK
     }
 
 Consensus Connection
@@ -228,17 +231,14 @@ merkle root of the data returned by the DeliverTx requests, or both.
 ::
 
     // tx is either "key=value" or just arbitrary bytes
-    func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.Result {
-      // if it starts with "val:", update the validator set
-      // format is "val:pubkey/power"
-      if isValidatorTx(tx) {
-        // update validators in the merkle tree
-        // and in app.changes
-        return app.execValidatorTx(tx)
+    func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
+      parts := strings.Split(string(tx), "=")
+      if len(parts) == 2 {
+        app.state.Set([]byte(parts[0]), []byte(parts[1]))
+      } else {
+        app.state.Set(tx, tx)
       }
-
-      // otherwise, update the key-value store
-      return app.app.DeliverTx(tx)
+      return types.OK
     }
 
 Commit
@@ -265,20 +265,9 @@ job of the `Handshake <#handshake>`__.
 
 ::
 
-    func (app *PersistentDummyApplication) Commit() types.Result {
-      // Save
-      appHash := app.app.state.Save()
-      app.logger.Info("Saved state", "root", appHash)
-
-      lastBlock := LastBlockInfo{
-        Height:  app.blockHeader.Height,
-        AppHash: appHash, // this hash will be in the next block header
-      }
-
-      app.logger.Info("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
-      SaveLastBlock(app.db, lastBlock)
-
-      return types.NewResultOK(appHash, "")
+    func (app *DummyApplication) Commit() types.Result {
+      hash := app.state.Hash()
+      return types.NewResultOK(hash, "")
     }
 
 BeginBlock
@@ -345,8 +334,30 @@ Note: these query formats are subject to change!
 
 ::
 
-    func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
-      return app.app.Query(reqQuery)
+    func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+      if reqQuery.Prove {
+        value, proof, exists := app.state.Proof(reqQuery.Data)
+        resQuery.Index = -1 // TODO make Proof return index
+        resQuery.Key = reqQuery.Data
+        resQuery.Value = value
+        resQuery.Proof = proof
+        if exists {
+          resQuery.Log = "exists"
+        } else {
+          resQuery.Log = "does not exist"
+        }
+        return
+      } else {
+        index, value, exists := app.state.Get(reqQuery.Data)
+        resQuery.Index = int64(index)
+        resQuery.Value = value
+        if exists {
+          resQuery.Log = "exists"
+        } else {
+          resQuery.Log = "does not exist"
+        }
+        return
+      }
     }
 
 Handshake
@@ -368,12 +379,8 @@ all blocks.
 
 ::
 
-    func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-      resInfo = app.app.Info(req)
-      lastBlock := LoadLastBlock(app.db)
-      resInfo.LastBlockHeight = lastBlock.Height
-      resInfo.LastBlockAppHash = lastBlock.AppHash
-      return resInfo
+    func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+      return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
     }
 
 Genesis
