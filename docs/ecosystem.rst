@@ -36,26 +36,21 @@ Ethermint
 
 The go-ethereum state machine run as a ABCI app, written in Go, `authored by Tendermint <https://github.com/tendermint/ethermint>`__.
 
-Lotion
-^^^^^^
-
-A Javascript microframework for building blockchain applications with Tendermint, written in Javascript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>`__ and `lotion-coin <https://github.com/keppel/lotion-coin>`__ apps written using Lotion.
-
 IAVL
 ^^^^
 
 Immutable AVL+ tree with Merkle proofs, Written in Go, `authored by Tendermint <https://github.com/tendermint/iavl>`__.
+
+Lotion
+^^^^^^
+
+A Javascript microframework for building blockchain applications with Tendermint, written in Javascript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>`__ and `lotion-coin <https://github.com/keppel/lotion-coin>`__ apps written using Lotion.
 
 MerkleTree
 ^^^^^^^^^^
 
 Immutable AVL+ tree with Merkle proofs, Written in Java, `authored by jTendermint <https://github.com/jTendermint/MerkleTree>`__.
 
-TMChat
-^^^^^^
-
-P2P chat using Tendermint, written in Java, `authored by wolfposd <https://github.com/wolfposd/TMChat>`__.
-      
 Passchain
 ^^^^^^^^^
 
@@ -70,6 +65,17 @@ Py-Tendermint
 ^^^^^^^^^^^^^
 
 A Python microframework for building blockchain applications with Tendermint, written in Python, `authored by Dave Bryson <https://github.com/davebryson/py-tendermint>`__.
+
+Stratumn
+^^^^^^^^
+
+SDK for "Proof-of-Process" networks, written in Go, `authored by the Stratumn team <https://github.com/stratumn/sdk>`__.
+
+TMChat
+^^^^^^
+
+P2P chat using Tendermint, written in Java, `authored by wolfposd <https://github.com/wolfposd/TMChat>`__.
+      
 
 ABCI Servers
 ------------
