@@ -13,9 +13,9 @@ import (
 
 var (
 	ErrVoteUnexpectedStep          = errors.New("Unexpected step")
-	ErrVoteInvalidValidatorIndex   = errors.New("Invalid round vote validator index")
-	ErrVoteInvalidValidatorAddress = errors.New("Invalid round vote validator address")
-	ErrVoteInvalidSignature        = errors.New("Invalid round vote signature")
+	ErrVoteInvalidValidatorIndex   = errors.New("Invalid validator index")
+	ErrVoteInvalidValidatorAddress = errors.New("Invalid validator address")
+	ErrVoteInvalidSignature        = errors.New("Invalid signature")
 	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
 )
 
