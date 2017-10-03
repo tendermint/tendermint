@@ -103,6 +103,11 @@ func (af *AutoFile) Sync() error {
 	af.mtx.Lock()
 	defer af.mtx.Unlock()
 
+	if af.file == nil {
+		if err := af.openFile(); err != nil {
+			return err
+		}
+	}
 	return af.file.Sync()
 }
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.2 (October 2, 2017)
+
+BUG FIXES:
+
+- [autofile] fix AutoFile.Sync() to open file if it's been closed
+- [db] fix MemDb.Close() to not empty the database (ie. its just a noop)
+
+
 ## 0.3.1 (September 22, 2017)
 
 BUG FIXES:
