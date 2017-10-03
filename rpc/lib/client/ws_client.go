@@ -44,6 +44,9 @@ type WSClient struct {
 	ResultsCh chan json.RawMessage
 	ErrorsCh  chan error
 
+	// Callback, which will be called each time after successful reconnect.
+	onReconnect func()
+
 	// internal channels
 	send            chan types.RPCRequest // user requests
 	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
@@ -121,6 +124,14 @@ func WriteWait(writeWait time.Duration) func(*WSClient) {
 func PingPeriod(pingPeriod time.Duration) func(*WSClient) {
 	return func(c *WSClient) {
 		c.pingPeriod = pingPeriod
+	}
+}
+
+// OnReconnect sets the callback, which will be called every time after
+// successful reconnect.
+func OnReconnect(cb func()) func(*WSClient) {
+	return func(c *WSClient) {
+		c.onReconnect = cb
 	}
 }
 
@@ -254,6 +265,9 @@ func (c *WSClient) reconnect() error {
 			c.Logger.Error("failed to redial", "err", err)
 		} else {
 			c.Logger.Info("reconnected")
+			if c.onReconnect != nil {
+				go c.onReconnect()
+			}
 			return nil
 		}
 

@@ -226,7 +226,9 @@ func (w *WSEvents) Start() (bool, error) {
 	st, err := w.EventSwitch.Start()
 	// if we did start, then OnStart here...
 	if st && err == nil {
-		ws := rpcclient.NewWSClient(w.remote, w.endpoint)
+		ws := rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+			w.redoSubscriptions()
+		}))
 		_, err = ws.Start()
 		if err == nil {
 			w.ws = ws
@@ -303,6 +305,14 @@ func (w *WSEvents) RemoveListener(listenerID string) {
 
 	// then let the switch do it's magic
 	w.EventSwitch.RemoveListener(listenerID)
+}
+
+// After being reconnected, it is necessary to redo subscription
+// to server otherwise no data will be automatically received
+func (w *WSEvents) redoSubscriptions() {
+	for event, _ := range w.evtCount {
+		w.subscribe(event)
+	}
 }
 
 // eventListener is an infinite loop pulling all websocket events

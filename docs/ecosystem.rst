@@ -36,36 +36,49 @@ Ethermint
 
 The go-ethereum state machine run as a ABCI app, written in Go, `authored by Tendermint <https://github.com/tendermint/ethermint>`__.
 
+IAVL
+^^^^
 
-Merkle AVL Tree
-^^^^^^^^^^^^^^^
+Immutable AVL+ tree with Merkle proofs, Written in Go, `authored by Tendermint <https://github.com/tendermint/iavl>`__.
 
-The following are implementations of the Tendermint IAVL tree as an ABCI application
-
-Merkleeyes
-~~~~~~~~~~
-
-Written in Go, `authored by Tendermint <https://github.com/tendermint/merkleeyes>`__.
-
-MerkleTree
-~~~~~~~~~~
-
-Written in Java, `authored by jTendermint <https://github.com/jTendermint/MerkleTree>`__.
-
-
-TMChat
+Lotion
 ^^^^^^
 
-P2P chat using Tendermint, written in Java, `authored by woldposd <https://github.com/wolfposd/TMChat>`__.
-      
+A Javascript microframework for building blockchain applications with Tendermint, written in Javascript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>`__ and `lotion-coin <https://github.com/keppel/lotion-coin>`__ apps written using Lotion.
+
+MerkleTree
+^^^^^^^^^^
+
+Immutable AVL+ tree with Merkle proofs, Written in Java, `authored by jTendermint <https://github.com/jTendermint/MerkleTree>`__.
+
+Passchain
+^^^^^^^^^
+
+Passchain is a tool to securely store and share passwords, tokens and other short secrets, `authored by trusch <https://github.com/trusch/passchain>`__.
+
 Passwerk
 ^^^^^^^^
 
 Encrypted storage web-utility backed by Tendermint, written in Go, `authored by Rigel Rozanski <https://github.com/rigelrozanski/passwerk>`__.
 
+Py-Tendermint
+^^^^^^^^^^^^^
+
+A Python microframework for building blockchain applications with Tendermint, written in Python, `authored by Dave Bryson <https://github.com/davebryson/py-tendermint>`__.
+
+Stratumn
+^^^^^^^^
+
+SDK for "Proof-of-Process" networks, written in Go, `authored by the Stratumn team <https://github.com/stratumn/sdk>`__.
+
+TMChat
+^^^^^^
+
+P2P chat using Tendermint, written in Java, `authored by wolfposd <https://github.com/wolfposd/TMChat>`__.
+      
+
 ABCI Servers
 ------------
-
 
 +-------------------------------------------------------------+--------------------+--------------+
 | **Name**                                                    | **Author**         | **Language** |       
@@ -75,7 +88,9 @@ ABCI Servers
 +-------------------------------------------------------------+--------------------+--------------+
 | `js abci <https://github.com/tendermint/js-abci>`__         | Tendermint         | Javascript   |                       
 +-------------------------------------------------------------+--------------------+--------------+
-| `cpp-tmsp <https://github.com/mdyring/cpp-tmsp>`__          | Martin Dyring      | C++          |
+| `cpp-tmsp <https://github.com/block-finance/cpp-abci>`__    | Martin Dyring      | C++          |
++-------------------------------------------------------------+--------------------+--------------+
+| `c-abci <https://github.com/chainx-org/c-abci>`__           | ChainX             | C            |
 +-------------------------------------------------------------+--------------------+--------------+
 | `jabci <https://github.com/jTendermint/jabci>`__            | jTendermint        | Java         |
 +-------------------------------------------------------------+--------------------+--------------+
@@ -84,6 +99,12 @@ ABCI Servers
 | `ocaml-tmsp <https://github.com/zbo14/ocaml-tmsp>`__        | Zach Balder        | Ocaml        |
 +-------------------------------------------------------------+--------------------+--------------+
 | `abci_server <https://github.com/KrzysiekJ/abci_server>`__  | Krzysztof Jurewicz | Erlang       |
++-------------------------------------------------------------+--------------------+--------------+
+| `rust-tsp <https://github.com/tendermint/rust-tsp>`__       | Adrian Brink       | Rust         |
++-------------------------------------------------------------+--------------------+--------------+
+| `hs-abci <https://github.com/albertov/hs-abci>`__           | Alberto Gonzalez   | Haskell      |
++-------------------------------------------------------------+--------------------+--------------+
+| `haskell-abci <https://github.com/cwgoes/haskell-abci>`__   | Christoper Goes    | Haskell      |
 +-------------------------------------------------------------+--------------------+--------------+
 
 Deployment Tools

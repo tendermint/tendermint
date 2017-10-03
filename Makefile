@@ -1,5 +1,6 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
+					github.com/tcnksm/ghr \
 					github.com/Masterminds/glide \
 					honnef.co/go/tools/cmd/megacheck
 
