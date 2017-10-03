@@ -140,8 +140,10 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	blockKey := vote.BlockID.Key()
 
 	// Ensure that validator index was set
-	if valIndex < 0 || len(valAddr) == 0 {
-		panic("Validator index or address was not set in vote.")
+	if valIndex < 0 {
+		return false, ErrVoteInvalidValidatorIndex
+	} else if len(valAddr) == 0 {
+		return false, ErrVoteInvalidValidatorAddress
 	}
 
 	// Make sure the step matches.
