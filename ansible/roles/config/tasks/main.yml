@@ -23,6 +23,7 @@
     group: "{{service}}"
 
 - name: copy generated service genesis.json - genesis_time will be updated
+  tags: reconfig-appgenesis
   when: (validators == true or validators == 'true') and (service_genesis_file is not defined) and (service != 'ethermint')
   template:
     src: genesis-service.json.j2

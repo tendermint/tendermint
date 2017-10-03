@@ -47,11 +47,7 @@
       },
       {
         "name": "adrian",
-        "address": "98F28277FA8C512968BBDE443F5DB27AC743F814",
-        "pub_key": {
-          "type": "ed25519",
-          "data": "2E7EAB9E4C93D3657A63E063D6ABB851596BA97ED9F4EB9A2FC714043DC9685D"
-        },
+        "address": "0FA1DB09E8B174E81E94280C047C158D4271457B",
         "coins": [
           {
             "denom": "axi",

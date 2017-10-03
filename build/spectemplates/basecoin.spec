@@ -10,15 +10,17 @@ Summary: basecoin is a Proof-of-Stake cryptocurrency and framework
 License: Apache 2.0
 URL: https://tendermint.com/
 Packager: Greg Szabo
-Requires: tendermint >= 0.10.0
+Requires: tendermint >= 0.11.0
 Provides: basecli
-#Requires(pre): useradd
 
 %description
 Basecoin is an ABCI application designed to be used with the Tendermint consensus engine to form a Proof-of-Stake cryptocurrency. It also provides a general purpose framework for extending the feature-set of the cryptocurrency by implementing plugins.
 
 %pre
 if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
+  echo "`date`: useradd -k /dev/null -r -m -b %{_sysconfdir} %{name}" >> /tmp/rpmdebug
+  set >> /tmp/rpmdebug
+  echo "---" >> /tmp/rpmdebug
   useradd -k /dev/null -r -m -b %{_sysconfdir} %{name}
   chmod 755 %{_sysconfdir}/%{name}
 fi
