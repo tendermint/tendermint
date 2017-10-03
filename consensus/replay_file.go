@@ -65,11 +65,7 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	}
 
 	pb := newPlayback(file, fp, cs, cs.state.Copy())
-	defer func() {
-		if err := pb.fp.Close(); err != nil {
-			cs.Logger.Error("Error closing new playback", "err", err)
-		}
-	}()
+	defer pb.fp.Close() // nolint: errcheck
 
 	var nextN int // apply N msgs in a row
 	var msg *TimedWALMessage

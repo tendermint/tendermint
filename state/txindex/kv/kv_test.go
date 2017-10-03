@@ -40,11 +40,7 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer func() {
-		if err := os.RemoveAll(dir); err != nil {
-			b.Fatal(err)
-		}
-	}()
+	defer os.RemoveAll(dir) // nolint: errcheck
 
 	store := db.NewDB("tx_index", "leveldb", dir)
 	indexer := &TxIndex{store: store}

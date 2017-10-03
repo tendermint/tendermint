@@ -354,7 +354,7 @@ func (c *WSClient) writeRoutine() {
 		ticker.Stop()
 		if err := c.conn.Close(); err != nil {
 			// ignore error; it will trigger in tests
-			// likely because it's closing and already closed connection
+			// likely because it's closing an already closed connection
 		}
 		c.wg.Done()
 	}()
@@ -406,7 +406,7 @@ func (c *WSClient) readRoutine() {
 	defer func() {
 		if err := c.conn.Close(); err != nil {
 			// ignore error; it will trigger in tests
-			// likely because it's closing and already closed connection
+			// likely because it's closing an already closed connection
 		}
 		c.wg.Done()
 	}()

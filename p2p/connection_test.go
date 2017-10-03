@@ -32,16 +32,8 @@ func TestMConnectionSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer func() {
-		if err := server.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := client.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
 	_, err := mconn.Start()
@@ -73,16 +65,8 @@ func TestMConnectionReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer func() {
-		if err := server.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := client.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -119,16 +103,8 @@ func TestMConnectionStatus(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer func() {
-		if err := server.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := client.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
 	_, err := mconn.Start()
@@ -144,16 +120,8 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer func() {
-		if err := server.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	defer func() {
-		if err := client.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})

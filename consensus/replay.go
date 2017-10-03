@@ -115,12 +115,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	} else if err != nil {
 		return err
 	} else {
-		defer func() {
-			if err := gr.Close(); err != nil {
-				cs.Logger.Error("Error closing wal Search", "err", err)
-				return
-			}
-		}()
+		defer gr.Close() // nolint: errcheck
 	}
 	if !found {
 		return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
