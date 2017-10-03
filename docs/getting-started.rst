@@ -73,7 +73,7 @@ Tendermint before, use:
 
 ::
 
-    tendermint init 
+    tendermint init
     tendermint node
 
 If you have used Tendermint, you may want to reset the data for a new
@@ -107,7 +107,24 @@ like:
 
 ::
 
-    {"jsonrpc":"2.0","id":"","result":[98,{"check_tx":{},"deliver_tx":{}}],"error":""}
+    {
+      "jsonrpc": "2.0",
+      "id": "",
+      "result": {
+        "check_tx": {
+          "code": 0,
+          "data": "",
+          "log": ""
+        },
+        "deliver_tx": {
+          "code": 0,
+          "data": "",
+          "log": ""
+        },
+        "hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF",
+        "height": 154
+      }
+    }
 
 The ``98`` is a type-byte, and can be ignored (it's useful for
 serializing and deserializing arbitrary json). Otherwise, this result is
@@ -118,14 +135,27 @@ querying the app:
 
 ::
 
-    curl -s 'localhost:46657/abci_query?data="abcd"&path=""&prove=false'
+    curl -s 'localhost:46657/abci_query?data="abcd"'
 
-The ``path`` and ``prove`` arguments can be ignored for now, and in a
-future release can be left out. The result should look like:
+The result should look like:
 
 ::
 
-    {"jsonrpc":"2.0","id":"","result":[112,{"response":{"value":"61626364","log":"exists"}}],"error":""}
+    {
+      "jsonrpc": "2.0",
+      "id": "",
+      "result": {
+        "response": {
+          "code": 0,
+          "index": 0,
+          "key": "",
+          "value": "61626364",
+          "proof": "",
+          "height": 0,
+          "log": "exists"
+        }
+      }
+    }
 
 Again, the ``112`` is the type-byte. Note the ``value`` in the result
 (``61626364``); this is the hex-encoding of the ASCII of ``abcd``. You
@@ -144,7 +174,7 @@ Now if we query for ``name``, we should get ``satoshi``, or
 
 ::
 
-    curl -s 'localhost:46657/abci_query?data="name"&path=""&prove=false'
+    curl -s 'localhost:46657/abci_query?data="name"'
 
 Try some other transactions and queries to make sure everything is
 working!
@@ -204,14 +234,48 @@ the number ``1``. If instead, we try to send a ``5``, we get an error:
 ::
 
     > curl localhost:46657/broadcast_tx_commit?tx=0x05
-    {"jsonrpc":"2.0","id":"","result":[98,{"check_tx":{},"deliver_tx":{"code":3,"log":"Invalid nonce. Expected 1, got 5"}}],"error":""}
+    {
+      "jsonrpc": "2.0",
+      "id": "",
+      "result": {
+        "check_tx": {
+          "code": 0,
+          "data": "",
+          "log": ""
+        },
+        "deliver_tx": {
+          "code": 3,
+          "data": "",
+          "log": "Invalid nonce. Expected 1, got 5"
+        },
+        "hash": "33B93DFF98749B0D6996A70F64071347060DC19C",
+        "height": 38
+      }
+    }
 
 But if we send a ``1``, it works again:
 
 ::
 
     > curl localhost:46657/broadcast_tx_commit?tx=0x01
-    {"jsonrpc":"2.0","id":"","result":[98,{"check_tx":{},"deliver_tx":{}}],"error":""}
+    {
+      "jsonrpc": "2.0",
+      "id": "",
+      "result": {
+        "check_tx": {
+          "code": 0,
+          "data": "",
+          "log": ""
+        },
+        "deliver_tx": {
+          "code": 0,
+          "data": "",
+          "log": ""
+        },
+        "hash": "F17854A977F6FA7EEA1BD758E296710B86F72F3D",
+        "height": 87
+      }
+    }
 
 For more details on the ``broadcast_tx`` API, see `the guide on using
 Tendermint <./using-tendermint.html>`__.
