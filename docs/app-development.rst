@@ -142,6 +142,10 @@ It is unlikely that you will need to implement a client. For details of
 our client, see
 `here <https://github.com/tendermint/abci/tree/master/client>`__.
 
+All examples below are from `persistent-dummy application
+<https://github.com/tendermint/abci/blob/master/example/dummy/persistent_dummy.go>`__,
+which is a part of the abci repo.
+
 Blockchain Protocol
 -------------------
 
@@ -187,6 +191,12 @@ through all transactions in the mempool, removing any that were included
 in the block, and re-run the rest using CheckTx against the post-Commit
 mempool state.
 
+::
+
+    func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
+      return app.app.CheckTx(tx)
+    }
+
 Consensus Connection
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -215,6 +225,22 @@ The block header will be updated (TODO) to include some commitment to
 the results of DeliverTx, be it a bitarray of non-OK transactions, or a
 merkle root of the data returned by the DeliverTx requests, or both.
 
+::
+
+    // tx is either "key=value" or just arbitrary bytes
+    func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.Result {
+      // if it starts with "val:", update the validator set
+      // format is "val:pubkey/power"
+      if isValidatorTx(tx) {
+        // update validators in the merkle tree
+        // and in app.changes
+        return app.execValidatorTx(tx)
+      }
+
+      // otherwise, update the key-value store
+      return app.app.DeliverTx(tx)
+    }
+
 Commit
 ^^^^^^
 
@@ -237,6 +263,24 @@ It is expected that the app will persist state to disk on Commit. The
 option to have all transactions replayed from some previous block is the
 job of the `Handshake <#handshake>`__.
 
+::
+
+    func (app *PersistentDummyApplication) Commit() types.Result {
+      // Save
+      appHash := app.app.state.Save()
+      app.logger.Info("Saved state", "root", appHash)
+
+      lastBlock := LastBlockInfo{
+        Height:  app.blockHeader.Height,
+        AppHash: appHash, // this hash will be in the next block header
+      }
+
+      app.logger.Info("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
+      SaveLastBlock(app.db, lastBlock)
+
+      return types.NewResultOK(appHash, "")
+    }
+
 BeginBlock
 ^^^^^^^^^^
 
@@ -247,6 +291,17 @@ and header to the application, before it sends any of the transactions.
 The app should remember the latest height and header (ie. from which it
 has run a successful Commit) so that it can tell Tendermint where to
 pick up from when it restarts. See information on the Handshake, below.
+
+::
+
+    // Track the block hash and header information
+    func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
+      // update latest block info
+      app.blockHeader = params.Header
+
+      // reset valset changes
+      app.changes = make([]*types.Validator, 0)
+    }
 
 EndBlock
 ^^^^^^^^
@@ -259,6 +314,13 @@ EndBlock response. To remove one, include it in the list with a
 ``power`` equal to ``0``. Tendermint core will take care of updating the
 validator set. Note validator set changes are only available in v0.8.0
 and up.
+
+::
+
+    // Update the validator set
+    func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
+      return types.ResponseEndBlock{Diffs: app.changes}
+    }
 
 Query Connection
 ~~~~~~~~~~~~~~~~
@@ -281,6 +343,12 @@ cause Tendermint to not connect to the corresponding peer:
 
 Note: these query formats are subject to change!
 
+::
+
+    func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+      return app.app.Query(reqQuery)
+    }
+
 Handshake
 ~~~~~~~~~
 
@@ -297,3 +365,32 @@ the app are synced to the latest block height.
 
 If the app returns a LastBlockHeight of 0, Tendermint will just replay
 all blocks.
+
+::
+
+    func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+      resInfo = app.app.Info(req)
+      lastBlock := LoadLastBlock(app.db)
+      resInfo.LastBlockHeight = lastBlock.Height
+      resInfo.LastBlockAppHash = lastBlock.AppHash
+      return resInfo
+    }
+
+Genesis
+~~~~~~~
+
+``InitChain`` will be called once upon the genesis. ``params`` includes the
+initial validator set. Later on, it may be extended to take parts of the
+consensus params.
+
+::
+
+    // Save the validators in the merkle tree
+    func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
+      for _, v := range params.Validators {
+        r := app.updateValidator(v)
+        if r.IsErr() {
+          app.logger.Error("Error updating validators", "r", r)
+        }
+      }
+    }
