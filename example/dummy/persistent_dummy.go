@@ -67,7 +67,7 @@ func (app *PersistentDummyApplication) SetOption(key string, value string) (log 
 	return app.app.SetOption(key, value)
 }
 
-// tx is either "key=value" or just arbitrary bytes
+// tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
 func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.Result {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
