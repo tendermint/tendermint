@@ -1,0 +1,14 @@
+version: 1.0.{build}
+configuration: Release
+platform:
+- x64
+- x86
+clone_folder: c:\go\path\src\github.com\tendermint\tendermint
+before_build:
+- cmd: set GOPATH=%GOROOT%\path
+- cmd: set PATH=%GOPATH%\bin;%PATH%
+- cmd: go get github.com/Masterminds/glide
+- cmd: glide install
+build_script:
+- cmd: go test ./...
+test: off
