@@ -99,6 +99,9 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// NOTE: This is just a sanity check. As far as we know things work fine without it,
 	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
 	gr, found, err := cs.wal.SearchForEndHeight(uint64(csHeight))
+	if err != nil {
+		return err
+	}
 	if gr != nil {
 		if err := gr.Close(); err != nil {
 			return err

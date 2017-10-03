@@ -63,6 +63,9 @@ func Discover() (nat NAT, err error) {
 		}
 		var n int
 		_, _, err = socket.ReadFromUDP(answerBytes)
+		if err != nil {
+			return
+		}
 		for {
 			n, _, err = socket.ReadFromUDP(answerBytes)
 			if err != nil {
