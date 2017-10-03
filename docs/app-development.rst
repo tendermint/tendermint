@@ -228,7 +228,7 @@ Commit, or there will be deadlock. Note also that all remaining
 transactions in the mempool are replayed on the mempool connection
 (CheckTx) following a commit.
 
-The Commit response includes a byte array, which is the deterministic
+The app should respond with a byte array, which is the deterministic
 state root of the application. It is included in the header of the next
 block. It can be used to provide easily verified Merkle-proofs of the
 state of the application.
