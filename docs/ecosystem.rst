@@ -39,7 +39,7 @@ The go-ethereum state machine run as a ABCI app, written in Go, `authored by Ten
 Lotion
 ^^^^^^^^^^^^^
 
-A Javascript microframework for building blockchain applications with Tendermint, written in Javascript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>` and `lotion-coin <https://github.com/keppel/lotion-coin>` apps written using Lotion.
+A Javascript microframework for building blockchain applications with Tendermint, written in Javascript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>`__ and `lotion-coin <https://github.com/keppel/lotion-coin>`__ apps written using Lotion.
 
 IAVL
 ~~~~~~~~~~
