@@ -31,9 +31,7 @@ metalinter_test: ensure_tools
 		--enable=deadcode \
 		--enable=gas \
 		--enable=goconst \
-		--enable=goimports \
 		--enable=gosimple \
-		--enable=gotype \
 	 	--enable=ineffassign \
 	   	--enable=interfacer \
 		--enable=megacheck \
@@ -52,5 +50,7 @@ metalinter_test: ensure_tools
 		#--enable=dupl \
 		#--enable=errcheck \
 		#--enable=gocyclo \
+		#--enable=goimports \
 		#--enable=golint \ <== comments on anything exported
+		#--enable=gotype \
 	   	#--enable=unparam \

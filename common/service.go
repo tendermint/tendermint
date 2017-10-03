@@ -140,18 +140,16 @@ func (bs *BaseService) OnStop() {}
 
 // Implements Service
 func (bs *BaseService) Reset() (bool, error) {
-	if atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
-		// whether or not we've started, we can reset
-		atomic.CompareAndSwapUint32(&bs.started, 1, 0)
-
-		bs.Quit = make(chan struct{})
-		return true, bs.impl.OnReset()
-	} else {
+	if stopped := atomic.CompareAndSwapUint32(&bs.stopped, 1, 0); !stopped {
 		bs.Logger.Debug(Fmt("Can't reset %v. Not stopped", bs.name), "impl", bs.impl)
 		return false, nil
 	}
-	// never happens
-	return false, nil // nolint: vet
+
+	// whether or not we've started, we can reset
+	atomic.CompareAndSwapUint32(&bs.started, 1, 0)
+
+	bs.Quit = make(chan struct{})
+	return true, bs.impl.OnReset()
 }
 
 // Implements Service

@@ -22,7 +22,6 @@ For larger datasets, use IAVLTree.
 
 */
 
-// nolint: goimports
 package merkle
 
 import (
