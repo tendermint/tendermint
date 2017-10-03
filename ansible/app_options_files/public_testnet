@@ -14,7 +14,7 @@
         ]
       },
       {
-        "name": "gregkey",
+        "name": "greg",
         "address": "B01C264BFE9CBD45458256E613A6F07061A3A6B6",
         "pub_key": {
           "type": "ed25519",
@@ -122,6 +122,20 @@
           {
             "denom": "unit",
             "amount": 1
+          }
+        ]
+      },
+      {
+        "name": "peng",
+        "address": "7B8422A210D0F0B8734908C093ECF0E9A768BDB8",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "pengcoin",
+            "amount": 1000
           }
         ]
       }
