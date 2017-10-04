@@ -24,7 +24,7 @@ dependencies:
 
 test:
   override:
-    - cd "$PROJECT_PATH" && make metalinter_test
+    - cd "$PROJECT_PATH" && make get_vendor_deps && make metalinter_test
     - cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
         timeout: 1800
   post:

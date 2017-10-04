@@ -82,11 +82,11 @@ ensure_tools:
 
 metalinter: ensure_tools
 	@gometalinter --install
-	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
+	@gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test: ensure_tools
 	@gometalinter --install
-	gometalinter --vendor --deadline=600s --disable-all  \
+	@gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=errcheck \
 		--enable=gas \
