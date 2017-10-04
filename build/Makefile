@@ -2,7 +2,7 @@
 # Extra checks, because we do not use autoconf. Set extra_check to false if it is bothering you.
 ##
 
-extra_check = true
+extra_check = false
 go_min_version = 1.8.3
 gpg_key = 2122CBE9
 
@@ -105,7 +105,7 @@ build-basecoin: git-branch
 # set app_version
 version-%: $(GOPATH)/bin/%
 	if [ -z "$(BUILD_NUMBER)" ]; then echo "BUILD_NUMBER not set" ; false ; fi
-	$(eval $*_version=$(shell $< version | cut -d- -f1 ))
+	$(eval $*_version=$(shell $< version | cut -d- -f1 | sed 's/^v//' ))
 
 # set build_folder
 folder-%: version-%
