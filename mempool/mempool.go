@@ -24,7 +24,7 @@ import (
 
 The mempool pushes new txs onto the proxyAppConn.
 It gets a stream of (req, res) tuples from the proxy.
-The memool stores good txs in a concurrent linked-list.
+The mempool stores good txs in a concurrent linked-list.
 
 Multiple concurrent go-routines can traverse this linked-list
 safely by calling .NextWait() on each element.
