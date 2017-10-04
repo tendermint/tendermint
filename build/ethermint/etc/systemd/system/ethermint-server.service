@@ -3,7 +3,8 @@ Description=Ethermint server
 Requires=network-online.target
 BindTo=ethermint.service
 PartOf=ethermint.service
-After=network-online.target ethermint.service
+Before=ethermint.service
+After=network-online.target
 PropagatesReloadTo=ethermint.service
 ReloadPropagatedFrom=ethermint.service
 

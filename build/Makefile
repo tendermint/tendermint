@@ -32,12 +32,12 @@ endif
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint trackomatron gaia basecoin-old
-build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia build-basecoin-old
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia package-rpm-basecoin-old
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia package-rpm-basecoin-old
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia package-deb-basecoin-old
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia install-deb-basecoin-old
+binaries = tendermint basecoin ethermint trackomatron gaia
+build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia
+package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia
+install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia
+package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia
+install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia
 
 all: $(binaries)
 build: $(build-binaries)
@@ -60,13 +60,12 @@ build-tendermint: git-branch
 	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
-build-basecoin-old: git-branch
-	@echo "*** Building basecoin-old"
-	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
-	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
-	@echo "Workaround: basecoin-old  does not have a binary that gives the basecoin-old version number." && rm -rf $(GOPATH)/bin/basecoin-old && ln -s $(GOPATH)/bin/basecoin $(GOPATH)/bin/basecoin-old
-	@echo "*** Built basecoin"
+#build-basecoin: git-branch
+#	@echo "*** Building basecoin-old"
+#	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
+#	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
+#	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
+#	@echo "*** Built basecoin"
 
 build-ethermint: git-branch
 	@echo "*** Building ethermint"
@@ -119,13 +118,12 @@ prepare-files = rm -rf $(build_folder) && mkdir -p $(build_folder) && cp -r ./$(
 ##
 
 prepare-tendermint =
-prepare-basecoin-old = rm -f $(build_folder)/usr/bin/basecoin-old && cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(build_folder)/usr/bin
 prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
 prepare-gaia =
-prepare-basecoin = rm -f $(build_folder)/usr/bin/basecoin-old && cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
+prepare-basecoin = cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)

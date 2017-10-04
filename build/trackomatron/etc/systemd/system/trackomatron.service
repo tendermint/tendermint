@@ -7,8 +7,7 @@ BindTo=trackomatron-server.service
 #propagates stop and restart (one-way)
 PartOf=trackomatron-server.service
 #order
-Before=trackomatron-server.service
-After=network-online.target
+After=network-online.target trackomatron-server.service
 #propagates reload
 PropagatesReloadTo=trackomatron-server.service
 ReloadPropagatedFrom=trackomatron-server.service
@@ -23,6 +22,6 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target trackomatron-server.service
 Also=trackomatron-server.service
 

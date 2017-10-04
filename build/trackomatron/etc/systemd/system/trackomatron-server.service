@@ -3,7 +3,8 @@ Description=Trackomatron server
 Requires=network-online.target
 BindTo=trackomatron.service
 PartOf=trackomatron.service
-After=network-online.target trackomatron.service
+Before=trackomatron.service
+After=network-online.target
 PropagatesReloadTo=trackomatron.service
 ReloadPropagatedFrom=trackomatron.service
 
@@ -18,6 +19,6 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target trackomatron.service
+WantedBy=multi-user.target
 Also=trackomatron.service
 

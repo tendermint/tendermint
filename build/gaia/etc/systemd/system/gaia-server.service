@@ -3,7 +3,8 @@ Description=Gaia server
 Requires=network-online.target
 BindTo=gaia.service
 PartOf=gaia.service
-After=network-online.target gaia.service
+Before=gaia.service
+After=network-online.target
 PropagatesReloadTo=gaia.service
 ReloadPropagatedFrom=gaia.service
 
@@ -18,6 +19,6 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target gaia.service
+WantedBy=multi-user.target
 Also=gaia.service
 

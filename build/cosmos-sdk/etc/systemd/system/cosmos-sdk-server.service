@@ -18,6 +18,6 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target cosmos-sdk.service
+WantedBy=multi-user.target
 Also=cosmos-sdk.service
 
