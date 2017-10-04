@@ -4,33 +4,51 @@
 proxy_app = "tcp://127.0.0.1:46658"
 moniker = "{{inventory_hostname}}"
 fast_sync = true
+{% if service == 'tendermint' %}
+
+db_backend = "memdb"
+log_level = "mempool:error,*:debug"
+
+{% else %}
+
 db_backend = "leveldb"
-#db_backend = "memdb"
-#log_level = "mempool:error,*:debug"
 log_level = "state:info,*:error"
+
+{% endif %}
 
 [rpc]
 laddr = "tcp://0.0.0.0:46657"
 
-#[mempool]
-#recheck = false
-#broadcast = false
-#wal_dir = ""
+{% if service == 'tendermint' %}
+
+[mempool]
+recheck = false
+broadcast = false
+wal_dir = ""
 
 [consensus]
-#max_block_size_txs = 10000
-#create_empty_blocks = false
-#timeout_propose = 10000
-#skip_timeout_commit = true
-#timeout_commit = 1
-#wal_light = true
-#block_part_size = 262144
+max_block_size_txs = 10000
+create_empty_blocks = false
+timeout_propose = 10000
+skip_timeout_commit = true
+timeout_commit = 1
+wal_light = true
+block_part_size = 262144
 create_empty_blocks_interval = 1
 
+{% else %}
+
+[consensus]
+create_empty_blocks_interval = 1
+
+{% endif %}
+
 [p2p]
-#max_msg_packet_payload_size=65536
-#send_rate=51200000 # 50 MB/s
-#recv_rate=51200000 # 50 MB/s
+{% if service == 'tendermint' %}
+max_msg_packet_payload_size=65536
+send_rate=51200000 # 50 MB/s
+recv_rate=51200000 # 50 MB/s
+{% endif %}
 laddr = "tcp://0.0.0.0:46656"
 {% if validators == true or validators == 'true' %}
 {% set comma = joiner(",") %}seeds = "{% for host in ((groups[testnet_name]|default([]))+(groups['tag_Environment_'~(testnet_name|regex_replace('-','_'))]|default([])))|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["inventory_hostname"]}}:46656{% endfor %}"
