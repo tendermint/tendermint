@@ -62,12 +62,12 @@ Next we replay all the messages from the WAL.
     I[10-04|13:54:30.392] Started node                                 module=main nodeInfo="NodeInfo{pk: PubKeyEd25519{DF22D7C92C91082324A1312F092AA1DA197FA598DBBFB6526E177003C4D6FD66}, moniker: anonymous, network: test-chain-3MNw2N [remote , listen 10.0.2.15:46656], version: 0.11.0-10f361fc ([wire_version=0.6.2 p2p_version=0.5.0 consensus_version=v1/0.2.2 rpc_version=0.7.0/3 tx_index=on rpc_addr=tcp://0.0.0.0:46657])}"
 
 Next follows a standard block creation cycle, where we enter a new round,
-propose a block, receive more than 2/3 of prevotes, than precommits and finally
+propose a block, receive more than 2/3 of prevotes, then precommits and finally
 have a chance to commit a block. For details, please refer to `Consensus
 Overview
-<https://tendermint.readthedocs.io/projects/tools/en/master/introduction.html#consensus-overview>__`
+<introduction.html#consensus-overview>`__
 or `Byzantine Consensus Algorithm
-<https://tendermint.readthedocs.io/projects/tools/en/master/specification.html>__`.
+<specification.html>`__.
 
 ::
 
@@ -117,11 +117,11 @@ Here is the list of modules you may encounter in Tendermint's log and a little
 overview what they do.
 
 - ``abci-client`` As mentioned in `Application Development Guide
-  <https://tendermint.readthedocs.io/en/master/app-development.html#abci-design>__`,
+  <app-development.html#abci-design>`__,
   Tendermint acts as an ABCI client with respect to the application and
   maintains 3 connections: mempool, consensus and query. The code used by
   Tendermint Core can be found `here
-  <https://github.com/tendermint/abci/tree/master/client>__`.
+  <https://github.com/tendermint/abci/tree/master/client>`__.
 
 - ``blockchain``
   Provides storage, pool (a group of peers), and reactor for both storing and
@@ -136,10 +136,10 @@ overview what they do.
 - ``events``
   Simple event notification system. The list of events can be found
   `here
-  <https://github.com/tendermint/tendermint/blob/master/types/events.go>__`.
+  <https://github.com/tendermint/tendermint/blob/master/types/events.go>`__.
   You can subscribe to them by calling ``subscribe`` RPC method.
   Refer to `RPC docs
-  <https://tendermint.readthedocs.io/projects/tools/en/master/specification/rpc.html>__`
+  <specification/rpc.html>`__
   for additional information.
 
 - ``mempool``
@@ -149,13 +149,13 @@ overview what they do.
 - ``p2p``
   Provides an abstraction around peer-to-peer communication. For more details,
   please check out the `README
-  <https://github.com/tendermint/tendermint/blob/56c60fba2381e4ac41d2ae38a1eb6569acfbc095/p2p/README.md>__`.
+  <https://github.com/tendermint/tendermint/blob/56c60fba2381e4ac41d2ae38a1eb6569acfbc095/p2p/README.md>`__.
 
 - ``rpc``
-  `Tendermint's RPC <https://tendermint.readthedocs.io/projects/tools/en/master/specification/rpc.html>__`.
+  `Tendermint's RPC <specification/rpc.html>`__.
 
 - ``rpc-server``
-  RPC server. For implementation details, please read the `README <https://github.com/tendermint/tendermint/blob/master/rpc/lib/README.md>__` .
+  RPC server. For implementation details, please read the `README <https://github.com/tendermint/tendermint/blob/master/rpc/lib/README.md>`__.
 
 - ``state``
   Represents the latest state and execution submodule, which executes
