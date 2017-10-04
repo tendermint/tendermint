@@ -146,7 +146,7 @@ Most of the examples below are from `dummy application
 <https://github.com/tendermint/abci/blob/master/example/dummy/dummy.go>`__,
 which is a part of the abci repo. `persistent_dummy application
 <https://github.com/tendermint/abci/blob/master/example/dummy/persistent_dummy.go>`__
-application is used to show ``BeginBlock``, ``EndBlock`` and ``InitChain``
+is used to show ``BeginBlock``, ``EndBlock`` and ``InitChain``
 example implementations.
 
 Blockchain Protocol
@@ -254,7 +254,7 @@ Commit, or there will be deadlock. Note also that all remaining
 transactions in the mempool are replayed on the mempool connection
 (CheckTx) following a commit.
 
-The app should respond with a byte array, which is the deterministic
+The app should respond to the Commit request with a byte array, which is the deterministic
 state root of the application. It is included in the header of the next
 block. It can be used to provide easily verified Merkle-proofs of the
 state of the application.
