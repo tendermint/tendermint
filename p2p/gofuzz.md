@@ -53,7 +53,7 @@ $ $GOPATH/bin/go-fuzz-build github.com/tendermint/tendermint/p2p
 ```
 
 
-If step 6 still doesn't show the fuzzer firing successful executions, you may need to build the archive like this:
+If step 4 still doesn't show the fuzzer firing successful executions, you may need to build the archive like this:
 ```
 $ CGO_ENABLED=0 $GOPATH/bin/go-fuzz-build github.com/tendermint/tendermint/p2p
 ```
