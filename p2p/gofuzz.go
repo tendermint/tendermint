@@ -93,17 +93,16 @@ func init() {
 
 // Each execution of the fuzzer calls this function with random data provided.
 func Fuzz(data []byte) int {
-	var i int
 	datalen := len(data)
 
 	if datalen < 12 {
-		// small amounts of data will not due
+		// small amounts of data will not do
 		return -1
 	}
 
 	// simulate random remote peer
 	peer := randomPeer(data)
-	i += 6
+	i := 6
 
 	// send a PEXRequestMessage to the reactor
 	request := wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
