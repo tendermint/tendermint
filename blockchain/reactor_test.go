@@ -4,13 +4,15 @@ import (
 	"bytes"
 	"testing"
 
+	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
+
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
 )
 
 func newBlockchainReactor(logger log.Logger, maxBlockHeight int) *BlockchainReactor {
@@ -23,7 +25,8 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int) *BlockchainReac
 
 	// Get State
 	stateDB := db.NewDB("state", config.DBBackend, config.DBDir())
-	state := sm.GetState(stateDB, config.GenesisFile())
+	state, _ := sm.GetState(stateDB, config.GenesisFile())
+
 	state.SetLogger(stateLogger)
 	state.Save()
 
@@ -39,19 +42,11 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int) *BlockchainReac
 	for blockHeight := 1; blockHeight <= maxBlockHeight; blockHeight++ {
 		firstBlock := makeBlock(blockHeight, state)
 		secondBlock := makeBlock(blockHeight+1, state)
-		firstParts := firstBlock.MakePartSet(types.DefaultBlockPartSize)
+		firstParts := firstBlock.MakePartSet(state.Params().BlockGossipParams.BlockPartSizeBytes)
 		blockStore.SaveBlock(firstBlock, firstParts, secondBlock.LastCommit)
 	}
 
 	return bcReactor
-}
-
-func newbcrTestPeer(key string) *bcrTestPeer {
-	return &bcrTestPeer{
-		key: key,
-		kvm: make(map[byte]interface{}),
-		ch:  make(chan *keyValue, 2),
-	}
 }
 
 func TestNoBlockMessageResponse(t *testing.T) {
@@ -68,91 +63,49 @@ func TestNoBlockMessageResponse(t *testing.T) {
 	bcr.AddPeer(peer)
 
 	chID := byte(0x01)
-	
-	tests := [...]struct {
+
+	tests := []struct {
 		height   int
 		existent bool
 	}{
-		0: {
-			height:   maxBlockHeight + 2,
-			existent: false,
-		},
-		1: {
-			height:   10,
-			existent: true, // We should have this
-		},
-		2: {
-			height:   1,
-			existent: true, // We should have this
-		},
-		3: {
-			height:   100,
-			existent: false,
-		},
+		{maxBlockHeight + 2, false},
+		{10, true},
+		{1, true},
+		{100, false},
 	}
 
-	// Currently the repsonses take asynchronous paths so
-	// the results are skewed. However, we can ensure that
-	// the (expectedHeight, expectedExistence) all tally up.
-	heightTally := map[int]bool{}
-	var results []BlockchainMessage
-
-	msgRequest := byte(0x10)
 	for _, tt := range tests {
-		reqBlockBytes := []byte{msgRequest, 0x02, 0x00, byte(tt.height)}
+		reqBlockMsg := &bcBlockRequestMessage{tt.height}
+		reqBlockBytes := wire.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
 		bcr.Receive(chID, peer, reqBlockBytes)
-		heightTally[tt.height] = tt.existent
-		kv := peer.lastKeyValue()
-		results = append(results, kv.value.(struct{ BlockchainMessage }).BlockchainMessage)
-	}
+		value := peer.lastValue()
+		msg := value.(struct{ BlockchainMessage }).BlockchainMessage
 
-	for i, res := range results {
-		if bcRM, ok := res.(*bcBlockResponseMessage); ok {
-			block := bcRM.Block
-			if block == nil {
-				t.Errorf("result: #%d: expecting a non-nil block", i)
-				continue
-			}
-			mustExist, foundHeight := heightTally[block.Height]
-			if !foundHeight {
-				t.Errorf("result: #%d, missing height %d", i, block.Height)
-				continue
-			}
-			if !mustExist {
-				t.Errorf("result: #%d mustExist", i)
-			} else {
-				delete(heightTally, block.Height)
-			}
-		} else if bcNBRSM, ok := res.(*bcNoBlockResponseMessage); ok {
-			mustExist, foundHeight := heightTally[bcNBRSM.Height]
-			if !foundHeight {
-				t.Errorf("result: #%d, missing height %d", i, bcNBRSM.Height)
-				continue
-			}
-			if mustExist {
-				t.Errorf("result: #%d mustNotExist", i)
-			} else {
-				// Passes, remove this height from the tally
-				delete(heightTally, bcNBRSM.Height)
+		if tt.existent {
+			if blockMsg, ok := msg.(*bcBlockResponseMessage); !ok {
+				t.Fatalf("Expected to receive a block response for height %d", tt.height)
+			} else if blockMsg.Block.Height != tt.height {
+				t.Fatalf("Expected response to be for height %d, got %d", tt.height, blockMsg.Block.Height)
 			}
 		} else {
-			t.Errorf("result: #%d is an unexpected type: %T; data: %#v", i, res, res)
+			if noBlockMsg, ok := msg.(*bcNoBlockResponseMessage); !ok {
+				t.Fatalf("Expected to receive a no block response for height %d", tt.height)
+			} else if noBlockMsg.Height != tt.height {
+				t.Fatalf("Expected response to be for height %d, got %d", tt.height, noBlockMsg.Height)
+			}
 		}
 	}
-
-	if len(heightTally) > 0 {
-		t.Errorf("Untallied heights: %#v\n", heightTally)
-	}
 }
+
+//----------------------------------------------
+// utility funcs
 
 func makeTxs(blockNumber int) (txs []types.Tx) {
 	for i := 0; i < 10; i++ {
-		txs = append(txs, types.Tx([]byte{byte(blockNumber)}))
+		txs = append(txs, types.Tx([]byte{byte(blockNumber), byte(i)}))
 	}
 	return txs
 }
-
-const testPartSize = 65536
 
 func makeBlock(blockNumber int, state *sm.State) *types.Block {
 	prevHash := state.LastBlockID.Hash
@@ -160,39 +113,28 @@ func makeBlock(blockNumber int, state *sm.State) *types.Block {
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
 	block, _ := types.MakeBlock(blockNumber, "test_chain", makeTxs(blockNumber),
-		new(types.Commit), prevBlockID, valHash, state.AppHash, testPartSize)
+		new(types.Commit), prevBlockID, valHash, state.AppHash, state.Params().BlockGossipParams.BlockPartSizeBytes)
 	return block
 }
 
 // The Test peer
 type bcrTestPeer struct {
+	cmn.Service
 	key string
-	ch  chan *keyValue
-	kvm map[byte]interface{}
-}
-
-type keyValue struct {
-	key   interface{}
-	value interface{}
+	ch  chan interface{}
 }
 
 var _ p2p.Peer = (*bcrTestPeer)(nil)
 
-func (tp *bcrTestPeer) Key() string        { return tp.key }
-func (tp *bcrTestPeer) IsOutbound() bool   { return false }
-func (tp *bcrTestPeer) IsPersistent() bool { return true }
-func (tp *bcrTestPeer) IsRunning() bool    { return true }
+func newbcrTestPeer(key string) *bcrTestPeer {
+	return &bcrTestPeer{
+		Service: cmn.NewBaseService(nil, "bcrTestPeer", nil),
+		key:     key,
+		ch:      make(chan interface{}, 2),
+	}
+}
 
-func (tp *bcrTestPeer) OnStop() {}
-
-func (tp *bcrTestPeer) OnReset() error         { return nil }
-func (tp *bcrTestPeer) Reset() (bool, error)   { return false, nil }
-func (tp *bcrTestPeer) OnStart() error         { return nil }
-func (tp *bcrTestPeer) SetLogger(l log.Logger) {}
-
-func (tp *bcrTestPeer) Start() (bool, error) { return true, nil }
-func (tp *bcrTestPeer) Stop() bool           { return true }
-func (tp *bcrTestPeer) String() string       { return tp.key }
+func (tp *bcrTestPeer) lastValue() interface{} { return <-tp.ch }
 
 func (tp *bcrTestPeer) TrySend(chID byte, value interface{}) bool {
 	if _, ok := value.(struct{ BlockchainMessage }).BlockchainMessage.(*bcStatusResponseMessage); ok {
@@ -201,18 +143,16 @@ func (tp *bcrTestPeer) TrySend(chID byte, value interface{}) bool {
 		// + bcBlockResponseMessage
 		// + bcNoBlockResponseMessage
 	} else {
-		tp.ch <- &keyValue{key: chID, value: value}
+		tp.ch <- value
 	}
 	return true
 }
 
-func (tp *bcrTestPeer) Send(chID byte, data interface{}) bool {
-	return tp.TrySend(chID, data)
-}
-
-func (tp *bcrTestPeer) NodeInfo() *p2p.NodeInfo      { return nil }
-func (tp *bcrTestPeer) Status() p2p.ConnectionStatus { return p2p.ConnectionStatus{} }
-
-func (tp *bcrTestPeer) Get(s string) interface{} { return s }
-func (tp *bcrTestPeer) Set(string, interface{})  {}
-func (tp *bcrTestPeer) lastKeyValue() *keyValue  { return <-tp.ch }
+func (tp *bcrTestPeer) Send(chID byte, data interface{}) bool { return tp.TrySend(chID, data) }
+func (tp *bcrTestPeer) NodeInfo() *p2p.NodeInfo               { return nil }
+func (tp *bcrTestPeer) Status() p2p.ConnectionStatus          { return p2p.ConnectionStatus{} }
+func (tp *bcrTestPeer) Key() string                           { return tp.key }
+func (tp *bcrTestPeer) IsOutbound() bool                      { return false }
+func (tp *bcrTestPeer) IsPersistent() bool                    { return true }
+func (tp *bcrTestPeer) Get(s string) interface{}              { return s }
+func (tp *bcrTestPeer) Set(string, interface{})               {}
