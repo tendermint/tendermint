@@ -30,14 +30,16 @@ The main config parameters are defined
 
 -  ``consensus.max_block_size_txs``: Maximum number of block txs.
    *Default*: ``10000``
+-  ``consensus.create_empty_blocks``: Create empty blocks w/o txs.
+   *Default*: ``true``
+-  ``consensus.create_empty_blocks_interval``: Block creation interval, even if empty.
 -  ``consensus.timeout_*``: Various consensus timeout parameters
-   **TODO**
 -  ``consensus.wal_file``: Consensus state WAL. *Default*:
-   ``"$TMHOME/data/cswal"``
+   ``"$TMHOME/data/cs.wal/wal"``
 -  ``consensus.wal_light``: Whether to use light-mode for Consensus
    state WAL. *Default*: ``false``
 
--  ``mempool.*``: Various mempool parameters **TODO**
+-  ``mempool.*``: Various mempool parameters
 
 -  ``p2p.addr_book_file``: Peer address book. *Default*:
    ``"$TMHOME/addrbook.json"``. **NOT USED**

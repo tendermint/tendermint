@@ -126,6 +126,38 @@ Notable options include the socket address of the application
 
 Some fields from the config file can be overwritten with flags.
 
+No Empty Blocks
+---------------
+
+This much requested feature was implemented in version 0.10.3. While the default behaviour of ``tendermint`` is still to create blocks approximately once per second, it is possible to disable empty blocks or set a block creation interval. In the former case, blocks will be created when there are new transactions or when the AppHash changes.
+
+To configure tendermint to not produce empty blocks unless there are txs or the app hash changes, 
+run tendermint with this additional flag:
+
+::
+
+    tendermint node --consensus.create_empty_blocks=false
+
+or set the configuration via the ``config.toml`` file:
+
+::
+
+    [consensus]
+    create_empty_blocks = false
+
+Remember: because the default is to *create empty blocks*, avoiding empty blocks requires the config option to be set to ``false``.
+
+The block interval setting allows for a delay (in seconds) between the creation of each new empty block. It is set via the ``config.toml``:
+
+::
+
+    [consensus]
+    create_empty_blocks_interval = 5
+
+With this setting, empty blocks will be produced every 5s if no block has been produced otherwise,
+regardless of the value of `create_empty_blocks`.
+
+
 Broadcast API
 -------------
 
