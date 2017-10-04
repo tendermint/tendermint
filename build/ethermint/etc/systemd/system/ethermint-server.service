@@ -9,7 +9,7 @@ PropagatesReloadTo=ethermint.service
 ReloadPropagatedFrom=ethermint.service
 
 [Service]
-Environment="TMHOME=/etc/ethermint/tendermint"
+Environment="TMHOME=/etc/ethermint"
 Restart=on-failure
 User=ethermint
 Group=ethermint

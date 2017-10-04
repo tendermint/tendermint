@@ -9,7 +9,7 @@ PropagatesReloadTo=gaia.service
 ReloadPropagatedFrom=gaia.service
 
 [Service]
-Environment="TMHOME=/etc/gaia/tendermint"
+Environment="TMHOME=/etc/gaia"
 Restart=on-failure
 User=gaia
 Group=gaia

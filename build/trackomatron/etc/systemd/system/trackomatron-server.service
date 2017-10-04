@@ -9,7 +9,7 @@ PropagatesReloadTo=trackomatron.service
 ReloadPropagatedFrom=trackomatron.service
 
 [Service]
-Environment="TMHOME=/etc/trackomatron/tendermint"
+Environment="TMHOME=/etc/trackomatron"
 Restart=on-failure
 User=trackomatron
 Group=trackomatron

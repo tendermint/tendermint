@@ -8,7 +8,7 @@ PropagatesReloadTo=cosmos-sdk.service
 ReloadPropagatedFrom=cosmos-sdk.service
 
 [Service]
-Environment="TMHOME=/etc/cosmos-sdk/tendermint"
+Environment="TMHOME=/etc/cosmos-sdk"
 Restart=on-failure
 User=cosmos-sdk
 Group=cosmos-sdk

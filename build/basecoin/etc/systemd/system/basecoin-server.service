@@ -9,7 +9,7 @@ PropagatesReloadTo=basecoin.service
 ReloadPropagatedFrom=basecoin.service
 
 [Service]
-Environment="TMHOME=/etc/basecoin/tendermint"
+Environment="TMHOME=/etc/basecoin"
 Restart=on-failure
 User=basecoin
 Group=basecoin
