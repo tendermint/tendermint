@@ -55,6 +55,7 @@ Tendermint 102
    abci-cli.rst
    app-architecture.rst
    app-development.rst
+   how-to-read-logs.rst
 
 Tendermint 201
 --------------
