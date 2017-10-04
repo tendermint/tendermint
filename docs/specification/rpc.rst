@@ -18,7 +18,7 @@ Configuration
 ~~~~~~~~~~~~~
 
 Set the ``laddr`` config parameter under ``[rpc]`` table in the
-$TMHOME/config.toml file or the ``--rpc.laddr`` command-line flag to the
+$TMHOME/config/config.toml file or the ``--rpc.laddr`` command-line flag to the
 desired protocol://host:port setting. Default: ``tcp://0.0.0.0:46657``.
 
 Arguments

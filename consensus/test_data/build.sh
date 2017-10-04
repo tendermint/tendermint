@@ -16,11 +16,11 @@ DIR_TO_COPY=$HOME/.tendermint_test/consensus_state_test
 TMHOME="$HOME/.tendermint"
 rm -rf "$TMHOME"
 cp -r "$DIR_TO_COPY" "$TMHOME"
-cp $TMHOME/config.toml $TMHOME/config.toml.bak
+cp $TMHOME/config/config.toml $TMHOME/config/config.toml.bak
 
 function reset(){
 	tendermint unsafe_reset_all
-	cp $TMHOME/config.toml.bak $TMHOME/config.toml
+	cp $TMHOME/config/config.toml.bak $TMHOME/config/config.toml
 }
 
 reset
@@ -71,8 +71,8 @@ reset
 
 # small block 2 (part size = 512)
 function small_block2(){
-echo "" >> ~/.tendermint/config.toml
-echo "block_part_size = 512" >> ~/.tendermint/config.toml
+echo "" >> ~/.tendermint/config/config.toml
+echo "block_part_size = 512" >> ~/.tendermint/config/config.toml
 bash scripts/txs/random.sh 1000 36657 &> /dev/null &
 PID=$!
 tendermint node --proxy_app=persistent_dummy &> /dev/null &

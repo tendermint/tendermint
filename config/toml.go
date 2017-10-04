@@ -3,7 +3,6 @@ package config
 import (
 	"bytes"
 	"os"
-	"path"
 	"path/filepath"
 	"text/template"
 
@@ -23,10 +22,10 @@ func init() {
 
 func EnsureRoot(rootDir string) {
 	cmn.EnsureDir(rootDir, 0700)
-	cmn.EnsureDir(rootDir+"/config", 0700)
-	cmn.EnsureDir(rootDir+"/data", 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, DefaultConfigDir), 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, DefaultDataDir), 0700)
 
-	configFilePath := path.Join(rootDir, "config/config.toml")
+	configFilePath := filepath.Join(rootDir, DefaultConfigFilePath)
 
 	if cmn.FileExists(configFilePath) {
 		// TODO: Prompt user to replace if config file already exists.
@@ -206,12 +205,12 @@ func ResetTestRoot(testName string) *Config {
 	}
 	// Create new dir
 	cmn.EnsureDir(rootDir, 0700)
-	cmn.EnsureDir(rootDir+"/config", 0700)
-	cmn.EnsureDir(rootDir+"/data", 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, DefaultConfigDir), 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, DefaultDataDir), 0700)
 
-	configFilePath := path.Join(rootDir, "config/config.toml")
-	genesisFilePath := path.Join(rootDir, "config/genesis.json")
-	privFilePath := path.Join(rootDir, "config/priv_validator.json")
+	configFilePath := filepath.Join(rootDir, DefaultConfigFilePath)
+	genesisFilePath := filepath.Join(rootDir, DefaultGenesisJSONPath)
+	privFilePath := filepath.Join(rootDir, DefaultPrivValPath)
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {

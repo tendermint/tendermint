@@ -24,7 +24,8 @@ Initialize the root directory by running:
     tendermint init
 
 This will create a new private key (``priv_validator.json``), and a
-genesis file (``genesis.json``) containing the associated public key.
+genesis file (``genesis.json``) containing the associated public key,
+in ``$TMHOME/config``.
 This is all that's necessary to run a local testnet with one validator.
 
 For more elaborate initialization, see our `testnet deployment
@@ -197,7 +198,7 @@ Tendermint Networks
 -------------------
 
 When ``tendermint init`` is run, both a ``genesis.json`` and
-``priv_validator.json`` are created in ``~/.tendermint``. The
+``priv_validator.json`` are created in ``~/.tendermint/config``. The
 ``genesis.json`` might look like:
 
 ::
@@ -264,7 +265,7 @@ with the consensus protocol.
 Peers
 ~~~~~
 
-To connect to peers on start-up, specify them in the ``config.toml`` or
+To connect to peers on start-up, specify them in the ``$TMHOME/config/config.toml`` or
 on the command line.
 
 For instance,
@@ -290,7 +291,7 @@ Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Adding a non-validator is simple. Just copy the original
-``genesis.json`` to ``~/.tendermint`` on the new machine and start the
+``genesis.json`` to ``~/.tendermint/config`` on the new machine and start the
 node, specifying seeds as necessary. If no seeds are specified, the node
 won't make any blocks, because it's not a validator, and it won't hear
 about any blocks, because it's not connected to the other peer.
@@ -359,8 +360,8 @@ then the new ``genesis.json`` will be:
         ]
     }
 
-Update the ``genesis.json`` in ``~/.tendermint``. Copy the genesis file
-and the new ``priv_validator.json`` to the ``~/.tendermint`` on a new
+Update the ``genesis.json`` in ``~/.tendermint/config``. Copy the genesis file
+and the new ``priv_validator.json`` to the ``~/.tendermint/config`` on a new
 machine.
 
 Now run ``tendermint node`` on both machines, and use either

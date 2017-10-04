@@ -28,6 +28,11 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.12.0 (TBD)
+
+BREAKING:
+- the files usually found in `~/.tendermint` (`config.toml`, `genesis.json`, and `priv_validator.json`) are now in `~/.tendermint/config`. The `$TMHOME/data/` directory remains unchanged.
+
 ## 0.11.1 (October 10, 2017)
 
 IMPROVEMENTS:

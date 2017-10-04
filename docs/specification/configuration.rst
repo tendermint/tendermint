@@ -2,7 +2,7 @@ Configuration
 =============
 
 Tendermint Core can be configured via a TOML file in
-``$TMHOME/config.toml``. Some of these parameters can be overridden by
+``$TMHOME/config/config.toml``. Some of these parameters can be overridden by
 command-line flags. For most users, the options in the ``##### main
 base configuration options #####`` are intended to be modified while
 config options further below are intended for advance power users.

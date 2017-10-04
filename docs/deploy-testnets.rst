@@ -13,7 +13,7 @@ It's relatively easy to setup a Tendermint cluster manually. The only
 requirements for a particular Tendermint node are a private key for the
 validator, stored as ``priv_validator.json``, and a list of the public
 keys of all validators, stored as ``genesis.json``. These files should
-be stored in ``~/.tendermint``, or wherever the ``$TMROOT`` variable
+be stored in ``~/.tendermint/config``, or wherever the ``$TMHOME`` variable
 might be set to.
 
 Here are the steps to setting up a testnet manually:

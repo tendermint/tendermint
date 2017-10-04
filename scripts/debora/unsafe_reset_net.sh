@@ -3,7 +3,7 @@ set -euo pipefail
 IFS=$'\n\t'
 
 debora run -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; killall tendermint; killall logjack"
-debora run -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; tendermint unsafe_reset_priv_validator; rm -rf ~/.tendermint/data; rm ~/.tendermint/genesis.json; rm ~/.tendermint/logs/*"
+debora run -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; tendermint unsafe_reset_priv_validator; rm -rf ~/.tendermint/data; rm ~/.tendermint/config/genesis.json; rm ~/.tendermint/logs/*"
 debora run -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; git pull origin develop; make"
 debora run -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; mkdir -p ~/.tendermint/logs"
 debora run --bg --label tendermint -- bash -c "cd \$GOPATH/src/github.com/tendermint/tendermint; tendermint node 2>&1 | stdinwriter -outpath ~/.tendermint/logs/tendermint.log"

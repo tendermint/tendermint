@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -44,7 +45,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 			cmn.Exit(err.Error())
 		}
 		// Read priv_validator.json to populate vals
-		privValFile := path.Join(dataDir, mach, "priv_validator.json")
+		privValFile := path.Join(dataDir, mach, cfg.DefaultPrivValPath)
 		privVal := types.LoadPrivValidatorFS(privValFile)
 		genVals[i] = types.GenesisValidator{
 			PubKey: privVal.GetPubKey(),
@@ -63,7 +64,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 	// Write genesis file.
 	for i := 0; i < nValidators; i++ {
 		mach := cmn.Fmt("mach%d", i)
-		genDoc.SaveAs(path.Join(dataDir, mach, "genesis.json"))
+		genDoc.SaveAs(path.Join(dataDir, mach, cfg.DefaultGenesisJSONPath))
 	}
 
 	fmt.Println(cmn.Fmt("Successfully initialized %v node directories", nValidators))
@@ -78,7 +79,7 @@ func initMachCoreDirectory(base, mach string) error {
 	}
 
 	// Create priv_validator.json file if not present
-	ensurePrivValidator(path.Join(dir, "priv_validator.json"))
+	ensurePrivValidator(path.Join(dir, cfg.DefaultPrivValPath))
 	return nil
 
 }
