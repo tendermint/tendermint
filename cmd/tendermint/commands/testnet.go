@@ -2,7 +2,7 @@ package commands
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -45,7 +45,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 			cmn.Exit(err.Error())
 		}
 		// Read priv_validator.json to populate vals
-		privValFile := path.Join(dataDir, mach, cfg.DefaultPrivValPath)
+		privValFile := filepath.Join(dataDir, mach, cfg.DefaultPrivValPath)
 		privVal := types.LoadPrivValidatorFS(privValFile)
 		genVals[i] = types.GenesisValidator{
 			PubKey: privVal.GetPubKey(),
@@ -64,7 +64,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 	// Write genesis file.
 	for i := 0; i < nValidators; i++ {
 		mach := cmn.Fmt("mach%d", i)
-		genDoc.SaveAs(path.Join(dataDir, mach, cfg.DefaultGenesisJSONPath))
+		genDoc.SaveAs(filepath.Join(dataDir, mach, cfg.DefaultGenesisJSONPath))
 	}
 
 	fmt.Println(cmn.Fmt("Successfully initialized %v node directories", nValidators))
@@ -72,14 +72,14 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 
 // Initialize per-machine core directory
 func initMachCoreDirectory(base, mach string) error {
-	dir := path.Join(base, mach)
+	dir := filepath.Join(base, mach)
 	err := cmn.EnsureDir(dir, 0777)
 	if err != nil {
 		return err
 	}
 
 	// Create priv_validator.json file if not present
-	ensurePrivValidator(path.Join(dir, cfg.DefaultPrivValPath))
+	ensurePrivValidator(filepath.Join(dir, cfg.DefaultPrivValPath))
 	return nil
 
 }
