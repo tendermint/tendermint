@@ -134,5 +134,33 @@
             "amount": 1000
           }
         ]
+      },
+      {
+        "name": "matt",
+        "address": "C2104A8191E282AA45D210BA93282B36768EDDA1",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "mattcoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "frey",
+        "address": "0F8FB94B5A4D04220F15058B7AA16AF1328B57A9",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "freycoin",
+            "amount": 1000
+          }
+        ]
       }
     ]
