@@ -5,21 +5,23 @@ Release: @BUILD_NUMBER@
 %define debug_package       %{nil}
 %define __os_install_post   %{nil}
 
-Name: ethermint
-Summary: ethermint enables ethereum as an ABCI application on tendermint and the COSMOS hub
+Name: @PACKAGE_NAME@
+Summary: @PACKAGE_SUMMARY@
 License: Apache 2.0
-URL: https://tendermint.com/
+URL: @PACKAGE_URL@
 Packager: Greg Szabo
-Requires: tendermint >= 0.10.0
-#Requires(pre): useradd
+Requires: tendermint >= 0.11.0
+@PACKAGE_ADDITIONAL_HEADER@
 
 %description
-Ethermint enables ethereum to run as an ABCI application on tendermint and the COSMOS hub. This application allows you to get all the benefits of ethereum without having to run your own miners.
+@PACKAGE_DESCRIPTION@
 
 %pre
 if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
-  useradd -k /dev/null -r -m -b %{_sysconfdir} %{name}
+  useradd -r -b %{_sysconfdir} %{name}
+  mkdir -p %{_sysconfdir}/%{name}
   chmod 755 %{_sysconfdir}/%{name}
+  chown %{name}.%{name} %{_sysconfdir}/%{name}
 fi
 
 %prep
@@ -33,10 +35,9 @@ cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
-sudo -Hu %{name} %{_bindir}/%{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
-sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
-
-chmod 755 %{_sysconfdir}/%{name}/tendermint
+sudo -Hu %{name} %{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
+#The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
+sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}
 
 systemctl daemon-reload
 
@@ -52,7 +53,6 @@ systemctl daemon-reload
 %config(noreplace) %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/genesis.json
 %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/keystore
 %attr(0644, %{name}, %{name}) %{_sysconfdir}/%{name}/keystore/*
-%ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*

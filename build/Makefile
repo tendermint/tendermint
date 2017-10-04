@@ -32,12 +32,12 @@ endif
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint trackomatron gaia cosmos-sdk
-build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia build-cosmos-sdk
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia package-rpm-cosmos-sdk
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia package-rpm-cosmos-sdk
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia package-deb-cosmos-sdk
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia install-deb-cosmos-sdk
+binaries = tendermint basecoin ethermint trackomatron gaia basecoin-old
+build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia build-basecoin-old
+package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia package-rpm-basecoin-old
+install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia package-rpm-basecoin-old
+package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia package-deb-basecoin-old
+install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia install-deb-basecoin-old
 
 all: $(binaries)
 build: $(build-binaries)
@@ -60,11 +60,12 @@ build-tendermint: git-branch
 	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
-build-basecoin: git-branch
-	@echo "*** Building basecoin"
+build-basecoin-old: git-branch
+	@echo "*** Building basecoin-old"
 	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
 	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
 	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
+	@echo "Workaround: basecoin-old  does not have a binary that gives the basecoin-old version number." && rm -rf $(GOPATH)/bin/basecoin-old && ln -s $(GOPATH)/bin/basecoin $(GOPATH)/bin/basecoin-old
 	@echo "*** Built basecoin"
 
 build-ethermint: git-branch
@@ -90,13 +91,12 @@ build-gaia: git-branch
 	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
 
-build-cosmos-sdk: git-branch
-	@echo "*** Building cosmos-sdk"
+build-basecoin: git-branch
+	@echo "*** Building basecoin from cosmos-sdk"
 	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
 	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
-	@echo "Workaround: cosmos-sdk does not have a binary that gives the cosmos-sdk version number." && rm -rf $(GOPATH)/bin/cosmos-sdk && ln -s $(GOPATH)/bin/basecoin $(GOPATH)/bin/cosmos-sdk
-	@echo "*** Built cosmos-sdk"
+	@echo "*** Built basecoin from cosmos-sdk"
 
 ###
 # Prepare package files
@@ -119,14 +119,13 @@ prepare-files = rm -rf $(build_folder) && mkdir -p $(build_folder) && cp -r ./$(
 ##
 
 prepare-tendermint =
-prepare-basecoin = cp $(GOPATH)/bin/basecli $(build_folder)/usr/bin
+prepare-basecoin-old = rm -f $(build_folder)/usr/bin/basecoin-old && cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(build_folder)/usr/bin
 prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
 prepare-gaia =
-prepare-cosmos-sdk = rm -f $(build_folder)/usr/bin/cosmos-sdk && \
-	cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
+prepare-basecoin = rm -f $(build_folder)/usr/bin/basecoin-old && cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
@@ -146,9 +145,10 @@ package-rpm-%: folder-%
 
 	mkdir -p {SPECS,tmp}
 
-	cp ./spectemplates/$*.spec SPECS
+	./generate-spec $* spectemplates SPECS
 	sed -i "s/@VERSION@/$($*_version)/" SPECS/$*.spec
 	sed -i "s/@BUILD_NUMBER@/$(BUILD_NUMBER)/" SPECS/$*.spec
+	sed -i "s/@PACKAGE_NAME@/$*/" SPECS/$*.spec
 
 	rpmbuild -bb SPECS/$*.spec --define "_topdir `pwd`" --define "_tmppath `pwd`/tmp"
 	./sign RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm "$(gpg_key)" "`which gpg`"
