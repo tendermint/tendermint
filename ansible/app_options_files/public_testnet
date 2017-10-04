@@ -162,5 +162,34 @@
             "amount": 1000
           }
         ]
+      },
+      {
+        "name": "wancloud",
+        "address": "117FE408E1F74C453901BCB638F996964FD29CBB",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "wancloudcoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "bianjie",
+        "address": "F63F2D34C03430A54B7F6A43C886B4A83F366B84",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "bianjiecoin",
+            "amount": 1000
+          }
+        ]
       }
+
     ]
