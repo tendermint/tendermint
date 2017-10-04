@@ -14,7 +14,7 @@ import (
 )
 
 /*
-Simple low level store for blocks.
+BlockStore is a simple low level store for blocks.
 
 There are three types of information stored:
  - BlockMeta:   Meta information about each block
@@ -23,7 +23,7 @@ There are three types of information stored:
 
 Currently the precommit signatures are duplicated in the Block parts as
 well as the Commit.  In the future this may change, perhaps by moving
-the Commit data outside the Block.
+the Commit data outside the Block. (TODO)
 
 // NOTE: BlockStore methods will panic if they encounter errors
 // deserializing loaded data, indicating probable corruption on disk.
@@ -35,9 +35,8 @@ type BlockStore struct {
 	height int64
 }
 
-// NewBlockStore loads a blockStore's JSON serialized form from the
-// database, db to retrieve the starting height of the blockstore
-// and backs db as the internal database of the blockstore.
+// NewBlockStore returns a new BlockStore with the given db,
+// initialized to the last committed height.
 func NewBlockStore(db dbm.DB) *BlockStore {
 	bsjson := LoadBlockStoreStateJSON(db)
 	return &BlockStore{
@@ -46,17 +45,16 @@ func NewBlockStore(db dbm.DB) *BlockStore {
 	}
 }
 
-// Height() returns the last known contiguous block height.
+// Height returns the last known contiguous block height.
 func (bs *BlockStore) Height() int64 {
 	bs.mtx.RLock()
 	defer bs.mtx.RUnlock()
 	return bs.height
 }
 
-// GetReader conveniently wraps the result of the database
-// lookup for key key into an io.Reader. If no result is found,
-// it returns nil otherwise it creates an io.Reader.
-// Its utility is mainly for use with wire.ReadBinary.
+// GetReader returns the value associated with the given key wrapped in an io.Reader.
+// If no value is found, it returns nil.
+// Its mainly for use with wire.ReadBinary.
 func (bs *BlockStore) GetReader(key []byte) io.Reader {
 	bytez := bs.db.Get(key)
 	if bytez == nil {
@@ -65,13 +63,8 @@ func (bs *BlockStore) GetReader(key []byte) io.Reader {
 	return bytes.NewReader(bytez)
 }
 
-// LoadBlock retrieves the serialized block, keyed by height in the
-// store's database. If the data at the requested height is not found,
-// it returns nil. However, if the block meta data is found but
-// cannot be deserialized by wire.ReadBinary, it panics.
-// The serialized data consists of the BlockMeta data and different
-// parts that are reassembled by their internal Data. If the final
-// reassembled data cannot be deserialized by wire.ReadBinary, it panics.
+// LoadBlock returns the block with the given height.
+// If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	var n int
 	var err error
@@ -95,11 +88,9 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	return block
 }
 
-// LoadBlockPart tries to load a blockPart from the
-// backing database, keyed by height and index.
-// If it doesn't find the requested blockPart, it
-// returns nil. Otherwise, If the found part is
-// corrupted/not deserializable by wire.ReadBinary, it panics.
+// LoadBlockPart returns the Part at the given index
+// from the block at the given height.
+// If no part is found for the given height and index, it returns nil.
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	var n int
 	var err error
@@ -114,10 +105,8 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	return part
 }
 
-// LoadBlockMeta tries to load a block meta from the backing database,
-// keyed by height. The block meta must have been wire.Binary serialized.
-// If it doesn't find the requested meta, it returns nil. Otherwise,
-// if the found data cannot be deserialized by wire.ReadBinary, it panics.
+// LoadBlockMeta returns the BlockMeta for the given height.
+// If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	var n int
 	var err error
@@ -132,13 +121,10 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	return blockMeta
 }
 
-// LoadBlockCommit tries to load a commit from the backing database,
-// keyed by height. The commit must have been wire.Binary serialized.
-// If it doesn't find the requested commit in the database, it returns nil.
-// Otherwise, if the found data cannot be deserialized by wire.ReadBinary, it panics.
-//
-// The +2/3 and other Precommit-votes for block at `height`.
-// This Commit comes from block.LastCommit for `height+1`.
+// LoadBlockCommit returns the Commit for the given height.
+// This commit consists of the +2/3 and other Precommit-votes for block at `height`,
+// and it comes from the block.LastCommit for `height+1`.
+// If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	var n int
 	var err error
@@ -153,12 +139,9 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	return commit
 }
 
-// LoadSeenCommit tries to load the seen commit from the backing database,
-// keyed by height. The commit must have been wire.Binary serialized.
-// If it doesn't find the requested commit in the database, it returns nil.
-// Otherwise, if the found data cannot be deserialized by wire.ReadBinary, it panics.
-//
-// NOTE: the Precommit-vote heights are for the block at `height`
+// LoadSeenCommit returns the locally seen Commit for the given height.
+// This is useful when we've seen a commit, but there has not yet been
+// a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	var n int
 	var err error
@@ -173,6 +156,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return commit
 }
 
+// SaveBlock persists the given block, blockParts, and seenCommit to the underlying db.
 // blockParts: Must be parts of the block
 // seenCommit: The +2/3 precommits that were seen which committed at height.
 //             If all the nodes restart after committing a block,
@@ -180,7 +164,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 //             most recent height.  Otherwise they'd stall at H-1.
 func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 	if block == nil {
-		PanicSanity("BlockStore can only save a non-nil block")
+		cmn.PanicSanity("BlockStore can only save a non-nil block")
 	}
 	height := block.Height
 	if height != bs.Height()+1 {
@@ -255,7 +239,7 @@ type BlockStoreStateJSON struct {
 	Height int64
 }
 
-// Save JSON marshals the blockStore state to the database, saving it synchronously.
+// Save persists the blockStore state to the database as JSON.
 func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 	bytes, err := json.Marshal(bsj)
 	if err != nil {
@@ -264,10 +248,8 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 	db.SetSync(blockStoreKey, bytes)
 }
 
-// LoadBlockStoreStateJSON JSON unmarshals the
-// blockStore state from the database, keyed by
-// key "blockStore". If it cannot lookup the state,
-// it returns the zero value BlockStoreStateJSON.
+// LoadBlockStoreStateJSON returns the BlockStoreStateJSON as loaded from disk.
+// If no BlockStoreStateJSON was previously persisted, it returns a zero value one.
 func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bytes := db.Get(blockStoreKey)
 	if bytes == nil {
