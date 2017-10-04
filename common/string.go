@@ -31,10 +31,7 @@ func LeftPadString(s string, totalLength int) string {
 func IsHex(s string) bool {
 	if len(s) > 2 && s[:2] == "0x" {
 		_, err := hex.DecodeString(s[2:])
-		if err != nil {
-			return false
-		}
-		return true
+		return err == nil
 	}
 	return false
 }

@@ -1,20 +1,20 @@
 package autofile
 
 import (
-	. "github.com/tendermint/tmlibs/common"
 	"os"
 	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func TestSIGHUP(t *testing.T) {
 
 	// First, create an AutoFile writing to a tempfile dir
-	file, name := Tempfile("sighup_test")
-	err := file.Close()
-	if err != nil {
+	file, name := cmn.Tempfile("sighup_test")
+	if err := file.Close(); err != nil {
 		t.Fatalf("Error creating tempfile: %v", err)
 	}
 	// Here is the actual AutoFile
@@ -57,17 +57,15 @@ func TestSIGHUP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error writing to autofile: %v", err)
 	}
-	err = af.Close()
-	if err != nil {
+	if err := af.Close(); err != nil {
 		t.Fatalf("Error closing autofile")
 	}
 
 	// Both files should exist
-	if body := MustReadFile(name + "_old"); string(body) != "Line 1\nLine 2\n" {
+	if body := cmn.MustReadFile(name + "_old"); string(body) != "Line 1\nLine 2\n" {
 		t.Errorf("Unexpected body %s", body)
 	}
-	if body := MustReadFile(name); string(body) != "Line 3\nLine 4\n" {
+	if body := cmn.MustReadFile(name); string(body) != "Line 3\nLine 4\n" {
 		t.Errorf("Unexpected body %s", body)
 	}
-
 }

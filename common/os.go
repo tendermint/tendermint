@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 var (
@@ -17,8 +18,7 @@ var (
 
 func TrapSignal(cb func()) {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	signal.Notify(c, os.Kill)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for sig := range c {
 			fmt.Printf("captured %v, exiting...\n", sig)
@@ -84,12 +84,7 @@ func MustReadFile(filePath string) []byte {
 }
 
 func WriteFile(filePath string, contents []byte, mode os.FileMode) error {
-	err := ioutil.WriteFile(filePath, contents, mode)
-	if err != nil {
-		return err
-	}
-	// fmt.Printf("File written to %v.\n", filePath)
-	return nil
+	return ioutil.WriteFile(filePath, contents, mode)
 }
 
 func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {

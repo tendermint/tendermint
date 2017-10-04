@@ -171,10 +171,7 @@ func statusesAreEqual(s1 *Status, s2 *Status) bool {
 }
 
 func durationsAreEqual(d1 time.Duration, d2 time.Duration, maxDeviation time.Duration) bool {
-	if d2-d1 <= maxDeviation {
-		return true
-	}
-	return false
+	return d2-d1 <= maxDeviation
 }
 
 func ratesAreEqual(r1 int64, r2 int64, maxDeviation int64) bool {
