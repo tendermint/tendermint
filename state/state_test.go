@@ -7,16 +7,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/types"
+
 	abci "github.com/tendermint/abci/types"
-
 	crypto "github.com/tendermint/go-crypto"
-
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
-
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/types"
 )
 
 // setupTestCase does setup common to all test cases

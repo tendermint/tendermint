@@ -6,7 +6,7 @@ import (
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //--------------------------------------------------------
@@ -34,7 +34,7 @@ var _ = wire.RegisterInterface(
 // TODO: currently the wal is overwritten during replay catchup
 //   give it a mode so it's either reading or appending - must read to end to start appending again
 type WAL struct {
-	BaseService
+	cmn.BaseService
 
 	group *auto.Group
 	light bool // ignore block parts
@@ -49,7 +49,7 @@ func NewWAL(walFile string, light bool) (*WAL, error) {
 		group: group,
 		light: light,
 	}
-	wal.BaseService = *NewBaseService(nil, "WAL", wal)
+	wal.BaseService = *cmn.NewBaseService(nil, "WAL", wal)
 	return wal, nil
 }
 
@@ -86,19 +86,19 @@ func (wal *WAL) Save(wmsg WALMessage) {
 	var wmsgBytes = wire.JSONBytes(TimedWALMessage{time.Now(), wmsg})
 	err := wal.group.WriteLine(string(wmsgBytes))
 	if err != nil {
-		PanicQ(Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, wmsg))
+		cmn.PanicQ(cmn.Fmt("Error writing msg to consensus wal. Error: %v \n\nMessage: %v", err, wmsg))
 	}
 	// TODO: only flush when necessary
 	if err := wal.group.Flush(); err != nil {
-		PanicQ(Fmt("Error flushing consensus wal buf to file. Error: %v \n", err))
+		cmn.PanicQ(cmn.Fmt("Error flushing consensus wal buf to file. Error: %v \n", err))
 	}
 }
 
 func (wal *WAL) writeEndHeight(height int) {
-	wal.group.WriteLine(Fmt("#ENDHEIGHT: %v", height))
+	wal.group.WriteLine(cmn.Fmt("#ENDHEIGHT: %v", height))
 
 	// TODO: only flush when necessary
 	if err := wal.group.Flush(); err != nil {
-		PanicQ(Fmt("Error flushing consensus wal buf to file. Error: %v \n", err))
+		cmn.PanicQ(cmn.Fmt("Error flushing consensus wal buf to file. Error: %v \n", err))
 	}
 }

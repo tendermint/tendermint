@@ -1,11 +1,10 @@
 package core_grpc
 
 import (
-	core "github.com/tendermint/tendermint/rpc/core"
+	context "golang.org/x/net/context"
 
 	abci "github.com/tendermint/abci/types"
-
-	context "golang.org/x/net/context"
+	core "github.com/tendermint/tendermint/rpc/core"
 )
 
 type broadcastAPI struct {

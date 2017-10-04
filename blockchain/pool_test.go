@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -22,7 +22,7 @@ type testPeer struct {
 func makePeers(numPeers int, minHeight, maxHeight int) map[string]testPeer {
 	peers := make(map[string]testPeer, numPeers)
 	for i := 0; i < numPeers; i++ {
-		peerID := RandStr(12)
+		peerID := cmn.RandStr(12)
 		height := minHeight + rand.Intn(maxHeight-minHeight)
 		peers[peerID] = testPeer{peerID, height}
 	}

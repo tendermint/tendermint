@@ -16,6 +16,7 @@ import (
 	"github.com/go-kit/kit/log/term"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/go-wire/data"
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
