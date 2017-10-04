@@ -155,8 +155,7 @@ The block interval setting allows for a delay (in seconds) between the creation 
     create_empty_blocks_interval = 5
 
 With this setting, empty blocks will be produced every 5s if no block has been produced otherwise,
-regardless of the value of `create_empty_blocks`.
-
+regardless of the value of ``create_empty_blocks``.
 
 Broadcast API
 -------------
