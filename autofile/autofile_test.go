@@ -18,7 +18,7 @@ func TestSIGHUP(t *testing.T) {
 		t.Fatalf("Error creating tempfile: %v", err)
 	}
 	// Here is the actual AutoFile
-	af, err := cmn.OpenAutoFile(name)
+	af, err := OpenAutoFile(name)
 	if err != nil {
 		t.Fatalf("Error creating autofile: %v", err)
 	}
@@ -34,7 +34,8 @@ func TestSIGHUP(t *testing.T) {
 	}
 
 	// Move the file over
-	if err := os.Rename(name, name+"_old"); err != nil {
+	err = os.Rename(name, name+"_old")
+	if err != nil {
 		t.Fatalf("Error moving autofile: %v", err)
 	}
 

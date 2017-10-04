@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"syscall"
 )
 
 var (
@@ -16,8 +17,7 @@ var (
 
 func TrapSignal(cb func()) {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	signal.Notify(c, os.Kill) // nolint: megacheck
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for sig := range c {
 			fmt.Printf("captured %v, exiting...\n", sig)

@@ -140,7 +140,7 @@ func (bs *BaseService) OnStop() {}
 
 // Implements Service
 func (bs *BaseService) Reset() (bool, error) {
-	if stopped := atomic.CompareAndSwapUint32(&bs.stopped, 1, 0); !stopped {
+	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
 		bs.Logger.Debug(Fmt("Can't reset %v. Not stopped", bs.name), "impl", bs.impl)
 		return false, nil
 	}
