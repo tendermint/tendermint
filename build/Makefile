@@ -2,7 +2,7 @@
 # Extra checks, because we do not use autoconf. Set extra_check to false if it is bothering you.
 ##
 
-extra_check = false
+extra_check = true
 go_min_version = 1.8.3
 gpg_key = 2122CBE9
 
@@ -78,7 +78,9 @@ build-ethermint: git-branch
 build-trackomatron: git-branch
 	@echo "*** Building trackomatron"
 	go get -d -u go github.com/tendermint/trackomatron/cmd/tracko
+	echo "Debug1: $(GIT_BRANCH)"
 	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
+	echo "Debug2: $(GO_PATH)"
 	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
 	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed for proper packaging" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
 	@echo "*** Built trackomatron"
@@ -122,7 +124,7 @@ prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
-prepare-gaia =
+prepare-gaia = cp $(GOPATH)/bin/gaiacli $(build_folder)/usr/bin
 prepare-basecoin = cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
 
 ###
@@ -289,6 +291,8 @@ distclean: clean
 	rm -rf $(GOPATH)/bin/basecoin
 	rm -rf $(GOPATH)/bin/basecli
 	rm -rf $(GOPATH)/bin/ethermint
+	rm -rf $(GOPATH)/bin/gaia
+	rm -rf $(GOPATH)/bin/gaiacli
 	rm -rf $(GOPATH)/bin/tracko
 	rm -rf $(GOPATH)/bin/trackocli
 
