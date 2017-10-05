@@ -8,13 +8,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
 	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tendermint/rpc/client/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/tendermint/tendermint/rpc/client/mock"
 )
 
 func TestABCIMock(t *testing.T) {

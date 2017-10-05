@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"

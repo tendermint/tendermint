@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"

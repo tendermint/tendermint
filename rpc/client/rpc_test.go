@@ -6,7 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/merkleeyes/iavl"
+
+	"github.com/tendermint/merkleeyes/iavl" //TODO use tendermint/iavl ?
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"

@@ -121,6 +121,24 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	bcR.pool.RemovePeer(peer.Key())
 }
 
+// respondToPeer loads a block and sends it to the requesting peer,
+// if we have it. Otherwise, we'll respond saying we don't have it.
+// According to the Tendermint spec, if all nodes are honest,
+// no node should be requesting for a block that's non-existent.
+func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage, src p2p.Peer) (queued bool) {
+	block := bcR.store.LoadBlock(msg.Height)
+	if block != nil {
+		msg := &bcBlockResponseMessage{Block: block}
+		return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
+	}
+
+	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
+
+	return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{
+		&bcNoBlockResponseMessage{Height: msg.Height},
+	})
+}
+
 // Receive implements Reactor by handling 4 types of messages (look below).
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes, bcR.maxMsgSize())
@@ -134,16 +152,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	// TODO: improve logic to satisfy megacheck
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
-		// Got a request for a block. Respond with block if we have it.
-		block := bcR.store.LoadBlock(msg.Height)
-		if block != nil {
-			msg := &bcBlockResponseMessage{Block: block}
-			queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
-			if !queued {
-				// queue is full, just ignore.
-			}
-		} else {
-			// TODO peer is asking for things we don't have.
+		if queued := bcR.respondToPeer(msg, src); !queued {
+			// Unfortunately not queued since the queue is full.
 		}
 	case *bcBlockResponseMessage:
 		// Got a block.
@@ -276,10 +286,11 @@ func (bcR *BlockchainReactor) SetEventSwitch(evsw types.EventSwitch) {
 // Messages
 
 const (
-	msgTypeBlockRequest   = byte(0x10)
-	msgTypeBlockResponse  = byte(0x11)
-	msgTypeStatusResponse = byte(0x20)
-	msgTypeStatusRequest  = byte(0x21)
+	msgTypeBlockRequest    = byte(0x10)
+	msgTypeBlockResponse   = byte(0x11)
+	msgTypeNoBlockResponse = byte(0x12)
+	msgTypeStatusResponse  = byte(0x20)
+	msgTypeStatusRequest   = byte(0x21)
 )
 
 // BlockchainMessage is a generic message for this reactor.
@@ -289,6 +300,7 @@ var _ = wire.RegisterInterface(
 	struct{ BlockchainMessage }{},
 	wire.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
 	wire.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
+	wire.ConcreteType{&bcNoBlockResponseMessage{}, msgTypeNoBlockResponse},
 	wire.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
 	wire.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
 )
@@ -314,6 +326,14 @@ type bcBlockRequestMessage struct {
 
 func (m *bcBlockRequestMessage) String() string {
 	return cmn.Fmt("[bcBlockRequestMessage %v]", m.Height)
+}
+
+type bcNoBlockResponseMessage struct {
+	Height int
+}
+
+func (brm *bcNoBlockResponseMessage) String() string {
+	return cmn.Fmt("[bcNoBlockResponseMessage %d]", brm.Height)
 }
 
 //-------------------------------------

@@ -196,7 +196,7 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 	return NewNetAddressIPPort(ext, uint16(externalPort))
 }
 
-// TODO: use syscalls: http://pastebin.com/9exZG4rh
+// TODO: use syscalls: see issue #712
 func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {

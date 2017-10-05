@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
@@ -80,7 +80,7 @@ func TestProposerSelection0(t *testing.T) {
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
 	if !bytes.Equal(prop.Address, vss[1].GetAddress()) {
-		panic(Fmt("expected proposer to be validator %d. Got %X", 1, prop.Address))
+		panic(cmn.Fmt("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
 }
 
@@ -101,7 +101,7 @@ func TestProposerSelection2(t *testing.T) {
 	for i := 0; i < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
 		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].GetAddress()) {
-			panic(Fmt("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
+			panic(cmn.Fmt("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
 		}
 
 		rs := cs1.GetRoundState()
@@ -432,7 +432,7 @@ func TestLockNoPOL(t *testing.T) {
 
 	// now we're on a new round and are the proposer
 	if !bytes.Equal(rs.ProposalBlock.Hash(), rs.LockedBlock.Hash()) {
-		panic(Fmt("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock))
+		panic(cmn.Fmt("Expected proposal block to be locked block. Got %v, Expected %v", rs.ProposalBlock, rs.LockedBlock))
 	}
 
 	<-voteCh // prevote

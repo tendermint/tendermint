@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	ctest "github.com/tendermint/tmlibs/test"

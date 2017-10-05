@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	crypto "github.com/tendermint/go-crypto"
 )
 
