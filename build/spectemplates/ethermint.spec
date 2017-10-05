@@ -35,9 +35,8 @@ cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
-sudo -Hu %{name} %{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
-#The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}
+sudo -Hu %{name} %{name} --datadir %{_sysconfdir}/%{name} init %{_sysconfdir}/%{name}/genesis.json
 
 systemctl daemon-reload
 

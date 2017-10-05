@@ -35,9 +35,8 @@ cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
-sudo -Hu %{name} tracko init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
-#The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}
+sudo -Hu %{name} tracko init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
 
 #Temporary until https://github.com/tendermint/basecoin/issues/123
 rm -f %{_sysconfdir}/%{name}/key.json
