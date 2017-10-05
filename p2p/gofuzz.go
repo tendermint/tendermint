@@ -38,19 +38,19 @@ func randomAddr(b []byte) *NetAddress {
 
 // randomPeer uses random bytes provided by the fuzzer to create a random peer.
 // TODO: the peer can be made more complete in order to support testing of other message types.
-func randomPeer(b []byte) *Peer {
+func randomPeer(b []byte) *peer {
 	privKey := crypto.GenPrivKeyEd25519()
 	config := DefaultPeerConfig()
 	config.AuthEnc = false
 	netAddr := randomAddr(b)
 
 	p, err := newInboundPeer(remoteConn, make(map[byte]Reactor),
-		make([]*ChannelDescriptor, 0), func(p *Peer, r interface{}) {}, privKey, config)
+		make([]*ChannelDescriptor, 0), func(p Peer, r interface{}) {}, privKey, config)
 	if err != nil {
 		return nil
 	}
 
-	p.NodeInfo = &NodeInfo{ListenAddr: netAddr.String()}
+	p.nodeInfo = &NodeInfo{ListenAddr: netAddr.String()}
 	p.mconn.RemoteAddress = netAddr
 	p.SetLogger(log.TestingLogger().With("peer", netAddr.String()))
 	return p
@@ -63,20 +63,20 @@ var (
 	remoteConn net.Conn
 )
 
-func createInboundPeer(conn net.Conn, config *PeerConfig) (*Peer, error) {
+func createInboundPeer(conn net.Conn, config *PeerConfig) (Peer, error) {
 	chDescs := []*ChannelDescriptor{
 		&ChannelDescriptor{ID: PexChannel, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{PexChannel: react}
 	peerPK := crypto.GenPrivKeyEd25519()
 
-	p, err := newInboundPeer(conn, reactorsByCh, chDescs, func(p *Peer, r interface{}) {}, peerPK, config)
+	p, err := newInboundPeer(conn, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, peerPK, config)
 	if err != nil {
 		return nil, err
 	}
 
 	n, _ := NewNetAddressString("127.0.0.1:2345")
-	p.NodeInfo.ListenAddr = n.String()
+	p.nodeInfo.ListenAddr = n.String()
 	p.mconn.RemoteAddress = n
 	return p, nil
 }
