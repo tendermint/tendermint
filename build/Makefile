@@ -77,10 +77,8 @@ build-ethermint: git-branch
 
 build-trackomatron: git-branch
 	@echo "*** Building trackomatron"
-	go get -d -u go github.com/tendermint/trackomatron/cmd/tracko
-	echo "Debug1: $(GIT_BRANCH)"
+	go get -d -u github.com/tendermint/trackomatron/cmd/tracko
 	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
-	echo "Debug2: $(GO_PATH)"
 	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
 	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed for proper packaging" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
 	@echo "*** Built trackomatron"
