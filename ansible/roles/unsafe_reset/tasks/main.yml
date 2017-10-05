@@ -6,7 +6,7 @@
   when: "service == 'basecoin'"
   become_user: basecoin
 
-- shell: "export TMHOME=/etc/{{service}}/tendermint ; tendermint unsafe_reset_all"
+- shell: "export TMHOME=/etc/{{service}} ; tendermint unsafe_reset_all"
   become_user: "{{service}}"
 
 - file: "path=/etc/{{service}}/data state=absent"
