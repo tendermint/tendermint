@@ -22,9 +22,12 @@
         },
         "coins": [
           {
-            "denom": "mycoin",
+            "denom": "buckyball",
             "amount": 9007199254740991
-          }
+          },
+          {
+            "denom": "gregcoin",
+            "amount": 1000
         ]
       },
       {
@@ -36,12 +39,12 @@
         },
         "coins": [
           {
-            "denom": "anton",
+            "denom": "buckyball",
             "amount": 9007199254740992
           },
           {
-            "denom": "tank",
-            "amount": 99
+            "denom": "antoncoin",
+            "amount": 1000
           }
         ]
       },
@@ -50,12 +53,12 @@
         "address": "0FA1DB09E8B174E81E94280C047C158D4271457B",
         "coins": [
           {
-            "denom": "axi",
+            "denom": "buckyball",
             "amount": 1928936473812
           },
           {
-            "denom": "bear",
-            "amount": 42
+            "denom": "adriancoin",
+            "amount": 1000
           }
         ]
       },
@@ -72,16 +75,8 @@
             "amount": 20000000000
           },
           {
-            "denom": "bumblebee",
-            "amount": 100
-          },
-          {
-            "denom": "french",
-            "amount": 10
-          },
-          {
-            "denom": "frey",
-            "amount": 4838271727204
+            "denom": "buckycoin",
+            "amount": 1000
           }
         ]
       },
@@ -94,11 +89,11 @@
         },
         "coins": [
           {
-            "denom": "radio",
-            "amount": 50
+            "denom": "rigelcoin",
+            "amount": 1000
           },
           {
-            "denom": "tv",
+            "denom": "buckyball",
             "amount": 3478765434568
           }
         ]
@@ -112,12 +107,12 @@
         },
         "coins": [
           {
-            "denom": "shadow",
+            "denom": "buckyball",
             "amount": 53712836452781
           },
           {
-            "denom": "unit",
-            "amount": 1
+            "denom": "shadowcoin",
+            "amount": 1000
           }
         ]
       },
