@@ -41,7 +41,6 @@ func randomAddr(b []byte) *NetAddress {
 func randomPeer(b []byte) *peer {
 	privKey := crypto.GenPrivKeyEd25519()
 	config := DefaultPeerConfig()
-	config.AuthEnc = false
 	netAddr := randomAddr(b)
 
 	p, err := newInboundPeer(remoteConn, make(map[byte]Reactor),
