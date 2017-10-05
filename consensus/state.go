@@ -389,12 +389,8 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 	if state.LastBlockHeight == 0 {
 		return
 	}
-	chainID, err := cs.state.ChainID()
-	if err != nil {
-		cmn.PanicCrisis(cmn.Fmt("Failed to retrieve ChainID: %v", err))
-	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(chainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
+	lastPrecommits := types.NewVoteSet(state.ChainID(), state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for _, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
@@ -711,6 +707,7 @@ func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 		// not a validator
 		valIndex = -1
 	}
+	chainID := cs.state.ChainID()
 	for {
 		rs := cs.GetRoundState()
 		// if we've already moved on, no need to send more heartbeats
@@ -723,10 +720,6 @@ func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 			Sequence:         counter,
 			ValidatorAddress: addr,
 			ValidatorIndex:   valIndex,
-		}
-		chainID, err := cs.state.ChainID()
-		if err != nil {
-			return
 		}
 		cs.privValidator.SignHeartbeat(chainID, heartbeat)
 		heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
@@ -805,11 +798,7 @@ func (cs *ConsensusState) defaultDecideProposal(height, round int) {
 	// Make proposal
 	polRound, polBlockID := cs.Votes.POLInfo()
 	proposal := types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
-	chainID, err := cs.state.ChainID()
-	if err != nil {
-		return
-	}
-	if err := cs.privValidator.SignProposal(chainID, proposal); err == nil {
+	if err := cs.privValidator.SignProposal(cs.state.ChainID(), proposal); err == nil {
 		// Set fields
 		/*  fields set by setProposal and addBlockPart
 		cs.Proposal = proposal
@@ -868,12 +857,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
-	chainID, err := cs.state.ChainID()
-	if err != nil {
-		cs.Logger.Error("chainID err", err)
-		return
-	}
-	return types.MakeBlock(cs.Height, chainID, txs, commit,
+	return types.MakeBlock(cs.Height, cs.state.ChainID(), txs, commit,
 		cs.state.LastBlockID, cs.state.Validators.Hash(),
 		cs.state.AppHash, cs.state.Params().BlockPartSizeBytes)
 }
@@ -1278,13 +1262,8 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 		return ErrInvalidProposalPOLRound
 	}
 
-	chainID, err := cs.state.ChainID()
-	if err != nil {
-		return err
-	}
-
 	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifyBytes(types.SignBytes(chainID, proposal), proposal.Signature) {
+	if !cs.Validators.GetProposer().PubKey.VerifyBytes(types.SignBytes(cs.state.ChainID(), proposal), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -1469,10 +1448,6 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	chainID, err := cs.state.ChainID()
-	if err != nil {
-		return nil, err
-	}
 	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
@@ -1483,7 +1458,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 		Type:             type_,
 		BlockID:          types.BlockID{hash, header},
 	}
-	err = cs.privValidator.SignVote(chainID, vote)
+	err := cs.privValidator.SignVote(cs.state.ChainID(), vote)
 	return vote, err
 }
 

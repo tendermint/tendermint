@@ -167,13 +167,13 @@ func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusS
 	block1, blockParts1 := cs.createProposalBlock()
 	polRound, polBlockID := cs.Votes.POLInfo()
 	proposal1 := types.NewProposal(height, round, blockParts1.Header(), polRound, polBlockID)
-	cs.privValidator.SignProposal(cs.state.ChainID, proposal1) // byzantine doesnt err
+	cs.privValidator.SignProposal(cs.state.ChainID(), proposal1) // byzantine doesnt err
 
 	// Create a new proposal block from state/txs from the mempool.
 	block2, blockParts2 := cs.createProposalBlock()
 	polRound, polBlockID = cs.Votes.POLInfo()
 	proposal2 := types.NewProposal(height, round, blockParts2.Header(), polRound, polBlockID)
-	cs.privValidator.SignProposal(cs.state.ChainID, proposal2) // byzantine doesnt err
+	cs.privValidator.SignProposal(cs.state.ChainID(), proposal2) // byzantine doesnt err
 
 	block1Hash := block1.Hash()
 	block2Hash := block2.Hash()

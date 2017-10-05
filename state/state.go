@@ -2,7 +2,6 @@ package state
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"sync"
@@ -39,11 +38,10 @@ type State struct {
 	mtx sync.Mutex
 	db  dbm.DB
 
-	// genesisDoc is the memoized genesisDoc to cut down
-	// the number of unnecessary DB lookups since we no longer
-	// directly serialize the GenesisDoc in state.
 	// See https://github.com/tendermint/tendermint/issues/671.
-	genesisDoc *types.GenesisDoc
+	chainID string
+
+	params *types.ConsensusParams
 
 	// These fields are updated by SetBlockAndValidators.
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
@@ -73,14 +71,22 @@ type State struct {
 // to the database.
 func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
 	var err error
+	genDoc, err := MakeGenesisDocFromFile(genesisFile)
+	if err != nil {
+		return nil, err
+	}
 	state := LoadState(stateDB)
 	if state == nil {
-		state, err = MakeGenesisStateFromFile(stateDB, genesisFile)
+		state, err = MakeGenesisState(stateDB, genDoc)
 		if err != nil {
 			return nil, err
 		}
 		state.Save()
+	} else {
+		state.SetChainID(genDoc.ChainID)
+		state.SetParams(genDoc.ConsensusParams)
 	}
+
 	return state, nil
 }
 
@@ -113,6 +119,7 @@ func (s *State) SetLogger(l log.Logger) {
 
 // Copy makes a copy of the State for mutating.
 func (s *State) Copy() *State {
+	paramsCopy := *s.params
 	return &State{
 		db:                          s.db,
 		LastBlockHeight:             s.LastBlockHeight,
@@ -123,45 +130,10 @@ func (s *State) Copy() *State {
 		AppHash:                     s.AppHash,
 		TxIndexer:                   s.TxIndexer, // pointer here, not value
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
-		logger: s.logger,
+		logger:  s.logger,
+		chainID: s.chainID,
+		params:  &paramsCopy,
 	}
-}
-
-var (
-	errNilGenesisDoc = errors.New("no genesisDoc was found")
-
-	genesisDBKey = []byte("genesis-doc")
-)
-
-// GenesisDoc is the accessor to retrieve the genesisDoc associated
-// with a state. If the state has no set GenesisDoc, it fetches from
-// its database the JSON marshaled bytes keyed by "genesis-doc", and
-// parses the GenesisDoc from that memoizing it for later use.
-// If you'd like to change the value of the GenesisDoc, invoke SetGenesisDoc.
-func (s *State) GenesisDoc() (*types.GenesisDoc, error) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	if s.genesisDoc == nil {
-		retrGenesisDocBytes := s.db.Get(genesisDBKey)
-		if len(retrGenesisDocBytes) == 0 {
-			return nil, errNilGenesisDoc
-		}
-		genDoc, err := types.GenesisDocFromJSON(retrGenesisDocBytes)
-		if err != nil {
-			return nil, err
-		}
-		s.genesisDoc = genDoc
-	}
-	return s.genesisDoc, nil
-}
-
-func (s *State) ChainID() (string, error) {
-	genDoc, err := s.GenesisDoc()
-	if err != nil {
-		return "", err
-	}
-	return genDoc.ChainID, nil
 }
 
 // Save persists the State to the database.
@@ -169,14 +141,6 @@ func (s *State) Save() {
 	s.mtx.Lock()
 	s.saveValidatorsInfo()
 	s.db.SetSync(stateKey, s.Bytes())
-	s.mtx.Unlock()
-}
-
-// SetGenesisDoc sets the internal genesisDoc, but doesn't
-// serialize it to the database, until Save is invoked.
-func (s *State) SetGenesisDoc(genDoc *types.GenesisDoc) {
-	s.mtx.Lock()
-	s.genesisDoc = genDoc
 	s.mtx.Unlock()
 }
 
@@ -213,7 +177,7 @@ func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
 	if v.ValidatorSet == nil {
 		v = s.loadValidators(v.LastHeightChanged)
 		if v == nil {
-			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at 
+			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at
 			height %d as last changed from height %d`, v.LastHeightChanged, height))
 		}
 	}
@@ -309,18 +273,26 @@ func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
 }
 
-var blankConsensusParams = types.ConsensusParams{}
+// ChainID returns the chain ID.
+func (s *State) ChainID() string {
+	return s.chainID
+}
+
+// SetChainID sets the chain ID.
+func (s *State) SetChainID(chainID string) {
+	s.chainID = chainID
+}
 
 // Params returns the consensus parameters used for
-// validating blocks
+// validating blocks.
 func (s *State) Params() types.ConsensusParams {
-	// TODO: this should move into the State proper
-	// when we allow the app to change it
-	genDoc, err := s.GenesisDoc()
-	if err != nil || genDoc == nil {
-		return blankConsensusParams
-	}
-	return *genDoc.ConsensusParams
+	return *s.params
+}
+
+// SetParams sets the consensus parameters used for
+// validating blocks.
+func (s *State) SetParams(params *types.ConsensusParams) {
+	s.params = params
 }
 
 //------------------------------------------------------------------------
@@ -417,7 +389,9 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 	return &State{
 		db: db,
 
-		genesisDoc:                  genDoc,
+		chainID: genDoc.ChainID,
+		params:  genDoc.ConsensusParams,
+
 		LastBlockHeight:             0,
 		LastBlockID:                 types.BlockID{},
 		LastBlockTime:               genDoc.GenesisTime,

@@ -132,24 +132,24 @@ func NewNode(config *cfg.Config,
 	if err != nil {
 		return nil, err
 	}
+
+	genDoc, err := genesisDocProvider()
+	if err != nil {
+		return nil, err
+	}
+
 	state := sm.LoadState(stateDB)
 	if state == nil {
-		genDoc, err := genesisDocProvider()
-		if err != nil {
-			return nil, err
-		}
 		state, err = sm.MakeGenesisState(stateDB, genDoc)
 		if err != nil {
 			return nil, err
 		}
 		state.Save()
+	} else {
+		state.SetChainID(genDoc.ChainID)
+		state.SetParams(genDoc.ConsensusParams)
 	}
-
 	state.SetLogger(stateLogger)
-	genesisDoc, err := state.GenesisDoc()
-	if err != nil {
-		return nil, err
-	}
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
@@ -163,6 +163,8 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
+	state.SetChainID(genDoc.ChainID)
+	state.SetParams(genDoc.ConsensusParams)
 	state.SetLogger(stateLogger)
 
 	// Transaction indexing
@@ -290,7 +292,7 @@ func NewNode(config *cfg.Config,
 
 	node := &Node{
 		config:        config,
-		genesisDoc:    genesisDoc,
+		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
 		privKey:  privKey,
@@ -489,15 +491,10 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
-	chainID, err := n.consensusState.GetState().ChainID()
-	if err != nil {
-		cmn.PanicSanity(cmn.Fmt("failed ot get chainID: %v", err))
-	}
-
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker: n.config.Moniker,
-		Network: chainID,
+		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
