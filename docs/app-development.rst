@@ -142,6 +142,13 @@ It is unlikely that you will need to implement a client. For details of
 our client, see
 `here <https://github.com/tendermint/abci/tree/master/client>`__.
 
+Most of the examples below are from `dummy application
+<https://github.com/tendermint/abci/blob/master/example/dummy/dummy.go>`__,
+which is a part of the abci repo. `persistent_dummy application
+<https://github.com/tendermint/abci/blob/master/example/dummy/persistent_dummy.go>`__
+is used to show ``BeginBlock``, ``EndBlock`` and ``InitChain``
+example implementations.
+
 Blockchain Protocol
 -------------------
 
@@ -187,6 +194,12 @@ through all transactions in the mempool, removing any that were included
 in the block, and re-run the rest using CheckTx against the post-Commit
 mempool state.
 
+::
+
+    func (app *DummyApplication) CheckTx(tx []byte) types.Result {
+      return types.OK
+    }
+
 Consensus Connection
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -215,6 +228,19 @@ The block header will be updated (TODO) to include some commitment to
 the results of DeliverTx, be it a bitarray of non-OK transactions, or a
 merkle root of the data returned by the DeliverTx requests, or both.
 
+::
+
+    // tx is either "key=value" or just arbitrary bytes
+    func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
+      parts := strings.Split(string(tx), "=")
+      if len(parts) == 2 {
+        app.state.Set([]byte(parts[0]), []byte(parts[1]))
+      } else {
+        app.state.Set(tx, tx)
+      }
+      return types.OK
+    }
+
 Commit
 ^^^^^^
 
@@ -228,7 +254,7 @@ Commit, or there will be deadlock. Note also that all remaining
 transactions in the mempool are replayed on the mempool connection
 (CheckTx) following a commit.
 
-The Commit response includes a byte array, which is the deterministic
+The app should respond to the Commit request with a byte array, which is the deterministic
 state root of the application. It is included in the header of the next
 block. It can be used to provide easily verified Merkle-proofs of the
 state of the application.
@@ -236,6 +262,13 @@ state of the application.
 It is expected that the app will persist state to disk on Commit. The
 option to have all transactions replayed from some previous block is the
 job of the `Handshake <#handshake>`__.
+
+::
+
+    func (app *DummyApplication) Commit() types.Result {
+      hash := app.state.Hash()
+      return types.NewResultOK(hash, "")
+    }
 
 BeginBlock
 ^^^^^^^^^^
@@ -248,6 +281,17 @@ The app should remember the latest height and header (ie. from which it
 has run a successful Commit) so that it can tell Tendermint where to
 pick up from when it restarts. See information on the Handshake, below.
 
+::
+
+    // Track the block hash and header information
+    func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
+      // update latest block info
+      app.blockHeader = params.Header
+
+      // reset valset changes
+      app.changes = make([]*types.Validator, 0)
+    }
+
 EndBlock
 ^^^^^^^^
 
@@ -259,6 +303,13 @@ EndBlock response. To remove one, include it in the list with a
 ``power`` equal to ``0``. Tendermint core will take care of updating the
 validator set. Note validator set changes are only available in v0.8.0
 and up.
+
+::
+
+    // Update the validator set
+    func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
+      return types.ResponseEndBlock{Diffs: app.changes}
+    }
 
 Query Connection
 ~~~~~~~~~~~~~~~~
@@ -281,6 +332,34 @@ cause Tendermint to not connect to the corresponding peer:
 
 Note: these query formats are subject to change!
 
+::
+
+    func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+      if reqQuery.Prove {
+        value, proof, exists := app.state.Proof(reqQuery.Data)
+        resQuery.Index = -1 // TODO make Proof return index
+        resQuery.Key = reqQuery.Data
+        resQuery.Value = value
+        resQuery.Proof = proof
+        if exists {
+          resQuery.Log = "exists"
+        } else {
+          resQuery.Log = "does not exist"
+        }
+        return
+      } else {
+        index, value, exists := app.state.Get(reqQuery.Data)
+        resQuery.Index = int64(index)
+        resQuery.Value = value
+        if exists {
+          resQuery.Log = "exists"
+        } else {
+          resQuery.Log = "does not exist"
+        }
+        return
+      }
+    }
+
 Handshake
 ~~~~~~~~~
 
@@ -297,3 +376,28 @@ the app are synced to the latest block height.
 
 If the app returns a LastBlockHeight of 0, Tendermint will just replay
 all blocks.
+
+::
+
+    func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+      return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
+    }
+
+Genesis
+~~~~~~~
+
+``InitChain`` will be called once upon the genesis. ``params`` includes the
+initial validator set. Later on, it may be extended to take parts of the
+consensus params.
+
+::
+
+    // Save the validators in the merkle tree
+    func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
+      for _, v := range params.Validators {
+        r := app.updateValidator(v)
+        if r.IsErr() {
+          app.logger.Error("Error updating validators", "r", r)
+        }
+      }
+    }

@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func BenchmarkFileWrite(b *testing.B) {
@@ -14,7 +14,7 @@ func BenchmarkFileWrite(b *testing.B) {
 	if err != nil {
 		b.Error(err)
 	}
-	testString := RandStr(200) + "\n"
+	testString := cmn.RandStr(200) + "\n"
 	b.StartTimer()
 
 	for i := 0; i < b.N; i++ {

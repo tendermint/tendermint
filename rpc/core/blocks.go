@@ -5,7 +5,7 @@ import (
 
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Get block headers for minHeight <= height <= maxHeight.
@@ -65,12 +65,12 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
 	} else {
-		maxHeight = MinInt(blockStore.Height(), maxHeight)
+		maxHeight = cmn.MinInt(blockStore.Height(), maxHeight)
 	}
 	if minHeight == 0 {
-		minHeight = MaxInt(1, maxHeight-20)
+		minHeight = cmn.MaxInt(1, maxHeight-20)
 	} else {
-		minHeight = MaxInt(minHeight, maxHeight-20)
+		minHeight = cmn.MaxInt(minHeight, maxHeight-20)
 	}
 
 	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)

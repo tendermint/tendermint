@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	//. "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 )

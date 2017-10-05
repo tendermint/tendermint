@@ -2,12 +2,11 @@ package types
 
 import (
 	"bytes"
+	"testing"
 
 	"github.com/tendermint/go-crypto"
-	. "github.com/tendermint/tmlibs/common"
-	. "github.com/tendermint/tmlibs/test"
-
-	"testing"
+	cmn "github.com/tendermint/tmlibs/common"
+	tst "github.com/tendermint/tmlibs/test"
 )
 
 // NOTE: privValidators are in order
@@ -137,7 +136,7 @@ func Test2_3Majority(t *testing.T) {
 	// 7th validator voted for some blockhash
 	{
 		vote := withValidator(voteProto, privValidators[6].GetAddress(), 6)
-		signAddVote(privValidators[6], withBlockHash(vote, RandBytes(32)), voteSet)
+		signAddVote(privValidators[6], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority")
@@ -217,7 +216,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 	// 70th validator voted for different BlockHash
 	{
 		vote := withValidator(voteProto, privValidators[69].GetAddress(), 69)
-		signAddVote(privValidators[69], withBlockHash(vote, RandBytes(32)), voteSet)
+		signAddVote(privValidators[69], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority: last vote added had different BlockHash")
@@ -260,7 +259,7 @@ func TestBadVotes(t *testing.T) {
 	// val0 votes again for some block.
 	{
 		vote := withValidator(voteProto, privValidators[0].GetAddress(), 0)
-		added, err := signAddVote(privValidators[0], withBlockHash(vote, RandBytes(32)), voteSet)
+		added, err := signAddVote(privValidators[0], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
 		if added || err == nil {
 			t.Errorf("Expected VoteSet.Add to fail, conflicting vote.")
 		}
@@ -297,8 +296,8 @@ func TestBadVotes(t *testing.T) {
 func TestConflicts(t *testing.T) {
 	height, round := 1, 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 4, 1)
-	blockHash1 := RandBytes(32)
-	blockHash2 := RandBytes(32)
+	blockHash1 := cmn.RandBytes(32)
+	blockHash2 := cmn.RandBytes(32)
 
 	voteProto := &Vote{
 		ValidatorAddress: nil,
@@ -444,13 +443,13 @@ func TestMakeCommit(t *testing.T) {
 	}
 
 	// MakeCommit should fail.
-	AssertPanics(t, "Doesn't have +2/3 majority", func() { voteSet.MakeCommit() })
+	tst.AssertPanics(t, "Doesn't have +2/3 majority", func() { voteSet.MakeCommit() })
 
 	// 7th voted for some other block.
 	{
 		vote := withValidator(voteProto, privValidators[6].GetAddress(), 6)
-		vote = withBlockHash(vote, RandBytes(32))
-		vote = withBlockPartsHeader(vote, PartSetHeader{123, RandBytes(32)})
+		vote = withBlockHash(vote, cmn.RandBytes(32))
+		vote = withBlockPartsHeader(vote, PartSetHeader{123, cmn.RandBytes(32)})
 		signAddVote(privValidators[6], vote, voteSet)
 	}
 

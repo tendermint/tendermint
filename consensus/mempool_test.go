@@ -8,7 +8,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/types"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
@@ -86,7 +86,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 		binary.BigEndian.PutUint64(txBytes, uint64(i))
 		err := cs.mempool.CheckTx(txBytes, nil)
 		if err != nil {
-			panic(Fmt("Error after CheckTx: %v", err))
+			panic(cmn.Fmt("Error after CheckTx: %v", err))
 		}
 	}
 }
@@ -184,7 +184,7 @@ func NewCounterApplication() *CounterApplication {
 }
 
 func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
-	return abci.ResponseInfo{Data: Fmt("txs:%v", app.txCount)}
+	return abci.ResponseInfo{Data: cmn.Fmt("txs:%v", app.txCount)}
 }
 
 func (app *CounterApplication) DeliverTx(tx []byte) abci.Result {
@@ -201,7 +201,7 @@ func runTx(tx []byte, countPtr *int) abci.Result {
 	copy(tx8[len(tx8)-len(tx):], tx)
 	txValue := binary.BigEndian.Uint64(tx8)
 	if txValue != uint64(count) {
-		return abci.ErrBadNonce.AppendLog(Fmt("Invalid nonce. Expected %v, got %v", count, txValue))
+		return abci.ErrBadNonce.AppendLog(cmn.Fmt("Invalid nonce. Expected %v, got %v", count, txValue))
 	}
 	*countPtr += 1
 	return abci.OK

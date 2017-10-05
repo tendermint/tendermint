@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
@@ -57,7 +57,7 @@ func makeVoteHR(t *testing.T, height, round int, privVals []*types.PrivValidator
 	chainID := config.ChainID
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
-		panic(Fmt("Error signing vote: %v", err))
+		panic(cmn.Fmt("Error signing vote: %v", err))
 		return nil
 	}
 	return vote
