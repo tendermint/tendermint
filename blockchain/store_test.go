@@ -128,6 +128,14 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
 	uncontiguousPartSet.AddPart(part2, false)
 
+	header1 := types.Header{
+		Height:  1,
+		NumTxs:  100,
+		ChainID: "block_test",
+	}
+	header2 := header1
+	header2.Height = 4
+
 	// End of setup, test data
 
 	tuples := []struct {
@@ -145,11 +153,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}{
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  1,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header1,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:      validPartSet,
@@ -163,11 +167,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  4,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header2,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:     uncontiguousPartSet,
@@ -176,11 +176,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  1,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header1,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:     incompletePartSet,
@@ -189,11 +185,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  1,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header1,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:             validPartSet,
@@ -204,11 +196,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  1,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header1,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:            validPartSet,
@@ -219,11 +207,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  1,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header1,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:      validPartSet,
@@ -235,11 +219,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  1,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header1,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:      validPartSet,
@@ -251,11 +231,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 		{
 			block: &types.Block{
-				Header: &types.Header{
-					Height:  1,
-					NumTxs:  100,
-					ChainID: "block_test",
-				},
+				Header:     &header1,
 				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
 			},
 			parts:      validPartSet,
