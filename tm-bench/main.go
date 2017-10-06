@@ -14,8 +14,6 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/log"
 	"github.com/tendermint/tools/tm-monitor/monitor"
-	"math/rand"
-	"crypto/md5"
 )
 
 var version = "0.1.0"
@@ -75,8 +73,6 @@ Examples:
 
 	blockCh := make(chan tmtypes.Header, 100)
 	blockLatencyCh := make(chan float64, 100)
-
-	rand.Seed(time.Now().Unix())
 
 	nodes := startNodes(endpoints, blockCh, blockLatencyCh)
 
@@ -142,18 +138,10 @@ func startNodes(endpoints []string, blockCh chan<- tmtypes.Header, blockLatencyC
 }
 
 func startTransacters(endpoints []string, connections int, txsRate int) []*transacter {
-
-	var hostHash [16]byte
-	if hostName , err := os.Hostname(); err != nil {
-		hostHash =	md5.Sum([]byte("127.0.0.1"))
-	} else {
-		hostHash = md5.Sum([]byte(hostName))
-	}
-
 	transacters := make([]*transacter, len(endpoints))
 
 	for i, e := range endpoints {
-		t := newTransacter(e, connections, txsRate, hostHash)
+		t := newTransacter(e, connections, txsRate)
 		t.SetLogger(logger)
 		if err := t.Start(); err != nil {
 			fmt.Println(err)

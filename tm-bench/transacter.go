@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -24,13 +25,15 @@ const (
 	sendTimeout = 10 * time.Second
 	// see https://github.com/tendermint/go-rpc/blob/develop/server/handlers.go#L313
 	pingPeriod = (30 * 9 / 10) * time.Second
+
+	// the size of a transaction in bytes.
+	txSize = 250
 )
 
 type transacter struct {
 	Target      string
 	Rate        int
 	Connections int
-	HostHash	[16]byte
 
 	conns   []*websocket.Conn
 	wg      sync.WaitGroup
@@ -39,12 +42,11 @@ type transacter struct {
 	logger log.Logger
 }
 
-func newTransacter(target string, connections int, rate int, hosthash [16]byte) *transacter {
+func newTransacter(target string, connections int, rate int) *transacter {
 	return &transacter{
 		Target:      target,
 		Rate:        rate,
 		Connections: connections,
-		HostHash:    hosthash,
 		conns:       make([]*websocket.Conn, connections),
 		logger:      log.NewNopLogger(),
 	}
@@ -59,6 +61,8 @@ func (t *transacter) SetLogger(l log.Logger) {
 // and write goroutines for each connection.
 func (t *transacter) Start() error {
 	t.stopped = false
+
+	rand.Seed(time.Now().Unix())
 
 	for i := 0; i < t.Connections; i++ {
 		c, _, err := connect(t.Target)
@@ -131,14 +135,22 @@ func (t *transacter) sendLoop(connIndex int) {
 		t.wg.Done()
 	}()
 
+	// hash of the host name is a part of each tx
+	var hostnameHash [md5.Size]byte
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "127.0.0.1"
+	}
+	hostnameHash = md5.Sum([]byte(hostname))
+
 	for {
 		select {
 		case <-txsTicker.C:
 			startTime := time.Now()
 
 			for i := 0; i < t.Rate; i++ {
-				// each transaction embeds connection index and tx number
-				tx := generateTx(connIndex, txNumber, t.HostHash)
+				// each transaction embeds connection index, tx number and hash of the hostname
+				tx := generateTx(connIndex, txNumber, hostnameHash)
 				paramsJson, err := json.Marshal(map[string]interface{}{"tx": hex.EncodeToString(tx)})
 				if err != nil {
 					fmt.Printf("failed to encode params: %v\n", err)
@@ -149,7 +161,7 @@ func (t *transacter) sendLoop(connIndex int) {
 				c.SetWriteDeadline(time.Now().Add(sendTimeout))
 				err = c.WriteJSON(rpctypes.RPCRequest{
 					JSONRPC: "2.0",
-					ID:      "",
+					ID:      "tm-bench",
 					Method:  "broadcast_tx_async",
 					Params:  &rawParamsJson,
 				})
@@ -191,27 +203,18 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }
 
-func generateTx(a int, b int, hosthash [16]byte) []byte {
-	// 250 byte transaction
-	tx := make([]byte, 250)
+func generateTx(connIndex int, txNumber int, hostnameHash [md5.Size]byte) []byte {
+	tx := make([]byte, txSize)
 
-	// 0-8 connection number
-	binary.PutUvarint(tx[:8], uint64(a))
-
-	// 8-16 transaction number
-	binary.PutUvarint(tx[8:16], uint64(b))
-
-	// 16-32 hostname hash
-	for i:=0; i < 16 ; i++ {
-		tx[16+i] = hosthash[i]
-	}
-
-	// 32-40 current time
+	binary.PutUvarint(tx[:8], uint64(connIndex))
+	binary.PutUvarint(tx[8:16], uint64(txNumber))
+	copy(tx[16:32], hostnameHash[:16])
 	binary.PutUvarint(tx[32:40], uint64(time.Now().Unix()))
 
-	// 40- random data
+	// 40-* random data
 	if _, err := rand.Read(tx[40:]); err != nil {
-		panic(errors.Wrap(err, "failed to generate transaction"))
+		panic(errors.Wrap(err, "failed to read random bytes"))
 	}
+
 	return tx
 }
