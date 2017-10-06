@@ -37,7 +37,7 @@ func TestNodeNewBlockReceived(t *testing.T) {
 	n.SendBlocksTo(blockCh)
 
 	blockHeader := &tmtypes.Header{Height: 5}
-	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlockHeader{blockHeader})
+	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.TMEventData{tmtypes.EventDataNewBlockHeader{blockHeader}})
 
 	assert.Equal(uint64(5), n.Height)
 	assert.Equal(*blockHeader, <-blockCh)
@@ -68,10 +68,7 @@ func TestNodeConnectionLost(t *testing.T) {
 	emMock.Call("disconnectCallback")
 
 	assert.Equal(true, <-disconnectCh)
-	assert.Equal(false, <-disconnectCh)
-
-	// we're back in a race
-	assert.Equal(true, n.Online)
+	assert.Equal(false, n.Online)
 }
 
 func TestNumValidators(t *testing.T) {
@@ -89,10 +86,10 @@ func TestNumValidators(t *testing.T) {
 func startValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter) {
 	emMock = &mock.EventMeter{}
 
-	stubs := make(map[string]ctypes.TMResult)
+	stubs := make(map[string]interface{})
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
-	stubs["validators"] = &ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
-	stubs["status"] = &ctypes.ResultStatus{PubKey: pubKey}
+	stubs["validators"] = ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
+	stubs["status"] = ctypes.ResultStatus{PubKey: pubKey}
 	rpcClientMock := &mock.RpcClient{stubs}
 
 	n = monitor.NewNodeWithEventMeterAndRpcClient("tcp://127.0.0.1:46657", emMock, rpcClientMock)
