@@ -7,7 +7,7 @@ GOTOOLS = \
 tools:
 	go get -v $(GOTOOLS)
 
-get_deps: tools
+get_vendor_deps: tools
 	glide install
 
 build:
@@ -44,4 +44,4 @@ clean:
 	rm -f ./tm-bench
 	rm -rf ./dist
 
-.PHONY: tools get_deps build install test build-all dist clean build-docker
+.PHONY: tools get_vendor_deps build install test build-all dist clean build-docker

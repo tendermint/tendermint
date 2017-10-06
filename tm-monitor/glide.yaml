@@ -5,7 +5,7 @@ import:
 - package: github.com/rcrowley/go-metrics
 - package: github.com/tendermint/go-crypto
 - package: github.com/tendermint/tendermint
-  version: develop
+  version: v0.11.0
   subpackages:
   - rpc/core/types
   - rpc/lib/client

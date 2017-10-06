@@ -1,22 +1,28 @@
-hash: b963733b341869e0667dde0c93f9be17fdf002ab4e92ae8778562a2b94580de8
-updated: 2017-07-29T18:52:35.221739544Z
+hash: 765fd22d79f7d7123197548b3228ebf56f72be9541b64b04cde875f2d09214f8
+updated: 2017-10-06T07:40:33.279710782Z
 imports:
 - name: github.com/btcsuite/btcd
-  version: 47885ab8702485be6b6f87a03d4f3be0bc5c982c
+  version: 4803a8291c92a1d2d41041b942a9a9e37deab065
   subpackages:
   - btcec
 - name: github.com/go-kit/kit
-  version: 19463ea8b215413a29c3513aa3a76181f4bac58d
+  version: 4dc7be5d2d12881735283bcab7352178e190fc71
   subpackages:
   - log
   - log/level
   - log/term
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
+- name: github.com/go-playground/locales
+  version: 1e5f1161c6416a5ff48840eb8724a394e48cc534
+  subpackages:
+  - currency
+- name: github.com/go-playground/universal-translator
+  version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/golang/protobuf
-  version: 748d386b5c1ea99658fd69fe9f03991ce86a90c1
+  version: 130e6b02ab059e7b717a096f397c5b60111cae74
   subpackages:
   - proto
   - ptypes
@@ -24,15 +30,15 @@ imports:
   - ptypes/duration
   - ptypes/timestamp
 - name: github.com/gorilla/websocket
-  version: a69d9f6de432e2c6b296a947d8a5ee88f68522cf
+  version: 4201258b820c74ac8e6922fc9e6b52f71fe46f8d
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/pkg/errors
-  version: c605e284fe17294bda444b34710735b29d1a9d90
+  version: 2b3a18b5f0fb6b4f9190549597d3f962c02bc5eb
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/tendermint/abci
-  version: 864d1f80b36b440bde030a5c18d8ac3aa8c2949d
+  version: 191c4b6d176169ffc7f9972d490fa362a3b7d940
   subpackages:
   - client
   - example/dummy
@@ -43,17 +49,13 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 95b7c9e09c49b91bfbb71bb63dd514eb55450f16
-- name: github.com/tendermint/go-rpc
-  version: 15d5b2ac497da95cd2dceb9c087910ccec4dacb2
-  subpackages:
-  - types
+  version: 311e8c1bf00fa5868daad4f8ea56dcad539182c0
 - name: github.com/tendermint/go-wire
   version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
   subpackages:
   - data
 - name: github.com/tendermint/tendermint
-  version: b467515719e686e4678e6da4e102f32a491b85a0
+  version: 7682ad9a60162dd17fd6f61aeed7049a8635ac78
   subpackages:
   - config
   - p2p
@@ -63,7 +65,7 @@ imports:
   - rpc/lib/types
   - types
 - name: github.com/tendermint/tmlibs
-  version: 7ce4da1eee6004d627e780c8fe91e96d9b99e459
+  version: 096dcb90e60aa00b748b3fe49a4b95e48ebf1e13
   subpackages:
   - common
   - events
@@ -71,12 +73,12 @@ imports:
   - log
   - merkle
 - name: github.com/tendermint/tools
-  version: d205ae1f98c946b2a057f62bfcd505b40ea52031
+  version: 9708c66576d3e7d4fd0a5cdec7d951f1ef002efc
   subpackages:
   - tm-monitor/eventmeter
   - tm-monitor/monitor
 - name: golang.org/x/crypto
-  version: 558b6879de74bc843225cde5686419267ff707ca
+  version: 9419663f5a44be8b34ca85f08abc5fe1be11f8a3
   subpackages:
   - curve25519
   - nacl/box
@@ -87,7 +89,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: f5079bd7f6f74e23c4d65efa0f4ce14cbd6a3c0f
+  version: a04bdaca5b32abe1c069418fb7088ae607de5bd0
   subpackages:
   - context
   - http2
@@ -97,30 +99,35 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
+  version: d82c1812e304abfeeabd31e995a115a2855bf642
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: b0a3dcfcd1a9bd48e63634bd8802960804cf8315
+  version: f676e0f3ac6395ff1a529ae59a6670878a8371a6
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 971efedc2078cb1efd8111d12432813084bc628d
+  version: 5279edf262dc22329b1e53281ce9d55c0a998216
   subpackages:
+  - balancer
   - codes
+  - connectivity
   - credentials
-  - grpclb/grpc_lb_v1
+  - grpclb/grpc_lb_v1/messages
   - grpclog
   - internal
   - keepalive
   - metadata
   - naming
   - peer
+  - resolver
   - stats
   - status
   - tap
   - transport
+- name: gopkg.in/go-playground/validator.v9
+  version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
 testImports: []
