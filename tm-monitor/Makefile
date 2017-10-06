@@ -21,19 +21,20 @@ test:
 	@go test $(PACKAGES)
 
 build-all: tools
+	rm -rf ./dist
 	gox -verbose \
 		-ldflags "-X main.version=${VERSION}" \
-		-os="linux darwin windows freebsd openbsd netbsd" \
-		-arch="amd64 386 armv5 armv6 armv7 arm64" \
+		-os="linux darwin windows" \
+		-arch="amd64 386 armv6 arm64" \
 		-osarch="!darwin/arm64" \
 		-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
 
 dist: build-all
 	cd dist && \
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
-		$(DIST_DIRS) cp ../README.md {} \; && \
+		$(DIST_DIRS) cp ../README.rst {} \; && \
 		$(DIST_DIRS) tar -zcf tm-monitor-${VERSION}-{}.tar.gz {} \; && \
-		$(DIST_DIRS) zip -r tm-monitor-${VERSION}-{}.zip {} \; && \
+		shasum -a256 ./*.tar.gz > "./tm-monitor_${VERSION}_SHA256SUMS" && \
 		cd ..
 
 build-docker:
