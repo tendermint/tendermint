@@ -1,0 +1,83 @@
+program hanged (timeout 10 seconds)
+
+SIGABRT: abort
+PC=0x1057cd2 m=0 sigcode=0
+
+goroutine 0 [idle]:
+runtime.memclrNoHeapPointers(0xc42053e000, 0x14f2558000)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/memclr_amd64.s:99 +0x172
+runtime.(*mheap).alloc(0x19fec60, 0xa792ac, 0x10101, 0x7fff5fbfdde8)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/mheap.go:744 +0xdc
+runtime.largeAlloc(0x14f255758f, 0x1050101, 0x19f69f0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/malloc.go:826 +0x94
+runtime.mallocgc.func1()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/malloc.go:721 +0x46
+runtime.systemstack(0x19f6f00)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/asm_amd64.s:344 +0x79
+runtime.mstart()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/proc.go:1142
+
+goroutine 1 [running]:
+runtime.systemstack_switch()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/asm_amd64.s:298 fp=0xc420530ff8 sp=0xc420530ff0 pc=0x1054ad0
+runtime.mallocgc(0x14f255758f, 0x15027e0, 0xc420520601, 0x19ecdc0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/malloc.go:720 +0x8a7 fp=0xc420531098 sp=0xc420530ff8 pc=0x1012887
+runtime.makeslice(0x15027e0, 0x14f255758f, 0x14f255758f, 0xc420531ce8, 0x14f255758f, 0xc420098730)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/slice.go:54 +0x77 fp=0xc4205310c8 sp=0xc420531098 pc=0x10415b7
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadByteSlice(0x1735d40, 0xc4201bf350, 0x0, 0xc420531cd8, 0xc420531ce8, 0x14cce1e, 0x5, 0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/byteslice.go:28 +0x15a fp=0xc420531128 sp=0xc4205310c8 pc=0x1370cba
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x1541200, 0xc42006c740, 0x197, 0x173f2e0, 0x1541200, 0x14d1fa8, 0x7, 0x0, 0x1541200, 0xc42032c180, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:277 +0x1169 fp=0xc4205314a0 sp=0xc420531128 pc=0x1374499
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x1573620, 0xc42006c740, 0x199, 0x173f2e0, 0x1573620, 0x14d3d50, 0x8, 0x0, 0x1549660, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96 fp=0xc420531818 sp=0xc4205314a0 pc=0x1373dc6
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x15621a0, 0xc4201bf320, 0x199, 0x173f2e0, 0x15621a0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96 fp=0xc420531b90 sp=0xc420531818 pc=0x1373dc6
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadBinary(0x15a1980, 0xc4201bf320, 0x1735d40, 0xc4201bf350, 0x0, 0xc420531cd8, 0xc420531ce8, 0x101485d, 0xc4201bf338)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/wire.go:31 +0x3d2 fp=0xc420531c90 sp=0xc420531b90 pc=0x137ae92
+github.com/tendermint/tendermint/types.(*ValidatorSet).FromBytes(0xc4201bf320, 0x2810000, 0x123, 0x200000)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/types/validator_set.go:308 +0xe6 fp=0xc420531d08 sp=0xc420531c90 pc=0x14ae346
+github.com/tendermint/tendermint/fuzz/types/validatorSet.Fuzz.func1()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/main.go:44 +0x3c fp=0xc420531d38 sp=0xc420531d08 pc=0x14b1a3c
+github.com/tendermint/tendermint/fuzz/types/validatorSet.captureAnyPanic(0xc420531ec8, 0x0, 0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/main.go:33 +0x55 fp=0xc420531d60 sp=0xc420531d38 pc=0x14b1145
+github.com/tendermint/tendermint/fuzz/types/validatorSet.Fuzz(0x2810000, 0x123, 0x200000, 0x3)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/main.go:44 +0x114 fp=0xc420531f00 sp=0xc420531d60 pc=0x14b1304
+go-fuzz-dep.Main(0x16fed70)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/go-fuzz-dep/main.go:49 +0xad fp=0xc420531f70 sp=0xc420531f00 pc=0x107b91d
+main.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/go.fuzz.main/main.go:10 +0x2d fp=0xc420531f88 sp=0xc420531f70 pc=0x14b1afd
+runtime.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/proc.go:192 +0x1f5 fp=0xc420531fe0 sp=0xc420531f88 pc=0x102ca35
+runtime.goexit()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/asm_amd64.s:2303 +0x1 fp=0xc420531fe8 sp=0xc420531fe0 pc=0x1057681
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/os/signal/signal_unix.go:22 +0x52
+created by os/signal.init.0
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/os/signal/signal_unix.go:28 +0x59
+
+rax    0x0
+rbx    0x127df5afe0
+rcx    0x14f2558000
+rdx    0x19fec60
+rdi    0xc694b3b020
+rsi    0xffffffffffffffe0
+rbp    0x7fff5fbfdd98
+rsp    0x7fff5fbfdd50
+r8     0xc000000000
+r9     0xa7954a
+r10    0xa830e03b135e
+r11    0x5ed097b4
+r12    0x3bfd1569a3bc
+r13    0x0
+r14    0x1b39000
+r15    0x1
+rip    0x1057cd2
+rflags 0x206
+cs     0x2b
+fs     0x0
+gs     0x0
+exit status 2

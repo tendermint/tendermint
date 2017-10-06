@@ -1,0 +1,18 @@
+panic: runtime error: makeslice: len out of range
+
+goroutine 1 [running]:
+github.com/tendermint/tendermint/fuzz/types/validatorSet.Fuzz(0x2810000, 0xb, 0x200000, 0xc42005df78)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/main.go:50 +0x592
+go-fuzz-dep.Main(0x16fed70)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/go-fuzz-dep/main.go:49 +0xad
+main.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/go.fuzz.main/main.go:10 +0x2d
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/os/signal/signal_unix.go:22 +0x52
+created by os/signal.init.0
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/os/signal/signal_unix.go:28 +0x59
+exit status 2

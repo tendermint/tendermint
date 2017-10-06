@@ -1,0 +1,17 @@
+fatal error: out of memory
+runtime.systemstack_switch
+runtime.mallocgc
+runtime.makeslice
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadByteSlice
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadBinary
+github.com/tendermint/tendermint/types.(*ValidatorSet).FromBytes
+github.com/tendermint/tendermint/fuzz/types/validatorSet.Fuzz.func1
+github.com/tendermint/tendermint/fuzz/types/validatorSet.captureAnyPanic
+github.com/tendermint/tendermint/fuzz/types/validatorSet.Fuzz
+go-fuzz-dep.Main
+main.main
+runtime.main
+runtime.goexit

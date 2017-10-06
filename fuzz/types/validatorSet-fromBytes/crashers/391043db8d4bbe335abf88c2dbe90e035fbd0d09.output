@@ -1,0 +1,57 @@
+runtime: out of memory: cannot allocate 405316501504-byte block (176465149952 in use)
+fatal error: out of memory
+
+runtime stack:
+runtime.throw(0x15c15c4, 0xd)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/panic.go:606 +0x81
+runtime.largeAlloc(0x5e5ebe0930, 0x1050101, 0x19f69f0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/malloc.go:828 +0x110
+runtime.mallocgc.func1()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/malloc.go:721 +0x46
+runtime.systemstack(0xc4201aadb8)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/asm_amd64.s:344 +0x79
+runtime.mstart()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/proc.go:1142
+
+goroutine 1 [running]:
+runtime.systemstack_switch()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/asm_amd64.s:298 fp=0xc420194ff8 sp=0xc420194ff0 pc=0x1054ad0
+runtime.mallocgc(0x5e5ebe0930, 0x15027e0, 0xc42051e101, 0x19ecdc0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/malloc.go:720 +0x8a7 fp=0xc420195098 sp=0xc420194ff8 pc=0x1012887
+runtime.makeslice(0x15027e0, 0x5e5ebe0930, 0x5e5ebe0930, 0xc420195ce8, 0x5e5ebe0930, 0xc42053c5a0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/slice.go:54 +0x77 fp=0xc4201950c8 sp=0xc420195098 pc=0x10415b7
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadByteSlice(0x1735d40, 0xc4205325a0, 0x0, 0xc420195cd8, 0xc420195ce8, 0x14cce1e, 0x5, 0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/byteslice.go:28 +0x15a fp=0xc420195128 sp=0xc4201950c8 pc=0x1370cba
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x1541200, 0xc4205461c0, 0x197, 0x173f2e0, 0x1541200, 0x14d1fa8, 0x7, 0x0, 0x1541200, 0xc420538120, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:277 +0x1169 fp=0xc4201954a0 sp=0xc420195128 pc=0x1374499
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x1573620, 0xc4205461c0, 0x199, 0x173f2e0, 0x1573620, 0x14d3d50, 0x8, 0x0, 0x1549660, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96 fp=0xc420195818 sp=0xc4201954a0 pc=0x1373dc6
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x15621a0, 0xc420532570, 0x199, 0x173f2e0, 0x15621a0, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96 fp=0xc420195b90 sp=0xc420195818 pc=0x1373dc6
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadBinary(0x15a1980, 0xc420532570, 0x1735d40, 0xc4205325a0, 0x0, 0xc420195cd8, 0xc420195ce8, 0x101485d, 0xc420532588)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/wire.go:31 +0x3d2 fp=0xc420195c90 sp=0xc420195b90 pc=0x137ae92
+github.com/tendermint/tendermint/types.(*ValidatorSet).FromBytes(0xc420532570, 0x2810000, 0xdb, 0x200000)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/types/validator_set.go:308 +0xe6 fp=0xc420195d08 sp=0xc420195c90 pc=0x14ae346
+github.com/tendermint/tendermint/fuzz/types/validatorSet.Fuzz.func1()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/main.go:44 +0x3c fp=0xc420195d38 sp=0xc420195d08 pc=0x14b1a3c
+github.com/tendermint/tendermint/fuzz/types/validatorSet.captureAnyPanic(0xc420195ec8, 0x0, 0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/main.go:33 +0x55 fp=0xc420195d60 sp=0xc420195d38 pc=0x14b1145
+github.com/tendermint/tendermint/fuzz/types/validatorSet.Fuzz(0x2810000, 0xdb, 0x200000, 0x3)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/main.go:44 +0x114 fp=0xc420195f00 sp=0xc420195d60 pc=0x14b1304
+go-fuzz-dep.Main(0x16fed70)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/go-fuzz-dep/main.go:49 +0xad fp=0xc420195f70 sp=0xc420195f00 pc=0x107b91d
+main.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/gopath/src/github.com/tendermint/tendermint/fuzz/types/validatorSet/go.fuzz.main/main.go:10 +0x2d fp=0xc420195f88 sp=0xc420195f70 pc=0x14b1afd
+runtime.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/proc.go:192 +0x1f5 fp=0xc420195fe0 sp=0xc420195f88 pc=0x102ca35
+runtime.goexit()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/asm_amd64.s:2303 +0x1 fp=0xc420195fe8 sp=0xc420195fe0 pc=0x1057681
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/os/signal/signal_unix.go:22 +0x52
+created by os/signal.init.0
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build181236838/goroot/src/os/signal/signal_unix.go:28 +0x59
+exit status 2
