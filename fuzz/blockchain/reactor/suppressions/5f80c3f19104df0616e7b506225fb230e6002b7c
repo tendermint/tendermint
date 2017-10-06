@@ -1,0 +1,14 @@
+panic: Panicked on a Sanity Check: Time cannot have sub-millisecond precision
+github.com/tendermint/tendermint/vendor/github.com/tendermint/tmlibs/common.PanicSanity
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadTime
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadBinary
+github.com/tendermint/tendermint/blockchain.DecodeMessage
+github.com/tendermint/tendermint/fuzz/blockchain/reactor.Fuzz
+go-fuzz-dep.Main
+main.main

@@ -1,0 +1,5 @@
+panic: runtime error: index out of range
+github.com/tendermint/tendermint/blockchain.DecodeMessage
+github.com/tendermint/tendermint/fuzz/blockchain/reactor.Fuzz
+go-fuzz-dep.Main
+main.main

@@ -1,0 +1,38 @@
+panic: Panicked on a Sanity Check: Time cannot have sub-millisecond precision
+
+goroutine 1 [running]:
+github.com/tendermint/tendermint/vendor/github.com/tendermint/tmlibs/common.PanicSanity(0x15acb20, 0x17fa280)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/tmlibs/common/errors.go:26 +0xe7
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadTime(0x17fbb80, 0xc4201beff0, 0xc42052be60, 0xc42052bee0, 0x0, 0x0, 0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/time.go:24 +0x11d
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x166fba0, 0xc420089058, 0x199, 0x18061a0, 0x166fba0, 0x156f687, 0x4, 0x0, 0x166fba0, 0xc420542360, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:310 +0xb36
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x16516e0, 0xc420089040, 0x199, 0x18061a0, 0x16516e0, 0x1575e09, 0x6, 0x0, 0x15deb00, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x16140a0, 0xc420542660, 0x199, 0x18061a0, 0x16140a0, 0x1557a93, 0x5, 0x0, 0x162ad40, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x15ef540, 0xc42000e0b0, 0x199, 0x18061a0, 0x15ef540, 0x156f3ab, 0x11, 0x0, 0x0, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x15dc560, 0xc42001f4a0, 0x194, 0x18061a0, 0x15dc560, 0x156f3ab, 0x11, 0x0, 0x0, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:212 +0x5c2
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.readReflectBinary(0x15e6d40, 0xc42001f4a0, 0x199, 0x18061a0, 0x15e6d40, 0x0, 0x0, 0x0, 0x0, 0x0, ...)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/reflect.go:317 +0xa96
+github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire.ReadBinary(0x15e6d40, 0xc42001f490, 0x17fbb80, 0xc4201beff0, 0x1500002, 0xc42052be60, 0xc42052bee0, 0xc42052bed0, 0x8)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/vendor/github.com/tendermint/go-wire/wire.go:36 +0x4cd
+github.com/tendermint/tendermint/blockchain.DecodeMessage(0x2a10000, 0x6, 0x200000, 0x1500002, 0xc42052bef0, 0x1074116, 0x59d72cd9, 0x17fbe00, 0xc42001e0b0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/blockchain/reactor.go:314 +0x13e
+github.com/tendermint/tendermint/fuzz/blockchain/reactor.Fuzz(0x2a10000, 0x6, 0x200000, 0x3)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/fuzz/blockchain/reactor/main.go:11 +0x4f
+go-fuzz-dep.Main(0x17be088)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/goroot/src/go-fuzz-dep/main.go:49 +0xad
+main.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/gopath/src/github.com/tendermint/tendermint/fuzz/blockchain/reactor/go.fuzz.main/main.go:10 +0x2d
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/goroot/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/goroot/src/os/signal/signal_unix.go:22 +0x52
+created by os/signal.init.0
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build356881063/goroot/src/os/signal/signal_unix.go:28 +0x59
+exit status 2
