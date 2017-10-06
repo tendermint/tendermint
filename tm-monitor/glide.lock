@@ -1,5 +1,5 @@
-hash: 93b135dd9e360743acb6d8f82fea7b86f5a318e627a7479f41a5f3ad96b86b0b
-updated: 2017-08-10T21:56:38.148200545Z
+hash: 1a38134bef18f688b42d6d52fcb02682604e8c1c9e308f6e2ce8c4a461c903a9
+updated: 2017-10-06T06:57:56.777237539Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -34,7 +34,7 @@ imports:
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/tendermint/abci
-  version: 864d1f80b36b440bde030a5c18d8ac3aa8c2949d
+  version: 191c4b6d176169ffc7f9972d490fa362a3b7d940
   subpackages:
   - client
   - example/dummy
@@ -45,13 +45,13 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 95b7c9e09c49b91bfbb71bb63dd514eb55450f16
+  version: 311e8c1bf00fa5868daad4f8ea56dcad539182c0
 - name: github.com/tendermint/go-wire
   version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
   subpackages:
   - data
 - name: github.com/tendermint/tendermint
-  version: 2fd8496bc109d010c6c2e415604131b500550e37
+  version: 7682ad9a60162dd17fd6f61aeed7049a8635ac78
   subpackages:
   - config
   - p2p
@@ -62,7 +62,7 @@ imports:
   - rpc/lib/types
   - types
 - name: github.com/tendermint/tmlibs
-  version: 75372988e737a9f672c0e7f6308042620bd3e151
+  version: 7dd6b3d3f8a7a998a79bdd0d8222252b309570f3
   subpackages:
   - common
   - events
@@ -104,7 +104,7 @@ imports:
   - tap
   - transport
 - name: gopkg.in/go-playground/validator.v9
-  version: d529ee1b0f30352444f507cc6cdac96bfd12decc
+  version: a021b2ec9a8a8bb970f3f15bc42617cb520e8a64
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
