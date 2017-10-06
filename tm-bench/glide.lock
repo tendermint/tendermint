@@ -1,5 +1,5 @@
-hash: d196c017846efa4f180164cea76c9a950f1d22989fdb157d3e7bb858b0f5a86d
-updated: 2017-10-06T07:26:42.070129304Z
+hash: 765fd22d79f7d7123197548b3228ebf56f72be9541b64b04cde875f2d09214f8
+updated: 2017-10-06T07:40:33.279710782Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 4803a8291c92a1d2d41041b942a9a9e37deab065
@@ -73,7 +73,7 @@ imports:
   - log
   - merkle
 - name: github.com/tendermint/tools
-  version: 213b11a6cad7b3c7fdedd2cc05b74e62b4f318b1
+  version: 9708c66576d3e7d4fd0a5cdec7d951f1ef002efc
   subpackages:
   - tm-monitor/eventmeter
   - tm-monitor/monitor

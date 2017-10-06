@@ -15,6 +15,6 @@ import:
   subpackages:
   - log
 - package: github.com/tendermint/tools
-  version: 213b11a6cad7b3c7fdedd2cc05b74e62b4f318b1
+  version: 9708c66576d3e7d4fd0a5cdec7d951f1ef002efc
   subpackages:
   - tm-monitor/monitor
