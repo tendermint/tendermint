@@ -1,10 +1,11 @@
 package core_types
 
 import (
+	"encoding/json"
 	"strings"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -75,8 +76,8 @@ type ResultValidators struct {
 }
 
 type ResultDumpConsensusState struct {
-	RoundState      string   `json:"round_state"`
-	PeerRoundStates []string `json:"peer_round_states"`
+	RoundState      json.RawMessage   `json:"round_state"`
+	PeerRoundStates map[string]json.RawMessage `json:"peer_round_states"`
 }
 
 type ResultBroadcastTx struct {

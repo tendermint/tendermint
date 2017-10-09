@@ -1,10 +1,13 @@
 package core
 
 import (
-	wire "github.com/tendermint/go-wire"
+	"encoding/json"
+
 	cm "github.com/tendermint/tendermint/consensus"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+
+	"github.com/pkg/errors"
 )
 
 // Get the validator set at the given block height.
@@ -82,14 +85,22 @@ func Validators(heightPtr *int) (*ctypes.ResultValidators, error) {
 // }
 // ```
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
-	roundState := consensusState.GetRoundState()
-	peerRoundStates := []string{}
-	for _, peer := range p2pSwitch.Peers().List() {
+	roundStateBytes, err := json.Marshal(consensusState.GetRoundState())
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal round state")
+	}
+
+	peerRoundStates := make(map[string]json.RawMessage)
+	for i, peer := range p2pSwitch.Peers().List() {
 		// TODO: clean this up?
 		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)
 		peerRoundState := peerState.GetRoundState()
-		peerRoundStateStr := peer.Key() + ":" + string(wire.JSONBytes(peerRoundState))
-		peerRoundStates = append(peerRoundStates, peerRoundStateStr)
+		peerRoundStateBytes, err := json.Marshal(peerRoundState)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to marshal peer#%d round state", i)
+		}
+		peerRoundStates[peer.Key()] = json.RawMessage(peerRoundStateBytes)
 	}
-	return &ctypes.ResultDumpConsensusState{roundState.String(), peerRoundStates}, nil
+
+	return &ctypes.ResultDumpConsensusState{json.RawMessage(roundStateBytes), peerRoundStates}, nil
 }
