@@ -534,9 +534,13 @@ func (wsc *wsConnection) readRoutine() {
 			var args []reflect.Value
 			if rpcFunc.ws {
 				wsCtx := types.WSRPCContext{Request: request, WSRPCConnection: wsc}
-				args, err = jsonParamsToArgsWS(rpcFunc, request.Params, wsCtx)
+				if request.Params != nil {
+					args, err = jsonParamsToArgsWS(rpcFunc, request.Params, wsCtx)
+				}
 			} else {
-				args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
+				if request.Params != nil {
+					args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
+				}
 			}
 			if err != nil {
 				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
