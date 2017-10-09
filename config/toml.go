@@ -21,11 +21,10 @@ func init() {
 /****** these are for production settings ***********/
 
 func EnsureRoot(rootDir string) {
-	cmn.EnsureDir(rootDir, 0700)
-	cmn.EnsureDir(filepath.Join(rootDir, DefaultConfigDir), 0700)
-	cmn.EnsureDir(filepath.Join(rootDir, DefaultDataDir), 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), 0700)
 
-	configFilePath := filepath.Join(rootDir, DefaultConfigFilePath)
+	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
 
 	if cmn.FileExists(configFilePath) {
 		// TODO: Prompt user to replace if config file already exists.
@@ -204,13 +203,13 @@ func ResetTestRoot(testName string) *Config {
 		}
 	}
 	// Create new dir
-	cmn.EnsureDir(rootDir, 0700)
-	cmn.EnsureDir(filepath.Join(rootDir, DefaultConfigDir), 0700)
-	cmn.EnsureDir(filepath.Join(rootDir, DefaultDataDir), 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, defaultConfigDir), 0700)
+	cmn.EnsureDir(filepath.Join(rootDir, defaultDataDir), 0700)
 
-	configFilePath := filepath.Join(rootDir, DefaultConfigFilePath)
-	genesisFilePath := filepath.Join(rootDir, DefaultGenesisJSONPath)
-	privFilePath := filepath.Join(rootDir, DefaultPrivValPath)
+	baseConfig := DefaultBaseConfig()
+	configFilePath := filepath.Join(rootDir, defaultConfigFilePath)
+	genesisFilePath := filepath.Join(rootDir, baseConfig.Genesis)
+	privFilePath := filepath.Join(rootDir, baseConfig.PrivValidator)
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
