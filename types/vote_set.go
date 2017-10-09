@@ -121,8 +121,8 @@ func (voteSet *VoteSet) Size() int {
 //		InvalidSignature | InvalidBlockHash | ConflictingVotes ]
 // Duplicate votes return added=false, err=nil.
 // Conflicting votes return added=*, err=ErrVoteConflictingVotes.
-// NOTE: vote should not be mutated after adding.
 // NOTE: VoteSet must not be nil
+// NOTE: Vote must not be nil
 func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 	if voteSet == nil {
 		cmn.PanicSanity("AddVote() on nil VoteSet")
@@ -135,6 +135,9 @@ func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 
 // NOTE: Validates as much as possible before attempting to verify the signature.
 func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
+	if vote == nil {
+		return false, errNilVote
+	}
 	valIndex := vote.ValidatorIndex
 	valAddr := vote.ValidatorAddress
 	blockKey := vote.BlockID.Key()
@@ -208,7 +211,10 @@ func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok b
 
 // Assumes signature is valid.
 // If conflicting vote exists, returns it.
-func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower int64) (added bool, conflicting *Vote) {
+func (voteSet *VoteSet) addVerifiedVote(vvote *Vote, blockKey string, votingPower int64) (added bool, conflicting *Vote) {
+	// Firstly make an immutable copy of the vote
+	vote := vvote.Copy()
+
 	valIndex := vote.ValidatorIndex
 
 	// Already exists in voteSet.votes?
@@ -394,7 +400,7 @@ func (voteSet *VoteSet) HasTwoThirdsAny() bool {
 }
 
 func (voteSet *VoteSet) HasAll() bool {
-	return voteSet.sum == voteSet.valSet.TotalVotingPower()
+	return voteSet != nil && voteSet.sum == voteSet.valSet.TotalVotingPower()
 }
 
 // Returns either a blockhash (or nil) that received +2/3 majority.
@@ -455,6 +461,9 @@ func (voteSet *VoteSet) StringShort() string {
 // Commit
 
 func (voteSet *VoteSet) MakeCommit() *Commit {
+	if voteSet == nil {
+		return nil
+	}
 	if voteSet.type_ != VoteTypePrecommit {
 		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is VoteTypePrecommit")
 	}

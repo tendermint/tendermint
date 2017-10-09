@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	tst "github.com/tendermint/tmlibs/test"
@@ -471,4 +473,156 @@ func TestMakeCommit(t *testing.T) {
 		t.Errorf("Error in Commit.ValidateBasic(): %v", err)
 	}
 
+}
+
+func TestVoteSetInvalid(t *testing.T) {
+	vs := (*VoteSet)(nil)
+	require.Equal(t, vs.Round(), -1, "nil voteSet returns -1")
+	require.Equal(t, vs.Type(), byte(0x00), "nil voteSet returns the zero value type")
+	require.Equal(t, vs.Height(), 0, "nil voteSet returns the zero value height")
+	require.Equal(t, vs.Size(), 0, "nil voteSet returns the zero value size")
+	require.False(t, vs.HasTwoThirdsAny(), "nil voteSet cannot say if it has 2/3")
+	require.False(t, vs.HasTwoThirdsMajority(), "nil voteSet cannot return 2/3 status")
+	require.False(t, vs.IsCommit(), "a nil voteSet cannot tell if it is a commit")
+	require.False(t, vs.HasAll(), "a nil voteSet cannot say if HasAll()")
+	require.Nil(t, vs.MakeCommit(), "a nil voteSet cannot makeCommit")
+	require.Contains(t, vs.StringShort(), "nil-VoteSet")
+	require.Contains(t, vs.String(), "nil-VoteSet")
+	require.Panics(t, func() { vs.SetPeerMaj23("foo", BlockID{}) }, "cannot set majority 2/3 on a nil voteSet")
+	require.Nil(t, vs.GetByAddress([]byte("foo")), "cannot get a vote by address from a nil voteSet")
+	blockID, is := vs.TwoThirdsMajority()
+	require.False(t, is, "cannot be the 2/3 majority if nil")
+	require.Equal(t, blockID, BlockID{}, "expecting the zero-value of BlockID")
+
+	vs = new(VoteSet)
+	require.Panics(t, func() { vs.GetByAddress([]byte("foo")) }, "non-existent address should panic")
+
+	require.Panics(t, func() { NewVoteSet("foo", 0, 1, 0x01, nil) }, "height 0 shouldn't work")
+}
+
+func TestVoteSetEndToEnd(t *testing.T) {
+	vs := (*VoteSet)(nil)
+	require.Nil(t, vs.GetByIndex(0), "should return nil for any index when nil")
+	require.Nil(t, vs.GetByIndex(-1), "should return nil for any index when nil")
+	require.Nil(t, vs.GetByIndex(11), "should return nil for any index when nil")
+
+	require.Panics(t, func() { vs.AddVote(nil) }, "nil voteSet should panic")
+
+	vs, vsl, privValidators := randVoteSet(25, 2, VoteTypePrecommit, 10, 1)
+	require.Equal(t, vs.Size(), 10, "expecting 10 validators as set in")
+	require.Nil(t, vs.GetByIndex(0), "0: hasn't yet cast their vote")
+	require.Nil(t, vs.GetByIndex(1), "1: hasn't yet cast their vote")
+
+	// Invalid/nil/non-dereferenceable vote
+	added, err := vs.AddVote(nil)
+	require.False(t, added, "nil votes can't be dereferenced")
+	require.NotNil(t, err, "nil votes can't be dereferenced")
+
+	// Intentionally malicious votes
+	for _, index := range []int{-1, 10000, -10} {
+		added, err = vs.AddVote(&Vote{
+			ValidatorIndex: index,
+		})
+		require.False(t, added, "%d: an invalid vote should not have been added", index)
+		require.Equal(t, err, ErrVoteInvalidValidatorIndex)
+	}
+
+	// Cast some votes
+	// 1. No validator address:
+	v1 := &Vote{ValidatorIndex: 0}
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "no validator address")
+	require.Equal(t, err, ErrVoteInvalidValidatorAddress, "no validator address")
+
+	// 2. Not the same Round between ValidatorSet and Vote
+	val1 := vsl.Validators[0]
+	v1.ValidatorAddress = val1.Address
+	v1.Round = vs.Round() + 1
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "not same round")
+	require.Equal(t, err, ErrVoteUnexpectedStep, "rounds do not match")
+
+	v1.Round = vs.Round()
+
+	// 3. Not the same Type between ValidatorSet and Vote
+	v1.Type = vs.Type() + 2
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "not same type")
+	require.Equal(t, err, ErrVoteUnexpectedStep, "not same type")
+
+	v1.Type = vs.Type()
+
+	// 4. Invalid height
+	v1.Height = vs.Height() + 1
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "not same height")
+	require.Equal(t, err, ErrVoteUnexpectedStep, "heights don't match")
+
+	v1.Height = vs.Height()
+
+	// 5. Invalid signature
+	randKey := crypto.GenPrivKeyEd25519()
+	v1.Signature = randKey.Sign([]byte("foo-bar"))
+	added, err = vs.AddVote(v1)
+	require.Equal(t, err, ErrVoteInvalidSignature, "invalid signature")
+
+	// 6. Valid signature
+	priv1 := privValidators[0]
+	require.Nil(t, priv1.SignVote(vs.ChainID(), v1))
+	added, err = vs.AddVote(v1)
+
+	nonNilCount := func(vs *VoteSet) int {
+		count := 0
+		for _, v := range vs.votes {
+			if v != nil {
+				count += 1
+			}
+		}
+		return count
+	}
+	require.True(t, added, "expected the vote to have been cast")
+	require.Nil(t, err, "no errors in casting the vote")
+	require.Equal(t, nonNilCount(vs), 1, "only one vote cast so far")
+
+	// 7. Duplicate vote, right signature
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "duplicate vote, already seen")
+	require.Nil(t, err, "duplicate but has the right signature")
+	require.Equal(t, nonNilCount(vs), 1, "only one vote despite a duplicate attempt")
+
+	origIndex := v1.ValidatorIndex
+	origBlockKey := v1.BlockID.Key()
+
+	// 8. Mutated vote shouldn't affect the already cast vote
+	// Firstly check that we only have one vote
+	require.Equal(t, nonNilCount(vs), 1, "only one vote cast")
+	v1.Round = vs.Round() + 10
+	val2 := vsl.Validators[1]
+	v1.ValidatorAddress = val2.Address
+
+	castVote, ok := vs.getVote(origIndex, origBlockKey)
+	require.True(t, ok, "expecting successful retrieval of the previously cast vote")
+	require.NotNil(t, castVote, "expecting a non-nil vote")
+	require.NotEqual(t, v1, castVote, "despite v1 being cast already, a Copy() must have been made, hence immutable")
+
+	// 9. Sneaky change of validator address
+	v1 = castVote.Copy()
+	v1.ValidatorIndex = 1
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "different validators at different addresses")
+	require.Equal(t, err, ErrVoteInvalidValidatorAddress, "different validators at different addresses")
+
+	// 10. Change of the validator index whimsically, but they aren't a validator
+	v1 = castVote.Copy()
+	v1.ValidatorIndex = 10000
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "different validators at different addresses")
+	require.Equal(t, err, ErrVoteInvalidValidatorIndex, "different validators at different addresses")
+
+	// 11. Change of signature
+	v1 = castVote.Copy()
+	v1.Signature = randKey.Sign([]byte("foo-bar"))
+	added, err = vs.AddVote(v1)
+	require.False(t, added, "different/unknown signature")
+	require.Equal(t, err, ErrVoteInvalidSignature, "different/unknown/undeterministic signature")
 }

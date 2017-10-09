@@ -62,6 +62,15 @@ type PartSetHeader struct {
 	Hash  data.Bytes `json:"hash"`
 }
 
+func (psh *PartSetHeader) Copy() *PartSetHeader {
+	if psh == nil {
+		return nil
+	}
+	pshc := *psh
+	pshc.Hash = copyBytes(psh.Hash)
+	return &pshc
+}
+
 func (psh PartSetHeader) String() string {
 	return fmt.Sprintf("%v:%X", psh.Total, cmn.Fingerprint(psh.Hash))
 }

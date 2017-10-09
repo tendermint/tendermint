@@ -44,6 +44,18 @@ func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 	return block, block.MakePartSet(partSize)
 }
 
+func (b *Block) Copy() *Block {
+	if b == nil {
+		return nil
+	}
+	return &Block{
+		Header: b.Header.Copy(),
+		Data:   b.Data.Copy(),
+
+		LastCommit: b.LastCommit.Copy(),
+	}
+}
+
 // ValidateBasic performs basic validation that doesn't involve state data.
 func (b *Block) ValidateBasic(chainID string, lastBlockHeight int, lastBlockID BlockID,
 	lastBlockTime time.Time, appHash []byte) error {
@@ -168,6 +180,27 @@ type Header struct {
 	AppHash        data.Bytes `json:"app_hash"`         // state after txs from the previous block
 }
 
+func (h *Header) Copy() *Header {
+	if h == nil {
+		return nil
+	}
+	hc := *h
+	hc.AppHash = copyBytes(h.AppHash)
+	hc.DataHash = copyBytes(h.DataHash)
+	hc.ValidatorsHash = copyBytes(h.ValidatorsHash)
+	hc.LastCommitHash = copyBytes(h.LastCommitHash)
+	return &hc
+}
+
+func copyBytes(b data.Bytes) data.Bytes {
+	if b == nil {
+		return nil
+	}
+	bc := make(data.Bytes, len(b))
+	copy(bc, b)
+	return bc
+}
+
 // Hash returns the hash of the header.
 // NOTE: hash is nil if required fields are missing.
 func (h *Header) Hash() data.Bytes {
@@ -230,6 +263,25 @@ type Commit struct {
 	firstPrecommit *Vote
 	hash           data.Bytes
 	bitArray       *cmn.BitArray
+}
+
+func (c *Commit) Copy() *Commit {
+	if c == nil {
+		return nil
+	}
+	cc := *c
+	if c.bitArray != nil {
+		cc.bitArray = c.bitArray.Copy()
+	}
+	cc.hash = copyBytes(c.hash)
+	cc.firstPrecommit = c.firstPrecommit.Copy()
+	if len(c.Precommits) > 0 {
+		cc.Precommits = make([]*Vote, len(c.Precommits))
+		for i, vote := range c.Precommits {
+			cc.Precommits[i] = vote.Copy()
+		}
+	}
+	return &cc
 }
 
 // FirstPrecommit returns the first non-nil precommit in the commit
@@ -380,6 +432,15 @@ type Data struct {
 	hash data.Bytes
 }
 
+func (data *Data) Copy() *Data {
+	if data == nil {
+		return nil
+	}
+	dc := *data
+	dc.hash = copyBytes(data.hash)
+	return &dc
+}
+
 // Hash returns the hash of the data
 func (data *Data) Hash() data.Bytes {
 	if data.hash == nil {
@@ -414,6 +475,16 @@ func (data *Data) StringIndented(indent string) string {
 type BlockID struct {
 	Hash        data.Bytes    `json:"hash"`
 	PartsHeader PartSetHeader `json:"parts"`
+}
+
+func (bi *BlockID) Copy() *BlockID {
+	if bi == nil {
+		return nil
+	}
+	bic := *bi
+	bic.Hash = copyBytes(bi.Hash)
+	bic.PartsHeader = *(bic.PartsHeader.Copy())
+	return &bic
 }
 
 // IsZero returns true if this is the BlockID for a nil-block
