@@ -16,6 +16,11 @@ if ! hash tendermint 2>/dev/null; then
     make install
 fi
 
+# Make sure we have a cutWALUntil binary.
+if ! hash ./scripts/cutWALUntil/cutWALUntil 2>/dev/null; then
+	cd ./scripts/cutWALUntil/ && go build && cd - || exit
+fi
+
 # specify a dir to copy
 # TODO: eventually we should replace with `tendermint init --test`
 DIR_TO_COPY=$HOME/.tendermint_test/consensus_state_test
@@ -39,10 +44,8 @@ function empty_block(){
 	sleep 5
 	killall tendermint
 
-	# /q would print up to and including the match, then quit.
-	# /Q doesn't include the match.
-	# http://unix.stackexchange.com/questions/11305/grep-show-all-the-file-up-to-the-match
-	sed -e "/ENDHEIGHT: 1/Q" ~/.tendermint/data/cs.wal/wal > consensus/test_data/empty_block.cswal
+	./scripts/cutWALUntil/cutWALUntil ~/.tendermint/data/cs.wal/wal 1 consensus/test_data/new_empty_block.cswal
+	mv consensus/test_data/new_empty_block.cswal consensus/test_data/empty_block.cswal
 
 	reset
 }
@@ -56,7 +59,8 @@ function many_blocks(){
 	killall tendermint
 	kill -9 $PID
 
-	sed -e '/ENDHEIGHT: 6/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/many_blocks.cswal
+	./scripts/cutWALUntil/cutWALUntil ~/.tendermint/data/cs.wal/wal 6 consensus/test_data/new_many_blocks.cswal
+	mv consensus/test_data/new_many_blocks.cswal consensus/test_data/many_blocks.cswal
 
 	reset
 }
@@ -71,7 +75,8 @@ function small_block1(){
 	killall tendermint
 	kill -9 $PID
 
-	sed -e '/ENDHEIGHT: 1/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/small_block1.cswal
+	./scripts/cutWALUntil/cutWALUntil ~/.tendermint/data/cs.wal/wal 1 consensus/test_data/new_small_block1.cswal
+	mv consensus/test_data/new_small_block1.cswal consensus/test_data/small_block1.cswal
 
 	reset
 }
@@ -79,8 +84,8 @@ function small_block1(){
 
 # small block 2 (part size = 64)
 function small_block2(){
-	cat ~/.tendermint/genesis.json | jq  '. + {"consensus_params": {"block_size_params": {"max_bytes":1000000}, "block_gossip_params": {"block_part_size_bytes":512}}}' > genesis.json.new
-	mv genesis.json.new ~/.tendermint/genesis.json
+	cat ~/.tendermint/genesis.json | jq '. + {consensus_params: {block_size_params: {max_bytes: 22020096}, block_gossip_params: {block_part_size_bytes: 512}}}' > ~/.tendermint/new_genesis.json
+	mv ~/.tendermint/new_genesis.json ~/.tendermint/genesis.json
 	bash scripts/txs/random.sh 1000 36657 &> /dev/null &
 	PID=$!
 	tendermint node --proxy_app=persistent_dummy &> /dev/null &
@@ -88,7 +93,8 @@ function small_block2(){
 	killall tendermint
 	kill -9 $PID
 
-	sed -e '/ENDHEIGHT: 1/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/small_block2.cswal
+	./scripts/cutWALUntil/cutWALUntil ~/.tendermint/data/cs.wal/wal 1 consensus/test_data/new_small_block2.cswal
+	mv consensus/test_data/new_small_block2.cswal consensus/test_data/small_block2.cswal
 
 	reset
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -53,12 +54,20 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	defer pb.fp.Close()
 
 	var nextN int // apply N msgs in a row
-	for pb.scanner.Scan() {
+	var msg *TimedWALMessage
+	for {
 		if nextN == 0 && console {
 			nextN = pb.replayConsoleLoop()
 		}
 
-		if err := pb.cs.readReplayMessage(pb.scanner.Bytes(), newStepCh); err != nil {
+		msg, err = pb.dec.Decode()
+		if err == io.EOF {
+			return nil
+		} else {
+			return err
+		}
+
+		if err := pb.cs.readReplayMessage(msg, newStepCh); err != nil {
 			return err
 		}
 
@@ -76,9 +85,9 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 type playback struct {
 	cs *ConsensusState
 
-	fp      *os.File
-	scanner *bufio.Scanner
-	count   int // how many lines/msgs into the file are we
+	fp    *os.File
+	dec   *WALDecoder
+	count int // how many lines/msgs into the file are we
 
 	// replays can be reset to beginning
 	fileName     string    // so we can close/reopen the file
@@ -91,7 +100,7 @@ func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState *sm.
 		fp:           fp,
 		fileName:     fileName,
 		genesisState: genState,
-		scanner:      bufio.NewScanner(fp),
+		dec:          NewWALDecoder(fp),
 	}
 }
 
@@ -111,13 +120,20 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 		return err
 	}
 	pb.fp = fp
-	pb.scanner = bufio.NewScanner(fp)
+	pb.dec = NewWALDecoder(fp)
 	count = pb.count - count
 	fmt.Printf("Reseting from %d to %d\n", pb.count, count)
 	pb.count = 0
 	pb.cs = newCS
-	for i := 0; pb.scanner.Scan() && i < count; i++ {
-		if err := pb.cs.readReplayMessage(pb.scanner.Bytes(), newStepCh); err != nil {
+	var msg *TimedWALMessage
+	for i := 0; i < count; i++ {
+		msg, err = pb.dec.Decode()
+		if err == io.EOF {
+			return nil
+		} else {
+			return err
+		}
+		if err := pb.cs.readReplayMessage(msg, newStepCh); err != nil {
 			return err
 		}
 		pb.count += 1

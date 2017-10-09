@@ -1188,7 +1188,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// As is, ConsensusState should not be started again
 	// until we successfully call ApplyBlock (ie. here or in Handshake after restart)
 	if cs.wal != nil {
-		cs.wal.writeEndHeight(height)
+		cs.wal.Save(EndHeightMessage{uint64(height)})
 	}
 
 	fail.Fail() // XXX

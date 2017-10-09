@@ -1,16 +1,18 @@
-hash: 9867fa4543ca4daea1a96a3883a7f483819c067ca34ed6d3aa67aace4a289e93
-updated: 2017-10-23T10:01:08.326324082-04:00
+hash: f012b05ea79172925b7f896b475d2684a948ac94efaf28d55de8397b673a89e3
+updated: 2017-10-23T18:19:06.286350807Z
 imports:
 - name: github.com/btcsuite/btcd
-  version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
+  version: b8df516b4b267acf2de46be593a9d948d1d2c420
   subpackages:
   - btcec
+- name: github.com/btcsuite/fastsha256
+  version: 637e656429416087660c84436a2a035d69d54e2e
 - name: github.com/ebuchman/fail-test
   version: 95f809107225be108efcf10a3509e4ea6ceef3c4
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: e2b298466b32c7cd5579a9b9b07e968fc9d9452c
+  version: d67bb4c202e3b91377d1079b110a6c9ce23ab2f8
   subpackages:
   - log
   - log/level
@@ -122,7 +124,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: 8e5266a9ef2527e68a1571f932db8228a331b556
+  version: 21b2c26fb1b26edf5846792890e01eaa8a472508
   subpackages:
   - autofile
   - cli

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -38,28 +37,10 @@ var crc32c = crc32.MakeTable(crc32.Castagnoli)
 // as if it were received in receiveRoutine
 // Lines that start with "#" are ignored.
 // NOTE: receiveRoutine should not be running
-func (cs *ConsensusState) readReplayMessage(msgBytes []byte, newStepCh chan interface{}) error {
-	// Skip over empty and meta lines
-	if len(msgBytes) == 0 || msgBytes[0] == '#' {
+func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan interface{}) error {
+	// Skip over meta lines
+	if _, ok := msg.Msg.(EndHeightMessage); ok {
 		return nil
-	}
-	var err error
-	var msg TimedWALMessage
-	wire.ReadJSON(&msg, msgBytes, &err)
-	if err != nil {
-		fmt.Println("MsgBytes:", msgBytes, string(msgBytes))
-		return fmt.Errorf("Error reading json data: %v", err)
-	}
-	// check checksum
-	innerMsgBytes := wire.JSONBytes(msg.Msg)
-	crc := crc32.Checksum(innerMsgBytes, crc32c)
-	if crc != msg.CRC {
-		return fmt.Errorf("Checksums do not match. Original: %v, but calculated: %v", msg.CRC, crc)
-	}
-	// check msg size (optional)
-	msgSize := uint32(len(innerMsgBytes))
-	if msgSize != msg.MsgSize {
-		return fmt.Errorf("Sizes do not match. Original: %v, but calculated: %v", msg.MsgSize, msgSize)
 	}
 
 	// for logging
@@ -118,7 +99,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// Ensure that ENDHEIGHT for this height doesn't exist
 	// NOTE: This is just a sanity check. As far as we know things work fine without it,
 	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
-	gr, found, err := cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight))
+	gr, found, err := cs.wal.SearchForEndHeight(uint64(csHeight))
 	if gr != nil {
 		gr.Close()
 	}
@@ -127,7 +108,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	}
 
 	// Search for last height marker
-	gr, found, err = cs.wal.group.Search("#ENDHEIGHT: ", makeHeightSearchFunc(csHeight-1))
+	gr, found, err = cs.wal.SearchForEndHeight(uint64(csHeight - 1))
 	if err == io.EOF {
 		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
 	} else if err != nil {
@@ -141,19 +122,21 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 
+	var msg *TimedWALMessage
+	dec := WALDecoder{gr}
+
 	for {
-		line, err := gr.ReadLine()
+		msg, err = dec.Decode()
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return err
-			}
+			return err
 		}
 		// NOTE: since the priv key is set when the msgs are received
 		// it will attempt to eg double sign but we can just ignore it
 		// since the votes will be replayed and we'll get to the next step
-		if err := cs.readReplayMessage([]byte(line), nil); err != nil {
+		if err := cs.readReplayMessage(msg, nil); err != nil {
 			return err
 		}
 	}
