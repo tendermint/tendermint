@@ -1,0 +1,6 @@
+---
+
+- name: Get file from node
+  fetch: "dest={{ destination | default('.') }}/{{ source | basename }} flat=yes src='{{source}}'"
+  run_once: yes
+

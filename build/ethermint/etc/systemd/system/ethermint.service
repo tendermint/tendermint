@@ -7,8 +7,7 @@ BindTo=ethermint-server.service
 #propagates stop and restart (one-way)
 PartOf=ethermint-server.service
 #order
-Before=ethermint-server.service
-After=network-online.target
+After=network-online.target ethermint-server.service
 #propagates reload
 PropagatesReloadTo=ethermint-server.service
 ReloadPropagatedFrom=ethermint-server.service
@@ -23,6 +22,6 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target ethermint-server.service
 Also=ethermint-server.service
 

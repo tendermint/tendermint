@@ -60,12 +60,12 @@ build-tendermint: git-branch
 	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
-build-basecoin: git-branch
-	@echo "*** Building basecoin"
-	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
-	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
-	@echo "*** Built basecoin"
+#build-basecoin: git-branch
+#	@echo "*** Building basecoin-old"
+#	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
+#	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
+#	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
+#	@echo "*** Built basecoin"
 
 build-ethermint: git-branch
 	@echo "*** Building ethermint"
@@ -77,7 +77,7 @@ build-ethermint: git-branch
 
 build-trackomatron: git-branch
 	@echo "*** Building trackomatron"
-	go get -d -u go github.com/tendermint/trackomatron/cmd/tracko
+	go get -d -u github.com/tendermint/trackomatron/cmd/tracko
 	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
 	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
 	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed for proper packaging" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
@@ -90,6 +90,13 @@ build-gaia: git-branch
 	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
 
+build-basecoin: git-branch
+	@echo "*** Building basecoin from cosmos-sdk"
+	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
+	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
+	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
+	@echo "*** Built basecoin from cosmos-sdk"
+
 ###
 # Prepare package files
 ###
@@ -97,7 +104,7 @@ build-gaia: git-branch
 # set app_version
 version-%: $(GOPATH)/bin/%
 	if [ -z "$(BUILD_NUMBER)" ]; then echo "BUILD_NUMBER not set" ; false ; fi
-	$(eval $*_version=$(shell $< version | cut -d- -f1 ))
+	$(eval $*_version=$(shell $< version | head -1 | cut -d- -f1 | sed 's/^\(ethermint:\s*\|\)\(v\|\)//' ))
 
 # set build_folder
 folder-%: version-%
@@ -111,12 +118,12 @@ prepare-files = rm -rf $(build_folder) && mkdir -p $(build_folder) && cp -r ./$(
 ##
 
 prepare-tendermint =
-prepare-basecoin = cp $(GOPATH)/bin/basecli $(build_folder)/usr/bin
 prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
-prepare-gaia =
+prepare-gaia = cp $(GOPATH)/bin/gaiacli $(build_folder)/usr/bin
+prepare-basecoin = cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
@@ -136,9 +143,10 @@ package-rpm-%: folder-%
 
 	mkdir -p {SPECS,tmp}
 
-	cp ./spectemplates/$*.spec SPECS
+	./generate-spec $* spectemplates SPECS
 	sed -i "s/@VERSION@/$($*_version)/" SPECS/$*.spec
 	sed -i "s/@BUILD_NUMBER@/$(BUILD_NUMBER)/" SPECS/$*.spec
+	sed -i "s/@PACKAGE_NAME@/$*/" SPECS/$*.spec
 
 	rpmbuild -bb SPECS/$*.spec --define "_topdir `pwd`" --define "_tmppath `pwd`/tmp"
 	./sign RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm "$(gpg_key)" "`which gpg`"
@@ -188,23 +196,23 @@ package-deb-%: folder-%
 
 install-rpm-%: version-%
 #Make sure your host has the IAM role to read/write the S3 bucket OR that you set up ~/.boto
-	@echo "*** Uploading $*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm to AWS CentOS repository"
-	aws s3 sync s3://tendermint-packages/centos/ tmp/s3/ --delete
+	@echo "*** Uploading $*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm to AWS $(DEVOPS_PATH)CentOS repository"
+	aws s3 sync s3://tendermint-packages/$(DEVOPS_PATH)centos/ tmp/s3/ --delete
 	mkdir -p tmp/s3/7/os/x86_64/Packages
 	cp RPMS/x86_64/$*-$($*_version)-$(BUILD_NUMBER).x86_64.rpm tmp/s3/7/os/x86_64/Packages
 	cp ./RPM-GPG-KEY-Tendermint tmp/s3/7/os/x86_64/
 	cp ./tendermint.repo tmp/s3/7/os/x86_64/
 	rm -f tmp/s3/7/os/x86_64/repodata/*.bz2 tmp/s3/7/os/x86_64/repodata/*.gz tmp/s3/7/os/x86_64/repodata/repomd.xml.asc
-	createrepo tmp/s3/7/os/x86_64/Packages -u https://do9rmxapsag1v.cloudfront.net/centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
+	createrepo tmp/s3/7/os/x86_64/Packages -u https://tendermint-packages.interblock.io/$(DEVOPS_PATH)centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --detach-sign -a tmp/s3/7/os/x86_64/repodata/repomd.xml
-	aws s3 sync tmp/s3/ s3://tendermint-packages/centos/ --delete --acl public-read
-	@echo "*** Uploaded $* to AWS CentOS repository"
+	aws s3 sync tmp/s3/ s3://tendermint-packages/$(DEVOPS_PATH)centos/ --delete --acl public-read
+	@echo "*** Uploaded $* to AWS $(DEVOPS_PATH)CentOS repository"
 
 install-deb-%: version-%
-	@echo "*** Uploading $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb to AWS Debian repository"
+	@echo "*** Uploading $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb to AWS $(DEVOPS_PATH)Debian repository"
 	@echo "Testing if $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb is already uploaded"
 	test ! -f tmp/debian-s3/pool/$*-$($*_version)-$(BUILD_NUMBER)_amd64.deb
-	aws s3 sync s3://tendermint-packages/debian/ tmp/debian-s3/ --delete
+	aws s3 sync s3://tendermint-packages/$(DEVOPS_PATH)debian/ tmp/debian-s3/ --delete
 	@echo "Testing if $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb is already uploaded"
 	test ! -f tmp/debian-s3/pool/$*-$($*_version)-$(BUILD_NUMBER)_amd64.deb
 	cp ./tendermint.list tmp/debian-s3/
@@ -263,8 +271,8 @@ install-deb-%: version-%
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --digest-algo SHA512 --clearsign tmp/debian-s3/dists/stable/Release
 	mv tmp/debian-s3/dists/stable/Release.asc tmp/debian-s3/dists/stable/InRelease
 
-	aws s3 sync tmp/debian-s3/ s3://tendermint-packages/debian/ --delete --acl public-read
-	@echo "*** Uploaded $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb to AWS Debian repository"
+	aws s3 sync tmp/debian-s3/ s3://tendermint-packages/$(DEVOPS_PATH)debian/ --delete --acl public-read
+	@echo "*** Uploaded $*-$($*_version)-$(BUILD_NUMBER)_amd64.deb to AWS $(DEVOPS_PATH)Debian repository"
 
 mostlyclean:
 	rm -rf {BUILDROOT,SOURCES,SPECS,SRPMS,tmp}
@@ -281,6 +289,8 @@ distclean: clean
 	rm -rf $(GOPATH)/bin/basecoin
 	rm -rf $(GOPATH)/bin/basecli
 	rm -rf $(GOPATH)/bin/ethermint
+	rm -rf $(GOPATH)/bin/gaia
+	rm -rf $(GOPATH)/bin/gaiacli
 	rm -rf $(GOPATH)/bin/tracko
 	rm -rf $(GOPATH)/bin/trackocli
 

@@ -5,21 +5,23 @@ Release: @BUILD_NUMBER@
 %define debug_package       %{nil}
 %define __os_install_post   %{nil}
 
-Name: gaia
-Summary: gaia - Tendermint Cosmos delegation game chain
+Name: @PACKAGE_NAME@
+Summary: @PACKAGE_SUMMARY@
 License: Apache 2.0
-URL: https://cosmos.network/
+URL: @PACKAGE_URL@
 Packager: Greg Szabo
-Requires: tendermint >= 0.10.0
-#Requires(pre): useradd
+Requires: tendermint >= 0.11.0
+@PACKAGE_ADDITIONAL_HEADER@
 
 %description
-Gaia description comes later.
+@PACKAGE_DESCRIPTION@
 
 %pre
 if ! %{__grep} -q '^%{name}:' /etc/passwd ; then
-  useradd -k /dev/null -r -m -b %{_sysconfdir} %{name}
+  useradd -r -b %{_sysconfdir} %{name}
+  mkdir -p %{_sysconfdir}/%{name}
   chmod 755 %{_sysconfdir}/%{name}
+  chown %{name}.%{name} %{_sysconfdir}/%{name}
 fi
 
 %prep
@@ -33,12 +35,8 @@ cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
-sudo -Hu %{name} gaia init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
-#The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
-sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}/tendermint
-#The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
-
-chmod 755 %{_sysconfdir}/%{name}/tendermint
+sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}
+sudo -Hu %{name} %{name} init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
 
 #Temporary until https://github.com/tendermint/basecoin/issues/123
 rm -f %{_sysconfdir}/%{name}/key.json
@@ -55,7 +53,6 @@ systemctl daemon-reload
 
 %files
 %ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}
-%ghost %attr(0755, %{name}, %{name}) %dir %{_sysconfdir}/%{name}/tendermint
 %{_bindir}/*
 %{_sysconfdir}/systemd/system/*
 %{_sysconfdir}/systemd/system-preset/*

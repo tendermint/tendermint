@@ -9,5 +9,8 @@
           "amount": 9007199254740992
         }
       ]
-    }]
+    }],
+    "plugin_options": [
+      "coin/issuer", {"app": "sigs", "addr": "1B1BE55F969F54064628A63B9559E7C21C925165"}
+    ]
 

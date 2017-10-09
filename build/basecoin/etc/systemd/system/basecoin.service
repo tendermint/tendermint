@@ -7,8 +7,7 @@ BindTo=basecoin-server.service
 #propagates stop and restart (one-way)
 PartOf=basecoin-server.service
 #order
-Before=basecoin-server.service
-After=network-online.target
+After=network-online.target basecoin-server.service
 #propagates reload
 PropagatesReloadTo=basecoin-server.service
 ReloadPropagatedFrom=basecoin-server.service
@@ -24,6 +23,6 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=multi-user.target basecoin-server.service
 Also=basecoin-server.service
 

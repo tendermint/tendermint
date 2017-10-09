@@ -14,6 +14,24 @@
         ]
       },
       {
+        "name": "greg",
+        "address": "B01C264BFE9CBD45458256E613A6F07061A3A6B6",
+        "pub_key": {
+          "type": "ed25519",
+          "data": "E1FFBD187FA2A922CE1B367532CEAC1AD8E606D576AB0D2E2CAA7EC6B7DAC10F"
+        },
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 9007199254740991
+          },
+          {
+            "denom": "gregcoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
         "name": "anton",
         "address": "40CC622438D3E42148A1FFD3A27C07C100F8FA3D",
         "pub_key": {
@@ -22,30 +40,26 @@
         },
         "coins": [
           {
-            "denom": "anton",
+            "denom": "buckyball",
             "amount": 9007199254740992
           },
           {
-            "denom": "tank",
-            "amount": 99
+            "denom": "antoncoin",
+            "amount": 1000
           }
         ]
       },
       {
         "name": "adrian",
-        "address": "98F28277FA8C512968BBDE443F5DB27AC743F814",
-        "pub_key": {
-          "type": "ed25519",
-          "data": "2E7EAB9E4C93D3657A63E063D6ABB851596BA97ED9F4EB9A2FC714043DC9685D"
-        },
+        "address": "0FA1DB09E8B174E81E94280C047C158D4271457B",
         "coins": [
           {
-            "denom": "axi",
+            "denom": "buckyball",
             "amount": 1928936473812
           },
           {
-            "denom": "bear",
-            "amount": 42
+            "denom": "adriancoin",
+            "amount": 1000
           }
         ]
       },
@@ -62,16 +76,8 @@
             "amount": 20000000000
           },
           {
-            "denom": "bumblebee",
-            "amount": 100
-          },
-          {
-            "denom": "french",
-            "amount": 10
-          },
-          {
-            "denom": "frey",
-            "amount": 4838271727204
+            "denom": "buckycoin",
+            "amount": 1000
           }
         ]
       },
@@ -84,34 +90,12 @@
         },
         "coins": [
           {
-            "denom": "radio",
-            "amount": 50
-          },
-          {
-            "denom": "tv",
-            "amount": 3478765434568
-          }
-        ]
-      },
-      {
-        "name": "gregkey",
-        "address": "B01C264BFE9CBD45458256E613A6F07061A3A6B6",
-        "pubkey": {
-          "type": "ed25519",
-          "data": "E1FFBD187FA2A922CE1B367532CEAC1AD8E606D576AB0D2E2CAA7EC6B7DAC10F"
-        },
-        "coins": [
-          {
-            "denom": "mycoin",
-            "amount": 3478765434568
+            "denom": "rigelcoin",
+            "amount": 1000
           },
           {
             "denom": "buckyball",
-            "amount": 8367251830291
-          },
-          {
-            "denom": "playmoney",
-            "amount": 9999999999999
+            "amount": 3478765434568
           }
         ]
       },
@@ -124,13 +108,87 @@
         },
         "coins": [
           {
-            "denom": "shadow",
+            "denom": "buckyball",
             "amount": 53712836452781
           },
           {
-            "denom": "unit",
-            "amount": 1
+            "denom": "shadowcoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "peng",
+        "address": "7B8422A210D0F0B8734908C093ECF0E9A768BDB8",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "pengcoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "matt",
+        "address": "C2104A8191E282AA45D210BA93282B36768EDDA1",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "mattcoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "frey",
+        "address": "0F8FB94B5A4D04220F15058B7AA16AF1328B57A9",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "freycoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "wancloud",
+        "address": "117FE408E1F74C453901BCB638F996964FD29CBB",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "wancloudcoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "bianjie",
+        "address": "F63F2D34C03430A54B7F6A43C886B4A83F366B84",
+        "coins": [
+          {
+            "denom": "buckyball",
+            "amount": 53712836452781
+          },
+          {
+            "denom": "bianjiecoin",
+            "amount": 1000
           }
         ]
       }
+
+    ],
+    "plugin_options": [
+      "coin/issuer", {"app": "sigs", "addr": "B01C264BFE9CBD45458256E613A6F07061A3A6B6"}
     ]

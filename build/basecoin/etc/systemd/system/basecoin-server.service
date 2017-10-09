@@ -3,12 +3,13 @@ Description=Basecoin server
 Requires=network-online.target
 BindTo=basecoin.service
 PartOf=basecoin.service
-After=network-online.target basecoin.service
+Before=basecoin.service
+After=network-online.target
 PropagatesReloadTo=basecoin.service
 ReloadPropagatedFrom=basecoin.service
 
 [Service]
-Environment="TMHOME=/etc/basecoin/tendermint"
+Environment="TMHOME=/etc/basecoin"
 Restart=on-failure
 User=basecoin
 Group=basecoin
@@ -18,6 +19,6 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target basecoin.service
+WantedBy=multi-user.target
 Also=basecoin.service
 

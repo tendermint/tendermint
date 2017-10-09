@@ -13,6 +13,9 @@
 - name: Restart journald
   service: name=systemd-journald state=restarted
 
+#TODO include is deprecated in Ansible 2.4.0 and will be removed in 2.8.0
+#Replace it with include_tasks
+
 - include: debian.yml
   when: ansible_os_family == "Debian"
 
