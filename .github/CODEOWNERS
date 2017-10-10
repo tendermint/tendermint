@@ -1,0 +1,5 @@
+# CODEOWNERS: https://help.github.com/articles/about-codeowners/
+
+# Everything goes through Bucky. For now.
+*       @ebuchman
+

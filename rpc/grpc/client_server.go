@@ -8,7 +8,7 @@ import (
 
 	"google.golang.org/grpc"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Start the grpcServer in a go routine
@@ -40,5 +40,5 @@ func StartGRPCClient(protoAddr string) BroadcastAPIClient {
 }
 
 func dialerFunc(addr string, timeout time.Duration) (net.Conn, error) {
-	return Connect(addr)
+	return cmn.Connect(addr)
 }

@@ -5,7 +5,7 @@ import (
 	"io/ioutil"
 	"testing"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 func TestBasicPartSet(t *testing.T) {
 
 	// Construct random data of size partSize * 100
-	data := RandBytes(testPartSize * 100)
+	data := cmn.RandBytes(testPartSize * 100)
 
 	partSet := NewPartSetFromData(data, testPartSize)
 	if len(partSet.Hash()) == 0 {
@@ -65,7 +65,7 @@ func TestBasicPartSet(t *testing.T) {
 func TestWrongProof(t *testing.T) {
 
 	// Construct random data of size partSize * 100
-	data := RandBytes(testPartSize * 100)
+	data := cmn.RandBytes(testPartSize * 100)
 	partSet := NewPartSetFromData(data, testPartSize)
 
 	// Test adding a part with wrong data.

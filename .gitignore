@@ -15,3 +15,5 @@ test/p2p/data/
 test/logs
 .glide
 coverage.txt
+docs/_build
+docs/tools

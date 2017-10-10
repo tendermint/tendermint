@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -33,7 +33,7 @@ var peerTimeoutSeconds = time.Duration(15) // not const so we can override with 
 */
 
 type BlockPool struct {
-	BaseService
+	cmn.BaseService
 	startTime time.Time
 
 	mtx sync.Mutex
@@ -59,7 +59,7 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
 	}
-	bp.BaseService = *NewBaseService(nil, "BlockPool", bp)
+	bp.BaseService = *cmn.NewBaseService(nil, "BlockPool", bp)
 	return bp
 }
 
@@ -137,14 +137,14 @@ func (pool *BlockPool) IsCaughtUp() bool {
 
 	maxPeerHeight := 0
 	for _, peer := range pool.peers {
-		maxPeerHeight = MaxInt(maxPeerHeight, peer.height)
+		maxPeerHeight = cmn.MaxInt(maxPeerHeight, peer.height)
 	}
 
 	// some conditions to determine if we're caught up
 	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
 	ourChainIsLongestAmongPeers := maxPeerHeight == 0 || pool.height >= maxPeerHeight
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
-	pool.Logger.Info(Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height, "maxPeerHeight", maxPeerHeight)
+	pool.Logger.Info(cmn.Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height, "maxPeerHeight", maxPeerHeight)
 	return isCaughtUp
 }
 
@@ -180,7 +180,7 @@ func (pool *BlockPool) PopRequest() {
 		delete(pool.requesters, pool.height)
 		pool.height++
 	} else {
-		PanicSanity(Fmt("Expected requester to pop, got nothing at height %v", pool.height))
+		cmn.PanicSanity(cmn.Fmt("Expected requester to pop, got nothing at height %v", pool.height))
 	}
 }
 
@@ -192,7 +192,7 @@ func (pool *BlockPool) RedoRequest(height int) {
 	pool.mtx.Unlock()
 
 	if request.block == nil {
-		PanicSanity("Expected block to be non-nil")
+		cmn.PanicSanity("Expected block to be non-nil")
 	}
 	// RemovePeer will redo all requesters associated with this peer.
 	// TODO: record this malfeasance
@@ -311,10 +311,10 @@ func (pool *BlockPool) debug() string {
 	str := ""
 	for h := pool.height; h < pool.height+len(pool.requesters); h++ {
 		if pool.requesters[h] == nil {
-			str += Fmt("H(%v):X ", h)
+			str += cmn.Fmt("H(%v):X ", h)
 		} else {
-			str += Fmt("H(%v):", h)
-			str += Fmt("B?(%v) ", pool.requesters[h].block != nil)
+			str += cmn.Fmt("H(%v):", h)
+			str += cmn.Fmt("B?(%v) ", pool.requesters[h].block != nil)
 		}
 	}
 	return str
@@ -394,7 +394,7 @@ func (peer *bpPeer) onTimeout() {
 //-------------------------------------
 
 type bpRequester struct {
-	BaseService
+	cmn.BaseService
 	pool       *BlockPool
 	height     int
 	gotBlockCh chan struct{}
@@ -415,7 +415,7 @@ func newBPRequester(pool *BlockPool, height int) *bpRequester {
 		peerID: "",
 		block:  nil,
 	}
-	bpr.BaseService = *NewBaseService(nil, "bpRequester", bpr)
+	bpr.BaseService = *cmn.NewBaseService(nil, "bpRequester", bpr)
 	return bpr
 }
 

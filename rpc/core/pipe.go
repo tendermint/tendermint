@@ -2,14 +2,14 @@ package core
 
 import (
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/tmlibs/log"
-
 	"github.com/tendermint/tendermint/consensus"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	p2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/log"
 )
 
 //----------------------------------------------
@@ -18,7 +18,7 @@ import (
 type Consensus interface {
 	GetState() *sm.State
 	GetValidators() (int, []*types.Validator)
-	GetRoundState() *consensus.RoundState
+	GetRoundState() *cstypes.RoundState
 }
 
 type P2P interface {

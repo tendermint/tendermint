@@ -15,11 +15,12 @@ import (
 	abci "github.com/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
@@ -34,7 +35,7 @@ var config *cfg.Config // NOTE: must be reset for each _test.go file
 var ensureTimeout = time.Second * 2
 
 func ensureDir(dir string, mode os.FileMode) {
-	if err := EnsureDir(dir, mode); err != nil {
+	if err := cmn.EnsureDir(dir, mode); err != nil {
 		panic(err)
 	}
 }
@@ -341,7 +342,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		state, _ := sm.MakeGenesisState(db, genDoc)
 		state.SetLogger(logger.With("module", "state", "validator", i))
 		state.Save()
-		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
@@ -362,13 +363,13 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		state, _ := sm.MakeGenesisState(db, genDoc)
 		state.SetLogger(log.TestingLogger().With("module", "state"))
 		state.Save()
-		thisConfig := ResetConfig(Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal types.PrivValidator
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			_, tempFilePath := Tempfile("priv_validator_")
+			_, tempFilePath := cmn.Tempfile("priv_validator_")
 			privVal = types.GenPrivValidatorFS(tempFilePath)
 		}
 
@@ -456,7 +457,7 @@ func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 	if m.onlyOnce && m.fired {
 		return
 	}
-	if ti.Step == RoundStepNewHeight {
+	if ti.Step == cstypes.RoundStepNewHeight {
 		m.c <- ti
 		m.fired = true
 	}

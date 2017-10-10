@@ -9,7 +9,7 @@ import (
 	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/events"
 )
 
@@ -149,8 +149,8 @@ func TestByzantine(t *testing.T) {
 	case <-done:
 	case <-tick.C:
 		for i, reactor := range reactors {
-			t.Log(Fmt("Consensus Reactor %v", i))
-			t.Log(Fmt("%v", reactor))
+			t.Log(cmn.Fmt("Consensus Reactor %v", i))
+			t.Log(cmn.Fmt("%v", reactor))
 		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}
@@ -220,7 +220,7 @@ func sendProposalAndParts(height, round int, cs *ConsensusState, peer p2p.Peer, 
 // byzantine consensus reactor
 
 type ByzantineReactor struct {
-	Service
+	cmn.Service
 	reactor *ConsensusReactor
 }
 
@@ -296,5 +296,5 @@ func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *
 }
 
 func (privVal *ByzantinePrivValidator) String() string {
-	return Fmt("PrivValidator{%X}", privVal.GetAddress())
+	return cmn.Fmt("PrivValidator{%X}", privVal.GetAddress())
 }

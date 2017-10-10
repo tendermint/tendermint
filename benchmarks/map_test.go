@@ -1,8 +1,9 @@
 package benchmarks
 
 import (
-	. "github.com/tendermint/tmlibs/common"
 	"testing"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func BenchmarkSomething(b *testing.B) {
@@ -11,11 +12,11 @@ func BenchmarkSomething(b *testing.B) {
 	numChecks := 100000
 	keys := make([]string, numItems)
 	for i := 0; i < numItems; i++ {
-		keys[i] = RandStr(100)
+		keys[i] = cmn.RandStr(100)
 	}
 	txs := make([]string, numChecks)
 	for i := 0; i < numChecks; i++ {
-		txs[i] = RandStr(100)
+		txs[i] = cmn.RandStr(100)
 	}
 	b.StartTimer()
 

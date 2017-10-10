@@ -1,11 +1,11 @@
-package consensus
+package types
 
 import (
 	"strings"
 	"sync"
 
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 type RoundVoteSet struct {
@@ -76,7 +76,7 @@ func (hvs *HeightVoteSet) SetRound(round int) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if hvs.round != 0 && (round < hvs.round+1) {
-		PanicSanity("SetRound() must increment hvs.round")
+		cmn.PanicSanity("SetRound() must increment hvs.round")
 	}
 	for r := hvs.round + 1; r <= round; r++ {
 		if _, ok := hvs.roundVoteSets[r]; ok {
@@ -89,7 +89,7 @@ func (hvs *HeightVoteSet) SetRound(round int) {
 
 func (hvs *HeightVoteSet) addRound(round int) {
 	if _, ok := hvs.roundVoteSets[round]; ok {
-		PanicSanity("addRound() for an existing round")
+		cmn.PanicSanity("addRound() for an existing round")
 	}
 	// log.Debug("addRound(round)", "round", round)
 	prevotes := types.NewVoteSet(hvs.chainID, hvs.height, round, types.VoteTypePrevote, hvs.valSet)
@@ -164,7 +164,7 @@ func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {
 	case types.VoteTypePrecommit:
 		return rvs.Precommits
 	default:
-		PanicSanity(Fmt("Unexpected vote type %X", type_))
+		cmn.PanicSanity(cmn.Fmt("Unexpected vote type %X", type_))
 		return nil
 	}
 }
@@ -194,7 +194,7 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 		voteSetString = roundVoteSet.Precommits.StringShort()
 		vsStrings = append(vsStrings, voteSetString)
 	}
-	return Fmt(`HeightVoteSet{H:%v R:0~%v
+	return cmn.Fmt(`HeightVoteSet{H:%v R:0~%v
 %s  %v
 %s}`,
 		hvs.height, hvs.round,

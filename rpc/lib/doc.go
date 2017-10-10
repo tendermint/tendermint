@@ -1,7 +1,4 @@
-# tendermint/rpc/lib
-
-[![CircleCI](https://circleci.com/gh/tendermint/tendermint/rpc/lib.svg?style=svg)](https://circleci.com/gh/tendermint/tendermint/rpc/lib)
-
+/*
 HTTP RPC server supporting calls via uri params, jsonrpc, and jsonrpc over websockets
 
 # Client Requests
@@ -102,20 +99,5 @@ Each route is available as a GET request, as a JSONRPCv2 POST request, and via J
 
 * [Tendermint](https://github.com/tendermint/tendermint/blob/master/rpc/core/routes.go)
 * [tm-monitor](https://github.com/tendermint/tools/blob/master/tm-monitor/rpc.go)
-
-## CHANGELOG
-
-### 0.7.0
-
-BREAKING CHANGES:
-
-- removed `Client` empty interface
-- `ClientJSONRPC#Call` `params` argument became a map
-- rename `ClientURI` -> `URIClient`, `ClientJSONRPC` -> `JSONRPCClient`
-
-IMPROVEMENTS:
-
-- added `HTTPClient` interface, which can be used for both `ClientURI`
-and `ClientJSONRPC`
-- all params are now optional (Golang's default will be used if some param is missing)
-- added `Call` method to `WSClient` (see method's doc for details)
+*/
+package rpc

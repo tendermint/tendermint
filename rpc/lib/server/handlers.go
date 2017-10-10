@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -116,6 +117,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		// A Notification is a Request object without an "id" member.
 		// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 		if request.ID == "" {
+			logger.Debug("HTTPJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
 			return
 		}
 		if len(r.URL.Path) > 1 {
@@ -127,10 +129,13 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			WriteRPCResponseHTTP(w, types.RPCMethodNotFoundError(request.ID))
 			return
 		}
-		args, err := jsonParamsToArgsRPC(rpcFunc, request.Params)
-		if err != nil {
-			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
-			return
+		var args []reflect.Value
+		if len(request.Params) > 0 {
+			args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
+			if err != nil {
+				WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
+				return
+			}
 		}
 		returns := rpcFunc.f.Call(args)
 		logger.Info("HTTPJSONRPC", "method", request.Method, "args", args, "returns", returns)
@@ -208,13 +213,13 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte, argsOffset int) ([]reflect.V
 }
 
 // Convert a []interface{} OR a map[string]interface{} to properly typed values
-func jsonParamsToArgsRPC(rpcFunc *RPCFunc, params *json.RawMessage) ([]reflect.Value, error) {
-	return jsonParamsToArgs(rpcFunc, *params, 0)
+func jsonParamsToArgsRPC(rpcFunc *RPCFunc, params json.RawMessage) ([]reflect.Value, error) {
+	return jsonParamsToArgs(rpcFunc, params, 0)
 }
 
 // Same as above, but with the first param the websocket connection
-func jsonParamsToArgsWS(rpcFunc *RPCFunc, params *json.RawMessage, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values, err := jsonParamsToArgs(rpcFunc, *params, 1)
+func jsonParamsToArgsWS(rpcFunc *RPCFunc, params json.RawMessage, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
+	values, err := jsonParamsToArgs(rpcFunc, params, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -485,8 +490,22 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
-		wsc.baseConn.Close()
+		if r := recover(); r != nil {
+			err, ok := r.(error)
+			if !ok {
+				err = fmt.Errorf("WSJSONRPC: %v", r)
+			}
+			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
+			wsc.WriteRPCResponse(types.RPCInternalError("unknown", err))
+			go wsc.readRoutine()
+		} else {
+			wsc.baseConn.Close()
+		}
 	}()
+
+	wsc.baseConn.SetPongHandler(func(m string) error {
+		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
+	})
 
 	for {
 		select {
@@ -517,6 +536,7 @@ func (wsc *wsConnection) readRoutine() {
 			// A Notification is a Request object without an "id" member.
 			// The Server MUST NOT reply to a Notification, including those that are within a batch request.
 			if request.ID == "" {
+				wsc.Logger.Debug("WSJSONRPC received a notification, skipping... (please send a non-empty ID if you want to call a method)")
 				continue
 			}
 
@@ -530,9 +550,13 @@ func (wsc *wsConnection) readRoutine() {
 			var args []reflect.Value
 			if rpcFunc.ws {
 				wsCtx := types.WSRPCContext{Request: request, WSRPCConnection: wsc}
-				args, err = jsonParamsToArgsWS(rpcFunc, request.Params, wsCtx)
+				if len(request.Params) > 0 {
+					args, err = jsonParamsToArgsWS(rpcFunc, request.Params, wsCtx)
+				}
 			} else {
-				args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
+				if len(request.Params) > 0 {
+					args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
+				}
 			}
 			if err != nil {
 				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))

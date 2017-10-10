@@ -28,17 +28,32 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.11.1 (October 10, 2017)
+
+IMPROVEMENTS:
+ - blockchain/reactor: respondWithNoResponseMessage for missing height
+
+BUG FIXES:
+ - rpc: fixed client WebSocket timeout
+ - rpc: client now resubscribes on reconnection
+ - rpc: fix panics on missing params
+ - rpc: fix `/dump_consensus_state` to have normal json output (NOTE: technically breaking, but worth a bug fix label)
+ - types: fixed out of range error in VoteSet.addVote
+ - consensus: fix wal autofile via https://github.com/tendermint/tmlibs/blob/master/CHANGELOG.md#032-october-2-2017
+
 ## 0.11.0 (September 22, 2017)
 
 BREAKING:
- - state: every validator set change is persisted to disk, which required some changes to the `State` structure.
- - cmd: if there is no genesis, exit immediately instead of waiting around for one to show.
- - p2p: new `p2p.Peer` interface used for all reactor methods (instead of `*p2p.Peer` struct).
- - types: `Signer.Sign` returns an error.
+ - genesis file: validator `amount` is now `power`
+ - abci: Info, BeginBlock, InitChain all take structs
  - rpc: various changes to match JSONRPC spec (http://www.jsonrpc.org/specification), including breaking ones:
     - requests that previously returned HTTP code 4XX now return 200 with an error code in the JSONRPC.
     - `rpctypes.RPCResponse` uses new `RPCError` type instead of `string`.
- - abci: Info, BeginBlock, InitChain all take structs
+
+ - cmd: if there is no genesis, exit immediately instead of waiting around for one to show.
+ - types: `Signer.Sign` returns an error.
+ - state: every validator set change is persisted to disk, which required some changes to the `State` structure.
+ - p2p: new `p2p.Peer` interface used for all reactor methods (instead of `*p2p.Peer` struct).
 
 FEATURES:
  - rpc: `/validators?height=X` allows querying of validators at previous heights.

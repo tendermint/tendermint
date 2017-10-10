@@ -12,6 +12,7 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -321,7 +322,7 @@ func (conR *ConsensusReactor) FastSync() bool {
 func (conR *ConsensusReactor) registerEventCallbacks() {
 
 	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringNewRoundStep(), func(data types.TMEventData) {
-		rs := data.Unwrap().(types.EventDataRoundState).RoundState.(*RoundState)
+		rs := data.Unwrap().(types.EventDataRoundState).RoundState.(*cstypes.RoundState)
 		conR.broadcastNewRoundStep(rs)
 	})
 
@@ -344,7 +345,7 @@ func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.
 	conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{msg})
 }
 
-func (conR *ConsensusReactor) broadcastNewRoundStep(rs *RoundState) {
+func (conR *ConsensusReactor) broadcastNewRoundStep(rs *cstypes.RoundState) {
 
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
@@ -381,7 +382,7 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 	*/
 }
 
-func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
+func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
 		Height: rs.Height,
 		Round:  rs.Round,
@@ -389,7 +390,7 @@ func makeRoundStepMessages(rs *RoundState) (nrsMsg *NewRoundStepMessage, csMsg *
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
-	if rs.Step == RoundStepCommit {
+	if rs.Step == cstypes.RoundStepCommit {
 		csMsg = &CommitStepMessage{
 			Height:           rs.Height,
 			BlockPartsHeader: rs.ProposalBlockParts.Header(),
@@ -491,8 +492,8 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *RoundState,
-	prs *PeerRoundState, ps *PeerState, peer p2p.Peer) {
+func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState, ps *PeerState, peer p2p.Peer) {
 
 	if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
 		// Ensure that the peer's PartSetHeader is correct
@@ -606,24 +607,24 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *RoundState, prs *PeerRoundState, ps *PeerState) bool {
+func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
 
 	// If there are lastCommits to send...
-	if prs.Step == RoundStepNewHeight {
+	if prs.Step == cstypes.RoundStepNewHeight {
 		if ps.PickSendVote(rs.LastCommit) {
 			logger.Debug("Picked rs.LastCommit to send")
 			return true
 		}
 	}
 	// If there are prevotes to send...
-	if prs.Step <= RoundStepPrevote && prs.Round != -1 && prs.Round <= rs.Round {
+	if prs.Step <= cstypes.RoundStepPrevote && prs.Round != -1 && prs.Round <= rs.Round {
 		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
 			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
 			return true
 		}
 	}
 	// If there are precommits to send...
-	if prs.Step <= RoundStepPrecommit && prs.Round != -1 && prs.Round <= rs.Round {
+	if prs.Step <= cstypes.RoundStepPrecommit && prs.Round != -1 && prs.Round <= rs.Round {
 		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
 			logger.Debug("Picked rs.Precommits(prs.Round) to send", "round", prs.Round)
 			return true
@@ -752,54 +753,6 @@ func (conR *ConsensusReactor) StringIndented(indent string) string {
 
 //-----------------------------------------------------------------------------
 
-// PeerRoundState contains the known state of a peer.
-// NOTE: Read-only when returned by PeerState.GetRoundState().
-type PeerRoundState struct {
-	Height                   int                 // Height peer is at
-	Round                    int                 // Round peer is at, -1 if unknown.
-	Step                     RoundStepType       // Step peer is at
-	StartTime                time.Time           // Estimated start of round 0 at this height
-	Proposal                 bool                // True if peer has proposal for this round
-	ProposalBlockPartsHeader types.PartSetHeader //
-	ProposalBlockParts       *cmn.BitArray       //
-	ProposalPOLRound         int                 // Proposal's POL round. -1 if none.
-	ProposalPOL              *cmn.BitArray       // nil until ProposalPOLMessage received.
-	Prevotes                 *cmn.BitArray       // All votes peer has for this round
-	Precommits               *cmn.BitArray       // All precommits peer has for this round
-	LastCommitRound          int                 // Round of commit for last height. -1 if none.
-	LastCommit               *cmn.BitArray       // All commit precommits of commit for last height.
-	CatchupCommitRound       int                 // Round that we have commit for. Not necessarily unique. -1 if none.
-	CatchupCommit            *cmn.BitArray       // All commit precommits peer has for this height & CatchupCommitRound
-}
-
-// String returns a string representation of the PeerRoundState
-func (prs PeerRoundState) String() string {
-	return prs.StringIndented("")
-}
-
-// StringIndented returns a string representation of the PeerRoundState
-func (prs PeerRoundState) StringIndented(indent string) string {
-	return fmt.Sprintf(`PeerRoundState{
-%s  %v/%v/%v @%v
-%s  Proposal %v -> %v
-%s  POL      %v (round %v)
-%s  Prevotes   %v
-%s  Precommits %v
-%s  LastCommit %v (round %v)
-%s  Catchup    %v (round %v)
-%s}`,
-		indent, prs.Height, prs.Round, prs.Step, prs.StartTime,
-		indent, prs.ProposalBlockPartsHeader, prs.ProposalBlockParts,
-		indent, prs.ProposalPOL, prs.ProposalPOLRound,
-		indent, prs.Prevotes,
-		indent, prs.Precommits,
-		indent, prs.LastCommit, prs.LastCommitRound,
-		indent, prs.CatchupCommit, prs.CatchupCommitRound,
-		indent)
-}
-
-//-----------------------------------------------------------------------------
-
 var (
 	ErrPeerStateHeightRegression = errors.New("Error peer state height regression")
 	ErrPeerStateInvalidStartTime = errors.New("Error peer state invalid startTime")
@@ -812,7 +765,7 @@ type PeerState struct {
 	logger log.Logger
 
 	mtx sync.Mutex
-	PeerRoundState
+	cstypes.PeerRoundState
 }
 
 // NewPeerState returns a new PeerState for the given Peer
@@ -820,7 +773,7 @@ func NewPeerState(peer p2p.Peer) *PeerState {
 	return &PeerState{
 		Peer:   peer,
 		logger: log.NewNopLogger(),
-		PeerRoundState: PeerRoundState{
+		PeerRoundState: cstypes.PeerRoundState{
 			Round:              -1,
 			ProposalPOLRound:   -1,
 			LastCommitRound:    -1,
@@ -836,7 +789,7 @@ func (ps *PeerState) SetLogger(logger log.Logger) *PeerState {
 
 // GetRoundState returns an atomic snapshot of the PeerRoundState.
 // There's no point in mutating it since it won't change PeerState.
-func (ps *PeerState) GetRoundState() *PeerRoundState {
+func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -1227,7 +1180,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 type NewRoundStepMessage struct {
 	Height                int
 	Round                 int
-	Step                  RoundStepType
+	Step                  cstypes.RoundStepType
 	SecondsSinceStartTime int
 	LastCommitRound       int
 }

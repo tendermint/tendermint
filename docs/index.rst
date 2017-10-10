@@ -15,8 +15,6 @@ Welcome to Tendermint!
 Tendermint 101
 --------------
 
-.. maxdepth set to 2 for sexinesss
-.. but use 4 to upgrade overall documentation
 .. toctree::
    :maxdepth: 2
 
@@ -25,9 +23,19 @@ Tendermint 101
    getting-started.rst
    using-tendermint.rst
 
+Tendermint Ecosystem
+--------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   ecosystem.rst
+
 Tendermint Tools
 ----------------
 
+.. the tools/ files are pulled in from the tools repo
+.. see the bottom of conf.py
 .. toctree::
    :maxdepth: 2
 
@@ -38,15 +46,6 @@ Tendermint Tools
    tools/terraform-digitalocean.rst
    tools/benchmarking-and-monitoring.rst
 
-
-Tendermint Ecosystem
---------------------
-
-.. toctree::
-   :maxdepth: 2
-
-   ecosystem.rst
-
 Tendermint 102
 --------------
 
@@ -56,6 +55,7 @@ Tendermint 102
    abci-cli.rst
    app-architecture.rst
    app-development.rst
+   how-to-read-logs.rst
 
 Tendermint 201
 --------------

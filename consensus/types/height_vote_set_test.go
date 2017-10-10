@@ -1,14 +1,17 @@
-package consensus
+package types
 
 import (
 	"testing"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
+var config *cfg.Config // NOTE: must be reset for each _test.go file
+
 func init() {
-	config = ResetConfig("consensus_height_vote_set_test")
+	config = cfg.ResetTestRoot("consensus_height_vote_set_test")
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
@@ -57,7 +60,7 @@ func makeVoteHR(t *testing.T, height, round int, privVals []*types.PrivValidator
 	chainID := config.ChainID
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
-		panic(Fmt("Error signing vote: %v", err))
+		panic(cmn.Fmt("Error signing vote: %v", err))
 		return nil
 	}
 	return vote

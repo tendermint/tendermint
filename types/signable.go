@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -19,7 +19,7 @@ func SignBytes(chainID string, o Signable) []byte {
 	buf, n, err := new(bytes.Buffer), new(int), new(error)
 	o.WriteSignBytes(chainID, buf, n, err)
 	if *err != nil {
-		PanicCrisis(err)
+		cmn.PanicCrisis(err)
 	}
 	return buf.Bytes()
 }
