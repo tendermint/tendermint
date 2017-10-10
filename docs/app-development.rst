@@ -367,7 +367,7 @@ When the app or tendermint restarts, they need to sync to a common
 height. When an ABCI connection is first established, Tendermint will
 call ``Info`` on the Query connection. The response should contain the
 LastBlockHeight and LastBlockAppHash - the former is the last block for
-the which the app ran Commit successfully, the latter is the response
+which the app ran Commit successfully, the latter is the response
 from that Commit.
 
 Using this information, Tendermint will determine what needs to be
