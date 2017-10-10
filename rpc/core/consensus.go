@@ -84,7 +84,6 @@ func Validators(heightPtr *int) (*ctypes.ResultValidators, error) {
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	peerRoundStates := make(map[string]*cstypes.PeerRoundState)
 	for _, peer := range p2pSwitch.Peers().List() {
-		// TODO: clean this up?
 		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)
 		peerRoundState := peerState.GetRoundState()
 		peerRoundStates[peer.Key()] = peerRoundState
