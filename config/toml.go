@@ -5,7 +5,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"text/template"
 
 	cmn "github.com/tendermint/tmlibs/common"
@@ -31,17 +30,22 @@ func EnsureRoot(rootDir string) {
 	if cmn.FileExists(configFilePath) {
 		// TODO: Prompt user to replace if config file already exists.
 	} else {
-		// If file doesn't exist
 		// Ask user for moniker [moniker := cfg.Prompt("Type hostname: ", "anonymous")] (TODO)
 		// Then write the default config from template
-		var buffer bytes.Buffer
-
-		if err := configTemplate.Execute(&buffer, DefaultConfig()); err != nil {
-			panic(err)
-		}
-
-		cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
+		writeConfigFile(configFilePath)
 	}
+}
+
+// XXX: this func should probably be called by cmd/tendermint/commands/init.go
+// alongside the writing of the genesis.json and priv_validator.json
+func writeConfigFile(configFilePath string) {
+	var buffer bytes.Buffer
+
+	if err := configTemplate.Execute(&buffer, DefaultConfig()); err != nil {
+		panic(err)
+	}
+
+	cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
 }
 
 const defaultConfigTemplate = `# This is a TOML config file.
@@ -205,8 +209,7 @@ func ResetTestRoot(testName string) *Config {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		// Ask user for moniker
-		cmn.MustWriteFile(configFilePath, []byte(testConfig("anonymous")), 0644)
+		writeConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
@@ -216,28 +219,6 @@ func ResetTestRoot(testName string) *Config {
 
 	config := TestConfig().SetRoot(rootDir)
 	return config
-}
-
-var testConfigTmpl = `# This is a TOML config file.
-# For more information, see https://github.com/toml-lang/toml
-
-proxy_app = "dummy"
-moniker = "__MONIKER__"
-fast_sync = false
-db_backend = "memdb"
-log_level = "info"
-
-[rpc]
-laddr = "tcp://0.0.0.0:36657"
-
-[p2p]
-laddr = "tcp://0.0.0.0:36656"
-seeds = ""
-`
-
-func testConfig(moniker string) (testConfig string) {
-	testConfig = strings.Replace(testConfigTmpl, "__MONIKER__", moniker, -1)
-	return
 }
 
 var testGenesis = `{
