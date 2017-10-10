@@ -2,11 +2,12 @@ package commands
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -35,6 +36,7 @@ var TestnetFilesCmd = &cobra.Command{
 func testnetFiles(cmd *cobra.Command, args []string) {
 
 	genVals := make([]types.GenesisValidator, nValidators)
+	defaultConfig := cfg.DefaultBaseConfig()
 
 	// Initialize core dir and priv_validator.json's
 	for i := 0; i < nValidators; i++ {
@@ -44,7 +46,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 			cmn.Exit(err.Error())
 		}
 		// Read priv_validator.json to populate vals
-		privValFile := path.Join(dataDir, mach, "priv_validator.json")
+		privValFile := filepath.Join(dataDir, mach, defaultConfig.PrivValidator)
 		privVal := types.LoadPrivValidatorFS(privValFile)
 		genVals[i] = types.GenesisValidator{
 			PubKey: privVal.GetPubKey(),
@@ -63,7 +65,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 	// Write genesis file.
 	for i := 0; i < nValidators; i++ {
 		mach := cmn.Fmt("mach%d", i)
-		if err := genDoc.SaveAs(path.Join(dataDir, mach, "genesis.json")); err != nil {
+		if err := genDoc.SaveAs(filepath.Join(dataDir, mach, defaultConfig.Genesis)); err != nil {
 			panic(err)
 		}
 	}
@@ -73,14 +75,15 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 
 // Initialize per-machine core directory
 func initMachCoreDirectory(base, mach string) error {
-	dir := path.Join(base, mach)
+	dir := filepath.Join(base, mach)
 	err := cmn.EnsureDir(dir, 0777)
 	if err != nil {
 		return err
 	}
 
 	// Create priv_validator.json file if not present
-	ensurePrivValidator(path.Join(dir, "priv_validator.json"))
+	defaultConfig := cfg.DefaultBaseConfig()
+	ensurePrivValidator(filepath.Join(dir, defaultConfig.PrivValidator))
 	return nil
 
 }
