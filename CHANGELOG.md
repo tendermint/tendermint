@@ -28,6 +28,19 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.11.1 (October 10, 2017)
+
+IMPROVEMENTS:
+ - blockchain/reactor: respondWithNoResponseMessage for missing height
+
+BUG FIXES:
+ - rpc: fixed client WebSocket timeout
+ - rpc: client now resubscribes on reconnection
+ - rpc: fix panics on missing params
+ - rpc: fix `/dump_consensus_state` to have normal json output (NOTE: technically breaking, but worth a bug fix label)
+ - types: fixed out of range error in VoteSet.addVote
+ - consensus: fix wal autofile via https://github.com/tendermint/tmlibs/blob/master/CHANGELOG.md#032-october-2-2017
+
 ## 0.11.0 (September 22, 2017)
 
 BREAKING:
