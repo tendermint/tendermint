@@ -15,6 +15,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
@@ -456,7 +457,7 @@ func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {
 	if m.onlyOnce && m.fired {
 		return
 	}
-	if ti.Step == RoundStepNewHeight {
+	if ti.Step == cstypes.RoundStepNewHeight {
 		m.c <- ti
 		m.fired = true
 	}
