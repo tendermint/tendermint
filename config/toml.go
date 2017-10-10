@@ -1,13 +1,24 @@
 package config
 
 import (
+	"bytes"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+	"text/template"
 
 	cmn "github.com/tendermint/tmlibs/common"
 )
+
+var configTemplate *template.Template
+
+func init() {
+	var err error
+	if configTemplate, err = template.New("configFileTemplate").Parse(defaultConfigTemplate); err != nil {
+		panic(err)
+	}
+}
 
 /****** these are for production settings ***********/
 
@@ -17,34 +28,153 @@ func EnsureRoot(rootDir string) {
 
 	configFilePath := path.Join(rootDir, "config.toml")
 
-	// Write default config file if missing.
-	if !cmn.FileExists(configFilePath) {
-		// Ask user for moniker
-		// moniker := cfg.Prompt("Type hostname: ", "anonymous")
-		cmn.MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
+	if cmn.FileExists(configFilePath) {
+		// TODO: Prompt user to replace if config file already exists.
+	} else {
+		// If file doesn't exist
+		// Ask user for moniker [moniker := cfg.Prompt("Type hostname: ", "anonymous")] (TODO)
+		// Then write the default config from template
+		var buffer bytes.Buffer
+
+		if err := configTemplate.Execute(&buffer, DefaultConfig()); err != nil {
+			panic(err)
+		}
+
+		cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
 	}
 }
 
-var defaultConfigTmpl = `# This is a TOML config file.
+const defaultConfigTemplate = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
-proxy_app = "tcp://127.0.0.1:46658"
-moniker = "__MONIKER__"
-fast_sync = true
-db_backend = "leveldb"
-log_level = "state:info,*:error"
+##### main base config options #####
+
+# TCP or UNIX socket address of the ABCI application,
+# or the name of an ABCI application compiled in with the Tendermint binary
+proxy_app = "{{ .BaseConfig.ProxyApp }}"
+
+# A custom human readable name for this node
+moniker = "{{ .BaseConfig.Moniker }}"
+
+# If this node is many blocks behind the tip of the chain, FastSync
+# allows them to catchup quickly by downloading blocks in parallel
+# and verifying their commits
+fast_sync = {{ .BaseConfig.FastSync }}
+
+# Database backend: leveldb | memdb
+db_backend = "{{ .BaseConfig.DBBackend }}"
+
+# Database directory
+db_path = "{{ .BaseConfig.DBPath }}"
+
+# Output level for logging
+log_level = "{{ .BaseConfig.LogLevel }}"
+
+##### additional base config options #####
+
+# The ID of the chain to join (should be signed with every transaction and vote)
+chain_id = "{{ .BaseConfig.ChainID }}"
+
+# Path to the JSON file containing the initial validator set and other meta data
+genesis_file = "{{ .BaseConfig.Genesis }}"
+
+# Path to the JSON file containing the private key to use as a validator in the consensus protocol
+priv_validator_file = "{{ .BaseConfig.PrivValidator }}"
+
+# Mechanism to connect to the ABCI application: socket | grpc
+abci = "{{ .BaseConfig.ABCI }}"
+
+# TCP or UNIX socket address for the profiling server to listen on
+prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
+
+# If true, query the ABCI app on connecting to a new peer
+# so the app can decide if we should keep the connection or not
+filter_peers = {{ .BaseConfig.FilterPeers }}
+
+# What indexer to use for transactions
+tx_index = "{{ .BaseConfig.TxIndex }}"
+
 
 [rpc]
-laddr = "tcp://0.0.0.0:46657"
+
+# TCP or UNIX socket address for the RPC server to listen on
+laddr = "{{ .RPC.ListenAddress }}"
+
+# TCP or UNIX socket address for the gRPC server to listen on
+# NOTE: This server only supports /broadcast_tx_commit
+grpc_laddr = "{{ .RPC.GRPCListenAddress }}"
+
+# Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
+unsafe = {{ .RPC.Unsafe }}
+
 
 [p2p]
-laddr = "tcp://0.0.0.0:46656"
-seeds = ""
-`
 
-func defaultConfig(moniker string) string {
-	return strings.Replace(defaultConfigTmpl, "__MONIKER__", moniker, -1)
-}
+# Address to listen for incoming connections
+laddr = "{{ .P2P.ListenAddress }}"
+
+# Comma separated list of seed nodes to connect to
+seeds = ""
+
+# Path to address book
+addr_book_file = "{{ .P2P.AddrBook }}"
+
+# Set true for strict address routability rules
+addr_book_strict = {{ .P2P.AddrBookStrict }}
+
+# Time to wait before flushing messages out on the connection, in ms
+flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
+
+# Maximum number of peers to connect to
+max_num_peers = {{ .P2P.MaxNumPeers }}
+
+# Maximum size of a message packet payload, in bytes
+max_msg_packet_payload_size = {{ .P2P.MaxMsgPacketPayloadSize }}
+
+# Rate at which packets can be sent, in bytes/second
+send_rate = {{ .P2P.SendRate }}
+
+# Rate at which packets can be received, in bytes/second
+recv_rate = {{ .P2P.RecvRate }}
+
+
+[mempool]
+
+recheck = {{ .Mempool.Recheck }}
+recheck_empty = {{ .Mempool.RecheckEmpty }}
+broadcast = {{ .Mempool.Broadcast }}
+wal_dir = "{{ .Mempool.WalPath }}"
+
+
+[consensus]
+
+wal_file = "{{ .Consensus.WalPath }}"
+wal_light = {{ .Consensus.WalLight }}
+
+# All timeouts are in milliseconds
+timeout_propose = {{ .Consensus.TimeoutPropose }}
+timeout_propose_delta = {{ .Consensus.TimeoutProposeDelta }}
+timeout_prevote = {{ .Consensus.TimeoutPrevote }}
+timeout_prevote_delta = {{ .Consensus.TimeoutPrevoteDelta }}
+timeout_precommit = {{ .Consensus.TimeoutPrecommit }}
+timeout_precommit_delta = {{ .Consensus.TimeoutPrecommitDelta }}
+timeout_commit = {{ .Consensus.TimeoutCommit }}
+
+# Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
+skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
+
+# BlockSize
+max_block_size_txs = {{ .Consensus.MaxBlockSizeTxs }}
+max_block_size_bytes = {{ .Consensus.MaxBlockSizeBytes }}
+
+# EmptyBlocks mode and possible interval between empty blocks in seconds
+create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
+create_empty_blocks_interval = {{ .Consensus.CreateEmptyBlocksInterval }}
+
+# Reactor sleep duration parameters are in milliseconds
+peer_gossip_sleep_duration = {{ .Consensus.PeerGossipSleepDuration }}
+peer_query_maj23_sleep_duration = {{ .Consensus.PeerQueryMaj23SleepDuration }}
+`
 
 /****** these are for test settings ***********/
 
