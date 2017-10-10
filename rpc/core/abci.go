@@ -45,12 +45,14 @@ import (
 // |-----------+--------+---------+----------+---------------------------------------|
 // | path      | string | false   | false    | Path to the data ("/a/b/c")           |
 // | data      | []byte | false   | true     | Data                                  |
+// | height    | uint64 | 0       | false    | Height (0 means latest)               |
 // | prove     | bool   | false   | false    | Include a proof of the data inclusion |
-func ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
+func ABCIQuery(path string, data data.Bytes, height uint64, prove bool) (*ctypes.ResultABCIQuery, error) {
 	resQuery, err := proxyAppQuery.QuerySync(abci.RequestQuery{
-		Path:  path,
-		Data:  data,
-		Prove: prove,
+		Path:   path,
+		Data:   data,
+		Height: height,
+		Prove:  prove,
 	})
 	if err != nil {
 		return nil, err
