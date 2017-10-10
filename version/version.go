@@ -2,7 +2,7 @@ package version
 
 const Maj = "0"
 const Min = "11"
-const Fix = "0"
+const Fix = "1"
 
 var (
 	// The full version string
