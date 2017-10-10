@@ -1,14 +1,17 @@
-package consensus
+package types
 
 import (
 	"testing"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+var config *cfg.Config // NOTE: must be reset for each _test.go file
+
 func init() {
-	config = ResetConfig("consensus_height_vote_set_test")
+	config = cfg.ResetTestRoot("consensus_height_vote_set_test")
 }
 
 func TestPeerCatchupRounds(t *testing.T) {
