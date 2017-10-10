@@ -14,10 +14,10 @@ import (
 // REQUEST
 
 type RPCRequest struct {
-	JSONRPC string           `json:"jsonrpc"`
-	ID      string           `json:"id"`
-	Method  string           `json:"method"`
-	Params  *json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
+	JSONRPC string          `json:"jsonrpc"`
+	ID      string          `json:"id"`
+	Method  string          `json:"method"`
+	Params  json.RawMessage `json:"params"` // must be map[string]interface{} or []interface{}
 }
 
 func NewRPCRequest(id string, method string, params json.RawMessage) RPCRequest {
@@ -25,7 +25,7 @@ func NewRPCRequest(id string, method string, params json.RawMessage) RPCRequest 
 		JSONRPC: "2.0",
 		ID:      id,
 		Method:  method,
-		Params:  &params,
+		Params:  params,
 	}
 }
 

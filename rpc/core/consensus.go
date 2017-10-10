@@ -1,8 +1,8 @@
 package core
 
 import (
-	wire "github.com/tendermint/go-wire"
 	cm "github.com/tendermint/tendermint/consensus"
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 )
@@ -82,14 +82,11 @@ func Validators(heightPtr *int) (*ctypes.ResultValidators, error) {
 // }
 // ```
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
-	roundState := consensusState.GetRoundState()
-	peerRoundStates := []string{}
+	peerRoundStates := make(map[string]*cstypes.PeerRoundState)
 	for _, peer := range p2pSwitch.Peers().List() {
-		// TODO: clean this up?
 		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)
 		peerRoundState := peerState.GetRoundState()
-		peerRoundStateStr := peer.Key() + ":" + string(wire.JSONBytes(peerRoundState))
-		peerRoundStates = append(peerRoundStates, peerRoundStateStr)
+		peerRoundStates[peer.Key()] = peerRoundState
 	}
-	return &ctypes.ResultDumpConsensusState{roundState.String(), peerRoundStates}, nil
+	return &ctypes.ResultDumpConsensusState{consensusState.GetRoundState(), peerRoundStates}, nil
 }
