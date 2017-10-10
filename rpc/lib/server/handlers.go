@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"reflect"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"time"
@@ -486,7 +487,17 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
-		wsc.baseConn.Close()
+		if r := recover(); r != nil {
+			err, ok := r.(error)
+			if !ok {
+				err = fmt.Errorf("WSJSONRPC: %v", r)
+			}
+			wsc.Logger.Error("Panic in WSJSONRPC handler", "err", err, "stack", string(debug.Stack()))
+			wsc.WriteRPCResponse(types.RPCInternalError("unknown", err))
+			go wsc.readRoutine()
+		} else {
+			wsc.baseConn.Close()
+		}
 	}()
 
 	wsc.baseConn.SetPongHandler(func(m string) error {
