@@ -60,6 +60,19 @@ type ResultNetInfo struct {
 	Peers     []Peer   `json:"peers"`
 }
 
+type ResultNodeInfo struct {
+	Self NodeInfo `json:"self"`
+	NodeInfos []NodeInfo `json:"node_infos"`
+	FastSync bool `json:"fast_sync"`
+	BlockStoreHeight int `json:"block_store_height"`
+}
+
+type NodeInfo struct {
+	Moniker string `json:"moniker"`
+	Address crypto.PubKeyEd25519 `json:"pubkey"`
+	Height int `json:"height"`
+}
+
 type ResultDialSeeds struct {
 	Log string `json:"log"`
 }

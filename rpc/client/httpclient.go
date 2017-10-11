@@ -115,6 +115,15 @@ func (c *HTTP) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return result, nil
 }
 
+func (c *HTTP) NodeInfo() (*ctypes.ResultNodeInfo, error) {
+	result := new(ctypes.ResultNodeInfo)
+	_, err := c.rpc.Call("node_info", map[string]interface{}{}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "NodeInfo")
+	}
+	return result, nil
+}
+
 func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	result := new(ctypes.ResultDumpConsensusState)
 	_, err := c.rpc.Call("dump_consensus_state", map[string]interface{}{}, result)
