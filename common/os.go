@@ -6,6 +6,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -13,8 +14,21 @@ import (
 )
 
 var (
-	GoPath = os.Getenv("GOPATH")
+	GoPath = gopath()
 )
+
+func gopath() string {
+	path := os.Getenv("GOPATH")
+	if len(path) == 0 {
+		goCmd := exec.Command("go", "env", "GOPATH")
+		out, err := goCmd.Output()
+		if err != nil {
+			panic(fmt.Sprintf("failed to determine gopath: %v", err))
+		}
+		path = string(out)
+	}
+	return path
+}
 
 func TrapSignal(cb func()) {
 	c := make(chan os.Signal, 1)

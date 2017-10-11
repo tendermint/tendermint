@@ -27,3 +27,26 @@ func TestWriteFileAtomic(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestGoPath(t *testing.T) {
+	// restore original gopath upon exit
+	path := os.Getenv("GOPATH")
+	defer func() {
+		_ = os.Setenv("GOPATH", path)
+	}()
+
+	err := os.Setenv("GOPATH", "~/testgopath")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path = gopath()
+	if path != "~/testgopath" {
+		t.Fatalf("gopath should return GOPATH env var if set, got %v", path)
+	}
+	os.Unsetenv("GOPATH")
+
+	path = gopath()
+	if path == "~/testgopath" || path == "" {
+		t.Fatalf("gopath should return go env GOPATH result if env var does not exist, got %v", path)
+	}
+}
