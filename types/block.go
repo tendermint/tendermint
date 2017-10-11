@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tendermint/tendermint/version"
+
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -22,7 +24,6 @@ type Block struct {
 }
 
 // MakeBlock returns a new block and corresponding part set from the given information
-// TODO: version
 func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
 	block := &Block{
@@ -34,6 +35,7 @@ func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 			LastBlockID:    prevBlockID,
 			ValidatorsHash: valHash,
 			AppHash:        appHash, // state merkle root of txs from the previous block.
+			Version:        version.Version,
 		},
 		LastCommit: commit,
 		Data: &Data{
@@ -166,6 +168,7 @@ type Header struct {
 	DataHash       data.Bytes `json:"data_hash"`        // transactions
 	ValidatorsHash data.Bytes `json:"validators_hash"`  // validators for the current block
 	AppHash        data.Bytes `json:"app_hash"`         // state after txs from the previous block
+	Version        string     `json:"version"`          // version of the tendermint node
 }
 
 // Hash returns the hash of the header.
@@ -184,6 +187,7 @@ func (h *Header) Hash() data.Bytes {
 		"Data":        h.DataHash,
 		"Validators":  h.ValidatorsHash,
 		"App":         h.AppHash,
+		"Version":     h.Version,
 	})
 }
 
@@ -202,6 +206,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Data:           %v
 %s  Validators:     %v
 %s  App:            %v
+%s  Version:	    %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
@@ -212,6 +217,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.DataHash,
 		indent, h.ValidatorsHash,
 		indent, h.AppHash,
+		indent, h.Version,
 		indent, h.Hash())
 }
 
