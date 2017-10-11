@@ -118,10 +118,8 @@ imports:
   subpackages:
   - data
   - data/base58
-- name: github.com/tendermint/merkleeyes
-  version: 2a93256d2c6fbcc3b55673c0d2b96a7e32c6238b
-  subpackages:
-  - iavl
+- name: github.com/tendermint/iavl
+  version: 9233811d241ac8d4441a7223a4e79b83931dfae0
 - name: github.com/tendermint/tmlibs
   version: 096dcb90e60aa00b748b3fe49a4b95e48ebf1e13
   subpackages:
