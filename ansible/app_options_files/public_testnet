@@ -22,7 +22,7 @@
         },
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 9007199254740991
           },
           {
@@ -40,7 +40,7 @@
         },
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 9007199254740992
           },
           {
@@ -54,7 +54,7 @@
         "address": "0FA1DB09E8B174E81E94280C047C158D4271457B",
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 1928936473812
           },
           {
@@ -72,7 +72,7 @@
         },
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 20000000000
           },
           {
@@ -94,7 +94,7 @@
             "amount": 1000
           },
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 3478765434568
           }
         ]
@@ -108,7 +108,7 @@
         },
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 53712836452781
           },
           {
@@ -122,7 +122,7 @@
         "address": "7B8422A210D0F0B8734908C093ECF0E9A768BDB8",
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 53712836452781
           },
           {
@@ -136,7 +136,7 @@
         "address": "C2104A8191E282AA45D210BA93282B36768EDDA1",
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 53712836452781
           },
           {
@@ -150,7 +150,7 @@
         "address": "0F8FB94B5A4D04220F15058B7AA16AF1328B57A9",
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 53712836452781
           },
           {
@@ -164,7 +164,7 @@
         "address": "117FE408E1F74C453901BCB638F996964FD29CBB",
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 53712836452781
           },
           {
@@ -178,7 +178,7 @@
         "address": "F63F2D34C03430A54B7F6A43C886B4A83F366B84",
         "coins": [
           {
-            "denom": "buckyball",
+            "denom": "neutrino",
             "amount": 53712836452781
           },
           {
