@@ -172,7 +172,7 @@ type Header struct {
 }
 
 // Hash returns the hash of the header.
-// NOTE: hash is nil if required fields are missing.
+// Returns nil if ValidatorHash is missing.
 func (h *Header) Hash() data.Bytes {
 	if len(h.ValidatorsHash) == 0 {
 		return nil
@@ -206,7 +206,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Data:           %v
 %s  Validators:     %v
 %s  App:            %v
-%s  Version:	    %v
+%s  Version:        %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
