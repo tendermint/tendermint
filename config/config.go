@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// Note: Most of the structs & relevant comments + the
+// default configuration options were used to manually
+// generate the config.toml. Please reflect any changes
+// made here in the defaultConfigTemplate constant in
+// config/toml.go
+
 // Config defines the top level configuration for a Tendermint node
 type Config struct {
 	// Top level options use an anonymous struct

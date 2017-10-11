@@ -48,6 +48,8 @@ func writeConfigFile(configFilePath string) {
 	cmn.MustWriteFile(configFilePath, buffer.Bytes(), 0644)
 }
 
+// Note: any changes to the comments/variables/mapstructure
+// must be reflected in the appropriate struct in config/config.go
 const defaultConfigTemplate = `# This is a TOML config file.
 # For more information, see https://github.com/toml-lang/toml
 
@@ -98,7 +100,9 @@ filter_peers = {{ .BaseConfig.FilterPeers }}
 # What indexer to use for transactions
 tx_index = "{{ .BaseConfig.TxIndex }}"
 
+##### advanced configuration options #####
 
+##### rpc server configuration options #####
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
@@ -111,7 +115,7 @@ grpc_laddr = "{{ .RPC.GRPCListenAddress }}"
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
 unsafe = {{ .RPC.Unsafe }}
 
-
+##### peer to peer configuration options #####
 [p2p]
 
 # Address to listen for incoming connections
@@ -141,7 +145,7 @@ send_rate = {{ .P2P.SendRate }}
 # Rate at which packets can be received, in bytes/second
 recv_rate = {{ .P2P.RecvRate }}
 
-
+##### mempool configuration options #####
 [mempool]
 
 recheck = {{ .Mempool.Recheck }}
@@ -149,7 +153,7 @@ recheck_empty = {{ .Mempool.RecheckEmpty }}
 broadcast = {{ .Mempool.Broadcast }}
 wal_dir = "{{ .Mempool.WalPath }}"
 
-
+##### consensus configuration options #####
 [consensus]
 
 wal_file = "{{ .Consensus.WalPath }}"

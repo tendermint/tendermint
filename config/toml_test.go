@@ -106,7 +106,9 @@ filter_peers = false
 # What indexer to use for transactions
 tx_index = "kv"
 
+##### advanced configuration options #####
 
+##### rpc server configuration options #####
 [rpc]
 
 # TCP or UNIX socket address for the RPC server to listen on
@@ -119,7 +121,7 @@ grpc_laddr = ""
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
 unsafe = false
 
-
+##### peer to peer configuration options #####
 [p2p]
 
 # Address to listen for incoming connections
@@ -149,7 +151,7 @@ send_rate = 512000
 # Rate at which packets can be received, in bytes/second
 recv_rate = 512000
 
-
+##### mempool configuration options #####
 [mempool]
 
 recheck = true
@@ -157,7 +159,7 @@ recheck_empty = true
 broadcast = true
 wal_dir = "data/mempool.wal"
 
-
+##### consensus configuration options #####
 [consensus]
 
 wal_file = "data/cs.wal/wal"

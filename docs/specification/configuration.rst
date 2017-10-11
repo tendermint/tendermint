@@ -3,10 +3,12 @@ Configuration
 
 Tendermint Core can be configured via a TOML file in
 ``$TMHOME/config.toml``. Some of these parameters can be overridden by
-command-line flags.
+command-line flags. For most users, the options in the ``##### main
+base configuration options #####`` are intended to be modified while
+config options further below are intended for advance power users.
 
-Config parameters
-~~~~~~~~~~~~~~~~~
+Config options
+~~~~~~~~~~~~~~
 
 The default configuration file create by ``tendermint init`` has all
 the parameters set with their default values. It will look something
@@ -17,7 +19,7 @@ like the file below, however, double check by inspecting the
 
     # This is a TOML config file.
     # For more information, see https://github.com/toml-lang/toml
-
+    
     ##### main base config options #####
     
     # TCP or UNIX socket address of the ABCI application,
@@ -65,7 +67,9 @@ like the file below, however, double check by inspecting the
     # What indexer to use for transactions
     tx_index = "kv"
     
+    ##### advanced configuration options #####
     
+    ##### rpc server configuration options #####
     [rpc]
     
     # TCP or UNIX socket address for the RPC server to listen on
@@ -78,7 +82,7 @@ like the file below, however, double check by inspecting the
     # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
     unsafe = false
     
-    
+    ##### peer to peer configuration options #####
     [p2p]
     
     # Address to listen for incoming connections
@@ -108,7 +112,7 @@ like the file below, however, double check by inspecting the
     # Rate at which packets can be received, in bytes/second
     recv_rate = 512000
     
-    
+    ##### mempool configuration options #####
     [mempool]
     
     recheck = true
@@ -116,7 +120,7 @@ like the file below, however, double check by inspecting the
     broadcast = true
     wal_dir = "data/mempool.wal"
     
-    
+    ##### consensus configuration options #####
     [consensus]
     
     wal_file = "data/cs.wal/wal"
