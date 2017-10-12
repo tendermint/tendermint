@@ -23,7 +23,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "gregcoin",
@@ -41,7 +41,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "antoncoin",
@@ -55,7 +55,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "adriancoin",
@@ -73,7 +73,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "buckycoin",
@@ -87,7 +87,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "buckycoin",
@@ -105,7 +105,7 @@
           },
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 10000
           }
         ]
       },
@@ -119,7 +119,7 @@
           },
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 10000
           }
         ]
       },
@@ -133,7 +133,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "shadowcoin",
@@ -147,7 +147,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "pengcoin",
@@ -161,7 +161,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "mattcoin",
@@ -175,7 +175,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "freycoin",
@@ -189,7 +189,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "wancloudcoin",
@@ -203,7 +203,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "bianjiecoin",
@@ -217,7 +217,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000
+            "amount": 100
           },
           {
             "denom": "zakicoin",
