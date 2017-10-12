@@ -22,8 +22,8 @@
         },
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 9007199254740991
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "gregcoin",
@@ -40,8 +40,8 @@
         },
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 9007199254740992
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "antoncoin",
@@ -54,8 +54,8 @@
         "address": "0FA1DB09E8B174E81E94280C047C158D4271457B",
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 1928936473812
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "adriancoin",
@@ -72,8 +72,8 @@
         },
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 20000000000
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "buckycoin",
@@ -82,20 +82,44 @@
         ]
       },
       {
+        "name": "bucky-new",
+        "address": "4FE8FFE12EDBA34BE4E587B2125177AC24594BAF",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 10000000
+          },
+          {
+            "denom": "buckycoin",
+            "amount": 2000
+          }
+        ]
+      },
+      {
         "name": "rigel",
-        "address": "3A8BE0EEE474C8D197AA14312B59ACB2D9DFECDE",
-        "pub_key": {
-          "type": "ed25519",
-          "data": "C7CAC198E3999C4DD9F25C575C4C10587C083F73B1E985AC65658992DE6B552E"
-        },
+        "address": "C7A6F5FD77DDCA5C43600F33D14533A27C683F55",
         "coins": [
           {
             "denom": "rigelcoin",
             "amount": 1000
           },
           {
-            "denom": "neutrino",
-            "amount": 3478765434568
+            "denom": "fermion",
+            "amount": 10000000
+          }
+        ]
+      },
+      {
+        "name": "rigel2",
+        "address": "5B228AB64E290F1FC4D3E933B7623CCA3F015C34",
+        "coins": [
+          {
+            "denom": "rigelcoin",
+            "amount": 1000
+          },
+          {
+            "denom": "fermion",
+            "amount": 10000000
           }
         ]
       },
@@ -108,8 +132,8 @@
         },
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 53712836452781
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "shadowcoin",
@@ -122,8 +146,8 @@
         "address": "7B8422A210D0F0B8734908C093ECF0E9A768BDB8",
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 53712836452781
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "pengcoin",
@@ -136,8 +160,8 @@
         "address": "C2104A8191E282AA45D210BA93282B36768EDDA1",
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 53712836452781
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "mattcoin",
@@ -150,8 +174,8 @@
         "address": "0F8FB94B5A4D04220F15058B7AA16AF1328B57A9",
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 53712836452781
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "freycoin",
@@ -164,8 +188,8 @@
         "address": "117FE408E1F74C453901BCB638F996964FD29CBB",
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 53712836452781
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "wancloudcoin",
@@ -178,8 +202,8 @@
         "address": "F63F2D34C03430A54B7F6A43C886B4A83F366B84",
         "coins": [
           {
-            "denom": "neutrino",
-            "amount": 53712836452781
+            "denom": "fermion",
+            "amount": 10000000
           },
           {
             "denom": "bianjiecoin",
