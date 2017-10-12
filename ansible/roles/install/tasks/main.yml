@@ -5,7 +5,7 @@
   file: path=/etc/localtime state=link src=/usr/share/zoneinfo/{{timezone}} force=yes
 
 - name: Disable journald rate-limiting
-  lineinfile: "path=/etc/systemd/journald.conf regexp={{item.regexp}} line='{{item.line}}'"
+  lineinfile: "dest=/etc/systemd/journald.conf regexp={{item.regexp}} line='{{item.line}}'"
   with_items:
   - { regexp: "^#RateLimitInterval", line: "RateLimitInterval=0s" }
   - { regexp: "^#RateLimitBurst", line: "RateLimitBurst=0" }
