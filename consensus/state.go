@@ -390,7 +390,7 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(state.ChainID(), state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
+	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for _, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
@@ -707,7 +707,7 @@ func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 		// not a validator
 		valIndex = -1
 	}
-	chainID := cs.state.ChainID()
+	chainID := cs.state.ChainID
 	for {
 		rs := cs.GetRoundState()
 		// if we've already moved on, no need to send more heartbeats
@@ -798,7 +798,7 @@ func (cs *ConsensusState) defaultDecideProposal(height, round int) {
 	// Make proposal
 	polRound, polBlockID := cs.Votes.POLInfo()
 	proposal := types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
-	if err := cs.privValidator.SignProposal(cs.state.ChainID(), proposal); err == nil {
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 		// Set fields
 		/*  fields set by setProposal and addBlockPart
 		cs.Proposal = proposal
@@ -857,9 +857,9 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
-	return types.MakeBlock(cs.Height, cs.state.ChainID(), txs, commit,
+	return types.MakeBlock(cs.Height, cs.state.ChainID, txs, commit,
 		cs.state.LastBlockID, cs.state.Validators.Hash(),
-		cs.state.AppHash, cs.state.Params().BlockPartSizeBytes)
+		cs.state.AppHash, cs.state.Params.BlockPartSizeBytes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1263,7 +1263,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifyBytes(types.SignBytes(cs.state.ChainID(), proposal), proposal.Signature) {
+	if !cs.Validators.GetProposer().PubKey.VerifyBytes(types.SignBytes(cs.state.ChainID, proposal), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -1294,7 +1294,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part, ver
 		var n int
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
-			cs.state.Params().BlockSizeParams.MaxBytes, &n, &err).(*types.Block)
+			cs.state.Params.BlockSizeParams.MaxBytes, &n, &err).(*types.Block)
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
@@ -1458,7 +1458,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 		Type:             type_,
 		BlockID:          types.BlockID{hash, header},
 	}
-	err := cs.privValidator.SignVote(cs.state.ChainID(), vote)
+	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
 	return vote, err
 }
 

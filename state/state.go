@@ -39,9 +39,10 @@ type State struct {
 	db  dbm.DB
 
 	// See https://github.com/tendermint/tendermint/issues/671.
-	chainID string
-
-	params *types.ConsensusParams
+	ChainID string
+	// consensus parameters used for validating blocks
+	// must not be nil
+	Params *types.ConsensusParams
 
 	// These fields are updated by SetBlockAndValidators.
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
@@ -70,21 +71,14 @@ type State struct {
 // or creates a new one from the given genesisFile and persists the result
 // to the database.
 func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
-	var err error
-	genDoc, err := MakeGenesisDocFromFile(genesisFile)
-	if err != nil {
-		return nil, err
-	}
 	state := LoadState(stateDB)
 	if state == nil {
-		state, err = MakeGenesisState(stateDB, genDoc)
+		var err error
+		state, err = MakeGenesisStateFromFile(stateDB, genesisFile)
 		if err != nil {
 			return nil, err
 		}
 		state.Save()
-	} else {
-		state.SetChainID(genDoc.ChainID)
-		state.SetParams(genDoc.ConsensusParams)
 	}
 
 	return state, nil
@@ -119,7 +113,7 @@ func (s *State) SetLogger(l log.Logger) {
 
 // Copy makes a copy of the State for mutating.
 func (s *State) Copy() *State {
-	paramsCopy := *s.params
+	paramsCopy := *s.Params
 	return &State{
 		db:                          s.db,
 		LastBlockHeight:             s.LastBlockHeight,
@@ -131,17 +125,17 @@ func (s *State) Copy() *State {
 		TxIndexer:                   s.TxIndexer, // pointer here, not value
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
 		logger:  s.logger,
-		chainID: s.chainID,
-		params:  &paramsCopy,
+		ChainID: s.ChainID,
+		Params:  &paramsCopy,
 	}
 }
 
 // Save persists the State to the database.
 func (s *State) Save() {
 	s.mtx.Lock()
+	defer s.mtx.Unlock()
 	s.saveValidatorsInfo()
 	s.db.SetSync(stateKey, s.Bytes())
-	s.mtx.Unlock()
 }
 
 // SaveABCIResponses persists the ABCIResponses to the database.
@@ -273,28 +267,6 @@ func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
 }
 
-// ChainID returns the chain ID.
-func (s *State) ChainID() string {
-	return s.chainID
-}
-
-// SetChainID sets the chain ID.
-func (s *State) SetChainID(chainID string) {
-	s.chainID = chainID
-}
-
-// Params returns the consensus parameters used for
-// validating blocks.
-func (s *State) Params() types.ConsensusParams {
-	return *s.params
-}
-
-// SetParams sets the consensus parameters used for
-// validating blocks.
-func (s *State) SetParams(params *types.ConsensusParams) {
-	s.params = params
-}
-
 //------------------------------------------------------------------------
 
 // ABCIResponses retains the responses of the various ABCI calls during block processing.
@@ -364,8 +336,6 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 }
 
 // MakeGenesisState creates state from types.GenesisDoc.
-//
-// Used in tests.
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
@@ -389,8 +359,8 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 	return &State{
 		db: db,
 
-		chainID: genDoc.ChainID,
-		params:  genDoc.ConsensusParams,
+		ChainID: genDoc.ChainID,
+		Params:  genDoc.ConsensusParams,
 
 		LastBlockHeight:             0,
 		LastBlockID:                 types.BlockID{},

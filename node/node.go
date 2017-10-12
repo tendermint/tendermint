@@ -145,9 +145,6 @@ func NewNode(config *cfg.Config,
 			return nil, err
 		}
 		state.Save()
-	} else {
-		state.SetChainID(genDoc.ChainID)
-		state.SetParams(genDoc.ConsensusParams)
 	}
 	state.SetLogger(stateLogger)
 
@@ -163,8 +160,6 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
-	state.SetChainID(genDoc.ChainID)
-	state.SetParams(genDoc.ConsensusParams)
 	state.SetLogger(stateLogger)
 
 	// Transaction indexing

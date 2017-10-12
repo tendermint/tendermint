@@ -116,22 +116,6 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
 }
 
-func TestChainID(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
-
-	state.SetChainID("test")
-	assert.Equal(t, "test", state.ChainID())
-}
-
-func TestParams(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
-
-	state.SetParams(&types.ConsensusParams{})
-	assert.Equal(t, types.ConsensusParams{}, state.Params())
-}
-
 func TestValidatorChangesSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)

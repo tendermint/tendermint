@@ -179,9 +179,8 @@ func (s *State) ValidateBlock(block *types.Block) error {
 }
 
 func (s *State) validateBlock(block *types.Block) error {
-	chainID := s.ChainID()
 	// Basic block validation.
-	err := block.ValidateBasic(chainID, s.LastBlockHeight, s.LastBlockID, s.LastBlockTime, s.AppHash)
+	err := block.ValidateBasic(s.ChainID, s.LastBlockHeight, s.LastBlockID, s.LastBlockTime, s.AppHash)
 	if err != nil {
 		return err
 	}
@@ -197,7 +196,7 @@ func (s *State) validateBlock(block *types.Block) error {
 				s.LastValidators.Size(), len(block.LastCommit.Precommits)))
 		}
 		err := s.LastValidators.VerifyCommit(
-			chainID, s.LastBlockID, block.Height-1, block.LastCommit)
+			s.ChainID, s.LastBlockID, block.Height-1, block.LastCommit)
 		if err != nil {
 			return err
 		}
