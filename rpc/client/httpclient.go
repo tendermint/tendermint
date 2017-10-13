@@ -69,10 +69,14 @@ func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return result, nil
 }
 
-func (c *HTTP) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c *HTTP) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
+}
+
+func (c *HTTP) ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.rpc.Call("abci_query",
-		map[string]interface{}{"path": path, "data": data, "prove": prove},
+		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "trusted": opts.Trusted},
 		result)
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIQuery")

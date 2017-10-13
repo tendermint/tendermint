@@ -24,8 +24,12 @@ func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{a.App.Info(abci.RequestInfo{version.Version})}, nil
 }
 
-func (a ABCIApp) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
-	q := a.App.Query(abci.RequestQuery{data, path, 0, prove})
+func (a ABCIApp) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return a.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
+}
+
+func (a ABCIApp) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	q := a.App.Query(abci.RequestQuery{data, path, opts.Height, opts.Trusted})
 	return &ctypes.ResultABCIQuery{q.Result()}, nil
 }
 
@@ -79,8 +83,12 @@ func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{res.(abci.ResponseInfo)}, nil
 }
 
-func (m ABCIMock) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
-	res, err := m.Query.GetResponse(QueryArgs{path, data, prove})
+func (m ABCIMock) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return m.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
+}
+
+func (m ABCIMock) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	res, err := m.Query.GetResponse(QueryArgs{path, data, opts.Height, opts.Trusted})
 	if err != nil {
 		return nil, err
 	}
@@ -131,9 +139,10 @@ func (r *ABCIRecorder) _assertABCIClient() client.ABCIClient {
 }
 
 type QueryArgs struct {
-	Path  string
-	Data  data.Bytes
-	Prove bool
+	Path    string
+	Data    data.Bytes
+	Height  uint64
+	Trusted bool
 }
 
 func (r *ABCIRecorder) addCall(call Call) {
@@ -150,11 +159,15 @@ func (r *ABCIRecorder) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return res, err
 }
 
-func (r *ABCIRecorder) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
-	res, err := r.Client.ABCIQuery(path, data, prove)
+func (r *ABCIRecorder) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return r.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
+}
+
+func (r *ABCIRecorder) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	res, err := r.Client.ABCIQueryWithOptions(path, data, opts)
 	r.addCall(Call{
 		Name:     "abci_query",
-		Args:     QueryArgs{path, data, prove},
+		Args:     QueryArgs{path, data, opts.Height, opts.Trusted},
 		Response: res,
 		Error:    err,
 	})

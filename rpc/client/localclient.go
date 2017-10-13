@@ -57,8 +57,12 @@ func (c Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo()
 }
 
-func (c Local) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
-	return core.ABCIQuery(path, data, prove)
+func (c Local) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
+}
+
+func (c Local) ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	return core.ABCIQuery(path, data, opts.Height, opts.Trusted)
 }
 
 func (c Local) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
