@@ -121,6 +121,7 @@ type goLevelDBIterator struct {
 	iterator.Iterator
 }
 
+// Key returns a copy of the current key.
 func (it *goLevelDBIterator) Key() []byte {
 	key := it.Key()
 	k := make([]byte, len(key))
@@ -129,6 +130,7 @@ func (it *goLevelDBIterator) Key() []byte {
 	return k
 }
 
+// Value returns a copy of the current value.
 func (it *goLevelDBIterator) Value() []byte {
 	val := it.Value()
 	v := make([]byte, len(val))
