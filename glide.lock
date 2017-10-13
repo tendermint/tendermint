@@ -114,7 +114,7 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: 311e8c1bf00fa5868daad4f8ea56dcad539182c0
 - name: github.com/tendermint/go-wire
-  version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
+  version: 26ee079df7fca1958da8995c727b59759b197534
   subpackages:
   - data
   - data/base58
