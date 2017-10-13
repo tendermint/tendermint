@@ -7,5 +7,6 @@ type ABCIQueryOptions struct {
 	Trusted bool
 }
 
-// DefaultABCIQueryOptions are latest height (0) and prove equal to true.
+// DefaultABCIQueryOptions are latest height (0) and trusted equal to false
+// (which will result in a proof being returned).
 var DefaultABCIQueryOptions = ABCIQueryOptions{Height: 0, Trusted: false}
