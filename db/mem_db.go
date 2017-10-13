@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 )
 
@@ -99,7 +100,21 @@ func (it *memDBIterator) Value() []byte {
 	return it.db.Get(it.Key())
 }
 
+func (it *memDBIterator) Release() {
+	it.db = nil
+	it.keys = nil
+	return
+}
+
+func (it *memDBIterator) Error() error {
+	return nil
+}
+
 func (db *MemDB) Iterator() Iterator {
+	return db.IteratorPrefix([]byte{})
+}
+
+func (db *MemDB) IteratorPrefix(prefix []byte) Iterator {
 	it := newMemDBIterator()
 	it.db = db
 	it.last = -1
@@ -109,7 +124,9 @@ func (db *MemDB) Iterator() Iterator {
 
 	// unfortunately we need a copy of all of the keys
 	for key, _ := range db.db {
-		it.keys = append(it.keys, key)
+		if strings.HasPrefix(key, string(prefix)) {
+			it.keys = append(it.keys, key)
+		}
 	}
 	return it
 }

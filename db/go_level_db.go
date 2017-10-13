@@ -6,7 +6,9 @@ import (
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
+	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/syndtr/goleveldb/leveldb/util"
 
 	. "github.com/tendermint/tmlibs/common"
 )
@@ -115,8 +117,34 @@ func (db *GoLevelDB) Stats() map[string]string {
 	return stats
 }
 
+type goLevelDBIterator struct {
+	iterator.Iterator
+}
+
+// Key returns a copy of the current key.
+func (it *goLevelDBIterator) Key() []byte {
+	key := it.Key()
+	k := make([]byte, len(key))
+	copy(k, key)
+
+	return k
+}
+
+// Value returns a copy of the current value.
+func (it *goLevelDBIterator) Value() []byte {
+	val := it.Value()
+	v := make([]byte, len(val))
+	copy(v, val)
+
+	return v
+}
+
 func (db *GoLevelDB) Iterator() Iterator {
-	return db.db.NewIterator(nil, nil)
+	return &goLevelDBIterator{db.db.NewIterator(nil, nil)}
+}
+
+func (db *GoLevelDB) IteratorPrefix(prefix []byte) Iterator {
+	return &goLevelDBIterator{db.db.NewIterator(util.BytesPrefix(prefix), nil)}
 }
 
 func (db *GoLevelDB) NewBatch() Batch {

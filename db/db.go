@@ -10,10 +10,11 @@ type DB interface {
 	DeleteSync([]byte)
 	Close()
 	NewBatch() Batch
+	Iterator() Iterator
+	IteratorPrefix([]byte) Iterator
 
 	// For debugging
 	Print()
-	Iterator() Iterator
 	Stats() map[string]string
 }
 
@@ -28,6 +29,9 @@ type Iterator interface {
 
 	Key() []byte
 	Value() []byte
+
+	Release()
+	Error() error
 }
 
 //-----------------------------------------------------------------------------
