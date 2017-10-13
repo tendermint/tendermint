@@ -126,10 +126,6 @@ like:
       }
     }
 
-The ``98`` is a type-byte, and can be ignored (it's useful for
-serializing and deserializing arbitrary json). Otherwise, this result is
-empty - there's nothing to report on and everything is OK.
-
 We can confirm that our transaction worked and the value got stored by
 querying the app:
 
