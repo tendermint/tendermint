@@ -562,7 +562,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
-	store := NewMockBlockStore(config, *state.Params)
+	store := NewMockBlockStore(config, state.Params)
 	return state, store
 }
 

@@ -38,11 +38,9 @@ type State struct {
 	mtx sync.Mutex
 	db  dbm.DB
 
-	// See https://github.com/tendermint/tendermint/issues/671.
 	ChainID string
-	// consensus parameters used for validating blocks
-	// must not be nil
-	Params *types.ConsensusParams
+	// Consensus parameters used for validating blocks
+	Params types.ConsensusParams
 
 	// These fields are updated by SetBlockAndValidators.
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
@@ -113,7 +111,6 @@ func (s *State) SetLogger(l log.Logger) {
 
 // Copy makes a copy of the State for mutating.
 func (s *State) Copy() *State {
-	paramsCopy := *s.Params
 	return &State{
 		db:                          s.db,
 		LastBlockHeight:             s.LastBlockHeight,
@@ -126,7 +123,7 @@ func (s *State) Copy() *State {
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
 		logger:  s.logger,
 		ChainID: s.ChainID,
-		Params:  &paramsCopy,
+		Params:  s.Params,
 	}
 }
 
@@ -360,7 +357,7 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		db: db,
 
 		ChainID: genDoc.ChainID,
-		Params:  genDoc.ConsensusParams,
+		Params:  *genDoc.ConsensusParams,
 
 		LastBlockHeight:             0,
 		LastBlockID:                 types.BlockID{},
