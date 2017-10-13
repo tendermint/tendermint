@@ -39,17 +39,12 @@ func NewHTTP(remote, wsEndpoint string) *HTTP {
 	}
 }
 
-func (c *HTTP) _assertIsClient() Client {
-	return c
-}
-
-func (c *HTTP) _assertIsNetworkClient() NetworkClient {
-	return c
-}
-
-func (c *HTTP) _assertIsEventSwitch() types.EventSwitch {
-	return c
-}
+var (
+	_ Client            = (*HTTP)(nil)
+	_ NetworkClient     = (*HTTP)(nil)
+	_ types.EventSwitch = (*HTTP)(nil)
+	_ types.EventSwitch = (*WSEvents)(nil)
+)
 
 func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
 	result := new(ctypes.ResultStatus)
@@ -214,10 +209,6 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 		evtCount:    map[string]int{},
 		listeners:   map[string][]string{},
 	}
-}
-
-func (w *WSEvents) _assertIsEventSwitch() types.EventSwitch {
-	return w
 }
 
 // Start is the only way I could think the extend OnStart from

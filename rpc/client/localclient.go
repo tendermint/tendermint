@@ -41,13 +41,10 @@ func NewLocal(node *nm.Node) Local {
 	}
 }
 
-func (c Local) _assertIsClient() Client {
-	return c
-}
-
-func (c Local) _assertIsNetworkClient() NetworkClient {
-	return c
-}
+var (
+	_ Client        = Local{}
+	_ NetworkClient = Local{}
+)
 
 func (c Local) Status() (*ctypes.ResultStatus, error) {
 	return core.Status()

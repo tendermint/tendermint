@@ -16,9 +16,11 @@ type ABCIApp struct {
 	App abci.Application
 }
 
-func (a ABCIApp) _assertABCIClient() client.ABCIClient {
-	return a
-}
+var (
+	_ client.ABCIClient = ABCIApp{}
+	_ client.ABCIClient = ABCIMock{}
+	_ client.ABCIClient = (*ABCIRecorder)(nil)
+)
 
 func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{a.App.Info(abci.RequestInfo{version.Version})}, nil
@@ -65,10 +67,6 @@ type ABCIMock struct {
 	Query           Call
 	BroadcastCommit Call
 	Broadcast       Call
-}
-
-func (m ABCIMock) _assertABCIClient() client.ABCIClient {
-	return m
 }
 
 func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
@@ -124,10 +122,6 @@ func NewABCIRecorder(client client.ABCIClient) *ABCIRecorder {
 		Client: client,
 		Calls:  []Call{},
 	}
-}
-
-func (r *ABCIRecorder) _assertABCIClient() client.ABCIClient {
-	return r
 }
 
 type QueryArgs struct {
