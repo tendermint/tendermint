@@ -23,7 +23,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 100
+            "amount": 1000000
           },
           {
             "denom": "gregcoin",
@@ -51,7 +51,7 @@
       },
       {
         "name": "adrian",
-        "address": "0FA1DB09E8B174E81E94280C047C158D4271457B",
+        "address": "4548017683F771FDBCF7D8E74F4723868AA20009",
         "coins": [
           {
             "denom": "fermion",
@@ -66,10 +66,6 @@
       {
         "name": "bucky",
         "address": "2B24DEE2364762300168DF19B6C18BCE2D399EA2",
-        "pub_key": {
-          "type": "ed25519",
-          "data": "37BF9D6F8D66DC3FAECD330291CF08DF52E2F646B01F7E43BC0A746AED927A62"
-        },
         "coins": [
           {
             "denom": "fermion",
@@ -207,6 +203,20 @@
           },
           {
             "denom": "bianjiecoin",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "alexis",
+        "address": "42989458D3285F05FE0233EE669A1CCD90AE6F3E",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 100
+          },
+          {
+            "denom": "alexiscoin",
             "amount": 1000
           }
         ]
