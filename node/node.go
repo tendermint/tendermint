@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -133,9 +134,19 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	genDoc, err := genesisDocProvider()
+	// Get genesis doc
+	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
-		return nil, err
+		genDoc, err = genesisDocProvider()
+		if err != nil {
+			return nil, err
+		}
+		// save genesis doc to prevent a certain class of user errors (e.g. when it
+		// was changed, accidentally or not). Also good for audit trail.
+		err = saveGenesisDoc(stateDB, genDoc)
+		if err != nil {
+			return nil, fmt.Errorf("Failed to save genesis doc: %v", err)
+		}
 	}
 
 	state := sm.LoadState(stateDB)
@@ -536,3 +547,27 @@ func (n *Node) DialSeeds(seeds []string) error {
 }
 
 //------------------------------------------------------------------------------
+
+var (
+	genesisDocKey = []byte("genesisDoc")
+)
+
+func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
+	bytes := db.Get(genesisDocKey)
+	if len(bytes) == 0 {
+		return nil, errors.New("Genesis doc not found")
+	} else {
+		var genDoc *types.GenesisDoc
+		err := json.Unmarshal(bytes, &genDoc)
+		return genDoc, err
+	}
+}
+
+func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
+	bytes, err := json.Marshal(genDoc)
+	if err != nil {
+		return err
+	}
+	db.SetSync(genesisDocKey, bytes)
+	return nil
+}
