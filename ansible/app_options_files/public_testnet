@@ -83,7 +83,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000
+            "amount": 10000000000
           },
           {
             "denom": "buckycoin",
