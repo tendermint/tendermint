@@ -88,7 +88,6 @@ metalinter_test: ensure_tools
 	@gometalinter --install
 	@gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
-		--enable=errcheck \
 		--enable=gas \
 		--enable=gosimple \
 	 	--enable=ineffassign \
@@ -100,6 +99,7 @@ metalinter_test: ensure_tools
 
 		#--enable=aligncheck \
 		#--enable=dupl \
+		#--enable=errcheck \
 		#--enable=goconst \
 		#--enable=gocyclo \
 		#--enable=goimports \

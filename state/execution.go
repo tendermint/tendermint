@@ -293,7 +293,6 @@ func (s *State) indexTxs(abciResponses *ABCIResponses) {
 	}
 	if err := s.TxIndexer.AddBatch(batch); err != nil {
 		s.logger.Error("Error adding batch", "err", err)
-		panic(err)
 	}
 }
 

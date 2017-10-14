@@ -529,12 +529,9 @@ func (wsc *wsConnection) readRoutine() {
 			wsc.WriteRPCResponse(types.RPCInternalError("unknown", err))
 			go wsc.readRoutine()
 		} else {
-			if err := wsc.baseConn.Close(); err != nil {
-				panic(err)
-			}
+			wsc.baseConn.Close() // nolint: errcheck
 		}
 	}()
-	defer wsc.baseConn.Close()
 
 	wsc.baseConn.SetPongHandler(func(m string) error {
 		return wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))

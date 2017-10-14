@@ -237,14 +237,10 @@ func Test2_3MajorityRedux(t *testing.T) {
 	// 70th validator voted for different BlockHash
 	{
 		vote := withValidator(voteProto, privValidators[69].GetAddress(), 69)
-<<<<<<< 026e76894f49dbfbd47601158c7e720b9545fd42
-		signAddVote(privValidators[69], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
-=======
-		_, err := signAddVote(privValidators[69], withBlockHash(vote, RandBytes(32)), voteSet)
+		_, err := signAddVote(privValidators[69], withBlockHash(vote, cmn.RandBytes(32)), voteSet)
 		if err != nil {
 			t.Error(err)
 		}
->>>>>>> linting: apply errcheck part1
 		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority: last vote added had different BlockHash")
@@ -482,18 +478,13 @@ func TestMakeCommit(t *testing.T) {
 	// 7th voted for some other block.
 	{
 		vote := withValidator(voteProto, privValidators[6].GetAddress(), 6)
-<<<<<<< 026e76894f49dbfbd47601158c7e720b9545fd42
 		vote = withBlockHash(vote, cmn.RandBytes(32))
 		vote = withBlockPartsHeader(vote, PartSetHeader{123, cmn.RandBytes(32)})
-		signAddVote(privValidators[6], vote, voteSet)
-=======
-		vote = withBlockHash(vote, RandBytes(32))
-		vote = withBlockPartsHeader(vote, PartSetHeader{123, RandBytes(32)})
+
 		_, err := signAddVote(privValidators[6], vote, voteSet)
 		if err != nil {
 			t.Error(err)
 		}
->>>>>>> linting: apply errcheck part1
 	}
 
 	// The 8th voted like everyone else.
