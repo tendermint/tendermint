@@ -1,4 +1,4 @@
-package benchmarks // nolint: goimports
+package benchmarks
 
 import (
 	"testing"
