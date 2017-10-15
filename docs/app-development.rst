@@ -194,11 +194,37 @@ through all transactions in the mempool, removing any that were included
 in the block, and re-run the rest using CheckTx against the post-Commit
 mempool state.
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) CheckTx(tx []byte) types.Result {
-      return types.OK
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) CheckTx(tx []byte) types.Result {
+          return types.OK
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseCheckTx requestCheckTx(RequestCheckTx req) {
+            byte[] transaction = req.getTx().toByteArray();
+
+            // validate transaction
+
+            if (notValid) {
+                return ResponseCheckTx.newBuilder().setCode(CodeType.BadNonce).setLog("invalid tx").build();
+            } else {
+                return ResponseCheckTx.newBuilder().setCode(CodeType.OK).build();
+            }
+        }
 
 Consensus Connection
 ~~~~~~~~~~~~~~~~~~~~
@@ -228,18 +254,48 @@ The block header will be updated (TODO) to include some commitment to
 the results of DeliverTx, be it a bitarray of non-OK transactions, or a
 merkle root of the data returned by the DeliverTx requests, or both.
 
-::
+.. container:: toggle
 
-    // tx is either "key=value" or just arbitrary bytes
-    func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
-      parts := strings.Split(string(tx), "=")
-      if len(parts) == 2 {
-        app.state.Set([]byte(parts[0]), []byte(parts[1]))
-      } else {
-        app.state.Set(tx, tx)
-      }
-      return types.OK
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // tx is either "key=value" or just arbitrary bytes
+        func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
+          parts := strings.Split(string(tx), "=")
+          if len(parts) == 2 {
+            app.state.Set([]byte(parts[0]), []byte(parts[1]))
+          } else {
+            app.state.Set(tx, tx)
+          }
+          return types.OK
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /**
+         * Using Protobuf types from the protoc compiler, we always start with a byte[]
+         */
+        ResponseDeliverTx deliverTx(RequestDeliverTx request) {
+            byte[] transaction  = request.getTx().toByteArray();
+
+            // validate your transaction
+
+            if (notValid) {
+                return ResponseDeliverTx.newBuilder().setCode(CodeType.BadNonce).setLog("transaction was invalid").build();
+            } else {
+                ResponseDeliverTx.newBuilder().setCode(CodeType.OK).build();
+            }
+
+        }
 
 Commit
 ^^^^^^
@@ -263,12 +319,35 @@ It is expected that the app will persist state to disk on Commit. The
 option to have all transactions replayed from some previous block is the
 job of the `Handshake <#handshake>`__.
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) Commit() types.Result {
-      hash := app.state.Hash()
-      return types.NewResultOK(hash, "")
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) Commit() types.Result {
+          hash := app.state.Hash()
+          return types.NewResultOK(hash, "")
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseCommit requestCommit(RequestCommit requestCommit) {
+
+            // update the internal app-state
+            byte[] newAppState = calculateAppState();
+
+            // and return it to the node
+            return ResponseCommit.newBuilder().setCode(CodeType.OK).setData(ByteString.copyFrom(newAppState)).build();
+        }
 
 BeginBlock
 ^^^^^^^^^^
@@ -281,16 +360,45 @@ The app should remember the latest height and header (ie. from which it
 has run a successful Commit) so that it can tell Tendermint where to
 pick up from when it restarts. See information on the Handshake, below.
 
-::
+.. container:: toggle
 
-    // Track the block hash and header information
-    func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
-      // update latest block info
-      app.blockHeader = params.Header
+    .. container:: header
 
-      // reset valset changes
-      app.changes = make([]*types.Validator, 0)
-    }
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // Track the block hash and header information
+        func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
+          // update latest block info
+          app.blockHeader = params.Header
+
+          // reset valset changes
+          app.changes = make([]*types.Validator, 0)
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /*
+         * all types come from protobuf definition
+         */
+        ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
+
+            Header header = req.getHeader();
+            byte[] prevAppHash = header.getAppHash().toByteArray();
+            long prevHeight = header.getHeight();
+            long numTxs = header.getNumTxs();
+
+            // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
+
+            return ResponseBeginBlock.newBuilder().build();
+        }
 
 EndBlock
 ^^^^^^^^
@@ -304,12 +412,39 @@ EndBlock response. To remove one, include it in the list with a
 validator set. Note validator set changes are only available in v0.8.0
 and up.
 
-::
+.. container:: toggle
 
-    // Update the validator set
-    func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
-      return types.ResponseEndBlock{Diffs: app.changes}
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // Update the validator set
+        func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
+          return types.ResponseEndBlock{Diffs: app.changes}
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /*
+         * Assume that one validator changes. The new validator has a power of 10
+         */
+        ResponseEndBlock requestEndBlock(RequestEndBlock req) {
+            final long currentHeight = req.getHeight();
+            final byte[] validatorPubKey = getValPubKey();
+
+            ResponseEndBlock.Builder builder = ResponseEndBlock.newBuilder();
+            builder.addDiffs(1, Types.Validator.newBuilder().setPower(10L).setPubKey(ByteString.copyFrom(validatorPubKey)).build());
+
+            return builder.build();
+        }
 
 Query Connection
 ~~~~~~~~~~~~~~~~
@@ -332,33 +467,72 @@ cause Tendermint to not connect to the corresponding peer:
 
 Note: these query formats are subject to change!
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-      if reqQuery.Prove {
-        value, proof, exists := app.state.Proof(reqQuery.Data)
-        resQuery.Index = -1 // TODO make Proof return index
-        resQuery.Key = reqQuery.Data
-        resQuery.Value = value
-        resQuery.Proof = proof
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+          if reqQuery.Prove {
+            value, proof, exists := app.state.Proof(reqQuery.Data)
+            resQuery.Index = -1 // TODO make Proof return index
+            resQuery.Key = reqQuery.Data
+            resQuery.Value = value
+            resQuery.Proof = proof
+            if exists {
+              resQuery.Log = "exists"
+            } else {
+              resQuery.Log = "does not exist"
+            }
+            return
+          } else {
+            index, value, exists := app.state.Get(reqQuery.Data)
+            resQuery.Index = int64(index)
+            resQuery.Value = value
+            if exists {
+              resQuery.Log = "exists"
+            } else {
+              resQuery.Log = "does not exist"
+            }
+            return
+          }
         }
-        return
-      } else {
-        index, value, exists := app.state.Get(reqQuery.Data)
-        resQuery.Index = int64(index)
-        resQuery.Value = value
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseQuery requestQuery(RequestQuery req) {
+            final boolean isProveQuery = req.getProve();
+            final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
+
+            if (isProveQuery) {
+                com.app.example.ProofResult proofResult = generateProof(req.getData().toByteArray());
+                final byte[] proofAsByteArray = proofResult.getAsByteArray();
+
+                responseBuilder.setProof(ByteString.copyFrom(proofAsByteArray));
+                responseBuilder.setKey(req.getData());
+                responseBuilder.setValue(ByteString.copyFrom(proofResult.getData()));
+                responseBuilder.setLog(result.getLogValue());
+            } else {
+                byte[] queryData = req.getData().toByteArray();
+
+                final com.app.example.QueryResult result = generateQueryResult(queryData);
+
+                responseBuilder.setIndex(result.getIndex());
+                responseBuilder.setValue(ByteString.copyFrom(result.getValue()));
+                responseBuilder.setLog(result.getLogValue());
+            }
+
+            return responseBuilder.build();
         }
-        return
-      }
-    }
 
 Handshake
 ~~~~~~~~~
@@ -377,11 +551,31 @@ the app are synced to the latest block height.
 If the app returns a LastBlockHeight of 0, Tendermint will just replay
 all blocks.
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-      return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+          return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseInfo requestInfo(RequestInfo req) {
+            final byte[] lastAppHash = getLastAppHash();
+            final long lastHeight = getLastHeight();
+            return ResponseInfo.newBuilder().setLastBlockAppHash(ByteString.copyFrom(lastAppHash)).setLastBlockHeight(lastHeight).build();
+        }
 
 Genesis
 ~~~~~~~
@@ -390,14 +584,45 @@ Genesis
 initial validator set. Later on, it may be extended to take parts of the
 consensus params.
 
-::
+.. container:: toggle
 
-    // Save the validators in the merkle tree
-    func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
-      for _, v := range params.Validators {
-        r := app.updateValidator(v)
-        if r.IsErr() {
-          app.logger.Error("Error updating validators", "r", r)
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // Save the validators in the merkle tree
+        func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
+          for _, v := range params.Validators {
+            r := app.updateValidator(v)
+            if r.IsErr() {
+              app.logger.Error("Error updating validators", "r", r)
+            }
+          }
         }
-      }
-    }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /*
+         * all types come from protobuf definition
+         */
+        ResponseInitChain requestInitChain(RequestInitChain req) {
+            final int validatorsCount = req.getValidatorsCount();
+            final List<Types.Validator> validatorsList = req.getValidatorsList();
+
+            validatorsList.forEach((validator) -> {
+                long power = validator.getPower();
+                byte[] validatorPubKey = validator.getPubKey().toByteArray();
+
+                // do somehing for validator setup in app
+            });
+
+            return ResponseInitChain.newBuilder().build();
+        }
