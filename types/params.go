@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	maxBlockSizeBytes = 104857600 // 100MB
+	_100MiB = 104857600
 )
 
 // ConsensusParams contains consensus critical parameters
@@ -69,6 +69,10 @@ func DefaultBlockGossipParams() BlockGossipParams {
 
 // Validate validates the ConsensusParams to ensure all values
 // are within their allowed limits, and returns an error if they are not.
+// Expecting:
+// * BlockSizeParams.MaxBytes > 0
+// * BlockGossipParams.BlockPartSizeBytes > 0
+// * BlockSizeParams.MaxBytes <= 100MiB
 func (params *ConsensusParams) Validate() error {
 	// ensure some values are greater than 0
 	if params.BlockSizeParams.MaxBytes <= 0 {
@@ -79,9 +83,9 @@ func (params *ConsensusParams) Validate() error {
 	}
 
 	// ensure blocks aren't too big
-	if params.BlockSizeParams.MaxBytes > maxBlockSizeBytes {
+	if params.BlockSizeParams.MaxBytes > _100MiB {
 		return errors.Errorf("BlockSizeParams.MaxBytes is too big. %d > %d",
-			params.BlockSizeParams.MaxBytes, maxBlockSizeBytes)
+			params.BlockSizeParams.MaxBytes, _100MiB)
 	}
 	return nil
 }
