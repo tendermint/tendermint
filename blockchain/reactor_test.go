@@ -14,16 +14,21 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func newBlockchainReactor(maxBlockHeight int64) *BlockchainReactor {
-	logger := log.TestingLogger()
+func makeStateAndBlockStore(logger log.Logger) (*sm.State, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
-
 	blockStore := NewBlockStore(dbm.NewMemDB())
 
 	// Get State
 	state, _ := sm.GetState(dbm.NewMemDB(), config.GenesisFile())
 	state.SetLogger(logger.With("module", "state"))
 	state.Save()
+
+	return state, blockStore
+}
+
+func newBlockchainReactor(logger log.Logger, maxBlockHeight int) *BlockchainReactor {
+	logger := log.TestingLogger()
+	state, blockStore := makeStateAndBlockStore(logger)
 
 	// Make the blockchainReactor itself
 	fastSync := true
@@ -47,7 +52,7 @@ func newBlockchainReactor(maxBlockHeight int64) *BlockchainReactor {
 func TestNoBlockMessageResponse(t *testing.T) {
 	maxBlockHeight := int64(20)
 
-	bcr := newBlockchainReactor(maxBlockHeight)
+	bcr := newBlockchainReactor(log.NewNopLogger(), maxBlockHeight)
 	bcr.Start()
 	defer bcr.Stop()
 
