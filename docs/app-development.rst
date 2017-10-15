@@ -206,6 +206,26 @@ mempool state.
           return types.OK
         }
 
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseCheckTx requestCheckTx(RequestCheckTx req) {
+            byte[] transaction = req.getTx().toByteArray();
+
+            // validate transaction
+
+            if (notValid) {
+                return ResponseCheckTx.newBuilder().setCode(CodeType.BadNonce).setLog("invalid tx").build();
+            } else {
+                return ResponseCheckTx.newBuilder().setCode(CodeType.OK).build();
+            }
+        }
+
 Consensus Connection
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -312,6 +332,23 @@ job of the `Handshake <#handshake>`__.
           return types.NewResultOK(hash, "")
         }
 
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseCommit requestCommit(RequestCommit requestCommit) {
+
+            // update the internal app-state
+            byte[] newAppState = calculateAppState();
+
+            // and return it to the node
+            return ResponseCommit.newBuilder().setCode(CodeType.OK).setData(ByteString.copyFrom(newAppState)).build();
+        }
+
 BeginBlock
 ^^^^^^^^^^
 
@@ -340,6 +377,29 @@ pick up from when it restarts. See information on the Handshake, below.
           app.changes = make([]*types.Validator, 0)
         }
 
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /*
+         * all types come from protobuf definition
+         */
+        ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
+
+            Header header = req.getHeader();
+            byte[] prevAppHash = header.getAppHash().toByteArray();
+            long prevHeight = header.getHeight();
+            long numTxs = header.getNumTxs();
+
+            // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
+
+            return ResponseBeginBlock.newBuilder().build();
+        }
+
 EndBlock
 ^^^^^^^^
 
@@ -363,6 +423,27 @@ and up.
         // Update the validator set
         func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
           return types.ResponseEndBlock{Diffs: app.changes}
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /*
+         * Assume that one validator changes. The new validator has a power of 10
+         */
+        ResponseEndBlock requestEndBlock(RequestEndBlock req) {
+            final long currentHeight = req.getHeight();
+            final byte[] validatorPubKey = getValPubKey();
+
+            ResponseEndBlock.Builder builder = ResponseEndBlock.newBuilder();
+            builder.addDiffs(1, Types.Validator.newBuilder().setPower(10L).setPubKey(ByteString.copyFrom(validatorPubKey)).build());
+
+            return builder.build();
         }
 
 Query Connection
@@ -420,6 +501,39 @@ Note: these query formats are subject to change!
           }
         }
 
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseQuery requestQuery(RequestQuery req) {
+            final boolean isProveQuery = req.getProve();
+            final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
+
+            if (isProveQuery) {
+                com.app.example.ProofResult proofResult = generateProof(req.getData().toByteArray());
+                final byte[] proofAsByteArray = proofResult.getAsByteArray();
+
+                responseBuilder.setProof(ByteString.copyFrom(proofAsByteArray));
+                responseBuilder.setKey(req.getData());
+                responseBuilder.setValue(ByteString.copyFrom(proofResult.getData()));
+                responseBuilder.setLog(result.getLogValue());
+            } else {
+                byte[] queryData = req.getData().toByteArray();
+
+                final com.app.example.QueryResult result = generateQueryResult(queryData);
+
+                responseBuilder.setIndex(result.getIndex());
+                responseBuilder.setValue(ByteString.copyFrom(result.getValue()));
+                responseBuilder.setLog(result.getLogValue());
+            }
+
+            return responseBuilder.build();
+        }
+
 Handshake
 ~~~~~~~~~
 
@@ -449,6 +563,20 @@ all blocks.
           return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
         }
 
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        ResponseInfo requestInfo(RequestInfo req) {
+            final byte[] lastAppHash = getLastAppHash();
+            final long lastHeight = getLastHeight();
+            return ResponseInfo.newBuilder().setLastBlockAppHash(ByteString.copyFrom(lastAppHash)).setLastBlockHeight(lastHeight).build();
+        }
+
 Genesis
 ~~~~~~~
 
@@ -474,3 +602,27 @@ consensus params.
           }
         }
 
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /*
+         * all types come from protobuf definition
+         */
+        ResponseInitChain requestInitChain(RequestInitChain req) {
+            final int validatorsCount = req.getValidatorsCount();
+            final List<Types.Validator> validatorsList = req.getValidatorsList();
+
+            validatorsList.forEach((validator) -> {
+                long power = validator.getPower();
+                byte[] validatorPubKey = validator.getPubKey().toByteArray();
+
+                // do somehing for validator setup in app
+            });
+
+            return ResponseInitChain.newBuilder().build();
+        }
