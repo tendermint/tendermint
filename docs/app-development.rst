@@ -228,18 +228,48 @@ The block header will be updated (TODO) to include some commitment to
 the results of DeliverTx, be it a bitarray of non-OK transactions, or a
 merkle root of the data returned by the DeliverTx requests, or both.
 
-::
+.. container:: toggle
 
-    // tx is either "key=value" or just arbitrary bytes
-    func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
-      parts := strings.Split(string(tx), "=")
-      if len(parts) == 2 {
-        app.state.Set([]byte(parts[0]), []byte(parts[1]))
-      } else {
-        app.state.Set(tx, tx)
-      }
-      return types.OK
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // tx is either "key=value" or just arbitrary bytes
+        func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
+          parts := strings.Split(string(tx), "=")
+          if len(parts) == 2 {
+            app.state.Set([]byte(parts[0]), []byte(parts[1]))
+          } else {
+            app.state.Set(tx, tx)
+          }
+          return types.OK
+        }
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Java Example**
+
+    .. code-block:: java
+
+        /**
+         * Using Protobuf types from the protoc compiler, we always start with a byte[]
+         */
+        ResponseDeliverTx deliverTx(RequestDeliverTx request) {
+            byte[] transaction  = request.getTx().toByteArray();
+
+            // validate your transaction
+
+            if (notValid) {
+                return ResponseDeliverTx.newBuilder().setCode(CodeType.BadNonce).setLog("transaction was invalid").build();
+            } else {
+                ResponseDeliverTx.newBuilder().setCode(CodeType.OK).build();
+            }
+
+        }
 
 Commit
 ^^^^^^
@@ -401,3 +431,4 @@ consensus params.
         }
       }
     }
+
