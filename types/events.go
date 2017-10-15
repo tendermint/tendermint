@@ -140,14 +140,6 @@ type EventDataVote struct {
 	Vote *Vote
 }
 
-func (_ EventDataNewBlock) AssertIsTMEventData()       {}
-func (_ EventDataNewBlockHeader) AssertIsTMEventData() {}
-func (_ EventDataTx) AssertIsTMEventData()             {}
-func (_ EventDataRoundState) AssertIsTMEventData()     {}
-func (_ EventDataVote) AssertIsTMEventData()           {}
-
-func (_ EventDataProposalHeartbeat) AssertIsTMEventData() {}
-
 //----------------------------------------
 // Wrappers for type safety
 
