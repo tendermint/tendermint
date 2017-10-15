@@ -194,11 +194,17 @@ through all transactions in the mempool, removing any that were included
 in the block, and re-run the rest using CheckTx against the post-Commit
 mempool state.
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) CheckTx(tx []byte) types.Result {
-      return types.OK
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) CheckTx(tx []byte) types.Result {
+          return types.OK
+        }
 
 Consensus Connection
 ~~~~~~~~~~~~~~~~~~~~
@@ -293,12 +299,18 @@ It is expected that the app will persist state to disk on Commit. The
 option to have all transactions replayed from some previous block is the
 job of the `Handshake <#handshake>`__.
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) Commit() types.Result {
-      hash := app.state.Hash()
-      return types.NewResultOK(hash, "")
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) Commit() types.Result {
+          hash := app.state.Hash()
+          return types.NewResultOK(hash, "")
+        }
 
 BeginBlock
 ^^^^^^^^^^
@@ -311,16 +323,22 @@ The app should remember the latest height and header (ie. from which it
 has run a successful Commit) so that it can tell Tendermint where to
 pick up from when it restarts. See information on the Handshake, below.
 
-::
+.. container:: toggle
 
-    // Track the block hash and header information
-    func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
-      // update latest block info
-      app.blockHeader = params.Header
+    .. container:: header
 
-      // reset valset changes
-      app.changes = make([]*types.Validator, 0)
-    }
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // Track the block hash and header information
+        func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
+          // update latest block info
+          app.blockHeader = params.Header
+
+          // reset valset changes
+          app.changes = make([]*types.Validator, 0)
+        }
 
 EndBlock
 ^^^^^^^^
@@ -334,12 +352,18 @@ EndBlock response. To remove one, include it in the list with a
 validator set. Note validator set changes are only available in v0.8.0
 and up.
 
-::
+.. container:: toggle
 
-    // Update the validator set
-    func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
-      return types.ResponseEndBlock{Diffs: app.changes}
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // Update the validator set
+        func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
+          return types.ResponseEndBlock{Diffs: app.changes}
+        }
 
 Query Connection
 ~~~~~~~~~~~~~~~~
@@ -362,33 +386,39 @@ cause Tendermint to not connect to the corresponding peer:
 
 Note: these query formats are subject to change!
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-      if reqQuery.Prove {
-        value, proof, exists := app.state.Proof(reqQuery.Data)
-        resQuery.Index = -1 // TODO make Proof return index
-        resQuery.Key = reqQuery.Data
-        resQuery.Value = value
-        resQuery.Proof = proof
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+          if reqQuery.Prove {
+            value, proof, exists := app.state.Proof(reqQuery.Data)
+            resQuery.Index = -1 // TODO make Proof return index
+            resQuery.Key = reqQuery.Data
+            resQuery.Value = value
+            resQuery.Proof = proof
+            if exists {
+              resQuery.Log = "exists"
+            } else {
+              resQuery.Log = "does not exist"
+            }
+            return
+          } else {
+            index, value, exists := app.state.Get(reqQuery.Data)
+            resQuery.Index = int64(index)
+            resQuery.Value = value
+            if exists {
+              resQuery.Log = "exists"
+            } else {
+              resQuery.Log = "does not exist"
+            }
+            return
+          }
         }
-        return
-      } else {
-        index, value, exists := app.state.Get(reqQuery.Data)
-        resQuery.Index = int64(index)
-        resQuery.Value = value
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
-        }
-        return
-      }
-    }
 
 Handshake
 ~~~~~~~~~
@@ -407,11 +437,17 @@ the app are synced to the latest block height.
 If the app returns a LastBlockHeight of 0, Tendermint will just replay
 all blocks.
 
-::
+.. container:: toggle
 
-    func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-      return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
-    }
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+          return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
+        }
 
 Genesis
 ~~~~~~~
@@ -420,15 +456,21 @@ Genesis
 initial validator set. Later on, it may be extended to take parts of the
 consensus params.
 
-::
+.. container:: toggle
 
-    // Save the validators in the merkle tree
-    func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
-      for _, v := range params.Validators {
-        r := app.updateValidator(v)
-        if r.IsErr() {
-          app.logger.Error("Error updating validators", "r", r)
+    .. container:: header
+
+        **Show/Hide Go Example**
+
+    .. code-block:: go
+
+        // Save the validators in the merkle tree
+        func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
+          for _, v := range params.Validators {
+            r := app.updateValidator(v)
+            if r.IsErr() {
+              app.logger.Error("Error updating validators", "r", r)
+            }
+          }
         }
-      }
-    }
 
