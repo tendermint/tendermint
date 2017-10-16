@@ -14,15 +14,15 @@ import (
 	"github.com/tendermint/tmlibs/merkle"
 )
 
-// Block defines the atomic unit of a Tendermint blockchain
+// Block defines the atomic unit of a Tendermint blockchain.
 type Block struct {
 	*Header    `json:"header"`
 	*Data      `json:"data"`
 	LastCommit *Commit `json:"last_commit"`
 }
 
-// MakeBlock returns a new block and corresponding part set from the given information
-// TODO: version
+// MakeBlock returns a new block and corresponding part set from the given information.
+// TODO: Add version information to the Block struct.
 func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
 	block := &Block{

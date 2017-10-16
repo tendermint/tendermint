@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
@@ -60,12 +61,13 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 
 //------------------------------------------------------------------------------------
 
-// JSON rpc takes params as a slice
+// JSONRPCClient takes params as a slice
 type JSONRPCClient struct {
 	address string
 	client  *http.Client
 }
 
+// NewJSONRPCClient takes an address and returns a pointer to an instance of JSONRPCClient
 func NewJSONRPCClient(remote string) *JSONRPCClient {
 	address, client := makeHTTPClient(remote)
 	return &JSONRPCClient{
