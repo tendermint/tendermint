@@ -98,6 +98,23 @@ func TestGenesisAndValidators(t *testing.T) {
 	}
 }
 
+func TestABCIQuery(t *testing.T) {
+	for i, c := range GetClients() {
+		// write something
+		k, v, tx := MakeTxKV()
+		bres, err := c.BroadcastTxCommit(tx)
+		require.Nil(t, err, "%d: %+v", i, err)
+		apph := bres.Height + 1 // this is where the tx will be applied to the state
+
+		// wait before querying
+		client.WaitForHeight(c, apph, nil)
+		qres, err := c.ABCIQuery("/key", k)
+		if assert.Nil(t, err) && assert.True(t, qres.Code.IsOK()) {
+			assert.EqualValues(t, v, qres.Value)
+		}
+	}
+}
+
 // Make some app checks
 func TestAppCalls(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -124,7 +141,7 @@ func TestAppCalls(t *testing.T) {
 
 		// wait before querying
 		client.WaitForHeight(c, apph, nil)
-		qres, err := c.ABCIQuery("/key", k, false)
+		qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
 		if assert.Nil(err) && assert.True(qres.Code.IsOK()) {
 			// assert.Equal(k, data.GetKey())  // only returned for proofs
 			assert.EqualValues(v, qres.Value)
@@ -172,7 +189,7 @@ func TestAppCalls(t *testing.T) {
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
 		// and we got a proof that works!
-		pres, err := c.ABCIQuery("/key", k, true)
+		pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
 		if assert.Nil(err) && assert.True(pres.Code.IsOK()) {
 			proof, err := iavl.ReadProof(pres.Proof)
 			if assert.Nil(err) {
