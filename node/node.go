@@ -143,10 +143,7 @@ func NewNode(config *cfg.Config,
 		}
 		// save genesis doc to prevent a certain class of user errors (e.g. when it
 		// was changed, accidentally or not). Also good for audit trail.
-		err = saveGenesisDoc(stateDB, genDoc)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to save genesis doc: %v", err)
-		}
+		saveGenesisDoc(stateDB, genDoc)
 	}
 
 	state := sm.LoadState(stateDB)
@@ -552,6 +549,7 @@ var (
 	genesisDocKey = []byte("genesisDoc")
 )
 
+// panics if failed to unmarshal bytes
 func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	bytes := db.Get(genesisDocKey)
 	if len(bytes) == 0 {
@@ -559,15 +557,18 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	} else {
 		var genDoc *types.GenesisDoc
 		err := json.Unmarshal(bytes, &genDoc)
-		return genDoc, err
+		if err != nil {
+			cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+		}
+		return genDoc, nil
 	}
 }
 
-func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) error {
+// panics if failed to marshal the given genesis document
+func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 	bytes, err := json.Marshal(genDoc)
 	if err != nil {
-		return err
+		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}
 	db.SetSync(genesisDocKey, bytes)
-	return nil
 }
