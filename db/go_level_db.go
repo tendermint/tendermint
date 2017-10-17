@@ -118,12 +118,12 @@ func (db *GoLevelDB) Stats() map[string]string {
 }
 
 type goLevelDBIterator struct {
-	iterator.Iterator
+	source iterator.Iterator
 }
 
 // Key returns a copy of the current key.
 func (it *goLevelDBIterator) Key() []byte {
-	key := it.Key()
+	key := it.source.Key()
 	k := make([]byte, len(key))
 	copy(k, key)
 
@@ -132,11 +132,23 @@ func (it *goLevelDBIterator) Key() []byte {
 
 // Value returns a copy of the current value.
 func (it *goLevelDBIterator) Value() []byte {
-	val := it.Value()
+	val := it.source.Value()
 	v := make([]byte, len(val))
 	copy(v, val)
 
 	return v
+}
+
+func (it *goLevelDBIterator) Error() error {
+	return it.source.Error()
+}
+
+func (it *goLevelDBIterator) Next() bool {
+	return it.source.Next()
+}
+
+func (it *goLevelDBIterator) Release() {
+	it.source.Release()
 }
 
 func (db *GoLevelDB) Iterator() Iterator {

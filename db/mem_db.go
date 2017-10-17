@@ -103,7 +103,6 @@ func (it *memDBIterator) Value() []byte {
 func (it *memDBIterator) Release() {
 	it.db = nil
 	it.keys = nil
-	return
 }
 
 func (it *memDBIterator) Error() error {
