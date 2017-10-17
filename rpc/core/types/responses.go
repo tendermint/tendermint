@@ -62,14 +62,14 @@ type ResultNetInfo struct {
 
 type ResultNodeInfo struct {
 	Self NodeInfo `json:"self"`
-	NodeInfos []NodeInfo `json:"node_infos"`
 	FastSync bool `json:"fast_sync"`
 	BlockStoreHeight int `json:"block_store_height"`
+	NodeInfos []NodeInfo `json:"peers"`
 }
 
 type NodeInfo struct {
 	Moniker string `json:"moniker"`
-	Address crypto.PubKeyEd25519 `json:"pubkey"`
+	Address crypto.PubKey `json:"pub_key"`
 	Height int `json:"height"`
 }
 

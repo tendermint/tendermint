@@ -6,6 +6,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/go-crypto"
 )
 
 // Get network info.
@@ -61,14 +62,14 @@ func NodeInfo() (*ctypes.ResultNodeInfo ,error) {
 
 	self := ctypes.NodeInfo {
 		Moniker: p2pSwitch.NodeInfo().Moniker,
-		Address: p2pSwitch.NodeInfo().PubKey,
+		Address: pubKey,
 		Height: consensusState.GetRoundState().Height,
 	}
 
 	for _, peer := range p2pSwitch.Peers().List() {
 		nodes = append(nodes, ctypes.NodeInfo{
 			Moniker: peer.NodeInfo().Moniker,
-			Address: peer.NodeInfo().PubKey,
+			Address: crypto.PubKey{peer.NodeInfo().PubKey},
 			Height: peer.Get(types.PeerStateKey).(*consensus.PeerState).GetHeight(),
 		})
 	}
