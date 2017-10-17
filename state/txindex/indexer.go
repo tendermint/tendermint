@@ -24,9 +24,8 @@ type TxIndexer interface {
 //----------------------------------------------------
 // Txs are written as a batch
 
-// Batch groups together multiple Index operations you would like performed
-// at the same time.
-// NOTE: Bach is NOT thread-safe and should not be modified after starting its execution.
+// Batch groups together multiple Index operations to be performed at the same time.
+// NOTE: Batch is NOT thread-safe and must not be modified after starting its execution.
 type Batch struct {
 	Ops []types.TxResult
 }

@@ -42,7 +42,8 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 		protocol = "tcp"
 	}
 
-	trimmedAddress := strings.Replace(address, "/", ".", -1) // replace / with . for http requests (dummy domain)
+	// replace / with . for http requests (dummy domain)
+	trimmedAddress := strings.Replace(address, "/", ".", -1)
 	return trimmedAddress, func(proto, addr string) (net.Conn, error) {
 		return net.Dial(protocol, address)
 	}
@@ -67,7 +68,7 @@ type JSONRPCClient struct {
 	client  *http.Client
 }
 
-// NewJSONRPCClient takes an address and returns a pointer to an instance of JSONRPCClient
+// NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
 func NewJSONRPCClient(remote string) *JSONRPCClient {
 	address, client := makeHTTPClient(remote)
 	return &JSONRPCClient{

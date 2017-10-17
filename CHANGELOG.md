@@ -7,6 +7,8 @@ BREAKING CHANGES:
 - Better support for injecting randomness
 - Pass evidence/voteInfo through ABCI
 - Upgrade consensus for more real-time use of evidence
+- func(s *State) LoadABCIResponses() *ABCIResponses now returns nil if now ABCIResponses could be loaded from the database.
+  Previously it would return a pointer to an ABCIResponses object if it didn't find anything in the database.
 
 FEATURES:
 - Peer reputation management

@@ -233,8 +233,8 @@ func (s *State) Bytes() []byte {
 	return wire.BinaryBytes(s)
 }
 
-// SetBlockAndValidators mutates State variables to update block and validators after running
-// EndBlock.
+// SetBlockAndValidators mutates State variables
+// to update block and validators after running EndBlock.
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader,
 	abciResponses *ABCIResponses) {
 

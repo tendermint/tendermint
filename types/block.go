@@ -21,7 +21,7 @@ type Block struct {
 	LastCommit *Commit `json:"last_commit"`
 }
 
-// MakeBlock returns a new block and corresponding part set from the given information.
+// MakeBlock returns a new block and corresponding partset from the given information.
 // TODO: Add version information to the Block struct.
 func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
