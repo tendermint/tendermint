@@ -164,7 +164,7 @@ func (mem *Mempool) TxsFrontWait() *clist.CElement {
 // It blocks if we're waiting on Update() or Reap().
 // cb: A callback from the CheckTx command.
 //     It gets called from another goroutine.
-// NOTE: Either cb will get called, or err returned.
+// CONTRACT: Either cb will get called, or err returned.
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
