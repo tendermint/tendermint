@@ -6,6 +6,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	types2 "github.com/tendermint/abci/types"
 )
 
 // Tx allows you to query the transaction results. `nil` could mean the
@@ -99,3 +100,16 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 		Proof:    proof,
 	}, nil
 }
+
+func BroadcastTransientTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+
+	transientBroadcastReactor.BroadcastTransientMessage(tx)
+
+	return &ctypes.ResultBroadcastTx{
+		Code: types2.CodeType_OK,
+		Data: nil,
+		Log:  "tried to broadcast transient tx",
+		Hash: tx.Hash(),
+	}, nil
+}
+

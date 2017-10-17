@@ -193,3 +193,14 @@ func (r *ABCIRecorder) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, 
 	})
 	return res, err
 }
+
+func (r* ABCIRecorder) BroadcastTransientTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+	res, err := r.Client.BroadcastTransientTx(tx)
+	r.addCall(Call {
+		Name:     "broadcast_transient_tx",
+		Args:     tx,
+		Response: res,
+		Error:    err,
+	})
+	return res, err
+}

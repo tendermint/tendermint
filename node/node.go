@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -23,8 +23,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	rpc "github.com/tendermint/tendermint/rpc/lib"
-	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
+	"github.com/tendermint/tendermint/rpc/lib"
+	"github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
@@ -98,15 +98,16 @@ type Node struct {
 	addrBook *p2p.AddrBook         // known peers
 
 	// services
-	evsw             types.EventSwitch           // pub/sub for services
-	blockStore       *bc.BlockStore              // store the blockchain to disk
-	bcReactor        *bc.BlockchainReactor       // for fast-syncing
-	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
-	consensusState   *consensus.ConsensusState   // latest consensus state
-	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
-	proxyApp         proxy.AppConns              // connection to the application
-	rpcListeners     []net.Listener              // rpc servers
-	txIndexer        txindex.TxIndexer
+	evsw                      types.EventSwitch              // pub/sub for services
+	blockStore                *bc.BlockStore                 // store the blockchain to disk
+	bcReactor                 *bc.BlockchainReactor          // for fast-syncing
+	mempoolReactor            *mempl.MempoolReactor          // for gossipping transactions
+	consensusState            *consensus.ConsensusState      // latest consensus state
+	consensusReactor          *consensus.ConsensusReactor    // for participating in the consensus
+	transientBroadcastReactor *p2p.TransientBroadcastReactor // peer to peer message propagation
+	proxyApp                  proxy.AppConns                 // connection to the application
+	rpcListeners              []net.Listener                 // rpc servers
+	txIndexer                 txindex.TxIndexer
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.
@@ -244,6 +245,10 @@ func NewNode(config *cfg.Config,
 		sw.AddReactor("PEX", pexReactor)
 	}
 
+	// Make TransientBroadcastReactor
+	transientReactor := p2p.NewTransientBroadCastReactor()
+	sw.AddReactor("TRANSIENT", transientReactor)
+
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
 	// XXX: Query format subject to change
@@ -293,14 +298,15 @@ func NewNode(config *cfg.Config,
 		sw:       sw,
 		addrBook: addrBook,
 
-		evsw:             eventSwitch,
-		blockStore:       blockStore,
-		bcReactor:        bcReactor,
-		mempoolReactor:   mempoolReactor,
-		consensusState:   consensusState,
-		consensusReactor: consensusReactor,
-		proxyApp:         proxyApp,
-		txIndexer:        txIndexer,
+		evsw:                      eventSwitch,
+		blockStore:                blockStore,
+		bcReactor:                 bcReactor,
+		mempoolReactor:            mempoolReactor,
+		consensusState:            consensusState,
+		consensusReactor:          consensusReactor,
+		transientBroadcastReactor: transientReactor,
+		proxyApp:                  proxyApp,
+		txIndexer:                 txIndexer,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
 	return node, nil
@@ -394,6 +400,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
 	rpccore.SetConsensusReactor(n.consensusReactor)
+	rpccore.SetTransientBroadcastReactor(n.transientBroadcastReactor)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
 }
 
@@ -457,6 +464,10 @@ func (n *Node) ConsensusReactor() *consensus.ConsensusReactor {
 // MempoolReactor returns the Node's MempoolReactor.
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
+}
+
+func (n *Node) TransientBroadcastReactor() *p2p.TransientBroadcastReactor {
+	return n.transientBroadcastReactor
 }
 
 // EventSwitch returns the Node's EventSwitch.

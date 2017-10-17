@@ -97,6 +97,10 @@ func (c *HTTP) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	return c.broadcastTX("broadcast_tx_sync", tx)
 }
 
+func (c *HTTP) BroadcastTransientTX(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+	return c.broadcastTX("broadcast_transient_tx", tx)
+}
+
 func (c *HTTP) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	result := new(ctypes.ResultBroadcastTx)
 	_, err := c.rpc.Call(route, map[string]interface{}{"tx": tx}, result)
@@ -105,6 +109,7 @@ func (c *HTTP) broadcastTX(route string, tx types.Tx) (*ctypes.ResultBroadcastTx
 	}
 	return result, nil
 }
+
 
 func (c *HTTP) NetInfo() (*ctypes.ResultNetInfo, error) {
 	result := new(ctypes.ResultNetInfo)

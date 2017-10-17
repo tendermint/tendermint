@@ -37,6 +37,8 @@ type ABCIClient interface {
 	BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
 	BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 	BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
+
+	BroadcastTransientTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error)
 }
 
 // SignClient groups together the interfaces need to get valid
