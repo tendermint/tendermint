@@ -146,6 +146,17 @@ func (g *Group) MaxIndex() int {
 	return g.maxIndex
 }
 
+// Write writes the contents of p into the current head of the group. It
+// returns the number of bytes written. If nn < len(p), it also returns an
+// error explaining why the write is short.
+// NOTE: Writes are buffered so they don't write synchronously
+// TODO: Make it halt if space is unavailable
+func (g *Group) Write(p []byte) (nn int, err error) {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	return g.headBuf.Write(p)
+}
+
 // WriteLine writes line into the current head of the group. It also appends "\n".
 // NOTE: Writes are buffered so they don't write synchronously
 // TODO: Make it halt if space is unavailable
