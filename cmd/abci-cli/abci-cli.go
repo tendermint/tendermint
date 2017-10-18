@@ -11,8 +11,12 @@ import (
 	"strings"
 
 	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/counter"
+	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 	//"github.com/tendermint/abci/version"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/spf13/cobra"
@@ -42,13 +46,23 @@ var logger log.Logger
 
 // flags
 var (
+	// global
 	address string
 	abci    string
 	verbose bool
 
+	// query
 	path   string
 	height int
 	prove  bool
+
+	// counter
+	addrC  string
+	serial bool
+
+	// dummy
+	addrD   string
+	persist string
 )
 
 var RootCmd = &cobra.Command{
@@ -93,6 +107,15 @@ func addQueryFlags() {
 	queryCmd.PersistentFlags().BoolVarP(&prove, "prove", "", false, "Whether or not to return a merkle proof of the query result")
 }
 
+func addCounterFlags() {
+	counterCmd.PersistentFlags().StringVarP(&addrC, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
+	counterCmd.PersistentFlags().BoolVarP(&serial, "serial", "", false, "Enforce incrementing (serial) transactions")
+}
+
+func addDummyFlags() {
+	dummyCmd.PersistentFlags().StringVarP(&addrD, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
+	dummyCmd.PersistentFlags().StringVarP(&persist, "persist", "", "", "Directory to use for a database")
+}
 func addCommands() {
 	RootCmd.AddCommand(batchCmd)
 	RootCmd.AddCommand(consoleCmd)
@@ -104,6 +127,12 @@ func addCommands() {
 	RootCmd.AddCommand(commitCmd)
 	addQueryFlags()
 	RootCmd.AddCommand(queryCmd)
+
+	// examples
+	addCounterFlags()
+	RootCmd.AddCommand(counterCmd)
+	addDummyFlags()
+	RootCmd.AddCommand(dummyCmd)
 }
 
 var batchCmd = &cobra.Command{
@@ -166,6 +195,20 @@ var queryCmd = &cobra.Command{
 	Short: "Query the application state",
 	Long:  "",
 	Run:   cmdQuery,
+}
+
+var counterCmd = &cobra.Command{
+	Use:   "counter",
+	Short: "ABCI demo example",
+	Long:  "",
+	Run:   cmdCounter,
+}
+
+var dummyCmd = &cobra.Command{
+	Use:   "dummy",
+	Short: "ABCI demo example",
+	Long:  "",
+	Run:   cmdDummy,
 }
 
 // Generates new Args array based off of previous call args to maintain flag persistence
@@ -338,6 +381,62 @@ func cmdQuery(cmd *cobra.Command, args []string) {
 			Height: resQuery.Height,
 			Proof:  resQuery.Proof,
 		},
+	})
+}
+
+func cmdCounter(cmd *cobra.Command, args []string) {
+
+	app := counter.NewCounterApplication(serial)
+
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+
+	// Start the listener
+	srv, err := server.NewServer(addrC, abci, app)
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+	srv.SetLogger(logger.With("module", "abci-server"))
+	if _, err := srv.Start(); err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	// Wait forever
+	cmn.TrapSignal(func() {
+		// Cleanup
+		srv.Stop()
+	})
+}
+
+func cmdDummy(cmd *cobra.Command, args []string) {
+	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+
+	// Create the application - in memory or persisted to disk
+	var app types.Application
+	if persist == "" {
+		app = dummy.NewDummyApplication()
+	} else {
+		app = dummy.NewPersistentDummyApplication(persist)
+		app.(*dummy.PersistentDummyApplication).SetLogger(logger.With("module", "dummy"))
+	}
+
+	// Start the listener
+	srv, err := server.NewServer(addrD, abci, app)
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+	srv.SetLogger(logger.With("module", "abci-server"))
+	if _, err := srv.Start(); err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
+	// Wait forever
+	cmn.TrapSignal(func() {
+		// Cleanup
+		srv.Stop()
 	})
 }
 
