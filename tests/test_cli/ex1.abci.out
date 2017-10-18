@@ -2,21 +2,21 @@
 -> data: hello
 -> data.hex: 68656C6C6F
 
-> info 
+> info
 -> data: {"size":0}
 -> data.hex: 7B2273697A65223A307D
 
-> commit 
+> commit
 
 > deliver_tx "abc"
 
-> info 
+> info
 -> data: {"size":1}
 -> data.hex: 7B2273697A65223A317D
 
-> commit 
--> data: uü~„»×ˆíX–$ðlú‡EÑ
--> data.hex: 750502FC7E84BBD788ED589624F06CFA871845D1
+> commit
+-> data: IßÑ\Í¬Þ®—(ËûµèhŒ¥‹‘
+-> data.hex: 49DFD15CCDACDEAE9728CB01FBB5E8688CA58B91
 
 > query "abc"
 -> log: exists
@@ -26,9 +26,9 @@
 
 > deliver_tx "def=xyz"
 
-> commit 
--> data: v9;Š.E†°iLbžËQ²†ïÕ
--> data.hex: 76393B8A182E450286B0694C629ECB51B286EFD5
+> commit
+-> data: p-³"€7?¿?Ÿ‰Ú* Î,Ö+
+-> data.hex: 70102DB32280373FBF3F9F89DA2A20CE2CD62B0B
 
 > query "def"
 -> log: exists

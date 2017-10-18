@@ -1,6 +1,7 @@
 package dummy
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
@@ -33,6 +34,7 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
 	} else {
 		app.state.Set(tx, tx)
 	}
+	fmt.Println("set data")
 	return types.OK
 }
 
@@ -41,7 +43,20 @@ func (app *DummyApplication) CheckTx(tx []byte) types.Result {
 }
 
 func (app *DummyApplication) Commit() types.Result {
-	hash := app.state.Hash()
+	// Save a new version
+	var hash []byte
+	var err error
+
+	if app.state.Size() > 0 {
+		// just add one more to height (kind of arbitrarily stupid)
+		height := app.state.LatestVersion() + 1
+		hash, err = app.state.SaveVersion(height)
+		if err != nil {
+			// if this wasn't a dummy app, we'd do something smarter
+			panic(err)
+		}
+	}
+
 	return types.NewResultOK(hash, "")
 }
 

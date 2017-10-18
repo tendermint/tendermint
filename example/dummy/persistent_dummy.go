@@ -94,6 +94,7 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 	// Save a new version
 	var appHash []byte
 	var err error
+
 	if app.app.state.Size() > 0 {
 		appHash, err = app.app.state.SaveVersion(app.height)
 		if err != nil {
@@ -103,12 +104,7 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 		app.logger.Info("Saved state", "root", appHash)
 	}
 
-	lastBlock := LastBlockInfo{
-		Height:  app.height,
-		AppHash: appHash, // this hash will be in the next block header
-	}
-
-	app.logger.Info("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
+	app.logger.Info("Commit block", "height", app.height, "root", appHash)
 	return types.NewResultOK(appHash, "")
 }
 
