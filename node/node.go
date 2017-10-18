@@ -247,6 +247,7 @@ func NewNode(config *cfg.Config,
 
 	// Make TransientBroadcastReactor
 	transientReactor := p2p.NewTransientBroadCastReactor()
+	transientReactor.SetLogger(p2pLogger)
 	sw.AddReactor("TRANSIENT", transientReactor)
 
 	// Filter peers by addr or pubkey with an ABCI query.
