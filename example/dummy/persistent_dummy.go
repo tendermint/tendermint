@@ -3,13 +3,12 @@ package dummy
 import (
 	"bytes"
 	"encoding/hex"
+	"path"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/merkleeyes/iavl"
+	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -23,11 +22,11 @@ const (
 
 type PersistentDummyApplication struct {
 	app *DummyApplication
-	db  dbm.DB
 
 	// latest received
 	// TODO: move to merkle tree?
 	blockHeader *types.Header
+	height      uint64
 
 	// validator set
 	changes []*types.Validator
@@ -36,17 +35,22 @@ type PersistentDummyApplication struct {
 }
 
 func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
-	db := dbm.NewDB("dummy", "leveldb", dbDir)
-	lastBlock := LoadLastBlock(db)
+	name := "dummy"
+	dbPath := path.Join(dbDir, name+".db")
+	empty, _ := cmn.IsDirEmpty(dbPath)
 
-	stateTree := iavl.NewIAVLTree(0, db)
-	stateTree.Load(lastBlock.AppHash)
+	db, err := dbm.NewGoLevelDB(name, dbDir)
+	if err != nil {
+		panic(err)
+	}
 
-	// log.Notice("Loaded state", "block", lastBlock.Height, "root", stateTree.Hash())
+	stateTree := iavl.NewVersionedTree(500, db)
+	if !empty {
+		stateTree.Load()
+	}
 
 	return &PersistentDummyApplication{
 		app:    &DummyApplication{state: stateTree},
-		db:     db,
 		logger: log.NewNopLogger(),
 	}
 }
@@ -57,9 +61,8 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	resInfo = app.app.Info(req)
-	lastBlock := LoadLastBlock(app.db)
-	resInfo.LastBlockHeight = lastBlock.Height
-	resInfo.LastBlockAppHash = lastBlock.AppHash
+	resInfo.LastBlockHeight = app.height
+	resInfo.LastBlockAppHash = app.app.state.Hash()
 	return resInfo
 }
 
@@ -86,18 +89,26 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
 }
 
 func (app *PersistentDummyApplication) Commit() types.Result {
-	// Save
-	appHash := app.app.state.Save()
-	app.logger.Info("Saved state", "root", appHash)
+	app.height = app.blockHeader.Height
+
+	// Save a new version
+	var appHash []byte
+	var err error
+	if app.app.state.Size() > 0 {
+		appHash, err = app.app.state.SaveVersion(app.height)
+		if err != nil {
+			// if this wasn't a dummy app, we'd do something smarter
+			panic(err)
+		}
+		app.logger.Info("Saved state", "root", appHash)
+	}
 
 	lastBlock := LastBlockInfo{
-		Height:  app.blockHeader.Height,
+		Height:  app.height,
 		AppHash: appHash, // this hash will be in the next block header
 	}
 
 	app.logger.Info("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
-	SaveLastBlock(app.db, lastBlock)
-
 	return types.NewResultOK(appHash, "")
 }
 
@@ -137,31 +148,6 @@ var lastBlockKey = []byte("lastblock")
 type LastBlockInfo struct {
 	Height  uint64
 	AppHash []byte
-}
-
-// Get the last block from the db
-func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
-	buf := db.Get(lastBlockKey)
-	if len(buf) != 0 {
-		r, n, err := bytes.NewReader(buf), new(int), new(error)
-		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
-		if *err != nil {
-			cmn.PanicCrisis(errors.Wrap(*err, "cannot load last block (data has been corrupted or its spec has changed)"))
-		}
-		// TODO: ensure that buf is completely read.
-	}
-
-	return lastBlock
-}
-
-func SaveLastBlock(db dbm.DB, lastBlock LastBlockInfo) {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(lastBlock, buf, n, err)
-	if *err != nil {
-		// TODO
-		cmn.PanicCrisis(errors.Wrap(*err, "cannot save last block"))
-	}
-	db.Set(lastBlockKey, buf.Bytes())
 }
 
 //---------------------------------------------
