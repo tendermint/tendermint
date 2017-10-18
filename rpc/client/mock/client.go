@@ -37,9 +37,7 @@ type Client struct {
 	types.EventSwitch
 }
 
-func (c Client) _assertIsClient() client.Client {
-	return c
-}
+var _ client.Client = Client{}
 
 // Call is used by recorders to save a call and response.
 // It can also be used to configure mock responses.

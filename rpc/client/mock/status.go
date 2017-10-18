@@ -10,9 +10,10 @@ type StatusMock struct {
 	Call
 }
 
-func (m *StatusMock) _assertStatusClient() client.StatusClient {
-	return m
-}
+var (
+	_ client.StatusClient = (*StatusMock)(nil)
+	_ client.StatusClient = (*StatusRecorder)(nil)
+)
 
 func (m *StatusMock) Status() (*ctypes.ResultStatus, error) {
 	res, err := m.GetResponse(nil)
@@ -34,10 +35,6 @@ func NewStatusRecorder(client client.StatusClient) *StatusRecorder {
 		Client: client,
 		Calls:  []Call{},
 	}
-}
-
-func (r *StatusRecorder) _assertStatusClient() client.StatusClient {
-	return r
 }
 
 func (r *StatusRecorder) addCall(call Call) {
