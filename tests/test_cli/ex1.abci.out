@@ -2,19 +2,19 @@
 -> data: hello
 -> data.hex: 68656C6C6F
 
-> info
+> info 
 -> data: {"size":0}
 -> data.hex: 7B2273697A65223A307D
 
-> commit
+> commit 
 
 > deliver_tx "abc"
 
-> info
+> info 
 -> data: {"size":1}
 -> data.hex: 7B2273697A65223A317D
 
-> commit
+> commit 
 -> data: IßÑ\Í¬Þ®—(ËûµèhŒ¥‹‘
 -> data.hex: 49DFD15CCDACDEAE9728CB01FBB5E8688CA58B91
 
@@ -26,7 +26,7 @@
 
 > deliver_tx "def=xyz"
 
-> commit
+> commit 
 -> data: p-³"€7?¿?Ÿ‰Ú* Î,Ö+
 -> data.hex: 70102DB32280373FBF3F9F89DA2A20CE2CD62B0B
 
