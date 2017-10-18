@@ -25,7 +25,7 @@ Then run
 
 ::
 
-    go get -u github.com/tendermint/abci/cmd/...
+    go get -u github.com/tendermint/abci/cmd/abci-cli
 
 If there is an error, install and run the ``glide`` tool to pin the
 dependencies:
@@ -35,20 +35,12 @@ dependencies:
     go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
     glide install
-    go install ./cmd/...
+    go install ./cmd/abci-cli
 
-Now you should have the ``abci-cli`` plus two apps installed:
-
-::
-
-    dummy --help
-    counter --help
-
-These binaries are installed on ``$GOPATH/bin`` and all come from within
-the ``./cmd/...`` directory of the abci repository.
-
-Both of these example applications are in Go. See below for an
-application written in Javascript.
+Now you should have the ``abci-cli`` installed; you'll see
+a couple of commands (``counter`` and ``dummy``) that are
+example applications written in Go. See below for an application
+written in Javascript.
 
 Now, let's run some apps!
 
@@ -66,7 +58,7 @@ Let's start a dummy application.
 
 ::
 
-    dummy
+    abci-cli dummy
 
 In another terminal, we can start Tendermint. If you have never run
 Tendermint before, use:

@@ -14,7 +14,7 @@ Next, install the ``abci-cli`` tool and example applications:
 
 ::
 
-    go get -u github.com/tendermint/abci/cmd/...
+    go get -u github.com/tendermint/abci/cmd/abci-cli
 
 If this fails, you may need to use ``glide`` to get vendored
 dependencies:
@@ -24,27 +24,37 @@ dependencies:
     go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
     glide install
-    go install ./cmd/...
+    go install ./cmd/abci-cli
 
-Now run ``abci-cli --help`` to see the list of commands:
+Now run ``abci-cli`` to see the list of commands:
 
 ::
 
-    COMMANDS:
-       batch        Run a batch of ABCI commands against an application
-       console      Start an interactive console for multiple commands
-       echo         Have the application echo a message
-       info         Get some info about the application
-       set_option   Set an option on the application
-       deliver_tx    Append a new tx to application
-       check_tx     Validate a tx
-       commit       Get application Merkle root hash
-       help, h      Shows a list of commands or help for one command
+    Usage:
+      abci-cli [command]
 
-    GLOBAL OPTIONS:
-       --address "tcp://127.0.0.1:46658"    address of application socket
-       --help, -h                           show help
-       --version, -v                        print the version
+    Available Commands:
+      batch       Run a batch of abci commands against an application
+      check_tx    Validate a tx
+      commit      Commit the application state and return the Merkle root hash
+      console     Start an interactive abci console for multiple commands
+      counter     ABCI demo example
+      deliver_tx  Deliver a new tx to the application
+      dummy       ABCI demo example
+      echo        Have the application echo a message
+      help        Help about any command
+      info        Get some info about the application
+      query       Query the application state
+      set_option  Set an options on the application
+
+    Flags:
+          --abci string      socket or grpc (default "socket")
+          --address string   address of application socket (default "tcp://127.0.0.1:46658")
+      -h, --help             help for abci-cli
+      -v, --verbose          print the command and results as if it were a console session
+
+                                          Use "abci-cli [command] --help" for more information about a command.
+
 
 Dummy - First Example
 ---------------------
@@ -61,7 +71,7 @@ Let's start a dummy application, which was installed at the same time as
 
 ::
 
-    dummy
+    abci-cli dummy
 
 In another terminal, run
 
@@ -181,7 +191,7 @@ app:
 
 ::
 
-    counter
+    abci-cli counter
 
 In another window, start the ``abci-cli console``:
 
