@@ -11,13 +11,13 @@ cd "$DIR" || exit
 function testExample() {
 	N=$1
 	INPUT=$2
-	APP=$3
+	APP="$3 $4"
 
-	echo "Example $N"
+	echo "Example $N: $APP"
 	$APP &> /dev/null &
 	sleep 2
 	abci-cli --verbose batch < "$INPUT" > "${INPUT}.out.new"
-	killall "$APP"
+	killall $3
 
 	pre=$(shasum < "${INPUT}.out")
 	post=$(shasum < "${INPUT}.out.new")
@@ -34,8 +34,8 @@ function testExample() {
 	rm "${INPUT}".out.new
 }
 
-testExample 1 tests/test_cli/ex1.abci dummy
-testExample 2 tests/test_cli/ex2.abci counter
+testExample 1 tests/test_cli/ex1.abci abci-cli dummy
+testExample 2 tests/test_cli/ex2.abci abci-cli counter
 
 echo ""
 echo "PASS"
