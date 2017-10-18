@@ -153,11 +153,10 @@ The result should look like:
       }
     }
 
-Again, the ``112`` is the type-byte. Note the ``value`` in the result
-(``61626364``); this is the hex-encoding of the ASCII of ``abcd``. You
-can verify this in a python shell by running
-``"61626364".decode('hex')``. Stay tuned for a future release that makes
-this output more human-readable ;).
+Note the ``value`` in the result (``61626364``); this is the
+hex-encoding of the ASCII of ``abcd``. You can verify this in
+a python shell by running ``"61626364".decode('hex')``. Stay
+tuned for a future release that makes this output more human-readable.
 
 Now let's try setting a different key and value:
 
