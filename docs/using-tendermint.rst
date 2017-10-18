@@ -386,3 +386,11 @@ the listening addresses of the various sockets don't conflict.
 Additionally, you must set ``addrbook_strict=false`` in the
 ``config.toml``, otherwise Tendermint's p2p library will deny making
 connections to peers with the same IP address.
+
+Ugrading
+~~~~~~~~
+
+The tendermint development cycle includes a lot of breaking changes. Upgrading from
+an old version to a new version usually means throwing away the chain data. Try out
+the `tm-migrate <https://github.com/hxzqlh/tm-tools>`__ tool written by @hxqlh if
+you are keen to preserve the state of your chain when upgrading to newer versions.
