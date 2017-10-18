@@ -15,7 +15,6 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	//"github.com/tendermint/abci/version"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -70,6 +69,13 @@ var RootCmd = &cobra.Command{
 	Short: "",
 	Long:  "",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+
+		switch cmd.Use {
+		// for the examples apps, don't pre-run
+		case "counter", "dummy":
+			return nil
+		}
+
 		if logger == nil {
 			logger = log.NewFilter(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), log.AllowError())
 		}
