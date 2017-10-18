@@ -70,13 +70,13 @@ metalinter_test: tools
 		--enable=vetshadow \
 		./...
 
-	#--enable=dupl \
-	#--enable=errcheck \
-	#--enable=gocyclo \
-	#--enable=golint \ <== comments on anything exported
-	#--enable=gotype \
-	#--enable=interfacer \
-	#--enable=unparam \
-	#--enable=vet \
+		#--enable=dupl \
+		#--enable=errcheck \
+		#--enable=gocyclo \
+		#--enable=golint \ <== comments on anything exported
+		#--enable=gotype \
+	   	#--enable=interfacer \
+	   	#--enable=unparam \
+		#--enable=vet \
 
 .PHONY: all build test fmt get_deps tools
