@@ -89,14 +89,14 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
 }
 
 func (app *PersistentDummyApplication) Commit() types.Result {
-	app.height = app.blockHeader.Height
+	h := app.blockHeader.Height
 
 	// Save a new version
 	var appHash []byte
 	var err error
 
 	if app.app.state.Size() > 0 {
-		appHash, err = app.app.state.SaveVersion(app.height)
+		appHash, err = app.app.state.SaveVersion(h)
 		if err != nil {
 			// if this wasn't a dummy app, we'd do something smarter
 			panic(err)
@@ -104,7 +104,8 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 		app.logger.Info("Saved state", "root", appHash)
 	}
 
-	app.logger.Info("Commit block", "height", app.height, "root", appHash)
+	app.height = h
+	app.logger.Info("Commit block", "height", h, "root", appHash)
 	return types.NewResultOK(appHash, "")
 }
 

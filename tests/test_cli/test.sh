@@ -15,7 +15,6 @@ function testExample() {
 
 	echo "Example $N"
 	$APP &> /dev/null &
-    # $APP &> ./app.out &
 	sleep 2
 	abci-cli --verbose batch < "$INPUT" > "${INPUT}.out.new"
 	killall "$APP"

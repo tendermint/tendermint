@@ -1,7 +1,6 @@
 package dummy
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
@@ -34,7 +33,6 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
 	} else {
 		app.state.Set(tx, tx)
 	}
-	fmt.Println("set data")
 	return types.OK
 }
 
@@ -63,7 +61,7 @@ func (app *DummyApplication) Commit() types.Result {
 func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value, proof, err := app.state.GetWithProof(reqQuery.Data)
-		// be stupid here
+		// if this wasn't a dummy app, we'd do something smarter
 		if err != nil {
 			panic(err)
 		}
@@ -71,7 +69,7 @@ func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
 		resQuery.Proof = wire.BinaryBytes(proof)
-		if value == nil {
+		if value != nil {
 			resQuery.Log = "exists"
 		} else {
 			resQuery.Log = "does not exist"
