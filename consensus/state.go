@@ -675,7 +675,7 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	// before we enterPropose in round 0. If the last block changed the app hash,
 	// we may need an empty "proof" block, and enterPropose immediately.
 	waitForTxs := cs.config.WaitForTxs() && round == 0 && !cs.needProofBlock(height)
-	if waitForTxs {
+	if waitForTxs || cs.mempool.Size()==0 {
 		if cs.config.CreateEmptyBlocksInterval > 0 {
 			cs.scheduleTimeout(cs.config.EmptyBlocksInterval(), height, round, cstypes.RoundStepNewRound)
 		}
