@@ -137,16 +137,6 @@ func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock type
 	return types.ResponseEndBlock{Diffs: app.changes}
 }
 
-//-----------------------------------------
-// persist the last block info
-
-var lastBlockKey = []byte("lastblock")
-
-type LastBlockInfo struct {
-	Height  uint64
-	AppHash []byte
-}
-
 //---------------------------------------------
 // update validators
 
