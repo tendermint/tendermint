@@ -38,9 +38,9 @@ type State struct {
 	mtx sync.Mutex
 	db  dbm.DB
 
-	// should not change
-	GenesisDoc *types.GenesisDoc
-	ChainID    string
+	ChainID string
+	// Consensus parameters used for validating blocks
+	Params types.ConsensusParams
 
 	// These fields are updated by SetBlockAndValidators.
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
@@ -69,15 +69,16 @@ type State struct {
 // or creates a new one from the given genesisFile and persists the result
 // to the database.
 func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
-	var err error
 	state := LoadState(stateDB)
 	if state == nil {
+		var err error
 		state, err = MakeGenesisStateFromFile(stateDB, genesisFile)
 		if err != nil {
 			return nil, err
 		}
 		state.Save()
 	}
+
 	return state, nil
 }
 
@@ -100,7 +101,6 @@ func loadState(db dbm.DB, key []byte) *State {
 		}
 		// TODO: ensure that buf is completely read.
 	}
-
 	return s
 }
 
@@ -113,8 +113,6 @@ func (s *State) SetLogger(l log.Logger) {
 func (s *State) Copy() *State {
 	return &State{
 		db:                          s.db,
-		GenesisDoc:                  s.GenesisDoc,
-		ChainID:                     s.ChainID,
 		LastBlockHeight:             s.LastBlockHeight,
 		LastBlockID:                 s.LastBlockID,
 		LastBlockTime:               s.LastBlockTime,
@@ -123,7 +121,9 @@ func (s *State) Copy() *State {
 		AppHash:                     s.AppHash,
 		TxIndexer:                   s.TxIndexer, // pointer here, not value
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
-		logger: s.logger,
+		logger:  s.logger,
+		ChainID: s.ChainID,
+		Params:  s.Params,
 	}
 }
 
@@ -168,7 +168,7 @@ func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
 	if v.ValidatorSet == nil {
 		v = s.loadValidators(v.LastHeightChanged)
 		if v == nil {
-			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at 
+			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at
 			height %d as last changed from height %d`, v.LastHeightChanged, height))
 		}
 	}
@@ -264,14 +264,6 @@ func (s *State) GetValidators() (*types.ValidatorSet, *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
 }
 
-// Params returns the consensus parameters used for
-// validating blocks
-func (s *State) Params() types.ConsensusParams {
-	// TODO: this should move into the State proper
-	// when we allow the app to change it
-	return *s.GenesisDoc.ConsensusParams
-}
-
 //------------------------------------------------------------------------
 
 // ABCIResponses retains the responses of the various ABCI calls during block processing.
@@ -341,8 +333,6 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 }
 
 // MakeGenesisState creates state from types.GenesisDoc.
-//
-// Used in tests.
 func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
@@ -364,9 +354,11 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 	}
 
 	return &State{
-		db:                          db,
-		GenesisDoc:                  genDoc,
-		ChainID:                     genDoc.ChainID,
+		db: db,
+
+		ChainID: genDoc.ChainID,
+		Params:  *genDoc.ConsensusParams,
+
 		LastBlockHeight:             0,
 		LastBlockID:                 types.BlockID{},
 		LastBlockTime:               genDoc.GenesisTime,

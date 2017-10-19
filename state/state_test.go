@@ -12,6 +12,7 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -127,7 +128,8 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	// each valset is just one validator.
 	// create list of them
 	pubkeys := make([]crypto.PubKey, N+1)
-	pubkeys[0] = state.GenesisDoc.Validators[0].PubKey
+	_, val := state.Validators.GetByIndex(0)
+	pubkeys[0] = val.PubKey
 	for i := 1; i < N+1; i++ {
 		pubkeys[i] = crypto.GenPrivKeyEd25519().PubKey()
 	}
