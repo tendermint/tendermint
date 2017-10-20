@@ -320,7 +320,7 @@ Neat, eh?
 Basecoin - A More Interesting Example
 -------------------------------------
 
-We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the``dummy`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
+We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the ``dummy`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
 
 The default ``basecoin`` application is a multi-asset cryptocurrency
 that supports inter-blockchain communication. For more details on how
