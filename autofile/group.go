@@ -146,6 +146,13 @@ func (g *Group) MaxIndex() int {
 	return g.maxIndex
 }
 
+// MinIndex returns index of the first file in the group.
+func (g *Group) MinIndex() int {
+	g.mtx.Lock()
+	defer g.mtx.Unlock()
+	return g.minIndex
+}
+
 // Write writes the contents of p into the current head of the group. It
 // returns the number of bytes written. If nn < len(p), it also returns an
 // error explaining why the write is short.
