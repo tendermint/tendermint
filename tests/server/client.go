@@ -17,9 +17,9 @@ func InitChain(client abcicli.Client) error {
 	for i := 0; i < total; i++ {
 		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
 		power := cmn.RandInt()
-		vals[i] = &types.Validator{pubkey, uint64(power)}
+		vals[i] = &types.Validator{pubkey, int64(power)}
 	}
-	err := client.InitChainSync(vals)
+	_, err := client.InitChainSync(types.RequestInitChain{Validators: vals})
 	if err != nil {
 		fmt.Println("Failed test: InitChain - %v", err)
 		return err
@@ -29,38 +29,38 @@ func InitChain(client abcicli.Client) error {
 }
 
 func SetOption(client abcicli.Client, key, value string) error {
-	res := client.SetOptionSync(key, value)
-	_, _, log := res.Code, res.Data, res.Log
-	if res.IsErr() {
+	res, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: value})
+	log := res.GetLog()
+	if err != nil {
 		fmt.Println("Failed test: SetOption")
 		fmt.Printf("setting %v=%v: \nlog: %v", key, value, log)
 		fmt.Println("Failed test: SetOption")
-		return errors.New(res.Error())
+		return err
 	}
 	fmt.Println("Passed test: SetOption")
 	return nil
 }
 
 func Commit(client abcicli.Client, hashExp []byte) error {
-	res := client.CommitSync()
-	_, data, log := res.Code, res.Data, res.Log
-	if res.IsErr() {
+	res, err := client.CommitSync()
+	_, data := res.Code, res.Data
+	if err != nil {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("committing %v\nlog: %v", log)
-		return errors.New(res.Error())
+		fmt.Printf("committing %v\nlog: %v", res.GetLog())
+		return err
 	}
-	if !bytes.Equal(res.Data, hashExp) {
+	if !bytes.Equal(data, hashExp) {
 		fmt.Println("Failed test: Commit")
 		fmt.Printf("Commit hash was unexpected. Got %X expected %X",
-			data, hashExp)
+			data.Bytes(), hashExp)
 		return errors.New("CommitTx failed")
 	}
 	fmt.Println("Passed test: Commit")
 	return nil
 }
 
-func DeliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) error {
-	res := client.DeliverTxSync(txBytes)
+func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
+	res, _ := client.DeliverTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: DeliverTx")
@@ -78,14 +78,9 @@ func DeliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 	return nil
 }
 
-func CheckTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) error {
-	res := client.CheckTxSync(txBytes)
+func CheckTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) error {
+	res, _ := client.CheckTxSync(txBytes)
 	code, data, log := res.Code, res.Data, res.Log
-	if res.IsErr() {
-		fmt.Println("Failed test: CheckTx")
-		fmt.Printf("checking tx %X: %v\nlog: %v", txBytes, log)
-		return errors.New(res.Error())
-	}
 	if code != codeExp {
 		fmt.Println("Failed test: CheckTx")
 		fmt.Printf("CheckTx response code was unexpected. Got %v expected %v. Log: %v",

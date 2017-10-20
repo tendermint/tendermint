@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
@@ -274,10 +275,10 @@ var dummyCmd = &cobra.Command{
 }
 
 var testCmd = &cobra.Command{
-	Use: "test",
+	Use:   "test",
 	Short: "Run integration tests",
-	Long: "",
-	Args: cobra.ExactArgs(0),
+	Long:  "",
+	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdTest(cmd, args)
 	},
@@ -299,6 +300,14 @@ func persistentArgs(line []byte) []string {
 
 //--------------------------------------------------------------------------------
 
+func or(err1 error, err2 error) error {
+	if err1 == nil {
+		return err2
+	} else {
+		return err1
+	}
+}
+
 func cmdTest(cmd *cobra.Command, args []string) error {
 	fmt.Println("Running tests")
 
@@ -306,34 +315,34 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 
 	err = servertest.InitChain(client)
 	fmt.Println("")
-	err = servertest.SetOption(client, "serial", "on")
+	err = or(err, servertest.SetOption(client, "serial", "on"))
 	fmt.Println("")
-	err = servertest.Commit(client, nil)
+	err = or(err, servertest.Commit(client, nil))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte("abc"), types.CodeType_BadNonce, nil)
+	err = or(err, servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil))
 	fmt.Println("")
-	err = servertest.Commit(client, nil)
+	err = or(err, servertest.Commit(client, nil))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte{0x00}, types.CodeType_OK, nil)
+	err = or(err, servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeOK, nil))
 	fmt.Println("")
-	err = servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1})
+	err = or(err, servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1}))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte{0x00}, types.CodeType_BadNonce, nil)
+	err = or(err, servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte{0x01}, types.CodeType_OK, nil)
+	err = or(err, servertest.DeliverTx(client, []byte{0x01}, code.CodeTypeOK, nil))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte{0x00, 0x02}, types.CodeType_OK, nil)
+	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x02}, code.CodeTypeOK, nil))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte{0x00, 0x03}, types.CodeType_OK, nil)
+	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x03}, code.CodeTypeOK, nil))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte{0x00, 0x00, 0x04}, types.CodeType_OK, nil)
+	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x00, 0x04}, code.CodeTypeOK, nil))
 	fmt.Println("")
-	err = servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, types.CodeType_BadNonce, nil)
+	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil))
 	fmt.Println("")
-	err = servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5})
+	err = or(err, servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5}))
 
 	if err != nil {
-		return errors.New("Some checks didn't pass, please use the cli to see the exact failures.")
+		return errors.New("Some checks didn't pass, please inspect stdout to see the exact failures.")
 	}
 	return nil
 }
