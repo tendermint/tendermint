@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	TBChannel = byte(0x00)
+	TBChannel = byte(0xf0)
 
 	maxMessageSize = 1048576
 )
