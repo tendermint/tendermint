@@ -212,7 +212,9 @@ func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int
 	if requester.setBlock(block, peerID) {
 		pool.numPending--
 		peer := pool.peers[peerID]
-		peer.decrPending(blockSize)
+		if peer != nil {
+			peer.decrPending(blockSize)
+		}
 	} else {
 		// Bad peer?
 	}
