@@ -69,9 +69,7 @@ func (pool *BlockPool) OnStart() error {
 	return nil
 }
 
-func (pool *BlockPool) OnStop() {
-	pool.BaseService.OnStop()
-}
+func (pool *BlockPool) OnStop() {}
 
 // Run spawns requesters as needed.
 func (pool *BlockPool) makeRequestersRoutine() {
