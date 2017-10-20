@@ -107,8 +107,6 @@ func BroadcastTransientTx(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 
 	return &ctypes.ResultBroadcastTx{
 		Code: types2.CodeType_OK,
-		Data: nil,
-		Log:  "tried to broadcast transient tx",
 		Hash: tx.Hash(),
 	}, nil
 }

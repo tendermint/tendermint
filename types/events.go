@@ -17,6 +17,7 @@ func EventStringRebond() string  { return "Rebond" }
 func EventStringDupeout() string { return "Dupeout" }
 func EventStringFork() string    { return "Fork" }
 func EventStringTx(tx Tx) string { return cmn.Fmt("Tx:%X", tx.Hash()) }
+func EventStringTransientTx() string { return "TransientTx" }
 
 func EventStringNewBlock() string         { return "NewBlock" }
 func EventStringNewBlockHeader() string   { return "NewBlockHeader" }
@@ -43,6 +44,8 @@ var (
 	EventDataNameVote           = "vote"
 
 	EventDataNameProposalHeartbeat = "proposer_heartbeat"
+
+	EventDataNameTransientTx = "transient_tx"
 )
 
 //----------------------------------------
@@ -90,6 +93,8 @@ const (
 	EventDataTypeVote       = byte(0x12)
 
 	EventDataTypeProposalHeartbeat = byte(0x20)
+
+	EventDataTypeTransientTx = byte(0xf0)
 )
 
 var tmEventDataMapper = data.NewMapper(TMEventData{}).
@@ -98,7 +103,8 @@ var tmEventDataMapper = data.NewMapper(TMEventData{}).
 	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
 	RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
 	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote).
-	RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat)
+	RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat).
+	RegisterImplementation(EventDataTransientTx{}, EventDataNameTransientTx, EventDataTypeTransientTx)
 
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic
@@ -140,11 +146,16 @@ type EventDataVote struct {
 	Vote *Vote
 }
 
+type EventDataTransientTx struct {
+	Tx Tx `json:"tx"`
+}
+
 func (_ EventDataNewBlock) AssertIsTMEventData()       {}
 func (_ EventDataNewBlockHeader) AssertIsTMEventData() {}
 func (_ EventDataTx) AssertIsTMEventData()             {}
 func (_ EventDataRoundState) AssertIsTMEventData()     {}
 func (_ EventDataVote) AssertIsTMEventData()           {}
+func (_ EventDataTransientTx) AssertIsTMEventData()        {}
 
 func (_ EventDataProposalHeartbeat) AssertIsTMEventData() {}
 
@@ -206,6 +217,10 @@ func FireEventVote(fireable events.Fireable, vote EventDataVote) {
 
 func FireEventTx(fireable events.Fireable, tx EventDataTx) {
 	fireEvent(fireable, EventStringTx(tx.Tx), TMEventData{tx})
+}
+
+func FireEventTransientTx(fireable events.Fireable, tx EventDataTransientTx) {
+	fireEvent(fireable, EventStringTransientTx(), TMEventData{tx})
 }
 
 //--- EventDataRoundState events

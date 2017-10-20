@@ -16,6 +16,7 @@ const (
 
 type TransientBroadcastReactor struct {
 	BaseReactor
+	evsw types.EventSwitch
 }
 
 func NewTransientBroadCastReactor() *TransientBroadcastReactor {
@@ -23,6 +24,15 @@ func NewTransientBroadCastReactor() *TransientBroadcastReactor {
 	r.BaseReactor = *NewBaseReactor("TransientBroadcastReactor", r)
 	return r
 }
+
+func (r *TransientBroadcastReactor) SetEventSwitch(eventSwitch types.EventSwitch) {
+	r.evsw = eventSwitch
+}
+
+//func(r *TransientBroadcastReactor) SetLogger(logger log.Logger) {
+//	r.Logger = logger
+//	logger.Debug("Set logger on TransientBroadcastReactor")
+//}
 
 func (r *TransientBroadcastReactor) GetChannels() []*ChannelDescriptor {
 	return []*ChannelDescriptor{
@@ -43,13 +53,12 @@ func (r *TransientBroadcastReactor) Receive(chID byte, src Peer, msgBytes []byte
 		return
 	}
 
-	r.Logger.Info("Received message", "msg", msg)
+	r.Logger.Debug("Received message", "msg", msg)
 
 	switch msg := msg.(type) {
-
 	case *TransientTxMessage:
-		r.Logger.Debug("received tx", "tx", msg.Tx)
-		//TODO forward to websocket stuff
+		r.Logger.Debug("Received tx, broadcasting over EventSwitch now", "tx", msg.Tx)
+		types.FireEventTransientTx(r.evsw, types.EventDataTransientTx{msg.Tx})
 	default:
 		r.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -60,28 +69,26 @@ func (r *TransientBroadcastReactor) Receive(chID byte, src Peer, msgBytes []byte
  * Broadcast a transient message to all peers
  */
 func (r *TransientBroadcastReactor) BroadcastTransientMessage(tx types.Tx) {
-	//r.Switch.Broadcast(TBChannel, &TransientTxMessage{tx})
-
-	// p.Send(PexChannel, struct{ PexMessage }{&pexRequestMessage{}})
-
-	r.Logger.Info("Sending message", "msg", tx)
+	r.Logger.Debug("Sending Transient Message", "msg", tx)
 
 	if (r.Switch == nil) {
-		r.Logger.Error("SWITCH IS NIL, FUCK")
+		r.Logger.Error("PeerSwitch is nil, this shouldnt be")
 		return
-	} else {
-		r.Logger.Error("possibly broadcasting this tx")
 	}
 
+	// Send to own WSClients, can be multiple
+	r.Logger.Debug("Re-Broadcasting over EventSwitch to own subscribers")
+	types.FireEventTransientTx(r.evsw, types.EventDataTransientTx{tx})
 
+	// send to peers
+	r.Logger.Debug("Broadcasting to peers", "peer_size", r.Switch.peers.Size())
 	for _, peer := range r.Switch.peers.List() {
 		go func(peer Peer) {
-			peer.Send(TBChannel, struct {TransientMessage}{&TransientTxMessage{Tx:tx}})
+			peer.Send(TBChannel, struct{ TransientMessage }{&TransientTxMessage{Tx: tx}})
 		}(peer)
 	}
 
 }
-
 
 //-----------------------------------------------------------------------------
 // Messages

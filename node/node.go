@@ -246,8 +246,10 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Make TransientBroadcastReactor
+	// TODO maybe make this config-dependant, disabled by default?
 	transientReactor := p2p.NewTransientBroadCastReactor()
 	transientReactor.SetLogger(p2pLogger)
+	transientReactor.SetEventSwitch(eventSwitch)
 	sw.AddReactor("TRANSIENT", transientReactor)
 
 	// Filter peers by addr or pubkey with an ABCI query.
