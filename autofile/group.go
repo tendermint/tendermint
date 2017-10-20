@@ -565,6 +565,42 @@ func (gr *GroupReader) Close() error {
 	}
 }
 
+// Read implements io.Reader, reading bytes from the current Reader
+// incrementing index until enough bytes are read.
+func (gr *GroupReader) Read(p []byte) (n int, err error) {
+	gr.mtx.Lock()
+	defer gr.mtx.Unlock()
+
+	// Open file if not open yet
+	if gr.curReader == nil {
+		if err = gr.openFile(gr.curIndex); err != nil {
+			return 0, err
+		}
+	}
+
+	// Iterate over files until enough bytes are read
+	lenP := len(p)
+	for {
+		nn, err := gr.curReader.Read(p[n:])
+		n += nn
+		if err == io.EOF {
+			// Open the next file
+			if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
+				return n, err1
+			}
+			if n >= lenP {
+				return n, nil
+			} else {
+				continue
+			}
+		} else if err != nil {
+			return n, err
+		}
+	}
+
+	return n, err
+}
+
 // ReadLine reads a line (without delimiter).
 // just return io.EOF if no new lines found.
 func (gr *GroupReader) ReadLine() (string, error) {
