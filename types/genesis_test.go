@@ -60,31 +60,3 @@ func TestGenesis(t *testing.T) {
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
 }
-
-func newConsensusParams(blockSize, partSize int) ConsensusParams {
-	return ConsensusParams{
-		BlockSizeParams:   BlockSizeParams{MaxBytes: blockSize},
-		BlockGossipParams: BlockGossipParams{BlockPartSizeBytes: partSize},
-	}
-
-}
-
-func TestConsensusParams(t *testing.T) {
-
-	testCases := []struct {
-		params ConsensusParams
-		valid  bool
-	}{
-		{newConsensusParams(1, 1), true},
-		{newConsensusParams(1, 0), false},
-		{newConsensusParams(0, 1), false},
-		{newConsensusParams(0, 0), false},
-	}
-	for _, testCase := range testCases {
-		if testCase.valid {
-			assert.NoError(t, testCase.params.Validate(), "expected no error for valid params")
-		} else {
-			assert.Error(t, testCase.params.Validate(), "expected error for non valid params")
-		}
-	}
-}
