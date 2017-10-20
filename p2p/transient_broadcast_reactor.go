@@ -3,9 +3,9 @@ package p2p
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
-	"reflect"
 )
 
 const (
