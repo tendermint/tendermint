@@ -12,7 +12,8 @@ log_level = "mempool:error,*:debug"
 {% else %}
 
 db_backend = "leveldb"
-log_level = "state:info,*:error"
+#log_level = "state:info,*:error"
+log_level = "debug"
 
 {% endif %}
 
@@ -39,7 +40,7 @@ create_empty_blocks_interval = 1
 {% else %}
 
 [consensus]
-create_empty_blocks_interval = 1
+create_empty_blocks_interval = 10
 
 {% endif %}
 

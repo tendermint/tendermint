@@ -181,7 +181,7 @@
       },
       {
         "name": "wancloud",
-        "address": "117FE408E1F74C453901BCB638F996964FD29CBB",
+        "address": "02C1F2CE501DAF30F758E657B71FC7AD568C4BE5",
         "coins": [
           {
             "denom": "fermion",
@@ -195,7 +195,7 @@
       },
       {
         "name": "bianjie",
-        "address": "F63F2D34C03430A54B7F6A43C886B4A83F366B84",
+        "address": "7D626173FAA69D96E56523A333EAF78F87843CE5",
         "coins": [
           {
             "denom": "fermion",
@@ -232,6 +232,26 @@
           {
             "denom": "zakicoin",
             "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "jimyang",
+        "address": "6F94C5B7FEB6EF926A8901A8E8F4B2077D02B354",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "MichaelYuan",
+        "address": "F75D0FD7036A3BB9092DD0938BBF0A9323224832",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 100000
           }
         ]
       }
