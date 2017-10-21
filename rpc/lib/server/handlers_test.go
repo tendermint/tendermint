@@ -75,7 +75,6 @@ func TestRPCParams(t *testing.T) {
 			assert.False(t, statusOK(recv.Error.Code), "#%d: not expecting a 2XX success code", i)
 			// The wanted error is either in the message or the data
 			assert.Contains(t, recv.Error.Message+recv.Error.Data, tt.wantErr, "#%d: expected substring", i)
-			continue
 		}
 	}
 }
