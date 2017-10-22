@@ -437,7 +437,7 @@ func (c *WSClient) readRoutine() {
 			continue
 		}
 		if response.Error != nil {
-			c.ErrorsCh <- errors.New(response.Error.Message)
+			c.ErrorsCh <- response.Error
 			continue
 		}
 		c.Logger.Info("got response", "resp", response.Result)
