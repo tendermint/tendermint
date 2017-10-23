@@ -80,8 +80,19 @@ In another terminal, run
     abci-cli echo hello
     abci-cli info
 
-The application should echo ``hello`` and give you some information
-about itself.
+You'll see something like:
+
+::
+
+    -> data: hello
+    -> data.hex: 68656C6C6F
+
+and:
+
+::
+
+    -> data: {"size":0}
+    -> data.hex: 7B2273697A65223A307D
 
 An ABCI application must provide two things:
 
@@ -96,7 +107,7 @@ The server may be generic for a particular language, and we provide a
 `reference implementation in
 Golang <https://github.com/tendermint/abci/tree/master/server>`__. See
 the `list of other ABCI
-implementations <https://tendermint.com/ecosystem>`__ for servers in
+implementations <./ecosystem.html>`__ for servers in
 other languages.
 
 The handler is specific to the application, and may be arbitrary, so
