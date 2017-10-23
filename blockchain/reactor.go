@@ -18,8 +18,8 @@ const (
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
 
-	defaultChannelCapacity = 100
-	trySyncIntervalMS      = 100
+	defaultChannelCapacity = 2000
+	trySyncIntervalMS      = 10
 	// stop syncing when last block's time is
 	// within this much of the system time.
 	// stopSyncingDurationMinutes = 10
@@ -104,7 +104,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 		&p2p.ChannelDescriptor{
 			ID:                BlockchainChannel,
 			Priority:          5,
-			SendQueueCapacity: 100,
+			SendQueueCapacity: 2000,
 		},
 	}
 }

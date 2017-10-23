@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	requestIntervalMS         = 250
-	maxTotalRequesters        = 300
-	maxPendingRequests        = maxTotalRequesters
-	maxPendingRequestsPerPeer = 75
+	requestIntervalMS         = 50
+	maxTotalRequesters        = 3000
+	maxPendingRequests        = 2000
+	maxPendingRequestsPerPeer = 2000
 	minRecvRate               = 10240 // 10Kb/s
 )
 
