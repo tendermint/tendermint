@@ -17,3 +17,5 @@ test/logs
 coverage.txt
 docs/_build
 docs/tools
+# Local notes
+NOTES.md

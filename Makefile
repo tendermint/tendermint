@@ -74,6 +74,10 @@ tools:
 ensure_tools:
 	go get $(GOTOOLS)
 
+release:
+	go get github.com/goreleaser/goreleaser
+	goreleaser
+
 ### Formatting, linting, and vetting
 
 megacheck:
