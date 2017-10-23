@@ -102,9 +102,9 @@ func Execute() {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&address, "address", "", "tcp://127.0.0.1:46658", "address of application socket")
-	RootCmd.PersistentFlags().StringVarP(&abci, "abci", "", "socket", "socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().StringVarP(&address, "address", "", "tcp://127.0.0.1:46658", "Address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&abci, "abci", "", "socket", "Either socket or grpc")
+	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print the command and results as if it were a console session")
 }
 
 func addQueryFlags() {
@@ -158,8 +158,8 @@ var consoleCmd = &cobra.Command{
 
 var echoCmd = &cobra.Command{
 	Use:   "echo",
-	Short: "",
-	Long:  "Have the application echo a message",
+	Short: "Have the application echo a message",
+	Long:  "",
 	Run:   cmdEcho,
 }
 var infoCmd = &cobra.Command{
@@ -170,21 +170,21 @@ var infoCmd = &cobra.Command{
 }
 var setOptionCmd = &cobra.Command{
 	Use:   "set_option",
-	Short: "Set an options on the application",
+	Short: "Set an option on the application",
 	Long:  "",
 	Run:   cmdSetOption,
 }
 
 var deliverTxCmd = &cobra.Command{
 	Use:   "deliver_tx",
-	Short: "Deliver a new tx to the application",
+	Short: "Deliver a new transaction to the application",
 	Long:  "",
 	Run:   cmdDeliverTx,
 }
 
 var checkTxCmd = &cobra.Command{
 	Use:   "check_tx",
-	Short: "Validate a tx",
+	Short: "Validate a transaction",
 	Long:  "",
 	Run:   cmdCheckTx,
 }
@@ -250,7 +250,7 @@ func cmdBatch(cmd *cobra.Command, args []string) {
 		pArgs := persistentArgs(line)
 		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
 		if err != nil {
-			panic(err)
+			ifExit(err)
 		}
 		fmt.Println(string(out))
 	}
@@ -271,7 +271,7 @@ func cmdConsole(cmd *cobra.Command, args []string) {
 		pArgs := persistentArgs(line)
 		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
 		if err != nil {
-			panic(err)
+			ifExit(err)
 		}
 		fmt.Println(string(out))
 	}
@@ -280,7 +280,7 @@ func cmdConsole(cmd *cobra.Command, args []string) {
 // Have the application echo a message
 func cmdEcho(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ifExit(errors.New("Command echo takes 1 argument"))
+		ifExit(errors.New("Command echo takes only 1 argument"))
 	}
 	resEcho := client.EchoSync(args[0])
 	printResponse(cmd, args, response{
@@ -306,7 +306,7 @@ func cmdInfo(cmd *cobra.Command, args []string) {
 // Set an option on the application
 func cmdSetOption(cmd *cobra.Command, args []string) {
 	if len(args) != 2 {
-		ifExit(errors.New("Command set_option takes 2 arguments (key, value)"))
+		ifExit(errors.New("Command set_option takes exactly 2 arguments (key, value)"))
 	}
 	resSetOption := client.SetOptionSync(args[0], args[1])
 	printResponse(cmd, args, response{
@@ -317,7 +317,7 @@ func cmdSetOption(cmd *cobra.Command, args []string) {
 // Append a new tx to application
 func cmdDeliverTx(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ifExit(errors.New("Command deliver_tx takes 1 argument"))
+		ifExit(errors.New("Command deliver_tx takes only 1 argument"))
 	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
@@ -334,7 +334,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) {
 // Validate a tx
 func cmdCheckTx(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ifExit(errors.New("Command check_tx takes 1 argument"))
+		ifExit(errors.New("Command check_tx takes only 1 argument"))
 	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
@@ -361,7 +361,7 @@ func cmdCommit(cmd *cobra.Command, args []string) {
 // Query application state
 func cmdQuery(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
-		ifExit(errors.New("Command query takes 1 argument, the query bytes"))
+		ifExit(errors.New("Command query takes only 1 argument, the query bytes"))
 	}
 
 	queryBytes, err := stringOrHexToBytes(args[0])
