@@ -3,7 +3,6 @@ package dummy
 import (
 	"bytes"
 	"encoding/hex"
-	"path"
 	"strconv"
 	"strings"
 
@@ -31,18 +30,13 @@ type PersistentDummyApplication struct {
 
 func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 	name := "dummy"
-	dbPath := path.Join(dbDir, name+".db")
-	empty, _ := cmn.IsDirEmpty(dbPath)
-
 	db, err := dbm.NewGoLevelDB(name, dbDir)
 	if err != nil {
 		panic(err)
 	}
 
 	stateTree := iavl.NewVersionedTree(500, db)
-	if !empty {
-		stateTree.Load()
-	}
+	stateTree.Load()
 
 	return &PersistentDummyApplication{
 		app:    &DummyApplication{state: stateTree},
@@ -117,7 +111,6 @@ func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) 
 
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
-
 	// reset valset changes
 	app.changes = make([]*types.Validator, 0)
 }
