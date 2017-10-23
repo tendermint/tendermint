@@ -81,6 +81,8 @@ func TestPersistentDummyInfo(t *testing.T) {
 	dummy := NewPersistentDummyApplication(dir)
 	height := uint64(0)
 
+	dummy.InitChain(types.RequestInitChain{[]*types.Validator{randVal(0)}})
+
 	resInfo := dummy.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
@@ -103,6 +105,12 @@ func TestPersistentDummyInfo(t *testing.T) {
 
 }
 
+func randVal(i int) *types.Validator {
+	pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
+	power := cmn.RandInt()
+	return &types.Validator{pubkey, uint64(power)}
+}
+
 // add a validator, remove a validator, update a validator
 func TestValSetChanges(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
@@ -116,9 +124,7 @@ func TestValSetChanges(t *testing.T) {
 	nInit := 5
 	vals := make([]*types.Validator, total)
 	for i := 0; i < total; i++ {
-		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
-		power := cmn.RandInt()
-		vals[i] = &types.Validator{pubkey, uint64(power)}
+		vals[i] = randVal(i)
 	}
 	// iniitalize with the first nInit
 	dummy.InitChain(types.RequestInitChain{vals[:nInit]})

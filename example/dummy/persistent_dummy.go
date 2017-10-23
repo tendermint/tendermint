@@ -23,11 +23,6 @@ const (
 type PersistentDummyApplication struct {
 	app *DummyApplication
 
-	// latest received
-	// TODO: move to merkle tree?
-	blockHeader *types.Header
-	height      uint64
-
 	// validator set
 	changes []*types.Validator
 
@@ -61,7 +56,7 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	resInfo = app.app.Info(req)
-	resInfo.LastBlockHeight = app.height
+	resInfo.LastBlockHeight = app.app.state.LatestVersion()
 	resInfo.LastBlockAppHash = app.app.state.Hash()
 	return resInfo
 }
@@ -88,24 +83,21 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
 	return app.app.CheckTx(tx)
 }
 
+// Commit will panic if InitChain was not called
 func (app *PersistentDummyApplication) Commit() types.Result {
-	h := app.blockHeader.Height
 
-	// Save a new version
+	// Save a new version for next height
+	height := app.app.state.LatestVersion() + 1
 	var appHash []byte
 	var err error
 
-	if app.app.state.Size() > 0 {
-		appHash, err = app.app.state.SaveVersion(h)
-		if err != nil {
-			// if this wasn't a dummy app, we'd do something smarter
-			panic(err)
-		}
-		app.logger.Info("Saved state", "root", appHash)
+	appHash, err = app.app.state.SaveVersion(height)
+	if err != nil {
+		// if this wasn't a dummy app, we'd do something smarter
+		panic(err)
 	}
 
-	app.height = h
-	app.logger.Info("Commit block", "height", h, "root", appHash)
+	app.logger.Info("Commit block", "height", height, "root", appHash)
 	return types.NewResultOK(appHash, "")
 }
 
@@ -125,8 +117,6 @@ func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) 
 
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
-	// update latest block info
-	app.blockHeader = params.Header
 
 	// reset valset changes
 	app.changes = make([]*types.Validator, 0)
