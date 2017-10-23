@@ -575,6 +575,11 @@ func (gr *GroupReader) Close() error {
 // Read implements io.Reader, reading bytes from the current Reader
 // incrementing index until enough bytes are read.
 func (gr *GroupReader) Read(p []byte) (n int, err error) {
+	lenP := len(p)
+	if lenP == 0 {
+		return 0, errors.New("given empty slice")
+	}
+
 	gr.mtx.Lock()
 	defer gr.mtx.Unlock()
 
@@ -586,7 +591,6 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 	}
 
 	// Iterate over files until enough bytes are read
-	lenP := len(p)
 	for {
 		nn, err := gr.curReader.Read(p[n:])
 		n += nn
