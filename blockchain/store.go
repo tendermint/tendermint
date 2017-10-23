@@ -25,7 +25,8 @@ Currently the precommit signatures are duplicated in the Block parts as
 well as the Commit.  In the future this may change, perhaps by moving
 the Commit data outside the Block.
 
-Panics indicate probable corruption in the data
+// NOTE: BlockStore methods will panic if they encounter errors
+// deserializing loaded data, indicating probable corruption on disk.
 */
 type BlockStore struct {
 	db dbm.DB
