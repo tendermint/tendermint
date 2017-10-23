@@ -387,7 +387,7 @@ Additionally, you must set ``addrbook_strict=false`` in the
 ``config.toml``, otherwise Tendermint's p2p library will deny making
 connections to peers with the same IP address.
 
-Ugrading
+Upgrading
 ~~~~~~~~
 
 The tendermint development cycle includes a lot of breaking changes. Upgrading from
