@@ -38,7 +38,7 @@ var crc32c = crc32.MakeTable(crc32.Castagnoli)
 // Lines that start with "#" are ignored.
 // NOTE: receiveRoutine should not be running
 func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan interface{}) error {
-	// Skip over meta lines
+	// skip meta messages
 	if _, ok := msg.Msg.(EndHeightMessage); ok {
 		return nil
 	}
@@ -129,8 +129,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 		msg, err = dec.Decode()
 		if err == io.EOF {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return err
 		}
 		// NOTE: since the priv key is set when the msgs are received

@@ -177,9 +177,9 @@ func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bo
 	lastMsg := split[nLines]
 
 	// we write those lines up to (not including) one with the signature
-	bytes := bytes.Join(split[:nLines], walSeparator)
-	bytes = append(bytes, walSeparator...)
-	walFile := writeWAL(bytes)
+	b := bytes.Join(split[:nLines], walSeparator)
+	b = append(b, walSeparator...)
+	walFile := writeWAL(b)
 
 	cs := fixedConsensusStateDummy()
 
@@ -196,6 +196,7 @@ func setupReplayTest(t *testing.T, thisCase *testCase, nLines int, crashAfter bo
 
 func readTimedWALMessage(t *testing.T, rawMsg []byte) TimedWALMessage {
 	b := bytes.NewBuffer(rawMsg)
+	// because rawMsg does not contain a separator and WALDecoder#Decode expects it
 	_, err := b.Write(walSeparator)
 	if err != nil {
 		t.Fatal(err)
@@ -496,8 +497,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 		msg, err := dec.Decode()
 		if err == io.EOF {
 			break
-		}
-		if err != nil {
+		} else if err != nil {
 			return nil, nil, err
 		}
 
@@ -538,7 +538,7 @@ func makeBlockchainFromWAL(wal *WAL) ([]*types.Block, []*types.Commit, error) {
 }
 
 func readPieceFromWAL(msg *TimedWALMessage) interface{} {
-	// Skip meta lines
+	// skip meta messages
 	if _, ok := msg.Msg.(EndHeightMessage); ok {
 		return nil
 	}

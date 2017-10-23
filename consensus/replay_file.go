@@ -63,7 +63,7 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 		msg, err = pb.dec.Decode()
 		if err == io.EOF {
 			return nil
-		} else {
+		} else if err != nil {
 			return err
 		}
 
@@ -130,7 +130,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 		msg, err = pb.dec.Decode()
 		if err == io.EOF {
 			return nil
-		} else {
+		} else if err != nil {
 			return err
 		}
 		if err := pb.cs.readReplayMessage(msg, newStepCh); err != nil {

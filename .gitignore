@@ -17,3 +17,6 @@ test/logs
 coverage.txt
 docs/_build
 docs/tools
+
+scripts/wal2json/wal2json
+scripts/cutWALUntil/cutWALUntil

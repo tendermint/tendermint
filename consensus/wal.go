@@ -18,7 +18,7 @@ import (
 // types and functions for savings consensus messages
 
 var (
-	walSeparator = []byte{55, 127, 6, 130} // 0x377f0682 - magic number (can only affect tests)
+	walSeparator = []byte{55, 127, 6, 130} // 0x377f0682 - magic number
 )
 
 type TimedWALMessage struct {
@@ -27,6 +27,7 @@ type TimedWALMessage struct {
 }
 
 // EndHeightMessage marks the end of the given height inside WAL.
+// @internal used by scripts/cutWALUntil util.
 type EndHeightMessage struct {
 	Height uint64 `json:"height"`
 }
