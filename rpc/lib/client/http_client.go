@@ -147,7 +147,7 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 		return nil, errors.Errorf("Error unmarshalling rpc response: %v", err)
 	}
 	if response.Error != nil {
-		return nil, errors.Errorf("Response error: %v", response.Error.Message)
+		return nil, errors.Errorf("Response error: %v", response.Error)
 	}
 	// unmarshal the RawMessage into the result
 	err = json.Unmarshal(*response.Result, result)

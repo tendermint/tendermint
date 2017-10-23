@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	events "github.com/tendermint/tmlibs/events"
 )
 
@@ -58,6 +57,14 @@ type RPCError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	Data    string `json:"data,omitempty"`
+}
+
+func (err RPCError) Error() string {
+	const baseFormat = "RPC error %v - %s"
+	if err.Data != "" {
+		return fmt.Sprintf(baseFormat+": %s", err.Code, err.Message, err.Data)
+	}
+	return fmt.Sprintf(baseFormat, err.Code, err.Message)
 }
 
 type RPCResponse struct {
