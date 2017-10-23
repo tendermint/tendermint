@@ -1,5 +1,5 @@
-hash: f9c2ddad16bf8652076a93bd9f398bb498eefb2f5bd2c89a77d966ebd12feec8
-updated: 2017-09-22T10:34:17.228026799-04:00
+hash: 876bc65024f66612325ebafcedeb3e4d5014d46b339cf7583f1c00c6bac6e32c
+updated: 2017-10-23T14:04:02.596189966+02:00
 imports:
 - name: github.com/btcsuite/btcd
   version: b8df516b4b267acf2de46be593a9d948d1d2c420
@@ -57,17 +57,15 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: e6ea9499ff958479e4a921850d2382eb599f204c
+  version: 8e7f0e7701f92206679ad093d013b9b162427631
 - name: github.com/tendermint/go-wire
-  version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
+  version: 26ee079df7fca1958da8995c727b59759b197534
   subpackages:
   - data
-- name: github.com/tendermint/merkleeyes
-  version: 2f6e5d31e7a35045d8d0a5895cb1fec33dd4d32b
-  subpackages:
-  - iavl
+- name: github.com/tendermint/iavl
+  version: 721710e7aa59f61dbfbf558943a207ba3fe6b926
 - name: github.com/tendermint/tmlibs
-  version: bffe6744ec277d60f707ab442e25513617842f8e
+  version: 8e5266a9ef2527e68a1571f932db8228a331b556
   subpackages:
   - common
   - db
@@ -75,7 +73,7 @@ imports:
   - merkle
   - process
 - name: github.com/urfave/cli
-  version: d70f47eeca3afd795160003bc6e28b001d60c67c
+  version: 7bc6a0acffa589f415f88aca16cc1de5ffd66f9c
 - name: golang.org/x/crypto
   version: c7af5bf2638a1164f2eb5467c39c6cffbd13a02e
   subpackages:
@@ -123,7 +121,7 @@ imports:
   - tap
   - transport
 - name: gopkg.in/go-playground/validator.v9
-  version: d529ee1b0f30352444f507cc6cdac96bfd12decc
+  version: 6d8c18553ea1ac493d049edd6f102f52e618f085
 testImports:
 - name: github.com/davecgh/go-spew
   version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9

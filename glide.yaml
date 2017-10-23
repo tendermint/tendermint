@@ -8,10 +8,8 @@ import:
   version: develop
 - package: github.com/tendermint/go-wire
   version: develop
-- package: github.com/tendermint/merkleeyes
+- package: github.com/tendermint/iavl
   version: develop
-  subpackages:
-  - iavl
 - package: github.com/tendermint/tmlibs
   version: develop
   subpackages:

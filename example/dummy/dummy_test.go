@@ -10,8 +10,7 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/merkleeyes/iavl"
+	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -39,9 +38,10 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	})
 	require.Equal(t, types.CodeType_OK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadProof(resQuery.Proof)
+	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
 	require.Nil(t, err)
-	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
+	err = proof.Verify([]byte(key), resQuery.Value, proof.RootHash)
+	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }
 
 func TestDummyKV(t *testing.T) {
@@ -78,6 +78,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 	dummy := NewPersistentDummyApplication(dir)
+	InitDummy(dummy)
 	height := uint64(0)
 
 	resInfo := dummy.Info(types.RequestInfo{})
@@ -113,12 +114,7 @@ func TestValSetChanges(t *testing.T) {
 	// init with some validators
 	total := 10
 	nInit := 5
-	vals := make([]*types.Validator, total)
-	for i := 0; i < total; i++ {
-		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
-		power := cmn.RandInt()
-		vals[i] = &types.Validator{pubkey, uint64(power)}
-	}
+	vals := RandVals(total)
 	// iniitalize with the first nInit
 	dummy.InitChain(types.RequestInitChain{vals[:nInit]})
 
@@ -309,7 +305,8 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.Nil(t, err)
 	require.Equal(t, types.CodeType_OK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadProof(resQuery.Proof)
+	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
 	require.Nil(t, err)
-	require.True(t, proof.Verify([]byte(key), resQuery.Value, proof.RootHash)) // NOTE: we have no way to verify the RootHash
+	err = proof.Verify([]byte(key), resQuery.Value, proof.RootHash)
+	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }
