@@ -28,6 +28,8 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.12.0 (TBA)
+
 ## 0.11.1 (October 10, 2017)
 
 IMPROVEMENTS:
