@@ -8,8 +8,8 @@ Welcome to Tendermint!
 
 
 .. image:: assets/tmint-logo-blue.png
-   :height: 500px
-   :width: 500px
+   :height: 200px
+   :width: 200px
    :align: center
 
 Tendermint 101

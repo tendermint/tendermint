@@ -12,7 +12,7 @@ Directory Root
 --------------
 
 The default directory for blockchain data is ``~/.tendermint``. Override
-this by setting the ``TMROOT`` environment variable.
+this by setting the ``TMHOME`` environment variable.
 
 Initialize
 ----------
@@ -39,7 +39,7 @@ To run a tendermint node, use
 
     tendermint node
 
-By default, Tendermint will try to connect to a abci appliction on
+By default, Tendermint will try to connect to an ABCI application on
 `127.0.0.1:46658 <127.0.0.1:46658>`__. If you have the ``dummy`` ABCI
 app installed, run it in another window. If you don't, kill tendermint
 and run an in-process version with
@@ -49,9 +49,7 @@ and run an in-process version with
     tendermint node --proxy_app=dummy
 
 After a few seconds you should see blocks start streaming in. Note that
-blocks are produced regularly, even if there are no transactions. This
-changes `with this pull
-request <https://github.com/tendermint/tendermint/pull/584>`__.
+blocks are produced regularly, even if there are no transactions. See *No Empty Blocks*, below, to modify this setting.
 
 Tendermint supports in-process versions of the dummy, counter, and nil
 apps that ship as examples in the `ABCI
@@ -59,7 +57,7 @@ repository <https://github.com/tendermint/abci>`__. It's easy to compile
 your own app in-process with tendermint if it's written in Go. If your
 app is not written in Go, simply run it in another process, and use the
 ``--proxy_app`` flag to specify the address of the socket it is
-listening on, for instance
+listening on, for instance:
 
 ::
 
@@ -117,7 +115,7 @@ Configuration
 -------------
 
 Tendermint uses a ``config.toml`` for configuration. For details, see
-`the documentation <./specification/configuration.html>`__.
+`the config specification <./specification/configuration.html>`__.
 
 Notable options include the socket address of the application
 (``proxy_app``), the listenting address of the tendermint peer
@@ -283,7 +281,7 @@ specify peers for a running node to connect to:
 
 Additionally, the peer-exchange protocol can be enabled using the
 ``--pex`` flag, though this feature is `still under
-development <https://github.com/tendermint/tendermint/issues/598>`__ If
+development <https://github.com/tendermint/tendermint/issues/598>`__. If
 ``--pex`` is enabled, peers will gossip about known peers and form a
 more resilient network.
 
@@ -387,8 +385,8 @@ Additionally, you must set ``addrbook_strict=false`` in the
 ``config.toml``, otherwise Tendermint's p2p library will deny making
 connections to peers with the same IP address.
 
-Ugrading
-~~~~~~~~
+Upgrading
+~~~~~~~~~
 
 The tendermint development cycle includes a lot of breaking changes. Upgrading from
 an old version to a new version usually means throwing away the chain data. Try out

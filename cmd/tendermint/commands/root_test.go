@@ -28,8 +28,6 @@ const (
 func isolate(cmds ...*cobra.Command) cli.Executable {
 	os.Unsetenv("TMHOME")
 	os.Unsetenv("TM_HOME")
-	os.Unsetenv("TMROOT")
-	os.Unsetenv("TM_ROOT")
 
 	viper.Reset()
 	config = cfg.DefaultConfig()
@@ -70,7 +68,7 @@ func TestRootConfig(t *testing.T) {
 		{nil, nil, defaultRoot, defaults.Moniker, defaults.FastSync, dmax},
 		// try multiple ways of setting root (two flags, cli vs. env)
 		{[]string{"--home", conf}, nil, conf, cvals["moniker"], cfast, dmax},
-		{nil, map[string]string{"TMROOT": conf}, conf, cvals["moniker"], cfast, dmax},
+		{nil, map[string]string{"TMHOME": conf}, conf, cvals["moniker"], cfast, dmax},
 		// check setting p2p subflags two different ways
 		{[]string{"--p2p.max_num_peers", "420"}, nil, defaultRoot, defaults.Moniker, defaults.FastSync, 420},
 		{nil, map[string]string{"TM_P2P_MAX_NUM_PEERS": "17"}, defaultRoot, defaults.Moniker, defaults.FastSync, 17},
