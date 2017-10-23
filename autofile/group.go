@@ -606,6 +606,8 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 			}
 		} else if err != nil {
 			return n, err
+		} else if nn == 0 { // empty file
+			return n, err
 		}
 	}
 
