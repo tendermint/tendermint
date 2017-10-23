@@ -7,7 +7,6 @@ import (
 )
 
 // TxIndexer interface defines methods to index and search transactions.
-// TODO: Add the ability to create an independent TxIndexer.
 type TxIndexer interface {
 
 	// AddBatch analyzes, indexes or stores a batch of transactions.
@@ -16,7 +15,7 @@ type TxIndexer interface {
 	// support batching.
 	AddBatch(b *Batch) error
 
-	// Get return the transaction specified by hash or nil if the transaction is not indexed
+	// Get returns the transaction specified by hash or nil if the transaction is not indexed
 	// or stored.
 	Get(hash []byte) (*types.TxResult, error)
 }

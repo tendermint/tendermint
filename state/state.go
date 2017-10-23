@@ -279,13 +279,6 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 	return s.LastValidators, s.Validators
 }
 
-// Params returns the consensus parameters used for validating blocks
-func (s *State) Params() types.ConsensusParams {
-	// TODO: this should move into the State proper
-	// when we allow the app to change it
-	return *s.GenesisDoc.ConsensusParams
-}
-
 //------------------------------------------------------------------------
 
 // ABCIResponses retains the responses of the various ABCI calls during block processing.
