@@ -6,7 +6,7 @@ cd "$GOPATH/src/github.com/tendermint/tendermint" || exit 1
 
 # Make sure we have a tendermint command.
 if ! hash tendermint 2>/dev/null; then
-	make install
+    make install
 fi
 
 # specify a dir to copy
@@ -14,13 +14,14 @@ fi
 DIR_TO_COPY=$HOME/.tendermint_test/consensus_state_test
 
 TMHOME="$HOME/.tendermint"
-rm -rf "$TMHOME"
-cp -r "$DIR_TO_COPY" "$TMHOME"
-cp $TMHOME/config.toml $TMHOME/config.toml.bak
+#rm -rf "$TMHOME"
+#cp -r "$DIR_TO_COPY" "$TMHOME"
+#mv $TMHOME/config.toml $TMHOME/config.toml.bak
+cp $TMHOME/genesis.json $TMHOME/genesis.json.bak
 
 function reset(){
-	tendermint unsafe_reset_all
-	cp $TMHOME/config.toml.bak $TMHOME/config.toml
+tendermint unsafe_reset_all
+cp $TMHOME/genesis.json.bak $TMHOME/genesis.json
 }
 
 reset
@@ -34,6 +35,7 @@ killall tendermint
 # /q would print up to and including the match, then quit.
 # /Q doesn't include the match.
 # http://unix.stackexchange.com/questions/11305/grep-show-all-the-file-up-to-the-match
+# note on macbook we need `gnu-sed` for Q to work
 sed '/ENDHEIGHT: 1/Q' ~/.tendermint/data/cs.wal/wal  > consensus/test_data/empty_block.cswal
 
 reset
@@ -44,7 +46,7 @@ function many_blocks(){
 bash scripts/txs/random.sh 1000 36657 &> /dev/null &
 PID=$!
 tendermint node --proxy_app=persistent_dummy &> /dev/null &
-sleep 7
+sleep 10
 killall tendermint
 kill -9 $PID
 
@@ -71,12 +73,12 @@ reset
 
 # small block 2 (part size = 512)
 function small_block2(){
-echo "" >> ~/.tendermint/config.toml
-echo "block_part_size = 512" >> ~/.tendermint/config.toml
+cat ~/.tendermint/genesis.json | jq  '. + {"consensus_params": {"block_size_params": {"max_bytes":1000000}, "block_gossip_params": {"block_part_size_bytes":512}}}' > genesis.json.new
+mv genesis.json.new ~/.tendermint/genesis.json
 bash scripts/txs/random.sh 1000 36657 &> /dev/null &
 PID=$!
 tendermint node --proxy_app=persistent_dummy &> /dev/null &
-sleep 5
+sleep 10
 killall tendermint
 kill -9 $PID
 
@@ -88,23 +90,23 @@ reset
 
 
 case "$1" in
-	"small_block1")
-		small_block1
-		;;
-	"small_block2")
-		small_block2
-		;;
-	"empty_block")
-		empty_block
-		;;
-	"many_blocks")
-		many_blocks
-		;;
-	*)
-		small_block1
-		small_block2
-		empty_block
-		many_blocks
+    "small_block1")
+        small_block1
+        ;;
+    "small_block2")
+        small_block2
+        ;;
+    "empty_block")
+        empty_block
+        ;;
+    "many_blocks")
+        many_blocks
+        ;;
+    *)
+        small_block1
+        small_block2
+        empty_block
+        many_blocks
 esac
 
 

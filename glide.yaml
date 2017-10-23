@@ -14,7 +14,7 @@ import:
 - package: github.com/spf13/cobra
 - package: github.com/spf13/viper
 - package: github.com/tendermint/abci
-  version: ~0.6.0
+  version: develop
   subpackages:
   - client
   - example/dummy
@@ -25,12 +25,12 @@ import:
   version: ~0.6.2
   subpackages:
   - data
-- package: github.com/tendermint/merkleeyes
-  version: master
+- package: github.com/tendermint/iavl
+  version: develop
   subpackages:
   - iavl
 - package: github.com/tendermint/tmlibs
-  version: ~0.3.2
+  version: develop
   subpackages:
   - autofile
   - cli

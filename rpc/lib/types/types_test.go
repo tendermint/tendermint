@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"fmt"
+
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,4 +31,19 @@ func TestResponses(t *testing.T) {
 	h, _ := json.Marshal(g)
 	i := `{"jsonrpc":"2.0","id":"2","error":{"code":-32601,"message":"Method not found"}}`
 	assert.Equal(string(h), string(i))
+}
+
+func TestRPCError(t *testing.T) {
+	assert.Equal(t, "RPC error 12 - Badness: One worse than a code 11",
+		fmt.Sprintf("%v", &RPCError{
+			Code:    12,
+			Message: "Badness",
+			Data:    "One worse than a code 11",
+		}))
+
+	assert.Equal(t, "RPC error 12 - Badness",
+		fmt.Sprintf("%v", &RPCError{
+			Code:    12,
+			Message: "Badness",
+		}))
 }

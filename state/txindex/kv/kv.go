@@ -4,14 +4,16 @@ import (
 	"bytes"
 	"fmt"
 
-	db "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/go-wire"
+
+	db "github.com/tendermint/tmlibs/db"
+
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )
 
 // TxIndex is the simplest possible indexer, backed by Key-Value storage (levelDB).
-// It could only index transaction by its identifier.
+// It can only index transaction by its identifier.
 type TxIndex struct {
 	store db.DB
 }
@@ -44,7 +46,7 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 	return txResult, nil
 }
 
-// Batch writes a batch of transactions into the TxIndex storage.
+// AddBatch writes a batch of transactions into the TxIndex storage.
 func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	for _, result := range b.Ops {

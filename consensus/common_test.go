@@ -347,7 +347,11 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 			opt(thisConfig)
 		}
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
-		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], appFunc())
+		app := appFunc()
+		vals := types.TM2PB.Validators(state.Validators)
+		app.InitChain(abci.RequestInitChain{Validators: vals})
+
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
 		css[i].SetLogger(logger.With("validator", i))
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
@@ -373,7 +377,11 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 			privVal = types.GenPrivValidatorFS(tempFilePath)
 		}
 
-		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, appFunc())
+		app := appFunc()
+		vals := types.TM2PB.Validators(state.Validators)
+		app.InitChain(abci.RequestInitChain{Validators: vals})
+
+		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
 		css[i].SetLogger(log.TestingLogger())
 		css[i].SetTimeoutTicker(tickerFunc())
 	}
