@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/merkleeyes/iavl" //TODO use tendermint/iavl ?
+	"github.com/tendermint/iavl"
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -191,13 +191,13 @@ func TestAppCalls(t *testing.T) {
 		// and we got a proof that works!
 		pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
 		if assert.Nil(err) && assert.True(pres.Code.IsOK()) {
-			proof, err := iavl.ReadProof(pres.Proof)
+			proof, err := iavl.ReadKeyExistsProof(pres.Proof)
 			if assert.Nil(err) {
 				key := pres.Key
 				value := pres.Value
 				assert.EqualValues(appHash, proof.RootHash)
 				valid := proof.Verify(key, value, appHash)
-				assert.True(valid)
+				assert.Nil(valid)
 			}
 		}
 	}
