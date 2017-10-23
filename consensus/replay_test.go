@@ -58,9 +58,9 @@ var baseStepChanges = []int{3, 6, 8}
 
 // test recovery from each line in each testCase
 var testCases = []*testCase{
-	newTestCase("empty_block", baseStepChanges),   // empty block (has 1 block part)
-	newTestCase("small_block1", baseStepChanges),  // small block with txs in 1 block part
-	newTestCase("small_block2", []int{3, 11, 13}), // small block with txs across 6 smaller block parts
+	newTestCase("empty_block", baseStepChanges),  // empty block (has 1 block part)
+	newTestCase("small_block1", baseStepChanges), // small block with txs in 1 block part
+	newTestCase("small_block2", []int{3, 9, 11}), // small block with txs across 6 smaller block parts
 }
 
 type testCase struct {
