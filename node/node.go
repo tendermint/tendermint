@@ -317,6 +317,16 @@ func NewNode(config *cfg.Config,
 
 // OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
+	// Run the RPC server first
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		listeners, err := n.startRPC()
+		if err != nil {
+			return err
+		}
+		n.rpcListeners = listeners
+	}
+
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
@@ -337,15 +347,6 @@ func (n *Node) OnStart() error {
 		if err := n.DialSeeds(seeds); err != nil {
 			return err
 		}
-	}
-
-	// Run the RPC server
-	if n.config.RPC.ListenAddress != "" {
-		listeners, err := n.startRPC()
-		if err != nil {
-			return err
-		}
-		n.rpcListeners = listeners
 	}
 
 	return nil
