@@ -10,7 +10,6 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -79,9 +78,8 @@ func TestPersistentDummyInfo(t *testing.T) {
 		t.Fatal(err)
 	}
 	dummy := NewPersistentDummyApplication(dir)
+	InitDummy(dummy)
 	height := uint64(0)
-
-	dummy.InitChain(types.RequestInitChain{[]*types.Validator{randVal(0)}})
 
 	resInfo := dummy.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
@@ -105,12 +103,6 @@ func TestPersistentDummyInfo(t *testing.T) {
 
 }
 
-func randVal(i int) *types.Validator {
-	pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
-	power := cmn.RandInt()
-	return &types.Validator{pubkey, uint64(power)}
-}
-
 // add a validator, remove a validator, update a validator
 func TestValSetChanges(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
@@ -122,10 +114,7 @@ func TestValSetChanges(t *testing.T) {
 	// init with some validators
 	total := 10
 	nInit := 5
-	vals := make([]*types.Validator, total)
-	for i := 0; i < total; i++ {
-		vals[i] = randVal(i)
-	}
+	vals := RandVals(total)
 	// iniitalize with the first nInit
 	dummy.InitChain(types.RequestInitChain{vals[:nInit]})
 
