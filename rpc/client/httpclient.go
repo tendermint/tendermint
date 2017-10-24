@@ -318,16 +318,18 @@ func (w *WSEvents) redoSubscriptions() {
 func (w *WSEvents) eventListener() {
 	for {
 		select {
-		case res := <-w.ws.ResultsCh:
+		case resp := <-w.ws.ResponsesCh:
 			// res is json.RawMessage
-			err := w.parseEvent(res)
+			if resp.Error != nil {
+				// FIXME: better logging/handling of errors??
+				fmt.Printf("ws err: %+v\n", resp.Error.Error())
+				continue
+			}
+			err := w.parseEvent(*resp.Result)
 			if err != nil {
 				// FIXME: better logging/handling of errors??
 				fmt.Printf("ws result: %+v\n", err)
 			}
-		case err := <-w.ws.ErrorsCh:
-			// FIXME: better logging/handling of errors??
-			fmt.Printf("ws err: %+v\n", err)
 		case <-w.quit:
 			// send a message so we can wait for the routine to exit
 			// before cleaning up the w.ws stuff
