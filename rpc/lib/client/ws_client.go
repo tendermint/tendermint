@@ -48,10 +48,11 @@ type WSClient struct {
 	onReconnect func()
 
 	// internal channels
-	send            chan types.RPCRequest // user requests
-	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
-	reconnectAfter  chan error            // reconnect requests
-	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
+	send             chan types.RPCRequest // user requests
+	backlog          chan types.RPCRequest // stores a single user request received during a conn failure
+	reconnectAfter   chan error            // reconnect requests
+	readRoutineQuit  chan struct{}         // a way for readRoutine to close writeRoutine
+	writeRoutineQuit chan struct{}         // a way for writeRoutine to close readRoutine (on <-BaseService.Quit)
 
 	wg sync.WaitGroup
 
@@ -282,6 +283,7 @@ func (c *WSClient) reconnect() error {
 func (c *WSClient) startReadWriteRoutines() {
 	c.wg.Add(2)
 	c.readRoutineQuit = make(chan struct{})
+	c.writeRoutineQuit = make(chan struct{})
 	go c.readRoutine()
 	go c.writeRoutine()
 }
@@ -387,6 +389,9 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit:
+			// We need to fan out the quit message from the single BaseService Quit Channel to the readRoutine
+			// Use a non-blocking close rather than a send in case readRoutine is in the process of quitting
+			close(c.writeRoutineQuit)
 			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			return
 		}
@@ -441,7 +446,12 @@ func (c *WSClient) readRoutine() {
 			continue
 		}
 		c.Logger.Info("got response", "resp", response.Result)
-		c.ResultsCh <- *response.Result
+		// Combine a non-blocking read on writeRoutineQuit with a non-blocking write on ResultsCh to avoid blocking
+		// c.wg.Wait() in c.Stop()
+		select {
+		case <-c.writeRoutineQuit:
+		case c.ResultsCh <- *response.Result:
+		}
 	}
 }
 

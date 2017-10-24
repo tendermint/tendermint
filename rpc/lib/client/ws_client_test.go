@@ -162,6 +162,29 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	}
 }
 
+func TestNotBlockingOnStop(t *testing.T) {
+	timeout := 2 *time.Second
+	s := httptest.NewServer(&myHandler{})
+	c := startClient(t, s.Listener.Addr())
+	c.Call(context.Background(), "a", make(map[string]interface{}))
+	// Let the readRoutine get around to blocking
+	time.Sleep(time.Second)
+	passCh := make(chan struct{})
+	go func() {
+		// Unless we have a non-blocking write to ResultsCh from readRoutine
+		// this blocks forever ont the waitgroup
+		 c.Stop()
+		 passCh <- struct{}{}
+	}()
+	select {
+	case <-passCh:
+		// Pass
+	case <-time.After(timeout):
+		t.Fatalf("WSClient did failed to stop within %v seconds - is one of the read/write routines blocking?",
+			timeout.Seconds())
+	}
+}
+
 func startClient(t *testing.T, addr net.Addr) *WSClient {
 	c := NewWSClient(addr.String(), "/websocket")
 	_, err := c.Start()
