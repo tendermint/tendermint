@@ -138,6 +138,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	// End of setup, test data
 
+	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10}}}
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -152,10 +153,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		eraseSeenCommitInDB   bool
 	}{
 		{
-			block: &types.Block{
-				Header:     &header1,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:      newBlock(&header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 		},
@@ -166,28 +164,19 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block: &types.Block{
-				Header:     &header2,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:     newBlock(&header2, commitAtH10),
 			parts:     uncontiguousPartSet,
 			wantPanic: "only save contiguous blocks", // and incomplete and uncontiguous parts
 		},
 
 		{
-			block: &types.Block{
-				Header:     &header1,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:     newBlock(&header1, commitAtH10),
 			parts:     incompletePartSet,
 			wantPanic: "only save complete block", // incomplete parts
 		},
 
 		{
-			block: &types.Block{
-				Header:     &header1,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:             newBlock(&header1, commitAtH10),
 			parts:             validPartSet,
 			seenCommit:        seenCommit1,
 			corruptCommitInDB: true, // Corrupt the DB's commit entry
@@ -195,10 +184,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block: &types.Block{
-				Header:     &header1,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:            newBlock(&header1, commitAtH10),
 			parts:            validPartSet,
 			seenCommit:       seenCommit1,
 			wantPanic:        "rror reading block",
@@ -206,10 +192,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block: &types.Block{
-				Header:     &header1,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:      newBlock(&header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -218,10 +201,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block: &types.Block{
-				Header:     &header1,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:      newBlock(&header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -230,10 +210,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block: &types.Block{
-				Header:     &header1,
-				LastCommit: &types.Commit{Precommits: []*types.Vote{{Height: 10}}},
-			},
+			block:      newBlock(&header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -421,4 +398,11 @@ func doFn(fn func() (interface{}, error)) (res interface{}, err error, panicErr 
 
 	res, err = fn()
 	return res, err, panicErr
+}
+
+func newBlock(hdr *types.Header, lastCommit *types.Commit) *types.Block {
+	return &types.Block{
+		Header:     hdr,
+		LastCommit: lastCommit,
+	}
 }
