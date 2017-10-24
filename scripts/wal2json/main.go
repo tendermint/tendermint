@@ -1,3 +1,9 @@
+/*
+	wal2json converts binary WAL file to JSON.
+
+	Usage:
+			wal2json <path-to-wal>
+*/
 package main
 
 import (
@@ -10,6 +16,11 @@ import (
 )
 
 func main() {
+	if len(os.Args) < 2 {
+		fmt.Println("missing one argument: <path-to-wal>")
+		os.Exit(1)
+	}
+
 	f, err := os.Open(os.Args[1])
 	if err != nil {
 		panic(fmt.Errorf("failed to open WAL file: %v", err))
