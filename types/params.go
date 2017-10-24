@@ -18,7 +18,7 @@ type ConsensusParams struct {
 
 // BlockSizeParams contain limits on the block size.
 type BlockSizeParams struct {
-	MaxBytes int `json:"max_bytes"` // NOTE: must not be 0
+	MaxBytes int `json:"max_bytes"` // NOTE: must not be 0 nor greater than 100MB
 	MaxTxs   int `json:"max_txs"`
 	MaxGas   int `json:"max_gas"`
 }

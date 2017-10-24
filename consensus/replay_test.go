@@ -58,9 +58,9 @@ var baseStepChanges = []int{3, 6, 8}
 
 // test recovery from each line in each testCase
 var testCases = []*testCase{
-	newTestCase("empty_block", baseStepChanges),   // empty block (has 1 block part)
-	newTestCase("small_block1", baseStepChanges),  // small block with txs in 1 block part
-	newTestCase("small_block2", []int{3, 11, 13}), // small block with txs across 6 smaller block parts
+	newTestCase("empty_block", baseStepChanges),  // empty block (has 1 block part)
+	newTestCase("small_block1", baseStepChanges), // small block with txs in 1 block part
+	newTestCase("small_block2", []int{3, 9, 11}), // small block with txs across 6 smaller block parts
 }
 
 type testCase struct {
@@ -382,7 +382,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 }
 
 func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
-	testPartSize := st.Params().BlockPartSizeBytes
+	testPartSize := st.Params.BlockPartSizeBytes
 	err := st.ApplyBlock(nil, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
 	if err != nil {
 		panic(err)
@@ -562,7 +562,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
-	store := NewMockBlockStore(config, state.Params())
+	store := NewMockBlockStore(config, state.Params)
 	return state, store
 }
 

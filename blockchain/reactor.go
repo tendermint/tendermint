@@ -12,6 +12,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -79,7 +80,13 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, 
 	return bcR
 }
 
-// OnStart implements BaseService
+// SetLogger implements cmn.Service by setting the logger on reactor and pool.
+func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
+	bcR.BaseService.Logger = l
+	bcR.pool.Logger = l
+}
+
+// OnStart implements cmn.Service.
 func (bcR *BlockchainReactor) OnStart() error {
 	bcR.BaseReactor.OnStart()
 	if bcR.fastSync {
@@ -92,7 +99,7 @@ func (bcR *BlockchainReactor) OnStart() error {
 	return nil
 }
 
-// OnStop implements BaseService
+// OnStop implements cmn.Service.
 func (bcR *BlockchainReactor) OnStop() {
 	bcR.BaseReactor.OnStop()
 	bcR.pool.Stop()
@@ -175,7 +182,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 // maxMsgSize returns the maximum allowable size of a
 // message on the blockchain reactor.
 func (bcR *BlockchainReactor) maxMsgSize() int {
-	return bcR.state.Params().BlockSizeParams.MaxBytes + 2
+	return bcR.state.Params.BlockSizeParams.MaxBytes + 2
 }
 
 // Handle messages from the poolReactor telling the reactor what to do.
@@ -186,6 +193,8 @@ func (bcR *BlockchainReactor) poolRoutine() {
 	trySyncTicker := time.NewTicker(trySyncIntervalMS * time.Millisecond)
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
+
+	chainID := bcR.state.ChainID
 
 FOR_LOOP:
 	for {
@@ -212,9 +221,9 @@ FOR_LOOP:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case <-switchToConsensusTicker.C:
-			height, numPending, _ := bcR.pool.GetStatus()
+			height, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
-			bcR.Logger.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requesters),
+			bcR.Logger.Info("Consensus ticker", "numPending", numPending, "total", lenRequesters,
 				"outbound", outbound, "inbound", inbound)
 			if bcR.pool.IsCaughtUp() {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
@@ -236,14 +245,14 @@ FOR_LOOP:
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet(bcR.state.Params().BlockPartSizeBytes)
+				firstParts := first.MakePartSet(bcR.state.Params.BlockPartSizeBytes)
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
 				// NOTE: we can probably make this more efficient, but note that calling
 				// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 				// currently necessary.
 				err := bcR.state.Validators.VerifyCommit(
-					bcR.state.ChainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
+					chainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
 				if err != nil {
 					bcR.Logger.Error("Error in validation", "err", err)
 					bcR.pool.RedoRequest(first.Height)

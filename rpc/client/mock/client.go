@@ -37,9 +37,7 @@ type Client struct {
 	types.EventSwitch
 }
 
-func (c Client) _assertIsClient() client.Client {
-	return c
-}
+var _ client.Client = Client{}
 
 // Call is used by recorders to save a call and response.
 // It can also be used to configure mock responses.
@@ -84,8 +82,12 @@ func (c Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo()
 }
 
-func (c Client) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
-	return core.ABCIQuery(path, data, prove)
+func (c Client) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return c.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
+}
+
+func (c Client) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	return core.ABCIQuery(path, data, opts.Height, opts.Trusted)
 }
 
 func (c Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {

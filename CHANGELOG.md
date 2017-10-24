@@ -28,6 +28,12 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.12.0 (TBD)
+
+IMPROVEMENTS:
+ - genesis doc: added `app_options` field, which, along with the other fields,
+   will be returned upon `/genesis` rpc call.
+
 ## 0.11.1 (October 10, 2017)
 
 IMPROVEMENTS:
