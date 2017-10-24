@@ -591,8 +591,9 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 	}
 
 	// Iterate over files until enough bytes are read
+	var nn int
 	for {
-		nn, err := gr.curReader.Read(p[n:])
+		nn, err = gr.curReader.Read(p[n:])
 		n += nn
 		if err == io.EOF {
 			// Open the next file
@@ -610,8 +611,6 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 			return n, err
 		}
 	}
-
-	return n, err
 }
 
 // ReadLine reads a line (without delimiter).
