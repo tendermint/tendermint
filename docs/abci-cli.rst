@@ -130,36 +130,50 @@ Try running these commands:
 ::
 
     > echo hello
+    -> code: OK
     -> data: hello
-
+    -> data.hex: 0x68656C6C6F
+    
     > info
+    -> code: OK
     -> data: {"size":0}
-
+    -> data.hex: 0x7B2273697A65223A307D
+    
     > commit
-    -> data: 0x
-
+    -> code: OK
+    
     > deliver_tx "abc"
     -> code: OK
-
+    
     > info
+    -> code: OK
     -> data: {"size":1}
-
+    -> data.hex: 0x7B2273697A65223A317D
+    
     > commit
-    -> data: 0x750502FC7E84BBD788ED589624F06CFA871845D1
-
+    -> code: OK
+    -> data.hex: 0x49DFD15CCDACDEAE9728CB01FBB5E8688CA58B91
+    
     > query "abc"
     -> code: OK
-    -> data: {"index":0,"value":"abc","exists":true}
-
+    -> log: exists
+    -> height: 0
+    -> value: abc
+    -> value.hex: 616263
+    
     > deliver_tx "def=xyz"
     -> code: OK
-
+    
     > commit
-    -> data: 0x76393B8A182E450286B0694C629ECB51B286EFD5
-
+    -> code: OK
+    -> data.hex: 0x70102DB32280373FBF3F9F89DA2A20CE2CD62B0B
+    
     > query "def"
     -> code: OK
-    -> data: {"index":1,"value":"xyz","exists":true}
+    -> log: exists
+    -> height: 0
+    -> value: xyz
+    -> value.hex: 78797A
 
 Note that if we do ``deliver_tx "abc"`` it will store ``(abc, abc)``,
 but if we do ``deliver_tx "abc=efg"`` it will store ``(abc, efg)``.
@@ -209,30 +223,32 @@ In another window, start the ``abci-cli console``:
 ::
 
     > set_option serial on
-    -> data: serial=on
-
+    -> code: OK
+    
     > check_tx 0x00
     -> code: OK
-
+    
     > check_tx 0xff
     -> code: OK
-
+    
     > deliver_tx 0x00
     -> code: OK
-
+    
     > check_tx 0x00
     -> code: BadNonce
     -> log: Invalid nonce. Expected >= 1, got 0
-
+    
     > deliver_tx 0x01
     -> code: OK
-
+    
     > deliver_tx 0x04
     -> code: BadNonce
     -> log: Invalid nonce. Expected 2, got 4
-
+    
     > info
+    -> code: OK
     -> data: {"hashes":0,"txs":2}
+    -> data.hex: 0x7B22686173686573223A302C22747873223A327D
 
 This is a very simple application, but between ``counter`` and
 ``dummy``, its easy to see how you can build out arbitrary application

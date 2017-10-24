@@ -148,7 +148,7 @@ The result should look like:
 Note the ``value`` in the result (``61626364``); this is the
 hex-encoding of the ASCII of ``abcd``. You can verify this in
 a python shell by running ``"61626364".decode('hex')``. Stay
-tuned for a future release that `makes this output more human-readable <https://github.com/tendermint/abci/issues/32`__.
+tuned for a future release that `makes this output more human-readable <https://github.com/tendermint/abci/issues/32>`__.
 
 Now let's try setting a different key and value:
 
