@@ -11,11 +11,25 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+/*
+
+eg, L = latency = 0.1s
+	P = num peers = 10
+	FN = num full nodes
+	BS = 1kB block size
+	CB = 1 Mbit/s = 128 kB/s
+	CB/P = 12.8 kB
+	B/S = CB/P/BS = 12.8 blocks/s
+
+	12.8 * 0.1 = 1.28 blocks on conn
+
+*/
+
 const (
 	requestIntervalMS         = 250
 	maxTotalRequesters        = 300
 	maxPendingRequests        = maxTotalRequesters
-	maxPendingRequestsPerPeer = 75
+	maxPendingRequestsPerPeer = 10
 	minRecvRate               = 10240 // 10Kb/s
 )
 
@@ -69,9 +83,7 @@ func (pool *BlockPool) OnStart() error {
 	return nil
 }
 
-func (pool *BlockPool) OnStop() {
-	pool.BaseService.OnStop()
-}
+func (pool *BlockPool) OnStop() {}
 
 // Run spawns requesters as needed.
 func (pool *BlockPool) makeRequestersRoutine() {
@@ -188,15 +200,16 @@ func (pool *BlockPool) PopRequest() {
 // Remove the peer and redo request from others.
 func (pool *BlockPool) RedoRequest(height int) {
 	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+
 	request := pool.requesters[height]
-	pool.mtx.Unlock()
 
 	if request.block == nil {
 		cmn.PanicSanity("Expected block to be non-nil")
 	}
 	// RemovePeer will redo all requesters associated with this peer.
 	// TODO: record this malfeasance
-	pool.RemovePeer(request.peerID)
+	pool.removePeer(request.peerID)
 }
 
 // TODO: ensure that blocks come in order for each peer.
@@ -206,13 +219,17 @@ func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int
 
 	requester := pool.requesters[block.Height]
 	if requester == nil {
+		// a block we didn't expect.
+		// TODO:if height is too far ahead, punish peer
 		return
 	}
 
 	if requester.setBlock(block, peerID) {
 		pool.numPending--
 		peer := pool.peers[peerID]
-		peer.decrPending(blockSize)
+		if peer != nil {
+			peer.decrPending(blockSize)
+		}
 	} else {
 		// Bad peer?
 	}

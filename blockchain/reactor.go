@@ -12,6 +12,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -79,7 +80,13 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, 
 	return bcR
 }
 
-// OnStart implements BaseService
+// SetLogger implements cmn.Service by setting the logger on reactor and pool.
+func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
+	bcR.BaseService.Logger = l
+	bcR.pool.Logger = l
+}
+
+// OnStart implements cmn.Service.
 func (bcR *BlockchainReactor) OnStart() error {
 	bcR.BaseReactor.OnStart()
 	if bcR.fastSync {
@@ -92,7 +99,7 @@ func (bcR *BlockchainReactor) OnStart() error {
 	return nil
 }
 
-// OnStop implements BaseService
+// OnStop implements cmn.Service.
 func (bcR *BlockchainReactor) OnStop() {
 	bcR.BaseReactor.OnStop()
 	bcR.pool.Stop()
@@ -214,9 +221,9 @@ FOR_LOOP:
 			// ask for status updates
 			go bcR.BroadcastStatusRequest()
 		case <-switchToConsensusTicker.C:
-			height, numPending, _ := bcR.pool.GetStatus()
+			height, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
-			bcR.Logger.Info("Consensus ticker", "numPending", numPending, "total", len(bcR.pool.requesters),
+			bcR.Logger.Info("Consensus ticker", "numPending", numPending, "total", lenRequesters,
 				"outbound", outbound, "inbound", inbound)
 			if bcR.pool.IsCaughtUp() {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)

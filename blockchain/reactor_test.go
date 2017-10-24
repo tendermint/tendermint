@@ -1,12 +1,11 @@
 package blockchain
 
 import (
-	"bytes"
 	"testing"
 
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/db"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -15,28 +14,24 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func newBlockchainReactor(logger log.Logger, maxBlockHeight int) *BlockchainReactor {
-	config := cfg.ResetTestRoot("node_node_test")
+func newBlockchainReactor(maxBlockHeight int) *BlockchainReactor {
+	logger := log.TestingLogger()
+	config := cfg.ResetTestRoot("blockchain_reactor_test")
 
-	blockStoreDB := db.NewDB("blockstore", config.DBBackend, config.DBDir())
-	blockStore := NewBlockStore(blockStoreDB)
-
-	stateLogger := logger.With("module", "state")
+	blockStore := NewBlockStore(dbm.NewMemDB())
 
 	// Get State
-	stateDB := db.NewDB("state", config.DBBackend, config.DBDir())
-	state, _ := sm.GetState(stateDB, config.GenesisFile())
-
-	state.SetLogger(stateLogger)
+	state, _ := sm.GetState(dbm.NewMemDB(), config.GenesisFile())
+	state.SetLogger(logger.With("module", "state"))
 	state.Save()
 
 	// Make the blockchainReactor itself
 	fastSync := true
 	bcReactor := NewBlockchainReactor(state.Copy(), nil, blockStore, fastSync)
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Next: we need to set a switch in order for peers to be added in
 	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig())
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Lastly: let's add some blocks in
 	for blockHeight := 1; blockHeight <= maxBlockHeight; blockHeight++ {
@@ -50,12 +45,10 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int) *BlockchainReac
 }
 
 func TestNoBlockMessageResponse(t *testing.T) {
-	logBuf := new(bytes.Buffer)
-	logger := log.NewTMLogger(logBuf)
 	maxBlockHeight := 20
 
-	bcr := newBlockchainReactor(logger, maxBlockHeight)
-	go bcr.OnStart()
+	bcr := newBlockchainReactor(maxBlockHeight)
+	bcr.Start()
 	defer bcr.Stop()
 
 	// Add some peers in
