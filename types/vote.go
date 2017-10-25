@@ -17,6 +17,8 @@ var (
 	ErrVoteInvalidValidatorAddress = errors.New("Invalid validator address")
 	ErrVoteInvalidSignature        = errors.New("Invalid signature")
 	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
+
+	errNilVote = errors.New("nil/non-dereferenceable votes are not allowed")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -65,7 +67,12 @@ func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error
 }
 
 func (vote *Vote) Copy() *Vote {
+	if vote == nil {
+		return nil
+	}
 	voteCopy := *vote
+	voteCopy.ValidatorAddress = copyBytes(vote.ValidatorAddress)
+	voteCopy.BlockID = *(vote.BlockID.Copy())
 	return &voteCopy
 }
 
