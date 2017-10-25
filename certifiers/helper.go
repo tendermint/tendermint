@@ -122,28 +122,26 @@ func genHeader(chainID string, height int, txs types.Txs,
 	}
 }
 
-// GenCommit calls genHeader and signHeader and combines them into a *Commit
+// GenCommit calls genHeader and signHeader and combines them into a Commit
 func (v ValKeys) GenCommit(chainID string, height int, txs types.Txs,
-	vals *types.ValidatorSet, appHash []byte, first, last int) *Commit {
+	vals *types.ValidatorSet, appHash []byte, first, last int) Commit {
 
 	header := genHeader(chainID, height, txs, vals, appHash)
-	check := &Commit{
-		Header:          header,
-		Commit:          v.signHeader(header, first, last),
-		CanonicalCommit: true,
+	check := Commit{
+		Header: header,
+		Commit: v.signHeader(header, first, last),
 	}
 	return check
 }
 
-// GenFullCommit calls genHeader and signHeader and combines them into a *Commit
+// GenFullCommit calls genHeader and signHeader and combines them into a Commit
 func (v ValKeys) GenFullCommit(chainID string, height int, txs types.Txs,
 	vals *types.ValidatorSet, appHash []byte, first, last int) FullCommit {
 
 	header := genHeader(chainID, height, txs, vals, appHash)
-	commit := &Commit{
-		Header:          header,
-		Commit:          v.signHeader(header, first, last),
-		CanonicalCommit: true,
+	commit := Commit{
+		Header: header,
+		Commit: v.signHeader(header, first, last),
 	}
 	return NewFullCommit(commit, vals)
 }

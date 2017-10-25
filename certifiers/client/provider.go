@@ -89,6 +89,10 @@ func (p *provider) GetLatestCommit() (*ctypes.ResultCommit, error) {
 	return p.node.Commit(&status.LatestBlockHeight)
 }
 
+func CommitFromResult(result *ctypes.ResultCommit) certifiers.Commit {
+	return (certifiers.Commit)(result.SignedHeader)
+}
+
 func (p *provider) seedFromVals(vals *ctypes.ResultValidators) (certifiers.FullCommit, error) {
 	// now get the commits and build a full commit
 	commit, err := p.node.Commit(&vals.BlockHeight)
@@ -96,14 +100,14 @@ func (p *provider) seedFromVals(vals *ctypes.ResultValidators) (certifiers.FullC
 		return certifiers.FullCommit{}, err
 	}
 	fc := certifiers.NewFullCommit(
-		certifiers.CommitFromResult(commit),
+		CommitFromResult(commit),
 		types.NewValidatorSet(vals.Validators),
 	)
 	return fc, nil
 }
 
 func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc certifiers.FullCommit, err error) {
-	fc.Commit = certifiers.CommitFromResult(commit)
+	fc.Commit = CommitFromResult(commit)
 
 	// now get the proper validators
 	vals, err := p.node.Validators(&commit.Header.Height)

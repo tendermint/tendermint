@@ -47,7 +47,7 @@ func (c *Static) Hash() []byte {
 	return c.vhash
 }
 
-func (c *Static) Certify(commit *Commit) error {
+func (c *Static) Certify(commit Commit) error {
 	// do basic sanity checks
 	err := commit.ValidateBasic(c.chainID)
 	if err != nil {

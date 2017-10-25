@@ -43,7 +43,7 @@ func (c *Inquiring) LastHeight() int {
 // for a path to prove the new validators.
 //
 // On success, it will store the checkpoint in the store for later viewing
-func (c *Inquiring) Certify(commit *Commit) error {
+func (c *Inquiring) Certify(commit Commit) error {
 	err := c.useClosestTrust(commit.Height())
 	if err != nil {
 		return err

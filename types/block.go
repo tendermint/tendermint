@@ -368,6 +368,14 @@ func (commit *Commit) StringIndented(indent string) string {
 
 //-----------------------------------------------------------------------------
 
+// SignedHeader is a header along with the commits that prove it
+type SignedHeader struct {
+	Header *Header `json:"header"`
+	Commit *Commit `json:"commit"`
+}
+
+//-----------------------------------------------------------------------------
+
 // Data contains the set of transactions included in the block
 type Data struct {
 

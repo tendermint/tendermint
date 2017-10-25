@@ -5,7 +5,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	rtypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
 	certerr "github.com/tendermint/tendermint/certifiers/errors"
@@ -14,46 +13,42 @@ import (
 // Certifier checks the votes to make sure the block really is signed properly.
 // Certifier must know the current set of validitors by some other means.
 type Certifier interface {
-	Certify(check *Commit) error
+	Certify(check Commit) error
 	ChainID() string
 }
 
-// *Commit is basically the rpc /commit response, but extended
+// Commit is basically the rpc /commit response, but extended
 //
 // This is the basepoint for proving anything on the blockchain. It contains
 // a signed header.  If the signatures are valid and > 2/3 of the known set,
 // we can store this checkpoint and use it to prove any number of aspects of
 // the system: such as txs, abci state, validator sets, etc...
-type Commit rtypes.ResultCommit
+type Commit types.SignedHeader
 
 // FullCommit is a commit and the actual validator set,
 // the base info you need to update to a given point,
 // assuming knowledge of some previous validator set
 type FullCommit struct {
-	*Commit    `json:"commit"`
+	Commit     `json:"commit"`
 	Validators *types.ValidatorSet `json:"validator_set"`
 }
 
-func NewFullCommit(commit *Commit, vals *types.ValidatorSet) FullCommit {
+func NewFullCommit(commit Commit, vals *types.ValidatorSet) FullCommit {
 	return FullCommit{
 		Commit:     commit,
 		Validators: vals,
 	}
 }
 
-func CommitFromResult(commit *rtypes.ResultCommit) *Commit {
-	return (*Commit)(commit)
-}
-
-func (c *Commit) Height() int {
-	if c == nil || c.Header == nil {
+func (c Commit) Height() int {
+	if c.Header == nil {
 		return 0
 	}
 	return c.Header.Height
 }
 
-func (c *Commit) ValidatorsHash() []byte {
-	if c == nil || c.Header == nil {
+func (c Commit) ValidatorsHash() []byte {
+	if c.Header == nil {
 		return nil
 	}
 	return c.Header.ValidatorsHash
@@ -64,7 +59,7 @@ func (c *Commit) ValidatorsHash() []byte {
 //
 // Make sure to use a Verifier to validate the signatures actually provide
 // a significantly strong proof for this header's validity.
-func (c *Commit) ValidateBasic(chainID string) error {
+func (c Commit) ValidateBasic(chainID string) error {
 	// make sure the header is reasonable
 	if c.Header == nil {
 		return errors.New("Commit missing header")

@@ -46,7 +46,7 @@ func (c *Dynamic) LastHeight() int {
 }
 
 // Certify handles this with
-func (c *Dynamic) Certify(check *Commit) error {
+func (c *Dynamic) Certify(check Commit) error {
 	err := c.cert.Certify(check)
 	if err == nil {
 		// update last seen height if input is valid
