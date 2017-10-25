@@ -44,7 +44,7 @@ func init() {
 // after running it (eg. sometimes small_block2 will have 5 block parts, sometimes 6).
 // It should only have to be re-run if there is some breaking change to the consensus data structures (eg. blocks, votes)
 // or to the behaviour of the app (eg. computes app hash differently)
-var data_dir = path.Join(cmn.GoPath, "src/github.com/tendermint/tendermint/consensus", "test_data")
+var data_dir = path.Join(cmn.GoPath(), "src/github.com/tendermint/tendermint/consensus", "test_data")
 
 //------------------------------------------------------------------------------------------
 // WAL Tests
