@@ -13,11 +13,15 @@ import (
 	"syscall"
 )
 
-var (
-	GoPath = gopath()
-)
+var gopath string
 
-func gopath() string {
+// GoPath returns GOPATH env variable value. If it is not set, this function
+// will try to call `go env GOPATH` subcommand.
+func GoPath() string {
+	if gopath != "" {
+		return gopath
+	}
+
 	path := os.Getenv("GOPATH")
 	if len(path) == 0 {
 		goCmd := exec.Command("go", "env", "GOPATH")
@@ -27,6 +31,7 @@ func gopath() string {
 		}
 		path = string(out)
 	}
+	gopath = path
 	return path
 }
 
