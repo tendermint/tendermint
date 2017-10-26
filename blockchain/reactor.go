@@ -19,8 +19,8 @@ const (
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
 
-	defaultChannelCapacity = 100
-	trySyncIntervalMS      = 100
+	defaultChannelCapacity = 1000
+	trySyncIntervalMS      = 50
 	// stop syncing when last block's time is
 	// within this much of the system time.
 	// stopSyncingDurationMinutes = 10
@@ -34,7 +34,7 @@ const (
 type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
-	SwitchToConsensus(*sm.State)
+	SwitchToConsensus(*sm.State, int)
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -110,8 +110,8 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
 			ID:                BlockchainChannel,
-			Priority:          5,
-			SendQueueCapacity: 100,
+			Priority:          10,
+			SendQueueCapacity: 1000,
 		},
 	}
 }
@@ -194,7 +194,12 @@ func (bcR *BlockchainReactor) poolRoutine() {
 	statusUpdateTicker := time.NewTicker(statusUpdateIntervalSeconds * time.Second)
 	switchToConsensusTicker := time.NewTicker(switchToConsensusIntervalSeconds * time.Second)
 
+	blocksSynced := 0
+
 	chainID := bcR.state.ChainID
+
+	lastHundred := time.Now()
+	lastRate := 0.0
 
 FOR_LOOP:
 	for {
@@ -223,14 +228,14 @@ FOR_LOOP:
 		case <-switchToConsensusTicker.C:
 			height, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
-			bcR.Logger.Info("Consensus ticker", "numPending", numPending, "total", lenRequesters,
+			bcR.Logger.Debug("Consensus ticker", "numPending", numPending, "total", lenRequesters,
 				"outbound", outbound, "inbound", inbound)
 			if bcR.pool.IsCaughtUp() {
 				bcR.Logger.Info("Time to switch to consensus reactor!", "height", height)
 				bcR.pool.Stop()
 
 				conR := bcR.Switch.Reactor("CONSENSUS").(consensusReactor)
-				conR.SwitchToConsensus(bcR.state)
+				conR.SwitchToConsensus(bcR.state, blocksSynced)
 
 				break FOR_LOOP
 			}
@@ -270,6 +275,14 @@ FOR_LOOP:
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+					}
+					blocksSynced += 1
+
+					if blocksSynced%100 == 0 {
+						lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
+						bcR.Logger.Info("Fast Sync Rate", "height", bcR.pool.height,
+							"max_peer_height", bcR.pool.MaxPeerHeight(), "blocks/s", lastRate)
+						lastHundred = time.Now()
 					}
 				}
 			}
