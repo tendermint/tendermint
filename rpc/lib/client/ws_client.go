@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
+	"math/rand"
 	"net"
 	"net/http"
 	"sync"
@@ -251,11 +251,14 @@ func (c *WSClient) reconnect() error {
 		c.mtx.Unlock()
 	}()
 
+	// 1s == (1e9 ns) == (1 Billion ns)
+	billionNs := float64(time.Second.Nanoseconds())
 	for {
-		c.Logger.Info("reconnecting", "attempt", attempt+1)
+		jitterSeconds := time.Duration(rand.Float64() * billionNs)
+		backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
 
-		d := time.Duration(math.Exp2(float64(attempt)))
-		time.Sleep(d * time.Second)
+		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)
+		time.Sleep(backoffDuration)
 
 		err := c.dial()
 		if err != nil {

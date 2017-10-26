@@ -35,6 +35,9 @@ test_race:
 test_integrations:
 	@bash ./test/test.sh
 
+release:
+	@go test -tags release $(PACKAGES)
+
 test100:
 	@for i in {1..100}; do make test; done
 
