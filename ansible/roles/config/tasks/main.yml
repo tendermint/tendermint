@@ -1,7 +1,7 @@
 ---
 
 - name: gather tendermint public keys
-  when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
+  when: (validators == true or validators == 'true') and genesis_file is not defined
   tags: reconfig-toml,reconfig-genesis
   command: "/usr/bin/tendermint show_validator --home /etc/{{service}} --log_level error"
   register: pubkeys
@@ -12,7 +12,7 @@
   file: "path=/etc/{{service}} owner={{service}} group={{service}} recurse=yes"
 
 - name: register tendermint public keys as host facts
-  when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
+  when: (validators == true or validators == 'true') and genesis_file is not defined
   tags: reconfig-toml,reconfig-genesis
   set_fact: "pubkey='{{pubkeys.stdout}}'"
   connection: local
@@ -28,6 +28,7 @@
 
 - name: copy pre-created genesis.json
   when: genesis_file is defined
+  tags: reconfig-genesis
   copy: "src={{genesis_file}} dest=/etc/{{service}}/genesis.json owner={{service}} group={{service}}"
 
 - name: copy tendermint config.toml
