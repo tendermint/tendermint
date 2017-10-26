@@ -271,7 +271,7 @@ func (p *peer) CanSend(chID byte) bool {
 func (p *peer) WriteTo(w io.Writer) (n int64, err error) {
 	var n_ int
 	wire.WriteString(p.key, w, &n_, &err)
-	n += int64(n_)
+	n = int64(n_)
 	return
 }
 
