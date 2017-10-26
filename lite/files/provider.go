@@ -34,7 +34,7 @@ const (
 	ValDir   = "validators"
 	CheckDir = "checkpoints"
 	dirPerm  = os.FileMode(0755)
-	filePerm = os.FileMode(0644)
+	//filePerm = os.FileMode(0644)
 )
 
 type provider struct {

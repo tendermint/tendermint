@@ -97,7 +97,7 @@ metalinter_test: ensure_tools
 	   	--enable=varcheck \
 		./...
 
-		#--enable=aligncheck \
+		#--enable=maligned \
 		#--enable=dupl \
 		#--enable=errcheck \
 		#--enable=goconst \
