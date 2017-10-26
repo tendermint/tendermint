@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/certifiers"
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
-	"github.com/tendermint/tendermint/certifiers/files"
+	"github.com/tendermint/tendermint/light"
+	lightErr "github.com/tendermint/tendermint/light/errors"
+	"github.com/tendermint/tendermint/light/files"
 )
 
-func checkEqual(stored, loaded certifiers.FullCommit, chainID string) error {
+func checkEqual(stored, loaded light.FullCommit, chainID string) error {
 	err := loaded.ValidateBasic(chainID)
 	if err != nil {
 		return err
@@ -36,28 +36,28 @@ func TestFileProvider(t *testing.T) {
 
 	chainID := "test-files"
 	appHash := []byte("some-data")
-	keys := certifiers.GenValKeys(5)
+	keys := light.GenValKeys(5)
 	count := 10
 
 	// make a bunch of seeds...
-	seeds := make([]certifiers.FullCommit, count)
+	seeds := make([]light.FullCommit, count)
 	for i := 0; i < count; i++ {
 		// two seeds for each validator, to check how we handle dups
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
 		vals := keys.ToValidators(10, int64(count/2))
 		h := 20 + 10*i
 		check := keys.GenCommit(chainID, h, nil, vals, appHash, 0, 5)
-		seeds[i] = certifiers.NewFullCommit(check, vals)
+		seeds[i] = light.NewFullCommit(check, vals)
 	}
 
 	// check provider is empty
 	seed, err := p.GetByHeight(20)
 	require.NotNil(err)
-	assert.True(certerr.IsCommitNotFoundErr(err))
+	assert.True(lightErr.IsCommitNotFoundErr(err))
 
 	seed, err = p.GetByHash(seeds[3].ValidatorsHash())
 	require.NotNil(err)
-	assert.True(certerr.IsCommitNotFoundErr(err))
+	assert.True(lightErr.IsCommitNotFoundErr(err))
 
 	// now add them all to the provider
 	for _, s := range seeds {
@@ -92,5 +92,5 @@ func TestFileProvider(t *testing.T) {
 	// and proper error for too low
 	_, err = p.GetByHeight(5)
 	assert.NotNil(err)
-	assert.True(certerr.IsCommitNotFoundErr(err))
+	assert.True(lightErr.IsCommitNotFoundErr(err))
 }

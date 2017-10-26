@@ -1,9 +1,9 @@
-package certifiers
+package light
 
 import (
 	"github.com/tendermint/tendermint/types"
 
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	lightErr "github.com/tendermint/tendermint/light/errors"
 )
 
 var _ Certifier = &Dynamic{}
@@ -22,6 +22,7 @@ type Dynamic struct {
 	lastHeight int
 }
 
+// NewDynamic returns a new dynamic certifier.
 func NewDynamic(chainID string, vals *types.ValidatorSet, height int) *Dynamic {
 	return &Dynamic{
 		cert:       NewStatic(chainID, vals),
@@ -29,23 +30,28 @@ func NewDynamic(chainID string, vals *types.ValidatorSet, height int) *Dynamic {
 	}
 }
 
+// ChainID returns the chain id of this certifier.
 func (c *Dynamic) ChainID() string {
 	return c.cert.ChainID()
 }
 
+// Validators returns the validators of this certifier.
 func (c *Dynamic) Validators() *types.ValidatorSet {
 	return c.cert.vSet
 }
 
+// Hash returns the hash of this certifier.
 func (c *Dynamic) Hash() []byte {
 	return c.cert.Hash()
 }
 
+// LastHeight returns the last height of this certifier.
 func (c *Dynamic) LastHeight() int {
 	return c.lastHeight
 }
 
-// Certify handles this with
+// Certify will verify whether the commit is valid and will update the height if it is or return an
+// error if it is not.
 func (c *Dynamic) Certify(check Commit) error {
 	err := c.cert.Certify(check)
 	if err == nil {
@@ -63,7 +69,7 @@ func (c *Dynamic) Update(fc FullCommit) error {
 	// ignore all checkpoints in the past -> only to the future
 	h := fc.Height()
 	if h <= c.lastHeight {
-		return certerr.ErrPastTime()
+		return lightErr.ErrPastTime()
 	}
 
 	// first, verify if the input is self-consistent....
@@ -79,7 +85,7 @@ func (c *Dynamic) Update(fc FullCommit) error {
 	err = c.Validators().VerifyCommitAny(fc.Validators, c.ChainID(),
 		commit.BlockID, h, commit)
 	if err != nil {
-		return certerr.ErrTooMuchChange()
+		return lightErr.ErrTooMuchChange()
 	}
 
 	// looks good, we can update
