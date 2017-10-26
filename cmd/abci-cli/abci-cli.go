@@ -259,7 +259,7 @@ func cmdBatch(cmd *cobra.Command, args []string) {
 func cmdConsole(cmd *cobra.Command, args []string) {
 
 	for {
-		fmt.Printf("\n> ")
+		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
@@ -454,12 +454,16 @@ func printResponse(cmd *cobra.Command, args []string, rsp response) {
 		fmt.Println(">", cmd.Use, strings.Join(args, " "))
 	}
 
-	if !rsp.Code.IsOK() {
-		fmt.Printf("-> code: %s\n", rsp.Code.String())
-	}
+	// Always print the status code.
+	fmt.Printf("-> code: %s\n", rsp.Code.String())
+
 	if len(rsp.Data) != 0 {
-		fmt.Printf("-> data: %s\n", rsp.Data)
-		fmt.Printf("-> data.hex: %X\n", rsp.Data)
+		// Do no print this line when using the commit command
+		// because the string comes out as gibberish
+		if cmd.Use != "commit" {
+			fmt.Printf("-> data: %s\n", rsp.Data)
+		}
+		fmt.Printf("-> data.hex: 0x%X\n", rsp.Data)
 	}
 	if rsp.Log != "" {
 		fmt.Printf("-> log: %s\n", rsp.Log)
