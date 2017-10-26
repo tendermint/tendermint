@@ -1,4 +1,4 @@
-package certifiers
+package light
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	lightErr "github.com/tendermint/tendermint/light/errors"
 )
 
 var _ Certifier = &Static{}
@@ -25,6 +25,7 @@ type Static struct {
 	vhash   []byte
 }
 
+// NewStatic returns a new certifier with a static validator set.
 func NewStatic(chainID string, vals *types.ValidatorSet) *Static {
 	return &Static{
 		chainID: chainID,
@@ -32,14 +33,17 @@ func NewStatic(chainID string, vals *types.ValidatorSet) *Static {
 	}
 }
 
+// ChainID returns the chain id.
 func (c *Static) ChainID() string {
 	return c.chainID
 }
 
+// Validators returns the validator set.
 func (c *Static) Validators() *types.ValidatorSet {
 	return c.vSet
 }
 
+// Hash returns the hash of the validator set.
 func (c *Static) Hash() []byte {
 	if len(c.vhash) == 0 {
 		c.vhash = c.vSet.Hash()
@@ -47,6 +51,7 @@ func (c *Static) Hash() []byte {
 	return c.vhash
 }
 
+// Certify makes sure that the commit is valid.
 func (c *Static) Certify(commit Commit) error {
 	// do basic sanity checks
 	err := commit.ValidateBasic(c.chainID)
@@ -56,7 +61,7 @@ func (c *Static) Certify(commit Commit) error {
 
 	// make sure it has the same validator set we have (static means static)
 	if !bytes.Equal(c.Hash(), commit.Header.ValidatorsHash) {
-		return certerr.ErrValidatorsChanged()
+		return lightErr.ErrValidatorsChanged()
 	}
 
 	// then make sure we have the proper signatures for this

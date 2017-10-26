@@ -12,10 +12,11 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tendermint/certifiers"
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	"github.com/tendermint/tendermint/light"
+	lightErr "github.com/tendermint/tendermint/light/errors"
 )
 
+// SignStatusClient combines a SignClient and StatusClient.
 type SignStatusClient interface {
 	rpcclient.SignClient
 	rpcclient.StatusClient
@@ -28,13 +29,13 @@ type provider struct {
 
 // NewProvider can wrap any rpcclient to expose it as
 // a read-only provider.
-func NewProvider(node SignStatusClient) certifiers.Provider {
+func NewProvider(node SignStatusClient) light.Provider {
 	return &provider{node: node}
 }
 
-// NewProvider can connects to a tendermint json-rpc endpoint
+// NewHTTPProvider can connects to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
-func NewHTTPProvider(remote string) certifiers.Provider {
+func NewHTTPProvider(remote string) light.Provider {
 	return &provider{
 		node: rpcclient.NewHTTP(remote, "/websocket"),
 	}
@@ -46,13 +47,13 @@ func (p *provider) StatusClient() rpcclient.StatusClient {
 }
 
 // StoreCommit is a noop, as clients can only read from the chain...
-func (p *provider) StoreCommit(_ certifiers.FullCommit) error { return nil }
+func (p *provider) StoreCommit(_ light.FullCommit) error { return nil }
 
 // GetHash gets the most recent validator and sees if it matches
 //
 // TODO: improve when the rpc interface supports more functionality
-func (p *provider) GetByHash(hash []byte) (certifiers.FullCommit, error) {
-	var fc certifiers.FullCommit
+func (p *provider) GetByHash(hash []byte) (light.FullCommit, error) {
+	var fc light.FullCommit
 	vals, err := p.node.Validators(nil)
 	// if we get no validators, or a different height, return an error
 	if err != nil {
@@ -61,13 +62,13 @@ func (p *provider) GetByHash(hash []byte) (certifiers.FullCommit, error) {
 	p.updateHeight(vals.BlockHeight)
 	vhash := types.NewValidatorSet(vals.Validators).Hash()
 	if !bytes.Equal(hash, vhash) {
-		return fc, certerr.ErrCommitNotFound()
+		return fc, lightErr.ErrCommitNotFound()
 	}
 	return p.seedFromVals(vals)
 }
 
 // GetByHeight gets the validator set by height
-func (p *provider) GetByHeight(h int) (fc certifiers.FullCommit, err error) {
+func (p *provider) GetByHeight(h int) (fc light.FullCommit, err error) {
 	commit, err := p.node.Commit(&h)
 	if err != nil {
 		return fc, err
@@ -75,7 +76,8 @@ func (p *provider) GetByHeight(h int) (fc certifiers.FullCommit, err error) {
 	return p.seedFromCommit(commit)
 }
 
-func (p *provider) LatestCommit() (fc certifiers.FullCommit, err error) {
+// LatestCommit returns the newest commit stored.
+func (p *provider) LatestCommit() (fc light.FullCommit, err error) {
 	commit, err := p.GetLatestCommit()
 	if err != nil {
 		return fc, err
@@ -94,24 +96,25 @@ func (p *provider) GetLatestCommit() (*ctypes.ResultCommit, error) {
 	return p.node.Commit(&status.LatestBlockHeight)
 }
 
-func CommitFromResult(result *ctypes.ResultCommit) certifiers.Commit {
-	return (certifiers.Commit)(result.SignedHeader)
+// CommitFromResult ...
+func CommitFromResult(result *ctypes.ResultCommit) light.Commit {
+	return (light.Commit)(result.SignedHeader)
 }
 
-func (p *provider) seedFromVals(vals *ctypes.ResultValidators) (certifiers.FullCommit, error) {
+func (p *provider) seedFromVals(vals *ctypes.ResultValidators) (light.FullCommit, error) {
 	// now get the commits and build a full commit
 	commit, err := p.node.Commit(&vals.BlockHeight)
 	if err != nil {
-		return certifiers.FullCommit{}, err
+		return light.FullCommit{}, err
 	}
-	fc := certifiers.NewFullCommit(
+	fc := light.NewFullCommit(
 		CommitFromResult(commit),
 		types.NewValidatorSet(vals.Validators),
 	)
 	return fc, nil
 }
 
-func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc certifiers.FullCommit, err error) {
+func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc light.FullCommit, err error) {
 	fc.Commit = CommitFromResult(commit)
 
 	// now get the proper validators
@@ -123,7 +126,7 @@ func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc certifiers.Fu
 	// make sure they match the commit (as we cannot enforce height)
 	vset := types.NewValidatorSet(vals.Validators)
 	if !bytes.Equal(vset.Hash(), commit.Header.ValidatorsHash) {
-		return fc, certerr.ErrValidatorsChanged()
+		return fc, lightErr.ErrValidatorsChanged()
 	}
 
 	p.updateHeight(commit.Header.Height)

@@ -10,7 +10,7 @@ import (
 
 	cmn "github.com/tendermint/tmlibs/common"
 
-	"github.com/tendermint/tendermint/certifiers"
+	"github.com/tendermint/tendermint/light"
 )
 
 func tmpFile() string {
@@ -27,7 +27,7 @@ func TestSerializeFullCommits(t *testing.T) {
 	h := 25
 
 	// build a fc
-	keys := certifiers.GenValKeys(5)
+	keys := light.GenValKeys(5)
 	vals := keys.ToValidators(10, 0)
 	fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, 5)
 

@@ -1,4 +1,4 @@
-package certifiers
+package light
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	lightErr "github.com/tendermint/tendermint/light/errors"
 )
 
 // Certifier checks the votes to make sure the block really is signed properly.
@@ -33,6 +33,7 @@ type FullCommit struct {
 	Validators *types.ValidatorSet `json:"validator_set"`
 }
 
+// NewFullCommit returns a new FullCommit.
 func NewFullCommit(commit Commit, vals *types.ValidatorSet) FullCommit {
 	return FullCommit{
 		Commit:     commit,
@@ -40,6 +41,7 @@ func NewFullCommit(commit Commit, vals *types.ValidatorSet) FullCommit {
 	}
 }
 
+// Height returns the of the header.
 func (c Commit) Height() int {
 	if c.Header == nil {
 		return 0
@@ -47,6 +49,7 @@ func (c Commit) Height() int {
 	return c.Header.Height
 }
 
+// ValidatorsHash returns the hash of the validator set.
 func (c Commit) ValidatorsHash() []byte {
 	if c.Header == nil {
 		return nil
@@ -75,7 +78,7 @@ func (c Commit) ValidateBasic(chainID string) error {
 
 	// make sure the header and commit match (height and hash)
 	if c.Commit.Height() != c.Header.Height {
-		return certerr.ErrHeightMismatch(c.Commit.Height(), c.Header.Height)
+		return lightErr.ErrHeightMismatch(c.Commit.Height(), c.Header.Height)
 	}
 	hhash := c.Header.Hash()
 	chash := c.Commit.BlockID.Hash

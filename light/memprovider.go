@@ -1,10 +1,10 @@
-package certifiers
+package light
 
 import (
 	"encoding/hex"
 	"sort"
 
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	lightErr "github.com/tendermint/tendermint/light/errors"
 )
 
 type memStoreProvider struct {
@@ -23,6 +23,7 @@ func (s fullCommits) Less(i, j int) bool {
 	return s[i].Height() < s[j].Height()
 }
 
+// NewMemStoreProvider returns a new in-memory provider.
 func NewMemStoreProvider() Provider {
 	return &memStoreProvider{
 		byHeight: fullCommits{},
@@ -34,6 +35,7 @@ func (m *memStoreProvider) encodeHash(hash []byte) string {
 	return hex.EncodeToString(hash)
 }
 
+// StoreCommit stores a FullCommit after verifying it.
 func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 	// make sure the fc is self-consistent before saving
 	err := fc.ValidateBasic(fc.Commit.Header.ChainID)
@@ -49,6 +51,7 @@ func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 	return nil
 }
 
+// GetByHeight returns the FullCommit for height h or an error if the commit is not found.
 func (m *memStoreProvider) GetByHeight(h int) (FullCommit, error) {
 	// search from highest to lowest
 	for i := len(m.byHeight) - 1; i >= 0; i-- {
@@ -57,22 +60,24 @@ func (m *memStoreProvider) GetByHeight(h int) (FullCommit, error) {
 			return fc, nil
 		}
 	}
-	return FullCommit{}, certerr.ErrCommitNotFound()
+	return FullCommit{}, lightErr.ErrCommitNotFound()
 }
 
+// GetByHash returns the FullCommit for the hash or an error if the commit is not found.
 func (m *memStoreProvider) GetByHash(hash []byte) (FullCommit, error) {
 	var err error
 	fc, ok := m.byHash[m.encodeHash(hash)]
 	if !ok {
-		err = certerr.ErrCommitNotFound()
+		err = lightErr.ErrCommitNotFound()
 	}
 	return fc, err
 }
 
+// LatestCommit returns the latest FullCommit or an error if no commits exist.
 func (m *memStoreProvider) LatestCommit() (FullCommit, error) {
 	l := len(m.byHeight)
 	if l == 0 {
-		return FullCommit{}, certerr.ErrCommitNotFound()
+		return FullCommit{}, lightErr.ErrCommitNotFound()
 	}
 	return m.byHeight[l-1], nil
 }

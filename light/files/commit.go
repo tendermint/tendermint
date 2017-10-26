@@ -8,8 +8,8 @@ import (
 
 	wire "github.com/tendermint/go-wire"
 
-	"github.com/tendermint/tendermint/certifiers"
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	"github.com/tendermint/tendermint/light"
+	lightErr "github.com/tendermint/tendermint/light/errors"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 )
 
 // SaveFullCommit exports the seed in binary / go-wire style
-func SaveFullCommit(fc certifiers.FullCommit, path string) error {
+func SaveFullCommit(fc light.FullCommit, path string) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return errors.WithStack(err)
@@ -33,7 +33,7 @@ func SaveFullCommit(fc certifiers.FullCommit, path string) error {
 }
 
 // SaveFullCommitJSON exports the seed in a json format
-func SaveFullCommitJSON(fc certifiers.FullCommit, path string) error {
+func SaveFullCommitJSON(fc light.FullCommit, path string) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return errors.WithStack(err)
@@ -44,12 +44,13 @@ func SaveFullCommitJSON(fc certifiers.FullCommit, path string) error {
 	return errors.WithStack(err)
 }
 
-func LoadFullCommit(path string) (certifiers.FullCommit, error) {
-	var fc certifiers.FullCommit
+// LoadFullCommit loads the full commit from the file system.
+func LoadFullCommit(path string) (light.FullCommit, error) {
+	var fc light.FullCommit
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fc, certerr.ErrCommitNotFound()
+			return fc, lightErr.ErrCommitNotFound()
 		}
 		return fc, errors.WithStack(err)
 	}
@@ -60,12 +61,13 @@ func LoadFullCommit(path string) (certifiers.FullCommit, error) {
 	return fc, errors.WithStack(err)
 }
 
-func LoadFullCommitJSON(path string) (certifiers.FullCommit, error) {
-	var fc certifiers.FullCommit
+// LoadFullCommitJSON loads the commit from the file system in JSON format.
+func LoadFullCommitJSON(path string) (light.FullCommit, error) {
+	var fc light.FullCommit
 	f, err := os.Open(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fc, certerr.ErrCommitNotFound()
+			return fc, lightErr.ErrCommitNotFound()
 		}
 		return fc, errors.WithStack(err)
 	}
