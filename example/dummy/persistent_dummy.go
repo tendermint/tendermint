@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/tendermint/abci/types"
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -149,15 +150,25 @@ func isValidatorTx(tx []byte) bool {
 // format is "val:pubkey1/power1,addr2/power2,addr3/power3"tx
 func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Result {
 	tx = tx[len(ValidatorSetChangePrefix):]
+
+	//get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "/")
 	if len(pubKeyAndPower) != 2 {
 		return types.ErrEncodingError.SetLog(cmn.Fmt("Expected 'pubkey/power'. Got %v", pubKeyAndPower))
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
+
+	// decode the pubkey, ensuring its go-crypto encoded
 	pubkey, err := hex.DecodeString(pubkeyS)
 	if err != nil {
 		return types.ErrEncodingError.SetLog(cmn.Fmt("Pubkey (%s) is invalid hex", pubkeyS))
 	}
+	_, err = crypto.PubKeyFromBytes(pubkey)
+	if err != nil {
+		return types.ErrEncodingError.SetLog(cmn.Fmt("Pubkey (%X) is invalid go-crypto encoded", pubkey))
+	}
+
+	// decode the power
 	power, err := strconv.Atoi(powerS)
 	if err != nil {
 		return types.ErrEncodingError.SetLog(cmn.Fmt("Power (%s) is not an int", powerS))
