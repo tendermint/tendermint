@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -347,24 +346,6 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 			newVotingPower, (newSet.TotalVotingPower()*2/3 + 1))
 	}
 	return nil
-}
-
-func (valSet *ValidatorSet) ToBytes() []byte {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(valSet, buf, n, err)
-	if *err != nil {
-		cmn.PanicCrisis(*err)
-	}
-	return buf.Bytes()
-}
-
-func (valSet *ValidatorSet) FromBytes(b []byte) {
-	r, n, err := bytes.NewReader(b), new(int), new(error)
-	wire.ReadBinary(valSet, r, 0, n, err)
-	if *err != nil {
-		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.PanicCrisis(*err)
-	}
 }
 
 func (valSet *ValidatorSet) String() string {
