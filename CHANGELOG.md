@@ -30,9 +30,27 @@ BUG FIXES:
 
 ## 0.12.0 (TBD)
 
+BREAKING CHANGES:
+ - rpc/client: websocket ResultsCh and ErrorsCh unified in ResponsesCh.
+ - rpc/client: ABCIQuery no longer takes `prove`
+ - state: remove GenesisDoc from state.
+
+FEATURES:
+ - new `certifiers` pkg contains the tendermint light-client library!
+ - rpc: `/genesis` includes the `app_options` .
+ - rpc: `/abci_query` takes an additional `height` parameter to support historical queries.
+ - rpc/client: new ABCIQueryWithOptions supports options like `trusted` (set false to get a proof`) and `height` to query a historical height.
+
 IMPROVEMENTS:
  - genesis doc: added `app_options` field, which, along with the other fields,
    will be returned upon `/genesis` rpc call.
+ - rpc/lib/client: add jitter to reconnects.
+ - rpc/lib/types: `RPCError` satisfies the `error` interface.
+
+BUG FIXES:
+ - rpc/client: fix ws deadlock after stopping
+ - blockchain: fix panic on AddBlock when peer is nil
+ - mempool: fix sending on TxsAvailable when a tx has been invalidated
 
 ## 0.11.1 (October 10, 2017)
 
