@@ -34,17 +34,16 @@ BREAKING CHANGES:
  - rpc/client: ABCIQuery no longer takes `prove`
  - state: remove GenesisDoc from state.
  - consensus: new binary WAL format provides efficiency and uses checksums to detect corruption
-    - see scripts/wal2json to convert to json for debugging
+    - use scripts/wal2json to convert to json for debugging
 
 FEATURES:
- - new `certifiers` pkg contains the tendermint light-client library!
+ - new `certifiers` pkg contains the tendermint light-client library (name subject to change)!
  - rpc: `/genesis` includes the `app_options` .
  - rpc: `/abci_query` takes an additional `height` parameter to support historical queries.
  - rpc/client: new ABCIQueryWithOptions supports options like `trusted` (set false to get a proof`) and `height` to query a historical height.
 
 IMPROVEMENTS:
- - genesis doc: added `app_options` field, which, along with the other fields,
-   will be returned upon `/genesis` rpc call.
+ - rpc: `/genesis` result includes `app_options`
  - rpc/lib/client: add jitter to reconnects.
  - rpc/lib/types: `RPCError` satisfies the `error` interface.
 
