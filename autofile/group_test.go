@@ -1,6 +1,7 @@
 package autofile
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"io/ioutil"
@@ -395,6 +396,96 @@ func TestFindLast4(t *testing.T) {
 	}
 	if match != "" {
 		t.Errorf("Unexpected match: [%v]", match)
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestWrite(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	written := []byte("Medusa")
+	g.Write(written)
+	g.Flush()
+
+	read := make([]byte, len(written))
+	gr, err := g.NewReader(0)
+	if err != nil {
+		t.Fatalf("Failed to create reader: %v", err)
+	}
+	_, err = gr.Read(read)
+	if err != nil {
+		t.Fatalf("Failed to read data: %v", err)
+	}
+
+	if !bytes.Equal(written, read) {
+		t.Errorf("%s, %s should be equal", string(written), string(read))
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestGroupReaderRead(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	professor := []byte("Professor Monster")
+	g.Write(professor)
+	g.Flush()
+	g.RotateFile()
+	frankenstein := []byte("Frankenstein's Monster")
+	g.Write(frankenstein)
+	g.Flush()
+
+	totalWrittenLength := len(professor) + len(frankenstein)
+	read := make([]byte, totalWrittenLength)
+	gr, err := g.NewReader(0)
+	if err != nil {
+		t.Fatalf("Failed to create reader: %v", err)
+	}
+	n, err := gr.Read(read)
+	if err != nil {
+		t.Fatalf("Failed to read data: %v", err)
+	}
+	if n != totalWrittenLength {
+		t.Errorf("Failed to read enough bytes: wanted %d, but read %d", totalWrittenLength, n)
+	}
+
+	professorPlusFrankenstein := professor
+	professorPlusFrankenstein = append(professorPlusFrankenstein, frankenstein...)
+	if !bytes.Equal(read, professorPlusFrankenstein) {
+		t.Errorf("%s, %s should be equal", string(professorPlusFrankenstein), string(read))
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestMinIndex(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	if g.MinIndex() != 0 {
+		t.Error("MinIndex should be zero at the beginning")
+	}
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestMaxIndex(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	if g.MaxIndex() != 0 {
+		t.Error("MaxIndex should be zero at the beginning")
+	}
+
+	g.WriteLine("Line 1")
+	g.Flush()
+	g.RotateFile()
+
+	if g.MaxIndex() != 1 {
+		t.Error("MaxIndex should point to the last file")
 	}
 
 	// Cleanup
