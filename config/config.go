@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// Note: Most of the structs & relevant comments + the
+// default configuration options were used to manually
+// generate the config.toml. Please reflect any changes
+// made here in the defaultConfigTemplate constant in
+// config/toml.go
+
 // Config defines the top level configuration for a Tendermint node
 type Config struct {
 	// Top level options use an anonymous struct
@@ -62,10 +68,10 @@ type BaseConfig struct {
 	// The ID of the chain to join (should be signed with every transaction and vote)
 	ChainID string `mapstructure:"chain_id"`
 
-	// A JSON file containing the initial validator set and other meta data
+	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
 
-	// A JSON file containing the private key to use as a validator in the consensus protocol
+	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
 	PrivValidator string `mapstructure:"priv_validator_file"`
 
 	// A custom human readable name for this node
@@ -108,8 +114,8 @@ func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:           "genesis.json",
 		PrivValidator:     "priv_validator.json",
-		Moniker:           "anonymous",
 		ProxyApp:          "tcp://127.0.0.1:46658",
+		Moniker:           "anonymous",
 		ABCI:              "socket",
 		LogLevel:          DefaultPackageLogLevels(),
 		ProfListenAddress: "",
@@ -298,7 +304,7 @@ type ConsensusConfig struct {
 	WalLight bool   `mapstructure:"wal_light"`
 	walFile  string // overrides WalPath if set
 
-	// All timeouts are in ms
+	// All timeouts are in milliseconds
 	TimeoutPropose        int `mapstructure:"timeout_propose"`
 	TimeoutProposeDelta   int `mapstructure:"timeout_propose_delta"`
 	TimeoutPrevote        int `mapstructure:"timeout_prevote"`
@@ -318,7 +324,7 @@ type ConsensusConfig struct {
 	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
 	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
 
-	// Reactor sleep duration parameters are in ms
+	// Reactor sleep duration parameters are in milliseconds
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
 }

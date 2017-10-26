@@ -4,6 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -32,7 +33,7 @@ func TestEnsureRoot(t *testing.T) {
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 	require.Nil(err)
-	assert.Equal([]byte(defaultConfig("anonymous")), data)
+	assert.Equal(checkConfig(string(data)), true)
 
 	ensureFiles(t, tmpDir, "data")
 }
@@ -49,9 +50,37 @@ func TestEnsureTestRoot(t *testing.T) {
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(rootDir, "config.toml"))
 	require.Nil(err)
-	assert.Equal([]byte(testConfig("anonymous")), data)
-
-	// TODO: make sure the cfg returned and testconfig are the same!
+	assert.Equal(checkConfig(string(data)), true)
 
 	ensureFiles(t, rootDir, "data", "genesis.json", "priv_validator.json")
+}
+
+func checkConfig(configFile string) bool {
+	var valid bool
+
+	// list of words we expect in the config
+	var elems = []string{
+		"moniker",
+		"seeds",
+		"proxy_app",
+		"fast_sync",
+		"create_empty_blocks",
+		"peer",
+		"timeout",
+		"broadcast",
+		"send",
+		"addr",
+		"wal",
+		"propose",
+		"max",
+		"genesis",
+	}
+	for _, e := range elems {
+		if !strings.Contains(configFile, e) {
+			valid = false
+		} else {
+			valid = true
+		}
+	}
+	return valid
 }
