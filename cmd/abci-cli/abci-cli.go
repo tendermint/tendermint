@@ -144,6 +144,7 @@ var batchCmd = &cobra.Command{
 	Use:   "batch",
 	Short: "Run a batch of abci commands against an application",
 	Long:  "",
+	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdBatch(cmd, args)
 	},
@@ -153,6 +154,7 @@ var consoleCmd = &cobra.Command{
 	Use:       "console",
 	Short:     "Start an interactive abci console for multiple commands",
 	Long:      "",
+	Args:      cobra.ExactArgs(0),
 	ValidArgs: []string{"batch", "echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdConsole(cmd, args)
@@ -163,6 +165,7 @@ var echoCmd = &cobra.Command{
 	Use:   "echo",
 	Short: "Have the application echo a message",
 	Long:  "",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdEcho(cmd, args)
 	},
@@ -171,6 +174,7 @@ var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get some info about the application",
 	Long:  "",
+	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdInfo(cmd, args)
 	},
@@ -179,6 +183,7 @@ var setOptionCmd = &cobra.Command{
 	Use:   "set_option",
 	Short: "Set an option on the application",
 	Long:  "",
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdSetOption(cmd, args)
 	},
@@ -188,6 +193,7 @@ var deliverTxCmd = &cobra.Command{
 	Use:   "deliver_tx",
 	Short: "Deliver a new transaction to the application",
 	Long:  "",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdDeliverTx(cmd, args)
 	},
@@ -197,6 +203,7 @@ var checkTxCmd = &cobra.Command{
 	Use:   "check_tx",
 	Short: "Validate a transaction",
 	Long:  "",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCheckTx(cmd, args)
 	},
@@ -206,6 +213,7 @@ var commitCmd = &cobra.Command{
 	Use:   "commit",
 	Short: "Commit the application state and return the Merkle root hash",
 	Long:  "",
+	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCommit(cmd, args)
 	},
@@ -215,6 +223,7 @@ var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Query the application state",
 	Long:  "",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdQuery(cmd, args)
 	},
@@ -224,6 +233,7 @@ var counterCmd = &cobra.Command{
 	Use:   "counter",
 	Short: "ABCI demo example",
 	Long:  "",
+	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCounter(cmd, args)
 	},
@@ -233,6 +243,7 @@ var dummyCmd = &cobra.Command{
 	Use:   "dummy",
 	Short: "ABCI demo example",
 	Long:  "",
+	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdDummy(cmd, args)
 	},
@@ -302,9 +313,6 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 
 // Have the application echo a message
 func cmdEcho(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return errors.New("Command echo takes only 1 argument")
-	}
 	resEcho := client.EchoSync(args[0])
 	printResponse(cmd, args, response{
 		Data: resEcho.Data,
@@ -330,9 +338,6 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 
 // Set an option on the application
 func cmdSetOption(cmd *cobra.Command, args []string) error {
-	if len(args) != 2 {
-		return errors.New("Command set_option takes exactly 2 arguments (key, value)")
-	}
 	resSetOption := client.SetOptionSync(args[0], args[1])
 	printResponse(cmd, args, response{
 		Log: resSetOption.Log,
@@ -342,9 +347,6 @@ func cmdSetOption(cmd *cobra.Command, args []string) error {
 
 // Append a new tx to application
 func cmdDeliverTx(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return errors.New("Command deliver_tx takes only 1 argument")
-	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
@@ -360,9 +362,6 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 
 // Validate a tx
 func cmdCheckTx(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return errors.New("Command check_tx takes only 1 argument")
-	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
@@ -389,10 +388,6 @@ func cmdCommit(cmd *cobra.Command, args []string) error {
 
 // Query application state
 func cmdQuery(cmd *cobra.Command, args []string) error {
-	if len(args) != 1 {
-		return errors.New("Command query takes only 1 argument, the query bytes")
-	}
-
 	queryBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err

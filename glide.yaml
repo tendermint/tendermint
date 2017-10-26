@@ -19,6 +19,7 @@ import:
   - merkle
   - process
 - package: github.com/spf13/cobra
+  version: master
 - package: golang.org/x/net
   subpackages:
   - context
