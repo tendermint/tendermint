@@ -129,7 +129,6 @@ func DefaultBaseConfig() BaseConfig {
 		PrivValidator:     defaultPrivValPath,
 		Moniker:           "anonymous",
 		ProxyApp:          "tcp://127.0.0.1:46658",
-		Moniker:           "anonymous",
 		ABCI:              "socket",
 		LogLevel:          DefaultPackageLogLevels(),
 		ProfListenAddress: "",

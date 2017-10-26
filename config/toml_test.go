@@ -50,7 +50,7 @@ func TestEnsureTestRoot(t *testing.T) {
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(rootDir, defaultConfigFilePath))
 	require.Nil(err)
-	assert.Equal([]byte(testConfig("anonymous")), data)
+	assert.Equal(checkConfig(string(data)), true)
 
 	// TODO: make sure the cfg returned and testconfig are the same!
 	baseConfig := DefaultBaseConfig()
