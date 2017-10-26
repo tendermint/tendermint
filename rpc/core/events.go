@@ -1,9 +1,15 @@
 package core
 
 import (
+	"context"
+	"time"
+
+	"github.com/pkg/errors"
+
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
+	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
 // Subscribe for events via WebSocket.
@@ -33,14 +39,32 @@ import (
 // | event     | string | ""      | true     | Event name  |
 //
 // <aside class="notice">WebSocket only</aside>
-func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscribe, error) {
-	logger.Info("Subscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
-	types.AddListenerForEvent(wsCtx.GetEventSwitch(), wsCtx.GetRemoteAddr(), event, func(msg types.TMEventData) {
-		// NOTE: EventSwitch callbacks must be nonblocking
-		// NOTE: RPCResponses of subscribed events have id suffix "#event"
-		tmResult := &ctypes.ResultEvent{event, msg}
-		wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Request.ID+"#event", tmResult))
-	})
+func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
+	addr := wsCtx.GetRemoteAddr()
+
+	logger.Info("Subscribe to query", "remote", addr, "query", query)
+	q, err := tmquery.New(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse a query")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+	ch := make(chan interface{})
+	err = eventBus.Subscribe(ctx, addr, q, ch)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to subscribe")
+	}
+
+	wsCtx.AddSubscription(query, q)
+
+	go func() {
+		for event := range ch {
+			tmResult := &ctypes.ResultEvent{query, event.(tmtypes.TMEventData)}
+			wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Request.ID+"#event", tmResult))
+		}
+	}()
+
 	return &ctypes.ResultSubscribe{}, nil
 }
 
@@ -71,8 +95,21 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultSubscri
 // | event     | string | ""      | true     | Event name  |
 //
 // <aside class="notice">WebSocket only</aside>
-func Unsubscribe(wsCtx rpctypes.WSRPCContext, event string) (*ctypes.ResultUnsubscribe, error) {
-	logger.Info("Unsubscribe to event", "remote", wsCtx.GetRemoteAddr(), "event", event)
-	wsCtx.GetEventSwitch().RemoveListenerForEvent(event, wsCtx.GetRemoteAddr())
+func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsubscribe, error) {
+	addr := wsCtx.GetRemoteAddr()
+	logger.Info("Unsubscribe from query", "remote", addr, "query", query)
+	q, ok := wsCtx.DeleteSubscription(query)
+	if !ok {
+		return nil, errors.New("subscription not found")
+	}
+	eventBus.Unsubscribe(context.Background(), addr, q.(*tmquery.Query))
+	return &ctypes.ResultUnsubscribe{}, nil
+}
+
+func UnsubscribeAll(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
+	addr := wsCtx.GetRemoteAddr()
+	logger.Info("Unsubscribe from all", "remote", addr)
+	eventBus.UnsubscribeAll(context.Background(), addr)
+	wsCtx.DeleteAllSubscriptions()
 	return &ctypes.ResultUnsubscribe{}, nil
 }

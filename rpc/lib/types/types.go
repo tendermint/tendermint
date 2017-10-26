@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	events "github.com/tendermint/tmlibs/events"
 )
 
 //----------------------------------------
@@ -135,9 +134,12 @@ func RPCServerError(id string, err error) RPCResponse {
 // *wsConnection implements this interface.
 type WSRPCConnection interface {
 	GetRemoteAddr() string
-	GetEventSwitch() events.EventSwitch
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
+
+	AddSubscription(string, interface{})
+	DeleteSubscription(string) (interface{}, bool)
+	DeleteAllSubscriptions()
 }
 
 // websocket-only RPCFuncs take this as the first parameter.

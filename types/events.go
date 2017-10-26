@@ -1,39 +1,40 @@
 package types
 
 import (
-	// for registering TMEventData as events.EventData
+	"fmt"
+
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire/data"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/events"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
+	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
-// Functions to generate eventId strings
+// Reserved event types
+const (
+	EventBond              = "Bond"
+	EventCompleteProposal  = "CompleteProposal"
+	EventDupeout           = "Dupeout"
+	EventFork              = "Fork"
+	EventLock              = "Lock"
+	EventNewBlock          = "NewBlock"
+	EventNewBlockHeader    = "NewBlockHeader"
+	EventNewRound          = "NewRound"
+	EventNewRoundStep      = "NewRoundStep"
+	EventPolka             = "Polka"
+	EventRebond            = "Rebond"
+	EventRelock            = "Relock"
+	EventTimeoutPropose    = "TimeoutPropose"
+	EventTimeoutWait       = "TimeoutWait"
+	EventTx                = "Tx"
+	EventUnbond            = "Unbond"
+	EventUnlock            = "Unlock"
+	EventVote              = "Vote"
+	EventProposalHeartbeat = "ProposalHeartbeat"
+)
 
-// Reserved
-func EventStringBond() string    { return "Bond" }
-func EventStringUnbond() string  { return "Unbond" }
-func EventStringRebond() string  { return "Rebond" }
-func EventStringDupeout() string { return "Dupeout" }
-func EventStringFork() string    { return "Fork" }
-func EventStringTx(tx Tx) string { return cmn.Fmt("Tx:%X", tx.Hash()) }
-
-func EventStringNewBlock() string         { return "NewBlock" }
-func EventStringNewBlockHeader() string   { return "NewBlockHeader" }
-func EventStringNewRound() string         { return "NewRound" }
-func EventStringNewRoundStep() string     { return "NewRoundStep" }
-func EventStringTimeoutPropose() string   { return "TimeoutPropose" }
-func EventStringCompleteProposal() string { return "CompleteProposal" }
-func EventStringPolka() string            { return "Polka" }
-func EventStringUnlock() string           { return "Unlock" }
-func EventStringLock() string             { return "Lock" }
-func EventStringRelock() string           { return "Relock" }
-func EventStringTimeoutWait() string      { return "TimeoutWait" }
-func EventStringVote() string             { return "Vote" }
-
-func EventStringProposalHeartbeat() string { return "ProposalHeartbeat" }
-
-//----------------------------------------
+///////////////////////////////////////////////////////////////////////////////
+// ENCODING / DECODING
+///////////////////////////////////////////////////////////////////////////////
 
 var (
 	EventDataNameNewBlock       = "new_block"
@@ -45,11 +46,9 @@ var (
 	EventDataNameProposalHeartbeat = "proposer_heartbeat"
 )
 
-//----------------------------------------
-
 // implements events.EventData
 type TMEventDataInner interface {
-	events.EventData
+	// empty interface
 }
 
 type TMEventData struct {
@@ -140,112 +139,54 @@ type EventDataVote struct {
 	Vote *Vote
 }
 
-func (_ EventDataNewBlock) AssertIsTMEventData()       {}
-func (_ EventDataNewBlockHeader) AssertIsTMEventData() {}
-func (_ EventDataTx) AssertIsTMEventData()             {}
-func (_ EventDataRoundState) AssertIsTMEventData()     {}
-func (_ EventDataVote) AssertIsTMEventData()           {}
-
+func (_ EventDataNewBlock) AssertIsTMEventData()          {}
+func (_ EventDataNewBlockHeader) AssertIsTMEventData()    {}
+func (_ EventDataTx) AssertIsTMEventData()                {}
+func (_ EventDataRoundState) AssertIsTMEventData()        {}
+func (_ EventDataVote) AssertIsTMEventData()              {}
 func (_ EventDataProposalHeartbeat) AssertIsTMEventData() {}
 
-//----------------------------------------
-// Wrappers for type safety
+///////////////////////////////////////////////////////////////////////////////
+// PUBSUB
+///////////////////////////////////////////////////////////////////////////////
 
-type Fireable interface {
-	events.Fireable
+const (
+	// EventTypeKey is a reserved key, used to specify event type in tags.
+	EventTypeKey = "tm.events.type"
+	// TxHashKey is a reserved key, used to specify transaction's hash.
+	// see EventBus#PublishEventTx
+	TxHashKey = "tx.hash"
+)
+
+var (
+	EventQueryBond              = queryForEvent(EventBond)
+	EventQueryUnbond            = queryForEvent(EventUnbond)
+	EventQueryRebond            = queryForEvent(EventRebond)
+	EventQueryDupeout           = queryForEvent(EventDupeout)
+	EventQueryFork              = queryForEvent(EventFork)
+	EventQueryNewBlock          = queryForEvent(EventNewBlock)
+	EventQueryNewBlockHeader    = queryForEvent(EventNewBlockHeader)
+	EventQueryNewRound          = queryForEvent(EventNewRound)
+	EventQueryNewRoundStep      = queryForEvent(EventNewRoundStep)
+	EventQueryTimeoutPropose    = queryForEvent(EventTimeoutPropose)
+	EventQueryCompleteProposal  = queryForEvent(EventCompleteProposal)
+	EventQueryPolka             = queryForEvent(EventPolka)
+	EventQueryUnlock            = queryForEvent(EventUnlock)
+	EventQueryLock              = queryForEvent(EventLock)
+	EventQueryRelock            = queryForEvent(EventRelock)
+	EventQueryTimeoutWait       = queryForEvent(EventTimeoutWait)
+	EventQueryVote              = queryForEvent(EventVote)
+	EventQueryProposalHeartbeat = queryForEvent(EventProposalHeartbeat)
+)
+
+func EventQueryTx(tx Tx) tmpubsub.Query {
+	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
 }
 
-type Eventable interface {
-	SetEventSwitch(EventSwitch)
+func queryForEvent(eventType string) tmpubsub.Query {
+	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
 }
 
-type EventSwitch interface {
-	events.EventSwitch
-}
-
-type EventCache interface {
-	Fireable
-	Flush()
-}
-
-func NewEventSwitch() EventSwitch {
-	return events.NewEventSwitch()
-}
-
-func NewEventCache(evsw EventSwitch) EventCache {
-	return events.NewEventCache(evsw)
-}
-
-// All events should be based on this FireEvent to ensure they are TMEventData
-func fireEvent(fireable events.Fireable, event string, data TMEventData) {
-	if fireable != nil {
-		fireable.FireEvent(event, data)
-	}
-}
-
-func AddListenerForEvent(evsw EventSwitch, id, event string, cb func(data TMEventData)) {
-	evsw.AddListenerForEvent(id, event, func(data events.EventData) {
-		cb(data.(TMEventData))
-	})
-
-}
-
-//--- block, tx, and vote events
-
-func FireEventNewBlock(fireable events.Fireable, block EventDataNewBlock) {
-	fireEvent(fireable, EventStringNewBlock(), TMEventData{block})
-}
-
-func FireEventNewBlockHeader(fireable events.Fireable, header EventDataNewBlockHeader) {
-	fireEvent(fireable, EventStringNewBlockHeader(), TMEventData{header})
-}
-
-func FireEventVote(fireable events.Fireable, vote EventDataVote) {
-	fireEvent(fireable, EventStringVote(), TMEventData{vote})
-}
-
-func FireEventTx(fireable events.Fireable, tx EventDataTx) {
-	fireEvent(fireable, EventStringTx(tx.Tx), TMEventData{tx})
-}
-
-//--- EventDataRoundState events
-
-func FireEventNewRoundStep(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringNewRoundStep(), TMEventData{rs})
-}
-
-func FireEventTimeoutPropose(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringTimeoutPropose(), TMEventData{rs})
-}
-
-func FireEventTimeoutWait(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringTimeoutWait(), TMEventData{rs})
-}
-
-func FireEventNewRound(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringNewRound(), TMEventData{rs})
-}
-
-func FireEventCompleteProposal(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringCompleteProposal(), TMEventData{rs})
-}
-
-func FireEventPolka(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringPolka(), TMEventData{rs})
-}
-
-func FireEventUnlock(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringUnlock(), TMEventData{rs})
-}
-
-func FireEventRelock(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringRelock(), TMEventData{rs})
-}
-
-func FireEventLock(fireable events.Fireable, rs EventDataRoundState) {
-	fireEvent(fireable, EventStringLock(), TMEventData{rs})
-}
-
-func FireEventProposalHeartbeat(fireable events.Fireable, rs EventDataProposalHeartbeat) {
-	fireEvent(fireable, EventStringProposalHeartbeat(), TMEventData{rs})
+type TxEventPublisher interface {
+	PublishEventTx(EventDataTx) error
 }
