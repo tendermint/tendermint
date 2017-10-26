@@ -254,10 +254,11 @@ func (c *WSClient) reconnect() error {
 		c.mtx.Unlock()
 	}()
 
-	_1sAsNs := float64(time.Second.Nanoseconds())
+	// 1s == (1e9 ns) == (1 Billion ns)
+	billionNs := float64(time.Second.Nanoseconds())
 	for {
-		jitter := time.Duration(rand.Float64() * _1sAsNs)
-		backoffDuration := jitter + ((1 << uint(attempt)) * time.Second)
+		jitterSeconds := time.Duration(rand.Float64() * billionNs)
+		backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)
 		time.Sleep(backoffDuration)
