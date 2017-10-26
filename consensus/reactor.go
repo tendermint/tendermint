@@ -328,7 +328,7 @@ func (conR *ConsensusReactor) FastSync() bool {
 // broadcastNewRoundStepsAndVotes subscribes for new round steps and votes
 // using the event bus and broadcasts events to peers upon receiving them.
 func (conR *ConsensusReactor) broadcastNewRoundStepsAndVotes() error {
-	subscriber := "consensus-reactor"
+	const subscriber = "consensus-reactor"
 	ctx := context.Background()
 
 	// new round steps

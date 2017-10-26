@@ -13,6 +13,11 @@ import (
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
+const (
+	// event bus subscriber
+	subscriber = "rpc-localclient"
+)
+
 /*
 Local is a Client implementation that directly executes the rpc
 functions on a given node, without going through HTTP or GRPC.
@@ -67,7 +72,7 @@ func (c Local) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery,
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
-func (c Local) ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (Local) ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	return core.ABCIQuery(path, data, opts.Height, opts.Trusted)
 }
 
@@ -124,7 +129,7 @@ func (c *Local) Subscribe(ctx context.Context, query string, out chan<- interfac
 	if err != nil {
 		return errors.Wrap(err, "failed to subscribe")
 	}
-	if err = c.EventBus.Subscribe(ctx, "rpclocalclient", q, out); err != nil {
+	if err = c.EventBus.Subscribe(ctx, subscriber, q, out); err != nil {
 		return errors.Wrap(err, "failed to subscribe")
 	}
 	c.subscriptions[query] = q
@@ -136,7 +141,7 @@ func (c *Local) Unsubscribe(ctx context.Context, query string) error {
 	if !ok {
 		return errors.New("subscription not found")
 	}
-	if err := c.EventBus.Unsubscribe(ctx, "rpclocalclient", q); err != nil {
+	if err := c.EventBus.Unsubscribe(ctx, subscriber, q); err != nil {
 		return errors.Wrap(err, "failed to unsubscribe")
 	}
 	delete(c.subscriptions, query)
@@ -144,7 +149,7 @@ func (c *Local) Unsubscribe(ctx context.Context, query string) error {
 }
 
 func (c *Local) UnsubscribeAll(ctx context.Context) error {
-	if err := c.EventBus.UnsubscribeAll(ctx, "rpclocalclient"); err != nil {
+	if err := c.EventBus.UnsubscribeAll(ctx, subscriber); err != nil {
 		return errors.Wrap(err, "failed to unsubscribe")
 	}
 	c.subscriptions = make(map[string]*tmquery.Query)

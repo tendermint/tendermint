@@ -20,6 +20,11 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
+const (
+	// event bus subscriber
+	subscriber = "replay-file"
+)
+
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
@@ -47,11 +52,11 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	newStepCh := make(chan interface{}, 1)
 
 	ctx := context.Background()
-	err := cs.eventBus.Subscribe(ctx, "replay-file", types.EventQueryNewRoundStep, newStepCh)
+	err := cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, newStepCh)
 	if err != nil {
-		return errors.Errorf("failed to subscribe replay-file to %v", types.EventQueryNewRoundStep)
+		return errors.Errorf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep)
 	}
-	defer cs.eventBus.Unsubscribe(ctx, "replay-file", types.EventQueryNewRoundStep)
+	defer cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
 	// just open the file for reading, no need to use wal
 	fp, err := os.OpenFile(file, os.O_RDONLY, 0666)
@@ -208,11 +213,11 @@ func (pb *playback) replayConsoleLoop() int {
 			// ensure all new step events are regenerated as expected
 			newStepCh := make(chan interface{}, 1)
 
-			err := pb.cs.eventBus.Subscribe(ctx, "replay-file", types.EventQueryNewRoundStep, newStepCh)
+			err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, newStepCh)
 			if err != nil {
-				cmn.Exit(fmt.Sprintf("failed to subscribe replay-file to %v", types.EventQueryNewRoundStep))
+				cmn.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
 			}
-			defer pb.cs.eventBus.Unsubscribe(ctx, "replay-file", types.EventQueryNewRoundStep)
+			defer pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
 			if len(tokens) == 1 {
 				pb.replayReset(1, newStepCh)

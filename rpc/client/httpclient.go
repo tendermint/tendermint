@@ -291,9 +291,10 @@ func (w *WSEvents) UnsubscribeAll(ctx context.Context) error {
 // After being reconnected, it is necessary to redo subscription to server
 // otherwise no data will be automatically received.
 func (w *WSEvents) redoSubscriptions() {
-	for query, out := range w.subscriptions {
-		// NOTE: no timeout for reconnect
-		w.Subscribe(context.Background(), query, out)
+	for query := range w.subscriptions {
+		// NOTE: no timeout for resubscribing
+		// FIXME: better logging/handling of errors??
+		w.ws.Subscribe(context.Background(), query)
 	}
 }
 
