@@ -13,7 +13,6 @@ FEATURES:
 - Use the chain as its own CA for nodes and validators
 - Tooling to run multiple blockchains/apps, possibly in a single process
 - State syncing (without transaction replay)
-- Improved support for querying history and state
 - Add authentication and rate-limitting to the RPC
 
 IMPROVEMENTS:
@@ -34,6 +33,8 @@ BREAKING CHANGES:
  - rpc/client: websocket ResultsCh and ErrorsCh unified in ResponsesCh.
  - rpc/client: ABCIQuery no longer takes `prove`
  - state: remove GenesisDoc from state.
+ - consensus: new binary WAL format provides efficiency and uses checksums to detect corruption
+    - see scripts/wal2json to convert to json for debugging
 
 FEATURES:
  - new `certifiers` pkg contains the tendermint light-client library!
