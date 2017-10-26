@@ -83,8 +83,7 @@ var RootCmd = &cobra.Command{
 			var err error
 			client, err = abcicli.NewClient(address, abci, false)
 			if err != nil {
-				logger.Error(err.Error())
-				os.Exit(1)
+				return err
 			}
 			client.SetLogger(logger.With("module", "abci-client"))
 			if _, err := client.Start(); err != nil {
@@ -98,7 +97,7 @@ var RootCmd = &cobra.Command{
 func Execute() {
 	addGlobalFlags()
 	addCommands()
-	RootCmd.Execute() //err?
+	RootCmd.Execute()
 }
 
 func addGlobalFlags() {
@@ -145,7 +144,9 @@ var batchCmd = &cobra.Command{
 	Use:   "batch",
 	Short: "Run a batch of abci commands against an application",
 	Long:  "",
-	Run:   cmdBatch,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdBatch(cmd, args)
+	},
 }
 
 var consoleCmd = &cobra.Command{
@@ -153,68 +154,88 @@ var consoleCmd = &cobra.Command{
 	Short:     "Start an interactive abci console for multiple commands",
 	Long:      "",
 	ValidArgs: []string{"batch", "echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
-	Run:       cmdConsole,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdConsole(cmd, args)
+	},
 }
 
 var echoCmd = &cobra.Command{
 	Use:   "echo",
 	Short: "Have the application echo a message",
 	Long:  "",
-	Run:   cmdEcho,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdEcho(cmd, args)
+	},
 }
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get some info about the application",
 	Long:  "",
-	Run:   cmdInfo,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdInfo(cmd, args)
+	},
 }
 var setOptionCmd = &cobra.Command{
 	Use:   "set_option",
 	Short: "Set an option on the application",
 	Long:  "",
-	Run:   cmdSetOption,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdSetOption(cmd, args)
+	},
 }
 
 var deliverTxCmd = &cobra.Command{
 	Use:   "deliver_tx",
 	Short: "Deliver a new transaction to the application",
 	Long:  "",
-	Run:   cmdDeliverTx,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdDeliverTx(cmd, args)
+	},
 }
 
 var checkTxCmd = &cobra.Command{
 	Use:   "check_tx",
 	Short: "Validate a transaction",
 	Long:  "",
-	Run:   cmdCheckTx,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdCheckTx(cmd, args)
+	},
 }
 
 var commitCmd = &cobra.Command{
 	Use:   "commit",
 	Short: "Commit the application state and return the Merkle root hash",
 	Long:  "",
-	Run:   cmdCommit,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdCommit(cmd, args)
+	},
 }
 
 var queryCmd = &cobra.Command{
 	Use:   "query",
 	Short: "Query the application state",
 	Long:  "",
-	Run:   cmdQuery,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdQuery(cmd, args)
+	},
 }
 
 var counterCmd = &cobra.Command{
 	Use:   "counter",
 	Short: "ABCI demo example",
 	Long:  "",
-	Run:   cmdCounter,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdCounter(cmd, args)
+	},
 }
 
 var dummyCmd = &cobra.Command{
 	Use:   "dummy",
 	Short: "ABCI demo example",
 	Long:  "",
-	Run:   cmdDummy,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdDummy(cmd, args)
+	},
 }
 
 // Generates new Args array based off of previous call args to maintain flag persistence
@@ -233,95 +254,100 @@ func persistentArgs(line []byte) []string {
 
 //--------------------------------------------------------------------------------
 
-func cmdBatch(cmd *cobra.Command, args []string) {
+func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
 	for {
 		line, more, err := bufReader.ReadLine()
 		if more {
-			ifExit(errors.New("Input line is too long"))
+			return errors.New("Input line is too long")
 		} else if err == io.EOF {
 			break
 		} else if len(line) == 0 {
 			continue
 		} else if err != nil {
-			ifExit(err)
+			return err
 		}
 
 		pArgs := persistentArgs(line)
 		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
 		if err != nil {
-			ifExit(err)
+			return err
 		}
 		fmt.Println(string(out))
 	}
+	return nil
 }
 
-func cmdConsole(cmd *cobra.Command, args []string) {
+func cmdConsole(cmd *cobra.Command, args []string) error {
 
 	for {
 		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
 		line, more, err := bufReader.ReadLine()
 		if more {
-			ifExit(errors.New("Input is too long"))
+			return errors.New("Input is too long")
 		} else if err != nil {
-			ifExit(err)
+			return err
 		}
 
 		pArgs := persistentArgs(line)
 		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
 		if err != nil {
-			ifExit(err)
+			return err
 		}
 		fmt.Println(string(out))
 	}
+	return nil
 }
 
 // Have the application echo a message
-func cmdEcho(cmd *cobra.Command, args []string) {
+func cmdEcho(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		ifExit(errors.New("Command echo takes only 1 argument"))
+		return errors.New("Command echo takes only 1 argument")
 	}
 	resEcho := client.EchoSync(args[0])
 	printResponse(cmd, args, response{
 		Data: resEcho.Data,
 	})
+	return nil
 }
 
 // Get some info from the application
-func cmdInfo(cmd *cobra.Command, args []string) {
+func cmdInfo(cmd *cobra.Command, args []string) error {
 	var version string
 	if len(args) == 1 {
 		version = args[0]
 	}
 	resInfo, err := client.InfoSync(types.RequestInfo{version})
 	if err != nil {
-		ifExit(err)
+		return err
 	}
 	printResponse(cmd, args, response{
 		Data: []byte(resInfo.Data),
 	})
+	return nil
 }
 
 // Set an option on the application
-func cmdSetOption(cmd *cobra.Command, args []string) {
+func cmdSetOption(cmd *cobra.Command, args []string) error {
 	if len(args) != 2 {
-		ifExit(errors.New("Command set_option takes exactly 2 arguments (key, value)"))
+		return errors.New("Command set_option takes exactly 2 arguments (key, value)")
 	}
 	resSetOption := client.SetOptionSync(args[0], args[1])
 	printResponse(cmd, args, response{
 		Log: resSetOption.Log,
 	})
+	return nil
 }
 
 // Append a new tx to application
-func cmdDeliverTx(cmd *cobra.Command, args []string) {
+func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		ifExit(errors.New("Command deliver_tx takes only 1 argument"))
+		return errors.New("Command deliver_tx takes only 1 argument")
 	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
-		ifExit(err)
+		return err
 	}
 	res := client.DeliverTxSync(txBytes)
 	printResponse(cmd, args, response{
@@ -329,16 +355,17 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) {
 		Data: res.Data,
 		Log:  res.Log,
 	})
+	return nil
 }
 
 // Validate a tx
-func cmdCheckTx(cmd *cobra.Command, args []string) {
+func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		ifExit(errors.New("Command check_tx takes only 1 argument"))
+		return errors.New("Command check_tx takes only 1 argument")
 	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
-		ifExit(err)
+		return err
 	}
 	res := client.CheckTxSync(txBytes)
 	printResponse(cmd, args, response{
@@ -346,27 +373,29 @@ func cmdCheckTx(cmd *cobra.Command, args []string) {
 		Data: res.Data,
 		Log:  res.Log,
 	})
+	return nil
 }
 
 // Get application Merkle root hash
-func cmdCommit(cmd *cobra.Command, args []string) {
+func cmdCommit(cmd *cobra.Command, args []string) error {
 	res := client.CommitSync()
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
 		Log:  res.Log,
 	})
+	return nil
 }
 
 // Query application state
-func cmdQuery(cmd *cobra.Command, args []string) {
+func cmdQuery(cmd *cobra.Command, args []string) error {
 	if len(args) != 1 {
-		ifExit(errors.New("Command query takes only 1 argument, the query bytes"))
+		return errors.New("Command query takes only 1 argument, the query bytes")
 	}
 
 	queryBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
-		ifExit(err)
+		return err
 	}
 
 	resQuery, err := client.QuerySync(types.RequestQuery{
@@ -376,7 +405,7 @@ func cmdQuery(cmd *cobra.Command, args []string) {
 		Prove:  prove,
 	})
 	if err != nil {
-		ifExit(err)
+		return err
 	}
 	printResponse(cmd, args, response{
 		Code: resQuery.Code,
@@ -388,9 +417,10 @@ func cmdQuery(cmd *cobra.Command, args []string) {
 			Proof:  resQuery.Proof,
 		},
 	})
+	return nil
 }
 
-func cmdCounter(cmd *cobra.Command, args []string) {
+func cmdCounter(cmd *cobra.Command, args []string) error {
 
 	app := counter.NewCounterApplication(serial)
 
@@ -399,13 +429,11 @@ func cmdCounter(cmd *cobra.Command, args []string) {
 	// Start the listener
 	srv, err := server.NewServer(addrC, abci, app)
 	if err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
+		return err
 	}
 	srv.SetLogger(logger.With("module", "abci-server"))
 	if _, err := srv.Start(); err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	// Wait forever
@@ -413,9 +441,10 @@ func cmdCounter(cmd *cobra.Command, args []string) {
 		// Cleanup
 		srv.Stop()
 	})
+	return nil
 }
 
-func cmdDummy(cmd *cobra.Command, args []string) {
+func cmdDummy(cmd *cobra.Command, args []string) error {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Create the application - in memory or persisted to disk
@@ -430,13 +459,11 @@ func cmdDummy(cmd *cobra.Command, args []string) {
 	// Start the listener
 	srv, err := server.NewServer(addrD, abci, app)
 	if err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
+		return err
 	}
 	srv.SetLogger(logger.With("module", "abci-server"))
 	if _, err := srv.Start(); err != nil {
-		logger.Error(err.Error())
-		os.Exit(1)
+		return err
 	}
 
 	// Wait forever
@@ -444,6 +471,7 @@ func cmdDummy(cmd *cobra.Command, args []string) {
 		// Cleanup
 		srv.Stop()
 	})
+	return nil
 }
 
 //--------------------------------------------------------------------------------
@@ -502,11 +530,4 @@ func stringOrHexToBytes(s string) ([]byte, error) {
 	}
 
 	return []byte(s[1 : len(s)-1]), nil
-}
-
-func ifExit(err error) {
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 }
