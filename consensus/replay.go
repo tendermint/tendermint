@@ -113,12 +113,11 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
 	} else if err != nil {
 		return err
-	} else {
-		defer gr.Close()
 	}
 	if !found {
 		return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
 	}
+	defer gr.Close()
 
 	cs.Logger.Info("Catchup by replaying consensus messages", "height", csHeight)
 

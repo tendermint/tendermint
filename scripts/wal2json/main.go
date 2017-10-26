@@ -43,5 +43,8 @@ func main() {
 
 		os.Stdout.Write(json)
 		os.Stdout.Write([]byte("\n"))
+		if end, ok := msg.Msg.(cs.EndHeightMessage); ok {
+			os.Stdout.Write([]byte(fmt.Sprintf("ENDHEIGHT %d\n", end.Height)))
+		}
 	}
 }

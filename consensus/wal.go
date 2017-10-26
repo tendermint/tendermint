@@ -136,6 +136,7 @@ func (wal *WAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found b
 		for {
 			msg, err = dec.Decode()
 			if err == io.EOF {
+				// check next file
 				break
 			}
 			if err != nil {
@@ -147,10 +148,6 @@ func (wal *WAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found b
 				if m.Height == height { // found
 					wal.Logger.Debug("Found", "height", height, "index", index)
 					return gr, true, nil
-				} else if m.Height < height {
-					// we will never find it because we're starting from the end
-					gr.Close()
-					return nil, false, nil
 				}
 			}
 		}
@@ -214,8 +211,7 @@ func NewWALDecoder(rd io.Reader) *WALDecoder {
 	return &WALDecoder{rd}
 }
 
-// Decode reads the next custom-encoded value from its input and stores it in
-// the value pointed to by v.
+// Decode reads the next custom-encoded value from its reader and returns it.
 func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	b := make([]byte, 4)
 

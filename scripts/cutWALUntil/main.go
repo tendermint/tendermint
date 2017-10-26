@@ -18,7 +18,7 @@ import (
 
 func main() {
 	if len(os.Args) < 4 {
-		fmt.Println("3 arguments required: <path-to-wal> height-to-stop <output-wal>")
+		fmt.Println("3 arguments required: <path-to-wal> <height-to-stop> <output-wal>")
 		os.Exit(1)
 	}
 

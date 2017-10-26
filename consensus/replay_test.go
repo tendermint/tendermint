@@ -219,6 +219,7 @@ func TestWALCrashAfterWrite(t *testing.T) {
 		for i := 0; i < splitSize-1; i++ {
 			t.Run(fmt.Sprintf("%s:%d", thisCase.name, i), func(t *testing.T) {
 				cs, newBlockCh, _, walFile := setupReplayTest(t, thisCase, i+1, true)
+				cs.config.TimeoutPropose = 100
 				runReplayTest(t, cs, walFile, newBlockCh, thisCase, i+1)
 				// cleanup
 				os.Remove(walFile)
@@ -237,6 +238,7 @@ func TestWALCrashBeforeWritePropose(t *testing.T) {
 		t.Run(fmt.Sprintf("%s:%d", thisCase.name, lineNum), func(t *testing.T) {
 			// setup replay test where last message is a proposal
 			cs, newBlockCh, proposalMsg, walFile := setupReplayTest(t, thisCase, lineNum, false)
+			cs.config.TimeoutPropose = 100
 			msg := readTimedWALMessage(t, proposalMsg)
 			proposal := msg.Msg.(msgInfo).Msg.(*ProposalMessage)
 			// Set LastSig
