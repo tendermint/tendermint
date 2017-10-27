@@ -8,6 +8,7 @@ BREAKING:
 
 FEATURES:
  - [autofile] `Read([]byte)` and `Write([]byte)` methods on `Group` to support binary WAL
+ - [common] `Kill()` sends SIGTERM to the current process
 
 IMPROVEMENTS:
  - comments and linting
