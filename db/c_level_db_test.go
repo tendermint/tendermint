@@ -50,7 +50,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 			//fmt.Printf("Get %X -> %X\n", idxBytes, valBytes)
 			if val == 0 {
 				if !bytes.Equal(valBytes, nil) {
-					b.Errorf("Expected %X for %v, got %X",
+					b.Errorf("Expected %v for %v, got %X",
 						nil, idx, valBytes)
 					break
 				}

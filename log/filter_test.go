@@ -73,8 +73,7 @@ func TestVariousLevels(t *testing.T) {
 func TestLevelContext(t *testing.T) {
 	var buf bytes.Buffer
 
-	var logger log.Logger
-	logger = log.NewTMJSONLogger(&buf)
+	logger := log.NewTMJSONLogger(&buf)
 	logger = log.NewFilter(logger, log.AllowError())
 	logger = logger.With("context", "value")
 
@@ -93,8 +92,7 @@ func TestLevelContext(t *testing.T) {
 func TestVariousAllowWith(t *testing.T) {
 	var buf bytes.Buffer
 
-	var logger log.Logger
-	logger = log.NewTMJSONLogger(&buf)
+	logger := log.NewTMJSONLogger(&buf)
 
 	logger1 := log.NewFilter(logger, log.AllowError(), log.AllowInfoWith("context", "value"))
 	logger1.With("context", "value").Info("foo", "bar", "baz")

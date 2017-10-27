@@ -1,11 +1,9 @@
 machine:
   environment:
-    GOPATH: /home/ubuntu/.go_workspace
+    GOPATH: "${HOME}/.go_workspace"
     PROJECT_PARENT_PATH: "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
     PROJECT_PATH: $GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME
-    GO15VENDOREXPERIMENT: 1
   hosts:
-    circlehost: 127.0.0.1
     localhost: 127.0.0.1
 
 dependencies:
@@ -17,5 +15,7 @@ dependencies:
 
 test:
   override:
-    - "go version"
-    - "cd $PROJECT_PATH && make get_vendor_deps && make test"
+    - cd $PROJECT_PATH && make get_vendor_deps && make metalinter_test && bash ./test.sh
+  post:
+    - cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
+    - cd "$PROJECT_PATH" && mv coverage.txt "${CIRCLE_ARTIFACTS}"

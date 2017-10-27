@@ -6,19 +6,38 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
-var (
-	GoPath = os.Getenv("GOPATH")
-)
+var gopath string
+
+// GoPath returns GOPATH env variable value. If it is not set, this function
+// will try to call `go env GOPATH` subcommand.
+func GoPath() string {
+	if gopath != "" {
+		return gopath
+	}
+
+	path := os.Getenv("GOPATH")
+	if len(path) == 0 {
+		goCmd := exec.Command("go", "env", "GOPATH")
+		out, err := goCmd.Output()
+		if err != nil {
+			panic(fmt.Sprintf("failed to determine gopath: %v", err))
+		}
+		path = string(out)
+	}
+	gopath = path
+	return path
+}
 
 func TrapSignal(cb func()) {
 	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	signal.Notify(c, os.Kill)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		for sig := range c {
 			fmt.Printf("captured %v, exiting...\n", sig)
@@ -29,6 +48,12 @@ func TrapSignal(cb func()) {
 		}
 	}()
 	select {}
+}
+
+// Kill the running process by sending itself SIGTERM
+func Kill() error {
+	pid := os.Getpid()
+	return syscall.Kill(pid, syscall.SIGTERM)
 }
 
 func Exit(s string) {
@@ -84,12 +109,7 @@ func MustReadFile(filePath string) []byte {
 }
 
 func WriteFile(filePath string, contents []byte, mode os.FileMode) error {
-	err := ioutil.WriteFile(filePath, contents, mode)
-	if err != nil {
-		return err
-	}
-	// fmt.Printf("File written to %v.\n", filePath)
-	return nil
+	return ioutil.WriteFile(filePath, contents, mode)
 }
 
 func MustWriteFile(filePath string, contents []byte, mode os.FileMode) {

@@ -49,9 +49,10 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 	enc.Reset()
 	defer tmfmtEncoderPool.Put(enc)
 
+	const unknown = "unknown"
 	lvl := "none"
-	msg := "unknown"
-	module := "unknown"
+	msg := unknown
+	module := unknown
 
 	// indexes of keys to skip while encoding later
 	excludeIndexes := make([]int, 0)
@@ -90,7 +91,7 @@ func (l tmfmtLogger) Log(keyvals ...interface{}) error {
 	//     Stopping ...					- message
 	enc.buf.WriteString(fmt.Sprintf("%c[%s] %-44s ", lvl[0]-32, time.Now().UTC().Format("01-02|15:04:05.000"), msg))
 
-	if module != "unknown" {
+	if module != unknown {
 		enc.buf.WriteString("module=" + module + " ")
 	}
 
