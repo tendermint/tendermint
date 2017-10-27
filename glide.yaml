@@ -18,7 +18,8 @@ import:
   - log
   - merkle
   - process
-- package: github.com/urfave/cli
+- package: github.com/spf13/cobra
+  version: master
 - package: golang.org/x/net
   subpackages:
   - context

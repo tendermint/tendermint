@@ -1,5 +1,5 @@
-hash: 876bc65024f66612325ebafcedeb3e4d5014d46b339cf7583f1c00c6bac6e32c
-updated: 2017-10-23T14:04:02.596189966+02:00
+hash: 3c8680f0a289567a29f737be5f1d5f242c7e2afd84bdd023dd74596b88508fc2
+updated: 2017-10-26T08:45:51.300025559-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: b8df516b4b267acf2de46be593a9d948d1d2c420
@@ -30,12 +30,18 @@ imports:
   - ptypes/any
 - name: github.com/golang/snappy
   version: 553a641470496b2327abcac10b36396bd98e45c9
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/jmhodges/levigo
   version: c42d9e0ca023e2198120196f842701bb4c55d7b9
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: github.com/spf13/cobra
+  version: 2df9a531813370438a4d79bfc33e21f58063ed87
+- name: github.com/spf13/pflag
+  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
 - name: github.com/syndtr/goleveldb
   version: 8c81ea47d4c41a385645e133e15510fc6a2a74b4
   subpackages:
@@ -63,7 +69,7 @@ imports:
   subpackages:
   - data
 - name: github.com/tendermint/iavl
-  version: 721710e7aa59f61dbfbf558943a207ba3fe6b926
+  version: 595f3dcd5b6cd4a292e90757ae6d367fd7a6e653
 - name: github.com/tendermint/tmlibs
   version: 8e5266a9ef2527e68a1571f932db8228a331b556
   subpackages:
@@ -72,8 +78,6 @@ imports:
   - log
   - merkle
   - process
-- name: github.com/urfave/cli
-  version: 7bc6a0acffa589f415f88aca16cc1de5ffd66f9c
 - name: golang.org/x/crypto
   version: c7af5bf2638a1164f2eb5467c39c6cffbd13a02e
   subpackages:

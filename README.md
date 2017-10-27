@@ -60,9 +60,9 @@ The `abci-cli` tool wraps any ABCI client and can be used for probing/testing an
 See [the documentation](http://tendermint.readthedocs.io/en/master/) for more details.
 
 Multiple example apps are included:
-- the `counter` application, which illustrates nonce checking in txs
-- the `dummy` application, which illustrates a simple key-value merkle tree
-- the `dummy --persistent` application, which augments the dummy with persistence and validator set changes
+- the `abci-cli counter` application, which illustrates nonce checking in txs
+- the `abci-cli dummy` application, which illustrates a simple key-value merkle tree
+- the `abci-cli dummy --persistent` application, which augments the dummy with persistence and validator set changes
 
 ## Specification
 
