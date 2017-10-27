@@ -97,8 +97,9 @@ type ConsensusState struct {
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
-	wal        *WAL
-	replayMode bool // so we don't log signing errors during replay
+	wal          *WAL
+	replayMode   bool // so we don't log signing errors during replay
+	doWALCatchup bool // determines if we even try to do the catchup
 
 	// for tests where we want to limit the number of transitions the state makes
 	nSteps int
@@ -123,6 +124,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
 		done:             make(chan struct{}),
+		doWALCatchup:     true,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -226,10 +228,12 @@ func (cs *ConsensusState) OnStart() error {
 
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
-	if err := cs.catchupReplay(cs.Height); err != nil {
-		cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "err", err.Error())
-		// NOTE: if we ever do return an error here,
-		// make sure to stop the timeoutTicker
+	if cs.doWALCatchup {
+		if err := cs.catchupReplay(cs.Height); err != nil {
+			cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "err", err.Error())
+			// NOTE: if we ever do return an error here,
+			// make sure to stop the timeoutTicker
+		}
 	}
 
 	// now start the receiveRoutine

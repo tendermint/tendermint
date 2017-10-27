@@ -54,7 +54,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int, subscribeEven
 	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
 	for i := 0; i < N; i++ {
 		s := reactors[i].conS.GetState()
-		reactors[i].SwitchToConsensus(s)
+		reactors[i].SwitchToConsensus(s, 0)
 	}
 	return reactors, eventChans
 }

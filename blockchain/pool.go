@@ -26,10 +26,10 @@ eg, L = latency = 0.1s
 */
 
 const (
-	requestIntervalMS         = 250
-	maxTotalRequesters        = 300
+	requestIntervalMS         = 100
+	maxTotalRequesters        = 1000
 	maxPendingRequests        = maxTotalRequesters
-	maxPendingRequestsPerPeer = 10
+	maxPendingRequestsPerPeer = 50
 	minRecvRate               = 10240 // 10Kb/s
 )
 
@@ -56,7 +56,8 @@ type BlockPool struct {
 	height     int   // the lowest key in requesters.
 	numPending int32 // number of requests pending assignment or block response
 	// peers
-	peers map[string]*bpPeer
+	peers         map[string]*bpPeer
+	maxPeerHeight int
 
 	requestsCh chan<- BlockRequest
 	timeoutsCh chan<- string
@@ -87,10 +88,12 @@ func (pool *BlockPool) OnStop() {}
 
 // Run spawns requesters as needed.
 func (pool *BlockPool) makeRequestersRoutine() {
+
 	for {
 		if !pool.IsRunning() {
 			break
 		}
+
 		_, numPending, lenRequesters := pool.GetStatus()
 		if numPending >= maxPendingRequests {
 			// sleep for a bit.
@@ -147,16 +150,10 @@ func (pool *BlockPool) IsCaughtUp() bool {
 		return false
 	}
 
-	maxPeerHeight := 0
-	for _, peer := range pool.peers {
-		maxPeerHeight = cmn.MaxInt(maxPeerHeight, peer.height)
-	}
-
 	// some conditions to determine if we're caught up
 	receivedBlockOrTimedOut := (pool.height > 0 || time.Since(pool.startTime) > 5*time.Second)
-	ourChainIsLongestAmongPeers := maxPeerHeight == 0 || pool.height >= maxPeerHeight
+	ourChainIsLongestAmongPeers := pool.maxPeerHeight == 0 || pool.height >= pool.maxPeerHeight
 	isCaughtUp := receivedBlockOrTimedOut && ourChainIsLongestAmongPeers
-	pool.Logger.Info(cmn.Fmt("IsCaughtUp: %v", isCaughtUp), "height", pool.height, "maxPeerHeight", maxPeerHeight)
 	return isCaughtUp
 }
 
@@ -235,6 +232,13 @@ func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int
 	}
 }
 
+// MaxPeerHeight returns the heighest height reported by a peer
+func (pool *BlockPool) MaxPeerHeight() int {
+	pool.mtx.Lock()
+	defer pool.mtx.Unlock()
+	return pool.maxPeerHeight
+}
+
 // Sets the peer's alleged blockchain height.
 func (pool *BlockPool) SetPeerHeight(peerID string, height int) {
 	pool.mtx.Lock()
@@ -247,6 +251,10 @@ func (pool *BlockPool) SetPeerHeight(peerID string, height int) {
 		peer = newBPPeer(pool, peerID, height)
 		peer.setLogger(pool.Logger.With("peer", peerID))
 		pool.peers[peerID] = peer
+	}
+
+	if height > pool.maxPeerHeight {
+		pool.maxPeerHeight = height
 	}
 }
 
@@ -298,7 +306,7 @@ func (pool *BlockPool) makeNextRequester() {
 
 	nextHeight := pool.height + len(pool.requesters)
 	request := newBPRequester(pool, nextHeight)
-	request.SetLogger(pool.Logger.With("height", nextHeight))
+	// request.SetLogger(pool.Logger.With("height", nextHeight))
 
 	pool.requesters[nextHeight] = request
 	pool.numPending++
