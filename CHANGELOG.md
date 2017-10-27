@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.4.0 (October 26, 2017)
+
+BREAKING:
+ - [common] GoPath is now a function
+ - [db] `DB` and `Iterator` interfaces have new methods to better support iteration
+
+FEATURES:
+ - [autofile] `Read([]byte)` and `Write([]byte)` methods on `Group` to support binary WAL
+
+IMPROVEMENTS:
+ - comments and linting
+
+BUG FIXES:
+ - [events] fix allocation error prefixing cache with 1000 empty events
+
 ## 0.3.2 (October 2, 2017)
 
 BUG FIXES:
