@@ -27,7 +27,7 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.12.0 (TBD)
+## 0.12.0 (October 27, 2017)
 
 BREAKING CHANGES:
  - rpc/client: websocket ResultsCh and ErrorsCh unified in ResponsesCh.
@@ -40,7 +40,7 @@ FEATURES:
  - new `certifiers` pkg contains the tendermint light-client library (name subject to change)!
  - rpc: `/genesis` includes the `app_options` .
  - rpc: `/abci_query` takes an additional `height` parameter to support historical queries.
- - rpc/client: new ABCIQueryWithOptions supports options like `trusted` (set false to get a proof`) and `height` to query a historical height.
+ - rpc/client: new ABCIQueryWithOptions supports options like `trusted` (set false to get a proof) and `height` to query a historical height.
 
 IMPROVEMENTS:
  - rpc: `/genesis` result includes `app_options`
@@ -51,6 +51,7 @@ BUG FIXES:
  - rpc/client: fix ws deadlock after stopping
  - blockchain: fix panic on AddBlock when peer is nil
  - mempool: fix sending on TxsAvailable when a tx has been invalidated
+ - consensus: dont run WAL catchup if we fast synced
 
 ## 0.11.1 (October 10, 2017)
 
