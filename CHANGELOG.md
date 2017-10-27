@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 (October 27, 2017)
+
+BREAKING CHANGES:
+ - [cli] consolidate example apps under a single `abci-cli` binary
+
+IMPROVEMENTS:
+ - [cli] use spf13/cobra instead of urfave/cli
+ - [dummy] use iavl instead of merkleeyes, and add support for historical queries
+
+BUG FIXES:
+ - [client] fix deadlock on StopForError
+
 ## 0.6.0 (September 22, 2017)
 
 BREAKING CHANGES:
