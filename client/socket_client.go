@@ -97,11 +97,11 @@ func (cli *socketClient) OnStop() {
 
 // Stop the client and set the error
 func (cli *socketClient) StopForError(err error) {
-	cli.mtx.Lock()
 	if !cli.IsRunning() {
 		return
 	}
 
+	cli.mtx.Lock()
 	if cli.err == nil {
 		cli.err = err
 	}

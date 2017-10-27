@@ -6,10 +6,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/merkleeyes/iavl"
+	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -23,11 +22,6 @@ const (
 
 type PersistentDummyApplication struct {
 	app *DummyApplication
-	db  dbm.DB
-
-	// latest received
-	// TODO: move to merkle tree?
-	blockHeader *types.Header
 
 	// validator set
 	changes []*types.Validator
@@ -36,17 +30,17 @@ type PersistentDummyApplication struct {
 }
 
 func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
-	db := dbm.NewDB("dummy", "leveldb", dbDir)
-	lastBlock := LoadLastBlock(db)
+	name := "dummy"
+	db, err := dbm.NewGoLevelDB(name, dbDir)
+	if err != nil {
+		panic(err)
+	}
 
-	stateTree := iavl.NewIAVLTree(0, db)
-	stateTree.Load(lastBlock.AppHash)
-
-	// log.Notice("Loaded state", "block", lastBlock.Height, "root", stateTree.Hash())
+	stateTree := iavl.NewVersionedTree(500, db)
+	stateTree.Load()
 
 	return &PersistentDummyApplication{
 		app:    &DummyApplication{state: stateTree},
-		db:     db,
 		logger: log.NewNopLogger(),
 	}
 }
@@ -57,9 +51,8 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	resInfo = app.app.Info(req)
-	lastBlock := LoadLastBlock(app.db)
-	resInfo.LastBlockHeight = lastBlock.Height
-	resInfo.LastBlockAppHash = lastBlock.AppHash
+	resInfo.LastBlockHeight = app.app.state.LatestVersion()
+	resInfo.LastBlockAppHash = app.app.state.Hash()
 	return resInfo
 }
 
@@ -67,7 +60,7 @@ func (app *PersistentDummyApplication) SetOption(key string, value string) (log 
 	return app.app.SetOption(key, value)
 }
 
-// tx is either "key=value" or just arbitrary bytes
+// tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
 func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.Result {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
@@ -85,19 +78,21 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
 	return app.app.CheckTx(tx)
 }
 
+// Commit will panic if InitChain was not called
 func (app *PersistentDummyApplication) Commit() types.Result {
-	// Save
-	appHash := app.app.state.Save()
-	app.logger.Info("Saved state", "root", appHash)
 
-	lastBlock := LastBlockInfo{
-		Height:  app.blockHeader.Height,
-		AppHash: appHash, // this hash will be in the next block header
+	// Save a new version for next height
+	height := app.app.state.LatestVersion() + 1
+	var appHash []byte
+	var err error
+
+	appHash, err = app.app.state.SaveVersion(height)
+	if err != nil {
+		// if this wasn't a dummy app, we'd do something smarter
+		panic(err)
 	}
 
-	app.logger.Info("Saving block", "height", lastBlock.Height, "root", lastBlock.AppHash)
-	SaveLastBlock(app.db, lastBlock)
-
+	app.logger.Info("Commit block", "height", height, "root", appHash)
 	return types.NewResultOK(appHash, "")
 }
 
@@ -117,9 +112,6 @@ func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) 
 
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
-	// update latest block info
-	app.blockHeader = params.Header
-
 	// reset valset changes
 	app.changes = make([]*types.Validator, 0)
 }
@@ -127,41 +119,6 @@ func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock
 // Update the validator set
 func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
 	return types.ResponseEndBlock{Diffs: app.changes}
-}
-
-//-----------------------------------------
-// persist the last block info
-
-var lastBlockKey = []byte("lastblock")
-
-type LastBlockInfo struct {
-	Height  uint64
-	AppHash []byte
-}
-
-// Get the last block from the db
-func LoadLastBlock(db dbm.DB) (lastBlock LastBlockInfo) {
-	buf := db.Get(lastBlockKey)
-	if len(buf) != 0 {
-		r, n, err := bytes.NewReader(buf), new(int), new(error)
-		wire.ReadBinaryPtr(&lastBlock, r, 0, n, err)
-		if *err != nil {
-			cmn.PanicCrisis(errors.Wrap(*err, "cannot load last block (data has been corrupted or its spec has changed)"))
-		}
-		// TODO: ensure that buf is completely read.
-	}
-
-	return lastBlock
-}
-
-func SaveLastBlock(db dbm.DB, lastBlock LastBlockInfo) {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(lastBlock, buf, n, err)
-	if *err != nil {
-		// TODO
-		cmn.PanicCrisis(errors.Wrap(*err, "cannot save last block"))
-	}
-	db.Set(lastBlockKey, buf.Bytes())
 }
 
 //---------------------------------------------
@@ -193,15 +150,25 @@ func isValidatorTx(tx []byte) bool {
 // format is "val:pubkey1/power1,addr2/power2,addr3/power3"tx
 func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Result {
 	tx = tx[len(ValidatorSetChangePrefix):]
+
+	//get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "/")
 	if len(pubKeyAndPower) != 2 {
 		return types.ErrEncodingError.SetLog(cmn.Fmt("Expected 'pubkey/power'. Got %v", pubKeyAndPower))
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
+
+	// decode the pubkey, ensuring its go-crypto encoded
 	pubkey, err := hex.DecodeString(pubkeyS)
 	if err != nil {
 		return types.ErrEncodingError.SetLog(cmn.Fmt("Pubkey (%s) is invalid hex", pubkeyS))
 	}
+	_, err = crypto.PubKeyFromBytes(pubkey)
+	if err != nil {
+		return types.ErrEncodingError.SetLog(cmn.Fmt("Pubkey (%X) is invalid go-crypto encoded", pubkey))
+	}
+
+	// decode the power
 	power, err := strconv.Atoi(powerS)
 	if err != nil {
 		return types.ErrEncodingError.SetLog(cmn.Fmt("Power (%s) is not an int", powerS))

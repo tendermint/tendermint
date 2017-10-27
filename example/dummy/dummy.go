@@ -4,19 +4,20 @@ import (
 	"strings"
 
 	"github.com/tendermint/abci/types"
-	"github.com/tendermint/merkleeyes/iavl"
+	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/merkle"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
 type DummyApplication struct {
 	types.BaseApplication
 
-	state merkle.Tree
+	state *iavl.VersionedTree
 }
 
 func NewDummyApplication() *DummyApplication {
-	state := iavl.NewIAVLTree(0, nil)
+	state := iavl.NewVersionedTree(0, dbm.NewMemDB())
 	return &DummyApplication{state: state}
 }
 
@@ -40,28 +41,45 @@ func (app *DummyApplication) CheckTx(tx []byte) types.Result {
 }
 
 func (app *DummyApplication) Commit() types.Result {
-	hash := app.state.Hash()
+	// Save a new version
+	var hash []byte
+	var err error
+
+	if app.state.Size() > 0 {
+		// just add one more to height (kind of arbitrarily stupid)
+		height := app.state.LatestVersion() + 1
+		hash, err = app.state.SaveVersion(height)
+		if err != nil {
+			// if this wasn't a dummy app, we'd do something smarter
+			panic(err)
+		}
+	}
+
 	return types.NewResultOK(hash, "")
 }
 
 func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
-		value, proof, exists := app.state.Proof(reqQuery.Data)
+		value, proof, err := app.state.GetWithProof(reqQuery.Data)
+		// if this wasn't a dummy app, we'd do something smarter
+		if err != nil {
+			panic(err)
+		}
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
-		resQuery.Proof = proof
-		if exists {
+		resQuery.Proof = wire.BinaryBytes(proof)
+		if value != nil {
 			resQuery.Log = "exists"
 		} else {
 			resQuery.Log = "does not exist"
 		}
 		return
 	} else {
-		index, value, exists := app.state.Get(reqQuery.Data)
+		index, value := app.state.Get(reqQuery.Data)
 		resQuery.Index = int64(index)
 		resQuery.Value = value
-		if exists {
+		if value != nil {
 			resQuery.Log = "exists"
 		} else {
 			resQuery.Log = "does not exist"

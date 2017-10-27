@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"strings"
 	"sync"
 
 	"github.com/tendermint/abci/types"
@@ -30,8 +29,7 @@ type SocketServer struct {
 }
 
 func NewSocketServer(protoAddr string, app types.Application) cmn.Service {
-	parts := strings.SplitN(protoAddr, "://", 2)
-	proto, addr := parts[0], parts[1]
+	proto, addr := cmn.ProtocolAndAddress(protoAddr)
 	s := &SocketServer{
 		proto:    proto,
 		addr:     addr,

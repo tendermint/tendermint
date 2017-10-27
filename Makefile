@@ -52,13 +52,12 @@ metalinter: tools
 metalinter_test: tools
 	@gometalinter --install
 	gometalinter --vendor --deadline=600s --disable-all  \
-		--enable=aligncheck \
+		--enable=maligned \
 		--enable=deadcode \
 		--enable=gas \
 		--enable=goconst \
 		--enable=goimports \
 		--enable=gosimple \
-		--enable=gotype \
 	 	--enable=ineffassign \
 		--enable=megacheck \
 	 	--enable=misspell \
@@ -75,6 +74,7 @@ metalinter_test: tools
 		#--enable=errcheck \
 		#--enable=gocyclo \
 		#--enable=golint \ <== comments on anything exported
+		#--enable=gotype \
 	   	#--enable=interfacer \
 	   	#--enable=unparam \
 		#--enable=vet \

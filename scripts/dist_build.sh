@@ -24,30 +24,28 @@ make tools
 # Get VENDORED dependencies
 make get_vendor_deps
 
-BINARIES=( "abci-cli" "dummy" "counter" )
+BINARY="abci-cli"
 
-for binary in ${BINARIES[@]}; do
-	# Build!
-	echo "==> Building..."
-	"$(which gox)" \
-			-os="${XC_OS}" \
-			-arch="${XC_ARCH}" \
-			-osarch="!darwin/arm !solaris/amd64 !freebsd/amd64" \
-			-ldflags "-X ${GIT_IMPORT}.GitCommit='${GIT_COMMIT}' -X ${GIT_IMPORT}.GitDescribe='${GIT_DESCRIBE}'" \
-			-output "build/pkg/{{.OS}}_{{.Arch}}/$binary" \
-			-tags="${BUILD_TAGS}" \
-			github.com/tendermint/abci/cmd/$binary
+# Build!
+echo "==> Building..."
+"$(which gox)" \
+		-os="${XC_OS}" \
+		-arch="${XC_ARCH}" \
+		-osarch="!darwin/arm !solaris/amd64 !freebsd/amd64" \
+		-ldflags "-X ${GIT_IMPORT}.GitCommit='${GIT_COMMIT}' -X ${GIT_IMPORT}.GitDescribe='${GIT_DESCRIBE}'" \
+		-output "build/pkg/{{.OS}}_{{.Arch}}/$BINARY" \
+		-tags="${BUILD_TAGS}" \
+		github.com/tendermint/abci/cmd/$BINARY
 
-	# Zip all the files.
-	echo "==> Packaging..."
-	for PLATFORM in $(find ./build/pkg -mindepth 1 -maxdepth 1 -type d); do
-			OSARCH=$(basename "${PLATFORM}")
-			echo "--> ${OSARCH}"
+# Zip all the files.
+echo "==> Packaging..."
+for PLATFORM in $(find ./build/pkg -mindepth 1 -maxdepth 1 -type d); do
+		OSARCH=$(basename "${PLATFORM}")
+		echo "--> ${OSARCH}"
 
-			pushd "$PLATFORM" >/dev/null 2>&1
-			zip "../${OSARCH}.zip" ./*
-			popd >/dev/null 2>&1
-	done
+		pushd "$PLATFORM" >/dev/null 2>&1
+		zip "../${OSARCH}.zip" ./*
+		popd >/dev/null 2>&1
 done
 
 
