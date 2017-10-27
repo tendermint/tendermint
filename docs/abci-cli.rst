@@ -14,7 +14,7 @@ Next, install the ``abci-cli`` tool and example applications:
 
 ::
 
-    go get -u github.com/tendermint/abci/cmd/...
+    go get -u github.com/tendermint/abci/cmd/abci-cli
 
 If this fails, you may need to use ``glide`` to get vendored
 dependencies:
@@ -24,27 +24,37 @@ dependencies:
     go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
     glide install
-    go install ./cmd/...
+    go install ./cmd/abci-cli
 
-Now run ``abci-cli --help`` to see the list of commands:
+Now run ``abci-cli`` to see the list of commands:
 
 ::
 
-    COMMANDS:
-       batch        Run a batch of ABCI commands against an application
-       console      Start an interactive console for multiple commands
-       echo         Have the application echo a message
-       info         Get some info about the application
-       set_option   Set an option on the application
-       deliver_tx    Append a new tx to application
-       check_tx     Validate a tx
-       commit       Get application Merkle root hash
-       help, h      Shows a list of commands or help for one command
+    Usage:
+      abci-cli [command]
 
-    GLOBAL OPTIONS:
-       --address "tcp://127.0.0.1:46658"    address of application socket
-       --help, -h                           show help
-       --version, -v                        print the version
+    Available Commands:
+      batch       Run a batch of abci commands against an application
+      check_tx    Validate a tx
+      commit      Commit the application state and return the Merkle root hash
+      console     Start an interactive abci console for multiple commands
+      counter     ABCI demo example
+      deliver_tx  Deliver a new tx to the application
+      dummy       ABCI demo example
+      echo        Have the application echo a message
+      help        Help about any command
+      info        Get some info about the application
+      query       Query the application state
+      set_option  Set an options on the application
+
+    Flags:
+          --abci string      socket or grpc (default "socket")
+          --address string   address of application socket (default "tcp://127.0.0.1:46658")
+      -h, --help             help for abci-cli
+      -v, --verbose          print the command and results as if it were a console session
+
+                                          Use "abci-cli [command] --help" for more information about a command.
+
 
 Dummy - First Example
 ---------------------
@@ -61,7 +71,7 @@ Let's start a dummy application, which was installed at the same time as
 
 ::
 
-    dummy
+    abci-cli dummy
 
 In another terminal, run
 
@@ -70,8 +80,19 @@ In another terminal, run
     abci-cli echo hello
     abci-cli info
 
-The application should echo ``hello`` and give you some information
-about itself.
+You'll see something like:
+
+::
+
+    -> data: hello
+    -> data.hex: 68656C6C6F
+
+and:
+
+::
+
+    -> data: {"size":0}
+    -> data.hex: 7B2273697A65223A307D
 
 An ABCI application must provide two things:
 
@@ -86,7 +107,7 @@ The server may be generic for a particular language, and we provide a
 `reference implementation in
 Golang <https://github.com/tendermint/abci/tree/master/server>`__. See
 the `list of other ABCI
-implementations <https://tendermint.com/ecosystem>`__ for servers in
+implementations <./ecosystem.html>`__ for servers in
 other languages.
 
 The handler is specific to the application, and may be arbitrary, so
@@ -109,36 +130,50 @@ Try running these commands:
 ::
 
     > echo hello
+    -> code: OK
     -> data: hello
-
+    -> data.hex: 0x68656C6C6F
+    
     > info
+    -> code: OK
     -> data: {"size":0}
-
+    -> data.hex: 0x7B2273697A65223A307D
+    
     > commit
-    -> data: 0x
-
+    -> code: OK
+    
     > deliver_tx "abc"
     -> code: OK
-
+    
     > info
+    -> code: OK
     -> data: {"size":1}
-
+    -> data.hex: 0x7B2273697A65223A317D
+    
     > commit
-    -> data: 0x750502FC7E84BBD788ED589624F06CFA871845D1
-
+    -> code: OK
+    -> data.hex: 0x49DFD15CCDACDEAE9728CB01FBB5E8688CA58B91
+    
     > query "abc"
     -> code: OK
-    -> data: {"index":0,"value":"abc","exists":true}
-
+    -> log: exists
+    -> height: 0
+    -> value: abc
+    -> value.hex: 616263
+    
     > deliver_tx "def=xyz"
     -> code: OK
-
+    
     > commit
-    -> data: 0x76393B8A182E450286B0694C629ECB51B286EFD5
-
+    -> code: OK
+    -> data.hex: 0x70102DB32280373FBF3F9F89DA2A20CE2CD62B0B
+    
     > query "def"
     -> code: OK
-    -> data: {"index":1,"value":"xyz","exists":true}
+    -> log: exists
+    -> height: 0
+    -> value: xyz
+    -> value.hex: 78797A
 
 Note that if we do ``deliver_tx "abc"`` it will store ``(abc, abc)``,
 but if we do ``deliver_tx "abc=efg"`` it will store ``(abc, efg)``.
@@ -181,37 +216,39 @@ app:
 
 ::
 
-    counter
+    abci-cli counter
 
 In another window, start the ``abci-cli console``:
 
 ::
 
     > set_option serial on
-    -> data: serial=on
-
+    -> code: OK
+    
     > check_tx 0x00
     -> code: OK
-
+    
     > check_tx 0xff
     -> code: OK
-
+    
     > deliver_tx 0x00
     -> code: OK
-
+    
     > check_tx 0x00
     -> code: BadNonce
     -> log: Invalid nonce. Expected >= 1, got 0
-
+    
     > deliver_tx 0x01
     -> code: OK
-
+    
     > deliver_tx 0x04
     -> code: BadNonce
     -> log: Invalid nonce. Expected 2, got 4
-
+    
     > info
+    -> code: OK
     -> data: {"hashes":0,"txs":2}
+    -> data.hex: 0x7B22686173686573223A302C22747873223A327D
 
 This is a very simple application, but between ``counter`` and
 ``dummy``, its easy to see how you can build out arbitrary application
