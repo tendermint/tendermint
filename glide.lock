@@ -1,5 +1,5 @@
 hash: 3c8680f0a289567a29f737be5f1d5f242c7e2afd84bdd023dd74596b88508fc2
-updated: 2017-10-26T08:45:51.300025559-04:00
+updated: 2017-10-27T12:12:58.940745472-04:00
 imports:
 - name: github.com/btcsuite/btcd
   version: b8df516b4b267acf2de46be593a9d948d1d2c420
@@ -24,10 +24,13 @@ imports:
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
-  version: 18c9bb3261723cd5401db4d0c9fbc5c3b6c70fe8
+  version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
   subpackages:
   - proto
+  - ptypes
   - ptypes/any
+  - ptypes/duration
+  - ptypes/timestamp
 - name: github.com/golang/snappy
   version: 553a641470496b2327abcac10b36396bd98e45c9
 - name: github.com/inconshreveable/mousetrap
@@ -39,9 +42,9 @@ imports:
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/spf13/cobra
-  version: 2df9a531813370438a4d79bfc33e21f58063ed87
+  version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/pflag
-  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
+  version: 80fe0fb4eba54167e2ccae1c6c950e72abf61b73
 - name: github.com/syndtr/goleveldb
   version: 8c81ea47d4c41a385645e133e15510fc6a2a74b4
   subpackages:
@@ -63,15 +66,15 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 8e7f0e7701f92206679ad093d013b9b162427631
+  version: db5603e37435933c13665a708055fadd18222f5f
 - name: github.com/tendermint/go-wire
-  version: 26ee079df7fca1958da8995c727b59759b197534
+  version: 8ee84b5b2581530168daf66fc89c548d27403c57
   subpackages:
   - data
 - name: github.com/tendermint/iavl
   version: 595f3dcd5b6cd4a292e90757ae6d367fd7a6e653
 - name: github.com/tendermint/tmlibs
-  version: 8e5266a9ef2527e68a1571f932db8228a331b556
+  version: 092eb701c7276907cdbed258750e22ce895b6735
   subpackages:
   - common
   - db
@@ -88,7 +91,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: feeb485667d1fdabe727840fe00adc22431bc86e
+  version: cd69bc3fc700721b709c3a59e16e24c67b58f6ff
   subpackages:
   - context
   - http2
@@ -105,21 +108,24 @@ imports:
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: 411e09b969b1170a9f0c467558eb4c4c110d9c77
+  version: f676e0f3ac6395ff1a529ae59a6670878a8371a6
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: 844f573616520565fdc6fb4db242321b5456fd6d
+  version: f7bf885db0b7479a537ec317c6e48ce53145f3db
   subpackages:
+  - balancer
   - codes
+  - connectivity
   - credentials
-  - grpclb/grpc_lb_v1
+  - grpclb/grpc_lb_v1/messages
   - grpclog
   - internal
   - keepalive
   - metadata
   - naming
   - peer
+  - resolver
   - stats
   - status
   - tap
