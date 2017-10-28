@@ -1,4 +1,3 @@
 killall tendermint
-killall dummy
-killall counter
+killall abci-cli
 rm -rf ~/.tendermint_app
