@@ -1,8 +1,8 @@
-hash: 0b9134e3582541a31cf2e7b03cc610c66b100d0f9381c276bd3bd4ffeabc3baa
-updated: 2017-10-27T13:55:42.192646567-04:00
+hash: 0f9ba99fd411afaaf90993037b0067c5f9f873554f407a6ae9afa0e2548343c5
+updated: 2017-10-27T22:34:38.187149434-04:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
+  version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
   subpackages:
   - btcec
 - name: github.com/ebuchman/fail-test
@@ -10,7 +10,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: 4dc7be5d2d12881735283bcab7352178e190fc71
+  version: e2b298466b32c7cd5579a9b9b07e968fc9d9452c
   subpackages:
   - log
   - log/level
@@ -106,14 +106,14 @@ imports:
   - server
   - types
 - name: github.com/tendermint/ed25519
-  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
+  version: d8387025d2b9d158cf4efb07e7ebf814bcce2057
   subpackages:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: d1f00be7a062bb90c6f66f268e5d5cc7ad8ad269
+  version: dd20358a264c772b4a83e477b0cfce4c88a7001d
 - name: github.com/tendermint/go-wire
-  version: 1019b2ded93cb6251c9836402b8ca358e18ce1bc
+  version: 2baffcb6b690057568bc90ef1d457efb150b979a
   subpackages:
   - data
   - data/base58
@@ -147,7 +147,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 4b14673ba32bee7f5ac0f990a48f033919fd418b
+  version: c73622c77280266305273cb545f54516ced95b93
   subpackages:
   - context
   - http2
@@ -157,7 +157,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 176de7413414c01569163271c745672ff04a7267
+  version: b98136db334ff9cb24f28a68e3be3cb6608f7630
   subpackages:
   - unix
 - name: golang.org/x/text

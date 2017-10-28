@@ -24,9 +24,9 @@ import:
   - example/dummy
   - types
 - package: github.com/tendermint/go-crypto
-  version: ~0.4.0
+  version: ~0.4.1
 - package: github.com/tendermint/go-wire
-  version: ~0.7.0
+  version: ~0.7.1
   subpackages:
   - data
 - package: github.com/tendermint/iavl
