@@ -232,7 +232,7 @@ func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int
 	}
 }
 
-// MaxPeerHeight returns the heighest height reported by a peer
+// MaxPeerHeight returns the highest height reported by a peer.
 func (pool *BlockPool) MaxPeerHeight() int {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()

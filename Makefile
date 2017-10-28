@@ -90,7 +90,6 @@ metalinter_test: ensure_tools
 		--enable=deadcode \
 		--enable=gas \
 		--enable=gosimple \
-	 	--enable=ineffassign \
 	 	--enable=misspell \
 		--enable=safesql \
 	   	--enable=structcheck \
@@ -105,6 +104,7 @@ metalinter_test: ensure_tools
 		#--enable=goimports \
 		#--enable=golint \ <== comments on anything exported
 		#--enable=gotype \
+	 	#--enable=ineffassign \
 	   	#--enable=interfacer \
 	   	#--enable=megacheck \
 	   	#--enable=staticcheck \
