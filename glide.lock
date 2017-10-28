@@ -1,8 +1,8 @@
-hash: 58d209dee0c21d507226d6b56f7b7f49d24f60090ef9a6c1d89bc27ff00f90e4
-updated: 2017-10-26T00:04:10.142172009-04:00
+hash: 0f9ba99fd411afaaf90993037b0067c5f9f873554f407a6ae9afa0e2548343c5
+updated: 2017-10-27T22:34:38.187149434-04:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
+  version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
   subpackages:
   - btcec
 - name: github.com/ebuchman/fail-test
@@ -10,7 +10,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: 4dc7be5d2d12881735283bcab7352178e190fc71
+  version: e2b298466b32c7cd5579a9b9b07e968fc9d9452c
   subpackages:
   - log
   - log/level
@@ -98,7 +98,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: a0e38dc58374f485481ea07b23659d85f670a694
+  version: dc33aad9b4e514a2322725ef68f27f72d955c537
   subpackages:
   - client
   - example/counter
@@ -106,23 +106,23 @@ imports:
   - server
   - types
 - name: github.com/tendermint/ed25519
-  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
+  version: d8387025d2b9d158cf4efb07e7ebf814bcce2057
   subpackages:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 311e8c1bf00fa5868daad4f8ea56dcad539182c0
+  version: dd20358a264c772b4a83e477b0cfce4c88a7001d
 - name: github.com/tendermint/go-wire
-  version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
+  version: 2baffcb6b690057568bc90ef1d457efb150b979a
   subpackages:
   - data
   - data/base58
 - name: github.com/tendermint/iavl
-  version: 595f3dcd5b6cd4a292e90757ae6d367fd7a6e653
+  version: 594cc0c062a7174475f0ab654384038d77067917
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: b30e3ba26d4077edeed83c50a4e0c38b0ec9ddb3
+  version: d9525c0fb671204450b160807480e1263053fb20
   subpackages:
   - autofile
   - cli
@@ -147,7 +147,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 4b14673ba32bee7f5ac0f990a48f033919fd418b
+  version: c73622c77280266305273cb545f54516ced95b93
   subpackages:
   - context
   - http2
@@ -157,7 +157,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 176de7413414c01569163271c745672ff04a7267
+  version: b98136db334ff9cb24f28a68e3be3cb6608f7630
   subpackages:
   - unix
 - name: golang.org/x/text
