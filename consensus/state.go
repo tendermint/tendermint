@@ -97,8 +97,9 @@ type ConsensusState struct {
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
-	wal        *WAL
-	replayMode bool // so we don't log signing errors during replay
+	wal          *WAL
+	replayMode   bool // so we don't log signing errors during replay
+	doWALCatchup bool // determines if we even try to do the catchup
 
 	// for tests where we want to limit the number of transitions the state makes
 	nSteps int
@@ -123,6 +124,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 		internalMsgQueue: make(chan msgInfo, msgQueueSize),
 		timeoutTicker:    NewTimeoutTicker(),
 		done:             make(chan struct{}),
+		doWALCatchup:     true,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -226,10 +228,12 @@ func (cs *ConsensusState) OnStart() error {
 
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
-	if err := cs.catchupReplay(cs.Height); err != nil {
-		cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "err", err.Error())
-		// NOTE: if we ever do return an error here,
-		// make sure to stop the timeoutTicker
+	if cs.doWALCatchup {
+		if err := cs.catchupReplay(cs.Height); err != nil {
+			cs.Logger.Error("Error on catchup replay. Proceeding to start ConsensusState anyway", "err", err.Error())
+			// NOTE: if we ever do return an error here,
+			// make sure to stop the timeoutTicker
+		}
 	}
 
 	// now start the receiveRoutine
@@ -390,7 +394,7 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(cs.state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
+	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for _, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
@@ -707,6 +711,7 @@ func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 		// not a validator
 		valIndex = -1
 	}
+	chainID := cs.state.ChainID
 	for {
 		rs := cs.GetRoundState()
 		// if we've already moved on, no need to send more heartbeats
@@ -720,7 +725,7 @@ func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 			ValidatorAddress: addr,
 			ValidatorIndex:   valIndex,
 		}
-		cs.privValidator.SignHeartbeat(cs.state.ChainID, heartbeat)
+		cs.privValidator.SignHeartbeat(chainID, heartbeat)
 		heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
 		types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
 		counter += 1
@@ -797,8 +802,7 @@ func (cs *ConsensusState) defaultDecideProposal(height, round int) {
 	// Make proposal
 	polRound, polBlockID := cs.Votes.POLInfo()
 	proposal := types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
-	err := cs.privValidator.SignProposal(cs.state.ChainID, proposal)
-	if err == nil {
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal); err == nil {
 		// Set fields
 		/*  fields set by setProposal and addBlockPart
 		cs.Proposal = proposal
@@ -857,10 +861,9 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
-
 	return types.MakeBlock(cs.Height, cs.state.ChainID, txs, commit,
 		cs.state.LastBlockID, cs.state.Validators.Hash(),
-		cs.state.AppHash, cs.state.Params().BlockPartSizeBytes)
+		cs.state.AppHash, cs.state.Params.BlockPartSizeBytes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1130,7 +1133,7 @@ func (cs *ConsensusState) tryFinalizeCommit(height int) {
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		// TODO: this happens every time if we're not a validator (ugly logs)
 		// TODO: ^^ wait, why does it matter that we're a validator?
-		cs.Logger.Error("Attempt to finalize failed. We don't have the commit block.", "height", height, "proposal-block", cs.ProposalBlock.Hash(), "commit-block", blockID.Hash)
+		cs.Logger.Info("Attempt to finalize failed. We don't have the commit block.", "height", height, "proposal-block", cs.ProposalBlock.Hash(), "commit-block", blockID.Hash)
 		return
 	}
 
@@ -1189,7 +1192,7 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// As is, ConsensusState should not be started again
 	// until we successfully call ApplyBlock (ie. here or in Handshake after restart)
 	if cs.wal != nil {
-		cs.wal.writeEndHeight(height)
+		cs.wal.Save(EndHeightMessage{uint64(height)})
 	}
 
 	fail.Fail() // XXX
@@ -1295,7 +1298,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int, part *types.Part, ver
 		var n int
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
-			cs.state.Params().BlockSizeParams.MaxBytes, &n, &err).(*types.Block)
+			cs.state.Params.BlockSizeParams.MaxBytes, &n, &err).(*types.Block)
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {

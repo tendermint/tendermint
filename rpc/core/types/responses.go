@@ -26,9 +26,24 @@ type ResultBlock struct {
 }
 
 type ResultCommit struct {
-	Header          *types.Header `json:"header"`
-	Commit          *types.Commit `json:"commit"`
-	CanonicalCommit bool          `json:"canonical"`
+	// SignedHeader is header and commit, embedded so we only have
+	// one level in the json output
+	types.SignedHeader
+	CanonicalCommit bool `json:"canonical"`
+}
+
+// NewResultCommit is a helper to initialize the ResultCommit with
+// the embedded struct
+func NewResultCommit(header *types.Header, commit *types.Commit,
+	canonical bool) *ResultCommit {
+
+	return &ResultCommit{
+		SignedHeader: types.SignedHeader{
+			Header: header,
+			Commit: commit,
+		},
+		CanonicalCommit: canonical,
+	}
 }
 
 type ResultStatus struct {

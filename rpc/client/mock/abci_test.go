@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
 	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/client/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -50,7 +51,7 @@ func TestABCIMock(t *testing.T) {
 	assert.Equal("foobar", err.Error())
 
 	// query always returns the response
-	query, err := m.ABCIQuery("/", nil, false)
+	query, err := m.ABCIQueryWithOptions("/", nil, client.ABCIQueryOptions{Trusted: true})
 	require.Nil(err)
 	require.NotNil(query)
 	assert.EqualValues(key, query.Key)
@@ -92,7 +93,7 @@ func TestABCIRecorder(t *testing.T) {
 	require.Equal(0, len(r.Calls))
 
 	r.ABCIInfo()
-	r.ABCIQuery("path", data.Bytes("data"), true)
+	r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
 	require.Equal(2, len(r.Calls))
 
 	info := r.Calls[0]
@@ -115,7 +116,7 @@ func TestABCIRecorder(t *testing.T) {
 	require.True(ok)
 	assert.Equal("path", qa.Path)
 	assert.EqualValues("data", qa.Data)
-	assert.True(qa.Prove)
+	assert.False(qa.Trusted)
 
 	// now add some broadcasts
 	txs := []types.Tx{{1}, {2}, {3}}
@@ -164,7 +165,7 @@ func TestABCIApp(t *testing.T) {
 	assert.True(res.DeliverTx.Code.IsOK())
 
 	// check the key
-	qres, err := m.ABCIQuery("/key", data.Bytes(key), false)
+	qres, err := m.ABCIQueryWithOptions("/key", data.Bytes(key), client.ABCIQueryOptions{Trusted: true})
 	require.Nil(err)
 	assert.EqualValues(value, qres.Value)
 }

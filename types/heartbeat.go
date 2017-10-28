@@ -10,8 +10,11 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// Heartbeat is a simple vote-like structure so validators can alert others that
-// they are alive and waiting for transactions.
+// Heartbeat is a simple vote-like structure so validators can
+// alert others that they are alive and waiting for transactions.
+// Note: We aren't adding ",omitempty" to Heartbeat's
+// json field tags because we always want the JSON
+// representation to be in its canonical form.
 type Heartbeat struct {
 	ValidatorAddress data.Bytes       `json:"validator_address"`
 	ValidatorIndex   int              `json:"validator_index"`
@@ -22,6 +25,7 @@ type Heartbeat struct {
 }
 
 // WriteSignBytes writes the Heartbeat for signing.
+// It panics if the Heartbeat is nil.
 func (heartbeat *Heartbeat) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
 	wire.WriteJSON(CanonicalJSONOnceHeartbeat{
 		chainID,
@@ -31,6 +35,9 @@ func (heartbeat *Heartbeat) WriteSignBytes(chainID string, w io.Writer, n *int, 
 
 // Copy makes a copy of the Heartbeat.
 func (heartbeat *Heartbeat) Copy() *Heartbeat {
+	if heartbeat == nil {
+		return nil
+	}
 	heartbeatCopy := *heartbeat
 	return &heartbeatCopy
 }

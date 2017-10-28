@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func randPubKey() crypto.PubKey {
@@ -166,8 +167,8 @@ func TestProposerSelection3(t *testing.T) {
 		}
 
 		// serialize, deserialize, check proposer
-		b := vset.ToBytes()
-		vset.FromBytes(b)
+		b := vset.toBytes()
+		vset.fromBytes(b)
 
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
@@ -204,5 +205,23 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		vset.Copy()
+	}
+}
+
+func (valSet *ValidatorSet) toBytes() []byte {
+	buf, n, err := new(bytes.Buffer), new(int), new(error)
+	wire.WriteBinary(valSet, buf, n, err)
+	if *err != nil {
+		cmn.PanicCrisis(*err)
+	}
+	return buf.Bytes()
+}
+
+func (valSet *ValidatorSet) fromBytes(b []byte) {
+	r, n, err := bytes.NewReader(b), new(int), new(error)
+	wire.ReadBinary(valSet, r, 0, n, err)
+	if *err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.PanicCrisis(*err)
 	}
 }

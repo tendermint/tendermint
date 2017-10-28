@@ -2,7 +2,7 @@
 set -e
 
 function toHex() {
-	echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}' 
+    echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}' 
 
 }
 
@@ -32,9 +32,9 @@ RESPONSE=`abci-cli query \"$KEY\"`
 set +e
 A=`echo $RESPONSE | grep "$VALUE"`
 if [[ $? != 0 ]]; then
-	echo "Failed to find $VALUE for $KEY. Response:"
-	echo "$RESPONSE"
-	exit 1
+    echo "Failed to find $VALUE for $KEY. Response:"
+    echo "$RESPONSE"
+    exit 1
 fi
 set -e
 
@@ -43,9 +43,9 @@ RESPONSE=`abci-cli query \"$VALUE\"`
 set +e
 A=`echo $RESPONSE | grep $VALUE`
 if [[ $? == 0 ]]; then
-	echo "Found '$VALUE' for $VALUE when we should not have. Response:"
-	echo "$RESPONSE"
-	exit 1
+    echo "Found '$VALUE' for $VALUE when we should not have. Response:"
+    echo "$RESPONSE"
+    exit 1
 fi
 set -e
 
@@ -62,9 +62,9 @@ RESPONSE=`echo $RESPONSE | jq .result.response.log`
 set +e
 A=`echo $RESPONSE | grep 'exists'`
 if [[ $? != 0 ]]; then
-	echo "Failed to find 'exists' for $KEY. Response:"
-	echo "$RESPONSE"
-	exit 1
+    echo "Failed to find 'exists' for $KEY. Response:"
+    echo "$RESPONSE"
+    exit 1
 fi
 set -e
 
@@ -74,9 +74,9 @@ RESPONSE=`echo $RESPONSE | jq .result.response.log`
 set +e
 A=`echo $RESPONSE | grep 'exists'`
 if [[ $? == 0 ]]; then
-	echo "Found 'exists' for $VALUE when we should not have. Response:"
-	echo "$RESPONSE"
-	exit 1
+    echo "Found 'exists' for $VALUE when we should not have. Response:"
+    echo "$RESPONSE"
+    exit 1
 fi
 set -e
 

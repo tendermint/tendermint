@@ -13,7 +13,6 @@ FEATURES:
 - Use the chain as its own CA for nodes and validators
 - Tooling to run multiple blockchains/apps, possibly in a single process
 - State syncing (without transaction replay)
-- Improved support for querying history and state
 - Add authentication and rate-limitting to the RPC
 
 IMPROVEMENTS:
@@ -27,6 +26,32 @@ IMPROVEMENTS:
 BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
+
+## 0.12.0 (October 27, 2017)
+
+BREAKING CHANGES:
+ - rpc/client: websocket ResultsCh and ErrorsCh unified in ResponsesCh.
+ - rpc/client: ABCIQuery no longer takes `prove`
+ - state: remove GenesisDoc from state.
+ - consensus: new binary WAL format provides efficiency and uses checksums to detect corruption
+    - use scripts/wal2json to convert to json for debugging
+
+FEATURES:
+ - new `certifiers` pkg contains the tendermint light-client library (name subject to change)!
+ - rpc: `/genesis` includes the `app_options` .
+ - rpc: `/abci_query` takes an additional `height` parameter to support historical queries.
+ - rpc/client: new ABCIQueryWithOptions supports options like `trusted` (set false to get a proof) and `height` to query a historical height.
+
+IMPROVEMENTS:
+ - rpc: `/genesis` result includes `app_options`
+ - rpc/lib/client: add jitter to reconnects.
+ - rpc/lib/types: `RPCError` satisfies the `error` interface.
+
+BUG FIXES:
+ - rpc/client: fix ws deadlock after stopping
+ - blockchain: fix panic on AddBlock when peer is nil
+ - mempool: fix sending on TxsAvailable when a tx has been invalidated
+ - consensus: dont run WAL catchup if we fast synced
 
 ## 0.11.1 (October 10, 2017)
 

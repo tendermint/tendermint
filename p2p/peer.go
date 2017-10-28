@@ -268,11 +268,11 @@ func (p *peer) CanSend(chID byte) bool {
 }
 
 // WriteTo writes the peer's public key to w.
-func (p *peer) WriteTo(w io.Writer) (n int64, err error) {
-	var n_ int
-	wire.WriteString(p.key, w, &n_, &err)
-	n += int64(n_)
-	return
+func (p *peer) WriteTo(w io.Writer) (int64, error) {
+	var n int
+	var err error
+	wire.WriteString(p.key, w, &n, &err)
+	return int64(n), err
 }
 
 // String representation.

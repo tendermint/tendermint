@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -132,19 +133,27 @@ func NewNode(config *cfg.Config,
 	if err != nil {
 		return nil, err
 	}
-	state := sm.LoadState(stateDB)
-	if state == nil {
-		genDoc, err := genesisDocProvider()
+
+	// Get genesis doc
+	genDoc, err := loadGenesisDoc(stateDB)
+	if err != nil {
+		genDoc, err = genesisDocProvider()
 		if err != nil {
 			return nil, err
 		}
+		// save genesis doc to prevent a certain class of user errors (e.g. when it
+		// was changed, accidentally or not). Also good for audit trail.
+		saveGenesisDoc(stateDB, genDoc)
+	}
+
+	state := sm.LoadState(stateDB)
+	if state == nil {
 		state, err = sm.MakeGenesisState(stateDB, genDoc)
 		if err != nil {
 			return nil, err
 		}
 		state.Save()
 	}
-
 	state.SetLogger(stateLogger)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
@@ -286,7 +295,7 @@ func NewNode(config *cfg.Config,
 
 	node := &Node{
 		config:        config,
-		genesisDoc:    state.GenesisDoc,
+		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
 		privKey:  privKey,
@@ -308,6 +317,16 @@ func NewNode(config *cfg.Config,
 
 // OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
+	// Run the RPC server first
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		listeners, err := n.startRPC()
+		if err != nil {
+			return err
+		}
+		n.rpcListeners = listeners
+	}
+
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
@@ -328,15 +347,6 @@ func (n *Node) OnStart() error {
 		if err := n.DialSeeds(seeds); err != nil {
 			return err
 		}
-	}
-
-	// Run the RPC server
-	if n.config.RPC.ListenAddress != "" {
-		listeners, err := n.startRPC()
-		if err != nil {
-			return err
-		}
-		n.rpcListeners = listeners
 	}
 
 	return nil
@@ -485,11 +495,10 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
-
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker: n.config.Moniker,
-		Network: n.consensusState.GetState().ChainID,
+		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
@@ -536,3 +545,31 @@ func (n *Node) DialSeeds(seeds []string) error {
 }
 
 //------------------------------------------------------------------------------
+
+var (
+	genesisDocKey = []byte("genesisDoc")
+)
+
+// panics if failed to unmarshal bytes
+func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
+	bytes := db.Get(genesisDocKey)
+	if len(bytes) == 0 {
+		return nil, errors.New("Genesis doc not found")
+	} else {
+		var genDoc *types.GenesisDoc
+		err := json.Unmarshal(bytes, &genDoc)
+		if err != nil {
+			cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+		}
+		return genDoc, nil
+	}
+}
+
+// panics if failed to marshal the given genesis document
+func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
+	bytes, err := json.Marshal(genDoc)
+	if err != nil {
+		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
+	}
+	db.SetSync(genesisDocKey, bytes)
+}

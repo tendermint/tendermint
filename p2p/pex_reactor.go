@@ -139,6 +139,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	switch msg := msg.(type) {
 	case *pexRequestMessage:
 		// src requested some peers.
+		// NOTE: we might send an empty selection
 		r.SendAddrs(src, r.book.GetSelection())
 	case *pexAddrsMessage:
 		// We received some peer addresses from src.

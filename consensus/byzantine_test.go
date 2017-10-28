@@ -101,10 +101,10 @@ func TestByzantine(t *testing.T) {
 	// start the state machines
 	byzR := reactors[0].(*ByzantineReactor)
 	s := byzR.reactor.conS.GetState()
-	byzR.reactor.SwitchToConsensus(s)
+	byzR.reactor.SwitchToConsensus(s, 0)
 	for i := 1; i < N; i++ {
 		cr := reactors[i].(*ConsensusReactor)
-		cr.SwitchToConsensus(cr.conS.GetState())
+		cr.SwitchToConsensus(cr.conS.GetState(), 0)
 	}
 
 	// byz proposer sends one block to peers[0]

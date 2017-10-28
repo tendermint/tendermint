@@ -39,17 +39,12 @@ func NewHTTP(remote, wsEndpoint string) *HTTP {
 	}
 }
 
-func (c *HTTP) _assertIsClient() Client {
-	return c
-}
-
-func (c *HTTP) _assertIsNetworkClient() NetworkClient {
-	return c
-}
-
-func (c *HTTP) _assertIsEventSwitch() types.EventSwitch {
-	return c
-}
+var (
+	_ Client            = (*HTTP)(nil)
+	_ NetworkClient     = (*HTTP)(nil)
+	_ types.EventSwitch = (*HTTP)(nil)
+	_ types.EventSwitch = (*WSEvents)(nil)
+)
 
 func (c *HTTP) Status() (*ctypes.ResultStatus, error) {
 	result := new(ctypes.ResultStatus)
@@ -69,10 +64,14 @@ func (c *HTTP) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return result, nil
 }
 
-func (c *HTTP) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
+func (c *HTTP) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
+}
+
+func (c *HTTP) ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	result := new(ctypes.ResultABCIQuery)
 	_, err := c.rpc.Call("abci_query",
-		map[string]interface{}{"path": path, "data": data, "prove": prove},
+		map[string]interface{}{"path": path, "data": data, "height": opts.Height, "trusted": opts.Trusted},
 		result)
 	if err != nil {
 		return nil, errors.Wrap(err, "ABCIQuery")
@@ -216,10 +215,6 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 	}
 }
 
-func (w *WSEvents) _assertIsEventSwitch() types.EventSwitch {
-	return w
-}
-
 // Start is the only way I could think the extend OnStart from
 // events.eventSwitch.  If only it wasn't private...
 // BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
@@ -323,16 +318,18 @@ func (w *WSEvents) redoSubscriptions() {
 func (w *WSEvents) eventListener() {
 	for {
 		select {
-		case res := <-w.ws.ResultsCh:
+		case resp := <-w.ws.ResponsesCh:
 			// res is json.RawMessage
-			err := w.parseEvent(res)
+			if resp.Error != nil {
+				// FIXME: better logging/handling of errors??
+				fmt.Printf("ws err: %+v\n", resp.Error.Error())
+				continue
+			}
+			err := w.parseEvent(*resp.Result)
 			if err != nil {
 				// FIXME: better logging/handling of errors??
 				fmt.Printf("ws result: %+v\n", err)
 			}
-		case err := <-w.ws.ErrorsCh:
-			// FIXME: better logging/handling of errors??
-			fmt.Printf("ws err: %+v\n", err)
 		case <-w.quit:
 			// send a message so we can wait for the routine to exit
 			// before cleaning up the w.ws stuff

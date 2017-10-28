@@ -29,7 +29,7 @@ You should be able to install the latest with a simple
 Run ``tendermint --help`` and ``tendermint version`` to ensure your
 installation worked.
 
-If the installation failed, a dependency may been updated and become
+If the installation failed, a dependency may have been updated and become
 incompatible with the latest Tendermint master branch. We solve this
 using the ``glide`` tool for dependency management.
 
