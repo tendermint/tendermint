@@ -37,11 +37,10 @@ func destroyTestGroup(t *testing.T, g *Group) {
 }
 
 func assertGroupInfo(t *testing.T, gInfo GroupInfo, minIndex, maxIndex int, totalSize, headSize int64) {
-	assert := assert.New(t)
-	assert.Equal(minIndex, gInfo.MinIndex)
-	assert.Equal(maxIndex, gInfo.MaxIndex)
-	assert.Equal(totalSize, gInfo.TotalSize)
-	assert.Equal(headSize, gInfo.HeadSize)
+	assert.Equal(t, minIndex, gInfo.MinIndex)
+	assert.Equal(t, maxIndex, gInfo.MaxIndex)
+	assert.Equal(t, totalSize, gInfo.TotalSize)
+	assert.Equal(t, headSize, gInfo.HeadSize)
 }
 
 func TestCheckHeadSizeLimit(t *testing.T) {
