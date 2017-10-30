@@ -214,9 +214,6 @@ type P2PConfig struct {
 	// Set true for strict address routability rules
 	AddrBookStrict bool `mapstructure:"addr_book_strict"`
 
-	// Path to the trust history file
-	TrustHistory string `mapstructure:"trust_history_file"`
-
 	// Set true to enable the peer-exchange reactor
 	PexReactor bool `mapstructure:"pex"`
 
@@ -242,7 +239,6 @@ func DefaultP2PConfig() *P2PConfig {
 		ListenAddress:           "tcp://0.0.0.0:46656",
 		AddrBook:                "addrbook.json",
 		AddrBookStrict:          true,
-		TrustHistory:            "trusthistory.json",
 		MaxNumPeers:             50,
 		FlushThrottleTimeout:    100,
 		MaxMsgPacketPayloadSize: 1024,   // 1 kB
@@ -262,11 +258,6 @@ func TestP2PConfig() *P2PConfig {
 // AddrBookFile returns the full path to the address book
 func (p *P2PConfig) AddrBookFile() string {
 	return rootify(p.AddrBook, p.RootDir)
-}
-
-// TrustHistoryFile returns the full path to the trust metric store history
-func (p *P2PConfig) TrustHistoryFile() string {
-	return rootify(p.TrustHistory, p.RootDir)
 }
 
 //-----------------------------------------------------------------------------

@@ -5,12 +5,12 @@ package trust
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"math"
 	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
 // TrustMetricStore - Manages all trust metrics for peers
@@ -23,19 +23,19 @@ type TrustMetricStore struct {
 	// Mutex that protects the map and history data file
 	mtx sync.Mutex
 
-	// The file path where peer trust metric history data will be stored
-	filePath string
+	// The db where peer trust metric history data will be stored
+	db dbm.DB
 
 	// This configuration will be used when creating new TrustMetrics
-	config *TrustMetricConfig
+	config TrustMetricConfig
 }
 
-// NewTrustMetricStore returns a store that optionally saves data to
-// the file path and uses the optional config when creating new trust metrics
-func NewTrustMetricStore(filePath string, tmc *TrustMetricConfig) *TrustMetricStore {
+// NewTrustMetricStore returns a store that saves data to the DB
+// and uses the config when creating new trust metrics
+func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {
 	tms := &TrustMetricStore{
 		peerMetrics: make(map[string]*TrustMetric),
-		filePath:    filePath,
+		db:          db,
 		config:      tmc,
 	}
 
@@ -49,7 +49,8 @@ func (tms *TrustMetricStore) OnStart() error {
 
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
-	tms.loadFromFile()
+
+	tms.loadFromDB()
 	return nil
 }
 
@@ -63,8 +64,16 @@ func (tms *TrustMetricStore) OnStop() {
 		tm.Stop()
 	}
 
-	tms.saveToFile()
+	tms.saveToDB()
 	tms.BaseService.OnStop()
+}
+
+// Size returns the number of entries in the trust metric store
+func (tms *TrustMetricStore) Size() int {
+	tms.mtx.Lock()
+	defer tms.mtx.Unlock()
+
+	return tms.size()
 }
 
 // GetPeerTrustMetric returns a trust metric by peer key
@@ -95,41 +104,43 @@ func (tms *TrustMetricStore) PeerDisconnected(key string) {
 	}
 }
 
+/* Private methods */
+
+// size returns the number of entries in the store without acquiring the mutex
+func (tms *TrustMetricStore) size() int {
+	return len(tms.peerMetrics)
+}
+
 /* Loading & Saving */
+/* Both of these methods assume the mutex has been acquired, since they write to the map */
+
+var trustMetricKey = []byte("trustMetricStore")
 
 type peerHistoryJSON struct {
 	NumIntervals int       `json:"intervals"`
 	History      []float64 `json:"history"`
 }
 
-// Loads the history data for the Peer identified by key from the store file.
+// Loads the history data for the Peer identified by key from the store DB.
 // cmn.Panics if file is corrupt
-func (tms *TrustMetricStore) loadFromFile() bool {
-	// Check that a file has been configured for use
-	if tms.filePath == "" {
-		// The trust metric store can operate without the file
+func (tms *TrustMetricStore) loadFromDB() bool {
+	// Obtain the history data we have so far
+	bytes := tms.db.Get(trustMetricKey)
+	if bytes == nil {
 		return false
 	}
 
-	// Obtain the history data we have so far
-	content, err := ioutil.ReadFile(tms.filePath)
-	if err != nil {
-		cmn.PanicCrisis(cmn.Fmt("Error reading file %s: %v", tms.filePath, err))
-	}
-
 	peers := make(map[string]peerHistoryJSON, 0)
-	err = json.Unmarshal(content, &peers)
+	err := json.Unmarshal(bytes, &peers)
 	if err != nil {
-		cmn.PanicCrisis(cmn.Fmt("Error decoding file %s: %v", tms.filePath, err))
+		cmn.PanicCrisis(cmn.Fmt("Could not unmarchal Trust Metric Store DB data: %v", err))
 	}
 
 	// If history data exists in the file,
 	// load it into trust metrics and recalc
 	for key, p := range peers {
 		tm := NewMetricWithConfig(tms.config)
-		if tm == nil {
-			continue
-		}
+
 		// Restore the number of time intervals we have previously tracked
 		if p.NumIntervals > tm.maxIntervals {
 			p.NumIntervals = tm.maxIntervals
@@ -149,15 +160,9 @@ func (tms *TrustMetricStore) loadFromFile() bool {
 	return true
 }
 
-// Saves the history data for all peers to the store file
-func (tms *TrustMetricStore) saveToFile() {
-	// Check that a file has been configured for use
-	if tms.filePath == "" {
-		// The trust metric store can operate without the file
-		return
-	}
-
-	tms.Logger.Info("Saving TrustHistory to file", "size", len(tms.peerMetrics))
+// Saves the history data for all peers to the store DB
+func (tms *TrustMetricStore) saveToDB() {
+	tms.Logger.Info("Saving TrustHistory to DB", "size", tms.size())
 
 	peers := make(map[string]peerHistoryJSON, 0)
 
@@ -169,20 +174,23 @@ func (tms *TrustMetricStore) saveToFile() {
 		}
 	}
 
-	// Write all the data back to the file
-	b, err := json.Marshal(peers)
+	// Write all the data back to the DB
+	bytes, err := json.Marshal(peers)
 	if err != nil {
 		tms.Logger.Error("Failed to encode the TrustHistory", "err", err)
 		return
 	}
-
-	err = ioutil.WriteFile(tms.filePath, b, 0644)
-	if err != nil {
-		tms.Logger.Error("Failed to save TrustHistory to file", "err", err)
-	}
+	tms.db.SetSync(trustMetricKey, bytes)
 }
 
 //---------------------------------------------------------------------------------------
+
+// The number of event updates that can be sent on a single metric before blocking
+const defaultUpdateChanCapacity = 10
+
+// The number of trust value requests that can be made simultaneously before blocking
+const defaultRequestChanCapacity = 10
+
 // TrustMetric - keeps track of peer reliability
 // See tendermint/docs/architecture/adr-006-trust-metric.md for details
 type TrustMetric struct {
@@ -216,6 +224,9 @@ type TrustMetric struct {
 	// The number of recorded good and bad events for the current time interval
 	bad, good float64
 
+	// While true, history data is not modified
+	paused bool
+
 	// Sending true on this channel stops tracking, while false pauses tracking
 	stop chan bool
 
@@ -238,7 +249,8 @@ type reqTrustValue struct {
 	Resp chan float64
 }
 
-// Pause tells the metric to pause recording data over time intervals
+// Pause tells the metric to pause recording data over time intervals.
+// All method calls that indicate events will unpause the metric
 func (tm *TrustMetric) Pause() {
 	tm.stop <- false
 }
@@ -299,40 +311,33 @@ type TrustMetricConfig struct {
 	// Each interval should be short for adapability.
 	// Less than 30 seconds is too sensitive,
 	// and greater than 5 minutes will make the metric numb
-	IntervalLen time.Duration
+	IntervalLength time.Duration
 }
 
 // DefaultConfig returns a config with values that have been tested and produce desirable results
-func DefaultConfig() *TrustMetricConfig {
-	return &TrustMetricConfig{
+func DefaultConfig() TrustMetricConfig {
+	return TrustMetricConfig{
 		ProportionalWeight: 0.4,
 		IntegralWeight:     0.6,
 		TrackingWindow:     (time.Minute * 60 * 24) * 14, // 14 days.
-		IntervalLen:        1 * time.Minute,
+		IntervalLength:     1 * time.Minute,
 	}
 }
 
 // NewMetric returns a trust metric with the default configuration
 func NewMetric() *TrustMetric {
-	return NewMetricWithConfig(nil)
+	return NewMetricWithConfig(DefaultConfig())
 }
 
 // NewMetricWithConfig returns a trust metric with a custom configuration
-func NewMetricWithConfig(tmc *TrustMetricConfig) *TrustMetric {
-	var config *TrustMetricConfig
-
-	if tmc == nil {
-		config = DefaultConfig()
-	} else {
-		config = customConfig(tmc)
-	}
-
+func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {
 	tm := new(TrustMetric)
+	config := customConfig(tmc)
 
 	// Setup using the configuration values
 	tm.proportionalWeight = config.ProportionalWeight
 	tm.integralWeight = config.IntegralWeight
-	tm.intervalLen = config.IntervalLen
+	tm.intervalLen = config.IntervalLength
 	// The maximum number of time intervals is the tracking window / interval length
 	tm.maxIntervals = int(config.TrackingWindow / tm.intervalLen)
 	// The history size will be determined by the maximum number of time intervals
@@ -340,8 +345,8 @@ func NewMetricWithConfig(tmc *TrustMetricConfig) *TrustMetric {
 	// This metric has a perfect history so far
 	tm.historyValue = 1.0
 	// Setup the channels
-	tm.update = make(chan *updateBadGood, 10)
-	tm.trustValue = make(chan *reqTrustValue, 10)
+	tm.update = make(chan *updateBadGood, defaultUpdateChanCapacity)
+	tm.trustValue = make(chan *reqTrustValue, defaultRequestChanCapacity)
 	tm.stop = make(chan bool, 2)
 
 	go tm.processRequests()
@@ -351,25 +356,27 @@ func NewMetricWithConfig(tmc *TrustMetricConfig) *TrustMetric {
 /* Private methods */
 
 // Ensures that all configuration elements have valid values
-func customConfig(tmc *TrustMetricConfig) *TrustMetricConfig {
+func customConfig(tmc TrustMetricConfig) TrustMetricConfig {
 	config := DefaultConfig()
 
 	// Check the config for set values, and setup appropriately
-	if tmc.ProportionalWeight != 0 {
+	if tmc.ProportionalWeight > 0 {
 		config.ProportionalWeight = tmc.ProportionalWeight
 	}
 
-	if tmc.IntegralWeight != 0 {
+	if tmc.IntegralWeight > 0 {
 		config.IntegralWeight = tmc.IntegralWeight
 	}
 
-	if tmc.TrackingWindow != time.Duration(0) {
+	if tmc.IntervalLength > time.Duration(0) {
+		config.IntervalLength = tmc.IntervalLength
+	}
+
+	if tmc.TrackingWindow > time.Duration(0) &&
+		tmc.TrackingWindow >= config.IntervalLength {
 		config.TrackingWindow = tmc.TrackingWindow
 	}
 
-	if tmc.IntervalLen != time.Duration(0) {
-		config.IntervalLen = tmc.IntervalLen
-	}
 	return config
 }
 
@@ -480,18 +487,19 @@ func (tm *TrustMetric) calcTrustValue() float64 {
 
 // This method is for a goroutine that handles all requests on the metric
 func (tm *TrustMetric) processRequests() {
-	var t *time.Ticker
-
+	t := time.NewTicker(tm.intervalLen)
+	defer t.Stop()
 loop:
 	for {
 		select {
 		case bg := <-tm.update:
 			// Check if this is the first experience with
-			// what we are tracking since being started or paused
-			if t == nil {
-				t = time.NewTicker(tm.intervalLen)
+			// what we are tracking since being paused
+			if tm.paused {
 				tm.good = 0
 				tm.bad = 0
+				// New events cause us to unpause the metric
+				tm.paused = false
 			}
 
 			if bg.IsBad {
@@ -502,41 +510,36 @@ loop:
 		case rtv := <-tm.trustValue:
 			rtv.Resp <- tm.calcTrustValue()
 		case <-t.C:
-			// Add the current trust value to the history data
-			newHist := tm.calcTrustValue()
-			tm.history = append([]float64{newHist}, tm.history...)
+			if !tm.paused {
+				// Add the current trust value to the history data
+				newHist := tm.calcTrustValue()
+				tm.history = append([]float64{newHist}, tm.history...)
 
-			// Update history and interval counters
-			if tm.historySize < tm.historyMaxSize {
-				tm.historySize++
-			} else {
-				tm.history = tm.history[:tm.historyMaxSize]
+				// Update history and interval counters
+				if tm.historySize < tm.historyMaxSize {
+					tm.historySize++
+				} else {
+					tm.history = tm.history[:tm.historyMaxSize]
+				}
+
+				if tm.numIntervals < tm.maxIntervals {
+					tm.numIntervals++
+				}
+
+				// Update the history data using Faded Memories
+				tm.updateFadedMemory()
+				// Calculate the history value for the upcoming time interval
+				tm.historyValue = tm.calcHistoryValue()
+				tm.good = 0
+				tm.bad = 0
 			}
-
-			if tm.numIntervals < tm.maxIntervals {
-				tm.numIntervals++
-			}
-
-			// Update the history data using Faded Memories
-			tm.updateFadedMemory()
-			// Calculate the history value for the upcoming time interval
-			tm.historyValue = tm.calcHistoryValue()
-			tm.good = 0
-			tm.bad = 0
 		case stop := <-tm.stop:
 			if stop {
 				// Stop all further tracking for this metric
 				break loop
 			}
-			// Pause the metric for now by stopping the ticker
-			if t != nil {
-				t.Stop()
-				t = nil
-			}
+			// Pause the metric for now
+			tm.paused = true
 		}
-	}
-
-	if t != nil {
-		t.Stop()
 	}
 }

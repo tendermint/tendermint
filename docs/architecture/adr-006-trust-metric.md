@@ -1,10 +1,10 @@
-# Trust Metric Design
+# ADR 006: Trust Metric Design
 
-## Overview
+## Context
 
 The proposed trust metric will allow Tendermint to maintain local trust rankings for peers it has directly interacted with, which can then be used to implement soft security controls. The calculations were obtained from the [TrustGuard](https://dl.acm.org/citation.cfm?id=1060808) project.
 
-## Background
+### Background
 
 The Tendermint Core project developers would like to improve Tendermint security and reliability by keeping track of the level of trustworthiness peers have demonstrated within the peer-to-peer network. This way, undesirable outcomes from peers will not immediately result in them being dropped from the network (potentially causing drastic changes to take place). Instead, peers behavior can be monitored with appropriate metrics and be removed from the network once Tendermint Core is certain the peer is a threat. For example, when the PEXReactor makes a request for peers network addresses from a already known peer, and the returned network addresses are unreachable, this untrustworthy behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer being dropped.
 
@@ -12,13 +12,15 @@ Trust metrics can be circumvented by malicious nodes through the use of strategi
 
 Instead, having shorter intervals, but keeping a history of interval values, will give our metric the flexibility needed in order to keep the network stable, while also making it resilient against a strategic malicious node in the Tendermint peer-to-peer network. Also, the metric can access trust data over a rather long period of time while not greatly increasing its history size by aggregating older history values over a larger number of intervals, and at the same time, maintain great precision for the recent intervals. This approach is referred to as fading memories, and closely resembles the way human beings remember their experiences. The trade-off to using history data is that the interval values should be preserved in-between executions of the node.
 
-## Scope
+### References
 
-The proposed trust metric will be implemented as a Go programming language object that will allow a developer to inform the object of all good and bad events relevant to the trust object instantiation, and at any time, the metric can be queried for the current trust ranking. Methods will be provided for storing trust metric history data that is required across instantiations.
+S. Mudhakar, L. Xiong, and L. Liu, “TrustGuard: Countering Vulnerabilities in Reputation Management for Decentralized Overlay Networks,” in *Proceedings of the 14th international conference on World Wide Web, pp. 422-431*, May 2005.
 
-## Detailed Design
+## Decision
 
-This section will cover the process being considered for calculating the trust ranking and the interface for the trust metric.
+The proposed trust metric will allow a developer to inform the trust metric store of all good and bad events relevant to a peer's behavior, and at any time, the metric can be queried for a peer's current trust ranking.
+
+The three subsections below will cover the process being considered for calculating the trust ranking, the concept of the trust metric store, and the interface for the trust metric.
 
 ### Proposed Process
 
@@ -33,7 +35,7 @@ The equation being proposed resembles a Proportional-Integral-Derivative (PID) c
 where *R*[*i*] denotes the raw trust value at time interval *i* (where *i* == 0 being current time) and *a* is the weight applied to the contribution of the current reports. The next component of our equation uses a weighted sum over the last *maxH* intervals to calculate the history value for time *i*:
  
 
-`H[i] = ` ![formula1](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/img/formula1.png "Weighted Sum Formula")
+`H[i] = ` ![formula1](img/formula1.png "Weighted Sum Formula")
 
 
 The weights can be chosen either optimistically or pessimistically. With the history value available, we can now finish calculating the integral value:
@@ -68,75 +70,71 @@ Where *j* is one of *(0, 1, 2, … , m – 1)* indices used to access history in
 R[0] = raw data for current time interval
 ```
 
-`R[j] = ` ![formula2](https://github.com/tendermint/tendermint/blob/develop/docs/architecture/img/formula2.png "Fading Memories Formula")
+`R[j] = ` ![formula2](img/formula2.png "Fading Memories Formula")
 
+### Trust Metric Store
+
+Similar to the P2P subsystem AddrBook, the trust metric store will maintain information relevant to Tendermint peers. Additionally, the trust metric store will ensure that trust metrics will only be active for peers that a node is currently and directly engaged with.
+
+Reactors will provide a peer key to the trust metric store in order to retrieve the associated trust metric. The trust metric can then record new positive and negative events experienced by the reactor, as well as provided the current trust score calculated by the metric.
+
+When the node is shutting down, the trust metric store will save history data for trust metrics associated with all known peers. This saved information allows experiences with a peer to be preserved across node executions, which can span a tracking windows of days or weeks. The trust history data is loaded automatically during OnStart.
 
 ### Interface Detailed Design
 
-This section will cover the Go programming language API designed for the previously proposed process. Below is the interface for a TrustMetric:
+Each trust metric allows for the recording of positive/negative events, querying the current trust value/score, and the stopping/pausing of tracking over time intervals. This can be seen below:
+
 
 ```go
 
-package trust
-
-
-// TrustMetricStore - Manages all trust metrics for peers
-type TrustMetricStore struct {
-    cmn.BaseService
-    
-    // Private elements
-}
-
-// OnStart implements Service
-func (tms *TrustMetricStore) OnStart() error
-
-/ OnStop implements Service
-func (tms *TrustMetricStore) OnStop()
-
-// NewTrustMetricStore returns a store that optionally saves data to
-// the file path and uses the optional config when creating new trust metrics
-func NewTrustMetricStore(filePath string, tmc *TrustMetricConfig) *TrustMetricStore
-
-// GetPeerTrustMetric returns a trust metric by peer key
-func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric
-
-// PeerDisconnected pauses the trust metric associated with the peer identified by the key
-func (tms *TrustMetricStore) PeerDisconnected(key string)
-
-
-//----------------------------------------------------------------------------------------
 // TrustMetric - keeps track of peer reliability
 type TrustMetric struct {
     // Private elements.
 }
 
-// Pause tells the metric to pause recording data over time intervals
-func (tm *TrustMetric) Pause()
+// Pause tells the metric to pause recording data over time intervals.
+// All method calls that indicate events will unpause the metric
+func (tm *TrustMetric) Pause() {}
 
 // Stop tells the metric to stop recording data over time intervals
-func (tm *TrustMetric) Stop()
+func (tm *TrustMetric) Stop() {}
 
 // BadEvent indicates that an undesirable event took place
-func (tm *TrustMetric) BadEvent()
+func (tm *TrustMetric) BadEvent() {}
 
 // AddBadEvents acknowledges multiple undesirable events
-func (tm *TrustMetric) AddBadEvents(num int)
+func (tm *TrustMetric) AddBadEvents(num int) {}
 
 // GoodEvent indicates that a desirable event took place
-func (tm *TrustMetric) GoodEvent()
+func (tm *TrustMetric) GoodEvent() {}
 
 // AddGoodEvents acknowledges multiple desirable events
-func (tm *TrustMetric) AddGoodEvents(num int)
+func (tm *TrustMetric) AddGoodEvents(num int) {}
 
 // TrustValue gets the dependable trust value; always between 0 and 1
-func (tm *TrustMetric) TrustValue() float64
+func (tm *TrustMetric) TrustValue() float64 {}
 
 // TrustScore gets a score based on the trust value always between 0 and 100
-func (tm *TrustMetric) TrustScore() int
+func (tm *TrustMetric) TrustScore() int {}
 
 // NewMetric returns a trust metric with the default configuration
-func NewMetric() *TrustMetric
+func NewMetric() *TrustMetric {}
 
+//------------------------------------------------------------------------------------------------
+// For example
+
+tm := NewMetric()
+
+tm.BadEvent()
+score := tm.TrustScore()
+
+tm.Stop()
+
+```
+
+Some of the trust metric parameters can be configured. The weight values should probably be left alone in more cases, yet the time durations for the tracking window and individual time interval should be considered.
+
+```go
 
 // TrustMetricConfig - Configures the weight functions and time intervals for the metric
 type TrustMetricConfig struct {
@@ -153,17 +151,94 @@ type TrustMetricConfig struct {
     // Each interval should be short for adapability.
     // Less than 30 seconds is too sensitive,
     // and greater than 5 minutes will make the metric numb
-    IntervalLen time.Duration
+    IntervalLength time.Duration
 }
 
 // DefaultConfig returns a config with values that have been tested and produce desirable results
-func DefaultConfig() *TrustMetricConfig
+func DefaultConfig() TrustMetricConfig {}
 
 // NewMetricWithConfig returns a trust metric with a custom configuration
-func NewMetricWithConfig(tmc *TrustMetricConfig) *TrustMetric
+func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {}
+
+//------------------------------------------------------------------------------------------------
+// For example
+
+config := TrustMetricConfig{
+    TrackingWindow: time.Minute * 60 * 24, // one day
+    IntervalLength:    time.Minute * 2,
+}
+
+tm := NewMetricWithConfig(config)
+
+tm.AddBadEvents(10)
+tm.Pause() 
+tm.GoodEvent() // becomes active again
 
 ```
 
-## References
+A trust metric store should be created with a DB that has persistent storage so it can save history data across node executions. All trust metrics instantiated by the store will be created with the provided TrustMetricConfig configuration. 
 
-S. Mudhakar, L. Xiong, and L. Liu, “TrustGuard: Countering Vulnerabilities in Reputation Management for Decentralized Overlay Networks,” in *Proceedings of the 14th international conference on World Wide Web, pp. 422-431*, May 2005.
+When you attempt to fetch the trust metric for a peer, and an entry does not exist in the trust metric store, a new metric is automatically created and the entry made within the store.
+
+In additional to the fetching method, GetPeerTrustMetric, the trust metric store provides a method to call when a peer has disconnected from the node. This is so the metric can be paused (history data will not be saved) for periods of time when the node is not having direct experiences with the peer.
+
+```go
+
+// TrustMetricStore - Manages all trust metrics for peers
+type TrustMetricStore struct {
+    cmn.BaseService
+    
+    // Private elements
+}
+
+// OnStart implements Service
+func (tms *TrustMetricStore) OnStart() error {}
+
+// OnStop implements Service
+func (tms *TrustMetricStore) OnStop() {}
+
+// NewTrustMetricStore returns a store that saves data to the DB
+// and uses the config when creating new trust metrics
+func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {}
+
+// Size returns the number of entries in the trust metric store
+func (tms *TrustMetricStore) Size() int {}
+
+// GetPeerTrustMetric returns a trust metric by peer key
+func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric {}
+
+// PeerDisconnected pauses the trust metric associated with the peer identified by the key
+func (tms *TrustMetricStore) PeerDisconnected(key string) {}
+
+//------------------------------------------------------------------------------------------------
+// For example
+
+db := dbm.NewDB("trusthistory", "goleveldb", dirPathStr)
+tms := NewTrustMetricStore(db, DefaultConfig())
+
+tm := tms.GetPeerTrustMetric(key)
+tm.BadEvent()
+
+tms.PeerDisconnected(key)
+
+```
+
+## Status
+
+Proposed.
+
+## Consequences
+
+### Positive
+
+- The trust metric will allow Tendermint to make non-binary security and reliability decisions
+- Will help Tendermint implement deterrents that provide soft security controls, yet avoids disruption on the network
+- Will provide useful profiling information when analyzing performance over time related to peer interaction
+
+### Negative
+
+- Requires saving the trust metric history data across node executions
+
+### Neutral
+
+- Keep in mind that, good events need to be recorded just as bad events do using this implementation

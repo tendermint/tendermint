@@ -96,10 +96,10 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	privKey  crypto.PrivKeyEd25519   // local node's p2p key
-	sw       *p2p.Switch             // p2p connections
-	addrBook *p2p.AddrBook           // known peers
-	tmStore  *trust.TrustMetricStore // trust metrics for all peers
+	privKey          crypto.PrivKeyEd25519   // local node's p2p key
+	sw               *p2p.Switch             // p2p connections
+	addrBook         *p2p.AddrBook           // known peers
+	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
 
 	// services
 	eventBus         *types.EventBus             // pub/sub for services
@@ -241,12 +241,19 @@ func NewNode(config *cfg.Config,
 
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
-	var tmStore *trust.TrustMetricStore
+	var trustMetricStore *trust.TrustMetricStore
 	if config.P2P.PexReactor {
 		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
-		tmStore = trust.NewTrustMetricStore(config.P2P.TrustHistoryFile(), nil)
-		tmStore.SetLogger(p2pLogger.With("trust", config.P2P.TrustHistoryFile()))
+
+		// Get the trust metric history data
+		trustHistoryDB, err := dbProvider(&DBContext{"trusthistory", config})
+		if err != nil {
+			return nil, err
+		}
+		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
+		trustMetricStore.SetLogger(p2pLogger)
+
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
@@ -299,10 +306,10 @@ func NewNode(config *cfg.Config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		privKey:  privKey,
-		sw:       sw,
-		addrBook: addrBook,
-		tmStore:  tmStore,
+		privKey:          privKey,
+		sw:               sw,
+		addrBook:         addrBook,
+		trustMetricStore: trustMetricStore,
 
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
