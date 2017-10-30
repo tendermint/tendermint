@@ -57,7 +57,7 @@ func (conR *ConsensusReactor) OnStart() error {
 	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
 	conR.BaseReactor.OnStart()
 
-	err := conR.broadcastNewRoundStepsAndVotes()
+	err := conR.broadcastRoutine()
 	if err != nil {
 		return err
 	}
@@ -325,9 +325,10 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// broadcastNewRoundStepsAndVotes subscribes for new round steps and votes
-// using the event bus and broadcasts events to peers upon receiving them.
-func (conR *ConsensusReactor) broadcastNewRoundStepsAndVotes() error {
+// broadcastRoutine subscribes for new round steps, votes and proposal
+// heartbeats using the event bus and broadcasts events to peers upon receiving
+// them.
+func (conR *ConsensusReactor) broadcastRoutine() error {
 	const subscriber = "consensus-reactor"
 	ctx := context.Background()
 
@@ -345,6 +346,13 @@ func (conR *ConsensusReactor) broadcastNewRoundStepsAndVotes() error {
 		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryVote)
 	}
 
+	// proposal heartbeats
+	heartbeatsCh := make(chan interface{})
+	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryProposalHeartbeat, heartbeatsCh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryProposalHeartbeat)
+	}
+
 	go func() {
 		for {
 			select {
@@ -357,6 +365,11 @@ func (conR *ConsensusReactor) broadcastNewRoundStepsAndVotes() error {
 				if ok {
 					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
 					conR.broadcastHasVoteMessage(edv.Vote)
+				}
+			case data, ok := <-heartbeatsCh:
+				if ok {
+					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
+					conR.broadcastProposalHeartbeatMessage(edph)
 				}
 			case <-conR.Quit:
 				conR.eventBus.UnsubscribeAll(ctx, subscriber)

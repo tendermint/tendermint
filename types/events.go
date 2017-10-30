@@ -37,12 +37,11 @@ const (
 ///////////////////////////////////////////////////////////////////////////////
 
 var (
-	EventDataNameNewBlock       = "new_block"
-	EventDataNameNewBlockHeader = "new_block_header"
-	EventDataNameTx             = "tx"
-	EventDataNameRoundState     = "round_state"
-	EventDataNameVote           = "vote"
-
+	EventDataNameNewBlock          = "new_block"
+	EventDataNameNewBlockHeader    = "new_block_header"
+	EventDataNameTx                = "tx"
+	EventDataNameRoundState        = "round_state"
+	EventDataNameVote              = "vote"
 	EventDataNameProposalHeartbeat = "proposer_heartbeat"
 )
 
@@ -80,14 +79,12 @@ func (tmr TMEventData) Empty() bool {
 }
 
 const (
-	EventDataTypeNewBlock       = byte(0x01)
-	EventDataTypeFork           = byte(0x02)
-	EventDataTypeTx             = byte(0x03)
-	EventDataTypeNewBlockHeader = byte(0x04)
-
-	EventDataTypeRoundState = byte(0x11)
-	EventDataTypeVote       = byte(0x12)
-
+	EventDataTypeNewBlock          = byte(0x01)
+	EventDataTypeFork              = byte(0x02)
+	EventDataTypeTx                = byte(0x03)
+	EventDataTypeNewBlockHeader    = byte(0x04)
+	EventDataTypeRoundState        = byte(0x11)
+	EventDataTypeVote              = byte(0x12)
 	EventDataTypeProposalHeartbeat = byte(0x20)
 )
 
@@ -138,13 +135,6 @@ type EventDataRoundState struct {
 type EventDataVote struct {
 	Vote *Vote
 }
-
-func (_ EventDataNewBlock) AssertIsTMEventData()          {}
-func (_ EventDataNewBlockHeader) AssertIsTMEventData()    {}
-func (_ EventDataTx) AssertIsTMEventData()                {}
-func (_ EventDataRoundState) AssertIsTMEventData()        {}
-func (_ EventDataVote) AssertIsTMEventData()              {}
-func (_ EventDataProposalHeartbeat) AssertIsTMEventData() {}
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBSUB

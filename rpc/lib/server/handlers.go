@@ -478,8 +478,13 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	}
 }
 
-func (wsc *wsConnection) AddSubscription(query string, data interface{}) {
+func (wsc *wsConnection) AddSubscription(query string, data interface{}) error {
+	if _, ok := wsc.subscriptions[query]; ok {
+		return errors.New("Already subscribed")
+	}
+
 	wsc.subscriptions[query] = data
+	return nil
 }
 
 func (wsc *wsConnection) DeleteSubscription(query string) (interface{}, bool) {

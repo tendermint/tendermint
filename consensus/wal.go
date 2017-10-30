@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
@@ -70,6 +73,11 @@ type baseWAL struct {
 }
 
 func NewWAL(walFile string, light bool) (*baseWAL, error) {
+	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
+	}
+
 	group, err := auto.OpenGroup(walFile)
 	if err != nil {
 		return nil, err

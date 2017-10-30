@@ -41,11 +41,16 @@ import (
 // <aside class="notice">WebSocket only</aside>
 func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscribe, error) {
 	addr := wsCtx.GetRemoteAddr()
-
 	logger.Info("Subscribe to query", "remote", addr, "query", query)
+
 	q, err := tmquery.New(query)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to parse a query")
+	}
+
+	err = wsCtx.AddSubscription(query, q)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to add subscription")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
@@ -55,8 +60,6 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to subscribe")
 	}
-
-	wsCtx.AddSubscription(query, q)
 
 	go func() {
 		for event := range ch {

@@ -137,7 +137,7 @@ type WSRPCConnection interface {
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
 
-	AddSubscription(string, interface{})
+	AddSubscription(string, interface{}) error
 	DeleteSubscription(string) (interface{}, bool)
 	DeleteAllSubscriptions()
 }

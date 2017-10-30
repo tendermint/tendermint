@@ -58,7 +58,7 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 	return b.pubsub.UnsubscribeAll(ctx, subscriber)
 }
 
-func (b *EventBus) publish(eventType string, eventData TMEventData) error {
+func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	if b.pubsub != nil {
 		// no explicit deadline for publishing events
 		ctx := context.Background()
@@ -70,15 +70,15 @@ func (b *EventBus) publish(eventType string, eventData TMEventData) error {
 //--- block, tx, and vote events
 
 func (b *EventBus) PublishEventNewBlock(block EventDataNewBlock) error {
-	return b.publish(EventNewBlock, TMEventData{block})
+	return b.Publish(EventNewBlock, TMEventData{block})
 }
 
 func (b *EventBus) PublishEventNewBlockHeader(header EventDataNewBlockHeader) error {
-	return b.publish(EventNewBlockHeader, TMEventData{header})
+	return b.Publish(EventNewBlockHeader, TMEventData{header})
 }
 
 func (b *EventBus) PublishEventVote(vote EventDataVote) error {
-	return b.publish(EventVote, TMEventData{vote})
+	return b.Publish(EventVote, TMEventData{vote})
 }
 
 func (b *EventBus) PublishEventTx(tx EventDataTx) error {
@@ -90,44 +90,44 @@ func (b *EventBus) PublishEventTx(tx EventDataTx) error {
 	return nil
 }
 
+func (b *EventBus) PublishEventProposalHeartbeat(ph EventDataProposalHeartbeat) error {
+	return b.Publish(EventProposalHeartbeat, TMEventData{ph})
+}
+
 //--- EventDataRoundState events
 
 func (b *EventBus) PublishEventNewRoundStep(rs EventDataRoundState) error {
-	return b.publish(EventNewRoundStep, TMEventData{rs})
+	return b.Publish(EventNewRoundStep, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventTimeoutPropose(rs EventDataRoundState) error {
-	return b.publish(EventTimeoutPropose, TMEventData{rs})
+	return b.Publish(EventTimeoutPropose, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventTimeoutWait(rs EventDataRoundState) error {
-	return b.publish(EventTimeoutWait, TMEventData{rs})
+	return b.Publish(EventTimeoutWait, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventNewRound(rs EventDataRoundState) error {
-	return b.publish(EventNewRound, TMEventData{rs})
+	return b.Publish(EventNewRound, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventCompleteProposal(rs EventDataRoundState) error {
-	return b.publish(EventCompleteProposal, TMEventData{rs})
+	return b.Publish(EventCompleteProposal, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventPolka(rs EventDataRoundState) error {
-	return b.publish(EventPolka, TMEventData{rs})
+	return b.Publish(EventPolka, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventUnlock(rs EventDataRoundState) error {
-	return b.publish(EventUnlock, TMEventData{rs})
+	return b.Publish(EventUnlock, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventRelock(rs EventDataRoundState) error {
-	return b.publish(EventRelock, TMEventData{rs})
+	return b.Publish(EventRelock, TMEventData{rs})
 }
 
 func (b *EventBus) PublishEventLock(rs EventDataRoundState) error {
-	return b.publish(EventLock, TMEventData{rs})
-}
-
-func (b *EventBus) PublishEventProposalHeartbeat(ph EventDataProposalHeartbeat) error {
-	return b.publish(EventProposalHeartbeat, TMEventData{ph})
+	return b.Publish(EventLock, TMEventData{rs})
 }
