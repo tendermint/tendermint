@@ -162,7 +162,7 @@ func (sw *Switch) NodeInfo() *NodeInfo {
 	return sw.nodeInfo
 }
 
-// SetNodePrivKey sets the switche's private key for authenticated encryption.
+// SetNodePrivKey sets the switch's private key for authenticated encryption.
 // NOTE: Overwrites sw.nodeInfo.PubKey.
 // NOTE: Not goroutine safe.
 func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
@@ -209,8 +209,8 @@ func (sw *Switch) OnStop() {
 	}
 }
 
-// addPeer checks the given peer's validity, performs a handshake, and adds the peer to the switch
-// and to all registered reactors.
+// addPeer checks the given peer's validity, performs a handshake, and adds the
+// peer to the switch and to all registered reactors.
 // NOTE: This performs a blocking handshake before the peer is added.
 // CONTRACT: If error is returned, peer is nil, and conn is immediately closed.
 func (sw *Switch) addPeer(peer *peer) error {
@@ -250,7 +250,7 @@ func (sw *Switch) addPeer(peer *peer) error {
 
 	// Add the peer to .peers.
 	// We start it first so that a peer in the list is safe to Stop.
-	// It should not err since we already checked peers.Has()
+	// It should not err since we already checked peers.Has().
 	if err := sw.peers.Add(peer); err != nil {
 		return err
 	}
@@ -293,7 +293,7 @@ func (sw *Switch) startInitPeer(peer *peer) {
 	}
 }
 
-// DialSeeds dials a list of seeds asynchronously in random order
+// DialSeeds dials a list of seeds asynchronously in random order.
 func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 
 	netAddrs, err := NewNetAddressStrings(seeds)
@@ -369,7 +369,7 @@ func (sw *Switch) IsDialing(addr *NetAddress) bool {
 
 // Broadcast runs a go routine for each attempted send, which will block
 // trying to send for defaultSendTimeoutSeconds. Returns a channel
-// which receives success values for each attempted send (false if times out)
+// which receives success values for each attempted send (false if times out).
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 // TODO: Something more intelligent.
 func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
@@ -398,7 +398,7 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-// Peers returns the set of peers the switch is connected to.
+// Peers returns the set of peers that are connected to the switch.
 func (sw *Switch) Peers() IPeerSet {
 	return sw.peers
 }
@@ -475,7 +475,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 
 		// NOTE: We don't yet have the listening port of the
 		// remote (if they have a listener at all).
-		// The peerHandshake will handle that
+		// The peerHandshake will handle that.
 	}
 
 	// cleanup
@@ -493,11 +493,11 @@ type SwitchEventDonePeer struct {
 }
 
 //------------------------------------------------------------------
-// Switches connected via arbitrary net.Conn; useful for testing
+// Connects switches via arbitrary net.Conn. Used for testing.
 
 // MakeConnectedSwitches returns n switches, connected according to the connect func.
 // If connect==Connect2Switches, the switches will be fully connected.
-// initSwitch defines how the ith switch should be initialized (ie. with what reactors).
+// initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
 func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
 	switches := make([]*Switch, n)
@@ -520,9 +520,9 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 
 var PanicOnAddPeerErr = false
 
-// Connect2Switches will connect switches i and j via net.Pipe()
+// Connect2Switches will connect switches i and j via net.Pipe().
 // Blocks until a conection is established.
-// NOTE: caller ensures i and j are within bounds
+// NOTE: caller ensures i and j are within bounds.
 func Connect2Switches(switches []*Switch, i, j int) {
 	switchI := switches[i]
 	switchJ := switches[j]
