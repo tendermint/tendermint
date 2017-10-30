@@ -596,14 +596,12 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 		nn, err = gr.curReader.Read(p[n:])
 		n += nn
 		if err == io.EOF {
-			// Open the next file
-			if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
-				return n, err1
-			}
 			if n >= lenP {
 				return n, nil
-			} else {
-				continue
+			} else { // Open the next file
+				if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
+					return n, err1
+				}
 			}
 		} else if err != nil {
 			return n, err
