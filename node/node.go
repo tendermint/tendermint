@@ -22,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/trust"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -95,9 +96,10 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	privKey  crypto.PrivKeyEd25519 // local node's p2p key
-	sw       *p2p.Switch           // p2p connections
-	addrBook *p2p.AddrBook         // known peers
+	privKey  crypto.PrivKeyEd25519   // local node's p2p key
+	sw       *p2p.Switch             // p2p connections
+	addrBook *p2p.AddrBook           // known peers
+	tmStore  *trust.TrustMetricStore // trust metrics for all peers
 
 	// services
 	eventBus         *types.EventBus             // pub/sub for services
@@ -239,9 +241,12 @@ func NewNode(config *cfg.Config,
 
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
+	var tmStore *trust.TrustMetricStore
 	if config.P2P.PexReactor {
 		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
+		tmStore = trust.NewTrustMetricStore(config.P2P.TrustHistoryFile(), nil)
+		tmStore.SetLogger(p2pLogger.With("trust", config.P2P.TrustHistoryFile()))
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
@@ -297,6 +302,7 @@ func NewNode(config *cfg.Config,
 		privKey:  privKey,
 		sw:       sw,
 		addrBook: addrBook,
+		tmStore:  tmStore,
 
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,

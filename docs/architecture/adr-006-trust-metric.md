@@ -76,39 +76,91 @@ R[0] = raw data for current time interval
 This section will cover the Go programming language API designed for the previously proposed process. Below is the interface for a TrustMetric:
 
 ```go
+
 package trust
 
-type TrustMetric struct {
+
+// TrustMetricStore - Manages all trust metrics for peers
+type TrustMetricStore struct {
+    cmn.BaseService
     
+    // Private elements
 }
 
+// OnStart implements Service
+func (tms *TrustMetricStore) OnStart() error
+
+/ OnStop implements Service
+func (tms *TrustMetricStore) OnStop()
+
+// NewTrustMetricStore returns a store that optionally saves data to
+// the file path and uses the optional config when creating new trust metrics
+func NewTrustMetricStore(filePath string, tmc *TrustMetricConfig) *TrustMetricStore
+
+// GetPeerTrustMetric returns a trust metric by peer key
+func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric
+
+// PeerDisconnected pauses the trust metric associated with the peer identified by the key
+func (tms *TrustMetricStore) PeerDisconnected(key string)
+
+
+//----------------------------------------------------------------------------------------
+// TrustMetric - keeps track of peer reliability
+type TrustMetric struct {
+    // Private elements.
+}
+
+// Pause tells the metric to pause recording data over time intervals
+func (tm *TrustMetric) Pause()
+
+// Stop tells the metric to stop recording data over time intervals
+func (tm *TrustMetric) Stop()
+
+// BadEvent indicates that an undesirable event took place
+func (tm *TrustMetric) BadEvent()
+
+// AddBadEvents acknowledges multiple undesirable events
+func (tm *TrustMetric) AddBadEvents(num int)
+
+// GoodEvent indicates that a desirable event took place
+func (tm *TrustMetric) GoodEvent()
+
+// AddGoodEvents acknowledges multiple desirable events
+func (tm *TrustMetric) AddGoodEvents(num int)
+
+// TrustValue gets the dependable trust value; always between 0 and 1
+func (tm *TrustMetric) TrustValue() float64
+
+// TrustScore gets a score based on the trust value always between 0 and 100
+func (tm *TrustMetric) TrustScore() int
+
+// NewMetric returns a trust metric with the default configuration
+func NewMetric() *TrustMetric
+
+
+// TrustMetricConfig - Configures the weight functions and time intervals for the metric
 type TrustMetricConfig struct {
+    // Determines the percentage given to current behavior
     ProportionalWeight float64
+
+    // Determines the percentage given to prior behavior
     IntegralWeight float64
-    HistoryMaxSize int
+
+    // The window of time that the trust metric will track events across.
+    // This can be set to cover many days without issue
+    TrackingWindow time.Duration
+
+    // Each interval should be short for adapability.
+    // Less than 30 seconds is too sensitive,
+    // and greater than 5 minutes will make the metric numb
     IntervalLen time.Duration
 }
 
-func (tm *TrustMetric) Stop()
+// DefaultConfig returns a config with values that have been tested and produce desirable results
+func DefaultConfig() *TrustMetricConfig
 
-func (tm *TrustMetric) IncBad()
-
-func (tm *TrustMetric) AddBad(num int)
-
-func (tm *TrustMetric) IncGood()
-
-func (tm *TrustMetric) AddGood(num int)
-
-// get the dependable trust value
-func (tm *TrustMetric) TrustValue() float64
-
-func NewMetric() *TrustMetric
-
+// NewMetricWithConfig returns a trust metric with a custom configuration
 func NewMetricWithConfig(tmc *TrustMetricConfig) *TrustMetric
-
-func GetPeerTrustMetric(key string) *TrustMetric
-
-func PeerDisconnected(key string)
 
 ```
 
