@@ -57,7 +57,7 @@ func (conR *ConsensusReactor) OnStart() error {
 	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
 	conR.BaseReactor.OnStart()
 
-	err := conR.broadcastRoutine()
+	err := conR.startBroadcastRoutine()
 	if err != nil {
 		return err
 	}
@@ -325,10 +325,10 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// broadcastRoutine subscribes for new round steps, votes and proposal
-// heartbeats using the event bus and broadcasts events to peers upon receiving
-// them.
-func (conR *ConsensusReactor) broadcastRoutine() error {
+// startBroadcastRoutine subscribes for new round steps, votes and proposal
+// heartbeats using the event bus and starts a go routine to broadcasts events
+// to peers upon receiving them.
+func (conR *ConsensusReactor) startBroadcastRoutine() error {
 	const subscriber = "consensus-reactor"
 	ctx := context.Background()
 

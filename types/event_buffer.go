@@ -3,7 +3,7 @@ package types
 // Interface assertions
 var _ TxEventPublisher = (*TxEventBuffer)(nil)
 
-// TxEventBuffer is a buffer of events, which uses a slice to temporary store
+// TxEventBuffer is a buffer of events, which uses a slice to temporarily store
 // events.
 type TxEventBuffer struct {
 	next     TxEventPublisher
@@ -11,7 +11,7 @@ type TxEventBuffer struct {
 	events   []EventDataTx
 }
 
-// NewTxEventBuffer accepts an EventBus and returns a new buffer with the given
+// NewTxEventBuffer accepts a TxEventPublisher and returns a new buffer with the given
 // capacity.
 func NewTxEventBuffer(next TxEventPublisher, capacity int) *TxEventBuffer {
 	return &TxEventBuffer{

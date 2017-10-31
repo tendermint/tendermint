@@ -14,7 +14,6 @@ FEATURES:
 - Tooling to run multiple blockchains/apps, possibly in a single process
 - State syncing (without transaction replay)
 - Add authentication and rate-limitting to the RPC
-- new unsubscribe_all WebSocket RPC endpoint
 
 IMPROVEMENTS:
 - Improve subtleties around mempool caching and logic

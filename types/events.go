@@ -42,7 +42,7 @@ var (
 	EventDataNameTx                = "tx"
 	EventDataNameRoundState        = "round_state"
 	EventDataNameVote              = "vote"
-	EventDataNameProposalHeartbeat = "proposer_heartbeat"
+	EventDataNameProposalHeartbeat = "proposal_heartbeat"
 )
 
 // implements events.EventData
