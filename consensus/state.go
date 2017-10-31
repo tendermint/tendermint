@@ -1208,6 +1208,10 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
+		err := cmn.Kill()
+		if err != nil {
+			cs.Logger.Error("Failed to kill this process - please do so manually", "err", err)
+		}
 		return
 	}
 
