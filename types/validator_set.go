@@ -100,9 +100,10 @@ func (valSet *ValidatorSet) GetByAddress(address []byte) (index int, val *Valida
 }
 
 // GetByIndex returns the validator by index.
-// It returns nil values if index >= len(ValidatorSet.Validators)
+// It returns nil values if index < 0 or
+// index >= len(ValidatorSet.Validators)
 func (valSet *ValidatorSet) GetByIndex(index int) (address []byte, val *Validator) {
-	if index >= len(valSet.Validators) {
+	if index < 0 || index >= len(valSet.Validators) {
 		return nil, nil
 	}
 	val = valSet.Validators[index]
