@@ -40,15 +40,18 @@ func TestRPCParams(t *testing.T) {
 		payload string
 		wantErr string
 	}{
+		// bad
 		{`{"jsonrpc": "2.0", "id": "0"}`, "Method not found"},
 		{`{"jsonrpc": "2.0", "method": "y", "id": "0"}`, "Method not found"},
-		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": null}`, ""},
-		{`{"method": "c", "id": "0", "params": {}}`, ""},
 		{`{"method": "c", "id": "0", "params": a}`, "invalid character"},
-		{`{"method": "c", "id": "0", "params": ["a", 10]}`, ""},
 		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1"},
 		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "of type int"},
 		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string"},
+
+		// good
+		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": null}`, ""},
+		{`{"method": "c", "id": "0", "params": {}}`, ""},
+		{`{"method": "c", "id": "0", "params": ["a", 10]}`, ""},
 	}
 
 	for i, tt := range tests {
@@ -71,7 +74,7 @@ func TestRPCParams(t *testing.T) {
 		if tt.wantErr == "" {
 			assert.Nil(t, recv.Error, "#%d: not expecting an error", i)
 		} else {
-			assert.False(t, statusOK(recv.Error.Code), "#%d: not expecting a 2XX success code", i)
+			assert.True(t, recv.Error.Code < 0, "#%d: not expecting a positive JSONRPC code", i)
 			// The wanted error is either in the message or the data
 			assert.Contains(t, recv.Error.Message+recv.Error.Data, tt.wantErr, "#%d: expected substring", i)
 		}
