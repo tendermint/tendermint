@@ -81,5 +81,6 @@ type Client interface {
 // by concrete implementations.
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
+	NodeInfo() (*ctypes.NodeInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
 }

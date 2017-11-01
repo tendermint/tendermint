@@ -4,6 +4,9 @@ import (
 	"fmt"
 
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/go-crypto"
 )
 
 // Get network info.
@@ -51,6 +54,31 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 		Listening: listening,
 		Listeners: listeners,
 		Peers:     peers,
+	}, nil
+}
+
+func NodeInfo() (*ctypes.ResultNodeInfo ,error) {
+	nodes := []ctypes.NodeInfo{}
+
+	self := ctypes.NodeInfo {
+		Moniker: p2pSwitch.NodeInfo().Moniker,
+		PubKey: pubKey,
+		Height: consensusState.GetRoundState().Height,
+	}
+
+	for _, peer := range p2pSwitch.Peers().List() {
+		nodes = append(nodes, ctypes.NodeInfo{
+			Moniker: peer.NodeInfo().Moniker,
+			PubKey: crypto.PubKey{peer.NodeInfo().PubKey},
+			Height: peer.Get(types.PeerStateKey).(*consensus.PeerState).GetHeight(),
+		})
+	}
+
+	return &ctypes.ResultNodeInfo{
+		Self: self,
+		NodeInfos: nodes,
+		FastSync: consensusReactor.FastSync(),
+		BlockStoreHeight: blockStore.Height(),
 	}, nil
 }
 

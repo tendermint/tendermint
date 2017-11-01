@@ -78,6 +78,10 @@ func (c Local) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo()
 }
 
+func (c Local) NodeInfo() (*ctypes.ResultNodeInfo, error) {
+	return core.NodeInfo()
+}
+
 func (c Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return core.DumpConsensusState()
 }
