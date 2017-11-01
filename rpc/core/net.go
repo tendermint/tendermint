@@ -62,14 +62,14 @@ func NodeInfo() (*ctypes.ResultNodeInfo ,error) {
 
 	self := ctypes.NodeInfo {
 		Moniker: p2pSwitch.NodeInfo().Moniker,
-		Address: pubKey,
+		PubKey: pubKey,
 		Height: consensusState.GetRoundState().Height,
 	}
 
 	for _, peer := range p2pSwitch.Peers().List() {
 		nodes = append(nodes, ctypes.NodeInfo{
 			Moniker: peer.NodeInfo().Moniker,
-			Address: crypto.PubKey{peer.NodeInfo().PubKey},
+			PubKey: crypto.PubKey{peer.NodeInfo().PubKey},
 			Height: peer.Get(types.PeerStateKey).(*consensus.PeerState).GetHeight(),
 		})
 	}

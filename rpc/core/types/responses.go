@@ -69,7 +69,7 @@ type ResultNodeInfo struct {
 
 type NodeInfo struct {
 	Moniker string `json:"moniker"`
-	Address crypto.PubKey `json:"pub_key"`
+	PubKey crypto.PubKey `json:"pub_key"`
 	Height int `json:"height"`
 }
 
