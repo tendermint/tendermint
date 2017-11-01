@@ -14,9 +14,10 @@ const (
 // ConsensusParams contains consensus critical parameters
 // that determine the validity of blocks.
 type ConsensusParams struct {
-	BlockSize   `json:"block_size_params"`
-	TxSize      `json:"tx_size_params"`
-	BlockGossip `json:"block_gossip_params"`
+	BlockSize      `json:"block_size_params"`
+	TxSize         `json:"tx_size_params"`
+	BlockGossip    `json:"block_gossip_params"`
+	EvidenceParams `json:"evidence_params"`
 }
 
 // BlockSize contain limits on the block size.
@@ -37,12 +38,18 @@ type BlockGossip struct {
 	BlockPartSizeBytes int `json:"block_part_size_bytes"` // NOTE: must not be 0
 }
 
+// EvidenceParams determine how we handle evidence of malfeasance
+type EvidenceParams struct {
+	MaxHeightDiff int `json:"max_height_diff"` // only accept new evidence more recent than this
+}
+
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
 		DefaultBlockSize(),
 		DefaultTxSize(),
 		DefaultBlockGossip(),
+		DefaultEvidenceParams(),
 	}
 }
 
@@ -67,6 +74,13 @@ func DefaultTxSize() TxSize {
 func DefaultBlockGossip() BlockGossip {
 	return BlockGossip{
 		BlockPartSizeBytes: 65536, // 64kB,
+	}
+}
+
+// DefaultEvidence Params returns a default EvidenceParams.
+func DefaultEvidenceParams() EvidenceParams {
+	return EvidenceParams{
+		MaxHeightDiff: 100000, // 27.8 hrs at 1block/s
 	}
 }
 
