@@ -53,6 +53,14 @@ func (evs Evidences) Hash() []byte {
 	}
 }
 
+func (evs Evidences) String() string {
+	s := ""
+	for _, e := range evs {
+		s += fmt.Sprintf("%s\t\t", e)
+	}
+	return s
+}
+
 //-------------------------------------------
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting votes.

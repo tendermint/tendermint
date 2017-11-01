@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 type voteData struct {
@@ -12,7 +13,7 @@ type voteData struct {
 	valid bool
 }
 
-func makeVote(val *PrivValidator, chainID string, valIndex, height, round, step int, blockID BlockID) *Vote {
+func makeVote(val *PrivValidatorFS, chainID string, valIndex, height, round, step int, blockID BlockID) *Vote {
 	v := &Vote{
 		ValidatorAddress: val.PubKey.Address(),
 		ValidatorIndex:   valIndex,
@@ -39,8 +40,9 @@ func makeBlockID(hash string, partSetSize int, partSetHash string) BlockID {
 }
 
 func TestEvidence(t *testing.T) {
-	val := GenPrivValidator()
-	val2 := GenPrivValidator()
+	_, tmpFilePath := cmn.Tempfile("priv_validator_")
+	val := GenPrivValidatorFS(tmpFilePath)
+	val2 := GenPrivValidatorFS(tmpFilePath)
 	blockID := makeBlockID("blockhash", 1000, "partshash")
 	blockID2 := makeBlockID("blockhash2", 1000, "partshash")
 	blockID3 := makeBlockID("blockhash", 10000, "partshash")
