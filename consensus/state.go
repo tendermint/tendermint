@@ -1338,10 +1338,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
 			}
-			cs.Logger.Error("Found conflicting vote. Recording evidence in the RoundState", "height", vote.Height, "round", vote.Round, "type", vote.Type, "valAddr", vote.ValidatorAddress, "valIndex", vote.ValidatorIndex)
-
-			// TODO: ensure we haven't seen this evidence already !
-			cs.Evidence = append(cs.Evidence, voteErr.DuplicateVoteEvidence)
+			cs.addEvidence(voteErr.DuplicateVoteEvidence)
 			return err
 		} else {
 			// Probably an invalid signature / Bad peer.
@@ -1351,6 +1348,16 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		}
 	}
 	return nil
+}
+
+func (cs *ConsensusState) addEvidence(ev types.Evidence) {
+	if cs.Evidence.Has(ev) {
+		return
+	}
+
+	cs.Logger.Error("Found conflicting vote. Recording evidence in the RoundState", "evidence", ev)
+
+	cs.Evidence = append(cs.Evidence, ev)
 }
 
 //-----------------------------------------------------------------------------

@@ -30,6 +30,7 @@ type Evidence interface {
 	Address() []byte
 	Hash() []byte
 	Verify(chainID string) error
+	Equal(Evidence) bool
 
 	String() string
 }
@@ -59,6 +60,15 @@ func (evs Evidences) String() string {
 		s += fmt.Sprintf("%s\t\t", e)
 	}
 	return s
+}
+
+func (evs Evidences) Has(evidence Evidence) bool {
+	for _, ev := range evs {
+		if ev.Equal(evidence) {
+			return true
+		}
+	}
+	return false
 }
 
 //-------------------------------------------
@@ -119,4 +129,14 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 	}
 
 	return nil
+}
+
+// Equal checks if two pieces of evidence are equal.
+func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
+	if _, ok := ev.(*DuplicateVoteEvidence); !ok {
+		return false
+	}
+
+	// just check their hashes
+	return bytes.Equal(merkle.SimpleHashFromBinary(dve), merkle.SimpleHashFromBinary(ev))
 }

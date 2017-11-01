@@ -86,7 +86,6 @@ func (b *Block) FillHeader() {
 // Hash computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
 func (b *Block) Hash() data.Bytes {
-	// fmt.Println(">>", b.Data)
 	if b == nil || b.Header == nil || b.Data == nil || b.LastCommit == nil {
 		return nil
 	}
