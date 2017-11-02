@@ -128,10 +128,12 @@ func TestSwitches(t *testing.T) {
 	ch0Msg := "channel zero"
 	ch1Msg := "channel foo"
 	ch2Msg := "channel bar"
+	ch3Msg := "channel baz"
 
 	s1.Broadcast(byte(0x00), ch0Msg)
 	s1.Broadcast(byte(0x01), ch1Msg)
 	s1.Broadcast(byte(0x02), ch2Msg)
+	s1.TryBroadcast(byte(0x03), ch3Msg)
 
 	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
@@ -324,12 +326,15 @@ func BenchmarkSwitches(b *testing.B) {
 
 	numSuccess, numFailure := 0, 0
 
-	// Send random message from foo channel to another
+	// Send random message from foo channel to another with Broadcast
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
-		successChan := s1.Broadcast(chID, "test data")
-		for s := range successChan {
-			if s {
+		resultChan := s1.Broadcast(chID, "test data")
+		for res := range resultChan {
+			if !s1.peers.Has(res.PeerKey) {
+				b.Errorf("unexpected peerKey: %s", res.PeerKey)
+			}
+			if res.Success {
 				numSuccess++
 			} else {
 				numFailure++
@@ -337,7 +342,25 @@ func BenchmarkSwitches(b *testing.B) {
 		}
 	}
 
-	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
+	b.Logf("Broadcast: success: %v, failure: %v", numSuccess, numFailure)
+
+	// Send random message from foo channel to another with TryBroadcast
+	for i := 0; i < b.N; i++ {
+		chID := byte(i % 4)
+		resultChan := s1.TryBroadcast(chID, "test data")
+		for res := range resultChan {
+			if !s1.peers.Has(res.PeerKey) {
+				b.Errorf("unexpected peerKey: %s", res.PeerKey)
+			}
+			if res.Success {
+				numSuccess++
+			} else {
+				numFailure++
+			}
+		}
+	}
+
+	b.Logf("TryBroadcast: success: %v, failure: %v", numSuccess, numFailure)
 
 	// Allow everything to flush before stopping switches & closing connections.
 	b.StopTimer()
