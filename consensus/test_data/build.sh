@@ -52,19 +52,19 @@ function reset(){
 
 reset
 
-function empty_block(){
-	echo "==> Starting tendermint..."
-	tendermint node --proxy_app=persistent_dummy &> /dev/null &
-	sleep 5
-	echo "==> Killing tendermint..."
-	killall tendermint
+# function empty_block(){
+# 	echo "==> Starting tendermint..."
+# 	tendermint node --proxy_app=persistent_dummy &> /dev/null &
+# 	sleep 5
+# 	echo "==> Killing tendermint..."
+# 	killall tendermint
 
-	echo "==> Copying WAL log..."
-	$cutWALUntil "$TMHOME/data/cs.wal/wal" 1 consensus/test_data/new_empty_block.cswal
-	mv consensus/test_data/new_empty_block.cswal consensus/test_data/empty_block.cswal
+# 	echo "==> Copying WAL log..."
+# 	$cutWALUntil "$TMHOME/data/cs.wal/wal" 1 consensus/test_data/new_empty_block.cswal
+# 	mv consensus/test_data/new_empty_block.cswal consensus/test_data/empty_block.cswal
 
-	reset
-}
+# 	reset
+# }
 
 function many_blocks(){
 	bash scripts/txs/random.sh 1000 36657 &> /dev/null &
@@ -84,63 +84,63 @@ function many_blocks(){
 }
 
 
-function small_block1(){
-	bash scripts/txs/random.sh 1000 36657 &> /dev/null &
-	PID=$!
-	echo "==> Starting tendermint..."
-	tendermint node --proxy_app=persistent_dummy &> /dev/null &
-	sleep 10
-	echo "==> Killing tendermint..."
-	kill -9 $PID
-	killall tendermint
+# function small_block1(){
+# 	bash scripts/txs/random.sh 1000 36657 &> /dev/null &
+# 	PID=$!
+# 	echo "==> Starting tendermint..."
+# 	tendermint node --proxy_app=persistent_dummy &> /dev/null &
+# 	sleep 10
+# 	echo "==> Killing tendermint..."
+# 	kill -9 $PID
+# 	killall tendermint
 
-	echo "==> Copying WAL log..."
-	$cutWALUntil "$TMHOME/data/cs.wal/wal" 1 consensus/test_data/new_small_block1.cswal
-	mv consensus/test_data/new_small_block1.cswal consensus/test_data/small_block1.cswal
+# 	echo "==> Copying WAL log..."
+# 	$cutWALUntil "$TMHOME/data/cs.wal/wal" 1 consensus/test_data/new_small_block1.cswal
+# 	mv consensus/test_data/new_small_block1.cswal consensus/test_data/small_block1.cswal
 
-	reset
-}
+# 	reset
+# }
 
 
-# block part size = 512
-function small_block2(){
-	cat "$TMHOME/genesis.json" | jq '. + {consensus_params: {block_size_params: {max_bytes: 22020096}, block_gossip_params: {block_part_size_bytes: 512}}}' > "$TMHOME/new_genesis.json"
-	mv "$TMHOME/new_genesis.json" "$TMHOME/genesis.json"
-	bash scripts/txs/random.sh 1000 36657 &> /dev/null &
-	PID=$!
-	echo "==> Starting tendermint..."
-	tendermint node --proxy_app=persistent_dummy &> /dev/null &
-	sleep 5
-	echo "==> Killing tendermint..."
-	kill -9 $PID
-	killall tendermint
+# # block part size = 512
+# function small_block2(){
+# 	cat "$TMHOME/genesis.json" | jq '. + {consensus_params: {block_size_params: {max_bytes: 22020096}, block_gossip_params: {block_part_size_bytes: 512}}}' > "$TMHOME/new_genesis.json"
+# 	mv "$TMHOME/new_genesis.json" "$TMHOME/genesis.json"
+# 	bash scripts/txs/random.sh 1000 36657 &> /dev/null &
+# 	PID=$!
+# 	echo "==> Starting tendermint..."
+# 	tendermint node --proxy_app=persistent_dummy &> /dev/null &
+# 	sleep 5
+# 	echo "==> Killing tendermint..."
+# 	kill -9 $PID
+# 	killall tendermint
 
-	echo "==> Copying WAL log..."
-	$cutWALUntil "$TMHOME/data/cs.wal/wal" 1 consensus/test_data/new_small_block2.cswal
-	mv consensus/test_data/new_small_block2.cswal consensus/test_data/small_block2.cswal
+# 	echo "==> Copying WAL log..."
+# 	$cutWALUntil "$TMHOME/data/cs.wal/wal" 1 consensus/test_data/new_small_block2.cswal
+# 	mv consensus/test_data/new_small_block2.cswal consensus/test_data/small_block2.cswal
 
-	reset
-}
+# 	reset
+# }
 
 
 
 case "$1" in
-	"small_block1")
-		small_block1
-		;;
-	"small_block2")
-		small_block2
-		;;
-	"empty_block")
-		empty_block
-		;;
+	# "small_block1")
+	# 	small_block1
+	# 	;;
+	# "small_block2")
+	# 	small_block2
+	# 	;;
+	# "empty_block")
+	# 	empty_block
+	# 	;;
 	"many_blocks")
 		many_blocks
 		;;
 	*)
-		small_block1
-		small_block2
-		empty_block
+		# small_block1
+		# small_block2
+		# empty_block
 		many_blocks
 esac
 
