@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -21,6 +22,7 @@ const (
 	minWriteBufferSize = 65536
 	updateState        = 2 * time.Second
 	pingTimeout        = 40 * time.Second
+	pongTimeout        = 60 * time.Second
 
 	// some of these defaults are written in the user config
 	// flushThrottle, sendRate, recvRate
@@ -83,6 +85,7 @@ type MConnection struct {
 	quit         chan struct{}
 	flushTimer   *cmn.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer    *cmn.RepeatTimer   // send pings periodically
+	pongTimer    *cmn.ThrottleTimer // close conn if pong not recv in 1 min
 	chStatsTimer *cmn.RepeatTimer   // update channel stats periodically
 
 	LocalAddress  *NetAddress
@@ -165,6 +168,7 @@ func (c *MConnection) OnStart() error {
 	c.quit = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
+	c.pongTimer = cmn.NewThrottleTimer("pong", pongTimeout)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateState)
 	go c.sendRoutine()
 	go c.recvRoutine()
@@ -176,6 +180,7 @@ func (c *MConnection) OnStop() {
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
+	c.pongTimer.Stop()
 	c.chStatsTimer.Stop()
 	if c.quit != nil {
 		close(c.quit)
@@ -310,7 +315,12 @@ FOR_LOOP:
 			c.Logger.Debug("Send Ping")
 			wire.WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
-			c.flush()
+			go c.flush()
+			c.Logger.Debug("Starting pong timer")
+			c.pongTimer.Set()
+		case <-c.pongTimer.Ch:
+			c.Logger.Debug("Pong timeout")
+			err = errors.New("pong timeout")
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
 			wire.WriteByte(packetTypePong, c.bufWriter, &n, &err)
@@ -444,8 +454,8 @@ FOR_LOOP:
 			c.Logger.Debug("Receive Ping")
 			c.pong <- struct{}{}
 		case packetTypePong:
-			// do nothing
 			c.Logger.Debug("Receive Pong")
+			c.pongTimer.Unset()
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
 			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
