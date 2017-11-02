@@ -311,13 +311,13 @@ func (w *WSEvents) eventListener() {
 				continue
 			}
 			result := new(ctypes.ResultEvent)
-			err = json.Unmarshal(*resp.Result, result)
+			err := json.Unmarshal(*resp.Result, result)
 			if err != nil {
 				// ignore silently (eg. subscribe, unsubscribe and maybe other events)
 				// TODO: ?
 				continue
 			}
-			if ch := getSubscription(result.Query); ch != nil {
+			if ch := w.getSubscription(result.Query); ch != nil {
 				ch <- result.Data
 			}
 		case <-w.quit:

@@ -50,7 +50,7 @@ var (
 	addrBook         *p2p.AddrBook
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
-	eventBus         *types.EventBus
+	eventBus         *types.EventBus // thread safe
 
 	logger log.Logger
 )

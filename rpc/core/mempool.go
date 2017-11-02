@@ -158,8 +158,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
-		logger.Error("Error broadcasting transaction", "err", err)
-		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+		logger.Error("Error on broadcastTxCommit", "err", err)
+		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
 	}
 	defer eventBus.Unsubscribe(context.Background(), "mempool", q)
 
@@ -169,8 +169,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		checkTxResCh <- res
 	})
 	if err != nil {
-		logger.Error("Error broadcasting transaction", "err", err)
-		return nil, fmt.Errorf("Error broadcasting transaction: %v", err)
+		logger.Error("Error on broadcastTxCommit", "err", err)
+		return nil, fmt.Errorf("Error on broadcastTxCommit: %v", err)
 	}
 	checkTxRes := <-checkTxResCh
 	checkTxR := checkTxRes.GetCheckTx()

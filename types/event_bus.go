@@ -59,11 +59,9 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 }
 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
-	if b.pubsub != nil {
-		// no explicit deadline for publishing events
-		ctx := context.Background()
-		b.pubsub.PublishWithTags(ctx, eventData, map[string]interface{}{EventTypeKey: eventType})
-	}
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+	b.pubsub.PublishWithTags(ctx, eventData, map[string]interface{}{EventTypeKey: eventType})
 	return nil
 }
 
@@ -82,11 +80,9 @@ func (b *EventBus) PublishEventVote(vote EventDataVote) error {
 }
 
 func (b *EventBus) PublishEventTx(tx EventDataTx) error {
-	if b.pubsub != nil {
-		// no explicit deadline for publishing events
-		ctx := context.Background()
-		b.pubsub.PublishWithTags(ctx, TMEventData{tx}, map[string]interface{}{EventTypeKey: EventTx, TxHashKey: fmt.Sprintf("%X", tx.Tx.Hash())})
-	}
+	// no explicit deadline for publishing events
+	ctx := context.Background()
+	b.pubsub.PublishWithTags(ctx, TMEventData{tx}, map[string]interface{}{EventTypeKey: EventTx, TxHashKey: fmt.Sprintf("%X", tx.Tx.Hash())})
 	return nil
 }
 
