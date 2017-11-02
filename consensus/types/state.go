@@ -74,7 +74,6 @@ type RoundState struct {
 	CommitRound        int            //
 	LastCommit         *types.VoteSet // Last precommits at Height-1
 	LastValidators     *types.ValidatorSet
-	Evidence           types.Evidences
 }
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
@@ -110,7 +109,6 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  Votes:         %v
 %s  LastCommit:    %v
 %s  LastValidators:%v
-%s  Evidence:      %v
 %s}`,
 		indent, rs.Height, rs.Round, rs.Step,
 		indent, rs.StartTime,
@@ -123,7 +121,6 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.Votes.StringIndented(indent+"    "),
 		indent, rs.LastCommit.StringShort(),
 		indent, rs.LastValidators.StringIndented(indent+"    "),
-		indent, rs.Evidence.String(),
 		indent)
 }
 

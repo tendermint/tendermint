@@ -78,6 +78,7 @@ type ConsensusState struct {
 	proxyAppConn proxy.AppConnConsensus
 	blockStore   types.BlockStore
 	mempool      types.Mempool
+	evpool       types.EvidencePool
 
 	// internal state
 	mtx sync.Mutex
@@ -113,7 +114,7 @@ type ConsensusState struct {
 }
 
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
+func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool, evpool types.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -125,6 +126,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
+		evpool:           evpool,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -864,7 +866,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
-	block.AddEvidence(cs.Evidence)
+	evidence := cs.evpool.Evidence()
+	block.AddEvidence(evidence)
 	return block, parts
 }
 
@@ -1338,7 +1341,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
 			}
-			cs.addEvidence(voteErr.DuplicateVoteEvidence)
+			cs.evpool.AddEvidence(voteErr.DuplicateVoteEvidence)
 			return err
 		} else {
 			// Probably an invalid signature / Bad peer.
@@ -1348,16 +1351,6 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		}
 	}
 	return nil
-}
-
-func (cs *ConsensusState) addEvidence(ev types.Evidence) {
-	if cs.Evidence.Has(ev) {
-		return
-	}
-
-	cs.Logger.Error("Found conflicting vote. Recording evidence in the RoundState", "evidence", ev)
-
-	cs.Evidence = append(cs.Evidence, ev)
 }
 
 //-----------------------------------------------------------------------------
