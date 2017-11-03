@@ -26,13 +26,18 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 //-------------------------------------------
 
+type HistoricalValidators interface {
+	LoadValidators(height int) *ValidatorSet
+}
+
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
-	Height() int
-	Address() []byte
-	Hash() []byte
-	Verify(chainID string) error
-	Equal(Evidence) bool
+	Height() int                                            // height of the equivocation
+	Address() []byte                                        // address of the equivocating validator
+	Index() int                                             // index of the validator in the validator set
+	Hash() []byte                                           // hash of the evidence
+	Verify(chainID string, vals HistoricalValidators) error // verify the evidence
+	Equal(Evidence) bool                                    // check equality of evidence
 
 	String() string
 }
@@ -161,6 +166,11 @@ func (dve *DuplicateVoteEvidence) Address() []byte {
 	return dve.PubKey.Address()
 }
 
+// Index returns the index of the validator.
+func (dve *DuplicateVoteEvidence) Index() int {
+	return dve.VoteA.ValidatorIndex
+}
+
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
 	return merkle.SimpleHashFromBinary(dve)
@@ -168,7 +178,10 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 
 // Verify returns an error if the two votes aren't conflicting.
 // To be conflicting, they must be from the same validator, for the same H/R/S, but for different blocks.
-func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
+func (dve *DuplicateVoteEvidence) Verify(chainID string, vals HistoricalValidators) error {
+
+	// TODO: verify (cs.Height - dve.Height) < MaxHeightDiff
+
 	// H/R/S must be the same
 	if dve.VoteA.Height != dve.VoteB.Height ||
 		dve.VoteA.Round != dve.VoteB.Round ||
@@ -196,6 +209,18 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 	}
 	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteB), dve.VoteB.Signature) {
 		return ErrVoteInvalidSignature
+	}
+
+	// The address must have been an active validator at the height
+	height := dve.Height()
+	addr := dve.Address()
+	idx := dve.Index()
+	valset := vals.LoadValidators(height)
+	valIdx, val := valset.GetByAddress(addr)
+	if val == nil {
+		return fmt.Errorf("Address %X was not a validator at height %d", addr, height)
+	} else if idx != valIdx {
+		return fmt.Errorf("Address %X was validator %d at height %d, not %d", addr, valIdx, height, idx)
 	}
 
 	return nil

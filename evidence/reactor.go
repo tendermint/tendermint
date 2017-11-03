@@ -67,20 +67,19 @@ func (evR *EvidencePoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor.
 func (evR *EvidencePoolReactor) AddPeer(peer p2p.Peer) {
-	// first send the peer high-priority evidence
+	// send the peer our high-priority evidence.
+	// the rest will be sent by the broadcastRoutine
 	evidence := evR.evpool.PriorityEvidence()
 	msg := EvidenceMessage{evidence}
 	success := peer.Send(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
 	if !success {
 		// TODO: remove peer ?
 	}
-
-	// TODO: send the remaining pending evidence
-	// or just let the broadcastRoutine do it ?
 }
 
 // RemovePeer implements Reactor.
 func (evR *EvidencePoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	// nothing to do
 }
 
 // Receive implements Reactor.
@@ -122,10 +121,9 @@ func (evR *EvidencePoolReactor) broadcastRoutine() {
 			msg := EvidenceMessage{[]types.Evidence{evidence}}
 			evR.Switch.Broadcast(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
 
-			// NOTE: Broadcast runs asynchronously, so this should wait on the successChan
+			// TODO: Broadcast runs asynchronously, so this should wait on the successChan
 			// in another routine before marking to be proper.
-			idx := 1 // TODO
-			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(idx, evidence)
+			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(evidence)
 		case <-ticker.C:
 			// broadcast all pending evidence
 			msg := EvidenceMessage{evR.evpool.PendingEvidence()}

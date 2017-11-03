@@ -310,9 +310,10 @@ func (s *State) validateBlock(b *types.Block) error {
 	}
 
 	for _, ev := range block.Evidence.Evidences {
-		if err := ev.Verify(s.ChainID); err != nil {
+		if err := ev.Verify(s.ChainID, s); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
 		}
+		// TODO: mark evidence as committed
 	}
 
 	return nil

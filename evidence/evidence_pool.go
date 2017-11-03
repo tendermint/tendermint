@@ -42,20 +42,17 @@ func (evpool *EvidencePool) NewEvidenceChan() chan types.Evidence {
 
 // PriorityEvidence returns the priority evidence.
 func (evpool *EvidencePool) PriorityEvidence() []types.Evidence {
-	// TODO
-	return nil
+	return evpool.evidenceStore.PriorityEvidence()
 }
 
 // PendingEvidence returns all uncommitted evidence.
 func (evpool *EvidencePool) PendingEvidence() []types.Evidence {
-	// TODO
-	return nil
+	return evpool.evidenceStore.PendingEvidence()
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
 func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
-	idx := 1 // TODO
-	added, err := evpool.evidenceStore.AddNewEvidence(idx, evidence)
+	added, err := evpool.evidenceStore.AddNewEvidence(evidence)
 	if err != nil {
 		return err
 	} else if !added {
