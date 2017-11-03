@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"sync"
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/merkle"
@@ -27,6 +28,7 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
+	Height() int
 	Address() []byte
 	Hash() []byte
 	Verify(chainID string) error
@@ -37,9 +39,72 @@ type Evidence interface {
 
 //-------------------------------------------
 
-type Evidences []Evidence
+//EvidenceSet is a thread-safe set of evidence.
+type EvidenceSet struct {
+	sync.RWMutex
+	evidences evidences
+}
 
-func (evs Evidences) Hash() []byte {
+//Evidence returns a copy of all the evidence.
+func (evset EvidenceSet) Evidence() []Evidence {
+	evset.RLock()
+	defer evset.RUnlock()
+	evCopy := make([]Evidence, len(evset.evidences))
+	for i, ev := range evset.evidences {
+		evCopy[i] = ev
+	}
+	return evCopy
+}
+
+// Size returns the number of pieces of evidence in the set.
+func (evset EvidenceSet) Size() int {
+	evset.RLock()
+	defer evset.RUnlock()
+	return len(evset.evidences)
+}
+
+// Hash returns a merkle hash of the evidence.
+func (evset EvidenceSet) Hash() []byte {
+	evset.RLock()
+	defer evset.RUnlock()
+	return evset.evidences.Hash()
+}
+
+// Has returns true if the given evidence is in the set.
+func (evset EvidenceSet) Has(evidence Evidence) bool {
+	evset.RLock()
+	defer evset.RUnlock()
+	return evset.evidences.Has(evidence)
+}
+
+// String returns a string representation of the evidence.
+func (evset EvidenceSet) String() string {
+	evset.RLock()
+	defer evset.RUnlock()
+	return evset.evidences.String()
+}
+
+// Add adds the given evidence to the set.
+// TODO: and persists it to disk.
+func (evset EvidenceSet) Add(evidence Evidence) {
+	evset.Lock()
+	defer evset.Unlock()
+	evset.evidences = append(evset.evidences, evidence)
+}
+
+// Reset empties the evidence set.
+func (evset EvidenceSet) Reset() {
+	evset.Lock()
+	defer evset.Unlock()
+	evset.evidences = make(evidences, 0)
+
+}
+
+//-------------------------------------------
+
+type evidences []Evidence
+
+func (evs evidences) Hash() []byte {
 	// Recursive impl.
 	// Copied from tmlibs/merkle to avoid allocations
 	switch len(evs) {
@@ -48,13 +113,13 @@ func (evs Evidences) Hash() []byte {
 	case 1:
 		return evs[0].Hash()
 	default:
-		left := Evidences(evs[:(len(evs)+1)/2]).Hash()
-		right := Evidences(evs[(len(evs)+1)/2:]).Hash()
+		left := evidences(evs[:(len(evs)+1)/2]).Hash()
+		right := evidences(evs[(len(evs)+1)/2:]).Hash()
 		return merkle.SimpleHashFromTwoHashes(left, right)
 	}
 }
 
-func (evs Evidences) String() string {
+func (evs evidences) String() string {
 	s := ""
 	for _, e := range evs {
 		s += fmt.Sprintf("%s\t\t", e)
@@ -62,7 +127,7 @@ func (evs Evidences) String() string {
 	return s
 }
 
-func (evs Evidences) Has(evidence Evidence) bool {
+func (evs evidences) Has(evidence Evidence) bool {
 	for _, ev := range evs {
 		if ev.Equal(evidence) {
 			return true
@@ -84,6 +149,11 @@ type DuplicateVoteEvidence struct {
 func (dve *DuplicateVoteEvidence) String() string {
 	return fmt.Sprintf("VoteA: %v; VoteB: %v", dve.VoteA, dve.VoteB)
 
+}
+
+// Height returns the height this evidence refers to.
+func (dve *DuplicateVoteEvidence) Height() int {
+	return dve.VoteA.Height
 }
 
 // Address returns the address of the validator.

@@ -437,7 +437,8 @@ func (data *Data) StringIndented(indent string) string {
 
 // EvidenceData contains any evidence of malicious wrong-doing by validators
 type EvidenceData struct {
-	Evidences Evidences `json:"evidence"`
+	// TODO: FIXME
+	Evidences evidences `json:"evidence"`
 
 	// Volatile
 	hash data.Bytes

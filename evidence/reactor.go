@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"time"
 
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -18,21 +18,22 @@ const (
 
 	maxEvidencePoolMessageSize = 1048576 // 1MB TODO make it configurable
 	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
+	broadcastEvidenceIntervalS = 60      // broadcast uncommitted evidence this often
 )
 
 // EvidencePoolReactor handles evpool evidence broadcasting amongst peers.
 type EvidencePoolReactor struct {
 	p2p.BaseReactor
-	config       *cfg.EvidencePoolConfig
-	EvidencePool *EvidencePool
-	evsw         types.EventSwitch
+	config *EvidencePoolConfig
+	evpool *EvidencePool
+	evsw   types.EventSwitch
 }
 
 // NewEvidencePoolReactor returns a new EvidencePoolReactor with the given config and evpool.
-func NewEvidencePoolReactor(config *cfg.EvidencePoolConfig, evpool *EvidencePool) *EvidencePoolReactor {
+func NewEvidencePoolReactor(config *EvidencePoolConfig, evpool *EvidencePool) *EvidencePoolReactor {
 	evR := &EvidencePoolReactor{
-		config:       config,
-		EvidencePool: evpool,
+		config: config,
+		evpool: evpool,
 	}
 	evR.BaseReactor = *p2p.NewBaseReactor("EvidencePoolReactor", evR)
 	return evR
@@ -41,7 +42,16 @@ func NewEvidencePoolReactor(config *cfg.EvidencePoolConfig, evpool *EvidencePool
 // SetLogger sets the Logger on the reactor and the underlying EvidencePool.
 func (evR *EvidencePoolReactor) SetLogger(l log.Logger) {
 	evR.Logger = l
-	evR.EvidencePool.SetLogger(l)
+	evR.evpool.SetLogger(l)
+}
+
+// OnStart implements cmn.Service
+func (evR *EvidencePoolReactor) OnStart() error {
+	if err := evR.BaseReactor.OnStart(); err != nil {
+		return err
+	}
+	go evR.broadcastRoutine()
+	return nil
 }
 
 // GetChannels implements Reactor.
@@ -57,13 +67,16 @@ func (evR *EvidencePoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor.
 func (evR *EvidencePoolReactor) AddPeer(peer p2p.Peer) {
-	// send the new peer all current evidence
-	evidence := evR.evpool.Evidence()
+	// first send the peer high-priority evidence
+	evidence := evR.evpool.PriorityEvidence()
 	msg := EvidenceMessage{evidence}
 	success := peer.Send(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
 	if !success {
 		// TODO: remove peer ?
 	}
+
+	// TODO: send the remaining pending evidence
+	// or just let the broadcastRoutine do it ?
 }
 
 // RemovePeer implements Reactor.
@@ -83,12 +96,10 @@ func (evR *EvidencePoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte
 	switch msg := msg.(type) {
 	case *EvidenceMessage:
 		for _, ev := range msg.Evidence {
-			err := evR.EvidencePool.AddEvidence(msg.Evidence, nil)
+			err := evR.evpool.AddEvidence(ev)
 			if err != nil {
 				evR.Logger.Info("Evidence is not valid", "evidence", msg.Evidence, "err", err)
 				// TODO: punish peer
-			} else {
-				// TODO: broadcast good evidence to all peers (except sender? )
 			}
 		}
 	default:
@@ -99,6 +110,30 @@ func (evR *EvidencePoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte
 // SetEventSwitch implements events.Eventable.
 func (evR *EvidencePoolReactor) SetEventSwitch(evsw types.EventSwitch) {
 	evR.evsw = evsw
+}
+
+// broadcast new evidence to all peers
+func (evR *EvidencePoolReactor) broadcastRoutine() {
+	ticker := time.NewTicker(time.Second * broadcastEvidenceIntervalS)
+	for {
+		select {
+		case evidence := <-evR.evpool.NewEvidenceChan():
+			// broadcast some new evidence
+			msg := EvidenceMessage{[]types.Evidence{evidence}}
+			evR.Switch.Broadcast(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
+
+			// NOTE: Broadcast runs asynchronously, so this should wait on the successChan
+			// in another routine before marking to be proper.
+			idx := 1 // TODO
+			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(idx, evidence)
+		case <-ticker.C:
+			// broadcast all pending evidence
+			msg := EvidenceMessage{evR.evpool.PendingEvidence()}
+			evR.Switch.Broadcast(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
+		case <-evR.Quit:
+			return
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -129,7 +164,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg EvidencePoolMessage, err error)
 
 // EvidenceMessage contains a list of evidence.
 type EvidenceMessage struct {
-	Evidence types.Evidences
+	Evidence []types.Evidence
 }
 
 // String returns a string representation of the EvidenceMessage.

@@ -17,6 +17,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	evpool "github.com/tendermint/tendermint/evidence"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -78,7 +79,7 @@ type ConsensusState struct {
 	proxyAppConn proxy.AppConnConsensus
 	blockStore   types.BlockStore
 	mempool      types.Mempool
-	evpool       types.EvidencePool
+	evpool       evpool.EvidencePool
 
 	// internal state
 	mtx sync.Mutex
@@ -114,7 +115,7 @@ type ConsensusState struct {
 }
 
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool, evpool types.Mempool) *ConsensusState {
+func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -126,7 +127,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
 		wal:              nilWAL{},
-		evpool:           evpool,
+		// evpool:           evpool,
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -866,7 +867,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
-	evidence := cs.evpool.Evidence()
+	evidence := cs.evpool.PendingEvidence()
 	block.AddEvidence(evidence)
 	return block, parts
 }
