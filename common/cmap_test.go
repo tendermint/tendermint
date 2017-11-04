@@ -16,27 +16,26 @@ func TestIterateKeysWithValues(t *testing.T) {
 	}
 
 	// Testing size
-	assert.Equal(t, cmap.Size(), 10, "overall size should be 10")
-	assert.Equal(t, len(cmap.Keys()), 10, "should be 10 keys")
-	assert.Equal(t, len(cmap.Values()), 10, "should be 10 values")
+	assert.Equal(t, 10, cmap.Size())
+	assert.Equal(t, 10, len(cmap.Keys()))
+	assert.Equal(t, 10, len(cmap.Values()))
 
 	// Iterating Keys, checking for matching Value
 	for _, key := range cmap.Keys() {
 		val := strings.Replace(key, "key", "value", -1)
-		assert.Equal(t, cmap.Get(key), val)
+		assert.Equal(t, val, cmap.Get(key))
 	}
 
 	// Test if all keys are within []Keys()
 	keys := cmap.Keys()
 	for i := 1; i <= 10; i++ {
-		assert.True(t, contains(keys, fmt.Sprintf("key%d", i)), "cmap.Keys() should contain key")
+		assert.Contains(t, keys, fmt.Sprintf("key%d", i), "cmap.Keys() should contain key")
 	}
 
 	// Delete 1 Key
 	cmap.Delete("key1")
 
 	assert.NotEqual(t, len(keys), len(cmap.Keys()), "[]keys and []Keys() should not be equal, they are copies, one item was removed")
-
 }
 
 func TestContains(t *testing.T) {
@@ -45,19 +44,10 @@ func TestContains(t *testing.T) {
 	cmap.Set("key1", "value1")
 
 	// Test for known values
-	assert.True(t, cmap.Has("key1"), "should contain key1")
-	assert.Equal(t, cmap.Get("key1"), "value1", "key1.value() should be value1")
+	assert.True(t, cmap.Has("key1"))
+	assert.Equal(t, "value1", cmap.Get("key1"))
 
 	// Test for unknown values
-	assert.False(t, cmap.Has("key2"), "should not contain key2")
-	assert.Nil(t, cmap.Get("key2"), "does not contain key2")
-}
-
-func contains(array []string, value string) (bool) {
-	for _, val := range array {
-		if val == value {
-			return true
-		}
-	}
-	return false
+	assert.False(t, cmap.Has("key2"))
+	assert.Nil(t, cmap.Get("key2"))
 }
