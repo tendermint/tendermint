@@ -170,9 +170,11 @@ func (c *WSClient) OnStop() {}
 // channel is closed.
 func (c *WSClient) Stop() error {
 	err := c.BaseService.Stop()
-	// only close user-facing channels when we can't write to them
-	c.wg.Wait()
-	close(c.ResponsesCh)
+	if err == nil {
+		// only close user-facing channels when we can't write to them
+		c.wg.Wait()
+		close(c.ResponsesCh)
+	}
 	return err
 }
 
