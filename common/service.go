@@ -16,7 +16,7 @@ type Service interface {
 	Start() error
 	OnStart() error
 
-	Stop() bool
+	Stop() error
 	OnStop()
 
 	Reset() (bool, error)
@@ -127,15 +127,15 @@ func (bs *BaseService) Start() error {
 func (bs *BaseService) OnStart() error { return nil }
 
 // Implements Service
-func (bs *BaseService) Stop() bool {
+func (bs *BaseService) Stop() error {
 	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
 		bs.Logger.Info(Fmt("Stopping %v", bs.name), "impl", bs.impl)
 		bs.impl.OnStop()
 		close(bs.Quit)
-		return true
+		return nil
 	} else {
 		bs.Logger.Debug(Fmt("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
-		return false
+		return ErrAlreadyStopped
 	}
 }
 
