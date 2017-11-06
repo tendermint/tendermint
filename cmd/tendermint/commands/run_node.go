@@ -49,7 +49,7 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 				return fmt.Errorf("Failed to create node: %v", err)
 			}
 
-			if _, err := n.Start(); err != nil {
+			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
 			} else {
 				logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())

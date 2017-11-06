@@ -95,7 +95,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// start switches
 	for _, s := range switches {
-		_, err := s.Start() // start switch and reactors
+		err := s.Start() // start switch and reactors
 		require.Nil(err)
 	}
 

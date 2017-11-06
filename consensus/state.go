@@ -229,7 +229,7 @@ func (cs *ConsensusState) OnStart() error {
 	// NOTE: we will get a build up of garbage go routines
 	// firing on the tockChan until the receiveRoutine is started
 	// to deal with them (by that point, at most one will be valid)
-	_, err := cs.timeoutTicker.Start()
+	err := cs.timeoutTicker.Start()
 	if err != nil {
 		return err
 	}
@@ -257,7 +257,7 @@ func (cs *ConsensusState) OnStart() error {
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
 func (cs *ConsensusState) startRoutines(maxSteps int) {
-	_, err := cs.timeoutTicker.Start()
+	err := cs.timeoutTicker.Start()
 	if err != nil {
 		cs.Logger.Error("Error starting timeout ticker", "err", err)
 		return
@@ -292,7 +292,7 @@ func (cs *ConsensusState) OpenWAL(walFile string) (WAL, error) {
 		return nil, err
 	}
 	wal.SetLogger(cs.Logger.With("wal", walFile))
-	if _, err := wal.Start(); err != nil {
+	if err := wal.Start(); err != nil {
 		return nil, err
 	}
 	return wal, nil

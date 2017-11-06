@@ -23,7 +23,7 @@ func TestPeerBasic(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), DefaultPeerConfig())
 	require.Nil(err)
 
-	_, err = p.Start()
+	err = p.Start()
 	require.Nil(err)
 	defer p.Stop()
 
@@ -50,7 +50,7 @@ func TestPeerWithoutAuthEnc(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
 	require.Nil(err)
 
-	_, err = p.Start()
+	err = p.Start()
 	require.Nil(err)
 	defer p.Stop()
 
@@ -71,7 +71,7 @@ func TestPeerSend(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
 	require.Nil(err)
 
-	_, err = p.Start()
+	err = p.Start()
 	require.Nil(err)
 
 	defer p.Stop()

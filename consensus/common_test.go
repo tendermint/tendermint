@@ -464,12 +464,12 @@ type mockTicker struct {
 	fired    bool
 }
 
-func (m *mockTicker) Start() (bool, error) {
-	return true, nil
+func (m *mockTicker) Start() error {
+	return nil
 }
 
-func (m *mockTicker) Stop() bool {
-	return true
+func (m *mockTicker) Stop() error {
+	return nil
 }
 
 func (m *mockTicker) ScheduleTimeout(ti timeoutInfo) {

@@ -69,7 +69,7 @@ func (r *PEXReactor) OnStart() error {
 	if err := r.BaseReactor.OnStart(); err != nil {
 		return err
 	}
-	_, err := r.book.Start()
+	err := r.book.Start()
 	if err != nil {
 		return err
 	}

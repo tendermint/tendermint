@@ -58,7 +58,7 @@ func TestByzantine(t *testing.T) {
 
 		eventBus := types.NewEventBus()
 		eventBus.SetLogger(logger.With("module", "events", "validator", i))
-		_, err := eventBus.Start()
+		err := eventBus.Start()
 		require.NoError(t, err)
 		defer eventBus.Stop()
 

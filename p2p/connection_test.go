@@ -36,7 +36,7 @@ func TestMConnectionSend(t *testing.T) {
 	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
-	_, err := mconn.Start()
+	err := mconn.Start()
 	require.Nil(err)
 	defer mconn.Stop()
 
@@ -77,12 +77,12 @@ func TestMConnectionReceive(t *testing.T) {
 		errorsCh <- r
 	}
 	mconn1 := createMConnectionWithCallbacks(client, onReceive, onError)
-	_, err := mconn1.Start()
+	err := mconn1.Start()
 	require.Nil(err)
 	defer mconn1.Stop()
 
 	mconn2 := createTestMConnection(server)
-	_, err = mconn2.Start()
+	err = mconn2.Start()
 	require.Nil(err)
 	defer mconn2.Stop()
 
@@ -107,7 +107,7 @@ func TestMConnectionStatus(t *testing.T) {
 	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
-	_, err := mconn.Start()
+	err := mconn.Start()
 	require.Nil(err)
 	defer mconn.Stop()
 
@@ -132,7 +132,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 		errorsCh <- r
 	}
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
-	_, err := mconn.Start()
+	err := mconn.Start()
 	require.Nil(err)
 	defer mconn.Stop()
 
@@ -164,7 +164,7 @@ func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr c
 	}
 	mconnClient := NewMConnection(client, chDescs, onReceive, onError)
 	mconnClient.SetLogger(log.TestingLogger().With("module", "client"))
-	_, err := mconnClient.Start()
+	err := mconnClient.Start()
 	require.Nil(err)
 
 	// create server conn with 1 channel
@@ -175,7 +175,7 @@ func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr c
 	}
 	mconnServer := createMConnectionWithCallbacks(server, onReceive, onError)
 	mconnServer.SetLogger(serverLogger)
-	_, err = mconnServer.Start()
+	err = mconnServer.Start()
 	require.Nil(err)
 	return mconnClient, mconnServer
 }
@@ -288,7 +288,7 @@ func TestMConnectionTrySend(t *testing.T) {
 	defer client.Close()
 
 	mconn := createTestMConnection(client)
-	_, err := mconn.Start()
+	err := mconn.Start()
 	require.Nil(err)
 	defer mconn.Stop()
 

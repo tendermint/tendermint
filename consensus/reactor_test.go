@@ -41,7 +41,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 
 		eventBuses[i] = types.NewEventBus()
 		eventBuses[i].SetLogger(thisLogger.With("module", "events", "validator", i))
-		_, err := eventBuses[i].Start()
+		err := eventBuses[i].Start()
 		require.NoError(t, err)
 
 		reactors[i].SetEventBus(eventBuses[i])

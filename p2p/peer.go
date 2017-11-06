@@ -235,7 +235,7 @@ func (p *peer) OnStart() error {
 	if err := p.BaseService.OnStart(); err != nil {
 		return err
 	}
-	_, err := p.mconn.Start()
+	err := p.mconn.Start()
 	return err
 }
 

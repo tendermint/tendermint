@@ -15,8 +15,8 @@ var (
 // conditional on the height/round/step in the timeoutInfo.
 // The timeoutInfo.Duration may be non-positive.
 type TimeoutTicker interface {
-	Start() (bool, error)
-	Stop() bool
+	Start() error
+	Stop() error
 	Chan() <-chan timeoutInfo       // on which to receive a timeout
 	ScheduleTimeout(ti timeoutInfo) // reset the timer
 

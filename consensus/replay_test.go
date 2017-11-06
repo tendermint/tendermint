@@ -70,7 +70,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int, bl
 	// fmt.Printf("====== WAL: \n\r%s\n", bytes)
 	t.Logf("====== WAL: \n\r%s\n", bytes)
 
-	_, err := cs.Start()
+	err := cs.Start()
 	require.NoError(t, err)
 	defer func() {
 		cs.Stop()
@@ -171,7 +171,7 @@ LOOP:
 		cs.wal = crashingWal
 
 		// start consensus state
-		_, err = cs.Start()
+		err = cs.Start()
 		require.NoError(t, err)
 
 		i++
@@ -257,9 +257,9 @@ func (w *crashingWAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, f
 	return w.next.SearchForEndHeight(height)
 }
 
-func (w *crashingWAL) Start() (bool, error) { return w.next.Start() }
-func (w *crashingWAL) Stop() bool           { return w.next.Stop() }
-func (w *crashingWAL) Wait()                { w.next.Wait() }
+func (w *crashingWAL) Start() error { return w.next.Start() }
+func (w *crashingWAL) Stop() error  { return w.next.Stop() }
+func (w *crashingWAL) Wait()        { w.next.Wait() }
 
 //------------------------------------------------------------------------------------------
 // Handshake Tests
@@ -339,7 +339,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatal(err)
 	}
 	wal.SetLogger(log.TestingLogger())
-	if _, err := wal.Start(); err != nil {
+	if err := wal.Start(); err != nil {
 		t.Fatal(err)
 	}
 	chain, commits, err := makeBlockchainFromWAL(wal)
@@ -368,7 +368,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	// now start the app using the handshake - it should sync
 	handshaker := NewHandshaker(state, store)
 	proxyApp := proxy.NewAppConns(clientCreator2, handshaker)
-	if _, err := proxyApp.Start(); err != nil {
+	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
 
@@ -406,7 +406,7 @@ func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
 func buildAppStateFromChain(proxyApp proxy.AppConns,
 	state *sm.State, chain []*types.Block, nBlocks int, mode uint) {
 	// start a new app without handshake, play nBlocks blocks
-	if _, err := proxyApp.Start(); err != nil {
+	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
 
@@ -441,7 +441,7 @@ func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.B
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "1")))
 	proxyApp := proxy.NewAppConns(clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
-	if _, err := proxyApp.Start(); err != nil {
+	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
 	defer proxyApp.Stop()
