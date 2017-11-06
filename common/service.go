@@ -1,13 +1,19 @@
 package common
 
 import (
+	"errors"
 	"sync/atomic"
 
 	"github.com/tendermint/tmlibs/log"
 )
 
+var (
+	ErrAlreadyStarted = errors.New("already started")
+	ErrAlreadyStopped = errors.New("already stopped")
+)
+
 type Service interface {
-	Start() (bool, error)
+	Start() error
 	OnStart() error
 
 	Stop() bool
@@ -94,11 +100,11 @@ func (bs *BaseService) SetLogger(l log.Logger) {
 }
 
 // Implements Servce
-func (bs *BaseService) Start() (bool, error) {
+func (bs *BaseService) Start() error {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
 			bs.Logger.Error(Fmt("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
-			return false, nil
+			return ErrAlreadyStopped
 		} else {
 			bs.Logger.Info(Fmt("Starting %v", bs.name), "impl", bs.impl)
 		}
@@ -106,12 +112,12 @@ func (bs *BaseService) Start() (bool, error) {
 		if err != nil {
 			// revert flag
 			atomic.StoreUint32(&bs.started, 0)
-			return false, err
+			return err
 		}
-		return true, err
+		return nil
 	} else {
 		bs.Logger.Debug(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
-		return false, nil
+		return ErrAlreadyStarted
 	}
 }
 
