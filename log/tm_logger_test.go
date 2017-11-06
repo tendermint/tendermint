@@ -1,11 +1,25 @@
 package log_test
 
 import (
+	"bytes"
 	"io/ioutil"
+	"strings"
 	"testing"
 
+	"github.com/go-logfmt/logfmt"
 	"github.com/tendermint/tmlibs/log"
 )
+
+func TestLoggerLogsItsErrors(t *testing.T) {
+	var buf bytes.Buffer
+
+	logger := log.NewTMLogger(&buf)
+	logger.Info("foo", "baz baz", "bar")
+	msg := strings.TrimSpace(buf.String())
+	if !strings.Contains(msg, logfmt.ErrInvalidKey.Error()) {
+		t.Errorf("Expected logger msg to contain ErrInvalidKey, got %s", msg)
+	}
+}
 
 func BenchmarkTMLoggerSimple(b *testing.B) {
 	benchmarkRunner(b, log.NewTMLogger(ioutil.Discard), baseInfoMessage)
