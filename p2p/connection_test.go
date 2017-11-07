@@ -55,6 +55,45 @@ func TestMConnectionSend(t *testing.T) {
 	assert.False(mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
 }
 
+func TestMConnectionTrySend(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	mconn := createMConnection(client)
+	_, err := mconn.Start()
+	require.Nil(err)
+	defer mconn.Stop()
+
+	msg := "Semicolon-Woman"
+	assert.True(mconn.TrySend(0x01, msg))
+	server.Read(make([]byte, len(msg))) // separate goroutine
+	assert.True(mconn.CanSend(0x01))
+	assert.True(mconn.TrySend(0x01, msg))
+	assert.False(mconn.CanSend(0x01))
+	assert.False(mconn.TrySend(0x01, msg))
+	sequence := "0"
+	pause := make(chan bool)
+	done := make(chan bool)
+	go func() {
+		assert.False(mconn.CanSend(0x01))
+		pause <- true
+		sequence += "s"
+		mconn.Send(0x01, msg) // TrySend causes "0rsSR" instead
+		sequence += "S"
+		done <- true
+	}()
+	sequence += "r"
+	<-pause
+	time.Sleep(18 * time.Millisecond)
+	sequence += "R"
+	server.Read(make([]byte, len(msg))) // separate goroutine
+	<-done
+	assert.Equal("0rsRS", sequence) // without blocking Send it's "0rsSR"
+}
+
 func TestMConnectionReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
