@@ -499,6 +499,20 @@ OUTER_LOOP:
 func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstypes.RoundState,
 	prs *cstypes.PeerRoundState, ps *PeerState, peer p2p.Peer) {
 
+	// this might happen if we didn't receive the commit message from the peer
+	// NOTE: wouldn't it be better if the peer resubmitted his CommitStepMessage periodically if not progressing?
+	if prs.ProposalBlockParts == nil {
+		blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
+		if blockMeta == nil {
+			logger.Error("Failed to load block meta",
+				"ourHeight", rs.Height, "blockstoreHeight", conR.conS.blockStore.Height())
+			time.Sleep(conR.conS.config.PeerGossipSleep())
+			return
+		}
+		prs.ProposalBlockPartsHeader = blockMeta.BlockID.PartsHeader
+		prs.ProposalBlockParts = cmn.NewBitArray(blockMeta.BlockID.PartsHeader.Total)
+	}
+
 	if index, ok := prs.ProposalBlockParts.Not().PickRandom(); ok {
 		// Ensure that the peer's PartSetHeader is correct
 		blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
