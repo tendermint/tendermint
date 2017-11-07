@@ -76,21 +76,14 @@ type RoundState struct {
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
+	// XXX: copy the RoundState
+	// if we want to avoid this, we may need synchronous events after all
+	rs_ := *rs
 	edrs := types.EventDataRoundState{
-		Height: rs.Height,
-		Round:  rs.Round,
-		Step:   rs.Step.String(),
-		// send only fields needed by makeRoundStepMessages
-		RoundState: &RoundState{
-			Height:             rs.Height,
-			Round:              rs.Round,
-			Step:               rs.Step,
-			StartTime:          rs.StartTime,
-			LastCommit:         rs.LastCommit,
-			LockedBlock:        rs.LockedBlock,   // consensus/state_test.go#L398
-			ProposalBlock:      rs.ProposalBlock, // consensus/state_test.go#L253
-			ProposalBlockParts: rs.ProposalBlockParts,
-		},
+		Height:     rs.Height,
+		Round:      rs.Round,
+		Step:       rs.Step.String(),
+		RoundState: &rs_,
 	}
 	return edrs
 }
