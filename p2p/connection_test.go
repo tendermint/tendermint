@@ -1,4 +1,4 @@
-package p2p_test
+package p2p
 
 import (
 	"net"
@@ -7,11 +7,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	p2p "github.com/tendermint/tendermint/p2p"
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 )
 
-func createMConnection(conn net.Conn) *p2p.MConnection {
+func createTestMConnection(conn net.Conn) *MConnection {
 	onReceive := func(chID byte, msgBytes []byte) {
 	}
 	onError := func(r interface{}) {
@@ -21,9 +21,9 @@ func createMConnection(conn net.Conn) *p2p.MConnection {
 	return c
 }
 
-func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *p2p.MConnection {
-	chDescs := []*p2p.ChannelDescriptor{&p2p.ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := p2p.NewMConnection(conn, chDescs, onReceive, onError)
+func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
+	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
+	c := NewMConnection(conn, chDescs, onReceive, onError)
 	c.SetLogger(log.TestingLogger())
 	return c
 }
@@ -35,7 +35,7 @@ func TestMConnectionSend(t *testing.T) {
 	defer server.Close()
 	defer client.Close()
 
-	mconn := createMConnection(client)
+	mconn := createTestMConnection(client)
 	_, err := mconn.Start()
 	require.Nil(err)
 	defer mconn.Stop()
@@ -75,7 +75,7 @@ func TestMConnectionReceive(t *testing.T) {
 	require.Nil(err)
 	defer mconn1.Stop()
 
-	mconn2 := createMConnection(server)
+	mconn2 := createTestMConnection(server)
 	_, err = mconn2.Start()
 	require.Nil(err)
 	defer mconn2.Stop()
@@ -100,7 +100,7 @@ func TestMConnectionStatus(t *testing.T) {
 	defer server.Close()
 	defer client.Close()
 
-	mconn := createMConnection(client)
+	mconn := createTestMConnection(client)
 	_, err := mconn.Start()
 	require.Nil(err)
 	defer mconn.Stop()
@@ -141,4 +141,133 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("Did not receive error in 500ms")
 	}
+}
+
+func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr chan struct{}) (*MConnection, *MConnection) {
+	server, client := net.Pipe()
+
+	onReceive := func(chID byte, msgBytes []byte) {}
+	onError := func(r interface{}) {}
+
+	// create client conn with two channels
+	chDescs := []*ChannelDescriptor{
+		{ID: 0x01, Priority: 1, SendQueueCapacity: 1},
+		{ID: 0x02, Priority: 1, SendQueueCapacity: 1},
+	}
+	mconnClient := NewMConnection(client, chDescs, onReceive, onError)
+	mconnClient.SetLogger(log.TestingLogger().With("module", "client"))
+	_, err := mconnClient.Start()
+	require.Nil(err)
+
+	// create server conn with 1 channel
+	// it fires on chOnErr when there's an error
+	serverLogger := log.TestingLogger().With("module", "server")
+	onError = func(r interface{}) {
+		chOnErr <- struct{}{}
+	}
+	mconnServer := createMConnectionWithCallbacks(server, onReceive, onError)
+	mconnServer.SetLogger(serverLogger)
+	_, err = mconnServer.Start()
+	require.Nil(err)
+	return mconnClient, mconnServer
+}
+
+func expectSend(ch chan struct{}) bool {
+	after := time.After(time.Second * 5)
+	select {
+	case <-ch:
+		return true
+	case <-after:
+		return false
+	}
+}
+
+func TestMConnectionReadErrorBadEncoding(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	chOnErr := make(chan struct{})
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	defer mconnClient.Stop()
+	defer mconnServer.Stop()
+
+	client := mconnClient.conn
+	msg := "Ant-Man"
+
+	// send badly encoded msgPacket
+	var n int
+	var err error
+	wire.WriteByte(packetTypeMsg, client, &n, &err)
+	wire.WriteByteSlice([]byte(msg), client, &n, &err)
+	assert.True(expectSend(chOnErr), "badly encoded msgPacket")
+}
+
+func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	chOnErr := make(chan struct{})
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	defer mconnClient.Stop()
+	defer mconnServer.Stop()
+
+	msg := "Ant-Man"
+
+	// fail to send msg on channel unknown by client
+	assert.False(mconnClient.Send(0x03, msg))
+
+	// send msg on channel unknown by the server.
+	// should cause an error
+	assert.True(mconnClient.Send(0x02, msg))
+	assert.True(expectSend(chOnErr), "unknown channel")
+}
+
+func TestMConnectionReadErrorLongMessage(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	chOnErr := make(chan struct{})
+	chOnRcv := make(chan struct{})
+
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	defer mconnClient.Stop()
+	defer mconnServer.Stop()
+
+	mconnServer.onReceive = func(chID byte, msgBytes []byte) {
+		chOnRcv <- struct{}{}
+	}
+
+	client := mconnClient.conn
+
+	// send msg thats just right
+	var n int
+	var err error
+	packet := msgPacket{
+		ChannelID: 0x01,
+		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-5),
+		EOF:       1,
+	}
+	writeMsgPacketTo(packet, client, &n, &err)
+	assert.True(expectSend(chOnRcv), "msg just right")
+
+	// send msg thats too long
+	packet = msgPacket{
+		ChannelID: 0x01,
+		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-4),
+		EOF:       1,
+	}
+	writeMsgPacketTo(packet, client, &n, &err)
+	assert.True(expectSend(chOnErr), "msg too long")
+}
+
+func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	chOnErr := make(chan struct{})
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	defer mconnClient.Stop()
+	defer mconnServer.Stop()
+
+	// send msg with unknown msg type
+	var n int
+	var err error
+	wire.WriteByte(0x04, mconnClient.conn, &n, &err)
+	assert.True(expectSend(chOnErr), "unknown msg type")
 }
