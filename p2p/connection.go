@@ -459,8 +459,11 @@ FOR_LOOP:
 			}
 			channel, ok := c.channelsIdx[pkt.ChannelID]
 			if !ok || channel == nil {
-				cmn.PanicQ(cmn.Fmt("Unknown channel %X", pkt.ChannelID))
+				err := fmt.Errorf("Unknown channel %X", pkt.ChannelID)
+				c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
+				c.stopForError(err)
 			}
+
 			msgBytes, err := channel.recvMsgPacket(pkt)
 			if err != nil {
 				if c.IsRunning() {
@@ -475,7 +478,9 @@ FOR_LOOP:
 				c.onReceive(pkt.ChannelID, msgBytes)
 			}
 		default:
-			cmn.PanicSanity(cmn.Fmt("Unknown message type %X", pktType))
+			err := fmt.Errorf("Unknown message type %X", pktType)
+			c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
+			c.stopForError(err)
 		}
 
 		// TODO: shouldn't this go in the sendRoutine?
@@ -648,12 +653,16 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 	packet := ch.nextMsgPacket()
 	// log.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
-	wire.WriteByte(packetTypeMsg, w, &n, &err)
-	wire.WriteBinary(packet, w, &n, &err)
+	writeMsgPacketTo(packet, w, &n, &err)
 	if err == nil {
 		ch.recentlySent += int64(n)
 	}
 	return
+}
+
+func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
+	wire.WriteByte(packetTypeMsg, w, n, err)
+	wire.WriteBinary(packet, w, n, err)
 }
 
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
