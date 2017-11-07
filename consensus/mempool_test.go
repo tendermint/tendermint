@@ -141,10 +141,12 @@ func TestRmBadTx(t *testing.T) {
 		}
 
 		// check for the tx
-		txs := cs.mempool.Reap(1)
-		if len(txs) == 0 {
-			emptyMempoolCh <- struct{}{}
-			return
+		for {
+			txs := cs.mempool.Reap(1)
+			if len(txs) == 0 {
+				emptyMempoolCh <- struct{}{}
+			}
+			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 

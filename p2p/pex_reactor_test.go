@@ -109,26 +109,28 @@ func TestPEXReactorRunning(t *testing.T) {
 
 func assertSomePeersWithTimeout(t *testing.T, switches []*Switch, checkPeriod, timeout time.Duration) {
 	ticker := time.NewTicker(checkPeriod)
-	select {
-	case <-ticker.C:
-		// check peers are connected
-		allGood := true
-		for _, s := range switches {
-			outbound, inbound, _ := s.NumPeers()
-			if outbound+inbound == 0 {
-				allGood = false
+	for {
+		select {
+		case <-ticker.C:
+			// check peers are connected
+			allGood := true
+			for _, s := range switches {
+				outbound, inbound, _ := s.NumPeers()
+				if outbound+inbound == 0 {
+					allGood = false
+				}
 			}
+			if allGood {
+				return
+			}
+		case <-time.After(timeout):
+			numPeersStr := ""
+			for i, s := range switches {
+				outbound, inbound, _ := s.NumPeers()
+				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
+			}
+			t.Errorf("expected all switches to be connected to at least one peer (switches: %s)", numPeersStr)
 		}
-		if allGood {
-			return
-		}
-	case <-time.After(timeout):
-		numPeersStr := ""
-		for i, s := range switches {
-			outbound, inbound, _ := s.NumPeers()
-			numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
-		}
-		t.Errorf("expected all switches to be connected to at least one peer (switches: %s)", numPeersStr)
 	}
 }
 

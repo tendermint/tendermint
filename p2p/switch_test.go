@@ -138,16 +138,19 @@ func TestSwitches(t *testing.T) {
 
 func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
 	ticker := time.NewTicker(checkPeriod)
-	select {
-	case <-ticker.C:
-		msgs := reactor.getMsgs(channel)
-		if len(msgs) > 0 {
-			if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
-				t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+	for {
+		select {
+		case <-ticker.C:
+			msgs := reactor.getMsgs(channel)
+			if len(msgs) > 0 {
+				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+				}
+				return
 			}
+		case <-time.After(timeout):
+			t.Fatalf("Expected to have received 1 message in channel #%v, got zero", channel)
 		}
-	case <-time.After(timeout):
-		t.Fatalf("Expected to have received 1 message in channel #%v, got zero", channel)
 	}
 }
 
@@ -174,19 +177,14 @@ func TestConnAddrFilter(t *testing.T) {
 		s2.addPeerWithConnection(c2)
 	}()
 
-	assertNoPeersWithTimeout(t, s1, 100*time.Millisecond, 400*time.Millisecond)
-	assertNoPeersWithTimeout(t, s2, 100*time.Millisecond, 400*time.Millisecond)
+	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
+	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
-func assertNoPeersWithTimeout(t *testing.T, sw *Switch, checkPeriod, timeout time.Duration) {
-	ticker := time.NewTicker(checkPeriod)
-	select {
-	case <-ticker.C:
-		if sw.Peers().Size() != 0 {
-			t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
-		}
-	case <-time.After(timeout):
-		return
+func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
+	time.Sleep(timeout)
+	if sw.Peers().Size() != 0 {
+		t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
 	}
 }
 
@@ -214,8 +212,8 @@ func TestConnPubKeyFilter(t *testing.T) {
 		s2.addPeerWithConnection(c2)
 	}()
 
-	assertNoPeersWithTimeout(t, s1, 100*time.Millisecond, 400*time.Millisecond)
-	assertNoPeersWithTimeout(t, s2, 100*time.Millisecond, 400*time.Millisecond)
+	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
+	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
@@ -238,7 +236,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	// simulate failure by closing connection
 	peer.CloseConn()
 
-	assertNoPeersWithTimeout(t, sw, 100*time.Millisecond, 100*time.Millisecond)
+	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
 	assert.False(peer.IsRunning())
 }
 
