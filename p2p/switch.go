@@ -509,10 +509,8 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 		panic(err)
 	}
 
-	for i := 0; i < n; i++ {
-		for j := i; j < n; j++ {
-			connect(switches, i, j)
-		}
+	for i := 1; i < n; i++ {
+		connect(switches, 0, i)
 	}
 
 	return switches
