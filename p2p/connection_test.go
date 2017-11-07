@@ -271,3 +271,37 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	wire.WriteByte(0x04, mconnClient.conn, &n, &err)
 	assert.True(expectSend(chOnErr), "unknown msg type")
 }
+
+func TestMConnectionTrySend(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	mconn := createTestMConnection(client)
+	_, err := mconn.Start()
+	require.Nil(err)
+	defer mconn.Stop()
+
+	msg := "Semicolon-Woman"
+	resultCh := make(chan string, 2)
+	assert.True(mconn.TrySend(0x01, msg))
+	server.Read(make([]byte, len(msg)))
+	assert.True(mconn.CanSend(0x01))
+	assert.True(mconn.TrySend(0x01, msg))
+	assert.False(mconn.CanSend(0x01))
+	go func() {
+		mconn.TrySend(0x01, msg)
+		resultCh <- "TrySend"
+	}()
+	go func() {
+		mconn.Send(0x01, msg)
+		resultCh <- "Send"
+	}()
+	assert.False(mconn.CanSend(0x01))
+	assert.False(mconn.TrySend(0x01, msg))
+	assert.Equal("TrySend", <-resultCh)
+	server.Read(make([]byte, len(msg)))
+	assert.Equal("Send", <-resultCh) // Order constrained by parallel blocking above
+}
