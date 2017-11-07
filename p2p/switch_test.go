@@ -286,6 +286,21 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert.False(peer.IsRunning())
 }
 
+func TestSwitchFullConnectivity(t *testing.T) {
+	switches := MakeConnectedSwitches(config, 3, initSwitchFunc, Connect2Switches)
+	defer func() {
+		for _, sw := range switches {
+			sw.Stop()
+		}
+	}()
+
+	for i, sw := range switches {
+		if sw.Peers().Size() != 2 {
+			t.Fatalf("Expected each switch to be connected to 2 other, but %d switch only connected to %d", sw.Peers().Size(), i)
+		}
+	}
+}
+
 func BenchmarkSwitches(b *testing.B) {
 	b.StopTimer()
 
