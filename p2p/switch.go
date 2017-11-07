@@ -481,17 +481,6 @@ func (sw *Switch) listenerRoutine(l Listener) {
 	// cleanup
 }
 
-//-----------------------------------------------------------------------------
-
-type SwitchEventNewPeer struct {
-	Peer Peer
-}
-
-type SwitchEventDonePeer struct {
-	Peer  Peer
-	Error interface{}
-}
-
 //------------------------------------------------------------------
 // Connects switches via arbitrary net.Conn. Used for testing.
 

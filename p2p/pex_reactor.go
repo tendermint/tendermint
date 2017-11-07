@@ -143,7 +143,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		r.SendAddrs(src, r.book.GetSelection())
 	case *pexAddrsMessage:
 		// We received some peer addresses from src.
-		// (We don't want to get spammed with bad peers)
+		// TODO: (We don't want to get spammed with bad peers)
 		for _, addr := range msg.Addrs {
 			if addr != nil {
 				r.book.AddAddress(addr, srcAddr)
