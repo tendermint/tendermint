@@ -1,0 +1,9 @@
+panic: runtime error: invalid memory address or nil pointer dereference
+github.com/tendermint/tendermint/p2p.(*AddrBook).groupKey
+github.com/tendermint/tendermint/p2p.(*AddrBook).calcNewBucket
+github.com/tendermint/tendermint/p2p.(*AddrBook).addAddress
+github.com/tendermint/tendermint/p2p.(*AddrBook).AddAddress
+github.com/tendermint/tendermint/p2p.(*PEXReactor).Receive
+github.com/tendermint/tendermint/fuzz/p2p/pex-reactor.Fuzz
+go-fuzz-dep.Main
+main.main
