@@ -499,7 +499,7 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 	}
 
 	for i := 0; i < n; i++ {
-		for j := i; j < n; j++ {
+		for j := i + 1; j < n; j++ {
 			connect(switches, i, j)
 		}
 	}
