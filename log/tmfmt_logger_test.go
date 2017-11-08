@@ -30,8 +30,10 @@ func TestTMFmtLogger(t *testing.T) {
 	assert.Regexp(t, regexp.MustCompile(`N\[.+\] unknown \s+ a=1 err=error\n$`), buf.String())
 
 	buf.Reset()
-	err := logger.Log("std_map", map[int]int{1: 2}, "my_map", mymap{0: 0})
-	assert.NotNil(t, err)
+	if err := logger.Log("std_map", map[int]int{1: 2}, "my_map", mymap{0: 0}); err != nil {
+		t.Fatal(err)
+	}
+	assert.Regexp(t, regexp.MustCompile(`N\[.+\] unknown \s+ std_map=map\[1:2\] my_map=special_behavior\n$`), buf.String())
 
 	buf.Reset()
 	if err := logger.Log("level", "error"); err != nil {
