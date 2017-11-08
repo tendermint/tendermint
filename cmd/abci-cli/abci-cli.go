@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
+	"github.com/tendermint/abci/version"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -71,8 +72,9 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		switch cmd.Use {
-		// for the examples apps, don't pre-run
-		case "counter", "dummy":
+		case "counter", "dummy": // for the examples apps, don't pre-run
+			return nil
+		case "version": // skip running for version command
 			return nil
 		}
 
@@ -130,6 +132,7 @@ func addCommands() {
 	RootCmd.AddCommand(deliverTxCmd)
 	RootCmd.AddCommand(checkTxCmd)
 	RootCmd.AddCommand(commitCmd)
+	RootCmd.AddCommand(versionCmd)
 	addQueryFlags()
 	RootCmd.AddCommand(queryCmd)
 
@@ -216,6 +219,17 @@ var commitCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCommit(cmd, args)
+	},
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print abci console version",
+	Long:  "",
+	Args:  cobra.ExactArgs(0),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println(version.Version)
+		return nil
 	},
 }
 
