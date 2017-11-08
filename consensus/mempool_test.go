@@ -124,8 +124,8 @@ func TestRmBadTx(t *testing.T) {
 	app.DeliverTx(txBytes)
 	app.Commit()
 
-	ch := make(chan struct{})
-	cbCh := make(chan struct{})
+	emptyMempoolCh := make(chan struct{})
+	checkTxRespCh := make(chan struct{})
 	go func() {
 		// Try to send the tx through the mempool.
 		// CheckTx should not err, but the app should return a bad abci code
@@ -134,7 +134,7 @@ func TestRmBadTx(t *testing.T) {
 			if r.GetCheckTx().Code != abci.CodeType_BadNonce {
 				t.Fatalf("expected checktx to return bad nonce, got %v", r)
 			}
-			cbCh <- struct{}{}
+			checkTxRespCh <- struct{}{}
 		})
 		if err != nil {
 			t.Fatal("Error after CheckTx: %v", err)
@@ -142,20 +142,18 @@ func TestRmBadTx(t *testing.T) {
 
 		// check for the tx
 		for {
-			time.Sleep(time.Second)
 			txs := cs.mempool.Reap(1)
 			if len(txs) == 0 {
-				ch <- struct{}{}
-				return
+				emptyMempoolCh <- struct{}{}
 			}
-
+			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 
 	// Wait until the tx returns
 	ticker := time.After(time.Second * 5)
 	select {
-	case <-cbCh:
+	case <-checkTxRespCh:
 		// success
 	case <-ticker:
 		t.Fatalf("Timed out waiting for tx to return")
@@ -164,7 +162,7 @@ func TestRmBadTx(t *testing.T) {
 	// Wait until the tx is removed
 	ticker = time.After(time.Second * 5)
 	select {
-	case <-ch:
+	case <-emptyMempoolCh:
 		// success
 	case <-ticker:
 		t.Fatalf("Timed out waiting for tx to be removed")

@@ -9,30 +9,37 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestNodeStartStop(t *testing.T) {
 	config := cfg.ResetTestRoot("node_node_test")
 
-	// Create & start node
+	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	assert.NoError(t, err, "expected no err on DefaultNewNode")
 	n.Start()
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
-	// Wait a bit to initialize
-	// TODO remove time.Sleep(), make asynchronous.
-	time.Sleep(time.Second * 2)
+	// wait for the node to produce a block
+	blockCh := make(chan struct{})
+	types.AddListenerForEvent(n.EventSwitch(), "node_test", types.EventStringNewBlock(), func(types.TMEventData) {
+		blockCh <- struct{}{}
+	})
+	select {
+	case <-blockCh:
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for the node to produce a block")
+	}
 
-	ch := make(chan struct{}, 1)
+	// stop the node
 	go func() {
 		n.Stop()
-		ch <- struct{}{}
 	}()
-	ticker := time.NewTicker(time.Second * 5)
+
 	select {
-	case <-ch:
-	case <-ticker.C:
+	case <-n.Quit:
+	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for shutdown")
 	}
 }

@@ -131,41 +131,34 @@ func TestSwitches(t *testing.T) {
 	s1.Broadcast(byte(0x01), ch1Msg)
 	s1.Broadcast(byte(0x02), ch2Msg)
 
-	// Wait for things to settle...
-	time.Sleep(5000 * time.Millisecond)
+	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+}
 
-	// Check message on ch0
-	ch0Msgs := s2.Reactor("foo").(*TestReactor).getMsgs(byte(0x00))
-	if len(ch0Msgs) != 1 {
-		t.Errorf("Expected to have received 1 message in ch0")
+func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
+	ticker := time.NewTicker(checkPeriod)
+	for {
+		select {
+		case <-ticker.C:
+			msgs := reactor.getMsgs(channel)
+			if len(msgs) > 0 {
+				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+				}
+				return
+			}
+		case <-time.After(timeout):
+			t.Fatalf("Expected to have received 1 message in channel #%v, got zero", channel)
+		}
 	}
-	if !bytes.Equal(ch0Msgs[0].Bytes, wire.BinaryBytes(ch0Msg)) {
-		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(ch0Msg), ch0Msgs[0].Bytes)
-	}
-
-	// Check message on ch1
-	ch1Msgs := s2.Reactor("foo").(*TestReactor).getMsgs(byte(0x01))
-	if len(ch1Msgs) != 1 {
-		t.Errorf("Expected to have received 1 message in ch1")
-	}
-	if !bytes.Equal(ch1Msgs[0].Bytes, wire.BinaryBytes(ch1Msg)) {
-		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(ch1Msg), ch1Msgs[0].Bytes)
-	}
-
-	// Check message on ch2
-	ch2Msgs := s2.Reactor("bar").(*TestReactor).getMsgs(byte(0x02))
-	if len(ch2Msgs) != 1 {
-		t.Errorf("Expected to have received 1 message in ch2")
-	}
-	if !bytes.Equal(ch2Msgs[0].Bytes, wire.BinaryBytes(ch2Msg)) {
-		t.Errorf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(ch2Msg), ch2Msgs[0].Bytes)
-	}
-
 }
 
 func TestConnAddrFilter(t *testing.T) {
 	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	defer s1.Stop()
+	defer s2.Stop()
 
 	c1, c2 := net.Pipe()
 
@@ -184,22 +177,22 @@ func TestConnAddrFilter(t *testing.T) {
 		s2.addPeerWithConnection(c2)
 	}()
 
-	// Wait for things to happen, peers to get added...
-	time.Sleep(100 * time.Millisecond * time.Duration(4))
+	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
+	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
+}
 
-	defer s1.Stop()
-	defer s2.Stop()
-	if s1.Peers().Size() != 0 {
-		t.Errorf("Expected s1 not to connect to peers, got %d", s1.Peers().Size())
-	}
-	if s2.Peers().Size() != 0 {
-		t.Errorf("Expected s2 not to connect to peers, got %d", s2.Peers().Size())
+func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
+	time.Sleep(timeout)
+	if sw.Peers().Size() != 0 {
+		t.Fatalf("Expected %v to not connect to some peers, got %d", sw, sw.Peers().Size())
 	}
 }
 
 func TestConnPubKeyFilter(t *testing.T) {
 	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	defer s1.Stop()
+	defer s2.Stop()
 
 	c1, c2 := net.Pipe()
 
@@ -219,17 +212,8 @@ func TestConnPubKeyFilter(t *testing.T) {
 		s2.addPeerWithConnection(c2)
 	}()
 
-	// Wait for things to happen, peers to get added...
-	time.Sleep(100 * time.Millisecond * time.Duration(4))
-
-	defer s1.Stop()
-	defer s2.Stop()
-	if s1.Peers().Size() != 0 {
-		t.Errorf("Expected s1 not to connect to peers, got %d", s1.Peers().Size())
-	}
-	if s2.Peers().Size() != 0 {
-		t.Errorf("Expected s2 not to connect to peers, got %d", s2.Peers().Size())
-	}
+	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
+	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
@@ -252,9 +236,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	// simulate failure by closing connection
 	peer.CloseConn()
 
-	time.Sleep(100 * time.Millisecond)
-
-	assert.Zero(sw.Peers().Size())
+	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
 	assert.False(peer.IsRunning())
 }
 
@@ -305,7 +287,7 @@ func BenchmarkSwitches(b *testing.B) {
 	defer s2.Stop()
 
 	// Allow time for goroutines to boot up
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 	b.StartTimer()
 
 	numSuccess, numFailure := 0, 0
@@ -327,5 +309,4 @@ func BenchmarkSwitches(b *testing.B) {
 
 	// Allow everything to flush before stopping switches & closing connections.
 	b.StopTimer()
-	time.Sleep(1000 * time.Millisecond)
 }

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"os"
@@ -98,19 +99,38 @@ func TestPEXReactorRunning(t *testing.T) {
 		require.Nil(err)
 	}
 
-	time.Sleep(1 * time.Second)
-
-	// check peers are connected after some time
-	for _, s := range switches {
-		outbound, inbound, _ := s.NumPeers()
-		if outbound+inbound == 0 {
-			t.Errorf("%v expected to be connected to at least one peer", s.NodeInfo().ListenAddr)
-		}
-	}
+	assertSomePeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second)
 
 	// stop them
 	for _, s := range switches {
 		s.Stop()
+	}
+}
+
+func assertSomePeersWithTimeout(t *testing.T, switches []*Switch, checkPeriod, timeout time.Duration) {
+	ticker := time.NewTicker(checkPeriod)
+	for {
+		select {
+		case <-ticker.C:
+			// check peers are connected
+			allGood := true
+			for _, s := range switches {
+				outbound, inbound, _ := s.NumPeers()
+				if outbound+inbound == 0 {
+					allGood = false
+				}
+			}
+			if allGood {
+				return
+			}
+		case <-time.After(timeout):
+			numPeersStr := ""
+			for i, s := range switches {
+				outbound, inbound, _ := s.NumPeers()
+				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
+			}
+			t.Errorf("expected all switches to be connected to at least one peer (switches: %s)", numPeersStr)
+		}
 	}
 }
 
