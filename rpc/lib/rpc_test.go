@@ -114,7 +114,7 @@ func setup() {
 	tcpLogger := logger.With("socket", "tcp")
 	mux := http.NewServeMux()
 	server.RegisterRPCFuncs(mux, Routes, tcpLogger)
-	wm := server.NewWebsocketManager(Routes, nil, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
+	wm := server.NewWebsocketManager(Routes, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
 	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
@@ -127,7 +127,7 @@ func setup() {
 	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
 	server.RegisterRPCFuncs(mux2, Routes, unixLogger)
-	wm = server.NewWebsocketManager(Routes, nil)
+	wm = server.NewWebsocketManager(Routes)
 	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
@@ -223,7 +223,7 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 
 		}
 		result := new(ResultEcho)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		if err != nil {
 			return "", nil
 		}
@@ -247,7 +247,7 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 
 		}
 		result := new(ResultEchoBytes)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		if err != nil {
 			return []byte{}, nil
 		}
@@ -328,7 +328,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 			t.Fatal(err)
 		}
 		result := new(ResultEcho)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		require.Nil(t, err)
 		got := result.Value
 		assert.Equal(t, got, val)
@@ -353,7 +353,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 			t.Fatalf("%+v", err)
 		}
 		result := new(ResultEcho)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		require.Nil(t, err)
 		got := result.Value
 		assert.Equal(t, got, val)

@@ -27,6 +27,14 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.12.1 (TBA)
+
+FEATURES:
+- new unsubscribe_all WebSocket RPC endpoint
+
+IMPROVEMENTS:
+- New events system using tmlibs/pubsub
+
 ## 0.12.0 (October 27, 2017)
 
 BREAKING CHANGES:

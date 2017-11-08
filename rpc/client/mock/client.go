@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Client wraps arbitrary implementations of the various interfaces.
@@ -33,8 +34,8 @@ type Client struct {
 	client.SignClient
 	client.HistoryClient
 	client.StatusClient
-	// create a mock with types.NewEventSwitch()
-	types.EventSwitch
+	client.EventsClient
+	cmn.Service
 }
 
 var _ client.Client = Client{}

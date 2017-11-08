@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"runtime/debug"
 	"sync"
@@ -91,13 +90,13 @@ type ConsensusState struct {
 	internalMsgQueue chan msgInfo
 	timeoutTicker    TimeoutTicker
 
-	// we use PubSub to trigger msg broadcasts in the reactor,
+	// we use eventBus to trigger msg broadcasts in the reactor,
 	// and to notify external subscribers, eg. through a websocket
-	evsw types.EventSwitch
+	eventBus *types.EventBus
 
 	// a Write-Ahead Log ensures we can recover from any kind of crash
 	// and helps us avoid signing conflicting votes
-	wal          *WAL
+	wal          WAL
 	replayMode   bool // so we don't log signing errors during replay
 	doWALCatchup bool // determines if we even try to do the catchup
 
@@ -125,6 +124,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 		timeoutTicker:    NewTimeoutTicker(),
 		done:             make(chan struct{}),
 		doWALCatchup:     true,
+		wal:              nilWAL{},
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -148,9 +148,9 @@ func (cs *ConsensusState) SetLogger(l log.Logger) {
 	cs.timeoutTicker.SetLogger(l)
 }
 
-// SetEventSwitch implements events.Eventable
-func (cs *ConsensusState) SetEventSwitch(evsw types.EventSwitch) {
-	cs.evsw = evsw
+// SetEventBus sets event bus.
+func (cs *ConsensusState) SetEventBus(b *types.EventBus) {
+	cs.eventBus = b
 }
 
 // String returns a string.
@@ -212,11 +212,16 @@ func (cs *ConsensusState) LoadCommit(height int) *types.Commit {
 // OnStart implements cmn.Service.
 // It loads the latest state via the WAL, and starts the timeout and receive routines.
 func (cs *ConsensusState) OnStart() error {
-
-	walFile := cs.config.WalFile()
-	if err := cs.OpenWAL(walFile); err != nil {
-		cs.Logger.Error("Error loading ConsensusState wal", "err", err.Error())
-		return err
+	// we may set the WAL in testing before calling Start,
+	// so only OpenWAL if its still the nilWAL
+	if _, ok := cs.wal.(nilWAL); ok {
+		walFile := cs.config.WalFile()
+		wal, err := cs.OpenWAL(walFile)
+		if err != nil {
+			cs.Logger.Error("Error loading ConsensusState wal", "err", err.Error())
+			return err
+		}
+		cs.wal = wal
 	}
 
 	// we need the timeoutRoutine for replay so
@@ -260,7 +265,7 @@ func (cs *ConsensusState) OnStop() {
 	cs.timeoutTicker.Stop()
 
 	// Make BaseService.Wait() wait until cs.wal.Wait()
-	if cs.wal != nil && cs.IsRunning() {
+	if cs.IsRunning() {
 		cs.wal.Wait()
 	}
 }
@@ -273,25 +278,17 @@ func (cs *ConsensusState) Wait() {
 }
 
 // OpenWAL opens a file to log all consensus messages and timeouts for deterministic accountability
-func (cs *ConsensusState) OpenWAL(walFile string) (err error) {
-	err = cmn.EnsureDir(filepath.Dir(walFile), 0700)
-	if err != nil {
-		cs.Logger.Error("Error ensuring ConsensusState wal dir", "err", err.Error())
-		return err
-	}
-
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+func (cs *ConsensusState) OpenWAL(walFile string) (WAL, error) {
 	wal, err := NewWAL(walFile, cs.config.WalLight)
 	if err != nil {
-		return err
+		cs.Logger.Error("Failed to open WAL for consensus state", "wal", walFile, "err", err)
+		return nil, err
 	}
 	wal.SetLogger(cs.Logger.With("wal", walFile))
 	if _, err := wal.Start(); err != nil {
-		return err
+		return nil, err
 	}
-	cs.wal = wal
-	return nil
+	return wal, nil
 }
 
 //------------------------------------------------------------
@@ -480,9 +477,9 @@ func (cs *ConsensusState) newStep() {
 	rs := cs.RoundStateEvent()
 	cs.wal.Save(rs)
 	cs.nSteps += 1
-	// newStep is called by updateToStep in NewConsensusState before the evsw is set!
-	if cs.evsw != nil {
-		types.FireEventNewRoundStep(cs.evsw, rs)
+	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
+	if cs.eventBus != nil {
+		cs.eventBus.PublishEventNewRoundStep(rs)
 	}
 }
 
@@ -536,9 +533,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// priv_val tracks LastSig
 
 			// close wal now that we're done writing to it
-			if cs.wal != nil {
-				cs.wal.Stop()
-			}
+			cs.wal.Stop()
 
 			close(cs.done)
 			return
@@ -607,13 +602,13 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 	case cstypes.RoundStepNewRound:
 		cs.enterPropose(ti.Height, 0)
 	case cstypes.RoundStepPropose:
-		types.FireEventTimeoutPropose(cs.evsw, cs.RoundStateEvent())
+		cs.eventBus.PublishEventTimeoutPropose(cs.RoundStateEvent())
 		cs.enterPrevote(ti.Height, ti.Round)
 	case cstypes.RoundStepPrevoteWait:
-		types.FireEventTimeoutWait(cs.evsw, cs.RoundStateEvent())
+		cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent())
 		cs.enterPrecommit(ti.Height, ti.Round)
 	case cstypes.RoundStepPrecommitWait:
-		types.FireEventTimeoutWait(cs.evsw, cs.RoundStateEvent())
+		cs.eventBus.PublishEventTimeoutWait(cs.RoundStateEvent())
 		cs.enterNewRound(ti.Height, ti.Round+1)
 	default:
 		panic(cmn.Fmt("Invalid timeout step: %v", ti.Step))
@@ -673,7 +668,7 @@ func (cs *ConsensusState) enterNewRound(height int, round int) {
 	}
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 
-	types.FireEventNewRound(cs.evsw, cs.RoundStateEvent())
+	cs.eventBus.PublishEventNewRound(cs.RoundStateEvent())
 
 	// Wait for txs to be available in the mempool
 	// before we enterPropose in round 0. If the last block changed the app hash,
@@ -726,8 +721,7 @@ func (cs *ConsensusState) proposalHeartbeat(height, round int) {
 			ValidatorIndex:   valIndex,
 		}
 		cs.privValidator.SignHeartbeat(chainID, heartbeat)
-		heartbeatEvent := types.EventDataProposalHeartbeat{heartbeat}
-		types.FireEventProposalHeartbeat(cs.evsw, heartbeatEvent)
+		cs.eventBus.PublishEventProposalHeartbeat(types.EventDataProposalHeartbeat{heartbeat})
 		counter += 1
 		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 	}
@@ -885,7 +879,7 @@ func (cs *ConsensusState) enterPrevote(height int, round int) {
 
 	// fire event for how we got here
 	if cs.isProposalComplete() {
-		types.FireEventCompleteProposal(cs.evsw, cs.RoundStateEvent())
+		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
 	} else {
 		// we received +2/3 prevotes for a future round
 		// TODO: catchup event?
@@ -987,7 +981,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	}
 
 	// At this point +2/3 prevoted for a particular block or nil
-	types.FireEventPolka(cs.evsw, cs.RoundStateEvent())
+	cs.eventBus.PublishEventPolka(cs.RoundStateEvent())
 
 	// the latest POLRound should be this round
 	polRound, _ := cs.Votes.POLInfo()
@@ -1004,7 +998,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 			cs.LockedRound = 0
 			cs.LockedBlock = nil
 			cs.LockedBlockParts = nil
-			types.FireEventUnlock(cs.evsw, cs.RoundStateEvent())
+			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 		}
 		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		return
@@ -1016,7 +1010,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
 		cs.Logger.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
-		types.FireEventRelock(cs.evsw, cs.RoundStateEvent())
+		cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
 		cs.signAddVote(types.VoteTypePrecommit, blockID.Hash, blockID.PartsHeader)
 		return
 	}
@@ -1031,7 +1025,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 		cs.LockedRound = round
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
-		types.FireEventLock(cs.evsw, cs.RoundStateEvent())
+		cs.eventBus.PublishEventLock(cs.RoundStateEvent())
 		cs.signAddVote(types.VoteTypePrecommit, blockID.Hash, blockID.PartsHeader)
 		return
 	}
@@ -1047,7 +1041,7 @@ func (cs *ConsensusState) enterPrecommit(height int, round int) {
 		cs.ProposalBlock = nil
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
-	types.FireEventUnlock(cs.evsw, cs.RoundStateEvent())
+	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 	cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 }
 
@@ -1191,21 +1185,19 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	// WAL replay for blocks with an #ENDHEIGHT
 	// As is, ConsensusState should not be started again
 	// until we successfully call ApplyBlock (ie. here or in Handshake after restart)
-	if cs.wal != nil {
-		cs.wal.Save(EndHeightMessage{uint64(height)})
-	}
+	cs.wal.Save(EndHeightMessage{uint64(height)})
 
 	fail.Fail() // XXX
 
 	// Create a copy of the state for staging
 	// and an event cache for txs
 	stateCopy := cs.state.Copy()
-	eventCache := types.NewEventCache(cs.evsw)
+	txEventBuffer := types.NewTxEventBuffer(cs.eventBus, block.NumTxs)
 
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// All calls to the proxyAppConn come here.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
-	err := stateCopy.ApplyBlock(eventCache, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+	err := stateCopy.ApplyBlock(txEventBuffer, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := cmn.Kill()
@@ -1224,9 +1216,12 @@ func (cs *ConsensusState) finalizeCommit(height int) {
 	//	* Fire before persisting state, in ApplyBlock
 	//	* Fire on start up if we haven't written any new WAL msgs
 	//   Both options mean we may fire more than once. Is that fine ?
-	types.FireEventNewBlock(cs.evsw, types.EventDataNewBlock{block})
-	types.FireEventNewBlockHeader(cs.evsw, types.EventDataNewBlockHeader{block.Header})
-	eventCache.Flush()
+	cs.eventBus.PublishEventNewBlock(types.EventDataNewBlock{block})
+	cs.eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{block.Header})
+	err = txEventBuffer.Flush()
+	if err != nil {
+		cs.Logger.Error("Failed to flush event buffer", "err", err)
+	}
 
 	fail.Fail() // XXX
 
@@ -1361,7 +1356,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 		added, err = cs.LastCommit.AddVote(vote)
 		if added {
 			cs.Logger.Info(cmn.Fmt("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
-			types.FireEventVote(cs.evsw, types.EventDataVote{vote})
+			cs.eventBus.PublishEventVote(types.EventDataVote{vote})
 
 			// if we can skip timeoutCommit and have all the votes now,
 			if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
@@ -1379,7 +1374,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 		height := cs.Height
 		added, err = cs.Votes.AddVote(vote, peerKey)
 		if added {
-			types.FireEventVote(cs.evsw, types.EventDataVote{vote})
+			cs.eventBus.PublishEventVote(types.EventDataVote{vote})
 
 			switch vote.Type {
 			case types.VoteTypePrevote:
@@ -1397,7 +1392,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 						cs.LockedRound = 0
 						cs.LockedBlock = nil
 						cs.LockedBlockParts = nil
-						types.FireEventUnlock(cs.evsw, cs.RoundStateEvent())
+						cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 					}
 				}
 				if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {

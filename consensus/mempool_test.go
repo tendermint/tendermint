@@ -7,7 +7,6 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/types"
-
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -22,7 +21,7 @@ func TestNoProgressUntilTxsAvailable(t *testing.T) {
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
 	ensureNewStep(newBlockCh) // first block gets committed
@@ -41,7 +40,7 @@ func TestProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
 	ensureNewStep(newBlockCh)   // first block gets committed
@@ -56,9 +55,9 @@ func TestProgressInHigherRound(t *testing.T) {
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
-	newRoundCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewRound(), 1)
-	timeoutCh := subscribeToEvent(cs.evsw, "tester", types.EventStringTimeoutPropose(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
+	timeoutCh := subscribe(cs.eventBus, types.EventQueryTimeoutPropose)
 	cs.setProposal = func(proposal *types.Proposal) error {
 		if cs.Height == 2 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
@@ -92,11 +91,10 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 }
 
 func TestTxConcurrentWithCommit(t *testing.T) {
-
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusState(state, privVals[0], NewCounterApplication())
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 
 	NTxs := 10000
 	go deliverTxsRange(cs, 0, NTxs)

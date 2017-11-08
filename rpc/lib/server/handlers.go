@@ -18,7 +18,6 @@ import (
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
-	events "github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -350,9 +349,10 @@ const (
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
 )
 
-// a single websocket connection
-// contains listener id, underlying ws connection,
-// and the event switch for subscribing to events
+// a single websocket connection contains listener id, underlying ws
+// connection, and the event switch for subscribing to events.
+//
+// In case of an error, the connection is stopped.
 type wsConnection struct {
 	cmn.BaseService
 
@@ -361,7 +361,8 @@ type wsConnection struct {
 	writeChan  chan types.RPCResponse
 
 	funcMap map[string]*RPCFunc
-	evsw    events.EventSwitch
+
+	subscriptions map[string]interface{}
 
 	// write channel capacity
 	writeChanCapacity int
@@ -374,19 +375,23 @@ type wsConnection struct {
 
 	// Send pings to server with this period. Must be less than readWait, but greater than zero.
 	pingPeriod time.Duration
+
+	// called before stopping the connection.
+	onDisconnect func(remoteAddr string)
 }
 
-// NewWSConnection wraps websocket.Conn. See the commentary on the
-// func(*wsConnection) functions for a detailed description of how to configure
-// ping period and pong wait time.
-// NOTE: if the write buffer is full, pongs may be dropped, which may cause clients to disconnect.
-//   see https://github.com/gorilla/websocket/issues/97
-func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, evsw events.EventSwitch, options ...func(*wsConnection)) *wsConnection {
+// NewWSConnection wraps websocket.Conn.
+//
+// See the commentary on the func(*wsConnection) functions for a detailed
+// description of how to configure ping period and pong wait time. NOTE: if the
+// write buffer is full, pongs may be dropped, which may cause clients to
+// disconnect. see https://github.com/gorilla/websocket/issues/97
+func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, options ...func(*wsConnection)) *wsConnection {
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
 		funcMap:           funcMap,
-		evsw:              evsw,
+		subscriptions:     make(map[string]interface{}),
 		writeWait:         defaultWSWriteWait,
 		writeChanCapacity: defaultWSWriteChanCapacity,
 		readWait:          defaultWSReadWait,
@@ -431,7 +436,16 @@ func PingPeriod(pingPeriod time.Duration) func(*wsConnection) {
 	}
 }
 
-// OnStart starts the read and write routines. It blocks until the connection closes.
+// OnDisconnect called before stopping the connection.
+// It should only be used in the constructor - not Goroutine-safe.
+func OnDisconnect(cb func(remoteAddr string)) func(*wsConnection) {
+	return func(wsc *wsConnection) {
+		wsc.onDisconnect = cb
+	}
+}
+
+// OnStart implements cmn.Service by starting the read and write routines. It
+// blocks until the connection closes.
 func (wsc *wsConnection) OnStart() error {
 	wsc.writeChan = make(chan types.RPCResponse, wsc.writeChanCapacity)
 
@@ -443,25 +457,19 @@ func (wsc *wsConnection) OnStart() error {
 	return nil
 }
 
-// OnStop unsubscribes from all events.
+// OnStop implements cmn.Service by calling OnDisconnect callback.
 func (wsc *wsConnection) OnStop() {
-	if wsc.evsw != nil {
-		wsc.evsw.RemoveListener(wsc.remoteAddr)
-	}
 	// Both read and write loops close the websocket connection when they exit their loops.
 	// The writeChan is never closed, to allow WriteRPCResponse() to fail.
+	if wsc.onDisconnect != nil {
+		wsc.onDisconnect(wsc.remoteAddr)
+	}
 }
 
 // GetRemoteAddr returns the remote address of the underlying connection.
 // It implements WSRPCConnection
 func (wsc *wsConnection) GetRemoteAddr() string {
 	return wsc.remoteAddr
-}
-
-// GetEventSwitch returns the event switch.
-// It implements WSRPCConnection
-func (wsc *wsConnection) GetEventSwitch() events.EventSwitch {
-	return wsc.evsw
 }
 
 // WriteRPCResponse pushes a response to the writeChan, and blocks until it is accepted.
@@ -485,6 +493,28 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	default:
 		return false
 	}
+}
+
+func (wsc *wsConnection) AddSubscription(query string, data interface{}) error {
+	if _, ok := wsc.subscriptions[query]; ok {
+		return errors.New("Already subscribed")
+	}
+
+	wsc.subscriptions[query] = data
+	return nil
+}
+
+func (wsc *wsConnection) DeleteSubscription(query string) (interface{}, bool) {
+	data, ok := wsc.subscriptions[query]
+	if ok {
+		delete(wsc.subscriptions, query)
+		return data, true
+	}
+	return nil, false
+}
+
+func (wsc *wsConnection) DeleteAllSubscriptions() {
+	wsc.subscriptions = make(map[string]interface{})
 }
 
 // Read from the socket and subscribe to or unsubscribe from events
@@ -644,17 +674,16 @@ func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error
 type WebsocketManager struct {
 	websocket.Upgrader
 	funcMap       map[string]*RPCFunc
-	evsw          events.EventSwitch
 	logger        log.Logger
 	wsConnOptions []func(*wsConnection)
 }
 
-// NewWebsocketManager returns a new WebsocketManager that routes according to the given funcMap, listens on the given event switch,
-// and connects to the server with the given connection options.
-func NewWebsocketManager(funcMap map[string]*RPCFunc, evsw events.EventSwitch, wsConnOptions ...func(*wsConnection)) *WebsocketManager {
+// NewWebsocketManager returns a new WebsocketManager that routes according to
+// the given funcMap and connects to the server with the given connection
+// options.
+func NewWebsocketManager(funcMap map[string]*RPCFunc, wsConnOptions ...func(*wsConnection)) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
-		evsw:    evsw,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// TODO ???
@@ -681,7 +710,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// register connection
-	con := NewWSConnection(wsConn, wm.funcMap, wm.evsw, wm.wsConnOptions...)
+	con := NewWSConnection(wsConn, wm.funcMap, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	con.Start() // Blocking

@@ -1,16 +1,17 @@
 package consensus
 
 import (
+	"context"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/events"
 )
 
 func init() {
@@ -41,18 +42,8 @@ func TestByzantine(t *testing.T) {
 		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 
-	reactors := make([]p2p.Reactor, N)
-	defer func() {
-		for _, r := range reactors {
-			if rr, ok := r.(*ByzantineReactor); ok {
-				rr.reactor.Switch.Stop()
-			} else {
-				r.(*ConsensusReactor).Switch.Stop()
-			}
-		}
-	}()
 	eventChans := make([]chan interface{}, N)
-	eventLogger := logger.With("module", "events")
+	reactors := make([]p2p.Reactor, N)
 	for i := 0; i < N; i++ {
 		if i == 0 {
 			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator)
@@ -65,17 +56,19 @@ func TestByzantine(t *testing.T) {
 			css[i].doPrevote = func(height, round int) {}
 		}
 
-		eventSwitch := events.NewEventSwitch()
-		eventSwitch.SetLogger(eventLogger.With("validator", i))
-		_, err := eventSwitch.Start()
-		if err != nil {
-			t.Fatalf("Failed to start switch: %v", err)
-		}
-		eventChans[i] = subscribeToEvent(eventSwitch, "tester", types.EventStringNewBlock(), 1)
+		eventBus := types.NewEventBus()
+		eventBus.SetLogger(logger.With("module", "events", "validator", i))
+		_, err := eventBus.Start()
+		require.NoError(t, err)
+		defer eventBus.Stop()
+
+		eventChans[i] = make(chan interface{}, 1)
+		err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		require.NoError(t, err)
 
 		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
 		conR.SetLogger(logger.With("validator", i))
-		conR.SetEventSwitch(eventSwitch)
+		conR.SetEventBus(eventBus)
 
 		var conRI p2p.Reactor
 		conRI = conR
@@ -85,6 +78,16 @@ func TestByzantine(t *testing.T) {
 		}
 		reactors[i] = conRI
 	}
+
+	defer func() {
+		for _, r := range reactors {
+			if rr, ok := r.(*ByzantineReactor); ok {
+				rr.reactor.Switch.Stop()
+			} else {
+				r.(*ConsensusReactor).Switch.Stop()
+			}
+		}
+	}()
 
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		// ignore new switch s, we already made ours

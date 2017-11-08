@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"hash/crc32"
 	"io"
+	"path/filepath"
 	"time"
+
+	"github.com/pkg/errors"
 
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
@@ -45,11 +48,22 @@ var _ = wire.RegisterInterface(
 //--------------------------------------------------------
 // Simple write-ahead logger
 
+// WAL is an interface for any write-ahead logger.
+type WAL interface {
+	Save(WALMessage)
+	Group() *auto.Group
+	SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error)
+
+	Start() (bool, error)
+	Stop() bool
+	Wait()
+}
+
 // Write ahead logger writes msgs to disk before they are processed.
 // Can be used for crash-recovery and deterministic replay
 // TODO: currently the wal is overwritten during replay catchup
 //   give it a mode so it's either reading or appending - must read to end to start appending again
-type WAL struct {
+type baseWAL struct {
 	cmn.BaseService
 
 	group *auto.Group
@@ -58,21 +72,30 @@ type WAL struct {
 	enc *WALEncoder
 }
 
-func NewWAL(walFile string, light bool) (*WAL, error) {
+func NewWAL(walFile string, light bool) (*baseWAL, error) {
+	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
+	}
+
 	group, err := auto.OpenGroup(walFile)
 	if err != nil {
 		return nil, err
 	}
-	wal := &WAL{
+	wal := &baseWAL{
 		group: group,
 		light: light,
 		enc:   NewWALEncoder(group),
 	}
-	wal.BaseService = *cmn.NewBaseService(nil, "WAL", wal)
+	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
 	return wal, nil
 }
 
-func (wal *WAL) OnStart() error {
+func (wal *baseWAL) Group() *auto.Group {
+	return wal.group
+}
+
+func (wal *baseWAL) OnStart() error {
 	size, err := wal.group.Head.Size()
 	if err != nil {
 		return err
@@ -83,13 +106,13 @@ func (wal *WAL) OnStart() error {
 	return err
 }
 
-func (wal *WAL) OnStop() {
+func (wal *baseWAL) OnStop() {
 	wal.BaseService.OnStop()
 	wal.group.Stop()
 }
 
 // called in newStep and for each pass in receiveRoutine
-func (wal *WAL) Save(msg WALMessage) {
+func (wal *baseWAL) Save(msg WALMessage) {
 	if wal == nil {
 		return
 	}
@@ -119,7 +142,7 @@ func (wal *WAL) Save(msg WALMessage) {
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
-func (wal *WAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error) {
+func (wal *baseWAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error) {
 	var msg *TimedWALMessage
 
 	// NOTE: starting from the last file in the group because we're usually
@@ -277,3 +300,14 @@ func readSeparator(r io.Reader) error {
 	}
 	return nil
 }
+
+type nilWAL struct{}
+
+func (nilWAL) Save(m WALMessage)  {}
+func (nilWAL) Group() *auto.Group { return nil }
+func (nilWAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error) {
+	return nil, false, nil
+}
+func (nilWAL) Start() (bool, error) { return true, nil }
+func (nilWAL) Stop() bool           { return true }
+func (nilWAL) Wait()                {}
