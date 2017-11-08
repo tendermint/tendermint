@@ -24,7 +24,7 @@ type Reactor interface {
 	GetChannels() []*ChannelDescriptor
 	AddPeer(peer Peer)
 	RemovePeer(peer Peer, reason interface{})
-	Receive(chID byte, peer Peer, msgBytes []byte)
+	Receive(chID byte, peer Peer, msgBytes []byte) // CONTRACT: msgBytes are not nil
 }
 
 //--------------------------------------

@@ -103,7 +103,7 @@ func (r *PEXReactor) AddPeer(p Peer) {
 	} else { // For inbound connections, the peer is its own source
 		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
 		if err != nil {
-			// this should never happen
+			// peer gave us a bad ListenAddr. TODO: punish
 			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
 			return
 		}
@@ -120,7 +120,12 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	srcAddrStr := src.NodeInfo().RemoteAddr
-	srcAddr, _ := NewNetAddressString(srcAddrStr)
+	srcAddr, err := NewNetAddressString(srcAddrStr)
+	if err != nil {
+		// this should never happen. TODO: cancel conn
+		r.Logger.Error("Error in Receive: invalid peer address", "addr", srcAddrStr, "err", err)
+		return
+	}
 
 	r.IncrementMsgCountForPeer(srcAddrStr)
 	if r.ReachedMaxMsgCountForPeer(srcAddrStr) {

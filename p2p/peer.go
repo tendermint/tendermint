@@ -210,7 +210,7 @@ func (p *peer) PubKey() crypto.PubKeyEd25519 {
 	if p.config.AuthEnc {
 		return p.conn.(*SecretConnection).RemotePubKey()
 	}
-	if p.NodeInfo == nil {
+	if p.NodeInfo() == nil {
 		panic("Attempt to get peer's PubKey before calling Handshake")
 	}
 	return p.PubKey()
@@ -306,6 +306,9 @@ func (p *peer) Key() string {
 
 // NodeInfo returns a copy of the peer's NodeInfo.
 func (p *peer) NodeInfo() *NodeInfo {
+	if p.nodeInfo == nil {
+		return nil
+	}
 	n := *p.nodeInfo // copy
 	return &n
 }
