@@ -223,7 +223,7 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 
 		}
 		result := new(ResultEcho)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		if err != nil {
 			return "", nil
 		}
@@ -247,7 +247,7 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 
 		}
 		result := new(ResultEchoBytes)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		if err != nil {
 			return []byte{}, nil
 		}
@@ -328,7 +328,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 			t.Fatal(err)
 		}
 		result := new(ResultEcho)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		require.Nil(t, err)
 		got := result.Value
 		assert.Equal(t, got, val)
@@ -353,7 +353,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 			t.Fatalf("%+v", err)
 		}
 		result := new(ResultEcho)
-		err = json.Unmarshal(*msg.Result, result)
+		err = json.Unmarshal(msg.Result, result)
 		require.Nil(t, err)
 		got := result.Value
 		assert.Equal(t, got, val)

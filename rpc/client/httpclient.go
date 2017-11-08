@@ -311,7 +311,7 @@ func (w *WSEvents) eventListener() {
 				continue
 			}
 			result := new(ctypes.ResultEvent)
-			err := json.Unmarshal(*resp.Result, result)
+			err := json.Unmarshal(resp.Result, result)
 			if err != nil {
 				// ignore silently (eg. subscribe, unsubscribe and maybe other events)
 				// TODO: ?

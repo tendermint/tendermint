@@ -46,7 +46,7 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.mtx.RUnlock()
 
 		res := json.RawMessage(`{}`)
-		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: &res})
+		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: res})
 		if err := conn.WriteMessage(messageType, emptyRespBytes); err != nil {
 			return
 		}
@@ -204,7 +204,7 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 			if resp.Error != nil {
 				t.Fatalf("unexpected error: %v", resp.Error)
 			}
-			if *resp.Result != nil {
+			if resp.Result != nil {
 				wg.Done()
 			}
 		case <-c.Quit:
