@@ -457,10 +457,13 @@ func (wsc *wsConnection) OnStart() error {
 	return nil
 }
 
-// OnStop is a nop.
+// OnStop implements cmn.Service by calling OnDisconnect callback.
 func (wsc *wsConnection) OnStop() {
 	// Both read and write loops close the websocket connection when they exit their loops.
 	// The writeChan is never closed, to allow WriteRPCResponse() to fail.
+	if wsc.onDisconnect != nil {
+		wsc.onDisconnect(wsc.remoteAddr)
+	}
 }
 
 // GetRemoteAddr returns the remote address of the underlying connection.
