@@ -15,16 +15,11 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
-func getTempDir(prefix string) string {
-	dir, err := ioutil.TempDir("", prefix)
+func TestTrustMetricStoreSaveLoad(t *testing.T) {
+	dir, err := ioutil.TempDir("", "trust_test")
 	if err != nil {
 		panic(err)
 	}
-	return dir
-}
-
-func TestTrustMetricStoreSaveLoad(t *testing.T) {
-	dir := getTempDir("trustMetricStoreTest")
 	defer os.Remove(dir)
 
 	historyDB := dbm.NewDB("trusthistory", "goleveldb", dir)
