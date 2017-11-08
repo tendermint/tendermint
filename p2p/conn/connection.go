@@ -466,6 +466,7 @@ FOR_LOOP:
 			}
 		case packetTypePong:
 			c.Logger.Debug("Receive Pong")
+			// Should we unset pongTimer if we get other packet?
 			c.pongTimer.Unset()
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
