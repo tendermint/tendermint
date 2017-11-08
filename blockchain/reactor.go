@@ -121,6 +121,8 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	if !peer.Send(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
 		// doing nothing, will try later in `poolRoutine`
 	}
+	// peer is added to the pool once we receive the first
+	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
