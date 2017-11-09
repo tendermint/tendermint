@@ -579,7 +579,7 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstype
 			Round:  prs.Round,  // Not our height, so it doesn't matter.
 			Part:   part,
 		}
-		logger.Debug("Sending block part for catchup", "height", prs.Height, "round", prs.Round, "index", index)
+		logger.Debug("Sending block part for catchup", "round", prs.Round, "index", index)
 		if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
 		} else {
