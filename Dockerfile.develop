@@ -1,0 +1,15 @@
+FROM golang:latest
+
+RUN mkdir -p /go/src/github.com/tendermint/abci
+WORKDIR /go/src/github.com/tendermint/abci
+
+COPY Makefile /go/src/github.com/tendermint/abci/
+
+RUN make install_protoc
+
+COPY glide.yaml /go/src/github.com/tendermint/abci/
+COPY glide.lock /go/src/github.com/tendermint/abci/
+
+RUN make get_vendor_deps
+
+COPY . /go/src/github.com/tendermint/abci
