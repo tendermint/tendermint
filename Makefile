@@ -89,4 +89,10 @@ metalinter_test: tools
 	   	#--enable=unparam \
 		#--enable=vet \
 
-.PHONY: all build test fmt get_deps tools protoc install_protoc
+build-docker:
+	docker build -t "tendermint/abci-dev" -f Dockerfile.develop .
+
+run-docker:
+	docker run -it --rm -v "$PWD:/go/src/github.com/tendermint/abci" -w "/go/src/github.com/tendermint/abci" "tendermint/abci-dev" /bin/bash
+
+.PHONY: all build test fmt get_deps tools protoc install_protoc build-docker run-docker
