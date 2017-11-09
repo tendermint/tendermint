@@ -1,6 +1,7 @@
 package node
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -22,10 +23,9 @@ func TestNodeStartStop(t *testing.T) {
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block
-	blockCh := make(chan struct{})
-	types.AddListenerForEvent(n.EventSwitch(), "node_test", types.EventStringNewBlock(), func(types.TMEventData) {
-		blockCh <- struct{}{}
-	})
+	blockCh := make(chan interface{})
+	err = n.EventBus().Subscribe(context.Background(), "node_test", types.EventQueryNewBlock, blockCh)
+	assert.NoError(t, err)
 	select {
 	case <-blockCh:
 	case <-time.After(5 * time.Second):
