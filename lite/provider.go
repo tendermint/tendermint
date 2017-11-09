@@ -1,4 +1,4 @@
-package light
+package lite
 
 // Provider is used to get more validators by other means.
 //

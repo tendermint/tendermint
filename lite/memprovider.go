@@ -1,10 +1,10 @@
-package light
+package lite
 
 import (
 	"encoding/hex"
 	"sort"
 
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 type memStoreProvider struct {
@@ -60,7 +60,7 @@ func (m *memStoreProvider) GetByHeight(h int) (FullCommit, error) {
 			return fc, nil
 		}
 	}
-	return FullCommit{}, lightErr.ErrCommitNotFound()
+	return FullCommit{}, liteErr.ErrCommitNotFound()
 }
 
 // GetByHash returns the FullCommit for the hash or an error if the commit is not found.
@@ -68,7 +68,7 @@ func (m *memStoreProvider) GetByHash(hash []byte) (FullCommit, error) {
 	var err error
 	fc, ok := m.byHash[m.encodeHash(hash)]
 	if !ok {
-		err = lightErr.ErrCommitNotFound()
+		err = liteErr.ErrCommitNotFound()
 	}
 	return fc, err
 }
@@ -77,7 +77,7 @@ func (m *memStoreProvider) GetByHash(hash []byte) (FullCommit, error) {
 func (m *memStoreProvider) LatestCommit() (FullCommit, error) {
 	l := len(m.byHeight)
 	if l == 0 {
-		return FullCommit{}, lightErr.ErrCommitNotFound()
+		return FullCommit{}, liteErr.ErrCommitNotFound()
 	}
 	return m.byHeight[l-1], nil
 }
