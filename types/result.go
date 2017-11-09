@@ -12,6 +12,7 @@ type Result struct {
 	Code CodeType   `json:"code"`
 	Data data.Bytes `json:"data"`
 	Log  string     `json:"log"` // Can be non-deterministic
+	Tags []*KVPair  `json:"tags"`
 }
 
 func NewResult(code CodeType, data []byte, log string) Result {
@@ -102,6 +103,7 @@ func (r *ResponseCheckTx) Result() Result {
 		Code: r.Code,
 		Data: r.Data,
 		Log:  r.Log,
+		Tags: r.Tags,
 	}
 }
 
@@ -111,6 +113,7 @@ func (r *ResponseDeliverTx) Result() Result {
 		Code: r.Code,
 		Data: r.Data,
 		Log:  r.Log,
+		Tags: r.Tags,
 	}
 }
 

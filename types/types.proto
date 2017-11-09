@@ -156,15 +156,17 @@ message ResponseSetOption{
 }
 
 message ResponseDeliverTx{
-	CodeType          code        = 1;
-	bytes             data        = 2;
-	string            log         = 3;
+  CodeType          code        = 1;
+  bytes             data        = 2;
+  string            log         = 3;
+  repeated KVPair tags = 4;
 }
 
 message ResponseCheckTx{
 	CodeType          code        = 1;
 	bytes             data        = 2;
 	string            log         = 3;
+  repeated KVPair tags = 4;
 }
 
 message ResponseQuery{
@@ -222,6 +224,15 @@ message PartSetHeader {
 message Validator {
 	bytes pubKey = 1;
 	uint64 power = 2;
+}
+
+//----------------------------------------
+// Abstract types
+
+message KVPair {
+  string key = 1;
+  string value_string = 2;
+  int64 value_int = 3;
 }
 
 //----------------------------------------

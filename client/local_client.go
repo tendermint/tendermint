@@ -75,7 +75,7 @@ func (app *localClient) DeliverTxAsync(tx []byte) *ReqRes {
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestDeliverTx(tx),
-		types.ToResponseDeliverTx(res.Code, res.Data, res.Log),
+		types.ToResponseDeliverTx(res.Code, res.Data, res.Log, res.Tags),
 	)
 }
 
@@ -85,7 +85,7 @@ func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestCheckTx(tx),
-		types.ToResponseCheckTx(res.Code, res.Data, res.Log),
+		types.ToResponseCheckTx(res.Code, res.Data, res.Log, res.Tags),
 	)
 }
 

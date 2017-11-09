@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 )
 
 func ToRequestEcho(message string) *Request {
@@ -105,15 +105,15 @@ func ToResponseSetOption(log string) *Response {
 	}
 }
 
-func ToResponseDeliverTx(code CodeType, data []byte, log string) *Response {
+func ToResponseDeliverTx(code CodeType, data []byte, log string, tags []*KVPair) *Response {
 	return &Response{
-		Value: &Response_DeliverTx{&ResponseDeliverTx{code, data, log}},
+		Value: &Response_DeliverTx{&ResponseDeliverTx{code, data, log, tags}},
 	}
 }
 
-func ToResponseCheckTx(code CodeType, data []byte, log string) *Response {
+func ToResponseCheckTx(code CodeType, data []byte, log string, tags []*KVPair) *Response {
 	return &Response{
-		Value: &Response_CheckTx{&ResponseCheckTx{code, data, log}},
+		Value: &Response_CheckTx{&ResponseCheckTx{code, data, log, tags}},
 	}
 }
 
