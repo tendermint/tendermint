@@ -148,7 +148,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	for _, desc := range chDescs {
 		descCopy := *desc // copy the desc else unsafe access across connections
 		channel := newChannel(mconn, &descCopy)
-		channelsIdx[channel.id] = channel
+		channelsIdx[channel.desc.ID] = channel
 		channels = append(channels, channel)
 	}
 	mconn.channels = channels
@@ -372,7 +372,7 @@ func (c *MConnection) sendMsgPacket() bool {
 			continue
 		}
 		// Get ratio, and keep track of lowest ratio.
-		ratio := float32(channel.recentlySent) / float32(channel.priority)
+		ratio := float32(channel.recentlySent) / float32(channel.desc.Priority)
 		if ratio < leastRatio {
 			leastRatio = ratio
 			leastChannel = channel
@@ -516,10 +516,10 @@ func (c *MConnection) Status() ConnectionStatus {
 	status.Channels = make([]ChannelStatus, len(c.channels))
 	for i, channel := range c.channels {
 		status.Channels[i] = ChannelStatus{
-			ID:                channel.id,
+			ID:                channel.desc.ID,
 			SendQueueCapacity: cap(channel.sendQueue),
 			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
-			Priority:          channel.priority,
+			Priority:          channel.desc.Priority,
 			RecentlySent:      channel.recentlySent,
 		}
 	}
@@ -553,18 +553,18 @@ func (chDesc *ChannelDescriptor) FillDefaults() {
 type Channel struct {
 	conn          *MConnection
 	desc          *ChannelDescriptor
-	id            byte
 	sendQueue     chan []byte
 	sendQueueSize int32 // atomic.
 	recving       []byte
 	sending       []byte
-	priority      int
 	recentlySent  int64 // exponential moving average
 
 	maxMsgPacketPayloadSize int
 }
 
 func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
+	descCopy := *desc
+	desc = &descCopy
 	desc.FillDefaults()
 	if desc.Priority <= 0 {
 		cmn.PanicSanity("Channel default priority must be a postive integer")
@@ -572,10 +572,8 @@ func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
 	return &Channel{
 		conn:                    conn,
 		desc:                    desc,
-		id:                      desc.ID,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
-		priority:                desc.Priority,
 		maxMsgPacketPayloadSize: conn.config.maxMsgPacketPayloadSize,
 	}
 }
@@ -634,7 +632,7 @@ func (ch *Channel) isSendPending() bool {
 // Not goroutine-safe
 func (ch *Channel) nextMsgPacket() msgPacket {
 	packet := msgPacket{}
-	packet.ChannelID = byte(ch.id)
+	packet.ChannelID = byte(ch.desc.ID)
 	maxSize := ch.maxMsgPacketPayloadSize
 	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
