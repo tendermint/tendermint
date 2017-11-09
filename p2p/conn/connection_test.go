@@ -23,7 +23,10 @@ func createTestMConnection(conn net.Conn) *MConnection {
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
 	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := NewMConnection(conn, chDescs, onReceive, onError)
+	cfg := DefaultMConnConfig()
+	cfg.pingTimeout = 40 * time.Millisecond
+	cfg.pongTimeout = 60 * time.Millisecond
+	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
 	return c
 }
@@ -142,7 +145,7 @@ func TestPingPongTimeout(t *testing.T) {
 	case err := <-errorsCh:
 		assert.NotNil(err)
 		assert.False(mconn.IsRunning())
-	case <-time.After(500*time.Millisecond + 100*time.Second):
+	case <-time.After(10*time.Millisecond + mconn.config.pingTimeout + mconn.config.pongTimeout):
 		t.Fatal("Did not receive error in ~(pingTimeout + pongTimeout) seconds")
 	}
 }
