@@ -55,6 +55,8 @@ func (rs RoundStepType) String() string {
 // It is Immutable when returned from ConsensusState.GetRoundState()
 // TODO: Actually, only the top pointer is copied,
 // so access to field pointers is still racey
+// NOTE: Not thread safe. Should only be manipulated by functions downstream
+// of the cs.receiveRoutine
 type RoundState struct {
 	Height             int // Height we are working on
 	Round              int
