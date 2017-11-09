@@ -4,7 +4,7 @@ GOTOOLS = \
 					github.com/alecthomas/gometalinter \
 					github.com/ckaznocha/protoc-gen-lint
 
-all: protoc install test
+all: install test
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 
