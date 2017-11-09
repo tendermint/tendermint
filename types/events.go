@@ -110,12 +110,13 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	Height int           `json:"height"`
-	Tx     Tx            `json:"tx"`
-	Data   data.Bytes    `json:"data"`
-	Log    string        `json:"log"`
-	Code   abci.CodeType `json:"code"`
-	Error  string        `json:"error"` // this is redundant information for now
+	Height int            `json:"height"`
+	Tx     Tx             `json:"tx"`
+	Data   data.Bytes     `json:"data"`
+	Log    string         `json:"log"`
+	Code   abci.CodeType  `json:"code"`
+	Tags   []*abci.KVPair `json:"tags"`
+	Error  string         `json:"error"` // this is redundant information for now
 }
 
 type EventDataProposalHeartbeat struct {

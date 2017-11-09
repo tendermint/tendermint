@@ -75,6 +75,7 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 				Data:   txResult.Data,
 				Code:   txResult.Code,
 				Log:    txResult.Log,
+				Tags:   txResult.Tags,
 				Error:  txError,
 			}
 			txEventPublisher.PublishEventTx(event)

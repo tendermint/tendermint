@@ -17,7 +17,7 @@ func TestTxIndex(t *testing.T) {
 	indexer := &TxIndex{store: db.NewMemDB()}
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: []*abci.KVPair{}}}
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
@@ -34,7 +34,7 @@ func TestTxIndex(t *testing.T) {
 
 func benchmarkTxIndex(txsCount int, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: ""}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: []*abci.KVPair{}}}
 
 	dir, err := ioutil.TempDir("", "tx_index_db")
 	if err != nil {

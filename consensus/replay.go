@@ -392,6 +392,7 @@ func (mock *mockProxyApp) DeliverTx(tx []byte) abci.Result {
 		r.Code,
 		r.Data,
 		r.Log,
+		r.Tags,
 	}
 }
 
