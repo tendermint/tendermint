@@ -44,12 +44,12 @@ func TestMConnectionSend(t *testing.T) {
 	assert.True(mconn.Send(0x01, msg))
 	// Note: subsequent Send/TrySend calls could pass because we are reading from
 	// the send queue in a separate goroutine.
-	server.Read(make([]byte, len(msg)))
+	server.Read(make([]byte, len(wire.BinaryBytes(msg))+4))
 	assert.True(mconn.CanSend(0x01))
 
 	msg = "Spider-Man"
 	assert.True(mconn.TrySend(0x01, msg))
-	server.Read(make([]byte, len(msg)))
+	server.Read(make([]byte, len(wire.BinaryBytes(msg))+4))
 
 	assert.False(mconn.CanSend(0x05), "CanSend should return false because channel is unknown")
 	assert.False(mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
@@ -287,7 +287,7 @@ func TestMConnectionTrySend(t *testing.T) {
 	msg := "Semicolon-Woman"
 	resultCh := make(chan string, 2)
 	assert.True(mconn.TrySend(0x01, msg))
-	server.Read(make([]byte, len(msg)))
+	server.Read(make([]byte, len(wire.BinaryBytes(msg))+4))
 	assert.True(mconn.CanSend(0x01))
 	assert.True(mconn.TrySend(0x01, msg))
 	assert.False(mconn.CanSend(0x01))
@@ -302,6 +302,6 @@ func TestMConnectionTrySend(t *testing.T) {
 	assert.False(mconn.CanSend(0x01))
 	assert.False(mconn.TrySend(0x01, msg))
 	assert.Equal("TrySend", <-resultCh)
-	server.Read(make([]byte, len(msg)))
+	server.Read(make([]byte, len(wire.BinaryBytes(msg))+4))
 	assert.Equal("Send", <-resultCh) // Order constrained by parallel blocking above
 }
