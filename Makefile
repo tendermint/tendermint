@@ -7,12 +7,22 @@ all: protoc install test
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 
-install-protoc:
-	# Download: https://github.com/google/protobuf/releases
+install_protoc:
+	# https://github.com/google/protobuf/releases
+	curl -L https://github.com/google/protobuf/releases/download/v3.4.1/protobuf-cpp-3.4.1.tar.gz | tar xvz && \
+		cd protobuf-cpp-3.4.1 && \
+		DIST_LANG=cpp ./configure && \
+		make && \
+		make install && \
+		cd .. && \
+		rm -rf protobuf-cpp-3.4.1
 	go get github.com/golang/protobuf/protoc-gen-go
 
 protoc:
-	@ protoc --go_out=plugins=grpc:. types/*.proto
+	## On "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
+	##   ldconfig (may require sudo)
+	## https://stackoverflow.com/a/25518702
+	protoc --go_out=plugins=grpc:. types/*.proto
 
 install:
 	@ go install ./cmd/...
@@ -79,4 +89,4 @@ metalinter_test: tools
 	   	#--enable=unparam \
 		#--enable=vet \
 
-.PHONY: all build test fmt get_deps tools
+.PHONY: all build test fmt get_deps tools protoc install_protoc
