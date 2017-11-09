@@ -117,7 +117,7 @@ func (s *SocketServer) acceptConnectionsRoutine() {
 		go func() {
 			// Wait until signal to close connection
 			errClose := <-closeConn
-			if err == io.EOF {
+			if errClose == io.EOF {
 				s.Logger.Error("Connection was closed by client")
 			} else if errClose != nil {
 				s.Logger.Error("Connection error", "error", errClose)
