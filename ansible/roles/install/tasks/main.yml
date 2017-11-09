@@ -14,7 +14,7 @@
   service: name=systemd-journald state=restarted
 
 - name: Ability to get the core dump on SIGABRT
-  command: "ulimit -c unlimited"
+  shell: "ulimit -c unlimited"
 
 #TODO include is deprecated in Ansible 2.4.0 and will be removed in 2.8.0
 #Replace it with include_tasks
