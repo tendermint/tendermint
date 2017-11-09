@@ -1,5 +1,5 @@
 // nolint: vetshadow
-package light_test
+package lite_test
 
 import (
 	"fmt"
@@ -8,22 +8,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/light"
+	"github.com/tendermint/tendermint/lite"
 )
 
 func TestInquirerValidPath(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	trust := light.NewMemStoreProvider()
-	source := light.NewMemStoreProvider()
+	trust := lite.NewMemStoreProvider()
+	source := lite.NewMemStoreProvider()
 
 	// set up the validators to generate test blocks
 	var vote int64 = 10
-	keys := light.GenValKeys(5)
+	keys := lite.GenValKeys(5)
 
 	// construct a bunch of commits, each with one more height than the last
 	chainID := "inquiry-test"
 	count := 50
-	commits := make([]light.FullCommit, count)
+	commits := make([]lite.FullCommit, count)
 	for i := 0; i < count; i++ {
 		// extend the keys by 1 each time
 		keys = keys.Extend(1)
@@ -34,7 +34,7 @@ func TestInquirerValidPath(t *testing.T) {
 	}
 
 	// initialize a certifier with the initial state
-	cert := light.NewInquiring(chainID, commits[0], trust, source)
+	cert := lite.NewInquiring(chainID, commits[0], trust, source)
 
 	// this should fail validation....
 	commit := commits[count-1].Commit
@@ -60,17 +60,17 @@ func TestInquirerValidPath(t *testing.T) {
 
 func TestInquirerMinimalPath(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	trust := light.NewMemStoreProvider()
-	source := light.NewMemStoreProvider()
+	trust := lite.NewMemStoreProvider()
+	source := lite.NewMemStoreProvider()
 
 	// set up the validators to generate test blocks
 	var vote int64 = 10
-	keys := light.GenValKeys(5)
+	keys := lite.GenValKeys(5)
 
 	// construct a bunch of commits, each with one more height than the last
 	chainID := "minimal-path"
 	count := 12
-	commits := make([]light.FullCommit, count)
+	commits := make([]lite.FullCommit, count)
 	for i := 0; i < count; i++ {
 		// extend the validators, so we are just below 2/3
 		keys = keys.Extend(len(keys)/2 - 1)
@@ -81,7 +81,7 @@ func TestInquirerMinimalPath(t *testing.T) {
 	}
 
 	// initialize a certifier with the initial state
-	cert := light.NewInquiring(chainID, commits[0], trust, source)
+	cert := lite.NewInquiring(chainID, commits[0], trust, source)
 
 	// this should fail validation....
 	commit := commits[count-1].Commit
@@ -107,17 +107,17 @@ func TestInquirerMinimalPath(t *testing.T) {
 
 func TestInquirerVerifyHistorical(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	trust := light.NewMemStoreProvider()
-	source := light.NewMemStoreProvider()
+	trust := lite.NewMemStoreProvider()
+	source := lite.NewMemStoreProvider()
 
 	// set up the validators to generate test blocks
 	var vote int64 = 10
-	keys := light.GenValKeys(5)
+	keys := lite.GenValKeys(5)
 
 	// construct a bunch of commits, each with one more height than the last
 	chainID := "inquiry-test"
 	count := 10
-	commits := make([]light.FullCommit, count)
+	commits := make([]lite.FullCommit, count)
 	for i := 0; i < count; i++ {
 		// extend the keys by 1 each time
 		keys = keys.Extend(1)
@@ -128,7 +128,7 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	}
 
 	// initialize a certifier with the initial state
-	cert := light.NewInquiring(chainID, commits[0], trust, source)
+	cert := lite.NewInquiring(chainID, commits[0], trust, source)
 
 	// store a few commits as trust
 	for _, i := range []int{2, 5} {

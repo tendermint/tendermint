@@ -1,4 +1,4 @@
-package light
+package lite
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 // Certifier checks the votes to make sure the block really is signed properly.
@@ -41,7 +41,7 @@ func NewFullCommit(commit Commit, vals *types.ValidatorSet) FullCommit {
 	}
 }
 
-// Height returns the of the header.
+// Height returns the height of the header.
 func (c Commit) Height() int {
 	if c.Header == nil {
 		return 0
@@ -78,7 +78,7 @@ func (c Commit) ValidateBasic(chainID string) error {
 
 	// make sure the header and commit match (height and hash)
 	if c.Commit.Height() != c.Header.Height {
-		return lightErr.ErrHeightMismatch(c.Commit.Height(), c.Header.Height)
+		return liteErr.ErrHeightMismatch(c.Commit.Height(), c.Header.Height)
 	}
 	hhash := c.Header.Hash()
 	chash := c.Commit.BlockID.Hash

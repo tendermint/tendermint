@@ -1,9 +1,9 @@
-package light
+package lite
 
 import (
 	"github.com/tendermint/tendermint/types"
 
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 var _ Certifier = &Dynamic{}
@@ -69,7 +69,7 @@ func (c *Dynamic) Update(fc FullCommit) error {
 	// ignore all checkpoints in the past -> only to the future
 	h := fc.Height()
 	if h <= c.lastHeight {
-		return lightErr.ErrPastTime()
+		return liteErr.ErrPastTime()
 	}
 
 	// first, verify if the input is self-consistent....
@@ -85,7 +85,7 @@ func (c *Dynamic) Update(fc FullCommit) error {
 	err = c.Validators().VerifyCommitAny(fc.Validators, c.ChainID(),
 		commit.BlockID, h, commit)
 	if err != nil {
-		return lightErr.ErrTooMuchChange()
+		return liteErr.ErrTooMuchChange()
 	}
 
 	// looks good, we can update

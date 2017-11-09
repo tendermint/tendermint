@@ -1,4 +1,4 @@
-package light
+package lite
 
 import (
 	"bytes"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 var _ Certifier = &Static{}
@@ -61,7 +61,7 @@ func (c *Static) Certify(commit Commit) error {
 
 	// make sure it has the same validator set we have (static means static)
 	if !bytes.Equal(c.Hash(), commit.Header.ValidatorsHash) {
-		return lightErr.ErrValidatorsChanged()
+		return liteErr.ErrValidatorsChanged()
 	}
 
 	// then make sure we have the proper signatures for this

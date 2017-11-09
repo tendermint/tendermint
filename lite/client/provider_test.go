@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/light"
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	"github.com/tendermint/tendermint/lite"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
@@ -35,7 +35,7 @@ func TestProvider(t *testing.T) {
 
 	// let's check this is valid somehow
 	assert.Nil(seed.ValidateBasic(chainID))
-	cert := light.NewStatic(chainID, seed.Validators)
+	cert := lite.NewStatic(chainID, seed.Validators)
 
 	// historical queries now work :)
 	lower := sh - 5
@@ -53,7 +53,7 @@ func TestProvider(t *testing.T) {
 	// get by hash fails without match
 	seed, err = p.GetByHash([]byte("foobar"))
 	assert.NotNil(err)
-	assert.True(lightErr.IsCommitNotFoundErr(err))
+	assert.True(liteErr.IsCommitNotFoundErr(err))
 
 	// storing the seed silently ignored
 	err = p.StoreCommit(seed)

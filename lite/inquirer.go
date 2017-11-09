@@ -1,9 +1,9 @@
-package light
+package lite
 
 import (
 	"github.com/tendermint/tendermint/types"
 
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 // Inquiring wraps a dynamic certifier and implements an auto-update strategy. If a call to Certify
@@ -63,7 +63,7 @@ func (c *Inquiring) Certify(commit Commit) error {
 	}
 
 	err = c.cert.Certify(commit)
-	if !lightErr.IsValidatorsChangedErr(err) {
+	if !liteErr.IsValidatorsChangedErr(err) {
 		return err
 	}
 	err = c.updateToHash(commit.Header.ValidatorsHash)
@@ -119,7 +119,7 @@ func (c *Inquiring) updateToHash(vhash []byte) error {
 	}
 	err = c.cert.Update(fc)
 	// handle IsTooMuchChangeErr by using divide and conquer
-	if lightErr.IsTooMuchChangeErr(err) {
+	if liteErr.IsTooMuchChangeErr(err) {
 		err = c.updateToHeight(fc.Height())
 	}
 	return err
@@ -134,12 +134,12 @@ func (c *Inquiring) updateToHeight(h int) error {
 	}
 	start, end := c.LastHeight(), fc.Height()
 	if end <= start {
-		return lightErr.ErrNoPathFound()
+		return liteErr.ErrNoPathFound()
 	}
 	err = c.Update(fc)
 
 	// we can handle IsTooMuchChangeErr specially
-	if !lightErr.IsTooMuchChangeErr(err) {
+	if !liteErr.IsTooMuchChangeErr(err) {
 		return err
 	}
 

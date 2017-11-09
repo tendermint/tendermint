@@ -1,4 +1,4 @@
-package light_test
+package lite_test
 
 import (
 	"testing"
@@ -7,8 +7,8 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tendermint/light"
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	"github.com/tendermint/tendermint/lite"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 func TestStaticCert(t *testing.T) {
@@ -16,15 +16,15 @@ func TestStaticCert(t *testing.T) {
 	assert := assert.New(t)
 	// require := require.New(t)
 
-	keys := light.GenValKeys(4)
+	keys := lite.GenValKeys(4)
 	// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 	vals := keys.ToValidators(20, 10)
 	// and a certifier based on our known set
 	chainID := "test-static"
-	cert := light.NewStatic(chainID, vals)
+	cert := lite.NewStatic(chainID, vals)
 
 	cases := []struct {
-		keys        light.ValKeys
+		keys        lite.ValKeys
 		vals        *types.ValidatorSet
 		height      int
 		first, last int  // who actually signs
@@ -51,7 +51,7 @@ func TestStaticCert(t *testing.T) {
 		} else {
 			assert.NotNil(err)
 			if tc.changed {
-				assert.True(lightErr.IsValidatorsChangedErr(err), "%+v", err)
+				assert.True(liteErr.IsValidatorsChangedErr(err), "%+v", err)
 			}
 		}
 	}

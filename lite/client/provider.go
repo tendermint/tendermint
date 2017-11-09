@@ -12,8 +12,8 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tendermint/light"
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	"github.com/tendermint/tendermint/lite"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.
@@ -29,13 +29,13 @@ type provider struct {
 
 // NewProvider can wrap any rpcclient to expose it as
 // a read-only provider.
-func NewProvider(node SignStatusClient) light.Provider {
+func NewProvider(node SignStatusClient) lite.Provider {
 	return &provider{node: node}
 }
 
-// NewHTTPProvider can connects to a tendermint json-rpc endpoint
+// NewHTTPProvider can connect to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
-func NewHTTPProvider(remote string) light.Provider {
+func NewHTTPProvider(remote string) lite.Provider {
 	return &provider{
 		node: rpcclient.NewHTTP(remote, "/websocket"),
 	}
@@ -47,13 +47,13 @@ func (p *provider) StatusClient() rpcclient.StatusClient {
 }
 
 // StoreCommit is a noop, as clients can only read from the chain...
-func (p *provider) StoreCommit(_ light.FullCommit) error { return nil }
+func (p *provider) StoreCommit(_ lite.FullCommit) error { return nil }
 
 // GetHash gets the most recent validator and sees if it matches
 //
 // TODO: improve when the rpc interface supports more functionality
-func (p *provider) GetByHash(hash []byte) (light.FullCommit, error) {
-	var fc light.FullCommit
+func (p *provider) GetByHash(hash []byte) (lite.FullCommit, error) {
+	var fc lite.FullCommit
 	vals, err := p.node.Validators(nil)
 	// if we get no validators, or a different height, return an error
 	if err != nil {
@@ -62,13 +62,13 @@ func (p *provider) GetByHash(hash []byte) (light.FullCommit, error) {
 	p.updateHeight(vals.BlockHeight)
 	vhash := types.NewValidatorSet(vals.Validators).Hash()
 	if !bytes.Equal(hash, vhash) {
-		return fc, lightErr.ErrCommitNotFound()
+		return fc, liteErr.ErrCommitNotFound()
 	}
 	return p.seedFromVals(vals)
 }
 
 // GetByHeight gets the validator set by height
-func (p *provider) GetByHeight(h int) (fc light.FullCommit, err error) {
+func (p *provider) GetByHeight(h int) (fc lite.FullCommit, err error) {
 	commit, err := p.node.Commit(&h)
 	if err != nil {
 		return fc, err
@@ -77,7 +77,7 @@ func (p *provider) GetByHeight(h int) (fc light.FullCommit, err error) {
 }
 
 // LatestCommit returns the newest commit stored.
-func (p *provider) LatestCommit() (fc light.FullCommit, err error) {
+func (p *provider) LatestCommit() (fc lite.FullCommit, err error) {
 	commit, err := p.GetLatestCommit()
 	if err != nil {
 		return fc, err
@@ -97,24 +97,24 @@ func (p *provider) GetLatestCommit() (*ctypes.ResultCommit, error) {
 }
 
 // CommitFromResult ...
-func CommitFromResult(result *ctypes.ResultCommit) light.Commit {
-	return (light.Commit)(result.SignedHeader)
+func CommitFromResult(result *ctypes.ResultCommit) lite.Commit {
+	return (lite.Commit)(result.SignedHeader)
 }
 
-func (p *provider) seedFromVals(vals *ctypes.ResultValidators) (light.FullCommit, error) {
+func (p *provider) seedFromVals(vals *ctypes.ResultValidators) (lite.FullCommit, error) {
 	// now get the commits and build a full commit
 	commit, err := p.node.Commit(&vals.BlockHeight)
 	if err != nil {
-		return light.FullCommit{}, err
+		return lite.FullCommit{}, err
 	}
-	fc := light.NewFullCommit(
+	fc := lite.NewFullCommit(
 		CommitFromResult(commit),
 		types.NewValidatorSet(vals.Validators),
 	)
 	return fc, nil
 }
 
-func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc light.FullCommit, err error) {
+func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc lite.FullCommit, err error) {
 	fc.Commit = CommitFromResult(commit)
 
 	// now get the proper validators
@@ -126,7 +126,7 @@ func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc light.FullCom
 	// make sure they match the commit (as we cannot enforce height)
 	vset := types.NewValidatorSet(vals.Validators)
 	if !bytes.Equal(vset.Hash(), commit.Header.ValidatorsHash) {
-		return fc, lightErr.ErrValidatorsChanged()
+		return fc, liteErr.ErrValidatorsChanged()
 	}
 
 	p.updateHeight(commit.Header.Height)

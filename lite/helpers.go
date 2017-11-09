@@ -1,4 +1,4 @@
-package light
+package lite
 
 import (
 	"time"

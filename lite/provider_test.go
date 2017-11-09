@@ -1,5 +1,5 @@
 // nolint: vetshadow
-package light_test
+package lite_test
 
 import (
 	"testing"
@@ -7,8 +7,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	light "github.com/tendermint/tendermint/light"
-	lightErr "github.com/tendermint/tendermint/light/errors"
+	"github.com/tendermint/tendermint/lite"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 // missingProvider doens't store anything, always a miss
@@ -16,43 +16,43 @@ import (
 type missingProvider struct{}
 
 // NewMissingProvider returns a provider which does not store anything and always misses.
-func NewMissingProvider() light.Provider {
+func NewMissingProvider() lite.Provider {
 	return missingProvider{}
 }
 
-func (missingProvider) StoreCommit(_ light.FullCommit) error { return nil }
-func (missingProvider) GetByHeight(_ int) (light.FullCommit, error) {
-	return light.FullCommit{}, lightErr.ErrCommitNotFound()
+func (missingProvider) StoreCommit(_ lite.FullCommit) error { return nil }
+func (missingProvider) GetByHeight(_ int) (lite.FullCommit, error) {
+	return lite.FullCommit{}, liteErr.ErrCommitNotFound()
 }
-func (missingProvider) GetByHash(_ []byte) (light.FullCommit, error) {
-	return light.FullCommit{}, lightErr.ErrCommitNotFound()
+func (missingProvider) GetByHash(_ []byte) (lite.FullCommit, error) {
+	return lite.FullCommit{}, liteErr.ErrCommitNotFound()
 }
-func (missingProvider) LatestCommit() (light.FullCommit, error) {
-	return light.FullCommit{}, lightErr.ErrCommitNotFound()
+func (missingProvider) LatestCommit() (lite.FullCommit, error) {
+	return lite.FullCommit{}, liteErr.ErrCommitNotFound()
 }
 
 func TestMemProvider(t *testing.T) {
-	p := light.NewMemStoreProvider()
+	p := lite.NewMemStoreProvider()
 	checkProvider(t, p, "test-mem", "empty")
 }
 
 func TestCacheProvider(t *testing.T) {
-	p := light.NewCacheProvider(
+	p := lite.NewCacheProvider(
 		NewMissingProvider(),
-		light.NewMemStoreProvider(),
+		lite.NewMemStoreProvider(),
 		NewMissingProvider(),
 	)
 	checkProvider(t, p, "test-cache", "kjfhekfhkewhgit")
 }
 
-func checkProvider(t *testing.T, p light.Provider, chainID, app string) {
+func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
 	assert, require := assert.New(t), require.New(t)
 	appHash := []byte(app)
-	keys := light.GenValKeys(5)
+	keys := lite.GenValKeys(5)
 	count := 10
 
 	// make a bunch of commits...
-	commits := make([]light.FullCommit, count)
+	commits := make([]lite.FullCommit, count)
 	for i := 0; i < count; i++ {
 		// two commits for each validator, to check how we handle dups
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
@@ -64,11 +64,11 @@ func checkProvider(t *testing.T, p light.Provider, chainID, app string) {
 	// check provider is empty
 	fc, err := p.GetByHeight(20)
 	require.NotNil(err)
-	assert.True(lightErr.IsCommitNotFoundErr(err))
+	assert.True(liteErr.IsCommitNotFoundErr(err))
 
 	fc, err = p.GetByHash(commits[3].ValidatorsHash())
 	require.NotNil(err)
-	assert.True(lightErr.IsCommitNotFoundErr(err))
+	assert.True(liteErr.IsCommitNotFoundErr(err))
 
 	// now add them all to the provider
 	for _, s := range commits {
@@ -101,7 +101,7 @@ func checkProvider(t *testing.T, p light.Provider, chainID, app string) {
 }
 
 // this will make a get height, and if it is good, set the data as well
-func checkGetHeight(t *testing.T, p light.Provider, ask, expect int) {
+func checkGetHeight(t *testing.T, p lite.Provider, ask, expect int) {
 	fc, err := p.GetByHeight(ask)
 	require.Nil(t, err, "%+v", err)
 	if assert.Equal(t, expect, fc.Height()) {
@@ -116,13 +116,13 @@ func TestCacheGetsBestHeight(t *testing.T) {
 
 	// we will write data to the second level of the cache (p2),
 	// and see what gets cached, stored in
-	p := light.NewMemStoreProvider()
-	p2 := light.NewMemStoreProvider()
-	cp := light.NewCacheProvider(p, p2)
+	p := lite.NewMemStoreProvider()
+	p2 := lite.NewMemStoreProvider()
+	cp := lite.NewCacheProvider(p, p2)
 
 	chainID := "cache-best-height"
 	appHash := []byte("01234567")
-	keys := light.GenValKeys(5)
+	keys := lite.GenValKeys(5)
 	count := 10
 
 	// set a bunch of commits
