@@ -26,11 +26,10 @@ func TestNoProgressUntilTxsAvailable(t *testing.T) {
 
 	ensureNewStep(newBlockCh) // first block gets committed
 	ensureNoNewStep(newBlockCh)
-	deliverTxsRange(cs, 0, 2)
+	deliverTxsRange(cs, 0, 1)
 	ensureNewStep(newBlockCh) // commit txs
 	ensureNewStep(newBlockCh) // commit updated app hash
 	ensureNoNewStep(newBlockCh)
-
 }
 
 func TestProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
@@ -72,7 +71,7 @@ func TestProgressInHigherRound(t *testing.T) {
 	ensureNewStep(newRoundCh) // first round at first height
 	ensureNewStep(newBlockCh) // first block gets committed
 	ensureNewStep(newRoundCh) // first round at next height
-	deliverTxsRange(cs, 0, 2) // we deliver txs, but dont set a proposal so we get the next round
+	deliverTxsRange(cs, 0, 1) // we deliver txs, but dont set a proposal so we get the next round
 	<-timeoutCh
 	ensureNewStep(newRoundCh) // wait for the next round
 	ensureNewStep(newBlockCh) // now we can commit the block
