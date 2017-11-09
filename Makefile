@@ -1,7 +1,8 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
-					github.com/alecthomas/gometalinter
+					github.com/alecthomas/gometalinter \
+					github.com/ckaznocha/protoc-gen-lint
 
 all: protoc install test
 
@@ -57,10 +58,12 @@ get_vendor_deps:
 
 metalinter: tools
 	@gometalinter --install
+	protoc --lint_out=. types/*.proto
 	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test: tools
 	@gometalinter --install
+	# protoc --lint_out=. types/*.proto
 	gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
