@@ -89,11 +89,8 @@ metalinter_test: ensure_tools
 	@gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gas \
-		--enable=gosimple \
 	 	--enable=misspell \
 		--enable=safesql \
-	   	--enable=structcheck \
-	   	--enable=varcheck \
 		./...
 
 		#--enable=maligned \
@@ -103,14 +100,17 @@ metalinter_test: ensure_tools
 		#--enable=gocyclo \
 		#--enable=goimports \
 		#--enable=golint \ <== comments on anything exported
+		#--enable=gosimple \
 		#--enable=gotype \
 	 	#--enable=ineffassign \
 	   	#--enable=interfacer \
 	   	#--enable=megacheck \
 	   	#--enable=staticcheck \
+	   	#--enable=structcheck \
 	   	#--enable=unconvert \
 	   	#--enable=unparam \
 		#--enable=unused \
+	   	#--enable=varcheck \
 		#--enable=vet \
 		#--enable=vetshadow \
 
