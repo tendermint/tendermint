@@ -1,5 +1,5 @@
 /*
-Package certifiers allows you to securely validate headers
+Package lite allows you to securely validate headers
 without a full node.
 
 This library pulls together all the crypto and algorithms,
@@ -130,4 +130,4 @@ to manually verify the new validator set hash using off-chain
 means (the same as getting the initial hash).
 
 */
-package certifiers
+package lite

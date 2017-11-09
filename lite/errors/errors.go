@@ -19,34 +19,39 @@ func IsCommitNotFoundErr(err error) bool {
 	return err != nil && (errors.Cause(err) == errCommitNotFound)
 }
 
+// ErrCommitNotFound indicates that a the requested commit was not found.
 func ErrCommitNotFound() error {
 	return errors.WithStack(errCommitNotFound)
 }
 
 // IsValidatorsChangedErr checks whether an error is due
-// to a differing validator set
+// to a differing validator set.
 func IsValidatorsChangedErr(err error) bool {
 	return err != nil && (errors.Cause(err) == errValidatorsChanged)
 }
 
+// ErrValidatorsChanged indicates that the validator set was changed between two commits.
 func ErrValidatorsChanged() error {
 	return errors.WithStack(errValidatorsChanged)
 }
 
 // IsTooMuchChangeErr checks whether an error is due to too much change
-// between these validators sets
+// between these validators sets.
 func IsTooMuchChangeErr(err error) bool {
 	return err != nil && (errors.Cause(err) == errTooMuchChange)
 }
 
+// ErrTooMuchChange indicates that the underlying validator set was changed by >1/3.
 func ErrTooMuchChange() error {
 	return errors.WithStack(errTooMuchChange)
 }
 
+// IsPastTimeErr ...
 func IsPastTimeErr(err error) bool {
 	return err != nil && (errors.Cause(err) == errPastTime)
 }
 
+// ErrPastTime ...
 func ErrPastTime() error {
 	return errors.WithStack(errPastTime)
 }
@@ -57,6 +62,7 @@ func IsNoPathFoundErr(err error) bool {
 	return err != nil && (errors.Cause(err) == errNoPathFound)
 }
 
+// ErrNoPathFound ...
 func ErrNoPathFound() error {
 	return errors.WithStack(errNoPathFound)
 }

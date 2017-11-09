@@ -1,11 +1,15 @@
-package certifiers
+package lite
 
 import (
 	"github.com/tendermint/tendermint/types"
 
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
+// Inquiring wraps a dynamic certifier and implements an auto-update strategy. If a call to Certify
+// fails due to a change it validator set, Inquiring will try and find a previous FullCommit which
+// it can use to safely update the validator set. It uses a source provider to obtain the needed
+// FullCommits. It stores properly validated data on the local system.
 type Inquiring struct {
 	cert *Dynamic
 	// These are only properly validated data, from local system
@@ -14,8 +18,14 @@ type Inquiring struct {
 	Source Provider
 }
 
+// NewInquiring returns a new Inquiring object. It uses the trusted provider to store validated
+// data and the source provider to obtain missing FullCommits.
+//
+// Example: The trusted provider should a CacheProvider, MemProvider or files.Provider. The source
+// provider should be a client.HTTPProvider.
 func NewInquiring(chainID string, fc FullCommit, trusted Provider, source Provider) *Inquiring {
 	// store the data in trusted
+	// TODO: StoredCommit() can return an error and we need to handle this.
 	trusted.StoreCommit(fc)
 
 	return &Inquiring{
@@ -25,14 +35,17 @@ func NewInquiring(chainID string, fc FullCommit, trusted Provider, source Provid
 	}
 }
 
+// ChainID returns the chain id.
 func (c *Inquiring) ChainID() string {
 	return c.cert.ChainID()
 }
 
+// Validators returns the validator set.
 func (c *Inquiring) Validators() *types.ValidatorSet {
 	return c.cert.cert.vSet
 }
 
+// LastHeight returns the last height.
 func (c *Inquiring) LastHeight() int {
 	return c.cert.lastHeight
 }
@@ -50,7 +63,7 @@ func (c *Inquiring) Certify(commit Commit) error {
 	}
 
 	err = c.cert.Certify(commit)
-	if !certerr.IsValidatorsChangedErr(err) {
+	if !liteErr.IsValidatorsChangedErr(err) {
 		return err
 	}
 	err = c.updateToHash(commit.Header.ValidatorsHash)
@@ -64,11 +77,11 @@ func (c *Inquiring) Certify(commit Commit) error {
 	}
 
 	// store the new checkpoint
-	c.trusted.StoreCommit(
-		NewFullCommit(commit, c.Validators()))
-	return nil
+	return c.trusted.StoreCommit(NewFullCommit(commit, c.Validators()))
 }
 
+// Update will verify if this is a valid change and update
+// the certifying validator set if safe to do so.
 func (c *Inquiring) Update(fc FullCommit) error {
 	err := c.useClosestTrust(fc.Height())
 	if err != nil {
@@ -77,7 +90,7 @@ func (c *Inquiring) Update(fc FullCommit) error {
 
 	err = c.cert.Update(fc)
 	if err == nil {
-		c.trusted.StoreCommit(fc)
+		err = c.trusted.StoreCommit(fc)
 	}
 	return err
 }
@@ -106,7 +119,7 @@ func (c *Inquiring) updateToHash(vhash []byte) error {
 	}
 	err = c.cert.Update(fc)
 	// handle IsTooMuchChangeErr by using divide and conquer
-	if certerr.IsTooMuchChangeErr(err) {
+	if liteErr.IsTooMuchChangeErr(err) {
 		err = c.updateToHeight(fc.Height())
 	}
 	return err
@@ -121,12 +134,12 @@ func (c *Inquiring) updateToHeight(h int) error {
 	}
 	start, end := c.LastHeight(), fc.Height()
 	if end <= start {
-		return certerr.ErrNoPathFound()
+		return liteErr.ErrNoPathFound()
 	}
 	err = c.Update(fc)
 
 	// we can handle IsTooMuchChangeErr specially
-	if !certerr.IsTooMuchChangeErr(err) {
+	if !liteErr.IsTooMuchChangeErr(err) {
 		return err
 	}
 

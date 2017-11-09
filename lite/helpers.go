@@ -1,4 +1,4 @@
-package certifiers
+package lite
 
 import (
 	"time"
@@ -12,14 +12,14 @@ import (
 //
 // It lets us simulate signing with many keys, either ed25519 or secp256k1.
 // The main use case is to create a set, and call GenCommit
-// to get propely signed header for testing.
+// to get properly signed header for testing.
 //
 // You can set different weights of validators each time you call
 // ToValidators, and can optionally extend the validator set later
 // with Extend or ExtendSecp
 type ValKeys []crypto.PrivKey
 
-// GenValKeys produces an array of private keys to generate commits
+// GenValKeys produces an array of private keys to generate commits.
 func GenValKeys(n int) ValKeys {
 	res := make(ValKeys, n)
 	for i := range res {
@@ -28,7 +28,7 @@ func GenValKeys(n int) ValKeys {
 	return res
 }
 
-// Change replaces the key at index i
+// Change replaces the key at index i.
 func (v ValKeys) Change(i int) ValKeys {
 	res := make(ValKeys, len(v))
 	copy(res, v)
@@ -36,13 +36,13 @@ func (v ValKeys) Change(i int) ValKeys {
 	return res
 }
 
-// Extend adds n more keys (to remove, just take a slice)
+// Extend adds n more keys (to remove, just take a slice).
 func (v ValKeys) Extend(n int) ValKeys {
 	extra := GenValKeys(n)
 	return append(v, extra...)
 }
 
-// GenSecpValKeys produces an array of secp256k1 private keys to generate commits
+// GenSecpValKeys produces an array of secp256k1 private keys to generate commits.
 func GenSecpValKeys(n int) ValKeys {
 	res := make(ValKeys, n)
 	for i := range res {
@@ -51,7 +51,7 @@ func GenSecpValKeys(n int) ValKeys {
 	return res
 }
 
-// ExtendSecp adds n more secp256k1 keys (to remove, just take a slice)
+// ExtendSecp adds n more secp256k1 keys (to remove, just take a slice).
 func (v ValKeys) ExtendSecp(n int) ValKeys {
 	extra := GenSecpValKeys(n)
 	return append(v, extra...)
@@ -60,7 +60,7 @@ func (v ValKeys) ExtendSecp(n int) ValKeys {
 // ToValidators produces a list of validators from the set of keys
 // The first key has weight `init` and it increases by `inc` every step
 // so we can have all the same weight, or a simple linear distribution
-// (should be enough for testing)
+// (should be enough for testing).
 func (v ValKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 	res := make([]*types.Validator, len(v))
 	for i, k := range v {
@@ -69,7 +69,7 @@ func (v ValKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 	return types.NewValidatorSet(res)
 }
 
-// signHeader properly signs the header with all keys from first to last exclusive
+// signHeader properly signs the header with all keys from first to last exclusive.
 func (v ValKeys) signHeader(header *types.Header, first, last int) *types.Commit {
 	votes := make([]*types.Vote, len(v))
 
@@ -106,6 +106,8 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 	return vote
 }
 
+// Silences warning that vals can also be merkle.Hashable
+// nolint: interfacer
 func genHeader(chainID string, height int, txs types.Txs,
 	vals *types.ValidatorSet, appHash []byte) *types.Header {
 
@@ -122,7 +124,7 @@ func genHeader(chainID string, height int, txs types.Txs,
 	}
 }
 
-// GenCommit calls genHeader and signHeader and combines them into a Commit
+// GenCommit calls genHeader and signHeader and combines them into a Commit.
 func (v ValKeys) GenCommit(chainID string, height int, txs types.Txs,
 	vals *types.ValidatorSet, appHash []byte, first, last int) Commit {
 
@@ -134,7 +136,7 @@ func (v ValKeys) GenCommit(chainID string, height int, txs types.Txs,
 	return check
 }
 
-// GenFullCommit calls genHeader and signHeader and combines them into a Commit
+// GenFullCommit calls genHeader and signHeader and combines them into a Commit.
 func (v ValKeys) GenFullCommit(chainID string, height int, txs types.Txs,
 	vals *types.ValidatorSet, appHash []byte, first, last int) FullCommit {
 
