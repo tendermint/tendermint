@@ -1,8 +1,9 @@
 package db
 
 import (
+	"bytes"
 	"fmt"
-	"strings"
+	"sort"
 	"sync"
 )
 
@@ -15,40 +16,63 @@ func init() {
 type MemDB struct {
 	mtx sync.Mutex
 	db  map[string][]byte
+
+	cwwMutex
 }
 
 func NewMemDB() *MemDB {
-	database := &MemDB{db: make(map[string][]byte)}
+	database := &MemDB{
+		db:       make(map[string][]byte),
+		cwwMutex: NewCWWMutex(),
+	}
 	return database
 }
 
 func (db *MemDB) Get(key []byte) []byte {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
 	return db.db[string(key)]
 }
 
 func (db *MemDB) Set(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	db.db[string(key)] = value
+
+	db.SetNoLock(key, value)
 }
 
 func (db *MemDB) SetSync(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
+	db.SetNoLock(key, value)
+}
+
+// NOTE: Implements atomicSetDeleter
+func (db *MemDB) SetNoLock(key []byte, value []byte) {
+	if value == nil {
+		value = []byte{}
+	}
 	db.db[string(key)] = value
 }
 
 func (db *MemDB) Delete(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
 	delete(db.db, string(key))
 }
 
 func (db *MemDB) DeleteSync(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
+	delete(db.db, string(key))
+}
+
+// NOTE: Implements atomicSetDeleter
+func (db *MemDB) DeleteNoLock(key []byte) {
 	delete(db.db, string(key))
 }
 
@@ -63,115 +87,113 @@ func (db *MemDB) Close() {
 func (db *MemDB) Print() {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
 	for key, value := range db.db {
 		fmt.Printf("[%X]:\t[%X]\n", []byte(key), value)
 	}
 }
 
 func (db *MemDB) Stats() map[string]string {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
 	stats := make(map[string]string)
 	stats["database.type"] = "memDB"
+	stats["database.size"] = fmt.Sprintf("%d", len(db.db))
 	return stats
 }
 
+func (db *MemDB) NewBatch() Batch {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	return &memBatch{db, nil}
+}
+
+func (db *MemDB) Mutex() *sync.Mutex {
+	return &(db.mtx)
+}
+
+func (db *MemDB) CacheWrap() interface{} {
+	return NewCacheDB(db, db.GetWriteLockVersion())
+}
+
+//----------------------------------------
+
+func (db *MemDB) Iterator() Iterator {
+	it := newMemDBIterator()
+	it.db = db
+	it.cur = 0
+
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	// We need a copy of all of the keys.
+	// Not the best, but probably not a bottleneck depending.
+	for key, _ := range db.db {
+		it.keys = append(it.keys, key)
+	}
+	sort.Strings(it.keys)
+	return it
+}
+
 type memDBIterator struct {
-	last int
+	cur  int
 	keys []string
-	db   *MemDB
+	db   DB
 }
 
 func newMemDBIterator() *memDBIterator {
 	return &memDBIterator{}
 }
 
-func (it *memDBIterator) Next() bool {
-	if it.last >= len(it.keys)-1 {
-		return false
+func (it *memDBIterator) Seek(key []byte) {
+	for i, ik := range it.keys {
+		it.cur = i
+		if bytes.Compare(key, []byte(ik)) <= 0 {
+			return
+		}
 	}
-	it.last++
-	return true
+	it.cur += 1 // If not found, becomes invalid.
+}
+
+func (it *memDBIterator) Valid() bool {
+	return 0 <= it.cur && it.cur < len(it.keys)
+}
+
+func (it *memDBIterator) Next() {
+	if !it.Valid() {
+		panic("memDBIterator Next() called when invalid")
+	}
+	it.cur++
+}
+
+func (it *memDBIterator) Prev() {
+	if !it.Valid() {
+		panic("memDBIterator Next() called when invalid")
+	}
+	it.cur--
 }
 
 func (it *memDBIterator) Key() []byte {
-	return []byte(it.keys[it.last])
+	if !it.Valid() {
+		panic("memDBIterator Key() called when invalid")
+	}
+	return []byte(it.keys[it.cur])
 }
 
 func (it *memDBIterator) Value() []byte {
+	if !it.Valid() {
+		panic("memDBIterator Value() called when invalid")
+	}
 	return it.db.Get(it.Key())
 }
 
-func (it *memDBIterator) Release() {
+func (it *memDBIterator) Close() {
 	it.db = nil
 	it.keys = nil
 }
 
-func (it *memDBIterator) Error() error {
+func (it *memDBIterator) GetError() error {
 	return nil
-}
-
-func (db *MemDB) Iterator() Iterator {
-	return db.IteratorPrefix([]byte{})
-}
-
-func (db *MemDB) IteratorPrefix(prefix []byte) Iterator {
-	it := newMemDBIterator()
-	it.db = db
-	it.last = -1
-
-	db.mtx.Lock()
-	defer db.mtx.Unlock()
-
-	// unfortunately we need a copy of all of the keys
-	for key, _ := range db.db {
-		if strings.HasPrefix(key, string(prefix)) {
-			it.keys = append(it.keys, key)
-		}
-	}
-	return it
-}
-
-func (db *MemDB) NewBatch() Batch {
-	return &memDBBatch{db, nil}
-}
-
-//--------------------------------------------------------------------------------
-
-type memDBBatch struct {
-	db  *MemDB
-	ops []operation
-}
-
-type opType int
-
-const (
-	opTypeSet    = 1
-	opTypeDelete = 2
-)
-
-type operation struct {
-	opType
-	key   []byte
-	value []byte
-}
-
-func (mBatch *memDBBatch) Set(key, value []byte) {
-	mBatch.ops = append(mBatch.ops, operation{opTypeSet, key, value})
-}
-
-func (mBatch *memDBBatch) Delete(key []byte) {
-	mBatch.ops = append(mBatch.ops, operation{opTypeDelete, key, nil})
-}
-
-func (mBatch *memDBBatch) Write() {
-	mBatch.db.mtx.Lock()
-	defer mBatch.db.mtx.Unlock()
-
-	for _, op := range mBatch.ops {
-		if op.opType == opTypeSet {
-			mBatch.db.db[string(op.key)] = op.value
-		} else if op.opType == opTypeDelete {
-			delete(mBatch.db.db, string(op.key))
-		}
-	}
-
 }

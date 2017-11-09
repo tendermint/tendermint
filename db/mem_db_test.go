@@ -21,7 +21,7 @@ func TestMemDbIterator(t *testing.T) {
 
 	iter := db.Iterator()
 	i := 0
-	for iter.Next() {
+	for ; iter.Valid(); iter.Next() {
 		assert.Equal(t, db.Get(iter.Key()), iter.Value(), "values dont match for key")
 		i += 1
 	}

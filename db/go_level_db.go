@@ -8,7 +8,6 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
-	"github.com/syndtr/goleveldb/leveldb/util"
 
 	. "github.com/tendermint/tmlibs/common"
 )
@@ -23,6 +22,8 @@ func init() {
 
 type GoLevelDB struct {
 	db *leveldb.DB
+
+	cwwMutex
 }
 
 func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
@@ -31,7 +32,10 @@ func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
 	if err != nil {
 		return nil, err
 	}
-	database := &GoLevelDB{db: db}
+	database := &GoLevelDB{
+		db:       db,
+		cwwMutex: NewCWWMutex(),
+	}
 	return database, nil
 }
 
@@ -117,54 +121,17 @@ func (db *GoLevelDB) Stats() map[string]string {
 	return stats
 }
 
-type goLevelDBIterator struct {
-	source iterator.Iterator
+func (db *GoLevelDB) CacheWrap() interface{} {
+	return NewCacheDB(db, db.GetWriteLockVersion())
 }
 
-// Key returns a copy of the current key.
-func (it *goLevelDBIterator) Key() []byte {
-	key := it.source.Key()
-	k := make([]byte, len(key))
-	copy(k, key)
-
-	return k
-}
-
-// Value returns a copy of the current value.
-func (it *goLevelDBIterator) Value() []byte {
-	val := it.source.Value()
-	v := make([]byte, len(val))
-	copy(v, val)
-
-	return v
-}
-
-func (it *goLevelDBIterator) Error() error {
-	return it.source.Error()
-}
-
-func (it *goLevelDBIterator) Next() bool {
-	return it.source.Next()
-}
-
-func (it *goLevelDBIterator) Release() {
-	it.source.Release()
-}
-
-func (db *GoLevelDB) Iterator() Iterator {
-	return &goLevelDBIterator{db.db.NewIterator(nil, nil)}
-}
-
-func (db *GoLevelDB) IteratorPrefix(prefix []byte) Iterator {
-	return &goLevelDBIterator{db.db.NewIterator(util.BytesPrefix(prefix), nil)}
-}
+//----------------------------------------
+// Batch
 
 func (db *GoLevelDB) NewBatch() Batch {
 	batch := new(leveldb.Batch)
 	return &goLevelDBBatch{db, batch}
 }
-
-//--------------------------------------------------------------------------------
 
 type goLevelDBBatch struct {
 	db    *GoLevelDB
@@ -184,4 +151,78 @@ func (mBatch *goLevelDBBatch) Write() {
 	if err != nil {
 		PanicCrisis(err)
 	}
+}
+
+//----------------------------------------
+// Iterator
+
+func (db *GoLevelDB) Iterator() Iterator {
+	itr := &goLevelDBIterator{
+		source: db.db.NewIterator(nil, nil),
+	}
+	itr.Seek(nil)
+	return itr
+}
+
+type goLevelDBIterator struct {
+	source  iterator.Iterator
+	invalid bool
+}
+
+// Key returns a copy of the current key.
+func (it *goLevelDBIterator) Key() []byte {
+	if !it.Valid() {
+		panic("goLevelDBIterator Key() called when invalid")
+	}
+	key := it.source.Key()
+	k := make([]byte, len(key))
+	copy(k, key)
+
+	return k
+}
+
+// Value returns a copy of the current value.
+func (it *goLevelDBIterator) Value() []byte {
+	if !it.Valid() {
+		panic("goLevelDBIterator Value() called when invalid")
+	}
+	val := it.source.Value()
+	v := make([]byte, len(val))
+	copy(v, val)
+
+	return v
+}
+
+func (it *goLevelDBIterator) GetError() error {
+	return it.source.Error()
+}
+
+func (it *goLevelDBIterator) Seek(key []byte) {
+	it.source.Seek(key)
+}
+
+func (it *goLevelDBIterator) Valid() bool {
+	if it.invalid {
+		return false
+	}
+	it.invalid = !it.source.Valid()
+	return !it.invalid
+}
+
+func (it *goLevelDBIterator) Next() {
+	if !it.Valid() {
+		panic("goLevelDBIterator Next() called when invalid")
+	}
+	it.source.Next()
+}
+
+func (it *goLevelDBIterator) Prev() {
+	if !it.Valid() {
+		panic("goLevelDBIterator Prev() called when invalid")
+	}
+	it.source.Prev()
+}
+
+func (it *goLevelDBIterator) Close() {
+	it.source.Release()
 }
