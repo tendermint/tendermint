@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -287,7 +288,10 @@ func TestMConnectionTrySend(t *testing.T) {
 	msg := "Semicolon-Woman"
 	resultCh := make(chan string, 2)
 	assert.True(mconn.TrySend(0x01, msg))
-	server.Read(make([]byte, len(wire.BinaryBytes(msg))+4))
+	probe := make([]byte, len(wire.BinaryBytes(msg))+5)
+	fmt.Printf("length is %d", len(probe))
+	server.Read(probe)
+	fmt.Printf("probe is %x", probe)
 	assert.True(mconn.CanSend(0x01))
 	assert.True(mconn.TrySend(0x01, msg))
 	assert.False(mconn.CanSend(0x01))
@@ -302,6 +306,6 @@ func TestMConnectionTrySend(t *testing.T) {
 	assert.False(mconn.CanSend(0x01))
 	assert.False(mconn.TrySend(0x01, msg))
 	assert.Equal("TrySend", <-resultCh)
-	server.Read(make([]byte, len(wire.BinaryBytes(msg))+4))
+	server.Read(make([]byte, len(wire.BinaryBytes(msg))+5))
 	assert.Equal("Send", <-resultCh) // Order constrained by parallel blocking above
 }
