@@ -306,6 +306,9 @@ func TestMConnectionTrySend(t *testing.T) {
 	assert.False(mconn.CanSend(0x01))
 	assert.False(mconn.TrySend(0x01, msg))
 	assert.Equal("TrySend", <-resultCh)
-	server.Read(make([]byte, len(wire.BinaryBytes(msg))+5))
+	probe2 := make([]byte, len(wire.BinaryBytes(msg))+5)
+	fmt.Printf("length is %d", len(probe2))
+	server.Read(probe2)
+	fmt.Printf("probe2 is %x", probe2)
 	assert.Equal("Send", <-resultCh) // Order constrained by parallel blocking above
 }
