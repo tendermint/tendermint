@@ -13,7 +13,7 @@
 # Quick reference
 
 * **Where to get help:**
-  [Chat on Riot.im](https://riot.im/app/#/room/#tendermint:matrix.org)
+  https://tendermint.com/community
 
 * **Where to file issues:**
   https://github.com/tendermint/tendermint/issues
