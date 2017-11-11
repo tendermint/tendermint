@@ -1,0 +1,18 @@
+panic: picked a nil address with bias: 893, netAddress: {"":"111.111.119.111"} addr: {"IP":"127.125.90.130","Port":36957}
+
+goroutine 1 [running]:
+github.com/tendermint/tendermint/fuzz/p2p/addr-book.Fuzz(0x2810000, 0x16, 0x200000, 0x3)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build610134091/gopath/src/github.com/tendermint/tendermint/fuzz/p2p/addr-book/fuzz.go:34 +0x29e
+go-fuzz-dep.Main(0x1500558)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build610134091/goroot/src/go-fuzz-dep/main.go:49 +0xad
+main.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build610134091/gopath/src/github.com/tendermint/tendermint/fuzz/p2p/addr-book/go.fuzz.main/main.go:10 +0x2d
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build610134091/goroot/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build610134091/goroot/src/os/signal/signal_unix.go:22 +0x52
+created by os/signal.init.0
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build610134091/goroot/src/os/signal/signal_unix.go:28 +0x59
+exit status 2
