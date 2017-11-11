@@ -16,8 +16,8 @@ type cDBValue struct {
 	dirty   bool
 }
 
-// CacheDB wraps an in-memory cache around an underlying DB.
-type CacheDB struct {
+// cacheDB wraps an in-memory cache around an underlying DB.
+type cacheDB struct {
 	mtx         sync.Mutex
 	cache       map[string]cDBValue
 	parent      DB
@@ -27,13 +27,14 @@ type CacheDB struct {
 }
 
 // Needed by MultiStore.CacheWrap().
-var _ atomicSetDeleter = (*CacheDB)(nil)
+var _ atomicSetDeleter = (*cacheDB)(nil)
+var _ CacheDB = (*cacheDB)(nil)
 
 // Users should typically not be required to call NewCacheDB directly, as the
-// DB implementations here provide a .CacheWrap() function already.
+// DB implementations here provide a .CacheDB() function already.
 // `lockVersion` is typically provided by parent.GetWriteLockVersion().
-func NewCacheDB(parent DB, lockVersion interface{}) *CacheDB {
-	db := &CacheDB{
+func NewCacheDB(parent DB, lockVersion interface{}) CacheDB {
+	db := &cacheDB{
 		cache:       make(map[string]cDBValue),
 		parent:      parent,
 		lockVersion: lockVersion,
@@ -42,7 +43,7 @@ func NewCacheDB(parent DB, lockVersion interface{}) *CacheDB {
 	return db
 }
 
-func (db *CacheDB) Get(key []byte) []byte {
+func (db *cacheDB) Get(key []byte) []byte {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
@@ -55,54 +56,54 @@ func (db *CacheDB) Get(key []byte) []byte {
 	return dbValue.value
 }
 
-func (db *CacheDB) Set(key []byte, value []byte) {
+func (db *cacheDB) Set(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
 	db.SetNoLock(key, value)
 }
 
-func (db *CacheDB) SetSync(key []byte, value []byte) {
+func (db *cacheDB) SetSync(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
 	db.SetNoLock(key, value)
 }
 
-func (db *CacheDB) SetNoLock(key []byte, value []byte) {
+func (db *cacheDB) SetNoLock(key []byte, value []byte) {
 	db.cache[string(key)] = cDBValue{value: value, deleted: false, dirty: true}
 }
 
-func (db *CacheDB) Delete(key []byte) {
+func (db *cacheDB) Delete(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
 	db.DeleteNoLock(key)
 }
 
-func (db *CacheDB) DeleteSync(key []byte) {
+func (db *cacheDB) DeleteSync(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
 	db.DeleteNoLock(key)
 }
 
-func (db *CacheDB) DeleteNoLock(key []byte) {
+func (db *cacheDB) DeleteNoLock(key []byte) {
 	db.cache[string(key)] = cDBValue{value: nil, deleted: true, dirty: true}
 }
 
-func (db *CacheDB) Close() {
+func (db *cacheDB) Close() {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
 	db.parent.Close()
 }
 
-func (db *CacheDB) Print() {
+func (db *cacheDB) Print() {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	fmt.Println("CacheDB\ncache:")
+	fmt.Println("cacheDB\ncache:")
 	for key, value := range db.cache {
 		fmt.Printf("[%X]:\t[%v]\n", []byte(key), value)
 	}
@@ -110,7 +111,7 @@ func (db *CacheDB) Print() {
 	db.parent.Print()
 }
 
-func (db *CacheDB) Stats() map[string]string {
+func (db *cacheDB) Stats() map[string]string {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
@@ -121,30 +122,30 @@ func (db *CacheDB) Stats() map[string]string {
 	return stats
 }
 
-func (db *CacheDB) Iterator() Iterator {
-	panic("CacheDB.Iterator() not yet supported")
+func (db *cacheDB) Iterator() Iterator {
+	panic("cacheDB.Iterator() not yet supported")
 }
 
-func (db *CacheDB) NewBatch() Batch {
+func (db *cacheDB) NewBatch() Batch {
 	return &memBatch{db, nil}
 }
 
 // Implements `atomicSetDeleter` for Batch support.
-func (db *CacheDB) Mutex() *sync.Mutex {
+func (db *cacheDB) Mutex() *sync.Mutex {
 	return &(db.mtx)
 }
 
 // Write writes pending updates to the parent database and clears the cache.
-func (db *CacheDB) Write() {
+func (db *cacheDB) Write() {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	// Optional sanity check to ensure that CacheDB is valid
+	// Optional sanity check to ensure that cacheDB is valid
 	if parent, ok := db.parent.(WriteLocker); ok {
 		if parent.TryWriteLock(db.lockVersion) {
 			// All good!
 		} else {
-			panic("CacheDB.Write() failed. Did this CacheDB expire?")
+			panic("cacheDB.Write() failed. Did this CacheDB expire?")
 		}
 	}
 
@@ -176,14 +177,14 @@ func (db *CacheDB) Write() {
 }
 
 //----------------------------------------
-// To CacheWrap this CacheDB further.
+// To cache-wrap this cacheDB further.
 
-func (db *CacheDB) CacheWrap() interface{} {
+func (db *cacheDB) CacheDB() CacheDB {
 	return NewCacheDB(db, db.GetWriteLockVersion())
 }
 
-// If the parent parent DB implements this, (e.g. such as a CacheDB parent to a
-// CacheDB child), CacheDB will call `parent.TryWriteLock()` before attempting
+// If the parent parent DB implements this, (e.g. such as a cacheDB parent to a
+// cacheDB child), cacheDB will call `parent.TryWriteLock()` before attempting
 // to write.
 type WriteLocker interface {
 	GetWriteLockVersion() (lockVersion interface{})

@@ -120,7 +120,7 @@ func (db *CLevelDB) Stats() map[string]string {
 	return stats
 }
 
-func (db *CLevelDB) CacheWrap() interface{} {
+func (db *CLevelDB) CacheDB() CacheDB {
 	return NewCacheDB(db, db.GetWriteLockVersion())
 }
 

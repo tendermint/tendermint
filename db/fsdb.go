@@ -140,7 +140,7 @@ func (db *FSDB) Mutex() *sync.Mutex {
 	return &(db.mtx)
 }
 
-func (db *FSDB) CacheWrap() interface{} {
+func (db *FSDB) CacheDB() CacheDB {
 	return NewCacheDB(db, db.GetWriteLockVersion())
 }
 

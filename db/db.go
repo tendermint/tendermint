@@ -18,8 +18,13 @@ type DB interface {
 	// Stats returns a map of property values for all keys and the size of the cache.
 	Stats() map[string]string
 
-	// CacheWrap wraps the DB w/ a CacheDB.
-	CacheWrap() interface{}
+	// CacheDB wraps the DB w/ a cache.
+	CacheDB() CacheDB
+}
+
+type CacheDB interface {
+	DB
+	Write() // Write to the underlying DB
 }
 
 type Batch interface {

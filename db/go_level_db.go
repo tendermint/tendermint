@@ -121,7 +121,7 @@ func (db *GoLevelDB) Stats() map[string]string {
 	return stats
 }
 
-func (db *GoLevelDB) CacheWrap() interface{} {
+func (db *GoLevelDB) CacheDB() CacheDB {
 	return NewCacheDB(db, db.GetWriteLockVersion())
 }
 

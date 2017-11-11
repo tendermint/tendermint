@@ -10,7 +10,7 @@ func bz(s string) []byte { return []byte(s) }
 
 func TestCacheDB(t *testing.T) {
 	mem := NewMemDB()
-	cdb := mem.CacheWrap().(*CacheDB)
+	cdb := mem.CacheDB()
 
 	require.Empty(t, cdb.Get(bz("key1")), "Expected `key1` to be empty")
 
@@ -27,7 +27,7 @@ func TestCacheDB(t *testing.T) {
 
 	require.Panics(t, func() { cdb.Write() }, "Expected second cdb.Write() to fail")
 
-	cdb = mem.CacheWrap().(*CacheDB)
+	cdb = mem.CacheDB()
 	cdb.Delete(bz("key1"))
 	require.Empty(t, cdb.Get(bz("key1")))
 	require.Equal(t, mem.Get(bz("key1")), bz("value2"))
@@ -39,33 +39,33 @@ func TestCacheDB(t *testing.T) {
 
 func TestCacheDBWriteLock(t *testing.T) {
 	mem := NewMemDB()
-	cdb := mem.CacheWrap().(*CacheDB)
+	cdb := mem.CacheDB()
 	require.NotPanics(t, func() { cdb.Write() })
 	require.Panics(t, func() { cdb.Write() })
-	cdb = mem.CacheWrap().(*CacheDB)
+	cdb = mem.CacheDB()
 	require.NotPanics(t, func() { cdb.Write() })
 	require.Panics(t, func() { cdb.Write() })
 }
 
 func TestCacheDBWriteLockNested(t *testing.T) {
 	mem := NewMemDB()
-	cdb := mem.CacheWrap().(*CacheDB)
-	cdb2 := cdb.CacheWrap().(*CacheDB)
+	cdb := mem.CacheDB()
+	cdb2 := cdb.CacheDB()
 	require.NotPanics(t, func() { cdb2.Write() })
 	require.Panics(t, func() { cdb2.Write() })
-	cdb2 = cdb.CacheWrap().(*CacheDB)
+	cdb2 = cdb.CacheDB()
 	require.NotPanics(t, func() { cdb2.Write() })
 	require.Panics(t, func() { cdb2.Write() })
 }
 
 func TestCacheDBNested(t *testing.T) {
 	mem := NewMemDB()
-	cdb := mem.CacheWrap().(*CacheDB)
+	cdb := mem.CacheDB()
 	cdb.Set(bz("key1"), bz("value1"))
 
 	require.Empty(t, mem.Get(bz("key1")))
 	require.Equal(t, bz("value1"), cdb.Get(bz("key1")))
-	cdb2 := cdb.CacheWrap().(*CacheDB)
+	cdb2 := cdb.CacheDB()
 	require.Equal(t, bz("value1"), cdb2.Get(bz("key1")))
 
 	cdb2.Set(bz("key1"), bz("VALUE2"))

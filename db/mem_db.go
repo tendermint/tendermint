@@ -114,7 +114,7 @@ func (db *MemDB) Mutex() *sync.Mutex {
 	return &(db.mtx)
 }
 
-func (db *MemDB) CacheWrap() interface{} {
+func (db *MemDB) CacheDB() CacheDB {
 	return NewCacheDB(db, db.GetWriteLockVersion())
 }
 
