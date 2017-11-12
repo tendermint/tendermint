@@ -40,6 +40,11 @@ func NewHTTPProvider(remote string) certifiers.Provider {
 	}
 }
 
+// StatusClient returns the internal node as a StatusClient
+func (p *provider) StatusClient() rpcclient.StatusClient {
+	return p.node
+}
+
 // StoreCommit is a noop, as clients can only read from the chain...
 func (p *provider) StoreCommit(_ certifiers.FullCommit) error { return nil }
 

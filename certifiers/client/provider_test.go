@@ -1,17 +1,15 @@
-package client_test
+package client
 
 import (
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	rpctest "github.com/tendermint/tendermint/rpc/test"
-
 	"github.com/tendermint/tendermint/certifiers"
-	"github.com/tendermint/tendermint/certifiers/client"
 	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	rpctest "github.com/tendermint/tendermint/rpc/test"
 )
 
 func TestProvider(t *testing.T) {
@@ -20,11 +18,12 @@ func TestProvider(t *testing.T) {
 	cfg := rpctest.GetConfig()
 	rpcAddr := cfg.RPC.ListenAddress
 	chainID := cfg.ChainID
-	p := client.NewHTTPProvider(rpcAddr)
+	p := NewHTTPProvider(rpcAddr)
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	time.Sleep(500 * time.Millisecond)
+	err := rpcclient.WaitForHeight(p.(*provider).node, 6, nil)
+	require.Nil(err)
 
 	// let's get the highest block
 	seed, err := p.LatestCommit()
