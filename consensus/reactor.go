@@ -390,7 +390,6 @@ func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.
 }
 
 func (conR *ConsensusReactor) broadcastNewRoundStep(rs *cstypes.RoundState) {
-
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
 		conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{nrsMsg})
