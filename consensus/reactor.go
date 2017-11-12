@@ -1056,8 +1056,8 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
-	logger := ps.logger.With("peerRound", ps.Round, "height", height, "round", round)
-	logger.Debug("setHasVote(LastCommit)", "lastCommit", ps.LastCommit, "index", index)
+	logger := ps.logger.With("peerH/R", cmn.Fmt("%d/%d", ps.Height, ps.Round), "H/R", cmn.Fmt("%d/%d", height, round))
+	logger.Debug("setHasVote", "type", type_, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, type_)
