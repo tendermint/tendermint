@@ -3,6 +3,8 @@ package consensus
 import (
 	"context"
 	"fmt"
+	"os"
+	"runtime/pprof"
 	"sync"
 	"testing"
 	"time"
@@ -29,11 +31,16 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 	eventBuses := make([]*types.EventBus, N)
 	logger := consensusLogger()
 	for i := 0; i < N; i++ {
+		/*thisLogger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
+		if err != nil {	t.Fatal(err)}*/
+		thisLogger := logger
+
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].SetLogger(logger.With("validator", i))
+		reactors[i].conS.SetLogger(thisLogger.With("validator", i))
+		reactors[i].SetLogger(thisLogger.With("validator", i))
 
 		eventBuses[i] = types.NewEventBus()
-		eventBuses[i].SetLogger(logger.With("module", "events", "validator", i))
+		eventBuses[i].SetLogger(thisLogger.With("module", "events", "validator", i))
 		_, err := eventBuses[i].Start()
 		require.NoError(t, err)
 
@@ -52,6 +59,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 	// now that everyone is connected,  start the state machines
 	// If we started the state machines before everyone was connected,
 	// we'd block when the cs fires NewBlockEvent and the peers are trying to start their reactors
+	// TODO: is this still true with new pubsub?
 	for i := 0; i < N; i++ {
 		s := reactors[i].conS.GetState()
 		reactors[i].SwitchToConsensus(s, 0)
@@ -304,7 +312,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 	}, css)
 }
 
-func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
+func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState) {
 	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
 		var newBlock *types.Block
 	LOOP:
@@ -355,15 +363,20 @@ func timeoutWaitGroup(t *testing.T, n int, f func(*sync.WaitGroup, int), css []*
 		close(done)
 	}()
 
+	// we're running many nodes in-process, possibly in in a virtual machine,
+	// and spewing debug messages - making a block could take a while,
+	timeout := time.Second * 60
+
 	select {
 	case <-done:
-	case <-time.After(time.Second * 10):
+	case <-time.After(timeout):
 		for i, cs := range css {
-			fmt.Println("#################")
-			fmt.Println("Validator", i)
-			fmt.Println(cs.GetRoundState())
-			fmt.Println("")
+			t.Log("#################")
+			t.Log("Validator", i)
+			t.Log(cs.GetRoundState())
+			t.Log("")
 		}
+		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
 		panic("Timed out waiting for all validators to commit a block")
 	}
 }
