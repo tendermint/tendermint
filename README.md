@@ -13,8 +13,8 @@ to manage an application state running in another.
 ```
 go get github.com/tendermint/abci
 cd $GOPATH/src/github.com/tendermint/abci
-glide install
-go install ./cmd/...
+make get_vendor_deps
+make install
 ```
 
 For background information on ABCI, motivations, and tendermint, please visit [the documentation](http://tendermint.readthedocs.io/en/master/).
