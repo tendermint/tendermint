@@ -127,8 +127,12 @@ func (a *AddrBook) init() {
 func (a *AddrBook) OnStart() error {
 	a.BaseService.OnStart()
 	a.loadFromFile(a.filePath)
+
+	// wg.Add to ensure that any invocation of .Wait()
+	// later on will wait for saveRoutine to terminate.
 	a.wg.Add(1)
 	go a.saveRoutine()
+
 	return nil
 }
 
@@ -391,6 +395,8 @@ func (a *AddrBook) Save() {
 /* Private methods */
 
 func (a *AddrBook) saveRoutine() {
+	defer a.wg.Done()
+
 	dumpAddressTicker := time.NewTicker(dumpAddressInterval)
 out:
 	for {
@@ -403,7 +409,6 @@ out:
 	}
 	dumpAddressTicker.Stop()
 	a.saveToFile(a.filePath)
-	a.wg.Done()
 	a.Logger.Info("Address handler done")
 }
 
