@@ -2,6 +2,8 @@ package node
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -9,8 +11,8 @@ import (
 	"strings"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -23,8 +25,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
-	"github.com/tendermint/tendermint/rpc/lib"
-	"github.com/tendermint/tendermint/rpc/lib/server"
+	rpc "github.com/tendermint/tendermint/rpc/lib"
+	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/state/txindex/kv"
@@ -98,16 +100,16 @@ type Node struct {
 	addrBook *p2p.AddrBook         // known peers
 
 	// services
-	evsw                      types.EventSwitch              // pub/sub for services
-	blockStore                *bc.BlockStore                 // store the blockchain to disk
-	bcReactor                 *bc.BlockchainReactor          // for fast-syncing
-	mempoolReactor            *mempl.MempoolReactor          // for gossipping transactions
-	consensusState            *consensus.ConsensusState      // latest consensus state
-	consensusReactor          *consensus.ConsensusReactor    // for participating in the consensus
-	transientBroadcastReactor *p2p.TransientBroadcastReactor // peer to peer message propagation
-	proxyApp                  proxy.AppConns                 // connection to the application
-	rpcListeners              []net.Listener                 // rpc servers
-	txIndexer                 txindex.TxIndexer
+	eventBus         *types.EventBus             // pub/sub for services
+	blockStore       *bc.BlockStore              // store the blockchain to disk
+	bcReactor        *bc.BlockchainReactor       // for fast-syncing
+	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
+	consensusState   *consensus.ConsensusState   // latest consensus state
+	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
+	transBrReactor   *p2p.TransientBroadcastReactor // for sending transient non-persisted p2p messages
+	proxyApp         proxy.AppConns              // connection to the application
+	rpcListeners     []net.Listener              // rpc servers
+	txIndexer        txindex.TxIndexer
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.
@@ -133,19 +135,27 @@ func NewNode(config *cfg.Config,
 	if err != nil {
 		return nil, err
 	}
-	state := sm.LoadState(stateDB)
-	if state == nil {
-		genDoc, err := genesisDocProvider()
+
+	// Get genesis doc
+	genDoc, err := loadGenesisDoc(stateDB)
+	if err != nil {
+		genDoc, err = genesisDocProvider()
 		if err != nil {
 			return nil, err
 		}
+		// save genesis doc to prevent a certain class of user errors (e.g. when it
+		// was changed, accidentally or not). Also good for audit trail.
+		saveGenesisDoc(stateDB, genDoc)
+	}
+
+	state := sm.LoadState(stateDB)
+	if state == nil {
 		state, err = sm.MakeGenesisState(stateDB, genDoc)
 		if err != nil {
 			return nil, err
 		}
 		state.Save()
 	}
-
 	state.SetLogger(stateLogger)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
@@ -178,13 +188,6 @@ func NewNode(config *cfg.Config,
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
-
-	// Make event switch
-	eventSwitch := types.NewEventSwitch()
-	eventSwitch.SetLogger(logger.With("module", "types"))
-	if _, err := eventSwitch.Start(); err != nil {
-		return nil, fmt.Errorf("Failed to start switch: %v", err)
-	}
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -247,10 +250,10 @@ func NewNode(config *cfg.Config,
 
 	// Make TransientBroadcastReactor
 	// TODO maybe make this config-dependant, disabled by default?
-	transientReactor := p2p.NewTransientBroadCastReactor()
-	transientReactor.SetLogger(p2pLogger)
-	transientReactor.SetEventSwitch(eventSwitch)
-	sw.AddReactor("TRANSIENT", transientReactor)
+	transBroReactor := p2p.NewTransientBroadCastReactor()
+	transBroReactor.SetLogger(p2pLogger)
+	sw.AddReactor("TRANSIENT", transBroReactor)
+
 
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
@@ -279,14 +282,17 @@ func NewNode(config *cfg.Config,
 		})
 	}
 
-	// add the event switch to all services
-	// they should all satisfy events.Eventable
-	SetEventSwitch(eventSwitch, bcReactor, mempoolReactor, consensusReactor)
+	eventBus := types.NewEventBus()
+	eventBus.SetLogger(logger.With("module", "events"))
+
+	// services which will be publishing and/or subscribing for messages (events)
+	bcReactor.SetEventBus(eventBus)
+	consensusReactor.SetEventBus(eventBus)
+	transBroReactor.SetEventBus(eventBus)
 
 	// run the profile server
 	profileHost := config.ProfListenAddress
 	if profileHost != "" {
-
 		go func() {
 			logger.Error("Profile server", "err", http.ListenAndServe(profileHost, nil))
 		}()
@@ -294,22 +300,22 @@ func NewNode(config *cfg.Config,
 
 	node := &Node{
 		config:        config,
-		genesisDoc:    state.GenesisDoc,
+		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
 		privKey:  privKey,
 		sw:       sw,
 		addrBook: addrBook,
 
-		evsw:                      eventSwitch,
-		blockStore:                blockStore,
-		bcReactor:                 bcReactor,
-		mempoolReactor:            mempoolReactor,
-		consensusState:            consensusState,
-		consensusReactor:          consensusReactor,
-		transientBroadcastReactor: transientReactor,
-		proxyApp:                  proxyApp,
-		txIndexer:                 txIndexer,
+		blockStore:       blockStore,
+		bcReactor:        bcReactor,
+		mempoolReactor:   mempoolReactor,
+		consensusState:   consensusState,
+		consensusReactor: consensusReactor,
+		transBrReactor:   transBroReactor,
+		proxyApp:         proxyApp,
+		txIndexer:        txIndexer,
+		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
 	return node, nil
@@ -317,6 +323,21 @@ func NewNode(config *cfg.Config,
 
 // OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
+	_, err := n.eventBus.Start()
+	if err != nil {
+		return err
+	}
+
+	// Run the RPC server first
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		listeners, err := n.startRPC()
+		if err != nil {
+			return err
+		}
+		n.rpcListeners = listeners
+	}
+
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
@@ -325,7 +346,7 @@ func (n *Node) OnStart() error {
 	// Start the switch
 	n.sw.SetNodeInfo(n.makeNodeInfo())
 	n.sw.SetNodePrivKey(n.privKey)
-	_, err := n.sw.Start()
+	_, err = n.sw.Start()
 	if err != nil {
 		return err
 	}
@@ -337,15 +358,6 @@ func (n *Node) OnStart() error {
 		if err := n.DialSeeds(seeds); err != nil {
 			return err
 		}
-	}
-
-	// Run the RPC server
-	if n.config.RPC.ListenAddress != "" {
-		listeners, err := n.startRPC()
-		if err != nil {
-			return err
-		}
-		n.rpcListeners = listeners
 	}
 
 	return nil
@@ -365,6 +377,8 @@ func (n *Node) OnStop() {
 			n.Logger.Error("Error closing listener", "listener", l, "err", err)
 		}
 	}
+
+	n.eventBus.Stop()
 }
 
 // RunForever waits for an interupt signal and stops the node.
@@ -373,13 +387,6 @@ func (n *Node) RunForever() {
 	cmn.TrapSignal(func() {
 		n.Stop()
 	})
-}
-
-// SetEventSwitch adds the event switch to reactors, mempool, etc.
-func SetEventSwitch(evsw types.EventSwitch, eventables ...types.Eventable) {
-	for _, e := range eventables {
-		e.SetEventSwitch(evsw)
-	}
 }
 
 // AddListener adds a listener to accept inbound peer connections.
@@ -392,7 +399,6 @@ func (n *Node) AddListener(l p2p.Listener) {
 // ConfigureRPC sets all variables in rpccore so they will serve
 // rpc calls from this node
 func (n *Node) ConfigureRPC() {
-	rpccore.SetEventSwitch(n.evsw)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetMempool(n.mempoolReactor.Mempool)
@@ -403,7 +409,8 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
 	rpccore.SetConsensusReactor(n.consensusReactor)
-	rpccore.SetTransientBroadcastReactor(n.transientBroadcastReactor)
+	rpccore.SetTransientBroadcastReactor(n.transBrReactor)
+	rpccore.SetEventBus(n.eventBus)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
 }
 
@@ -420,7 +427,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, n.evsw)
+		onDisconnect := rpcserver.OnDisconnect(func(remoteAddr string) {
+			n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+		})
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, onDisconnect)
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
@@ -464,18 +474,18 @@ func (n *Node) ConsensusReactor() *consensus.ConsensusReactor {
 	return n.consensusReactor
 }
 
+func (n *Node) TransientBroadcastReactor() *p2p.TransientBroadcastReactor {
+	return n.transBrReactor
+}
+
 // MempoolReactor returns the Node's MempoolReactor.
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
 }
 
-func (n *Node) TransientBroadcastReactor() *p2p.TransientBroadcastReactor {
-	return n.transientBroadcastReactor
-}
-
-// EventSwitch returns the Node's EventSwitch.
-func (n *Node) EventSwitch() types.EventSwitch {
-	return n.evsw
+// EventBus returns the Node's EventBus.
+func (n *Node) EventBus() *types.EventBus {
+	return n.eventBus
 }
 
 // PrivValidator returns the Node's PrivValidator.
@@ -499,11 +509,10 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
-
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker: n.config.Moniker,
-		Network: n.consensusState.GetState().ChainID,
+		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
@@ -550,3 +559,31 @@ func (n *Node) DialSeeds(seeds []string) error {
 }
 
 //------------------------------------------------------------------------------
+
+var (
+	genesisDocKey = []byte("genesisDoc")
+)
+
+// panics if failed to unmarshal bytes
+func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
+	bytes := db.Get(genesisDocKey)
+	if len(bytes) == 0 {
+		return nil, errors.New("Genesis doc not found")
+	} else {
+		var genDoc *types.GenesisDoc
+		err := json.Unmarshal(bytes, &genDoc)
+		if err != nil {
+			cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+		}
+		return genDoc, nil
+	}
+}
+
+// panics if failed to marshal the given genesis document
+func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
+	bytes, err := json.Marshal(genDoc)
+	if err != nil {
+		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
+	}
+	db.SetSync(genesisDocKey, bytes)
+}

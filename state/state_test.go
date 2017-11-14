@@ -7,14 +7,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/types"
-
 	abci "github.com/tendermint/abci/types"
+
 	crypto "github.com/tendermint/go-crypto"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
+
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/types"
 )
 
 // setupTestCase does setup common to all test cases
@@ -30,22 +32,29 @@ func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, *State) {
 	return tearDown, stateDB, state
 }
 
+// TestStateCopy tests the correct copying behaviour of State.
 func TestStateCopy(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
+	// nolint: vetshadow
 	assert := assert.New(t)
 
 	stateCopy := state.Copy()
 
 	assert.True(state.Equals(stateCopy),
-		cmn.Fmt("expected state and its copy to be identical. got %v\n expected %v\n", stateCopy, state))
+		cmn.Fmt(`expected state and its copy to be identical. got %v\n expected %v\n`,
+			stateCopy, state))
+
 	stateCopy.LastBlockHeight++
-	assert.False(state.Equals(stateCopy), cmn.Fmt("expected states to be different. got same %v", state))
+	assert.False(state.Equals(stateCopy), cmn.Fmt(`expected states to be different. got same
+        %v`, state))
 }
 
+// TestStateSaveLoad tests saving and loading State from a db.
 func TestStateSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
+	// nolint: vetshadow
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -53,12 +62,15 @@ func TestStateSaveLoad(t *testing.T) {
 
 	loadedState := LoadState(stateDB)
 	assert.True(state.Equals(loadedState),
-		cmn.Fmt("expected state and its copy to be identical. got %v\n expected %v\n", loadedState, state))
+		cmn.Fmt(`expected state and its copy to be identical. got %v\n expected %v\n`,
+			loadedState, state))
 }
 
+// TestABCIResponsesSaveLoad tests saving and loading ABCIResponses.
 func TestABCIResponsesSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
+	// nolint: vetshadow
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
@@ -77,17 +89,20 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 	abciResponses.txs = nil
 
 	state.SaveABCIResponses(abciResponses)
-	abciResponses2 := state.LoadABCIResponses()
-	assert.Equal(abciResponses, abciResponses2,
-		cmn.Fmt("ABCIResponses don't match: Got %v, Expected %v", abciResponses2, abciResponses))
+	loadedAbciResponses := state.LoadABCIResponses()
+	assert.Equal(abciResponses, loadedAbciResponses,
+		cmn.Fmt(`ABCIResponses don't match: Got %v, Expected %v`, loadedAbciResponses,
+			abciResponses))
 }
 
+// TestValidatorSimpleSaveLoad tests saving and loading validators.
 func TestValidatorSimpleSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
+	// nolint: vetshadow
 	assert := assert.New(t)
 
-	// cant load anything for height 0
+	// can't load anything for height 0
 	v, err := state.LoadValidators(0)
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at height 0")
 
@@ -115,9 +130,11 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
 }
 
+// TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
 func TestValidatorChangesSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
+	// nolint: vetshadow
 	assert := assert.New(t)
 
 	// change vals at these heights
@@ -127,7 +144,8 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	// each valset is just one validator.
 	// create list of them
 	pubkeys := make([]crypto.PubKey, N+1)
-	pubkeys[0] = state.GenesisDoc.Validators[0].PubKey
+	_, val := state.Validators.GetByIndex(0)
+	pubkeys[0] = val.PubKey
 	for i := 1; i < N+1; i++ {
 		pubkeys[i] = crypto.GenPrivKeyEd25519().PubKey()
 	}
@@ -169,7 +187,8 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 		assert.Equal(v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
 		addr, _ := v.GetByIndex(0)
 
-		assert.Equal(addr, testCase.vals.Address(), fmt.Sprintf("unexpected pubkey at height %d", testCase.height))
+		assert.Equal(addr, testCase.vals.Address(), fmt.Sprintf(`unexpected pubkey at
+                height %d`, testCase.height))
 	}
 }
 

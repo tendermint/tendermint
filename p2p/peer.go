@@ -11,6 +11,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 // Peer is an interface representing a peer connected on a reactor.
@@ -136,6 +137,11 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 	return p, nil
 }
 
+func (p *peer) SetLogger(l log.Logger) {
+	p.Logger = l
+	p.mconn.SetLogger(l)
+}
+
 // CloseConn should be used when the peer was created, but never started.
 func (p *peer) CloseConn() {
 	p.conn.Close()
@@ -210,7 +216,7 @@ func (p *peer) PubKey() crypto.PubKeyEd25519 {
 	if p.config.AuthEnc {
 		return p.conn.(*SecretConnection).RemotePubKey()
 	}
-	if p.NodeInfo == nil {
+	if p.NodeInfo() == nil {
 		panic("Attempt to get peer's PubKey before calling Handshake")
 	}
 	return p.PubKey()
@@ -268,11 +274,11 @@ func (p *peer) CanSend(chID byte) bool {
 }
 
 // WriteTo writes the peer's public key to w.
-func (p *peer) WriteTo(w io.Writer) (n int64, err error) {
-	var n_ int
-	wire.WriteString(p.key, w, &n_, &err)
-	n += int64(n_)
-	return
+func (p *peer) WriteTo(w io.Writer) (int64, error) {
+	var n int
+	var err error
+	wire.WriteString(p.key, w, &n, &err)
+	return int64(n), err
 }
 
 // String representation.
@@ -306,6 +312,9 @@ func (p *peer) Key() string {
 
 // NodeInfo returns a copy of the peer's NodeInfo.
 func (p *peer) NodeInfo() *NodeInfo {
+	if p.nodeInfo == nil {
+		return nil
+	}
 	n := *p.nodeInfo // copy
 	return &n
 }

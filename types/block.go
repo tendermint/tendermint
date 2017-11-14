@@ -14,15 +14,15 @@ import (
 	"github.com/tendermint/tmlibs/merkle"
 )
 
-// Block defines the atomic unit of a Tendermint blockchain
+// Block defines the atomic unit of a Tendermint blockchain.
 type Block struct {
 	*Header    `json:"header"`
 	*Data      `json:"data"`
 	LastCommit *Commit `json:"last_commit"`
 }
 
-// MakeBlock returns a new block and corresponding part set from the given information
-// TODO: version
+// MakeBlock returns a new block and corresponding partset from the given information.
+// TODO: Add version information to the Block struct.
 func MakeBlock(height int, chainID string, txs []Tx, commit *Commit,
 	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
 	block := &Block{
@@ -169,7 +169,7 @@ type Header struct {
 }
 
 // Hash returns the hash of the header.
-// NOTE: hash is nil if required fields are missing.
+// Returns nil if ValidatorHash is missing.
 func (h *Header) Hash() data.Bytes {
 	if len(h.ValidatorsHash) == 0 {
 		return nil
@@ -364,6 +364,14 @@ func (commit *Commit) StringIndented(indent string) string {
 		indent, commit.BlockID,
 		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
 		indent, commit.hash)
+}
+
+//-----------------------------------------------------------------------------
+
+// SignedHeader is a header along with the commits that prove it
+type SignedHeader struct {
+	Header *Header `json:"header"`
+	Commit *Commit `json:"commit"`
 }
 
 //-----------------------------------------------------------------------------

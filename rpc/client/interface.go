@@ -20,9 +20,12 @@ implementation.
 package client
 
 import (
+	"context"
+
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // ABCIClient groups together the functionality that principally
@@ -31,7 +34,8 @@ import (
 type ABCIClient interface {
 	// reading from abci app
 	ABCIInfo() (*ctypes.ResultABCIInfo, error)
-	ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error)
+	ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error)
+	ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
 
 	// writing to abci app
 	BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
@@ -65,14 +69,12 @@ type StatusClient interface {
 // if you want to listen for events, test if it also
 // implements events.EventSwitch
 type Client interface {
+	cmn.Service
 	ABCIClient
 	SignClient
 	HistoryClient
 	StatusClient
-
-	// this Client is reactive, you can subscribe to any TMEventData
-	// type, given the proper string. see tendermint/types/events.go
-	types.EventSwitch
+	EventsClient
 }
 
 // NetworkClient is general info about the network state.  May not
@@ -83,4 +85,12 @@ type Client interface {
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
+}
+
+// EventsClient is reactive, you can subscribe to any message, given the proper
+// string. see tendermint/types/events.go
+type EventsClient interface {
+	Subscribe(ctx context.Context, query string, out chan<- interface{}) error
+	Unsubscribe(ctx context.Context, query string) error
+	UnsubscribeAll(ctx context.Context) error
 }

@@ -280,7 +280,7 @@ func Commit(heightPtr *int) (*ctypes.ResultCommit, error) {
 		height := blockStore.Height()
 		header := blockStore.LoadBlockMeta(height).Header
 		commit := blockStore.LoadSeenCommit(height)
-		return &ctypes.ResultCommit{header, commit, false}, nil
+		return ctypes.NewResultCommit(header, commit, false), nil
 	}
 
 	height := *heightPtr
@@ -298,10 +298,10 @@ func Commit(heightPtr *int) (*ctypes.ResultCommit, error) {
 	// use a non-canonical commit
 	if height == storeHeight {
 		commit := blockStore.LoadSeenCommit(height)
-		return &ctypes.ResultCommit{header, commit, false}, nil
+		return ctypes.NewResultCommit(header, commit, false), nil
 	}
 
 	// Return the canonical commit (comes from the block at height+1)
 	commit := blockStore.LoadBlockCommit(height)
-	return &ctypes.ResultCommit{header, commit, true}, nil
+	return ctypes.NewResultCommit(header, commit, true), nil
 }

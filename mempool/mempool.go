@@ -50,9 +50,10 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 
 const cacheSize = 100000
 
-// Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus round.
-// Transaction validity is checked using the CheckTx abci message before the transaction is added to the pool.
-// The Mempool uses a concurrent list structure for storing transactions that can be efficiently accessed by multiple concurrent readers.
+// Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
+// round. Transaction validity is checked using the CheckTx abci message before the transaction is
+// added to the pool. The Mempool uses a concurrent list structure for storing transactions that
+// can be efficiently accessed by multiple concurrent readers.
 type Mempool struct {
 	config *cfg.MempoolConfig
 
@@ -78,6 +79,7 @@ type Mempool struct {
 }
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
+// TODO: Extract logger into arguments.
 func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int) *Mempool {
 	mempool := &Mempool{
 		config:        config,
@@ -269,7 +271,10 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			atomic.StoreInt32(&mem.rechecking, 0)
 			mem.logger.Info("Done rechecking txs")
 
-			mem.notifyTxsAvailable()
+			// incase the recheck removed all txs
+			if mem.Size() > 0 {
+				mem.notifyTxsAvailable()
+			}
 		}
 	default:
 		// ignore other messages
@@ -287,9 +292,7 @@ func (mem *Mempool) notifyTxsAvailable() {
 	if mem.Size() == 0 {
 		panic("notified txs available but mempool is empty!")
 	}
-	if mem.txsAvailable != nil &&
-		!mem.notifiedTxsAvailable {
-
+	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
 		mem.notifiedTxsAvailable = true
 		mem.txsAvailable <- mem.height + 1
 	}

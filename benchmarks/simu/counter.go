@@ -21,7 +21,7 @@ func main() {
 	// Read a bunch of responses
 	go func() {
 		for {
-			_, ok := <-wsc.ResultsCh
+			_, ok := <-wsc.ResponsesCh
 			if !ok {
 				break
 			}

@@ -17,6 +17,7 @@ var (
 	ErrVoteInvalidValidatorAddress = errors.New("Invalid validator address")
 	ErrVoteInvalidSignature        = errors.New("Invalid signature")
 	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
+	ErrVoteNil                     = errors.New("Nil vote")
 )
 
 type ErrVoteConflictingVotes struct {

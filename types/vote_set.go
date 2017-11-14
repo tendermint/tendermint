@@ -123,6 +123,7 @@ func (voteSet *VoteSet) Size() int {
 // Conflicting votes return added=*, err=ErrVoteConflictingVotes.
 // NOTE: vote should not be mutated after adding.
 // NOTE: VoteSet must not be nil
+// NOTE: Vote must not be nil
 func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 	if voteSet == nil {
 		cmn.PanicSanity("AddVote() on nil VoteSet")
@@ -135,6 +136,9 @@ func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 
 // NOTE: Validates as much as possible before attempting to verify the signature.
 func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
+	if vote == nil {
+		return false, ErrVoteNil
+	}
 	valIndex := vote.ValidatorIndex
 	valAddr := vote.ValidatorAddress
 	blockKey := vote.BlockID.Key()

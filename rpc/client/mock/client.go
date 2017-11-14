@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Client wraps arbitrary implementations of the various interfaces.
@@ -33,13 +34,11 @@ type Client struct {
 	client.SignClient
 	client.HistoryClient
 	client.StatusClient
-	// create a mock with types.NewEventSwitch()
-	types.EventSwitch
+	client.EventsClient
+	cmn.Service
 }
 
-func (c Client) _assertIsClient() client.Client {
-	return c
-}
+var _ client.Client = Client{}
 
 // Call is used by recorders to save a call and response.
 // It can also be used to configure mock responses.
@@ -84,8 +83,12 @@ func (c Client) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo()
 }
 
-func (c Client) ABCIQuery(path string, data data.Bytes, prove bool) (*ctypes.ResultABCIQuery, error) {
-	return core.ABCIQuery(path, data, prove)
+func (c Client) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+	return c.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
+}
+
+func (c Client) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+	return core.ABCIQuery(path, data, opts.Height, opts.Trusted)
 }
 
 func (c Client) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {

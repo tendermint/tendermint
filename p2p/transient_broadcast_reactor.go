@@ -25,7 +25,7 @@ const (
 
 type TransientBroadcastReactor struct {
 	BaseReactor
-	evsw     types.EventSwitch
+	eventBus *types.EventBus
 	messages *common.CMap
 }
 
@@ -36,14 +36,18 @@ func NewTransientBroadCastReactor() *TransientBroadcastReactor {
 	return r
 }
 
-func (r *TransientBroadcastReactor) SetEventSwitch(eventSwitch types.EventSwitch) {
-	r.evsw = eventSwitch
-}
+//func (r *TransientBroadcastReactor) SetEventSwitch(eventSwitch types.EventSwitch) {
+//	r.evsw = eventSwitch
+//}
 
 func (r *TransientBroadcastReactor) OnStart() error {
 	r.BaseReactor.OnStart()
 	go r.ensureCleanupRoutine()
 	return nil
+}
+
+func (r *TransientBroadcastReactor) SetEventBus(b *types.EventBus) {
+	r.eventBus = b
 }
 
 //func(r *TransientBroadcastReactor) SetLogger(logger log.Logger) {
@@ -129,7 +133,8 @@ func (r *TransientBroadcastReactor) broadcastTransientMessage(tm *TransientTxMes
 
 	// Send to own WSClients, can be multiple
 	r.Logger.Debug("Re-Broadcasting over EventSwitch to own subscribers")
-	types.FireEventTransientTx(r.evsw, types.EventDataTransientTx{tm.Tx})
+
+	r.eventBus.PublishEventTransientTx(types.EventDataTransientTx{tm.Tx})
 
 	if (r.Switch != nil) { // we should always have a switch
 		// send to peers

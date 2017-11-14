@@ -25,7 +25,7 @@ Then run
 
 ::
 
-    go get -u github.com/tendermint/abci/cmd/...
+    go get -u github.com/tendermint/abci/cmd/abci-cli
 
 If there is an error, install and run the ``glide`` tool to pin the
 dependencies:
@@ -35,20 +35,12 @@ dependencies:
     go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
     glide install
-    go install ./cmd/...
+    go install ./cmd/abci-cli
 
-Now you should have the ``abci-cli`` plus two apps installed:
-
-::
-
-    dummy --help
-    counter --help
-
-These binaries are installed on ``$GOPATH/bin`` and all come from within
-the ``./cmd/...`` directory of the abci repository.
-
-Both of these example applications are in Go. See below for an
-application written in Javascript.
+Now you should have the ``abci-cli`` installed; you'll see
+a couple of commands (``counter`` and ``dummy``) that are
+example applications written in Go. See below for an application
+written in Javascript.
 
 Now, let's run some apps!
 
@@ -66,7 +58,7 @@ Let's start a dummy application.
 
 ::
 
-    dummy
+    abci-cli dummy
 
 In another terminal, we can start Tendermint. If you have never run
 Tendermint before, use:
@@ -126,10 +118,6 @@ like:
       }
     }
 
-The ``98`` is a type-byte, and can be ignored (it's useful for
-serializing and deserializing arbitrary json). Otherwise, this result is
-empty - there's nothing to report on and everything is OK.
-
 We can confirm that our transaction worked and the value got stored by
 querying the app:
 
@@ -157,11 +145,10 @@ The result should look like:
       }
     }
 
-Again, the ``112`` is the type-byte. Note the ``value`` in the result
-(``61626364``); this is the hex-encoding of the ASCII of ``abcd``. You
-can verify this in a python shell by running
-``"61626364".decode('hex')``. Stay tuned for a future release that makes
-this output more human-readable ;).
+Note the ``value`` in the result (``61626364``); this is the
+hex-encoding of the ASCII of ``abcd``. You can verify this in
+a python shell by running ``"61626364".decode('hex')``. Stay
+tuned for a future release that `makes this output more human-readable <https://github.com/tendermint/abci/issues/32>`__.
 
 Now let's try setting a different key and value:
 
@@ -183,7 +170,7 @@ Counter - Another Example
 -------------------------
 
 Now that we've got the hang of it, let's try another application, the
-"counter" app.
+**counter** app.
 
 The counter app doesn't use a Merkle tree, it just counts how many times
 we've sent a transaction, or committed the state.
@@ -211,7 +198,7 @@ a flag:
 
 ::
 
-    counter --serial
+    abci-cli counter --serial
 
 In another window, reset then start Tendermint:
 
@@ -295,6 +282,7 @@ keep all our code under the ``$GOPATH``, so run:
     go get github.com/tendermint/js-abci &> /dev/null
     cd $GOPATH/src/github.com/tendermint/js-abci/example
     npm install
+    cd ..
 
 Kill the previous ``counter`` and ``tendermint`` processes. Now run the
 app:
@@ -325,12 +313,12 @@ Neat, eh?
 Basecoin - A More Interesting Example
 -------------------------------------
 
-We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the``dummy`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
+We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the ``dummy`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
 
 The default ``basecoin`` application is a multi-asset cryptocurrency
-that supports inter-blockchain communication. For more details on how
+that supports inter-blockchain communication (IBC). For more details on how
 basecoin works and how to use it, see our `basecoin
-guide <https://github.com/cosmos/cosmos-sdk/blob/develop/docs/guide/basecoin-basics.md>`__
+guide <http://cosmos-sdk.readthedocs.io/en/latest/basecoin-basics.html>`__
 
 In this tutorial you learned how to run applications using Tendermint
 on a single node. You saw how applications could be written in different

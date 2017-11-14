@@ -146,11 +146,11 @@ The ABCI consists of 3 primary message types that get delivered from the core to
 
 The messages are specified here: `ABCI Message Types <https://github.com/tendermint/abci#message-types>`__.
 
-The `DeliverTx` message is the work horse of the application.  Each transaction in the blockchain is delivered with this message. The application needs to validate each transaction received with the `DeliverTx` message against the current state, application protocol, and the cryptographic credentials of the transaction. A validated transaction then needs to update the application state — by binding a value into a key values store, or by updating the UTXO database, for instance.
+The **DeliverTx** message is the work horse of the application. Each transaction in the blockchain is delivered with this message. The application needs to validate each transaction received with the **DeliverTx** message against the current state, application protocol, and the cryptographic credentials of the transaction. A validated transaction then needs to update the application state — by binding a value into a key values store, or by updating the UTXO database, for instance.
 
-The `CheckTx` message is similar to `DeliverTx`, but it's only for validating transactions.  Tendermint Core's mempool first checks the validity of a transaction with `CheckTx`, and only relays valid transactions to its peers.  For instance, an application may check an incrementing sequence number in the transaction and return an error upon `CheckTx` if the sequence number is old. Alternatively, they might use a capabilities based system that requires capabilities to be renewed with every transaction.
+The **CheckTx** message is similar to **DeliverTx**, but it's only for validating transactions. Tendermint Core's mempool first checks the validity of a transaction with **CheckTx**, and only relays valid transactions to its peers. For instance, an application may check an incrementing sequence number in the transaction and return an error upon **CheckTx** if the sequence number is old. Alternatively, they might use a capabilities based system that requires capabilities to be renewed with every transaction.
 
-The `Commit` message is used to compute a cryptographic commitment to the current application state, to be placed into the next block header. This has some handy properties. Inconsistencies in updating that state will now appear as blockchain forks which catches a whole class of programming errors. This also simplifies the development of secure lightweight clients, as Merkle-hash proofs can be verified by checking against the block hash, and that the block hash is signed by a quorum.
+The **Commit** message is used to compute a cryptographic commitment to the current application state, to be placed into the next block header. This has some handy properties. Inconsistencies in updating that state will now appear as blockchain forks which catches a whole class of programming errors. This also simplifies the development of secure lightweight clients, as Merkle-hash proofs can be verified by checking against the block hash, and that the block hash is signed by a quorum.
 
 There can be multiple ABCI socket connections to an application. Tendermint Core creates three ABCI connections to the application; one for the validation of transactions when broadcasting in the mempool, one for the consensus engine to run block proposals, and one more for querying the application state.
 
@@ -169,7 +169,7 @@ Solidity on Ethereum is a great language of choice for blockchain applications b
  * race conditions on threads (or avoiding threads altogether)
  * the system clock
  * uninitialized memory (in unsafe programming languages like C or C++)
- * `floating point arithmetic <http://gafferongames.com/networking-for-game-programmers/floating-point-determinism/>`__.
+ * `floating point arithmetic <http://gafferongames.com/networking-for-game-programmers/floating-point-determinism/>`__
  * language features that are random (e.g. map iteration in Go)
 
 While programmers can avoid non-determinism by being careful, it is also possible to create a special linter or static analyzer for each language to check for determinism.  In the future we may work with partners to create such tools.
@@ -182,17 +182,17 @@ The protocol follows a simple state machine that looks like this:
 
 .. figure:: assets/consensus_logic.png
 
-Participants in the protocol are called "validators";
+Participants in the protocol are called **validators**;
 they take turns proposing blocks of transactions and voting on them.
-Blocks are committed in a chain, with one block at each "height".
-A block may fail to be committed, in which case the protocol moves to the next "round",
+Blocks are committed in a chain, with one block at each **height**.
+A block may fail to be committed, in which case the protocol moves to the next **round**,
 and a new validator gets to propose a block for that height.
 Two stages of voting are required to successfully commit a block;
-we call them "pre-vote" and "pre-commit".
+we call them **pre-vote** and **pre-commit**.
 A block is committed when more than 2/3 of validators pre-commit for the same block in the same round.
 
 There is a picture of a couple doing the polka because validators are doing something like a polka dance.
-When more than two-thirds of the validators pre-vote for the same block, we call that a "polka".
+When more than two-thirds of the validators pre-vote for the same block, we call that a **polka**.
 Every pre-commit must be justified by a polka in the same round.
 
 Validators may fail to commit a block for a number of reasons; 
@@ -204,8 +204,8 @@ However, the rest of the protocol is asynchronous, and validators only make prog
 A simplifying element of Tendermint is that it uses the same mechanism to commit a block as it does to skip to the next round.
 
 Assuming less than one-third of the validators are Byzantine, Tendermint guarantees that safety will never be violated - that is, validators will never commit conflicting blocks at the same height.
-To do this it introduces a few "locking" rules which modulate which paths can be followed in the flow diagram.
-Once a validator precommits a block, it is "locked" on that block. 
+To do this it introduces a few **locking** rules which modulate which paths can be followed in the flow diagram.
+Once a validator precommits a block, it is locked on that block.
 Then, 
 
 1) it must prevote for the block it is locked on

@@ -6,17 +6,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Indexer interface defines methods to index and search transactions.
+// TxIndexer interface defines methods to index and search transactions.
 type TxIndexer interface {
 
-	// Batch analyzes, indexes or stores a batch of transactions.
-	//
-	// NOTE We do not specify Index method for analyzing a single transaction
+	// AddBatch analyzes, indexes or stores a batch of transactions.
+	// NOTE: We do not specify Index method for analyzing a single transaction
 	// here because it bears heavy perfomance loses. Almost all advanced indexers
 	// support batching.
 	AddBatch(b *Batch) error
 
-	// Tx returns specified transaction or nil if the transaction is not indexed
+	// Get returns the transaction specified by hash or nil if the transaction is not indexed
 	// or stored.
 	Get(hash []byte) (*types.TxResult, error)
 }
@@ -24,10 +23,8 @@ type TxIndexer interface {
 //----------------------------------------------------
 // Txs are written as a batch
 
-// A Batch groups together multiple Index operations you would like performed
-// at the same time. The Batch structure is NOT thread-safe. You should only
-// perform operations on a batch from a single thread at a time. Once batch
-// execution has started, you may not modify it.
+// Batch groups together multiple Index operations to be performed at the same time.
+// NOTE: Batch is NOT thread-safe and must not be modified after starting its execution.
 type Batch struct {
 	Ops []types.TxResult
 }
@@ -39,7 +36,7 @@ func NewBatch(n int) *Batch {
 	}
 }
 
-// Index adds or updates entry for the given result.Index.
+// Add or update an entry for the given result.Index.
 func (b *Batch) Add(result types.TxResult) error {
 	b.Ops[result.Index] = result
 	return nil
