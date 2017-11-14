@@ -15,7 +15,7 @@ cd "$DIR"
 ABCI_APP="counter" go run  ./*.go
 
 # test golang counter via grpc
-ABCI_APP="counter -abci=grpc" ABCI="grpc" go run ./*.go
+ABCI_APP="counter --abci=grpc" ABCI="grpc" go run ./*.go
 
 # test nodejs counter
 # TODO: fix node app
