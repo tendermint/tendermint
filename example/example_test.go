@@ -13,7 +13,7 @@ import (
 
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
-	"github.com/tendermint/abci/server"
+	abciserver "github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -38,7 +38,7 @@ func testStream(t *testing.T, app types.Application) {
 	numDeliverTxs := 200000
 
 	// Start the listener
-	server := server.NewSocketServer("unix://test.sock", app)
+	server := abciserver.NewSocketServer("unix://test.sock", app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if _, err := server.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
@@ -111,7 +111,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	numDeliverTxs := 2000
 
 	// Start the listener
-	server := server.NewGRPCServer("unix://test.sock", app)
+	server := abciserver.NewGRPCServer("unix://test.sock", app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if _, err := server.Start(); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())

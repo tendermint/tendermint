@@ -3,11 +3,13 @@ import:
 - package: github.com/golang/protobuf
   subpackages:
   - proto
-- package: github.com/pkg/errors
+- package: github.com/spf13/cobra
 - package: github.com/tendermint/go-crypto
   version: develop
 - package: github.com/tendermint/go-wire
   version: develop
+  subpackages:
+  - data
 - package: github.com/tendermint/iavl
   version: develop
 - package: github.com/tendermint/tmlibs
@@ -16,10 +18,7 @@ import:
   - common
   - db
   - log
-  - merkle
   - process
-- package: github.com/spf13/cobra
-  version: master
 - package: golang.org/x/net
   subpackages:
   - context
@@ -27,4 +26,5 @@ import:
 testImport:
 - package: github.com/stretchr/testify
   subpackages:
+  - assert
   - require

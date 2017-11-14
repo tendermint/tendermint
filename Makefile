@@ -5,7 +5,7 @@ GOTOOLS = \
 
 all: protoc install test
 
-NOVENDOR = go list github.com/tendermint/abci/... | grep -v /vendor/
+PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 
 install-protoc:
 	# Download: https://github.com/google/protobuf/releases
@@ -15,10 +15,10 @@ protoc:
 	@ protoc --go_out=plugins=grpc:. types/*.proto
 
 install:
-	@ go install github.com/tendermint/abci/cmd/...
+	@ go install ./cmd/...
 
 build:
-	@ go build -i github.com/tendermint/abci/cmd/...
+	@ go build -i ./cmd/...
 
 dist:
 	@ bash scripts/dist.sh
@@ -27,7 +27,7 @@ dist:
 # test.sh requires that we run the installed cmds, must not be out of date
 test: install
 	find . -path ./vendor -prune -o -name *.sock -exec rm {} \;
-	@ go test -p 1 `${NOVENDOR}`
+	@ go test $(PACKAGES)
 	@ bash tests/test.sh
 
 fmt:
@@ -36,7 +36,7 @@ fmt:
 test_integrations: get_vendor_deps install test
 
 get_deps:
-	@ go get -d `${NOVENDOR}`
+	@ go get -d $(PACKAGES)
 
 tools:
 	go get -u -v $(GOTOOLS)

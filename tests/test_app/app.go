@@ -18,7 +18,7 @@ func startApp(abciApp string) *process.Process {
 	proc, err := process.StartProcess("abci_app",
 		"",
 		"bash",
-		[]string{"-c", abciApp},
+		[]string{"-c", fmt.Sprintf("abci-cli %s", abciApp)},
 		nil,
 		os.Stdout,
 	)

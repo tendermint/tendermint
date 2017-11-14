@@ -17,7 +17,7 @@ function testExample() {
 	$APP &> /dev/null &
 	sleep 2
 	abci-cli --verbose batch < "$INPUT" > "${INPUT}.out.new"
-	killall $3
+	killall "$3"
 
 	pre=$(shasum < "${INPUT}.out")
 	post=$(shasum < "${INPUT}.out.new")

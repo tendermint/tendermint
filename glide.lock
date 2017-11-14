@@ -1,5 +1,5 @@
-hash: 3c8680f0a289567a29f737be5f1d5f242c7e2afd84bdd023dd74596b88508fc2
-updated: 2017-10-27T12:12:58.940745472-04:00
+hash: 5501ab3d7136aa8fb425c995d45221849b33aefab76c5d2c192e721dad28da38
+updated: 2017-11-14T18:23:41.2024073Z
 imports:
 - name: github.com/btcsuite/btcd
   version: b8df516b4b267acf2de46be593a9d948d1d2c420
@@ -66,20 +66,19 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: db5603e37435933c13665a708055fadd18222f5f
+  version: b4f04f196cd719660e43b91202cd60d9a95b1837
 - name: github.com/tendermint/go-wire
-  version: 8ee84b5b2581530168daf66fc89c548d27403c57
+  version: 1c96861c03231361546944d883d99593b2e6b408
   subpackages:
   - data
 - name: github.com/tendermint/iavl
   version: 595f3dcd5b6cd4a292e90757ae6d367fd7a6e653
 - name: github.com/tendermint/tmlibs
-  version: 092eb701c7276907cdbed258750e22ce895b6735
+  version: 2442a0a698d271d5cf5d6a8e7c1db20335e959c1
   subpackages:
   - common
   - db
   - log
-  - merkle
   - process
 - name: golang.org/x/crypto
   version: c7af5bf2638a1164f2eb5467c39c6cffbd13a02e
