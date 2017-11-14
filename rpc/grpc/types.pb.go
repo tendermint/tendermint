@@ -22,7 +22,8 @@ import math "math"
 import types "github.com/tendermint/abci/types"
 
 import (
-	context "golang.org/x/net/context"
+	"context"
+
 	grpc "google.golang.org/grpc"
 )
 
