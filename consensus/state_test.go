@@ -10,6 +10,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
@@ -239,6 +240,14 @@ func TestBadProposal(t *testing.T) {
 func TestFullRound1(t *testing.T) {
 	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
+
+	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
+	// before consensus can move to the next height (and cause a race condition)
+	cs.eventBus.Stop()
+	eventBus := types.NewEventBusWithBufferCapacity(0)
+	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	cs.SetEventBus(eventBus)
+	eventBus.Start()
 
 	voteCh := subscribe(cs.eventBus, types.EventQueryVote)
 	propCh := subscribe(cs.eventBus, types.EventQueryCompleteProposal)
