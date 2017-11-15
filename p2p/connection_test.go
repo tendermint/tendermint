@@ -31,7 +31,7 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 func TestMConnectionSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := net.Pipe()
+	server, client := netPipe()
 	defer server.Close()
 	defer client.Close()
 
@@ -58,7 +58,7 @@ func TestMConnectionSend(t *testing.T) {
 func TestMConnectionReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := net.Pipe()
+	server, client := netPipe()
 	defer server.Close()
 	defer client.Close()
 
@@ -96,7 +96,7 @@ func TestMConnectionReceive(t *testing.T) {
 func TestMConnectionStatus(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := net.Pipe()
+	server, client := netPipe()
 	defer server.Close()
 	defer client.Close()
 
@@ -113,7 +113,7 @@ func TestMConnectionStatus(t *testing.T) {
 func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := net.Pipe()
+	server, client := netPipe()
 	defer server.Close()
 	defer client.Close()
 
@@ -144,7 +144,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 }
 
 func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr chan struct{}) (*MConnection, *MConnection) {
-	server, client := net.Pipe()
+	server, client := netPipe()
 
 	onReceive := func(chID byte, msgBytes []byte) {}
 	onError := func(r interface{}) {}
@@ -275,7 +275,7 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 func TestMConnectionTrySend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := net.Pipe()
+	server, client := netPipe()
 	defer server.Close()
 	defer client.Close()
 

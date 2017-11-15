@@ -160,7 +160,7 @@ func TestConnAddrFilter(t *testing.T) {
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := net.Pipe()
+	c1, c2 := netPipe()
 
 	s1.SetAddrFilter(func(addr net.Addr) error {
 		if addr.String() == c1.RemoteAddr().String() {
@@ -194,7 +194,7 @@ func TestConnPubKeyFilter(t *testing.T) {
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := net.Pipe()
+	c1, c2 := netPipe()
 
 	// set pubkey filter
 	s1.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
