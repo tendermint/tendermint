@@ -176,7 +176,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 
 // Saves the history data for all peers to the store DB
 func (tms *TrustMetricStore) saveToDB() {
-	tms.Logger.Info("Saving TrustHistory to DB", "size", tms.size())
+	tms.Logger.Debug("Saving TrustHistory to DB", "size", tms.size())
 
 	peers := make(map[string]peerHistoryJSON, 0)
 

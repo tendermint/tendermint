@@ -27,13 +27,29 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.12.1 (TBA)
+## 0.13.0 (TBA)
+
+BREAKING CHANGES:
+- types: EventBus and EventBuffer have replaced EventSwitch and EventCache; event types have been overhauled
+- node: EventSwitch methods now refer to EventBus
+- rpc/lib/types: RPCResponse is no longer a pointer; WSRPCConnection interface has been modified
+- rpc/client: WaitForOneEvent takes an EventsClient instead of types.EventSwitch
+- rpc/client: Add/RemoveListenerForEvent are now Subscribe/Unsubscribe
 
 FEATURES:
-- new unsubscribe_all WebSocket RPC endpoint
+- rpc: new `/unsubscribe_all` WebSocket RPC endpoint
+- p2p/trust: new trust metric for tracking peers. See ADR-006
 
 IMPROVEMENTS:
-- New events system using tmlibs/pubsub
+- New asynchronous events system using `tmlibs/pubsub`
+- logging: Various small improvements 
+- consensus: Graceful shutdown when app crashes
+- tests: Fix various non-deterministic errors
+- p2p: more defensive programming
+
+BUG FIXES:
+- consensus: fix panic where prs.ProposalBlockParts is not initialized
+- p2p: fix panic on bad channel
 
 ## 0.12.0 (October 27, 2017)
 
