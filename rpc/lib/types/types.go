@@ -97,7 +97,7 @@ func NewRPCErrorResponse(id string, code int, msg string, data string) RPCRespon
 }
 
 func (resp RPCResponse) String() string {
-	if resp.Error != nil {
+	if resp.Error == nil {
 		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
 	} else {
 		return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
