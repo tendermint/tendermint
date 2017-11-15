@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 
-	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire/data"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
@@ -110,13 +109,7 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	Height int                    `json:"height"`
-	Tx     Tx                     `json:"tx"`
-	Data   data.Bytes             `json:"data"`
-	Log    string                 `json:"log"`
-	Code   abci.CodeType          `json:"code"`
-	Tags   map[string]interface{} `json:"tags"`
-	Error  string                 `json:"error"` // this is redundant information for now
+	TxResult
 }
 
 type EventDataProposalHeartbeat struct {
@@ -168,9 +161,10 @@ var (
 	EventQueryTimeoutWait       = queryForEvent(EventTimeoutWait)
 	EventQueryVote              = queryForEvent(EventVote)
 	EventQueryProposalHeartbeat = queryForEvent(EventProposalHeartbeat)
+	EventQueryTx                = queryForEvent(EventTx)
 )
 
-func EventQueryTx(tx Tx) tmpubsub.Query {
+func EventQueryTxFor(tx Tx) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
 }
 

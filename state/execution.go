@@ -8,7 +8,6 @@ import (
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -54,47 +53,25 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
 			// reqDeliverTx := req.(abci.RequestDeliverTx)
-			txError := ""
 			txResult := r.DeliverTx
 			if txResult.Code == abci.CodeType_OK {
 				validTxs++
 			} else {
 				logger.Debug("Invalid tx", "code", txResult.Code, "log", txResult.Log)
 				invalidTxs++
-				txError = txResult.Code.String()
 			}
-
-			abciResponses.DeliverTx[txIndex] = txResult
-			txIndex++
 
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
-			tx := types.Tx(req.GetDeliverTx().Tx)
+			txEventPublisher.PublishEventTx(types.EventDataTx{types.TxResult{
+				Height: uint64(block.Height),
+				Index:  uint32(txIndex),
+				Tx:     types.Tx(req.GetDeliverTx().Tx),
+				Result: *txResult,
+			}})
 
-			tags := make(map[string]interface{})
-			for _, t := range txResult.Tags {
-				// basic validation
-				if t.Key == "" {
-					logger.Info("Got tag with an empty key (skipping)", "tag", t, "tx", tx)
-					continue
-				}
-
-				if t.ValueString != "" {
-					tags[t.Key] = t.ValueString
-				} else {
-					tags[t.Key] = t.ValueInt
-				}
-			}
-
-			txEventPublisher.PublishEventTx(types.EventDataTx{
-				Height: block.Height,
-				Tx:     tx,
-				Data:   txResult.Data,
-				Code:   txResult.Code,
-				Log:    txResult.Log,
-				Tags:   tags,
-				Error:  txError,
-			})
+			abciResponses.DeliverTx[txIndex] = txResult
+			txIndex++
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
@@ -227,7 +204,6 @@ func (s *State) validateBlock(block *types.Block) error {
 //-----------------------------------------------------------------------------
 // ApplyBlock validates & executes the block, updates state w/ ABCI responses,
 // then commits and updates the mempool atomically, then saves state.
-// Transaction results are optionally indexed.
 
 // ApplyBlock validates the block against the state, executes it against the app,
 // commits it, and saves the block and state. It's the only function that needs to be called
@@ -241,9 +217,6 @@ func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn
 	}
 
 	fail.Fail() // XXX
-
-	// index txs. This could run in the background
-	s.indexTxs(abciResponses)
 
 	// save the results before we commit
 	s.SaveABCIResponses(abciResponses)
@@ -291,26 +264,6 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 
 	// Update mempool.
 	return mempool.Update(block.Height, block.Txs)
-}
-
-func (s *State) indexTxs(abciResponses *ABCIResponses) {
-	// save the tx results using the TxIndexer
-	// NOTE: these may be overwriting, but the values should be the same.
-	batch := txindex.NewBatch(len(abciResponses.DeliverTx))
-	for i, d := range abciResponses.DeliverTx {
-		tx := abciResponses.txs[i]
-		if err := batch.Add(types.TxResult{
-			Height: uint64(abciResponses.Height),
-			Index:  uint32(i),
-			Tx:     tx,
-			Result: *d,
-		}); err != nil {
-			s.logger.Error("Error with batch.Add", "err", err)
-		}
-	}
-	if err := s.TxIndexer.AddBatch(batch); err != nil {
-		s.logger.Error("Error adding batch", "err", err)
-	}
 }
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.

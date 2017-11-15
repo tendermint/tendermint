@@ -67,67 +67,95 @@ func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 
 //--- block, tx, and vote events
 
-func (b *EventBus) PublishEventNewBlock(block EventDataNewBlock) error {
-	return b.Publish(EventNewBlock, TMEventData{block})
+func (b *EventBus) PublishEventNewBlock(event EventDataNewBlock) error {
+	return b.Publish(EventNewBlock, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventNewBlockHeader(header EventDataNewBlockHeader) error {
-	return b.Publish(EventNewBlockHeader, TMEventData{header})
+func (b *EventBus) PublishEventNewBlockHeader(event EventDataNewBlockHeader) error {
+	return b.Publish(EventNewBlockHeader, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventVote(vote EventDataVote) error {
-	return b.Publish(EventVote, TMEventData{vote})
+func (b *EventBus) PublishEventVote(event EventDataVote) error {
+	return b.Publish(EventVote, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventTx(tx EventDataTx) error {
+// PublishEventTx publishes tx event with tags from Result. Note it will add
+// predefined tags (EventTypeKey, TxHashKey). Existing tags with the same names
+// will be overwritten.
+func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	tags := tx.Tags
-	// add predefined tags (they should overwrite any existing tags)
+
+	tags := make(map[string]interface{})
+
+	// validate and fill tags from tx result
+	for _, tag := range event.Result.Tags {
+		// basic validation
+		if tag.Key == "" {
+			b.Logger.Info("Got tag with an empty key (skipping)", "tag", tag, "tx", event.Tx)
+			continue
+		}
+
+		if tag.ValueString != "" {
+			tags[tag.Key] = tag.ValueString
+		} else {
+			tags[tag.Key] = tag.ValueInt
+		}
+	}
+
+	// add predefined tags
+	if tag, ok := tags[EventTypeKey]; ok {
+		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
+	}
 	tags[EventTypeKey] = EventTx
-	tags[TxHashKey] = fmt.Sprintf("%X", tx.Tx.Hash())
-	b.pubsub.PublishWithTags(ctx, TMEventData{tx}, tags)
+
+	if tag, ok := tags[TxHashKey]; ok {
+		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
+	}
+	tags[TxHashKey] = fmt.Sprintf("%X", event.Tx.Hash())
+
+	b.pubsub.PublishWithTags(ctx, TMEventData{event}, tags)
 	return nil
 }
 
-func (b *EventBus) PublishEventProposalHeartbeat(ph EventDataProposalHeartbeat) error {
-	return b.Publish(EventProposalHeartbeat, TMEventData{ph})
+func (b *EventBus) PublishEventProposalHeartbeat(event EventDataProposalHeartbeat) error {
+	return b.Publish(EventProposalHeartbeat, TMEventData{event})
 }
 
 //--- EventDataRoundState events
 
-func (b *EventBus) PublishEventNewRoundStep(rs EventDataRoundState) error {
-	return b.Publish(EventNewRoundStep, TMEventData{rs})
+func (b *EventBus) PublishEventNewRoundStep(event EventDataRoundState) error {
+	return b.Publish(EventNewRoundStep, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventTimeoutPropose(rs EventDataRoundState) error {
-	return b.Publish(EventTimeoutPropose, TMEventData{rs})
+func (b *EventBus) PublishEventTimeoutPropose(event EventDataRoundState) error {
+	return b.Publish(EventTimeoutPropose, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventTimeoutWait(rs EventDataRoundState) error {
-	return b.Publish(EventTimeoutWait, TMEventData{rs})
+func (b *EventBus) PublishEventTimeoutWait(event EventDataRoundState) error {
+	return b.Publish(EventTimeoutWait, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventNewRound(rs EventDataRoundState) error {
-	return b.Publish(EventNewRound, TMEventData{rs})
+func (b *EventBus) PublishEventNewRound(event EventDataRoundState) error {
+	return b.Publish(EventNewRound, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventCompleteProposal(rs EventDataRoundState) error {
-	return b.Publish(EventCompleteProposal, TMEventData{rs})
+func (b *EventBus) PublishEventCompleteProposal(event EventDataRoundState) error {
+	return b.Publish(EventCompleteProposal, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventPolka(rs EventDataRoundState) error {
-	return b.Publish(EventPolka, TMEventData{rs})
+func (b *EventBus) PublishEventPolka(event EventDataRoundState) error {
+	return b.Publish(EventPolka, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventUnlock(rs EventDataRoundState) error {
-	return b.Publish(EventUnlock, TMEventData{rs})
+func (b *EventBus) PublishEventUnlock(event EventDataRoundState) error {
+	return b.Publish(EventUnlock, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventRelock(rs EventDataRoundState) error {
-	return b.Publish(EventRelock, TMEventData{rs})
+func (b *EventBus) PublishEventRelock(event EventDataRoundState) error {
+	return b.Publish(EventRelock, TMEventData{event})
 }
 
-func (b *EventBus) PublishEventLock(rs EventDataRoundState) error {
-	return b.Publish(EventLock, TMEventData{rs})
+func (b *EventBus) PublishEventLock(event EventDataRoundState) error {
+	return b.Publish(EventLock, TMEventData{event})
 }

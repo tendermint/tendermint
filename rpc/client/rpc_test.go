@@ -104,7 +104,7 @@ func TestABCIQuery(t *testing.T) {
 		k, v, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(t, err, "%d: %+v", i, err)
-		apph := bres.Height + 1 // this is where the tx will be applied to the state
+		apph := int(bres.Height) + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
 		client.WaitForHeight(c, apph, nil)
@@ -136,7 +136,7 @@ func TestAppCalls(t *testing.T) {
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
 		require.True(bres.DeliverTx.Code.IsOK())
-		txh := bres.Height
+		txh := int(bres.Height)
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
@@ -153,7 +153,7 @@ func TestAppCalls(t *testing.T) {
 		// ptx, err := c.Tx(bres.Hash, true)
 		ptx, err := c.Tx(bres.Hash, true)
 		require.Nil(err, "%d: %+v", i, err)
-		assert.Equal(txh, ptx.Height)
+		assert.EqualValues(txh, ptx.Height)
 		assert.EqualValues(tx, ptx.Tx)
 
 		// and we can even check the block is added
@@ -280,9 +280,9 @@ func TestTx(t *testing.T) {
 				require.NotNil(err)
 			} else {
 				require.Nil(err, "%+v", err)
-				assert.Equal(txHeight, ptx.Height)
+				assert.EqualValues(txHeight, ptx.Height)
 				assert.EqualValues(tx, ptx.Tx)
-				assert.Equal(0, ptx.Index)
+				assert.Zero(ptx.Index)
 				assert.True(ptx.TxResult.Code.IsOK())
 
 				// time to verify the proof

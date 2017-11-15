@@ -82,13 +82,13 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 		return nil, fmt.Errorf("Tx (%X) not found", hash)
 	}
 
-	height := int(r.Height) // XXX
-	index := int(r.Index)
+	height := r.Height
+	index := r.Index
 
 	var proof types.TxProof
 	if prove {
-		block := blockStore.LoadBlock(height)
-		proof = block.Data.Txs.Proof(index)
+		block := blockStore.LoadBlock(int(height))
+		proof = block.Data.Txs.Proof(int(index))
 	}
 
 	return &ctypes.ResultTx{

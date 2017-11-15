@@ -154,7 +154,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	deliverTxResCh := make(chan interface{})
-	q := types.EventQueryTx(tx)
+	q := types.EventQueryTxFor(tx)
 	err := eventBus.Subscribe(ctx, "mempool", q, deliverTxResCh)
 	if err != nil {
 		err = errors.Wrap(err, "failed to subscribe to tx")
@@ -192,9 +192,9 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 		deliverTxRes := deliverTxResMsg.(types.TMEventData).Unwrap().(types.EventDataTx)
 		// The tx was included in a block.
 		deliverTxR := &abci.ResponseDeliverTx{
-			Code: deliverTxRes.Code,
-			Data: deliverTxRes.Data,
-			Log:  deliverTxRes.Log,
+			Code: deliverTxRes.Result.Code,
+			Data: deliverTxRes.Result.Data,
+			Log:  deliverTxRes.Result.Log,
 		}
 		logger.Info("DeliverTx passed ", "tx", data.Bytes(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{

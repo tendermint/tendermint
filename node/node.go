@@ -173,20 +173,6 @@ func NewNode(config *cfg.Config,
 	state = sm.LoadState(stateDB)
 	state.SetLogger(stateLogger)
 
-	// Transaction indexing
-	var txIndexer txindex.TxIndexer
-	switch config.TxIndex.Indexer {
-	case "kv":
-		store, err := dbProvider(&DBContext{"tx_index", config})
-		if err != nil {
-			return nil, err
-		}
-		txIndexer = kv.NewTxIndex(store)
-	default:
-		txIndexer = &null.TxIndex{}
-	}
-	state.TxIndexer = txIndexer
-
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
 
@@ -292,6 +278,30 @@ func NewNode(config *cfg.Config,
 	// services which will be publishing and/or subscribing for messages (events)
 	bcReactor.SetEventBus(eventBus)
 	consensusReactor.SetEventBus(eventBus)
+
+	// Transaction indexing
+	var txIndexer txindex.TxIndexer
+	switch config.TxIndex.Indexer {
+	case "kv":
+		store, err := dbProvider(&DBContext{"tx_index", config})
+		if err != nil {
+			return nil, err
+		}
+		txIndexer = kv.NewTxIndex(store)
+	default:
+		txIndexer = &null.TxIndex{}
+	}
+
+	// subscribe for all transactions and index them by tags
+	ch := make(chan interface{})
+	eventBus.Subscribe(context.Background(), "tx_index", types.EventQueryTx, ch)
+	go func() {
+		for event := range ch {
+			// XXX: may be not perfomant to write one event at a time
+			txResult := event.(types.TMEventData).Unwrap().(types.EventDataTx).TxResult
+			txIndexer.Index(&txResult)
+		}
+	}()
 
 	// run the profile server
 	profileHost := config.ProfListenAddress

@@ -30,6 +30,17 @@ func TestTxIndex(t *testing.T) {
 	loadedTxResult, err := indexer.Get(hash)
 	require.Nil(t, err)
 	assert.Equal(t, txResult, loadedTxResult)
+
+	tx2 := types.Tx("BYE BYE WORLD")
+	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: []*abci.KVPair{}}}
+	hash2 := tx2.Hash()
+
+	err = indexer.Index(txResult2)
+	require.Nil(t, err)
+
+	loadedTxResult2, err := indexer.Get(hash2)
+	require.Nil(t, err)
+	assert.Equal(t, txResult2, loadedTxResult2)
 }
 
 func benchmarkTxIndex(txsCount int, b *testing.B) {

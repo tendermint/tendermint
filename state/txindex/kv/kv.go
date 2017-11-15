@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 
 	db "github.com/tendermint/tmlibs/db"
 
@@ -54,5 +54,12 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		storeBatch.Set(result.Tx.Hash(), rawBytes)
 	}
 	storeBatch.Write()
+	return nil
+}
+
+// Index writes a single transaction into the TxIndex storage.
+func (txi *TxIndex) Index(result *types.TxResult) error {
+	rawBytes := wire.BinaryBytes(result)
+	txi.store.Set(result.Tx.Hash(), rawBytes)
 	return nil
 }
