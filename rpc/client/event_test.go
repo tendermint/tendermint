@@ -12,6 +12,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+var waitForEventTimeout = 5 * time.Second
+
 // MakeTxKV returns a text transaction, allong with expected key, value pair
 func MakeTxKV() ([]byte, []byte, []byte) {
 	k := []byte(cmn.RandStr(8))
@@ -32,7 +34,7 @@ func TestHeaderEvents(t *testing.T) {
 		}
 
 		evtTyp := types.EventNewBlockHeader
-		evt, err := client.WaitForOneEvent(c, evtTyp, 1*time.Second)
+		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 		require.Nil(err, "%d: %+v", i, err)
 		_, ok := evt.Unwrap().(types.EventDataNewBlockHeader)
 		require.True(ok, "%d: %#v", i, evt)
@@ -56,7 +58,7 @@ func TestBlockEvents(t *testing.T) {
 		var firstBlockHeight int
 		for j := 0; j < 3; j++ {
 			evtTyp := types.EventNewBlock
-			evt, err := client.WaitForOneEvent(c, evtTyp, 1*time.Second)
+			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 			require.Nil(err, "%d: %+v", j, err)
 			blockEvent, ok := evt.Unwrap().(types.EventDataNewBlock)
 			require.True(ok, "%d: %#v", j, evt)
@@ -94,7 +96,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 		require.True(txres.Code.IsOK())
 
 		// and wait for confirmation
-		evt, err := client.WaitForOneEvent(c, evtTyp, 1*time.Second)
+		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 		require.Nil(err, "%d: %+v", i, err)
 		// and make sure it has the proper info
 		txe, ok := evt.Unwrap().(types.EventDataTx)
@@ -127,7 +129,7 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		require.True(txres.Code.IsOK())
 
 		// and wait for confirmation
-		evt, err := client.WaitForOneEvent(c, evtTyp, 1*time.Second)
+		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 		require.Nil(err, "%d: %+v", i, err)
 		// and make sure it has the proper info
 		txe, ok := evt.Unwrap().(types.EventDataTx)
