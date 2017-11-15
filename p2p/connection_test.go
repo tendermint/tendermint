@@ -55,6 +55,19 @@ func TestMConnectionSend(t *testing.T) {
 	assert.False(mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
 }
 
+func TestMConnectionNonCrashingSuccessiveOnStop(t *testing.T) {
+	require := require.New(t)
+
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	mconn := createTestMConnection(client)
+	require.Nil(mconn.OnStart())
+	mconn.OnStop()
+	mconn.OnStop()
+}
+
 func TestMConnectionReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 

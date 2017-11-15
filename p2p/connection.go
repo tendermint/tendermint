@@ -7,6 +7,7 @@ import (
 	"math"
 	"net"
 	"runtime/debug"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -80,6 +81,7 @@ type MConnection struct {
 	errored     uint32
 	config      *MConnConfig
 
+	onStopOnce   sync.Once
 	quit         chan struct{}
 	flushTimer   *cmn.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer    *cmn.RepeatTimer   // send pings periodically
@@ -162,6 +164,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 // OnStart implements BaseService
 func (c *MConnection) OnStart() error {
 	c.BaseService.OnStart()
+	c.onStopOnce = sync.Once{}
 	c.quit = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
@@ -173,19 +176,21 @@ func (c *MConnection) OnStart() error {
 
 // OnStop implements BaseService
 func (c *MConnection) OnStop() {
-	c.BaseService.OnStop()
-	c.flushTimer.Stop()
-	c.pingTimer.Stop()
-	c.chStatsTimer.Stop()
-	if c.quit != nil {
-		close(c.quit)
-	}
-	c.conn.Close()
-	// We can't close pong safely here because
-	// recvRoutine may write to it after we've stopped.
-	// Though it doesn't need to get closed at all,
-	// we close it @ recvRoutine.
-	// close(c.pong)
+	c.onStopOnce.Do(func() {
+		c.BaseService.OnStop()
+		c.flushTimer.Stop()
+		c.pingTimer.Stop()
+		c.chStatsTimer.Stop()
+		if c.quit != nil {
+			close(c.quit)
+		}
+		c.conn.Close()
+		// We can't close pong safely here because
+		// recvRoutine may write to it after we've stopped.
+		// Though it doesn't need to get closed at all,
+		// we close it @ recvRoutine.
+		// close(c.pong)
+	})
 }
 
 func (c *MConnection) String() string {
