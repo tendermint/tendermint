@@ -1,11 +1,11 @@
 package core_grpc_test
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
 
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/tendermint/rpc/grpc"

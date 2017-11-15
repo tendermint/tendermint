@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"time"
 
 	"github.com/pkg/errors"
 
@@ -53,7 +52,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 		return nil, errors.Wrap(err, "failed to add subscription")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	ch := make(chan interface{})
 	err = eventBus.Subscribe(ctx, addr, q, ch)

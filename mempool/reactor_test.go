@@ -81,7 +81,7 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 
 	mempool := reactors[reactorIdx].Mempool
 	for mempool.Size() != len(txs) {
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 100)
 	}
 
 	reapedTxs := mempool.Reap(len(txs))

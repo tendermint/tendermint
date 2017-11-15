@@ -17,6 +17,8 @@ import (
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
+var wsCallTimeout = 5 * time.Second
+
 type myHandler struct {
 	closeConnAfterRead bool
 	mtx                sync.RWMutex
@@ -138,7 +140,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 
 	// results in WS write error
 	// provide timeout to avoid blocking
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), wsCallTimeout)
 	defer cancel()
 	c.Call(ctx, "a", make(map[string]interface{}))
 

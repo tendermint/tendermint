@@ -151,7 +151,7 @@ func BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 // | tx        | Tx   | nil     | true     | The transaction |
 func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// subscribe to tx being committed in block
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	deliverTxResCh := make(chan interface{})
 	q := types.EventQueryTx(tx)
