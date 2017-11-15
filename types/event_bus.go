@@ -82,16 +82,8 @@ func (b *EventBus) PublishEventVote(vote EventDataVote) error {
 func (b *EventBus) PublishEventTx(tx EventDataTx) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	tags := make(map[string]interface{})
-	for _, t := range tx.Tags {
-		// TODO [@melekes]: validate, but where?
-		if t.ValueString != "" {
-			tags[t.Key] = t.ValueString
-		} else {
-			tags[t.Key] = t.ValueInt
-		}
-	}
-	// predefined tags should come last
+	tags := tx.Tags
+	// add predefined tags (they should overwrite any existing tags)
 	tags[EventTypeKey] = EventTx
 	tags[TxHashKey] = fmt.Sprintf("%X", tx.Tx.Hash())
 	b.pubsub.PublishWithTags(ctx, TMEventData{tx}, tags)

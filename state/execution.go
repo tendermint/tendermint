@@ -69,16 +69,32 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
-			event := types.EventDataTx{
+			tx := types.Tx(req.GetDeliverTx().Tx)
+
+			tags := make(map[string]interface{})
+			for _, t := range txResult.Tags {
+				// basic validation
+				if t.Key == "" {
+					logger.Info("Got tag with an empty key (skipping)", "tag", t, "tx", tx)
+					continue
+				}
+
+				if t.ValueString != "" {
+					tags[t.Key] = t.ValueString
+				} else {
+					tags[t.Key] = t.ValueInt
+				}
+			}
+
+			txEventPublisher.PublishEventTx(types.EventDataTx{
 				Height: block.Height,
-				Tx:     types.Tx(req.GetDeliverTx().Tx),
+				Tx:     tx,
 				Data:   txResult.Data,
 				Code:   txResult.Code,
 				Log:    txResult.Log,
-				Tags:   txResult.Tags,
+				Tags:   tags,
 				Error:  txError,
-			}
-			txEventPublisher.PublishEventTx(event)
+			})
 		}
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
