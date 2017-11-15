@@ -175,7 +175,7 @@ func NewNode(config *cfg.Config,
 
 	// Transaction indexing
 	var txIndexer txindex.TxIndexer
-	switch config.TxIndex {
+	switch config.TxIndex.Indexer {
 	case "kv":
 		store, err := dbProvider(&DBContext{"tx_index", config})
 		if err != nil {
