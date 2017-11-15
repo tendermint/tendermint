@@ -8,6 +8,7 @@ Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/tendermint/tendermint)
+[![Go version](https://img.shields.io/badge/go-1.9.2-blue.svg)](https://github.com/moovweb/gvm)
 [![Rocket.Chat](https://demo.rocket.chat/images/join-chat.svg)](https://cosmos.rocket.chat/)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
@@ -23,7 +24,7 @@ _NOTE: This is alpha software. Please contact us if you intend to run it in prod
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For more information, from introduction to install to application development, [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master).
+For more information, from introduction to install to application development, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
 
 ## Install
 
@@ -33,13 +34,13 @@ To install from source, you should be able to:
 
 `go get -u github.com/tendermint/tendermint/cmd/tendermint`
 
-For more details (or if it fails), [read the docs](http://tendermint.readthedocs.io/projects/tools/en/master/install.html).
+For more details (or if it fails), [read the docs](https://tendermint.readthedocs.io/en/master/install.html).
 
 ## Resources
 
 ### Tendermint Core
 
-All resources involving the use of, building application on, or developing for, tendermint, can be found at [Read The Docs](http://tendermint.readthedocs.io/projects/tools/en/master). Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
+All resources involving the use of, building application on, or developing for, tendermint, can be found at [Read The Docs](https://tendermint.readthedocs.io/en/master/). Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
 
 ### Sub-projects
 
