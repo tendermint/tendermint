@@ -113,7 +113,9 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 
 	// Encrypt connection
 	if config.AuthEnc {
-		conn.SetDeadline(time.Now().Add(config.HandshakeTimeout * time.Second))
+		if err := conn.SetDeadline(time.Now().Add(config.HandshakeTimeout * time.Second)); err != nil {
+			return nil, errors.Wrap(err, "Error setting deadline while encrypting connection")
+		}
 
 		var err error
 		conn, err = MakeSecretConnection(conn, ourNodePrivKey)
@@ -165,7 +167,9 @@ func (p *peer) IsPersistent() bool {
 // NOTE: blocking
 func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) error {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	p.conn.SetDeadline(time.Now().Add(timeout))
+	if err := p.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return errors.Wrap(err, "Error setting deadline")
+	}
 
 	var peerNodeInfo = new(NodeInfo)
 	var err1 error
@@ -196,7 +200,9 @@ func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	}
 
 	// Remove deadline
-	p.conn.SetDeadline(time.Time{})
+	if err := p.conn.SetDeadline(time.Time{}); err != nil {
+		return errors.Wrap(err, "Error removing deadline")
+	}
 
 	peerNodeInfo.RemoteAddr = p.Addr().String()
 
