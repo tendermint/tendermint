@@ -3,7 +3,7 @@
 ##
 
 extra_check = true
-go_min_version = 1.8.3
+go_min_version = 1.9.2
 gpg_key = 2122CBE9
 
 ifeq ($(extra_check),true)
