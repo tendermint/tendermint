@@ -30,9 +30,6 @@ type TrustMetricStore struct {
 
 	// This configuration will be used when creating new TrustMetrics
 	config TrustMetricConfig
-
-	// This channel is used to stop the store go-routine
-	stop chan int
 }
 
 // NewTrustMetricStore returns a store that saves data to the DB
@@ -42,7 +39,6 @@ func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {
 		peerMetrics: make(map[string]*TrustMetric),
 		db:          db,
 		config:      tmc,
-		stop:        make(chan int, 2),
 	}
 
 	tms.BaseService = *cmn.NewBaseService(nil, "TrustMetricStore", tms)
@@ -57,14 +53,13 @@ func (tms *TrustMetricStore) OnStart() error {
 	defer tms.mtx.Unlock()
 
 	tms.loadFromDB()
-	go tms.periodicSave()
+	go tms.saveRoutine()
 	return nil
 }
 
 // OnStop implements Service
 func (tms *TrustMetricStore) OnStop() {
-	// Stop the store periodic save go-routine
-	tms.stop <- 1
+	tms.BaseService.OnStop()
 
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
@@ -76,7 +71,6 @@ func (tms *TrustMetricStore) OnStop() {
 
 	// Make the final trust history data save
 	tms.saveToDB()
-	tms.BaseService.OnStop()
 }
 
 // Size returns the number of entries in the trust metric store
@@ -130,7 +124,7 @@ type peerHistoryJSON struct {
 	History      []float64 `json:"history"`
 }
 
-// Loads the history data for the Peer identified by key from the store DB.
+// Loads the history data for all peers from the store DB
 // cmn.Panics if file is corrupt
 func (tms *TrustMetricStore) loadFromDB() bool {
 	// Obtain the history data we have so far
@@ -157,10 +151,21 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 		tm.numIntervals = p.NumIntervals
 		// Restore the history and its current size
 		if len(p.History) > tm.historyMaxSize {
-			p.History = p.History[:tm.historyMaxSize]
+			// Keep the history no larger than historyMaxSize
+			last := len(p.History) - tm.historyMaxSize
+			p.History = p.History[last:]
 		}
 		tm.history = p.History
 		tm.historySize = len(tm.history)
+		// Create the history weight values and weight sum
+		for i := 1; i <= tm.numIntervals; i++ {
+			x := math.Pow(defaultHistoryDataWeight, float64(i)) // Optimistic weight
+			tm.historyWeights = append(tm.historyWeights, x)
+		}
+
+		for _, v := range tm.historyWeights {
+			tm.historyWeightSum += v
+		}
 		// Calculate the history value based on the loaded history data
 		tm.historyValue = tm.calcHistoryValue()
 		// Load the peer trust metric into the store
@@ -193,7 +198,7 @@ func (tms *TrustMetricStore) saveToDB() {
 }
 
 // Periodically saves the trust history data to the DB
-func (tms *TrustMetricStore) periodicSave() {
+func (tms *TrustMetricStore) saveRoutine() {
 	t := time.NewTicker(defaultStorePeriodicSaveInterval)
 	defer t.Stop()
 loop:
@@ -203,7 +208,7 @@ loop:
 			tms.mtx.Lock()
 			tms.saveToDB()
 			tms.mtx.Unlock()
-		case <-tms.stop:
+		case <-tms.Quit:
 			break loop
 		}
 	}
@@ -211,11 +216,22 @@ loop:
 
 //---------------------------------------------------------------------------------------
 
-// The number of event updates that can be sent on a single metric before blocking
-const defaultUpdateChanCapacity = 10
+const (
+	// The number of event updates that can be sent on a single metric before blocking
+	defaultUpdateChanCapacity = 10
 
-// The number of trust value requests that can be made simultaneously before blocking
-const defaultRequestChanCapacity = 10
+	// The number of trust value requests that can be made simultaneously before blocking
+	defaultRequestChanCapacity = 10
+
+	// The weight applied to the derivative when current behavior is >= previous behavior
+	defaultDerivativeGamma1 = 0
+
+	// The weight applied to the derivative when current behavior is less than previous behavior
+	defaultDerivativeGamma2 = 1.0
+
+	// The weight applied to history data values when calculating the history value
+	defaultHistoryDataWeight = 0.8
+)
 
 // TrustMetric - keeps track of peer reliability
 // See tendermint/docs/architecture/adr-006-trust-metric.md for details
@@ -237,6 +253,12 @@ type TrustMetric struct {
 
 	// Stores the trust history data for this metric
 	history []float64
+
+	// Weights applied to the history data when calculating the history value
+	historyWeights []float64
+
+	// The sum of the history weights used when calculating the history value
+	historyWeightSum float64
 
 	// The current number of history data elements
 	historySize int
@@ -286,23 +308,13 @@ func (tm *TrustMetric) Stop() {
 	tm.stop <- true
 }
 
-// BadEvent indicates that an undesirable event took place
-func (tm *TrustMetric) BadEvent() {
-	tm.update <- &updateBadGood{IsBad: true, Add: 1}
-}
-
-// AddBadEvents acknowledges multiple undesirable events
-func (tm *TrustMetric) AddBadEvents(num int) {
+// BadEvents indicates that an undesirable event(s) took place
+func (tm *TrustMetric) BadEvents(num int) {
 	tm.update <- &updateBadGood{IsBad: true, Add: num}
 }
 
-// GoodEvent indicates that a desirable event took place
-func (tm *TrustMetric) GoodEvent() {
-	tm.update <- &updateBadGood{IsBad: false, Add: 1}
-}
-
-// AddGoodEvents acknowledges multiple desirable events
-func (tm *TrustMetric) AddGoodEvents(num int) {
+// GoodEvents indicates that a desirable event(s) took place
+func (tm *TrustMetric) GoodEvents(num int) {
 	tm.update <- &updateBadGood{IsBad: false, Add: num}
 }
 
@@ -316,10 +328,9 @@ func (tm *TrustMetric) TrustValue() float64 {
 
 // TrustScore gets a score based on the trust value always between 0 and 100
 func (tm *TrustMetric) TrustScore() int {
-	resp := make(chan float64, 1)
+	score := tm.TrustValue() * 100
 
-	tm.trustValue <- &reqTrustValue{Resp: resp}
-	return int(math.Floor(<-resp * 100))
+	return int(math.Floor(score))
 }
 
 // TrustMetricConfig - Configures the weight functions and time intervals for the metric
@@ -373,7 +384,7 @@ func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {
 	// Setup the channels
 	tm.update = make(chan *updateBadGood, defaultUpdateChanCapacity)
 	tm.trustValue = make(chan *reqTrustValue, defaultRequestChanCapacity)
-	tm.stop = make(chan bool, 2)
+	tm.stop = make(chan bool, 1)
 
 	go tm.processRequests()
 	return tm
@@ -413,12 +424,11 @@ func (tm *TrustMetric) derivativeValue() float64 {
 
 // Strengthens the derivative component when the change is negative
 func (tm *TrustMetric) weightedDerivative() float64 {
-	var weight float64
+	var weight float64 = defaultDerivativeGamma1
 
 	d := tm.derivativeValue()
-
 	if d < 0 {
-		weight = 1.0
+		weight = defaultDerivativeGamma2
 	}
 	return weight * d
 }
@@ -431,9 +441,10 @@ func (tm *TrustMetric) updateFadedMemory() {
 		return
 	}
 
-	first := tm.historySize - 1
+	end := tm.historySize - 1
 	// Keep the most recent history element
-	for count, i := 1, first-1; count < tm.historySize; count, i = count+1, i-1 {
+	for count := 1; count < tm.historySize; count++ {
+		i := end - count
 		// The older the data is, the more we spread it out
 		x := math.Pow(2, float64(count))
 		// Two history data values are merged into a single value
@@ -443,7 +454,10 @@ func (tm *TrustMetric) updateFadedMemory() {
 
 // Map the interval value down to an offset from the beginning of history
 func intervalToHistoryOffset(interval int) int {
-	return int(math.Floor(math.Log(float64(interval)) / math.Log(2)))
+	// The system maintains 2^m interval values in the form of m history
+	// data values. Therefore, we access the ith interval by obtaining
+	// the history data index = the floor of log2(i)
+	return int(math.Floor(math.Log2(float64(interval))))
 }
 
 // Retrieves the actual history data value that represents the requested time interval
@@ -461,37 +475,21 @@ func (tm *TrustMetric) fadedMemoryValue(interval int) float64 {
 
 // Calculates the integral (history) component of the trust value
 func (tm *TrustMetric) calcHistoryValue() float64 {
-	var wk []float64
-
-	// Create the weights.
-	hlen := tm.numIntervals
-	for i := 0; i < hlen; i++ {
-		x := math.Pow(.8, float64(i+1)) // Optimistic weight
-		wk = append(wk, x)
-	}
-
-	var wsum float64
-	// Calculate the sum of the weights
-	for _, v := range wk {
-		wsum += v
-	}
-
 	var hv float64
-	// Calculate the history value
-	for i := 0; i < hlen; i++ {
-		weight := wk[i] / wsum
-		hv += tm.fadedMemoryValue(i) * weight
+
+	for i := 0; i < tm.numIntervals; i++ {
+		hv += tm.fadedMemoryValue(i) * tm.historyWeights[i]
 	}
-	return hv
+
+	return hv / tm.historyWeightSum
 }
 
 // Calculates the current score for good/bad experiences
 func (tm *TrustMetric) proportionalValue() float64 {
 	value := 1.0
-	// Bad events are worth more in the calculation of our score
-	total := tm.good + math.Pow(tm.bad, 2)
 
-	if tm.bad > 0 || tm.good > 0 {
+	total := tm.good + tm.bad
+	if total > 0 {
 		value = tm.good / total
 	}
 	return value
@@ -545,14 +543,17 @@ loop:
 				if tm.historySize < tm.historyMaxSize {
 					tm.historySize++
 				} else {
-					last := len(tm.history) - tm.historyMaxSize
-
 					// Keep the history no larger than historyMaxSize
+					last := len(tm.history) - tm.historyMaxSize
 					tm.history = tm.history[last:]
 				}
 
 				if tm.numIntervals < tm.maxIntervals {
 					tm.numIntervals++
+					// Add the optimistic weight for the new time interval
+					wk := math.Pow(defaultHistoryDataWeight, float64(tm.numIntervals))
+					tm.historyWeights = append(tm.historyWeights, wk)
+					tm.historyWeightSum += wk
 				}
 
 				// Update the history data using Faded Memories

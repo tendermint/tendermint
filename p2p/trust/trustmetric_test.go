@@ -45,8 +45,8 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 		key := fmt.Sprintf("peer_%d", i)
 		tm := store.GetPeerTrustMetric(key)
 
-		tm.AddBadEvents(10)
-		tm.GoodEvent()
+		tm.BadEvents(10)
+		tm.GoodEvents(1)
 	}
 
 	// Check that we have 100 entries and save
@@ -134,10 +134,10 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	assert.Equal(t, 100, first)
 
 	// Add some undesirable events and disconnect
-	tm.BadEvent()
+	tm.BadEvents(1)
 	first = tm.TrustScore()
 	assert.NotEqual(t, 100, first)
-	tm.AddBadEvents(10)
+	tm.BadEvents(10)
 	second := tm.TrustScore()
 
 	if second > first {
@@ -155,12 +155,12 @@ func TestTrustMetricScores(t *testing.T) {
 	tm := NewMetric()
 
 	// Perfect score
-	tm.GoodEvent()
+	tm.GoodEvents(1)
 	score := tm.TrustScore()
 	assert.Equal(t, 100, score)
 
 	// Less than perfect score
-	tm.AddBadEvents(10)
+	tm.BadEvents(10)
 	score = tm.TrustScore()
 	assert.NotEqual(t, 100, score)
 	tm.Stop()
@@ -216,7 +216,7 @@ func TestTrustMetricStopPause(t *testing.T) {
 	assert.Equal(t, first, tm.numIntervals)
 
 	// Get the trust metric activated again
-	tm.AddGoodEvents(5)
+	tm.GoodEvents(5)
 	// Allow some time intervals to pass and stop
 	time.Sleep(50 * time.Millisecond)
 	tm.Stop()

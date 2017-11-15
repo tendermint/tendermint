@@ -38,7 +38,7 @@ where *R*[*i*] denotes the raw trust value at time interval *i* (where *i* == 0 
 `H[i] = ` ![formula1](img/formula1.png "Weighted Sum Formula")
 
 
-The weights can be chosen either optimistically or pessimistically. With the history value available, we can now finish calculating the integral value:
+The weights can be chosen either optimistically or pessimistically. An optimistic weight creates larger weights for newer history data values, while the the pessimistic weight creates larger weights for time intervals with lower scores. The default weights used during the calculation of the history value are optimistic and calculated as *Wk* = 0.8^*k*, for time interval *k*. With the history value available, we can now finish calculating the integral value:
 
 ```math
 (2) Integral Value = b * H[i]
@@ -49,13 +49,13 @@ Where *H*[*i*] denotes the history value at time interval *i* and *b* is the wei
 ```math
 D[i] = R[i] – H[i]
 
-(3) Derivative Value = (c * D[i]) * D[i]
+(3) Derivative Value = c(D[i]) * D[i]
 ```
 
-Where the value of *c* is selected based on the *D*[*i*] value relative to zero. With the three components brought together, our trust value equation is calculated as follows:
+Where the value of *c* is selected based on the *D*[*i*] value relative to zero. The default selection process makes *c* equal to 0 unless *D*[*i*] is a negative value, in which case c is equal to 1. The result is that the maximum penalty is applied when current behavior is lower than previously experienced behavior. If the current behavior is better than the previously experienced behavior, then the Derivative Value has no impact on the trust value. With the three components brought together, our trust value equation is calculated as follows:
 
 ```math
-TrustValue[i] = a * R[i] + b * H[i] + (c * D[i]) * D[i]
+TrustValue[i] = a * R[i] + b * H[i] + c(D[i]) * D[i]
 ```
 
 As a performance optimization that will keep the amount of raw interval data being saved to a reasonable size of *m*, while allowing us to represent 2^*m* - 1 history intervals, we can employ the fading memories technique that will trade space and time complexity for the precision of the history data values by summarizing larger quantities of less recent values. While our equation above attempts to access up to *maxH* (which can be 2^*m* - 1), we will map those requests down to *m* values using equation 4 below:
@@ -99,17 +99,11 @@ func (tm *TrustMetric) Pause() {}
 // Stop tells the metric to stop recording data over time intervals
 func (tm *TrustMetric) Stop() {}
 
-// BadEvent indicates that an undesirable event took place
-func (tm *TrustMetric) BadEvent() {}
+// BadEvents indicates that an undesirable event(s) took place
+func (tm *TrustMetric) BadEvents(num int) {}
 
-// AddBadEvents acknowledges multiple undesirable events
-func (tm *TrustMetric) AddBadEvents(num int) {}
-
-// GoodEvent indicates that a desirable event took place
-func (tm *TrustMetric) GoodEvent() {}
-
-// AddGoodEvents acknowledges multiple desirable events
-func (tm *TrustMetric) AddGoodEvents(num int) {}
+// GoodEvents indicates that a desirable event(s) took place
+func (tm *TrustMetric) GoodEvents(num int) {}
 
 // TrustValue gets the dependable trust value; always between 0 and 1
 func (tm *TrustMetric) TrustValue() float64 {}
@@ -125,7 +119,7 @@ func NewMetric() *TrustMetric {}
 
 tm := NewMetric()
 
-tm.BadEvent()
+tm.BadEvents(1)
 score := tm.TrustScore()
 
 tm.Stop()
@@ -170,9 +164,9 @@ config := TrustMetricConfig{
 
 tm := NewMetricWithConfig(config)
 
-tm.AddBadEvents(10)
+tm.BadEvents(10)
 tm.Pause() 
-tm.GoodEvent() // becomes active again
+tm.GoodEvents(1) // becomes active again
 
 ```
 
@@ -217,7 +211,7 @@ db := dbm.NewDB("trusthistory", "goleveldb", dirPathStr)
 tms := NewTrustMetricStore(db, DefaultConfig())
 
 tm := tms.GetPeerTrustMetric(key)
-tm.BadEvent()
+tm.BadEvents(1)
 
 tms.PeerDisconnected(key)
 
@@ -225,7 +219,7 @@ tms.PeerDisconnected(key)
 
 ## Status
 
-Proposed.
+Approved.
 
 ## Consequences
 
