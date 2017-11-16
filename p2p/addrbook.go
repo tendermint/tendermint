@@ -210,37 +210,18 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(newBias))
 	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(newBias)
 
+	// pick a random peer from a random bucket
+	var bucket map[string]*knownAddress
 	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
-	if pickFromOldBucket {
-		var bucket map[string]*knownAddress
-		for len(bucket) == 0 {
+	for len(bucket) == 0 {
+		if pickFromOldBucket {
 			bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
-		}
-		// pick a random ka from bucket.
-		randIndex := a.rand.Intn(len(bucket))
-		for _, ka := range bucket {
-			if randIndex == 0 {
-				return ka.Addr
-			}
-			randIndex--
-		}
-		cmn.PanicSanity("Should not happen")
-	} else {
-		var bucket map[string]*knownAddress = nil
-		for len(bucket) == 0 {
+		} else {
 			bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
 		}
-		// pick a random ka from bucket.
-		randIndex := a.rand.Intn(len(bucket))
-		for _, ka := range bucket {
-			if randIndex == 0 {
-				return ka.Addr
-			}
-			randIndex--
-		}
-		cmn.PanicSanity("Should not happen")
 	}
-	return nil
+	randIndex := a.rand.Intn(len(bucket))
+	return bucket[randIndex].Addr
 }
 
 // MarkGood marks the peer as good and moves it into an "old" bucket.
