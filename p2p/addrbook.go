@@ -7,6 +7,7 @@ package p2p
 import (
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand"
 	"net"
@@ -168,11 +169,10 @@ func (a *AddrBook) OurAddresses() []*NetAddress {
 
 // AddAddress adds the given address as received from the given source.
 // NOTE: addr must not be nil
-func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
+func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	a.Logger.Info("Add address to book", "addr", addr, "src", src)
-	a.addAddress(addr, src)
+	return a.addAddress(addr, src)
 }
 
 // NeedMoreAddrs returns true if there are not have enough addresses in the book.
@@ -213,6 +213,11 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	// pick a random peer from a random bucket
 	var bucket map[string]*knownAddress
 	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
+	if (pickFromOldBucket && a.nOld == 0) ||
+		(!pickFromOldBucket && a.nNew == 0) {
+		return nil
+	}
+	// loop until we pick a random non-empty bucket
 	for len(bucket) == 0 {
 		if pickFromOldBucket {
 			bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
@@ -220,8 +225,15 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 			bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
 		}
 	}
+	// pick a random index and loop over the map to return that index
 	randIndex := a.rand.Intn(len(bucket))
-	return bucket[randIndex].Addr
+	for _, ka := range bucket {
+		if randIndex == 0 {
+			return ka.Addr
+		}
+		randIndex--
+	}
+	return nil
 }
 
 // MarkGood marks the peer as good and moves it into an "old" bucket.
@@ -529,14 +541,13 @@ func (a *AddrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 	return oldest
 }
 
-func (a *AddrBook) addAddress(addr, src *NetAddress) {
+func (a *AddrBook) addAddress(addr, src *NetAddress) error {
 	if a.routabilityStrict && !addr.Routable() {
-		a.Logger.Error(cmn.Fmt("Cannot add non-routable address %v", addr))
-		return
+		return fmt.Errorf("Cannot add non-routable address %v", addr)
 	}
 	if _, ok := a.ourAddrs[addr.String()]; ok {
 		// Ignore our own listener address.
-		return
+		return fmt.Errorf("Cannot add ourselves with address %v", addr)
 	}
 
 	ka := a.addrLookup[addr.String()]
@@ -544,16 +555,16 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	if ka != nil {
 		// Already old.
 		if ka.isOld() {
-			return
+			return nil
 		}
 		// Already in max new buckets.
 		if len(ka.Buckets) == maxNewBucketsPerAddress {
-			return
+			return nil
 		}
 		// The more entries we have, the less likely we are to add more.
 		factor := int32(2 * len(ka.Buckets))
 		if a.rand.Int31n(factor) != 0 {
-			return
+			return nil
 		}
 	} else {
 		ka = newKnownAddress(addr, src)
@@ -563,6 +574,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 	a.addToNewBucket(ka, bucket)
 
 	a.Logger.Info("Added new address", "address", addr, "total", a.size())
+	return nil
 }
 
 // Make space in the new buckets by expiring the really bad entries.
