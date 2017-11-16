@@ -413,7 +413,7 @@ FOR_LOOP:
 			// Peek into bufReader for debugging
 			if numBytes := c.bufReader.Buffered(); numBytes > 0 {
 				log.Info("Peek connection buffer", "numBytes", numBytes, "bytes", log15.Lazy{func() []byte {
-					bytes, err := c.bufReader.Peek(MinInt(numBytes, 100))
+					bytes, err := c.bufReader.Peek(cmn.MinInt(numBytes, 100))
 					if err == nil {
 						return bytes
 					} else {
