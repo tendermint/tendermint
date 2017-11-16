@@ -475,7 +475,7 @@ func (a *AddrBook) addToOldBucket(ka *knownAddress, bucketIdx int) bool {
 	}
 
 	addrStr := ka.Addr.String()
-	bucket := a.getBucket(bucketTypeNew, bucketIdx)
+	bucket := a.getBucket(bucketTypeOld, bucketIdx)
 
 	// Already exists?
 	if _, ok := bucket[addrStr]; ok {

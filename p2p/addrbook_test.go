@@ -53,8 +53,10 @@ func TestAddrBookPickAddress(t *testing.T) {
 	assert.NotNil(addr, "expected an address")
 	addr = book.PickAddress(50)
 	assert.NotNil(addr, "expected an address")
+
+	// in this case, nNew==0 but we biased 100% to new, so we return nil
 	addr = book.PickAddress(100)
-	assert.NotNil(addr, "expected an address")
+	assert.Nil(addr, "did not expected an address")
 }
 
 func TestAddrBookSaveLoad(t *testing.T) {
