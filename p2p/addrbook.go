@@ -89,8 +89,8 @@ type AddrBook struct {
 	rand       *rand.Rand
 	ourAddrs   map[string]*NetAddress
 	addrLookup map[string]*knownAddress // new & old
-	addrNew    []map[string]*knownAddress
-	addrOld    []map[string]*knownAddress
+	bucketsOld []map[string]*knownAddress
+	bucketsNew []map[string]*knownAddress
 	nOld       int
 	nNew       int
 
@@ -116,14 +116,14 @@ func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
 func (a *AddrBook) init() {
 	a.key = crypto.CRandHex(24) // 24/2 * 8 = 96 bits
 	// New addr buckets
-	a.addrNew = make([]map[string]*knownAddress, newBucketCount)
-	for i := range a.addrNew {
-		a.addrNew[i] = make(map[string]*knownAddress)
+	a.bucketsNew = make([]map[string]*knownAddress, newBucketCount)
+	for i := range a.bucketsNew {
+		a.bucketsNew[i] = make(map[string]*knownAddress)
 	}
 	// Old addr buckets
-	a.addrOld = make([]map[string]*knownAddress, oldBucketCount)
-	for i := range a.addrOld {
-		a.addrOld[i] = make(map[string]*knownAddress)
+	a.bucketsOld = make([]map[string]*knownAddress, oldBucketCount)
+	for i := range a.bucketsOld {
+		a.bucketsOld[i] = make(map[string]*knownAddress)
 	}
 }
 
@@ -214,7 +214,7 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	if pickFromOldBucket {
 		var bucket map[string]*knownAddress
 		for len(bucket) == 0 {
-			bucket = a.addrOld[a.rand.Intn(len(a.addrOld))]
+			bucket = a.bucketsOld[a.rand.Intn(len(a.bucketsOld))]
 		}
 		// pick a random ka from bucket.
 		randIndex := a.rand.Intn(len(bucket))
@@ -228,7 +228,7 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	} else {
 		var bucket map[string]*knownAddress = nil
 		for len(bucket) == 0 {
-			bucket = a.addrNew[a.rand.Intn(len(a.addrNew))]
+			bucket = a.bucketsNew[a.rand.Intn(len(a.bucketsNew))]
 		}
 		// pick a random ka from bucket.
 		randIndex := a.rand.Intn(len(bucket))
@@ -380,7 +380,7 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 	// Restore all the fields...
 	// Restore the key
 	a.key = aJSON.Key
-	// Restore .addrNew & .addrOld
+	// Restore .bucketsNew & .bucketsOld
 	for _, ka := range aJSON.Addrs {
 		for _, bucketIndex := range ka.Buckets {
 			bucket := a.getBucket(ka.BucketType, bucketIndex)
@@ -425,9 +425,9 @@ out:
 func (a *AddrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAddress {
 	switch bucketType {
 	case bucketTypeNew:
-		return a.addrNew[bucketIdx]
+		return a.bucketsNew[bucketIdx]
 	case bucketTypeOld:
-		return a.addrOld[bucketIdx]
+		return a.bucketsOld[bucketIdx]
 	default:
 		cmn.PanicSanity("Should not happen")
 		return nil
@@ -587,7 +587,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) {
 // Make space in the new buckets by expiring the really bad entries.
 // If no bad entries are available we remove the oldest.
 func (a *AddrBook) expireNew(bucketIdx int) {
-	for addrStr, ka := range a.addrNew[bucketIdx] {
+	for addrStr, ka := range a.bucketsNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
 			a.Logger.Info(cmn.Fmt("expiring bad address %v", addrStr))
