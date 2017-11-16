@@ -23,6 +23,40 @@ func createTempFileName(prefix string) string {
 	return fname
 }
 
+func TestAddrBookPickAddress(t *testing.T) {
+	assert := assert.New(t)
+	fname := createTempFileName("addrbook_test")
+
+	// 0 addresses
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+	assert.Zero(book.Size())
+
+	addr := book.PickAddress(50)
+	assert.Nil(addr, "expected no address")
+
+	randAddrs := randNetAddressPairs(t, 1)
+	addrSrc := randAddrs[0]
+	book.AddAddress(addrSrc.addr, addrSrc.src)
+
+	// pick an address when we only have new address
+	addr = book.PickAddress(0)
+	assert.NotNil(addr, "expected an address")
+	addr = book.PickAddress(50)
+	assert.NotNil(addr, "expected an address")
+	addr = book.PickAddress(100)
+	assert.NotNil(addr, "expected an address")
+
+	// pick an address when we only have old address
+	book.MarkGood(addrSrc.addr)
+	addr = book.PickAddress(0)
+	assert.NotNil(addr, "expected an address")
+	addr = book.PickAddress(50)
+	assert.NotNil(addr, "expected an address")
+	addr = book.PickAddress(100)
+	assert.NotNil(addr, "expected an address")
+}
+
 func TestAddrBookSaveLoad(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
@@ -105,6 +139,10 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 
 	if len(selection) > book.Size() {
 		t.Errorf("selection could not be bigger than the book")
+	}
+
+	if book.Size() != 100 {
+		t.Errorf("Size is not 100. Got %v", book.Size())
 	}
 }
 
