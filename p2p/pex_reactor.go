@@ -240,43 +240,26 @@ func (r *PEXReactor) ensurePeers() {
 		return
 	}
 
-	toDial := make(map[string]*NetAddress)
+	// bias to prefer more vetted peers when we have fewer connections.
+	// not perfect, but somewhate ensures that we prioritize connecting to more-vetted
+	newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
 
-	// Try to pick numToDial addresses to dial.
-	for i := 0; i < numToDial; i++ {
-		// The purpose of newBias is to first prioritize old (more vetted) peers
-		// when we have few connections, but to allow for new (less vetted) peers
-		// if we already have many connections. This algorithm isn't perfect, but
-		// it somewhat ensures that we prioritize connecting to more-vetted
-		// peers.
-		newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
-		var picked *NetAddress
-		// Try to fetch a new peer 3 times.
-		// This caps the maximum number of tries to 3 * numToDial.
-		for j := 0; j < 3; j++ {
-			try := r.book.PickAddress(newBias)
-			if try == nil {
-				break
-			}
-			_, alreadySelected := toDial[try.IP.String()]
-			alreadyDialing := r.Switch.IsDialing(try)
-			alreadyConnected := r.Switch.Peers().Has(try.IP.String())
-			if alreadySelected || alreadyDialing || alreadyConnected {
-				// r.Logger.Info("Cannot dial address", "addr", try,
-				// 	"alreadySelected", alreadySelected,
-				// 	"alreadyDialing", alreadyDialing,
-				//  "alreadyConnected", alreadyConnected)
-				continue
-			} else {
-				r.Logger.Info("Will dial address", "addr", try)
-				picked = try
-				break
-			}
-		}
-		if picked == nil {
+	toDial := make(map[string]*NetAddress)
+	// Try maxAttempts times to pick numToDial addresses to dial
+	maxAttempts := numToDial * 3
+	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
+		try := r.book.PickAddress(newBias)
+		if try == nil {
 			continue
 		}
-		toDial[picked.IP.String()] = picked
+		_, alreadySelected := toDial[try.IP.String()]
+		alreadyDialing := r.Switch.IsDialing(try)
+		alreadyConnected := r.Switch.Peers().Has(try.IP.String())
+		if alreadySelected || alreadyDialing || alreadyConnected {
+			continue
+		}
+		r.Logger.Info("Will dial address", "addr", try)
+		toDial[try.IP.String()] = try
 	}
 
 	// Dial picked addresses
