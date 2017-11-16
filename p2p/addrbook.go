@@ -684,8 +684,8 @@ func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 }
 
 // Return a string representing the network group of this address.
-// This is the /16 for IPv6, the /32 (/36 for he.net) for IPv6, the string
-// "local" for a local address and the string "unroutable for an unroutable
+// This is the /16 for IPv4, the /32 (/36 for he.net) for IPv6, the string
+// "local" for a local address and the string "unroutable" for an unroutable
 // address.
 func (a *AddrBook) groupKey(na *NetAddress) string {
 	if a.routabilityStrict && na.Local() {
@@ -811,8 +811,8 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
 }
 
 /*
-   An address is bad if the address in question has not been tried in the last
-   minute and meets one of the following criteria:
+   An address is bad if the address in question is a New address, has not been tried in the last
+   minute, and meets one of the following criteria:
 
    1) It claims to be from the future
    2) It hasn't been seen in over a month
@@ -821,8 +821,15 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
 
    All addresses that meet these criteria are assumed to be worthless and not
    worth keeping hold of.
+
+   XXX: so a good peer needs us to call MarkGood before the conditions above are reached!
 */
 func (ka *knownAddress) isBad() bool {
+	// Is Old --> good
+	if ka.BucketType == bucketTypeOld {
+		return false
+	}
+
 	// Has been attempted in the last minute --> good
 	if ka.LastAttempt.Before(time.Now().Add(-1 * time.Minute)) {
 		return false
@@ -830,6 +837,7 @@ func (ka *knownAddress) isBad() bool {
 
 	// Too old?
 	// XXX: does this mean if we've kept a connection up for this long we'll disconnect?!
+	// and shouldn't it be .Before ?
 	if ka.LastAttempt.After(time.Now().Add(-1 * numMissingDays * time.Hour * 24)) {
 		return true
 	}
@@ -840,6 +848,7 @@ func (ka *knownAddress) isBad() bool {
 	}
 
 	// Hasn't succeeded in too long?
+	// XXX: does this mean if we've kept a connection up for this long we'll disconnect?!
 	if ka.LastSuccess.Before(time.Now().Add(-1*minBadDays*time.Hour*24)) &&
 		ka.Attempts >= maxFailures {
 		return true
