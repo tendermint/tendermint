@@ -237,6 +237,7 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 }
 
 // MarkGood marks the peer as good and moves it into an "old" bucket.
+// XXX: we never call this!
 func (a *AddrBook) MarkGood(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -304,6 +305,7 @@ func (a *AddrBook) GetSelection() []*NetAddress {
 
 	// Fisher-Yates shuffle the array. We only need to do the first
 	// `numAddresses' since we are throwing the rest.
+	// XXX: What's the point of this if we already loop randomly through addrLookup ?
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
 		j := rand.Intn(len(allAddr)-i) + i
@@ -400,17 +402,17 @@ func (a *AddrBook) Save() {
 func (a *AddrBook) saveRoutine() {
 	defer a.wg.Done()
 
-	dumpAddressTicker := time.NewTicker(dumpAddressInterval)
+	saveFileTicker := time.NewTicker(dumpAddressInterval)
 out:
 	for {
 		select {
-		case <-dumpAddressTicker.C:
+		case <-saveFileTicker.C:
 			a.saveToFile(a.filePath)
 		case <-a.Quit:
 			break out
 		}
 	}
-	dumpAddressTicker.Stop()
+	saveFileTicker.Stop()
 	a.saveToFile(a.filePath)
 	a.Logger.Info("Address handler done")
 }
