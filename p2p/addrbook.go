@@ -40,7 +40,7 @@ const (
 	// old buckets over which an address group will be spread.
 	oldBucketsPerGroup = 4
 
-	// new buckets over which an source address group will be spread.
+	// new buckets over which a source address group will be spread.
 	newBucketsPerGroup = 32
 
 	// buckets a frequently seen new address may end up in.
@@ -79,18 +79,22 @@ const (
 type AddrBook struct {
 	cmn.BaseService
 
-	mtx               sync.Mutex
+	// immutable after creation
 	filePath          string
 	routabilityStrict bool
-	rand              *rand.Rand
 	key               string
-	ourAddrs          map[string]*NetAddress
-	addrLookup        map[string]*knownAddress // new & old
-	addrNew           []map[string]*knownAddress
-	addrOld           []map[string]*knownAddress
-	wg                sync.WaitGroup
-	nOld              int
-	nNew              int
+
+	// accessed concurrently
+	mtx        sync.Mutex
+	rand       *rand.Rand
+	ourAddrs   map[string]*NetAddress
+	addrLookup map[string]*knownAddress // new & old
+	addrNew    []map[string]*knownAddress
+	addrOld    []map[string]*knownAddress
+	nOld       int
+	nNew       int
+
+	wg sync.WaitGroup
 }
 
 // NewAddrBook creates a new address book.
@@ -145,6 +149,7 @@ func (a *AddrBook) Wait() {
 	a.wg.Wait()
 }
 
+// AddOurAddress adds another one of our addresses.
 func (a *AddrBook) AddOurAddress(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -152,6 +157,7 @@ func (a *AddrBook) AddOurAddress(addr *NetAddress) {
 	a.ourAddrs[addr.String()] = addr
 }
 
+// OurAddresses returns a list of our addresses.
 func (a *AddrBook) OurAddresses() []*NetAddress {
 	addrs := []*NetAddress{}
 	for _, addr := range a.ourAddrs {
@@ -160,6 +166,7 @@ func (a *AddrBook) OurAddresses() []*NetAddress {
 	return addrs
 }
 
+// AddAddress adds the given address as received from the given source.
 // NOTE: addr must not be nil
 func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.mtx.Lock()
@@ -168,10 +175,12 @@ func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) {
 	a.addAddress(addr, src)
 }
 
+// NeedMoreAddrs returns true if there are not have enough addresses in the book.
 func (a *AddrBook) NeedMoreAddrs() bool {
 	return a.Size() < needAddressThreshold
 }
 
+// Size returns the number of addresses in the book.
 func (a *AddrBook) Size() int {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -182,7 +191,7 @@ func (a *AddrBook) size() int {
 	return a.nNew + a.nOld
 }
 
-// Pick an address to connect to with new/old bias.
+// PickAddress picks an address to connect to with new/old bias.
 func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -201,9 +210,9 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(newBias))
 	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(newBias)
 
-	if (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation {
-		// pick random Old bucket.
-		var bucket map[string]*knownAddress = nil
+	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
+	if pickFromOldBucket {
+		var bucket map[string]*knownAddress
 		for len(bucket) == 0 {
 			bucket = a.addrOld[a.rand.Intn(len(a.addrOld))]
 		}
@@ -217,7 +226,6 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 		}
 		cmn.PanicSanity("Should not happen")
 	} else {
-		// pick random New bucket.
 		var bucket map[string]*knownAddress = nil
 		for len(bucket) == 0 {
 			bucket = a.addrNew[a.rand.Intn(len(a.addrNew))]
@@ -235,6 +243,7 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	return nil
 }
 
+// MarkGood marks the peer as good and moves it into an "old" bucket.
 func (a *AddrBook) MarkGood(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -248,6 +257,7 @@ func (a *AddrBook) MarkGood(addr *NetAddress) {
 	}
 }
 
+// MarkAttempt marks that an attempt was made to connect to the address.
 func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -823,7 +833,8 @@ func (ka *knownAddress) isBad() bool {
 		return false
 	}
 
-	// Over a month old?
+	// Too old?
+	// XXX: does this mean if we've kept a connection up for this long we'll disconnect?!
 	if ka.LastAttempt.After(time.Now().Add(-1 * numMissingDays * time.Hour * 24)) {
 		return true
 	}
