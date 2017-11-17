@@ -521,11 +521,8 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 		},
 	}
 
-	// include git hash in the nodeInfo if available
-	// TODO: use ld-flags
-	/*if rev, err := cmn.ReadFile(n.config.GetString("revision_file")); err == nil {
-		nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("revision=%v", string(rev)))
-	}*/
+	rpcListenAddr := n.config.RPC.ListenAddress
+	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
 
 	if !n.sw.IsListening() {
 		return nodeInfo
@@ -534,13 +531,8 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := n.config.RPC.ListenAddress
-
-	// We assume that the rpcListener has the same ExternalAddress.
-	// This is probably true because both P2P and RPC listeners use UPnP,
-	// except of course if the rpc is only bound to localhost
 	nodeInfo.ListenAddr = cmn.Fmt("%v:%v", p2pHost, p2pPort)
-	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
+
 	return nodeInfo
 }
 
