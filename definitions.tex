@@ -4,43 +4,51 @@
 
 \subsection{Model}
 
-We consider a system composed of $n$ server processes $\Pi = \{ 1, \dots, n\}$ that communicate by exchanging messages.
-All messages sent between processes are digitally signed.
-Processes can be \emph{correct} or \emph{faulty}, where correct processes
-follow the algorithm and the faulty one may behave in an arbitrary way, i.e., we consider Byzantine faults.
-We assume than the number of faulty servers is limited to $f$.
+We consider a system composed of $n$ server processes $\Pi = \{ 1, \dots, n\}$.
+Server processes can be correct or faulty, where a faulty process can behave in an arbitrary way,
+ i.e., we consider Byzantine faults. We assume that each process has some amount of voting power, and we denote with $N$ the total voting power of all processes in the system. 
+Furthermore, we assume that the total voting power of faulty processes is bounded with a system parameter $f$.
 
-We consider a partially synchronous system model:
-in all executions of the system, there is a bound $\Delta$
-and an instant $GST$ (Global Stabilization Time) such that all
-communication among correct processes after $GST$ is reliable and $\Delta$-timely, i.e., if a correct process
-$p$ sends message $m$ at time $t\ge GST$ to correct process $q$, then $q$ will receive $m$
-before $t+\Delta$.
-We do not make any assumption
-before $GST$. For example, messages among correct processes can be
-delayed, dropped or duplicated before $GST$. Spoofing/impersonation attacks are
-assumed to be impossible also before $GST$.
+Processes communicate by exchanging messages. We assume a model where processes are not part of the single administration domain; therefore we cannot enforce a direct network connectivity between all server processes.
+Instead, we assume that each server process is connected to a small number of processes called peers, 
+such that there is an indirect communication channel between all correct server processes. Communication between processes is established using gossip protocol.
 
-We assume that process steps (which might include
-sending and receiving messages)
-take zero time.
-Processes are equipped with clocks able to measure local timeouts.
+We assume that processes communicate over wide-area network. Formally, we model the network communication using the partially synchronous system model~\cite{DLS88:jacm}, or rather a slightly weaker variant of this model: we assume that the system alternates between good periods (during which the system is synchronous) and bad periods (during which the system is asynchronous and messages can be lost). During good periods, there is a bound $\Delta$ such that all
+communication among correct processes is reliable and $\Delta$-timely, i.e., if a correct process
+$p$ sends message $m$ at time $t$ to a correct process $q$, then $q$ will receive $m$
+before $t+\Delta$. Note that as we do not assume direct communication channels among all correct processes, this implies that before the message $m$ reaches $q$, it will pass through a number of 
+correct servers that will forward the message $m$ using gossip protocol towards $q$. 
+Messages among correct processes can be
+delayed, dropped or duplicated during bad periods. Spoofing/impersonation attacks are assumed to be impossible also during bad periods.
+The bound $\Delta$ is a system parameter whose value is not required to be known for the safety of the algorithm presented. However, the timing bounds derived for our algorithm, and thus the guaranteed latency requires knowledge of $\Delta$.
+
+We assume that process steps (which might include sending and receiving messages) take zero time.
+Processes are equipped with clocks so they can measure local timeouts.
+
+We assume integrity of direct communication channels between peers, that is if a process $p$ received a message $m$ from process $q$, then $q$ sent message $m$ to $p$ before. All protocol messages are signed, i.e., when a correct process $q$ receives a signed message $m$ from its peer, the process $q$ can verify who was the original message sender.
+
+The details of the Tendermint gossip protocol will be discussed in a separate technical report. For the sake of this report it is sufficient to assume the following properties provided by the gossip protocol (in addition to the properties about partial synchrony of the network stated above):
+
+\begin{itemize}
+	\item Messages that are being gossiped come from the consensus layer. We can think about consensus protocol as a content creator, which defines what messages should be disseminated using the gossip protocol. A correct process creates the message for dissemination either i) explicitly, by invoking \emph{send} function as part of the consensus protocol or ii) implicitly, by receiving a message from some other process. Note that in the case ii) gossiping of messages is implicit, i.e., it happens without explicit send clause in the consensus algorithm whenever a correct process receives some messages in the consensus algorithm\footnote{If a message is received by a correct process at the consensus level then it is considered valid from the protocol point of view, i.e., it has a correct signature, a proper message structure and a valid height and round number.}. 
+    \item Processes keep resending messages (in case of failures or message loss) until all its peers get them. This ensures that every message sent or received by a correct process is eventually received by all correct processes. 
+\end{itemize}
+
 
  \subsection{Consensus}
  \label{sec:consensus}
 
- \newcommand{\propose}{\mathsf{Propose}}
- \newcommand{\decide}{\mathsf{Decide}}
+ \newcommand{\propose}{\mathsf{propose}}
+ \newcommand{\decide}{\mathsf{decide}}
 
- In the consensus problem, every process has an initial value from a
-      set $V$ and has eventually to irrevocably decide on a value from
-      $V$.
- The problem is defined by an agreement, a termination, and a validity
-      property.
+We consider a variant of the Byzantine consensus problem called Validity Predicate-based Byzantine consensus that is motivated by blockchain systems~\cite{GLR17:red-belly-bc}. The problem is defined by an agreement, a termination, and a validity
+property.
 
  \begin{itemize}
- \item \emph{Agreement:} No two correct processes decide differently.
- \item \emph{Termination:} All correct processes eventually decide.
- \item \emph{Validity:} If all correct processes have the same initial value, and no process
- is faulty, then this is the only possible decision value.
+ \item \emph{Agreement:} No two correct processes decide on different values.
+ \item \emph{Termination:} All correct processes eventually decide on a value.
+ \item \emph{Validity:} A decided value is valid, i.e., it satisfies the predefined predicate denoted \emph{valid()}.
  \end{itemize}
+
+This variant of the Byzantine consensus problem has an application-specific valid() predicate to indicate whether a value is valid. In the context of blockchain systems, for example, a value is not valid if it does not contain an appropriate hash of the last value (block) added to the blockchain.
+
