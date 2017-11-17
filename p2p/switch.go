@@ -507,8 +507,6 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 	return switches
 }
 
-var PanicOnAddPeerErr = false
-
 // Connect2Switches will connect switches i and j via net.Pipe().
 // Blocks until a conection is established.
 // NOTE: caller ensures i and j are within bounds.
@@ -519,14 +517,14 @@ func Connect2Switches(switches []*Switch, i, j int) {
 	doneCh := make(chan struct{})
 	go func() {
 		err := switchI.addPeerWithConnection(c1)
-		if PanicOnAddPeerErr && err != nil {
+		if err != nil {
 			panic(err)
 		}
 		doneCh <- struct{}{}
 	}()
 	go func() {
 		err := switchJ.addPeerWithConnection(c2)
-		if PanicOnAddPeerErr && err != nil {
+		if err != nil {
 			panic(err)
 		}
 		doneCh <- struct{}{}
