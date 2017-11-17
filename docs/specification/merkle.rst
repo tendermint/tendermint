@@ -6,9 +6,9 @@ For an overview of Merkle trees, see
 
 There are two types of Merkle trees used in Tendermint.
 
--  ```IAVL+ Tree`` <#iavl-tree>`__: An immutable self-balancing binary
+-  **IAVL+ Tree**: An immutable self-balancing binary
    tree for persistent application state
--  ```Simple Tree`` <#simple-tree>`__: A simple compact binary tree for
+-  **Simple Tree**: A simple compact binary tree for
    a static list of items
 
 IAVL+ Tree
