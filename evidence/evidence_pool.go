@@ -3,27 +3,28 @@ package evpool
 import (
 	"github.com/tendermint/tmlibs/log"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 )
 
 // EvidencePool maintains a pool of valid evidence
 // in an EvidenceStore.
 type EvidencePool struct {
-	config *EvidencePoolConfig
+	config *cfg.EvidenceConfig
 	logger log.Logger
 
+	state         types.State
 	evidenceStore *EvidenceStore
-	evidenceChan  chan types.Evidence
+
+	evidenceChan chan types.Evidence
 }
 
-type EvidencePoolConfig struct {
-}
-
-func NewEvidencePool(config *EvidencePoolConfig, evidenceStore *EvidenceStore) *EvidencePool {
+func NewEvidencePool(config *cfg.EvidenceConfig, evidenceStore *EvidenceStore, state types.State) *EvidencePool {
 	evpool := &EvidencePool{
 		config:        config,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceStore,
+		state:         state,
 		evidenceChan:  make(chan types.Evidence),
 	}
 	return evpool
@@ -52,7 +53,13 @@ func (evpool *EvidencePool) PendingEvidence() []types.Evidence {
 // AddEvidence checks the evidence is valid and adds it to the pool.
 // Blocks on the EvidenceChan.
 func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
-	added, err := evpool.evidenceStore.AddNewEvidence(evidence)
+
+	priority, err := evpool.state.VerifyEvidence(evidence)
+	if err != nil {
+		return err
+	}
+
+	added, err := evpool.evidenceStore.AddNewEvidence(evidence, priority)
 	if err != nil {
 		return err
 	} else if !added {

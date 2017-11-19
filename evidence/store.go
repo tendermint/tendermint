@@ -51,18 +51,12 @@ func _key(key string, evidence types.Evidence) []byte {
 // evidence that has been committed, evidence that has been seen but not broadcast,
 // and evidence that has been broadcast but not yet committed.
 type EvidenceStore struct {
-	chainID string
-	db      dbm.DB
-
-	// so we can verify evidence was from a real validator
-	state types.State
+	db dbm.DB
 }
 
-func NewEvidenceStore(chainID string, db dbm.DB, state types.State) *EvidenceStore {
+func NewEvidenceStore(db dbm.DB) *EvidenceStore {
 	return &EvidenceStore{
-		chainID: chainID,
-		db:      db,
-		state:   state,
+		db: db,
 	}
 }
 
@@ -93,17 +87,12 @@ func (store *EvidenceStore) PendingEvidence() (evidence []types.Evidence) {
 }
 
 // AddNewEvidence adds the given evidence to the database.
-func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence) (bool, error) {
+func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int) (bool, error) {
 	// check if we already have seen it
 	key := keyLookup(evidence)
 	v := store.db.Get(key)
 	if len(v) != 0 {
 		return false, nil
-	}
-
-	priority, err := store.state.VerifyEvidence(evidence)
-	if err != nil {
-		return false, err
 	}
 
 	ei := evidenceInfo{

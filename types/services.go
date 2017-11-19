@@ -84,7 +84,7 @@ type State interface {
 // UNSTABLE
 type EvidencePool interface {
 	PendingEvidence() []Evidence
-	AddEvidence(Evidence)
+	AddEvidence(Evidence) error
 }
 
 // MockMempool is an empty implementation of a Mempool, useful for testing.
@@ -93,4 +93,4 @@ type MockEvidencePool struct {
 }
 
 func (m MockEvidencePool) PendingEvidence() []Evidence { return nil }
-func (m MockEvidencePool) AddEvidence(Evidence)        {}
+func (m MockEvidencePool) AddEvidence(Evidence) error  { return nil }

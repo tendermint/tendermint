@@ -260,8 +260,11 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.
 		mempool.EnableTxsAvailable()
 	}
 
+	// mock the evidence pool
+	evpool := types.MockEvidencePool{}
+
 	// Make ConsensusReactor
-	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool)
+	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
