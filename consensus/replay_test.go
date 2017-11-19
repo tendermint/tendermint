@@ -261,7 +261,9 @@ const (
 )
 
 var (
-	mempool = types.MockMempool{}
+	NUM_BLOCKS = 6 // number of blocks in the test_data/many_blocks.cswal
+	mempool    = types.MockMempool{}
+	evpool     = types.MockEvidencePool{}
 )
 
 //---------------------------------------
@@ -394,7 +396,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
 	testPartSize := st.ConsensusParams.BlockPartSizeBytes
-	err := st.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
+	err := st.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool, evpool)
 	if err != nil {
 		panic(err)
 	}

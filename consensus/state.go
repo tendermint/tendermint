@@ -1208,7 +1208,9 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// All calls to the proxyAppConn come here.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
-	err := stateCopy.ApplyBlock(txEventBuffer, cs.proxyAppConn, block, blockParts.Header(), cs.mempool)
+	err := stateCopy.ApplyBlock(txEventBuffer, cs.proxyAppConn,
+		block, blockParts.Header(),
+		cs.mempool, cs.evpool)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := cmn.Kill()
@@ -1235,8 +1237,6 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	}
 
 	fail.Fail() // XXX
-
-	// TODO: cs.evpool.Update()
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)

@@ -73,25 +73,9 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 	return nil
 }
 
-// Update informs the evpool that the given evidence was committed and can be discarded.
-// NOTE: this should be called *after* block is committed by consensus.
-func (evpool *EvidencePool) Update(height int, evidence []types.Evidence) {
-
-	// First, create a lookup map of new committed evidence
-
-	evMap := make(map[string]struct{})
+// MarkEvidenceAsCommitted marks all the evidence as committed.
+func (evpool *EvidencePool) MarkEvidenceAsCommitted(evidence []types.Evidence) {
 	for _, ev := range evidence {
 		evpool.evidenceStore.MarkEvidenceAsCommitted(ev)
-		evMap[string(ev.Hash())] = struct{}{}
 	}
-
-	// Remove evidence that is already committed .
-	goodEvidence := evpool.filterEvidence(evMap)
-	_ = goodEvidence
-
-}
-
-func (evpool *EvidencePool) filterEvidence(blockEvidenceMap map[string]struct{}) []types.Evidence {
-	// TODO:
-	return nil
 }

@@ -93,7 +93,10 @@ func TestApplyBlock(t *testing.T) {
 
 	block := makeBlock(state, 1)
 
-	err = state.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), types.MockMempool{})
+	err = state.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(),
+		block, block.MakePartSet(testPartSize).Header(),
+		types.MockMempool{}, types.MockEvidencePool{})
+
 	require.Nil(t, err)
 
 	// TODO check state and mempool

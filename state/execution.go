@@ -327,7 +327,8 @@ func (s *State) validateBlock(b *types.Block) error {
 // commits it, and saves the block and state. It's the only function that needs to be called
 // from outside this package to process and commit an entire block.
 func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn proxy.AppConnConsensus,
-	block *types.Block, partsHeader types.PartSetHeader, mempool types.Mempool) error {
+	block *types.Block, partsHeader types.PartSetHeader,
+	mempool types.Mempool, evpool types.EvidencePool) error {
 
 	abciResponses, err := s.ValExecBlock(txEventPublisher, proxyAppConn, block)
 	if err != nil {
@@ -354,6 +355,8 @@ func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn
 	}
 
 	fail.Fail() // XXX
+
+	evpool.MarkEvidenceAsCommitted(block.Evidence.Evidence)
 
 	// save the state and the validators
 	s.Save()
