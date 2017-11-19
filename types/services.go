@@ -4,7 +4,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 )
 
-// NOTE: all types in this file are considered UNSTABLE
+// NOTE/XXX: all type definitions in this file are considered UNSTABLE
 
 //------------------------------------------------------
 // blockchain services types
@@ -73,6 +73,8 @@ type BlockStore interface {
 //------------------------------------------------------
 // state
 
+// State defines the stateful interface used to verify evidence.
+// UNSTABLE
 type State interface {
 	VerifyEvidence(Evidence) (priority int, err error)
 }

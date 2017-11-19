@@ -309,7 +309,7 @@ func (s *State) validateBlock(b *types.Block) error {
 		}
 	}
 
-	for _, ev := range block.Evidence.Evidences {
+	for _, ev := range block.Evidence.Evidence {
 		if _, err := s.VerifyEvidence(ev); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
 		}

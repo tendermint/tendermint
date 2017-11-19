@@ -386,7 +386,7 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 // VerifyEvidence verifies the evidence fully by checking it is internally
 // consistent and corresponds to an existing or previous validator.
 // It returns the priority of this evidence, or an error.
-// NOTE: return error may be ErrLoadValidators, in which case the validator set
+// NOTE: return error may be ErrNoValSetForHeight, in which case the validator set
 // for the evidence height could not be loaded.
 func (s *State) VerifyEvidence(evidence types.Evidence) (priority int, err error) {
 	if err := evidence.Verify(s.ChainID); err != nil {

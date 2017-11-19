@@ -3,7 +3,6 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"sync"
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/merkle"
@@ -26,10 +25,6 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 //-------------------------------------------
 
-type HistoricalValidators interface {
-	LoadValidators(height int) (*ValidatorSet, error)
-}
-
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
 	Height() int                 // height of the equivocation
@@ -44,96 +39,36 @@ type Evidence interface {
 
 //-------------------------------------------
 
-//EvidenceSet is a thread-safe set of evidence.
-type EvidenceSet struct {
-	sync.RWMutex
-	evidences evidences
-}
+// EvidenceList is a list of Evidence. Evidences is not a word.
+type EvidenceList []Evidence
 
-//Evidence returns a copy of all the evidence.
-func (evset EvidenceSet) Evidence() []Evidence {
-	evset.RLock()
-	defer evset.RUnlock()
-	evCopy := make([]Evidence, len(evset.evidences))
-	for i, ev := range evset.evidences {
-		evCopy[i] = ev
-	}
-	return evCopy
-}
-
-// Size returns the number of pieces of evidence in the set.
-func (evset EvidenceSet) Size() int {
-	evset.RLock()
-	defer evset.RUnlock()
-	return len(evset.evidences)
-}
-
-// Hash returns a merkle hash of the evidence.
-func (evset EvidenceSet) Hash() []byte {
-	evset.RLock()
-	defer evset.RUnlock()
-	return evset.evidences.Hash()
-}
-
-// Has returns true if the given evidence is in the set.
-func (evset EvidenceSet) Has(evidence Evidence) bool {
-	evset.RLock()
-	defer evset.RUnlock()
-	return evset.evidences.Has(evidence)
-}
-
-// String returns a string representation of the evidence.
-func (evset EvidenceSet) String() string {
-	evset.RLock()
-	defer evset.RUnlock()
-	return evset.evidences.String()
-}
-
-// Add adds the given evidence to the set.
-// TODO: and persists it to disk.
-func (evset EvidenceSet) Add(evidence Evidence) {
-	evset.Lock()
-	defer evset.Unlock()
-	evset.evidences = append(evset.evidences, evidence)
-}
-
-// Reset empties the evidence set.
-func (evset EvidenceSet) Reset() {
-	evset.Lock()
-	defer evset.Unlock()
-	evset.evidences = make(evidences, 0)
-
-}
-
-//-------------------------------------------
-
-type evidences []Evidence
-
-func (evs evidences) Hash() []byte {
+// Hash returns the simple merkle root hash of the EvidenceList.
+func (evl EvidenceList) Hash() []byte {
 	// Recursive impl.
 	// Copied from tmlibs/merkle to avoid allocations
-	switch len(evs) {
+	switch len(evl) {
 	case 0:
 		return nil
 	case 1:
-		return evs[0].Hash()
+		return evl[0].Hash()
 	default:
-		left := evidences(evs[:(len(evs)+1)/2]).Hash()
-		right := evidences(evs[(len(evs)+1)/2:]).Hash()
+		left := EvidenceList(evl[:(len(evl)+1)/2]).Hash()
+		right := EvidenceList(evl[(len(evl)+1)/2:]).Hash()
 		return merkle.SimpleHashFromTwoHashes(left, right)
 	}
 }
 
-func (evs evidences) String() string {
+func (evl EvidenceList) String() string {
 	s := ""
-	for _, e := range evs {
+	for _, e := range evl {
 		s += fmt.Sprintf("%s\t\t", e)
 	}
 	return s
 }
 
-func (evs evidences) Has(evidence Evidence) bool {
-	for _, ev := range evs {
+// Has returns true if the evidence is in the EvidenceList.
+func (evl EvidenceList) Has(evidence Evidence) bool {
+	for _, ev := range evl {
 		if ev.Equal(evidence) {
 			return true
 		}
