@@ -9,44 +9,45 @@ import (
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 
+	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
 
 const (
-	EvidencePoolChannel = byte(0x38)
+	EvidenceChannel = byte(0x38)
 
-	maxEvidencePoolMessageSize = 1048576 // 1MB TODO make it configurable
+	maxEvidenceMessageSize     = 1048576 // 1MB TODO make it configurable
 	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
 	broadcastEvidenceIntervalS = 60      // broadcast uncommitted evidence this often
 )
 
-// EvidencePoolReactor handles evpool evidence broadcasting amongst peers.
-type EvidencePoolReactor struct {
+// EvidenceReactor handles evpool evidence broadcasting amongst peers.
+type EvidenceReactor struct {
 	p2p.BaseReactor
-	config *EvidencePoolConfig
-	evpool *EvidencePool
-	evsw   types.EventSwitch
+	config   *cfg.EvidenceConfig
+	evpool   *EvidencePool
+	eventBus *types.EventBus
 }
 
-// NewEvidencePoolReactor returns a new EvidencePoolReactor with the given config and evpool.
-func NewEvidencePoolReactor(config *EvidencePoolConfig, evpool *EvidencePool) *EvidencePoolReactor {
-	evR := &EvidencePoolReactor{
+// NewEvidenceReactor returns a new EvidenceReactor with the given config and evpool.
+func NewEvidenceReactor(config *cfg.EvidenceConfig, evpool *EvidencePool) *EvidenceReactor {
+	evR := &EvidenceReactor{
 		config: config,
 		evpool: evpool,
 	}
-	evR.BaseReactor = *p2p.NewBaseReactor("EvidencePoolReactor", evR)
+	evR.BaseReactor = *p2p.NewBaseReactor("EvidenceReactor", evR)
 	return evR
 }
 
-// SetLogger sets the Logger on the reactor and the underlying EvidencePool.
-func (evR *EvidencePoolReactor) SetLogger(l log.Logger) {
+// SetLogger sets the Logger on the reactor and the underlying Evidence.
+func (evR *EvidenceReactor) SetLogger(l log.Logger) {
 	evR.Logger = l
 	evR.evpool.SetLogger(l)
 }
 
 // OnStart implements cmn.Service
-func (evR *EvidencePoolReactor) OnStart() error {
+func (evR *EvidenceReactor) OnStart() error {
 	if err := evR.BaseReactor.OnStart(); err != nil {
 		return err
 	}
@@ -56,35 +57,35 @@ func (evR *EvidencePoolReactor) OnStart() error {
 
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
-func (evR *EvidencePoolReactor) GetChannels() []*p2p.ChannelDescriptor {
+func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		&p2p.ChannelDescriptor{
-			ID:       EvidencePoolChannel,
+			ID:       EvidenceChannel,
 			Priority: 5,
 		},
 	}
 }
 
 // AddPeer implements Reactor.
-func (evR *EvidencePoolReactor) AddPeer(peer p2p.Peer) {
+func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
 	// send the peer our high-priority evidence.
 	// the rest will be sent by the broadcastRoutine
 	evidence := evR.evpool.PriorityEvidence()
-	msg := EvidenceMessage{evidence}
-	success := peer.Send(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
+	msg := EvidenceListMessage{evidence}
+	success := peer.Send(EvidenceChannel, struct{ EvidenceMessage }{msg})
 	if !success {
 		// TODO: remove peer ?
 	}
 }
 
 // RemovePeer implements Reactor.
-func (evR *EvidencePoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	// nothing to do
 }
 
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
-func (evR *EvidencePoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
+func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		evR.Logger.Error("Error decoding message", "err", err)
@@ -93,7 +94,7 @@ func (evR *EvidencePoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte
 	evR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
 
 	switch msg := msg.(type) {
-	case *EvidenceMessage:
+	case *EvidenceListMessage:
 		for _, ev := range msg.Evidence {
 			err := evR.evpool.AddEvidence(ev)
 			if err != nil {
@@ -107,28 +108,28 @@ func (evR *EvidencePoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte
 }
 
 // SetEventSwitch implements events.Eventable.
-func (evR *EvidencePoolReactor) SetEventSwitch(evsw types.EventSwitch) {
-	evR.evsw = evsw
+func (evR *EvidenceReactor) SetEventBus(b *types.EventBus) {
+	evR.eventBus = b
 }
 
 // broadcast new evidence to all peers.
 // broadcasts must be non-blocking so routine is always available to read off EvidenceChan.
-func (evR *EvidencePoolReactor) broadcastRoutine() {
+func (evR *EvidenceReactor) broadcastRoutine() {
 	ticker := time.NewTicker(time.Second * broadcastEvidenceIntervalS)
 	for {
 		select {
 		case evidence := <-evR.evpool.EvidenceChan():
 			// broadcast some new evidence
-			msg := EvidenceMessage{[]types.Evidence{evidence}}
-			evR.Switch.Broadcast(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
+			msg := EvidenceListMessage{[]types.Evidence{evidence}}
+			evR.Switch.Broadcast(EvidenceChannel, struct{ EvidenceMessage }{msg})
 
 			// TODO: Broadcast runs asynchronously, so this should wait on the successChan
 			// in another routine before marking to be proper.
 			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(evidence)
 		case <-ticker.C:
 			// broadcast all pending evidence
-			msg := EvidenceMessage{evR.evpool.PendingEvidence()}
-			evR.Switch.Broadcast(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})
+			msg := EvidenceListMessage{evR.evpool.PendingEvidence()}
+			evR.Switch.Broadcast(EvidenceChannel, struct{ EvidenceMessage }{msg})
 		case <-evR.Quit:
 			return
 		}
@@ -142,31 +143,31 @@ const (
 	msgTypeEvidence = byte(0x01)
 )
 
-// EvidencePoolMessage is a message sent or received by the EvidencePoolReactor.
-type EvidencePoolMessage interface{}
+// EvidenceMessage is a message sent or received by the EvidenceReactor.
+type EvidenceMessage interface{}
 
 var _ = wire.RegisterInterface(
-	struct{ EvidencePoolMessage }{},
-	wire.ConcreteType{&EvidenceMessage{}, msgTypeEvidence},
+	struct{ EvidenceMessage }{},
+	wire.ConcreteType{&EvidenceListMessage{}, msgTypeEvidence},
 )
 
-// DecodeMessage decodes a byte-array into a EvidencePoolMessage.
-func DecodeMessage(bz []byte) (msgType byte, msg EvidencePoolMessage, err error) {
+// DecodeMessage decodes a byte-array into a EvidenceMessage.
+func DecodeMessage(bz []byte) (msgType byte, msg EvidenceMessage, err error) {
 	msgType = bz[0]
 	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ EvidencePoolMessage }{}, r, maxEvidencePoolMessageSize, n, &err).(struct{ EvidencePoolMessage }).EvidencePoolMessage
+	msg = wire.ReadBinary(struct{ EvidenceMessage }{}, r, maxEvidenceMessageSize, n, &err).(struct{ EvidenceMessage }).EvidenceMessage
 	return
 }
 
 //-------------------------------------
 
 // EvidenceMessage contains a list of evidence.
-type EvidenceMessage struct {
+type EvidenceListMessage struct {
 	Evidence []types.Evidence
 }
 
-// String returns a string representation of the EvidenceMessage.
-func (m *EvidenceMessage) String() string {
-	return fmt.Sprintf("[EvidenceMessage %v]", m.Evidence)
+// String returns a string representation of the EvidenceListMessage.
+func (m *EvidenceListMessage) String() string {
+	return fmt.Sprintf("[EvidenceListMessage %v]", m.Evidence)
 }

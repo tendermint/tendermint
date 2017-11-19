@@ -14,7 +14,7 @@ import (
 //------------------------------------------------------
 // mempool
 
-// Mempool defines the mempool interface.
+// Mempool defines the mempool interface as used by the ConsensusState.
 // Updates to the mempool need to be synchronized with committing a block
 // so apps can reset their transient state on Commit
 // UNSTABLE
@@ -63,9 +63,34 @@ type BlockStoreRPC interface {
 	LoadSeenCommit(height int64) *Commit
 }
 
-// BlockStore defines the BlockStore interface.
+// BlockStore defines the BlockStore interface used by the ConsensusState.
 // UNSTABLE
 type BlockStore interface {
 	BlockStoreRPC
 	SaveBlock(block *Block, blockParts *PartSet, seenCommit *Commit)
 }
+
+//------------------------------------------------------
+// state
+
+type State interface {
+	VerifyEvidence(Evidence) (priority int, err error)
+}
+
+//------------------------------------------------------
+// evidence pool
+
+// EvidencePool defines the EvidencePool interface used by the ConsensusState.
+// UNSTABLE
+type EvidencePool interface {
+	PendingEvidence() []Evidence
+	AddEvidence(Evidence)
+}
+
+// MockMempool is an empty implementation of a Mempool, useful for testing.
+// UNSTABLE
+type MockEvidencePool struct {
+}
+
+func (m MockEvidencePool) PendingEvidence() []Evidence { return nil }
+func (m MockEvidencePool) AddEvidence(Evidence)        {}

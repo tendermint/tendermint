@@ -55,14 +55,14 @@ type EvidenceStore struct {
 	db      dbm.DB
 
 	// so we can verify evidence was from a real validator
-	historicalValidators types.HistoricalValidators
+	state types.State
 }
 
-func NewEvidenceStore(chainID string, db dbm.DB, vals types.HistoricalValidators) *EvidenceStore {
+func NewEvidenceStore(chainID string, db dbm.DB, state types.State) *EvidenceStore {
 	return &EvidenceStore{
-		chainID:              chainID,
-		db:                   db,
-		historicalValidators: vals,
+		chainID: chainID,
+		db:      db,
+		state:   state,
 	}
 }
 
@@ -101,15 +101,10 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence) (bool, error
 		return false, nil
 	}
 
-	// verify evidence consistency
-	if err := evidence.Verify(store.chainID, store.historicalValidators); err != nil {
+	priority, err := store.state.VerifyEvidence(evidence)
+	if err != nil {
 		return false, err
 	}
-
-	// TODO: or we let Verify return the val to avoid running this again?
-	valSet := store.historicalValidators.LoadValidators(evidence.Height())
-	_, val := valSet.GetByAddress(evidence.Address())
-	priority := int(val.VotingPower)
 
 	ei := evidenceInfo{
 		Committed: false,
