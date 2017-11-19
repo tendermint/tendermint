@@ -54,6 +54,7 @@ func (evpool *EvidencePool) PendingEvidence() []types.Evidence {
 // Blocks on the EvidenceChan.
 func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 
+	// XXX: is this thread safe ?
 	priority, err := evpool.state.VerifyEvidence(evidence)
 	if err != nil {
 		return err
