@@ -295,7 +295,6 @@ func (sw *Switch) startInitPeer(peer *peer) {
 
 // DialSeeds dials a list of seeds asynchronously in random order.
 func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
-
 	netAddrs, err := NewNetAddressStrings(seeds)
 	if err != nil {
 		return err
@@ -315,11 +314,15 @@ func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 		addrBook.Save()
 	}
 
+	// Ensure we have a completely undeterministic PRNG. cmd.RandInt64() draws
+	// from a seed that's initialized with OS entropy on process start.
+	rng := rand.New(rand.NewSource(cmn.RandInt64()))
+
 	// permute the list, dial them in random order.
-	perm := rand.Perm(len(netAddrs))
+	perm := rng.Perm(len(netAddrs))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
-			time.Sleep(time.Duration(rand.Int63n(3000)) * time.Millisecond)
+			time.Sleep(time.Duration(rng.Int63n(3000)) * time.Millisecond)
 			j := perm[i]
 			sw.dialSeed(netAddrs[j])
 		}(i)
