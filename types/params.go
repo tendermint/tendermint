@@ -40,7 +40,7 @@ type BlockGossip struct {
 
 // EvidenceParams determine how we handle evidence of malfeasance
 type EvidenceParams struct {
-	MaxHeightDiff int `json:"max_height_diff"` // only accept new evidence more recent than this
+	MaxAge int `json:"max_age"` // only accept new evidence more recent than this
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
@@ -80,7 +80,7 @@ func DefaultBlockGossip() BlockGossip {
 // DefaultEvidence Params returns a default EvidenceParams.
 func DefaultEvidenceParams() EvidenceParams {
 	return EvidenceParams{
-		MaxHeightDiff: 100000, // 27.8 hrs at 1block/s
+		MaxAge: 100000, // 27.8 hrs at 1block/s
 	}
 }
 

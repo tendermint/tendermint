@@ -389,6 +389,13 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 // NOTE: return error may be ErrNoValSetForHeight, in which case the validator set
 // for the evidence height could not be loaded.
 func (s *State) VerifyEvidence(evidence types.Evidence) (priority int, err error) {
+	evidenceAge := s.LastBlockHeight - evidence.Height()
+	maxAge := s.Params.EvidenceParams.MaxAge
+	if evidenceAge > maxAge {
+		return priority, fmt.Errorf("Evidence from height %d is too old. Min height is %d",
+			evidence.Height(), s.LastBlockHeight-maxAge)
+	}
+
 	if err := evidence.Verify(s.ChainID); err != nil {
 		return priority, err
 	}
