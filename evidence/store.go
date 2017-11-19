@@ -9,9 +9,12 @@ import (
 )
 
 /*
+Schema for indexing evidence:
+
 "evidence-lookup"/<evidence-height>/<evidence-hash> -> evidence struct
 "evidence-outqueue"/<index>/<evidence-height>/<evidence-hash> -> nil
 "evidence-pending"/<evidence-height>/evidence-hash> -> nil
+
 */
 
 var nullValue = []byte{0}
@@ -23,21 +26,25 @@ type evidenceInfo struct {
 }
 
 const (
-	baseKeyLookup   = "evidence-lookup"
-	baseKeyOutqueue = "evidence-outqueue"
-	baseKeyPending  = "evidence-pending"
+	baseKeyLookup   = "evidence-lookup"   // all evidence
+	baseKeyOutqueue = "evidence-outqueue" // not-yet broadcast
+	baseKeyPending  = "evidence-pending"  // broadcast but not committed
 )
 
 func keyLookup(evidence types.Evidence) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%X", baseKeyLookup, evidence.Height(), evidence.Hash()))
+	return _key(baseKeyLookup, evidence)
 }
 
 func keyOutqueue(evidence types.Evidence) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%X", baseKeyOutqueue, evidence.Height(), evidence.Hash()))
+	return _key(baseKeyOutqueue, evidence)
 }
 
 func keyPending(evidence types.Evidence) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%X", baseKeyPending, evidence.Height(), evidence.Hash()))
+	return _key(baseKeyPending, evidence)
+}
+
+func _key(key string, evidence types.Evidence) []byte {
+	return []byte(fmt.Sprintf("%s/%d/%X", key, evidence.Height(), evidence.Hash()))
 }
 
 // EvidenceStore stores all the evidence we've seen, including
@@ -47,14 +54,15 @@ type EvidenceStore struct {
 	chainID string
 	db      dbm.DB
 
+	// so we can verify evidence was from a real validator
 	historicalValidators types.HistoricalValidators
 }
 
-func NewEvidenceStore(chainID string, db dbm.DB) *EvidenceStore {
+func NewEvidenceStore(chainID string, db dbm.DB, vals types.HistoricalValidators) *EvidenceStore {
 	return &EvidenceStore{
-		chainID: chainID,
-		db:      db,
-		// TODO historicalValidators
+		chainID:              chainID,
+		db:                   db,
+		historicalValidators: vals,
 	}
 }
 
@@ -111,6 +119,7 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence) (bool, error
 	eiBytes := wire.BinaryBytes(ei)
 
 	// add it to the store
+	key = keyLookup(evidence)
 	store.db.Set(key, eiBytes)
 
 	key = keyOutqueue(evidence)
@@ -128,8 +137,11 @@ func (store *EvidenceStore) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
 	store.db.Delete(key)
 }
 
-// MarkEvidenceAsPending removes evidence from pending and sets the state to committed.
+// MarkEvidenceAsPending removes evidence from pending and outqueue and sets the state to committed.
 func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
+	// if its committed, its been broadcast
+	store.MarkEvidenceAsBroadcasted(evidence)
+
 	key := keyPending(evidence)
 	store.db.Delete(key)
 

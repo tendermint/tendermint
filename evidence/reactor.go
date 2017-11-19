@@ -111,12 +111,13 @@ func (evR *EvidencePoolReactor) SetEventSwitch(evsw types.EventSwitch) {
 	evR.evsw = evsw
 }
 
-// broadcast new evidence to all peers
+// broadcast new evidence to all peers.
+// broadcasts must be non-blocking so routine is always available to read off EvidenceChan.
 func (evR *EvidencePoolReactor) broadcastRoutine() {
 	ticker := time.NewTicker(time.Second * broadcastEvidenceIntervalS)
 	for {
 		select {
-		case evidence := <-evR.evpool.NewEvidenceChan():
+		case evidence := <-evR.evpool.EvidenceChan():
 			// broadcast some new evidence
 			msg := EvidenceMessage{[]types.Evidence{evidence}}
 			evR.Switch.Broadcast(EvidencePoolChannel, struct{ EvidencePoolMessage }{msg})

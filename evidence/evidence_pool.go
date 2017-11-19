@@ -6,15 +6,14 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-const cacheSize = 100000
-
-// EvidencePool maintains a set of valid uncommitted evidence.
+// EvidencePool maintains a pool of valid evidence
+// in an EvidenceStore.
 type EvidencePool struct {
 	config *EvidencePoolConfig
 	logger log.Logger
 
-	evidenceStore   *EvidenceStore
-	newEvidenceChan chan types.Evidence
+	evidenceStore *EvidenceStore
+	evidenceChan  chan types.Evidence
 }
 
 type EvidencePoolConfig struct {
@@ -22,10 +21,10 @@ type EvidencePoolConfig struct {
 
 func NewEvidencePool(config *EvidencePoolConfig, evidenceStore *EvidenceStore) *EvidencePool {
 	evpool := &EvidencePool{
-		config:          config,
-		logger:          log.NewNopLogger(),
-		evidenceStore:   evidenceStore,
-		newEvidenceChan: make(chan types.Evidence),
+		config:        config,
+		logger:        log.NewNopLogger(),
+		evidenceStore: evidenceStore,
+		evidenceChan:  make(chan types.Evidence),
 	}
 	return evpool
 }
@@ -35,9 +34,9 @@ func (evpool *EvidencePool) SetLogger(l log.Logger) {
 	evpool.logger = l
 }
 
-// NewEvidenceChan returns a channel on which new evidence is sent.
-func (evpool *EvidencePool) NewEvidenceChan() chan types.Evidence {
-	return evpool.newEvidenceChan
+// EvidenceChan returns an unbuffered channel on which new evidence can be received.
+func (evpool *EvidencePool) EvidenceChan() chan types.Evidence {
+	return evpool.evidenceChan
 }
 
 // PriorityEvidence returns the priority evidence.
@@ -51,6 +50,7 @@ func (evpool *EvidencePool) PendingEvidence() []types.Evidence {
 }
 
 // AddEvidence checks the evidence is valid and adds it to the pool.
+// Blocks on the EvidenceChan.
 func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 	added, err := evpool.evidenceStore.AddNewEvidence(evidence)
 	if err != nil {
@@ -62,7 +62,7 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 
 	evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", evidence)
 
-	evpool.newEvidenceChan <- evidence
+	evpool.evidenceChan <- evidence
 	return nil
 }
 
