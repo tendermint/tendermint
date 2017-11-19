@@ -9,15 +9,26 @@ import (
 )
 
 /*
-Schema for indexing evidence:
+Requirements:
+	- Valid new evidence must be persisted immediately and never forgotten
+	- Uncommitted evidence must be continuously broadcast
+	- Uncommitted evidence has a partial order, the evidence's priority
 
-"evidence-lookup"/<evidence-height>/<evidence-hash> -> evidence struct
-"evidence-outqueue"/<index>/<evidence-height>/<evidence-hash> -> nil
-"evidence-pending"/<evidence-height>/evidence-hash> -> nil
+Impl:
+	- First commit atomically in outqueue, pending, lookup.
+	- Once broadcast, remove from outqueue. No need to sync
+	- Once committed, atomically remove from pending and update lookup.
+		- TODO: If we crash after committed but before removing/updating,
+			we'll be stuck broadcasting evidence we never know we committed.
+			so either share the state db and atomically MarkCommitted
+			with ApplyBlock, or check all outqueue/pending on Start to see if its committed
 
+Schema for indexing evidence (note you need both height and hash to find a piece of evidence):
+
+"evidence-lookup"/<evidence-height>/<evidence-hash> -> evidenceInfo
+"evidence-outqueue"/<priority>/<evidence-height>/<evidence-hash> -> evidenceInfo
+"evidence-pending"/<evidence-height>/<evidence-hash> -> evidenceInfo
 */
-
-var nullValue = []byte{0}
 
 type evidenceInfo struct {
 	Committed bool
@@ -32,19 +43,19 @@ const (
 )
 
 func keyLookup(evidence types.Evidence) []byte {
-	return _key(baseKeyLookup, evidence)
+	return _key("%s/%d/%X", baseKeyLookup, evidence.Height(), evidence.Hash())
 }
 
-func keyOutqueue(evidence types.Evidence) []byte {
-	return _key(baseKeyOutqueue, evidence)
+func keyOutqueue(evidence types.Evidence, priority int) []byte {
+	return _key("%s/%d/%d/%X", baseKeyOutqueue, priority, evidence.Height(), evidence.Hash())
 }
 
 func keyPending(evidence types.Evidence) []byte {
-	return _key(baseKeyPending, evidence)
+	return _key("%s/%d/%X", baseKeyPending, evidence.Height(), evidence.Hash())
 }
 
-func _key(key string, evidence types.Evidence) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%X", key, evidence.Height(), evidence.Hash()))
+func _key(fmt_ string, o ...interface{}) []byte {
+	return []byte(fmt.Sprintf(fmt_, o...))
 }
 
 // EvidenceStore stores all the evidence we've seen, including
@@ -70,10 +81,11 @@ func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
 		wire.ReadBinaryBytes(val, &ei)
 		evidence = append(evidence, ei.Evidence)
 	}
-	// TODO: sort
+	// TODO: revert order for highest first
 	return evidence
 }
 
+// PendingEvidence returns all known uncommitted evidence.
 func (store *EvidenceStore) PendingEvidence() (evidence []types.Evidence) {
 	iter := store.db.IteratorPrefix([]byte(baseKeyPending))
 	for iter.Next() {
@@ -103,21 +115,22 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int
 	eiBytes := wire.BinaryBytes(ei)
 
 	// add it to the store
-	key = keyLookup(evidence)
-	store.db.Set(key, eiBytes)
-
-	key = keyOutqueue(evidence)
+	key = keyOutqueue(evidence, priority)
 	store.db.Set(key, eiBytes)
 
 	key = keyPending(evidence)
 	store.db.Set(key, eiBytes)
 
+	key = keyLookup(evidence)
+	store.db.SetSync(key, eiBytes)
+
 	return true, nil
 }
 
-// MarkEvidenceAsBroadcasted removes evidence from the outqueue.
+// MarkEvidenceAsBroadcasted removes evidence from Outqueue.
 func (store *EvidenceStore) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
-	key := keyOutqueue(evidence)
+	ei := store.getEvidenceInfo(evidence)
+	key := keyOutqueue(evidence, ei.Priority)
 	store.db.Delete(key)
 }
 
@@ -129,10 +142,19 @@ func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	key := keyPending(evidence)
 	store.db.Delete(key)
 
-	key = keyLookup(evidence)
+	ei := store.getEvidenceInfo(evidence)
+	ei.Committed = true
+
+	// TODO: we should use the state db and db.Sync in state.Save instead.
+	// Else, if we call this before state.Save, we may never mark committed evidence as committed.
+	// Else, if we call this after state.Save, we may get stuck broadcasting evidence we never know we committed.
+	store.db.SetSync(key, wire.BinaryBytes(ei))
+}
+
+func (store *EvidenceStore) getEvidenceInfo(evidence types.Evidence) evidenceInfo {
+	key := keyLookup(evidence)
 	var ei evidenceInfo
 	b := store.db.Get(key)
 	wire.ReadBinaryBytes(b, &ei)
-	ei.Committed = true
-	store.db.Set(key, wire.BinaryBytes(ei))
+	return ei
 }
