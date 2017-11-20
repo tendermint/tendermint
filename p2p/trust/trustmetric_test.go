@@ -210,7 +210,10 @@ func TestTrustMetricStopPause(t *testing.T) {
 	// Give the pause some time to take place
 	time.Sleep(10 * time.Millisecond)
 
+	tm.mtx.Lock()
 	first := tm.numIntervals
+	tm.mtx.Unlock()
+
 	// Allow more time to pass and check the intervals are unchanged
 	time.Sleep(50 * time.Millisecond)
 	assert.Equal(t, first, tm.numIntervals)
@@ -223,7 +226,10 @@ func TestTrustMetricStopPause(t *testing.T) {
 	// Give the stop some time to take place
 	time.Sleep(10 * time.Millisecond)
 
+	tm.mtx.Lock()
 	second := tm.numIntervals
+	tm.mtx.Unlock()
+
 	// Allow more time to pass and check the intervals are unchanged
 	time.Sleep(50 * time.Millisecond)
 	assert.Equal(t, second, tm.numIntervals)
