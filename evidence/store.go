@@ -85,7 +85,7 @@ func (store *EvidenceStore) PriorityEvidence() (evidence []types.Evidence) {
 	// reverse the order so highest priority is first
 	l := store.ListEvidence(baseKeyOutqueue)
 	l2 := make([]types.Evidence, len(l))
-	for i, _ := range l {
+	for i := range l {
 		l2[i] = l[len(l)-1-i]
 	}
 	return l2
@@ -118,12 +118,13 @@ func (store *EvidenceStore) GetEvidence(height int, hash []byte) *EvidenceInfo {
 	if len(val) == 0 {
 		return nil
 	}
-	ei := new(EvidenceInfo)
-	wire.ReadBinaryBytes(val, ei)
-	return ei
+	var ei EvidenceInfo
+	wire.ReadBinaryBytes(val, &ei)
+	return &ei
 }
 
 // AddNewEvidence adds the given evidence to the database.
+// It returns false if the evidence is already stored.
 func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int) bool {
 	// check if we already have seen it
 	ei_ := store.GetEvidence(evidence.Height(), evidence.Hash())

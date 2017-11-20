@@ -36,7 +36,7 @@ func (evpool *EvidencePool) SetLogger(l log.Logger) {
 }
 
 // EvidenceChan returns an unbuffered channel on which new evidence can be received.
-func (evpool *EvidencePool) EvidenceChan() chan types.Evidence {
+func (evpool *EvidencePool) EvidenceChan() <-chan types.Evidence {
 	return evpool.evidenceChan
 }
 
