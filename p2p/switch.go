@@ -212,7 +212,7 @@ func (sw *Switch) OnStop() {
 // addPeer checks the given peer's validity, performs a handshake, and adds the
 // peer to the switch and to all registered reactors.
 // NOTE: This performs a blocking handshake before the peer is added.
-// CONTRACT: If error is returned, peer is nil, and conn is immediately closed.
+// NOTE: If error is returned, caller is responsible for calling peer.CloseConn()
 func (sw *Switch) addPeer(peer *peer) error {
 
 	if err := sw.FilterConnByAddr(peer.Addr()); err != nil {
@@ -570,7 +570,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
 	if err = sw.addPeer(peer); err != nil {
-		conn.Close()
+		peer.CloseConn()
 		return err
 	}
 
@@ -585,7 +585,7 @@ func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConf
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
 	if err = sw.addPeer(peer); err != nil {
-		conn.Close()
+		peer.CloseConn()
 		return err
 	}
 
