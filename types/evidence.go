@@ -126,9 +126,6 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 // Verify returns an error if the two votes aren't conflicting.
 // To be conflicting, they must be from the same validator, for the same H/R/S, but for different blocks.
 func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
-
-	// TODO: verify (cs.Height - dve.Height) < MaxHeightDiff
-
 	// H/R/S must be the same
 	if dve.VoteA.Height != dve.VoteB.Height ||
 		dve.VoteA.Round != dve.VoteB.Round ||
