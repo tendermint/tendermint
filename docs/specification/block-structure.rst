@@ -98,7 +98,7 @@ This is to protect anyone from swapping votes between chains to fake (or
 frame) a validator. Also note that this ``chainID`` is in the
 ``genesis.json`` from *Tendermint*, not the ``genesis.json`` from the
 basecoin app (`that is a different
-chainID... <https://github.com/tendermint/basecoin/issues/32>`__).
+chainID... <https://github.com/cosmos/cosmos-sdk/issues/32>`__).
 
 Once we have those votes, and we calculated the proper `sign
 bytes <https://godoc.org/github.com/tendermint/tendermint/types#Vote.WriteSignBytes>`__
@@ -136,7 +136,7 @@ Block Hash
 
 The `block
 hash <https://godoc.org/github.com/tendermint/tendermint/types#Block.Hash>`__
-is the `Simple Tree hash <Merkle-Trees#simple-tree-with-dictionaries>`__
+is the `Simple Tree hash <./merkle.html#simple-tree-with-dictionaries>`__
 of the fields of the block ``Header`` encoded as a list of
 ``KVPair``\ s.
 
