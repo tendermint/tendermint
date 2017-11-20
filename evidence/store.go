@@ -1,4 +1,4 @@
-package evpool
+package evidence
 
 import (
 	"fmt"
@@ -124,11 +124,11 @@ func (store *EvidenceStore) GetEvidence(height int, hash []byte) *EvidenceInfo {
 }
 
 // AddNewEvidence adds the given evidence to the database.
-func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int) (bool, error) {
+func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int) bool {
 	// check if we already have seen it
 	ei_ := store.GetEvidence(evidence.Height(), evidence.Hash())
 	if ei_ != nil && ei_.Evidence != nil {
-		return false, nil
+		return false
 	}
 
 	ei := EvidenceInfo{
@@ -148,7 +148,7 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int
 	key = keyLookup(evidence)
 	store.db.SetSync(key, eiBytes)
 
-	return true, nil
+	return true
 }
 
 // MarkEvidenceAsBroadcasted removes evidence from Outqueue.

@@ -1,4 +1,4 @@
-package evpool
+package evidence
 
 import (
 	"bytes"
@@ -22,13 +22,11 @@ func TestStoreAddDuplicate(t *testing.T) {
 	priority := 10
 	ev := newMockGoodEvidence(2, 1, []byte("val1"))
 
-	added, err := store.AddNewEvidence(ev, priority)
-	assert.Nil(err)
+	added := store.AddNewEvidence(ev, priority)
 	assert.True(added)
 
 	// cant add twice
-	added, err = store.AddNewEvidence(ev, priority)
-	assert.Nil(err)
+	added = store.AddNewEvidence(ev, priority)
 	assert.False(added)
 }
 
@@ -47,8 +45,7 @@ func TestStoreMark(t *testing.T) {
 	priority := 10
 	ev := newMockGoodEvidence(2, 1, []byte("val1"))
 
-	added, err := store.AddNewEvidence(ev, priority)
-	assert.Nil(err)
+	added := store.AddNewEvidence(ev, priority)
 	assert.True(added)
 
 	// get the evidence. verify. should be uncommitted
@@ -104,9 +101,8 @@ func TestStorePriority(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		added, err := store.AddNewEvidence(c.ev, c.priority)
+		added := store.AddNewEvidence(c.ev, c.priority)
 		assert.True(added)
-		assert.Nil(err)
 	}
 
 	evList := store.PriorityEvidence()

@@ -19,7 +19,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
-	evidence "github.com/tendermint/tendermint/evidence"
+	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/trust"

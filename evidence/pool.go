@@ -1,4 +1,4 @@
-package evpool
+package evidence
 
 import (
 	"github.com/tendermint/tmlibs/log"
@@ -60,10 +60,8 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 		return err
 	}
 
-	added, err := evpool.evidenceStore.AddNewEvidence(evidence, priority)
-	if err != nil {
-		return err
-	} else if !added {
+	added := evpool.evidenceStore.AddNewEvidence(evidence, priority)
+	if !added {
 		// evidence already known, just ignore
 		return
 	}
