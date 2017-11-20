@@ -182,9 +182,19 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ListenAddr))
 }
 
+func createRoutableAddr() (addr string, netAddr *NetAddress) {
+	for {
+		addr = cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
+		netAddr, _ = NewNetAddressString(addr)
+		if netAddr.Routable() {
+			break
+		}
+	}
+	return
+}
+
 func createRandomPeer(outbound bool) *peer {
-	addr := cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
-	netAddr, _ := NewNetAddressString(addr)
+	addr, netAddr := createRoutableAddr()
 	p := &peer{
 		key: cmn.RandStr(12),
 		nodeInfo: &NodeInfo{
