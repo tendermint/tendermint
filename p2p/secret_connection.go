@@ -67,8 +67,12 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25
 	// Sort by lexical order.
 	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
 
+	// Check if the local ephemeral public key
+	// was the least, lexicographically sorted.
+	locIsLeast := bytes.Equal(locEphPub[:], loEphPub[:])
+
 	// Generate nonces to use for secretbox.
-	recvNonce, sendNonce := genNonces(loEphPub, hiEphPub, locEphPub == loEphPub)
+	recvNonce, sendNonce := genNonces(loEphPub, hiEphPub, locIsLeast)
 
 	// Generate common challenge to sign.
 	challenge := genChallenge(loEphPub, hiEphPub)
