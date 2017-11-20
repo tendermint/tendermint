@@ -11,12 +11,12 @@ PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 install_protoc:
 	# https://github.com/google/protobuf/releases
 	curl -L https://github.com/google/protobuf/releases/download/v3.4.1/protobuf-cpp-3.4.1.tar.gz | tar xvz && \
-		cd protobuf-cpp-3.4.1 && \
+		cd protobuf-3.4.1 && \
 		DIST_LANG=cpp ./configure && \
 		make && \
 		make install && \
 		cd .. && \
-		rm -rf protobuf-cpp-3.4.1
+		rm -rf protobuf-3.4.1
 	go get github.com/golang/protobuf/protoc-gen-go
 
 protoc:
