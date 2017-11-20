@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -75,6 +76,17 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 	}
 	return false
 }
+
+//-------------------------------------------
+
+const (
+	evidenceTypeDuplicateVote = byte(0x01)
+)
+
+var _ = wire.RegisterInterface(
+	struct{ Evidence }{},
+	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
+)
 
 //-------------------------------------------
 
