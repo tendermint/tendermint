@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -127,6 +128,8 @@ func (db *MemDB) IteratorPrefix(prefix []byte) Iterator {
 			it.keys = append(it.keys, key)
 		}
 	}
+	// and we need to sort them
+	sort.Strings(it.keys)
 	return it
 }
 
