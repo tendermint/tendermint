@@ -112,6 +112,7 @@ func TestAddrBookLookup(t *testing.T) {
 }
 
 func TestAddrBookPromoteToOld(t *testing.T) {
+	assert := assert.New(t)
 	fname := createTempFileName("addrbook_test")
 
 	randAddrs := randNetAddressPairs(t, 100)
@@ -143,9 +144,7 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 		t.Errorf("selection could not be bigger than the book")
 	}
 
-	if book.Size() != 100 {
-		t.Errorf("Size is not 100. Got %v", book.Size())
-	}
+	assert.Equal(book.Size(), 100, "expecting book size to be 100")
 }
 
 func TestAddrBookHandlesDuplicates(t *testing.T) {

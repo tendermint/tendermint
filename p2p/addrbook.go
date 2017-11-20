@@ -191,7 +191,12 @@ func (a *AddrBook) size() int {
 	return a.nNew + a.nOld
 }
 
-// PickAddress picks an address to connect to with new/old bias.
+// PickAddress picks an address to connect to.
+// The address is picked randomly from an old or new bucket according
+// to the newBias argument, which must be between [0, 100] (or else is truncated to that range)
+// and determines how biased we are to pick an address from a new bucket.
+// PickAddress returns nil if the AddrBook is empty or if we try to pick
+// from an empty bucket.
 func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()

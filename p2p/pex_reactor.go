@@ -252,10 +252,13 @@ func (r *PEXReactor) ensurePeers() {
 		if try == nil {
 			continue
 		}
-		_, alreadySelected := toDial[try.IP.String()]
-		alreadyDialing := r.Switch.IsDialing(try)
-		alreadyConnected := r.Switch.Peers().Has(try.IP.String())
-		if alreadySelected || alreadyDialing || alreadyConnected {
+		if _, selected := toDial[try.IP.String()]; selected {
+			continue
+		}
+		if dialling := r.Switch.IsDialing(try); dialling {
+			continue
+		}
+		if connected := r.Switch.Peers().Has(try.IP.String()); connected {
 			continue
 		}
 		r.Logger.Info("Will dial address", "addr", try)
