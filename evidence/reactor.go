@@ -71,7 +71,7 @@ func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
 	// send the peer our high-priority evidence.
 	// the rest will be sent by the broadcastRoutine
 	evidence := evR.evpool.PriorityEvidence()
-	msg := EvidenceListMessage{evidence}
+	msg := &EvidenceListMessage{evidence}
 	success := peer.Send(EvidenceChannel, struct{ EvidenceMessage }{msg})
 	if !success {
 		// TODO: remove peer ?
@@ -120,7 +120,7 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 		select {
 		case evidence := <-evR.evpool.EvidenceChan():
 			// broadcast some new evidence
-			msg := EvidenceListMessage{[]types.Evidence{evidence}}
+			msg := &EvidenceListMessage{[]types.Evidence{evidence}}
 			evR.Switch.Broadcast(EvidenceChannel, struct{ EvidenceMessage }{msg})
 
 			// TODO: Broadcast runs asynchronously, so this should wait on the successChan
@@ -128,7 +128,7 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(evidence)
 		case <-ticker.C:
 			// broadcast all pending evidence
-			msg := EvidenceListMessage{evR.evpool.PendingEvidence()}
+			msg := &EvidenceListMessage{evR.evpool.PendingEvidence()}
 			evR.Switch.Broadcast(EvidenceChannel, struct{ EvidenceMessage }{msg})
 		case <-evR.Quit:
 			return
