@@ -124,6 +124,37 @@ type peerHistoryJSON struct {
 	History      []float64 `json:"history"`
 }
 
+// Loads the history data for a single peer and takes care of trust metric locking
+func reinstantiateMetric(tm *TrustMetric, ph peerHistoryJSON) {
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
+
+	// Restore the number of time intervals we have previously tracked
+	if ph.NumIntervals > tm.maxIntervals {
+		ph.NumIntervals = tm.maxIntervals
+	}
+	tm.numIntervals = ph.NumIntervals
+	// Restore the history and its current size
+	if len(ph.History) > tm.historyMaxSize {
+		// Keep the history no larger than historyMaxSize
+		last := len(ph.History) - tm.historyMaxSize
+		ph.History = ph.History[last:]
+	}
+	tm.history = ph.History
+	tm.historySize = len(tm.history)
+	// Create the history weight values and weight sum
+	for i := 1; i <= tm.numIntervals; i++ {
+		x := math.Pow(defaultHistoryDataWeight, float64(i)) // Optimistic weight
+		tm.historyWeights = append(tm.historyWeights, x)
+	}
+
+	for _, v := range tm.historyWeights {
+		tm.historyWeightSum += v
+	}
+	// Calculate the history value based on the loaded history data
+	tm.historyValue = tm.calcHistoryValue()
+}
+
 // Loads the history data for all peers from the store DB
 // cmn.Panics if file is corrupt
 func (tms *TrustMetricStore) loadFromDB() bool {
@@ -144,33 +175,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 	for key, p := range peers {
 		tm := NewMetricWithConfig(tms.config)
 
-		tm.mtx.Lock()
-		// Restore the number of time intervals we have previously tracked
-		if p.NumIntervals > tm.maxIntervals {
-			p.NumIntervals = tm.maxIntervals
-		}
-		tm.numIntervals = p.NumIntervals
-		// Restore the history and its current size
-		if len(p.History) > tm.historyMaxSize {
-			// Keep the history no larger than historyMaxSize
-			last := len(p.History) - tm.historyMaxSize
-			p.History = p.History[last:]
-		}
-		tm.history = p.History
-		tm.historySize = len(tm.history)
-		// Create the history weight values and weight sum
-		for i := 1; i <= tm.numIntervals; i++ {
-			x := math.Pow(defaultHistoryDataWeight, float64(i)) // Optimistic weight
-			tm.historyWeights = append(tm.historyWeights, x)
-		}
-
-		for _, v := range tm.historyWeights {
-			tm.historyWeightSum += v
-		}
-		// Calculate the history value based on the loaded history data
-		tm.historyValue = tm.calcHistoryValue()
-		tm.mtx.Unlock()
-
+		reinstantiateMetric(tm, p)
 		// Load the peer trust metric into the store
 		tms.peerMetrics[key] = tm
 	}
@@ -303,15 +308,7 @@ func (tm *TrustMetric) BadEvents(num int) {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
-	// Check if this is the first experience with
-	// what we are tracking since being paused
-	if tm.paused {
-		tm.good = 0
-		tm.bad = 0
-		// New events cause us to unpause the metric
-		tm.paused = false
-	}
-
+	tm.unpause()
 	tm.bad += float64(num)
 }
 
@@ -320,15 +317,7 @@ func (tm *TrustMetric) GoodEvents(num int) {
 	tm.mtx.Lock()
 	defer tm.mtx.Unlock()
 
-	// Check if this is the first experience with
-	// what we are tracking since being paused
-	if tm.paused {
-		tm.good = 0
-		tm.bad = 0
-		// New events cause us to unpause the metric
-		tm.paused = false
-	}
-
+	tm.unpause()
 	tm.good += float64(num)
 }
 
@@ -427,6 +416,19 @@ func customConfig(tmc TrustMetricConfig) TrustMetricConfig {
 	}
 
 	return config
+}
+
+// Wakes the trust metric up if it is currently paused
+// This method needs to be called with the mutex locked
+func (tm *TrustMetric) unpause() {
+	// Check if this is the first experience with
+	// what we are tracking since being paused
+	if tm.paused {
+		tm.good = 0
+		tm.bad = 0
+		// New events cause us to unpause the metric
+		tm.paused = false
+	}
 }
 
 // Calculates the derivative component
