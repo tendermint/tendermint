@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 (TBD)
+
+BREAKING CHANGES:
+ - [client] more consistent interface
+
+IMPROVEMENTS:
+ - [types] added Tags field to ResponseDeliverTx
+
 ## 0.7.1 (November 14, 2017)
 
 IMPROVEMENTS:
