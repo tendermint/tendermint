@@ -240,104 +240,71 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 	return reqres
 }
 
-func (cli *grpcClient) checkErrGetResult() types.Result {
-	if err := cli.Error(); err != nil {
-		// StopForError should already have been called if error is set
-		return types.ErrInternalError.SetLog(err.Error())
-	}
-	return types.Result{}
-}
-
 //----------------------------------------
-
-func (cli *grpcClient) EchoSync(msg string) (res types.Result) {
-	reqres := cli.EchoAsync(msg)
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
-	}
-	resp := reqres.Response.GetEcho()
-	return types.NewResultOK([]byte(resp.Message), "")
-}
 
 func (cli *grpcClient) FlushSync() error {
 	return nil
 }
 
-func (cli *grpcClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
+func (cli *grpcClient) EchoSync(msg string) (*types.ResponseEcho, error) {
+	reqres := cli.EchoAsync(msg)
+	// StopForError should already have been called if error is set
+	return reqres.Response.GetEcho(), cli.Error()
+}
+
+func (cli *grpcClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
 	reqres := cli.InfoAsync(req)
-	if err = cli.Error(); err != nil {
-		return resInfo, err
-	}
-	if info := reqres.Response.GetInfo(); info != nil {
-		return *info, nil
-	}
-	return resInfo, nil
+	return reqres.Response.GetInfo(), cli.Error()
 }
 
-func (cli *grpcClient) SetOptionSync(key string, value string) (res types.Result) {
+func (cli *grpcClient) SetOptionSync(key string, value string) (log string, err error) {
 	reqres := cli.SetOptionAsync(key, value)
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+	if err := cli.Error(); err != nil {
+		return "", err
 	}
-	resp := reqres.Response.GetSetOption()
-	return types.Result{Code: OK, Data: nil, Log: resp.Log}
+	return reqres.Response.GetSetOption().Log, nil
 }
 
-func (cli *grpcClient) DeliverTxSync(tx []byte) (res types.Result) {
+func (cli *grpcClient) DeliverTxSync(tx []byte) *types.ResponseDeliverTx {
 	reqres := cli.DeliverTxAsync(tx)
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+	if err := cli.Error(); err != nil {
+		return &types.ResponseDeliverTx{Code: types.CodeType_InternalError, Log: err.Error()}
 	}
-	resp := reqres.Response.GetDeliverTx()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	return reqres.Response.GetDeliverTx()
 }
 
-func (cli *grpcClient) CheckTxSync(tx []byte) (res types.Result) {
+func (cli *grpcClient) CheckTxSync(tx []byte) *types.ResponseCheckTx {
 	reqres := cli.CheckTxAsync(tx)
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+	if err := cli.Error(); err != nil {
+		return &types.ResponseCheckTx{Code: types.CodeType_InternalError, Log: err.Error()}
 	}
-	resp := reqres.Response.GetCheckTx()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	return reqres.Response.GetCheckTx()
 }
 
-func (cli *grpcClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
-	reqres := cli.QueryAsync(reqQuery)
-	if err = cli.Error(); err != nil {
-		return resQuery, err
-	}
-	if resQuery_ := reqres.Response.GetQuery(); resQuery_ != nil {
-		return *resQuery_, nil
-	}
-	return resQuery, nil
+func (cli *grpcClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
+	reqres := cli.QueryAsync(req)
+	return reqres.Response.GetQuery(), cli.Error()
 }
 
-func (cli *grpcClient) CommitSync() (res types.Result) {
+func (cli *grpcClient) CommitSync() *types.ResponseCommit {
 	reqres := cli.CommitAsync()
-	if res := cli.checkErrGetResult(); res.IsErr() {
-		return res
+	if err := cli.Error(); err != nil {
+		return &types.ResponseCommit{Code: types.CodeType_InternalError, Log: err.Error()}
 	}
-	resp := reqres.Response.GetCommit()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	return reqres.Response.GetCommit()
 }
 
-func (cli *grpcClient) InitChainSync(params types.RequestInitChain) (err error) {
+func (cli *grpcClient) InitChainSync(params types.RequestInitChain) error {
 	cli.InitChainAsync(params)
 	return cli.Error()
 }
 
-func (cli *grpcClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
+func (cli *grpcClient) BeginBlockSync(params types.RequestBeginBlock) error {
 	cli.BeginBlockAsync(params)
 	return cli.Error()
 }
 
-func (cli *grpcClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
+func (cli *grpcClient) EndBlockSync(height uint64) (*types.ResponseEndBlock, error) {
 	reqres := cli.EndBlockAsync(height)
-	if err := cli.Error(); err != nil {
-		return resEndBlock, err
-	}
-	if blk := reqres.Response.GetEndBlock(); blk != nil {
-		return *blk, nil
-	}
-	return resEndBlock, nil
+	return reqres.Response.GetEndBlock(), cli.Error()
 }

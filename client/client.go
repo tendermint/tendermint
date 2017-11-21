@@ -24,21 +24,21 @@ type Client interface {
 	CommitAsync() *ReqRes
 
 	FlushSync() error
-	EchoSync(msg string) (res types.Result)
-	InfoSync(types.RequestInfo) (resInfo types.ResponseInfo, err error)
-	SetOptionSync(key string, value string) (res types.Result)
-	DeliverTxSync(tx []byte) (res types.Result)
-	CheckTxSync(tx []byte) (res types.Result)
-	QuerySync(types.RequestQuery) (resQuery types.ResponseQuery, err error)
-	CommitSync() (res types.Result)
+	EchoSync(msg string) (*types.ResponseEcho, error)
+	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
+	SetOptionSync(key string, value string) (log string, err error)
+	DeliverTxSync(tx []byte) *types.ResponseDeliverTx
+	CheckTxSync(tx []byte) *types.ResponseCheckTx
+	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
+	CommitSync() *types.ResponseCommit
 
 	InitChainAsync(types.RequestInitChain) *ReqRes
 	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
 	EndBlockAsync(height uint64) *ReqRes
 
-	InitChainSync(types.RequestInitChain) (err error)
-	BeginBlockSync(types.RequestBeginBlock) (err error)
-	EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error)
+	InitChainSync(types.RequestInitChain) error
+	BeginBlockSync(types.RequestBeginBlock) error
+	EndBlockSync(height uint64) (*types.ResponseEndBlock, error)
 }
 
 //----------------------------------------

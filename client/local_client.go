@@ -146,71 +146,71 @@ func (app *localClient) FlushSync() error {
 	return nil
 }
 
-func (app *localClient) EchoSync(msg string) (res types.Result) {
-	return types.OK.SetData([]byte(msg))
+func (app *localClient) EchoSync(msg string) (*types.ResponseEcho, error) {
+	return &types.ResponseEcho{msg}, nil
 }
 
-func (app *localClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
+func (app *localClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
 	app.mtx.Lock()
-	defer app.mtx.Unlock()
-	resInfo = app.Application.Info(req)
-	return resInfo, nil
-}
-
-func (app *localClient) SetOptionSync(key string, value string) (res types.Result) {
-	app.mtx.Lock()
-	log := app.Application.SetOption(key, value)
+	res := app.Application.Info(req)
 	app.mtx.Unlock()
-	return types.OK.SetLog(log)
+	return &res, nil
 }
 
-func (app *localClient) DeliverTxSync(tx []byte) (res types.ResponseDeliverTx) {
+func (app *localClient) SetOptionSync(key string, value string) (log string, err error) {
 	app.mtx.Lock()
-	res = app.Application.DeliverTx(tx)
+	log = app.Application.SetOption(key, value)
 	app.mtx.Unlock()
-	return res
+	return log, nil
 }
 
-func (app *localClient) CheckTxSync(tx []byte) (res types.ResponseCheckTx) {
+func (app *localClient) DeliverTxSync(tx []byte) *types.ResponseDeliverTx {
 	app.mtx.Lock()
-	res = app.Application.CheckTx(tx)
+	res := app.Application.DeliverTx(tx)
 	app.mtx.Unlock()
-	return res
+	return &res
 }
 
-func (app *localClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
+func (app *localClient) CheckTxSync(tx []byte) *types.ResponseCheckTx {
 	app.mtx.Lock()
-	resQuery = app.Application.Query(reqQuery)
+	res := app.Application.CheckTx(tx)
 	app.mtx.Unlock()
-	return resQuery, nil
+	return &res
 }
 
-func (app *localClient) CommitSync() (res types.ResponseCommit) {
+func (app *localClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
 	app.mtx.Lock()
-	res = app.Application.Commit()
+	res := app.Application.Query(req)
 	app.mtx.Unlock()
-	return res
+	return &res, nil
 }
 
-func (app *localClient) InitChainSync(params types.RequestInitChain) (err error) {
+func (app *localClient) CommitSync() *types.ResponseCommit {
+	app.mtx.Lock()
+	res := app.Application.Commit()
+	app.mtx.Unlock()
+	return &res
+}
+
+func (app *localClient) InitChainSync(params types.RequestInitChain) error {
 	app.mtx.Lock()
 	app.Application.InitChain(params)
 	app.mtx.Unlock()
 	return nil
 }
 
-func (app *localClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
+func (app *localClient) BeginBlockSync(params types.RequestBeginBlock) error {
 	app.mtx.Lock()
 	app.Application.BeginBlock(params)
 	app.mtx.Unlock()
 	return nil
 }
 
-func (app *localClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
+func (app *localClient) EndBlockSync(height uint64) (*types.ResponseEndBlock, error) {
 	app.mtx.Lock()
-	resEndBlock = app.Application.EndBlock(height)
+	res := app.Application.EndBlock(height)
 	app.mtx.Unlock()
-	return resEndBlock, nil
+	return &res, nil
 }
 
 //-------------------------------------------------------

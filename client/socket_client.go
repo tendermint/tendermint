@@ -271,111 +271,85 @@ func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
 
 //----------------------------------------
 
-func (cli *socketClient) EchoSync(msg string) (res types.Result) {
-	reqres := cli.queueRequest(types.ToRequestEcho(msg))
-	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
-	}
-	resp := reqres.Response.GetEcho()
-	return types.Result{Code: OK, Data: []byte(resp.Message)}
-}
-
 func (cli *socketClient) FlushSync() error {
 	reqRes := cli.queueRequest(types.ToRequestFlush())
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return err
 	}
 	reqRes.Wait() // NOTE: if we don't flush the queue, its possible to get stuck here
 	return cli.Error()
 }
 
-func (cli *socketClient) InfoSync(req types.RequestInfo) (resInfo types.ResponseInfo, err error) {
-	reqres := cli.queueRequest(types.ToRequestInfo(req))
+func (cli *socketClient) EchoSync(msg string) (*types.ResponseEcho, error) {
+	reqres := cli.queueRequest(types.ToRequestEcho(msg))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return resInfo, err
-	}
-	if resInfo_ := reqres.Response.GetInfo(); resInfo_ != nil {
-		return *resInfo_, nil
-	}
-	return resInfo, nil
+	return reqres.Response.GetEcho(), cli.Error()
 }
 
-func (cli *socketClient) SetOptionSync(key string, value string) (res types.Result) {
+func (cli *socketClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
+	reqres := cli.queueRequest(types.ToRequestInfo(req))
+	cli.FlushSync()
+	return reqres.Response.GetInfo(), cli.Error()
+}
+
+func (cli *socketClient) SetOptionSync(key string, value string) (log string, err error) {
 	reqres := cli.queueRequest(types.ToRequestSetOption(key, value))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return "", err
 	}
-	resp := reqres.Response.GetSetOption()
-	return types.Result{Code: OK, Data: nil, Log: resp.Log}
+	return reqres.Response.GetSetOption().Log, nil
 }
 
-func (cli *socketClient) DeliverTxSync(tx []byte) (res types.Result) {
+func (cli *socketClient) DeliverTxSync(tx []byte) *types.ResponseDeliverTx {
 	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return &types.ResponseDeliverTx{Code: types.CodeType_InternalError, Log: err.Error()}
 	}
-	resp := reqres.Response.GetDeliverTx()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	return reqres.Response.GetDeliverTx()
 }
 
-func (cli *socketClient) CheckTxSync(tx []byte) (res types.Result) {
+func (cli *socketClient) CheckTxSync(tx []byte) *types.ResponseCheckTx {
 	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return &types.ResponseCheckTx{Code: types.CodeType_InternalError, Log: err.Error()}
 	}
-	resp := reqres.Response.GetCheckTx()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	return reqres.Response.GetCheckTx()
 }
 
-func (cli *socketClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.ResponseQuery, err error) {
-	reqres := cli.queueRequest(types.ToRequestQuery(reqQuery))
+func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
+	reqres := cli.queueRequest(types.ToRequestQuery(req))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return resQuery, err
-	}
-	if resQuery_ := reqres.Response.GetQuery(); resQuery_ != nil {
-		return *resQuery_, nil
-	}
-	return resQuery, nil
+	return reqres.Response.GetQuery(), cli.Error()
 }
 
-func (cli *socketClient) CommitSync() (res types.Result) {
+func (cli *socketClient) CommitSync() *types.ResponseCommit {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return types.ErrInternalError.SetLog(err.Error())
+		return &types.ResponseCommit{Code: types.CodeType_InternalError, Log: err.Error()}
 	}
-	resp := reqres.Response.GetCommit()
-	return types.Result{Code: resp.Code, Data: resp.Data, Log: resp.Log}
+	return reqres.Response.GetCommit()
 }
 
-func (cli *socketClient) InitChainSync(params types.RequestInitChain) (err error) {
+func (cli *socketClient) InitChainSync(params types.RequestInitChain) error {
 	cli.queueRequest(types.ToRequestInitChain(params))
 	cli.FlushSync()
 	return cli.Error()
 }
 
-func (cli *socketClient) BeginBlockSync(params types.RequestBeginBlock) (err error) {
+func (cli *socketClient) BeginBlockSync(params types.RequestBeginBlock) error {
 	cli.queueRequest(types.ToRequestBeginBlock(params))
 	cli.FlushSync()
 	return cli.Error()
 }
 
-func (cli *socketClient) EndBlockSync(height uint64) (resEndBlock types.ResponseEndBlock, err error) {
+func (cli *socketClient) EndBlockSync(height uint64) (*types.ResponseEndBlock, error) {
 	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return resEndBlock, err
-	}
-	if blk := reqres.Response.GetEndBlock(); blk != nil {
-		return *blk, nil
-	}
-	return resEndBlock, nil
+	return reqres.Response.GetEndBlock(), cli.Error()
 }
 
 //----------------------------------------

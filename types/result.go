@@ -106,6 +106,7 @@ func (r *ResponseCheckTx) Result() Result {
 	}
 }
 
+// IsErr returns true if Code is something other than OK.
 func (r ResponseCheckTx) IsErr() bool {
 	return r.Code != CodeType_OK
 }
@@ -120,6 +121,7 @@ func (r *ResponseDeliverTx) Result() Result {
 	}
 }
 
+// IsErr returns true if Code is something other than OK.
 func (r ResponseDeliverTx) IsErr() bool {
 	return r.Code != CodeType_OK
 }
@@ -144,4 +146,9 @@ func (r *ResponseQuery) Result() *ResultQuery {
 		Height: r.Height,
 		Log:    r.Log,
 	}
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r ResponseCommit) IsErr() bool {
+	return r.Code != CodeType_OK
 }

@@ -327,9 +327,12 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 
 // Have the application echo a message
 func cmdEcho(cmd *cobra.Command, args []string) error {
-	resEcho := client.EchoSync(args[0])
+	res, err := client.EchoSync(args[0])
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
-		Data: resEcho.Data,
+		Data: []byte(res.Message),
 	})
 	return nil
 }
@@ -340,21 +343,24 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	resInfo, err := client.InfoSync(types.RequestInfo{version})
+	res, err := client.InfoSync(types.RequestInfo{version})
 	if err != nil {
 		return err
 	}
 	printResponse(cmd, args, response{
-		Data: []byte(resInfo.Data),
+		Data: []byte(res.Data),
 	})
 	return nil
 }
 
 // Set an option on the application
 func cmdSetOption(cmd *cobra.Command, args []string) error {
-	resSetOption := client.SetOptionSync(args[0], args[1])
+	log, err := client.SetOptionSync(args[0], args[1])
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
-		Log: resSetOption.Log,
+		Log: log,
 	})
 	return nil
 }
