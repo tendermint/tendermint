@@ -58,7 +58,7 @@ func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	r := app.app.CheckTx(req.Tx)
-	return &ResponseCheckTx{r.Code, r.Data, r.Log, r.Tags}, nil
+	return &ResponseCheckTx{r.Code, r.Data, r.Log}, nil
 }
 
 func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {

@@ -85,7 +85,7 @@ func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestCheckTx(tx),
-		types.ToResponseCheckTx(res.Code, res.Data, res.Log, res.Tags),
+		types.ToResponseCheckTx(res.Code, res.Data, res.Log),
 	)
 }
 

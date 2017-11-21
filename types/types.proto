@@ -166,7 +166,6 @@ message ResponseCheckTx{
   CodeType          code        = 1;
   bytes             data        = 2;
   string            log         = 3;
-  repeated KVPair tags = 4;
 }
 
 message ResponseQuery{
@@ -231,8 +230,13 @@ message Validator {
 
 message KVPair {
   string key = 1;
-  string value_string = 2;
-  int64 value_int = 3;
+  enum Type {
+    STRING = 0;
+    INT = 1;
+  }
+  Type value_type = 2;
+  string value_string = 3;
+  int64 value_int = 4;
 }
 
 //----------------------------------------

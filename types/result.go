@@ -103,7 +103,6 @@ func (r *ResponseCheckTx) Result() Result {
 		Code: r.Code,
 		Data: r.Data,
 		Log:  r.Log,
-		Tags: r.Tags,
 	}
 }
 

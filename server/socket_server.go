@@ -179,7 +179,7 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		responses <- types.ToResponseDeliverTx(res.Code, res.Data, res.Log, res.Tags)
 	case *types.Request_CheckTx:
 		res := s.app.CheckTx(r.CheckTx.Tx)
-		responses <- types.ToResponseCheckTx(res.Code, res.Data, res.Log, res.Tags)
+		responses <- types.ToResponseCheckTx(res.Code, res.Data, res.Log)
 	case *types.Request_Commit:
 		res := s.app.Commit()
 		responses <- types.ToResponseCommit(res.Code, res.Data, res.Log)

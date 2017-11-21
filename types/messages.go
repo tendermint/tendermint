@@ -111,9 +111,9 @@ func ToResponseDeliverTx(code CodeType, data []byte, log string, tags []*KVPair)
 	}
 }
 
-func ToResponseCheckTx(code CodeType, data []byte, log string, tags []*KVPair) *Response {
+func ToResponseCheckTx(code CodeType, data []byte, log string) *Response {
 	return &Response{
-		Value: &Response_CheckTx{&ResponseCheckTx{code, data, log, tags}},
+		Value: &Response_CheckTx{&ResponseCheckTx{code, data, log}},
 	}
 }
 
