@@ -134,7 +134,7 @@ func TestRmBadTx(t *testing.T) {
 			checkTxRespCh <- struct{}{}
 		})
 		if err != nil {
-			t.Fatal("Error after CheckTx: %v", err)
+			t.Fatalf("Error after CheckTx: %v", err)
 		}
 
 		// check for the tx
