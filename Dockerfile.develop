@@ -6,6 +6,8 @@ WORKDIR /go/src/github.com/tendermint/abci
 COPY Makefile /go/src/github.com/tendermint/abci/
 
 RUN make install_protoc
+# see make protoc for details
+RUN ldconfig
 
 COPY glide.yaml /go/src/github.com/tendermint/abci/
 COPY glide.lock /go/src/github.com/tendermint/abci/
