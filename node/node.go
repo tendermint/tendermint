@@ -22,6 +22,7 @@ import (
 	"github.com/tendermint/tendermint/consensus"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/trust"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -95,9 +96,10 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	privKey  crypto.PrivKeyEd25519 // local node's p2p key
-	sw       *p2p.Switch           // p2p connections
-	addrBook *p2p.AddrBook         // known peers
+	privKey          crypto.PrivKeyEd25519   // local node's p2p key
+	sw               *p2p.Switch             // p2p connections
+	addrBook         *p2p.AddrBook           // known peers
+	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
 
 	// services
 	eventBus         *types.EventBus             // pub/sub for services
@@ -240,9 +242,19 @@ func NewNode(config *cfg.Config,
 
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
+	var trustMetricStore *trust.TrustMetricStore
 	if config.P2P.PexReactor {
 		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
+
+		// Get the trust metric history data
+		trustHistoryDB, err := dbProvider(&DBContext{"trusthistory", config})
+		if err != nil {
+			return nil, err
+		}
+		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
+		trustMetricStore.SetLogger(p2pLogger)
+
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
@@ -303,9 +315,10 @@ func NewNode(config *cfg.Config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		privKey:  privKey,
-		sw:       sw,
-		addrBook: addrBook,
+		privKey:          privKey,
+		sw:               sw,
+		addrBook:         addrBook,
+		trustMetricStore: trustMetricStore,
 
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
@@ -523,11 +536,8 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 		},
 	}
 
-	// include git hash in the nodeInfo if available
-	// TODO: use ld-flags
-	/*if rev, err := cmn.ReadFile(n.config.GetString("revision_file")); err == nil {
-		nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("revision=%v", string(rev)))
-	}*/
+	rpcListenAddr := n.config.RPC.ListenAddress
+	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
 
 	if !n.sw.IsListening() {
 		return nodeInfo
@@ -536,13 +546,8 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddress().IP.String()
 	p2pPort := p2pListener.ExternalAddress().Port
-	rpcListenAddr := n.config.RPC.ListenAddress
-
-	// We assume that the rpcListener has the same ExternalAddress.
-	// This is probably true because both P2P and RPC listeners use UPnP,
-	// except of course if the rpc is only bound to localhost
 	nodeInfo.ListenAddr = cmn.Fmt("%v:%v", p2pHost, p2pPort)
-	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
+
 	return nodeInfo
 }
 

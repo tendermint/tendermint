@@ -255,7 +255,7 @@ func TestP2PConfig() *P2PConfig {
 	return conf
 }
 
-// AddrBookFile returns the full path to the address bool
+// AddrBookFile returns the full path to the address book
 func (p *P2PConfig) AddrBookFile() string {
 	return rootify(p.AddrBook, p.RootDir)
 }

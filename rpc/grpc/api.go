@@ -1,13 +1,18 @@
 package core_grpc
 
 import (
-	context "golang.org/x/net/context"
+	"context"
 
 	abci "github.com/tendermint/abci/types"
 	core "github.com/tendermint/tendermint/rpc/core"
 )
 
 type broadcastAPI struct {
+}
+
+func (bapi *broadcastAPI) Ping(ctx context.Context, req *RequestPing) (*ResponsePing, error) {
+	// dummy so we can check if the server is up
+	return &ResponsePing{}, nil
 }
 
 func (bapi *broadcastAPI) BroadcastTx(ctx context.Context, req *RequestBroadcastTx) (*ResponseBroadcastTx, error) {

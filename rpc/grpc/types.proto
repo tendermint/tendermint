@@ -1,7 +1,7 @@
 syntax = "proto3";
 package core_grpc;
 
-import "github.com/tendermint/abci/blob/master/types/types.proto";
+import "github.com/tendermint/abci/types/types.proto";
 
 //----------------------------------------
 // Message types
@@ -9,12 +9,18 @@ import "github.com/tendermint/abci/blob/master/types/types.proto";
 //----------------------------------------
 // Request types
 
+message RequestPing {
+}
+
 message RequestBroadcastTx {
   bytes tx = 1;
 }
 
 //----------------------------------------
 // Response types
+
+message ResponsePing{
+}
 
 message ResponseBroadcastTx{
   types.ResponseCheckTx check_tx = 1;
@@ -25,5 +31,6 @@ message ResponseBroadcastTx{
 // Service Definition
 
 service BroadcastAPI {
+  rpc Ping(RequestPing) returns (ResponsePing) ;
   rpc BroadcastTx(RequestBroadcastTx) returns (ResponseBroadcastTx) ;
 }

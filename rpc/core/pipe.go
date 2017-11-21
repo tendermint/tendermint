@@ -1,7 +1,9 @@
 package core
 
 import (
-	"github.com/tendermint/go-crypto"
+	"time"
+  
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
@@ -11,6 +13,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/log"
 )
+
+var subscribeTimeout = 5 * time.Second
 
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
