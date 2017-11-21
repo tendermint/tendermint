@@ -91,6 +91,7 @@ Here, we describe the requests and responses as function arguments and return va
     * `Code (uint32)`: Response code
     * `Data ([]byte)`: Result bytes, if any
     * `Log (string)`: Debug or error message
+    * `Tags ([]*KVPair)`: Optional tags for indexing
   * __Usage__:<br/>
     Append and run a transaction.  If the transaction is valid, returns CodeType.OK
 
