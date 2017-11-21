@@ -108,6 +108,7 @@ type Node struct {
 	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
 	consensusState   *consensus.ConsensusState   // latest consensus state
 	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
+	transBrReactor   *p2p.TransientBroadcastReactor // for sending transient non-persisted p2p messages
 	proxyApp         proxy.AppConns              // connection to the application
 	rpcListeners     []net.Listener              // rpc servers
 	txIndexer        txindex.TxIndexer
@@ -259,6 +260,13 @@ func NewNode(config *cfg.Config,
 		sw.AddReactor("PEX", pexReactor)
 	}
 
+	// Make TransientBroadcastReactor
+	// TODO maybe make this config-dependant, disabled by default?
+	transBroReactor := p2p.NewTransientBroadCastReactor()
+	transBroReactor.SetLogger(p2pLogger)
+	sw.AddReactor("TRANSIENT", transBroReactor)
+
+
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
 	// XXX: Query format subject to change
@@ -292,6 +300,7 @@ func NewNode(config *cfg.Config,
 	// services which will be publishing and/or subscribing for messages (events)
 	bcReactor.SetEventBus(eventBus)
 	consensusReactor.SetEventBus(eventBus)
+	transBroReactor.SetEventBus(eventBus)
 
 	// run the profile server
 	profileHost := config.ProfListenAddress
@@ -316,6 +325,7 @@ func NewNode(config *cfg.Config,
 		mempoolReactor:   mempoolReactor,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
+		transBrReactor:   transBroReactor,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
 		eventBus:         eventBus,
@@ -412,6 +422,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
 	rpccore.SetConsensusReactor(n.consensusReactor)
+	rpccore.SetTransientBroadcastReactor(n.transBrReactor)
 	rpccore.SetEventBus(n.eventBus)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
 }
@@ -474,6 +485,10 @@ func (n *Node) ConsensusState() *consensus.ConsensusState {
 // ConsensusReactor returns the Node's ConsensusReactor.
 func (n *Node) ConsensusReactor() *consensus.ConsensusReactor {
 	return n.consensusReactor
+}
+
+func (n *Node) TransientBroadcastReactor() *p2p.TransientBroadcastReactor {
+	return n.transBrReactor
 }
 
 // MempoolReactor returns the Node's MempoolReactor.

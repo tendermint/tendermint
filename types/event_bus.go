@@ -90,6 +90,12 @@ func (b *EventBus) PublishEventProposalHeartbeat(ph EventDataProposalHeartbeat) 
 	return b.Publish(EventProposalHeartbeat, TMEventData{ph})
 }
 
+func (b *EventBus) PublishEventTransientTx(transtx EventDataTransientTx) error {
+	ctx :=  context.Background()
+	b.pubsub.Publish(ctx, TMEventData{transtx})
+	return nil
+}
+
 //--- EventDataRoundState events
 
 func (b *EventBus) PublishEventNewRoundStep(rs EventDataRoundState) error {

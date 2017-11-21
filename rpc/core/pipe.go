@@ -2,11 +2,11 @@ package core
 
 import (
 	"time"
-
+  
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	p2p "github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
@@ -56,6 +56,8 @@ var (
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
 
+	transientBroadcastReactor *p2p.TransientBroadcastReactor
+
 	logger log.Logger
 )
 
@@ -97,6 +99,10 @@ func SetTxIndexer(indexer txindex.TxIndexer) {
 
 func SetConsensusReactor(conR *consensus.ConsensusReactor) {
 	consensusReactor = conR
+}
+
+func SetTransientBroadcastReactor(broad * p2p.TransientBroadcastReactor) {
+	transientBroadcastReactor = broad
 }
 
 func SetLogger(l log.Logger) {

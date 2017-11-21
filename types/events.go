@@ -26,6 +26,7 @@ const (
 	EventTimeoutPropose    = "TimeoutPropose"
 	EventTimeoutWait       = "TimeoutWait"
 	EventTx                = "Tx"
+	EventTransientTx       = "TransientTx"
 	EventUnbond            = "Unbond"
 	EventUnlock            = "Unlock"
 	EventVote              = "Vote"
@@ -40,6 +41,7 @@ var (
 	EventDataNameNewBlock          = "new_block"
 	EventDataNameNewBlockHeader    = "new_block_header"
 	EventDataNameTx                = "tx"
+	EventDataNameTransientTx       = "transient_tx"
 	EventDataNameRoundState        = "round_state"
 	EventDataNameVote              = "vote"
 	EventDataNameProposalHeartbeat = "proposal_heartbeat"
@@ -86,6 +88,8 @@ const (
 	EventDataTypeRoundState        = byte(0x11)
 	EventDataTypeVote              = byte(0x12)
 	EventDataTypeProposalHeartbeat = byte(0x20)
+
+	EventDataTypeTransientTx       = byte(0xf0)
 )
 
 var tmEventDataMapper = data.NewMapper(TMEventData{}).
@@ -94,7 +98,9 @@ var tmEventDataMapper = data.NewMapper(TMEventData{}).
 	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
 	RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
 	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote).
-	RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat)
+	RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat).
+	RegisterImplementation(EventDataTransientTx{}, EventDataNameTransientTx, EventDataTypeTransientTx)
+
 
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic
@@ -134,6 +140,10 @@ type EventDataRoundState struct {
 
 type EventDataVote struct {
 	Vote *Vote
+}
+
+type EventDataTransientTx struct {
+	Tx Tx `json:"tx"`
 }
 
 ///////////////////////////////////////////////////////////////////////////////
