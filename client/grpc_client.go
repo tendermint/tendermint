@@ -13,6 +13,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+var _ Client = (*grpcClient)(nil)
+
 // A stripped copy of the remoteClient that makes
 // synchronous calls using grpc
 type grpcClient struct {

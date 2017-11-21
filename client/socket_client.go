@@ -23,6 +23,8 @@ const reqQueueSize = 256 // TODO make configurable
 // const maxResponseSize = 1048576 // 1MB TODO make configurable
 const flushThrottleMS = 20 // Don't wait longer than...
 
+var _ Client = (*socketClient)(nil)
+
 // This is goroutine-safe, but users should beware that
 // the application in general is not meant to be interfaced
 // with concurrent callers.

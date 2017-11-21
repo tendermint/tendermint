@@ -7,6 +7,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+var _ Client = (*localClient)(nil)
+
 type localClient struct {
 	cmn.BaseService
 	mtx *sync.Mutex
