@@ -164,14 +164,14 @@ func (app *localClient) SetOptionSync(key string, value string) (res types.Resul
 	return types.OK.SetLog(log)
 }
 
-func (app *localClient) DeliverTxSync(tx []byte) (res types.Result) {
+func (app *localClient) DeliverTxSync(tx []byte) (res types.ResponseDeliverTx) {
 	app.mtx.Lock()
 	res = app.Application.DeliverTx(tx)
 	app.mtx.Unlock()
 	return res
 }
 
-func (app *localClient) CheckTxSync(tx []byte) (res types.Result) {
+func (app *localClient) CheckTxSync(tx []byte) (res types.ResponseCheckTx) {
 	app.mtx.Lock()
 	res = app.Application.CheckTx(tx)
 	app.mtx.Unlock()
@@ -185,7 +185,7 @@ func (app *localClient) QuerySync(reqQuery types.RequestQuery) (resQuery types.R
 	return resQuery, nil
 }
 
-func (app *localClient) CommitSync() (res types.Result) {
+func (app *localClient) CommitSync() (res types.ResponseCommit) {
 	app.mtx.Lock()
 	res = app.Application.Commit()
 	app.mtx.Unlock()

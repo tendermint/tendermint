@@ -13,14 +13,14 @@ type Application interface {
 	Query(RequestQuery) ResponseQuery                // Query for state
 
 	// Mempool Connection
-	CheckTx(tx []byte) Result // Validate a tx for the mempool
+	CheckTx(tx []byte) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
 	InitChain(RequestInitChain)              // Initialize blockchain with validators and other info from TendermintCore
 	BeginBlock(RequestBeginBlock)            // Signals the beginning of a block
-	DeliverTx(tx []byte) Result              // Deliver a tx for full processing
+	DeliverTx(tx []byte) ResponseDeliverTx   // Deliver a tx for full processing
 	EndBlock(height uint64) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
-	Commit() Result                          // Commit the state and return the application Merkle root hash
+	Commit() ResponseCommit                  // Commit the state and return the application Merkle root hash
 }
 
 //------------------------------------

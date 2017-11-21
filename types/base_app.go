@@ -15,16 +15,16 @@ func (BaseApplication) SetOption(key string, value string) (log string) {
 	return ""
 }
 
-func (BaseApplication) DeliverTx(tx []byte) Result {
-	return NewResultOK(nil, "")
+func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
+	return ResponseDeliverTx{}
 }
 
-func (BaseApplication) CheckTx(tx []byte) Result {
-	return NewResultOK(nil, "")
+func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
+	return ResponseCheckTx{}
 }
 
-func (BaseApplication) Commit() Result {
-	return NewResultOK([]byte("nil"), "")
+func (BaseApplication) Commit() ResponseCommit {
+	return ResponseCommit{Code: CodeType_OK, Data: []byte("nil")}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {

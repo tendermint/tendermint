@@ -106,6 +106,10 @@ func (r *ResponseCheckTx) Result() Result {
 	}
 }
 
+func (r ResponseCheckTx) IsErr() bool {
+	return r.Code != CodeType_OK
+}
+
 // Convert ResponseDeliverTx to standard Result
 func (r *ResponseDeliverTx) Result() Result {
 	return Result{
@@ -114,6 +118,10 @@ func (r *ResponseDeliverTx) Result() Result {
 		Log:  r.Log,
 		Tags: r.Tags,
 	}
+}
+
+func (r ResponseDeliverTx) IsErr() bool {
+	return r.Code != CodeType_OK
 }
 
 type ResultQuery struct {

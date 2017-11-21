@@ -3,6 +3,7 @@ package dummy
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -61,7 +62,7 @@ func (app *PersistentDummyApplication) SetOption(key string, value string) (log 
 }
 
 // tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
-func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.Result {
+func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
 	if isValidatorTx(tx) {
@@ -74,12 +75,12 @@ func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.Result {
 	return app.app.DeliverTx(tx)
 }
 
-func (app *PersistentDummyApplication) CheckTx(tx []byte) types.Result {
+func (app *PersistentDummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	return app.app.CheckTx(tx)
 }
 
 // Commit will panic if InitChain was not called
-func (app *PersistentDummyApplication) Commit() types.Result {
+func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
 
 	// Save a new version for next height
 	height := app.app.state.LatestVersion() + 1
@@ -93,7 +94,7 @@ func (app *PersistentDummyApplication) Commit() types.Result {
 	}
 
 	app.logger.Info("Commit block", "height", height, "root", appHash)
-	return types.NewResultOK(appHash, "")
+	return types.ResponseCommit{Code: types.CodeType_OK, Data: appHash}
 }
 
 func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
@@ -148,30 +149,38 @@ func isValidatorTx(tx []byte) bool {
 }
 
 // format is "val:pubkey1/power1,addr2/power2,addr3/power3"tx
-func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Result {
+func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
 	//get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "/")
 	if len(pubKeyAndPower) != 2 {
-		return types.ErrEncodingError.SetLog(cmn.Fmt("Expected 'pubkey/power'. Got %v", pubKeyAndPower))
+		return types.ResponseDeliverTx{
+			Code: types.CodeType_EncodingError,
+			Log:  fmt.Sprintf("Expected 'pubkey/power'. Got %v", pubKeyAndPower)}
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 
 	// decode the pubkey, ensuring its go-crypto encoded
 	pubkey, err := hex.DecodeString(pubkeyS)
 	if err != nil {
-		return types.ErrEncodingError.SetLog(cmn.Fmt("Pubkey (%s) is invalid hex", pubkeyS))
+		return types.ResponseDeliverTx{
+			Code: types.CodeType_EncodingError,
+			Log:  fmt.Sprintf("Pubkey (%s) is invalid hex", pubkeyS)}
 	}
 	_, err = crypto.PubKeyFromBytes(pubkey)
 	if err != nil {
-		return types.ErrEncodingError.SetLog(cmn.Fmt("Pubkey (%X) is invalid go-crypto encoded", pubkey))
+		return types.ResponseDeliverTx{
+			Code: types.CodeType_EncodingError,
+			Log:  fmt.Sprintf("Pubkey (%X) is invalid go-crypto encoded", pubkey)}
 	}
 
 	// decode the power
 	power, err := strconv.Atoi(powerS)
 	if err != nil {
-		return types.ErrEncodingError.SetLog(cmn.Fmt("Power (%s) is not an int", powerS))
+		return types.ResponseDeliverTx{
+			Code: types.CodeType_EncodingError,
+			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
 	}
 
 	// update
@@ -179,19 +188,23 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Result {
 }
 
 // add, update, or remove a validator
-func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types.Result {
+func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey))
 	if v.Power == 0 {
 		// remove validator
 		if !app.app.state.Has(key) {
-			return types.ErrUnauthorized.SetLog(cmn.Fmt("Cannot remove non-existent validator %X", key))
+			return types.ResponseDeliverTx{
+				Code: types.CodeType_Unauthorized,
+				Log:  fmt.Sprintf("Cannot remove non-existent validator %X", key)}
 		}
 		app.app.state.Remove(key)
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
 		if err := types.WriteMessage(v, value); err != nil {
-			return types.ErrInternalError.SetLog(cmn.Fmt("Error encoding validator: %v", err))
+			return types.ResponseDeliverTx{
+				Code: types.CodeType_InternalError,
+				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
 		app.app.state.Set(key, value.Bytes())
 	}
@@ -199,5 +212,5 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 	// we only update the changes array if we successfully updated the tree
 	app.changes = append(app.changes, v)
 
-	return types.OK
+	return types.ResponseDeliverTx{Code: types.CodeType_OK}
 }
