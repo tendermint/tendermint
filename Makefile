@@ -37,14 +37,14 @@ dist:
 
 # test.sh requires that we run the installed cmds, must not be out of date
 test: install
-	find . -path ./vendor -prune -o -name *.sock -exec rm {} \;
+	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
+	@ echo "==> Running unit tests"
 	@ go test $(PACKAGES)
+	@ echo "==> Running integration tests (./tests)"
 	@ bash tests/test.sh
 
 fmt:
 	@ go fmt ./...
-
-test_integrations: get_vendor_deps install test
 
 get_deps:
 	@ go get -d $(PACKAGES)
