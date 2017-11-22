@@ -3,7 +3,9 @@
 ## 0.8.0 (TBD)
 
 BREAKING CHANGES:
- - [client] more consistent interface
+ - [client] all {X}Sync methods now return an error
+ - [types] removed Result
+ - [client] all {X}Sync methods now return Response{X} as first return value
 
 IMPROVEMENTS:
  - [types] added Tags field to ResponseDeliverTx
