@@ -3,13 +3,13 @@ package abcicli
 import (
 	"bufio"
 	"container/list"
-	"errors"
 	"fmt"
 	"net"
 	"reflect"
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -303,22 +303,22 @@ func (cli *socketClient) SetOptionSync(key string, value string) (log string, er
 	return reqres.Response.GetSetOption().Log, nil
 }
 
-func (cli *socketClient) DeliverTxSync(tx []byte) *types.ResponseDeliverTx {
+func (cli *socketClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
 	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return &types.ResponseDeliverTx{Code: types.CodeType_InternalError, Log: err.Error()}
+		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
 	}
-	return reqres.Response.GetDeliverTx()
+	return reqres.Response.GetDeliverTx(), nil
 }
 
-func (cli *socketClient) CheckTxSync(tx []byte) *types.ResponseCheckTx {
+func (cli *socketClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
 	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return &types.ResponseCheckTx{Code: types.CodeType_InternalError, Log: err.Error()}
+		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
 	}
-	return reqres.Response.GetCheckTx()
+	return reqres.Response.GetCheckTx(), nil
 }
 
 func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
@@ -327,13 +327,13 @@ func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery
 	return reqres.Response.GetQuery(), cli.Error()
 }
 
-func (cli *socketClient) CommitSync() *types.ResponseCommit {
+func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
 	if err := cli.Error(); err != nil {
-		return &types.ResponseCommit{Code: types.CodeType_InternalError, Log: err.Error()}
+		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
 	}
-	return reqres.Response.GetCommit()
+	return reqres.Response.GetCommit(), nil
 }
 
 func (cli *socketClient) InitChainSync(params types.RequestInitChain) error {

@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 
@@ -267,20 +268,20 @@ func (cli *grpcClient) SetOptionSync(key string, value string) (log string, err 
 	return reqres.Response.GetSetOption().Log, nil
 }
 
-func (cli *grpcClient) DeliverTxSync(tx []byte) *types.ResponseDeliverTx {
+func (cli *grpcClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
 	reqres := cli.DeliverTxAsync(tx)
 	if err := cli.Error(); err != nil {
-		return &types.ResponseDeliverTx{Code: types.CodeType_InternalError, Log: err.Error()}
+		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
 	}
-	return reqres.Response.GetDeliverTx()
+	return reqres.Response.GetDeliverTx(), nil
 }
 
-func (cli *grpcClient) CheckTxSync(tx []byte) *types.ResponseCheckTx {
+func (cli *grpcClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
 	reqres := cli.CheckTxAsync(tx)
 	if err := cli.Error(); err != nil {
-		return &types.ResponseCheckTx{Code: types.CodeType_InternalError, Log: err.Error()}
+		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
 	}
-	return reqres.Response.GetCheckTx()
+	return reqres.Response.GetCheckTx(), nil
 }
 
 func (cli *grpcClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
@@ -288,12 +289,12 @@ func (cli *grpcClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, 
 	return reqres.Response.GetQuery(), cli.Error()
 }
 
-func (cli *grpcClient) CommitSync() *types.ResponseCommit {
+func (cli *grpcClient) CommitSync() (*types.ResponseCommit, error) {
 	reqres := cli.CommitAsync()
 	if err := cli.Error(); err != nil {
-		return &types.ResponseCommit{Code: types.CodeType_InternalError, Log: err.Error()}
+		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
 	}
-	return reqres.Response.GetCommit()
+	return reqres.Response.GetCommit(), nil
 }
 
 func (cli *grpcClient) InitChainSync(params types.RequestInitChain) error {

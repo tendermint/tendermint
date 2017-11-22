@@ -371,7 +371,10 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res := client.DeliverTxSync(txBytes)
+	res, err := client.DeliverTxSync(txBytes)
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
@@ -386,7 +389,10 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res := client.CheckTxSync(txBytes)
+	res, err := client.CheckTxSync(txBytes)
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
@@ -397,7 +403,10 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res := client.CommitSync()
+	res, err := client.CommitSync()
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,

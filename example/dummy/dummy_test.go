@@ -281,10 +281,12 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 }
 
 func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
-	ar := app.DeliverTxSync(tx)
+	ar, err := app.DeliverTxSync(tx)
+	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar = app.DeliverTxSync(tx)
+	ar, err = app.DeliverTxSync(tx)
+	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine

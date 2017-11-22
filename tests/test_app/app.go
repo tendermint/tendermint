@@ -55,7 +55,10 @@ func setOption(client abcicli.Client, key, value string) {
 }
 
 func commit(client abcicli.Client, hashExp []byte) {
-	res := client.CommitSync()
+	res, err := client.CommitSync()
+	if err != nil {
+		panicf("client error: %v", err)
+	}
 	if res.IsErr() {
 		panicf("committing err %v\n", res)
 	}
@@ -65,7 +68,10 @@ func commit(client abcicli.Client, hashExp []byte) {
 }
 
 func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	res := client.DeliverTxSync(txBytes)
+	res, err := client.DeliverTxSync(txBytes)
+	if err != nil {
+		panicf("client error: %v", err)
+	}
 	if res.Code != codeExp {
 		panicf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v", res.Code, codeExp, res.Log)
 	}
@@ -75,7 +81,10 @@ func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 }
 
 /*func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	res := client.CheckTxSync(txBytes)
+	res, err := client.CheckTxSync(txBytes)
+	if err != nil {
+		panicf("client error: %v", err)
+	}
 	if res.IsErr() {
 		panicf("checking tx %X: %v\nlog: %v", txBytes, res.Log)
 	}

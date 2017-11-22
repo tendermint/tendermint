@@ -27,10 +27,10 @@ type Client interface {
 	EchoSync(msg string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 	SetOptionSync(key string, value string) (log string, err error)
-	DeliverTxSync(tx []byte) *types.ResponseDeliverTx
-	CheckTxSync(tx []byte) *types.ResponseCheckTx
+	DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error)
+	CheckTxSync(tx []byte) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
-	CommitSync() *types.ResponseCommit
+	CommitSync() (*types.ResponseCommit, error)
 
 	InitChainAsync(types.RequestInitChain) *ReqRes
 	BeginBlockAsync(types.RequestBeginBlock) *ReqRes

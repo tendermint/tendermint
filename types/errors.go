@@ -47,3 +47,12 @@ var (
 		CodeType_BaseUnknownPubKey:        "Error (base) unknown pubkey",
 	}
 )
+
+// HumanCode transforms code into a more humane format, such as "Internal error" instead of 0.
+func HumanCode(code CodeType) string {
+	s, ok := code2string[code]
+	if !ok {
+		return "Unknown code"
+	}
+	return s
+}
