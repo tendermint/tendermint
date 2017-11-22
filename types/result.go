@@ -8,6 +8,7 @@ import (
 
 // Result is a common result object for ABCI calls.
 // CONTRACT: a zero Result is OK.
+// DEPRECATED: prefer raw types instead.
 type Result struct {
 	Code CodeType   `json:"code"`
 	Data data.Bytes `json:"data"`
