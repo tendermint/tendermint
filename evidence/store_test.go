@@ -131,10 +131,12 @@ func newMockGoodEvidence(height, index int, address []byte) MockGoodEvidence {
 	return MockGoodEvidence{height, address, index}
 }
 
-func (e MockGoodEvidence) Height() int                 { return e.Height_ }
-func (e MockGoodEvidence) Address() []byte             { return e.Address_ }
-func (e MockGoodEvidence) Index() int                  { return e.Index_ }
-func (e MockGoodEvidence) Hash() []byte                { return []byte{byte(e.Index_)} }
+func (e MockGoodEvidence) Height() int     { return e.Height_ }
+func (e MockGoodEvidence) Address() []byte { return e.Address_ }
+func (e MockGoodEvidence) Index() int      { return e.Index_ }
+func (e MockGoodEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%d", e.Height_, e.Index_))
+}
 func (e MockGoodEvidence) Verify(chainID string) error { return nil }
 func (e MockGoodEvidence) Equal(ev types.Evidence) bool {
 	e2 := ev.(MockGoodEvidence)
