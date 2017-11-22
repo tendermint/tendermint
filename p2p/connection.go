@@ -11,9 +11,12 @@ import (
 	"time"
 
 	wire "github.com/tendermint/go-wire"
+	tmencoding "github.com/tendermint/go-wire/nowriter/tmencoding"
 	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
 )
+
+var legacy = tmencoding.Legacy
 
 const (
 	numBatchMsgPackets = 10
@@ -308,12 +311,12 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Ch:
 			c.Logger.Debug("Send Ping")
-			wire.WriteByte(packetTypePing, c.bufWriter, &n, &err)
+			legacy.WriteOctet(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			wire.WriteByte(packetTypePong, c.bufWriter, &n, &err)
+			legacy.WriteOctet(packetTypePong, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
@@ -661,7 +664,7 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 }
 
 func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
-	wire.WriteByte(packetTypeMsg, w, n, err)
+	legacy.WriteOctet(packetTypeMsg, w, n, err)
 	wire.WriteBinary(packet, w, n, err)
 }
 
