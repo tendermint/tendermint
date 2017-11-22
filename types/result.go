@@ -111,6 +111,11 @@ func (r ResponseCheckTx) IsErr() bool {
 	return r.Code != CodeType_OK
 }
 
+// Error implements error interface by formatting response as string.
+func (r ResponseCheckTx) Error() string {
+	return fmtError(r.Code, r.Log)
+}
+
 // Convert ResponseDeliverTx to standard Result
 func (r *ResponseDeliverTx) Result() Result {
 	return Result{
@@ -124,6 +129,11 @@ func (r *ResponseDeliverTx) Result() Result {
 // IsErr returns true if Code is something other than OK.
 func (r ResponseDeliverTx) IsErr() bool {
 	return r.Code != CodeType_OK
+}
+
+// Error implements error interface by formatting response as string.
+func (r ResponseDeliverTx) Error() string {
+	return fmtError(r.Code, r.Log)
 }
 
 type ResultQuery struct {
@@ -151,4 +161,18 @@ func (r *ResponseQuery) Result() *ResultQuery {
 // IsErr returns true if Code is something other than OK.
 func (r ResponseCommit) IsErr() bool {
 	return r.Code != CodeType_OK
+}
+
+// Error implements error interface by formatting response as string.
+func (r ResponseCommit) Error() string {
+	return fmtError(r.Code, r.Log)
+}
+
+func fmtError(code CodeType, log string) string {
+	codeAsStr, ok := code2string[code]
+	if ok {
+		return fmt.Sprintf("%s (%v): %s", codeAsStr, code, log)
+	} else {
+		return fmt.Sprintf("Unknown error (%v): %s", code, log)
+	}
 }
