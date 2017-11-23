@@ -103,7 +103,8 @@ build-basecoin: git-branch
 
 # set app_version
 version-%: $(GOPATH)/bin/%
-	test -z "$(BUILD_NUMBER)" && echo "BUILD_NUMBER is not set" && false
+	@echo "BUILD_NUMBER is $(BUILD_NUMBER)"
+	test -n "$(BUILD_NUMBER)"
 	$(eval $*_version=$(shell $< version | head -1 | cut -d- -f1 | sed 's/^\(ethermint:\s*\|\)\(v\|\)//' | tr -d '\t ' ))
 
 # set build_folder
