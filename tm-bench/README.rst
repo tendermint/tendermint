@@ -78,6 +78,14 @@ Usage
             Txs per second to send in a connection (default 1000)
       -v    Verbose output
 
+Development
+^^^^^^^^^^^
+
+::
+
+    make get_vendor_deps
+    make test
+
 tm-monitor
 ----------
 
@@ -142,3 +150,10 @@ You should see the list of the available RPC endpoints:
 The API is available as GET requests with URI encoded parameters, or as JSONRPC
 POST requests. The JSONRPC methods are also exposed over websocket.
 
+Development
+^^^^^^^^^^^
+
+::
+
+    make get_vendor_deps
+    make test
