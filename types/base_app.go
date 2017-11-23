@@ -16,11 +16,11 @@ func (BaseApplication) SetOption(key string, value string) (log string) {
 }
 
 func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
-	return ResponseDeliverTx{}
+	return ResponseDeliverTx{Code: CodeType_OK}
 }
 
 func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
-	return ResponseCheckTx{}
+	return ResponseCheckTx{Code: CodeType_OK}
 }
 
 func (BaseApplication) Commit() ResponseCommit {
