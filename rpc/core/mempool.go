@@ -211,8 +211,6 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 			Hash:      tx.Hash(),
 		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
 	}
-
-	panic("Should never happen!")
 }
 
 // Get unconfirmed transactions including their number.
