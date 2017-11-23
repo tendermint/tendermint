@@ -80,7 +80,7 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 	abciResponses := NewABCIResponses(block)
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []*abci.KVPair{}}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []*abci.KVPair{}}
-	abciResponses.EndBlock = abci.ResponseEndBlock{Diffs: []*abci.Validator{
+	abciResponses.EndBlock = &abci.ResponseEndBlock{Diffs: []*abci.Validator{
 		{
 			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
 			Power:  10,
@@ -198,12 +198,13 @@ func makeHeaderPartsResponses(state *State, height int,
 	block := makeBlock(height, state)
 	_, val := state.Validators.GetByIndex(0)
 	abciResponses := &ABCIResponses{
-		Height: height,
+		Height:   height,
+		EndBlock: &abci.ResponseEndBlock{Diffs: []*abci.Validator{}},
 	}
 
 	// if the pubkey is new, remove the old and add the new
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
-		abciResponses.EndBlock = abci.ResponseEndBlock{
+		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			Diffs: []*abci.Validator{
 				{val.PubKey.Bytes(), 0},
 				{pubkey.Bytes(), 10},

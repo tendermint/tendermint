@@ -177,8 +177,8 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	if checkTxR.Code != abci.CodeType_OK {
 		// CheckTx failed!
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   checkTxR.Result(),
-			DeliverTx: abci.Result{},
+			CheckTx:   *checkTxR,
+			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, nil
 	}
@@ -191,23 +191,23 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	case deliverTxResMsg := <-deliverTxResCh:
 		deliverTxRes := deliverTxResMsg.(types.TMEventData).Unwrap().(types.EventDataTx)
 		// The tx was included in a block.
-		deliverTxR := &abci.ResponseDeliverTx{
+		deliverTxR := abci.ResponseDeliverTx{
 			Code: deliverTxRes.Result.Code,
 			Data: deliverTxRes.Result.Data,
 			Log:  deliverTxRes.Result.Log,
 		}
 		logger.Info("DeliverTx passed ", "tx", data.Bytes(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   checkTxR.Result(),
-			DeliverTx: deliverTxR.Result(),
+			CheckTx:   *checkTxR,
+			DeliverTx: deliverTxR,
 			Hash:      tx.Hash(),
 			Height:    deliverTxRes.Height,
 		}, nil
 	case <-timer.C:
 		logger.Error("failed to include tx")
 		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   checkTxR.Result(),
-			DeliverTx: abci.Result{},
+			CheckTx:   *checkTxR,
+			DeliverTx: abci.ResponseDeliverTx{},
 			Hash:      tx.Hash(),
 		}, fmt.Errorf("Timed out waiting for transaction to be included in a block")
 	}

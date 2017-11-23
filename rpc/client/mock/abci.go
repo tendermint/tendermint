@@ -38,7 +38,7 @@ func (a ABCIApp) ABCIQueryWithOptions(path string, data data.Bytes, opts client.
 func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	res := ctypes.ResultBroadcastTxCommit{}
 	res.CheckTx = a.App.CheckTx(tx)
-	if !res.CheckTx.IsOK() {
+	if res.CheckTx.IsErr() {
 		return &res, nil
 	}
 	res.DeliverTx = a.App.DeliverTx(tx)
@@ -48,7 +48,7 @@ func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit
 func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	c := a.App.CheckTx(tx)
 	// and this gets written in a background thread...
-	if c.IsOK() {
+	if !c.IsErr() {
 		go func() { a.App.DeliverTx(tx) }() // nolint: errcheck
 	}
 	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log, tx.Hash()}, nil
@@ -57,7 +57,7 @@ func (a ABCIApp) BroadcastTxAsync(tx types.Tx) (*ctypes.ResultBroadcastTx, error
 func (a ABCIApp) BroadcastTxSync(tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
 	c := a.App.CheckTx(tx)
 	// and this gets written in a background thread...
-	if c.IsOK() {
+	if !c.IsErr() {
 		go func() { a.App.DeliverTx(tx) }() // nolint: errcheck
 	}
 	return &ctypes.ResultBroadcastTx{c.Code, c.Data, c.Log, tx.Hash()}, nil

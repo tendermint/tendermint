@@ -37,8 +37,8 @@ func TestABCIMock(t *testing.T) {
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
 			Response: &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   abci.Result{Data: data.Bytes("stand")},
-				DeliverTx: abci.Result{Data: data.Bytes("deliver")},
+				CheckTx:   abci.ResponseCheckTx{Data: data.Bytes("stand")},
+				DeliverTx: abci.ResponseDeliverTx{Data: data.Bytes("deliver")},
 			},
 			Error: errors.New("bad tx"),
 		},

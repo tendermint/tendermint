@@ -2,6 +2,7 @@ package consensus
 
 import (
 	"encoding/binary"
+	"fmt"
 	"testing"
 	"time"
 
@@ -188,33 +189,41 @@ func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{Data: cmn.Fmt("txs:%v", app.txCount)}
 }
 
-func (app *CounterApplication) DeliverTx(tx []byte) abci.Result {
-	return runTx(tx, &app.txCount)
+func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+	txValue := txAsUint64(tx)
+	if txValue != uint64(app.txCount) {
+		return abci.ResponseDeliverTx{
+			Code: abci.CodeType_BadNonce,
+			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
+	}
+	app.txCount += 1
+	return abci.ResponseDeliverTx{Code: abci.CodeType_OK}
 }
 
-func (app *CounterApplication) CheckTx(tx []byte) abci.Result {
-	return runTx(tx, &app.mempoolTxCount)
+func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
+	txValue := txAsUint64(tx)
+	if txValue != uint64(app.mempoolTxCount) {
+		return abci.ResponseCheckTx{
+			Code: abci.CodeType_BadNonce,
+			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
+	}
+	app.mempoolTxCount += 1
+	return abci.ResponseCheckTx{Code: abci.CodeType_OK}
 }
 
-func runTx(tx []byte, countPtr *int) abci.Result {
-	count := *countPtr
+func txAsUint64(tx []byte) uint64 {
 	tx8 := make([]byte, 8)
 	copy(tx8[len(tx8)-len(tx):], tx)
-	txValue := binary.BigEndian.Uint64(tx8)
-	if txValue != uint64(count) {
-		return abci.ErrBadNonce.AppendLog(cmn.Fmt("Invalid nonce. Expected %v, got %v", count, txValue))
-	}
-	*countPtr += 1
-	return abci.OK
+	return binary.BigEndian.Uint64(tx8)
 }
 
-func (app *CounterApplication) Commit() abci.Result {
+func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.OK
+		return abci.ResponseCommit{Code: abci.CodeType_OK}
 	} else {
 		hash := make([]byte, 8)
 		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return abci.NewResultOK(hash, "")
+		return abci.ResponseCommit{Code: abci.CodeType_OK, Data: hash}
 	}
 }

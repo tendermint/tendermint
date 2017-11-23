@@ -279,7 +279,7 @@ type ABCIResponses struct {
 	Height int
 
 	DeliverTx []*abci.ResponseDeliverTx
-	EndBlock  abci.ResponseEndBlock
+	EndBlock  *abci.ResponseEndBlock
 
 	txs types.Txs // reference for indexing results by hash
 }

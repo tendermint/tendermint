@@ -93,5 +93,5 @@ func ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &ctypes.ResultABCIInfo{resInfo}, nil
+	return &ctypes.ResultABCIInfo{*resInfo}, nil
 }

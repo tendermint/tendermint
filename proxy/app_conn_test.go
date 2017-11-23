@@ -17,7 +17,7 @@ import (
 type AppConnTest interface {
 	EchoAsync(string) *abcicli.ReqRes
 	FlushSync() error
-	InfoSync(types.RequestInfo) (types.ResponseInfo, error)
+	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 }
 
 type appConnTest struct {
@@ -36,7 +36,7 @@ func (app *appConnTest) FlushSync() error {
 	return app.appConn.FlushSync()
 }
 
-func (app *appConnTest) InfoSync(req types.RequestInfo) (types.ResponseInfo, error) {
+func (app *appConnTest) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
 	return app.appConn.InfoSync(req)
 }
 

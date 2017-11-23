@@ -248,7 +248,11 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 	defer mempool.Unlock()
 
 	// Commit block, get hash back
-	res := proxyAppConn.CommitSync()
+	res, err := proxyAppConn.CommitSync()
+	if err != nil {
+		s.logger.Error("Client error during proxyAppConn.CommitSync", "err", err)
+		return err
+	}
 	if res.IsErr() {
 		s.logger.Error("Error in proxyAppConn.CommitSync", "err", res)
 		return res
@@ -275,7 +279,11 @@ func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block
 		return nil, err
 	}
 	// Commit block, get hash back
-	res := appConnConsensus.CommitSync()
+	res, err := appConnConsensus.CommitSync()
+	if err != nil {
+		logger.Error("Client error during proxyAppConn.CommitSync", "err", res)
+		return nil, err
+	}
 	if res.IsErr() {
 		logger.Error("Error in proxyAppConn.CommitSync", "err", res)
 		return nil, res

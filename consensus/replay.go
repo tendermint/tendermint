@@ -385,22 +385,17 @@ type mockProxyApp struct {
 	abciResponses *sm.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(tx []byte) abci.Result {
+func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTx[mock.txCount]
 	mock.txCount += 1
-	return abci.Result{
-		r.Code,
-		r.Data,
-		r.Log,
-		r.Tags,
-	}
+	return *r
 }
 
 func (mock *mockProxyApp) EndBlock(height uint64) abci.ResponseEndBlock {
 	mock.txCount = 0
-	return mock.abciResponses.EndBlock
+	return *mock.abciResponses.EndBlock
 }
 
-func (mock *mockProxyApp) Commit() abci.Result {
-	return abci.NewResultOK(mock.appHash, "")
+func (mock *mockProxyApp) Commit() abci.ResponseCommit {
+	return abci.ResponseCommit{Code: abci.CodeType_OK, Data: mock.appHash}
 }
