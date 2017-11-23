@@ -1,50 +1,44 @@
 Using Docker
 ============
 
-`This folder <https://github.com/tendermint/tools/tree/master/docker>`__ contains Docker container descriptions. Using this folder
-you can build your own Docker images with the tendermint application.
-
-It is assumed that you have already setup docker.
-
-If you don't want to build the images yourself, you should be able to
-download them from Docker Hub.
+It is assumed that you have already `setup docker <https://docs.docker.com/engine/installation/>`__.
 
 Tendermint
 ----------
 
-Build the container: Copy the ``tendermint`` binary to the
-``tendermint`` folder.
+The application configuration and data will be stored at ``/tendermint`` in the
+container. This directory will also be exposed as a volume. The ports 46656 and
+46657 will be open for ABCI applications to connect.
+
+Initialize tendermint:
 
 ::
 
-    docker build -t tendermint tendermint
+    mkdir /tmdata
+    docker run --rm -v /tmdata:/tendermint tendermint/tendermint init
 
-The application configuration will be stored at ``/tendermint`` in the
-container. The ports 46656 and 46657 will be open for ABCI applications
-to connect.
+Change ``/tmdata`` folder to any destination where you want to store Tendermint
+configuration and data.
 
-Initialize tendermint configuration and keep it after the container is
-finished in a docker volume called ``data``:
-
-::
-
-    docker run --rm -v data:/tendermint tendermint init
-
-If you want the docker volume to be a physical directory on your
-filesystem, you have to give an absolute path to docker and make sure
-the permissions allow the application to write it.
+Tendermint docker image is stored on `docker hub <https://hub.docker.com/r/tendermint/tendermint/>`__.
 
 Get the public key of tendermint:
 
 ::
 
-    docker run --rm -v data:/tendermint tendermint show_validator
+    docker run --rm -v /tmdata:/tendermint tendermint/tendermint show_validator
 
 Run the docker tendermint application with:
 
 ::
 
-    docker run --rm -d -v data:/tendermint tendermint node
+    docker run --rm -d -v /tmdata:/tendermint tendermint/tendermint node
+
+Building images by yourself:
+
+`This folder <https://github.com/tendermint/tendermint/tree/master/DOCKER>`__
+contains Docker container descriptions. Using this folder you can build your
+own Docker images with the tendermint application.
 
 Basecoin
 --------
