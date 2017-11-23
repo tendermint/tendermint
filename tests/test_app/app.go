@@ -99,5 +99,5 @@ func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 }*/
 
 func panicf(format string, a ...interface{}) {
-	panic(fmt.Sprintf(format, a))
+	panic(fmt.Sprintf(format, a...))
 }
