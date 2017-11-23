@@ -40,47 +40,6 @@ Building images by yourself:
 contains Docker container descriptions. Using this folder you can build your
 own Docker images with the tendermint application.
 
-Basecoin
---------
-
-Build the container: Copy the ``basecoin`` binary to the ``basecoin``
-folder.
-
-::
-
-    docker build -t basecoin basecoin
-
-The application configuration will be stored at ``/basecoin``.
-
-Initialize basecoin configuration and keep it after the container is
-finished:
-
-::
-
-    docker run --rm -v basecoindata:/basecoin basecoin init deadbeef
-
-Use your own basecoin account instead of ``deadbeef`` in the ``init``
-command.
-
-Get the public key of basecoin: We use a trick here: since the basecoin
-and the tendermint configuration folders are similar, the ``tendermint``
-command can extract the public key for us if we feed the basecoin
-configuration folder to tendermint.
-
-::
-
-    docker run --rm -v basecoindata:/tendermint tendermint show_validator
-
-Run the docker tendermint application with: This is a two-step process:
-\* Run the basecoin container. \* Run the tendermint container and
-expose the ports that allow clients to connect. The --proxy\_app should
-contain the basecoin application's IP address and port.
-
-::
-
-    docker run --rm -d -v basecoindata:/basecoin basecoin start --without-tendermint
-    docker run --rm -d -v data:/tendermint -p 46656-46657:46656-46657 tendermint node --proxy_app tcp://172.17.0.2:46658
-
 Ethermint
 ---------
 
