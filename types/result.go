@@ -39,9 +39,9 @@ func (r ResponseCommit) Error() string {
 func fmtError(code CodeType, log string) string {
 	codeAsStr, ok := code2string[code]
 	if ok {
-		return fmt.Sprintf("%s (%v): %s", codeAsStr, code, log)
+		return fmt.Sprintf("%s (%d): %s", codeAsStr, code, log)
 	} else {
-		return fmt.Sprintf("Unknown error (%v): %s", code, log)
+		return fmt.Sprintf("Unknown error (%d): %s", code, log)
 	}
 }
 
@@ -68,4 +68,14 @@ func (r *ResponseQuery) Result() *ResultQuery {
 		Height: r.Height,
 		Log:    r.Log,
 	}
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r *ResultQuery) IsErr() bool {
+	return r.Code != CodeType_OK
+}
+
+// Error implements error interface by formatting result as string.
+func (r *ResultQuery) Error() string {
+	return fmtError(r.Code, r.Log)
 }
