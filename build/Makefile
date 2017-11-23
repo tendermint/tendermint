@@ -107,7 +107,7 @@ version-%:
 	test -n $(GOPATH)/bin/$*
 	@echo "BUILD_NUMBER is $(BUILD_NUMBER)"
 	test -n "$(BUILD_NUMBER)"
-	$(eval $*_version=$(shell $< version | head -1 | cut -d- -f1 | sed 's/^\(ethermint:\s*\|\)\(v\|\)//' | tr -d '\t ' ))
+	$(eval $*_version=$(shell $(GOPATH)/bin/$* version | head -1 | cut -d- -f1 | sed 's/^\(ethermint:\s*\|\)\(v\|\)//' | tr -d '\t ' ))
 
 # set build_folder
 folder-%: version-%
