@@ -116,7 +116,7 @@ func (cli *socketClient) StopForError(err error) {
 func (cli *socketClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
-	return cli.err
+	return errors.Wrap(cli.err, types.HumanCode(types.CodeType_InternalError))
 }
 
 // Set listener for all responses
@@ -306,19 +306,13 @@ func (cli *socketClient) SetOptionSync(key string, value string) (log string, er
 func (cli *socketClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
 	reqres := cli.queueRequest(types.ToRequestDeliverTx(tx))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
-	}
-	return reqres.Response.GetDeliverTx(), nil
+	return reqres.Response.GetDeliverTx(), cli.Error()
 }
 
 func (cli *socketClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
 	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
-	}
-	return reqres.Response.GetCheckTx(), nil
+	return reqres.Response.GetCheckTx(), cli.Error()
 }
 
 func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
@@ -330,10 +324,7 @@ func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery
 func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 	reqres := cli.queueRequest(types.ToRequestCommit())
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return nil, errors.Wrap(err, types.HumanCode(types.CodeType_InternalError))
-	}
-	return reqres.Response.GetCommit(), nil
+	return reqres.Response.GetCommit(), cli.Error()
 }
 
 func (cli *socketClient) InitChainSync(params types.RequestInitChain) error {
