@@ -17,6 +17,7 @@ Vagrant.configure("2") do |config|
     usermod -a -G docker vagrant
     apt-get autoremove -y
 
+    apt-get install -y --no-install-recommends git
     curl -O https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz
     tar -xvf go1.9.linux-amd64.tar.gz
     rm -rf /usr/local/go
