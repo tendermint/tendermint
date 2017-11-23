@@ -8,6 +8,10 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+// Client defines an interface for an ABCI client. Client-related errors (e.g.
+// network errors) are returned as a second return value for most calls
+// (sometimes there is no response). Application-related errors are reflected
+// in response via ABCI error codes and logs.
 type Client interface {
 	cmn.Service
 
