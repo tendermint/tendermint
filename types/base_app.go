@@ -28,7 +28,7 @@ func (BaseApplication) Commit() ResponseCommit {
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
-	return ResponseQuery{}
+	return ResponseQuery{Code: CodeType_OK}
 }
 
 func (BaseApplication) InitChain(req RequestInitChain) {
