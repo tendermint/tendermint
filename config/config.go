@@ -428,7 +428,7 @@ type TxIndexConfig struct {
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
 		Indexer:   "kv",
-		IndexTags: "tx.hash", // types.TxHashKey
+		IndexTags: "",
 	}
 }
 
