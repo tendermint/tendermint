@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
@@ -96,9 +97,10 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 			continue
 		}
 
-		if tag.ValueString != "" {
+		switch tag.ValueType {
+		case abci.KVPair_STRING:
 			tags[tag.Key] = tag.ValueString
-		} else {
+		case abci.KVPair_INT:
 			tags[tag.Key] = tag.ValueInt
 		}
 	}
