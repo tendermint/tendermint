@@ -149,8 +149,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	var channels = []*Channel{}
 
 	for _, desc := range chDescs {
-		descCopy := *desc // copy the desc else unsafe access across connections
-		channel := newChannel(mconn, &descCopy)
+		channel := newChannel(mconn, *desc)
 		channelsIdx[channel.desc.ID] = channel
 		channels = append(channels, channel)
 	}
@@ -539,7 +538,7 @@ type ChannelDescriptor struct {
 	RecvMessageCapacity int
 }
 
-func (chDesc *ChannelDescriptor) FillDefaults() {
+func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 	if chDesc.SendQueueCapacity == 0 {
 		chDesc.SendQueueCapacity = defaultSendQueueCapacity
 	}
@@ -549,13 +548,15 @@ func (chDesc *ChannelDescriptor) FillDefaults() {
 	if chDesc.RecvMessageCapacity == 0 {
 		chDesc.RecvMessageCapacity = defaultRecvMessageCapacity
 	}
+	filled = chDesc
+	return
 }
 
 // TODO: lowercase.
 // NOTE: not goroutine-safe.
 type Channel struct {
 	conn          *MConnection
-	desc          *ChannelDescriptor
+	desc          ChannelDescriptor
 	sendQueue     chan []byte
 	sendQueueSize int32 // atomic.
 	recving       []byte
@@ -565,10 +566,8 @@ type Channel struct {
 	maxMsgPacketPayloadSize int
 }
 
-func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
-	descCopy := *desc
-	desc = &descCopy
-	desc.FillDefaults()
+func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
+	desc = desc.FillDefaults()
 	if desc.Priority <= 0 {
 		cmn.PanicSanity("Channel default priority must be a postive integer")
 	}
