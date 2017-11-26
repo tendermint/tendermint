@@ -149,9 +149,8 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	var channels = []*Channel{}
 
 	for _, desc := range chDescs {
-		descCopy := *desc // copy the desc else unsafe access across connections
-		channel := newChannel(mconn, &descCopy)
-		channelsIdx[channel.id] = channel
+		channel := newChannel(mconn, *desc)
+		channelsIdx[channel.desc.ID] = channel
 		channels = append(channels, channel)
 	}
 	mconn.channels = channels
@@ -375,7 +374,7 @@ func (c *MConnection) sendMsgPacket() bool {
 			continue
 		}
 		// Get ratio, and keep track of lowest ratio.
-		ratio := float32(channel.recentlySent) / float32(channel.priority)
+		ratio := float32(channel.recentlySent) / float32(channel.desc.Priority)
 		if ratio < leastRatio {
 			leastRatio = ratio
 			leastChannel = channel
@@ -519,10 +518,10 @@ func (c *MConnection) Status() ConnectionStatus {
 	status.Channels = make([]ChannelStatus, len(c.channels))
 	for i, channel := range c.channels {
 		status.Channels[i] = ChannelStatus{
-			ID:                channel.id,
+			ID:                channel.desc.ID,
 			SendQueueCapacity: cap(channel.sendQueue),
 			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
-			Priority:          channel.priority,
+			Priority:          channel.desc.Priority,
 			RecentlySent:      channel.recentlySent,
 		}
 	}
@@ -539,7 +538,7 @@ type ChannelDescriptor struct {
 	RecvMessageCapacity int
 }
 
-func (chDesc *ChannelDescriptor) FillDefaults() {
+func (chDesc ChannelDescriptor) FillDefaults() (filled ChannelDescriptor) {
 	if chDesc.SendQueueCapacity == 0 {
 		chDesc.SendQueueCapacity = defaultSendQueueCapacity
 	}
@@ -549,36 +548,34 @@ func (chDesc *ChannelDescriptor) FillDefaults() {
 	if chDesc.RecvMessageCapacity == 0 {
 		chDesc.RecvMessageCapacity = defaultRecvMessageCapacity
 	}
+	filled = chDesc
+	return
 }
 
 // TODO: lowercase.
 // NOTE: not goroutine-safe.
 type Channel struct {
 	conn          *MConnection
-	desc          *ChannelDescriptor
-	id            byte
+	desc          ChannelDescriptor
 	sendQueue     chan []byte
 	sendQueueSize int32 // atomic.
 	recving       []byte
 	sending       []byte
-	priority      int
 	recentlySent  int64 // exponential moving average
 
 	maxMsgPacketPayloadSize int
 }
 
-func newChannel(conn *MConnection, desc *ChannelDescriptor) *Channel {
-	desc.FillDefaults()
+func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
+	desc = desc.FillDefaults()
 	if desc.Priority <= 0 {
 		cmn.PanicSanity("Channel default priority must be a postive integer")
 	}
 	return &Channel{
 		conn:                    conn,
 		desc:                    desc,
-		id:                      desc.ID,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
-		priority:                desc.Priority,
 		maxMsgPacketPayloadSize: conn.config.maxMsgPacketPayloadSize,
 	}
 }
@@ -637,7 +634,7 @@ func (ch *Channel) isSendPending() bool {
 // Not goroutine-safe
 func (ch *Channel) nextMsgPacket() msgPacket {
 	packet := msgPacket{}
-	packet.ChannelID = byte(ch.id)
+	packet.ChannelID = byte(ch.desc.ID)
 	maxSize := ch.maxMsgPacketPayloadSize
 	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
