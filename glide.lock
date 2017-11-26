@@ -1,5 +1,5 @@
 hash: 223d8e42a118e7861cb673ea58a035e99d3a98c94e4b71fb52998d320f9c3b49
-updated: 2017-11-22T07:33:50.996598926-08:00
+updated: 2017-11-25T22:00:24.612202481-08:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
@@ -159,9 +159,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 82aafbf43bf885069dc71b7e7c2f9d7a614d47da
-  subpackages:
-  - unix
+  version: b98136db334ff9cb24f28a68e3be3cb6608f7630
 - name: golang.org/x/text
   version: 88f656faf3f37f690df1a32515b479415e1a6769
   subpackages:
