@@ -36,12 +36,18 @@ dist:
 	@ bash scripts/publish.sh
 
 # test.sh requires that we run the installed cmds, must not be out of date
-test: install
+test: 
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
-	@ echo "==> Running unit tests"
+	@ echo "==> Running go test"
 	@ go test $(PACKAGES)
-	@ echo "==> Running integration tests (./tests)"
-	@ bash tests/test.sh
+
+test_race: 
+	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
+	@ echo "==> Running go test --race"
+	@go test -v -race $(PACKAGES)
+
+test_integrations:
+	@ bash test.sh
 
 fmt:
 	@ go fmt ./...

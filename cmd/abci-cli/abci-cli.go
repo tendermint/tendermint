@@ -96,10 +96,10 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func Execute() {
+func Execute() error {
 	addGlobalFlags()
 	addCommands()
-	RootCmd.Execute()
+	return RootCmd.Execute()
 }
 
 func addGlobalFlags() {
