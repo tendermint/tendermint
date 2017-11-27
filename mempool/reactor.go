@@ -42,6 +42,7 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 
 // SetLogger sets the Logger on the reactor and the underlying Mempool.
 func (memR *MempoolReactor) SetLogger(l log.Logger) {
+	// logger on embedded p2p.BaseReactor
 	memR.Logger = l
 	memR.Mempool.SetLogger(l)
 }

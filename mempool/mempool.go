@@ -80,7 +80,9 @@ type Mempool struct {
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
 // TODO: Extract logger into arguments.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int,
+	logger log.Logger) *Mempool {
+
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -90,7 +92,7 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		rechecking:    0,
 		recheckCursor: nil,
 		recheckEnd:    nil,
-		logger:        log.NewNopLogger(),
+		logger:        logger,
 		cache:         newTxCache(cacheSize),
 	}
 	mempool.initWAL()
