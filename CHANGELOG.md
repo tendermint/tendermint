@@ -4,8 +4,9 @@
 
 BREAKING CHANGES:
  - [client] all XxxSync methods now return (ResponseXxx, error)
- - [types] Application: all methods take RequestXxx and return (ResponseXxx, error), 
-   except CheckTx/DeliverTx, which take `tx []byte`, and `Commit`, which takes nothing.
+ - [types] Application: all methods now take RequestXxx and return (ResponseXxx, error).
+    - Except `CheckTx`/`DeliverTx`, which takes a `tx []byte` argument.
+    - Except `Commit`, which takes no arguments.
  - [types] removed Result
 
 FEATURES:

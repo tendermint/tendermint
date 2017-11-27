@@ -14,11 +14,6 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-const (
-	OK  = types.CodeType_OK
-	LOG = ""
-)
-
 const reqQueueSize = 256 // TODO make configurable
 // const maxResponseSize = 1048576 // 1MB TODO make configurable
 const flushThrottleMS = 20 // Don't wait longer than...
@@ -251,8 +246,8 @@ func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestCheckTx(tx))
 }
 
-func (cli *socketClient) QueryAsync(reqQuery types.RequestQuery) *ReqRes {
-	return cli.queueRequest(types.ToRequestQuery(reqQuery))
+func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
+	return cli.queueRequest(types.ToRequestQuery(req))
 }
 
 func (cli *socketClient) CommitAsync() *ReqRes {
