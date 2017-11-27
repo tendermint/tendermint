@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -43,12 +44,14 @@ type ConsensusReactor struct {
 }
 
 // NewConsensusReactor returns a new ConsensusReactor with the given consensusState.
-func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *ConsensusReactor {
+func NewConsensusReactor(consensusState *ConsensusState, fastSync bool,
+	logger log.Logger) *ConsensusReactor {
+
 	conR := &ConsensusReactor{
 		conS:     consensusState,
 		fastSync: fastSync,
 	}
-	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
+	conR.BaseReactor = *p2p.NewBaseReactor(logger, "ConsensusReactor", conR)
 	return conR
 }
 
@@ -173,7 +176,8 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err",
+			err, "bytes", msgBytes)
 		// TODO punish peer?
 		return
 	}

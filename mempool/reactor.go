@@ -7,7 +7,9 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
+
 	wire "github.com/tendermint/go-wire"
+
 	"github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
@@ -31,19 +33,15 @@ type MempoolReactor struct {
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
-func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool,
+	logger log.Logger) *MempoolReactor {
+
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
 	}
-	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
+	memR.BaseReactor = *p2p.NewBaseReactor(logger, "MempoolReactor", memR)
 	return memR
-}
-
-// SetLogger sets the Logger on the reactor and the underlying Mempool.
-func (memR *MempoolReactor) SetLogger(l log.Logger) {
-	memR.Logger = l
-	memR.Mempool.SetLogger(l)
 }
 
 // GetChannels implements Reactor.
@@ -169,7 +167,8 @@ func DecodeMessage(bz []byte) (msgType byte, msg MempoolMessage, err error) {
 	msgType = bz[0]
 	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ MempoolMessage }{}, r, maxMempoolMessageSize, n, &err).(struct{ MempoolMessage }).MempoolMessage
+	msg = wire.ReadBinary(struct{ MempoolMessage }{}, r, maxMempoolMessageSize, n,
+		&err).(struct{ MempoolMessage }).MempoolMessage
 	return
 }
 

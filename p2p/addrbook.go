@@ -16,7 +16,9 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
+
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -100,7 +102,7 @@ type AddrBook struct {
 
 // NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
-func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
+func NewAddrBook(filePath string, routabilityStrict bool, logger log.Logger) *AddrBook {
 	am := &AddrBook{
 		rand:              rand.New(rand.NewSource(time.Now().UnixNano())),
 		ourAddrs:          make(map[string]*NetAddress),
@@ -109,7 +111,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
 		routabilityStrict: routabilityStrict,
 	}
 	am.init()
-	am.BaseService = *cmn.NewBaseService(nil, "AddrBook", am)
+	am.BaseService = *cmn.NewBaseService(logger, "AddrBook", am)
 	return am
 }
 
@@ -636,7 +638,8 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 		if !added {
 			added := a.addToNewBucket(oldest, freedBucket)
 			if !added {
-				a.Logger.Error(cmn.Fmt("Could not migrate oldest %v to freedBucket %v", oldest, freedBucket))
+				a.Logger.Error(cmn.Fmt("Could not migrate oldest %v to freedBucket %v", oldest,
+					freedBucket))
 			}
 		}
 		// Finally, add to bucket again.
@@ -648,7 +651,7 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 }
 
 // doublesha256(  key + sourcegroup +
-//                int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
+//             int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
 func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)

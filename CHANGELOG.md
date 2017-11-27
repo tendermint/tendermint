@@ -35,6 +35,23 @@ BREAKING CHANGES:
 - rpc/lib/types: RPCResponse is no longer a pointer; WSRPCConnection interface has been modified
 - rpc/client: WaitForOneEvent takes an EventsClient instead of types.EventSwitch
 - rpc/client: Add/RemoveListenerForEvent are now Subscribe/Unsubscribe
+- NewBlockPool requires log.Logger in function arguments
+- newBPPeer requires log.Logger in function argument
+- the following function signatures now require log.Logger as an argument:
+  - NewBlockPool
+  - NewBlockchainReactor
+  - NewConsensusReactor
+  - NewConsensusState
+  - NewMempool
+  - NewMempoolReactor
+  - NewAddrBook
+  - NewPEXReactor
+  - NewBaseReactor
+  - NewSwitch
+  - NewTrustMetricStore
+  - NewEventBus
+  - newBPPeer
+  - newBPRequester
 
 FEATURES:
 - rpc: new `/unsubscribe_all` WebSocket RPC endpoint

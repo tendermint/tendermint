@@ -8,11 +8,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"strings"
 
 	abci "github.com/tendermint/abci/types"
+
 	crypto "github.com/tendermint/go-crypto"
+
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -34,8 +38,6 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
-
-	_ "net/http/pprof"
 )
 
 //------------------------------------------------------------------------------
@@ -208,33 +210,29 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync,
+		logger.With("module", "blockchain"))
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
-	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight)
-	mempool.SetLogger(mempoolLogger)
-	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
-	mempoolReactor.SetLogger(mempoolLogger)
+	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight,
+		mempoolLogger)
+	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool, mempoolLogger)
 
 	if config.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
 
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
-	consensusState.SetLogger(consensusLogger)
+	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(),
+		proxyApp.Consensus(), blockStore, mempool, consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}
-	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
-	consensusReactor.SetLogger(consensusLogger)
+	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync, consensusLogger)
 
 	p2pLogger := logger.With("module", "p2p")
-
-	sw := p2p.NewSwitch(config.P2P)
-	sw.SetLogger(p2pLogger)
+	sw := p2p.NewSwitch(config.P2P, p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
@@ -243,19 +241,18 @@ func NewNode(config *cfg.Config,
 	var addrBook *p2p.AddrBook
 	var trustMetricStore *trust.TrustMetricStore
 	if config.P2P.PexReactor {
-		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
-		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
+		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict,
+			p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 		// Get the trust metric history data
 		trustHistoryDB, err := dbProvider(&DBContext{"trusthistory", config})
 		if err != nil {
 			return nil, err
 		}
-		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
-		trustMetricStore.SetLogger(p2pLogger)
+		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig(),
+			p2pLogger)
 
-		pexReactor := p2p.NewPEXReactor(addrBook)
-		pexReactor.SetLogger(p2pLogger)
+		pexReactor := p2p.NewPEXReactor(addrBook, p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
 
@@ -265,7 +262,8 @@ func NewNode(config *cfg.Config,
 	if config.FilterPeers {
 		// NOTE: addr is ip:port
 		sw.SetAddrFilter(func(addr net.Addr) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/addr/%s", addr.String())})
+			resQuery, err := proxyApp.Query().
+				QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/addr/%s", addr.String())})
 			if err != nil {
 				return err
 			}
@@ -275,7 +273,8 @@ func NewNode(config *cfg.Config,
 			return errors.New(resQuery.Code.String())
 		})
 		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
+			resQuery, err := proxyApp.Query().
+				QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
 			if err != nil {
 				return err
 			}
@@ -286,8 +285,7 @@ func NewNode(config *cfg.Config,
 		})
 	}
 
-	eventBus := types.NewEventBus()
-	eventBus.SetLogger(logger.With("module", "events"))
+	eventBus := types.NewEventBus(logger.With("module", "events"))
 
 	// services which will be publishing and/or subscribing for messages (events)
 	bcReactor.SetEventBus(eventBus)
@@ -343,7 +341,8 @@ func (n *Node) OnStart() error {
 
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
+	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP,
+		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
 	// Start the switch

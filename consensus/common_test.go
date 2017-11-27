@@ -12,8 +12,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/kit/log/term"
+
 	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/counter"
+	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
+
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -21,14 +30,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
-
-	"github.com/tendermint/abci/example/counter"
-	"github.com/tendermint/abci/example/dummy"
-
-	"github.com/go-kit/kit/log/term"
 )
 
 const (
@@ -68,7 +69,9 @@ func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validato
 	}
 }
 
-func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
+func (vs *validatorStub) signVote(voteType byte, hash []byte,
+	header types.PartSetHeader) (*types.Vote, error) {
+
 	vote := &types.Vote{
 		ValidatorIndex:   vs.Index,
 		ValidatorAddress: vs.PrivValidator.GetAddress(),
@@ -82,7 +85,9 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 }
 
 // Sign vote for type/hash/header
-func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSetHeader) *types.Vote {
+func signVote(vs *validatorStub, voteType byte, hash []byte,
+	header types.PartSetHeader) *types.Vote {
+
 	v, err := vs.signVote(voteType, hash, header)
 	if err != nil {
 		panic(fmt.Errorf("failed to sign vote: %v", err))
@@ -90,7 +95,9 @@ func signVote(vs *validatorStub, voteType byte, hash []byte, header types.PartSe
 	return v
 }
 
-func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) []*types.Vote {
+func signVotes(voteType byte, hash []byte, header types.PartSetHeader,
+	vss ...*validatorStub) []*types.Vote {
+
 	votes := make([]*types.Vote, len(vss))
 	for i, vs := range vss {
 		votes[i] = signVote(vs, voteType, hash, header)
@@ -119,7 +126,9 @@ func startTestRound(cs *ConsensusState, height, round int) {
 }
 
 // Create proposal block from cs1 but sign it with vs
-func decideProposal(cs1 *ConsensusState, vs *validatorStub, height, round int) (proposal *types.Proposal, block *types.Block) {
+func decideProposal(cs1 *ConsensusState, vs *validatorStub, height,
+	round int) (proposal *types.Proposal, block *types.Block) {
+
 	block, blockParts := cs1.createProposalBlock()
 	if block == nil { // on error
 		panic("error creating proposal block")
@@ -140,12 +149,16 @@ func addVotes(to *ConsensusState, votes ...*types.Vote) {
 	}
 }
 
-func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.PartSetHeader, vss ...*validatorStub) {
+func signAddVotes(to *ConsensusState, voteType byte, hash []byte, header types.PartSetHeader,
+	vss ...*validatorStub) {
+
 	votes := signVotes(voteType, hash, header, vss...)
 	addVotes(to, votes...)
 }
 
-func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub, blockHash []byte) {
+func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *validatorStub,
+	blockHash []byte) {
+
 	prevotes := cs.Votes.Prevotes(round)
 	var vote *types.Vote
 	if vote = prevotes.GetByAddress(privVal.GetAddress()); vote == nil {
@@ -157,12 +170,15 @@ func validatePrevote(t *testing.T, cs *ConsensusState, round int, privVal *valid
 		}
 	} else {
 		if !bytes.Equal(vote.BlockID.Hash, blockHash) {
-			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash, vote.BlockID.Hash))
+			panic(fmt.Sprintf("Expected prevote to be for %X, got %X", blockHash,
+				vote.BlockID.Hash))
 		}
 	}
 }
 
-func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub, blockHash []byte) {
+func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorStub,
+	blockHash []byte) {
+
 	votes := cs.LastCommit
 	var vote *types.Vote
 	if vote = votes.GetByAddress(privVal.GetAddress()); vote == nil {
@@ -173,7 +189,9 @@ func validateLastPrecommit(t *testing.T, cs *ConsensusState, privVal *validatorS
 	}
 }
 
-func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
+func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int,
+	privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
+
 	precommits := cs.Votes.Precommits(thisRound)
 	var vote *types.Vote
 	if vote = precommits.GetByAddress(privVal.GetAddress()); vote == nil {
@@ -202,7 +220,9 @@ func validatePrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound in
 
 }
 
-func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int, privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
+func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lockRound int,
+	privVal *validatorStub, votedBlockHash, lockedBlockHash []byte) {
+
 	// verify the prevote
 	validatePrevote(t, cs, thisRound, privVal, votedBlockHash)
 	// verify precommit
@@ -214,7 +234,8 @@ func validatePrevoteAndPrecommit(t *testing.T, cs *ConsensusState, thisRound, lo
 // genesis
 func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	voteCh0 := make(chan interface{})
-	err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote, voteCh0)
+	err := cs.eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryVote,
+		voteCh0)
 	if err != nil {
 		panic(fmt.Sprintf("failed to subscribe %s to %v", testSubscriber, types.EventQueryVote))
 	}
@@ -234,16 +255,22 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newConsensusState(state *sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusState(state *sm.State, pv types.PrivValidator,
+	app abci.Application) *ConsensusState {
+
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
-func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator,
+	app abci.Application) *ConsensusState {
+
 	blockDB := dbm.NewMemDB()
 	return newConsensusStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockDB)
 }
 
-func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
+func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.State,
+	pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
+
 	// Get BlockStore
 	blockStore := bc.NewBlockStore(blockDB)
 
@@ -253,19 +280,18 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0)
-	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0,
+		log.TestingLogger().With("module", "mempool"))
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
 
 	// Make ConsensusReactor
-	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool)
-	cs.SetLogger(log.TestingLogger())
+	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool,
+		log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
-	eventBus := types.NewEventBus()
-	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	eventBus := types.NewEventBus(log.TestingLogger().With("module", "events"))
 	eventBus.Start()
 	cs.SetEventBus(eventBus)
 
@@ -346,7 +372,9 @@ func consensusLogger() log.Logger {
 	})
 }
 
-func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application, configOpts ...func(*cfg.Config)) []*ConsensusState {
+func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker,
+	appFunc func() abci.Application, configOpts ...func(*cfg.Config)) []*ConsensusState {
+
 	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
 	css := make([]*ConsensusState, nValidators)
 	logger := consensusLogger()
@@ -372,7 +400,9 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 }
 
 // nPeers = nValidators + nNotValidator
-func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+func randConsensusNetWithPeers(nValidators, nPeers int, testName string,
+	tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
+
 	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
@@ -415,7 +445,9 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 //-------------------------------------------------------------------------------
 // genesis
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*types.PrivValidatorFS) {
+func randGenesisDoc(numValidators int, randPower bool,
+	minPower int64) (*types.GenesisDoc, []*types.PrivValidatorFS) {
+
 	validators := make([]types.GenesisValidator, numValidators)
 	privValidators := make([]*types.PrivValidatorFS, numValidators)
 	for i := 0; i < numValidators; i++ {
@@ -434,7 +466,9 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}, privValidators
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (*sm.State, []*types.PrivValidatorFS) {
+func randGenesisState(numValidators int, randPower bool,
+	minPower int64) (*sm.State, []*types.PrivValidatorFS) {
+
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	db := dbm.NewMemDB()
 	s0, _ := sm.MakeGenesisState(db, genDoc)

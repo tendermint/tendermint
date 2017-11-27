@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/abci/types"
+
 	auto "github.com/tendermint/tmlibs/autofile"
 	"github.com/tendermint/tmlibs/clist"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -21,7 +22,6 @@ import (
 )
 
 /*
-
 The mempool pushes new txs onto the proxyAppConn.
 It gets a stream of (req, res) tuples from the proxy.
 The mempool stores good txs in a concurrent linked-list.
@@ -45,7 +45,6 @@ the DetachPrev() call, which makes old elements not reachable by
 peer broadcastTxRoutine() automatically garbage collected.
 
 TODO: Better handle abci client errors. (make it automatically handle connection errors)
-
 */
 
 const cacheSize = 100000
@@ -79,8 +78,9 @@ type Mempool struct {
 }
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-// TODO: Extract logger into arguments.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int,
+	logger log.Logger) *Mempool {
+
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -90,7 +90,7 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		rechecking:    0,
 		recheckCursor: nil,
 		recheckEnd:    nil,
-		logger:        log.NewNopLogger(),
+		logger:        logger,
 		cache:         newTxCache(cacheSize),
 	}
 	mempool.initWAL()
@@ -103,11 +103,6 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 // NOTE: not thread safe - should only be called once, on startup
 func (mem *Mempool) EnableTxsAvailable() {
 	mem.txsAvailable = make(chan int, 1)
-}
-
-// SetLogger sets the Logger.
-func (mem *Mempool) SetLogger(l log.Logger) {
-	mem.logger = l
 }
 
 func (mem *Mempool) initWAL() {

@@ -12,7 +12,6 @@ import (
 )
 
 /*
-
 eg, L = latency = 0.1s
 	P = num peers = 10
 	FN = num full nodes
@@ -22,7 +21,6 @@ eg, L = latency = 0.1s
 	B/S = CB/P/BS = 12.8 blocks/s
 
 	12.8 * 0.1 = 1.28 blocks on conn
-
 */
 
 const (
@@ -63,7 +61,9 @@ type BlockPool struct {
 	timeoutsCh chan<- string
 }
 
-func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- string) *BlockPool {
+func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- string,
+	logger log.Logger) *BlockPool {
+
 	bp := &BlockPool{
 		peers: make(map[string]*bpPeer),
 
@@ -74,7 +74,7 @@ func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- s
 		requestsCh: requestsCh,
 		timeoutsCh: timeoutsCh,
 	}
-	bp.BaseService = *cmn.NewBaseService(nil, "BlockPool", bp)
+	bp.BaseService = *cmn.NewBaseService(logger, "BlockPool", bp)
 	return bp
 }
 
@@ -248,8 +248,7 @@ func (pool *BlockPool) SetPeerHeight(peerID string, height int) {
 	if peer != nil {
 		peer.height = height
 	} else {
-		peer = newBPPeer(pool, peerID, height)
-		peer.setLogger(pool.Logger.With("peer", peerID))
+		peer = newBPPeer(pool, peerID, height, pool.Logger.With("peer", peerID))
 		pool.peers[peerID] = peer
 	}
 
@@ -305,8 +304,7 @@ func (pool *BlockPool) makeNextRequester() {
 	defer pool.mtx.Unlock()
 
 	nextHeight := pool.height + len(pool.requesters)
-	request := newBPRequester(pool, nextHeight)
-	// request.SetLogger(pool.Logger.With("height", nextHeight))
+	request := newBPRequester(pool, nextHeight, pool.Logger.With("height", nextHeight))
 
 	pool.requesters[nextHeight] = request
 	pool.numPending++
@@ -360,19 +358,15 @@ type bpPeer struct {
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID string, height int) *bpPeer {
+func newBPPeer(pool *BlockPool, peerID string, height int, logger log.Logger) *bpPeer {
 	peer := &bpPeer{
 		pool:       pool,
 		id:         peerID,
 		height:     height,
 		numPending: 0,
-		logger:     log.NewNopLogger(),
+		logger:     logger,
 	}
 	return peer
-}
-
-func (peer *bpPeer) setLogger(l log.Logger) {
-	peer.logger = l
 }
 
 func (peer *bpPeer) resetMonitor() {
@@ -430,7 +424,7 @@ type bpRequester struct {
 	block  *types.Block
 }
 
-func newBPRequester(pool *BlockPool, height int) *bpRequester {
+func newBPRequester(pool *BlockPool, height int, logger log.Logger) *bpRequester {
 	bpr := &bpRequester{
 		pool:       pool,
 		height:     height,
@@ -440,7 +434,7 @@ func newBPRequester(pool *BlockPool, height int) *bpRequester {
 		peerID: "",
 		block:  nil,
 	}
-	bpr.BaseService = *cmn.NewBaseService(nil, "bpRequester", bpr)
+	bpr.BaseService = *cmn.NewBaseService(logger, "bpRequester", bpr)
 	return bpr
 }
 
@@ -494,7 +488,7 @@ func (bpr *bpRequester) requestRoutine() {
 OUTER_LOOP:
 	for {
 		// Pick a peer to send request to.
-		var peer *bpPeer = nil
+		var peer *bpPeer
 	PICK_PEER_LOOP:
 		for {
 			if !bpr.IsRunning() || !bpr.pool.IsRunning() {

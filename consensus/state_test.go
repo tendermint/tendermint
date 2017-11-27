@@ -7,11 +7,12 @@ import (
 	"testing"
 	"time"
 
-	cstypes "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
+
+	cstypes "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -23,7 +24,6 @@ func ensureProposeTimeout(timeoutPropose int) time.Duration {
 }
 
 /*
-
 ProposeSuite
 x * TestProposerSelection0 - round robin ordering, round 0
 x * TestProposerSelection2 - round robin ordering, round 2++
@@ -49,7 +49,6 @@ CatchupSuite
   * TestCatchup - if we might be behind and we've seen any 2/3 prevotes, round skip to new round, precommit, or prevote
 HaltSuite
 x * TestHalt1 - if we see +2/3 precommits after timing out into new round, we should still commit
-
 */
 
 //----------------------------------------------------------------------------------------------------
@@ -223,14 +222,16 @@ func TestBadProposal(t *testing.T) {
 	validatePrevote(t, cs1, round, vss[0], nil)
 
 	// add bad prevote from vs2 and wait for it
-	signAddVotes(cs1, types.VoteTypePrevote, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrevote, propBlock.Hash(),
+		propBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	// wait for precommit
 	<-voteCh
 
 	validatePrecommit(t, cs1, round, 0, vss[0], nil, nil)
-	signAddVotes(cs1, types.VoteTypePrecommit, propBlock.Hash(), propBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrecommit, propBlock.Hash(),
+		propBlock.MakePartSet(partSize).Header(), vs2)
 }
 
 //----------------------------------------------------------------------------------------------------
@@ -244,8 +245,7 @@ func TestFullRound1(t *testing.T) {
 	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
 	// before consensus can move to the next height (and cause a race condition)
 	cs.eventBus.Stop()
-	eventBus := types.NewEventBusWithBufferCapacity(0)
-	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	eventBus := types.NewEventBusWithBufferCapacity(0, log.TestingLogger().With("module", "events"))
 	cs.SetEventBus(eventBus)
 	eventBus.Start()
 

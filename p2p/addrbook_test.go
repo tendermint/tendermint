@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -28,8 +29,7 @@ func TestAddrBookPickAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
 	// 0 addresses
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book := NewAddrBook(fname, true, log.TestingLogger())
 	assert.Zero(book.Size())
 
 	addr := book.PickAddress(50)
@@ -63,12 +63,10 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
 	// 0 addresses
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book := NewAddrBook(fname, true, log.TestingLogger())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book = NewAddrBook(fname, true, log.TestingLogger())
 	book.loadFromFile(fname)
 
 	assert.Zero(t, book.Size())
@@ -83,8 +81,7 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	assert.Equal(t, 100, book.Size())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book = NewAddrBook(fname, true, log.TestingLogger())
 	book.loadFromFile(fname)
 
 	assert.Equal(t, 100, book.Size())
@@ -95,8 +92,7 @@ func TestAddrBookLookup(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book := NewAddrBook(fname, true, log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
@@ -117,8 +113,7 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book := NewAddrBook(fname, true, log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		book.AddAddress(addrSrc.addr, addrSrc.src)
 	}
@@ -150,8 +145,7 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 func TestAddrBookHandlesDuplicates(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book := NewAddrBook(fname, true, log.TestingLogger())
 
 	randAddrs := randNetAddressPairs(t, 100)
 
@@ -197,8 +191,7 @@ func randIPv4Address(t *testing.T) *NetAddress {
 
 func TestAddrBookRemoveAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
-	book := NewAddrBook(fname, true)
-	book.SetLogger(log.TestingLogger())
+	book := NewAddrBook(fname, true, log.TestingLogger())
 
 	addr := randIPv4Address(t)
 	book.AddAddress(addr, addr)

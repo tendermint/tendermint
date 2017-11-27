@@ -11,6 +11,7 @@ import (
 	"github.com/go-kit/kit/log/term"
 
 	"github.com/tendermint/abci/example/dummy"
+
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -41,8 +42,8 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 		cc := proxy.NewLocalClientCreator(app)
 		mempool := newMempoolWithApp(cc)
 
-		reactors[i] = NewMempoolReactor(config.Mempool, mempool) // so we dont start the consensus states
-		reactors[i].SetLogger(logger.With("validator", i))
+		// so we dont start the consensus states
+		reactors[i] = NewMempoolReactor(config.Mempool, mempool, logger.With("validator", i))
 	}
 
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
@@ -77,7 +78,8 @@ func waitForTxs(t *testing.T, txs types.Txs, reactors []*MempoolReactor) {
 }
 
 // wait for all txs on a single mempool
-func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int, reactors []*MempoolReactor) {
+func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int,
+	reactors []*MempoolReactor) {
 
 	mempool := reactors[reactorIdx].Mempool
 	for mempool.Size() != len(txs) {
@@ -86,7 +88,9 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 
 	reapedTxs := mempool.Reap(len(txs))
 	for i, tx := range txs {
-		assert.Equal(t, tx, reapedTxs[i], fmt.Sprintf("txs at index %d on reactor %d don't match: %v vs %v", i, reactorIdx, tx, reapedTxs[i]))
+		assert.Equal(t, tx, reapedTxs[i],
+			fmt.Sprintf("txs at index %d on reactor %d don't match: %v vs %v", i, reactorIdx, tx,
+				reapedTxs[i]))
 	}
 	wg.Done()
 }

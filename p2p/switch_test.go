@@ -50,8 +50,7 @@ func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReacto
 		logMessages:  logMessages,
 		msgsReceived: make(map[byte][]PeerMessage),
 	}
-	tr.BaseReactor = *NewBaseReactor("TestReactor", tr)
-	tr.SetLogger(log.TestingLogger())
+	tr.BaseReactor = *NewBaseReactor(log.TestingLogger(), "TestReactor", tr)
 	return tr
 }
 

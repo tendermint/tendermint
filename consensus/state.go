@@ -12,6 +12,7 @@ import (
 	fail "github.com/ebuchman/fail-test"
 
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -113,7 +114,10 @@ type ConsensusState struct {
 }
 
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool) *ConsensusState {
+func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State,
+	proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore,
+	mempool types.Mempool, logger log.Logger) *ConsensusState {
+
 	cs := &ConsensusState{
 		config:           config,
 		proxyAppConn:     proxyAppConn,
@@ -135,7 +139,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppCon
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
 	cs.reconstructLastCommit(state)
-	cs.BaseService = *cmn.NewBaseService(nil, "ConsensusState", cs)
+	cs.BaseService = *cmn.NewBaseService(logger, "ConsensusState", cs)
 	return cs
 }
 

@@ -8,7 +8,9 @@ import (
 	"time"
 
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -53,14 +55,14 @@ type PEXReactor struct {
 }
 
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook) *PEXReactor {
+func NewPEXReactor(b *AddrBook, logger log.Logger) *PEXReactor {
 	r := &PEXReactor{
 		book:              b,
 		ensurePeersPeriod: defaultEnsurePeersPeriod,
 		msgCountByPeer:    cmn.NewCMap(),
 		maxMsgCountByPeer: defaultMaxMsgCountByPeer,
 	}
-	r.BaseReactor = *NewBaseReactor("PEXReactor", r)
+	r.BaseReactor = *NewBaseReactor(logger, "PEXReactor", r)
 	return r
 }
 
@@ -104,7 +106,8 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
 		if err != nil {
 			// peer gave us a bad ListenAddr. TODO: punish
-			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
+			r.Logger.Error("Error in AddPeer: invalid peer address", "addr",
+				p.NodeInfo().ListenAddr, "err", err)
 			return
 		}
 		r.book.AddAddress(addr, addr)
@@ -235,7 +238,8 @@ func (r *PEXReactor) ensurePeersRoutine() {
 func (r *PEXReactor) ensurePeers() {
 	numOutPeers, _, numDialing := r.Switch.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
-	r.Logger.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
+	r.Logger.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing,
+		"numToDial", numToDial)
 	if numToDial <= 0 {
 		return
 	}
@@ -323,7 +327,8 @@ func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
 	msgType = bz[0]
 	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
+	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n,
+		&err).(struct{ PexMessage }).PexMessage
 	return
 }
 
