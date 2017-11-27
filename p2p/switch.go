@@ -291,7 +291,8 @@ func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKeyEd25519) error) {
 func (sw *Switch) startInitPeer(peer *peer) {
 	_, err := peer.Start() // spawn send/recv routines
 	if err != nil {
-		sw.Logger.Error("Error starting peer", "err", err)
+		// Should never happen
+		sw.Logger.Error("Error starting peer", "peer", peer, "err", err)
 	}
 
 	for _, reactor := range sw.reactors {

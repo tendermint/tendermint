@@ -389,17 +389,3 @@ func timeoutWaitGroup(t *testing.T, n int, f func(*sync.WaitGroup, int), css []*
 		panic("Timed out waiting for all validators to commit a block")
 	}
 }
-
-// XXX: WARNING: this function can halt the consensus as firing events is synchronous.
-// Make sure to read off the channels, and in the case of subscribeToEventRespond, to write back on it
-
-// NOTE: this blocks on receiving a response after the event is consumed
-func subscribeToEventRespond(evsw types.EventSwitch, receiver, eventID string) chan interface{} {
-	// listen for event
-	ch := make(chan interface{})
-	types.AddListenerForEvent(evsw, receiver, eventID, func(data types.TMEventData) {
-		ch <- data
-		<-ch
-	})
-	return ch
-}

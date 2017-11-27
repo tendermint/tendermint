@@ -5,6 +5,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -120,14 +122,10 @@ func TestRmBadTx(t *testing.T) {
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
 
 	resDeliver := app.DeliverTx(txBytes)
-	if resDeliver.Error != nil {
-		// t.Error(resDeliver.Error()) // FIXME: fails
-	}
+	assert.False(t, resDeliver.IsErr(), cmn.Fmt("expected no error. got %v", resDeliver))
 
 	resCommit := app.Commit()
-	if resCommit.Error != nil {
-		// t.Error(resCommit.Error()) // FIXME: fails
-	}
+	assert.False(t, resCommit.IsErr(), cmn.Fmt("expected no error. got %v", resCommit))
 
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})

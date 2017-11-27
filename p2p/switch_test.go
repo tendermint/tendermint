@@ -10,11 +10,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -171,14 +172,12 @@ func TestConnAddrFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		if err := s1.addPeerWithConnection(c1); err != nil {
-			// t.Error(err) FIXME: fails
-		}
+		err := s1.addPeerWithConnection(c1)
+		assert.NotNil(t, err, "expected err")
 	}()
 	go func() {
-		if err := s2.addPeerWithConnection(c2); err != nil {
-			// t.Error(err) FIXME: fails
-		}
+		err := s2.addPeerWithConnection(c2)
+		assert.NotNil(t, err, "expected err")
 	}()
 
 	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
@@ -210,14 +209,12 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		if err := s1.addPeerWithConnection(c1); err != nil {
-			// t.Error(err) FIXME: fails
-		}
+		err := s1.addPeerWithConnection(c1)
+		assert.NotNil(t, err, "expected error")
 	}()
 	go func() {
-		if err := s2.addPeerWithConnection(c2); err != nil {
-			// t.Error(err) FIXME: fails
-		}
+		err := s2.addPeerWithConnection(c2)
+		assert.NotNil(t, err, "expected error")
 	}()
 
 	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
