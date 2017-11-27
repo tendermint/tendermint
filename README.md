@@ -102,6 +102,8 @@ Here, we describe the requests and responses as function arguments and return va
     * `Code (uint32)`: Response code
     * `Data ([]byte)`: Result bytes, if any
     * `Log (string)`: Debug or error message
+    * `Gas (uint64)`: Amount of gas consumed by transaction
+    * `Fee (uint64)`: Fee paid by transaction
   * __Usage__:<br/>
     Validate a mempool transaction, prior to broadcasting or proposing.  This message should not mutate the main state, but application
     developers may want to keep a separate CheckTx state that gets reset upon Commit.
