@@ -56,13 +56,17 @@ func (s *SocketServer) OnStart() error {
 
 func (s *SocketServer) OnStop() {
 	s.BaseService.OnStop()
-	s.listener.Close()
+	if err := s.listener.Close(); err != nil {
+		s.Logger.Error("Error closing listener", "err", err)
+	}
 
 	s.connsMtx.Lock()
 	defer s.connsMtx.Unlock()
 	for id, conn := range s.conns {
 		delete(s.conns, id)
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			s.Logger.Error("Error closing connection", "id", id, "conn", conn, "err", err)
+		}
 	}
 }
 

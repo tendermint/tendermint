@@ -294,7 +294,7 @@ func cmdBatch(cmd *cobra.Command, args []string) error {
 		}
 
 		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
+		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
 		if err != nil {
 			return err
 		}
@@ -316,7 +316,7 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		}
 
 		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
+		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
 		if err != nil {
 			return err
 		}
