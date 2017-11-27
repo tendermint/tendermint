@@ -166,6 +166,8 @@ message ResponseCheckTx{
   CodeType          code        = 1;
   bytes             data        = 2;
   string            log         = 3;
+  uint64            gas         = 4;
+  uint64            fee         = 5;
 }
 
 message ResponseQuery{
