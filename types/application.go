@@ -45,46 +45,46 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 }
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
-	resInfo := app.app.Info(*req)
-	return &resInfo, nil
+	res := app.app.Info(*req)
+	return &res, nil
 }
 
 func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
-	resSetOption := app.app.SetOption(*req)
-	return &resSetOption, nil
+	res := app.app.SetOption(*req)
+	return &res, nil
 }
 
 func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
-	r := app.app.DeliverTx(req.Tx)
-	return &ResponseDeliverTx{r.Code, r.Data, r.Log, r.Tags}, nil
+	res := app.app.DeliverTx(req.Tx)
+	return &res, nil
 }
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
-	r := app.app.CheckTx(req.Tx)
-	return &ResponseCheckTx{r.Code, r.Data, r.Log}, nil
+	res := app.app.CheckTx(req.Tx)
+	return &res, nil
 }
 
 func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {
-	resQuery := app.app.Query(*req)
-	return &resQuery, nil
+	res := app.app.Query(*req)
+	return &res, nil
 }
 
 func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*ResponseCommit, error) {
-	r := app.app.Commit()
-	return &ResponseCommit{r.Code, r.Data, r.Log}, nil
+	res := app.app.Commit()
+	return &res, nil
 }
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
-	resInitChain := app.app.InitChain(*req)
-	return &resInitChain, nil
+	res := app.app.InitChain(*req)
+	return &res, nil
 }
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
-	resBeginBlock := app.app.BeginBlock(*req)
-	return &resBeginBlock, nil
+	res := app.app.BeginBlock(*req)
+	return &res, nil
 }
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
-	resEndBlock := app.app.EndBlock(*req)
-	return &resEndBlock, nil
+	res := app.app.EndBlock(*req)
+	return &res, nil
 }
