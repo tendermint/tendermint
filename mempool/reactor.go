@@ -9,6 +9,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -30,13 +31,14 @@ type MempoolReactor struct {
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
-func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReactor {
+func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool,
+	logger log.Logger) *MempoolReactor {
+
 	memR := &MempoolReactor{
 		config:  config,
 		Mempool: mempool,
 	}
-	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
-	memR.Logger = mempool.logger
+	memR.BaseReactor = *p2p.NewBaseReactor(logger, "MempoolReactor", memR)
 	return memR
 }
 

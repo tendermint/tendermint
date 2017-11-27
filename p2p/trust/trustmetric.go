@@ -11,6 +11,7 @@ import (
 
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const defaultStorePeriodicSaveInterval = 1 * time.Minute
@@ -34,14 +35,14 @@ type TrustMetricStore struct {
 
 // NewTrustMetricStore returns a store that saves data to the DB
 // and uses the config when creating new trust metrics
-func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {
+func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig, logger log.Logger) *TrustMetricStore {
 	tms := &TrustMetricStore{
 		peerMetrics: make(map[string]*TrustMetric),
 		db:          db,
 		config:      tmc,
 	}
 
-	tms.BaseService = *cmn.NewBaseService(nil, "TrustMetricStore", tms)
+	tms.BaseService = *cmn.NewBaseService(logger, "TrustMetricStore", tms)
 	return tms
 }
 

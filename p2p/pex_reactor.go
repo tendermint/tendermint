@@ -8,7 +8,9 @@ import (
 	"time"
 
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -53,14 +55,14 @@ type PEXReactor struct {
 }
 
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook) *PEXReactor {
+func NewPEXReactor(b *AddrBook, logger log.Logger) *PEXReactor {
 	r := &PEXReactor{
 		book:              b,
 		ensurePeersPeriod: defaultEnsurePeersPeriod,
 		msgCountByPeer:    cmn.NewCMap(),
 		maxMsgCountByPeer: defaultMaxMsgCountByPeer,
 	}
-	r.BaseReactor = *NewBaseReactor("PEXReactor", r)
+	r.BaseReactor = *NewBaseReactor(logger, "PEXReactor", r)
 	return r
 }
 

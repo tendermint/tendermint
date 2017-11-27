@@ -12,8 +12,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-kit/kit/log/term"
+
 	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/counter"
+	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
+
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -21,14 +30,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
-
-	"github.com/tendermint/abci/example/counter"
-	"github.com/tendermint/abci/example/dummy"
-
-	"github.com/go-kit/kit/log/term"
 )
 
 const (
@@ -234,16 +235,22 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 //-------------------------------------------------------------------------------
 // consensus states
 
-func newConsensusState(state *sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusState(state *sm.State, pv types.PrivValidator,
+	app abci.Application) *ConsensusState {
+
 	return newConsensusStateWithConfig(config, state, pv, app)
 }
 
-func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator, app abci.Application) *ConsensusState {
+func newConsensusStateWithConfig(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator,
+	app abci.Application) *ConsensusState {
+
 	blockDB := dbm.NewMemDB()
 	return newConsensusStateWithConfigAndBlockStore(thisConfig, state, pv, app, blockDB)
 }
 
-func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.State, pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
+func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.State,
+	pv types.PrivValidator, app abci.Application, blockDB dbm.DB) *ConsensusState {
+
 	// Get BlockStore
 	blockStore := bc.NewBlockStore(blockDB)
 
@@ -253,18 +260,18 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state *sm.
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0, log.TestingLogger().With("module", "mempool"))
+	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0,
+		log.TestingLogger().With("module", "mempool"))
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
 	}
 
 	// Make ConsensusReactor
-	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool)
-	cs.SetLogger(log.TestingLogger())
+	cs := NewConsensusState(thisConfig.Consensus, state, proxyAppConnCon, blockStore, mempool,
+		log.TestingLogger())
 	cs.SetPrivValidator(pv)
 
-	eventBus := types.NewEventBus()
-	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	eventBus := types.NewEventBus(log.TestingLogger().With("module", "events"))
 	eventBus.Start()
 	cs.SetEventBus(eventBus)
 

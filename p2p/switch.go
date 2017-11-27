@@ -10,6 +10,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 )
 
 type Reactor interface {
-	cmn.Service // Start, Stop
+	cmn.Service // Provides Start, Stop, Reset
 
 	SetSwitch(*Switch)
 	GetChannels() []*ChannelDescriptor
@@ -30,13 +31,13 @@ type Reactor interface {
 //--------------------------------------
 
 type BaseReactor struct {
-	cmn.BaseService // Provides Start, Stop, .Quit
+	cmn.BaseService // Provides Start, Stop, Reset
 	Switch          *Switch
 }
 
-func NewBaseReactor(name string, impl Reactor) *BaseReactor {
+func NewBaseReactor(logger log.Logger, name string, impl Reactor) *BaseReactor {
 	return &BaseReactor{
-		BaseService: *cmn.NewBaseService(nil, name, impl),
+		BaseService: *cmn.NewBaseService(logger, name, impl),
 		Switch:      nil,
 	}
 }
@@ -79,7 +80,7 @@ var (
 	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
 )
 
-func NewSwitch(config *cfg.P2PConfig) *Switch {
+func NewSwitch(config *cfg.P2PConfig, logger log.Logger) *Switch {
 	sw := &Switch{
 		config:       config,
 		peerConfig:   DefaultPeerConfig(),
@@ -97,7 +98,7 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw.peerConfig.MConfig.RecvRate = config.RecvRate
 	sw.peerConfig.MConfig.maxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
 
-	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
+	sw.BaseService = *cmn.NewBaseService(logger, "P2P Switch", sw)
 	return sw
 }
 
@@ -552,7 +553,7 @@ func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	privKey := crypto.GenPrivKeyEd25519()
 	// new switch, add reactors
 	// TODO: let the config be passed in?
-	s := initSwitch(i, NewSwitch(cfg))
+	s := initSwitch(i, NewSwitch(cfg, nil))
 	s.SetNodeInfo(&NodeInfo{
 		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker:    cmn.Fmt("switch%d", i),

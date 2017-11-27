@@ -7,12 +7,14 @@ import (
 	"time"
 
 	wire "github.com/tendermint/go-wire"
+
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -53,12 +55,15 @@ type BlockchainReactor struct {
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore,
+	fastSync bool, logger log.Logger) *BlockchainReactor {
+
 	if state.LastBlockHeight == store.Height()-1 {
 		store.height-- // XXX HACK, make this better
 	}
 	if state.LastBlockHeight != store.Height() {
-		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
+		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
+			store.Height()))
 	}
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
 	timeoutsCh := make(chan string, defaultChannelCapacity)
@@ -66,6 +71,7 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, 
 		store.Height()+1,
 		requestsCh,
 		timeoutsCh,
+		logger,
 	)
 	bcR := &BlockchainReactor{
 		state:        state,
@@ -76,14 +82,8 @@ func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, 
 		requestsCh:   requestsCh,
 		timeoutsCh:   timeoutsCh,
 	}
-	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
+	bcR.BaseReactor = *p2p.NewBaseReactor(logger, "BlockchainReactor", bcR)
 	return bcR
-}
-
-// SetLogger implements cmn.Service by setting the logger on reactor and pool.
-func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
-	bcR.BaseService.Logger = l
-	bcR.pool.Logger = l
 }
 
 // OnStart implements cmn.Service.
@@ -118,7 +118,8 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	if !peer.Send(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
+	if !peer.Send(BlockchainChannel,
+		struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
 		// doing nothing, will try later in `poolRoutine`
 	}
 	// peer is added to the pool once we receive the first
@@ -134,7 +135,9 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // if we have it. Otherwise, we'll respond saying we don't have it.
 // According to the Tendermint spec, if all nodes are honest,
 // no node should be requesting for a block that's non-existent.
-func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage, src p2p.Peer) (queued bool) {
+func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
+	src p2p.Peer) (queued bool) {
+
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		msg := &bcBlockResponseMessage{Block: block}
@@ -169,7 +172,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.Key(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
+		queued := src.TrySend(BlockchainChannel,
+			struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
 		if !queued {
 			// sorry
 		}
@@ -259,7 +263,8 @@ FOR_LOOP:
 				// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 				// currently necessary.
 				err := bcR.state.Validators.VerifyCommit(
-					chainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height, second.LastCommit)
+					chainID, types.BlockID{first.Hash(), firstPartsHeader}, first.Height,
+					second.LastCommit)
 				if err != nil {
 					bcR.Logger.Error("Error in validation", "err", err)
 					bcR.pool.RedoRequest(first.Height)
@@ -273,12 +278,14 @@ FOR_LOOP:
 					// NOTE: we could improve performance if we
 					// didn't make the app commit to disk every block
 					// ... but we would need a way to get the hash without it persisting
-					err := bcR.state.ApplyBlock(bcR.eventBus, bcR.proxyAppConn, first, firstPartsHeader, types.MockMempool{})
+					err := bcR.state.ApplyBlock(bcR.eventBus, bcR.proxyAppConn, first,
+						firstPartsHeader, types.MockMempool{})
 					if err != nil {
 						// TODO This is bad, are we zombie?
-						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v",
+							first.Height, first.Hash(), err))
 					}
-					blocksSynced += 1
+					blocksSynced++
 
 					if blocksSynced%100 == 0 {
 						lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
@@ -297,7 +304,8 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bcR.Switch.Broadcast(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
+	bcR.Switch.Broadcast(BlockchainChannel,
+		struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
 	return nil
 }
 
@@ -335,7 +343,8 @@ func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage,
 	msgType = bz[0]
 	n := int(0)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
+	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n,
+		&err).(struct{ BlockchainMessage }).BlockchainMessage
 	if err != nil && n != len(bz) {
 		err = errors.New("DecodeMessage() had bytes left over")
 	}

@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/tendermint/abci/example/dummy"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -25,7 +25,9 @@ func init() {
 //----------------------------------------------
 // in-process testnets
 
-func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*ConsensusReactor, []chan interface{}, []*types.EventBus) {
+func startConsensusNet(t *testing.T, css []*ConsensusState,
+	N int) ([]*ConsensusReactor, []chan interface{}, []*types.EventBus) {
+
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	eventBuses := make([]*types.EventBus, N)
@@ -35,12 +37,11 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		if err != nil {	t.Fatal(err)}*/
 		thisLogger := logger
 
-		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
+		// so we dont start the consensus states
+		reactors[i] = NewConsensusReactor(css[i], true, thisLogger.With("validator", i))
 		reactors[i].conS.SetLogger(thisLogger.With("validator", i))
-		reactors[i].SetLogger(thisLogger.With("validator", i))
 
-		eventBuses[i] = types.NewEventBus()
-		eventBuses[i].SetLogger(thisLogger.With("module", "events", "validator", i))
+		eventBuses[i] = types.NewEventBus(thisLogger.With("module", "events", "validator", i))
 		_, err := eventBuses[i].Start()
 		require.NoError(t, err)
 

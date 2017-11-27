@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -27,11 +28,10 @@ func newBlockchainReactor(maxBlockHeight int) *BlockchainReactor {
 
 	// Make the blockchainReactor itself
 	fastSync := true
-	bcReactor := NewBlockchainReactor(state.Copy(), nil, blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	bcReactor := NewBlockchainReactor(state.Copy(), nil, blockStore, fastSync, logger.With("module", "blockchain"))
 
 	// Next: we need to set a switch in order for peers to be added in
-	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig())
+	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig(), nil)
 
 	// Lastly: let's add some blocks in
 	for blockHeight := 1; blockHeight <= maxBlockHeight; blockHeight++ {

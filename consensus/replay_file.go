@@ -11,13 +11,14 @@ import (
 
 	"github.com/pkg/errors"
 
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
 )
 
 const (
@@ -123,7 +124,8 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	pb.cs.Stop()
 	pb.cs.Wait()
 
-	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.proxyAppConn, pb.cs.blockStore, pb.cs.mempool)
+	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.proxyAppConn,
+		pb.cs.blockStore, pb.cs.mempool, nil)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
 
@@ -213,9 +215,11 @@ func (pb *playback) replayConsoleLoop() int {
 			// ensure all new step events are regenerated as expected
 			newStepCh := make(chan interface{}, 1)
 
-			err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, newStepCh)
+			err := pb.cs.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep,
+				newStepCh)
 			if err != nil {
-				cmn.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber, types.EventQueryNewRoundStep))
+				cmn.Exit(fmt.Sprintf("failed to subscribe %s to %v", subscriber,
+					types.EventQueryNewRoundStep))
 			}
 			defer pb.cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
@@ -226,7 +230,8 @@ func (pb *playback) replayConsoleLoop() int {
 				if err != nil {
 					fmt.Println("back takes an integer argument")
 				} else if i > pb.count {
-					fmt.Printf("argument to back must not be larger than the current count (%d)\n", pb.count)
+					fmt.Printf("argument to back must not be larger than the current count (%d)\n",
+						pb.count)
 				} else {
 					pb.replayReset(i, newStepCh)
 				}
@@ -249,11 +254,13 @@ func (pb *playback) replayConsoleLoop() int {
 				case "proposal":
 					fmt.Println(rs.Proposal)
 				case "proposal_block":
-					fmt.Printf("%v %v\n", rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort())
+					fmt.Printf("%v %v\n", rs.ProposalBlockParts.StringShort(),
+						rs.ProposalBlock.StringShort())
 				case "locked_round":
 					fmt.Println(rs.LockedRound)
 				case "locked_block":
-					fmt.Printf("%v %v\n", rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort())
+					fmt.Printf("%v %v\n", rs.LockedBlockParts.StringShort(),
+						rs.LockedBlock.StringShort())
 				case "votes":
 					fmt.Println(rs.Votes.StringIndented("    "))
 
@@ -271,7 +278,9 @@ func (pb *playback) replayConsoleLoop() int {
 //--------------------------------------------------------------------------------
 
 // convenience for replay mode
-func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
+func newConsensusStateForReplay(config cfg.BaseConfig,
+	csConfig *cfg.ConsensusConfig) *ConsensusState {
+
 	// Get BlockStore
 	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
@@ -291,12 +300,13 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
 	}
 
-	eventBus := types.NewEventBus()
+	eventBus := types.NewEventBus(nil)
 	if _, err := eventBus.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Failed to start event bus: %v", err))
 	}
 
-	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore, types.MockMempool{})
+	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(), blockStore,
+		types.MockMempool{}, nil)
 
 	consensusState.SetEventBus(eventBus)
 	return consensusState

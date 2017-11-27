@@ -7,11 +7,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	crypto "github.com/tendermint/go-crypto"
+
 	data "github.com/tendermint/go-wire/data"
+
+	cmn "github.com/tendermint/tmlibs/common"
+
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func init() {
@@ -38,8 +42,7 @@ func TestByzantine(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.NewSwitch(config.P2P)
-		switches[i].SetLogger(p2pLogger.With("validator", i))
+		switches[i] = p2p.NewSwitch(config.P2P, p2pLogger.With("validator", i))
 	}
 
 	eventChans := make([]chan interface{}, N)
@@ -56,18 +59,18 @@ func TestByzantine(t *testing.T) {
 			css[i].doPrevote = func(height, round int) {}
 		}
 
-		eventBus := types.NewEventBus()
-		eventBus.SetLogger(logger.With("module", "events", "validator", i))
+		eventBus := types.NewEventBus(logger.With("module", "events", "validator", i))
 		_, err := eventBus.Start()
 		require.NoError(t, err)
 		defer eventBus.Stop()
 
 		eventChans[i] = make(chan interface{}, 1)
-		err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		err = eventBus.Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock,
+			eventChans[i])
 		require.NoError(t, err)
 
-		conR := NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		conR.SetLogger(logger.With("validator", i))
+		// so we dont start the consensus states
+		conR := NewConsensusReactor(css[i], true, logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
 		var conRI p2p.Reactor
@@ -162,7 +165,9 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusState, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusState,
+	sw *p2p.Switch) {
+
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -193,7 +198,9 @@ func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusS
 	}
 }
 
-func sendProposalAndParts(height, round int, cs *ConsensusState, peer p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
+func sendProposalAndParts(height, round int, cs *ConsensusState, peer p2p.Peer,
+	proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
+
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
 	peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
@@ -234,8 +241,10 @@ func NewByzantineReactor(conR *ConsensusReactor) *ByzantineReactor {
 	}
 }
 
-func (br *ByzantineReactor) SetSwitch(s *p2p.Switch)               { br.reactor.SetSwitch(s) }
-func (br *ByzantineReactor) GetChannels() []*p2p.ChannelDescriptor { return br.reactor.GetChannels() }
+func (br *ByzantineReactor) SetSwitch(s *p2p.Switch) { br.reactor.SetSwitch(s) }
+func (br *ByzantineReactor) GetChannels() []*p2p.ChannelDescriptor {
+	return br.reactor.GetChannels()
+}
 func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	if !br.reactor.IsRunning() {
 		return
@@ -288,12 +297,16 @@ func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote
 	return err
 }
 
-func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) (err error) {
+func (privVal *ByzantinePrivValidator) SignProposal(chainID string,
+	proposal *types.Proposal) (err error) {
+
 	proposal.Signature, err = privVal.Sign(types.SignBytes(chainID, proposal))
 	return nil
 }
 
-func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) (err error) {
+func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string,
+	heartbeat *types.Heartbeat) (err error) {
+
 	heartbeat.Signature, err = privVal.Sign(types.SignBytes(chainID, heartbeat))
 	return nil
 }

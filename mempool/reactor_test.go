@@ -41,8 +41,8 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 		cc := proxy.NewLocalClientCreator(app)
 		mempool := newMempoolWithApp(cc)
 
-		reactors[i] = NewMempoolReactor(config.Mempool, mempool) // so we dont start the consensus states
-		reactors[i].SetLogger(logger.With("validator", i))
+		// so we dont start the consensus states
+		reactors[i] = NewMempoolReactor(config.Mempool, mempool, logger.With("validator", i))
 	}
 
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
