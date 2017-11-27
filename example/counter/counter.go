@@ -24,11 +24,12 @@ func (app *CounterApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	return types.ResponseInfo{Data: cmn.Fmt("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 
-func (app *CounterApplication) SetOption(key string, value string) (log string) {
+func (app *CounterApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
+	key, value := req.Key, req.Value
 	if key == "serial" && value == "on" {
 		app.serial = true
 	}
-	return ""
+	return types.ResponseSetOption{}
 }
 
 func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {

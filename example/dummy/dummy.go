@@ -10,6 +10,8 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
+var _ types.Application = (*DummyApplication)(nil)
+
 type DummyApplication struct {
 	types.BaseApplication
 

@@ -5,22 +5,24 @@ import (
 )
 
 // Application is an interface that enables any finite, deterministic state machine
-// to be driven by a blockchain-based replication engine via the ABCI
+// to be driven by a blockchain-based replication engine via the ABCI.
+// All methods take a RequestXxx argument and return a ResponseXxx argument,
+// except CheckTx/DeliverTx, which take `tx []byte`, and `Commit`, which takes nothing.
 type Application interface {
 	// Info/Query Connection
-	Info(RequestInfo) ResponseInfo                   // Return application info
-	SetOption(key string, value string) (log string) // Set application option
-	Query(RequestQuery) ResponseQuery                // Query for state
+	Info(RequestInfo) ResponseInfo                // Return application info
+	SetOption(RequestSetOption) ResponseSetOption // Set application option
+	Query(RequestQuery) ResponseQuery             // Query for state
 
 	// Mempool Connection
 	CheckTx(tx []byte) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain)              // Initialize blockchain with validators and other info from TendermintCore
-	BeginBlock(RequestBeginBlock)            // Signals the beginning of a block
-	DeliverTx(tx []byte) ResponseDeliverTx   // Deliver a tx for full processing
-	EndBlock(height uint64) ResponseEndBlock // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                  // Commit the state and return the application Merkle root hash
+	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
+	DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
+	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
+	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
 }
 
 //------------------------------------
@@ -48,7 +50,8 @@ func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*Respon
 }
 
 func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
-	return &ResponseSetOption{app.app.SetOption(req.Key, req.Value)}, nil
+	resSetOption := app.app.SetOption(*req)
+	return &resSetOption, nil
 }
 
 func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
@@ -72,16 +75,16 @@ func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*Re
 }
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
-	app.app.InitChain(*req)
-	return &ResponseInitChain{}, nil // NOTE: empty return
+	resInitChain := app.app.InitChain(*req)
+	return &resInitChain, nil
 }
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
-	app.app.BeginBlock(*req)
-	return &ResponseBeginBlock{}, nil // NOTE: empty return
+	resBeginBlock := app.app.BeginBlock(*req)
+	return &resBeginBlock, nil
 }
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
-	resEndBlock := app.app.EndBlock(req.Height)
+	resEndBlock := app.app.EndBlock(*req)
 	return &resEndBlock, nil
 }

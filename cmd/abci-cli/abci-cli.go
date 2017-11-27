@@ -355,12 +355,13 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 
 // Set an option on the application
 func cmdSetOption(cmd *cobra.Command, args []string) error {
-	resLog, err := client.SetOptionSync(args[0], args[1])
+	key, val := args[0], args[1]
+	res, err := client.SetOptionSync(types.RequestSetOption{key, val})
 	if err != nil {
 		return err
 	}
 	printResponse(cmd, args, response{
-		Log: resLog,
+		Log: res.Log,
 	})
 	return nil
 }

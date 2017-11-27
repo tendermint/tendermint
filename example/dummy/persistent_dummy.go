@@ -21,6 +21,8 @@ const (
 
 //-----------------------------------------
 
+var _ types.Application = (*PersistentDummyApplication)(nil)
+
 type PersistentDummyApplication struct {
 	app *DummyApplication
 
@@ -50,15 +52,15 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
 
-func (app *PersistentDummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-	resInfo = app.app.Info(req)
-	resInfo.LastBlockHeight = app.app.state.LatestVersion()
-	resInfo.LastBlockAppHash = app.app.state.Hash()
-	return resInfo
+func (app *PersistentDummyApplication) Info(req types.RequestInfo) types.ResponseInfo {
+	res := app.app.Info(req)
+	res.LastBlockHeight = app.app.state.LatestVersion()
+	res.LastBlockAppHash = app.app.state.Hash()
+	return res
 }
 
-func (app *PersistentDummyApplication) SetOption(key string, value string) (log string) {
-	return app.app.SetOption(key, value)
+func (app *PersistentDummyApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
+	return app.app.SetOption(req)
 }
 
 // tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
@@ -102,23 +104,25 @@ func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.
 }
 
 // Save the validators in the merkle tree
-func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
-	for _, v := range params.Validators {
+func (app *PersistentDummyApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+	for _, v := range req.Validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
 			app.logger.Error("Error updating validators", "r", r)
 		}
 	}
+	return types.ResponseInitChain{}
 }
 
 // Track the block hash and header information
-func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
+func (app *PersistentDummyApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
 	app.changes = make([]*types.Validator, 0)
+	return types.ResponseBeginBlock{}
 }
 
 // Update the validator set
-func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
+func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	return types.ResponseEndBlock{Diffs: app.changes}
 }
 

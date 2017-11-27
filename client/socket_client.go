@@ -239,8 +239,8 @@ func (cli *socketClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	return cli.queueRequest(types.ToRequestInfo(req))
 }
 
-func (cli *socketClient) SetOptionAsync(key string, value string) *ReqRes {
-	return cli.queueRequest(types.ToRequestSetOption(key, value))
+func (cli *socketClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
+	return cli.queueRequest(types.ToRequestSetOption(req))
 }
 
 func (cli *socketClient) DeliverTxAsync(tx []byte) *ReqRes {
@@ -259,16 +259,16 @@ func (cli *socketClient) CommitAsync() *ReqRes {
 	return cli.queueRequest(types.ToRequestCommit())
 }
 
-func (cli *socketClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
-	return cli.queueRequest(types.ToRequestInitChain(params))
+func (cli *socketClient) InitChainAsync(req types.RequestInitChain) *ReqRes {
+	return cli.queueRequest(types.ToRequestInitChain(req))
 }
 
-func (cli *socketClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
-	return cli.queueRequest(types.ToRequestBeginBlock(params))
+func (cli *socketClient) BeginBlockAsync(req types.RequestBeginBlock) *ReqRes {
+	return cli.queueRequest(types.ToRequestBeginBlock(req))
 }
 
-func (cli *socketClient) EndBlockAsync(height uint64) *ReqRes {
-	return cli.queueRequest(types.ToRequestEndBlock(height))
+func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
+	return cli.queueRequest(types.ToRequestEndBlock(req))
 }
 
 //----------------------------------------
@@ -294,13 +294,10 @@ func (cli *socketClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, e
 	return reqres.Response.GetInfo(), cli.Error()
 }
 
-func (cli *socketClient) SetOptionSync(key string, value string) (log string, err error) {
-	reqres := cli.queueRequest(types.ToRequestSetOption(key, value))
+func (cli *socketClient) SetOptionSync(req types.RequestSetOption) (*types.ResponseSetOption, error) {
+	reqres := cli.queueRequest(types.ToRequestSetOption(req))
 	cli.FlushSync()
-	if err := cli.Error(); err != nil {
-		return "", err
-	}
-	return reqres.Response.GetSetOption().Log, nil
+	return reqres.Response.GetSetOption(), cli.Error()
 }
 
 func (cli *socketClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
@@ -327,20 +324,20 @@ func (cli *socketClient) CommitSync() (*types.ResponseCommit, error) {
 	return reqres.Response.GetCommit(), cli.Error()
 }
 
-func (cli *socketClient) InitChainSync(params types.RequestInitChain) error {
-	cli.queueRequest(types.ToRequestInitChain(params))
+func (cli *socketClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
+	reqres := cli.queueRequest(types.ToRequestInitChain(req))
 	cli.FlushSync()
-	return cli.Error()
+	return reqres.Response.GetInitChain(), cli.Error()
 }
 
-func (cli *socketClient) BeginBlockSync(params types.RequestBeginBlock) error {
-	cli.queueRequest(types.ToRequestBeginBlock(params))
+func (cli *socketClient) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
+	reqres := cli.queueRequest(types.ToRequestBeginBlock(req))
 	cli.FlushSync()
-	return cli.Error()
+	return reqres.Response.GetBeginBlock(), cli.Error()
 }
 
-func (cli *socketClient) EndBlockSync(height uint64) (*types.ResponseEndBlock, error) {
-	reqres := cli.queueRequest(types.ToRequestEndBlock(height))
+func (cli *socketClient) EndBlockSync(req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+	reqres := cli.queueRequest(types.ToRequestEndBlock(req))
 	cli.FlushSync()
 	return reqres.Response.GetEndBlock(), cli.Error()
 }

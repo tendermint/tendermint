@@ -8,10 +8,11 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// Client defines an interface for an ABCI client. Client-related errors (e.g.
-// network errors) are returned as a second return value for most calls
-// (sometimes there is no response). Application-related errors are reflected
-// in response via ABCI error codes and logs.
+// Client defines an interface for an ABCI client.
+// All `Async` methods return a `ReqRes` object.
+// All `Sync` methods return the appropriate protobuf ResponseXxx struct and an error.
+// Note these are client errors, eg. ABCI socket connectivity issues.
+// Application-related errors are reflected in response via ABCI error codes and logs.
 type Client interface {
 	cmn.Service
 
@@ -21,28 +22,26 @@ type Client interface {
 	FlushAsync() *ReqRes
 	EchoAsync(msg string) *ReqRes
 	InfoAsync(types.RequestInfo) *ReqRes
-	SetOptionAsync(key string, value string) *ReqRes
+	SetOptionAsync(types.RequestSetOption) *ReqRes
 	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
 	QueryAsync(types.RequestQuery) *ReqRes
 	CommitAsync() *ReqRes
+	InitChainAsync(types.RequestInitChain) *ReqRes
+	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
+	EndBlockAsync(types.RequestEndBlock) *ReqRes
 
 	FlushSync() error
 	EchoSync(msg string) (*types.ResponseEcho, error)
 	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
-	SetOptionSync(key string, value string) (log string, err error)
+	SetOptionSync(types.RequestSetOption) (*types.ResponseSetOption, error)
 	DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error)
 	CheckTxSync(tx []byte) (*types.ResponseCheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
-
-	InitChainAsync(types.RequestInitChain) *ReqRes
-	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
-	EndBlockAsync(height uint64) *ReqRes
-
-	InitChainSync(types.RequestInitChain) error
-	BeginBlockSync(types.RequestBeginBlock) error
-	EndBlockSync(height uint64) (*types.ResponseEndBlock, error)
+	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
+	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
+	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 }
 
 //----------------------------------------

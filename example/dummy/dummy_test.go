@@ -93,7 +93,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 		Height: uint64(height),
 	}
 	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
-	dummy.EndBlock(height)
+	dummy.EndBlock(types.RequestEndBlock{header.Height})
 	dummy.Commit()
 
 	resInfo = dummy.Info(types.RequestInfo{})
@@ -182,7 +182,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 			t.Fatal(r)
 		}
 	}
-	resEndBlock := dummy.EndBlock(height)
+	resEndBlock := dummy.EndBlock(types.RequestEndBlock{header.Height})
 	dummy.Commit()
 
 	valsEqual(t, diff, resEndBlock.Diffs)
