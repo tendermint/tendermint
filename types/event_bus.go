@@ -116,6 +116,16 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	}
 	tags[TxHashKey] = fmt.Sprintf("%X", event.Tx.Hash())
 
+	if tag, ok := tags[TxHeightKey]; ok {
+		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
+	}
+	tags[TxHeightKey] = event.Height
+
+	if tag, ok := tags[TxIndexKey]; ok {
+		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
+	}
+	tags[TxIndexKey] = event.Index
+
 	b.pubsub.PublishWithTags(ctx, TMEventData{event}, tags)
 	return nil
 }

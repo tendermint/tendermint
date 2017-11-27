@@ -299,7 +299,7 @@ func NewNode(config *cfg.Config,
 		for event := range ch {
 			// XXX: may be not perfomant to write one event at a time
 			txResult := event.(types.TMEventData).Unwrap().(types.EventDataTx).TxResult
-			txIndexer.Index(&txResult)
+			txIndexer.Index(&txResult, strings.Split(config.TxIndex.IndexTags, ","))
 		}
 	}()
 
