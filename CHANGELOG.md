@@ -34,6 +34,9 @@ BREAKING CHANGES:
 FEATURES:
 - none
 
+IMPROVEMENTS:
+- none
+
 BUG FIXES:
 - upgrade tmlibs dependency to enable Windows builds for Tendermint:w
 
