@@ -3,12 +3,14 @@
 ## 0.8.0 (TBD)
 
 BREAKING CHANGES:
- - [client] all {X}Sync methods now return an error
+ - [client] all XxxSync methods now return (ResponseXxx, error)
+ - [types] Application: all methods take RequestXxx and return (ResponseXxx, error), 
+   except CheckTx/DeliverTx, which take `tx []byte`, and `Commit`, which takes nothing.
  - [types] removed Result
- - [client] all {X}Sync methods now return Response{X} as first return value
 
-IMPROVEMENTS:
+FEATURES:
  - [types] added Tags field to ResponseDeliverTx
+ - [types] added Gas and Fee fields to ResponseCheckTx
 
 ## 0.7.1 (November 14, 2017)
 
