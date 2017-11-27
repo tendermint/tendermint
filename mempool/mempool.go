@@ -107,11 +107,6 @@ func (mem *Mempool) EnableTxsAvailable() {
 	mem.txsAvailable = make(chan int, 1)
 }
 
-// SetLogger sets the Logger.
-func (mem *Mempool) SetLogger(l log.Logger) {
-	mem.logger = l
-}
-
 func (mem *Mempool) initWAL() {
 	walDir := mem.config.WalDir()
 	if walDir != "" {

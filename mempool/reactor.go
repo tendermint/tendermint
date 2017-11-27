@@ -9,7 +9,6 @@ import (
 	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
-	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -37,14 +36,8 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 		Mempool: mempool,
 	}
 	memR.BaseReactor = *p2p.NewBaseReactor("MempoolReactor", memR)
+	memR.Logger = mempool.logger
 	return memR
-}
-
-// SetLogger sets the Logger on the reactor and the underlying Mempool.
-func (memR *MempoolReactor) SetLogger(l log.Logger) {
-	// logger on embedded p2p.BaseReactor
-	memR.Logger = l
-	memR.Mempool.SetLogger(l)
 }
 
 // GetChannels implements Reactor.
