@@ -30,7 +30,7 @@ BUG FIXES:
 ## 0.12.1 (November 27, 2017)
 
 BUG FIXES:
-- upgrade tmlibs dependency to enable Windows builds for Tendermint:w
+- upgrade tmlibs dependency to enable Windows builds for Tendermint
 
 
 ## 0.12.0 (October 27, 2017)
