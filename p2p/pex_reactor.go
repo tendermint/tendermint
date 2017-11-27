@@ -283,7 +283,7 @@ func (r *PEXReactor) ensurePeers() {
 	// If we need more addresses, pick a random peer and ask for more.
 	if r.book.NeedMoreAddrs() {
 		if peers := r.Switch.Peers().List(); len(peers) > 0 {
-			i := rand.Int() % len(peers)
+			i := rand.Int() % len(peers) // nolint: gas
 			peer := peers[i]
 			r.Logger.Info("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
 			r.RequestPEX(peer)

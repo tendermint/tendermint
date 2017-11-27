@@ -59,7 +59,7 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 	defer cs.eventBus.Unsubscribe(ctx, subscriber, types.EventQueryNewRoundStep)
 
 	// just open the file for reading, no need to use wal
-	fp, err := os.OpenFile(file, os.O_RDONLY, 0666)
+	fp, err := os.OpenFile(file, os.O_RDONLY, 0600)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	if err := pb.fp.Close(); err != nil {
 		return err
 	}
-	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0666)
+	fp, err := os.OpenFile(pb.fileName, os.O_RDONLY, 0600)
 	if err != nil {
 		return err
 	}

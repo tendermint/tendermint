@@ -430,7 +430,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
 		onDisconnect := rpcserver.OnDisconnect(func(remoteAddr string) {
-			n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+			err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+			if err != nil {
+				rpcLogger.Error("Error unsubsribing from all on disconnect", "err", err)
+			}
 		})
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, onDisconnect)
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))

@@ -99,7 +99,11 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		b, _ := ioutil.ReadAll(r.Body)
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError("", errors.Wrap(err, "Error reading request body")))
+			return
+		}
 		// if its an empty request (like from a browser),
 		// just display a list of functions
 		if len(b) == 0 {
@@ -108,7 +112,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		}
 
 		var request types.RPCRequest
-		err := json.Unmarshal(b, &request)
+		err = json.Unmarshal(b, &request)
 		if err != nil {
 			WriteRPCResponseHTTP(w, types.RPCParseError("", errors.Wrap(err, "Error unmarshalling request")))
 			return
