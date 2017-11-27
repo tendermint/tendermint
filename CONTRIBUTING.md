@@ -75,3 +75,12 @@ especially `go-p2p` and `go-rpc`, as their versions are referenced in tendermint
 - push to release-vX.X.X to run the extended integration tests on the CI
 - merge to master
 - merge master back to develop
+
+### Hotfix Procedure:
+- start on `master`
+- make the required changes
+  - these changes should be small and an absolute necessity
+- bumb versions
+- push to release-vX.X.X to run the extended integration tests on the CI
+- merge to master
+- merge master back to develop
