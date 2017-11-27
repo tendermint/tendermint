@@ -96,10 +96,8 @@ func TestABCIRecorder(t *testing.T) {
 
 	_, err := r.ABCIInfo()
 	assert.Nil(err, "expected no err on info")
-	_, err = r.ABCIInfo()
-	assert.Nil(err, "expected no err on info")
 
-	_, err := r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
+	_, err = r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
 	assert.NotNil(err, "expected error on query")
 	require.Equal(2, len(r.Calls))
 

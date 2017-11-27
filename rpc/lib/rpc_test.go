@@ -318,19 +318,12 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	err = cl.Call(context.Background(), "echo_ws", params)
 	require.Nil(t, err)
 
-	select {
-	case msg := <-cl.ResponsesCh:
-		if msg.Error != nil {
-			t.Fatal(err)
-		}
-		result := new(ResultEcho)
-		err = json.Unmarshal(msg.Result, result)
-		require.Nil(t, err)
-		got := result.Value
-		assert.Equal(t, got, val)
+	msg := <-cl.ResponsesCh
+	if msg.Error != nil {
+		t.Fatal(err)
 	}
 	result := new(ResultEcho)
-	err = json.Unmarshal(*msg.Result, result)
+	err = json.Unmarshal(msg.Result, result)
 	require.Nil(t, err)
 	got := result.Value
 	assert.Equal(t, got, val)
@@ -348,19 +341,12 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	err = cl.CallWithArrayParams(context.Background(), "echo_ws", params)
 	require.Nil(t, err)
 
-	select {
-	case msg := <-cl.ResponsesCh:
-		if msg.Error != nil {
-			t.Fatalf("%+v", err)
-		}
-		result := new(ResultEcho)
-		err = json.Unmarshal(msg.Result, result)
-		require.Nil(t, err)
-		got := result.Value
-		assert.Equal(t, got, val)
+	msg := <-cl.ResponsesCh
+	if msg.Error != nil {
+		t.Fatalf("%+v", err)
 	}
 	result := new(ResultEcho)
-	err = json.Unmarshal(*msg.Result, result)
+	err = json.Unmarshal(msg.Result, result)
 	require.Nil(t, err)
 	got := result.Value
 	assert.Equal(t, got, val)
