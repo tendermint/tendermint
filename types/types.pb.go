@@ -40,6 +40,7 @@ It has these top-level messages:
 	Validator
 	KVPair
 */
+//nolint: gas
 package types
 
 import proto "github.com/golang/protobuf/proto"
