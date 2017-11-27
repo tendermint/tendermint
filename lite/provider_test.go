@@ -11,7 +11,7 @@ import (
 	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
-// missingProvider doens't store anything, always a miss
+// missingProvider doesn't store anything, always a miss
 // Designed as a mock for testing
 type missingProvider struct{}
 
@@ -20,11 +20,11 @@ func NewMissingProvider() lite.Provider {
 	return missingProvider{}
 }
 
-func (missingProvider) StoreCommit(_ lite.FullCommit) error { return nil }
-func (missingProvider) GetByHeight(_ int) (lite.FullCommit, error) {
+func (missingProvider) StoreCommit(lite.FullCommit) error { return nil }
+func (missingProvider) GetByHeight(int) (lite.FullCommit, error) {
 	return lite.FullCommit{}, liteErr.ErrCommitNotFound()
 }
-func (missingProvider) GetByHash(_ []byte) (lite.FullCommit, error) {
+func (missingProvider) GetByHash([]byte) (lite.FullCommit, error) {
 	return lite.FullCommit{}, liteErr.ErrCommitNotFound()
 }
 func (missingProvider) LatestCommit() (lite.FullCommit, error) {
