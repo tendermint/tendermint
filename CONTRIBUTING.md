@@ -8,9 +8,9 @@ Please make sure to use `gofmt` before every commit - the easiest way to do this
 
 ## Forking
 
-Please note that Go requires code to live under absolute paths, which complicates forking. 
-While my fork lives at `https://github.com/ebuchman/tendermint`, 
-the code should never exist at  `$GOPATH/src/github.com/ebuchman/tendermint`. 
+Please note that Go requires code to live under absolute paths, which complicates forking.
+While my fork lives at `https://github.com/ebuchman/tendermint`,
+the code should never exist at  `$GOPATH/src/github.com/ebuchman/tendermint`.
 Instead, we use `git remote` to add the fork as a new remote for the original repo,
 `$GOPATH/src/github.com/tendermint/tendermint `, and do all the work there.
 
@@ -38,11 +38,22 @@ We use [glide](https://github.com/masterminds/glide) to manage dependencies.
 That said, the master branch of every Tendermint repository should just build with `go get`, which means they should be kept up-to-date with their dependencies so we can get away with telling people they can just `go get` our software.
 Since some dependencies are not under our control, a third party may break our build, in which case we can fall back on `glide install`. Even for dependencies under our control, glide helps us keeps multiple repos in sync as they evolve. Anything with an executable, such as apps, tools, and the core, should use glide.
 
-Run `bash scripts/glide/status.sh` to get a list of vendored dependencies that may not be up-to-date. 
+Run `bash scripts/glide/status.sh` to get a list of vendored dependencies that may not be up-to-date.
+
+## Vagrant
+
+If you are a [Vagrant](https://www.vagrantup.com/) user, all you have to do to get started hacking Tendermint is:
+
+```
+vagrant up
+vagrant ssh
+cd ~/go/src/github.com/tendermint/tendermint
+make test
+```
 
 ## Testing
 
-All repos should be hooked up to circle. 
+All repos should be hooked up to circle.
 If they have `.go` files in the root directory, they will be automatically tested by circle using `go test -v -race ./...`. If not, they will need a `circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and includes its continuous integration status using a badge in the `README.md`.
 
 ## Branching Model and Release
