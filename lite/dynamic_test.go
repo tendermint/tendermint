@@ -1,4 +1,4 @@
-package certifiers_test
+package lite_test
 
 import (
 	"testing"
@@ -8,8 +8,8 @@ import (
 
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/tendermint/tendermint/certifiers"
-	"github.com/tendermint/tendermint/certifiers/errors"
+	"github.com/tendermint/tendermint/lite"
+	"github.com/tendermint/tendermint/lite/errors"
 )
 
 // TestDynamicCert just makes sure it still works like StaticCert
@@ -18,15 +18,15 @@ func TestDynamicCert(t *testing.T) {
 	assert := assert.New(t)
 	// require := require.New(t)
 
-	keys := certifiers.GenValKeys(4)
+	keys := lite.GenValKeys(4)
 	// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 	vals := keys.ToValidators(20, 10)
 	// and a certifier based on our known set
 	chainID := "test-dyno"
-	cert := certifiers.NewDynamic(chainID, vals, 0)
+	cert := lite.NewDynamic(chainID, vals, 0)
 
 	cases := []struct {
-		keys        certifiers.ValKeys
+		keys        lite.ValKeys
 		vals        *types.ValidatorSet
 		height      int
 		first, last int  // who actually signs
@@ -65,9 +65,9 @@ func TestDynamicUpdate(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	chainID := "test-dyno-up"
-	keys := certifiers.GenValKeys(5)
+	keys := lite.GenValKeys(5)
 	vals := keys.ToValidators(20, 0)
-	cert := certifiers.NewDynamic(chainID, vals, 40)
+	cert := lite.NewDynamic(chainID, vals, 40)
 
 	// one valid block to give us a sense of time
 	h := 100
@@ -81,7 +81,7 @@ func TestDynamicUpdate(t *testing.T) {
 
 	// we try to update with some blocks
 	cases := []struct {
-		keys        certifiers.ValKeys
+		keys        lite.ValKeys
 		vals        *types.ValidatorSet
 		height      int
 		first, last int  // who actually signs

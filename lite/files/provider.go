@@ -24,10 +24,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/certifiers"
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
+	"github.com/tendermint/tendermint/lite"
+	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
+// nolint
 const (
 	Ext      = ".tsd"
 	ValDir   = "validators"
@@ -43,7 +44,7 @@ type provider struct {
 
 // NewProvider creates the parent dir and subdirs
 // for validators and checkpoints as needed
-func NewProvider(dir string) certifiers.Provider {
+func NewProvider(dir string) lite.Provider {
 	valDir := filepath.Join(dir, ValDir)
 	checkDir := filepath.Join(dir, CheckDir)
 	for _, d := range []string{valDir, checkDir} {
@@ -64,7 +65,8 @@ func (p *provider) encodeHeight(h int) string {
 	return fmt.Sprintf("%012d%s", h, Ext)
 }
 
-func (p *provider) StoreCommit(fc certifiers.FullCommit) error {
+// StoreCommit saves a full commit after it has been verified.
+func (p *provider) StoreCommit(fc lite.FullCommit) error {
 	// make sure the fc is self-consistent before saving
 	err := fc.ValidateBasic(fc.Commit.Header.ChainID)
 	if err != nil {
@@ -85,11 +87,12 @@ func (p *provider) StoreCommit(fc certifiers.FullCommit) error {
 	return nil
 }
 
-func (p *provider) GetByHeight(h int) (certifiers.FullCommit, error) {
+// GetByHeight returns the closest commit with height <= h.
+func (p *provider) GetByHeight(h int) (lite.FullCommit, error) {
 	// first we look for exact match, then search...
 	path := filepath.Join(p.checkDir, p.encodeHeight(h))
 	fc, err := LoadFullCommit(path)
-	if certerr.IsCommitNotFoundErr(err) {
+	if liteErr.IsCommitNotFoundErr(err) {
 		path, err = p.searchForHeight(h)
 		if err == nil {
 			fc, err = LoadFullCommit(path)
@@ -98,7 +101,8 @@ func (p *provider) GetByHeight(h int) (certifiers.FullCommit, error) {
 	return fc, err
 }
 
-func (p *provider) LatestCommit() (fc certifiers.FullCommit, err error) {
+// LatestCommit returns the newest commit stored.
+func (p *provider) LatestCommit() (fc lite.FullCommit, err error) {
 	// Note to future: please update by 2077 to avoid rollover
 	return p.GetByHeight(math.MaxInt32 - 1)
 }
@@ -121,14 +125,15 @@ func (p *provider) searchForHeight(h int) (string, error) {
 	sort.Strings(files)
 	i := sort.SearchStrings(files, desired)
 	if i == 0 {
-		return "", certerr.ErrCommitNotFound()
+		return "", liteErr.ErrCommitNotFound()
 	}
 	found := files[i-1]
 	path := filepath.Join(p.checkDir, found)
 	return path, errors.WithStack(err)
 }
 
-func (p *provider) GetByHash(hash []byte) (certifiers.FullCommit, error) {
+// GetByHash returns a commit exactly matching this validator hash.
+func (p *provider) GetByHash(hash []byte) (lite.FullCommit, error) {
 	path := filepath.Join(p.valDir, p.encodeHash(hash))
 	return LoadFullCommit(path)
 }

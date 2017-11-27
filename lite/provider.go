@@ -1,22 +1,18 @@
-package certifiers
+package lite
 
-import (
-	certerr "github.com/tendermint/tendermint/certifiers/errors"
-)
-
-// Provider is used to get more validators by other means
+// Provider is used to get more validators by other means.
 //
-// Examples: MemProvider, files.Provider, client.Provider....
+// Examples: MemProvider, files.Provider, client.Provider, CacheProvider....
 type Provider interface {
 	// StoreCommit saves a FullCommit after we have verified it,
 	// so we can query for it later. Important for updating our
-	// store of trusted commits
+	// store of trusted commits.
 	StoreCommit(fc FullCommit) error
-	// GetByHeight returns the closest commit with height <= h
+	// GetByHeight returns the closest commit with height <= h.
 	GetByHeight(h int) (FullCommit, error)
-	// GetByHash returns a commit exactly matching this validator hash
+	// GetByHash returns a commit exactly matching this validator hash.
 	GetByHash(hash []byte) (FullCommit, error)
-	// LatestCommit returns the newest commit stored
+	// LatestCommit returns the newest commit stored.
 	LatestCommit() (FullCommit, error)
 }
 
@@ -28,6 +24,7 @@ type cacheProvider struct {
 	Providers []Provider
 }
 
+// NewCacheProvider returns a new provider which wraps multiple other providers.
 func NewCacheProvider(providers ...Provider) Provider {
 	return cacheProvider{
 		Providers: providers,
@@ -47,19 +44,17 @@ func (c cacheProvider) StoreCommit(fc FullCommit) (err error) {
 	return err
 }
 
-/*
-GetByHeight should return the closest possible match from all providers.
-
-The Cache is usually organized in order from cheapest call (memory)
-to most expensive calls (disk/network). However, since GetByHeight returns
-a FullCommit at h' <= h, if the memory has a seed at h-10, but the network would
-give us the exact match, a naive "stop at first non-error" would hide
-the actual desired results.
-
-Thus, we query each provider in order until we find an exact match
-or we finished querying them all.  If at least one returned a non-error,
-then this returns the best match (minimum h-h').
-*/
+// GetByHeight should return the closest possible match from all providers.
+//
+// The Cache is usually organized in order from cheapest call (memory)
+// to most expensive calls (disk/network). However, since GetByHeight returns
+// a FullCommit at h' <= h, if the memory has a seed at h-10, but the network would
+// give us the exact match, a naive "stop at first non-error" would hide
+// the actual desired results.
+//
+// Thus, we query each provider in order until we find an exact match
+// or we finished querying them all.  If at least one returned a non-error,
+// then this returns the best match (minimum h-h').
 func (c cacheProvider) GetByHeight(h int) (fc FullCommit, err error) {
 	for _, p := range c.Providers {
 		var tfc FullCommit
@@ -80,6 +75,7 @@ func (c cacheProvider) GetByHeight(h int) (fc FullCommit, err error) {
 	return fc, err
 }
 
+// GetByHash returns the FullCommit for the hash or an error if the commit is not found.
 func (c cacheProvider) GetByHash(hash []byte) (fc FullCommit, err error) {
 	for _, p := range c.Providers {
 		fc, err = p.GetByHash(hash)
@@ -90,6 +86,7 @@ func (c cacheProvider) GetByHash(hash []byte) (fc FullCommit, err error) {
 	return fc, err
 }
 
+// LatestCommit returns the latest FullCommit or an error if no commit exists.
 func (c cacheProvider) LatestCommit() (fc FullCommit, err error) {
 	for _, p := range c.Providers {
 		var tfc FullCommit
@@ -103,23 +100,4 @@ func (c cacheProvider) LatestCommit() (fc FullCommit, err error) {
 		err = nil
 	}
 	return fc, err
-}
-
-// missingProvider doens't store anything, always a miss
-// Designed as a mock for testing
-type missingProvider struct{}
-
-func NewMissingProvider() Provider {
-	return missingProvider{}
-}
-
-func (missingProvider) StoreCommit(_ FullCommit) error { return nil }
-func (missingProvider) GetByHeight(_ int) (FullCommit, error) {
-	return FullCommit{}, certerr.ErrCommitNotFound()
-}
-func (missingProvider) GetByHash(_ []byte) (FullCommit, error) {
-	return FullCommit{}, certerr.ErrCommitNotFound()
-}
-func (missingProvider) LatestCommit() (FullCommit, error) {
-	return FullCommit{}, certerr.ErrCommitNotFound()
 }
