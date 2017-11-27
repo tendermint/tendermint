@@ -96,10 +96,10 @@ var RootCmd = &cobra.Command{
 	},
 }
 
-func Execute() {
+func Execute() error {
 	addGlobalFlags()
 	addCommands()
-	RootCmd.Execute()
+	return RootCmd.Execute()
 }
 
 func addGlobalFlags() {
@@ -294,7 +294,7 @@ func cmdBatch(cmd *cobra.Command, args []string) error {
 		}
 
 		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
+		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
 		if err != nil {
 			return err
 		}
@@ -316,7 +316,7 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		}
 
 		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output()
+		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
 		if err != nil {
 			return err
 		}
@@ -327,9 +327,12 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 
 // Have the application echo a message
 func cmdEcho(cmd *cobra.Command, args []string) error {
-	resEcho := client.EchoSync(args[0])
+	res, err := client.EchoSync(args[0])
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
-		Data: resEcho.Data,
+		Data: []byte(res.Message),
 	})
 	return nil
 }
@@ -340,21 +343,25 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	resInfo, err := client.InfoSync(types.RequestInfo{version})
+	res, err := client.InfoSync(types.RequestInfo{version})
 	if err != nil {
 		return err
 	}
 	printResponse(cmd, args, response{
-		Data: []byte(resInfo.Data),
+		Data: []byte(res.Data),
 	})
 	return nil
 }
 
 // Set an option on the application
 func cmdSetOption(cmd *cobra.Command, args []string) error {
-	resSetOption := client.SetOptionSync(args[0], args[1])
+	key, val := args[0], args[1]
+	res, err := client.SetOptionSync(types.RequestSetOption{key, val})
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
-		Log: resSetOption.Log,
+		Log: res.Log,
 	})
 	return nil
 }
@@ -365,7 +372,10 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res := client.DeliverTxSync(txBytes)
+	res, err := client.DeliverTxSync(txBytes)
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
@@ -380,7 +390,10 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	res := client.CheckTxSync(txBytes)
+	res, err := client.CheckTxSync(txBytes)
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
@@ -391,7 +404,10 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 
 // Get application Merkle root hash
 func cmdCommit(cmd *cobra.Command, args []string) error {
-	res := client.CommitSync()
+	res, err := client.CommitSync()
+	if err != nil {
+		return err
+	}
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,

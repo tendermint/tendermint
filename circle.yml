@@ -12,11 +12,11 @@ checkout:
     - rm -rf $REPO
     - mkdir -p $HOME/.go_workspace/src/github.com/$CIRCLE_PROJECT_USERNAME
     - mv $HOME/$CIRCLE_PROJECT_REPONAME $REPO
-    # - git submodule sync
-    # - git submodule update --init # use submodules
+    - go version
 
 test:
   override:
-    - "go version"
-    - "cd $REPO && make get_vendor_deps && make metalinter_test"
-    - "cd $REPO && make test_integrations"
+    - cd $REPO && make get_vendor_deps && make metalinter_test && make test_integrations
+  post:
+    - cd "$REPO" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
+    - cd "$REPO" && mv coverage.txt "${CIRCLE_ARTIFACTS}"

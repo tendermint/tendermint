@@ -93,7 +93,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 		Height: uint64(height),
 	}
 	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
-	dummy.EndBlock(height)
+	dummy.EndBlock(types.RequestEndBlock{header.Height})
 	dummy.Commit()
 
 	resInfo = dummy.Info(types.RequestInfo{})
@@ -182,7 +182,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 			t.Fatal(r)
 		}
 	}
-	resEndBlock := dummy.EndBlock(height)
+	resEndBlock := dummy.EndBlock(types.RequestEndBlock{header.Height})
 	dummy.Commit()
 
 	valsEqual(t, diff, resEndBlock.Diffs)
@@ -281,10 +281,12 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 }
 
 func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
-	ar := app.DeliverTxSync(tx)
+	ar, err := app.DeliverTxSync(tx)
+	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	ar = app.DeliverTxSync(tx)
+	ar, err = app.DeliverTxSync(tx)
+	require.NoError(t, err)
 	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine

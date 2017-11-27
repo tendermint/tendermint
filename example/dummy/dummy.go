@@ -1,14 +1,16 @@
 package dummy
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/iavl"
-	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 )
+
+var _ types.Application = (*DummyApplication)(nil)
 
 type DummyApplication struct {
 	types.BaseApplication
@@ -22,25 +24,25 @@ func NewDummyApplication() *DummyApplication {
 }
 
 func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-	return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
+	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
+func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	parts := strings.Split(string(tx), "=")
 	if len(parts) == 2 {
 		app.state.Set([]byte(parts[0]), []byte(parts[1]))
 	} else {
 		app.state.Set(tx, tx)
 	}
-	return types.OK
+	return types.ResponseDeliverTx{Code: types.CodeType_OK}
 }
 
-func (app *DummyApplication) CheckTx(tx []byte) types.Result {
-	return types.OK
+func (app *DummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+	return types.ResponseCheckTx{Code: types.CodeType_OK}
 }
 
-func (app *DummyApplication) Commit() types.Result {
+func (app *DummyApplication) Commit() types.ResponseCommit {
 	// Save a new version
 	var hash []byte
 	var err error
@@ -55,7 +57,7 @@ func (app *DummyApplication) Commit() types.Result {
 		}
 	}
 
-	return types.NewResultOK(hash, "")
+	return types.ResponseCommit{Code: types.CodeType_OK, Data: hash}
 }
 
 func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {

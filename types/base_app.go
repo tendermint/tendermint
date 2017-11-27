@@ -7,36 +7,38 @@ func NewBaseApplication() *BaseApplication {
 	return &BaseApplication{}
 }
 
-func (app *BaseApplication) Info(req RequestInfo) (resInfo ResponseInfo) {
-	return
+func (BaseApplication) Info(req RequestInfo) ResponseInfo {
+	return ResponseInfo{}
 }
 
-func (app *BaseApplication) SetOption(key string, value string) (log string) {
-	return ""
+func (BaseApplication) SetOption(req RequestSetOption) ResponseSetOption {
+	return ResponseSetOption{}
 }
 
-func (app *BaseApplication) DeliverTx(tx []byte) Result {
-	return NewResultOK(nil, "")
+func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
+	return ResponseDeliverTx{Code: CodeType_OK}
 }
 
-func (app *BaseApplication) CheckTx(tx []byte) Result {
-	return NewResultOK(nil, "")
+func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
+	return ResponseCheckTx{Code: CodeType_OK}
 }
 
-func (app *BaseApplication) Commit() Result {
-	return NewResultOK([]byte("nil"), "")
+func (BaseApplication) Commit() ResponseCommit {
+	return ResponseCommit{Code: CodeType_OK, Data: []byte("nil")}
 }
 
-func (app *BaseApplication) Query(req RequestQuery) (resQuery ResponseQuery) {
-	return
+func (BaseApplication) Query(req RequestQuery) ResponseQuery {
+	return ResponseQuery{Code: CodeType_OK}
 }
 
-func (app *BaseApplication) InitChain(req RequestInitChain) {
+func (BaseApplication) InitChain(req RequestInitChain) ResponseInitChain {
+	return ResponseInitChain{}
 }
 
-func (app *BaseApplication) BeginBlock(req RequestBeginBlock) {
+func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
+	return ResponseBeginBlock{}
 }
 
-func (app *BaseApplication) EndBlock(height uint64) (resEndBlock ResponseEndBlock) {
-	return
+func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
+	return ResponseEndBlock{}
 }

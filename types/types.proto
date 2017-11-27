@@ -7,42 +7,42 @@ package types;
 // Code types
 
 enum CodeType {
-	OK                    = 0;
+  OK                    = 0;
 
-	// General response codes, 0 ~ 99
-	InternalError         = 1;
-	EncodingError         = 2;
-	BadNonce              = 3;
-	Unauthorized          = 4;
-	InsufficientFunds     = 5;
-	UnknownRequest        = 6;
+  // General response codes, 0 ~ 99
+  InternalError         = 1;
+  EncodingError         = 2;
+  BadNonce              = 3;
+  Unauthorized          = 4;
+  InsufficientFunds     = 5;
+  UnknownRequest        = 6;
 
-	// Reserved for basecoin, 100 ~ 199
-	BaseDuplicateAddress  = 101;
-	BaseEncodingError     = 102;
-	BaseInsufficientFees  = 103;
-	BaseInsufficientFunds = 104;
-	BaseInsufficientGasPrice = 105;
-	BaseInvalidInput      = 106;
-	BaseInvalidOutput     = 107;
-	BaseInvalidPubKey     = 108;
-	BaseInvalidSequence   = 109;
-	BaseInvalidSignature  = 110;
-	BaseUnknownAddress    = 111;
-	BaseUnknownPubKey     = 112;
-	BaseUnknownPlugin     = 113;
+  // Reserved for basecoin, 100 ~ 199
+  BaseDuplicateAddress  = 101;
+  BaseEncodingError     = 102;
+  BaseInsufficientFees  = 103;
+  BaseInsufficientFunds = 104;
+  BaseInsufficientGasPrice = 105;
+  BaseInvalidInput      = 106;
+  BaseInvalidOutput     = 107;
+  BaseInvalidPubKey     = 108;
+  BaseInvalidSequence   = 109;
+  BaseInvalidSignature  = 110;
+  BaseUnknownAddress    = 111;
+  BaseUnknownPubKey     = 112;
+  BaseUnknownPlugin     = 113;
 
-	// Reserved for governance, 200 ~ 299
-	GovUnknownEntity      = 201;
-	GovUnknownGroup       = 202;
-	GovUnknownProposal    = 203;
-	GovDuplicateGroup     = 204;
-	GovDuplicateMember    = 205;
-	GovDuplicateProposal  = 206;
-	GovDuplicateVote      = 207;
-	GovInvalidMember      = 208;
-	GovInvalidVote        = 209;
-	GovInvalidVotingPower = 210;
+  // Reserved for governance, 200 ~ 299
+  GovUnknownEntity      = 201;
+  GovUnknownGroup       = 202;
+  GovUnknownProposal    = 203;
+  GovDuplicateGroup     = 204;
+  GovDuplicateMember    = 205;
+  GovDuplicateProposal  = 206;
+  GovDuplicateVote      = 207;
+  GovInvalidMember      = 208;
+  GovInvalidVote        = 209;
+  GovInvalidVotingPower = 210;
 
 }
 
@@ -50,66 +50,66 @@ enum CodeType {
 // Request types
 
 message Request {
-	oneof value{
-		RequestEcho echo = 1;
-		RequestFlush flush = 2;
-		RequestInfo info = 3;
-		RequestSetOption set_option = 4;
-		RequestDeliverTx deliver_tx = 5;
-		RequestCheckTx check_tx = 6;
-		RequestCommit commit = 7;
-		RequestQuery query = 8;
-		RequestInitChain init_chain = 9;
-		RequestBeginBlock begin_block = 10;
-		RequestEndBlock end_block = 11;
-	}
+  oneof value{
+    RequestEcho echo = 1;
+    RequestFlush flush = 2;
+    RequestInfo info = 3;
+    RequestSetOption set_option = 4;
+    RequestDeliverTx deliver_tx = 5;
+    RequestCheckTx check_tx = 6;
+    RequestCommit commit = 7;
+    RequestQuery query = 8;
+    RequestInitChain init_chain = 9;
+    RequestBeginBlock begin_block = 10;
+    RequestEndBlock end_block = 11;
+  }
 }
 
 message RequestEcho {
-	string message = 1;
+  string message = 1;
 }
 
 message RequestFlush {
 }
 
 message RequestInfo {
-    string version = 1;
+  string version = 1;
 }
 
 message RequestSetOption{
-	string key = 1;
-	string value = 2;
+  string key = 1;
+  string value = 2;
 }
 
 message RequestDeliverTx{
-	bytes tx = 1;
+  bytes tx = 1;
 }
 
 message RequestCheckTx{
-	bytes tx = 1;
+  bytes tx = 1;
 }
 
 message RequestQuery{
-	bytes data = 1;
-	string path = 2;
-	uint64 height = 3;
-	bool prove = 4;
+  bytes data = 1;
+  string path = 2;
+  uint64 height = 3;
+  bool prove = 4;
 }
 
 message RequestCommit{
 }
 
 message RequestInitChain{
-	repeated Validator validators = 1;
+  repeated Validator validators = 1;
 }
 
 message RequestBeginBlock{
-	bytes hash = 1;
-	Header header = 2;
+  bytes hash = 1;
+  Header header = 2;
 }
 
 message RequestEndBlock{
-	uint64 height = 1;
+  uint64 height = 1;
 }
 
 //----------------------------------------
@@ -117,70 +117,73 @@ message RequestEndBlock{
 
 
 message Response {
-	oneof value{
-		ResponseException exception = 1;
-		ResponseEcho echo = 2;
-		ResponseFlush flush = 3;
-		ResponseInfo info = 4;
-		ResponseSetOption set_option = 5;
-		ResponseDeliverTx deliver_tx = 6;
-		ResponseCheckTx check_tx = 7;
-		ResponseCommit commit = 8;
-		ResponseQuery query = 9;
-		ResponseInitChain init_chain = 10;
-		ResponseBeginBlock begin_block = 11;
-		ResponseEndBlock end_block = 12;
-	}
+  oneof value{
+    ResponseException exception = 1;
+    ResponseEcho echo = 2;
+    ResponseFlush flush = 3;
+    ResponseInfo info = 4;
+    ResponseSetOption set_option = 5;
+    ResponseDeliverTx deliver_tx = 6;
+    ResponseCheckTx check_tx = 7;
+    ResponseCommit commit = 8;
+    ResponseQuery query = 9;
+    ResponseInitChain init_chain = 10;
+    ResponseBeginBlock begin_block = 11;
+    ResponseEndBlock end_block = 12;
+  }
 }
 
 message ResponseException{
-	string error = 1;
+  string error = 1;
 }
 
 message ResponseEcho {
-	string message = 1;
+  string message = 1;
 }
 
 message ResponseFlush{
 }
 
 message ResponseInfo {
-	string data = 1;
-	string version = 2;
-	uint64 last_block_height = 3;
-	bytes last_block_app_hash = 4;
+  string data = 1;
+  string version = 2;
+  uint64 last_block_height = 3;
+  bytes last_block_app_hash = 4;
 }
 
 message ResponseSetOption{
-	string log = 1;
+  string log = 1;
 }
 
 message ResponseDeliverTx{
-	CodeType          code        = 1;
-	bytes             data        = 2;
-	string            log         = 3;
+  CodeType          code        = 1;
+  bytes             data        = 2;
+  string            log         = 3;
+  repeated KVPair tags = 4;
 }
 
 message ResponseCheckTx{
-	CodeType          code        = 1;
-	bytes             data        = 2;
-	string            log         = 3;
+  CodeType          code        = 1;
+  bytes             data        = 2;
+  string            log         = 3;
+  uint64            gas         = 4;
+  uint64            fee         = 5;
 }
 
 message ResponseQuery{
-	CodeType          code        = 1;
-	int64             index       = 2;
-	bytes             key         = 3;
-	bytes             value       = 4;
-	bytes             proof       = 5;
-	uint64            height      = 6;
-	string            log         = 7;
+  CodeType          code        = 1;
+  int64             index       = 2;
+  bytes             key         = 3;
+  bytes             value       = 4;
+  bytes             proof       = 5;
+  uint64            height      = 6;
+  string            log         = 7;
 }
 
 message ResponseCommit{
-	CodeType          code        = 1;
-	bytes             data        = 2;
-	string            log         = 3;
+  CodeType          code        = 1;
+  bytes             data        = 2;
+  string            log         = 3;
 }
 
 
@@ -191,52 +194,66 @@ message ResponseBeginBlock{
 }
 
 message ResponseEndBlock{
-	repeated Validator diffs = 1;
+  repeated Validator diffs = 1;
 }
 
 //----------------------------------------
 // Blockchain Types
 
 message Header {
-	string chain_id = 1;
-	uint64 height = 2;
-	uint64 time = 3;
-	uint64 num_txs = 4;
-	BlockID last_block_id = 5;
-	bytes last_commit_hash = 6;
-	bytes data_hash = 7;
-	bytes validators_hash = 8;
-	bytes app_hash = 9;
+  string chain_id = 1;
+  uint64 height = 2;
+  uint64 time = 3;
+  uint64 num_txs = 4;
+  BlockID last_block_id = 5;
+  bytes last_commit_hash = 6;
+  bytes data_hash = 7;
+  bytes validators_hash = 8;
+  bytes app_hash = 9;
 }
 
 message BlockID {
-	bytes hash = 1;
-	PartSetHeader parts = 2;
+  bytes hash = 1;
+  PartSetHeader parts = 2;
 }
 
 message PartSetHeader {
-	uint64 total = 1;
-	bytes hash = 2;
+  uint64 total = 1;
+  bytes hash = 2;
 }
 
 message Validator {
-	bytes pubKey = 1;
-	uint64 power = 2;
+  bytes pubKey = 1;
+  uint64 power = 2;
+}
+
+//----------------------------------------
+// Abstract types
+
+message KVPair {
+  string key = 1;
+  enum Type {
+    STRING = 0;
+    INT = 1;
+  }
+  Type value_type = 2;
+  string value_string = 3;
+  int64 value_int = 4;
 }
 
 //----------------------------------------
 // Service Definition
 
 service ABCIApplication {
-	rpc Echo(RequestEcho) returns (ResponseEcho) ;
-	rpc Flush(RequestFlush) returns (ResponseFlush);
-	rpc Info(RequestInfo) returns (ResponseInfo);
-	rpc SetOption(RequestSetOption) returns (ResponseSetOption);
-	rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
-	rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
-	rpc Query(RequestQuery) returns (ResponseQuery);
-	rpc Commit(RequestCommit) returns (ResponseCommit);
-	rpc InitChain(RequestInitChain) returns (ResponseInitChain);
-	rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
-	rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
+  rpc Echo(RequestEcho) returns (ResponseEcho) ;
+  rpc Flush(RequestFlush) returns (ResponseFlush);
+  rpc Info(RequestInfo) returns (ResponseInfo);
+  rpc SetOption(RequestSetOption) returns (ResponseSetOption);
+  rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
+  rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
+  rpc Query(RequestQuery) returns (ResponseQuery);
+  rpc Commit(RequestCommit) returns (ResponseCommit);
+  rpc InitChain(RequestInitChain) returns (ResponseInitChain);
+  rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
+  rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
 }

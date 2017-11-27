@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 )
 
 func ToRequestEcho(message string) *Request {
@@ -25,21 +25,21 @@ func ToRequestInfo(req RequestInfo) *Request {
 	}
 }
 
-func ToRequestSetOption(key string, value string) *Request {
+func ToRequestSetOption(req RequestSetOption) *Request {
 	return &Request{
-		Value: &Request_SetOption{&RequestSetOption{key, value}},
+		Value: &Request_SetOption{&req},
 	}
 }
 
-func ToRequestDeliverTx(txBytes []byte) *Request {
+func ToRequestDeliverTx(tx []byte) *Request {
 	return &Request{
-		Value: &Request_DeliverTx{&RequestDeliverTx{txBytes}},
+		Value: &Request_DeliverTx{&RequestDeliverTx{tx}},
 	}
 }
 
-func ToRequestCheckTx(txBytes []byte) *Request {
+func ToRequestCheckTx(tx []byte) *Request {
 	return &Request{
-		Value: &Request_CheckTx{&RequestCheckTx{txBytes}},
+		Value: &Request_CheckTx{&RequestCheckTx{tx}},
 	}
 }
 
@@ -67,9 +67,9 @@ func ToRequestBeginBlock(req RequestBeginBlock) *Request {
 	}
 }
 
-func ToRequestEndBlock(height uint64) *Request {
+func ToRequestEndBlock(req RequestEndBlock) *Request {
 	return &Request{
-		Value: &Request_EndBlock{&RequestEndBlock{height}},
+		Value: &Request_EndBlock{&req},
 	}
 }
 
@@ -93,57 +93,57 @@ func ToResponseFlush() *Response {
 	}
 }
 
-func ToResponseInfo(resInfo ResponseInfo) *Response {
+func ToResponseInfo(res ResponseInfo) *Response {
 	return &Response{
-		Value: &Response_Info{&resInfo},
+		Value: &Response_Info{&res},
 	}
 }
 
-func ToResponseSetOption(log string) *Response {
+func ToResponseSetOption(res ResponseSetOption) *Response {
 	return &Response{
-		Value: &Response_SetOption{&ResponseSetOption{log}},
+		Value: &Response_SetOption{&res},
 	}
 }
 
-func ToResponseDeliverTx(code CodeType, data []byte, log string) *Response {
+func ToResponseDeliverTx(res ResponseDeliverTx) *Response {
 	return &Response{
-		Value: &Response_DeliverTx{&ResponseDeliverTx{code, data, log}},
+		Value: &Response_DeliverTx{&res},
 	}
 }
 
-func ToResponseCheckTx(code CodeType, data []byte, log string) *Response {
+func ToResponseCheckTx(res ResponseCheckTx) *Response {
 	return &Response{
-		Value: &Response_CheckTx{&ResponseCheckTx{code, data, log}},
+		Value: &Response_CheckTx{&res},
 	}
 }
 
-func ToResponseCommit(code CodeType, data []byte, log string) *Response {
+func ToResponseCommit(res ResponseCommit) *Response {
 	return &Response{
-		Value: &Response_Commit{&ResponseCommit{code, data, log}},
+		Value: &Response_Commit{&res},
 	}
 }
 
-func ToResponseQuery(resQuery ResponseQuery) *Response {
+func ToResponseQuery(res ResponseQuery) *Response {
 	return &Response{
-		Value: &Response_Query{&resQuery},
+		Value: &Response_Query{&res},
 	}
 }
 
-func ToResponseInitChain() *Response {
+func ToResponseInitChain(res ResponseInitChain) *Response {
 	return &Response{
-		Value: &Response_InitChain{&ResponseInitChain{}},
+		Value: &Response_InitChain{&res},
 	}
 }
 
-func ToResponseBeginBlock() *Response {
+func ToResponseBeginBlock(res ResponseBeginBlock) *Response {
 	return &Response{
-		Value: &Response_BeginBlock{&ResponseBeginBlock{}},
+		Value: &Response_BeginBlock{&res},
 	}
 }
 
-func ToResponseEndBlock(resEndBlock ResponseEndBlock) *Response {
+func ToResponseEndBlock(res ResponseEndBlock) *Response {
 	return &Response{
-		Value: &Response_EndBlock{&resEndBlock},
+		Value: &Response_EndBlock{&res},
 	}
 }
 
