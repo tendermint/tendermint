@@ -26,6 +26,8 @@ dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 test:
+	@echo "--> Running linter"
+	@make metalinter_test
 	@echo "--> Running go test"
 	@go test $(PACKAGES)
 
@@ -77,15 +79,14 @@ tools:
 
 ensure_tools:
 	go get $(GOTOOLS)
+	@gometalinter --install
 
 ### Formatting, linting, and vetting
 
-metalinter: ensure_tools
-	@gometalinter --install
+metalinter: 
 	@gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test: ensure_tools
-	@gometalinter --install
+metalinter_test: 
 	@gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gas \
