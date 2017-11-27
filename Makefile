@@ -35,7 +35,6 @@ dist:
 	@ bash scripts/dist.sh
 	@ bash scripts/publish.sh
 
-# test.sh requires that we run the installed cmds, must not be out of date
 test: 
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
 	@ echo "==> Running go test"
