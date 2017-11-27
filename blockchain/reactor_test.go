@@ -28,7 +28,8 @@ func newBlockchainReactor(maxBlockHeight int) *BlockchainReactor {
 
 	// Make the blockchainReactor itself
 	fastSync := true
-	bcReactor := NewBlockchainReactor(state.Copy(), nil, blockStore, fastSync, logger.With("module", "blockchain"))
+	bcReactor := NewBlockchainReactor(state.Copy(), nil, blockStore, fastSync,
+		logger.With("module", "blockchain"))
 
 	// Next: we need to set a switch in order for peers to be added in
 	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig(), nil)
@@ -78,13 +79,15 @@ func TestNoBlockMessageResponse(t *testing.T) {
 			if blockMsg, ok := msg.(*bcBlockResponseMessage); !ok {
 				t.Fatalf("Expected to receive a block response for height %d", tt.height)
 			} else if blockMsg.Block.Height != tt.height {
-				t.Fatalf("Expected response to be for height %d, got %d", tt.height, blockMsg.Block.Height)
+				t.Fatalf("Expected response to be for height %d, got %d", tt.height,
+					blockMsg.Block.Height)
 			}
 		} else {
 			if noBlockMsg, ok := msg.(*bcNoBlockResponseMessage); !ok {
 				t.Fatalf("Expected to receive a no block response for height %d", tt.height)
 			} else if noBlockMsg.Height != tt.height {
-				t.Fatalf("Expected response to be for height %d, got %d", tt.height, noBlockMsg.Height)
+				t.Fatalf("Expected response to be for height %d, got %d", tt.height,
+					noBlockMsg.Height)
 			}
 		}
 	}
@@ -106,7 +109,8 @@ func makeBlock(blockNumber int, state *sm.State) *types.Block {
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
 	block, _ := types.MakeBlock(blockNumber, "test_chain", makeTxs(blockNumber),
-		new(types.Commit), prevBlockID, valHash, state.AppHash, state.Params.BlockGossipParams.BlockPartSizeBytes)
+		new(types.Commit), prevBlockID, valHash, state.AppHash,
+		state.Params.BlockGossipParams.BlockPartSizeBytes)
 	return block
 }
 
@@ -130,7 +134,8 @@ func newbcrTestPeer(key string) *bcrTestPeer {
 func (tp *bcrTestPeer) lastValue() interface{} { return <-tp.ch }
 
 func (tp *bcrTestPeer) TrySend(chID byte, value interface{}) bool {
-	if _, ok := value.(struct{ BlockchainMessage }).BlockchainMessage.(*bcStatusResponseMessage); ok {
+	if _, ok := value.(struct{ BlockchainMessage }).
+		BlockchainMessage.(*bcStatusResponseMessage); ok {
 		// Discard status response messages since they skew our results
 		// We only want to deal with:
 		// + bcBlockResponseMessage

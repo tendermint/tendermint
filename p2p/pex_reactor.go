@@ -106,7 +106,8 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
 		if err != nil {
 			// peer gave us a bad ListenAddr. TODO: punish
-			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
+			r.Logger.Error("Error in AddPeer: invalid peer address", "addr",
+				p.NodeInfo().ListenAddr, "err", err)
 			return
 		}
 		r.book.AddAddress(addr, addr)
@@ -237,7 +238,8 @@ func (r *PEXReactor) ensurePeersRoutine() {
 func (r *PEXReactor) ensurePeers() {
 	numOutPeers, _, numDialing := r.Switch.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
-	r.Logger.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
+	r.Logger.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing,
+		"numToDial", numToDial)
 	if numToDial <= 0 {
 		return
 	}
@@ -325,7 +327,8 @@ func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
 	msgType = bz[0]
 	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
+	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n,
+		&err).(struct{ PexMessage }).PexMessage
 	return
 }
 

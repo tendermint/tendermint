@@ -48,7 +48,8 @@ func startConsensusNet(t *testing.T, css []*ConsensusState,
 		reactors[i].SetEventBus(eventBuses[i])
 
 		eventChans[i] = make(chan interface{}, 1)
-		err = eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		err = eventBuses[i].Subscribe(context.Background(), testSubscriber,
+			types.EventQueryNewBlock, eventChans[i])
 		require.NoError(t, err)
 	}
 	// make connected switches and start all reactors
@@ -103,7 +104,8 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 	var err error
 	for i := 0; i < N; i++ {
 		heartbeatChans[i] = make(chan interface{}, 1)
-		err = eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryProposalHeartbeat, heartbeatChans[i])
+		err = eventBuses[i].Subscribe(context.Background(), testSubscriber,
+			types.EventQueryProposalHeartbeat, heartbeatChans[i])
 		require.NoError(t, err)
 	}
 	// wait till everyone sends a proposal heartbeat
@@ -127,7 +129,8 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 
 func TestVotingPowerChange(t *testing.T) {
 	nVals := 4
-	css := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentDummy)
+	css := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true),
+		newPersistentDummy)
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(reactors, eventBuses)
 
@@ -144,7 +147,7 @@ func TestVotingPowerChange(t *testing.T) {
 	}, css)
 
 	//---------------------------------------------------------------------------
-	t.Log("---------------------------- Testing changing the voting power of one validator a few times")
+	t.Log("----------------------- Testing changing the voting power of one validator a few times")
 
 	val1PubKey := css[0].privValidator.GetPubKey()
 	updateValidatorTx := dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 25)
@@ -156,7 +159,8 @@ func TestVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf("expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 2)
@@ -168,7 +172,8 @@ func TestVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf("expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	updateValidatorTx = dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 100)
@@ -180,14 +185,16 @@ func TestVotingPowerChange(t *testing.T) {
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css)
 
 	if css[0].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
+		t.Fatalf("expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 }
 
 func TestValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentDummy)
+	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test",
+		newMockTickerFunc(true), newPersistentDummy)
 
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, nPeers)
 	defer stopConsensusNet(reactors, eventBuses)
@@ -243,7 +250,8 @@ func TestValidatorSetChanges(t *testing.T) {
 	waitForBlockWithUpdatedValsAndValidateIt(t, nPeers, activeVals, eventChans, css)
 
 	if css[nVals].GetRoundState().LastValidators.TotalVotingPower() == previousTotalVotingPower {
-		t.Errorf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[nVals].GetRoundState().LastValidators.TotalVotingPower())
+		t.Errorf("expected voting power to change (before: %d, after: %d)",
+			previousTotalVotingPower, css[nVals].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
 	//---------------------------------------------------------------------------
@@ -255,7 +263,8 @@ func TestValidatorSetChanges(t *testing.T) {
 	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
 	newValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), uint64(testMinPower))
 
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2,
+		newValidatorTx3)
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 	activeVals[string(newValidatorPubKey2.Address())] = struct{}{}
@@ -268,7 +277,8 @@ func TestValidatorSetChanges(t *testing.T) {
 	removeValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), 0)
 	removeValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), 0)
 
-	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
+	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2,
+		removeValidatorTx3)
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
 	delete(activeVals, string(newValidatorPubKey2.Address()))
@@ -279,7 +289,8 @@ func TestValidatorSetChanges(t *testing.T) {
 // Check we can make blocks with skip_timeout_commit=false
 func TestReactorWithTimeoutCommit(t *testing.T) {
 	N := 4
-	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test", newMockTickerFunc(false), newCounter)
+	css := randConsensusNet(N, "consensus_reactor_with_timeout_commit_test",
+		newMockTickerFunc(false), newCounter)
 	// override default SkipTimeoutCommit == true for tests
 	for i := 0; i < N; i++ {
 		css[i].config.SkipTimeoutCommit = false
@@ -295,7 +306,9 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 	}, css)
 }
 
-func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
+func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{},
+	eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
+
 	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
 		defer wg.Done()
 
@@ -317,7 +330,9 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 	}, css)
 }
 
-func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState) {
+func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals map[string]struct{},
+	eventChans []chan interface{}, css []*ConsensusState) {
+
 	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
 		defer wg.Done()
 
@@ -333,7 +348,8 @@ func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals m
 				t.Logf("Block with new validators height=%v validator=%v", newBlock.Height, j)
 				break LOOP
 			} else {
-				t.Logf("Block with no new validators height=%v validator=%v. Skipping...", newBlock.Height, j)
+				t.Logf("Block with no new validators height=%v validator=%v. Skipping...",
+					newBlock.Height, j)
 			}
 		}
 

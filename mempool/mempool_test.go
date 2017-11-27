@@ -103,7 +103,8 @@ func TestSerialReap(t *testing.T) {
 
 	mempool := newMempoolWithApp(cc)
 	appConnCon, _ := cc.NewABCIClient()
-	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
+	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection",
+		"consensus"))
 	if _, err := appConnCon.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}

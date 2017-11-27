@@ -16,6 +16,7 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -637,7 +638,8 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 		if !added {
 			added := a.addToNewBucket(oldest, freedBucket)
 			if !added {
-				a.Logger.Error(cmn.Fmt("Could not migrate oldest %v to freedBucket %v", oldest, freedBucket))
+				a.Logger.Error(cmn.Fmt("Could not migrate oldest %v to freedBucket %v", oldest,
+					freedBucket))
 			}
 		}
 		// Finally, add to bucket again.
@@ -649,7 +651,7 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 }
 
 // doublesha256(  key + sourcegroup +
-//                int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
+//             int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
 func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)

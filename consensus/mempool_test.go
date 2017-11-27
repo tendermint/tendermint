@@ -6,8 +6,10 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/types"
+
 	cmn "github.com/tendermint/tmlibs/common"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -196,9 +198,10 @@ func runTx(tx []byte, countPtr *int) abci.Result {
 	copy(tx8[len(tx8)-len(tx):], tx)
 	txValue := binary.BigEndian.Uint64(tx8)
 	if txValue != uint64(count) {
-		return abci.ErrBadNonce.AppendLog(cmn.Fmt("Invalid nonce. Expected %v, got %v", count, txValue))
+		return abci.ErrBadNonce.AppendLog(cmn.Fmt("Invalid nonce. Expected %v, got %v", count,
+			txValue))
 	}
-	*countPtr += 1
+	*countPtr++
 	return abci.OK
 }
 

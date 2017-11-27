@@ -8,11 +8,15 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	_ "net/http/pprof"
 	"strings"
 
 	abci "github.com/tendermint/abci/types"
+
 	crypto "github.com/tendermint/go-crypto"
+
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -34,8 +38,6 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
-
-	_ "net/http/pprof"
 )
 
 //------------------------------------------------------------------------------
@@ -271,7 +273,8 @@ func NewNode(config *cfg.Config,
 			return errors.New(resQuery.Code.String())
 		})
 		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
+			resQuery, err := proxyApp.Query().
+				QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
 			if err != nil {
 				return err
 			}
@@ -338,7 +341,8 @@ func (n *Node) OnStart() error {
 
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
+	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP,
+		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
 	// Start the switch
