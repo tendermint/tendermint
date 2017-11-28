@@ -23,15 +23,24 @@ func main() {
 	testCounter()
 }
 
-func ensureABCIIsUp(subCommand string, n int) error {
+const (
+	maxABCIConnectTries = 10
+)
+
+func ensureABCIIsUp(typ string, n int) error {
 	var err error
+	cmdString := "abci-cli echo hello"
+	if typ == "grpc" {
+		cmdString = "abci-cli --abci grpc echo hello"
+	}
+
 	for i := 0; i < n; i++ {
-		cmd := exec.Command("bash", "-c", "abci-cli", subCommand)
+		cmd := exec.Command("bash", "-c", cmdString)
 		_, err = cmd.CombinedOutput()
 		if err == nil {
 			break
 		}
-		<-time.After(500 * time.Second)
+		<-time.After(500 * time.Millisecond)
 	}
 	return err
 }
@@ -51,7 +60,7 @@ func testCounter() {
 	defer cmd.Wait()
 	defer cmd.Process.Kill()
 
-	if err := ensureABCIIsUp("echo", 5); err != nil {
+	if err := ensureABCIIsUp(abciType, maxABCIConnectTries); err != nil {
 		log.Fatalf("echo failed: %v", err)
 	}
 

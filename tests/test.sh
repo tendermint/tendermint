@@ -1,4 +1,5 @@
 #! /bin/bash
+set -e
 
 # test the counter using a go test script
 bash tests/test_app/test.sh
