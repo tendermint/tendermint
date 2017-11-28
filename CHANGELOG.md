@@ -27,6 +27,11 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.12.1 (November 27, 2017)
+
+BUG FIXES:
+- upgrade tmlibs dependency to enable Windows builds for Tendermint
+
 ## 0.12.0 (October 27, 2017)
 
 BREAKING CHANGES:

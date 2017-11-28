@@ -1,5 +1,5 @@
-hash: 0f9ba99fd411afaaf90993037b0067c5f9f873554f407a6ae9afa0e2548343c5
-updated: 2017-10-27T22:34:38.187149434-04:00
+hash: dce4a972f0e46b3c5e2b2b12913cde282eaaa7f5d7146def47fa509ceccbfe95
+updated: 2017-11-28T04:03:55.53240986Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
@@ -10,7 +10,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: e2b298466b32c7cd5579a9b9b07e968fc9d9452c
+  version: e3b2152e0063c5f05efea89ecbe297852af2a92d
   subpackages:
   - log
   - log/level
@@ -24,13 +24,13 @@ imports:
 - name: github.com/go-playground/universal-translator
   version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/go-stack/stack
-  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
+  version: 259ab82a6cad3992b4e21ff5cac294ccb06474bc
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
   - proto
 - name: github.com/golang/protobuf
-  version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
+  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
   - proto
   - ptypes
@@ -59,7 +59,7 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/magiconair/properties
-  version: 8d7837e64d3c1ee4e54a880c5a920ab4316fc90a
+  version: 49d762b9817ba1c2e9d0c69183c2b4a8b8f1d934
 - name: github.com/mitchellh/mapstructure
   version: 06020f85339e21b2478f756a78e295255ffa4d6a
 - name: github.com/pelletier/go-toml
@@ -69,7 +69,7 @@ imports:
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/spf13/afero
-  version: 5660eeed305fe5f69c8fc6cf899132a459a97064
+  version: 8d919cbe7e2627e417f3e45c3c0e489a5b7e2536
   subpackages:
   - mem
 - name: github.com/spf13/cast
@@ -79,11 +79,11 @@ imports:
 - name: github.com/spf13/jwalterweatherman
   version: 12bd96e66386c1960ab0f74ced1362f66f552f7b
 - name: github.com/spf13/pflag
-  version: 97afa5e7ca8a08a383cb259e06636b5e2cc7897f
+  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/spf13/viper
   version: 25b30aa063fc18e48662b86996252eabdcf2f0c7
 - name: github.com/syndtr/goleveldb
-  version: b89cc31ef7977104127d34c1bd31ebd1a9db2199
+  version: adf24ef3f94bd13ec4163060b21a5678f22b429b
   subpackages:
   - leveldb
   - leveldb/cache
@@ -98,7 +98,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: dc33aad9b4e514a2322725ef68f27f72d955c537
+  version: 76ef8a0697c6179220a74c479b36c27a5b53008a
   subpackages:
   - client
   - example/counter
@@ -122,7 +122,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: d9525c0fb671204450b160807480e1263053fb20
+  version: b854baa1fce7101c90b1d301b3359bb412f981c0
   subpackages:
   - autofile
   - cli
@@ -136,7 +136,7 @@ imports:
   - merkle
   - test
 - name: golang.org/x/crypto
-  version: 2509b142fb2b797aa7587dad548f113b2c0f20ce
+  version: 9f005a07e0d31d45e6656d241bb5c0f2efd4bc94
   subpackages:
   - curve25519
   - nacl/box
@@ -147,7 +147,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: c73622c77280266305273cb545f54516ced95b93
+  version: 9dfe39835686865bff950a07b394c12a98ddc811
   subpackages:
   - context
   - http2
@@ -161,14 +161,14 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 6eab0e8f74e86c598ec3b6fad4888e0c11482d48
+  version: 88f656faf3f37f690df1a32515b479415e1a6769
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: f676e0f3ac6395ff1a529ae59a6670878a8371a6
+  version: 891aceb7c239e72692819142dfca057bdcbfcb96
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
@@ -191,9 +191,9 @@ imports:
   - tap
   - transport
 - name: gopkg.in/go-playground/validator.v9
-  version: 1304298bf10d085adec514b076772a79c9cadb6b
+  version: 61caf9d3038e1af346dbf5c2e16f6678e1548364
 - name: gopkg.in/yaml.v2
-  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
+  version: 287cf08546ab5e7e37d55a84f7ed3fd1db036de5
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
