@@ -110,6 +110,26 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
 
+// CloseWAL closes and discards the underlying WAL file.
+// Any further writes will not be relayed to disk.
+func (mem *Mempool) CloseWAL() bool {
+	if mem == nil {
+		return false
+	}
+
+	mem.proxyMtx.Lock()
+	defer mem.proxyMtx.Unlock()
+
+	if mem.wal == nil {
+		return false
+	}
+	if err := mem.wal.Close(); err != nil && mem.logger != nil {
+		mem.logger.Error("Mempool.CloseWAL", "err", err)
+	}
+	mem.wal = nil
+	return true
+}
+
 func (mem *Mempool) initWAL() {
 	walDir := mem.config.WalDir()
 	if walDir != "" {
