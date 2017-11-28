@@ -8,6 +8,11 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+const (
+	dialRetryIntervalSeconds = 3
+	echoRetryIntervalSeconds = 1
+)
+
 // Client defines an interface for an ABCI client.
 // All `Async` methods return a `ReqRes` object.
 // All `Sync` methods return the appropriate protobuf ResponseXxx struct and an error.
