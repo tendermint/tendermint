@@ -2,15 +2,18 @@
 
 ## Context
 
-The Tendermint project developers would like to improve Tendermint security and reliability by keeping track of the quality that peers have demonstrated. This way, undesirable outcomes from peers will not immediately result in them being dropped from the network (potentially causing drastic changes). Instead, peers behavior can be monitored with appropriate metrics and be removed from the network once Tendermint is certain the peer is a threat. For example, when the PEXReactor makes a request for peers network addresses from an already known peer, and the returned network addresses are unreachable, this undesirable behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer for removal. The originally proposed approach and design document for the trust metric can be found in the [ADR 006](adr-006-trust-metric.md) document.
+The Tendermint project developers would like to improve Tendermint security and reliability by keeping track of the quality that peers have demonstrated. This way, undesirable outcomes from peers will not immediately result in them being dropped from the network (potentially causing drastic changes). Instead, a peer's behavior can be monitored with appropriate metrics and can be removed from the network once Tendermint is certain the peer is a threat. For example, when the PEXReactor makes a request for peers network addresses from an already known peer, and the returned network addresses are unreachable, this undesirable behavior should be tracked. Returning a few bad network addresses probably shouldn’t cause a peer to be dropped, while excessive amounts of this behavior does qualify the peer for removal. The originally proposed approach and design document for the trust metric can be found in the [ADR 006](adr-006-trust-metric.md) document.
 
 The trust metric implementation allows a developer to obtain a peer's trust metric from a trust metric store, and track good and bad events relevant to a peer's behavior, and at any time, the peer's metric can be queried for a current trust value. The current trust value is calculated with a formula that utilizes current behavior, previous behavior, and change between the two. Current behavior is calculated as the percentage of good behavior within a time interval. The time interval is short; probably set between 30 seconds and 5 minutes. On the other hand, the historic data can estimate a peer's behavior over days worth of tracking. At the end of a time interval, the current behavior becomes part of the historic data, and a new time interval begins with the good and bad counters reset to zero.
 
-If a peer is inactive since the beginning of a time interval, the behavior for that time interval is considered to be untainted. Put another way, the trust value for a peer degrades from a perfect score as bad events are tracked.
+These are some important things to keep in mind regarding how the trust metrics handle time intervals and scoring:
+- Each new time interval begins with a perfect score
+- Bad events quickly bring the score down and good events cause the score to slowly rise
+- When the time interval is over, the percentage of good events becomes historic data.
 
 Some useful information about the inner workings of the trust metric:
 - When a trust metric is first instantiated, a timer (ticker) periodically fires in order to handle transitions between trust metric time intervals
-- If a peer become disconnected from a node, the timer should be paused, since the node is no longer having direct experiences with that peer
+- If a peer is disconnected from a node, the timer should be paused, since the node is no longer connected to that peer
 - The ability to pause the metric is supported with the store **PeerDisconnected** method and the metric **Pause** method
 - After a pause, if a good or bad event method is called on a metric, it automatically becomes unpaused and begins a new time interval.
 
