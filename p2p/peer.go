@@ -9,7 +9,9 @@ import (
 	"github.com/pkg/errors"
 
 	crypto "github.com/tendermint/go-crypto"
+
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -79,14 +81,16 @@ func DefaultPeerConfig() *PeerConfig {
 }
 
 func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519,
+	config *PeerConfig, logger log.Logger) (*peer, error) {
 
 	conn, err := dial(addr, config)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error creating peer")
 	}
 
-	peer, err := newPeerFromConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
+	peer, err := newPeerFromConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError,
+		ourNodePrivKey, config, logger)
 	if err != nil {
 		conn.Close()
 		return nil, err
@@ -95,13 +99,16 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 }
 
 func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519,
+	config *PeerConfig, logger log.Logger) (*peer, error) {
 
-	return newPeerFromConnAndConfig(conn, false, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
+	return newPeerFromConnAndConfig(conn, false, reactorsByCh, chDescs, onPeerError,
+		ourNodePrivKey, config, logger)
 }
 
-func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
+func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor,
+	chDescs []*ChannelDescriptor, onPeerError func(Peer, interface{}),
+	ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig, logger log.Logger) (*peer, error) {
 
 	conn := rawConn
 
@@ -132,16 +139,11 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 		Data:     cmn.NewCMap(),
 	}
 
-	p.mconn = createMConnection(conn, p, reactorsByCh, chDescs, onPeerError, config.MConfig)
+	p.mconn = createMConnection(conn, p, reactorsByCh, chDescs, onPeerError, config.MConfig, logger)
 
-	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
+	p.BaseService = *cmn.NewBaseService(logger, "Peer", p)
 
 	return p, nil
-}
-
-func (p *peer) SetLogger(l log.Logger) {
-	p.Logger = l
-	p.mconn.SetLogger(l)
 }
 
 // CloseConn should be used when the peer was created, but never started.
@@ -338,8 +340,9 @@ func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
 	return conn, nil
 }
 
-func createMConnection(conn net.Conn, p *peer, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), config *MConnConfig) *MConnection {
+func createMConnection(conn net.Conn, p *peer, reactorsByCh map[byte]Reactor,
+	chDescs []*ChannelDescriptor, onPeerError func(Peer, interface{}), config *MConnConfig,
+	logger log.Logger) *MConnection {
 
 	onReceive := func(chID byte, msgBytes []byte) {
 		reactor := reactorsByCh[chID]
@@ -353,5 +356,5 @@ func createMConnection(conn net.Conn, p *peer, reactorsByCh map[byte]Reactor, ch
 		onPeerError(p, r)
 	}
 
-	return NewMConnectionWithConfig(conn, chDescs, onReceive, onError, config)
+	return NewMConnectionWithConfig(conn, chDescs, onReceive, onError, config, logger)
 }

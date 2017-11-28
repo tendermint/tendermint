@@ -14,6 +14,7 @@ import (
 	tmencoding "github.com/tendermint/go-wire/nowriter/tmencoding"
 	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var legacy = tmencoding.Legacy
@@ -117,17 +118,16 @@ func DefaultMConnConfig() *MConnConfig {
 }
 
 // NewMConnection wraps net.Conn and creates multiplex connection
-func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
-	return NewMConnectionWithConfig(
-		conn,
-		chDescs,
-		onReceive,
-		onError,
-		DefaultMConnConfig())
+func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc,
+	onError errorCbFunc, logger log.Logger) *MConnection {
+
+	return NewMConnectionWithConfig(conn, chDescs, onReceive, onError, DefaultMConnConfig(), logger)
 }
 
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
-func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
+func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc,
+	onError errorCbFunc, config *MConnConfig, logger log.Logger) *MConnection {
+
 	mconn := &MConnection{
 		conn:        conn,
 		bufReader:   bufio.NewReaderSize(conn, minReadBufferSize),
@@ -157,7 +157,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	mconn.channels = channels
 	mconn.channelsIdx = channelsIdx
 
-	mconn.BaseService = *cmn.NewBaseService(nil, "MConnection", mconn)
+	mconn.BaseService = *cmn.NewBaseService(logger, "MConnection", mconn)
 
 	return mconn
 }

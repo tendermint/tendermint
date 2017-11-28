@@ -138,7 +138,7 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	}
 
 	// Create peerState for peer
-	peerState := NewPeerState(peer).SetLogger(conR.Logger)
+	peerState := NewPeerState(peer, conR.Logger)
 	peer.Set(types.PeerStateKey, peerState)
 
 	// Begin routines for this peer.
@@ -340,7 +340,8 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 	stepsCh := make(chan interface{})
 	err := conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, stepsCh)
 	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryNewRoundStep)
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber,
+			types.EventQueryNewRoundStep)
 	}
 
 	// votes
@@ -354,7 +355,8 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 	heartbeatsCh := make(chan interface{})
 	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryProposalHeartbeat, heartbeatsCh)
 	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryProposalHeartbeat)
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber,
+			types.EventQueryProposalHeartbeat)
 	}
 
 	go func() {
@@ -564,7 +566,8 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstype
 			return
 		} else if !blockMeta.BlockID.PartsHeader.Equals(prs.ProposalBlockPartsHeader) {
 			logger.Info("Peer ProposalBlockPartsHeader mismatch, sleeping",
-				"blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
+				"blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader",
+				prs.ProposalBlockPartsHeader)
 			time.Sleep(conR.conS.config.PeerGossipSleep())
 			return
 		}
@@ -572,7 +575,8 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstype
 		part := conR.conS.blockStore.LoadBlockPart(prs.Height, index)
 		if part == nil {
 			logger.Error("Could not load part", "index", index,
-				"blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader", prs.ProposalBlockPartsHeader)
+				"blockPartsHeader", blockMeta.BlockID.PartsHeader, "peerBlockPartsHeader",
+				prs.ProposalBlockPartsHeader)
 			time.Sleep(conR.conS.config.PeerGossipSleep())
 			return
 		}
@@ -655,9 +659,10 @@ OUTER_LOOP:
 		if sleeping == 0 {
 			// We sent nothing. Sleep...
 			sleeping = 1
-			logger.Debug("No votes to send, sleeping", "rs.Height", rs.Height, "prs.Height", prs.Height,
-				"localPV", rs.Votes.Prevotes(rs.Round).BitArray(), "peerPV", prs.Prevotes,
-				"localPC", rs.Votes.Precommits(rs.Round).BitArray(), "peerPC", prs.Precommits)
+			logger.Debug("No votes to send, sleeping", "rs.Height", rs.Height, "prs.Height",
+				prs.Height, "localPV", rs.Votes.Prevotes(rs.Round).BitArray(), "peerPV",
+				prs.Prevotes, "localPC", rs.Votes.Precommits(rs.Round).BitArray(), "peerPC",
+				prs.Precommits)
 		} else if sleeping == 2 {
 			// Continued sleep...
 			sleeping = 1
@@ -668,7 +673,8 @@ OUTER_LOOP:
 	}
 }
 
-func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *cstypes.RoundState, prs *cstypes.PeerRoundState, ps *PeerState) bool {
+func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *cstypes.RoundState,
+	prs *cstypes.PeerRoundState, ps *PeerState) bool {
 
 	// If there are lastCommits to send...
 	if prs.Step == cstypes.RoundStepNewHeight {
@@ -774,7 +780,9 @@ OUTER_LOOP:
 		// Maybe send Height/CatchupCommitRound/CatchupCommit.
 		{
 			prs := ps.GetRoundState()
-			if prs.CatchupCommitRound != -1 && 0 < prs.Height && prs.Height <= conR.conS.blockStore.Height() {
+			if prs.CatchupCommitRound != -1 && 0 < prs.Height &&
+				prs.Height <= conR.conS.blockStore.Height() {
+
 				commit := conR.conS.LoadCommit(prs.Height)
 				peer.TrySend(StateChannel, struct{ ConsensusMessage }{&VoteSetMaj23Message{
 					Height:  prs.Height,
@@ -830,10 +838,10 @@ type PeerState struct {
 }
 
 // NewPeerState returns a new PeerState for the given Peer
-func NewPeerState(peer p2p.Peer) *PeerState {
+func NewPeerState(peer p2p.Peer, logger log.Logger) *PeerState {
 	return &PeerState{
 		Peer:   peer,
-		logger: log.NewNopLogger(),
+		logger: logger,
 		PeerRoundState: cstypes.PeerRoundState{
 			Round:              -1,
 			ProposalPOLRound:   -1,
@@ -841,11 +849,6 @@ func NewPeerState(peer p2p.Peer) *PeerState {
 			CatchupCommitRound: -1,
 		},
 	}
-}
-
-func (ps *PeerState) SetLogger(logger log.Logger) *PeerState {
-	ps.logger = logger
-	return ps
 }
 
 // GetRoundState returns an atomic snapshot of the PeerRoundState.
@@ -1059,7 +1062,8 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 }
 
 func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
-	logger := ps.logger.With("peerH/R", cmn.Fmt("%d/%d", ps.Height, ps.Round), "H/R", cmn.Fmt("%d/%d", height, round))
+	logger := ps.logger.With("peerH/R", cmn.Fmt("%d/%d", ps.Height, ps.Round), "H/R",
+		cmn.Fmt("%d/%d", height, round))
 	logger.Debug("setHasVote", "type", type_, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
@@ -1302,7 +1306,8 @@ type ProposalPOLMessage struct {
 
 // String returns a string representation.
 func (m *ProposalPOLMessage) String() string {
-	return fmt.Sprintf("[ProposalPOL H:%v POLR:%v POL:%v]", m.Height, m.ProposalPOLRound, m.ProposalPOL)
+	return fmt.Sprintf("[ProposalPOL H:%v POLR:%v POL:%v]", m.Height, m.ProposalPOLRound,
+		m.ProposalPOL)
 }
 
 //-------------------------------------
@@ -1343,7 +1348,8 @@ type HasVoteMessage struct {
 
 // String returns a string representation.
 func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v} VI:%v]", m.Index, m.Height, m.Round, m.Type, m.Index)
+	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v} VI:%v]", m.Index, m.Height, m.Round, m.Type,
+		m.Index)
 }
 
 //-------------------------------------
@@ -1379,7 +1385,8 @@ func (m *VoteSetBitsMessage) String() string {
 
 //-------------------------------------
 
-// ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions for a proposal.
+// ProposalHeartbeatMessage is sent to signal that a node is alive and waiting for transactions
+// for a proposal.
 type ProposalHeartbeatMessage struct {
 	Heartbeat *types.Heartbeat
 }

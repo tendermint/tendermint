@@ -27,8 +27,7 @@ func NewEventBus(logger log.Logger) *EventBus {
 // NewEventBusWithBufferCapacity returns a new event bus with the given buffer capacity.
 func NewEventBusWithBufferCapacity(cap int, logger log.Logger) *EventBus {
 	// capacity could be exposed later if needed
-	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(cap))
-	pubsub.SetLogger(logger.With("module", "pubsub"))
+	pubsub := tmpubsub.NewServer(logger.With("module", "pubsub"), tmpubsub.BufferCapacity(cap))
 
 	b := &EventBus{pubsub: pubsub}
 	b.BaseService = *cmn.NewBaseService(logger, "EventBus", b)

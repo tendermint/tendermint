@@ -107,13 +107,13 @@ func signVotes(voteType byte, hash []byte, header types.PartSetHeader,
 
 func incrementHeight(vss ...*validatorStub) {
 	for _, vs := range vss {
-		vs.Height += 1
+		vs.Height++
 	}
 }
 
 func incrementRound(vss ...*validatorStub) {
 	for _, vs := range vss {
-		vs.Round += 1
+		vs.Round++
 	}
 }
 

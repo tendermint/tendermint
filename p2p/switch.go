@@ -354,12 +354,11 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, 
 
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError,
-		sw.nodePrivKey, sw.peerConfig)
+		sw.nodePrivKey, sw.peerConfig, sw.Logger.With("peer", addr))
 	if err != nil {
 		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
 		return nil, err
 	}
-	peer.SetLogger(sw.Logger.With("peer", addr))
 	if persistent {
 		peer.makePersistent()
 	}
@@ -583,12 +582,11 @@ func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string,
 
 func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError,
-		sw.nodePrivKey, sw.peerConfig)
+		sw.nodePrivKey, sw.peerConfig, sw.Logger.With("peer", conn.RemoteAddr()))
 	if err != nil {
 		conn.Close()
 		return err
 	}
-	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
 	if err = sw.addPeer(peer); err != nil {
 		peer.CloseConn()
 		return err
@@ -599,12 +597,11 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 
 func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConfig) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError,
-		sw.nodePrivKey, config)
+		sw.nodePrivKey, config, sw.Logger.With("peer", conn.RemoteAddr()))
 	if err != nil {
 		conn.Close()
 		return err
 	}
-	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
 	if err = sw.addPeer(peer); err != nil {
 		peer.CloseConn()
 		return err
