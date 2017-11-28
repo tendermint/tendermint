@@ -68,7 +68,7 @@ RETRY_LOOP:
 				return err
 			}
 			cli.Logger.Error(fmt.Sprintf("abci.socketClient failed to connect to %v.  Retrying...", cli.addr))
-			time.Sleep(time.Second * 3)
+			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue RETRY_LOOP
 		}
 		cli.conn = conn

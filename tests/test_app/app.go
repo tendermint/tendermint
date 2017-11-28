@@ -4,33 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"time"
 
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/tmlibs/log"
-	"github.com/tendermint/tmlibs/process"
 )
-
-func startApp(abciApp string) *process.Process {
-	// Start the app
-	//outBuf := NewBufferCloser(nil)
-	proc, err := process.StartProcess("abci_app",
-		"",
-		"bash",
-		[]string{"-c", fmt.Sprintf("abci-cli %s", abciApp)},
-		nil,
-		os.Stdout,
-	)
-	if err != nil {
-		panicf("running abci_app: %v", err)
-	}
-
-	// TODO a better way to handle this?
-	time.Sleep(time.Second)
-
-	return proc
-}
 
 func startClient(abciType string) abcicli.Client {
 	// Start client

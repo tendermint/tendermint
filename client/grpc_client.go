@@ -56,7 +56,7 @@ RETRY_LOOP:
 				return err
 			}
 			cli.Logger.Error(fmt.Sprintf("abci.grpcClient failed to connect to %v.  Retrying...\n", cli.addr))
-			time.Sleep(time.Second * 3)
+			time.Sleep(time.Second * dialRetryIntervalSeconds)
 			continue RETRY_LOOP
 		}
 
@@ -68,7 +68,7 @@ RETRY_LOOP:
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
-			time.Sleep(time.Second)
+			time.Sleep(time.Second * echoRetryIntervalSeconds)
 		}
 
 		cli.client = client
