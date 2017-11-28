@@ -35,7 +35,8 @@ type tmfmtLogger struct {
 }
 
 // NewTMFmtLogger returns a logger that encodes keyvals to the Writer in
-// Tendermint custom format.
+// Tendermint custom format. Note complex types (structs, maps, slices)
+// formatted as "%+v".
 //
 // Each log event produces no more than one call to w.Write.
 // The passed Writer must be safe for concurrent use by multiple goroutines if
@@ -103,7 +104,10 @@ KeyvalueLoop:
 			}
 		}
 
-		if err := enc.EncodeKeyval(keyvals[i], keyvals[i+1]); err != nil {
+		err := enc.EncodeKeyval(keyvals[i], keyvals[i+1])
+		if err == logfmt.ErrUnsupportedValueType {
+			enc.EncodeKeyval(keyvals[i], fmt.Sprintf("%+v", keyvals[i+1]))
+		} else if err != nil {
 			return err
 		}
 	}

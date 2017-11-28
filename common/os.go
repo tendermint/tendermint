@@ -35,6 +35,8 @@ func GoPath() string {
 	return path
 }
 
+// TrapSignal catches the SIGTERM and executes cb function. After that it exits
+// with code 1.
 func TrapSignal(cb func()) {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
@@ -50,10 +52,13 @@ func TrapSignal(cb func()) {
 	select {}
 }
 
-// Kill the running process by sending itself SIGTERM
+// Kill the running process by sending itself SIGTERM.
 func Kill() error {
-	pid := os.Getpid()
-	return syscall.Kill(pid, syscall.SIGTERM)
+	p, err := os.FindProcess(os.Getpid())
+	if err != nil {
+		return err
+	}
+	return p.Signal(syscall.SIGTERM)
 }
 
 func Exit(s string) {

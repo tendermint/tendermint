@@ -51,6 +51,17 @@ func (cm *CMap) Clear() {
 	cm.m = make(map[string]interface{})
 }
 
+func (cm *CMap) Keys() []string {
+	cm.l.Lock()
+	defer cm.l.Unlock()
+
+	keys := []string{}
+	for k := range cm.m {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func (cm *CMap) Values() []interface{} {
 	cm.l.Lock()
 	defer cm.l.Unlock()

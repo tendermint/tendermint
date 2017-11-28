@@ -1,8 +1,8 @@
 package autofile
 
 import (
-	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -10,51 +10,37 @@ import (
 	"strings"
 	"testing"
 
-	. "github.com/tendermint/tmlibs/common"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // NOTE: Returned group has ticker stopped
 func createTestGroup(t *testing.T, headSizeLimit int64) *Group {
-	testID := RandStr(12)
+	testID := cmn.RandStr(12)
 	testDir := "_test_" + testID
-	err := EnsureDir(testDir, 0700)
-	if err != nil {
-		t.Fatal("Error creating dir", err)
-	}
+	err := cmn.EnsureDir(testDir, 0700)
+	require.NoError(t, err, "Error creating dir")
 	headPath := testDir + "/myfile"
 	g, err := OpenGroup(headPath)
-	if err != nil {
-		t.Fatal("Error opening Group", err)
-	}
+	require.NoError(t, err, "Error opening Group")
 	g.SetHeadSizeLimit(headSizeLimit)
 	g.stopTicker()
-
-	if g == nil {
-		t.Fatal("Failed to create Group")
-	}
+	require.NotEqual(t, nil, g, "Failed to create Group")
 	return g
 }
 
 func destroyTestGroup(t *testing.T, g *Group) {
 	err := os.RemoveAll(g.Dir)
-	if err != nil {
-		t.Fatal("Error removing test Group directory", err)
-	}
+	require.NoError(t, err, "Error removing test Group directory")
 }
 
 func assertGroupInfo(t *testing.T, gInfo GroupInfo, minIndex, maxIndex int, totalSize, headSize int64) {
-	if gInfo.MinIndex != minIndex {
-		t.Errorf("GroupInfo MinIndex expected %v, got %v", minIndex, gInfo.MinIndex)
-	}
-	if gInfo.MaxIndex != maxIndex {
-		t.Errorf("GroupInfo MaxIndex expected %v, got %v", maxIndex, gInfo.MaxIndex)
-	}
-	if gInfo.TotalSize != totalSize {
-		t.Errorf("GroupInfo TotalSize expected %v, got %v", totalSize, gInfo.TotalSize)
-	}
-	if gInfo.HeadSize != headSize {
-		t.Errorf("GroupInfo HeadSize expected %v, got %v", headSize, gInfo.HeadSize)
-	}
+	assert.Equal(t, minIndex, gInfo.MinIndex)
+	assert.Equal(t, maxIndex, gInfo.MaxIndex)
+	assert.Equal(t, totalSize, gInfo.TotalSize)
+	assert.Equal(t, headSize, gInfo.HeadSize)
 }
 
 func TestCheckHeadSizeLimit(t *testing.T) {
@@ -65,10 +51,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		err := g.WriteLine(RandStr(999))
-		if err != nil {
-			t.Fatal("Error appending to head", err)
-		}
+		err := g.WriteLine(cmn.RandStr(999))
+		require.NoError(t, err, "Error appending to head")
 	}
 	g.Flush()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
@@ -78,9 +62,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 999000, 999000)
 
 	// Write 1000 more bytes.
-	if err := g.WriteLine(RandStr(999)); err != nil {
-		t.Fatal("Error appending to head", err)
-	}
+	err := g.WriteLine(cmn.RandStr(999))
+	require.NoError(t, err, "Error appending to head")
 	g.Flush()
 
 	// Calling checkHeadSizeLimit this time rolls it.
@@ -88,9 +71,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 1000000, 0)
 
 	// Write 1000 more bytes.
-	if err := g.WriteLine(RandStr(999)); err != nil {
-		t.Fatal("Error appending to head", err)
-	}
+	err = g.WriteLine(cmn.RandStr(999))
+	require.NoError(t, err, "Error appending to head")
 	g.Flush()
 
 	// Calling checkHeadSizeLimit does nothing.
@@ -99,9 +81,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Write 1000 bytes 999 times.
 	for i := 0; i < 999; i++ {
-		if err := g.WriteLine(RandStr(999)); err != nil {
-			t.Fatal("Error appending to head", err)
-		}
+		err = g.WriteLine(cmn.RandStr(999))
+		require.NoError(t, err, "Error appending to head")
 	}
 	g.Flush()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 2000000, 1000000)
@@ -111,10 +92,8 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2000000, 0)
 
 	// Write 1000 more bytes.
-	_, err := g.Head.Write([]byte(RandStr(999) + "\n"))
-	if err != nil {
-		t.Fatal("Error appending to head", err)
-	}
+	_, err = g.Head.Write([]byte(cmn.RandStr(999) + "\n"))
+	require.NoError(t, err, "Error appending to head")
 	g.Flush()
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
 
@@ -134,16 +113,12 @@ func TestSearch(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		// The random junk at the end ensures that this INFO linen
 		// is equally likely to show up at the end.
-		_, err := g.Head.Write([]byte(Fmt("INFO %v %v\n", i, RandStr(123))))
-		if err != nil {
-			t.Error("Failed to write to head")
-		}
+		_, err := g.Head.Write([]byte(fmt.Sprintf("INFO %v %v\n", i, cmn.RandStr(123))))
+		require.NoError(t, err, "Failed to write to head")
 		g.checkHeadSizeLimit()
 		for j := 0; j < 10; j++ {
-			_, err := g.Head.Write([]byte(RandStr(123) + "\n"))
-			if err != nil {
-				t.Error("Failed to write to head")
-			}
+			_, err1 := g.Head.Write([]byte(cmn.RandStr(123) + "\n"))
+			require.NoError(t, err1, "Failed to write to head")
 			g.checkHeadSizeLimit()
 		}
 	}
@@ -173,17 +148,11 @@ func TestSearch(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		t.Log("Testing for i", i)
 		gr, match, err := g.Search("INFO", makeSearchFunc(i))
-		if err != nil {
-			t.Fatal("Failed to search for line:", err)
-		}
-		if !match {
-			t.Error("Expected Search to return exact match")
-		}
+		require.NoError(t, err, "Failed to search for line")
+		assert.True(t, match, "Expected Search to return exact match")
 		line, err := gr.ReadLine()
-		if err != nil {
-			t.Fatal("Failed to read line after search", err)
-		}
-		if !strings.HasPrefix(line, Fmt("INFO %v ", i)) {
+		require.NoError(t, err, "Failed to read line after search")
+		if !strings.HasPrefix(line, fmt.Sprintf("INFO %v ", i)) {
 			t.Fatal("Failed to get correct line")
 		}
 		// Make sure we can continue to read from there.
@@ -203,7 +172,7 @@ func TestSearch(t *testing.T) {
 			if !strings.HasPrefix(line, "INFO ") {
 				continue
 			}
-			if !strings.HasPrefix(line, Fmt("INFO %v ", cur)) {
+			if !strings.HasPrefix(line, fmt.Sprintf("INFO %v ", cur)) {
 				t.Fatalf("Unexpected INFO #. Expected %v got:\n%v", cur, line)
 			}
 			cur += 1
@@ -215,35 +184,23 @@ func TestSearch(t *testing.T) {
 	// We should get the first available line.
 	{
 		gr, match, err := g.Search("INFO", makeSearchFunc(-999))
-		if err != nil {
-			t.Fatal("Failed to search for line:", err)
-		}
-		if match {
-			t.Error("Expected Search to not return exact match")
-		}
+		require.NoError(t, err, "Failed to search for line")
+		assert.False(t, match, "Expected Search to not return exact match")
 		line, err := gr.ReadLine()
-		if err != nil {
-			t.Fatal("Failed to read line after search", err)
-		}
+		require.NoError(t, err, "Failed to read line after search")
 		if !strings.HasPrefix(line, "INFO 0 ") {
 			t.Error("Failed to fetch correct line, which is the earliest INFO")
 		}
 		err = gr.Close()
-		if err != nil {
-			t.Error("Failed to close GroupReader", err)
-		}
+		require.NoError(t, err, "Failed to close GroupReader")
 	}
 
 	// Now search for something that is too large.
 	// We should get an EOF error.
 	{
 		gr, _, err := g.Search("INFO", makeSearchFunc(999))
-		if err != io.EOF {
-			t.Error("Expected to get an EOF error")
-		}
-		if gr != nil {
-			t.Error("Expected to get nil GroupReader")
-		}
+		assert.Equal(t, io.EOF, err)
+		assert.Nil(t, gr)
 	}
 
 	// Cleanup
@@ -264,18 +221,14 @@ func TestRotateFile(t *testing.T) {
 
 	// Read g.Head.Path+"000"
 	body1, err := ioutil.ReadFile(g.Head.Path + ".000")
-	if err != nil {
-		t.Error("Failed to read first rolled file")
-	}
+	assert.NoError(t, err, "Failed to read first rolled file")
 	if string(body1) != "Line 1\nLine 2\nLine 3\n" {
 		t.Errorf("Got unexpected contents: [%v]", string(body1))
 	}
 
 	// Read g.Head.Path
 	body2, err := ioutil.ReadFile(g.Head.Path)
-	if err != nil {
-		t.Error("Failed to read first rolled file")
-	}
+	assert.NoError(t, err, "Failed to read first rolled file")
 	if string(body2) != "Line 4\nLine 5\nLine 6\n" {
 		t.Errorf("Got unexpected contents: [%v]", string(body2))
 	}
@@ -300,15 +253,9 @@ func TestFindLast1(t *testing.T) {
 	g.Flush()
 
 	match, found, err := g.FindLast("#")
-	if err != nil {
-		t.Error("Unexpected error", err)
-	}
-	if !found {
-		t.Error("Expected found=True")
-	}
-	if match != "# b" {
-		t.Errorf("Unexpected match: [%v]", match)
-	}
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "# b", match)
 
 	// Cleanup
 	destroyTestGroup(t, g)
@@ -330,15 +277,9 @@ func TestFindLast2(t *testing.T) {
 	g.Flush()
 
 	match, found, err := g.FindLast("#")
-	if err != nil {
-		t.Error("Unexpected error", err)
-	}
-	if !found {
-		t.Error("Expected found=True")
-	}
-	if match != "# b" {
-		t.Errorf("Unexpected match: [%v]", match)
-	}
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "# b", match)
 
 	// Cleanup
 	destroyTestGroup(t, g)
@@ -360,15 +301,9 @@ func TestFindLast3(t *testing.T) {
 	g.Flush()
 
 	match, found, err := g.FindLast("#")
-	if err != nil {
-		t.Error("Unexpected error", err)
-	}
-	if !found {
-		t.Error("Expected found=True")
-	}
-	if match != "# b" {
-		t.Errorf("Unexpected match: [%v]", match)
-	}
+	assert.NoError(t, err)
+	assert.True(t, found)
+	assert.Equal(t, "# b", match)
 
 	// Cleanup
 	destroyTestGroup(t, g)
@@ -388,15 +323,9 @@ func TestFindLast4(t *testing.T) {
 	g.Flush()
 
 	match, found, err := g.FindLast("#")
-	if err != nil {
-		t.Error("Unexpected error", err)
-	}
-	if found {
-		t.Error("Expected found=False")
-	}
-	if match != "" {
-		t.Errorf("Unexpected match: [%v]", match)
-	}
+	assert.NoError(t, err)
+	assert.False(t, found)
+	assert.Empty(t, match)
 
 	// Cleanup
 	destroyTestGroup(t, g)
@@ -411,22 +340,18 @@ func TestWrite(t *testing.T) {
 
 	read := make([]byte, len(written))
 	gr, err := g.NewReader(0)
-	if err != nil {
-		t.Fatalf("Failed to create reader: %v", err)
-	}
-	_, err = gr.Read(read)
-	if err != nil {
-		t.Fatalf("Failed to read data: %v", err)
-	}
+	require.NoError(t, err, "failed to create reader")
 
-	if !bytes.Equal(written, read) {
-		t.Errorf("%s, %s should be equal", string(written), string(read))
-	}
+	_, err = gr.Read(read)
+	assert.NoError(t, err, "failed to read data")
+	assert.Equal(t, written, read)
 
 	// Cleanup
 	destroyTestGroup(t, g)
 }
 
+// test that Read reads the required amount of bytes from all the files in the
+// group and returns no error if n == size of the given slice.
 func TestGroupReaderRead(t *testing.T) {
 	g := createTestGroup(t, 0)
 
@@ -441,22 +366,47 @@ func TestGroupReaderRead(t *testing.T) {
 	totalWrittenLength := len(professor) + len(frankenstein)
 	read := make([]byte, totalWrittenLength)
 	gr, err := g.NewReader(0)
-	if err != nil {
-		t.Fatalf("Failed to create reader: %v", err)
-	}
-	n, err := gr.Read(read)
-	if err != nil {
-		t.Fatalf("Failed to read data: %v", err)
-	}
-	if n != totalWrittenLength {
-		t.Errorf("Failed to read enough bytes: wanted %d, but read %d", totalWrittenLength, n)
-	}
+	require.NoError(t, err, "failed to create reader")
 
+	n, err := gr.Read(read)
+	assert.NoError(t, err, "failed to read data")
+	assert.Equal(t, totalWrittenLength, n, "not enough bytes read")
 	professorPlusFrankenstein := professor
 	professorPlusFrankenstein = append(professorPlusFrankenstein, frankenstein...)
-	if !bytes.Equal(read, professorPlusFrankenstein) {
-		t.Errorf("%s, %s should be equal", string(professorPlusFrankenstein), string(read))
-	}
+	assert.Equal(t, professorPlusFrankenstein, read)
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+// test that Read returns an error if number of bytes read < size of
+// the given slice. Subsequent call should return 0, io.EOF.
+func TestGroupReaderRead2(t *testing.T) {
+	g := createTestGroup(t, 0)
+
+	professor := []byte("Professor Monster")
+	g.Write(professor)
+	g.Flush()
+	g.RotateFile()
+	frankenstein := []byte("Frankenstein's Monster")
+	frankensteinPart := []byte("Frankenstein")
+	g.Write(frankensteinPart) // note writing only a part
+	g.Flush()
+
+	totalLength := len(professor) + len(frankenstein)
+	read := make([]byte, totalLength)
+	gr, err := g.NewReader(0)
+	require.NoError(t, err, "failed to create reader")
+
+	// 1) n < (size of the given slice), io.EOF
+	n, err := gr.Read(read)
+	assert.Equal(t, io.EOF, err)
+	assert.Equal(t, len(professor)+len(frankensteinPart), n, "Read more/less bytes than it is in the group")
+
+	// 2) 0, io.EOF
+	n, err = gr.Read([]byte("0"))
+	assert.Equal(t, io.EOF, err)
+	assert.Equal(t, 0, n)
 
 	// Cleanup
 	destroyTestGroup(t, g)
@@ -465,9 +415,7 @@ func TestGroupReaderRead(t *testing.T) {
 func TestMinIndex(t *testing.T) {
 	g := createTestGroup(t, 0)
 
-	if g.MinIndex() != 0 {
-		t.Error("MinIndex should be zero at the beginning")
-	}
+	assert.Zero(t, g.MinIndex(), "MinIndex should be zero at the beginning")
 
 	// Cleanup
 	destroyTestGroup(t, g)
@@ -476,17 +424,13 @@ func TestMinIndex(t *testing.T) {
 func TestMaxIndex(t *testing.T) {
 	g := createTestGroup(t, 0)
 
-	if g.MaxIndex() != 0 {
-		t.Error("MaxIndex should be zero at the beginning")
-	}
+	assert.Zero(t, g.MaxIndex(), "MaxIndex should be zero at the beginning")
 
 	g.WriteLine("Line 1")
 	g.Flush()
 	g.RotateFile()
 
-	if g.MaxIndex() != 1 {
-		t.Error("MaxIndex should point to the last file")
-	}
+	assert.Equal(t, 1, g.MaxIndex(), "MaxIndex should point to the last file")
 
 	// Cleanup
 	destroyTestGroup(t, g)

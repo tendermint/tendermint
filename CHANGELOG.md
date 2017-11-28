@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.1 (November 27, 2017)
+
+FEATURES:
+ - [common] `Keys()` method on `CMap`
+
+IMPROVEMENTS:
+ - [log] complex types now encoded as "%+v" by default if `String()` method is undefined (previously resulted in error)
+ - [log] logger logs its own errors
+
+BUG FIXES:
+ - [common] fixed `Kill()` to build on Windows (Windows does not have `syscall.Kill`)
+
 ## 0.4.0 (October 26, 2017)
 
 BREAKING:
