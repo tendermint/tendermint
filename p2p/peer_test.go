@@ -23,7 +23,8 @@ func TestPeerBasic(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), DefaultPeerConfig())
 	require.Nil(err)
 
-	p.Start()
+	_, err = p.Start()
+	require.Nil(err)
 	defer p.Stop()
 
 	assert.True(p.IsRunning())
@@ -49,7 +50,8 @@ func TestPeerWithoutAuthEnc(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
 	require.Nil(err)
 
-	p.Start()
+	_, err = p.Start()
+	require.Nil(err)
 	defer p.Stop()
 
 	assert.True(p.IsRunning())
@@ -69,7 +71,9 @@ func TestPeerSend(t *testing.T) {
 	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
 	require.Nil(err)
 
-	p.Start()
+	_, err = p.Start()
+	require.Nil(err)
+
 	defer p.Stop()
 
 	assert.True(p.CanSend(0x01))
@@ -78,7 +82,7 @@ func TestPeerSend(t *testing.T) {
 
 func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
 	chDescs := []*ChannelDescriptor{
-		&ChannelDescriptor{ID: 0x01, Priority: 1},
+		{ID: 0x01, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519()
@@ -148,7 +152,9 @@ func (p *remotePeer) accept(l net.Listener) {
 		}
 		select {
 		case <-p.quit:
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				golog.Fatal(err)
+			}
 			return
 		default:
 		}

@@ -2,6 +2,7 @@ GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/tcnksm/ghr \
 					github.com/Masterminds/glide \
+					github.com/alecthomas/gometalinter
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
@@ -25,6 +26,8 @@ dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 test:
+	@echo "--> Running linter"
+	@make metalinter_test
 	@echo "--> Running go test"
 	@go test $(PACKAGES)
 
@@ -76,11 +79,40 @@ tools:
 
 ensure_tools:
 	go get $(GOTOOLS)
+	@gometalinter --install
 
 ### Formatting, linting, and vetting
 
-megacheck:
-	@for pkg in ${PACKAGES}; do megacheck "$$pkg"; done
+metalinter: 
+	@gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
+metalinter_test: 
+	@gometalinter --vendor --deadline=600s --disable-all  \
+		--enable=deadcode \
+		--enable=gas \
+	 	--enable=misspell \
+		--enable=safesql \
+		./...
+
+		#--enable=maligned \
+		#--enable=dupl \
+		#--enable=errcheck \
+		#--enable=goconst \
+		#--enable=gocyclo \
+		#--enable=goimports \
+		#--enable=golint \ <== comments on anything exported
+		#--enable=gosimple \
+		#--enable=gotype \
+	 	#--enable=ineffassign \
+	   	#--enable=interfacer \
+	   	#--enable=megacheck \
+	   	#--enable=staticcheck \
+	   	#--enable=structcheck \
+	   	#--enable=unconvert \
+	   	#--enable=unparam \
+		#--enable=unused \
+	   	#--enable=varcheck \
+		#--enable=vet \
+		#--enable=vetshadow \
 
 .PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools

@@ -11,7 +11,7 @@ type TxIndexer interface {
 
 	// AddBatch analyzes, indexes or stores a batch of transactions.
 	// NOTE: We do not specify Index method for analyzing a single transaction
-	// here because it bears heavy perfomance loses. Almost all advanced indexers
+	// here because it bears heavy performance losses. Almost all advanced indexers
 	// support batching.
 	AddBatch(b *Batch) error
 

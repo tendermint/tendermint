@@ -174,7 +174,6 @@ func (wal *baseWAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, fou
 				}
 			}
 		}
-
 		gr.Close()
 	}
 
@@ -273,7 +272,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	}
 
 	var nn int
-	var res *TimedWALMessage
+	var res *TimedWALMessage // nolint: gosimple
 	res = wire.ReadBinary(&TimedWALMessage{}, bytes.NewBuffer(data), int(length), &nn, &err).(*TimedWALMessage)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode data: %v", err)

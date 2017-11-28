@@ -72,7 +72,9 @@ func TestEcho(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		proxy.EchoAsync(cmn.Fmt("echo-%v", i))
 	}
-	proxy.FlushSync()
+	if err := proxy.FlushSync(); err != nil {
+		t.Error(err)
+	}
 }
 
 func BenchmarkEcho(b *testing.B) {
@@ -106,7 +108,9 @@ func BenchmarkEcho(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		proxy.EchoAsync(echoString)
 	}
-	proxy.FlushSync()
+	if err := proxy.FlushSync(); err != nil {
+		b.Error(err)
+	}
 
 	b.StopTimer()
 	// info := proxy.InfoSync(types.RequestInfo{""})

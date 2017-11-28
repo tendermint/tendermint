@@ -50,7 +50,7 @@ func (memR *MempoolReactor) SetLogger(l log.Logger) {
 // It returns the list of channels for this reactor.
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:       MempoolChannel,
 			Priority: 5,
 		},

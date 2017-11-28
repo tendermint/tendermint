@@ -47,7 +47,9 @@ func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {
 
 // OnStart implements Service
 func (tms *TrustMetricStore) OnStart() error {
-	tms.BaseService.OnStart()
+	if err := tms.BaseService.OnStart(); err != nil {
+		return err
+	}
 
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()

@@ -99,7 +99,11 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 // jsonrpc calls grab the given method's function info and runs reflect.Call
 func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		b, _ := ioutil.ReadAll(r.Body)
+		b, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			WriteRPCResponseHTTP(w, types.RPCInvalidRequestError("", errors.Wrap(err, "Error reading request body")))
+			return
+		}
 		// if its an empty request (like from a browser),
 		// just display a list of functions
 		if len(b) == 0 {
@@ -108,7 +112,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		}
 
 		var request types.RPCRequest
-		err := json.Unmarshal(b, &request)
+		err = json.Unmarshal(b, &request)
 		if err != nil {
 			WriteRPCResponseHTTP(w, types.RPCParseError("", errors.Wrap(err, "Error unmarshalling request")))
 			return
@@ -529,7 +533,7 @@ func (wsc *wsConnection) readRoutine() {
 			wsc.WriteRPCResponse(types.RPCInternalError("unknown", err))
 			go wsc.readRoutine()
 		} else {
-			wsc.baseConn.Close()
+			wsc.baseConn.Close() // nolint: errcheck
 		}
 	}()
 
@@ -543,7 +547,9 @@ func (wsc *wsConnection) readRoutine() {
 			return
 		default:
 			// reset deadline for every type of message (control or data)
-			wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait))
+			if err := wsc.baseConn.SetReadDeadline(time.Now().Add(wsc.readWait)); err != nil {
+				wsc.Logger.Error("failed to set read deadline", "err", err)
+			}
 			var in []byte
 			_, in, err := wsc.baseConn.ReadMessage()
 			if err != nil {
@@ -615,7 +621,9 @@ func (wsc *wsConnection) writeRoutine() {
 	pingTicker := time.NewTicker(wsc.pingPeriod)
 	defer func() {
 		pingTicker.Stop()
-		wsc.baseConn.Close()
+		if err := wsc.baseConn.Close(); err != nil {
+			wsc.Logger.Error("Error closing connection", "err", err)
+		}
 	}()
 
 	// https://github.com/gorilla/websocket/issues/97
@@ -662,7 +670,9 @@ func (wsc *wsConnection) writeRoutine() {
 // All writes to the websocket must (re)set the write deadline.
 // If some writes don't set it while others do, they may timeout incorrectly (https://github.com/tendermint/tendermint/issues/553)
 func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error {
-	wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait))
+	if err := wsc.baseConn.SetWriteDeadline(time.Now().Add(wsc.writeWait)); err != nil {
+		return err
+	}
 	return wsc.baseConn.WriteMessage(msgType, msg)
 }
 
@@ -713,7 +723,10 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	con := NewWSConnection(wsConn, wm.funcMap, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
-	con.Start() // Blocking
+	_, err = con.Start() // Blocking
+	if err != nil {
+		wm.logger.Error("Error starting connection", "err", err)
+	}
 }
 
 // rpc.websocket
@@ -770,5 +783,5 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	buf.WriteString("</body></html>")
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(200)
-	w.Write(buf.Bytes())
+	w.Write(buf.Bytes()) // nolint: errcheck
 }

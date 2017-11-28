@@ -24,9 +24,6 @@ import bytes "bytes"
 
 import strings "strings"
 import github_com_gogo_protobuf_proto "github.com/gogo/protobuf/proto"
-import sort "sort"
-import strconv "strconv"
-import reflect "reflect"
 
 import io "io"
 
@@ -392,31 +389,6 @@ func (this *PubKeyEd25519) GoString() string {
 	s = append(s, "}")
 	return strings.Join(s, "")
 }
-func valueToGoStringTest(v interface{}, typ string) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("func(v %v) *%v { return &v } ( %#v )", typ, typ, pv)
-}
-func extensionToGoStringTest(e map[int32]github_com_gogo_protobuf_proto.Extension) string {
-	if e == nil {
-		return "nil"
-	}
-	s := "map[int32]proto.Extension{"
-	keys := make([]int, 0, len(e))
-	for k := range e {
-		keys = append(keys, int(k))
-	}
-	sort.Ints(keys)
-	ss := []string{}
-	for _, k := range keys {
-		ss = append(ss, strconv.Itoa(k)+": "+e[int32(k)].GoString())
-	}
-	s += strings.Join(ss, ",") + "}"
-	return s
-}
 func (m *ResultStatus) Marshal() (data []byte, err error) {
 	size := m.Size()
 	data = make([]byte, size)
@@ -586,24 +558,6 @@ func (m *PubKeyEd25519) MarshalTo(data []byte) (int, error) {
 	return i, nil
 }
 
-func encodeFixed64Test(data []byte, offset int, v uint64) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	data[offset+4] = uint8(v >> 32)
-	data[offset+5] = uint8(v >> 40)
-	data[offset+6] = uint8(v >> 48)
-	data[offset+7] = uint8(v >> 56)
-	return offset + 8
-}
-func encodeFixed32Test(data []byte, offset int, v uint32) int {
-	data[offset] = uint8(v)
-	data[offset+1] = uint8(v >> 8)
-	data[offset+2] = uint8(v >> 16)
-	data[offset+3] = uint8(v >> 24)
-	return offset + 4
-}
 func encodeVarintTest(data []byte, offset int, v uint64) int {
 	for v >= 1<<7 {
 		data[offset] = uint8(v&0x7f | 0x80)
@@ -689,9 +643,6 @@ func sovTest(x uint64) (n int) {
 	}
 	return n
 }
-func sozTest(x uint64) (n int) {
-	return sovTest(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
 func (this *ResultStatus) String() string {
 	if this == nil {
 		return "nil"
@@ -741,14 +692,6 @@ func (this *PubKeyEd25519) String() string {
 		`}`,
 	}, "")
 	return s
-}
-func valueToStringTest(v interface{}) string {
-	rv := reflect.ValueOf(v)
-	if rv.IsNil() {
-		return "nil"
-	}
-	pv := reflect.Indirect(rv).Interface()
-	return fmt.Sprintf("*%v", pv)
 }
 func (m *ResultStatus) Unmarshal(data []byte) error {
 	var hasFields [1]uint64

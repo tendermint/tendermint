@@ -41,10 +41,18 @@ func main() {
 			panic(fmt.Errorf("failed to marshal msg: %v", err))
 		}
 
-		os.Stdout.Write(json)
-		os.Stdout.Write([]byte("\n"))
-		if end, ok := msg.Msg.(cs.EndHeightMessage); ok {
-			os.Stdout.Write([]byte(fmt.Sprintf("ENDHEIGHT %d\n", end.Height)))
+		_, err = os.Stdout.Write(json)
+		if err == nil {
+			_, err = os.Stdout.Write([]byte("\n"))
+		}
+		if err == nil {
+			if end, ok := msg.Msg.(cs.EndHeightMessage); ok {
+				_, err = os.Stdout.Write([]byte(fmt.Sprintf("ENDHEIGHT %d\n", end.Height))) // nolint: errcheck, gas
+			}
+		}
+		if err != nil {
+			fmt.Println("Failed to write message", err)
+			os.Exit(1)
 		}
 	}
 }

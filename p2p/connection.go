@@ -163,7 +163,9 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 
 // OnStart implements BaseService
 func (c *MConnection) OnStart() error {
-	c.BaseService.OnStart()
+	if err := c.BaseService.OnStart(); err != nil {
+		return err
+	}
 	c.quit = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
@@ -182,7 +184,7 @@ func (c *MConnection) OnStop() {
 	if c.quit != nil {
 		close(c.quit)
 	}
-	c.conn.Close()
+	c.conn.Close() // nolint: errcheck
 	// We can't close pong safely here because
 	// recvRoutine may write to it after we've stopped.
 	// Though it doesn't need to get closed at all,
@@ -569,7 +571,7 @@ type Channel struct {
 func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 	desc = desc.FillDefaults()
 	if desc.Priority <= 0 {
-		cmn.PanicSanity("Channel default priority must be a postive integer")
+		cmn.PanicSanity("Channel default priority must be a positive integer")
 	}
 	return &Channel{
 		conn:                    conn,

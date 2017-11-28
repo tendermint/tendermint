@@ -32,8 +32,8 @@ func TestMConnectionSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer server.Close()
-	defer client.Close()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
 	_, err := mconn.Start()
@@ -44,12 +44,18 @@ func TestMConnectionSend(t *testing.T) {
 	assert.True(mconn.Send(0x01, msg))
 	// Note: subsequent Send/TrySend calls could pass because we are reading from
 	// the send queue in a separate goroutine.
-	server.Read(make([]byte, len(msg)))
+	_, err = server.Read(make([]byte, len(msg)))
+	if err != nil {
+		t.Error(err)
+	}
 	assert.True(mconn.CanSend(0x01))
 
 	msg = "Spider-Man"
 	assert.True(mconn.TrySend(0x01, msg))
-	server.Read(make([]byte, len(msg)))
+	_, err = server.Read(make([]byte, len(msg)))
+	if err != nil {
+		t.Error(err)
+	}
 
 	assert.False(mconn.CanSend(0x05), "CanSend should return false because channel is unknown")
 	assert.False(mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
@@ -59,8 +65,8 @@ func TestMConnectionReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer server.Close()
-	defer client.Close()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -97,8 +103,8 @@ func TestMConnectionStatus(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer server.Close()
-	defer client.Close()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
 	_, err := mconn.Start()
@@ -114,8 +120,8 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	server, client := netPipe()
-	defer server.Close()
-	defer client.Close()
+	defer server.Close() // nolint: errcheck
+	defer client.Close() // nolint: errcheck
 
 	receivedCh := make(chan []byte)
 	errorsCh := make(chan interface{})
@@ -130,7 +136,9 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	require.Nil(err)
 	defer mconn.Stop()
 
-	client.Close()
+	if err := client.Close(); err != nil {
+		t.Error(err)
+	}
 
 	select {
 	case receivedBytes := <-receivedCh:

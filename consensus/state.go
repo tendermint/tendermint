@@ -225,11 +225,14 @@ func (cs *ConsensusState) OnStart() error {
 	}
 
 	// we need the timeoutRoutine for replay so
-	//  we don't block on the tick chan.
+	// we don't block on the tick chan.
 	// NOTE: we will get a build up of garbage go routines
-	//  firing on the tockChan until the receiveRoutine is started
-	//  to deal with them (by that point, at most one will be valid)
-	cs.timeoutTicker.Start()
+	// firing on the tockChan until the receiveRoutine is started
+	// to deal with them (by that point, at most one will be valid)
+	_, err := cs.timeoutTicker.Start()
+	if err != nil {
+		return err
+	}
 
 	// we may have lost some votes if the process crashed
 	// reload from consensus log to catchup
@@ -254,7 +257,11 @@ func (cs *ConsensusState) OnStart() error {
 // timeoutRoutine: receive requests for timeouts on tickChan and fire timeouts on tockChan
 // receiveRoutine: serializes processing of proposoals, block parts, votes; coordinates state transitions
 func (cs *ConsensusState) startRoutines(maxSteps int) {
-	cs.timeoutTicker.Start()
+	_, err := cs.timeoutTicker.Start()
+	if err != nil {
+		cs.Logger.Error("Error starting timeout ticker", "err", err)
+		return
+	}
 	go cs.receiveRoutine(maxSteps)
 }
 
@@ -338,12 +345,16 @@ func (cs *ConsensusState) AddProposalBlockPart(height, round int, part *types.Pa
 
 // SetProposalAndBlock inputs the proposal and all block parts.
 func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *types.Block, parts *types.PartSet, peerKey string) error {
-	cs.SetProposal(proposal, peerKey)
+	if err := cs.SetProposal(proposal, peerKey); err != nil {
+		return err
+	}
 	for i := 0; i < parts.Total(); i++ {
 		part := parts.GetPart(i)
-		cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerKey)
+		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerKey); err != nil {
+			return err
+		}
 	}
-	return nil // TODO errors
+	return nil
 }
 
 //------------------------------------------------------------
@@ -361,7 +372,7 @@ func (cs *ConsensusState) updateRoundStep(round int, step cstypes.RoundStepType)
 // enterNewRound(height, 0) at cs.StartTime.
 func (cs *ConsensusState) scheduleRound0(rs *cstypes.RoundState) {
 	//cs.Logger.Info("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
-	sleepDuration := rs.StartTime.Sub(time.Now())
+	sleepDuration := rs.StartTime.Sub(time.Now()) // nolint: gotype, gosimple
 	cs.scheduleTimeout(sleepDuration, rs.Height, 0, cstypes.RoundStepNewHeight)
 }
 
@@ -692,10 +703,7 @@ func (cs *ConsensusState) needProofBlock(height int) bool {
 	}
 
 	lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-	if !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash) {
-		return true
-	}
-	return false
+	return !bytes.Equal(cs.state.AppHash, lastBlockMeta.Header.AppHash)
 }
 
 func (cs *ConsensusState) proposalHeartbeat(height, round int) {

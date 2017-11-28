@@ -112,7 +112,9 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 	}, css)
 
 	// send a tx
-	css[3].mempool.CheckTx([]byte{1, 2, 3}, nil)
+	if err := css[3].mempool.CheckTx([]byte{1, 2, 3}, nil); err != nil {
+		//t.Fatal(err)
+	}
 
 	// wait till everyone makes the first new block
 	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {

@@ -37,5 +37,7 @@ func main() {
 	rootCmd.AddCommand(cmd.NewRunNodeCmd(nodeFunc))
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "TM", os.ExpandEnv("$HOME/.tendermint"))
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		panic(err)
+	}
 }

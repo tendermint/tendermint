@@ -25,7 +25,7 @@ func StartGRPCServer(protoAddr string) (net.Listener, error) {
 
 	grpcServer := grpc.NewServer()
 	RegisterBroadcastAPIServer(grpcServer, &broadcastAPI{})
-	go grpcServer.Serve(ln)
+	go grpcServer.Serve(ln) // nolint: errcheck
 
 	return ln, nil
 }

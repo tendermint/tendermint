@@ -150,7 +150,7 @@ func TestParseRPC(t *testing.T) {
 		{`{"name": "john", "height": 22}`, 22, "john", false},
 		// defaults
 		{`{"name": "solo", "unused": "stuff"}`, 0, "solo", false},
-		// should fail - wrong types/lenght
+		// should fail - wrong types/length
 		{`["flew", 7]`, 0, "", true},
 		{`[7,"flew",100]`, 0, "", true},
 		{`{"name": -12, "height": "fred"}`, 0, "", true},

@@ -100,19 +100,24 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 		connections: make(chan net.Conn, numBufferedConnections),
 	}
 	dl.BaseService = *cmn.NewBaseService(logger, "DefaultListener", dl)
-	dl.Start() // Started upon construction
+	_, err = dl.Start() // Started upon construction
+	if err != nil {
+		logger.Error("Error starting base service", "err", err)
+	}
 	return dl
 }
 
 func (l *DefaultListener) OnStart() error {
-	l.BaseService.OnStart()
+	if err := l.BaseService.OnStart(); err != nil {
+		return err
+	}
 	go l.listenRoutine()
 	return nil
 }
 
 func (l *DefaultListener) OnStop() {
 	l.BaseService.OnStop()
-	l.listener.Close()
+	l.listener.Close() // nolint: errcheck
 }
 
 // Accept connections and pass on the channel

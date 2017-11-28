@@ -25,10 +25,13 @@ var ResetPrivValidatorCmd = &cobra.Command{
 }
 
 // ResetAll removes the privValidator files.
-// Exported so other CLI tools can use  it
+// Exported so other CLI tools can use it.
 func ResetAll(dbDir, privValFile string, logger log.Logger) {
 	resetPrivValidatorFS(privValFile, logger)
-	os.RemoveAll(dbDir)
+	if err := os.RemoveAll(dbDir); err != nil {
+		logger.Error("Error removing directory", "err", err)
+		return
+	}
 	logger.Info("Removed all data", "dir", dbDir)
 }
 

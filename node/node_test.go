@@ -19,7 +19,10 @@ func TestNodeStartStop(t *testing.T) {
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	assert.NoError(t, err, "expected no err on DefaultNewNode")
-	n.Start()
+	_, err1 := n.Start()
+	if err1 != nil {
+		t.Error(err1)
+	}
 	t.Logf("Started node %v", n.sw.NodeInfo())
 
 	// wait for the node to produce a block

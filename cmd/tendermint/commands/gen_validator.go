@@ -19,7 +19,10 @@ var GenValidatorCmd = &cobra.Command{
 
 func genValidator(cmd *cobra.Command, args []string) {
 	privValidator := types.GenPrivValidatorFS("")
-	privValidatorJSONBytes, _ := json.MarshalIndent(privValidator, "", "\t")
+	privValidatorJSONBytes, err := json.MarshalIndent(privValidator, "", "\t")
+	if err != nil {
+		panic(err)
+	}
 	fmt.Printf(`%v
 `, string(privValidatorJSONBytes))
 }

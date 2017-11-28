@@ -216,19 +216,17 @@ func echoViaWS(cl *client.WSClient, val string) (string, error) {
 		return "", err
 	}
 
-	select {
-	case msg := <-cl.ResponsesCh:
-		if msg.Error != nil {
-			return "", err
+	msg := <-cl.ResponsesCh
+	if msg.Error != nil {
+		return "", err
 
-		}
-		result := new(ResultEcho)
-		err = json.Unmarshal(msg.Result, result)
-		if err != nil {
-			return "", nil
-		}
-		return result.Value, nil
 	}
+	result := new(ResultEcho)
+	err = json.Unmarshal(msg.Result, result)
+	if err != nil {
+		return "", nil
+	}
+	return result.Value, nil
 }
 
 func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
@@ -240,19 +238,17 @@ func echoBytesViaWS(cl *client.WSClient, bytes []byte) ([]byte, error) {
 		return []byte{}, err
 	}
 
-	select {
-	case msg := <-cl.ResponsesCh:
-		if msg.Error != nil {
-			return []byte{}, msg.Error
+	msg := <-cl.ResponsesCh
+	if msg.Error != nil {
+		return []byte{}, msg.Error
 
-		}
-		result := new(ResultEchoBytes)
-		err = json.Unmarshal(msg.Result, result)
-		if err != nil {
-			return []byte{}, nil
-		}
-		return result.Value, nil
 	}
+	result := new(ResultEchoBytes)
+	err = json.Unmarshal(msg.Result, result)
+	if err != nil {
+		return []byte{}, nil
+	}
+	return result.Value, nil
 }
 
 func testWithWSClient(t *testing.T, cl *client.WSClient) {
@@ -322,17 +318,15 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 	err = cl.Call(context.Background(), "echo_ws", params)
 	require.Nil(t, err)
 
-	select {
-	case msg := <-cl.ResponsesCh:
-		if msg.Error != nil {
-			t.Fatal(err)
-		}
-		result := new(ResultEcho)
-		err = json.Unmarshal(msg.Result, result)
-		require.Nil(t, err)
-		got := result.Value
-		assert.Equal(t, got, val)
+	msg := <-cl.ResponsesCh
+	if msg.Error != nil {
+		t.Fatal(err)
 	}
+	result := new(ResultEcho)
+	err = json.Unmarshal(msg.Result, result)
+	require.Nil(t, err)
+	got := result.Value
+	assert.Equal(t, got, val)
 }
 
 func TestWSHandlesArrayParams(t *testing.T) {
@@ -347,17 +341,15 @@ func TestWSHandlesArrayParams(t *testing.T) {
 	err = cl.CallWithArrayParams(context.Background(), "echo_ws", params)
 	require.Nil(t, err)
 
-	select {
-	case msg := <-cl.ResponsesCh:
-		if msg.Error != nil {
-			t.Fatalf("%+v", err)
-		}
-		result := new(ResultEcho)
-		err = json.Unmarshal(msg.Result, result)
-		require.Nil(t, err)
-		got := result.Value
-		assert.Equal(t, got, val)
+	msg := <-cl.ResponsesCh
+	if msg.Error != nil {
+		t.Fatalf("%+v", err)
 	}
+	result := new(ResultEcho)
+	err = json.Unmarshal(msg.Result, result)
+	require.Nil(t, err)
+	got := result.Value
+	assert.Equal(t, got, val)
 }
 
 // TestWSClientPingPong checks that a client & server exchange pings

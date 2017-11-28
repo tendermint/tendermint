@@ -70,7 +70,7 @@ func TestByzantine(t *testing.T) {
 		conR.SetLogger(logger.With("validator", i))
 		conR.SetEventBus(eventBus)
 
-		var conRI p2p.Reactor
+		var conRI p2p.Reactor // nolint: gotype, gosimple
 		conRI = conR
 
 		if i == 0 {
@@ -170,13 +170,17 @@ func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusS
 	block1, blockParts1 := cs.createProposalBlock()
 	polRound, polBlockID := cs.Votes.POLInfo()
 	proposal1 := types.NewProposal(height, round, blockParts1.Header(), polRound, polBlockID)
-	cs.privValidator.SignProposal(cs.state.ChainID, proposal1) // byzantine doesnt err
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal1); err != nil {
+		t.Error(err)
+	}
 
 	// Create a new proposal block from state/txs from the mempool.
 	block2, blockParts2 := cs.createProposalBlock()
 	polRound, polBlockID = cs.Votes.POLInfo()
 	proposal2 := types.NewProposal(height, round, blockParts2.Header(), polRound, polBlockID)
-	cs.privValidator.SignProposal(cs.state.ChainID, proposal2) // byzantine doesnt err
+	if err := cs.privValidator.SignProposal(cs.state.ChainID, proposal2); err != nil {
+		t.Error(err)
+	}
 
 	block1Hash := block1.Hash()
 	block2Hash := block2.Hash()
@@ -289,12 +293,12 @@ func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote
 }
 
 func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) (err error) {
-	proposal.Signature, err = privVal.Sign(types.SignBytes(chainID, proposal))
+	proposal.Signature, _ = privVal.Sign(types.SignBytes(chainID, proposal))
 	return nil
 }
 
 func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) (err error) {
-	heartbeat.Signature, err = privVal.Sign(types.SignBytes(chainID, heartbeat))
+	heartbeat.Signature, _ = privVal.Sign(types.SignBytes(chainID, heartbeat))
 	return nil
 }
 

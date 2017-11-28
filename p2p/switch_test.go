@@ -10,11 +10,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -100,12 +101,12 @@ func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 func initSwitchFunc(i int, sw *Switch) *Switch {
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
-		&ChannelDescriptor{ID: byte(0x00), Priority: 10},
-		&ChannelDescriptor{ID: byte(0x01), Priority: 10},
+		{ID: byte(0x00), Priority: 10},
+		{ID: byte(0x01), Priority: 10},
 	}, true))
 	sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
-		&ChannelDescriptor{ID: byte(0x02), Priority: 10},
-		&ChannelDescriptor{ID: byte(0x03), Priority: 10},
+		{ID: byte(0x02), Priority: 10},
+		{ID: byte(0x03), Priority: 10},
 	}, true))
 	return sw
 }
@@ -171,10 +172,12 @@ func TestConnAddrFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.addPeerWithConnection(c1)
+		err := s1.addPeerWithConnection(c1)
+		assert.NotNil(t, err, "expected err")
 	}()
 	go func() {
-		s2.addPeerWithConnection(c2)
+		err := s2.addPeerWithConnection(c2)
+		assert.NotNil(t, err, "expected err")
 	}()
 
 	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
@@ -206,10 +209,12 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	// connect to good peer
 	go func() {
-		s1.addPeerWithConnection(c1)
+		err := s1.addPeerWithConnection(c1)
+		assert.NotNil(t, err, "expected error")
 	}()
 	go func() {
-		s2.addPeerWithConnection(c2)
+		err := s2.addPeerWithConnection(c2)
+		assert.NotNil(t, err, "expected error")
 	}()
 
 	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
@@ -220,7 +225,10 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	sw.Start()
+	_, err := sw.Start()
+	if err != nil {
+		t.Error(err)
+	}
 	defer sw.Stop()
 
 	// simulate remote peer
@@ -244,7 +252,10 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	sw.Start()
+	_, err := sw.Start()
+	if err != nil {
+		t.Error(err)
+	}
 	defer sw.Stop()
 
 	// simulate remote peer
@@ -295,12 +306,12 @@ func BenchmarkSwitches(b *testing.B) {
 	s1, s2 := makeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
 		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
-			&ChannelDescriptor{ID: byte(0x00), Priority: 10},
-			&ChannelDescriptor{ID: byte(0x01), Priority: 10},
+			{ID: byte(0x00), Priority: 10},
+			{ID: byte(0x01), Priority: 10},
 		}, false))
 		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
-			&ChannelDescriptor{ID: byte(0x02), Priority: 10},
-			&ChannelDescriptor{ID: byte(0x03), Priority: 10},
+			{ID: byte(0x02), Priority: 10},
+			{ID: byte(0x03), Priority: 10},
 		}, false))
 		return sw
 	})

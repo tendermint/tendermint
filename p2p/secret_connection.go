@@ -302,7 +302,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 // sha256
 func hash32(input []byte) (res *[32]byte) {
 	hasher := sha256.New()
-	hasher.Write(input) // does not error
+	hasher.Write(input) // nolint: errcheck, gas
 	resSlice := hasher.Sum(nil)
 	res = new([32]byte)
 	copy(res[:], resSlice)
@@ -312,7 +312,7 @@ func hash32(input []byte) (res *[32]byte) {
 // We only fill in the first 20 bytes with ripemd160
 func hash24(input []byte) (res *[24]byte) {
 	hasher := ripemd160.New()
-	hasher.Write(input) // does not error
+	hasher.Write(input) // nolint: errcheck, gas
 	resSlice := hasher.Sum(nil)
 	res = new([24]byte)
 	copy(res[:], resSlice)

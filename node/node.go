@@ -384,7 +384,7 @@ func (n *Node) OnStop() {
 	n.eventBus.Stop()
 }
 
-// RunForever waits for an interupt signal and stops the node.
+// RunForever waits for an interrupt signal and stops the node.
 func (n *Node) RunForever() {
 	// Sleep forever and then...
 	cmn.TrapSignal(func() {
@@ -430,7 +430,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
 		onDisconnect := rpcserver.OnDisconnect(func(remoteAddr string) {
-			n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+			err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
+			if err != nil {
+				rpcLogger.Error("Error unsubsribing from all on disconnect", "err", err)
+			}
 		})
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, onDisconnect)
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))

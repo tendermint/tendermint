@@ -56,7 +56,7 @@ func WriteRPCResponseHTTPError(w http.ResponseWriter, httpCode int, res types.RP
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(httpCode)
-	w.Write(jsonBytes)
+	w.Write(jsonBytes) // nolint: errcheck, gas
 }
 
 func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
@@ -66,7 +66,7 @@ func WriteRPCResponseHTTP(w http.ResponseWriter, res types.RPCResponse) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
-	w.Write(jsonBytes)
+	w.Write(jsonBytes) // nolint: errcheck, gas
 }
 
 //-----------------------------------------------------------------------------

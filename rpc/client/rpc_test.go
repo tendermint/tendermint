@@ -140,7 +140,9 @@ func TestAppCalls(t *testing.T) {
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
-		client.WaitForHeight(c, apph, nil)
+		if err := client.WaitForHeight(c, apph, nil); err != nil {
+			t.Error(err)
+		}
 		qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
 		if assert.Nil(err) && assert.True(qres.Code.IsOK()) {
 			// assert.Equal(k, data.GetKey())  // only returned for proofs
