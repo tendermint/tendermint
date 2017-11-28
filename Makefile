@@ -87,11 +87,12 @@ metalinter:
 metalinter_test:
 	@gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
+		--enable=gosimple \
 	 	--enable=misspell \
 		--enable=safesql \
 		./...
 
-		# --enable=gas \
+		#--enable=gas \
 		#--enable=maligned \
 		#--enable=dupl \
 		#--enable=errcheck \
@@ -99,7 +100,6 @@ metalinter_test:
 		#--enable=gocyclo \
 		#--enable=goimports \
 		#--enable=golint \ <== comments on anything exported
-		#--enable=gosimple \
 		#--enable=gotype \
 	 	#--enable=ineffassign \
 	   	#--enable=interfacer \
