@@ -7,25 +7,23 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	wire "github.com/tendermint/go-wire"
+
 	"github.com/tendermint/tmlibs/log"
 )
 
 func createTestMConnection(conn net.Conn) *MConnection {
-	onReceive := func(chID byte, msgBytes []byte) {
-	}
-	onError := func(r interface{}) {
-	}
-	c := createMConnectionWithCallbacks(conn, onReceive, onError)
-	c.SetLogger(log.TestingLogger())
-	return c
+	onReceive := func(chID byte, msgBytes []byte) {}
+	onError := func(r interface{}) {}
+	return createMConnectionWithCallbacks(conn, onReceive, onError, log.TestingLogger())
 }
 
-func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
+func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte),
+	onError func(r interface{}), logger log.Logger) *MConnection {
+
 	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := NewMConnection(conn, chDescs, onReceive, onError)
-	c.SetLogger(log.TestingLogger())
-	return c
+	return NewMConnection(conn, chDescs, onReceive, onError, logger)
 }
 
 func TestMConnectionSend(t *testing.T) {
@@ -70,7 +68,7 @@ func TestMConnectionReceive(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn1 := createMConnectionWithCallbacks(client, onReceive, onError)
+	mconn1 := createMConnectionWithCallbacks(client, onReceive, onError, log.NewNopLogger())
 	_, err := mconn1.Start()
 	require.Nil(err)
 	defer mconn1.Stop()
@@ -125,7 +123,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	onError := func(r interface{}) {
 		errorsCh <- r
 	}
-	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	mconn := createMConnectionWithCallbacks(client, onReceive, onError, log.NewNopLogger())
 	_, err := mconn.Start()
 	require.Nil(err)
 	defer mconn.Stop()
@@ -143,7 +141,9 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	}
 }
 
-func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr chan struct{}) (*MConnection, *MConnection) {
+func newClientAndServerConnsForReadErrors(require *require.Assertions,
+	chOnErr chan struct{}) (*MConnection, *MConnection) {
+
 	server, client := netPipe()
 
 	onReceive := func(chID byte, msgBytes []byte) {}
@@ -154,8 +154,9 @@ func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr c
 		{ID: 0x01, Priority: 1, SendQueueCapacity: 1},
 		{ID: 0x02, Priority: 1, SendQueueCapacity: 1},
 	}
-	mconnClient := NewMConnection(client, chDescs, onReceive, onError)
-	mconnClient.SetLogger(log.TestingLogger().With("module", "client"))
+
+	clientLogger := log.TestingLogger().With("module", "client")
+	mconnClient := NewMConnection(client, chDescs, onReceive, onError, clientLogger)
 	_, err := mconnClient.Start()
 	require.Nil(err)
 
@@ -165,8 +166,7 @@ func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr c
 	onError = func(r interface{}) {
 		chOnErr <- struct{}{}
 	}
-	mconnServer := createMConnectionWithCallbacks(server, onReceive, onError)
-	mconnServer.SetLogger(serverLogger)
+	mconnServer := createMConnectionWithCallbacks(server, onReceive, onError, serverLogger)
 	_, err = mconnServer.Start()
 	require.Nil(err)
 	return mconnClient, mconnServer

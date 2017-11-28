@@ -12,9 +12,12 @@ import (
 	"github.com/pkg/errors"
 
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/types"
+
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 //--------------------------------------------------------
@@ -72,7 +75,7 @@ type baseWAL struct {
 	enc *WALEncoder
 }
 
-func NewWAL(walFile string, light bool) (*baseWAL, error) {
+func NewWAL(walFile string, light bool, logger log.Logger) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
@@ -87,7 +90,7 @@ func NewWAL(walFile string, light bool) (*baseWAL, error) {
 		light: light,
 		enc:   NewWALEncoder(group),
 	}
-	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
+	wal.BaseService = *cmn.NewBaseService(logger, "baseWAL", wal)
 	return wal, nil
 }
 

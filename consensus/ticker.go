@@ -14,13 +14,12 @@ var (
 // TimeoutTicker is a timer that schedules timeouts
 // conditional on the height/round/step in the timeoutInfo.
 // The timeoutInfo.Duration may be non-positive.
+// TODO: Embed cmn.Service instead of redefining it here.
 type TimeoutTicker interface {
 	Start() (bool, error)
 	Stop() bool
 	Chan() <-chan timeoutInfo       // on which to receive a timeout
 	ScheduleTimeout(ti timeoutInfo) // reset the timer
-
-	SetLogger(log.Logger)
 }
 
 // timeoutTicker wraps time.Timer,
@@ -37,13 +36,13 @@ type timeoutTicker struct {
 }
 
 // NewTimeoutTicker returns a new TimeoutTicker.
-func NewTimeoutTicker() TimeoutTicker {
+func NewTimeoutTicker(logger log.Logger) TimeoutTicker {
 	tt := &timeoutTicker{
 		timer:    time.NewTimer(0),
 		tickChan: make(chan timeoutInfo, tickTockBufferSize),
 		tockChan: make(chan timeoutInfo, tickTockBufferSize),
 	}
-	tt.BaseService = *cmn.NewBaseService(nil, "TimeoutTicker", tt)
+	tt.BaseService = *cmn.NewBaseService(logger, "TimeoutTicker", tt)
 	tt.stopTimer() // don't want to fire until the first scheduled timeout
 	return tt
 }

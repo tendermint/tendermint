@@ -294,7 +294,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig,
 
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
+	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore), nil)
 	_, err = proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))

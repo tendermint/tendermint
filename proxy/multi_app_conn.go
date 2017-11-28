@@ -4,6 +4,7 @@ import (
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 //-----------------------------
@@ -17,8 +18,8 @@ type AppConns interface {
 	Query() AppConnQuery
 }
 
-func NewAppConns(clientCreator ClientCreator, handshaker Handshaker) AppConns {
-	return NewMultiAppConn(clientCreator, handshaker)
+func NewAppConns(clientCreator ClientCreator, handshaker Handshaker, logger log.Logger) AppConns {
+	return NewMultiAppConn(clientCreator, handshaker, logger)
 }
 
 //-----------------------------
@@ -45,12 +46,14 @@ type multiAppConn struct {
 }
 
 // Make all necessary abci connections to the application
-func NewMultiAppConn(clientCreator ClientCreator, handshaker Handshaker) *multiAppConn {
+func NewMultiAppConn(clientCreator ClientCreator, handshaker Handshaker,
+	logger log.Logger) *multiAppConn {
+
 	multiAppConn := &multiAppConn{
 		handshaker:    handshaker,
 		clientCreator: clientCreator,
 	}
-	multiAppConn.BaseService = *cmn.NewBaseService(nil, "multiAppConn", multiAppConn)
+	multiAppConn.BaseService = *cmn.NewBaseService(logger, "multiAppConn", multiAppConn)
 	return multiAppConn
 }
 
@@ -71,33 +74,33 @@ func (app *multiAppConn) Query() AppConnQuery {
 
 func (app *multiAppConn) OnStart() error {
 	// query connection
-	querycli, err := app.clientCreator.NewABCIClient()
+	querycli, err := app.clientCreator.NewABCIClient(
+		app.Logger.With("module", "abci-client", "connection", "query"))
 	if err != nil {
 		return errors.Wrap(err, "Error creating ABCI client (query connection)")
 	}
-	querycli.SetLogger(app.Logger.With("module", "abci-client", "connection", "query"))
 	if _, err := querycli.Start(); err != nil {
 		return errors.Wrap(err, "Error starting ABCI client (query connection)")
 	}
 	app.queryConn = NewAppConnQuery(querycli)
 
 	// mempool connection
-	memcli, err := app.clientCreator.NewABCIClient()
+	memcli, err := app.clientCreator.NewABCIClient(
+		app.Logger.With("module", "abci-client", "connection", "mempool"))
 	if err != nil {
 		return errors.Wrap(err, "Error creating ABCI client (mempool connection)")
 	}
-	memcli.SetLogger(app.Logger.With("module", "abci-client", "connection", "mempool"))
 	if _, err := memcli.Start(); err != nil {
 		return errors.Wrap(err, "Error starting ABCI client (mempool connection)")
 	}
 	app.mempoolConn = NewAppConnMempool(memcli)
 
 	// consensus connection
-	concli, err := app.clientCreator.NewABCIClient()
+	concli, err := app.clientCreator.NewABCIClient(
+		app.Logger.With("module", "abci-client", "connection", "consensus"))
 	if err != nil {
 		return errors.Wrap(err, "Error creating ABCI client (consensus connection)")
 	}
-	concli.SetLogger(app.Logger.With("module", "abci-client", "connection", "consensus"))
 	if _, err := concli.Start(); err != nil {
 		return errors.Wrap(err, "Error starting ABCI client (consensus connection)")
 	}

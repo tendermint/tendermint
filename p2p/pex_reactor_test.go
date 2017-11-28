@@ -73,7 +73,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	// create switches
 	for i := 0; i < N; i++ {
 		switches[i] = makeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
-			sw.SetLogger(log.TestingLogger().With("switch", i))
+			sw.BaseService.Logger = log.TestingLogger().With("switch", i)
 
 			r := NewPEXReactor(book, log.TestingLogger())
 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
@@ -103,7 +103,9 @@ func TestPEXReactorRunning(t *testing.T) {
 	}
 }
 
-func assertSomePeersWithTimeout(t *testing.T, switches []*Switch, checkPeriod, timeout time.Duration) {
+func assertSomePeersWithTimeout(t *testing.T, switches []*Switch, checkPeriod,
+	timeout time.Duration) {
+
 	ticker := time.NewTicker(checkPeriod)
 	for {
 		select {
@@ -123,9 +125,11 @@ func assertSomePeersWithTimeout(t *testing.T, switches []*Switch, checkPeriod, t
 			numPeersStr := ""
 			for i, s := range switches {
 				outbound, inbound, _ := s.NumPeers()
-				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
+				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound,
+					inbound)
 			}
-			t.Errorf("expected all switches to be connected to at least one peer (switches: %s)", numPeersStr)
+			t.Errorf("expected all switches to be connected to at least one peer (switches: %s)",
+				numPeersStr)
 		}
 	}
 }
@@ -176,7 +180,8 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 
 func createRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
-		addr = cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
+		addr = cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256,
+			rand.Int()%256)
 		netAddr, _ = NewNetAddressString(addr)
 		if netAddr.Routable() {
 			break
@@ -196,6 +201,6 @@ func createRandomPeer(outbound bool) *peer {
 		outbound: outbound,
 		mconn:    &MConnection{RemoteAddress: netAddr},
 	}
-	p.SetLogger(log.TestingLogger().With("peer", addr))
+	p.BaseService.Logger = log.TestingLogger().With("peer", addr)
 	return p
 }

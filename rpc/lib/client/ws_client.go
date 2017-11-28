@@ -10,12 +10,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
+
+	"github.com/gorilla/websocket"
+
 	metrics "github.com/rcrowley/go-metrics"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
+	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 const (
@@ -40,17 +44,18 @@ type WSClient struct {
 	// https://godoc.org/github.com/rcrowley/go-metrics#Timer.
 	PingPongLatencyTimer metrics.Timer
 
-	// Single user facing channel to read RPCResponses from, closed only when the client is being stopped.
+	// Single user facing channel to read RPCResponses from, closed only when the client is being
+	// stopped.
 	ResponsesCh chan types.RPCResponse
 
 	// Callback, which will be called each time after successful reconnect.
 	onReconnect func()
 
 	// internal channels
-	send             chan types.RPCRequest // user requests
-	backlog          chan types.RPCRequest // stores a single user request received during a conn failure
-	reconnectAfter   chan error            // reconnect requests
-	readRoutineQuit  chan struct{}         // a way for readRoutine to close writeRoutine
+	send            chan types.RPCRequest // user requests
+	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
+	reconnectAfter  chan error            // reconnect requests
+	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
 
 	wg sync.WaitGroup
 
@@ -64,17 +69,21 @@ type WSClient struct {
 	// Time allowed to write a message to the server. 0 means block until operation succeeds.
 	writeWait time.Duration
 
-	// Time allowed to read the next message from the server. 0 means block until operation succeeds.
+	// Time allowed to read the next message from the server. 0 means block until operation
+	// succeeds.
 	readWait time.Duration
 
-	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
+	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be
+	// sent.
 	pingPeriod time.Duration
 }
 
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
-func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
+func NewWSClient(remoteAddr, endpoint string, logger log.Logger,
+	options ...func(*WSClient)) *WSClient {
+
 	addr, dialer := makeHTTPDialer(remoteAddr)
 	c := &WSClient{
 		Address:              addr,
@@ -87,7 +96,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 		writeWait:            defaultWriteWait,
 		pingPeriod:           defaultPingPeriod,
 	}
-	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
+	c.BaseService = *cmn.NewBaseService(logger, "WSClient", c)
 	for _, option := range options {
 		option(c)
 	}
@@ -212,7 +221,9 @@ func (c *WSClient) Call(ctx context.Context, method string, params map[string]in
 
 // CallWithArrayParams the given method with params in a form of array. See
 // Send description.
-func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
+func (c *WSClient) CallWithArrayParams(ctx context.Context, method string,
+	params []interface{}) error {
+
 	request, err := types.ArrayToRequest("ws-client", method, params)
 	if err != nil {
 		return err
@@ -387,7 +398,8 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit:
-			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			c.conn.WriteMessage(websocket.CloseMessage,
+				websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			return
 		}
 	}
@@ -436,9 +448,9 @@ func (c *WSClient) readRoutine() {
 			continue
 		}
 		c.Logger.Info("got response", "resp", response.Result)
-		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh to avoid blocking
-		// c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it sends unlimited Quit signals to stop
-		// both readRoutine and writeRoutine
+		// Combine a non-blocking read on BaseService.Quit with a non-blocking write on ResponsesCh
+		// to avoid blocking c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it
+		// sends unlimited Quit signals to stop both readRoutine and writeRoutine.
 		select {
 		case <-c.Quit:
 		case c.ResponsesCh <- response:

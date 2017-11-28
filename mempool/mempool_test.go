@@ -18,8 +18,8 @@ import (
 func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 	config := cfg.ResetTestRoot("mempool_test")
 
-	appConnMem, _ := cc.NewABCIClient()
-	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
+	appConnMem, _ := cc.NewABCIClient(
+		log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
 	appConnMem.Start()
 	mempool := NewMempool(config.Mempool, appConnMem, 0, log.TestingLogger())
 	return mempool
@@ -102,9 +102,8 @@ func TestSerialReap(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(app)
 
 	mempool := newMempoolWithApp(cc)
-	appConnCon, _ := cc.NewABCIClient()
-	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection",
-		"consensus"))
+	appConnCon, _ := cc.NewABCIClient(
+		log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	if _, err := appConnCon.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}

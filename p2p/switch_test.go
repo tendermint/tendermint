@@ -10,11 +10,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	crypto "github.com/tendermint/go-crypto"
+
 	wire "github.com/tendermint/go-wire"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tmlibs/log"
+
+	cfg "github.com/tendermint/tendermint/config"
 )
 
 var (
@@ -75,7 +78,8 @@ func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
 		//fmt.Printf("Received: %X, %X\n", chID, msgBytes)
-		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.Key(), msgBytes, tr.msgsCounter})
+		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.Key(), msgBytes,
+			tr.msgsCounter})
 		tr.msgsCounter++
 	}
 }
@@ -130,12 +134,17 @@ func TestSwitches(t *testing.T) {
 	s1.Broadcast(byte(0x01), ch1Msg)
 	s1.Broadcast(byte(0x02), ch2Msg)
 
-	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
-	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
-	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor),
+		10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor),
+		10*time.Millisecond, 5*time.Second)
+	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor),
+		10*time.Millisecond, 5*time.Second)
 }
 
-func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
+func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reactor *TestReactor,
+	checkPeriod, timeout time.Duration) {
+
 	ticker := time.NewTicker(checkPeriod)
 	for {
 		select {
@@ -143,7 +152,8 @@ func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reacto
 			msgs := reactor.getMsgs(channel)
 			if len(msgs) > 0 {
 				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X",
+						wire.BinaryBytes(msg), msgs[0].Bytes)
 				}
 				return
 			}
@@ -227,7 +237,8 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError,
+		sw.nodePrivKey, DefaultPeerConfig(), log.NewNopLogger())
 	require.Nil(err)
 	err = sw.addPeer(peer)
 	require.Nil(err)
@@ -251,7 +262,8 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError,
+		sw.nodePrivKey, DefaultPeerConfig(), log.NewNopLogger())
 	peer.makePersistent()
 	require.Nil(err)
 	err = sw.addPeer(peer)

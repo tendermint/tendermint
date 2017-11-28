@@ -14,14 +14,17 @@ import (
 	"time"
 
 	"github.com/go-kit/kit/log/term"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/go-wire/data"
+
+	"github.com/tendermint/tmlibs/log"
+
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tmlibs/log"
 )
 
 // Client and Server should work over tcp or unix sockets
@@ -114,8 +117,8 @@ func setup() {
 	tcpLogger := logger.With("socket", "tcp")
 	mux := http.NewServeMux()
 	server.RegisterRPCFuncs(mux, Routes, tcpLogger)
-	wm := server.NewWebsocketManager(Routes, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
-	wm.SetLogger(tcpLogger)
+	wm := server.NewWebsocketManager(Routes, tcpLogger, server.ReadWait(5*time.Second),
+		server.PingPeriod(1*time.Second))
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
 		_, err := server.StartHTTPServer(tcpAddr, mux, tcpLogger)
@@ -127,8 +130,7 @@ func setup() {
 	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
 	server.RegisterRPCFuncs(mux2, Routes, unixLogger)
-	wm = server.NewWebsocketManager(Routes)
-	wm.SetLogger(unixLogger)
+	wm = server.NewWebsocketManager(Routes, unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
 		_, err := server.StartHTTPServer(unixAddr, mux2, unixLogger)
@@ -280,8 +282,7 @@ func TestServersAndClientsBasic(t *testing.T) {
 		fmt.Printf("=== testing server on %s using %v client", addr, cl2)
 		testWithHTTPClient(t, cl2)
 
-		cl3 := client.NewWSClient(addr, websocketEndpoint)
-		cl3.SetLogger(log.TestingLogger())
+		cl3 := client.NewWSClient(addr, websocketEndpoint, log.TestingLogger())
 		_, err := cl3.Start()
 		require.Nil(t, err)
 		fmt.Printf("=== testing server on %s using %v client", addr, cl3)
@@ -309,8 +310,7 @@ func TestQuotedStringArg(t *testing.T) {
 }
 
 func TestWSNewWSRPCFunc(t *testing.T) {
-	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
-	cl.SetLogger(log.TestingLogger())
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint, log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
@@ -336,8 +336,7 @@ func TestWSNewWSRPCFunc(t *testing.T) {
 }
 
 func TestWSHandlesArrayParams(t *testing.T) {
-	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
-	cl.SetLogger(log.TestingLogger())
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint, log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()
@@ -363,8 +362,7 @@ func TestWSHandlesArrayParams(t *testing.T) {
 // TestWSClientPingPong checks that a client & server exchange pings
 // & pongs so connection stays alive.
 func TestWSClientPingPong(t *testing.T) {
-	cl := client.NewWSClient(tcpAddr, websocketEndpoint)
-	cl.SetLogger(log.TestingLogger())
+	cl := client.NewWSClient(tcpAddr, websocketEndpoint, log.TestingLogger())
 	_, err := cl.Start()
 	require.Nil(t, err)
 	defer cl.Stop()

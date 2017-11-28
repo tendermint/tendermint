@@ -9,10 +9,12 @@ import (
 	"github.com/pkg/errors"
 
 	data "github.com/tendermint/go-wire/data"
+
+	cmn "github.com/tendermint/tmlibs/common"
+
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 /*
@@ -216,7 +218,7 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 // events.eventSwitch.  If only it wasn't private...
 // BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
 func (w *WSEvents) Start() (bool, error) {
-	ws := rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+	ws := rpcclient.NewWSClient(w.remote, w.endpoint, nil, rpcclient.OnReconnect(func() {
 		w.redoSubscriptions()
 	}))
 	started, err := ws.Start()

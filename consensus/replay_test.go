@@ -17,17 +17,20 @@ import (
 
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
+
 	crypto "github.com/tendermint/go-crypto"
+
 	wire "github.com/tendermint/go-wire"
+
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/log"
 )
 
 var consensusReplayConfig *cfg.Config
@@ -334,11 +337,10 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 	privVal := types.LoadPrivValidatorFS(config.PrivValidatorFile())
 
-	wal, err := NewWAL(walFile, false)
+	wal, err := NewWAL(walFile, false, log.TestingLogger())
 	if err != nil {
 		t.Fatal(err)
 	}
-	wal.SetLogger(log.TestingLogger())
 	if _, err := wal.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -360,14 +362,14 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
-		proxyApp := proxy.NewAppConns(clientCreator2, nil)
+		proxyApp := proxy.NewAppConns(clientCreator2, nil, nil)
 		state, _ := stateAndStore(config, privVal.GetPubKey())
 		buildAppStateFromChain(proxyApp, state, chain, nBlocks, mode)
 	}
 
 	// now start the app using the handshake - it should sync
 	handshaker := NewHandshaker(state, store)
-	proxyApp := proxy.NewAppConns(clientCreator2, handshaker)
+	proxyApp := proxy.NewAppConns(clientCreator2, handshaker, nil)
 	if _, err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
@@ -385,9 +387,9 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 	expectedBlocksToSync := NUM_BLOCKS - nBlocks
 	if nBlocks == NUM_BLOCKS && mode > 0 {
-		expectedBlocksToSync += 1
+		expectedBlocksToSync++
 	} else if nBlocks > 0 && mode == 1 {
-		expectedBlocksToSync += 1
+		expectedBlocksToSync++
 	}
 
 	if handshaker.NBlocks() != expectedBlocksToSync {
@@ -437,8 +439,10 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 
 func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.Block, mode uint) []byte {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "1")))
-	proxyApp := proxy.NewAppConns(clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
+	clientCreator := proxy.NewLocalClientCreator(
+		dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "1")))
+	// sm.NewHandshaker(config, state, store, ReplayLastBlock)
+	proxyApp := proxy.NewAppConns(clientCreator, nil, nil)
 	if _, err := proxyApp.Start(); err != nil {
 		panic(err)
 	}

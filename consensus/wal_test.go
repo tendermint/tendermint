@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/consensus/types"
-	tmtypes "github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	cmn "github.com/tendermint/tmlibs/common"
+
+	"github.com/tendermint/tendermint/consensus/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 func TestWALEncoderDecoder(t *testing.T) {
@@ -40,7 +41,7 @@ func TestWALEncoderDecoder(t *testing.T) {
 }
 
 func TestSearchForEndHeight(t *testing.T) {
-	wal, err := NewWAL(path.Join(data_dir, "many_blocks.cswal"), false)
+	wal, err := NewWAL(path.Join(data_dir, "many_blocks.cswal"), false, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

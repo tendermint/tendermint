@@ -10,8 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/require"
+
+	"github.com/gorilla/websocket"
+
 	"github.com/tendermint/tmlibs/log"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
@@ -187,10 +189,9 @@ func TestNotBlockingOnStop(t *testing.T) {
 }
 
 func startClient(t *testing.T, addr net.Addr) *WSClient {
-	c := NewWSClient(addr.String(), "/websocket")
+	c := NewWSClient(addr.String(), "/websocket", log.TestingLogger())
 	_, err := c.Start()
 	require.Nil(t, err)
-	c.SetLogger(log.TestingLogger())
 	return c
 }
 

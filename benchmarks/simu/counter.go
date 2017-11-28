@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
+	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 )
 
 func main() {
-	wsc := rpcclient.NewWSClient("127.0.0.1:46657", "/websocket")
+	wsc := rpcclient.NewWSClient("127.0.0.1:46657", "/websocket", log.NewNopLogger())
 	_, err := wsc.Start()
 	if err != nil {
 		cmn.Exit(err.Error())

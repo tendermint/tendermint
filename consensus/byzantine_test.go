@@ -37,7 +37,7 @@ func TestByzantine(t *testing.T) {
 	css := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
 
 	// give the byzantine validator a normal ticker
-	css[0].SetTimeoutTicker(NewTimeoutTicker())
+	css[0].SetTimeoutTicker(NewTimeoutTicker(nil))
 
 	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")
@@ -251,7 +251,7 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	}
 
 	// Create peerState for peer
-	peerState := NewPeerState(peer).SetLogger(br.reactor.Logger)
+	peerState := NewPeerState(peer, br.reactor.Logger)
 	peer.Set(types.PeerStateKey, peerState)
 
 	// Send our state to peer.

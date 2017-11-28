@@ -8,11 +8,13 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/types"
+
+	"github.com/tendermint/tmlibs/log"
 )
 
 // NewABCIClient returns newly connected client
 type ClientCreator interface {
-	NewABCIClient() (abcicli.Client, error)
+	NewABCIClient(log.Logger) (abcicli.Client, error)
 }
 
 //----------------------------------------------------
@@ -30,8 +32,10 @@ func NewLocalClientCreator(app types.Application) ClientCreator {
 	}
 }
 
-func (l *localClientCreator) NewABCIClient() (abcicli.Client, error) {
-	return abcicli.NewLocalClient(l.mtx, l.app), nil
+func (l *localClientCreator) NewABCIClient(logger log.Logger) (abcicli.Client, error) {
+	c := abcicli.NewLocalClient(l.mtx, l.app)
+	c.BaseService.Logger = logger
+	return c, nil
 }
 
 //---------------------------------------------------------------
@@ -51,8 +55,8 @@ func NewRemoteClientCreator(addr, transport string, mustConnect bool) ClientCrea
 	}
 }
 
-func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
-	remoteApp, err := abcicli.NewClient(r.addr, r.transport, r.mustConnect)
+func (r *remoteClientCreator) NewABCIClient(logger log.Logger) (abcicli.Client, error) {
+	remoteApp, err := abcicli.NewClient(r.addr, r.transport, r.mustConnect, logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to connect to proxy")
 	}

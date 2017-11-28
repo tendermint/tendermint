@@ -165,8 +165,7 @@ func NewNode(config *cfg.Config,
 	// and sync tendermint and the app by replaying any necessary blocks
 	handshaker := consensus.NewHandshaker(state, blockStore)
 	handshaker.SetLogger(consensusLogger)
-	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
-	proxyApp.SetLogger(logger.With("module", "proxy"))
+	proxyApp := proxy.NewAppConns(clientCreator, handshaker, logger.With("module", "proxy"))
 	if _, err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
@@ -431,8 +430,8 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		onDisconnect := rpcserver.OnDisconnect(func(remoteAddr string) {
 			n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
 		})
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, onDisconnect)
-		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, rpcLogger.With("protocol", "websocket"),
+			onDisconnect)
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
 		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)

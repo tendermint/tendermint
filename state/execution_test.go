@@ -7,12 +7,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/abci/example/dummy"
+
 	crypto "github.com/tendermint/go-crypto"
+
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
+
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -24,7 +27,7 @@ var (
 
 func TestApplyBlock(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(dummy.NewDummyApplication())
-	proxyApp := proxy.NewAppConns(cc, nil)
+	proxyApp := proxy.NewAppConns(cc, nil, nil)
 	_, err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop()

@@ -50,19 +50,18 @@ func TestEcho(t *testing.T) {
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
-	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
-	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication(),
+		log.TestingLogger().With("module", "abci-server"))
 	if _, err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
 
 	// Start client
-	cli, err := clientCreator.NewABCIClient()
+	cli, err := clientCreator.NewABCIClient(log.TestingLogger().With("module", "abci-client"))
 	if err != nil {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
-	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
 	if _, err := cli.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
@@ -82,19 +81,18 @@ func BenchmarkEcho(b *testing.B) {
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
-	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
-	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication(),
+		log.TestingLogger().With("module", "abci-server"))
 	if _, err := s.Start(); err != nil {
 		b.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
 
 	// Start client
-	cli, err := clientCreator.NewABCIClient()
+	cli, err := clientCreator.NewABCIClient(log.TestingLogger().With("module", "abci-client"))
 	if err != nil {
 		b.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
-	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
 	if _, err := cli.Start(); err != nil {
 		b.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
@@ -119,19 +117,18 @@ func TestInfo(t *testing.T) {
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
-	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
-	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
+	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication(),
+		log.TestingLogger().With("module", "abci-server"))
 	if _, err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
 
 	// Start client
-	cli, err := clientCreator.NewABCIClient()
+	cli, err := clientCreator.NewABCIClient(log.TestingLogger().With("module", "abci-client"))
 	if err != nil {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
-	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
 	if _, err := cli.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
