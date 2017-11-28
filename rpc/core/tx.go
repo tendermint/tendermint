@@ -6,6 +6,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
 // Tx allows you to query the transaction results. `nil` could mean the
@@ -98,4 +99,43 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 		Tx:       r.Tx,
 		Proof:    proof,
 	}, nil
+}
+
+func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
+	// if index is disabled, return error
+	if _, ok := txIndexer.(*null.TxIndex); ok {
+		return nil, fmt.Errorf("Transaction indexing is disabled.")
+	}
+
+	q, err := tmquery.New(query)
+	if err != nil {
+		return []*ctypes.ResultTx{}, err
+	}
+
+	results, err := txIndexer.Search(q)
+	if err != nil {
+		return []*ctypes.ResultTx{}, err
+	}
+
+	apiResults := make([]*ctypes.ResultTx, len(results))
+	for i, r := range results {
+		height := r.Height
+		index := r.Index
+
+		var proof types.TxProof
+		if prove {
+			block := blockStore.LoadBlock(int(height))
+			proof = block.Data.Txs.Proof(int(index))
+		}
+
+		apiResults[i] = &ctypes.ResultTx{
+			Height:   height,
+			Index:    index,
+			TxResult: r.Result,
+			Tx:       r.Tx,
+			Proof:    proof,
+		}
+	}
+
+	return apiResults, nil
 }

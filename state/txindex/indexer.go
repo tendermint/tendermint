@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tmlibs/pubsub/query"
 )
 
 // TxIndexer interface defines methods to index and search transactions.
@@ -18,6 +19,9 @@ type TxIndexer interface {
 	// Get returns the transaction specified by hash or nil if the transaction is not indexed
 	// or stored.
 	Get(hash []byte) (*types.TxResult, error)
+
+	// Search allows you to query for transactions.
+	Search(q *query.Query) ([]*types.TxResult, error)
 }
 
 //----------------------------------------------------
