@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/tendermint/tmlibs/log"
@@ -19,7 +20,7 @@ type Service interface {
 	Stop() error
 	OnStop()
 
-	Reset() (bool, error)
+	Reset() error
 	OnReset() error
 
 	IsRunning() bool
@@ -145,17 +146,17 @@ func (bs *BaseService) Stop() error {
 func (bs *BaseService) OnStop() {}
 
 // Implements Service
-func (bs *BaseService) Reset() (bool, error) {
+func (bs *BaseService) Reset() error {
 	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
 		bs.Logger.Debug(Fmt("Can't reset %v. Not stopped", bs.name), "impl", bs.impl)
-		return false, nil
+		return fmt.Errorf("can't reset running %s", bs.name)
 	}
 
 	// whether or not we've started, we can reset
 	atomic.CompareAndSwapUint32(&bs.started, 1, 0)
 
 	bs.Quit = make(chan struct{})
-	return true, bs.impl.OnReset()
+	return bs.impl.OnReset()
 }
 
 // Implements Service
