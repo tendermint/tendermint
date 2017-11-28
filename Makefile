@@ -37,6 +37,8 @@ dist:
 
 test: 
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
+	@ echo "==> Running linter"
+	@ make metalinter_test
 	@ echo "==> Running go test"
 	@ go test $(PACKAGES)
 
@@ -54,20 +56,20 @@ fmt:
 get_deps:
 	@ go get -d $(PACKAGES)
 
-tools:
+ensure_tools:
 	go get -u -v $(GOTOOLS)
+	@gometalinter --install
 
-get_vendor_deps:
-	@ go get github.com/Masterminds/glide
+get_vendor_deps: ensure_tools
+	@rm -rf vendor/
+	@echo "--> Running glide install"
 	@ glide install
 
-metalinter: tools
-	@gometalinter --install
+metalinter:
 	protoc --lint_out=. types/*.proto
 	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test: tools
-	@gometalinter --install
+metalinter_test:
 	# protoc --lint_out=. types/*.proto
 	gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
@@ -103,4 +105,4 @@ build-docker:
 run-docker:
 	docker run -it --rm -v "$PWD:/go/src/github.com/tendermint/abci" -w "/go/src/github.com/tendermint/abci" "tendermint/abci-dev" /bin/bash
 
-.PHONY: all build test fmt get_deps tools protoc install_protoc build-docker run-docker
+.PHONY: all build test fmt get_deps ensure_tools protoc install_protoc build-docker run-docker
