@@ -45,15 +45,15 @@ func TestMatches(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		query, err := query.New(tc.s)
+		q, err := query.New(tc.s)
 		if !tc.err {
 			require.Nil(t, err)
 		}
 
 		if tc.matches {
-			assert.True(t, query.Matches(tc.tags), "Query '%s' should match %v", tc.s, tc.tags)
+			assert.True(t, q.Matches(tc.tags), "Query '%s' should match %v", tc.s, tc.tags)
 		} else {
-			assert.False(t, query.Matches(tc.tags), "Query '%s' should not match %v", tc.s, tc.tags)
+			assert.False(t, q.Matches(tc.tags), "Query '%s' should not match %v", tc.s, tc.tags)
 		}
 	}
 }
@@ -77,9 +77,9 @@ func TestConditions(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		query, err := query.New(tc.s)
+		q, err := query.New(tc.s)
 		require.Nil(t, err)
 
-		assert.Equal(t, tc.conditions, query.Conditions())
+		assert.Equal(t, tc.conditions, q.Conditions())
 	}
 }
