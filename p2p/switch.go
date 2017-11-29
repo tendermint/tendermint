@@ -1,11 +1,12 @@
 package p2p
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
@@ -174,17 +175,13 @@ func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
 
 // OnStart implements BaseService. It starts all the reactors, peers, and listeners.
 func (sw *Switch) OnStart() error {
-	if err := sw.BaseService.OnStart(); err != nil {
-		return err
-	}
 	// Start reactors
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to start %v", reactor)
 		}
 	}
-
 	// Start listeners
 	for _, listener := range sw.listeners {
 		go sw.listenerRoutine(listener)
@@ -194,7 +191,6 @@ func (sw *Switch) OnStart() error {
 
 // OnStop implements BaseService. It stops all listeners, peers, and reactors.
 func (sw *Switch) OnStop() {
-	sw.BaseService.OnStop()
 	// Stop listeners
 	for _, listener := range sw.listeners {
 		listener.Stop()

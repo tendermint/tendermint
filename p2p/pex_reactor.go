@@ -70,7 +70,7 @@ func (r *PEXReactor) OnStart() error {
 		return err
 	}
 	err := r.book.Start()
-	if err != nil {
+	if err != nil && err != cmn.ErrAlreadyStarted {
 		return err
 	}
 	go r.ensurePeersRoutine()
