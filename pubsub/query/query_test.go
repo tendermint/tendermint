@@ -45,15 +45,15 @@ func TestMatches(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		query, err := query.New(tc.s)
+		q, err := query.New(tc.s)
 		if !tc.err {
 			require.Nil(t, err)
 		}
 
 		if tc.matches {
-			assert.True(t, query.Matches(tc.tags), "Query '%s' should match %v", tc.s, tc.tags)
+			assert.True(t, q.Matches(tc.tags), "Query '%s' should match %v", tc.s, tc.tags)
 		} else {
-			assert.False(t, query.Matches(tc.tags), "Query '%s' should not match %v", tc.s, tc.tags)
+			assert.False(t, q.Matches(tc.tags), "Query '%s' should not match %v", tc.s, tc.tags)
 		}
 	}
 }
@@ -61,4 +61,25 @@ func TestMatches(t *testing.T) {
 func TestMustParse(t *testing.T) {
 	assert.Panics(t, func() { query.MustParse("=") })
 	assert.NotPanics(t, func() { query.MustParse("tm.events.type='NewBlock'") })
+}
+
+func TestConditions(t *testing.T) {
+	txTime, err := time.Parse(time.RFC3339, "2013-05-03T14:45:00Z")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		s          string
+		conditions []query.Condition
+	}{
+		{"tm.events.type='NewBlock'", []query.Condition{query.Condition{"tm.events.type", query.OpEqual, "NewBlock"}}},
+		{"tx.gas > 7 AND tx.gas < 9", []query.Condition{query.Condition{"tx.gas", query.OpGreater, int64(7)}, query.Condition{"tx.gas", query.OpLess, int64(9)}}},
+		{"tx.time >= TIME 2013-05-03T14:45:00Z", []query.Condition{query.Condition{"tx.time", query.OpGreaterEqual, txTime}}},
+	}
+
+	for _, tc := range testCases {
+		q, err := query.New(tc.s)
+		require.Nil(t, err)
+
+		assert.Equal(t, tc.conditions, q.Conditions())
+	}
 }
