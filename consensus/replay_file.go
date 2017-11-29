@@ -292,13 +292,13 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
-	_, err = proxyApp.Start()
+	err = proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
 	}
 
 	eventBus := types.NewEventBus()
-	if _, err := eventBus.Start(); err != nil {
+	if err := eventBus.Start(); err != nil {
 		cmn.Exit(cmn.Fmt("Failed to start event bus: %v", err))
 	}
 

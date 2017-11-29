@@ -37,7 +37,7 @@ func TestBasic(t *testing.T) {
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.SetLogger(log.TestingLogger())
 
-	_, err := pool.Start()
+	err := pool.Start()
 	if err != nil {
 		t.Error(err)
 	}
@@ -93,7 +93,7 @@ func TestTimeout(t *testing.T) {
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.SetLogger(log.TestingLogger())
-	_, err := pool.Start()
+	err := pool.Start()
 	if err != nil {
 		t.Error(err)
 	}

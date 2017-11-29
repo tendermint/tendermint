@@ -54,8 +54,8 @@ type WAL interface {
 	Group() *auto.Group
 	SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error)
 
-	Start() (bool, error)
-	Stop() bool
+	Start() error
+	Stop() error
 	Wait()
 }
 
@@ -102,7 +102,7 @@ func (wal *baseWAL) OnStart() error {
 	} else if size == 0 {
 		wal.Save(EndHeightMessage{0})
 	}
-	_, err = wal.group.Start()
+	err = wal.group.Start()
 	return err
 }
 
@@ -307,6 +307,6 @@ func (nilWAL) Group() *auto.Group { return nil }
 func (nilWAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error) {
 	return nil, false, nil
 }
-func (nilWAL) Start() (bool, error) { return true, nil }
-func (nilWAL) Stop() bool           { return true }
-func (nilWAL) Wait()                {}
+func (nilWAL) Start() error { return nil }
+func (nilWAL) Stop() error  { return nil }
+func (nilWAL) Wait()        {}

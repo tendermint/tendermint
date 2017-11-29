@@ -723,7 +723,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	con := NewWSConnection(wsConn, wm.funcMap, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
-	_, err = con.Start() // Blocking
+	err = con.Start() // Blocking
 	if err != nil {
 		wm.logger.Error("Error starting connection", "err", err)
 	}

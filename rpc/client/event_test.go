@@ -27,9 +27,8 @@ func TestHeaderEvents(t *testing.T) {
 		// start for this test it if it wasn't already running
 		if !c.IsRunning() {
 			// if so, then we start it, listen, and stop it.
-			st, err := c.Start()
+			err := c.Start()
 			require.Nil(err, "%d: %+v", i, err)
-			require.True(st, "%d", i)
 			defer c.Stop()
 		}
 
@@ -48,9 +47,8 @@ func TestBlockEvents(t *testing.T) {
 		// start for this test it if it wasn't already running
 		if !c.IsRunning() {
 			// if so, then we start it, listen, and stop it.
-			st, err := c.Start()
+			err := c.Start()
 			require.Nil(err, "%d: %+v", i, err)
-			require.True(st, "%d", i)
 			defer c.Stop()
 		}
 
@@ -80,9 +78,8 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 		// start for this test it if it wasn't already running
 		if !c.IsRunning() {
 			// if so, then we start it, listen, and stop it.
-			st, err := c.Start()
+			err := c.Start()
 			require.Nil(err, "%d: %+v", i, err)
-			require.True(st, "%d", i)
 			defer c.Stop()
 		}
 
@@ -113,9 +110,8 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		// start for this test it if it wasn't already running
 		if !c.IsRunning() {
 			// if so, then we start it, listen, and stop it.
-			st, err := c.Start()
+			err := c.Start()
 			require.Nil(err, "%d: %+v", i, err)
-			require.True(st, "%d", i)
 			defer c.Stop()
 		}
 

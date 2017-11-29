@@ -16,7 +16,7 @@ type Listener interface {
 	InternalAddress() *NetAddress
 	ExternalAddress() *NetAddress
 	String() string
-	Stop() bool
+	Stop() error
 }
 
 // Implements Listener
@@ -100,7 +100,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 		connections: make(chan net.Conn, numBufferedConnections),
 	}
 	dl.BaseService = *cmn.NewBaseService(logger, "DefaultListener", dl)
-	_, err = dl.Start() // Started upon construction
+	err = dl.Start() // Started upon construction
 	if err != nil {
 		logger.Error("Error starting base service", "err", err)
 	}

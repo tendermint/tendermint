@@ -25,7 +25,7 @@ var (
 func TestApplyBlock(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(dummy.NewDummyApplication())
 	proxyApp := proxy.NewAppConns(cc, nil)
-	_, err := proxyApp.Start()
+	err := proxyApp.Start()
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 

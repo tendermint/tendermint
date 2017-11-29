@@ -311,7 +311,7 @@ func (pool *BlockPool) makeNextRequester() {
 	pool.requesters[nextHeight] = request
 	pool.numPending++
 
-	_, err := request.Start()
+	err := request.Start()
 	if err != nil {
 		request.Logger.Error("Error starting request", "err", err)
 	}

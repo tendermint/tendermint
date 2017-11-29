@@ -1,11 +1,12 @@
 package p2p
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
 	"time"
+
+	"github.com/pkg/errors"
 
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
@@ -174,17 +175,13 @@ func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
 
 // OnStart implements BaseService. It starts all the reactors, peers, and listeners.
 func (sw *Switch) OnStart() error {
-	if err := sw.BaseService.OnStart(); err != nil {
-		return err
-	}
 	// Start reactors
 	for _, reactor := range sw.reactors {
-		_, err := reactor.Start()
+		err := reactor.Start()
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "failed to start %v", reactor)
 		}
 	}
-
 	// Start listeners
 	for _, listener := range sw.listeners {
 		go sw.listenerRoutine(listener)
@@ -194,7 +191,6 @@ func (sw *Switch) OnStart() error {
 
 // OnStop implements BaseService. It stops all listeners, peers, and reactors.
 func (sw *Switch) OnStop() {
-	sw.BaseService.OnStop()
 	// Stop listeners
 	for _, listener := range sw.listeners {
 		listener.Stop()
@@ -289,7 +285,7 @@ func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKeyEd25519) error) {
 }
 
 func (sw *Switch) startInitPeer(peer *peer) {
-	_, err := peer.Start() // spawn send/recv routines
+	err := peer.Start() // spawn send/recv routines
 	if err != nil {
 		// Should never happen
 		sw.Logger.Error("Error starting peer", "peer", peer, "err", err)
@@ -547,7 +543,7 @@ func Connect2Switches(switches []*Switch, i, j int) {
 // It returns the first encountered error.
 func StartSwitches(switches []*Switch) error {
 	for _, s := range switches {
-		_, err := s.Start() // start switch and reactors
+		err := s.Start() // start switch and reactors
 		if err != nil {
 			return err
 		}

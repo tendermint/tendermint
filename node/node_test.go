@@ -19,7 +19,7 @@ func TestNodeStartStop(t *testing.T) {
 	// create & start node
 	n, err := DefaultNewNode(config, log.TestingLogger())
 	assert.NoError(t, err, "expected no err on DefaultNewNode")
-	_, err1 := n.Start()
+	err1 := n.Start()
 	if err1 != nil {
 		t.Error(err1)
 	}

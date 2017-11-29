@@ -356,7 +356,6 @@ func (h *Handshaker) replayBlock(height int, proxyApp proxy.AppConnConsensus) ([
 func (h *Handshaker) checkAppHash(appHash []byte) error {
 	if !bytes.Equal(h.state.AppHash, appHash) {
 		panic(errors.New(cmn.Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash)).Error())
-		return nil
 	}
 	return nil
 }
@@ -371,7 +370,7 @@ func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppC
 		abciResponses: abciResponses,
 	})
 	cli, _ := clientCreator.NewABCIClient()
-	_, err := cli.Start()
+	err := cli.Start()
 	if err != nil {
 		panic(err)
 	}

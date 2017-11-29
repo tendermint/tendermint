@@ -83,17 +83,17 @@ ensure_tools:
 
 ### Formatting, linting, and vetting
 
-metalinter: 
+metalinter:
 	@gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test: 
+metalinter_test:
 	@gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
-		--enable=gas \
 	 	--enable=misspell \
 		--enable=safesql \
 		./...
 
+		# --enable=gas \
 		#--enable=maligned \
 		#--enable=dupl \
 		#--enable=errcheck \

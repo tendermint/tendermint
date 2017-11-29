@@ -47,10 +47,10 @@ type WSClient struct {
 	onReconnect func()
 
 	// internal channels
-	send             chan types.RPCRequest // user requests
-	backlog          chan types.RPCRequest // stores a single user request received during a conn failure
-	reconnectAfter   chan error            // reconnect requests
-	readRoutineQuit  chan struct{}         // a way for readRoutine to close writeRoutine
+	send            chan types.RPCRequest // user requests
+	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
+	reconnectAfter  chan error            // reconnect requests
+	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
 
 	wg sync.WaitGroup
 
@@ -168,12 +168,14 @@ func (c *WSClient) OnStop() {}
 
 // Stop overrides cmn.Service#Stop. There is no other way to wait until Quit
 // channel is closed.
-func (c *WSClient) Stop() bool {
-	success := c.BaseService.Stop()
-	// only close user-facing channels when we can't write to them
-	c.wg.Wait()
-	close(c.ResponsesCh)
-	return success
+func (c *WSClient) Stop() error {
+	err := c.BaseService.Stop()
+	if err == nil {
+		// only close user-facing channels when we can't write to them
+		c.wg.Wait()
+		close(c.ResponsesCh)
+	}
+	return err
 }
 
 // IsReconnecting returns true if the client is reconnecting right now.

@@ -65,7 +65,7 @@ func (conR *ConsensusReactor) OnStart() error {
 	}
 
 	if !conR.FastSync() {
-		_, err := conR.conS.Start()
+		err := conR.conS.Start()
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State, blocksSynced in
 		// dont bother with the WAL if we fast synced
 		conR.conS.doWALCatchup = false
 	}
-	_, err := conR.conS.Start()
+	err := conR.conS.Start()
 	if err != nil {
 		conR.Logger.Error("Error starting conS", "err", err)
 	}

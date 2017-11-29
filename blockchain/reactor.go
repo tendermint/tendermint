@@ -92,7 +92,7 @@ func (bcR *BlockchainReactor) OnStart() error {
 		return err
 	}
 	if bcR.fastSync {
-		_, err := bcR.pool.Start()
+		err := bcR.pool.Start()
 		if err != nil {
 			return err
 		}

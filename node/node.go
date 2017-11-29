@@ -165,7 +165,7 @@ func NewNode(config *cfg.Config,
 	handshaker.SetLogger(consensusLogger)
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
-	if _, err := proxyApp.Start(); err != nil {
+	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
 
@@ -326,7 +326,7 @@ func NewNode(config *cfg.Config,
 
 // OnStart starts the Node. It implements cmn.Service.
 func (n *Node) OnStart() error {
-	_, err := n.eventBus.Start()
+	err := n.eventBus.Start()
 	if err != nil {
 		return err
 	}
@@ -349,7 +349,7 @@ func (n *Node) OnStart() error {
 	// Start the switch
 	n.sw.SetNodeInfo(n.makeNodeInfo())
 	n.sw.SetNodePrivKey(n.privKey)
-	_, err = n.sw.Start()
+	err = n.sw.Start()
 	if err != nil {
 		return err
 	}

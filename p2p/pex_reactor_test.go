@@ -62,13 +62,11 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 }
 
 func TestPEXReactorRunning(t *testing.T) {
-	require := require.New(t)
-
 	N := 3
 	switches := make([]*Switch, N)
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
-	require.Nil(err)
+	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
 	book := NewAddrBook(dir+"addrbook.json", false)
 	book.SetLogger(log.TestingLogger())
@@ -95,8 +93,8 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// start switches
 	for _, s := range switches {
-		_, err := s.Start() // start switch and reactors
-		require.Nil(err)
+		err := s.Start() // start switch and reactors
+		require.Nil(t, err)
 	}
 
 	assertSomePeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second)

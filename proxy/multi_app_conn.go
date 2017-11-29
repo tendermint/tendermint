@@ -76,7 +76,7 @@ func (app *multiAppConn) OnStart() error {
 		return errors.Wrap(err, "Error creating ABCI client (query connection)")
 	}
 	querycli.SetLogger(app.Logger.With("module", "abci-client", "connection", "query"))
-	if _, err := querycli.Start(); err != nil {
+	if err := querycli.Start(); err != nil {
 		return errors.Wrap(err, "Error starting ABCI client (query connection)")
 	}
 	app.queryConn = NewAppConnQuery(querycli)
@@ -87,7 +87,7 @@ func (app *multiAppConn) OnStart() error {
 		return errors.Wrap(err, "Error creating ABCI client (mempool connection)")
 	}
 	memcli.SetLogger(app.Logger.With("module", "abci-client", "connection", "mempool"))
-	if _, err := memcli.Start(); err != nil {
+	if err := memcli.Start(); err != nil {
 		return errors.Wrap(err, "Error starting ABCI client (mempool connection)")
 	}
 	app.mempoolConn = NewAppConnMempool(memcli)
@@ -98,7 +98,7 @@ func (app *multiAppConn) OnStart() error {
 		return errors.Wrap(err, "Error creating ABCI client (consensus connection)")
 	}
 	concli.SetLogger(app.Logger.With("module", "abci-client", "connection", "consensus"))
-	if _, err := concli.Start(); err != nil {
+	if err := concli.Start(); err != nil {
 		return errors.Wrap(err, "Error starting ABCI client (consensus connection)")
 	}
 	app.consensusConn = NewAppConnConsensus(concli)
