@@ -77,7 +77,7 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	// Begin block
-	err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
+	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		block.Hash(),
 		types.TM2PB.Header(block.Header),
 	})
@@ -95,7 +95,7 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 	}
 
 	// End block
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(uint64(block.Height))
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{uint64(block.Height)})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err

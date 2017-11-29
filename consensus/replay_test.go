@@ -411,7 +411,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 	}
 
 	validators := types.TM2PB.Validators(state.Validators)
-	if err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
+	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
 		panic(err)
 	}
 
@@ -447,7 +447,7 @@ func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.B
 	defer proxyApp.Stop()
 
 	validators := types.TM2PB.Validators(state.Validators)
-	if err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
+	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
 		panic(err)
 	}
 

@@ -1,5 +1,5 @@
-hash: e279cca35a5cc9a68bb266015dc6a57da749b28dabca3994b2c5dbe02309f470
-updated: 2017-11-28T00:53:04.816567531Z
+hash: ffe610ffb74c1ea5cbe8da5d0d3ae30d2640c7426fe9a889a60218ea36daaf53
+updated: 2017-11-29T17:21:18.25916493Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
@@ -98,7 +98,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 2cfad8523a54d64271d7cbc69a39433eab918aa0
+  version: 5c29adc081795b04f9d046fb51d76903c22cfa6d
   subpackages:
   - client
   - example/counter
@@ -160,6 +160,8 @@ imports:
   - trace
 - name: golang.org/x/sys
   version: b98136db334ff9cb24f28a68e3be3cb6608f7630
+  subpackages:
+  - unix
 - name: golang.org/x/text
   version: 88f656faf3f37f690df1a32515b479415e1a6769
   subpackages:

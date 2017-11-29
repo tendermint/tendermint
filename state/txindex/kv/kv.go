@@ -186,6 +186,8 @@ func lookForHeight(conditions []query.Condition) (height uint64, index int) {
 	return 0, -1
 }
 
+// special map to hold range conditions
+// Example: account.number => queryRange{lowerBound: 1, upperBound: 5}
 type queryRanges map[string]queryRange
 
 type queryRange struct {
@@ -241,6 +243,8 @@ func (txi *TxIndex) match(c query.Condition, startKey []byte) (hashes [][]byte) 
 		}
 	} else if c.Op == query.OpContains {
 		// XXX: doing full scan because startKey does not apply here
+		// For example, if startKey = "account.owner=an" and search query = "accoutn.owner CONSISTS an"
+		// we can't iterate with prefix "account.owner=an" because we might miss keys like "account.owner=Ulan"
 		it := txi.store.Iterator()
 		defer it.Release()
 		for it.Next() {

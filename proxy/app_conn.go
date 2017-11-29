@@ -12,11 +12,11 @@ type AppConnConsensus interface {
 	SetResponseCallback(abcicli.Callback)
 	Error() error
 
-	InitChainSync(types.RequestInitChain) error
+	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 
-	BeginBlockSync(types.RequestBeginBlock) error
+	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	DeliverTxAsync(tx []byte) *abcicli.ReqRes
-	EndBlockSync(height uint64) (*types.ResponseEndBlock, error)
+	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
 	CommitSync() (*types.ResponseCommit, error)
 }
 
@@ -61,11 +61,11 @@ func (app *appConnConsensus) Error() error {
 	return app.appConn.Error()
 }
 
-func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) error {
+func (app *appConnConsensus) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	return app.appConn.InitChainSync(req)
 }
 
-func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) error {
+func (app *appConnConsensus) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
 	return app.appConn.BeginBlockSync(req)
 }
 
@@ -73,8 +73,8 @@ func (app *appConnConsensus) DeliverTxAsync(tx []byte) *abcicli.ReqRes {
 	return app.appConn.DeliverTxAsync(tx)
 }
 
-func (app *appConnConsensus) EndBlockSync(height uint64) (*types.ResponseEndBlock, error) {
-	return app.appConn.EndBlockSync(height)
+func (app *appConnConsensus) EndBlockSync(req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
+	return app.appConn.EndBlockSync(req)
 }
 
 func (app *appConnConsensus) CommitSync() (*types.ResponseCommit, error) {

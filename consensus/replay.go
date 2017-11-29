@@ -236,7 +236,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(h.state.Validators)
-		if err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
+		if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
 			return nil, err
 		}
 	}
@@ -391,7 +391,7 @@ func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 	return *r
 }
 
-func (mock *mockProxyApp) EndBlock(height uint64) abci.ResponseEndBlock {
+func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	mock.txCount = 0
 	return *mock.abciResponses.EndBlock
 }

@@ -191,11 +191,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	case deliverTxResMsg := <-deliverTxResCh:
 		deliverTxRes := deliverTxResMsg.(types.TMEventData).Unwrap().(types.EventDataTx)
 		// The tx was included in a block.
-		deliverTxR := abci.ResponseDeliverTx{
-			Code: deliverTxRes.Result.Code,
-			Data: deliverTxRes.Result.Data,
-			Log:  deliverTxRes.Result.Log,
-		}
+		deliverTxR := deliverTxRes.Result
 		logger.Info("DeliverTx passed ", "tx", data.Bytes(tx), "response", deliverTxR)
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxR,

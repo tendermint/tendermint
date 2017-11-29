@@ -13,6 +13,7 @@ import (
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -115,7 +116,7 @@ func TestTxsAvailable(t *testing.T) {
 
 func TestSerialReap(t *testing.T) {
 	app := counter.NewCounterApplication(true)
-	app.SetOption("serial", "on")
+	app.SetOption(abci.RequestSetOption{"serial", "on"})
 	cc := proxy.NewLocalClientCreator(app)
 
 	mempool := newMempoolWithApp(cc)

@@ -41,6 +41,7 @@ func (is *IndexerService) OnStart() error {
 	return nil
 }
 
+// OnStop implements cmn.Service by unsubscribing from all transactions.
 func (is *IndexerService) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
