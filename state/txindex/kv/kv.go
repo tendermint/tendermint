@@ -84,12 +84,23 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 
 // Index indexes a single transaction using the given list of tags.
 func (txi *TxIndex) Index(result *types.TxResult) error {
-	batch := txindex.NewBatch(1)
-	err := batch.Add(result)
-	if err != nil {
-		return errors.Wrap(err, "failed to add tx result to batch")
+	b := txi.store.NewBatch()
+
+	hash := result.Tx.Hash()
+
+	// index tx by tags
+	for _, tag := range result.Result.Tags {
+		if cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
+			b.Set(keyForTag(tag, result), hash)
+		}
 	}
-	return txi.AddBatch(batch)
+
+	// index tx by hash
+	rawBytes := wire.BinaryBytes(result)
+	b.Set(hash, rawBytes)
+
+	b.Write()
+	return nil
 }
 
 // Search performs a search using the given query. It breaks the query into
