@@ -367,7 +367,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// start tx indexer
-	_, err = n.indexerService.Start()
+	err = n.indexerService.Start()
 	if err != nil {
 		return err
 	}

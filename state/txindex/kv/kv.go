@@ -68,7 +68,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 
 		// index tx by tags
 		for _, tag := range result.Result.Tags {
-			if stringInSlice(tag.Key, txi.tagsToIndex) {
+			if cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
 				storeBatch.Set(keyForTag(tag, result), hash)
 			}
 		}
@@ -146,7 +146,7 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 	// for all other conditions
 	for i, c := range conditions {
-		if intInSlice(i, skipIndexes) {
+		if cmn.IntInSlice(i, skipIndexes) {
 			continue
 		}
 
@@ -355,24 +355,6 @@ func keyForTag(tag *abci.KVPair, result *types.TxResult) []byte {
 
 ///////////////////////////////////////////////////////////////////////////////
 // Utils
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
-
-func intInSlice(a int, list []int) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
 
 func intersect(as, bs [][]byte) [][]byte {
 	i := make([][]byte, 0, cmn.MinInt(len(as), len(bs)))
