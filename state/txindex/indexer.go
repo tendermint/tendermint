@@ -11,10 +11,10 @@ import (
 type TxIndexer interface {
 
 	// AddBatch analyzes, indexes and stores a batch of transactions.
-	AddBatch(b *Batch, allowedTags []string) error
+	AddBatch(b *Batch) error
 
 	// Index analyzes, indexes and stores a single transaction.
-	Index(result *types.TxResult, allowedTags []string) error
+	Index(result *types.TxResult) error
 
 	// Get returns the transaction specified by hash or nil if the transaction is not indexed
 	// or stored.

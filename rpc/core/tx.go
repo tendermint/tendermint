@@ -88,6 +88,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 	var proof types.TxProof
 	if prove {
+		// TODO: handle overflow
 		block := blockStore.LoadBlock(int(height))
 		proof = block.Data.Txs.Proof(int(index))
 	}
@@ -109,21 +110,24 @@ func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 
 	q, err := tmquery.New(query)
 	if err != nil {
-		return []*ctypes.ResultTx{}, err
+		return nil, err
 	}
 
 	results, err := txIndexer.Search(q)
 	if err != nil {
-		return []*ctypes.ResultTx{}, err
+		return nil, err
 	}
 
+	// TODO: we may want to consider putting a maximum on this length and somehow
+	// informing the user that things were truncated.
 	apiResults := make([]*ctypes.ResultTx, len(results))
+	var proof types.TxProof
 	for i, r := range results {
 		height := r.Height
 		index := r.Index
 
-		var proof types.TxProof
 		if prove {
+			// TODO: handle overflow
 			block := blockStore.LoadBlock(int(height))
 			proof = block.Data.Txs.Proof(int(index))
 		}

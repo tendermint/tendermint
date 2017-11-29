@@ -19,12 +19,12 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 }
 
 // AddBatch is a noop and always returns nil.
-func (txi *TxIndex) AddBatch(batch *txindex.Batch, allowedTags []string) error {
+func (txi *TxIndex) AddBatch(batch *txindex.Batch) error {
 	return nil
 }
 
 // Index is a noop and always returns nil.
-func (txi *TxIndex) Index(result *types.TxResult, allowedTags []string) error {
+func (txi *TxIndex) Index(result *types.TxResult) error {
 	return nil
 }
 

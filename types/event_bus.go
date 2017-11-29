@@ -106,25 +106,14 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	}
 
 	// add predefined tags
-	if tag, ok := tags[EventTypeKey]; ok {
-		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
-	}
+	logIfTagExists(EventTypeKey, tags, b.Logger)
 	tags[EventTypeKey] = EventTx
 
-	if tag, ok := tags[TxHashKey]; ok {
-		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
-	}
+	logIfTagExists(TxHashKey, tags, b.Logger)
 	tags[TxHashKey] = fmt.Sprintf("%X", event.Tx.Hash())
 
-	if tag, ok := tags[TxHeightKey]; ok {
-		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
-	}
+	logIfTagExists(TxHeightKey, tags, b.Logger)
 	tags[TxHeightKey] = event.Height
-
-	if tag, ok := tags[TxIndexKey]; ok {
-		b.Logger.Error("Found predefined tag (value will be overwritten)", "tag", tag)
-	}
-	tags[TxIndexKey] = event.Index
 
 	b.pubsub.PublishWithTags(ctx, TMEventData{event}, tags)
 	return nil
@@ -170,4 +159,10 @@ func (b *EventBus) PublishEventRelock(event EventDataRoundState) error {
 
 func (b *EventBus) PublishEventLock(event EventDataRoundState) error {
 	return b.Publish(EventLock, TMEventData{event})
+}
+
+func logIfTagExists(tag string, tags map[string]interface{}, logger log.Logger) {
+	if value, ok := tags[tag]; ok {
+		logger.Error("Found predefined tag (value will be overwritten)", "tag", tag, "value", value)
+	}
 }

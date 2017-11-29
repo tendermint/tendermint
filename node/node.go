@@ -287,7 +287,7 @@ func NewNode(config *cfg.Config,
 		if err != nil {
 			return nil, err
 		}
-		txIndexer = kv.NewTxIndex(store)
+		txIndexer = kv.NewTxIndex(store, strings.Split(config.TxIndex.IndexTags, ","))
 	default:
 		txIndexer = &null.TxIndex{}
 	}
@@ -299,7 +299,7 @@ func NewNode(config *cfg.Config,
 		for event := range ch {
 			// XXX: may be not perfomant to write one event at a time
 			txResult := event.(types.TMEventData).Unwrap().(types.EventDataTx).TxResult
-			txIndexer.Index(&txResult, strings.Split(config.TxIndex.IndexTags, ","))
+			txIndexer.Index(&txResult)
 		}
 	}()
 

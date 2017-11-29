@@ -143,9 +143,6 @@ const (
 	// TxHeightKey is a reserved key, used to specify transaction block's height.
 	// see EventBus#PublishEventTx
 	TxHeightKey = "tx.height"
-	// TxIndexKey is a reserved key, used to specify transaction's index within the block.
-	// see EventBus#PublishEventTx
-	TxIndexKey = "tx.index"
 )
 
 var (
