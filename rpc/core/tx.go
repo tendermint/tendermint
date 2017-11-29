@@ -102,6 +102,39 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}, nil
 }
 
+// TxSearch allows you to query for multiple transactions results.
+//
+// ```shell
+// curl "localhost:46657/tx_search?query='account.owner=\'Ivan\''&prove=true"
+// ```
+//
+// ```go
+// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// q, err := tmquery.New("account.owner='Ivan'")
+// tx, err := client.TxSearch(q, true)
+// ```
+//
+// > The above command returns JSON structured like this:
+//
+// ```json
+// ```
+//
+// Returns transactions matching the given query.
+//
+// ### Query Parameters
+//
+// | Parameter | Type   | Default | Required | Description                                               |
+// |-----------+--------+---------+----------+-----------------------------------------------------------|
+// | query     | string | ""      | true     | Query                                                     |
+// | prove     | bool   | false   | false    | Include proofs of the transactions inclusion in the block |
+//
+// ### Returns
+//
+// - `proof`: the `types.TxProof` object
+// - `tx`: `[]byte` - the transaction
+// - `tx_result`: the `abci.Result` object
+// - `index`: `int` - index of the transaction
+// - `height`: `int` - height of the block where this transaction was in
 func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
