@@ -85,7 +85,10 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 // Index indexes a single transaction using the given list of tags.
 func (txi *TxIndex) Index(result *types.TxResult) error {
 	batch := txindex.NewBatch(1)
-	batch.Add(result)
+	err := batch.Add(result)
+	if err != nil {
+		return errors.Wrap(err, "failed to add tx result to batch")
+	}
 	return txi.AddBatch(batch)
 }
 
@@ -340,10 +343,6 @@ func keyForTag(tag *abci.KVPair, result *types.TxResult) []byte {
 	default:
 		panic(fmt.Sprintf("Undefined value type: %v", tag.ValueType))
 	}
-}
-
-func hashKey(hash []byte) string {
-	return fmt.Sprintf("%X", hash)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
