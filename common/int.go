@@ -53,3 +53,13 @@ func PutInt64BE(dest []byte, i int64) {
 func GetInt64BE(src []byte) int64 {
 	return int64(binary.BigEndian.Uint64(src))
 }
+
+// IntInSlice returns true if a is found in the list.
+func IntInSlice(a int, list []int) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
