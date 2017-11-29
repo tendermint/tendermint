@@ -15,7 +15,7 @@ Install Go
 ^^^^^^^^^^
 
 Make sure you have `installed Go <https://golang.org/doc/install>`__ and
-set the ``GOPATH``.
+set the ``GOPATH``. You should also put ``GOPATH/bin`` on your ``PATH``.
 
 Get Source Code
 ^^^^^^^^^^^^^^^
