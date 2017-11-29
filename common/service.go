@@ -13,18 +13,29 @@ var (
 	ErrAlreadyStopped = errors.New("already stopped")
 )
 
+// Service defines a service that can be started, stopped, and reset.
 type Service interface {
+	// Start the service.
+	// If it's already started or stopped, will return an error.
+	// If OnStart() returns an error, it's returned by Start()
 	Start() error
 	OnStart() error
 
+	// Stop the service.
+	// If it's already stopped, will return an error.
+	// OnStop must never error.
 	Stop() error
 	OnStop()
 
+	// Reset the service.
+	// Panics by default - must be overwritten to enable reset.
 	Reset() error
 	OnReset() error
 
+	// Return true if the service is running
 	IsRunning() bool
 
+	// String representation of the service
 	String() string
 
 	SetLogger(log.Logger)
