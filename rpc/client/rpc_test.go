@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -292,5 +293,45 @@ func TestTx(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestTxSearch(t *testing.T) {
+	// first we broadcast a tx
+	c := getHTTPClient()
+	_, _, tx := MakeTxKV()
+	bres, err := c.BroadcastTxCommit(tx)
+	require.Nil(t, err, "%+v", err)
+
+	txHeight := bres.Height
+	txHash := bres.Hash
+
+	anotherTxHash := types.Tx("a different tx").Hash()
+
+	for i, c := range GetClients() {
+		t.Logf("client %d", i)
+
+		// now we query for the tx.
+		// since there's only one tx, we know index=0.
+		results, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, results, 1)
+
+		ptx := results[0]
+		assert.EqualValues(t, txHeight, ptx.Height)
+		assert.EqualValues(t, tx, ptx.Tx)
+		assert.Zero(t, ptx.Index)
+		assert.True(t, ptx.TxResult.Code.IsOK())
+
+		// time to verify the proof
+		proof := ptx.Proof
+		if assert.EqualValues(t, tx, proof.Data) {
+			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+		}
+
+		// we query for non existing tx
+		results, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, results, 0)
 	}
 }

@@ -163,15 +163,28 @@ func (c *HTTP) Commit(height *int) (*ctypes.ResultCommit, error) {
 
 func (c *HTTP) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	result := new(ctypes.ResultTx)
-	query := map[string]interface{}{
+	params := map[string]interface{}{
 		"hash":  hash,
 		"prove": prove,
 	}
-	_, err := c.rpc.Call("tx", query, result)
+	_, err := c.rpc.Call("tx", params, result)
 	if err != nil {
 		return nil, errors.Wrap(err, "Tx")
 	}
 	return result, nil
+}
+
+func (c *HTTP) TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
+	results := new([]*ctypes.ResultTx)
+	params := map[string]interface{}{
+		"query": query,
+		"prove": prove,
+	}
+	_, err := c.rpc.Call("tx_search", params, results)
+	if err != nil {
+		return nil, errors.Wrap(err, "TxSearch")
+	}
+	return *results, nil
 }
 
 func (c *HTTP) Validators(height *int) (*ctypes.ResultValidators, error) {

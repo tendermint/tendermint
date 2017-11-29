@@ -50,6 +50,7 @@ type SignClient interface {
 	Commit(height *int) (*ctypes.ResultCommit, error)
 	Validators(height *int) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
+	TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error)
 }
 
 // HistoryClient shows us data from genesis to now in large chunks.
