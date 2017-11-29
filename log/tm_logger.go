@@ -52,19 +52,28 @@ func NewTMLoggerWithColorFn(w io.Writer, colorFn func(keyvals ...interface{}) te
 // Info logs a message at level Info.
 func (l *tmLogger) Info(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Info(l.srcLogger)
-	kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
+	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+		errLogger := kitlevel.Error(l.srcLogger)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err)
+	}
 }
 
 // Debug logs a message at level Debug.
 func (l *tmLogger) Debug(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Debug(l.srcLogger)
-	kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
+	if err := kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...); err != nil {
+		errLogger := kitlevel.Error(l.srcLogger)
+		kitlog.With(errLogger, msgKey, msg).Log("err", err)
+	}
 }
 
 // Error logs a message at level Error.
 func (l *tmLogger) Error(msg string, keyvals ...interface{}) {
 	lWithLevel := kitlevel.Error(l.srcLogger)
-	kitlog.With(lWithLevel, msgKey, msg).Log(keyvals...)
+	lWithMsg := kitlog.With(lWithLevel, msgKey, msg)
+	if err := lWithMsg.Log(keyvals...); err != nil {
+		lWithMsg.Log("err", err)
+	}
 }
 
 // With returns a new contextual logger with keyvals prepended to those passed
