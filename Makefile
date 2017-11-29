@@ -4,14 +4,16 @@ GOTOOLS = \
 	github.com/Masterminds/glide \
 	github.com/alecthomas/gometalinter
 
+PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 REPO:=github.com/tendermint/tmlibs
 
 all: test
 
-NOVENDOR = go list github.com/tendermint/tmlibs/... | grep -v /vendor/
-
 test:
-	go test `glide novendor`
+	@echo "--> Running linter"
+	@make metalinter_test
+	@echo "--> Running go test"
+	@go test $(PACKAGES)
 
 get_vendor_deps: ensure_tools
 	@rm -rf vendor/
@@ -20,16 +22,14 @@ get_vendor_deps: ensure_tools
 
 ensure_tools:
 	go get $(GOTOOLS)
-
-metalinter: ensure_tools
 	@gometalinter --install
+
+metalinter: 
 	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test: ensure_tools
-	@gometalinter --install
+metalinter_test: 
 	gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
-		--enable=gas \
 		--enable=goconst \
 		--enable=gosimple \
 	 	--enable=ineffassign \
@@ -46,6 +46,7 @@ metalinter_test: ensure_tools
 		--enable=vet \
 		./...
 
+		#--enable=gas \
 		#--enable=aligncheck \
 		#--enable=dupl \
 		#--enable=errcheck \
