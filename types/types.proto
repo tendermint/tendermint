@@ -1,6 +1,9 @@
 syntax = "proto3";
 package types;
 
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+
 // This file is copied from http://github.com/tendermint/abci
 
 //----------------------------------------
@@ -114,14 +117,14 @@ message ResponseSetOption{
 
 message ResponseDeliverTx{
   uint32            code        = 1;
-  bytes             data        = 2;
+  bytes             data        = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
   string            log         = 3;
   repeated KVPair tags = 4;
 }
 
 message ResponseCheckTx{
   uint32            code        = 1;
-  bytes             data        = 2;
+  bytes             data        = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
   string            log         = 3;
   uint64            gas         = 4;
   uint64            fee         = 5;
@@ -130,16 +133,16 @@ message ResponseCheckTx{
 message ResponseQuery{
   uint32            code        = 1;
   int64             index       = 2;
-  bytes             key         = 3;
-  bytes             value       = 4;
-  bytes             proof       = 5;
+  bytes             key         = 3 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes             value       = 4 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes             proof       = 5 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
   uint64            height      = 6;
   string            log         = 7;
 }
 
 message ResponseCommit{
   uint32            code        = 1;
-  bytes             data        = 2;
+  bytes             data        = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
   string            log         = 3;
 }
 

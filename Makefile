@@ -3,7 +3,8 @@ GOTOOLS = \
 					github.com/Masterminds/glide \
 					github.com/alecthomas/gometalinter \
 					github.com/ckaznocha/protoc-gen-lint \
-					github.com/gogo/protobuf/protoc-gen-gogo
+					github.com/gogo/protobuf/protoc-gen-gogo \
+					github.com/gogo/protobuf/gogoproto
 
 all: install test
 
@@ -23,7 +24,7 @@ protoc:
 	## On "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
-	protoc --gogo_out=plugins=grpc:. types/*.proto
+	protoc -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf --gogo_out=plugins=grpc:. types/*.proto
 
 install:
 	@ go install ./cmd/...

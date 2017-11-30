@@ -24,7 +24,7 @@ func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
 }
 
 func (BaseApplication) Commit() ResponseCommit {
-	return ResponseCommit{Code: CodeTypeOK, Data: []byte("nil")}
+	return ResponseCommit{Code: CodeTypeOK}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {

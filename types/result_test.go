@@ -6,18 +6,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestResultQuery(t *testing.T) {
-	orig := &ResponseQuery{
+func TestResponseQuery(t *testing.T) {
+	res := ResponseQuery{
 		Code:   CodeTypeOK,
 		Index:  0,
 		Key:    []byte("hello"),
 		Value:  []byte("world"),
 		Height: 1,
 	}
-	res := orig.Result()
 	assert.False(t, res.IsErr())
 
-	orig = &ResponseQuery{
+	res = ResponseQuery{
 		Code:   1,
 		Index:  0,
 		Key:    []byte("hello"),
@@ -25,7 +24,6 @@ func TestResultQuery(t *testing.T) {
 		Height: 1,
 		Log:    "bad",
 	}
-	res = orig.Result()
 	assert.True(t, res.IsErr())
 	assert.Equal(t, "Error code (1): bad", res.Error())
 }
