@@ -333,5 +333,12 @@ func TestTxSearch(t *testing.T) {
 		results, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false)
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, results, 0)
+
+		// we query using a tag (see dummy application)
+		results, err = c.TxSearch("app.creator='jae'", false)
+		require.Nil(t, err, "%+v", err)
+		if len(results) == 0 {
+			t.Fatal("expected a lot of transactions")
+		}
 	}
 }
