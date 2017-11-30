@@ -3,7 +3,7 @@ package types
 import (
 	"io"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	wire "github.com/tendermint/go-wire"
 )
 
