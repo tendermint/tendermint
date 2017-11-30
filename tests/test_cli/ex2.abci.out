@@ -11,14 +11,14 @@
 -> code: OK
 
 > check_tx 0x00
--> code: BadNonce
+-> code: 2
 -> log: Invalid nonce. Expected >= 1, got 0
 
 > deliver_tx 0x01
 -> code: OK
 
 > deliver_tx 0x04
--> code: BadNonce
+-> code: 2
 -> log: Invalid nonce. Expected 2, got 4
 
 > info 
