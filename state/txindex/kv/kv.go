@@ -284,22 +284,24 @@ LOOP:
 		if !isTagKey(it.Key()) {
 			continue
 		}
-		// no other way to stop iterator other than checking for upperBound
-		switch (r.upperBound).(type) {
-		case int64:
-			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
-			if err == nil && v == r.upperBound {
-				if r.includeUpperBound {
-					hashes = append(hashes, it.Value())
+		if r.upperBound != nil {
+			// no other way to stop iterator other than checking for upperBound
+			switch (r.upperBound).(type) {
+			case int64:
+				v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
+				if err == nil && v == r.upperBound {
+					if r.includeUpperBound {
+						hashes = append(hashes, it.Value())
+					}
+					break LOOP
 				}
-				break LOOP
+				// XXX: passing time in a ABCI Tags is not yet implemented
+				// case time.Time:
+				// 	v := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
+				// 	if v == r.upperBound {
+				// 		break
+				// 	}
 			}
-			// XXX: passing time in a ABCI Tags is not yet implemented
-			// case time.Time:
-			// 	v := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
-			// 	if v == r.upperBound {
-			// 		break
-			// 	}
 		}
 		hashes = append(hashes, it.Value())
 	}
@@ -320,6 +322,10 @@ func startKey(c query.Condition, height uint64) []byte {
 }
 
 func startKeyForRange(r queryRange, height uint64) []byte {
+	if r.lowerBound == nil {
+		return []byte(fmt.Sprintf("%s", r.key))
+	}
+
 	var lowerBound interface{}
 	if r.includeLowerBound {
 		lowerBound = r.lowerBound

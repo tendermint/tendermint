@@ -75,6 +75,10 @@ func TestTxSearch(t *testing.T) {
 		{"account.number = 1 AND account.owner = 'Vlad'", 0},
 		// search by range
 		{"account.number >= 1 AND account.number <= 5", 1},
+		// search by range (lower bound)
+		{"account.number >= 1", 1},
+		// search by range (upper bound)
+		{"account.number <= 5", 1},
 		// search using not allowed tag
 		{"not_allowed = 'boom'", 0},
 		// search for not existing tx result
