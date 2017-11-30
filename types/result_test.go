@@ -8,7 +8,7 @@ import (
 
 func TestResultQuery(t *testing.T) {
 	orig := &ResponseQuery{
-		Code:   CodeType_OK,
+		Code:   CodeTypeOK,
 		Index:  0,
 		Key:    []byte("hello"),
 		Value:  []byte("world"),
@@ -18,7 +18,7 @@ func TestResultQuery(t *testing.T) {
 	assert.False(t, res.IsErr())
 
 	orig = &ResponseQuery{
-		Code:   CodeType_BadNonce,
+		Code:   1,
 		Index:  0,
 		Key:    []byte("hello"),
 		Value:  []byte("world"),
@@ -27,50 +27,50 @@ func TestResultQuery(t *testing.T) {
 	}
 	res = orig.Result()
 	assert.True(t, res.IsErr())
-	assert.Equal(t, "Error bad nonce (3): bad", res.Error())
+	assert.Equal(t, "Error code (1): bad", res.Error())
 }
 
 func TestResponseDeliverTx(t *testing.T) {
 	res := ResponseDeliverTx{
-		Code: CodeType_OK,
+		Code: CodeTypeOK,
 		Data: []byte("Victor Mancha"),
 	}
 	assert.False(t, res.IsErr())
 
 	res = ResponseDeliverTx{
-		Code: CodeType_InternalError,
+		Code: 1,
 		Log:  "bad",
 	}
 	assert.True(t, res.IsErr())
-	assert.Equal(t, "Internal error (1): bad", res.Error())
+	assert.Equal(t, "Error code (1): bad", res.Error())
 }
 
 func TestResponseCheckTx(t *testing.T) {
 	res := ResponseCheckTx{
-		Code: CodeType_OK,
+		Code: CodeTypeOK,
 		Data: []byte("Talos"),
 	}
 	assert.False(t, res.IsErr())
 
 	res = ResponseCheckTx{
-		Code: CodeType_InternalError,
+		Code: 1,
 		Log:  "bad",
 	}
 	assert.True(t, res.IsErr())
-	assert.Equal(t, "Internal error (1): bad", res.Error())
+	assert.Equal(t, "Error code (1): bad", res.Error())
 }
 
 func TestResponseCommit(t *testing.T) {
 	res := ResponseCommit{
-		Code: CodeType_OK,
+		Code: CodeTypeOK,
 		Data: []byte("Old Lace"),
 	}
 	assert.False(t, res.IsErr())
 
 	res = ResponseCommit{
-		Code: CodeType_Unauthorized,
+		Code: 1,
 		Log:  "bad",
 	}
 	assert.True(t, res.IsErr())
-	assert.Equal(t, "Unauthorized (4): bad", res.Error())
+	assert.Equal(t, "Error code (1): bad", res.Error())
 }

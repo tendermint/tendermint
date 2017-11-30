@@ -26,7 +26,7 @@ import (
 type response struct {
 	// generic abci response
 	Data []byte
-	Code types.CodeType
+	Code uint32
 	Log  string
 
 	Query *queryResponse
@@ -508,7 +508,7 @@ func printResponse(cmd *cobra.Command, args []string, rsp response) {
 	}
 
 	// Always print the status code.
-	fmt.Printf("-> code: %s\n", rsp.Code.String())
+	fmt.Printf("-> code: %d\n", rsp.Code)
 
 	if len(rsp.Data) != 0 {
 		// Do no print this line when using the commit command

@@ -27,7 +27,7 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 		Path: "/store",
 		Data: []byte(key),
 	})
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.Equal(t, types.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 
 	// make sure proof is fine
@@ -36,7 +36,7 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 		Data:  []byte(key),
 		Prove: true,
 	})
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.EqualValues(t, types.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
 	require.Nil(t, err)
@@ -295,7 +295,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 		Data: []byte(key),
 	})
 	require.Nil(t, err)
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.Equal(t, types.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 
 	// make sure proof is fine
@@ -305,7 +305,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 		Prove: true,
 	})
 	require.Nil(t, err)
-	require.Equal(t, types.CodeType_OK, resQuery.Code)
+	require.Equal(t, types.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
 	require.Nil(t, err)

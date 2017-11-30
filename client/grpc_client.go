@@ -104,7 +104,7 @@ func (cli *grpcClient) StopForError(err error) {
 func (cli *grpcClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
-	return errors.Wrap(cli.err, types.HumanCode(types.CodeType_InternalError))
+	return errors.Wrap(cli.err, "grpc client error")
 }
 
 // Set listener for all responses

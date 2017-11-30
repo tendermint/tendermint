@@ -4,49 +4,6 @@ package types;
 // This file is copied from http://github.com/tendermint/abci
 
 //----------------------------------------
-// Code types
-
-enum CodeType {
-  OK                    = 0;
-
-  // General response codes, 0 ~ 99
-  InternalError         = 1;
-  EncodingError         = 2;
-  BadNonce              = 3;
-  Unauthorized          = 4;
-  InsufficientFunds     = 5;
-  UnknownRequest        = 6;
-
-  // Reserved for basecoin, 100 ~ 199
-  BaseDuplicateAddress  = 101;
-  BaseEncodingError     = 102;
-  BaseInsufficientFees  = 103;
-  BaseInsufficientFunds = 104;
-  BaseInsufficientGasPrice = 105;
-  BaseInvalidInput      = 106;
-  BaseInvalidOutput     = 107;
-  BaseInvalidPubKey     = 108;
-  BaseInvalidSequence   = 109;
-  BaseInvalidSignature  = 110;
-  BaseUnknownAddress    = 111;
-  BaseUnknownPubKey     = 112;
-  BaseUnknownPlugin     = 113;
-
-  // Reserved for governance, 200 ~ 299
-  GovUnknownEntity      = 201;
-  GovUnknownGroup       = 202;
-  GovUnknownProposal    = 203;
-  GovDuplicateGroup     = 204;
-  GovDuplicateMember    = 205;
-  GovDuplicateProposal  = 206;
-  GovDuplicateVote      = 207;
-  GovInvalidMember      = 208;
-  GovInvalidVote        = 209;
-  GovInvalidVotingPower = 210;
-
-}
-
-//----------------------------------------
 // Request types
 
 message Request {
@@ -156,14 +113,14 @@ message ResponseSetOption{
 }
 
 message ResponseDeliverTx{
-  CodeType          code        = 1;
+  uint32            code        = 1;
   bytes             data        = 2;
   string            log         = 3;
   repeated KVPair tags = 4;
 }
 
 message ResponseCheckTx{
-  CodeType          code        = 1;
+  uint32            code        = 1;
   bytes             data        = 2;
   string            log         = 3;
   uint64            gas         = 4;
@@ -171,7 +128,7 @@ message ResponseCheckTx{
 }
 
 message ResponseQuery{
-  CodeType          code        = 1;
+  uint32            code        = 1;
   int64             index       = 2;
   bytes             key         = 3;
   bytes             value       = 4;
@@ -181,7 +138,7 @@ message ResponseQuery{
 }
 
 message ResponseCommit{
-  CodeType          code        = 1;
+  uint32            code        = 1;
   bytes             data        = 2;
   string            log         = 3;
 }

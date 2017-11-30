@@ -74,7 +74,6 @@ metalinter_test:
 	gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
-		--enable=gas \
 		--enable=goconst \
 		--enable=goimports \
 		--enable=gosimple \
@@ -90,6 +89,7 @@ metalinter_test:
 		--enable=vetshadow \
 		./...
 
+		#--enable=gas \
 		#--enable=dupl \
 		#--enable=errcheck \
 		#--enable=gocyclo \

@@ -60,7 +60,7 @@ func testStream(t *testing.T, app types.Application) {
 		switch r := res.Value.(type) {
 		case *types.Response_DeliverTx:
 			counter++
-			if r.DeliverTx.Code != types.CodeType_OK {
+			if r.DeliverTx.Code != types.CodeTypeOK {
 				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
 			}
 			if counter > numDeliverTxs {
@@ -135,7 +135,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}
 		counter++
-		if response.Code != types.CodeType_OK {
+		if response.Code != types.CodeTypeOK {
 			t.Error("DeliverTx failed with ret_code", response.Code)
 		}
 		if counter > numDeliverTxs {

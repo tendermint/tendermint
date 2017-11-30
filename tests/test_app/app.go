@@ -45,7 +45,7 @@ func commit(client abcicli.Client, hashExp []byte) {
 	}
 }
 
-func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+func deliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) {
 	res, err := client.DeliverTxSync(txBytes)
 	if err != nil {
 		panicf("client error: %v", err)
@@ -58,7 +58,7 @@ func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, da
 	}
 }
 
-/*func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
+/*func checkTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) {
 	res, err := client.CheckTxSync(txBytes)
 	if err != nil {
 		panicf("client error: %v", err)

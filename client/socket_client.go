@@ -111,7 +111,7 @@ func (cli *socketClient) StopForError(err error) {
 func (cli *socketClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
-	return errors.Wrap(cli.err, types.HumanCode(types.CodeType_InternalError))
+	return errors.Wrap(cli.err, "socket client error")
 }
 
 // Set listener for all responses

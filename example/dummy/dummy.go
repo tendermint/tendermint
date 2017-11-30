@@ -42,11 +42,11 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 		{Key: "app.creator", ValueType: types.KVPair_STRING, ValueString: "jae"},
 		{Key: "app.key", ValueType: types.KVPair_STRING, ValueString: string(key)},
 	}
-	return types.ResponseDeliverTx{Code: types.CodeType_OK, Tags: tags}
+	return types.ResponseDeliverTx{Code: types.CodeTypeOK, Tags: tags}
 }
 
 func (app *DummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
-	return types.ResponseCheckTx{Code: types.CodeType_OK}
+	return types.ResponseCheckTx{Code: types.CodeTypeOK}
 }
 
 func (app *DummyApplication) Commit() types.ResponseCommit {
@@ -64,7 +64,7 @@ func (app *DummyApplication) Commit() types.ResponseCommit {
 		}
 	}
 
-	return types.ResponseCommit{Code: types.CodeType_OK, Data: hash}
+	return types.ResponseCommit{Code: types.CodeTypeOK, Data: hash}
 }
 
 func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {

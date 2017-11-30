@@ -6,9 +6,15 @@ import (
 	"github.com/tendermint/go-wire/data"
 )
 
+// type CodeType uint32
+
+const (
+	CodeTypeOK uint32 = 0
+)
+
 // IsErr returns true if Code is something other than OK.
 func (r ResponseCheckTx) IsErr() bool {
-	return r.Code != CodeType_OK
+	return r.Code != CodeTypeOK
 }
 
 // Error implements error interface by formatting response as string.
@@ -18,7 +24,7 @@ func (r ResponseCheckTx) Error() string {
 
 // IsErr returns true if Code is something other than OK.
 func (r ResponseDeliverTx) IsErr() bool {
-	return r.Code != CodeType_OK
+	return r.Code != CodeTypeOK
 }
 
 // Error implements error interface by formatting response as string.
@@ -28,7 +34,7 @@ func (r ResponseDeliverTx) Error() string {
 
 // IsErr returns true if Code is something other than OK.
 func (r ResponseCommit) IsErr() bool {
-	return r.Code != CodeType_OK
+	return r.Code != CodeTypeOK
 }
 
 // Error implements error interface by formatting response as string.
@@ -36,19 +42,14 @@ func (r ResponseCommit) Error() string {
 	return fmtError(r.Code, r.Log)
 }
 
-func fmtError(code CodeType, log string) string {
-	codeAsStr, ok := code2string[code]
-	if ok {
-		return fmt.Sprintf("%s (%d): %s", codeAsStr, code, log)
-	} else {
-		return fmt.Sprintf("Unknown error (%d): %s", code, log)
-	}
+func fmtError(code uint32, log string) string {
+	return fmt.Sprintf("Error code (%d): %s", code, log)
 }
 
 // ResultQuery is a wrapper around ResponseQuery using data.Bytes instead of
 // raw byte slices.
 type ResultQuery struct {
-	Code   CodeType   `json:"code"`
+	Code   uint32     `json:"code"`
 	Index  int64      `json:"index"`
 	Key    data.Bytes `json:"key"`
 	Value  data.Bytes `json:"value"`
@@ -72,7 +73,7 @@ func (r *ResponseQuery) Result() *ResultQuery {
 
 // IsErr returns true if Code is something other than OK.
 func (r *ResultQuery) IsErr() bool {
-	return r.Code != CodeType_OK
+	return r.Code != CodeTypeOK
 }
 
 // Error implements error interface by formatting result as string.
