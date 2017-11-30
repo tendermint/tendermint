@@ -84,7 +84,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 
 	height := r.Height
-	index := r.Index
+	index := int(r.Index) // XXX:overflow
 
 	var proof types.TxProof
 	if prove {

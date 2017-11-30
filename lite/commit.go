@@ -42,7 +42,7 @@ func NewFullCommit(commit Commit, vals *types.ValidatorSet) FullCommit {
 }
 
 // Height returns the height of the header.
-func (c Commit) Height() int {
+func (c Commit) Height() uint64 {
 	if c.Header == nil {
 		return 0
 	}

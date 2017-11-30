@@ -46,7 +46,7 @@ func (c *Inquiring) Validators() *types.ValidatorSet {
 }
 
 // LastHeight returns the last height.
-func (c *Inquiring) LastHeight() int {
+func (c *Inquiring) LastHeight() uint64 {
 	return c.cert.lastHeight
 }
 
@@ -95,7 +95,7 @@ func (c *Inquiring) Update(fc FullCommit) error {
 	return err
 }
 
-func (c *Inquiring) useClosestTrust(h int) error {
+func (c *Inquiring) useClosestTrust(h uint64) error {
 	closest, err := c.trusted.GetByHeight(h)
 	if err != nil {
 		return err
@@ -126,7 +126,7 @@ func (c *Inquiring) updateToHash(vhash []byte) error {
 }
 
 // updateToHeight will use divide-and-conquer to find a path to h
-func (c *Inquiring) updateToHeight(h int) error {
+func (c *Inquiring) updateToHeight(h uint64) error {
 	// try to update to this height (with checks)
 	fc, err := c.Source.GetByHeight(h)
 	if err != nil {

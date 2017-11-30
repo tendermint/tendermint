@@ -20,7 +20,7 @@ func TestGenLoadValidator(t *testing.T) {
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	privVal := GenPrivValidatorFS(tempFilePath)
 
-	height := 100
+	height := uint64(100)
 	privVal.LastHeight = height
 	privVal.Save()
 	addr := privVal.GetAddress()
@@ -99,7 +99,7 @@ func TestSignVote(t *testing.T) {
 
 	block1 := BlockID{[]byte{1, 2, 3}, PartSetHeader{}}
 	block2 := BlockID{[]byte{3, 2, 1}, PartSetHeader{}}
-	height, round := 10, 1
+	height, round := uint64(10), 1
 	voteType := VoteTypePrevote
 
 	// sign a vote for first time
@@ -133,7 +133,7 @@ func TestSignProposal(t *testing.T) {
 
 	block1 := PartSetHeader{5, []byte{1, 2, 3}}
 	block2 := PartSetHeader{10, []byte{3, 2, 1}}
-	height, round := 10, 1
+	height, round := uint64(10), 1
 
 	// sign a proposal for first time
 	proposal := newProposal(height, round, block1)
@@ -158,7 +158,7 @@ func TestSignProposal(t *testing.T) {
 	}
 }
 
-func newVote(addr data.Bytes, idx, height, round int, typ byte, blockID BlockID) *Vote {
+func newVote(addr data.Bytes, idx int, height uint64, round int, typ byte, blockID BlockID) *Vote {
 	return &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
@@ -169,7 +169,7 @@ func newVote(addr data.Bytes, idx, height, round int, typ byte, blockID BlockID)
 	}
 }
 
-func newProposal(height, round int, partsHeader PartSetHeader) *Proposal {
+func newProposal(height uint64, round int, partsHeader PartSetHeader) *Proposal {
 	return &Proposal{
 		Height:           height,
 		Round:            round,

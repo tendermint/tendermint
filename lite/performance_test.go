@@ -31,7 +31,7 @@ func benchmarkGenCommit(b *testing.B, keys lite.ValKeys) {
 	chainID := fmt.Sprintf("bench-%d", len(keys))
 	vals := keys.ToValidators(20, 10)
 	for i := 0; i < b.N; i++ {
-		h := 1 + i
+		h := uint64(1 + i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		keys.GenCommit(chainID, h, nil, vals, appHash, 0, len(keys))
 	}

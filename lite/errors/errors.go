@@ -70,7 +70,7 @@ func ErrNoPathFound() error {
 //--------------------------------------------
 
 type errHeightMismatch struct {
-	h1, h2 int
+	h1, h2 uint64
 }
 
 func (e errHeightMismatch) Error() string {
@@ -87,6 +87,6 @@ func IsHeightMismatchErr(err error) bool {
 }
 
 // ErrHeightMismatch returns an mismatch error with stack-trace
-func ErrHeightMismatch(h1, h2 int) error {
+func ErrHeightMismatch(h1, h2 uint64) error {
 	return errors.WithStack(errHeightMismatch{h1, h2})
 }

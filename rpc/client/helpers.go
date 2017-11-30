@@ -32,7 +32,7 @@ func DefaultWaitStrategy(delta int) (abort error) {
 //
 // If waiter is nil, we use DefaultWaitStrategy, but you can also
 // provide your own implementation
-func WaitForHeight(c StatusClient, h int, waiter Waiter) error {
+func WaitForHeight(c StatusClient, h uint64, waiter Waiter) error {
 	if waiter == nil {
 		waiter = DefaultWaitStrategy
 	}
@@ -42,7 +42,7 @@ func WaitForHeight(c StatusClient, h int, waiter Waiter) error {
 		if err != nil {
 			return err
 		}
-		delta = h - s.LatestBlockHeight
+		delta = int(h - s.LatestBlockHeight)
 		// wait for the time, or abort early
 		if err := waiter(delta); err != nil {
 			return err

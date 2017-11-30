@@ -51,7 +51,7 @@ type PrivValidator interface {
 type PrivValidatorFS struct {
 	Address       data.Bytes       `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
-	LastHeight    int              `json:"last_height"`
+	LastHeight    uint64           `json:"last_height"`
 	LastRound     int              `json:"last_round"`
 	LastStep      int8             `json:"last_step"`
 	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
@@ -222,7 +222,7 @@ func (privVal *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal)
 // signBytesHRS signs the given signBytes if the height/round/step (HRS)
 // are greater than the latest state. If the HRS are equal,
 // it returns the privValidator.LastSignature.
-func (privVal *PrivValidatorFS) signBytesHRS(height, round int, step int8, signBytes []byte) (crypto.Signature, error) {
+func (privVal *PrivValidatorFS) signBytesHRS(height uint64, round int, step int8, signBytes []byte) (crypto.Signature, error) {
 
 	sig := crypto.Signature{}
 	// If height regression, err

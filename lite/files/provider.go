@@ -60,7 +60,7 @@ func (p *provider) encodeHash(hash []byte) string {
 	return hex.EncodeToString(hash) + Ext
 }
 
-func (p *provider) encodeHeight(h int) string {
+func (p *provider) encodeHeight(h uint64) string {
 	// pad up to 10^12 for height...
 	return fmt.Sprintf("%012d%s", h, Ext)
 }
@@ -88,7 +88,7 @@ func (p *provider) StoreCommit(fc lite.FullCommit) error {
 }
 
 // GetByHeight returns the closest commit with height <= h.
-func (p *provider) GetByHeight(h int) (lite.FullCommit, error) {
+func (p *provider) GetByHeight(h uint64) (lite.FullCommit, error) {
 	// first we look for exact match, then search...
 	path := filepath.Join(p.checkDir, p.encodeHeight(h))
 	fc, err := LoadFullCommit(path)
@@ -109,7 +109,7 @@ func (p *provider) LatestCommit() (fc lite.FullCommit, err error) {
 
 // search for height, looks for a file with highest height < h
 // return certifiers.ErrCommitNotFound() if not there...
-func (p *provider) searchForHeight(h int) (string, error) {
+func (p *provider) searchForHeight(h uint64) (string, error) {
 	d, err := os.Open(p.checkDir)
 	if err != nil {
 		return "", errors.WithStack(err)

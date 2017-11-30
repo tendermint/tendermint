@@ -61,12 +61,12 @@ type Mempool struct {
 	proxyAppConn         proxy.AppConnMempool
 	txs                  *clist.CList    // concurrent linked-list of good txs
 	counter              int64           // simple incrementing counter
-	height               int             // the last block Update()'d to
+	height               uint64          // the last block Update()'d to
 	rechecking           int32           // for re-checking filtered txs on Update()
 	recheckCursor        *clist.CElement // next expected response
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool            // true if fired on txsAvailable for this height
-	txsAvailable         chan int        // fires the next height once for each height, when the mempool is not empty
+	txsAvailable         chan uint64        // fires the next height once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -80,7 +80,7 @@ type Mempool struct {
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
 // TODO: Extract logger into arguments.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height uint64) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -102,7 +102,7 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 // ensuring it will trigger once every height when transactions are available.
 // NOTE: not thread safe - should only be called once, on startup
 func (mem *Mempool) EnableTxsAvailable() {
-	mem.txsAvailable = make(chan int, 1)
+	mem.txsAvailable = make(chan uint64, 1)
 }
 
 // SetLogger sets the Logger.
@@ -249,7 +249,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter: mem.counter,
-				height:  int64(mem.height),
+				height:  mem.height,
 				tx:      tx,
 			}
 			mem.txs.PushBack(memTx)
@@ -310,7 +310,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 // TxsAvailable returns a channel which fires once for every height,
 // and only when transactions are available in the mempool.
 // NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
-func (mem *Mempool) TxsAvailable() <-chan int {
+func (mem *Mempool) TxsAvailable() <-chan uint64 {
 	return mem.txsAvailable
 }
 
@@ -357,7 +357,7 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 // Update informs the mempool that the given txs were committed and can be discarded.
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
-func (mem *Mempool) Update(height int, txs types.Txs) error {
+func (mem *Mempool) Update(height uint64, txs types.Txs) error {
 	if err := mem.proxyAppConn.FlushSync(); err != nil { // To flush async resCb calls e.g. from CheckTx
 		return err
 	}
@@ -427,13 +427,13 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 // mempoolTx is a transaction that successfully ran
 type mempoolTx struct {
 	counter int64    // a simple incrementing counter
-	height  int64    // height that this tx had been validated in
+	height  uint64   // height that this tx had been validated in
 	tx      types.Tx //
 }
 
 // Height returns the height for this transaction
-func (memTx *mempoolTx) Height() int {
-	return int(atomic.LoadInt64(&memTx.height))
+func (memTx *mempoolTx) Height() uint64 {
+	return uint64(atomic.LoadUint64(&memTx.height))
 }
 
 //--------------------------------------------------------------------------------

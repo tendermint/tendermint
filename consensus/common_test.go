@@ -54,7 +54,7 @@ func ResetConfig(name string) *cfg.Config {
 
 type validatorStub struct {
 	Index  int // Validator index. NOTE: we don't assume validator set changes.
-	Height int
+	Height uint64
 	Round  int
 	types.PrivValidator
 }
@@ -113,13 +113,13 @@ func incrementRound(vss ...*validatorStub) {
 //-------------------------------------------------------------------------------
 // Functions for transitioning the consensus state
 
-func startTestRound(cs *ConsensusState, height, round int) {
+func startTestRound(cs *ConsensusState, height uint64, round int) {
 	cs.enterNewRound(height, round)
 	cs.startRoutines(0)
 }
 
 // Create proposal block from cs1 but sign it with vs
-func decideProposal(cs1 *ConsensusState, vs *validatorStub, height, round int) (proposal *types.Proposal, block *types.Block) {
+func decideProposal(cs1 *ConsensusState, vs *validatorStub, height uint64, round int) (proposal *types.Proposal, block *types.Block) {
 	block, blockParts := cs1.createProposalBlock()
 	if block == nil { // on error
 		panic("error creating proposal block")

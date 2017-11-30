@@ -23,7 +23,7 @@ var (
 	abciResponsesKey = []byte("abciResponsesKey")
 )
 
-func calcValidatorsKey(height int) []byte {
+func calcValidatorsKey(height uint64) []byte {
 	return []byte(cmn.Fmt("validatorsKey:%v", height))
 }
 
@@ -45,7 +45,7 @@ type State struct {
 	// These fields are updated by SetBlockAndValidators.
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	// LastValidators is used to validate block.LastCommit.
-	LastBlockHeight int
+	LastBlockHeight uint64
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
@@ -54,7 +54,7 @@ type State struct {
 	// the change only applies to the next block.
 	// So, if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
-	LastHeightValidatorsChanged int
+	LastHeightValidatorsChanged uint64
 
 	// AppHash is updated after Commit
 	AppHash []byte
@@ -163,7 +163,7 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 }
 
 // LoadValidators loads the ValidatorSet for a given height.
-func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
+func (s *State) LoadValidators(height uint64) (*types.ValidatorSet, error) {
 	valInfo := s.loadValidators(height)
 	if valInfo == nil {
 		return nil, ErrNoValSetForHeight{height}
@@ -180,7 +180,7 @@ func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
 	return valInfo.ValidatorSet, nil
 }
 
-func (s *State) loadValidators(height int) *ValidatorsInfo {
+func (s *State) loadValidators(height uint64) *ValidatorsInfo {
 	buf := s.db.Get(calcValidatorsKey(height))
 	if len(buf) == 0 {
 		return nil
@@ -256,7 +256,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 
 }
 
-func (s *State) setBlockAndValidators(height int, blockID types.BlockID, blockTime time.Time,
+func (s *State) setBlockAndValidators(height uint64, blockID types.BlockID, blockTime time.Time,
 	prevValSet, nextValSet *types.ValidatorSet) {
 
 	s.LastBlockHeight = height
@@ -276,7 +276,7 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 // ABCIResponses retains the responses of the various ABCI calls during block processing.
 // It is persisted to disk before calling Commit.
 type ABCIResponses struct {
-	Height int
+	Height uint64
 
 	DeliverTx []*abci.ResponseDeliverTx
 	EndBlock  *abci.ResponseEndBlock
@@ -303,7 +303,7 @@ func (a *ABCIResponses) Bytes() []byte {
 // ValidatorsInfo represents the latest validator set, or the last height it changed
 type ValidatorsInfo struct {
 	ValidatorSet      *types.ValidatorSet
-	LastHeightChanged int
+	LastHeightChanged uint64
 }
 
 // Bytes serializes the ValidatorsInfo using go-wire

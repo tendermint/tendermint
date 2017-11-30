@@ -90,7 +90,7 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan
 
 // replay only those messages since the last block.
 // timeoutRoutine should run concurrently to read off tickChan
-func (cs *ConsensusState) catchupReplay(csHeight int) error {
+func (cs *ConsensusState) catchupReplay(csHeight uint64) error {
 	// set replayMode
 	cs.replayMode = true
 	defer func() { cs.replayMode = false }()
@@ -98,7 +98,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	// Ensure that ENDHEIGHT for this height doesn't exist
 	// NOTE: This is just a sanity check. As far as we know things work fine without it,
 	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
-	gr, found, err := cs.wal.SearchForEndHeight(uint64(csHeight))
+	gr, found, err := cs.wal.SearchForEndHeight(csHeight)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 	}
 
 	// Search for last height marker
-	gr, found, err = cs.wal.SearchForEndHeight(uint64(csHeight - 1))
+	gr, found, err = cs.wal.SearchForEndHeight(csHeight - 1)
 	if err == io.EOF {
 		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
 	} else if err != nil {
@@ -151,7 +151,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int) error {
 // Parses marker lines of the form:
 // #ENDHEIGHT: 12345
 /*
-func makeHeightSearchFunc(height int) auto.SearchFunc {
+func makeHeightSearchFunc(height uint64) auto.SearchFunc {
 	return func(line string) (int, error) {
 		line = strings.TrimRight(line, "\n")
 		parts := strings.Split(line, " ")
@@ -205,7 +205,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return errors.New(cmn.Fmt("Error calling Info: %v", err))
 	}
 
-	blockHeight := int(res.LastBlockHeight) // XXX: beware overflow
+	blockHeight := res.LastBlockHeight
 	appHash := res.LastBlockAppHash
 
 	h.logger.Info("ABCI Handshake", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
@@ -227,7 +227,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 // Replay all blocks since appBlockHeight and ensure the result matches the current state.
 // Returns the final AppHash or an error
-func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp proxy.AppConns) ([]byte, error) {
+func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight uint64, proxyApp proxy.AppConns) ([]byte, error) {
 
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := h.state.LastBlockHeight
@@ -302,7 +302,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	return nil, nil
 }
 
-func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int, mutateState bool) ([]byte, error) {
+func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight uint64, mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
 	//
@@ -338,7 +338,7 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayBlock(height int, proxyApp proxy.AppConnConsensus) ([]byte, error) {
+func (h *Handshaker) replayBlock(height uint64, proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
 
 	block := h.store.LoadBlock(height)

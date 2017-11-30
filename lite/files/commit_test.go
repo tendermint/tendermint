@@ -24,7 +24,7 @@ func TestSerializeFullCommits(t *testing.T) {
 	// some constants
 	appHash := []byte("some crazy thing")
 	chainID := "ser-ial"
-	h := 25
+	h := uint64(25)
 
 	// build a fc
 	keys := lite.GenValKeys(5)

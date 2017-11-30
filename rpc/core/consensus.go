@@ -42,7 +42,7 @@ import (
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Validators(heightPtr *int) (*ctypes.ResultValidators, error) {
+func Validators(heightPtr *uint64) (*ctypes.ResultValidators, error) {
 	if heightPtr == nil {
 		blockHeight, validators := consensusState.GetValidators()
 		return &ctypes.ResultValidators{blockHeight, validators}, nil

@@ -16,21 +16,21 @@ func init() {
 
 type testPeer struct {
 	id     string
-	height int
+	height uint64
 }
 
-func makePeers(numPeers int, minHeight, maxHeight int) map[string]testPeer {
+func makePeers(numPeers int, minHeight, maxHeight uint64) map[string]testPeer {
 	peers := make(map[string]testPeer, numPeers)
 	for i := 0; i < numPeers; i++ {
 		peerID := cmn.RandStr(12)
-		height := minHeight + rand.Intn(maxHeight-minHeight)
+		height := minHeight + uint64(rand.Intn(int(maxHeight-minHeight)))
 		peers[peerID] = testPeer{peerID, height}
 	}
 	return peers
 }
 
 func TestBasic(t *testing.T) {
-	start := 42
+	start := uint64(42)
 	peers := makePeers(10, start+1, 1000)
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)
@@ -87,7 +87,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestTimeout(t *testing.T) {
-	start := 42
+	start := uint64(42)
 	peers := makePeers(10, start+1, 1000)
 	timeoutsCh := make(chan string, 100)
 	requestsCh := make(chan BlockRequest, 100)

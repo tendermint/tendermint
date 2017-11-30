@@ -46,9 +46,9 @@ type ABCIClient interface {
 // SignClient groups together the interfaces need to get valid
 // signatures and prove anything about the chain
 type SignClient interface {
-	Block(height *int) (*ctypes.ResultBlock, error)
-	Commit(height *int) (*ctypes.ResultCommit, error)
-	Validators(height *int) (*ctypes.ResultValidators, error)
+	Block(height *uint64) (*ctypes.ResultBlock, error)
+	Commit(height *uint64) (*ctypes.ResultCommit, error)
+	Validators(height *uint64) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)
 	TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error)
 }
@@ -56,7 +56,7 @@ type SignClient interface {
 // HistoryClient shows us data from genesis to now in large chunks.
 type HistoryClient interface {
 	Genesis() (*ctypes.ResultGenesis, error)
-	BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error)
+	BlockchainInfo(minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error)
 }
 
 type StatusClient interface {

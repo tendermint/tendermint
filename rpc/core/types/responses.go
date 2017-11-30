@@ -12,7 +12,7 @@ import (
 )
 
 type ResultBlockchainInfo struct {
-	LastHeight int                `json:"last_height"`
+	LastHeight uint64             `json:"last_height"`
 	BlockMetas []*types.BlockMeta `json:"block_metas"`
 }
 
@@ -51,7 +51,7 @@ type ResultStatus struct {
 	PubKey            crypto.PubKey `json:"pub_key"`
 	LatestBlockHash   data.Bytes    `json:"latest_block_hash"`
 	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
-	LatestBlockHeight int           `json:"latest_block_height"`
+	LatestBlockHeight uint64        `json:"latest_block_height"`
 	LatestBlockTime   int64         `json:"latest_block_time"` // nano
 	Syncing           bool          `json:"syncing"`
 }
@@ -86,7 +86,7 @@ type Peer struct {
 }
 
 type ResultValidators struct {
-	BlockHeight int                `json:"block_height"`
+	BlockHeight uint64             `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
 }
 

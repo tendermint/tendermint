@@ -58,7 +58,7 @@ func (rs RoundStepType) String() string {
 // NOTE: Not thread safe. Should only be manipulated by functions downstream
 // of the cs.receiveRoutine
 type RoundState struct {
-	Height             int // Height we are working on
+	Height             uint64 // Height we are working on
 	Round              int
 	Step               RoundStepType
 	StartTime          time.Time

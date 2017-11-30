@@ -123,7 +123,7 @@ func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return result, nil
 }
 
-func (c *HTTP) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
+func (c *HTTP) BlockchainInfo(minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
 	result := new(ctypes.ResultBlockchainInfo)
 	_, err := c.rpc.Call("blockchain",
 		map[string]interface{}{"minHeight": minHeight, "maxHeight": maxHeight},
@@ -143,7 +143,7 @@ func (c *HTTP) Genesis() (*ctypes.ResultGenesis, error) {
 	return result, nil
 }
 
-func (c *HTTP) Block(height *int) (*ctypes.ResultBlock, error) {
+func (c *HTTP) Block(height *uint64) (*ctypes.ResultBlock, error) {
 	result := new(ctypes.ResultBlock)
 	_, err := c.rpc.Call("block", map[string]interface{}{"height": height}, result)
 	if err != nil {
@@ -152,7 +152,7 @@ func (c *HTTP) Block(height *int) (*ctypes.ResultBlock, error) {
 	return result, nil
 }
 
-func (c *HTTP) Commit(height *int) (*ctypes.ResultCommit, error) {
+func (c *HTTP) Commit(height *uint64) (*ctypes.ResultCommit, error) {
 	result := new(ctypes.ResultCommit)
 	_, err := c.rpc.Call("commit", map[string]interface{}{"height": height}, result)
 	if err != nil {
@@ -187,7 +187,7 @@ func (c *HTTP) TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 	return *results, nil
 }
 
-func (c *HTTP) Validators(height *int) (*ctypes.ResultValidators, error) {
+func (c *HTTP) Validators(height *uint64) (*ctypes.ResultValidators, error) {
 	result := new(ctypes.ResultValidators)
 	_, err := c.rpc.Call("validators", map[string]interface{}{"height": height}, result)
 	if err != nil {

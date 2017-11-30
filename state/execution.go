@@ -8,6 +8,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -268,6 +269,26 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 
 	// Update mempool.
 	return mempool.Update(block.Height, block.Txs)
+}
+
+func (s *State) indexTxs(abciResponses *ABCIResponses) {
+	// save the tx results using the TxIndexer
+	// NOTE: these may be overwriting, but the values should be the same.
+	batch := txindex.NewBatch(len(abciResponses.DeliverTx))
+	for i, d := range abciResponses.DeliverTx {
+		tx := abciResponses.txs[i]
+		if err := batch.Add(types.TxResult{
+			Height: abciResponses.Height,
+			Index:  uint32(i),
+			Tx:     tx,
+			Result: *d,
+		}); err != nil {
+			s.logger.Error("Error with batch.Add", "err", err)
+		}
+	}
+	if err := s.TxIndexer.AddBatch(batch); err != nil {
+		s.logger.Error("Error adding batch", "err", err)
+	}
 }
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.

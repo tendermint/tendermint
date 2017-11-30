@@ -58,7 +58,7 @@ var data_dir = path.Join(cmn.GoPath(), "src/github.com/tendermint/tendermint/con
 // and which ones we need the wal for - then we'd also be able to only flush the
 // wal writer when we need to, instead of with every message.
 
-func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int, blockDB dbm.DB, stateDB dbm.DB) {
+func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight uint64, blockDB dbm.DB, stateDB dbm.DB) {
 	logger := log.TestingLogger()
 	state, _ := sm.GetState(stateDB, consensusReplayConfig.GenesisFile())
 	state.SetLogger(logger.With("module", "state"))
@@ -590,21 +590,21 @@ func NewMockBlockStore(config *cfg.Config, params types.ConsensusParams) *mockBl
 	return &mockBlockStore{config, params, nil, nil}
 }
 
-func (bs *mockBlockStore) Height() int                       { return len(bs.chain) }
-func (bs *mockBlockStore) LoadBlock(height int) *types.Block { return bs.chain[height-1] }
-func (bs *mockBlockStore) LoadBlockMeta(height int) *types.BlockMeta {
+func (bs *mockBlockStore) Height() uint64                       { return uint64(len(bs.chain)) }
+func (bs *mockBlockStore) LoadBlock(height uint64) *types.Block { return bs.chain[height-1] }
+func (bs *mockBlockStore) LoadBlockMeta(height uint64) *types.BlockMeta {
 	block := bs.chain[height-1]
 	return &types.BlockMeta{
 		BlockID: types.BlockID{block.Hash(), block.MakePartSet(bs.params.BlockPartSizeBytes).Header()},
 		Header:  block.Header,
 	}
 }
-func (bs *mockBlockStore) LoadBlockPart(height int, index int) *types.Part { return nil }
+func (bs *mockBlockStore) LoadBlockPart(height uint64, index int) *types.Part { return nil }
 func (bs *mockBlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, seenCommit *types.Commit) {
 }
-func (bs *mockBlockStore) LoadBlockCommit(height int) *types.Commit {
+func (bs *mockBlockStore) LoadBlockCommit(height uint64) *types.Commit {
 	return bs.commits[height-1]
 }
-func (bs *mockBlockStore) LoadSeenCommit(height int) *types.Commit {
+func (bs *mockBlockStore) LoadSeenCommit(height uint64) *types.Commit {
 	return bs.commits[height-1]
 }

@@ -111,7 +111,7 @@ func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(seeds)
 }
 
-func (c Client) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
+func (c Client) BlockchainInfo(minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
 	return core.BlockchainInfo(minHeight, maxHeight)
 }
 
@@ -119,14 +119,14 @@ func (c Client) Genesis() (*ctypes.ResultGenesis, error) {
 	return core.Genesis()
 }
 
-func (c Client) Block(height *int) (*ctypes.ResultBlock, error) {
+func (c Client) Block(height *uint64) (*ctypes.ResultBlock, error) {
 	return core.Block(height)
 }
 
-func (c Client) Commit(height *int) (*ctypes.ResultCommit, error) {
+func (c Client) Commit(height *uint64) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 
-func (c Client) Validators(height *int) (*ctypes.ResultValidators, error) {
+func (c Client) Validators(height *uint64) (*ctypes.ResultValidators, error) {
 	return core.Validators(height)
 }

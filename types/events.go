@@ -118,7 +118,7 @@ type EventDataProposalHeartbeat struct {
 
 // NOTE: This goes into the replay WAL
 type EventDataRoundState struct {
-	Height int    `json:"height"`
+	Height uint64 `json:"height"`
 	Round  int    `json:"round"`
 	Step   string `json:"step"`
 

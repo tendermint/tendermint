@@ -28,7 +28,7 @@ func TestInquirerValidPath(t *testing.T) {
 		// extend the keys by 1 each time
 		keys = keys.Extend(1)
 		vals := keys.ToValidators(vote, 0)
-		h := 20 + 10*i
+		h := uint64(20 + 10*i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, len(keys))
 	}
@@ -75,7 +75,7 @@ func TestInquirerMinimalPath(t *testing.T) {
 		// extend the validators, so we are just below 2/3
 		keys = keys.Extend(len(keys)/2 - 1)
 		vals := keys.ToValidators(vote, 0)
-		h := 5 + 10*i
+		h := uint64(5 + 10*i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, len(keys))
 	}
@@ -122,7 +122,7 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 		// extend the keys by 1 each time
 		keys = keys.Extend(1)
 		vals := keys.ToValidators(vote, 0)
-		h := 20 + 10*i
+		h := uint64(20 + 10*i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, len(keys))
 	}
