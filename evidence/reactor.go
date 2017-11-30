@@ -18,7 +18,6 @@ const (
 	EvidenceChannel = byte(0x38)
 
 	maxEvidenceMessageSize     = 1048576 // 1MB TODO make it configurable
-	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
 	broadcastEvidenceIntervalS = 60      // broadcast uncommitted evidence this often
 )
 
