@@ -12,6 +12,7 @@ BREAKING CHANGES:
 FEATURES:
  - [types] added Tags field to ResponseDeliverTx
  - [types] added Gas and Fee fields to ResponseCheckTx
+ - [dummy] DeliverTx returns tags
 
 ## 0.7.1 (November 14, 2017)
 
