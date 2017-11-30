@@ -60,6 +60,7 @@ RETRY_LOOP:
 			continue RETRY_LOOP
 		}
 
+		cli.Logger.Info("Dialed server. Waiting for echo.", "addr", cli.addr)
 		client := types.NewABCIApplicationClient(conn)
 
 	ENSURE_CONNECTED:
@@ -68,6 +69,7 @@ RETRY_LOOP:
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
+			cli.Logger.Info("Echo failed", "err", err)
 			time.Sleep(time.Second * echoRetryIntervalSeconds)
 		}
 

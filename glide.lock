@@ -1,8 +1,8 @@
-hash: 971ad090f3190ffd759deecf118a0eaefe7eceb4b1a8057800e332712fc1a7c2
-updated: 2017-11-30T15:29:31.740172292-05:00
+hash: 6cb2c869c8ce7d9e43b1e8930b9b1bc974ebb3d36d4b704fc78b77efba956a13
+updated: 2017-11-30T17:08:29.176515576-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
+  version: 2e60448ffcc6bf78332d1fe590260095f554dd78
   subpackages:
   - btcec
 - name: github.com/go-kit/kit
@@ -44,7 +44,7 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/pkg/errors
-  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+  version: f15c970de5b76fac0b59abb32d62c17cc7bed265
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/pflag
@@ -72,7 +72,7 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: b4f04f196cd719660e43b91202cd60d9a95b1837
 - name: github.com/tendermint/go-wire
-  version: 3f073b1a9c841d9b88d03ca8181f61278188adca
+  version: 5ab49b4c6ad674da6b81442911cf713ef0afb544
   subpackages:
   - data
 - name: github.com/tendermint/iavl
@@ -85,7 +85,7 @@ imports:
   - log
   - process
 - name: golang.org/x/crypto
-  version: 9f005a07e0d31d45e6656d241bb5c0f2efd4bc94
+  version: 94eea52f7b742c7cbe0b03b22f0c4c8631ece122
   subpackages:
   - nacl/secretbox
   - openpgp/armor
@@ -94,7 +94,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 9dfe39835686865bff950a07b394c12a98ddc811
+  version: a8b9294777976932365dabb6640cf1468d95c70f
   subpackages:
   - context
   - http2
@@ -104,18 +104,18 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 88f656faf3f37f690df1a32515b479415e1a6769
+  version: 75cc3cad82b5f47d3fb229ddda8c5167da14f294
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: 891aceb7c239e72692819142dfca057bdcbfcb96
+  version: 7f0da29060c682909f650ad8ed4e515bd74fa12a
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: f7bf885db0b7479a537ec317c6e48ce53145f3db
+  version: 401e0e00e4bb830a10496d64cd95e068c5bf50de
   subpackages:
   - balancer
   - codes
