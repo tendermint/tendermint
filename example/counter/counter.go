@@ -50,7 +50,7 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 		}
 	}
 	app.txCount++
-	return types.ResponseDeliverTx{Code: types.CodeTypeOK}
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
 func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
@@ -69,17 +69,17 @@ func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 				Log:  fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)}
 		}
 	}
-	return types.ResponseCheckTx{Code: types.CodeTypeOK}
+	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
 func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
 	app.hashCount++
 	if app.txCount == 0 {
-		return types.ResponseCommit{Code: types.CodeTypeOK}
+		return types.ResponseCommit{Code: code.CodeTypeOK}
 	}
 	hash := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return types.ResponseCommit{Code: types.CodeTypeOK, Data: hash}
+	return types.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
 }
 
 func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {

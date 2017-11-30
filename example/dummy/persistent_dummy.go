@@ -97,7 +97,7 @@ func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
 	}
 
 	app.logger.Info("Commit block", "height", height, "root", appHash)
-	return types.ResponseCommit{Code: types.CodeTypeOK, Data: appHash}
+	return types.ResponseCommit{Code: code.CodeTypeOK, Data: appHash}
 }
 
 func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
@@ -217,5 +217,5 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 	// we only update the changes array if we successfully updated the tree
 	app.changes = append(app.changes, v)
 
-	return types.ResponseDeliverTx{Code: types.CodeTypeOK}
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }

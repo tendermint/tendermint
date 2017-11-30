@@ -7,12 +7,15 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	abcicli "github.com/tendermint/abci/client"
-	abciserver "github.com/tendermint/abci/server"
-	"github.com/tendermint/abci/types"
+
 	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+
+	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/code"
+	abciserver "github.com/tendermint/abci/server"
+	"github.com/tendermint/abci/types"
 )
 
 func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
@@ -27,7 +30,7 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 		Path: "/store",
 		Data: []byte(key),
 	})
-	require.Equal(t, types.CodeTypeOK, resQuery.Code)
+	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 
 	// make sure proof is fine
@@ -36,7 +39,7 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 		Data:  []byte(key),
 		Prove: true,
 	})
-	require.EqualValues(t, types.CodeTypeOK, resQuery.Code)
+	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
 	require.Nil(t, err)
@@ -295,7 +298,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 		Data: []byte(key),
 	})
 	require.Nil(t, err)
-	require.Equal(t, types.CodeTypeOK, resQuery.Code)
+	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 
 	// make sure proof is fine
@@ -305,7 +308,7 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 		Prove: true,
 	})
 	require.Nil(t, err)
-	require.Equal(t, types.CodeTypeOK, resQuery.Code)
+	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
 	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
 	require.Nil(t, err)

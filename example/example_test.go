@@ -11,12 +11,14 @@ import (
 
 	"golang.org/x/net/context"
 
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/example/dummy"
 	abciserver "github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 func TestDummy(t *testing.T) {
@@ -60,7 +62,7 @@ func testStream(t *testing.T, app types.Application) {
 		switch r := res.Value.(type) {
 		case *types.Response_DeliverTx:
 			counter++
-			if r.DeliverTx.Code != types.CodeTypeOK {
+			if r.DeliverTx.Code != code.CodeTypeOK {
 				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
 			}
 			if counter > numDeliverTxs {
@@ -135,7 +137,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}
 		counter++
-		if response.Code != types.CodeTypeOK {
+		if response.Code != code.CodeTypeOK {
 			t.Error("DeliverTx failed with ret_code", response.Code)
 		}
 		if counter > numDeliverTxs {
