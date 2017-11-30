@@ -4,8 +4,6 @@ import (
 	"fmt"
 )
 
-// type CodeType uint32
-
 const (
 	CodeTypeOK uint32 = 0
 )
