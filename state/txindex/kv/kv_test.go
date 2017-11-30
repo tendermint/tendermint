@@ -104,6 +104,27 @@ func TestTxSearch(t *testing.T) {
 	}
 }
 
+func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
+	tagsToIndex := []string{"account.number"}
+	indexer := NewTxIndex(db.NewMemDB(), tagsToIndex)
+
+	tx := types.Tx("SAME MULTIPLE TAGS WITH DIFFERENT VALUES")
+	tags := []*abci.KVPair{
+		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 1},
+		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 2},
+	}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: tags}}
+
+	err := indexer.Index(txResult)
+	require.NoError(t, err)
+
+	results, err := indexer.Search(query.MustParse("account.number >= 1"))
+	assert.NoError(t, err)
+
+	assert.Len(t, results, 1)
+	assert.Equal(t, []*types.TxResult{txResult}, results)
+}
+
 func benchmarkTxIndex(txsCount int, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
 	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: []*abci.KVPair{}}}
