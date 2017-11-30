@@ -1,8 +1,8 @@
 package dummy
 
 import (
+	"bytes"
 	"fmt"
-	"strings"
 
 	"github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
@@ -29,13 +29,20 @@ func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.Response
 
 // tx is either "key=value" or just arbitrary bytes
 func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
-	parts := strings.Split(string(tx), "=")
+	var key, value []byte
+	parts := bytes.Split(tx, []byte("="))
 	if len(parts) == 2 {
-		app.state.Set([]byte(parts[0]), []byte(parts[1]))
+		key, value = parts[0], parts[1]
 	} else {
-		app.state.Set(tx, tx)
+		key, value = tx, tx
 	}
-	return types.ResponseDeliverTx{Code: types.CodeType_OK}
+	app.state.Set(key, value)
+
+	tags := []*types.KVPair{
+		{Key: "app.creator", ValueType: types.KVPair_STRING, ValueString: "jae"},
+		{Key: "app.key", ValueType: types.KVPair_STRING, ValueString: string(key)},
+	}
+	return types.ResponseDeliverTx{Code: types.CodeType_OK, Tags: tags}
 }
 
 func (app *DummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
