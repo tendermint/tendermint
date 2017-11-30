@@ -1,6 +1,6 @@
 package: github.com/tendermint/abci
 import:
-- package: github.com/golang/protobuf
+- package: github.com/gogo/protobuf
   subpackages:
   - proto
 - package: github.com/spf13/cobra
