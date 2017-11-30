@@ -35,7 +35,8 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	} else {
 		app.state.Set(tx, tx)
 	}
-	return types.ResponseDeliverTx{Code: types.CodeType_OK}
+	tags := []*types.KVPair{{Key: "app.creator", ValueType: types.KVPair_STRING, ValueString: "jae"}}
+	return types.ResponseDeliverTx{Code: types.CodeType_OK, Tags: tags}
 }
 
 func (app *DummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
