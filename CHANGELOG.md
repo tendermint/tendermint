@@ -17,9 +17,10 @@ BREAKING CHANGES:
  - [abci-cli] codes are printed as their number instead of a message, except for `code == 0`, which is still printed as `OK`
 
 FEATURES:
- - [types] added Tags field to ResponseDeliverTx
- - [types] added Gas and Fee fields to ResponseCheckTx
- - [dummy] DeliverTx returns tags
+ - [types] ResponseDeliverTx: added `tags` field
+ - [types] ResponseCheckTx: added `gas` and `fee` fields
+ - [types] RequestBeginBlock: added `absent_validators` and `byzantine_validators` fields
+ - [dummy] DeliverTx returns an owner tag and a key tag
  - [abci-cli] added `log_level` flag to control the logger
 
 ## 0.7.1 (November 14, 2017)

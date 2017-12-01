@@ -26,7 +26,7 @@ protoc:
 	## On "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) --gogo_out=plugins=grpc:. types/*.proto
+	protoc $(INCLUDE) --gogo_out=plugins=grpc:. --lint_out=. types/*.proto
 
 install:
 	@ go install ./cmd/...
@@ -38,14 +38,14 @@ dist:
 	@ bash scripts/dist.sh
 	@ bash scripts/publish.sh
 
-test: 
+test:
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
 	@ echo "==> Running linter"
 	@ make metalinter_test
 	@ echo "==> Running go test"
 	@ go test $(PACKAGES)
 
-test_race: 
+test_race:
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
 	@ echo "==> Running go test --race"
 	@go test -v -race $(PACKAGES)
