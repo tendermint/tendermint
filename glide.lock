@@ -1,5 +1,5 @@
-hash: b4e6f2f40e2738e45cec07ed91a5733d94d29cdfa0c7eb686a4d0a34512e2097
-updated: 2017-11-30T17:46:14.710809367Z
+hash: 8c38726da2666831affa40474117d3cef5dad083176e81fb013d7e8493b83e6f
+updated: 2017-12-01T02:14:22.08770964Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
@@ -98,7 +98,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 5c29adc081795b04f9d046fb51d76903c22cfa6d
+  version: 22b491bb1952125dd2fb0730d6ca8e59e310547c
   subpackages:
   - client
   - example/counter
@@ -113,7 +113,7 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: dd20358a264c772b4a83e477b0cfce4c88a7001d
 - name: github.com/tendermint/go-wire
-  version: 7d50b38b3815efe313728de77e2995c8813ce13f
+  version: 5ab49b4c6ad674da6b81442911cf713ef0afb544
   subpackages:
   - data
   - data/base58

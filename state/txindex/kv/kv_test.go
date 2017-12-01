@@ -46,8 +46,8 @@ func TestTxIndex(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	tags := []string{"account.number", "account.owner", "account.date"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(tags))
+	allowedTags := []string{"account.number", "account.owner", "account.date"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
 	tx := types.Tx("HELLO WORLD")
 	tags := []*abci.KVPair{
@@ -105,8 +105,8 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	tags := []string{"account.number"}
-	indexer := NewTxIndex(db.NewMemDB(), IndexTags(tags))
+	allowedTags := []string{"account.number"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
 	tx := types.Tx("SAME MULTIPLE TAGS WITH DIFFERENT VALUES")
 	tags := []*abci.KVPair{
