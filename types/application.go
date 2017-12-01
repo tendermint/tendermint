@@ -75,8 +75,6 @@ func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 
 //-------------------------------------------------------
 
-var _ Application = (*GRPCApplication)(nil)
-
 // GRPCApplication is a GRPC wrapper for Application
 type GRPCApplication struct {
 	app Application

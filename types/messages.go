@@ -7,6 +7,31 @@ import (
 	wire "github.com/tendermint/go-wire"
 )
 
+// WriteMessage writes a length-delimited protobuf message.
+func WriteMessage(msg proto.Message, w io.Writer) error {
+	bz, err := proto.Marshal(msg)
+	if err != nil {
+		return err
+	}
+	var n int
+	wire.WriteByteSlice(bz, w, &n, &err)
+	return err
+}
+
+// ReadMessage reads a length delimited protobuf message.
+func ReadMessage(r io.Reader, msg proto.Message) error {
+	var n int
+	var err error
+	bz := wire.ReadByteSlice(r, 0, &n, &err) //XXX: no max
+	if err != nil {
+		return err
+	}
+	err = proto.Unmarshal(bz, msg)
+	return err
+}
+
+//----------------------------------------
+
 func ToRequestEcho(message string) *Request {
 	return &Request{
 		Value: &Request_Echo{&RequestEcho{message}},
@@ -145,29 +170,4 @@ func ToResponseEndBlock(res ResponseEndBlock) *Response {
 	return &Response{
 		Value: &Response_EndBlock{&res},
 	}
-}
-
-//----------------------------------------
-
-// Write proto message, length delimited
-func WriteMessage(msg proto.Message, w io.Writer) error {
-	bz, err := proto.Marshal(msg)
-	if err != nil {
-		return err
-	}
-	var n int
-	wire.WriteByteSlice(bz, w, &n, &err)
-	return err
-}
-
-// Read proto message, length delimited
-func ReadMessage(r io.Reader, msg proto.Message) error {
-	var n int
-	var err error
-	bz := wire.ReadByteSlice(r, 0, &n, &err)
-	if err != nil {
-		return err
-	}
-	err = proto.Unmarshal(bz, msg)
-	return err
 }
