@@ -430,13 +430,19 @@ type TxIndexConfig struct {
 	// bloat. This is, of course, depends on the indexer's DB and the volume of
 	// transactions.
 	IndexTags string `mapstructure:"index_tags"`
+
+	// When set to true, tells indexer to index all tags. Note this may be not
+	// desirable (see the comment above). IndexTags has a precedence over
+	// IndexAllTags (i.e. when given both, IndexTags will be indexed).
+	IndexAllTags bool `mapstructure:"index_all_tags"`
 }
 
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer:   "kv",
-		IndexTags: "",
+		Indexer:      "kv",
+		IndexTags:    "",
+		IndexAllTags: false,
 	}
 }
 

@@ -288,7 +288,13 @@ func NewNode(config *cfg.Config,
 		if err != nil {
 			return nil, err
 		}
-		txIndexer = kv.NewTxIndex(store, strings.Split(config.TxIndex.IndexTags, ","))
+		if config.TxIndex.IndexTags != "" {
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(strings.Split(config.TxIndex.IndexTags, ",")))
+		} else if config.TxIndex.IndexAllTags {
+			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
+		} else {
+			txIndexer = kv.NewTxIndex(store)
+		}
 	default:
 		txIndexer = &null.TxIndex{}
 	}

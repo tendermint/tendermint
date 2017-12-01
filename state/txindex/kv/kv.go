@@ -27,13 +27,32 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store       db.DB
-	tagsToIndex []string
+	store        db.DB
+	tagsToIndex  []string
+	indexAllTags bool
 }
 
 // NewTxIndex creates new KV indexer.
-func NewTxIndex(store db.DB, tagsToIndex []string) *TxIndex {
-	return &TxIndex{store: store, tagsToIndex: tagsToIndex}
+func NewTxIndex(store db.DB, options ...func(*TxIndex)) *TxIndex {
+	txi := &TxIndex{store: store, tagsToIndex: make([]string, 0), indexAllTags: false}
+	for _, o := range options {
+		o(txi)
+	}
+	return txi
+}
+
+// IndexTags is an option for setting which tags to index.
+func IndexTags(tags []string) func(*TxIndex) {
+	return func(txi *TxIndex) {
+		txi.tagsToIndex = tags
+	}
+}
+
+// IndexAllTags is an option for indexing all tags.
+func IndexAllTags() func(*TxIndex) {
+	return func(txi *TxIndex) {
+		txi.indexAllTags = true
+	}
 }
 
 // Get gets transaction from the TxIndex storage and returns it or nil if the
@@ -68,7 +87,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 
 		// index tx by tags
 		for _, tag := range result.Result.Tags {
-			if cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
+			if txi.indexAllTags || cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
 				storeBatch.Set(keyForTag(tag, result), hash)
 			}
 		}
@@ -90,7 +109,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 
 	// index tx by tags
 	for _, tag := range result.Result.Tags {
-		if cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
+		if txi.indexAllTags || cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
 			b.Set(keyForTag(tag, result), hash)
 		}
 	}

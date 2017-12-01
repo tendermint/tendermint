@@ -16,7 +16,7 @@ import (
 )
 
 func TestTxIndex(t *testing.T) {
-	indexer := NewTxIndex(db.NewMemDB(), []string{})
+	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
 	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: []*abci.KVPair{}}}
@@ -46,8 +46,8 @@ func TestTxIndex(t *testing.T) {
 }
 
 func TestTxSearch(t *testing.T) {
-	tagsToIndex := []string{"account.number", "account.owner", "account.date"}
-	indexer := NewTxIndex(db.NewMemDB(), tagsToIndex)
+	tags := []string{"account.number", "account.owner", "account.date"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexTags(tags))
 
 	tx := types.Tx("HELLO WORLD")
 	tags := []*abci.KVPair{
@@ -105,8 +105,8 @@ func TestTxSearch(t *testing.T) {
 }
 
 func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
-	tagsToIndex := []string{"account.number"}
-	indexer := NewTxIndex(db.NewMemDB(), tagsToIndex)
+	tags := []string{"account.number"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexTags(tags))
 
 	tx := types.Tx("SAME MULTIPLE TAGS WITH DIFFERENT VALUES")
 	tags := []*abci.KVPair{
@@ -136,7 +136,7 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 	defer os.RemoveAll(dir) // nolint: errcheck
 
 	store := db.NewDB("tx_index", "leveldb", dir)
-	indexer := NewTxIndex(store, []string{})
+	indexer := NewTxIndex(store)
 
 	batch := txindex.NewBatch(txsCount)
 	for i := 0; i < txsCount; i++ {
