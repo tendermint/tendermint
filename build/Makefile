@@ -56,22 +56,15 @@ build-tendermint: git-branch
 	@echo "*** Building tendermint"
 	go get -d -u github.com/tendermint/tendermint/cmd/tendermint
 	cd $(GOPATH)/src/github.com/tendermint/tendermint && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_vendor_deps build
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_vendor_deps build
 	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
-
-#build-basecoin: git-branch
-#	@echo "*** Building basecoin-old"
-#	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
-#	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
-#	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
-#	@echo "*** Built basecoin"
 
 build-ethermint: git-branch
 	@echo "*** Building ethermint"
 	go get -d -u github.com/tendermint/ethermint/cmd/ethermint
 	cd $(GOPATH)/src/github.com/tendermint/ethermint && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps build
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps build
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/build/ethermint $(GOPATH)/bin
 	@echo "*** Built ethermint"
 
@@ -79,7 +72,7 @@ build-trackomatron: git-branch
 	@echo "*** Building trackomatron"
 	go get -d -u github.com/tendermint/trackomatron/cmd/tracko
 	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
 	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed for proper packaging" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
 	@echo "*** Built trackomatron"
 
@@ -87,14 +80,14 @@ build-gaia: git-branch
 	@echo "*** Building gaia"
 	go get -d -u go github.com/cosmos/gaia || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/gaia && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
 
 build-basecoin: git-branch
 	@echo "*** Building basecoin from cosmos-sdk"
 	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
 	@echo "*** Built basecoin from cosmos-sdk"
 
 ###
