@@ -49,14 +49,12 @@ func TestTxSearch(t *testing.T) {
 	allowedTags := []string{"account.number", "account.owner", "account.date"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
-	tx := types.Tx("HELLO WORLD")
-	tags := []*abci.KVPair{
+	txResult := txResultWithTags([]*abci.KVPair{
 		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 1},
 		{Key: "account.owner", ValueType: abci.KVPair_STRING, ValueString: "Ivan"},
 		{Key: "not_allowed", ValueType: abci.KVPair_STRING, ValueString: "Vlad"},
-	}
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: tags}}
-	hash := tx.Hash()
+	})
+	hash := txResult.Tx.Hash()
 
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
@@ -108,12 +106,10 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	allowedTags := []string{"account.number"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
-	tx := types.Tx("SAME MULTIPLE TAGS WITH DIFFERENT VALUES")
-	tags := []*abci.KVPair{
+	txResult := txResultWithTags([]*abci.KVPair{
 		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 1},
 		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 2},
-	}
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: tags}}
+	})
 
 	err := indexer.Index(txResult)
 	require.NoError(t, err)
@@ -123,6 +119,33 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 
 	assert.Len(t, results, 1)
 	assert.Equal(t, []*types.TxResult{txResult}, results)
+}
+
+func TestIndexAllTags(t *testing.T) {
+	indexer := NewTxIndex(db.NewMemDB(), IndexAllTags())
+
+	txResult := txResultWithTags([]*abci.KVPair{
+		abci.KVPairString("account.owner", "Ivan"),
+		abci.KVPairInt("account.number", 1),
+	})
+
+	err := indexer.Index(txResult)
+	require.NoError(t, err)
+
+	results, err := indexer.Search(query.MustParse("account.number >= 1"))
+	assert.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, []*types.TxResult{txResult}, results)
+
+	results, err = indexer.Search(query.MustParse("account.owner = 'Ivan'"))
+	assert.NoError(t, err)
+	assert.Len(t, results, 1)
+	assert.Equal(t, []*types.TxResult{txResult}, results)
+}
+
+func txResultWithTags(tags []*abci.KVPair) *types.TxResult {
+	tx := types.Tx("HELLO WORLD")
+	return &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeType_OK, Log: "", Tags: tags}}
 }
 
 func benchmarkTxIndex(txsCount int, b *testing.B) {
