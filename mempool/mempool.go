@@ -66,7 +66,7 @@ type Mempool struct {
 	recheckCursor        *clist.CElement // next expected response
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool            // true if fired on txsAvailable for this height
-	txsAvailable         chan uint64        // fires the next height once for each height, when the mempool is not empty
+	txsAvailable         chan uint64     // fires the next height once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -433,7 +433,7 @@ type mempoolTx struct {
 
 // Height returns the height for this transaction
 func (memTx *mempoolTx) Height() uint64 {
-	return uint64(atomic.LoadUint64(&memTx.height))
+	return atomic.LoadUint64(&memTx.height)
 }
 
 //--------------------------------------------------------------------------------

@@ -13,7 +13,7 @@ type tm2pb struct{}
 func (tm2pb) Header(header *Header) *types.Header {
 	return &types.Header{
 		ChainId:        header.ChainID,
-		Height:         uint64(header.Height),
+		Height:         header.Height,
 		Time:           uint64(header.Time.Unix()),
 		NumTxs:         uint64(header.NumTxs),
 		LastBlockId:    TM2PB.BlockID(header.LastBlockID),
