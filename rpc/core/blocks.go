@@ -62,18 +62,27 @@ import (
 //
 // <aside class="notice">Returns at most 20 items.</aside>
 func BlockchainInfo(minHeight, maxHeight uint64) (*ctypes.ResultBlockchainInfo, error) {
+	if minHeight == 0 {
+		minHeight = 1
+	}
+
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
 	} else {
 		maxHeight = cmn.MinUint64(blockStore.Height(), maxHeight)
 	}
-	if minHeight == 0 {
-		minHeight = cmn.MaxUint64(1, maxHeight-20)
-	} else {
-		minHeight = cmn.MaxUint64(minHeight, maxHeight-20)
+
+	// maximum 20 block metas
+	const limit uint64 = 20
+	if maxHeight >= limit { // to prevent underflow
+		minHeight = cmn.MaxUint64(minHeight, maxHeight-limit)
 	}
 
 	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
+
+	if minHeight > maxHeight {
+		return nil, fmt.Errorf("min height %d can't be greater than max height %d", minHeight, maxHeight)
+	}
 
 	blockMetas := []*types.BlockMeta{}
 	for height := maxHeight; height >= minHeight; height-- {
