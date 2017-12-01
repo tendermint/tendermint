@@ -54,9 +54,6 @@ type BlockchainReactor struct {
 
 // NewBlockchainReactor returns new reactor instance.
 func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
-	if state.LastBlockHeight == store.Height()-1 {
-		store.height-- // XXX HACK, make this better
-	}
 	if state.LastBlockHeight != store.Height() {
 		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
 	}
