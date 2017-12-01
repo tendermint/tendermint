@@ -69,7 +69,7 @@ RETRY_LOOP:
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
-			cli.Logger.Info("Echo failed", "err", err)
+			cli.Logger.Error("Echo failed", "err", err)
 			time.Sleep(time.Second * echoRetryIntervalSeconds)
 		}
 
