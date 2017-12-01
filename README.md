@@ -102,8 +102,8 @@ Here, we describe the requests and responses as function arguments and return va
     * `Code (uint32)`: Response code
     * `Data ([]byte)`: Result bytes, if any
     * `Log (string)`: Debug or error message
-    * `Gas (uint64)`: Amount of gas consumed by transaction
-    * `Fee (uint64)`: Fee paid by transaction
+    * `Gas (int64)`: Amount of gas consumed by transaction
+    * `Fee (int64)`: Fee paid by transaction
   * __Usage__:<br/>
     Validate a mempool transaction, prior to broadcasting or proposing.  This message should not mutate the main state, but application
     developers may want to keep a separate CheckTx state that gets reset upon Commit.
@@ -127,14 +127,14 @@ Here, we describe the requests and responses as function arguments and return va
     * `Path (string)`: Path of request, like an HTTP GET path.  Can be used with or in liue of Data.
       * Apps MUST interpret '/store' as a query by key on the underlying store.  The key SHOULD be specified in the Data field.
       * Apps SHOULD allow queries over specific types like '/accounts/...' or '/votes/...'
-    * `Height (uint64)`: The block height for which you want the query (default=0 returns data for the latest committed block). Note that this is the height of the block containing the application's Merkle root hash, which represents the state as it was after committing the block at Height-1
+    * `Height (int64)`: The block height for which you want the query (default=0 returns data for the latest committed block). Note that this is the height of the block containing the application's Merkle root hash, which represents the state as it was after committing the block at Height-1
     * `Prove (bool)`: Return Merkle proof with response if possible
   * __Returns__:
     * `Code (uint32)`: Response code
     * `Key ([]byte)`: The key of the matching data
     * `Value ([]byte)`: The value of the matching data
     * `Proof ([]byte)`: Proof for the data, if requested
-    * `Height (uint64)`: The block height from which data was derived. Note that this is the height of the block containing the application's Merkle root hash, which represents the state as it was after committing the block at Height-1
+    * `Height (int64)`: The block height from which data was derived. Note that this is the height of the block containing the application's Merkle root hash, which represents the state as it was after committing the block at Height-1
     * `Log (string)`: Debug or error message
   *Please note* The current implementation of go-merkle doesn't support querying proofs from past blocks, so for the present moment, any height other than 0 will return an error (recall height=0 defaults to latest block).  Hopefully this will be improved soon(ish)
 
@@ -142,7 +142,7 @@ Here, we describe the requests and responses as function arguments and return va
   * __Returns__:
     * `Data (string)`: Some arbitrary information
     * `Version (Version)`: Version information
-    * `LastBlockHeight (uint64)`: Latest block for which the app has called Commit
+    * `LastBlockHeight (int64)`: Latest block for which the app has called Commit
     * `LastBlockAppHash ([]byte)`: Latest result of Commit
 
   * __Usage__:<br/>
@@ -173,7 +173,7 @@ Here, we describe the requests and responses as function arguments and return va
 
 #### EndBlock
   * __Arguments__:
-    * `Height (uint64)`: The block height that ended
+    * `Height (int64)`: The block height that ended
   * __Returns__:
     * `Diffs ([]Validator)`: Changed validators with new voting powers (0 to remove)
   * __Usage__:<br/>
