@@ -11,7 +11,7 @@ import (
 func RandVal(i int) *types.Validator {
 	pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
 	power := cmn.RandUint16() + 1
-	return &types.Validator{pubkey, uint64(power)}
+	return &types.Validator{pubkey, int64(power)}
 }
 
 // RandVals returns a list of cnt validators for initializing

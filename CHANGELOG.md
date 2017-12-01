@@ -12,6 +12,8 @@ BREAKING CHANGES:
  - [types] switched to using `gogo/protobuf` for code generation
  - [types] use `customtype` feature of `gogo/protobuf` to replace `[]byte` with `data.Bytes` in all generated types :)
     - this eliminates the need for additional types like ResultQuery
+ - [types] `pubKey` -> `pub_key`
+ - [types] `uint64` -> `int64`
  - [abci-cli] codes are printed as their number instead of a message, except for `code == 0`, which is still printed as `OK`
 
 FEATURES:

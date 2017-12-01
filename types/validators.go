@@ -8,8 +8,7 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// validators implements sort
-
+// Validators is a list of validators that implements the Sort interface
 type Validators []*Validator
 
 func (v Validators) Len() int {
@@ -31,7 +30,7 @@ func (v Validators) Swap(i, j int) {
 
 type validatorPretty struct {
 	PubKey data.Bytes `json:"pub_key"`
-	Power  uint64     `json:"power"`
+	Power  int64      `json:"power"`
 }
 
 func ValidatorsString(vs Validators) string {
