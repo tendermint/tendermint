@@ -55,7 +55,8 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	res := app.app.Info(req)
-	res.LastBlockHeight = app.app.state.LatestVersion()
+	var latestVersion uint64 = app.app.state.LatestVersion() // TODO: change to int64
+	res.LastBlockHeight = int64(latestVersion)
 	res.LastBlockAppHash = app.app.state.Hash()
 	return res
 }
@@ -145,7 +146,7 @@ func (app *PersistentDummyApplication) Validators() (validators []*types.Validat
 	return
 }
 
-func MakeValSetChangeTx(pubkey []byte, power uint64) []byte {
+func MakeValSetChangeTx(pubkey []byte, power int64) []byte {
 	return []byte(cmn.Fmt("val:%X/%d", pubkey, power))
 }
 
@@ -181,7 +182,7 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 	}
 
 	// decode the power
-	power, err := strconv.Atoi(powerS)
+	power, err := strconv.ParseInt(powerS, 10, 64)
 	if err != nil {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
@@ -189,7 +190,7 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 	}
 
 	// update
-	return app.updateValidator(&types.Validator{pubkey, uint64(power)})
+	return app.updateValidator(&types.Validator{pubkey, power})
 }
 
 // add, update, or remove a validator

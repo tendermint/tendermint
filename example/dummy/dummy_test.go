@@ -82,7 +82,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 	}
 	dummy := NewPersistentDummyApplication(dir)
 	InitDummy(dummy)
-	height := uint64(0)
+	height := int64(0)
 
 	resInfo := dummy.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
@@ -90,12 +90,12 @@ func TestPersistentDummyInfo(t *testing.T) {
 	}
 
 	// make and apply block
-	height = uint64(1)
+	height = int64(1)
 	hash := []byte("foo")
 	header := &types.Header{
-		Height: uint64(height),
+		Height: int64(height),
 	}
-	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
+	dummy.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
 	dummy.EndBlock(types.RequestEndBlock{header.Height})
 	dummy.Commit()
 
@@ -173,13 +173,13 @@ func TestValSetChanges(t *testing.T) {
 
 func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff []*types.Validator, txs ...[]byte) {
 	// make and apply block
-	height := uint64(heightInt)
+	height := int64(heightInt)
 	hash := []byte("foo")
 	header := &types.Header{
 		Height: height,
 	}
 
-	dummy.BeginBlock(types.RequestBeginBlock{hash, header})
+	dummy.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
 	for _, tx := range txs {
 		if r := dummy.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)

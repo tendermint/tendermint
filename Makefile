@@ -6,6 +6,8 @@ GOTOOLS = \
 					github.com/gogo/protobuf/protoc-gen-gogo \
 					github.com/gogo/protobuf/gogoproto
 
+INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
+
 all: install test
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
@@ -24,7 +26,7 @@ protoc:
 	## On "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
-	protoc -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf --gogo_out=plugins=grpc:. types/*.proto
+	protoc $(INCLUDE) --gogo_out=plugins=grpc:. --lint_out=. types/*.proto
 
 install:
 	@ go install ./cmd/...
@@ -36,14 +38,14 @@ dist:
 	@ bash scripts/dist.sh
 	@ bash scripts/publish.sh
 
-test: 
+test:
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
 	@ echo "==> Running linter"
 	@ make metalinter_test
 	@ echo "==> Running go test"
 	@ go test $(PACKAGES)
 
-test_race: 
+test_race:
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
 	@ echo "==> Running go test --race"
 	@go test -v -race $(PACKAGES)
@@ -67,11 +69,11 @@ get_vendor_deps: ensure_tools
 	@ glide install
 
 metalinter:
-	protoc --lint_out=. types/*.proto
+	protoc $(INCLUDE) --lint_out=. types/*.proto
 	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test:
-	# protoc --lint_out=. types/*.proto
+	protoc $(INCLUDE) --lint_out=. types/*.proto
 	gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
