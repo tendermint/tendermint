@@ -15,8 +15,6 @@ import (
 
 	wire "github.com/tendermint/go-wire"
 
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -61,9 +59,6 @@ type State struct {
 	// AppHash is updated after Commit
 	AppHash []byte
 
-	// TxIndexer indexes transactions
-	TxIndexer txindex.TxIndexer `json:"-"`
-
 	logger log.Logger
 }
 
@@ -95,7 +90,7 @@ func loadState(db dbm.DB, key []byte) *State {
 		return nil
 	}
 
-	s := &State{db: db, TxIndexer: &null.TxIndex{}}
+	s := &State{db: db}
 	r, n, err := bytes.NewReader(buf), new(int), new(error)
 	wire.ReadBinaryPtr(&s, r, 0, n, err)
 	if *err != nil {
@@ -114,8 +109,6 @@ func (s *State) SetLogger(l log.Logger) {
 }
 
 // Copy makes a copy of the State for mutating.
-// NOTE: Does not create a copy of TxIndexer. It creates a new pointer that points to the same
-// underlying TxIndexer.
 func (s *State) Copy() *State {
 	return &State{
 		db:                          s.db,
@@ -125,7 +118,6 @@ func (s *State) Copy() *State {
 		Validators:                  s.Validators.Copy(),
 		LastValidators:              s.LastValidators.Copy(),
 		AppHash:                     s.AppHash,
-		TxIndexer:                   s.TxIndexer,
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
 		logger:  s.logger,
 		ChainID: s.ChainID,
@@ -287,7 +279,7 @@ type ABCIResponses struct {
 	Height int
 
 	DeliverTx []*abci.ResponseDeliverTx
-	EndBlock  abci.ResponseEndBlock
+	EndBlock  *abci.ResponseEndBlock
 
 	txs types.Txs // reference for indexing results by hash
 }
@@ -368,7 +360,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		}
 	}
 
-	// we do not need indexer during replay and in tests
 	return &State{
 		db: db,
 
@@ -381,7 +372,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		Validators:                  types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		AppHash:                     genDoc.AppHash,
-		TxIndexer:                   &null.TxIndex{},
 		LastHeightValidatorsChanged: 1,
 	}, nil
 }

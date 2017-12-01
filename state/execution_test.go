@@ -3,13 +3,11 @@ package state
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/abci/example/dummy"
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -31,8 +29,6 @@ func TestApplyBlock(t *testing.T) {
 
 	state := state()
 	state.SetLogger(log.TestingLogger())
-	indexer := &dummyIndexer{0}
-	state.TxIndexer = indexer
 
 	// make block
 	block := makeBlock(1, state)
@@ -40,7 +36,6 @@ func TestApplyBlock(t *testing.T) {
 	err = state.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), types.MockMempool{})
 
 	require.Nil(t, err)
-	assert.Equal(t, nTxsPerBlock, indexer.Indexed) // test indexing works
 
 	// TODO check state and mempool
 }
@@ -74,17 +69,4 @@ func makeBlock(num int, state *State) *types.Block {
 	block, _ := types.MakeBlock(num, chainID, makeTxs(num), new(types.Commit),
 		prevBlockID, valHash, state.AppHash, testPartSize)
 	return block
-}
-
-// dummyIndexer increments counter every time we index transaction.
-type dummyIndexer struct {
-	Indexed int
-}
-
-func (indexer *dummyIndexer) Get(hash []byte) (*types.TxResult, error) {
-	return nil, nil
-}
-func (indexer *dummyIndexer) AddBatch(batch *txindex.Batch) error {
-	indexer.Indexed += batch.Size()
-	return nil
 }

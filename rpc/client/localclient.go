@@ -124,6 +124,10 @@ func (Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(hash, prove)
 }
 
+func (Local) TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
+	return core.TxSearch(query, prove)
+}
+
 func (c *Local) Subscribe(ctx context.Context, query string, out chan<- interface{}) error {
 	q, err := tmquery.New(query)
 	if err != nil {

@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 
-	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/go-wire/data"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
@@ -110,12 +109,7 @@ type EventDataNewBlockHeader struct {
 
 // All txs fire EventDataTx
 type EventDataTx struct {
-	Height int           `json:"height"`
-	Tx     Tx            `json:"tx"`
-	Data   data.Bytes    `json:"data"`
-	Log    string        `json:"log"`
-	Code   abci.CodeType `json:"code"`
-	Error  string        `json:"error"` // this is redundant information for now
+	TxResult
 }
 
 type EventDataProposalHeartbeat struct {
@@ -142,10 +136,13 @@ type EventDataVote struct {
 
 const (
 	// EventTypeKey is a reserved key, used to specify event type in tags.
-	EventTypeKey = "tm.events.type"
+	EventTypeKey = "tm.event"
 	// TxHashKey is a reserved key, used to specify transaction's hash.
 	// see EventBus#PublishEventTx
 	TxHashKey = "tx.hash"
+	// TxHeightKey is a reserved key, used to specify transaction block's height.
+	// see EventBus#PublishEventTx
+	TxHeightKey = "tx.height"
 )
 
 var (
@@ -167,9 +164,10 @@ var (
 	EventQueryTimeoutWait       = queryForEvent(EventTimeoutWait)
 	EventQueryVote              = queryForEvent(EventVote)
 	EventQueryProposalHeartbeat = queryForEvent(EventProposalHeartbeat)
+	EventQueryTx                = queryForEvent(EventTx)
 )
 
-func EventQueryTx(tx Tx) tmpubsub.Query {
+func EventQueryTxFor(tx Tx) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
 }
 

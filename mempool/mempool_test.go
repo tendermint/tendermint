@@ -13,6 +13,7 @@ import (
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -115,7 +116,7 @@ func TestTxsAvailable(t *testing.T) {
 
 func TestSerialReap(t *testing.T) {
 	app := counter.NewCounterApplication(true)
-	app.SetOption("serial", "on")
+	app.SetOption(abci.RequestSetOption{"serial", "on"})
 	cc := proxy.NewLocalClientCreator(app)
 
 	mempool := newMempoolWithApp(cc)
@@ -172,13 +173,19 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res := appConnCon.DeliverTxSync(txBytes)
-			if !res.IsOK() {
+			res, err := appConnCon.DeliverTxSync(txBytes)
+			if err != nil {
+				t.Errorf("Client error committing tx: %v", err)
+			}
+			if res.IsErr() {
 				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
 					res.Code, res.Data, res.Log)
 			}
 		}
-		res := appConnCon.CommitSync()
+		res, err := appConnCon.CommitSync()
+		if err != nil {
+			t.Errorf("Client error committing: %v", err)
+		}
 		if len(res.Data) != 8 {
 			t.Errorf("Error committing. Hash:%X log:%v", res.Data, res.Log)
 		}

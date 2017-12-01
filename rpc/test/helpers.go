@@ -80,6 +80,7 @@ func GetConfig() *cfg.Config {
 		globalConfig.P2P.ListenAddress = tm
 		globalConfig.RPC.ListenAddress = rpc
 		globalConfig.RPC.GRPCListenAddress = grpc
+		globalConfig.TxIndex.IndexTags = "app.creator" // see dummy application
 	}
 	return globalConfig
 }

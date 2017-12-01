@@ -236,7 +236,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int, proxyApp p
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(h.state.Validators)
-		if err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
+		if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
 			return nil, err
 		}
 	}
@@ -385,21 +385,17 @@ type mockProxyApp struct {
 	abciResponses *sm.ABCIResponses
 }
 
-func (mock *mockProxyApp) DeliverTx(tx []byte) abci.Result {
+func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTx[mock.txCount]
 	mock.txCount += 1
-	return abci.Result{
-		r.Code,
-		r.Data,
-		r.Log,
-	}
+	return *r
 }
 
-func (mock *mockProxyApp) EndBlock(height uint64) abci.ResponseEndBlock {
+func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
 	mock.txCount = 0
-	return mock.abciResponses.EndBlock
+	return *mock.abciResponses.EndBlock
 }
 
-func (mock *mockProxyApp) Commit() abci.Result {
-	return abci.NewResultOK(mock.appHash, "")
+func (mock *mockProxyApp) Commit() abci.ResponseCommit {
+	return abci.ResponseCommit{Code: abci.CodeType_OK, Data: mock.appHash}
 }

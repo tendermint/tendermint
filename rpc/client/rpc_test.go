@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -104,7 +105,7 @@ func TestABCIQuery(t *testing.T) {
 		k, v, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(t, err, "%d: %+v", i, err)
-		apph := bres.Height + 1 // this is where the tx will be applied to the state
+		apph := int(bres.Height) + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
 		client.WaitForHeight(c, apph, nil)
@@ -136,7 +137,7 @@ func TestAppCalls(t *testing.T) {
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
 		require.True(bres.DeliverTx.Code.IsOK())
-		txh := bres.Height
+		txh := int(bres.Height)
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
@@ -153,7 +154,7 @@ func TestAppCalls(t *testing.T) {
 		// ptx, err := c.Tx(bres.Hash, true)
 		ptx, err := c.Tx(bres.Hash, true)
 		require.Nil(err, "%d: %+v", i, err)
-		assert.Equal(txh, ptx.Height)
+		assert.EqualValues(txh, ptx.Height)
 		assert.EqualValues(tx, ptx.Tx)
 
 		// and we can even check the block is added
@@ -280,9 +281,9 @@ func TestTx(t *testing.T) {
 				require.NotNil(err)
 			} else {
 				require.Nil(err, "%+v", err)
-				assert.Equal(txHeight, ptx.Height)
+				assert.EqualValues(txHeight, ptx.Height)
 				assert.EqualValues(tx, ptx.Tx)
-				assert.Equal(0, ptx.Index)
+				assert.Zero(ptx.Index)
 				assert.True(ptx.TxResult.Code.IsOK())
 
 				// time to verify the proof
@@ -291,6 +292,53 @@ func TestTx(t *testing.T) {
 					assert.True(proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
 				}
 			}
+		}
+	}
+}
+
+func TestTxSearch(t *testing.T) {
+	// first we broadcast a tx
+	c := getHTTPClient()
+	_, _, tx := MakeTxKV()
+	bres, err := c.BroadcastTxCommit(tx)
+	require.Nil(t, err, "%+v", err)
+
+	txHeight := bres.Height
+	txHash := bres.Hash
+
+	anotherTxHash := types.Tx("a different tx").Hash()
+
+	for i, c := range GetClients() {
+		t.Logf("client %d", i)
+
+		// now we query for the tx.
+		// since there's only one tx, we know index=0.
+		results, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, results, 1)
+
+		ptx := results[0]
+		assert.EqualValues(t, txHeight, ptx.Height)
+		assert.EqualValues(t, tx, ptx.Tx)
+		assert.Zero(t, ptx.Index)
+		assert.True(t, ptx.TxResult.Code.IsOK())
+
+		// time to verify the proof
+		proof := ptx.Proof
+		if assert.EqualValues(t, tx, proof.Data) {
+			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+		}
+
+		// we query for non existing tx
+		results, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, results, 0)
+
+		// we query using a tag (see dummy application)
+		results, err = c.TxSearch("app.creator='jae'", false)
+		require.Nil(t, err, "%+v", err)
+		if len(results) == 0 {
+			t.Fatal("expected a lot of transactions")
 		}
 	}
 }

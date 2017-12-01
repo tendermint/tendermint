@@ -104,18 +104,18 @@ type ResultBroadcastTx struct {
 }
 
 type ResultBroadcastTxCommit struct {
-	CheckTx   abci.Result `json:"check_tx"`
-	DeliverTx abci.Result `json:"deliver_tx"`
-	Hash      data.Bytes  `json:"hash"`
-	Height    int         `json:"height"`
+	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
+	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
+	Hash      data.Bytes             `json:"hash"`
+	Height    uint64                 `json:"height"`
 }
 
 type ResultTx struct {
-	Height   int           `json:"height"`
-	Index    int           `json:"index"`
-	TxResult abci.Result   `json:"tx_result"`
-	Tx       types.Tx      `json:"tx"`
-	Proof    types.TxProof `json:"proof,omitempty"`
+	Height   uint64                 `json:"height"`
+	Index    uint32                 `json:"index"`
+	TxResult abci.ResponseDeliverTx `json:"tx_result"`
+	Tx       types.Tx               `json:"tx"`
+	Proof    types.TxProof          `json:"proof,omitempty"`
 }
 
 type ResultUnconfirmedTxs struct {

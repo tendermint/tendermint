@@ -111,6 +111,7 @@ type Node struct {
 	proxyApp         proxy.AppConns              // connection to the application
 	rpcListeners     []net.Listener              // rpc servers
 	txIndexer        txindex.TxIndexer
+	indexerService   *txindex.IndexerService
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.
@@ -172,20 +173,6 @@ func NewNode(config *cfg.Config,
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
 	state.SetLogger(stateLogger)
-
-	// Transaction indexing
-	var txIndexer txindex.TxIndexer
-	switch config.TxIndex {
-	case "kv":
-		store, err := dbProvider(&DBContext{"tx_index", config})
-		if err != nil {
-			return nil, err
-		}
-		txIndexer = kv.NewTxIndex(store)
-	default:
-		txIndexer = &null.TxIndex{}
-	}
-	state.TxIndexer = txIndexer
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
@@ -293,6 +280,27 @@ func NewNode(config *cfg.Config,
 	bcReactor.SetEventBus(eventBus)
 	consensusReactor.SetEventBus(eventBus)
 
+	// Transaction indexing
+	var txIndexer txindex.TxIndexer
+	switch config.TxIndex.Indexer {
+	case "kv":
+		store, err := dbProvider(&DBContext{"tx_index", config})
+		if err != nil {
+			return nil, err
+		}
+		if config.TxIndex.IndexTags != "" {
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(strings.Split(config.TxIndex.IndexTags, ",")))
+		} else if config.TxIndex.IndexAllTags {
+			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
+		} else {
+			txIndexer = kv.NewTxIndex(store)
+		}
+	default:
+		txIndexer = &null.TxIndex{}
+	}
+
+	indexerService := txindex.NewIndexerService(txIndexer, eventBus)
+
 	// run the profile server
 	profileHost := config.ProfListenAddress
 	if profileHost != "" {
@@ -318,6 +326,7 @@ func NewNode(config *cfg.Config,
 		consensusReactor: consensusReactor,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
+		indexerService:   indexerService,
 		eventBus:         eventBus,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
@@ -363,6 +372,12 @@ func (n *Node) OnStart() error {
 		}
 	}
 
+	// start tx indexer
+	err = n.indexerService.Start()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -382,6 +397,8 @@ func (n *Node) OnStop() {
 	}
 
 	n.eventBus.Stop()
+
+	n.indexerService.Stop()
 }
 
 // RunForever waits for an interrupt signal and stops the node.

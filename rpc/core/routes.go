@@ -19,6 +19,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"block":                rpc.NewRPCFunc(Block, "height"),
 	"commit":               rpc.NewRPCFunc(Commit, "height"),
 	"tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
+	"tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove"),
 	"validators":           rpc.NewRPCFunc(Validators, "height"),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, ""),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, ""),

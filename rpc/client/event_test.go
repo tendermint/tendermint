@@ -100,7 +100,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 		require.True(ok, "%d: %#v", i, evt)
 		// make sure this is the proper tx
 		require.EqualValues(tx, txe.Tx)
-		require.True(txe.Code.IsOK())
+		require.True(txe.Result.Code.IsOK())
 	}
 }
 
@@ -132,6 +132,6 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		require.True(ok, "%d: %#v", i, evt)
 		// make sure this is the proper tx
 		require.EqualValues(tx, txe.Tx)
-		require.True(txe.Code.IsOK())
+		require.True(txe.Result.Code.IsOK())
 	}
 }
