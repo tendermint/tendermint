@@ -168,8 +168,10 @@ Here, we describe the requests and responses as function arguments and return va
   * __Arguments__:
     * `Hash ([]byte)`: The block's hash.  This can be derived from the block header.
     * `Header (struct{})`: The block header
+    * `AbsentValidators ([]int32)`: List of indices of validators not included in the LastCommit
+    * `ByzantineValidators ([]Evidence)`: List of evidence of validators that acted maliciously
   * __Usage__:<br/>
-    Signals the beginning of a new block. Called prior to any DeliverTxs. The header is expected to at least contain the Height.
+    Signals the beginning of a new block. Called prior to any DeliverTxs. The header is expected to at least contain the Height. The `AbsentValidators` and `ByzantineValidators` can be used to determine rewards and punishments for the validators.
 
 #### EndBlock
   * __Arguments__:
