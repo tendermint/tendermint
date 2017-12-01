@@ -60,6 +60,7 @@ RETRY_LOOP:
 			continue RETRY_LOOP
 		}
 
+		cli.Logger.Info("Dialed server. Waiting for echo.", "addr", cli.addr)
 		client := types.NewABCIApplicationClient(conn)
 
 	ENSURE_CONNECTED:
@@ -68,6 +69,7 @@ RETRY_LOOP:
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
+			cli.Logger.Error("Echo failed", "err", err)
 			time.Sleep(time.Second * echoRetryIntervalSeconds)
 		}
 
@@ -104,7 +106,7 @@ func (cli *grpcClient) StopForError(err error) {
 func (cli *grpcClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
-	return errors.Wrap(cli.err, types.HumanCode(types.CodeType_InternalError))
+	return errors.Wrap(cli.err, "grpc client error")
 }
 
 // Set listener for all responses

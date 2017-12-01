@@ -10,46 +10,32 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/spf13/cobra"
+
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/abci/version"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
-
-	"github.com/spf13/cobra"
 )
 
-// Structure for data passed to print response.
-type response struct {
-	// generic abci response
-	Data []byte
-	Code types.CodeType
-	Log  string
-
-	Query *queryResponse
-}
-
-type queryResponse struct {
-	Key    []byte
-	Value  []byte
-	Height uint64
-	Proof  []byte
-}
-
 // client is a global variable so it can be reused by the console
-var client abcicli.Client
-
-var logger log.Logger
+var (
+	client abcicli.Client
+	logger log.Logger
+)
 
 // flags
 var (
 	// global
-	address string
-	abci    string
-	verbose bool
+	address  string
+	abci     string
+	verbose  bool   // for the println output
+	logLevel string // for the logger
 
 	// query
 	path   string
@@ -79,7 +65,11 @@ var RootCmd = &cobra.Command{
 		}
 
 		if logger == nil {
-			logger = log.NewFilter(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), log.AllowError())
+			allowLevel, err := log.AllowLevel(logLevel)
+			if err != nil {
+				return err
+			}
+			logger = log.NewFilter(log.NewTMLogger(log.NewSyncWriter(os.Stdout)), allowLevel)
 		}
 		if client == nil {
 			var err error
@@ -88,12 +78,29 @@ var RootCmd = &cobra.Command{
 				return err
 			}
 			client.SetLogger(logger.With("module", "abci-client"))
-			if _, err := client.Start(); err != nil {
+			if err := client.Start(); err != nil {
 				return err
 			}
 		}
 		return nil
 	},
+}
+
+// Structure for data passed to print response.
+type response struct {
+	// generic abci response
+	Data []byte
+	Code uint32
+	Log  string
+
+	Query *queryResponse
+}
+
+type queryResponse struct {
+	Key    []byte
+	Value  []byte
+	Height uint64
+	Proof  []byte
 }
 
 func Execute() error {
@@ -103,9 +110,10 @@ func Execute() error {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&address, "address", "", "tcp://127.0.0.1:46658", "Address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&address, "address", "", "tcp://0.0.0.0:46658", "Address of application socket")
 	RootCmd.PersistentFlags().StringVarP(&abci, "abci", "", "socket", "Either socket or grpc")
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().StringVarP(&logLevel, "log_level", "", "debug", "Set the logger level")
 }
 
 func addQueryFlags() {
@@ -457,7 +465,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	srv.SetLogger(logger.With("module", "abci-server"))
-	if _, err := srv.Start(); err != nil {
+	if err := srv.Start(); err != nil {
 		return err
 	}
 
@@ -487,7 +495,7 @@ func cmdDummy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	srv.SetLogger(logger.With("module", "abci-server"))
-	if _, err := srv.Start(); err != nil {
+	if err := srv.Start(); err != nil {
 		return err
 	}
 
@@ -508,7 +516,12 @@ func printResponse(cmd *cobra.Command, args []string, rsp response) {
 	}
 
 	// Always print the status code.
-	fmt.Printf("-> code: %s\n", rsp.Code.String())
+	if rsp.Code == types.CodeTypeOK {
+		fmt.Printf("-> code: OK\n")
+	} else {
+		fmt.Printf("-> code: %d\n", rsp.Code)
+
+	}
 
 	if len(rsp.Data) != 0 {
 		// Do no print this line when using the commit command

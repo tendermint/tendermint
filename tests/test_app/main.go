@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
 )
 
@@ -69,15 +70,15 @@ func testCounter() {
 
 	setOption(client, "serial", "on")
 	commit(client, nil)
-	deliverTx(client, []byte("abc"), types.CodeType_BadNonce, nil)
+	deliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil)
 	commit(client, nil)
-	deliverTx(client, []byte{0x00}, types.CodeType_OK, nil)
+	deliverTx(client, []byte{0x00}, types.CodeTypeOK, nil)
 	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1})
-	deliverTx(client, []byte{0x00}, types.CodeType_BadNonce, nil)
-	deliverTx(client, []byte{0x01}, types.CodeType_OK, nil)
-	deliverTx(client, []byte{0x00, 0x02}, types.CodeType_OK, nil)
-	deliverTx(client, []byte{0x00, 0x03}, types.CodeType_OK, nil)
-	deliverTx(client, []byte{0x00, 0x00, 0x04}, types.CodeType_OK, nil)
-	deliverTx(client, []byte{0x00, 0x00, 0x06}, types.CodeType_BadNonce, nil)
+	deliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil)
+	deliverTx(client, []byte{0x01}, types.CodeTypeOK, nil)
+	deliverTx(client, []byte{0x00, 0x02}, types.CodeTypeOK, nil)
+	deliverTx(client, []byte{0x00, 0x03}, types.CodeTypeOK, nil)
+	deliverTx(client, []byte{0x00, 0x00, 0x04}, types.CodeTypeOK, nil)
+	deliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
 	commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5})
 }

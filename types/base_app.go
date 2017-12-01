@@ -16,19 +16,19 @@ func (BaseApplication) SetOption(req RequestSetOption) ResponseSetOption {
 }
 
 func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
-	return ResponseDeliverTx{Code: CodeType_OK}
+	return ResponseDeliverTx{Code: CodeTypeOK}
 }
 
 func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
-	return ResponseCheckTx{Code: CodeType_OK}
+	return ResponseCheckTx{Code: CodeTypeOK}
 }
 
 func (BaseApplication) Commit() ResponseCommit {
-	return ResponseCommit{Code: CodeType_OK, Data: []byte("nil")}
+	return ResponseCommit{Code: CodeTypeOK}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
-	return ResponseQuery{Code: CodeType_OK}
+	return ResponseQuery{Code: CodeTypeOK}
 }
 
 func (BaseApplication) InitChain(req RequestInitChain) ResponseInitChain {

@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -36,7 +37,7 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	if app.serial {
 		if len(tx) > 8 {
 			return types.ResponseDeliverTx{
-				Code: types.CodeType_EncodingError,
+				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}
 		}
 		tx8 := make([]byte, 8)
@@ -44,19 +45,19 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
 			return types.ResponseDeliverTx{
-				Code: types.CodeType_BadNonce,
+				Code: code.CodeTypeBadNonce,
 				Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
 		}
 	}
 	app.txCount++
-	return types.ResponseDeliverTx{Code: types.CodeType_OK}
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
 func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	if app.serial {
 		if len(tx) > 8 {
 			return types.ResponseCheckTx{
-				Code: types.CodeType_EncodingError,
+				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}
 		}
 		tx8 := make([]byte, 8)
@@ -64,21 +65,21 @@ func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
 			return types.ResponseCheckTx{
-				Code: types.CodeType_BadNonce,
+				Code: code.CodeTypeBadNonce,
 				Log:  fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)}
 		}
 	}
-	return types.ResponseCheckTx{Code: types.CodeType_OK}
+	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
 func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
 	app.hashCount++
 	if app.txCount == 0 {
-		return types.ResponseCommit{Code: types.CodeType_OK}
+		return types.ResponseCommit{Code: code.CodeTypeOK}
 	}
 	hash := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return types.ResponseCommit{Code: types.CodeType_OK, Data: hash}
+	return types.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
 }
 
 func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {

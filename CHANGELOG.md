@@ -4,15 +4,21 @@
 
 BREAKING CHANGES:
  - [client] all XxxSync methods now return (ResponseXxx, error)
- - [types] Application: all methods now take RequestXxx and return (ResponseXxx, error).
+ - [types] all methods on Application interface now take RequestXxx and return (ResponseXxx, error).
     - Except `CheckTx`/`DeliverTx`, which takes a `tx []byte` argument.
     - Except `Commit`, which takes no arguments.
- - [types] removed Result
+ - [types] removed Result and ResultQuery
+ - [types] removed CodeType - only `0 == OK` is defined here, everything else is left to convention at the application level
+ - [types] switched to using `gogo/protobuf` for code generation
+ - [types] use `customtype` feature of `gogo/protobuf` to replace `[]byte` with `data.Bytes` in all generated types :)
+    - this eliminates the need for additional types like ResultQuery
+ - [abci-cli] codes are printed as their number instead of a message, except for `code == 0`, which is still printed as `OK`
 
 FEATURES:
  - [types] added Tags field to ResponseDeliverTx
  - [types] added Gas and Fee fields to ResponseCheckTx
  - [dummy] DeliverTx returns tags
+ - [abci-cli] added `log_level` flag to control the logger
 
 ## 0.7.1 (November 14, 2017)
 

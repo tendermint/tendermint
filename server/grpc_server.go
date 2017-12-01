@@ -42,6 +42,7 @@ func (s *GRPCServer) OnStart() error {
 	if err != nil {
 		return err
 	}
+	s.Logger.Info("Listening", "proto", s.proto, "addr", s.addr)
 	s.listener = ln
 	s.server = grpc.NewServer()
 	types.RegisterABCIApplicationServer(s.server, s.app)

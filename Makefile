@@ -2,7 +2,9 @@ GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
 					github.com/alecthomas/gometalinter \
-					github.com/ckaznocha/protoc-gen-lint
+					github.com/ckaznocha/protoc-gen-lint \
+					github.com/gogo/protobuf/protoc-gen-gogo \
+					github.com/gogo/protobuf/gogoproto
 
 all: install test
 
@@ -17,13 +19,12 @@ install_protoc:
 		make install && \
 		cd .. && \
 		rm -rf protobuf-3.4.1
-	go get github.com/golang/protobuf/protoc-gen-go
 
 protoc:
 	## On "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
-	protoc --go_out=plugins=grpc:. types/*.proto
+	protoc -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf --gogo_out=plugins=grpc:. types/*.proto
 
 install:
 	@ go install ./cmd/...
@@ -74,7 +75,6 @@ metalinter_test:
 	gometalinter --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
-		--enable=gas \
 		--enable=goconst \
 		--enable=goimports \
 		--enable=gosimple \
@@ -90,6 +90,7 @@ metalinter_test:
 		--enable=vetshadow \
 		./...
 
+		#--enable=gas \
 		#--enable=dupl \
 		#--enable=errcheck \
 		#--enable=gocyclo \
