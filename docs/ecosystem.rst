@@ -106,7 +106,7 @@ ABCI Servers
 +------------------------------------------------------------------+--------------------+--------------+
 | `Spearmint <https://github.com/dennismckinnon/spearmint>`__      | Dennis Mckinnon    | Javascript   |
 +------------------------------------------------------------------+--------------------+--------------+
-| `py-tendermint <https://github.com/davebryson/py-tendermint>`__  | Dave Bryson        | Python       |
+| `py-abci <https://github.com/davebryson/py-abci>`__		   | Dave Bryson        | Python       |
 +------------------------------------------------------------------+--------------------+--------------+
 
 Deployment Tools
