@@ -32,23 +32,23 @@ var (
 // flags
 var (
 	// global
-	address  string
-	abci     string
-	verbose  bool   // for the println output
-	logLevel string // for the logger
+	flagAddress  string
+	flagAbci     string
+	flagVerbose  bool   // for the println output
+	flagLogLevel string // for the logger
 
 	// query
-	path   string
-	height int
-	prove  bool
+	flagPath   string
+	flagHeight int
+	flagProve  bool
 
 	// counter
-	addrC  string
-	serial bool
+	flagAddrC  string
+	flagSerial bool
 
 	// dummy
-	addrD   string
-	persist string
+	flagAddrD   string
+	flagPersist string
 )
 
 var RootCmd = &cobra.Command{
@@ -65,7 +65,7 @@ var RootCmd = &cobra.Command{
 		}
 
 		if logger == nil {
-			allowLevel, err := log.AllowLevel(logLevel)
+			allowLevel, err := log.AllowLevel(flagLogLevel)
 			if err != nil {
 				return err
 			}
@@ -73,7 +73,7 @@ var RootCmd = &cobra.Command{
 		}
 		if client == nil {
 			var err error
-			client, err = abcicli.NewClient(address, abci, false)
+			client, err = abcicli.NewClient(flagAddress, flagAbci, false)
 			if err != nil {
 				return err
 			}
@@ -99,7 +99,7 @@ type response struct {
 type queryResponse struct {
 	Key    []byte
 	Value  []byte
-	Height uint64
+	Height int64
 	Proof  []byte
 }
 
@@ -110,26 +110,26 @@ func Execute() error {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&address, "address", "", "tcp://0.0.0.0:46658", "Address of application socket")
-	RootCmd.PersistentFlags().StringVarP(&abci, "abci", "", "socket", "Either socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Print the command and results as if it were a console session")
-	RootCmd.PersistentFlags().StringVarP(&logLevel, "log_level", "", "debug", "Set the logger level")
+	RootCmd.PersistentFlags().StringVarP(&flagAddress, "address", "", "tcp://0.0.0.0:46658", "Address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "Either socket or grpc")
+	RootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "Set the logger level")
 }
 
 func addQueryFlags() {
-	queryCmd.PersistentFlags().StringVarP(&path, "path", "", "/store", "Path to prefix query with")
-	queryCmd.PersistentFlags().IntVarP(&height, "height", "", 0, "Height to query the blockchain at")
-	queryCmd.PersistentFlags().BoolVarP(&prove, "prove", "", false, "Whether or not to return a merkle proof of the query result")
+	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "Path to prefix query with")
+	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "Height to query the blockchain at")
+	queryCmd.PersistentFlags().BoolVarP(&flagProve, "prove", "", false, "Whether or not to return a merkle proof of the query result")
 }
 
 func addCounterFlags() {
-	counterCmd.PersistentFlags().StringVarP(&addrC, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
-	counterCmd.PersistentFlags().BoolVarP(&serial, "serial", "", false, "Enforce incrementing (serial) transactions")
+	counterCmd.PersistentFlags().StringVarP(&flagAddrC, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
+	counterCmd.PersistentFlags().BoolVarP(&flagSerial, "serial", "", false, "Enforce incrementing (serial) transactions")
 }
 
 func addDummyFlags() {
-	dummyCmd.PersistentFlags().StringVarP(&addrD, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
-	dummyCmd.PersistentFlags().StringVarP(&persist, "persist", "", "", "Directory to use for a database")
+	dummyCmd.PersistentFlags().StringVarP(&flagAddrD, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
+	dummyCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "Directory to use for a database")
 }
 func addCommands() {
 	RootCmd.AddCommand(batchCmd)
@@ -433,9 +433,9 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 
 	resQuery, err := client.QuerySync(types.RequestQuery{
 		Data:   queryBytes,
-		Path:   path,
-		Height: uint64(height),
-		Prove:  prove,
+		Path:   flagPath,
+		Height: int64(flagHeight),
+		Prove:  flagProve,
 	})
 	if err != nil {
 		return err
@@ -455,12 +455,12 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 
 func cmdCounter(cmd *cobra.Command, args []string) error {
 
-	app := counter.NewCounterApplication(serial)
+	app := counter.NewCounterApplication(flagSerial)
 
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
-	srv, err := server.NewServer(addrC, abci, app)
+	srv, err := server.NewServer(flagAddrC, flagAbci, app)
 	if err != nil {
 		return err
 	}
@@ -482,15 +482,15 @@ func cmdDummy(cmd *cobra.Command, args []string) error {
 
 	// Create the application - in memory or persisted to disk
 	var app types.Application
-	if persist == "" {
+	if flagPersist == "" {
 		app = dummy.NewDummyApplication()
 	} else {
-		app = dummy.NewPersistentDummyApplication(persist)
+		app = dummy.NewPersistentDummyApplication(flagPersist)
 		app.(*dummy.PersistentDummyApplication).SetLogger(logger.With("module", "dummy"))
 	}
 
 	// Start the listener
-	srv, err := server.NewServer(addrD, abci, app)
+	srv, err := server.NewServer(flagAddrD, flagAbci, app)
 	if err != nil {
 		return err
 	}
@@ -511,7 +511,7 @@ func cmdDummy(cmd *cobra.Command, args []string) error {
 
 func printResponse(cmd *cobra.Command, args []string, rsp response) {
 
-	if verbose {
+	if flagVerbose {
 		fmt.Println(">", cmd.Use, strings.Join(args, " "))
 	}
 
