@@ -105,7 +105,7 @@ func TestABCIQuery(t *testing.T) {
 		k, v, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(t, err, "%d: %+v", i, err)
-		apph := int(bres.Height) + 1 // this is where the tx will be applied to the state
+		apph := bres.Height + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
 		client.WaitForHeight(c, apph, nil)
@@ -137,7 +137,7 @@ func TestAppCalls(t *testing.T) {
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
 		require.True(bres.DeliverTx.Code.IsOK())
-		txh := int(bres.Height)
+		txh := bres.Height
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
