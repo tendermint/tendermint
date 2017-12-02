@@ -697,7 +697,6 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 
 // needProofBlock returns true on the first height (so the genesis app hash is signed right away)
 // and where the last block (height-1) caused the app hash to change
-// CONTRACT: height > 0
 func (cs *ConsensusState) needProofBlock(height int64) bool {
 	if height == 1 {
 		return true
