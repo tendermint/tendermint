@@ -166,7 +166,7 @@ message Header {
   string chain_id = 1;
   int64 height = 2;
   int64 time = 3;
-  int64 num_txs = 4;
+  int32 num_txs = 4;
   BlockID last_block_id = 5;
   bytes last_commit_hash = 6;
   bytes data_hash = 7;
@@ -180,7 +180,7 @@ message BlockID {
 }
 
 message PartSetHeader {
-  int64 total = 1;
+  int32 total = 1;
   bytes hash = 2;
 }
 

@@ -23,6 +23,7 @@ install_protoc:
 		rm -rf protobuf-3.4.1
 
 protoc:
+	## Note to self:
 	## On "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
