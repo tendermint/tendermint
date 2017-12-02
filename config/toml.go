@@ -100,9 +100,6 @@ prof_laddr = "{{ .BaseConfig.ProfListenAddress }}"
 # so the app can decide if we should keep the connection or not
 filter_peers = {{ .BaseConfig.FilterPeers }}
 
-# What indexer to use for transactions
-tx_index = "{{ .BaseConfig.TxIndex }}"
-
 ##### advanced configuration options #####
 
 ##### rpc server configuration options #####
@@ -185,6 +182,28 @@ create_empty_blocks_interval = {{ .Consensus.CreateEmptyBlocksInterval }}
 # Reactor sleep duration parameters are in milliseconds
 peer_gossip_sleep_duration = {{ .Consensus.PeerGossipSleepDuration }}
 peer_query_maj23_sleep_duration = {{ .Consensus.PeerQueryMaj23SleepDuration }}
+
+##### transactions indexer configuration options #####
+[tx_index]
+
+# What indexer to use for transactions
+#
+# Options:
+#   1) "null" (default)
+#   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+indexer = "{{ .TxIndex.Indexer }}"
+
+# Comma-separated list of tags to index (by default the only tag is tx hash)
+#
+# It's recommended to index only a subset of tags due to possible memory
+# bloat. This is, of course, depends on the indexer's DB and the volume of
+# transactions.
+index_tags = "{{ .TxIndex.IndexTags }}"
+
+# When set to true, tells indexer to index all tags. Note this may be not
+# desirable (see the comment above). IndexTags has a precedence over
+# IndexAllTags (i.e. when given both, IndexTags will be indexed).
+index_all_tags = {{ .TxIndex.IndexAllTags }}
 `
 
 /****** these are for test settings ***********/

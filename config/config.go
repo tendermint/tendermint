@@ -386,7 +386,7 @@ func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
 // DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
-		WalPath:                     filepath.Join(defaultDataDir, "cs.wal/wal"),
+		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
 		WalLight:                    false,
 		TimeoutPropose:              3000,
 		TimeoutProposeDelta:         500,
