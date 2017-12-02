@@ -74,9 +74,7 @@ func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, e
 
 	// maximum 20 block metas
 	const limit int64 = 20
-	if maxHeight >= limit { // to prevent underflow
-		minHeight = cmn.MaxInt64(minHeight, maxHeight-limit)
-	}
+	minHeight = cmn.MaxInt64(minHeight, maxHeight-limit)
 
 	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 

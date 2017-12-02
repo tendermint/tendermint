@@ -53,7 +53,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
-		val.Accum += int64(val.VotingPower) * int64(times) // TODO: mind overflow
+		val.Accum += val.VotingPower * int64(times) // TODO: mind overflow
 		validatorsHeap.Push(val, accumComparable{val})
 	}
 
