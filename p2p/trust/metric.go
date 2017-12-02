@@ -234,6 +234,8 @@ func (tm *TrustMetric) NextTimeInterval() {
 
 // Copy returns a new trust metric with members containing the same values
 func (tm *TrustMetric) Copy() *TrustMetric {
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
 	if tm == nil {
 		return nil
 	}
