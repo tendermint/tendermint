@@ -96,9 +96,9 @@ type ResultDumpConsensusState struct {
 }
 
 type ResultBroadcastTx struct {
-	Code abci.CodeType `json:"code"`
-	Data data.Bytes    `json:"data"`
-	Log  string        `json:"log"`
+	Code uint32     `json:"code"`
+	Data data.Bytes `json:"data"`
+	Log  string     `json:"log"`
 
 	Hash data.Bytes `json:"hash"`
 }
@@ -128,7 +128,7 @@ type ResultABCIInfo struct {
 }
 
 type ResultABCIQuery struct {
-	*abci.ResultQuery `json:"response"`
+	*abci.ResponseQuery `json:"response"`
 }
 
 type ResultUnsafeFlushMempool struct{}

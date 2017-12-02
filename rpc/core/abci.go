@@ -45,9 +45,9 @@ import (
 // |-----------+--------+---------+----------+------------------------------------------------|
 // | path      | string | false   | false    | Path to the data ("/a/b/c")                    |
 // | data      | []byte | false   | true     | Data                                           |
-// | height    | uint64 | 0       | false    | Height (0 means latest)                        |
+// | height    | int64 | 0       | false    | Height (0 means latest)                        |
 // | trusted   | bool   | false   | false    | Does not include a proof of the data inclusion |
-func ABCIQuery(path string, data data.Bytes, height uint64, trusted bool) (*ctypes.ResultABCIQuery, error) {
+func ABCIQuery(path string, data data.Bytes, height int64, trusted bool) (*ctypes.ResultABCIQuery, error) {
 	resQuery, err := proxyAppQuery.QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
@@ -59,7 +59,7 @@ func ABCIQuery(path string, data data.Bytes, height uint64, trusted bool) (*ctyp
 	}
 	logger.Info("ABCIQuery", "path", path, "data", data, "result", resQuery)
 	return &ctypes.ResultABCIQuery{
-		resQuery.Result(),
+		resQuery,
 	}, nil
 }
 

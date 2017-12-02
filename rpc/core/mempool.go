@@ -174,7 +174,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	}
 	checkTxRes := <-checkTxResCh
 	checkTxR := checkTxRes.GetCheckTx()
-	if checkTxR.Code != abci.CodeType_OK {
+	if checkTxR.Code != abci.CodeTypeOK {
 		// CheckTx failed!
 		return &ctypes.ResultBroadcastTxCommit{
 			CheckTx:   *checkTxR,

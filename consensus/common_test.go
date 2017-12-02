@@ -59,7 +59,7 @@ type validatorStub struct {
 	types.PrivValidator
 }
 
-var testMinPower = 10
+var testMinPower int64 = 10
 
 func NewValidatorStub(privValidator types.PrivValidator, valIndex int) *validatorStub {
 	return &validatorStub{
@@ -372,7 +372,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 
 // nPeers = nValidators + nNotValidator
 func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application) []*ConsensusState {
-	genDoc, privVals := randGenesisDoc(nValidators, false, int64(testMinPower))
+	genDoc, privVals := randGenesisDoc(nValidators, false, testMinPower)
 	css := make([]*ConsensusState, nPeers)
 	logger := consensusLogger()
 	for i := 0; i < nPeers; i++ {

@@ -22,7 +22,7 @@ func TestABCIMock(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	key, value := []byte("foo"), []byte("bar")
-	height := uint64(10)
+	height := int64(10)
 	goodTx := types.Tx{0x01, 0xff}
 	badTx := types.Tx{0x12, 0x21}
 
@@ -168,9 +168,9 @@ func TestABCIApp(t *testing.T) {
 	tx := fmt.Sprintf("%s=%s", key, value)
 	res, err := m.BroadcastTxCommit(types.Tx(tx))
 	require.Nil(err)
-	assert.True(res.CheckTx.Code.IsOK())
+	assert.True(res.CheckTx.IsOK())
 	require.NotNil(res.DeliverTx)
-	assert.True(res.DeliverTx.Code.IsOK())
+	assert.True(res.DeliverTx.IsOK())
 
 	// check the key
 	qres, err := m.ABCIQueryWithOptions("/key", data.Bytes(key), client.ABCIQueryOptions{Trusted: true})

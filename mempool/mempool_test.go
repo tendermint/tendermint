@@ -14,12 +14,14 @@ import (
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,10 +124,10 @@ func TestSerialReap(t *testing.T) {
 	mempool := newMempoolWithApp(cc)
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
-	if err := appConnCon.Start(); err != nil {
-		t.Fatalf("Error starting ABCI client: %v", err.Error())
-	}
+	err := appConnCon.Start()
+	assert.Nil(t, err)
 
+	cacheMap := make(map[string]struct{})
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.
 		for i := start; i < end; i++ {
@@ -134,26 +136,23 @@ func TestSerialReap(t *testing.T) {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			err := mempool.CheckTx(txBytes, nil)
-			if err != nil {
-				t.Fatalf("Error after CheckTx: %v", err)
+			_, cached := cacheMap[string(txBytes)]
+			if cached {
+				assert.NotNil(t, err, "expected error for cached tx")
+			} else {
+				assert.Nil(t, err, "expected no err for uncached tx")
 			}
+			cacheMap[string(txBytes)] = struct{}{}
 
-			// This will fail because not serial (incrementing)
-			// However, error should still be nil.
-			// It just won't show up on Reap().
+			// Duplicates are cached and should return error
 			err = mempool.CheckTx(txBytes, nil)
-			if err != nil {
-				t.Fatalf("Error after CheckTx: %v", err)
-			}
-
+			assert.NotNil(t, err, "Expected error after CheckTx on duplicated tx")
 		}
 	}
 
 	reapCheck := func(exp int) {
 		txs := mempool.Reap(-1)
-		if len(txs) != exp {
-			t.Fatalf("Expected to reap %v txs but got %v", exp, len(txs))
-		}
+		assert.Equal(t, len(txs), exp, cmn.Fmt("Expected to reap %v txs but got %v", exp, len(txs)))
 	}
 
 	updateRange := func(start, end int) {

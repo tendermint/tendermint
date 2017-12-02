@@ -8,9 +8,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/tendermint/abci/example/code"
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -135,7 +137,7 @@ func TestRmBadTx(t *testing.T) {
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
 		err := cs.mempool.CheckTx(txBytes, func(r *abci.Response) {
-			if r.GetCheckTx().Code != abci.CodeType_BadNonce {
+			if r.GetCheckTx().Code != code.CodeTypeBadNonce {
 				t.Fatalf("expected checktx to return bad nonce, got %v", r)
 			}
 			checkTxRespCh <- struct{}{}
@@ -193,22 +195,22 @@ func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 	txValue := txAsUint64(tx)
 	if txValue != uint64(app.txCount) {
 		return abci.ResponseDeliverTx{
-			Code: abci.CodeType_BadNonce,
+			Code: code.CodeTypeBadNonce,
 			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
 	}
 	app.txCount += 1
-	return abci.ResponseDeliverTx{Code: abci.CodeType_OK}
+	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
 func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
 	txValue := txAsUint64(tx)
 	if txValue != uint64(app.mempoolTxCount) {
 		return abci.ResponseCheckTx{
-			Code: abci.CodeType_BadNonce,
+			Code: code.CodeTypeBadNonce,
 			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
 	}
 	app.mempoolTxCount += 1
-	return abci.ResponseCheckTx{Code: abci.CodeType_OK}
+	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
 func txAsUint64(tx []byte) uint64 {
@@ -220,10 +222,10 @@ func txAsUint64(tx []byte) uint64 {
 func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.ResponseCommit{Code: abci.CodeType_OK}
+		return abci.ResponseCommit{Code: code.CodeTypeOK}
 	} else {
 		hash := make([]byte, 8)
 		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return abci.ResponseCommit{Code: abci.CodeType_OK, Data: hash}
+		return abci.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
 	}
 }

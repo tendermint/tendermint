@@ -8,7 +8,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/iavl"
+
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -110,7 +112,7 @@ func TestABCIQuery(t *testing.T) {
 		// wait before querying
 		client.WaitForHeight(c, apph, nil)
 		qres, err := c.ABCIQuery("/key", k)
-		if assert.Nil(t, err) && assert.True(t, qres.Code.IsOK()) {
+		if assert.Nil(t, err) && assert.True(t, qres.IsOK()) {
 			assert.EqualValues(t, v, qres.Value)
 		}
 	}
@@ -136,7 +138,7 @@ func TestAppCalls(t *testing.T) {
 		k, v, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.DeliverTx.Code.IsOK())
+		require.True(bres.DeliverTx.IsOK())
 		txh := bres.Height
 		apph := txh + 1 // this is where the tx will be applied to the state
 
@@ -145,7 +147,7 @@ func TestAppCalls(t *testing.T) {
 			t.Error(err)
 		}
 		qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
-		if assert.Nil(err) && assert.True(qres.Code.IsOK()) {
+		if assert.Nil(err) && assert.True(qres.IsOK()) {
 			// assert.Equal(k, data.GetKey())  // only returned for proofs
 			assert.EqualValues(v, qres.Value)
 		}
@@ -193,7 +195,7 @@ func TestAppCalls(t *testing.T) {
 
 		// and we got a proof that works!
 		pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
-		if assert.Nil(err) && assert.True(pres.Code.IsOK()) {
+		if assert.Nil(err) && assert.True(pres.IsOK()) {
 			proof, err := iavl.ReadKeyExistsProof(pres.Proof)
 			if assert.Nil(err) {
 				key := pres.Key
@@ -216,7 +218,7 @@ func TestBroadcastTxSync(t *testing.T) {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxSync(tx)
 		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.Code.IsOK())
+		require.Equal(bres.Code, abci.CodeTypeOK) // FIXME
 
 		require.Equal(initMempoolSize+1, mempool.Size())
 
@@ -234,8 +236,8 @@ func TestBroadcastTxCommit(t *testing.T) {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.CheckTx.Code.IsOK())
-		require.True(bres.DeliverTx.Code.IsOK())
+		require.True(bres.CheckTx.IsOK())
+		require.True(bres.DeliverTx.IsOK())
 
 		require.Equal(0, mempool.Size())
 	}
@@ -284,7 +286,7 @@ func TestTx(t *testing.T) {
 				assert.EqualValues(txHeight, ptx.Height)
 				assert.EqualValues(tx, ptx.Tx)
 				assert.Zero(ptx.Index)
-				assert.True(ptx.TxResult.Code.IsOK())
+				assert.True(ptx.TxResult.IsOK())
 
 				// time to verify the proof
 				proof := ptx.Proof
@@ -321,7 +323,7 @@ func TestTxSearch(t *testing.T) {
 		assert.EqualValues(t, txHeight, ptx.Height)
 		assert.EqualValues(t, tx, ptx.Tx)
 		assert.Zero(t, ptx.Index)
-		assert.True(t, ptx.TxResult.Code.IsOK())
+		assert.True(t, ptx.TxResult.IsOK())
 
 		// time to verify the proof
 		proof := ptx.Proof

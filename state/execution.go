@@ -54,7 +54,7 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 			// Blocks may include invalid txs.
 			// reqDeliverTx := req.(abci.RequestDeliverTx)
 			txResult := r.DeliverTx
-			if txResult.Code == abci.CodeType_OK {
+			if txResult.Code == abci.CodeTypeOK {
 				validTxs++
 			} else {
 				logger.Debug("Invalid tx", "code", txResult.Code, "log", txResult.Log)
@@ -80,6 +80,8 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		block.Hash(),
 		types.TM2PB.Header(block.Header),
+		nil,
+		nil,
 	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
@@ -95,7 +97,7 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 	}
 
 	// End block
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{uint64(block.Height)})
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err

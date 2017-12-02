@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/rpc/client"
@@ -90,7 +91,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 		// send async
 		txres, err := c.BroadcastTxAsync(tx)
 		require.Nil(err, "%+v", err)
-		require.True(txres.Code.IsOK())
+		require.Equal(txres.Code, abci.CodeTypeOK) // FIXME
 
 		// and wait for confirmation
 		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
@@ -100,7 +101,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 		require.True(ok, "%d: %#v", i, evt)
 		// make sure this is the proper tx
 		require.EqualValues(tx, txe.Tx)
-		require.True(txe.Result.Code.IsOK())
+		require.True(txe.Result.IsOK())
 	}
 }
 
@@ -122,7 +123,7 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		// send sync
 		txres, err := c.BroadcastTxSync(tx)
 		require.Nil(err, "%+v", err)
-		require.True(txres.Code.IsOK())
+		require.Equal(txres.Code, abci.CodeTypeOK) // FIXME
 
 		// and wait for confirmation
 		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
@@ -132,6 +133,6 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		require.True(ok, "%d: %#v", i, evt)
 		// make sure this is the proper tx
 		require.EqualValues(tx, txe.Tx)
-		require.True(txe.Result.Code.IsOK())
+		require.True(txe.Result.IsOK())
 	}
 }

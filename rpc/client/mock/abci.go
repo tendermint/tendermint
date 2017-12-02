@@ -32,7 +32,7 @@ func (a ABCIApp) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuer
 
 func (a ABCIApp) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	q := a.App.Query(abci.RequestQuery{data, path, opts.Height, opts.Trusted})
-	return &ctypes.ResultABCIQuery{q.Result()}, nil
+	return &ctypes.ResultABCIQuery{&q}, nil
 }
 
 func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
@@ -91,7 +91,7 @@ func (m ABCIMock) ABCIQueryWithOptions(path string, data data.Bytes, opts client
 		return nil, err
 	}
 	resQuery := res.(abci.ResponseQuery)
-	return &ctypes.ResultABCIQuery{resQuery.Result()}, nil
+	return &ctypes.ResultABCIQuery{&resQuery}, nil
 }
 
 func (m ABCIMock) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
@@ -135,7 +135,7 @@ func NewABCIRecorder(client client.ABCIClient) *ABCIRecorder {
 type QueryArgs struct {
 	Path    string
 	Data    data.Bytes
-	Height  uint64
+	Height  int64
 	Trusted bool
 }
 

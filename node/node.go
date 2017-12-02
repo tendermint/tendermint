@@ -256,20 +256,20 @@ func NewNode(config *cfg.Config,
 			if err != nil {
 				return err
 			}
-			if resQuery.Code.IsOK() {
-				return nil
+			if resQuery.IsErr() {
+				return resQuery
 			}
-			return errors.New(resQuery.Code.String())
+			return nil
 		})
 		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
 			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
 			if err != nil {
 				return err
 			}
-			if resQuery.Code.IsOK() {
-				return nil
+			if resQuery.IsErr() {
+				return resQuery
 			}
-			return errors.New(resQuery.Code.String())
+			return nil
 		})
 	}
 
