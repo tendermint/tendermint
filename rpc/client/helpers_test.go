@@ -50,7 +50,7 @@ func TestWaitForHeight(t *testing.T) {
 
 	// since we can't update in a background goroutine (test --race)
 	// we use the callback to update the status height
-	myWaiter := func(delta int) error {
+	myWaiter := func(delta int64) error {
 		// update the height for the next call
 		m.Call.Response = &ctypes.ResultStatus{LatestBlockHeight: 15}
 		return client.DefaultWaitStrategy(delta)
