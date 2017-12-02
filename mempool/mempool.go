@@ -3,6 +3,7 @@ package mempool
 import (
 	"bytes"
 	"container/list"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -191,17 +192,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	// CACHE
 	if mem.cache.Exists(tx) {
-		if cb != nil {
-			cb(&abci.Response{
-				Value: &abci.Response_CheckTx{
-					&abci.ResponseCheckTx{
-						Code: abci.CodeType_BadNonce, // TODO or duplicate tx
-						Log:  "Duplicate transaction (ignored)",
-					},
-				},
-			})
-		}
-		return nil // TODO: return an error (?)
+		return fmt.Errorf("Tx already exists in cache")
 	}
 	mem.cache.Push(tx)
 	// END CACHE
@@ -245,7 +236,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 	switch r := res.Value.(type) {
 	case *abci.Response_CheckTx:
 		tx := req.GetCheckTx().Tx
-		if r.CheckTx.Code == abci.CodeType_OK {
+		if r.CheckTx.Code == abci.CodeTypeOK {
 			mem.counter++
 			memTx := &mempoolTx{
 				counter: mem.counter,
@@ -277,7 +268,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			cmn.PanicSanity(cmn.Fmt("Unexpected tx response from proxy during recheck\n"+
 				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
 		}
-		if r.CheckTx.Code == abci.CodeType_OK {
+		if r.CheckTx.Code == abci.CodeTypeOK {
 			// Good, nothing to do.
 		} else {
 			// Tx became invalidated due to newly committed block.
