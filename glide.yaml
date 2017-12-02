@@ -18,7 +18,7 @@ import:
 - package: github.com/spf13/viper
   version: v1.0.0
 - package: github.com/tendermint/abci
-  version: 82d56571b54f95f2015a33969382b56d2a059ff5
+  version: develop
   subpackages:
   - client
   - example/dummy

@@ -15,7 +15,7 @@ func (tm2pb) Header(header *Header) *types.Header {
 		ChainId:        header.ChainID,
 		Height:         header.Height,
 		Time:           header.Time.Unix(),
-		NumTxs:         header.NumTxs,
+		NumTxs:         int32(header.NumTxs), // XXX: overflow
 		LastBlockId:    TM2PB.BlockID(header.LastBlockID),
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
@@ -32,7 +32,7 @@ func (tm2pb) BlockID(blockID BlockID) *types.BlockID {
 
 func (tm2pb) PartSetHeader(partSetHeader PartSetHeader) *types.PartSetHeader {
 	return &types.PartSetHeader{
-		Total: partSetHeader.Total,
+		Total: int32(partSetHeader.Total), // XXX: overflow
 		Hash:  partSetHeader.Hash,
 	}
 }

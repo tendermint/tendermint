@@ -1,5 +1,5 @@
-hash: d34d058745681f56adf1e275f74940018655c41abf4cd8d7f2fd748c9f7b6a06
-updated: 2017-12-02T01:50:26.784867491-05:00
+hash: b4e6f2f40e2738e45cec07ed91a5733d94d29cdfa0c7eb686a4d0a34512e2097
+updated: 2017-12-02T11:58:29.142347101-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2e60448ffcc6bf78332d1fe590260095f554dd78
@@ -69,7 +69,7 @@ imports:
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/rcrowley/go-metrics
-  version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
+  version: e181e095bae94582363434144c61a9653aff6e50
 - name: github.com/spf13/afero
   version: 8d919cbe7e2627e417f3e45c3c0e489a5b7e2536
   subpackages:
@@ -100,7 +100,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 82d56571b54f95f2015a33969382b56d2a059ff5
+  version: 48413b4839781c5c4bf96049a4b39f210ceb88c3
   subpackages:
   - client
   - example/code
@@ -162,7 +162,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: b98136db334ff9cb24f28a68e3be3cb6608f7630
+  version: 8b4580aae2a0dd0c231a45d3ccb8434ff533b840
   subpackages:
   - unix
 - name: golang.org/x/text
