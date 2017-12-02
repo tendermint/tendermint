@@ -207,6 +207,9 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	}
 
 	blockHeight := int64(res.LastBlockHeight)
+	if blockHeight < 0 {
+		return fmt.Errorf("Got a negative last block height (%d) from the app", blockHeight)
+	}
 	appHash := res.LastBlockAppHash
 
 	h.logger.Info("ABCI Handshake", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
