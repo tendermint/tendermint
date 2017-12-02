@@ -53,7 +53,7 @@ func TestBlockEvents(t *testing.T) {
 		}
 
 		// listen for a new block; ensure height increases by 1
-		var firstBlockHeight uint64
+		var firstBlockHeight int64
 		for j := 0; j < 3; j++ {
 			evtTyp := types.EventNewBlock
 			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
@@ -67,7 +67,7 @@ func TestBlockEvents(t *testing.T) {
 				continue
 			}
 
-			require.Equal(block.Header.Height, firstBlockHeight+uint64(j))
+			require.Equal(block.Header.Height, firstBlockHeight+int64(j))
 		}
 	}
 }

@@ -43,7 +43,7 @@ func TestApplyBlock(t *testing.T) {
 //----------------------------------------------------------------------------
 
 // make some bogus txs
-func makeTxs(height uint64) (txs []types.Tx) {
+func makeTxs(height int64) (txs []types.Tx) {
 	for i := 0; i < nTxsPerBlock; i++ {
 		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
 	}
@@ -61,7 +61,7 @@ func state() *State {
 	return s
 }
 
-func makeBlock(height uint64, state *State) *types.Block {
+func makeBlock(height int64, state *State) *types.Block {
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
 	valHash := state.Validators.Hash()

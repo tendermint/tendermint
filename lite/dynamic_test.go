@@ -28,7 +28,7 @@ func TestDynamicCert(t *testing.T) {
 	cases := []struct {
 		keys        lite.ValKeys
 		vals        *types.ValidatorSet
-		height      uint64
+		height      int64
 		first, last int  // who actually signs
 		proper      bool // true -> expect no error
 		changed     bool // true -> expect validator change error
@@ -70,7 +70,7 @@ func TestDynamicUpdate(t *testing.T) {
 	cert := lite.NewDynamic(chainID, vals, 40)
 
 	// one valid block to give us a sense of time
-	h := uint64(100)
+	h := int64(100)
 	good := keys.GenCommit(chainID, h, nil, vals, []byte("foo"), 0, len(keys))
 	err := cert.Certify(good)
 	require.Nil(err, "%+v", err)
@@ -83,7 +83,7 @@ func TestDynamicUpdate(t *testing.T) {
 	cases := []struct {
 		keys        lite.ValKeys
 		vals        *types.ValidatorSet
-		height      uint64
+		height      int64
 		first, last int  // who actually signs
 		proper      bool // true -> expect no error
 		changed     bool // true -> expect too much change error

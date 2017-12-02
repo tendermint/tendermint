@@ -48,7 +48,7 @@ func TestSearchForEndHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h := uint64(3)
+	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h)
 	assert.NoError(t, err, cmn.Fmt("expected not to err on height %d", h))
 	assert.True(t, found, cmn.Fmt("expected to find end height for %d", h))

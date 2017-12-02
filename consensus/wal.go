@@ -32,7 +32,7 @@ type TimedWALMessage struct {
 // EndHeightMessage marks the end of the given height inside WAL.
 // @internal used by scripts/cutWALUntil util.
 type EndHeightMessage struct {
-	Height uint64 `json:"height"`
+	Height int64 `json:"height"`
 }
 
 type WALMessage interface{}
@@ -52,7 +52,7 @@ var _ = wire.RegisterInterface(
 type WAL interface {
 	Save(WALMessage)
 	Group() *auto.Group
-	SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error)
+	SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error)
 
 	Start() error
 	Stop() error
@@ -142,7 +142,7 @@ func (wal *baseWAL) Save(msg WALMessage) {
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
-func (wal *baseWAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error) {
+func (wal *baseWAL) SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error) {
 	var msg *TimedWALMessage
 
 	// NOTE: starting from the last file in the group because we're usually
@@ -304,7 +304,7 @@ type nilWAL struct{}
 
 func (nilWAL) Save(m WALMessage)  {}
 func (nilWAL) Group() *auto.Group { return nil }
-func (nilWAL) SearchForEndHeight(height uint64) (gr *auto.GroupReader, found bool, err error) {
+func (nilWAL) SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error) {
 	return nil, false, nil
 }
 func (nilWAL) Start() error { return nil }

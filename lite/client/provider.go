@@ -24,7 +24,7 @@ type SignStatusClient interface {
 
 type provider struct {
 	node       SignStatusClient
-	lastHeight uint64
+	lastHeight int64
 }
 
 // NewProvider can wrap any rpcclient to expose it as
@@ -68,7 +68,7 @@ func (p *provider) GetByHash(hash []byte) (lite.FullCommit, error) {
 }
 
 // GetByHeight gets the validator set by height
-func (p *provider) GetByHeight(h uint64) (fc lite.FullCommit, err error) {
+func (p *provider) GetByHeight(h int64) (fc lite.FullCommit, err error) {
 	commit, err := p.node.Commit(&h)
 	if err != nil {
 		return fc, err
@@ -134,7 +134,7 @@ func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc lite.FullComm
 	return fc, nil
 }
 
-func (p *provider) updateHeight(h uint64) {
+func (p *provider) updateHeight(h int64) {
 	if h > p.lastHeight {
 		p.lastHeight = h
 	}

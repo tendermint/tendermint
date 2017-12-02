@@ -64,7 +64,7 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
 			txEventPublisher.PublishEventTx(types.EventDataTx{types.TxResult{
-				Height: uint64(block.Height),
+				Height: block.Height,
 				Index:  uint32(txIndex),
 				Tx:     types.Tx(req.GetDeliverTx().Tx),
 				Result: *txResult,
@@ -122,7 +122,7 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.
 
 		address := pubkey.Address()
 		power := int64(v.Power)
-		// mind the overflow from uint64
+		// mind the overflow from int64
 		if power < 0 {
 			return errors.New(cmn.Fmt("Power (%d) overflows int64", v.Power))
 		}

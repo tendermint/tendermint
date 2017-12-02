@@ -45,7 +45,7 @@ import (
 */
 type VoteSet struct {
 	chainID string
-	height  uint64
+	height  int64
 	round   int
 	type_   byte
 
@@ -60,7 +60,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height uint64, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		cmn.PanicSanity("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -83,7 +83,7 @@ func (voteSet *VoteSet) ChainID() string {
 	return voteSet.chainID
 }
 
-func (voteSet *VoteSet) Height() uint64 {
+func (voteSet *VoteSet) Height() int64 {
 	if voteSet == nil {
 		return 0
 	} else {
@@ -523,7 +523,7 @@ func (vs *blockVotes) getByIndex(index int) *Vote {
 
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
-	Height() uint64
+	Height() int64
 	Round() int
 	Type() byte
 	Size() int

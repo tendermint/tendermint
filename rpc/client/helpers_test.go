@@ -66,11 +66,11 @@ func TestWaitForHeight(t *testing.T) {
 	require.Nil(pre.Error)
 	prer, ok := pre.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.Equal(uint64(10), prer.LatestBlockHeight)
+	assert.Equal(int64(10), prer.LatestBlockHeight)
 
 	post := r.Calls[4]
 	require.Nil(post.Error)
 	postr, ok := post.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.Equal(uint64(15), postr.LatestBlockHeight)
+	assert.Equal(int64(15), postr.LatestBlockHeight)
 }

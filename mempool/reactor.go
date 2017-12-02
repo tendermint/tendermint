@@ -97,7 +97,7 @@ func (memR *MempoolReactor) BroadcastTx(tx types.Tx, cb func(*abci.Response)) er
 
 // PeerState describes the state of a peer.
 type PeerState interface {
-	GetHeight() uint64
+	GetHeight() int64
 }
 
 // Peer describes a peer.

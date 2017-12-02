@@ -91,7 +91,7 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan
 // replay only those messages since the last block.
 // timeoutRoutine should run concurrently to read off tickChan
 // CONTRACT: csHeight > 0
-func (cs *ConsensusState) catchupReplay(csHeight uint64) error {
+func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 	// set replayMode
 	cs.replayMode = true
 	defer func() { cs.replayMode = false }()
@@ -152,7 +152,7 @@ func (cs *ConsensusState) catchupReplay(csHeight uint64) error {
 // Parses marker lines of the form:
 // #ENDHEIGHT: 12345
 /*
-func makeHeightSearchFunc(height uint64) auto.SearchFunc {
+func makeHeightSearchFunc(height int64) auto.SearchFunc {
 	return func(line string) (int, error) {
 		line = strings.TrimRight(line, "\n")
 		parts := strings.Split(line, " ")
@@ -206,7 +206,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 		return errors.New(cmn.Fmt("Error calling Info: %v", err))
 	}
 
-	blockHeight := res.LastBlockHeight
+	blockHeight := int64(res.LastBlockHeight)
 	appHash := res.LastBlockAppHash
 
 	h.logger.Info("ABCI Handshake", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
@@ -228,7 +228,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 // Replay all blocks since appBlockHeight and ensure the result matches the current state.
 // Returns the final AppHash or an error
-func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight uint64, proxyApp proxy.AppConns) ([]byte, error) {
+func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight int64, proxyApp proxy.AppConns) ([]byte, error) {
 
 	storeBlockHeight := h.store.Height()
 	stateBlockHeight := h.state.LastBlockHeight
@@ -303,7 +303,7 @@ func (h *Handshaker) ReplayBlocks(appHash []byte, appBlockHeight uint64, proxyAp
 	return nil, nil
 }
 
-func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight uint64, mutateState bool) ([]byte, error) {
+func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, storeBlockHeight int64, mutateState bool) ([]byte, error) {
 	// App is further behind than it should be, so we need to replay blocks.
 	// We replay all blocks from appBlockHeight+1.
 	//
@@ -339,7 +339,7 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 }
 
 // ApplyBlock on the proxyApp with the last block.
-func (h *Handshaker) replayBlock(height uint64, proxyApp proxy.AppConnConsensus) ([]byte, error) {
+func (h *Handshaker) replayBlock(height int64, proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
 
 	block := h.store.LoadBlock(height)

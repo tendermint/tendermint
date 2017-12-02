@@ -9,22 +9,22 @@ type (
 	ErrProxyAppConn error
 
 	ErrUnknownBlock struct {
-		Height uint64
+		Height int64
 	}
 
 	ErrBlockHashMismatch struct {
 		CoreHash []byte
 		AppHash  []byte
-		Height   uint64
+		Height   int64
 	}
 
 	ErrAppBlockHeightTooHigh struct {
-		CoreHeight uint64
-		AppHeight  uint64
+		CoreHeight int64
+		AppHeight  int64
 	}
 
 	ErrLastStateMismatch struct {
-		Height uint64
+		Height int64
 		Core   []byte
 		App    []byte
 	}
@@ -35,7 +35,7 @@ type (
 	}
 
 	ErrNoValSetForHeight struct {
-		Height uint64
+		Height int64
 	}
 )
 

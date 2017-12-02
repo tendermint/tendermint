@@ -21,7 +21,7 @@ var subscribeTimeout = 5 * time.Second
 
 type Consensus interface {
 	GetState() *sm.State
-	GetValidators() (uint64, []*types.Validator)
+	GetValidators() (int64, []*types.Validator)
 	GetRoundState() *cstypes.RoundState
 }
 

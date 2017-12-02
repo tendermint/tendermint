@@ -9,7 +9,7 @@ type Provider interface {
 	// store of trusted commits.
 	StoreCommit(fc FullCommit) error
 	// GetByHeight returns the closest commit with height <= h.
-	GetByHeight(h uint64) (FullCommit, error)
+	GetByHeight(h int64) (FullCommit, error)
 	// GetByHash returns a commit exactly matching this validator hash.
 	GetByHash(hash []byte) (FullCommit, error)
 	// LatestCommit returns the newest commit stored.
@@ -55,7 +55,7 @@ func (c cacheProvider) StoreCommit(fc FullCommit) (err error) {
 // Thus, we query each provider in order until we find an exact match
 // or we finished querying them all.  If at least one returned a non-error,
 // then this returns the best match (minimum h-h').
-func (c cacheProvider) GetByHeight(h uint64) (fc FullCommit, err error) {
+func (c cacheProvider) GetByHeight(h int64) (fc FullCommit, err error) {
 	for _, p := range c.Providers {
 		var tfc FullCommit
 		tfc, err = p.GetByHeight(h)

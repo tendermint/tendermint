@@ -23,7 +23,7 @@ type Block struct {
 
 // MakeBlock returns a new block and corresponding partset from the given information.
 // TODO: Add version information to the Block struct.
-func MakeBlock(height uint64, chainID string, txs []Tx, commit *Commit,
+func MakeBlock(height int64, chainID string, txs []Tx, commit *Commit,
 	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
 	block := &Block{
 		Header: &Header{
@@ -45,7 +45,7 @@ func MakeBlock(height uint64, chainID string, txs []Tx, commit *Commit,
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(chainID string, lastBlockHeight uint64, lastBlockID BlockID,
+func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64, lastBlockID BlockID,
 	lastBlockTime time.Time, appHash []byte) error {
 	if b.ChainID != chainID {
 		return errors.New(cmn.Fmt("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID))
@@ -158,7 +158,7 @@ func (b *Block) StringShort() string {
 // Header defines the structure of a Tendermint block header
 type Header struct {
 	ChainID        string     `json:"chain_id"`
-	Height         uint64     `json:"height"`
+	Height         int64      `json:"height"`
 	Time           time.Time  `json:"time"`
 	NumTxs         int        `json:"num_txs"` // XXX: Can we get rid of this?
 	LastBlockID    BlockID    `json:"last_block_id"`
@@ -250,7 +250,7 @@ func (commit *Commit) FirstPrecommit() *Vote {
 }
 
 // Height returns the height of the commit
-func (commit *Commit) Height() uint64 {
+func (commit *Commit) Height() int64 {
 	if len(commit.Precommits) == 0 {
 		return 0
 	}

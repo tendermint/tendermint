@@ -25,10 +25,10 @@ type Mempool interface {
 	Size() int
 	CheckTx(Tx, func(*abci.Response)) error
 	Reap(int) Txs
-	Update(height uint64, txs Txs) error
+	Update(height int64, txs Txs) error
 	Flush()
 
-	TxsAvailable() <-chan uint64
+	TxsAvailable() <-chan int64
 	EnableTxsAvailable()
 }
 
@@ -42,9 +42,9 @@ func (m MockMempool) Unlock()                                      {}
 func (m MockMempool) Size() int                                    { return 0 }
 func (m MockMempool) CheckTx(tx Tx, cb func(*abci.Response)) error { return nil }
 func (m MockMempool) Reap(n int) Txs                               { return Txs{} }
-func (m MockMempool) Update(height uint64, txs Txs) error          { return nil }
+func (m MockMempool) Update(height int64, txs Txs) error           { return nil }
 func (m MockMempool) Flush()                                       {}
-func (m MockMempool) TxsAvailable() <-chan uint64                  { return make(chan uint64) }
+func (m MockMempool) TxsAvailable() <-chan int64                   { return make(chan int64) }
 func (m MockMempool) EnableTxsAvailable()                          {}
 
 //------------------------------------------------------
@@ -53,14 +53,14 @@ func (m MockMempool) EnableTxsAvailable()                          {}
 // BlockStoreRPC is the block store interface used by the RPC.
 // UNSTABLE
 type BlockStoreRPC interface {
-	Height() uint64
+	Height() int64
 
-	LoadBlockMeta(height uint64) *BlockMeta
-	LoadBlock(height uint64) *Block
-	LoadBlockPart(height uint64, index int) *Part
+	LoadBlockMeta(height int64) *BlockMeta
+	LoadBlock(height int64) *Block
+	LoadBlockPart(height int64, index int) *Part
 
-	LoadBlockCommit(height uint64) *Commit
-	LoadSeenCommit(height uint64) *Commit
+	LoadBlockCommit(height int64) *Commit
+	LoadSeenCommit(height int64) *Commit
 }
 
 // BlockStore defines the BlockStore interface.
