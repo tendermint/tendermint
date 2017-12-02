@@ -8,6 +8,11 @@ const (
 	CodeTypeOK uint32 = 0
 )
 
+// IsOK returns true if Code is OK.
+func (r ResponseCheckTx) IsOK() bool {
+	return r.Code == CodeTypeOK
+}
+
 // IsErr returns true if Code is something other than OK.
 func (r ResponseCheckTx) IsErr() bool {
 	return r.Code != CodeTypeOK
@@ -16,6 +21,11 @@ func (r ResponseCheckTx) IsErr() bool {
 // Error implements error interface by formatting response as string.
 func (r ResponseCheckTx) Error() string {
 	return fmtError(r.Code, r.Log)
+}
+
+// IsOK returns true if Code is OK.
+func (r ResponseDeliverTx) IsOK() bool {
+	return r.Code == CodeTypeOK
 }
 
 // IsErr returns true if Code is something other than OK.
@@ -28,6 +38,11 @@ func (r ResponseDeliverTx) Error() string {
 	return fmtError(r.Code, r.Log)
 }
 
+// IsOK returns true if Code is OK.
+func (r ResponseCommit) IsOK() bool {
+	return r.Code == CodeTypeOK
+}
+
 // IsErr returns true if Code is something other than OK.
 func (r ResponseCommit) IsErr() bool {
 	return r.Code != CodeTypeOK
@@ -36,6 +51,11 @@ func (r ResponseCommit) IsErr() bool {
 // Error implements error interface by formatting response as string.
 func (r ResponseCommit) Error() string {
 	return fmtError(r.Code, r.Log)
+}
+
+// IsOK returns true if Code is OK.
+func (r ResponseQuery) IsOK() bool {
+	return r.Code == CodeTypeOK
 }
 
 // IsErr returns true if Code is something other than OK.
