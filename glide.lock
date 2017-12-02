@@ -1,8 +1,8 @@
-hash: 8c38726da2666831affa40474117d3cef5dad083176e81fb013d7e8493b83e6f
-updated: 2017-12-01T02:14:22.08770964Z
+hash: d34d058745681f56adf1e275f74940018655c41abf4cd8d7f2fd748c9f7b6a06
+updated: 2017-12-02T01:50:26.784867491-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
+  version: 2e60448ffcc6bf78332d1fe590260095f554dd78
   subpackages:
   - btcec
 - name: github.com/ebuchman/fail-test
@@ -28,7 +28,9 @@ imports:
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
+  - gogoproto
   - proto
+  - protoc-gen-gogo/descriptor
 - name: github.com/golang/protobuf
   version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
@@ -98,9 +100,10 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 22b491bb1952125dd2fb0730d6ca8e59e310547c
+  version: 82d56571b54f95f2015a33969382b56d2a059ff5
   subpackages:
   - client
+  - example/code
   - example/counter
   - example/dummy
   - server
@@ -113,7 +116,7 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: dd20358a264c772b4a83e477b0cfce4c88a7001d
 - name: github.com/tendermint/go-wire
-  version: 5ab49b4c6ad674da6b81442911cf713ef0afb544
+  version: 217a3c439f6497890d232ff5ed24084b43d9bfb3
   subpackages:
   - data
   - data/base58
@@ -138,7 +141,7 @@ imports:
   - pubsub/query
   - test
 - name: golang.org/x/crypto
-  version: 9f005a07e0d31d45e6656d241bb5c0f2efd4bc94
+  version: 94eea52f7b742c7cbe0b03b22f0c4c8631ece122
   subpackages:
   - curve25519
   - nacl/box
@@ -149,7 +152,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 9dfe39835686865bff950a07b394c12a98ddc811
+  version: a8b9294777976932365dabb6640cf1468d95c70f
   subpackages:
   - context
   - http2
@@ -163,14 +166,14 @@ imports:
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 88f656faf3f37f690df1a32515b479415e1a6769
+  version: 75cc3cad82b5f47d3fb229ddda8c5167da14f294
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: 891aceb7c239e72692819142dfca057bdcbfcb96
+  version: 7f0da29060c682909f650ad8ed4e515bd74fa12a
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
