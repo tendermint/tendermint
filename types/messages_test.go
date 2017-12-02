@@ -10,7 +10,9 @@ import (
 
 func TestWriteReadMessage(t *testing.T) {
 	cases := []proto.Message{
-		&RequestEcho{"hello"},
+		&Header{
+			NumTxs: 4,
+		},
 		// TODO: add the rest
 	}
 
@@ -19,7 +21,7 @@ func TestWriteReadMessage(t *testing.T) {
 		err := WriteMessage(c, buf)
 		assert.Nil(t, err)
 
-		msg := new(RequestEcho)
+		msg := new(Header)
 		err = ReadMessage(buf, msg)
 		assert.Nil(t, err)
 
