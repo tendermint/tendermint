@@ -21,7 +21,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -125,7 +124,7 @@ func TestSerialReap(t *testing.T) {
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
 	err := appConnCon.Start()
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	cacheMap := make(map[string]struct{})
 	deliverTxsRange := func(start, end int) {
@@ -138,21 +137,21 @@ func TestSerialReap(t *testing.T) {
 			err := mempool.CheckTx(txBytes, nil)
 			_, cached := cacheMap[string(txBytes)]
 			if cached {
-				assert.NotNil(t, err, "expected error for cached tx")
+				require.NotNil(t, err, "expected error for cached tx")
 			} else {
-				assert.Nil(t, err, "expected no err for uncached tx")
+				require.Nil(t, err, "expected no err for uncached tx")
 			}
 			cacheMap[string(txBytes)] = struct{}{}
 
 			// Duplicates are cached and should return error
 			err = mempool.CheckTx(txBytes, nil)
-			assert.NotNil(t, err, "Expected error after CheckTx on duplicated tx")
+			require.NotNil(t, err, "Expected error after CheckTx on duplicated tx")
 		}
 	}
 
 	reapCheck := func(exp int) {
 		txs := mempool.Reap(-1)
-		assert.Equal(t, len(txs), exp, cmn.Fmt("Expected to reap %v txs but got %v", exp, len(txs)))
+		require.Equal(t, len(txs), exp, cmn.Fmt("Expected to reap %v txs but got %v", exp, len(txs)))
 	}
 
 	updateRange := func(start, end int) {
