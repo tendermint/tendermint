@@ -14,7 +14,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-func newBlockchainReactor(maxBlockHeight int) *BlockchainReactor {
+func newBlockchainReactor(maxBlockHeight int64) *BlockchainReactor {
 	logger := log.TestingLogger()
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 
@@ -34,7 +34,7 @@ func newBlockchainReactor(maxBlockHeight int) *BlockchainReactor {
 	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig())
 
 	// Lastly: let's add some blocks in
-	for blockHeight := 1; blockHeight <= maxBlockHeight; blockHeight++ {
+	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		firstBlock := makeBlock(blockHeight, state)
 		secondBlock := makeBlock(blockHeight+1, state)
 		firstParts := firstBlock.MakePartSet(state.Params.BlockGossipParams.BlockPartSizeBytes)
@@ -45,7 +45,7 @@ func newBlockchainReactor(maxBlockHeight int) *BlockchainReactor {
 }
 
 func TestNoBlockMessageResponse(t *testing.T) {
-	maxBlockHeight := 20
+	maxBlockHeight := int64(20)
 
 	bcr := newBlockchainReactor(maxBlockHeight)
 	bcr.Start()
@@ -58,7 +58,7 @@ func TestNoBlockMessageResponse(t *testing.T) {
 	chID := byte(0x01)
 
 	tests := []struct {
-		height   int
+		height   int64
 		existent bool
 	}{
 		{maxBlockHeight + 2, false},
@@ -93,19 +93,19 @@ func TestNoBlockMessageResponse(t *testing.T) {
 //----------------------------------------------
 // utility funcs
 
-func makeTxs(blockNumber int) (txs []types.Tx) {
+func makeTxs(height int64) (txs []types.Tx) {
 	for i := 0; i < 10; i++ {
-		txs = append(txs, types.Tx([]byte{byte(blockNumber), byte(i)}))
+		txs = append(txs, types.Tx([]byte{byte(height), byte(i)}))
 	}
 	return txs
 }
 
-func makeBlock(blockNumber int, state *sm.State) *types.Block {
+func makeBlock(height int64, state *sm.State) *types.Block {
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
-	block, _ := types.MakeBlock(blockNumber, "test_chain", makeTxs(blockNumber),
+	block, _ := types.MakeBlock(height, "test_chain", makeTxs(height),
 		new(types.Commit), prevBlockID, valHash, state.AppHash, state.Params.BlockGossipParams.BlockPartSizeBytes)
 	return block
 }

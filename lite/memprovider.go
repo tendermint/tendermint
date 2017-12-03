@@ -52,7 +52,7 @@ func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 }
 
 // GetByHeight returns the FullCommit for height h or an error if the commit is not found.
-func (m *memStoreProvider) GetByHeight(h int) (FullCommit, error) {
+func (m *memStoreProvider) GetByHeight(h int64) (FullCommit, error) {
 	// search from highest to lowest
 	for i := len(m.byHeight) - 1; i >= 0; i-- {
 		fc := m.byHeight[i]

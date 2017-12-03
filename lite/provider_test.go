@@ -21,7 +21,7 @@ func NewMissingProvider() lite.Provider {
 }
 
 func (missingProvider) StoreCommit(lite.FullCommit) error { return nil }
-func (missingProvider) GetByHeight(int) (lite.FullCommit, error) {
+func (missingProvider) GetByHeight(int64) (lite.FullCommit, error) {
 	return lite.FullCommit{}, liteErr.ErrCommitNotFound()
 }
 func (missingProvider) GetByHash([]byte) (lite.FullCommit, error) {
@@ -57,7 +57,7 @@ func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
 		// two commits for each validator, to check how we handle dups
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
 		vals := keys.ToValidators(10, int64(count/2))
-		h := 20 + 10*i
+		h := int64(20 + 10*i)
 		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, 5)
 	}
 
@@ -95,13 +95,13 @@ func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
 	fc, err = p.GetByHeight(47)
 	if assert.Nil(err) {
 		// we only step by 10, so 40 must be the one below this
-		assert.Equal(40, fc.Height())
+		assert.EqualValues(40, fc.Height())
 	}
 
 }
 
 // this will make a get height, and if it is good, set the data as well
-func checkGetHeight(t *testing.T, p lite.Provider, ask, expect int) {
+func checkGetHeight(t *testing.T, p lite.Provider, ask, expect int64) {
 	fc, err := p.GetByHeight(ask)
 	require.Nil(t, err, "%+v", err)
 	if assert.Equal(t, expect, fc.Height()) {
@@ -128,7 +128,7 @@ func TestCacheGetsBestHeight(t *testing.T) {
 	// set a bunch of commits
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(10, int64(count/2))
-		h := 10 * (i + 1)
+		h := int64(10 * (i + 1))
 		fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, 5)
 		err := p2.StoreCommit(fc)
 		require.NoError(err)

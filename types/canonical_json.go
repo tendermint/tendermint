@@ -18,7 +18,7 @@ type CanonicalJSONPartSetHeader struct {
 
 type CanonicalJSONProposal struct {
 	BlockPartsHeader CanonicalJSONPartSetHeader `json:"block_parts_header"`
-	Height           int                        `json:"height"`
+	Height           int64                      `json:"height"`
 	POLBlockID       CanonicalJSONBlockID       `json:"pol_block_id"`
 	POLRound         int                        `json:"pol_round"`
 	Round            int                        `json:"round"`
@@ -26,13 +26,13 @@ type CanonicalJSONProposal struct {
 
 type CanonicalJSONVote struct {
 	BlockID CanonicalJSONBlockID `json:"block_id"`
-	Height  int                  `json:"height"`
+	Height  int64                `json:"height"`
 	Round   int                  `json:"round"`
 	Type    byte                 `json:"type"`
 }
 
 type CanonicalJSONHeartbeat struct {
-	Height           int        `json:"height"`
+	Height           int64      `json:"height"`
 	Round            int        `json:"round"`
 	Sequence         int        `json:"sequence"`
 	ValidatorAddress data.Bytes `json:"validator_address"`

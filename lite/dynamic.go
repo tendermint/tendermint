@@ -19,11 +19,11 @@ var _ Certifier = &Dynamic{}
 // going forward.
 type Dynamic struct {
 	cert       *Static
-	lastHeight int
+	lastHeight int64
 }
 
 // NewDynamic returns a new dynamic certifier.
-func NewDynamic(chainID string, vals *types.ValidatorSet, height int) *Dynamic {
+func NewDynamic(chainID string, vals *types.ValidatorSet, height int64) *Dynamic {
 	return &Dynamic{
 		cert:       NewStatic(chainID, vals),
 		lastHeight: height,
@@ -46,7 +46,7 @@ func (c *Dynamic) Hash() []byte {
 }
 
 // LastHeight returns the last height of this certifier.
-func (c *Dynamic) LastHeight() int {
+func (c *Dynamic) LastHeight() int64 {
 	return c.lastHeight
 }
 

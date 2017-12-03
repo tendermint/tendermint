@@ -45,7 +45,7 @@ func TestFileProvider(t *testing.T) {
 		// two seeds for each validator, to check how we handle dups
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
 		vals := keys.ToValidators(10, int64(count/2))
-		h := 20 + 10*i
+		h := int64(20 + 10*i)
 		check := keys.GenCommit(chainID, h, nil, vals, appHash, 0, 5)
 		seeds[i] = lite.NewFullCommit(check, vals)
 	}
@@ -86,7 +86,7 @@ func TestFileProvider(t *testing.T) {
 	seed, err = p.GetByHeight(47)
 	if assert.Nil(err, "%+v", err) {
 		// we only step by 10, so 40 must be the one below this
-		assert.Equal(40, seed.Height())
+		assert.EqualValues(40, seed.Height())
 	}
 
 	// and proper error for too low

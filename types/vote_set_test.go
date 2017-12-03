@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	tst "github.com/tendermint/tmlibs/test"
 )
 
 // NOTE: privValidators are in order
-func randVoteSet(height int, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidatorFS) {
+func randVoteSet(height int64, round int, type_ byte, numValidators int, votingPower int64) (*VoteSet, *ValidatorSet, []*PrivValidatorFS) {
 	valSet, privValidators := RandValidatorSet(numValidators, votingPower)
 	return NewVoteSet("test_chain_id", height, round, type_, valSet), valSet, privValidators
 }
@@ -24,7 +24,7 @@ func withValidator(vote *Vote, addr []byte, idx int) *Vote {
 }
 
 // Convenience: Return new vote with different height
-func withHeight(vote *Vote, height int) *Vote {
+func withHeight(vote *Vote, height int64) *Vote {
 	vote = vote.Copy()
 	vote.Height = height
 	return vote
@@ -69,7 +69,7 @@ func signAddVote(privVal *PrivValidatorFS, vote *Vote, voteSet *VoteSet) (bool, 
 }
 
 func TestAddVote(t *testing.T) {
-	height, round := 1, 0
+	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 	val0 := privValidators[0]
 
@@ -112,7 +112,7 @@ func TestAddVote(t *testing.T) {
 }
 
 func Test2_3Majority(t *testing.T) {
-	height, round := 1, 0
+	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	voteProto := &Vote{
@@ -164,7 +164,7 @@ func Test2_3Majority(t *testing.T) {
 }
 
 func Test2_3MajorityRedux(t *testing.T) {
-	height, round := 1, 0
+	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 100, 1)
 
 	blockHash := crypto.CRandBytes(32)
@@ -262,7 +262,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 }
 
 func TestBadVotes(t *testing.T) {
-	height, round := 1, 0
+	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)
 
 	voteProto := &Vote{
@@ -321,7 +321,7 @@ func TestBadVotes(t *testing.T) {
 }
 
 func TestConflicts(t *testing.T) {
-	height, round := 1, 0
+	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 4, 1)
 	blockHash1 := cmn.RandBytes(32)
 	blockHash2 := cmn.RandBytes(32)
@@ -450,7 +450,7 @@ func TestConflicts(t *testing.T) {
 }
 
 func TestMakeCommit(t *testing.T) {
-	height, round := 1, 0
+	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrecommit, 10, 1)
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 

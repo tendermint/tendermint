@@ -54,9 +54,6 @@ type BlockchainReactor struct {
 
 // NewBlockchainReactor returns new reactor instance.
 func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
-	if state.LastBlockHeight == store.Height()-1 {
-		store.height-- // XXX HACK, make this better
-	}
 	if state.LastBlockHeight != store.Height() {
 		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
 	}
@@ -347,7 +344,7 @@ func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage,
 //-------------------------------------
 
 type bcBlockRequestMessage struct {
-	Height int
+	Height int64
 }
 
 func (m *bcBlockRequestMessage) String() string {
@@ -355,7 +352,7 @@ func (m *bcBlockRequestMessage) String() string {
 }
 
 type bcNoBlockResponseMessage struct {
-	Height int
+	Height int64
 }
 
 func (brm *bcNoBlockResponseMessage) String() string {
@@ -376,7 +373,7 @@ func (m *bcBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcStatusRequestMessage struct {
-	Height int
+	Height int64
 }
 
 func (m *bcStatusRequestMessage) String() string {
@@ -386,7 +383,7 @@ func (m *bcStatusRequestMessage) String() string {
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
-	Height int
+	Height int64
 }
 
 func (m *bcStatusResponseMessage) String() string {

@@ -47,7 +47,7 @@ func TestPeerCatchupRounds(t *testing.T) {
 
 }
 
-func makeVoteHR(t *testing.T, height, round int, privVals []*types.PrivValidatorFS, valIndex int) *types.Vote {
+func makeVoteHR(t *testing.T, height int64, round int, privVals []*types.PrivValidatorFS, valIndex int) *types.Vote {
 	privVal := privVals[valIndex]
 	vote := &types.Vote{
 		ValidatorAddress: privVal.GetAddress(),

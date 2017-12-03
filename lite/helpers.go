@@ -108,7 +108,7 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 
 // Silences warning that vals can also be merkle.Hashable
 // nolint: interfacer
-func genHeader(chainID string, height int, txs types.Txs,
+func genHeader(chainID string, height int64, txs types.Txs,
 	vals *types.ValidatorSet, appHash []byte) *types.Header {
 
 	return &types.Header{
@@ -125,7 +125,7 @@ func genHeader(chainID string, height int, txs types.Txs,
 }
 
 // GenCommit calls genHeader and signHeader and combines them into a Commit.
-func (v ValKeys) GenCommit(chainID string, height int, txs types.Txs,
+func (v ValKeys) GenCommit(chainID string, height int64, txs types.Txs,
 	vals *types.ValidatorSet, appHash []byte, first, last int) Commit {
 
 	header := genHeader(chainID, height, txs, vals, appHash)
@@ -137,7 +137,7 @@ func (v ValKeys) GenCommit(chainID string, height int, txs types.Txs,
 }
 
 // GenFullCommit calls genHeader and signHeader and combines them into a Commit.
-func (v ValKeys) GenFullCommit(chainID string, height int, txs types.Txs,
+func (v ValKeys) GenFullCommit(chainID string, height int64, txs types.Txs,
 	vals *types.ValidatorSet, appHash []byte, first, last int) FullCommit {
 
 	header := genHeader(chainID, height, txs, vals, appHash)

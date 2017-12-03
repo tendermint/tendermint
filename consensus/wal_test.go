@@ -48,8 +48,8 @@ func TestSearchForEndHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h := 3
-	gr, found, err := wal.SearchForEndHeight(uint64(h))
+	h := int64(3)
+	gr, found, err := wal.SearchForEndHeight(h)
 	assert.NoError(t, err, cmn.Fmt("expected not to err on height %d", h))
 	assert.True(t, found, cmn.Fmt("expected to find end height for %d", h))
 	assert.NotNil(t, gr, "expected group not to be nil")
@@ -61,7 +61,6 @@ func TestSearchForEndHeight(t *testing.T) {
 	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
 	assert.Equal(t, rs.Height, h+1, cmn.Fmt("wrong height"))
-
 }
 
 var initOnce sync.Once

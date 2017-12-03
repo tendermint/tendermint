@@ -61,19 +61,26 @@ import (
 // ```
 //
 // <aside class="notice">Returns at most 20 items.</aside>
-func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
+func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
+	if minHeight == 0 {
+		minHeight = 1
+	}
+
 	if maxHeight == 0 {
 		maxHeight = blockStore.Height()
 	} else {
-		maxHeight = cmn.MinInt(blockStore.Height(), maxHeight)
-	}
-	if minHeight == 0 {
-		minHeight = cmn.MaxInt(1, maxHeight-20)
-	} else {
-		minHeight = cmn.MaxInt(minHeight, maxHeight-20)
+		maxHeight = cmn.MinInt64(blockStore.Height(), maxHeight)
 	}
 
+	// maximum 20 block metas
+	const limit int64 = 20
+	minHeight = cmn.MaxInt64(minHeight, maxHeight-limit)
+
 	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
+
+	if minHeight > maxHeight {
+		return nil, fmt.Errorf("min height %d can't be greater than max height %d", minHeight, maxHeight)
+	}
 
 	blockMetas := []*types.BlockMeta{}
 	for height := maxHeight; height >= minHeight; height-- {
@@ -184,7 +191,7 @@ func BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, err
 //   "jsonrpc": "2.0"
 // }
 // ```
-func Block(heightPtr *int) (*ctypes.ResultBlock, error) {
+func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
 	if heightPtr == nil {
 		height := blockStore.Height()
 		blockMeta := blockStore.LoadBlockMeta(height)
@@ -275,7 +282,7 @@ func Block(heightPtr *int) (*ctypes.ResultBlock, error) {
 //   "jsonrpc": "2.0"
 // }
 // ```
-func Commit(heightPtr *int) (*ctypes.ResultCommit, error) {
+func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 	if heightPtr == nil {
 		height := blockStore.Height()
 		header := blockStore.LoadBlockMeta(height).Header

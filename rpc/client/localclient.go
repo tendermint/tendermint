@@ -100,7 +100,7 @@ func (Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(seeds)
 }
 
-func (Local) BlockchainInfo(minHeight, maxHeight int) (*ctypes.ResultBlockchainInfo, error) {
+func (Local) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	return core.BlockchainInfo(minHeight, maxHeight)
 }
 
@@ -108,15 +108,15 @@ func (Local) Genesis() (*ctypes.ResultGenesis, error) {
 	return core.Genesis()
 }
 
-func (Local) Block(height *int) (*ctypes.ResultBlock, error) {
+func (Local) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return core.Block(height)
 }
 
-func (Local) Commit(height *int) (*ctypes.ResultCommit, error) {
+func (Local) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	return core.Commit(height)
 }
 
-func (Local) Validators(height *int) (*ctypes.ResultValidators, error) {
+func (Local) Validators(height *int64) (*ctypes.ResultValidators, error) {
 	return core.Validators(height)
 }
 

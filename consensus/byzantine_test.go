@@ -48,12 +48,12 @@ func TestByzantine(t *testing.T) {
 		if i == 0 {
 			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator)
 			// make byzantine
-			css[i].decideProposal = func(j int) func(int, int) {
-				return func(height, round int) {
+			css[i].decideProposal = func(j int) func(int64, int) {
+				return func(height int64, round int) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
 				}
 			}(i)
-			css[i].doPrevote = func(height, round int) {}
+			css[i].doPrevote = func(height int64, round int) {}
 		}
 
 		eventBus := types.NewEventBus()
@@ -162,7 +162,7 @@ func TestByzantine(t *testing.T) {
 //-------------------------------
 // byzantine consensus functions
 
-func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusState, sw *p2p.Switch) {
+func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *ConsensusState, sw *p2p.Switch) {
 	// byzantine user should create two proposals and try to split the vote.
 	// Avoid sending on internalMsgQueue and running consensus state.
 
@@ -197,7 +197,7 @@ func byzantineDecideProposalFunc(t *testing.T, height, round int, cs *ConsensusS
 	}
 }
 
-func sendProposalAndParts(height, round int, cs *ConsensusState, peer p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
+func sendProposalAndParts(height int64, round int, cs *ConsensusState, peer p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
 	peer.Send(DataChannel, struct{ ConsensusMessage }{msg})

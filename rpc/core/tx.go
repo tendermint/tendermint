@@ -84,18 +84,18 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 
 	height := r.Height
-	index := r.Index
+	index := int(r.Index) // XXX:overflow
 
 	var proof types.TxProof
 	if prove {
+		block := blockStore.LoadBlock(height)
 		// TODO: handle overflow
-		block := blockStore.LoadBlock(int(height))
-		proof = block.Data.Txs.Proof(int(index))
+		proof = block.Data.Txs.Proof(index)
 	}
 
 	return &ctypes.ResultTx{
 		Height:   height,
-		Index:    index,
+		Index:    uint32(index),
 		TxResult: r.Result,
 		Tx:       r.Tx,
 		Proof:    proof,
@@ -187,8 +187,8 @@ func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 		index := r.Index
 
 		if prove {
+			block := blockStore.LoadBlock(height)
 			// TODO: handle overflow
-			block := blockStore.LoadBlock(int(height))
 			proof = block.Data.Txs.Proof(int(index))
 		}
 

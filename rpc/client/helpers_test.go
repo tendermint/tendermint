@@ -50,7 +50,7 @@ func TestWaitForHeight(t *testing.T) {
 
 	// since we can't update in a background goroutine (test --race)
 	// we use the callback to update the status height
-	myWaiter := func(delta int) error {
+	myWaiter := func(delta int64) error {
 		// update the height for the next call
 		m.Call.Response = &ctypes.ResultStatus{LatestBlockHeight: 15}
 		return client.DefaultWaitStrategy(delta)
@@ -66,11 +66,11 @@ func TestWaitForHeight(t *testing.T) {
 	require.Nil(pre.Error)
 	prer, ok := pre.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.Equal(10, prer.LatestBlockHeight)
+	assert.Equal(int64(10), prer.LatestBlockHeight)
 
 	post := r.Calls[4]
 	require.Nil(post.Error)
 	postr, ok := post.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.Equal(15, postr.LatestBlockHeight)
+	assert.Equal(int64(15), postr.LatestBlockHeight)
 }

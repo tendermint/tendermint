@@ -13,7 +13,7 @@ import (
 // PeerRoundState contains the known state of a peer.
 // NOTE: Read-only when returned by PeerState.GetRoundState().
 type PeerRoundState struct {
-	Height                   int                 // Height peer is at
+	Height                   int64               // Height peer is at
 	Round                    int                 // Round peer is at, -1 if unknown.
 	Step                     RoundStepType       // Step peer is at
 	StartTime                time.Time           // Estimated start of round 0 at this height

@@ -138,7 +138,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	// change vals at these heights
-	changeHeights := []int{1, 2, 4, 5, 10, 15, 16, 17, 20}
+	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
 	// each valset is just one validator.
@@ -155,7 +155,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
 	pubkey := pubkeys[changeIndex]
-	for i := 1; i < highestHeight; i++ {
+	for i := int64(1); i < highestHeight; i++ {
 		// when we get to a change height,
 		// use the next pubkey
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
@@ -171,7 +171,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	testCases := make([]valChangeTestCase, highestHeight)
 	changeIndex = 0
 	pubkey = pubkeys[changeIndex]
-	for i := 1; i < highestHeight+1; i++ {
+	for i := int64(1); i < highestHeight+1; i++ {
 		// we we get to the height after a change height
 		// use the next pubkey (note our counter starts at 0 this time)
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
@@ -192,7 +192,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeHeaderPartsResponses(state *State, height int,
+func makeHeaderPartsResponses(state *State, height int64,
 	pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
 
 	block := makeBlock(height, state)
@@ -216,6 +216,6 @@ func makeHeaderPartsResponses(state *State, height int,
 }
 
 type valChangeTestCase struct {
-	height int
+	height int64
 	vals   crypto.PubKey
 }

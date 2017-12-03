@@ -12,7 +12,7 @@ import (
 )
 
 type ResultBlockchainInfo struct {
-	LastHeight int                `json:"last_height"`
+	LastHeight int64              `json:"last_height"`
 	BlockMetas []*types.BlockMeta `json:"block_metas"`
 }
 
@@ -51,7 +51,7 @@ type ResultStatus struct {
 	PubKey            crypto.PubKey `json:"pub_key"`
 	LatestBlockHash   data.Bytes    `json:"latest_block_hash"`
 	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
-	LatestBlockHeight int           `json:"latest_block_height"`
+	LatestBlockHeight int64         `json:"latest_block_height"`
 	LatestBlockTime   int64         `json:"latest_block_time"` // nano
 	Syncing           bool          `json:"syncing"`
 }
@@ -86,7 +86,7 @@ type Peer struct {
 }
 
 type ResultValidators struct {
-	BlockHeight int                `json:"block_height"`
+	BlockHeight int64              `json:"block_height"`
 	Validators  []*types.Validator `json:"validators"`
 }
 
@@ -107,11 +107,11 @@ type ResultBroadcastTxCommit struct {
 	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
 	Hash      data.Bytes             `json:"hash"`
-	Height    uint64                 `json:"height"`
+	Height    int64                  `json:"height"`
 }
 
 type ResultTx struct {
-	Height   uint64                 `json:"height"`
+	Height   int64                  `json:"height"`
 	Index    uint32                 `json:"index"`
 	TxResult abci.ResponseDeliverTx `json:"tx_result"`
 	Tx       types.Tx               `json:"tx"`
