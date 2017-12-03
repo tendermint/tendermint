@@ -1,5 +1,5 @@
-hash: b4e6f2f40e2738e45cec07ed91a5733d94d29cdfa0c7eb686a4d0a34512e2097
-updated: 2017-12-02T11:58:29.142347101-05:00
+hash: b0397f8c86e8131753fce91514314fe871ffb2562452a9f2125dbcd3cea600c8
+updated: 2017-12-02T23:34:41.775549968-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2e60448ffcc6bf78332d1fe590260095f554dd78
@@ -177,7 +177,7 @@ imports:
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: f7bf885db0b7479a537ec317c6e48ce53145f3db
+  version: 401e0e00e4bb830a10496d64cd95e068c5bf50de
   subpackages:
   - balancer
   - codes

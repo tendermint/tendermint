@@ -55,7 +55,7 @@ import:
   subpackages:
   - context
 - package: google.golang.org/grpc
-  version: v1.7.0
+  version: v1.7.3
 testImport:
 - package: github.com/go-kit/kit
   subpackages:
