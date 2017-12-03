@@ -14,20 +14,41 @@ TESTNAME=$1
 # Send some txs
 
 function getCode() {
+	set +u
 	R=$1
-	if [[ "$R" == "{}" ]]; then
+	set -u
+	if [[ "$R" == "" ]]; then
+		echo -1
+	fi
+
+	if [[ $(echo $R | jq 'has("code")') == "true" ]]; then
+		# this wont actually work if theres an error ...
+		echo "$R" | jq ".code"
+	else
 		# protobuf auto adds `omitempty` to everything so code OK and empty data/log
 		# will not even show when marshalled into json
 		# apparently we can use github.com/golang/protobuf/jsonpb to do the marshalling ...
 		echo 0
-	else
-		# this wont actually work if theres an error ...
-		echo "$R" | jq .code
 	fi
 }
 
+# build grpc client if needed
+if [[ "$GRPC_BROADCAST_TX" != "" ]]; then
+	if [  -f grpc_client ]; then
+		rm grpc_client
+	fi
+	echo "... building grpc_client"
+	go build -o grpc_client grpc_client.go
+fi
+
 function sendTx() {
 	TX=$1
+	set +u
+	SHOULD_ERR=$2
+	if [ "$SHOULD_ERR" == "" ]; then
+		SHOULD_ERR=false
+	fi
+	set -u
 	if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
 		RESPONSE=$(curl -s localhost:46657/broadcast_tx_commit?tx=0x"$TX")
 		IS_ERR=$(echo "$RESPONSE" | jq 'has("error")')
@@ -36,11 +57,6 @@ function sendTx() {
 
 		RESPONSE=$(echo "$RESPONSE" | jq '.result')
 	else
-	 	if [  -f grpc_client ]; then
-			rm grpc_client
-	     	fi
-		echo "... building grpc_client"
-		go build -o grpc_client grpc_client.go
 		RESPONSE=$(./grpc_client "$TX")
 		IS_ERR=false
 		ERROR=""
@@ -64,11 +80,20 @@ function sendTx() {
 	echo "TX $TX"
 	echo "RESPONSE $RESPONSE"
 	echo "ERROR $ERROR"
+	echo "IS_ERR $IS_ERR"
 	echo "----"
 
-	if $IS_ERR; then
-		echo "Unexpected error sending tx ($TX): $ERROR"
-		exit 1
+	if $SHOULD_ERR; then
+		if [[ "$IS_ERR" != "true" ]]; then
+			echo "Expected error sending tx ($TX)"
+			exit 1
+		fi
+	else
+		if [[ "$IS_ERR" == "true" ]]; then
+			echo "Unexpected error sending tx ($TX)"
+			exit 1
+		fi
+
 	fi
 }
 
@@ -86,12 +111,7 @@ fi
 echo "... sending tx. expect error"
 
 # second time should get rejected by the mempool (return error and non-zero code)
-sendTx $TX
-echo "CHECKTX CODE: $CHECK_TX_CODE"
-if [[ "$CHECK_TX_CODE" == 0 ]]; then
-	echo "Got zero exit code for $TX. Expected tx to be rejected by mempool. $RESPONSE"
-	exit 1
-fi
+sendTx $TX true
 
 
 echo "... sending tx. expect no error"

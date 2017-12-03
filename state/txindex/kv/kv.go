@@ -211,10 +211,10 @@ func lookForHash(conditions []query.Condition) (hash []byte, err error, ok bool)
 	return
 }
 
-func lookForHeight(conditions []query.Condition) (height uint64, index int) {
+func lookForHeight(conditions []query.Condition) (height int64, index int) {
 	for i, c := range conditions {
 		if c.Tag == types.TxHeightKey {
-			return uint64(c.Operand.(int64)), i
+			return c.Operand.(int64), i
 		}
 	}
 	return 0, -1
@@ -330,7 +330,7 @@ LOOP:
 ///////////////////////////////////////////////////////////////////////////////
 // Keys
 
-func startKey(c query.Condition, height uint64) []byte {
+func startKey(c query.Condition, height int64) []byte {
 	var key string
 	if height > 0 {
 		key = fmt.Sprintf("%s/%v/%d", c.Tag, c.Operand, height)
@@ -340,7 +340,7 @@ func startKey(c query.Condition, height uint64) []byte {
 	return []byte(key)
 }
 
-func startKeyForRange(r queryRange, height uint64) []byte {
+func startKeyForRange(r queryRange, height int64) []byte {
 	if r.lowerBound == nil {
 		return []byte(fmt.Sprintf("%s", r.key))
 	}

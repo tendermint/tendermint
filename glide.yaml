@@ -18,7 +18,7 @@ import:
 - package: github.com/spf13/viper
   version: v1.0.0
 - package: github.com/tendermint/abci
-  version: 22b491bb1952125dd2fb0730d6ca8e59e310547c
+  version: develop
   subpackages:
   - client
   - example/dummy
@@ -55,7 +55,7 @@ import:
   subpackages:
   - context
 - package: google.golang.org/grpc
-  version: v1.7.0
+  version: v1.7.3
 testImport:
 - package: github.com/go-kit/kit
   subpackages:

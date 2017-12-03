@@ -209,7 +209,7 @@ func TestValidatorSetChanges(t *testing.T) {
 	t.Log("---------------------------- Testing adding one validator")
 
 	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
-	newValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), uint64(testMinPower))
+	newValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), testMinPower)
 
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
@@ -251,10 +251,10 @@ func TestValidatorSetChanges(t *testing.T) {
 	t.Log("---------------------------- Testing adding two validators at once")
 
 	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
-	newValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), uint64(testMinPower))
+	newValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), testMinPower)
 
 	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
-	newValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), uint64(testMinPower))
+	newValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), testMinPower)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css)
