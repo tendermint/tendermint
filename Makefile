@@ -79,7 +79,7 @@ tools:
 
 ensure_tools:
 	go get $(GOTOOLS)
-	@gometalinter --install
+	test -f gometalinter & gometalinter --install
 
 ### Formatting, linting, and vetting
 
