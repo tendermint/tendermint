@@ -60,25 +60,24 @@ get_deps:
 		grep -v /vendor/ | sort | uniq | \
 		xargs go get -v -d
 
-get_vendor_deps: ensure_tools
+update_deps:
+	@echo "--> Updating dependencies"
+	@go get -d -u ./...
+
+get_vendor_deps:
+	@hash glide 2>/dev/null || go get github.com/Masterminds/glide
 	@rm -rf vendor/
 	@echo "--> Running glide install"
 	@glide install
 
-update_deps: tools
-	@echo "--> Updating dependencies"
-	@go get -d -u ./...
-
-revision:
-	-echo `git rev-parse --verify HEAD` > $(TMHOME)/revision
-	-echo `git rev-parse --verify HEAD` >> $(TMHOME)/revision_history
+update_tools:
+	@echo "--> Updating tools"
+	@go get -u $(GOTOOLS)
 
 tools:
-	go get -u -v $(GOTOOLS)
-
-ensure_tools:
-	go get $(GOTOOLS)
-	test -f gometalinter & gometalinter --install
+	@echo "--> Installing tools"
+	@go get $(GOTOOLS)
+	@gometalinter --install
 
 ### Formatting, linting, and vetting
 

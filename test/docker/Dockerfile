@@ -17,6 +17,7 @@ WORKDIR $REPO
 ADD glide.yaml glide.yaml
 ADD glide.lock glide.lock
 ADD Makefile Makefile
+RUN make tools
 RUN make get_vendor_deps
 
 # Install the apps
