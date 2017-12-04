@@ -27,9 +27,13 @@ type CacheDB interface {
 	Write() // Write to the underlying DB
 }
 
-type Batch interface {
+type SetDeleter interface {
 	Set(key, value []byte)
 	Delete(key []byte)
+}
+
+type Batch interface {
+	SetDeleter
 	Write()
 }
 
