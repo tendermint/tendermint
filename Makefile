@@ -37,7 +37,7 @@ test_race:
 test_integrations:
 	@bash ./test/test.sh
 
-release:
+test_release:
 	@go test -tags release $(PACKAGES)
 
 test100:
@@ -114,4 +114,4 @@ metalinter_test:
 		#--enable=vet \
 		#--enable=vetshadow \
 
-.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools
+.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps update_tools tools test_release
