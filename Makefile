@@ -1,25 +1,24 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/tcnksm/ghr \
-					github.com/Masterminds/glide \
 					github.com/alecthomas/gometalinter
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
 
+BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
+
 all: install test
 
-install: get_vendor_deps
-	@go install --ldflags '-extldflags "-static"' \
-		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`" ./cmd/tendermint
+install:
+	CGO_ENABLED=0 go install $(BUILD_FLAGS) ./cmd/tendermint
 
 build:
-	go build \
-		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`"  -o build/tendermint ./cmd/tendermint/
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	go build -race -o build/tendermint ./cmd/tendermint
+	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
