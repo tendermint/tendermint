@@ -83,9 +83,9 @@ func TestParser(t *testing.T) {
 	for _, c := range cases {
 		_, err := query.New(c.query)
 		if c.valid {
-			assert.NoErrorf(t, err, "Query was '%s'", c.query)
+			assert.NoError(t, err, "Query was '"+c.query+"'")
 		} else {
-			assert.Errorf(t, err, "Query was '%s'", c.query)
+			assert.Error(t, err, "Query was '"+c.query+"'")
 		}
 	}
 }
