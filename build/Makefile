@@ -1,12 +1,13 @@
 ##
-# Extra checks, because we do not use autoconf. Set extra_check to false if it is bothering you.
+# Extra checks, because we do not use autoconf.
 ##
 
-extra_check = true
+requirements_check = true
+gpg_check = false
 go_min_version = 1.9.2
 gpg_key = 2122CBE9
 
-ifeq ($(extra_check),true)
+ifeq ($(requirements_check),true)
 ifndef GOPATH
 $(error GOPATH not set)
 else
@@ -17,6 +18,7 @@ ifneq ($(go_min_version),$(go_version_check))
 $(error go version go_min_version or above is required)
 endif
 endif
+ifeq ($(gpg_check),true)
 gpg_check := $(shell gpg -K | grep '/$(gpg_key) ' | sed 's,^.*/\($(gpg_key)\) .*$$,\1,')
 ifneq ($(gpg_check),$(gpg_key))
 $(error GPG key $(gpg_key) not found.)
@@ -25,6 +27,7 @@ $(info GPG key $(gpg_key) found)
 endif
 ifndef GPG_PASSPHRASE
 $(error GPG_PASSPHRASE not set)
+endif
 endif
 endif
 
@@ -52,7 +55,12 @@ $(binaries): %: build-% package-rpm-% package-deb-%
 git-branch:
 	$(eval GIT_BRANCH=$(shell echo $${GIT_BRANCH:-master}))
 
-build-tendermint: git-branch
+gopath-setup:
+	test -d $(GOPATH) || mkdir -p $(GOPATH)
+	test -d $(GOPATH)/bin || mkdir -p $(GOPATH)/bin
+	test -d $(GOPATH)/src || mkdir -p $(GOPATH)/src
+
+build-tendermint: git-branch gopath-setup
 	@echo "*** Building tendermint"
 	go get -d -u github.com/tendermint/tendermint/cmd/tendermint
 	cd $(GOPATH)/src/github.com/tendermint/tendermint && git checkout "$(GIT_BRANCH)" && git pull
@@ -60,7 +68,7 @@ build-tendermint: git-branch
 	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
-build-ethermint: git-branch
+build-ethermint: git-branch gopath-setup
 	@echo "*** Building ethermint"
 	go get -d -u github.com/tendermint/ethermint/cmd/ethermint
 	cd $(GOPATH)/src/github.com/tendermint/ethermint && git checkout "$(GIT_BRANCH)" && git pull
@@ -68,7 +76,7 @@ build-ethermint: git-branch
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/build/ethermint $(GOPATH)/bin
 	@echo "*** Built ethermint"
 
-build-trackomatron: git-branch
+build-trackomatron: git-branch gopath-setup
 	@echo "*** Building trackomatron"
 	go get -d -u github.com/tendermint/trackomatron/cmd/tracko
 	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
@@ -76,14 +84,14 @@ build-trackomatron: git-branch
 	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed for proper packaging" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
 	@echo "*** Built trackomatron"
 
-build-gaia: git-branch
+build-gaia: git-branch gopath-setup
 	@echo "*** Building gaia"
 	go get -d -u go github.com/cosmos/gaia || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/gaia && git checkout "$(GIT_BRANCH)" && git pull
 	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
 
-build-basecoin: git-branch
+build-basecoin: git-branch gopath-setup
 	@echo "*** Building basecoin from cosmos-sdk"
 	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
@@ -97,7 +105,7 @@ build-basecoin: git-branch
 # set app_version
 version-%:
 	@echo "Checking if binary exists"
-	test -n $(GOPATH)/bin/$*
+	test -f $(GOPATH)/bin/$*
 	@echo "BUILD_NUMBER is $(BUILD_NUMBER)"
 	test -n "$(BUILD_NUMBER)"
 	$(eval $*_version=$(shell $(GOPATH)/bin/$* version | head -1 | cut -d- -f1 | sed 's/^\(ethermint:\s*\|\)\(v\|\)//' | tr -d '\t ' ))
