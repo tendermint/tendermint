@@ -5,15 +5,16 @@ const Min = "12"
 const Fix = "1"
 
 var (
-	// The full version string
+	// Version is the current version of Tendermint
+	// Must be a string because scripts like dist.sh read this file.
 	Version = "0.12.1"
 
-	// GitCommit is set with --ldflags "-X main.gitCommit=$(git rev-parse HEAD)"
+	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
 )
 
 func init() {
 	if GitCommit != "" {
-		Version += "-" + GitCommit[:8]
+		Version += "-" + GitCommit
 	}
 }
