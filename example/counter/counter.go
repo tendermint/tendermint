@@ -29,8 +29,16 @@ func (app *CounterApplication) SetOption(req types.RequestSetOption) types.Respo
 	key, value := req.Key, req.Value
 	if key == "serial" && value == "on" {
 		app.serial = true
+	} else {
+		return types.ResponseSetOption{
+			Code: code.CodeTypeBadOption,
+			Log:  cmn.Fmt("Unknown key (%s) or value (%s)", key, value),
+		}
 	}
-	return types.ResponseSetOption{}
+
+	return types.ResponseSetOption{
+		Code: code.CodeTypeOK,
+	}
 }
 
 func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {

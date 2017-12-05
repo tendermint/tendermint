@@ -15,6 +15,7 @@ BREAKING CHANGES:
  - [types] `pubKey` -> `pub_key`
  - [types] `uint64` -> `int32` for `Header.num_txs` and `PartSetHeader.total`
  - [types] `uint64` -> `int64` for everything else
+ - [types] ResponseSetOption includes error code
  - [abci-cli] codes are printed as their number instead of a message, except for `code == 0`, which is still printed as `OK`
 
 FEATURES:
