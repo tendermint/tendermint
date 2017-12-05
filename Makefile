@@ -9,7 +9,7 @@ TMHOME = $${TMHOME:-$$HOME/.tendermint}
 
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
 
-all: install test
+all: get_vendor_deps install test
 
 install:
 	CGO_ENABLED=0 go install $(BUILD_FLAGS) ./cmd/tendermint
