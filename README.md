@@ -2,20 +2,11 @@
 
 [![CircleCI](https://circleci.com/gh/tendermint/abci.svg?style=svg)](https://circleci.com/gh/tendermint/abci)
 
-Blockchains are a system for multi-master state machine replication.
+Blockchains are systems for multi-master state machine replication.
 **ABCI** is an interface that defines the boundary between the replication engine (the blockchain),
 and the state machine (the application).
 By using a socket protocol, we enable a consensus engine running in one process
 to manage an application state running in another.
-
-## Install
-
-```
-go get github.com/tendermint/abci
-cd $GOPATH/src/github.com/tendermint/abci
-make get_vendor_deps
-make install
-```
 
 For background information on ABCI, motivations, and tendermint, please visit [the documentation](http://tendermint.readthedocs.io/en/master/).
 The two guides to focus on are the `Application Development Guide` and `Using ABCI-CLI`.
@@ -28,9 +19,17 @@ The community has provided a number of addtional implementations, see the `Tende
 
 We provide three implementations of the ABCI in Go:
 
+- Golang in-process
 - ABCI-socket
 - GRPC
-- Golang in-process
+
+Note the GRPC version is maintained primarily to simplify onboarding and prototyping and is not receiving the same
+attention to security and performance as the others.
+
+### In Process
+
+The simplest implementation just uses function calls within Go.
+This means ABCI applications written in Golang can be compiled with TendermintCore and run as a single binary.
 
 ### Socket
 
@@ -45,14 +44,9 @@ For example, if the Protobuf3 encoded ABCI message is `0xDEADBEEF` (4 bytes), th
 
 GRPC is an rpc framework native to Protocol Buffers with support in many languages.
 Implementing the ABCI using GRPC can allow for faster prototyping, but is expected to be much slower than
-the ordered, asynchronous socket protocol.
+the ordered, asynchronous socket protocol. The implementation has also not received as much testing or review.
 
 Note the length-prefixing used in the socket implementation does not apply for GRPC.
-
-### In Process
-
-The simplest implementation just uses function calls within Go.
-This means ABCI applications written in Golang can be compiled with TendermintCore and run as a single binary.
 
 ## Example Apps
 
@@ -63,6 +57,15 @@ Multiple example apps are included:
 - the `abci-cli counter` application, which illustrates nonce checking in txs
 - the `abci-cli dummy` application, which illustrates a simple key-value merkle tree
 - the `abci-cli dummy --persistent` application, which augments the dummy with persistence and validator set changes
+
+### Install
+
+```
+go get github.com/tendermint/abci
+cd $GOPATH/src/github.com/tendermint/abci
+make get_vendor_deps
+make install
+```
 
 ## Specification
 
