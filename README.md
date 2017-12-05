@@ -160,6 +160,7 @@ Here, we describe the requests and responses as function arguments and return va
     * `Key (string)`: Key to set
     * `Value (string)`: Value to set for key
   * __Returns__:
+    * `Code (uint32)`: Response code
     * `Log (string)`: Debug or error message
   * __Usage__:<br/>
     Set application options.  E.g. Key="mode", Value="mempool" for a mempool connection, or Key="mode", Value="consensus" for a consensus connection.

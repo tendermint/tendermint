@@ -429,7 +429,8 @@ func cmdSetOption(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printResponse(cmd, args, response{
-		Log: res.Log,
+		Code: res.Code,
+		Log:  res.Log,
 	})
 	return nil
 }

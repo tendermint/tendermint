@@ -114,7 +114,8 @@ message ResponseInfo {
 }
 
 message ResponseSetOption{
-  string log = 1;
+  uint32 code = 1;
+  string log  = 2;
 }
 
 message ResponseDeliverTx{

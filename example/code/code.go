@@ -6,4 +6,6 @@ const (
 	CodeTypeEncodingError uint32 = 1
 	CodeTypeBadNonce      uint32 = 2
 	CodeTypeUnauthorized  uint32 = 3
+
+	CodeTypeBadOption uint32 = 101
 )
