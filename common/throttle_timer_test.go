@@ -9,19 +9,19 @@ import (
 	asrt "github.com/stretchr/testify/assert"
 )
 
-type counter struct {
+type thCounter struct {
 	input chan struct{}
 	mtx   sync.Mutex
 	count int
 }
 
-func (c *counter) Increment() {
+func (c *thCounter) Increment() {
 	c.mtx.Lock()
 	c.count++
 	c.mtx.Unlock()
 }
 
-func (c *counter) Count() int {
+func (c *thCounter) Count() int {
 	c.mtx.Lock()
 	val := c.count
 	c.mtx.Unlock()
@@ -30,7 +30,7 @@ func (c *counter) Count() int {
 
 // Read should run in a go-routine and
 // updates count by one every time a packet comes in
-func (c *counter) Read() {
+func (c *thCounter) Read() {
 	for range c.input {
 		c.Increment()
 	}
@@ -45,7 +45,7 @@ func TestThrottle(test *testing.T) {
 	t := NewThrottleTimer("foo", delay)
 
 	// start at 0
-	c := &counter{input: t.Ch}
+	c := &thCounter{input: t.Ch}
 	assert.Equal(0, c.Count())
 	go c.Read()
 
