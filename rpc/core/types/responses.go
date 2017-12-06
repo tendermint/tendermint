@@ -2,6 +2,7 @@ package core_types
 
 import (
 	"strings"
+	"time"
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
@@ -52,7 +53,7 @@ type ResultStatus struct {
 	LatestBlockHash   data.Bytes    `json:"latest_block_hash"`
 	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
 	LatestBlockHeight int64         `json:"latest_block_height"`
-	LatestBlockTime   int64         `json:"latest_block_time"` // nano
+	LatestBlockTime   time.Time     `json:"latest_block_time"` // nano
 	Syncing           bool          `json:"syncing"`
 }
 
