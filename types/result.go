@@ -2,6 +2,8 @@ package types
 
 import (
 	"fmt"
+
+	"github.com/gogo/protobuf/jsonpb"
 )
 
 const (
@@ -70,4 +72,37 @@ func (r ResponseQuery) Error() string {
 
 func fmtError(code uint32, log string) string {
 	return fmt.Sprintf("Error code (%d): %s", code, log)
+}
+
+//---------------------------------------------------------------------------
+// override JSON marshalling so we dont emit defaults (ie. disable omitempty)
+
+func (r *ResponseSetOption) MarshalJSON() ([]byte, error) {
+	m := jsonpb.Marshaler{EmitDefaults: true}
+	s, err := m.MarshalToString(r)
+	return []byte(s), err
+}
+
+func (r *ResponseCheckTx) MarshalJSON() ([]byte, error) {
+	m := jsonpb.Marshaler{EmitDefaults: true}
+	s, err := m.MarshalToString(r)
+	return []byte(s), err
+}
+
+func (r *ResponseDeliverTx) MarshalJSON() ([]byte, error) {
+	m := jsonpb.Marshaler{EmitDefaults: true}
+	s, err := m.MarshalToString(r)
+	return []byte(s), err
+}
+
+func (r *ResponseQuery) MarshalJSON() ([]byte, error) {
+	m := jsonpb.Marshaler{EmitDefaults: true}
+	s, err := m.MarshalToString(r)
+	return []byte(s), err
+}
+
+func (r *ResponseCommit) MarshalJSON() ([]byte, error) {
+	m := jsonpb.Marshaler{EmitDefaults: true}
+	s, err := m.MarshalToString(r)
+	return []byte(s), err
 }

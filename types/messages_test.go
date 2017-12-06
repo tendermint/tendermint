@@ -2,11 +2,19 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 )
+
+func TestMarshalJSON(t *testing.T) {
+	b, err := json.Marshal(&ResponseDeliverTx{})
+	assert.Nil(t, err)
+	assert.True(t, strings.Contains(string(b), "code"))
+}
 
 func TestWriteReadMessage(t *testing.T) {
 	cases := []proto.Message{
