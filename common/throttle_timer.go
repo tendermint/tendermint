@@ -52,8 +52,8 @@ func (t *ThrottleTimer) run() {
 		select {
 		case cmd := <-t.input:
 			// stop goroutine if the input says so
+			// don't close channels, as closed channels mess up select reads
 			if t.processInput(cmd) {
-				close(t.Ch)
 				return
 			}
 		case <-t.timer.C:

@@ -31,6 +31,9 @@ func (c *thCounter) Count() int {
 // Read should run in a go-routine and
 // updates count by one every time a packet comes in
 func (c *thCounter) Read() {
+	// note, since this channel never closes, this will never end
+	// if thCounter was used in anything beyond trivial test cases.
+	// it would have to be smarter.
 	for range c.input {
 		c.Increment()
 	}
