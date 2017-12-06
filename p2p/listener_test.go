@@ -25,7 +25,12 @@ func TestListener(t *testing.T) {
 	}
 
 	msg := []byte("hi!")
-	go connIn.Write(msg)
+	go func() {
+		_, err := connIn.Write(msg)
+		if err != nil {
+			t.Error(err)
+		}
+	}()
 	b := make([]byte, 32)
 	n, err := connOut.Read(b)
 	if err != nil {

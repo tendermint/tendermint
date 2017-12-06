@@ -1,20 +1,20 @@
 package client
 
 import (
+	"context"
+	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	events "github.com/tendermint/tmlibs/events"
 )
 
 // Waiter is informed of current height, decided whether to quit early
-type Waiter func(delta int) (abort error)
+type Waiter func(delta int64) (abort error)
 
 // DefaultWaitStrategy is the standard backoff algorithm,
 // but you can plug in another one
-func DefaultWaitStrategy(delta int) (abort error) {
+func DefaultWaitStrategy(delta int64) (abort error) {
 	if delta > 10 {
 		return errors.Errorf("Waiting for %d blocks... aborting", delta)
 	} else if delta > 0 {
@@ -32,11 +32,11 @@ func DefaultWaitStrategy(delta int) (abort error) {
 //
 // If waiter is nil, we use DefaultWaitStrategy, but you can also
 // provide your own implementation
-func WaitForHeight(c StatusClient, h int, waiter Waiter) error {
+func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 	if waiter == nil {
 		waiter = DefaultWaitStrategy
 	}
-	delta := 1
+	delta := int64(1)
 	for delta > 0 {
 		s, err := c.Status()
 		if err != nil {
@@ -56,33 +56,25 @@ func WaitForHeight(c StatusClient, h int, waiter Waiter) error {
 // when the timeout duration has expired.
 //
 // This handles subscribing and unsubscribing under the hood
-func WaitForOneEvent(evsw types.EventSwitch,
-	evtTyp string, timeout time.Duration) (types.TMEventData, error) {
-	listener := cmn.RandStr(12)
-
-	evts, quit := make(chan events.EventData, 10), make(chan bool, 1)
-	// start timeout count-down
-	go func() {
-		time.Sleep(timeout)
-		quit <- true
-	}()
+func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (types.TMEventData, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	evts := make(chan interface{}, 1)
 
 	// register for the next event of this type
-	evsw.AddListenerForEvent(listener, evtTyp, func(data events.EventData) {
-		evts <- data
-	})
+	query := fmt.Sprintf("%s='%s'", types.EventTypeKey, evtTyp)
+	err := c.Subscribe(ctx, query, evts)
+	if err != nil {
+		return types.TMEventData{}, errors.Wrap(err, "failed to subscribe")
+	}
+
 	// make sure to unregister after the test is over
-	defer evsw.RemoveListenerForEvent(evtTyp, listener)
-	// defer evsw.RemoveListener(listener)  // this also works
+	defer c.Unsubscribe(ctx, query)
 
 	select {
-	case <-quit:
-		return types.TMEventData{}, errors.New("timed out waiting for event")
 	case evt := <-evts:
-		tmevt, ok := evt.(types.TMEventData)
-		if ok {
-			return tmevt, nil
-		}
-		return types.TMEventData{}, errors.Errorf("Got unexpected event type: %#v", evt)
+		return evt.(types.TMEventData), nil
+	case <-ctx.Done():
+		return types.TMEventData{}, errors.New("timed out waiting for event")
 	}
 }

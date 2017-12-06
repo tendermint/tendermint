@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	events "github.com/tendermint/tmlibs/events"
 )
 
 //----------------------------------------
@@ -68,14 +67,14 @@ func (err RPCError) Error() string {
 }
 
 type RPCResponse struct {
-	JSONRPC string           `json:"jsonrpc"`
-	ID      string           `json:"id"`
-	Result  *json.RawMessage `json:"result,omitempty"`
-	Error   *RPCError        `json:"error,omitempty"`
+	JSONRPC string          `json:"jsonrpc"`
+	ID      string          `json:"id"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Error   *RPCError       `json:"error,omitempty"`
 }
 
 func NewRPCSuccessResponse(id string, res interface{}) RPCResponse {
-	var raw *json.RawMessage
+	var rawMsg json.RawMessage
 
 	if res != nil {
 		var js []byte
@@ -83,11 +82,10 @@ func NewRPCSuccessResponse(id string, res interface{}) RPCResponse {
 		if err != nil {
 			return RPCInternalError(id, errors.Wrap(err, "Error marshalling response"))
 		}
-		rawMsg := json.RawMessage(js)
-		raw = &rawMsg
+		rawMsg = json.RawMessage(js)
 	}
 
-	return RPCResponse{JSONRPC: "2.0", ID: id, Result: raw}
+	return RPCResponse{JSONRPC: "2.0", ID: id, Result: rawMsg}
 }
 
 func NewRPCErrorResponse(id string, code int, msg string, data string) RPCResponse {
@@ -135,9 +133,12 @@ func RPCServerError(id string, err error) RPCResponse {
 // *wsConnection implements this interface.
 type WSRPCConnection interface {
 	GetRemoteAddr() string
-	GetEventSwitch() events.EventSwitch
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
+
+	AddSubscription(string, interface{}) error
+	DeleteSubscription(string) (interface{}, bool)
+	DeleteAllSubscriptions()
 }
 
 // websocket-only RPCFuncs take this as the first parameter.

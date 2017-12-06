@@ -1,30 +1,32 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/tcnksm/ghr \
-					github.com/Masterminds/glide \
+					github.com/alecthomas/gometalinter
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
 
-all: install test
+BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
 
-install: get_vendor_deps
-	@go install --ldflags '-extldflags "-static"' \
-		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`" ./cmd/tendermint
+all: get_vendor_deps install test
+
+install:
+	CGO_ENABLED=0 go install $(BUILD_FLAGS) ./cmd/tendermint
 
 build:
-	go build \
-		--ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse HEAD`"  -o build/tendermint ./cmd/tendermint/
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	go build -race -o build/tendermint ./cmd/tendermint
+	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 test:
+	@echo "--> Running linter"
+	@make metalinter_test
 	@echo "--> Running go test"
 	@go test $(PACKAGES)
 
@@ -35,7 +37,7 @@ test_race:
 test_integrations:
 	@bash ./test/test.sh
 
-release:
+test_release:
 	@go test -tags release $(PACKAGES)
 
 test100:
@@ -58,29 +60,57 @@ get_deps:
 		grep -v /vendor/ | sort | uniq | \
 		xargs go get -v -d
 
-get_vendor_deps: ensure_tools
+update_deps:
+	@echo "--> Updating dependencies"
+	@go get -d -u ./...
+
+get_vendor_deps:
+	@hash glide 2>/dev/null || go get github.com/Masterminds/glide
 	@rm -rf vendor/
 	@echo "--> Running glide install"
 	@glide install
 
-update_deps: tools
-	@echo "--> Updating dependencies"
-	@go get -d -u ./...
-
-revision:
-	-echo `git rev-parse --verify HEAD` > $(TMHOME)/revision
-	-echo `git rev-parse --verify HEAD` >> $(TMHOME)/revision_history
+update_tools:
+	@echo "--> Updating tools"
+	@go get -u $(GOTOOLS)
 
 tools:
-	go get -u -v $(GOTOOLS)
-
-ensure_tools:
-	go get $(GOTOOLS)
+	@echo "--> Installing tools"
+	@go get $(GOTOOLS)
+	@gometalinter --install
 
 ### Formatting, linting, and vetting
 
-megacheck:
-	@for pkg in ${PACKAGES}; do megacheck "$$pkg"; done
+metalinter:
+	@gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
 
+metalinter_test:
+	@gometalinter --vendor --deadline=600s --disable-all  \
+		--enable=deadcode \
+	 	--enable=misspell \
+		--enable=safesql \
+		./...
 
-.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps revision tools
+		# --enable=gas \
+		#--enable=maligned \
+		#--enable=dupl \
+		#--enable=errcheck \
+		#--enable=goconst \
+		#--enable=gocyclo \
+		#--enable=goimports \
+		#--enable=golint \ <== comments on anything exported
+		#--enable=gosimple \
+		#--enable=gotype \
+	 	#--enable=ineffassign \
+	   	#--enable=interfacer \
+	   	#--enable=megacheck \
+	   	#--enable=staticcheck \
+	   	#--enable=structcheck \
+	   	#--enable=unconvert \
+	   	#--enable=unparam \
+		#--enable=unused \
+	   	#--enable=varcheck \
+		#--enable=vet \
+		#--enable=vetshadow \
+
+.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps update_tools tools test_release

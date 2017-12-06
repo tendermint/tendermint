@@ -17,7 +17,7 @@ import (
 type AppConnTest interface {
 	EchoAsync(string) *abcicli.ReqRes
 	FlushSync() error
-	InfoSync(types.RequestInfo) (types.ResponseInfo, error)
+	InfoSync(types.RequestInfo) (*types.ResponseInfo, error)
 }
 
 type appConnTest struct {
@@ -36,7 +36,7 @@ func (app *appConnTest) FlushSync() error {
 	return app.appConn.FlushSync()
 }
 
-func (app *appConnTest) InfoSync(req types.RequestInfo) (types.ResponseInfo, error) {
+func (app *appConnTest) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
 	return app.appConn.InfoSync(req)
 }
 
@@ -51,7 +51,7 @@ func TestEcho(t *testing.T) {
 	// Start server
 	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if _, err := s.Start(); err != nil {
+	if err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
@@ -62,7 +62,7 @@ func TestEcho(t *testing.T) {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
 	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	if _, err := cli.Start(); err != nil {
+	if err := cli.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
@@ -72,7 +72,9 @@ func TestEcho(t *testing.T) {
 	for i := 0; i < 1000; i++ {
 		proxy.EchoAsync(cmn.Fmt("echo-%v", i))
 	}
-	proxy.FlushSync()
+	if err := proxy.FlushSync(); err != nil {
+		t.Error(err)
+	}
 }
 
 func BenchmarkEcho(b *testing.B) {
@@ -83,7 +85,7 @@ func BenchmarkEcho(b *testing.B) {
 	// Start server
 	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if _, err := s.Start(); err != nil {
+	if err := s.Start(); err != nil {
 		b.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
@@ -94,7 +96,7 @@ func BenchmarkEcho(b *testing.B) {
 		b.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
 	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	if _, err := cli.Start(); err != nil {
+	if err := cli.Start(); err != nil {
 		b.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 
@@ -106,7 +108,9 @@ func BenchmarkEcho(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		proxy.EchoAsync(echoString)
 	}
-	proxy.FlushSync()
+	if err := proxy.FlushSync(); err != nil {
+		b.Error(err)
+	}
 
 	b.StopTimer()
 	// info := proxy.InfoSync(types.RequestInfo{""})
@@ -120,7 +124,7 @@ func TestInfo(t *testing.T) {
 	// Start server
 	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
 	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if _, err := s.Start(); err != nil {
+	if err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer s.Stop()
@@ -131,7 +135,7 @@ func TestInfo(t *testing.T) {
 		t.Fatalf("Error creating ABCI client: %v", err.Error())
 	}
 	cli.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	if _, err := cli.Start(); err != nil {
+	if err := cli.Start(); err != nil {
 		t.Fatalf("Error starting ABCI client: %v", err.Error())
 	}
 

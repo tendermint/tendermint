@@ -22,9 +22,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	var heightToStop uint64
+	var heightToStop int64
 	var err error
-	if heightToStop, err = strconv.ParseUint(os.Args[2], 10, 64); err != nil {
+	if heightToStop, err = strconv.ParseInt(os.Args[2], 10, 64); err != nil {
 		panic(fmt.Errorf("failed to parse height: %v", err))
 	}
 

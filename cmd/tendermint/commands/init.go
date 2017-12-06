@@ -28,12 +28,14 @@ func initFiles(cmd *cobra.Command, args []string) {
 			genDoc := types.GenesisDoc{
 				ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
 			}
-			genDoc.Validators = []types.GenesisValidator{types.GenesisValidator{
+			genDoc.Validators = []types.GenesisValidator{{
 				PubKey: privValidator.GetPubKey(),
 				Power:  10,
 			}}
 
-			genDoc.SaveAs(genFile)
+			if err := genDoc.SaveAs(genFile); err != nil {
+				panic(err)
+			}
 		}
 
 		logger.Info("Initialized tendermint", "genesis", config.GenesisFile(), "priv_validator", config.PrivValidatorFile())

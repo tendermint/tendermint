@@ -17,6 +17,7 @@ var (
 	ErrVoteInvalidValidatorAddress = errors.New("Invalid validator address")
 	ErrVoteInvalidSignature        = errors.New("Invalid signature")
 	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
+	ErrVoteNil                     = errors.New("Nil vote")
 )
 
 type ErrVoteConflictingVotes struct {
@@ -50,7 +51,7 @@ func IsVoteTypeValid(type_ byte) bool {
 type Vote struct {
 	ValidatorAddress data.Bytes       `json:"validator_address"`
 	ValidatorIndex   int              `json:"validator_index"`
-	Height           int              `json:"height"`
+	Height           int64            `json:"height"`
 	Round            int              `json:"round"`
 	Type             byte             `json:"type"`
 	BlockID          BlockID          `json:"block_id"` // zero if vote is nil.

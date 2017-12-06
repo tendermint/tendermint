@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"golang.org/x/net/context"
+	"context"
 
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/rpc/grpc"

@@ -2,11 +2,13 @@ package consensus
 
 import (
 	"bytes"
-	"errors"
+	"context"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/pkg/errors"
 
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -34,10 +36,10 @@ type ConsensusReactor struct {
 	p2p.BaseReactor // BaseService + p2p.Switch
 
 	conS *ConsensusState
-	evsw types.EventSwitch
 
 	mtx      sync.RWMutex
 	fastSync bool
+	eventBus *types.EventBus
 }
 
 // NewConsensusReactor returns a new ConsensusReactor with the given consensusState.
@@ -53,18 +55,22 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *Consens
 // OnStart implements BaseService.
 func (conR *ConsensusReactor) OnStart() error {
 	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
-	conR.BaseReactor.OnStart()
+	if err := conR.BaseReactor.OnStart(); err != nil {
+		return err
+	}
 
-	// callbacks for broadcasting new steps and votes to peers
-	// upon their respective events (ie. uses evsw)
-	conR.registerEventCallbacks()
+	err := conR.startBroadcastRoutine()
+	if err != nil {
+		return err
+	}
 
 	if !conR.FastSync() {
-		_, err := conR.conS.Start()
+		err := conR.conS.Start()
 		if err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -91,31 +97,34 @@ func (conR *ConsensusReactor) SwitchToConsensus(state *sm.State, blocksSynced in
 		// dont bother with the WAL if we fast synced
 		conR.conS.doWALCatchup = false
 	}
-	conR.conS.Start()
+	err := conR.conS.Start()
+	if err != nil {
+		conR.Logger.Error("Error starting conS", "err", err)
+	}
 }
 
 // GetChannels implements Reactor
 func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:                StateChannel,
 			Priority:          5,
 			SendQueueCapacity: 100,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 DataChannel, // maybe split between gossiping current block and catchup stuff
 			Priority:           10,          // once we gossip the whole block there's nothing left to send until next height or round
 			SendQueueCapacity:  100,
 			RecvBufferCapacity: 50 * 4096,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 VoteChannel,
 			Priority:           5,
 			SendQueueCapacity:  100,
 			RecvBufferCapacity: 100 * 100,
 		},
-		&p2p.ChannelDescriptor{
+		{
 			ID:                 VoteSetBitsChannel,
 			Priority:           1,
 			SendQueueCapacity:  2,
@@ -306,10 +315,10 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	}
 }
 
-// SetEventSwitch implements events.Eventable
-func (conR *ConsensusReactor) SetEventSwitch(evsw types.EventSwitch) {
-	conR.evsw = evsw
-	conR.conS.SetEventSwitch(evsw)
+// SetEventBus sets event bus.
+func (conR *ConsensusReactor) SetEventBus(b *types.EventBus) {
+	conR.eventBus = b
+	conR.conS.SetEventBus(b)
 }
 
 // FastSync returns whether the consensus reactor is in fast-sync mode.
@@ -321,24 +330,60 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// Listens for new steps and votes,
-// broadcasting the result to peers
-func (conR *ConsensusReactor) registerEventCallbacks() {
+// startBroadcastRoutine subscribes for new round steps, votes and proposal
+// heartbeats using the event bus and starts a go routine to broadcasts events
+// to peers upon receiving them.
+func (conR *ConsensusReactor) startBroadcastRoutine() error {
+	const subscriber = "consensus-reactor"
+	ctx := context.Background()
 
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringNewRoundStep(), func(data types.TMEventData) {
-		rs := data.Unwrap().(types.EventDataRoundState).RoundState.(*cstypes.RoundState)
-		conR.broadcastNewRoundStep(rs)
-	})
+	// new round steps
+	stepsCh := make(chan interface{})
+	err := conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, stepsCh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryNewRoundStep)
+	}
 
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringVote(), func(data types.TMEventData) {
-		edv := data.Unwrap().(types.EventDataVote)
-		conR.broadcastHasVoteMessage(edv.Vote)
-	})
+	// votes
+	votesCh := make(chan interface{})
+	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryVote, votesCh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryVote)
+	}
 
-	types.AddListenerForEvent(conR.evsw, "conR", types.EventStringProposalHeartbeat(), func(data types.TMEventData) {
-		heartbeat := data.Unwrap().(types.EventDataProposalHeartbeat)
-		conR.broadcastProposalHeartbeatMessage(heartbeat)
-	})
+	// proposal heartbeats
+	heartbeatsCh := make(chan interface{})
+	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryProposalHeartbeat, heartbeatsCh)
+	if err != nil {
+		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryProposalHeartbeat)
+	}
+
+	go func() {
+		for {
+			select {
+			case data, ok := <-stepsCh:
+				if ok { // a receive from a closed channel returns the zero value immediately
+					edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
+					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
+				}
+			case data, ok := <-votesCh:
+				if ok {
+					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
+					conR.broadcastHasVoteMessage(edv.Vote)
+				}
+			case data, ok := <-heartbeatsCh:
+				if ok {
+					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
+					conR.broadcastProposalHeartbeatMessage(edph)
+				}
+			case <-conR.Quit:
+				conR.eventBus.UnsubscribeAll(ctx, subscriber)
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.EventDataProposalHeartbeat) {
@@ -350,7 +395,6 @@ func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.
 }
 
 func (conR *ConsensusReactor) broadcastNewRoundStep(rs *cstypes.RoundState) {
-
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
 		conR.Switch.Broadcast(StateChannel, struct{ ConsensusMessage }{nrsMsg})
@@ -448,6 +492,18 @@ OUTER_LOOP:
 		// If the peer is on a previous height, help catch up.
 		if (0 < prs.Height) && (prs.Height < rs.Height) {
 			heightLogger := logger.With("height", prs.Height)
+
+			// if we never received the commit message from the peer, the block parts wont be initialized
+			if prs.ProposalBlockParts == nil {
+				blockMeta := conR.conS.blockStore.LoadBlockMeta(prs.Height)
+				if blockMeta == nil {
+					cmn.PanicCrisis(cmn.Fmt("Failed to load block %d when blockStore is at %d",
+						prs.Height, conR.conS.blockStore.Height()))
+				}
+				ps.InitProposalBlockParts(blockMeta.BlockID.PartsHeader)
+				// continue the loop since prs is a copy and not effected by this initialization
+				continue OUTER_LOOP
+			}
 			conR.gossipDataForCatchup(heightLogger, rs, prs, ps, peer)
 			continue OUTER_LOOP
 		}
@@ -527,9 +583,11 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstype
 			Round:  prs.Round,  // Not our height, so it doesn't matter.
 			Part:   part,
 		}
-		logger.Debug("Sending block part for catchup", "round", prs.Round)
+		logger.Debug("Sending block part for catchup", "round", prs.Round, "index", index)
 		if peer.Send(DataChannel, struct{ ConsensusMessage }{msg}) {
 			ps.SetHasProposalBlockPart(prs.Height, prs.Round, index)
+		} else {
+			logger.Debug("Sending block part for catchup failed")
 		}
 		return
 	} else {
@@ -803,7 +861,7 @@ func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 
 // GetHeight returns an atomic snapshot of the PeerRoundState's height
 // used by the mempool to ensure peers are caught up before broadcasting new txs
-func (ps *PeerState) GetHeight() int {
+func (ps *PeerState) GetHeight() int64 {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return ps.PeerRoundState.Height
@@ -828,8 +886,21 @@ func (ps *PeerState) SetHasProposal(proposal *types.Proposal) {
 	ps.ProposalPOL = nil // Nil until ProposalPOLMessage received.
 }
 
+// InitProposalBlockParts initializes the peer's proposal block parts header and bit array.
+func (ps *PeerState) InitProposalBlockParts(partsHeader types.PartSetHeader) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.ProposalBlockParts != nil {
+		return
+	}
+
+	ps.ProposalBlockPartsHeader = partsHeader
+	ps.ProposalBlockParts = cmn.NewBitArray(partsHeader.Total)
+}
+
 // SetHasProposalBlockPart sets the given block part index as known for the peer.
-func (ps *PeerState) SetHasProposalBlockPart(height int, round int, index int) {
+func (ps *PeerState) SetHasProposalBlockPart(height int64, round int, index int) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
@@ -880,7 +951,7 @@ func (ps *PeerState) PickVoteToSend(votes types.VoteSetReader) (vote *types.Vote
 	return nil, false
 }
 
-func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *cmn.BitArray {
+func (ps *PeerState) getVoteBitArray(height int64, round int, type_ byte) *cmn.BitArray {
 	if !types.IsVoteTypeValid(type_) {
 		return nil
 	}
@@ -927,7 +998,7 @@ func (ps *PeerState) getVoteBitArray(height, round int, type_ byte) *cmn.BitArra
 }
 
 // 'round': A round for which we have a +2/3 commit.
-func (ps *PeerState) ensureCatchupCommitRound(height, round int, numValidators int) {
+func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValidators int) {
 	if ps.Height != height {
 		return
 	}
@@ -953,13 +1024,13 @@ func (ps *PeerState) ensureCatchupCommitRound(height, round int, numValidators i
 // what votes this peer has received.
 // NOTE: It's important to make sure that numValidators actually matches
 // what the node sees as the number of validators for height.
-func (ps *PeerState) EnsureVoteBitArrays(height int, numValidators int) {
+func (ps *PeerState) EnsureVoteBitArrays(height int64, numValidators int) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	ps.ensureVoteBitArrays(height, numValidators)
 }
 
-func (ps *PeerState) ensureVoteBitArrays(height int, numValidators int) {
+func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 	if ps.Height == height {
 		if ps.Prevotes == nil {
 			ps.Prevotes = cmn.NewBitArray(numValidators)
@@ -988,9 +1059,9 @@ func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.setHasVote(vote.Height, vote.Round, vote.Type, vote.ValidatorIndex)
 }
 
-func (ps *PeerState) setHasVote(height int, round int, type_ byte, index int) {
-	logger := ps.logger.With("peerRound", ps.Round, "height", height, "round", round)
-	logger.Debug("setHasVote(LastCommit)", "lastCommit", ps.LastCommit, "index", index)
+func (ps *PeerState) setHasVote(height int64, round int, type_ byte, index int) {
+	logger := ps.logger.With("peerH/R", cmn.Fmt("%d/%d", ps.Height, ps.Round), "H/R", cmn.Fmt("%d/%d", height, round))
+	logger.Debug("setHasVote", "type", type_, "index", index)
 
 	// NOTE: some may be nil BitArrays -> no side effects.
 	psVotes := ps.getVoteBitArray(height, round, type_)
@@ -1182,7 +1253,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 // NewRoundStepMessage is sent for every step taken in the ConsensusState.
 // For every height/round/step transition
 type NewRoundStepMessage struct {
-	Height                int
+	Height                int64
 	Round                 int
 	Step                  cstypes.RoundStepType
 	SecondsSinceStartTime int
@@ -1199,7 +1270,7 @@ func (m *NewRoundStepMessage) String() string {
 
 // CommitStepMessage is sent when a block is committed.
 type CommitStepMessage struct {
-	Height           int
+	Height           int64
 	BlockPartsHeader types.PartSetHeader
 	BlockParts       *cmn.BitArray
 }
@@ -1225,7 +1296,7 @@ func (m *ProposalMessage) String() string {
 
 // ProposalPOLMessage is sent when a previous proposal is re-proposed.
 type ProposalPOLMessage struct {
-	Height           int
+	Height           int64
 	ProposalPOLRound int
 	ProposalPOL      *cmn.BitArray
 }
@@ -1239,7 +1310,7 @@ func (m *ProposalPOLMessage) String() string {
 
 // BlockPartMessage is sent when gossipping a piece of the proposed block.
 type BlockPartMessage struct {
-	Height int
+	Height int64
 	Round  int
 	Part   *types.Part
 }
@@ -1265,7 +1336,7 @@ func (m *VoteMessage) String() string {
 
 // HasVoteMessage is sent to indicate that a particular vote has been received.
 type HasVoteMessage struct {
-	Height int
+	Height int64
 	Round  int
 	Type   byte
 	Index  int
@@ -1280,7 +1351,7 @@ func (m *HasVoteMessage) String() string {
 
 // VoteSetMaj23Message is sent to indicate that a given BlockID has seen +2/3 votes.
 type VoteSetMaj23Message struct {
-	Height  int
+	Height  int64
 	Round   int
 	Type    byte
 	BlockID types.BlockID
@@ -1295,7 +1366,7 @@ func (m *VoteSetMaj23Message) String() string {
 
 // VoteSetBitsMessage is sent to communicate the bit-array of votes seen for the BlockID.
 type VoteSetBitsMessage struct {
-	Height  int
+	Height  int64
 	Round   int
 	Type    byte
 	BlockID types.BlockID

@@ -28,7 +28,9 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 	var peerList []Peer
 	for i := 0; i < 5; i++ {
 		p := randPeer()
-		peerSet.Add(p)
+		if err := peerSet.Add(p); err != nil {
+			t.Error(err)
+		}
 		peerList = append(peerList, p)
 	}
 
@@ -48,7 +50,9 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 	// 2. Next we are testing removing the peer at the end
 	// a) Replenish the peerSet
 	for _, peer := range peerList {
-		peerSet.Add(peer)
+		if err := peerSet.Add(peer); err != nil {
+			t.Error(err)
+		}
 	}
 
 	// b) In reverse, remove each element

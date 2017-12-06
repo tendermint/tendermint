@@ -45,7 +45,7 @@ import (
 */
 type VoteSet struct {
 	chainID string
-	height  int
+	height  int64
 	round   int
 	type_   byte
 
@@ -60,7 +60,7 @@ type VoteSet struct {
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
-func NewVoteSet(chainID string, height int, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
+func NewVoteSet(chainID string, height int64, round int, type_ byte, valSet *ValidatorSet) *VoteSet {
 	if height == 0 {
 		cmn.PanicSanity("Cannot make VoteSet for height == 0, doesn't make sense.")
 	}
@@ -83,7 +83,7 @@ func (voteSet *VoteSet) ChainID() string {
 	return voteSet.chainID
 }
 
-func (voteSet *VoteSet) Height() int {
+func (voteSet *VoteSet) Height() int64 {
 	if voteSet == nil {
 		return 0
 	} else {
@@ -123,6 +123,7 @@ func (voteSet *VoteSet) Size() int {
 // Conflicting votes return added=*, err=ErrVoteConflictingVotes.
 // NOTE: vote should not be mutated after adding.
 // NOTE: VoteSet must not be nil
+// NOTE: Vote must not be nil
 func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 	if voteSet == nil {
 		cmn.PanicSanity("AddVote() on nil VoteSet")
@@ -135,6 +136,9 @@ func (voteSet *VoteSet) AddVote(vote *Vote) (added bool, err error) {
 
 // NOTE: Validates as much as possible before attempting to verify the signature.
 func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
+	if vote == nil {
+		return false, ErrVoteNil
+	}
 	valIndex := vote.ValidatorIndex
 	valAddr := vote.ValidatorAddress
 	blockKey := vote.BlockID.Key()
@@ -519,7 +523,7 @@ func (vs *blockVotes) getByIndex(index int) *Vote {
 
 // Common interface between *consensus.VoteSet and types.Commit
 type VoteSetReader interface {
-	Height() int
+	Height() int64
 	Round() int
 	Type() byte
 	Size() int

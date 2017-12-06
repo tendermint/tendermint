@@ -1,6 +1,8 @@
 package core
 
 import (
+	"time"
+
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -56,17 +58,19 @@ import (
 func Status() (*ctypes.ResultStatus, error) {
 	latestHeight := blockStore.Height()
 	var (
-		latestBlockMeta *types.BlockMeta
-		latestBlockHash data.Bytes
-		latestAppHash   data.Bytes
-		latestBlockTime int64
+		latestBlockMeta     *types.BlockMeta
+		latestBlockHash     data.Bytes
+		latestAppHash       data.Bytes
+		latestBlockTimeNano int64
 	)
 	if latestHeight != 0 {
 		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
 		latestBlockHash = latestBlockMeta.BlockID.Hash
 		latestAppHash = latestBlockMeta.Header.AppHash
-		latestBlockTime = latestBlockMeta.Header.Time.UnixNano()
+		latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
 	}
+
+	latestBlockTime := time.Unix(0, latestBlockTimeNano)
 
 	return &ctypes.ResultStatus{
 		NodeInfo:          p2pSwitch.NodeInfo(),

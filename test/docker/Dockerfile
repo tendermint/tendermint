@@ -1,4 +1,4 @@
-FROM golang:1.9.0
+FROM golang:1.9.2
 
 # Add testing deps for curl
 RUN echo 'deb http://httpredir.debian.org/debian testing main non-free contrib' >> /etc/apt/sources.list
@@ -17,6 +17,7 @@ WORKDIR $REPO
 ADD glide.yaml glide.yaml
 ADD glide.lock glide.lock
 ADD Makefile Makefile
+RUN make tools
 RUN make get_vendor_deps
 
 # Install the apps

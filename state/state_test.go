@@ -78,9 +78,9 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 	// build mock responses
 	block := makeBlock(2, state)
 	abciResponses := NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo")}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok"}
-	abciResponses.EndBlock = abci.ResponseEndBlock{Diffs: []*abci.Validator{
+	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []*abci.KVPair{}}
+	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []*abci.KVPair{}}
+	abciResponses.EndBlock = &abci.ResponseEndBlock{Diffs: []*abci.Validator{
 		{
 			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
 			Power:  10,
@@ -138,7 +138,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	// change vals at these heights
-	changeHeights := []int{1, 2, 4, 5, 10, 15, 16, 17, 20}
+	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
 	// each valset is just one validator.
@@ -155,7 +155,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
 	pubkey := pubkeys[changeIndex]
-	for i := 1; i < highestHeight; i++ {
+	for i := int64(1); i < highestHeight; i++ {
 		// when we get to a change height,
 		// use the next pubkey
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
@@ -171,7 +171,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	testCases := make([]valChangeTestCase, highestHeight)
 	changeIndex = 0
 	pubkey = pubkeys[changeIndex]
-	for i := 1; i < highestHeight+1; i++ {
+	for i := int64(1); i < highestHeight+1; i++ {
 		// we we get to the height after a change height
 		// use the next pubkey (note our counter starts at 0 this time)
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
@@ -192,18 +192,19 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeHeaderPartsResponses(state *State, height int,
+func makeHeaderPartsResponses(state *State, height int64,
 	pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
 
 	block := makeBlock(height, state)
 	_, val := state.Validators.GetByIndex(0)
 	abciResponses := &ABCIResponses{
-		Height: height,
+		Height:   height,
+		EndBlock: &abci.ResponseEndBlock{Diffs: []*abci.Validator{}},
 	}
 
 	// if the pubkey is new, remove the old and add the new
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
-		abciResponses.EndBlock = abci.ResponseEndBlock{
+		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			Diffs: []*abci.Validator{
 				{val.PubKey.Bytes(), 0},
 				{pubkey.Bytes(), 10},
@@ -215,6 +216,6 @@ func makeHeaderPartsResponses(state *State, height int,
 }
 
 type valChangeTestCase struct {
-	height int
+	height int64
 	vals   crypto.PubKey
 }

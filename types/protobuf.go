@@ -13,9 +13,9 @@ type tm2pb struct{}
 func (tm2pb) Header(header *Header) *types.Header {
 	return &types.Header{
 		ChainId:        header.ChainID,
-		Height:         uint64(header.Height),
-		Time:           uint64(header.Time.Unix()),
-		NumTxs:         uint64(header.NumTxs),
+		Height:         header.Height,
+		Time:           header.Time.Unix(),
+		NumTxs:         int32(header.NumTxs), // XXX: overflow
 		LastBlockId:    TM2PB.BlockID(header.LastBlockID),
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
@@ -32,7 +32,7 @@ func (tm2pb) BlockID(blockID BlockID) *types.BlockID {
 
 func (tm2pb) PartSetHeader(partSetHeader PartSetHeader) *types.PartSetHeader {
 	return &types.PartSetHeader{
-		Total: uint64(partSetHeader.Total),
+		Total: int32(partSetHeader.Total), // XXX: overflow
 		Hash:  partSetHeader.Hash,
 	}
 }
@@ -40,7 +40,7 @@ func (tm2pb) PartSetHeader(partSetHeader PartSetHeader) *types.PartSetHeader {
 func (tm2pb) Validator(val *Validator) *types.Validator {
 	return &types.Validator{
 		PubKey: val.PubKey.Bytes(),
-		Power:  uint64(val.VotingPower),
+		Power:  val.VotingPower,
 	}
 }
 

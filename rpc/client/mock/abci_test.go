@@ -22,7 +22,7 @@ func TestABCIMock(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	key, value := []byte("foo"), []byte("bar")
-	height := uint64(10)
+	height := int64(10)
 	goodTx := types.Tx{0x01, 0xff}
 	badTx := types.Tx{0x12, 0x21}
 
@@ -37,8 +37,8 @@ func TestABCIMock(t *testing.T) {
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
 			Response: &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   abci.Result{Data: data.Bytes("stand")},
-				DeliverTx: abci.Result{Data: data.Bytes("deliver")},
+				CheckTx:   abci.ResponseCheckTx{Data: data.Bytes("stand")},
+				DeliverTx: abci.ResponseDeliverTx{Data: data.Bytes("deliver")},
 			},
 			Error: errors.New("bad tx"),
 		},
@@ -51,7 +51,8 @@ func TestABCIMock(t *testing.T) {
 	assert.Equal("foobar", err.Error())
 
 	// query always returns the response
-	query, err := m.ABCIQueryWithOptions("/", nil, client.ABCIQueryOptions{Trusted: true})
+	_query, err := m.ABCIQueryWithOptions("/", nil, client.ABCIQueryOptions{Trusted: true})
+	query := _query.Response
 	require.Nil(err)
 	require.NotNil(query)
 	assert.EqualValues(key, query.Key)
@@ -79,6 +80,8 @@ func TestABCIMock(t *testing.T) {
 
 func TestABCIRecorder(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
+
+	// This mock returns errors on everything but Query
 	m := mock.ABCIMock{
 		Info: mock.Call{Response: abci.ResponseInfo{
 			Data:    "data",
@@ -92,8 +95,11 @@ func TestABCIRecorder(t *testing.T) {
 
 	require.Equal(0, len(r.Calls))
 
-	r.ABCIInfo()
-	r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
+	_, err := r.ABCIInfo()
+	assert.Nil(err, "expected no err on info")
+
+	_, err = r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
+	assert.NotNil(err, "expected error on query")
 	require.Equal(2, len(r.Calls))
 
 	info := r.Calls[0]
@@ -118,11 +124,14 @@ func TestABCIRecorder(t *testing.T) {
 	assert.EqualValues("data", qa.Data)
 	assert.False(qa.Trusted)
 
-	// now add some broadcasts
+	// now add some broadcasts (should all err)
 	txs := []types.Tx{{1}, {2}, {3}}
-	r.BroadcastTxCommit(txs[0])
-	r.BroadcastTxSync(txs[1])
-	r.BroadcastTxAsync(txs[2])
+	_, err = r.BroadcastTxCommit(txs[0])
+	assert.NotNil(err, "expected err on broadcast")
+	_, err = r.BroadcastTxSync(txs[1])
+	assert.NotNil(err, "expected err on broadcast")
+	_, err = r.BroadcastTxAsync(txs[2])
+	assert.NotNil(err, "expected err on broadcast")
 
 	require.Equal(5, len(r.Calls))
 
@@ -160,12 +169,13 @@ func TestABCIApp(t *testing.T) {
 	tx := fmt.Sprintf("%s=%s", key, value)
 	res, err := m.BroadcastTxCommit(types.Tx(tx))
 	require.Nil(err)
-	assert.True(res.CheckTx.Code.IsOK())
+	assert.True(res.CheckTx.IsOK())
 	require.NotNil(res.DeliverTx)
-	assert.True(res.DeliverTx.Code.IsOK())
+	assert.True(res.DeliverTx.IsOK())
 
 	// check the key
-	qres, err := m.ABCIQueryWithOptions("/key", data.Bytes(key), client.ABCIQueryOptions{Trusted: true})
+	_qres, err := m.ABCIQueryWithOptions("/key", data.Bytes(key), client.ABCIQueryOptions{Trusted: true})
+	qres := _qres.Response
 	require.Nil(err)
 	assert.EqualValues(value, qres.Value)
 }

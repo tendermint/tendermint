@@ -1,18 +1,27 @@
 package mempool
 
 import (
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/tendermint/abci/example/counter"
 	"github.com/tendermint/abci/example/dummy"
+	abci "github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+
+	"github.com/stretchr/testify/require"
 )
 
 func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
@@ -20,13 +29,16 @@ func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 
 	appConnMem, _ := cc.NewABCIClient()
 	appConnMem.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "mempool"))
-	appConnMem.Start()
+	err := appConnMem.Start()
+	if err != nil {
+		panic(err)
+	}
 	mempool := NewMempool(config.Mempool, appConnMem, 0)
 	mempool.SetLogger(log.TestingLogger())
 	return mempool
 }
 
-func ensureNoFire(t *testing.T, ch <-chan int, timeoutMS int) {
+func ensureNoFire(t *testing.T, ch <-chan int64, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -35,7 +47,7 @@ func ensureNoFire(t *testing.T, ch <-chan int, timeoutMS int) {
 	}
 }
 
-func ensureFire(t *testing.T, ch <-chan int, timeoutMS int) {
+func ensureFire(t *testing.T, ch <-chan int64, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -49,10 +61,12 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 	for i := 0; i < count; i++ {
 		txBytes := make([]byte, 20)
 		txs[i] = txBytes
-		rand.Read(txBytes)
-		err := mempool.CheckTx(txBytes, nil)
+		_, err := rand.Read(txBytes)
 		if err != nil {
-			t.Fatal("Error after CheckTx: %v", err)
+			t.Error(err)
+		}
+		if err := mempool.CheckTx(txBytes, nil); err != nil {
+			t.Fatalf("Error after CheckTx: %v", err)
 		}
 	}
 	return txs
@@ -78,7 +92,9 @@ func TestTxsAvailable(t *testing.T) {
 	// it should fire once now for the new height
 	// since there are still txs left
 	committedTxs, txs := txs[:50], txs[50:]
-	mempool.Update(1, committedTxs)
+	if err := mempool.Update(1, committedTxs); err != nil {
+		t.Error(err)
+	}
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
@@ -88,7 +104,9 @@ func TestTxsAvailable(t *testing.T) {
 
 	// now call update with all the txs. it should not fire as there are no txs left
 	committedTxs = append(txs, moreTxs...)
-	mempool.Update(2, committedTxs)
+	if err := mempool.Update(2, committedTxs); err != nil {
+		t.Error(err)
+	}
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs, it should only fire once
@@ -99,16 +117,16 @@ func TestTxsAvailable(t *testing.T) {
 
 func TestSerialReap(t *testing.T) {
 	app := counter.NewCounterApplication(true)
-	app.SetOption("serial", "on")
+	app.SetOption(abci.RequestSetOption{"serial", "on"})
 	cc := proxy.NewLocalClientCreator(app)
 
 	mempool := newMempoolWithApp(cc)
 	appConnCon, _ := cc.NewABCIClient()
 	appConnCon.SetLogger(log.TestingLogger().With("module", "abci-client", "connection", "consensus"))
-	if _, err := appConnCon.Start(); err != nil {
-		t.Fatalf("Error starting ABCI client: %v", err.Error())
-	}
+	err := appConnCon.Start()
+	require.Nil(t, err)
 
+	cacheMap := make(map[string]struct{})
 	deliverTxsRange := func(start, end int) {
 		// Deliver some txs.
 		for i := start; i < end; i++ {
@@ -117,26 +135,23 @@ func TestSerialReap(t *testing.T) {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			err := mempool.CheckTx(txBytes, nil)
-			if err != nil {
-				t.Fatal("Error after CheckTx: %v", err)
+			_, cached := cacheMap[string(txBytes)]
+			if cached {
+				require.NotNil(t, err, "expected error for cached tx")
+			} else {
+				require.Nil(t, err, "expected no err for uncached tx")
 			}
+			cacheMap[string(txBytes)] = struct{}{}
 
-			// This will fail because not serial (incrementing)
-			// However, error should still be nil.
-			// It just won't show up on Reap().
+			// Duplicates are cached and should return error
 			err = mempool.CheckTx(txBytes, nil)
-			if err != nil {
-				t.Fatal("Error after CheckTx: %v", err)
-			}
-
+			require.NotNil(t, err, "Expected error after CheckTx on duplicated tx")
 		}
 	}
 
 	reapCheck := func(exp int) {
 		txs := mempool.Reap(-1)
-		if len(txs) != exp {
-			t.Fatalf("Expected to reap %v txs but got %v", exp, len(txs))
-		}
+		require.Equal(t, len(txs), exp, cmn.Fmt("Expected to reap %v txs but got %v", exp, len(txs)))
 	}
 
 	updateRange := func(start, end int) {
@@ -146,7 +161,9 @@ func TestSerialReap(t *testing.T) {
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
 			txs = append(txs, txBytes)
 		}
-		mempool.Update(0, txs)
+		if err := mempool.Update(0, txs); err != nil {
+			t.Error(err)
+		}
 	}
 
 	commitRange := func(start, end int) {
@@ -154,13 +171,19 @@ func TestSerialReap(t *testing.T) {
 		for i := start; i < end; i++ {
 			txBytes := make([]byte, 8)
 			binary.BigEndian.PutUint64(txBytes, uint64(i))
-			res := appConnCon.DeliverTxSync(txBytes)
-			if !res.IsOK() {
+			res, err := appConnCon.DeliverTxSync(txBytes)
+			if err != nil {
+				t.Errorf("Client error committing tx: %v", err)
+			}
+			if res.IsErr() {
 				t.Errorf("Error committing tx. Code:%v result:%X log:%v",
 					res.Code, res.Data, res.Log)
 			}
 		}
-		res := appConnCon.CommitSync()
+		res, err := appConnCon.CommitSync()
+		if err != nil {
+			t.Errorf("Client error committing: %v", err)
+		}
 		if len(res.Data) != 8 {
 			t.Errorf("Error committing. Hash:%X log:%v", res.Data, res.Log)
 		}
@@ -199,4 +222,64 @@ func TestSerialReap(t *testing.T) {
 
 	// We should have 600 now.
 	reapCheck(600)
+}
+
+func TestMempoolCloseWAL(t *testing.T) {
+	// 1. Create the temporary directory for mempool and WAL testing.
+	rootDir, err := ioutil.TempDir("", "mempool-test")
+	require.Nil(t, err, "expecting successful tmpdir creation")
+	defer os.RemoveAll(rootDir)
+
+	// 2. Ensure that it doesn't contain any elements -- Sanity check
+	m1, err := filepath.Glob(filepath.Join(rootDir, "*"))
+	require.Nil(t, err, "successful globbing expected")
+	require.Equal(t, 0, len(m1), "no matches yet")
+
+	// 3. Create the mempool
+	wcfg := *(cfg.DefaultMempoolConfig())
+	wcfg.RootDir = rootDir
+	app := dummy.NewDummyApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	appConnMem, _ := cc.NewABCIClient()
+	mempool := NewMempool(&wcfg, appConnMem, 10)
+
+	// 4. Ensure that the directory contains the WAL file
+	m2, err := filepath.Glob(filepath.Join(rootDir, "*"))
+	require.Nil(t, err, "successful globbing expected")
+	require.Equal(t, 1, len(m2), "expecting the wal match in")
+
+	// 5. Write some contents to the WAL
+	mempool.CheckTx(types.Tx([]byte("foo")), nil)
+	walFilepath := mempool.wal.Path
+	sum1 := checksumFile(walFilepath, t)
+
+	// 6. Sanity check to ensure that the written TX matches the expectation.
+	require.Equal(t, sum1, checksumIt([]byte("foo\n")), "foo with a newline should be written")
+
+	// 7. Invoke CloseWAL() and ensure it discards the
+	// WAL thus any other write won't go through.
+	require.True(t, mempool.CloseWAL(), "CloseWAL should CloseWAL")
+	mempool.CheckTx(types.Tx([]byte("bar")), nil)
+	sum2 := checksumFile(walFilepath, t)
+	require.Equal(t, sum1, sum2, "expected no change to the WAL after invoking CloseWAL() since it was discarded")
+
+	// 8. Second CloseWAL should do nothing
+	require.False(t, mempool.CloseWAL(), "CloseWAL should CloseWAL")
+
+	// 9. Sanity check to ensure that the WAL file still exists
+	m3, err := filepath.Glob(filepath.Join(rootDir, "*"))
+	require.Nil(t, err, "successful globbing expected")
+	require.Equal(t, 1, len(m3), "expecting the wal match in")
+}
+
+func checksumIt(data []byte) string {
+	h := md5.New()
+	h.Write(data)
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func checksumFile(p string, t *testing.T) string {
+	data, err := ioutil.ReadFile(p)
+	require.Nil(t, err, "expecting successful read of %q", p)
+	return checksumIt(data)
 }

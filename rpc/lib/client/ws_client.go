@@ -47,10 +47,10 @@ type WSClient struct {
 	onReconnect func()
 
 	// internal channels
-	send             chan types.RPCRequest // user requests
-	backlog          chan types.RPCRequest // stores a single user request received during a conn failure
-	reconnectAfter   chan error            // reconnect requests
-	readRoutineQuit  chan struct{}         // a way for readRoutine to close writeRoutine
+	send            chan types.RPCRequest // user requests
+	backlog         chan types.RPCRequest // stores a single user request received during a conn failure
+	reconnectAfter  chan error            // reconnect requests
+	readRoutineQuit chan struct{}         // a way for readRoutine to close writeRoutine
 
 	wg sync.WaitGroup
 
@@ -168,12 +168,14 @@ func (c *WSClient) OnStop() {}
 
 // Stop overrides cmn.Service#Stop. There is no other way to wait until Quit
 // channel is closed.
-func (c *WSClient) Stop() bool {
-	success := c.BaseService.Stop()
-	// only close user-facing channels when we can't write to them
-	c.wg.Wait()
-	close(c.ResponsesCh)
-	return success
+func (c *WSClient) Stop() error {
+	err := c.BaseService.Stop()
+	if err == nil {
+		// only close user-facing channels when we can't write to them
+		c.wg.Wait()
+		close(c.ResponsesCh)
+	}
+	return err
 }
 
 // IsReconnecting returns true if the client is reconnecting right now.
@@ -290,10 +292,11 @@ func (c *WSClient) processBacklog() error {
 	select {
 	case request := <-c.backlog:
 		if c.writeWait > 0 {
-			c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+			if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
+				c.Logger.Error("failed to set write deadline", "err", err)
+			}
 		}
-		err := c.conn.WriteJSON(request)
-		if err != nil {
+		if err := c.conn.WriteJSON(request); err != nil {
 			c.Logger.Error("failed to resend request", "err", err)
 			c.reconnectAfter <- err
 			// requeue request
@@ -312,8 +315,7 @@ func (c *WSClient) reconnectRoutine() {
 		case originalError := <-c.reconnectAfter:
 			// wait until writeRoutine and readRoutine finish
 			c.wg.Wait()
-			err := c.reconnect()
-			if err != nil {
+			if err := c.reconnect(); err != nil {
 				c.Logger.Error("failed to reconnect", "err", err, "original_err", originalError)
 				c.Stop()
 				return
@@ -352,7 +354,10 @@ func (c *WSClient) writeRoutine() {
 
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			// ignore error; it will trigger in tests
+			// likely because it's closing an already closed connection
+		}
 		c.wg.Done()
 	}()
 
@@ -360,10 +365,11 @@ func (c *WSClient) writeRoutine() {
 		select {
 		case request := <-c.send:
 			if c.writeWait > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+				if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
+					c.Logger.Error("failed to set write deadline", "err", err)
+				}
 			}
-			err := c.conn.WriteJSON(request)
-			if err != nil {
+			if err := c.conn.WriteJSON(request); err != nil {
 				c.Logger.Error("failed to send request", "err", err)
 				c.reconnectAfter <- err
 				// add request to the backlog, so we don't lose it
@@ -372,10 +378,11 @@ func (c *WSClient) writeRoutine() {
 			}
 		case <-ticker.C:
 			if c.writeWait > 0 {
-				c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+				if err := c.conn.SetWriteDeadline(time.Now().Add(c.writeWait)); err != nil {
+					c.Logger.Error("failed to set write deadline", "err", err)
+				}
 			}
-			err := c.conn.WriteMessage(websocket.PingMessage, []byte{})
-			if err != nil {
+			if err := c.conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
 				c.Logger.Error("failed to write ping", "err", err)
 				c.reconnectAfter <- err
 				return
@@ -387,7 +394,9 @@ func (c *WSClient) writeRoutine() {
 		case <-c.readRoutineQuit:
 			return
 		case <-c.Quit:
-			c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
+				c.Logger.Error("failed to write message", "err", err)
+			}
 			return
 		}
 	}
@@ -397,7 +406,10 @@ func (c *WSClient) writeRoutine() {
 // executing all reads from this goroutine.
 func (c *WSClient) readRoutine() {
 	defer func() {
-		c.conn.Close()
+		if err := c.conn.Close(); err != nil {
+			// ignore error; it will trigger in tests
+			// likely because it's closing an already closed connection
+		}
 		c.wg.Done()
 	}()
 
@@ -415,7 +427,9 @@ func (c *WSClient) readRoutine() {
 	for {
 		// reset deadline for every message type (control or data)
 		if c.readWait > 0 {
-			c.conn.SetReadDeadline(time.Now().Add(c.readWait))
+			if err := c.conn.SetReadDeadline(time.Now().Add(c.readWait)); err != nil {
+				c.Logger.Error("failed to set read deadline", "err", err)
+			}
 		}
 		_, data, err := c.conn.ReadMessage()
 		if err != nil {
@@ -449,17 +463,17 @@ func (c *WSClient) readRoutine() {
 ///////////////////////////////////////////////////////////////////////////////
 // Predefined methods
 
-// Subscribe to an event. Note the server must have a "subscribe" route
+// Subscribe to a query. Note the server must have a "subscribe" route
 // defined.
-func (c *WSClient) Subscribe(ctx context.Context, eventType string) error {
-	params := map[string]interface{}{"event": eventType}
+func (c *WSClient) Subscribe(ctx context.Context, query string) error {
+	params := map[string]interface{}{"query": query}
 	return c.Call(ctx, "subscribe", params)
 }
 
-// Unsubscribe from an event. Note the server must have a "unsubscribe" route
+// Unsubscribe from a query. Note the server must have a "unsubscribe" route
 // defined.
-func (c *WSClient) Unsubscribe(ctx context.Context, eventType string) error {
-	params := map[string]interface{}{"event": eventType}
+func (c *WSClient) Unsubscribe(ctx context.Context, query string) error {
+	params := map[string]interface{}{"query": query}
 	return c.Call(ctx, "unsubscribe", params)
 }
 

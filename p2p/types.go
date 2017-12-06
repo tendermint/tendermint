@@ -55,12 +55,12 @@ func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 }
 
 func (info *NodeInfo) ListenHost() string {
-	host, _, _ := net.SplitHostPort(info.ListenAddr)
+	host, _, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
 	return host
 }
 
 func (info *NodeInfo) ListenPort() int {
-	_, port, _ := net.SplitHostPort(info.ListenAddr)
+	_, port, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
 	port_i, err := strconv.Atoi(port)
 	if err != nil {
 		return -1

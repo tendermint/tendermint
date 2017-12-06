@@ -18,7 +18,7 @@ import (
 type Heartbeat struct {
 	ValidatorAddress data.Bytes       `json:"validator_address"`
 	ValidatorIndex   int              `json:"validator_index"`
-	Height           int              `json:"height"`
+	Height           int64            `json:"height"`
 	Round            int              `json:"round"`
 	Sequence         int              `json:"sequence"`
 	Signature        crypto.Signature `json:"signature"`

@@ -17,6 +17,8 @@ import (
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
+var wsCallTimeout = 5 * time.Second
+
 type myHandler struct {
 	closeConnAfterRead bool
 	mtx                sync.RWMutex
@@ -32,7 +34,7 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
+	defer conn.Close() // nolint: errcheck
 	for {
 		messageType, _, err := conn.ReadMessage()
 		if err != nil {
@@ -41,12 +43,14 @@ func (h *myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		h.mtx.RLock()
 		if h.closeConnAfterRead {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				panic(err)
+			}
 		}
 		h.mtx.RUnlock()
 
 		res := json.RawMessage(`{}`)
-		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: &res})
+		emptyRespBytes, _ := json.Marshal(types.RPCResponse{Result: res})
 		if err := conn.WriteMessage(messageType, emptyRespBytes); err != nil {
 			return
 		}
@@ -100,7 +104,9 @@ func TestWSClientReconnectsAfterWriteFailure(t *testing.T) {
 	go callWgDoneOnResult(t, c, &wg)
 
 	// hacky way to abort the connection before write
-	c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		t.Error(err)
+	}
 
 	// results in WS write error, the client should resend on reconnect
 	call(t, "a", c)
@@ -133,14 +139,18 @@ func TestWSClientReconnectFailure(t *testing.T) {
 	}()
 
 	// hacky way to abort the connection before write
-	c.conn.Close()
+	if err := c.conn.Close(); err != nil {
+		t.Error(err)
+	}
 	s.Close()
 
 	// results in WS write error
 	// provide timeout to avoid blocking
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), wsCallTimeout)
 	defer cancel()
-	c.Call(ctx, "a", make(map[string]interface{}))
+	if err := c.Call(ctx, "a", make(map[string]interface{})); err != nil {
+		t.Error(err)
+	}
 
 	// expect to reconnect almost immediately
 	time.Sleep(10 * time.Millisecond)
@@ -186,7 +196,7 @@ func TestNotBlockingOnStop(t *testing.T) {
 
 func startClient(t *testing.T, addr net.Addr) *WSClient {
 	c := NewWSClient(addr.String(), "/websocket")
-	_, err := c.Start()
+	err := c.Start()
 	require.Nil(t, err)
 	c.SetLogger(log.TestingLogger())
 	return c
@@ -204,7 +214,7 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 			if resp.Error != nil {
 				t.Fatalf("unexpected error: %v", resp.Error)
 			}
-			if *resp.Result != nil {
+			if resp.Result != nil {
 				wg.Done()
 			}
 		case <-c.Quit:

@@ -49,14 +49,11 @@ type BlockchainReactor struct {
 	requestsCh   chan BlockRequest
 	timeoutsCh   chan string
 
-	evsw types.EventSwitch
+	eventBus *types.EventBus
 }
 
 // NewBlockchainReactor returns new reactor instance.
 func NewBlockchainReactor(state *sm.State, proxyAppConn proxy.AppConnConsensus, store *BlockStore, fastSync bool) *BlockchainReactor {
-	if state.LastBlockHeight == store.Height()-1 {
-		store.height-- // XXX HACK, make this better
-	}
 	if state.LastBlockHeight != store.Height() {
 		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
 	}
@@ -88,9 +85,11 @@ func (bcR *BlockchainReactor) SetLogger(l log.Logger) {
 
 // OnStart implements cmn.Service.
 func (bcR *BlockchainReactor) OnStart() error {
-	bcR.BaseReactor.OnStart()
+	if err := bcR.BaseReactor.OnStart(); err != nil {
+		return err
+	}
 	if bcR.fastSync {
-		_, err := bcR.pool.Start()
+		err := bcR.pool.Start()
 		if err != nil {
 			return err
 		}
@@ -108,7 +107,7 @@ func (bcR *BlockchainReactor) OnStop() {
 // GetChannels implements Reactor
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:                BlockchainChannel,
 			Priority:          10,
 			SendQueueCapacity: 1000,
@@ -121,6 +120,8 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	if !peer.Send(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
 		// doing nothing, will try later in `poolRoutine`
 	}
+	// peer is added to the pool once we receive the first
+	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
@@ -224,7 +225,7 @@ FOR_LOOP:
 			}
 		case <-statusUpdateTicker.C:
 			// ask for status updates
-			go bcR.BroadcastStatusRequest()
+			go bcR.BroadcastStatusRequest() // nolint: errcheck
 		case <-switchToConsensusTicker.C:
 			height, numPending, lenRequesters := bcR.pool.GetStatus()
 			outbound, inbound, _ := bcR.Switch.NumPeers()
@@ -271,7 +272,7 @@ FOR_LOOP:
 					// NOTE: we could improve performance if we
 					// didn't make the app commit to disk every block
 					// ... but we would need a way to get the hash without it persisting
-					err := bcR.state.ApplyBlock(bcR.evsw, bcR.proxyAppConn, first, firstPartsHeader, types.MockMempool{})
+					err := bcR.state.ApplyBlock(bcR.eventBus, bcR.proxyAppConn, first, firstPartsHeader, types.MockMempool{})
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
@@ -299,9 +300,9 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 	return nil
 }
 
-// SetEventSwitch implements events.Eventable
-func (bcR *BlockchainReactor) SetEventSwitch(evsw types.EventSwitch) {
-	bcR.evsw = evsw
+// SetEventBus sets event bus.
+func (bcR *BlockchainReactor) SetEventBus(b *types.EventBus) {
+	bcR.eventBus = b
 }
 
 //-----------------------------------------------------------------------------
@@ -343,7 +344,7 @@ func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage,
 //-------------------------------------
 
 type bcBlockRequestMessage struct {
-	Height int
+	Height int64
 }
 
 func (m *bcBlockRequestMessage) String() string {
@@ -351,7 +352,7 @@ func (m *bcBlockRequestMessage) String() string {
 }
 
 type bcNoBlockResponseMessage struct {
-	Height int
+	Height int64
 }
 
 func (brm *bcNoBlockResponseMessage) String() string {
@@ -372,7 +373,7 @@ func (m *bcBlockResponseMessage) String() string {
 //-------------------------------------
 
 type bcStatusRequestMessage struct {
-	Height int
+	Height int64
 }
 
 func (m *bcStatusRequestMessage) String() string {
@@ -382,7 +383,7 @@ func (m *bcStatusRequestMessage) String() string {
 //-------------------------------------
 
 type bcStatusResponseMessage struct {
-	Height int
+	Height int64
 }
 
 func (m *bcStatusResponseMessage) String() string {

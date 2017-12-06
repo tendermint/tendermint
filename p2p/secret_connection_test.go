@@ -70,8 +70,12 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 
 func TestSecretConnectionHandshake(t *testing.T) {
 	fooSecConn, barSecConn := makeSecretConnPair(t)
-	fooSecConn.Close()
-	barSecConn.Close()
+	if err := fooSecConn.Close(); err != nil {
+		t.Error(err)
+	}
+	if err := barSecConn.Close(); err != nil {
+		t.Error(err)
+	}
 }
 
 func TestSecretConnectionReadWrite(t *testing.T) {
@@ -110,7 +114,9 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 							return
 						}
 					}
-					nodeConn.PipeWriter.Close()
+					if err := nodeConn.PipeWriter.Close(); err != nil {
+						t.Error(err)
+					}
 				},
 				func() {
 					// Node reads
@@ -125,7 +131,9 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
-					nodeConn.PipeReader.Close()
+					if err := nodeConn.PipeReader.Close(); err != nil {
+						t.Error(err)
+					}
 				})
 		}
 	}
@@ -197,6 +205,8 @@ func BenchmarkSecretConnection(b *testing.B) {
 	}
 	b.StopTimer()
 
-	fooSecConn.Close()
+	if err := fooSecConn.Close(); err != nil {
+		b.Error(err)
+	}
 	//barSecConn.Close() race condition
 }

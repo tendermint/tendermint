@@ -15,8 +15,6 @@ import (
 
 	wire "github.com/tendermint/go-wire"
 
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -25,7 +23,7 @@ var (
 	abciResponsesKey = []byte("abciResponsesKey")
 )
 
-func calcValidatorsKey(height int) []byte {
+func calcValidatorsKey(height int64) []byte {
 	return []byte(cmn.Fmt("validatorsKey:%v", height))
 }
 
@@ -47,7 +45,7 @@ type State struct {
 	// These fields are updated by SetBlockAndValidators.
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	// LastValidators is used to validate block.LastCommit.
-	LastBlockHeight int
+	LastBlockHeight int64
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 	Validators      *types.ValidatorSet
@@ -56,13 +54,10 @@ type State struct {
 	// the change only applies to the next block.
 	// So, if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
-	LastHeightValidatorsChanged int
+	LastHeightValidatorsChanged int64
 
 	// AppHash is updated after Commit
 	AppHash []byte
-
-	// TxIndexer indexes transactions
-	TxIndexer txindex.TxIndexer `json:"-"`
 
 	logger log.Logger
 }
@@ -95,7 +90,7 @@ func loadState(db dbm.DB, key []byte) *State {
 		return nil
 	}
 
-	s := &State{db: db, TxIndexer: &null.TxIndex{}}
+	s := &State{db: db}
 	r, n, err := bytes.NewReader(buf), new(int), new(error)
 	wire.ReadBinaryPtr(&s, r, 0, n, err)
 	if *err != nil {
@@ -114,8 +109,6 @@ func (s *State) SetLogger(l log.Logger) {
 }
 
 // Copy makes a copy of the State for mutating.
-// NOTE: Does not create a copy of TxIndexer. It creates a new pointer that points to the same
-// underlying TxIndexer.
 func (s *State) Copy() *State {
 	return &State{
 		db:                          s.db,
@@ -125,7 +118,6 @@ func (s *State) Copy() *State {
 		Validators:                  s.Validators.Copy(),
 		LastValidators:              s.LastValidators.Copy(),
 		AppHash:                     s.AppHash,
-		TxIndexer:                   s.TxIndexer,
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
 		logger:  s.logger,
 		ChainID: s.ChainID,
@@ -171,7 +163,7 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 }
 
 // LoadValidators loads the ValidatorSet for a given height.
-func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
+func (s *State) LoadValidators(height int64) (*types.ValidatorSet, error) {
 	valInfo := s.loadValidators(height)
 	if valInfo == nil {
 		return nil, ErrNoValSetForHeight{height}
@@ -188,7 +180,7 @@ func (s *State) LoadValidators(height int) (*types.ValidatorSet, error) {
 	return valInfo.ValidatorSet, nil
 }
 
-func (s *State) loadValidators(height int) *ValidatorsInfo {
+func (s *State) loadValidators(height int64) *ValidatorsInfo {
 	buf := s.db.Get(calcValidatorsKey(height))
 	if len(buf) == 0 {
 		return nil
@@ -264,7 +256,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 
 }
 
-func (s *State) setBlockAndValidators(height int, blockID types.BlockID, blockTime time.Time,
+func (s *State) setBlockAndValidators(height int64, blockID types.BlockID, blockTime time.Time,
 	prevValSet, nextValSet *types.ValidatorSet) {
 
 	s.LastBlockHeight = height
@@ -284,10 +276,10 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 // ABCIResponses retains the responses of the various ABCI calls during block processing.
 // It is persisted to disk before calling Commit.
 type ABCIResponses struct {
-	Height int
+	Height int64
 
 	DeliverTx []*abci.ResponseDeliverTx
-	EndBlock  abci.ResponseEndBlock
+	EndBlock  *abci.ResponseEndBlock
 
 	txs types.Txs // reference for indexing results by hash
 }
@@ -311,7 +303,7 @@ func (a *ABCIResponses) Bytes() []byte {
 // ValidatorsInfo represents the latest validator set, or the last height it changed
 type ValidatorsInfo struct {
 	ValidatorSet      *types.ValidatorSet
-	LastHeightChanged int
+	LastHeightChanged int64
 }
 
 // Bytes serializes the ValidatorsInfo using go-wire
@@ -368,7 +360,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		}
 	}
 
-	// we do not need indexer during replay and in tests
 	return &State{
 		db: db,
 
@@ -381,7 +372,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		Validators:                  types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		AppHash:                     genDoc.AppHash,
-		TxIndexer:                   &null.TxIndex{},
 		LastHeightValidatorsChanged: 1,
 	}, nil
 }

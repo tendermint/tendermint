@@ -2,10 +2,13 @@ package consensus
 
 import (
 	"bytes"
+	"crypto/rand"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/consensus/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -45,8 +48,8 @@ func TestSearchForEndHeight(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	h := 3
-	gr, found, err := wal.SearchForEndHeight(uint64(h))
+	h := int64(3)
+	gr, found, err := wal.SearchForEndHeight(h)
 	assert.NoError(t, err, cmn.Fmt("expected not to err on height %d", h))
 	assert.True(t, found, cmn.Fmt("expected to find end height for %d", h))
 	assert.NotNil(t, gr, "expected group not to be nil")
@@ -58,5 +61,67 @@ func TestSearchForEndHeight(t *testing.T) {
 	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
 	assert.Equal(t, rs.Height, h+1, cmn.Fmt("wrong height"))
+}
 
+var initOnce sync.Once
+
+func registerInterfacesOnce() {
+	initOnce.Do(func() {
+		var _ = wire.RegisterInterface(
+			struct{ WALMessage }{},
+			wire.ConcreteType{[]byte{}, 0x10},
+		)
+	})
+}
+
+func nBytes(n int) []byte {
+	buf := make([]byte, n)
+	n, _ = rand.Read(buf)
+	return buf[:n]
+}
+
+func benchmarkWalDecode(b *testing.B, n int) {
+	registerInterfacesOnce()
+
+	buf := new(bytes.Buffer)
+	enc := NewWALEncoder(buf)
+
+	data := nBytes(n)
+	enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second)})
+
+	encoded := buf.Bytes()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf.Reset()
+		buf.Write(encoded)
+		dec := NewWALDecoder(buf)
+		if _, err := dec.Decode(); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.ReportAllocs()
+}
+
+func BenchmarkWalDecode512B(b *testing.B) {
+	benchmarkWalDecode(b, 512)
+}
+
+func BenchmarkWalDecode10KB(b *testing.B) {
+	benchmarkWalDecode(b, 10*1024)
+}
+func BenchmarkWalDecode100KB(b *testing.B) {
+	benchmarkWalDecode(b, 100*1024)
+}
+func BenchmarkWalDecode1MB(b *testing.B) {
+	benchmarkWalDecode(b, 1024*1024)
+}
+func BenchmarkWalDecode10MB(b *testing.B) {
+	benchmarkWalDecode(b, 10*1024*1024)
+}
+func BenchmarkWalDecode100MB(b *testing.B) {
+	benchmarkWalDecode(b, 100*1024*1024)
+}
+func BenchmarkWalDecode1GB(b *testing.B) {
+	benchmarkWalDecode(b, 1024*1024*1024)
 }

@@ -1,6 +1,7 @@
 package rpctest
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"os"
@@ -13,11 +14,35 @@ import (
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
+	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
 )
 
-var config *cfg.Config
+var globalConfig *cfg.Config
+
+func waitForRPC() {
+	laddr := GetConfig().RPC.ListenAddress
+	client := rpcclient.NewJSONRPCClient(laddr)
+	result := new(ctypes.ResultStatus)
+	for {
+		_, err := client.Call("status", map[string]interface{}{}, result)
+		if err == nil {
+			return
+		}
+	}
+}
+
+func waitForGRPC() {
+	client := GetGRPCClient()
+	for {
+		_, err := client.Ping(context.Background(), &core_grpc.RequestPing{})
+		if err == nil {
+			return
+		}
+	}
+}
 
 // f**ing long, but unique for each test
 func makePathname() string {
@@ -46,29 +71,39 @@ func makeAddrs() (string, string, string) {
 
 // GetConfig returns a config for the test cases as a singleton
 func GetConfig() *cfg.Config {
-	if config == nil {
+	if globalConfig == nil {
 		pathname := makePathname()
-		config = cfg.ResetTestRoot(pathname)
+		globalConfig = cfg.ResetTestRoot(pathname)
 
 		// and we use random ports to run in parallel
 		tm, rpc, grpc := makeAddrs()
-		config.P2P.ListenAddress = tm
-		config.RPC.ListenAddress = rpc
-		config.RPC.GRPCListenAddress = grpc
+		globalConfig.P2P.ListenAddress = tm
+		globalConfig.RPC.ListenAddress = rpc
+		globalConfig.RPC.GRPCListenAddress = grpc
+		globalConfig.TxIndex.IndexTags = "app.creator" // see dummy application
 	}
-	return config
+	return globalConfig
 }
 
 func GetGRPCClient() core_grpc.BroadcastAPIClient {
-	grpcAddr := config.RPC.GRPCListenAddress
+	grpcAddr := globalConfig.RPC.GRPCListenAddress
 	return core_grpc.StartGRPCClient(grpcAddr)
 }
 
 // StartTendermint starts a test tendermint server in a go routine and returns when it is initialized
 func StartTendermint(app abci.Application) *nm.Node {
 	node := NewTendermint(app)
-	node.Start()
+	err := node.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	// wait for rpc
+	waitForRPC()
+	waitForGRPC()
+
 	fmt.Println("Tendermint running!")
+
 	return node
 }
 

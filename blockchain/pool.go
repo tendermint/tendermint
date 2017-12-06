@@ -52,22 +52,22 @@ type BlockPool struct {
 
 	mtx sync.Mutex
 	// block requests
-	requesters map[int]*bpRequester
-	height     int   // the lowest key in requesters.
+	requesters map[int64]*bpRequester
+	height     int64 // the lowest key in requesters.
 	numPending int32 // number of requests pending assignment or block response
 	// peers
 	peers         map[string]*bpPeer
-	maxPeerHeight int
+	maxPeerHeight int64
 
 	requestsCh chan<- BlockRequest
 	timeoutsCh chan<- string
 }
 
-func NewBlockPool(start int, requestsCh chan<- BlockRequest, timeoutsCh chan<- string) *BlockPool {
+func NewBlockPool(start int64, requestsCh chan<- BlockRequest, timeoutsCh chan<- string) *BlockPool {
 	bp := &BlockPool{
 		peers: make(map[string]*bpPeer),
 
-		requesters: make(map[int]*bpRequester),
+		requesters: make(map[int64]*bpRequester),
 		height:     start,
 		numPending: 0,
 
@@ -132,7 +132,7 @@ func (pool *BlockPool) removeTimedoutPeers() {
 	}
 }
 
-func (pool *BlockPool) GetStatus() (height int, numPending int32, lenRequesters int) {
+func (pool *BlockPool) GetStatus() (height int64, numPending int32, lenRequesters int) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -195,7 +195,7 @@ func (pool *BlockPool) PopRequest() {
 
 // Invalidates the block at pool.height,
 // Remove the peer and redo request from others.
-func (pool *BlockPool) RedoRequest(height int) {
+func (pool *BlockPool) RedoRequest(height int64) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -232,15 +232,15 @@ func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int
 	}
 }
 
-// MaxPeerHeight returns the heighest height reported by a peer
-func (pool *BlockPool) MaxPeerHeight() int {
+// MaxPeerHeight returns the highest height reported by a peer.
+func (pool *BlockPool) MaxPeerHeight() int64 {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 	return pool.maxPeerHeight
 }
 
 // Sets the peer's alleged blockchain height.
-func (pool *BlockPool) SetPeerHeight(peerID string, height int) {
+func (pool *BlockPool) SetPeerHeight(peerID string, height int64) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -279,7 +279,7 @@ func (pool *BlockPool) removePeer(peerID string) {
 
 // Pick an available peer with at least the given minHeight.
 // If no peers are available, returns nil.
-func (pool *BlockPool) pickIncrAvailablePeer(minHeight int) *bpPeer {
+func (pool *BlockPool) pickIncrAvailablePeer(minHeight int64) *bpPeer {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -304,17 +304,24 @@ func (pool *BlockPool) makeNextRequester() {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
-	nextHeight := pool.height + len(pool.requesters)
+	nextHeight := pool.height + pool.requestersLen()
 	request := newBPRequester(pool, nextHeight)
 	// request.SetLogger(pool.Logger.With("height", nextHeight))
 
 	pool.requesters[nextHeight] = request
 	pool.numPending++
 
-	request.Start()
+	err := request.Start()
+	if err != nil {
+		request.Logger.Error("Error starting request", "err", err)
+	}
 }
 
-func (pool *BlockPool) sendRequest(height int, peerID string) {
+func (pool *BlockPool) requestersLen() int64 {
+	return int64(len(pool.requesters))
+}
+
+func (pool *BlockPool) sendRequest(height int64, peerID string) {
 	if !pool.IsRunning() {
 		return
 	}
@@ -334,7 +341,8 @@ func (pool *BlockPool) debug() string {
 	defer pool.mtx.Unlock()
 
 	str := ""
-	for h := pool.height; h < pool.height+len(pool.requesters); h++ {
+	nextHeight := pool.height + pool.requestersLen()
+	for h := pool.height; h < nextHeight; h++ {
 		if pool.requesters[h] == nil {
 			str += cmn.Fmt("H(%v):X ", h)
 		} else {
@@ -352,7 +360,7 @@ type bpPeer struct {
 	id          string
 	recvMonitor *flow.Monitor
 
-	height     int
+	height     int64
 	numPending int32
 	timeout    *time.Timer
 	didTimeout bool
@@ -360,7 +368,7 @@ type bpPeer struct {
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID string, height int) *bpPeer {
+func newBPPeer(pool *BlockPool, peerID string, height int64) *bpPeer {
 	peer := &bpPeer{
 		pool:       pool,
 		id:         peerID,
@@ -421,7 +429,7 @@ func (peer *bpPeer) onTimeout() {
 type bpRequester struct {
 	cmn.BaseService
 	pool       *BlockPool
-	height     int
+	height     int64
 	gotBlockCh chan struct{}
 	redoCh     chan struct{}
 
@@ -430,7 +438,7 @@ type bpRequester struct {
 	block  *types.Block
 }
 
-func newBPRequester(pool *BlockPool, height int) *bpRequester {
+func newBPRequester(pool *BlockPool, height int64) *bpRequester {
 	bpr := &bpRequester{
 		pool:       pool,
 		height:     height,
@@ -542,6 +550,6 @@ OUTER_LOOP:
 //-------------------------------------
 
 type BlockRequest struct {
-	Height int
+	Height int64
 	PeerID string
 }

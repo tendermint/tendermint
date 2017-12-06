@@ -27,6 +27,38 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.13.0 (December 6, 2017)
+
+BREAKING CHANGES:
+- abci: update to v0.8 using gogo/protobuf; includes tx tags, vote info in RequestBeginBlock, data.Bytes everywhere, use int64, etc.
+- types: block heights are now `int64` everywhere
+- types & node: EventSwitch and EventCache have been replaced by EventBus and EventBuffer; event types have been overhauled
+- node: EventSwitch methods now refer to EventBus
+- rpc/lib/types: RPCResponse is no longer a pointer; WSRPCConnection interface has been modified
+- rpc/client: WaitForOneEvent takes an EventsClient instead of types.EventSwitch
+- rpc/client: Add/RemoveListenerForEvent are now Subscribe/Unsubscribe
+- rpc/core/types: ResultABCIQuery wraps an abci.ResponseQuery
+- rpc: `/subscribe` and `/unsubscribe` take `query` arg instead of `event`
+- rpc: `/status` returns the LatestBlockTime in human readable form instead of in nanoseconds
+- mempool: cached transactions return an error instead of an ABCI response with BadNonce
+
+FEATURES:
+- rpc: new `/unsubscribe_all` WebSocket RPC endpoint
+- rpc: new `/tx_search` endpoint for filtering transactions by more complex queries
+- p2p/trust: new trust metric for tracking peers. See ADR-006
+- config: TxIndexConfig allows to set what DeliverTx tags to index
+
+IMPROVEMENTS:
+- New asynchronous events system using `tmlibs/pubsub`
+- logging: Various small improvements
+- consensus: Graceful shutdown when app crashes
+- tests: Fix various non-deterministic errors
+- p2p: more defensive programming
+
+BUG FIXES:
+- consensus: fix panic where prs.ProposalBlockParts is not initialized
+- p2p: fix panic on bad channel
+
 ## 0.12.1 (November 27, 2017)
 
 BUG FIXES:

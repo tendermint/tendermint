@@ -55,8 +55,10 @@ func (rs RoundStepType) String() string {
 // It is Immutable when returned from ConsensusState.GetRoundState()
 // TODO: Actually, only the top pointer is copied,
 // so access to field pointers is still racey
+// NOTE: Not thread safe. Should only be manipulated by functions downstream
+// of the cs.receiveRoutine
 type RoundState struct {
-	Height             int // Height we are working on
+	Height             int64 // Height we are working on
 	Round              int
 	Step               RoundStepType
 	StartTime          time.Time
@@ -76,11 +78,14 @@ type RoundState struct {
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
+	// XXX: copy the RoundState
+	// if we want to avoid this, we may need synchronous events after all
+	rs_ := *rs
 	edrs := types.EventDataRoundState{
 		Height:     rs.Height,
 		Round:      rs.Round,
 		Step:       rs.Step.String(),
-		RoundState: rs,
+		RoundState: &rs_,
 	}
 	return edrs
 }

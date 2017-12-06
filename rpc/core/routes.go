@@ -7,8 +7,9 @@ import (
 // TODO: better system than "unsafe" prefix
 var Routes = map[string]*rpc.RPCFunc{
 	// subscribe/unsubscribe are reserved for websocket events.
-	"subscribe":   rpc.NewWSRPCFunc(Subscribe, "event"),
-	"unsubscribe": rpc.NewWSRPCFunc(Unsubscribe, "event"),
+	"subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),
+	"unsubscribe":     rpc.NewWSRPCFunc(Unsubscribe, "query"),
+	"unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
 
 	// info API
 	"status":               rpc.NewRPCFunc(Status, ""),
@@ -18,6 +19,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"block":                rpc.NewRPCFunc(Block, "height"),
 	"commit":               rpc.NewRPCFunc(Commit, "height"),
 	"tx":                   rpc.NewRPCFunc(Tx, "hash,prove"),
+	"tx_search":            rpc.NewRPCFunc(TxSearch, "query,prove"),
 	"validators":           rpc.NewRPCFunc(Validators, "height"),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, ""),
 	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, ""),

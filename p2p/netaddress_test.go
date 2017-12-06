@@ -31,9 +31,9 @@ func TestNewNetAddressString(t *testing.T) {
 	}{
 		{"127.0.0.1:8080", true},
 		// {"127.0.0:8080", false},
-		{"a", false},
-		{"127.0.0.1:a", false},
-		{"a:8080", false},
+		{"notahost", false},
+		{"127.0.0.1:notapath", false},
+		{"notahost:8080", false},
 		{"8082", false},
 		{"127.0.0:8080000", false},
 	}

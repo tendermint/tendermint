@@ -1,6 +1,8 @@
 package core
 
 import (
+	"time"
+
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -12,12 +14,14 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+var subscribeTimeout = 5 * time.Second
+
 //----------------------------------------------
 // These interfaces are used by RPC and must be thread safe
 
 type Consensus interface {
 	GetState() *sm.State
-	GetValidators() (int, []*types.Validator)
+	GetValidators() (int64, []*types.Validator)
 	GetRoundState() *cstypes.RoundState
 }
 
@@ -36,7 +40,6 @@ type P2P interface {
 
 var (
 	// external, thread safe interfaces
-	eventSwitch   types.EventSwitch
 	proxyAppQuery proxy.AppConnQuery
 
 	// interfaces defined in types and above
@@ -51,13 +54,10 @@ var (
 	addrBook         *p2p.AddrBook
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
+	eventBus         *types.EventBus // thread safe
 
 	logger log.Logger
 )
-
-func SetEventSwitch(evsw types.EventSwitch) {
-	eventSwitch = evsw
-}
 
 func SetBlockStore(bs types.BlockStore) {
 	blockStore = bs
@@ -101,4 +101,8 @@ func SetConsensusReactor(conR *consensus.ConsensusReactor) {
 
 func SetLogger(l log.Logger) {
 	logger = l
+}
+
+func SetEventBus(b *types.EventBus) {
+	eventBus = b
 }

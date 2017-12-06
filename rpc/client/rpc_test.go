@@ -1,13 +1,16 @@
 package client_test
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/iavl"
+
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -18,7 +21,7 @@ func getHTTPClient() *client.HTTP {
 	return client.NewHTTP(rpcAddr, "/websocket")
 }
 
-func getLocalClient() client.Local {
+func getLocalClient() *client.Local {
 	return client.NewLocal(node)
 }
 
@@ -108,8 +111,9 @@ func TestABCIQuery(t *testing.T) {
 
 		// wait before querying
 		client.WaitForHeight(c, apph, nil)
-		qres, err := c.ABCIQuery("/key", k)
-		if assert.Nil(t, err) && assert.True(t, qres.Code.IsOK()) {
+		res, err := c.ABCIQuery("/key", k)
+		qres := res.Response
+		if assert.Nil(t, err) && assert.True(t, qres.IsOK()) {
 			assert.EqualValues(t, v, qres.Value)
 		}
 	}
@@ -135,14 +139,17 @@ func TestAppCalls(t *testing.T) {
 		k, v, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.DeliverTx.Code.IsOK())
+		require.True(bres.DeliverTx.IsOK())
 		txh := bres.Height
 		apph := txh + 1 // this is where the tx will be applied to the state
 
 		// wait before querying
-		client.WaitForHeight(c, apph, nil)
-		qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
-		if assert.Nil(err) && assert.True(qres.Code.IsOK()) {
+		if err := client.WaitForHeight(c, apph, nil); err != nil {
+			t.Error(err)
+		}
+		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
+		qres := _qres.Response
+		if assert.Nil(err) && assert.True(qres.IsOK()) {
 			// assert.Equal(k, data.GetKey())  // only returned for proofs
 			assert.EqualValues(v, qres.Value)
 		}
@@ -151,7 +158,7 @@ func TestAppCalls(t *testing.T) {
 		// ptx, err := c.Tx(bres.Hash, true)
 		ptx, err := c.Tx(bres.Hash, true)
 		require.Nil(err, "%d: %+v", i, err)
-		assert.Equal(txh, ptx.Height)
+		assert.EqualValues(txh, ptx.Height)
 		assert.EqualValues(tx, ptx.Tx)
 
 		// and we can even check the block is added
@@ -189,8 +196,9 @@ func TestAppCalls(t *testing.T) {
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
 		// and we got a proof that works!
-		pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
-		if assert.Nil(err) && assert.True(pres.Code.IsOK()) {
+		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
+		pres := _pres.Response
+		if assert.Nil(err) && assert.True(pres.IsOK()) {
 			proof, err := iavl.ReadKeyExistsProof(pres.Proof)
 			if assert.Nil(err) {
 				key := pres.Key
@@ -213,7 +221,7 @@ func TestBroadcastTxSync(t *testing.T) {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxSync(tx)
 		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.Code.IsOK())
+		require.Equal(bres.Code, abci.CodeTypeOK) // FIXME
 
 		require.Equal(initMempoolSize+1, mempool.Size())
 
@@ -231,8 +239,8 @@ func TestBroadcastTxCommit(t *testing.T) {
 		_, _, tx := MakeTxKV()
 		bres, err := c.BroadcastTxCommit(tx)
 		require.Nil(err, "%d: %+v", i, err)
-		require.True(bres.CheckTx.Code.IsOK())
-		require.True(bres.DeliverTx.Code.IsOK())
+		require.True(bres.CheckTx.IsOK())
+		require.True(bres.DeliverTx.IsOK())
 
 		require.Equal(0, mempool.Size())
 	}
@@ -278,10 +286,10 @@ func TestTx(t *testing.T) {
 				require.NotNil(err)
 			} else {
 				require.Nil(err, "%+v", err)
-				assert.Equal(txHeight, ptx.Height)
+				assert.EqualValues(txHeight, ptx.Height)
 				assert.EqualValues(tx, ptx.Tx)
-				assert.Equal(0, ptx.Index)
-				assert.True(ptx.TxResult.Code.IsOK())
+				assert.Zero(ptx.Index)
+				assert.True(ptx.TxResult.IsOK())
 
 				// time to verify the proof
 				proof := ptx.Proof
@@ -289,6 +297,53 @@ func TestTx(t *testing.T) {
 					assert.True(proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
 				}
 			}
+		}
+	}
+}
+
+func TestTxSearch(t *testing.T) {
+	// first we broadcast a tx
+	c := getHTTPClient()
+	_, _, tx := MakeTxKV()
+	bres, err := c.BroadcastTxCommit(tx)
+	require.Nil(t, err, "%+v", err)
+
+	txHeight := bres.Height
+	txHash := bres.Hash
+
+	anotherTxHash := types.Tx("a different tx").Hash()
+
+	for i, c := range GetClients() {
+		t.Logf("client %d", i)
+
+		// now we query for the tx.
+		// since there's only one tx, we know index=0.
+		results, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, results, 1)
+
+		ptx := results[0]
+		assert.EqualValues(t, txHeight, ptx.Height)
+		assert.EqualValues(t, tx, ptx.Tx)
+		assert.Zero(t, ptx.Index)
+		assert.True(t, ptx.TxResult.IsOK())
+
+		// time to verify the proof
+		proof := ptx.Proof
+		if assert.EqualValues(t, tx, proof.Data) {
+			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+		}
+
+		// we query for non existing tx
+		results, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, results, 0)
+
+		// we query using a tag (see dummy application)
+		results, err = c.TxSearch("app.creator='jae'", false)
+		require.Nil(t, err, "%+v", err)
+		if len(results) == 0 {
+			t.Fatal("expected a lot of transactions")
 		}
 	}
 }

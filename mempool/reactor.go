@@ -28,7 +28,6 @@ type MempoolReactor struct {
 	p2p.BaseReactor
 	config  *cfg.MempoolConfig
 	Mempool *Mempool
-	evsw    types.EventSwitch
 }
 
 // NewMempoolReactor returns a new MempoolReactor with the given config and mempool.
@@ -51,7 +50,7 @@ func (memR *MempoolReactor) SetLogger(l log.Logger) {
 // It returns the list of channels for this reactor.
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
-		&p2p.ChannelDescriptor{
+		{
 			ID:       MempoolChannel,
 			Priority: 5,
 		},
@@ -98,7 +97,7 @@ func (memR *MempoolReactor) BroadcastTx(tx types.Tx, cb func(*abci.Response)) er
 
 // PeerState describes the state of a peer.
 type PeerState interface {
-	GetHeight() int
+	GetHeight() int64
 }
 
 // Peer describes a peer.
@@ -148,11 +147,6 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
 		next = next.NextWait()
 		continue
 	}
-}
-
-// SetEventSwitch implements events.Eventable.
-func (memR *MempoolReactor) SetEventSwitch(evsw types.EventSwitch) {
-	memR.evsw = evsw
 }
 
 //-----------------------------------------------------------------------------

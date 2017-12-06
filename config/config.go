@@ -16,6 +16,7 @@ type Config struct {
 	P2P       *P2PConfig       `mapstructure:"p2p"`
 	Mempool   *MempoolConfig   `mapstructure:"mempool"`
 	Consensus *ConsensusConfig `mapstructure:"consensus"`
+	TxIndex   *TxIndexConfig   `mapstructure:"tx_index"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
@@ -26,6 +27,7 @@ func DefaultConfig() *Config {
 		P2P:        DefaultP2PConfig(),
 		Mempool:    DefaultMempoolConfig(),
 		Consensus:  DefaultConsensusConfig(),
+		TxIndex:    DefaultTxIndexConfig(),
 	}
 }
 
@@ -37,6 +39,7 @@ func TestConfig() *Config {
 		P2P:        TestP2PConfig(),
 		Mempool:    DefaultMempoolConfig(),
 		Consensus:  TestConsensusConfig(),
+		TxIndex:    DefaultTxIndexConfig(),
 	}
 }
 
@@ -93,9 +96,6 @@ type BaseConfig struct {
 	// so the app can decide if we should keep the connection or not
 	FilterPeers bool `mapstructure:"filter_peers"` // false
 
-	// What indexer to use for transactions
-	TxIndex string `mapstructure:"tx_index"`
-
 	// Database backend: leveldb | memdb
 	DBBackend string `mapstructure:"db_backend"`
 
@@ -115,7 +115,6 @@ func DefaultBaseConfig() BaseConfig {
 		ProfListenAddress: "",
 		FastSync:          true,
 		FilterPeers:       false,
-		TxIndex:           "kv",
 		DBBackend:         "leveldb",
 		DBPath:            "data",
 	}
@@ -255,7 +254,7 @@ func TestP2PConfig() *P2PConfig {
 	return conf
 }
 
-// AddrBookFile returns the full path to the address bool
+// AddrBookFile returns the full path to the address book
 func (p *P2PConfig) AddrBookFile() string {
 	return rootify(p.AddrBook, p.RootDir)
 }
@@ -410,6 +409,41 @@ func (c *ConsensusConfig) WalFile() string {
 // SetWalFile sets the path to the write-ahead log file
 func (c *ConsensusConfig) SetWalFile(walFile string) {
 	c.walFile = walFile
+}
+
+//-----------------------------------------------------------------------------
+// TxIndexConfig
+
+// TxIndexConfig defines the confuguration for the transaction
+// indexer, including tags to index.
+type TxIndexConfig struct {
+	// What indexer to use for transactions
+	//
+	// Options:
+	//   1) "null" (default)
+	//   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+	Indexer string `mapstructure:"indexer"`
+
+	// Comma-separated list of tags to index (by default the only tag is tx hash)
+	//
+	// It's recommended to index only a subset of tags due to possible memory
+	// bloat. This is, of course, depends on the indexer's DB and the volume of
+	// transactions.
+	IndexTags string `mapstructure:"index_tags"`
+
+	// When set to true, tells indexer to index all tags. Note this may be not
+	// desirable (see the comment above). IndexTags has a precedence over
+	// IndexAllTags (i.e. when given both, IndexTags will be indexed).
+	IndexAllTags bool `mapstructure:"index_all_tags"`
+}
+
+// DefaultTxIndexConfig returns a default configuration for the transaction indexer.
+func DefaultTxIndexConfig() *TxIndexConfig {
+	return &TxIndexConfig{
+		Indexer:      "kv",
+		IndexTags:    "",
+		IndexAllTags: false,
+	}
 }
 
 //-----------------------------------------------------------------------------

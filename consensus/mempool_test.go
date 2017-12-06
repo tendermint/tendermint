@@ -2,13 +2,17 @@ package consensus
 
 import (
 	"encoding/binary"
+	"fmt"
 	"testing"
 	"time"
 
-	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/types"
+	"github.com/stretchr/testify/assert"
 
+	"github.com/tendermint/abci/example/code"
+	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -22,16 +26,15 @@ func TestNoProgressUntilTxsAvailable(t *testing.T) {
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
 	ensureNewStep(newBlockCh) // first block gets committed
 	ensureNoNewStep(newBlockCh)
-	deliverTxsRange(cs, 0, 2)
+	deliverTxsRange(cs, 0, 1)
 	ensureNewStep(newBlockCh) // commit txs
 	ensureNewStep(newBlockCh) // commit updated app hash
 	ensureNoNewStep(newBlockCh)
-
 }
 
 func TestProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
@@ -41,7 +44,7 @@ func TestProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 	startTestRound(cs, height, round)
 
 	ensureNewStep(newBlockCh)   // first block gets committed
@@ -56,9 +59,9 @@ func TestProgressInHigherRound(t *testing.T) {
 	cs := newConsensusStateWithConfig(config, state, privVals[0], NewCounterApplication())
 	cs.mempool.EnableTxsAvailable()
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
-	newRoundCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewRound(), 1)
-	timeoutCh := subscribeToEvent(cs.evsw, "tester", types.EventStringTimeoutPropose(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
+	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
+	timeoutCh := subscribe(cs.eventBus, types.EventQueryTimeoutPropose)
 	cs.setProposal = func(proposal *types.Proposal) error {
 		if cs.Height == 2 && cs.Round == 0 {
 			// dont set the proposal in round 0 so we timeout and
@@ -73,7 +76,7 @@ func TestProgressInHigherRound(t *testing.T) {
 	ensureNewStep(newRoundCh) // first round at first height
 	ensureNewStep(newBlockCh) // first block gets committed
 	ensureNewStep(newRoundCh) // first round at next height
-	deliverTxsRange(cs, 0, 2) // we deliver txs, but dont set a proposal so we get the next round
+	deliverTxsRange(cs, 0, 1) // we deliver txs, but dont set a proposal so we get the next round
 	<-timeoutCh
 	ensureNewStep(newRoundCh) // wait for the next round
 	ensureNewStep(newBlockCh) // now we can commit the block
@@ -92,11 +95,10 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 }
 
 func TestTxConcurrentWithCommit(t *testing.T) {
-
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusState(state, privVals[0], NewCounterApplication())
 	height, round := cs.Height, cs.Round
-	newBlockCh := subscribeToEvent(cs.evsw, "tester", types.EventStringNewBlock(), 1)
+	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 
 	NTxs := 10000
 	go deliverTxsRange(cs, 0, NTxs)
@@ -121,41 +123,43 @@ func TestRmBadTx(t *testing.T) {
 	// increment the counter by 1
 	txBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(txBytes, uint64(0))
-	app.DeliverTx(txBytes)
-	app.Commit()
 
-	ch := make(chan struct{})
-	cbCh := make(chan struct{})
+	resDeliver := app.DeliverTx(txBytes)
+	assert.False(t, resDeliver.IsErr(), cmn.Fmt("expected no error. got %v", resDeliver))
+
+	resCommit := app.Commit()
+	assert.False(t, resCommit.IsErr(), cmn.Fmt("expected no error. got %v", resCommit))
+
+	emptyMempoolCh := make(chan struct{})
+	checkTxRespCh := make(chan struct{})
 	go func() {
 		// Try to send the tx through the mempool.
 		// CheckTx should not err, but the app should return a bad abci code
 		// and the tx should get removed from the pool
 		err := cs.mempool.CheckTx(txBytes, func(r *abci.Response) {
-			if r.GetCheckTx().Code != abci.CodeType_BadNonce {
+			if r.GetCheckTx().Code != code.CodeTypeBadNonce {
 				t.Fatalf("expected checktx to return bad nonce, got %v", r)
 			}
-			cbCh <- struct{}{}
+			checkTxRespCh <- struct{}{}
 		})
 		if err != nil {
-			t.Fatal("Error after CheckTx: %v", err)
+			t.Fatalf("Error after CheckTx: %v", err)
 		}
 
 		// check for the tx
 		for {
-			time.Sleep(time.Second)
 			txs := cs.mempool.Reap(1)
 			if len(txs) == 0 {
-				ch <- struct{}{}
-				return
+				emptyMempoolCh <- struct{}{}
 			}
-
+			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 
 	// Wait until the tx returns
 	ticker := time.After(time.Second * 5)
 	select {
-	case <-cbCh:
+	case <-checkTxRespCh:
 		// success
 	case <-ticker:
 		t.Fatalf("Timed out waiting for tx to return")
@@ -164,7 +168,7 @@ func TestRmBadTx(t *testing.T) {
 	// Wait until the tx is removed
 	ticker = time.After(time.Second * 5)
 	select {
-	case <-ch:
+	case <-emptyMempoolCh:
 		// success
 	case <-ticker:
 		t.Fatalf("Timed out waiting for tx to be removed")
@@ -187,33 +191,41 @@ func (app *CounterApplication) Info(req abci.RequestInfo) abci.ResponseInfo {
 	return abci.ResponseInfo{Data: cmn.Fmt("txs:%v", app.txCount)}
 }
 
-func (app *CounterApplication) DeliverTx(tx []byte) abci.Result {
-	return runTx(tx, &app.txCount)
+func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {
+	txValue := txAsUint64(tx)
+	if txValue != uint64(app.txCount) {
+		return abci.ResponseDeliverTx{
+			Code: code.CodeTypeBadNonce,
+			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
+	}
+	app.txCount += 1
+	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckTx(tx []byte) abci.Result {
-	return runTx(tx, &app.mempoolTxCount)
+func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
+	txValue := txAsUint64(tx)
+	if txValue != uint64(app.mempoolTxCount) {
+		return abci.ResponseCheckTx{
+			Code: code.CodeTypeBadNonce,
+			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
+	}
+	app.mempoolTxCount += 1
+	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
-func runTx(tx []byte, countPtr *int) abci.Result {
-	count := *countPtr
+func txAsUint64(tx []byte) uint64 {
 	tx8 := make([]byte, 8)
 	copy(tx8[len(tx8)-len(tx):], tx)
-	txValue := binary.BigEndian.Uint64(tx8)
-	if txValue != uint64(count) {
-		return abci.ErrBadNonce.AppendLog(cmn.Fmt("Invalid nonce. Expected %v, got %v", count, txValue))
-	}
-	*countPtr += 1
-	return abci.OK
+	return binary.BigEndian.Uint64(tx8)
 }
 
-func (app *CounterApplication) Commit() abci.Result {
+func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.OK
+		return abci.ResponseCommit{Code: code.CodeTypeOK}
 	} else {
 		hash := make([]byte, 8)
 		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return abci.NewResultOK(hash, "")
+		return abci.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
 	}
 }

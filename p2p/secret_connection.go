@@ -67,8 +67,12 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25
 	// Sort by lexical order.
 	loEphPub, hiEphPub := sort32(locEphPub, remEphPub)
 
+	// Check if the local ephemeral public key
+	// was the least, lexicographically sorted.
+	locIsLeast := bytes.Equal(locEphPub[:], loEphPub[:])
+
 	// Generate nonces to use for secretbox.
-	recvNonce, sendNonce := genNonces(loEphPub, hiEphPub, locEphPub == loEphPub)
+	recvNonce, sendNonce := genNonces(loEphPub, hiEphPub, locIsLeast)
 
 	// Generate common challenge to sign.
 	challenge := genChallenge(loEphPub, hiEphPub)
@@ -298,7 +302,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 // sha256
 func hash32(input []byte) (res *[32]byte) {
 	hasher := sha256.New()
-	hasher.Write(input) // does not error
+	hasher.Write(input) // nolint: errcheck, gas
 	resSlice := hasher.Sum(nil)
 	res = new([32]byte)
 	copy(res[:], resSlice)
@@ -308,7 +312,7 @@ func hash32(input []byte) (res *[32]byte) {
 // We only fill in the first 20 bytes with ripemd160
 func hash24(input []byte) (res *[24]byte) {
 	hasher := ripemd160.New()
-	hasher.Write(input) // does not error
+	hasher.Write(input) // nolint: errcheck, gas
 	resSlice := hasher.Sum(nil)
 	res = new([24]byte)
 	copy(res[:], resSlice)

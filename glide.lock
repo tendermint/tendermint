@@ -1,8 +1,8 @@
-hash: dce4a972f0e46b3c5e2b2b12913cde282eaaa7f5d7146def47fa509ceccbfe95
-updated: 2017-11-28T04:03:55.53240986Z
+hash: 09fc7f59ca6b718fe236368bb55f4801455295cfe455ea5865d544ee4dcfdc08
+updated: 2017-12-06T03:31:34.476581624-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: 8cea3866d0f7fb12d567a20744942c0d078c7d15
+  version: 2e60448ffcc6bf78332d1fe590260095f554dd78
   subpackages:
   - btcec
 - name: github.com/ebuchman/fail-test
@@ -28,7 +28,12 @@ imports:
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
+  - gogoproto
+  - jsonpb
   - proto
+  - protoc-gen-gogo/descriptor
+  - sortkeys
+  - types
 - name: github.com/golang/protobuf
   version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
@@ -67,7 +72,7 @@ imports:
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/rcrowley/go-metrics
-  version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
+  version: e181e095bae94582363434144c61a9653aff6e50
 - name: github.com/spf13/afero
   version: 8d919cbe7e2627e417f3e45c3c0e489a5b7e2536
   subpackages:
@@ -98,9 +103,10 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 76ef8a0697c6179220a74c479b36c27a5b53008a
+  version: fca2b508c185b855af1446ec4afc19bdfc7b315d
   subpackages:
   - client
+  - example/code
   - example/counter
   - example/dummy
   - server
@@ -113,16 +119,17 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: dd20358a264c772b4a83e477b0cfce4c88a7001d
 - name: github.com/tendermint/go-wire
-  version: 2baffcb6b690057568bc90ef1d457efb150b979a
+  version: b6fc872b42d41158a60307db4da051dd6f179415
   subpackages:
   - data
   - data/base58
+  - nowriter/tmlegacy
 - name: github.com/tendermint/iavl
   version: 594cc0c062a7174475f0ab654384038d77067917
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: b854baa1fce7101c90b1d301b3359bb412f981c0
+  version: bfcc0217f120d3bee6730ba0789d2eb72fc2e889
   subpackages:
   - autofile
   - cli
@@ -130,13 +137,14 @@ imports:
   - clist
   - common
   - db
-  - events
   - flowrate
   - log
   - merkle
+  - pubsub
+  - pubsub/query
   - test
 - name: golang.org/x/crypto
-  version: 9f005a07e0d31d45e6656d241bb5c0f2efd4bc94
+  version: 94eea52f7b742c7cbe0b03b22f0c4c8631ece122
   subpackages:
   - curve25519
   - nacl/box
@@ -147,7 +155,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: 9dfe39835686865bff950a07b394c12a98ddc811
+  version: a8b9294777976932365dabb6640cf1468d95c70f
   subpackages:
   - context
   - http2
@@ -157,22 +165,22 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: b98136db334ff9cb24f28a68e3be3cb6608f7630
+  version: 8b4580aae2a0dd0c231a45d3ccb8434ff533b840
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: 88f656faf3f37f690df1a32515b479415e1a6769
+  version: 75cc3cad82b5f47d3fb229ddda8c5167da14f294
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: 891aceb7c239e72692819142dfca057bdcbfcb96
+  version: 7f0da29060c682909f650ad8ed4e515bd74fa12a
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
-  version: f7bf885db0b7479a537ec317c6e48ce53145f3db
+  version: 401e0e00e4bb830a10496d64cd95e068c5bf50de
   subpackages:
   - balancer
   - codes
