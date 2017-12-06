@@ -24,6 +24,7 @@ FEATURES:
  - [types] RequestBeginBlock: added `absent_validators` and `byzantine_validators` fields
  - [dummy] DeliverTx returns an owner tag and a key tag
  - [abci-cli] added `log_level` flag to control the logger
+ - [abci-cli] introduce `abci-cli test` command for simple testing of ABCI server implementations via Counter application
 
 ## 0.7.1 (November 14, 2017)
 
