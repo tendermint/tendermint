@@ -294,7 +294,6 @@ distclean: clean
 	rm -rf $(GOPATH)/bin/basecli
 	rm -rf $(GOPATH)/bin/ethermint
 	rm -rf $(GOPATH)/bin/gaia
-	rm -rf $(GOPATH)/bin/gaiacli
 	rm -rf $(GOPATH)/bin/tracko
 	rm -rf $(GOPATH)/bin/trackocli
 
