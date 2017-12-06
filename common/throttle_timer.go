@@ -30,7 +30,7 @@ const (
 )
 
 func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
-	c := make(chan struct{}, 1)
+	c := make(chan struct{})
 	var t = &ThrottleTimer{
 		Name:   name,
 		Ch:     c,
@@ -54,9 +54,19 @@ func (t *ThrottleTimer) run() {
 				return
 			}
 		case <-t.timer.C:
-			t.isSet = false
-			t.output <- struct{}{}
+			t.trySend()
 		}
+	}
+}
+
+// trySend performs non-blocking send on t.output (t.Ch)
+func (t *ThrottleTimer) trySend() {
+	select {
+	case t.output <- struct{}{}:
+		t.isSet = false
+	default:
+		// if we just want to drop, replace this with t.isSet = false
+		t.timer.Reset(t.dur)
 	}
 }
 
