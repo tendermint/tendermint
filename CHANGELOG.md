@@ -3,13 +3,14 @@
 ## 0.5.0 (December 5, 2017)
 
 BREAKING:
- - [common] replace Service#Start, Service#Stop first param (bool) with an
+ - [common] replace Service#Start, Service#Stop first return value (bool) with an
    error (ErrAlreadyStarted, ErrAlreadyStopped)
- - [common] replace Service#Reset first param (bool) with an error
+ - [common] replace Service#Reset first return value (bool) with an error
  - [process] removed
 
 FEATURES:
  - [common] IntInSlice and StringInSlice functions
+ - [pubsub/query] introduce `Condition` struct, expose `Operator`, and add `query.Conditions()`
 
 ## 0.4.1 (November 27, 2017)
 
