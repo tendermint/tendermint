@@ -311,9 +311,7 @@ func or(err1 error, err2 error) error {
 func cmdTest(cmd *cobra.Command, args []string) error {
 	fmt.Println("Running tests")
 
-	var err error
-
-	err = servertest.InitChain(client)
+	err := servertest.InitChain(client)
 	fmt.Println("")
 	err = or(err, servertest.SetOption(client, "serial", "on"))
 	fmt.Println("")

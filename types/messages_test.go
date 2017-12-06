@@ -14,6 +14,20 @@ func TestMarshalJSON(t *testing.T) {
 	b, err := json.Marshal(&ResponseDeliverTx{})
 	assert.Nil(t, err)
 	assert.True(t, strings.Contains(string(b), "code"))
+
+	r1 := ResponseCheckTx{
+		Code: 1,
+		Data: []byte("hello"),
+		Gas:  43,
+		Fee:  12,
+	}
+	b, err = json.Marshal(&r1)
+	assert.Nil(t, err)
+
+	var r2 ResponseCheckTx
+	err = json.Unmarshal(b, &r2)
+	assert.Nil(t, err)
+	assert.Equal(t, r1, r2)
 }
 
 func TestWriteReadMessage(t *testing.T) {
