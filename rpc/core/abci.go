@@ -58,9 +58,7 @@ func ABCIQuery(path string, data data.Bytes, height int64, trusted bool) (*ctype
 		return nil, err
 	}
 	logger.Info("ABCIQuery", "path", path, "data", data, "result", resQuery)
-	return &ctypes.ResultABCIQuery{
-		resQuery,
-	}, nil
+	return &ctypes.ResultABCIQuery{*resQuery}, nil
 }
 
 // Get some info about the application.

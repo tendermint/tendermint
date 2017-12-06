@@ -53,7 +53,7 @@ type ResultStatus struct {
 	LatestBlockHash   data.Bytes    `json:"latest_block_hash"`
 	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
 	LatestBlockHeight int64         `json:"latest_block_height"`
-	LatestBlockTime   time.Time     `json:"latest_block_time"` // nano
+	LatestBlockTime   time.Time     `json:"latest_block_time"`
 	Syncing           bool          `json:"syncing"`
 }
 
@@ -129,7 +129,7 @@ type ResultABCIInfo struct {
 }
 
 type ResultABCIQuery struct {
-	*abci.ResponseQuery `json:"response"`
+	Response abci.ResponseQuery `json:"response"`
 }
 
 type ResultUnsafeFlushMempool struct{}

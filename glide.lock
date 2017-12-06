@@ -1,5 +1,5 @@
 hash: 09fc7f59ca6b718fe236368bb55f4801455295cfe455ea5865d544ee4dcfdc08
-updated: 2017-12-06T02:43:52.419328535-05:00
+updated: 2017-12-06T03:31:34.476581624-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2e60448ffcc6bf78332d1fe590260095f554dd78
@@ -103,7 +103,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 12dca48768bbc0ac0f345a8505166874daf1f8ec
+  version: fca2b508c185b855af1446ec4afc19bdfc7b315d
   subpackages:
   - client
   - example/code

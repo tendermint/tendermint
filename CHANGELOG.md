@@ -27,7 +27,7 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.13.0 (TBA)
+## 0.13.0 (December 6, 2017)
 
 BREAKING CHANGES:
 - abci: update to v0.8 using gogo/protobuf; includes tx tags, vote info in RequestBeginBlock, data.Bytes everywhere, use int64, etc.
@@ -38,6 +38,7 @@ BREAKING CHANGES:
 - rpc/client: WaitForOneEvent takes an EventsClient instead of types.EventSwitch
 - rpc/client: Add/RemoveListenerForEvent are now Subscribe/Unsubscribe
 - rpc: `/subscribe` and `/unsubscribe` take `query` arg instead of `event`
+- rpc/core/types: ResultABCIQuery wraps an abci.ResponseQuery
 - mempool: cached transactions return an error instead of an ABCI response with BadNonce
 
 FEATURES:

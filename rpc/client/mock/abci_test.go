@@ -51,7 +51,8 @@ func TestABCIMock(t *testing.T) {
 	assert.Equal("foobar", err.Error())
 
 	// query always returns the response
-	query, err := m.ABCIQueryWithOptions("/", nil, client.ABCIQueryOptions{Trusted: true})
+	_query, err := m.ABCIQueryWithOptions("/", nil, client.ABCIQueryOptions{Trusted: true})
+	query := _query.Response
 	require.Nil(err)
 	require.NotNil(query)
 	assert.EqualValues(key, query.Key)
@@ -173,7 +174,8 @@ func TestABCIApp(t *testing.T) {
 	assert.True(res.DeliverTx.IsOK())
 
 	// check the key
-	qres, err := m.ABCIQueryWithOptions("/key", data.Bytes(key), client.ABCIQueryOptions{Trusted: true})
+	_qres, err := m.ABCIQueryWithOptions("/key", data.Bytes(key), client.ABCIQueryOptions{Trusted: true})
+	qres := _qres.Response
 	require.Nil(err)
 	assert.EqualValues(value, qres.Value)
 }

@@ -2,9 +2,11 @@ package benchmarks
 
 import (
 	"testing"
+	"time"
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
+
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -26,7 +28,7 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 		PubKey:            pubKey,
 		LatestBlockHash:   []byte("SOMEBYTES"),
 		LatestBlockHeight: 123,
-		LatestBlockTime:   1234,
+		LatestBlockTime:   time.Unix(0, 1234),
 	}
 	b.StartTimer()
 
