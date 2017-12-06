@@ -1,5 +1,5 @@
-hash: b0397f8c86e8131753fce91514314fe871ffb2562452a9f2125dbcd3cea600c8
-updated: 2017-12-02T23:34:41.775549968-05:00
+hash: 09fc7f59ca6b718fe236368bb55f4801455295cfe455ea5865d544ee4dcfdc08
+updated: 2017-12-06T02:43:52.419328535-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2e60448ffcc6bf78332d1fe590260095f554dd78
@@ -29,8 +29,11 @@ imports:
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
   - gogoproto
+  - jsonpb
   - proto
   - protoc-gen-gogo/descriptor
+  - sortkeys
+  - types
 - name: github.com/golang/protobuf
   version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
@@ -100,7 +103,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 48413b4839781c5c4bf96049a4b39f210ceb88c3
+  version: 12dca48768bbc0ac0f345a8505166874daf1f8ec
   subpackages:
   - client
   - example/code
@@ -116,17 +119,17 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: dd20358a264c772b4a83e477b0cfce4c88a7001d
 - name: github.com/tendermint/go-wire
-  version: 217a3c439f6497890d232ff5ed24084b43d9bfb3
+  version: b6fc872b42d41158a60307db4da051dd6f179415
   subpackages:
   - data
   - data/base58
-  - nowriter/tmencoding
+  - nowriter/tmlegacy
 - name: github.com/tendermint/iavl
   version: 594cc0c062a7174475f0ab654384038d77067917
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: 21fb7819891997c96838308b4eba5a50b07ff03f
+  version: bfcc0217f120d3bee6730ba0789d2eb72fc2e889
   subpackages:
   - autofile
   - cli

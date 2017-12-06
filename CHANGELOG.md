@@ -30,19 +30,25 @@ BUG FIXES:
 ## 0.13.0 (TBA)
 
 BREAKING CHANGES:
-- types: EventBus and EventBuffer have replaced EventSwitch and EventCache; event types have been overhauled
+- abci: update to v0.8 using gogo/protobuf; includes tx tags, vote info in RequestBeginBlock, data.Bytes everywhere, use int64, etc.
+- types: block heights are now `int64` everywhere
+- types & node: EventSwitch and EventCache have been replaced by EventBus and EventBuffer; event types have been overhauled
 - node: EventSwitch methods now refer to EventBus
 - rpc/lib/types: RPCResponse is no longer a pointer; WSRPCConnection interface has been modified
 - rpc/client: WaitForOneEvent takes an EventsClient instead of types.EventSwitch
 - rpc/client: Add/RemoveListenerForEvent are now Subscribe/Unsubscribe
+- rpc: `/subscribe` and `/unsubscribe` take `query` arg instead of `event`
+- mempool: cached transactions return an error instead of an ABCI response with BadNonce
 
 FEATURES:
 - rpc: new `/unsubscribe_all` WebSocket RPC endpoint
+- rpc: new `/tx_search` endpoint for filtering transactions by more complex queries
 - p2p/trust: new trust metric for tracking peers. See ADR-006
+- config: TxIndexConfig allows to set what DeliverTx tags to index
 
 IMPROVEMENTS:
 - New asynchronous events system using `tmlibs/pubsub`
-- logging: Various small improvements 
+- logging: Various small improvements
 - consensus: Graceful shutdown when app crashes
 - tests: Fix various non-deterministic errors
 - p2p: more defensive programming
