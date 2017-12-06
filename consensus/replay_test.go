@@ -265,7 +265,7 @@ func (w *crashingWAL) Wait()        { w.next.Wait() }
 // Handshake Tests
 
 var (
-	NUM_BLOCKS = 6 // number of blocks in the test_data/many_blocks.cswal
+	NUM_BLOCKS = 6
 	mempool    = types.MockMempool{}
 )
 
@@ -324,8 +324,7 @@ func writeWAL(walMsgs []byte) string {
 func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	config := ResetConfig("proxy_test_")
 
-	// copy the many_blocks file
-	walBody, err := cmn.ReadFile(path.Join(data_dir, "many_blocks.cswal"))
+	walBody, err := GenWAL(NUM_BLOCKS)
 	if err != nil {
 		t.Fatal(err)
 	}

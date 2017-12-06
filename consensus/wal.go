@@ -30,7 +30,7 @@ type TimedWALMessage struct {
 }
 
 // EndHeightMessage marks the end of the given height inside WAL.
-// @internal used by scripts/cutWALUntil util.
+// @internal used by scripts/wal2json util.
 type EndHeightMessage struct {
 	Height int64 `json:"height"`
 }
