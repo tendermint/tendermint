@@ -11,11 +11,10 @@ If a long continuous burst of .Set() calls happens, ThrottleTimer fires
 at most once every "dur".
 */
 type ThrottleTimer struct {
-	Name   string
-	Ch     <-chan struct{}
-	output chan<- struct{}
-	input  chan command
-	dur    time.Duration
+	Name  string
+	Ch    chan struct{}
+	input chan command
+	dur   time.Duration
 
 	timer *time.Timer
 	isSet bool
@@ -30,18 +29,22 @@ const (
 )
 
 func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
-	c := make(chan struct{})
 	var t = &ThrottleTimer{
-		Name:   name,
-		Ch:     c,
-		dur:    dur,
-		output: c,
-		input:  make(chan command),
-		timer:  time.NewTimer(dur),
+		Name:  name,
+		Ch:    make(chan struct{}),
+		dur:   dur,
+		input: make(chan command),
+		timer: time.NewTimer(dur),
 	}
 	t.timer.Stop()
 	go t.run()
 	return t
+}
+
+// C is the proper way to listen to the timer output.
+// t.Ch will be made private in the (near?) future
+func (t *ThrottleTimer) C() <-chan struct{} {
+	return t.Ch
 }
 
 func (t *ThrottleTimer) run() {
@@ -50,7 +53,7 @@ func (t *ThrottleTimer) run() {
 		case cmd := <-t.input:
 			// stop goroutine if the input says so
 			if t.processInput(cmd) {
-				close(t.output)
+				close(t.Ch)
 				return
 			}
 		case <-t.timer.C:
@@ -59,10 +62,10 @@ func (t *ThrottleTimer) run() {
 	}
 }
 
-// trySend performs non-blocking send on t.output (t.Ch)
+// trySend performs non-blocking send on t.Ch
 func (t *ThrottleTimer) trySend() {
 	select {
-	case t.output <- struct{}{}:
+	case t.Ch <- struct{}{}:
 		t.isSet = false
 	default:
 		// if we just want to drop, replace this with t.isSet = false

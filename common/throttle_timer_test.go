@@ -46,7 +46,7 @@ func TestThrottle(test *testing.T) {
 	t := NewThrottleTimer("foo", delay)
 
 	// start at 0
-	c := &thCounter{input: t.Ch}
+	c := &thCounter{input: t.C()}
 	assert.Equal(0, c.Count())
 	go c.Read()
 
