@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -76,33 +77,63 @@ func fmtError(code uint32, log string) string {
 
 //---------------------------------------------------------------------------
 // override JSON marshalling so we dont emit defaults (ie. disable omitempty)
+// note we need Unmarshal functions too because protobuf had the bright idea
+// to marshal int64->string. cool. cool, cool, cool: https://developers.google.com/protocol-buffers/docs/proto3#json
+
+var (
+	jsonpbMarshaller = jsonpb.Marshaler{
+		EnumsAsInts:  true,
+		EmitDefaults: true,
+	}
+	jsonpbUnmarshaller = jsonpb.Unmarshaler{}
+)
 
 func (r *ResponseSetOption) MarshalJSON() ([]byte, error) {
-	m := jsonpb.Marshaler{EmitDefaults: true}
-	s, err := m.MarshalToString(r)
+	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
+}
+
+func (r *ResponseSetOption) UnmarshalJSON(b []byte) error {
+	reader := bytes.NewBuffer(b)
+	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
 func (r *ResponseCheckTx) MarshalJSON() ([]byte, error) {
-	m := jsonpb.Marshaler{EmitDefaults: true}
-	s, err := m.MarshalToString(r)
+	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
+}
+
+func (r *ResponseCheckTx) UnmarshalJSON(b []byte) error {
+	reader := bytes.NewBuffer(b)
+	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
 func (r *ResponseDeliverTx) MarshalJSON() ([]byte, error) {
-	m := jsonpb.Marshaler{EmitDefaults: true}
-	s, err := m.MarshalToString(r)
+	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
+}
+
+func (r *ResponseDeliverTx) UnmarshalJSON(b []byte) error {
+	reader := bytes.NewBuffer(b)
+	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
 
 func (r *ResponseQuery) MarshalJSON() ([]byte, error) {
-	m := jsonpb.Marshaler{EmitDefaults: true}
-	s, err := m.MarshalToString(r)
+	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
 }
 
+func (r *ResponseQuery) UnmarshalJSON(b []byte) error {
+	reader := bytes.NewBuffer(b)
+	return jsonpbUnmarshaller.Unmarshal(reader, r)
+}
+
 func (r *ResponseCommit) MarshalJSON() ([]byte, error) {
-	m := jsonpb.Marshaler{EmitDefaults: true}
-	s, err := m.MarshalToString(r)
+	s, err := jsonpbMarshaller.MarshalToString(r)
 	return []byte(s), err
+}
+
+func (r *ResponseCommit) UnmarshalJSON(b []byte) error {
+	reader := bytes.NewBuffer(b)
+	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
