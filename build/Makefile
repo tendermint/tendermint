@@ -126,7 +126,7 @@ prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
-prepare-gaia = cp $(GOPATH)/bin/gaiacli $(build_folder)/usr/bin
+prepare-gaia =
 prepare-basecoin = cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
 
 ###
