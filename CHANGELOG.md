@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 (December 5, 2017)
+
+BREAKING:
+ - [common] replace Service#Start, Service#Stop first param (bool) with an
+   error (ErrAlreadyStarted, ErrAlreadyStopped)
+ - [common] replace Service#Reset first param (bool) with an error
+ - [process] removed
+
+FEATURES:
+ - [common] IntInSlice and StringInSlice functions
+
 ## 0.4.1 (November 27, 2017)
 
 FEATURES:
