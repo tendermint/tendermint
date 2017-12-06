@@ -5,14 +5,14 @@ import:
 - package: github.com/rcrowley/go-metrics
 - package: github.com/tendermint/go-crypto
 - package: github.com/tendermint/tendermint
-  version: v0.11.0
+  version: v0.12.1
   subpackages:
   - rpc/core/types
   - rpc/lib/client
   - rpc/lib/server
   - types
 - package: github.com/tendermint/tmlibs
-  version: develop
+  version: v0.4.1
   subpackages:
   - common
   - events
