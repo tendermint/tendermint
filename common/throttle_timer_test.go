@@ -10,7 +10,7 @@ import (
 )
 
 type thCounter struct {
-	input chan struct{}
+	input <-chan struct{}
 	mtx   sync.Mutex
 	count int
 }

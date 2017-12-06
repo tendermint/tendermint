@@ -11,10 +11,11 @@ If a long continuous burst of .Set() calls happens, ThrottleTimer fires
 at most once every "dur".
 */
 type ThrottleTimer struct {
-	Name  string
-	Ch    chan struct{}
-	input chan command
-	dur   time.Duration
+	Name   string
+	Ch     <-chan struct{}
+	output chan<- struct{}
+	input  chan command
+	dur    time.Duration
 
 	timer *time.Timer
 	isSet bool
@@ -29,12 +30,14 @@ const (
 )
 
 func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
+	c := make(chan struct{}, 1)
 	var t = &ThrottleTimer{
-		Name:  name,
-		Ch:    make(chan struct{}, 1),
-		dur:   dur,
-		input: make(chan command),
-		timer: time.NewTimer(dur),
+		Name:   name,
+		Ch:     c,
+		dur:    dur,
+		output: c,
+		input:  make(chan command),
+		timer:  time.NewTimer(dur),
 	}
 	t.timer.Stop()
 	go t.run()
@@ -47,14 +50,12 @@ func (t *ThrottleTimer) run() {
 		case cmd := <-t.input:
 			// stop goroutine if the input says so
 			if t.processInput(cmd) {
-				// TODO: do we want to close the channels???
-				// close(t.Ch)
-				// close(t.input)
+				close(t.output)
 				return
 			}
 		case <-t.timer.C:
 			t.isSet = false
-			t.Ch <- struct{}{}
+			t.output <- struct{}{}
 		}
 	}
 }
@@ -80,7 +81,6 @@ func (t *ThrottleTimer) processInput(cmd command) (shutdown bool) {
 	default:
 		panic("unknown command!")
 	}
-	// return true
 	return shutdown
 }
 
