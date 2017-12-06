@@ -11,12 +11,12 @@ import (
 	"time"
 
 	wire "github.com/tendermint/go-wire"
-	tmencoding "github.com/tendermint/go-wire/nowriter/tmencoding"
+	tmlegacy "github.com/tendermint/go-wire/nowriter/tmlegacy"
 	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
 )
 
-var legacy = tmencoding.Legacy
+var legacy = tmlegacy.TMEncoderLegacy{}
 
 const (
 	numBatchMsgPackets = 10
