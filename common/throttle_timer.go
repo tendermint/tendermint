@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -64,7 +63,6 @@ func (t *ThrottleTimer) run() {
 // happen in this method. It is only called from the run goroutine
 // so we avoid any race conditions
 func (t *ThrottleTimer) processInput(cmd command) (shutdown bool) {
-	fmt.Printf("processInput: %d\n", cmd)
 	switch cmd {
 	case Set:
 		if !t.isSet {
@@ -77,9 +75,7 @@ func (t *ThrottleTimer) processInput(cmd command) (shutdown bool) {
 	case Unset:
 		if t.isSet {
 			t.isSet = false
-			if !t.timer.Stop() {
-				<-t.timer.C
-			}
+			t.timer.Stop()
 		}
 	default:
 		panic("unknown command!")
