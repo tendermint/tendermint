@@ -37,8 +37,9 @@ BREAKING CHANGES:
 - rpc/lib/types: RPCResponse is no longer a pointer; WSRPCConnection interface has been modified
 - rpc/client: WaitForOneEvent takes an EventsClient instead of types.EventSwitch
 - rpc/client: Add/RemoveListenerForEvent are now Subscribe/Unsubscribe
-- rpc: `/subscribe` and `/unsubscribe` take `query` arg instead of `event`
 - rpc/core/types: ResultABCIQuery wraps an abci.ResponseQuery
+- rpc: `/subscribe` and `/unsubscribe` take `query` arg instead of `event`
+- rpc: `/status` returns the LatestBlockTime in human readable form instead of in nanoseconds
 - mempool: cached transactions return an error instead of an ABCI response with BadNonce
 
 FEATURES:
