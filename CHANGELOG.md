@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.8.0 (December 6, 2017)
+
+BREAKING CHANGES:
+ - [client] all XxxSync methods now return (ResponseXxx, error)
+ - [types] all methods on Application interface now take RequestXxx and return (ResponseXxx, error).
+    - Except `CheckTx`/`DeliverTx`, which takes a `tx []byte` argument.
+    - Except `Commit`, which takes no arguments.
+ - [types] removed Result and ResultQuery
+ - [types] removed CodeType - only `0 == OK` is defined here, everything else is left to convention at the application level
+ - [types] switched to using `gogo/protobuf` for code generation
+ - [types] use `customtype` feature of `gogo/protobuf` to replace `[]byte` with `data.Bytes` in all generated types :)
+    - this eliminates the need for additional types like ResultQuery
+ - [types] `pubKey` -> `pub_key`
+ - [types] `uint64` -> `int32` for `Header.num_txs` and `PartSetHeader.total`
+ - [types] `uint64` -> `int64` for everything else
+ - [types] ResponseSetOption includes error code
+ - [abci-cli] codes are printed as their number instead of a message, except for `code == 0`, which is still printed as `OK`
+
+FEATURES:
+ - [types] ResponseDeliverTx: added `tags` field
+ - [types] ResponseCheckTx: added `gas` and `fee` fields
+ - [types] RequestBeginBlock: added `absent_validators` and `byzantine_validators` fields
+ - [dummy] DeliverTx returns an owner tag and a key tag
+ - [abci-cli] added `log_level` flag to control the logger
+ - [abci-cli] introduce `abci-cli test` command for simple testing of ABCI server implementations via Counter application
+
 ## 0.7.1 (November 14, 2017)
 
 IMPROVEMENTS:

@@ -11,12 +11,14 @@ import (
 
 	"golang.org/x/net/context"
 
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	abcicli "github.com/tendermint/abci/client"
+	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/example/dummy"
 	abciserver "github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 func TestDummy(t *testing.T) {
@@ -40,7 +42,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Start the listener
 	server := abciserver.NewSocketServer("unix://test.sock", app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if _, err := server.Start(); err != nil {
+	if err := server.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
 	}
 	defer server.Stop()
@@ -48,7 +50,7 @@ func testStream(t *testing.T, app types.Application) {
 	// Connect to the socket
 	client := abcicli.NewSocketClient("unix://test.sock", false)
 	client.SetLogger(log.TestingLogger().With("module", "abci-client"))
-	if _, err := client.Start(); err != nil {
+	if err := client.Start(); err != nil {
 		t.Fatalf("Error starting socket client: %v", err.Error())
 	}
 	defer client.Stop()
@@ -60,7 +62,7 @@ func testStream(t *testing.T, app types.Application) {
 		switch r := res.Value.(type) {
 		case *types.Response_DeliverTx:
 			counter++
-			if r.DeliverTx.Code != types.CodeType_OK {
+			if r.DeliverTx.Code != code.CodeTypeOK {
 				t.Error("DeliverTx failed with ret_code", r.DeliverTx.Code)
 			}
 			if counter > numDeliverTxs {
@@ -113,7 +115,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	// Start the listener
 	server := abciserver.NewGRPCServer("unix://test.sock", app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
-	if _, err := server.Start(); err != nil {
+	if err := server.Start(); err != nil {
 		t.Fatalf("Error starting GRPC server: %v", err.Error())
 	}
 	defer server.Stop()
@@ -135,7 +137,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}
 		counter++
-		if response.Code != types.CodeType_OK {
+		if response.Code != code.CodeTypeOK {
 			t.Error("DeliverTx failed with ret_code", response.Code)
 		}
 		if counter > numDeliverTxs {

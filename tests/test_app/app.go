@@ -4,33 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"time"
 
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/tmlibs/log"
-	"github.com/tendermint/tmlibs/process"
 )
-
-func startApp(abciApp string) *process.Process {
-	// Start the app
-	//outBuf := NewBufferCloser(nil)
-	proc, err := process.StartProcess("abci_app",
-		"",
-		"bash",
-		[]string{"-c", fmt.Sprintf("abci-cli %s", abciApp)},
-		nil,
-		os.Stdout,
-	)
-	if err != nil {
-		panic("running abci_app: " + err.Error())
-	}
-
-	// TODO a better way to handle this?
-	time.Sleep(time.Second)
-
-	return proc
-}
 
 func startClient(abciType string) abcicli.Client {
 	// Start client
@@ -40,58 +18,64 @@ func startClient(abciType string) abcicli.Client {
 	}
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	client.SetLogger(logger.With("module", "abcicli"))
-	if _, err := client.Start(); err != nil {
-		panic("connecting to abci_app: " + err.Error())
+	if err := client.Start(); err != nil {
+		panicf("connecting to abci_app: %v", err.Error())
 	}
 
 	return client
 }
 
 func setOption(client abcicli.Client, key, value string) {
-	res := client.SetOptionSync(key, value)
-	_, _, log := res.Code, res.Data, res.Log
-	if res.IsErr() {
-		panic(fmt.Sprintf("setting %v=%v: \nlog: %v", key, value, log))
+	_, err := client.SetOptionSync(types.RequestSetOption{key, value})
+	if err != nil {
+		panicf("setting %v=%v: \nerr: %v", key, value, err)
 	}
 }
 
 func commit(client abcicli.Client, hashExp []byte) {
-	res := client.CommitSync()
-	_, data, _ := res.Code, res.Data, res.Log
+	res, err := client.CommitSync()
+	if err != nil {
+		panicf("client error: %v", err)
+	}
 	if res.IsErr() {
-		panic(fmt.Sprintf("committing err %v\n", res))
+		panicf("committing err %v\n", res)
 	}
 	if !bytes.Equal(res.Data, hashExp) {
-		panic(fmt.Sprintf("Commit hash was unexpected. Got %X expected %X",
-			data, hashExp))
+		panicf("Commit hash was unexpected. Got %X expected %X", res.Data, hashExp)
 	}
 }
 
-func deliverTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	res := client.DeliverTxSync(txBytes)
-	code, data, log := res.Code, res.Data, res.Log
-	if code != codeExp {
-		panic(fmt.Sprintf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v",
-			code, codeExp, log))
+func deliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) {
+	res, err := client.DeliverTxSync(txBytes)
+	if err != nil {
+		panicf("client error: %v", err)
 	}
-	if !bytes.Equal(data, dataExp) {
-		panic(fmt.Sprintf("DeliverTx response data was unexpected. Got %X expected %X",
-			data, dataExp))
+	if res.Code != codeExp {
+		panicf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v", res.Code, codeExp, res.Log)
+	}
+	if !bytes.Equal(res.Data, dataExp) {
+		panicf("DeliverTx response data was unexpected. Got %X expected %X", res.Data, dataExp)
 	}
 }
 
-/*func checkTx(client abcicli.Client, txBytes []byte, codeExp types.CodeType, dataExp []byte) {
-	res := client.CheckTxSync(txBytes)
-	code, data, log := res.Code, res.Data, res.Log
+/*func checkTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []byte) {
+	res, err := client.CheckTxSync(txBytes)
+	if err != nil {
+		panicf("client error: %v", err)
+	}
 	if res.IsErr() {
-		panic(fmt.Sprintf("checking tx %X: %v\nlog: %v", txBytes, log))
+		panicf("checking tx %X: %v\nlog: %v", txBytes, res.Log)
 	}
-	if code != codeExp {
-		panic(fmt.Sprintf("CheckTx response code was unexpected. Got %v expected %v. Log: %v",
-			code, codeExp, log))
+	if res.Code != codeExp {
+		panicf("CheckTx response code was unexpected. Got %v expected %v. Log: %v",
+			res.Code, codeExp, res.Log)
 	}
-	if !bytes.Equal(data, dataExp) {
-		panic(fmt.Sprintf("CheckTx response data was unexpected. Got %X expected %X",
-			data, dataExp))
+	if !bytes.Equal(res.Data, dataExp) {
+		panicf("CheckTx response data was unexpected. Got %X expected %X",
+			res.Data, dataExp)
 	}
 }*/
+
+func panicf(format string, a ...interface{}) {
+	panic(fmt.Sprintf(format, a...))
+}

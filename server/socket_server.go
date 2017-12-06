@@ -56,13 +56,17 @@ func (s *SocketServer) OnStart() error {
 
 func (s *SocketServer) OnStop() {
 	s.BaseService.OnStop()
-	s.listener.Close()
+	if err := s.listener.Close(); err != nil {
+		s.Logger.Error("Error closing listener", "err", err)
+	}
 
 	s.connsMtx.Lock()
 	defer s.connsMtx.Unlock()
 	for id, conn := range s.conns {
 		delete(s.conns, id)
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			s.Logger.Error("Error closing connection", "id", id, "conn", conn, "err", err)
+		}
 	}
 }
 
@@ -168,33 +172,32 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Flush:
 		responses <- types.ToResponseFlush()
 	case *types.Request_Info:
-		resInfo := s.app.Info(*r.Info)
-		responses <- types.ToResponseInfo(resInfo)
+		res := s.app.Info(*r.Info)
+		responses <- types.ToResponseInfo(res)
 	case *types.Request_SetOption:
-		so := r.SetOption
-		logStr := s.app.SetOption(so.Key, so.Value)
-		responses <- types.ToResponseSetOption(logStr)
+		res := s.app.SetOption(*r.SetOption)
+		responses <- types.ToResponseSetOption(res)
 	case *types.Request_DeliverTx:
 		res := s.app.DeliverTx(r.DeliverTx.Tx)
-		responses <- types.ToResponseDeliverTx(res.Code, res.Data, res.Log)
+		responses <- types.ToResponseDeliverTx(res)
 	case *types.Request_CheckTx:
 		res := s.app.CheckTx(r.CheckTx.Tx)
-		responses <- types.ToResponseCheckTx(res.Code, res.Data, res.Log)
+		responses <- types.ToResponseCheckTx(res)
 	case *types.Request_Commit:
 		res := s.app.Commit()
-		responses <- types.ToResponseCommit(res.Code, res.Data, res.Log)
+		responses <- types.ToResponseCommit(res)
 	case *types.Request_Query:
-		resQuery := s.app.Query(*r.Query)
-		responses <- types.ToResponseQuery(resQuery)
+		res := s.app.Query(*r.Query)
+		responses <- types.ToResponseQuery(res)
 	case *types.Request_InitChain:
-		s.app.InitChain(*r.InitChain)
-		responses <- types.ToResponseInitChain()
+		res := s.app.InitChain(*r.InitChain)
+		responses <- types.ToResponseInitChain(res)
 	case *types.Request_BeginBlock:
-		s.app.BeginBlock(*r.BeginBlock)
-		responses <- types.ToResponseBeginBlock()
+		res := s.app.BeginBlock(*r.BeginBlock)
+		responses <- types.ToResponseBeginBlock(res)
 	case *types.Request_EndBlock:
-		resEndBlock := s.app.EndBlock(r.EndBlock.Height)
-		responses <- types.ToResponseEndBlock(resEndBlock)
+		res := s.app.EndBlock(*r.EndBlock)
+		responses <- types.ToResponseEndBlock(res)
 	default:
 		responses <- types.ToResponseException("Unknown request")
 	}
