@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 (TBD)
+## 0.8.0 (December 6, 2017)
 
 BREAKING CHANGES:
  - [client] all XxxSync methods now return (ResponseXxx, error)
