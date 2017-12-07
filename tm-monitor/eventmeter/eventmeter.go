@@ -214,22 +214,18 @@ func (em *EventMeter) receiveRoutine() {
 	latencyTicker := time.NewTicker(latencyPeriod)
 	for {
 		select {
-		case rawEvent := <-em.wsc.ResultsCh:
-			if rawEvent == nil {
-				em.logger.Error("expected some event, got nil")
+		case resp := <-em.wsc.ResponsesCh:
+			if resp.Error != nil {
+				em.logger.Error("expected some event, got error", "err", resp.Error.Error())
 				continue
 			}
-			eventType, data, err := em.unmarshalEvent(rawEvent)
+			eventType, data, err := em.unmarshalEvent(*resp.Result)
 			if err != nil {
 				em.logger.Error("failed to unmarshal event", "err", err)
 				continue
 			}
 			if eventType != "" { // FIXME how can it be an empty string?
 				em.updateMetric(eventType, data)
-			}
-		case err := <-em.wsc.ErrorsCh:
-			if err != nil {
-				em.logger.Error("expected some event, got error", "err", err)
 			}
 		case <-latencyTicker.C:
 			if em.wsc.IsActive() {

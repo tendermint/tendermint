@@ -7,7 +7,7 @@ import:
 - package: github.com/pkg/errors
 - package: github.com/rcrowley/go-metrics
 - package: github.com/tendermint/tendermint
-  version: v0.11.0
+  version: v0.12.1
   subpackages:
   - rpc/lib/types
   - types
@@ -15,6 +15,6 @@ import:
   subpackages:
   - log
 - package: github.com/tendermint/tools
-  version: 9708c66576d3e7d4fd0a5cdec7d951f1ef002efc
+  version: c36867e971f4d717e7ceb2c3d451a64e9a101b99
   subpackages:
   - tm-monitor/monitor

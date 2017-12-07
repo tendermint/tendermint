@@ -163,7 +163,7 @@ func (t *transacter) sendLoop(connIndex int) {
 					JSONRPC: "2.0",
 					ID:      "tm-bench",
 					Method:  "broadcast_tx_async",
-					Params:  &rawParamsJson,
+					Params:  rawParamsJson,
 				})
 				if err != nil {
 					fmt.Printf("%v. Try reducing the connections count and increasing the rate.\n", errors.Wrap(err, "txs send failed"))

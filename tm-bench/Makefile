@@ -1,31 +1,31 @@
 DIST_DIRS := find * -type d -exec
 VERSION := $(shell perl -ne '/^var version.*"([^"]+)".*$$/ && print "v$$1\n"' main.go)
 GOTOOLS = \
-					github.com/Masterminds/glide \
 					github.com/mitchellh/gox
 
 tools:
-	go get -v $(GOTOOLS)
+	go get $(GOTOOLS)
 
-get_vendor_deps: tools
+get_vendor_deps:
+	@hash glide 2>/dev/null || go get github.com/Masterminds/glide
 	glide install
 
 build:
-	go build -ldflags "-X main.version=${VERSION}"
+	go build
 
 install:
-	go install -ldflags "-X main.version=${VERSION}"
+	go install
 
 test:
-	go test
+	go test -race
 
 build-all: tools
 	rm -rf ./dist
 	gox -verbose \
-		-ldflags "-X main.version=${VERSION}" \
-		-os="linux darwin windows" \
-		-arch="amd64 386 armv6 arm64" \
-		-osarch="!darwin/arm64" \
+		-ldflags "-s -w" \
+		-arch="amd64 386 arm arm64" \
+		-os="linux darwin windows freebsd" \
+		-osarch="!darwin/arm !darwin/arm64" \
 		-output="dist/{{.OS}}-{{.Arch}}/{{.Dir}}" .
 
 dist: build-all
@@ -38,7 +38,7 @@ dist: build-all
 
 build-docker:
 	rm -f ./tm-bench
-	docker run -it --rm -v "$(PWD):/go/src/app" -w "/go/src/app" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-X main.version=${VERSION}" -o tm-bench
+	docker run -it --rm -v "$(PWD):/go/src/app" -w "/go/src/app" -e "CGO_ENABLED=0" golang:alpine go build -ldflags "-s -w" -o tm-bench
 	docker build -t "tendermint/bench" .
 
 clean:
