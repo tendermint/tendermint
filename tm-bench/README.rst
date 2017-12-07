@@ -29,8 +29,8 @@ Docker
 
 ::
 
-    docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
-    docker run -it --rm -v "/tmp:/tendermint" -p "46657:46657" --name=tm tendermint/tendermint
+    docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint:0.12.1 init
+    docker run -it --rm -v "/tmp:/tendermint" -p "46657:46657" --name=tm tendermint/tendermint:0.12.1
 
     docker run -it --rm --link=tm tendermint/bench tm:46657
 
@@ -41,13 +41,13 @@ If **Linux**, start with:
 
 ::
 
-    curl -L https://s3-us-west-2.amazonaws.com/tendermint/0.10.4/tendermint_linux_amd64.zip && sudo unzip -d /usr/local/bin tendermint_linux_amd64.zip && sudo chmod +x tendermint
+    curl -L https://s3-us-west-2.amazonaws.com/tendermint/0.12.1/tendermint_linux_amd64.zip && sudo unzip -d /usr/local/bin tendermint_linux_amd64.zip && sudo chmod +x tendermint
 
 if  **Mac OS**, start with:
 
 ::
 
-    curl -L https://s3-us-west-2.amazonaws.com/tendermint/0.10.4/tendermint_darwin_amd64.zip && sudo unzip -d /usr/local/bin tendermint_darwin_amd64.zip && sudo chmod +x tendermint
+    curl -L https://s3-us-west-2.amazonaws.com/tendermint/0.12.1/tendermint_darwin_amd64.zip && sudo unzip -d /usr/local/bin tendermint_darwin_amd64.zip && sudo chmod +x tendermint
 
 then run:
 
