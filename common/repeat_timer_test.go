@@ -10,7 +10,7 @@ import (
 )
 
 type rCounter struct {
-	input chan time.Time
+	input <-chan time.Time
 	mtx   sync.Mutex
 	count int
 }
@@ -74,5 +74,5 @@ func TestRepeat(test *testing.T) {
 	assert.Equal(6, c.Count())
 
 	// close channel to stop counter
-	close(t.Ch)
+	t.Stop()
 }
