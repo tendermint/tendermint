@@ -95,4 +95,9 @@ func TestThrottle(test *testing.T) {
 
 	stopped := t.Stop()
 	assert.True(stopped)
+	time.Sleep(longwait)
+	assert.Equal(5, c.Count())
+
+	// extra calls to stop don't block
+	t.Stop()
 }

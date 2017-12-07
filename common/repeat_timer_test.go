@@ -73,6 +73,6 @@ func TestRepeat(test *testing.T) {
 	time.Sleep(delay(7))
 	assert.Equal(6, c.Count())
 
-	// close channel to stop counter
+	// extra calls to stop don't block
 	t.Stop()
 }

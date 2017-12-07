@@ -16,8 +16,9 @@ type RepeatTimer struct {
 	output chan<- time.Time
 	input  chan repeatCommand
 
-	dur   time.Duration
-	timer *time.Timer
+	dur     time.Duration
+	timer   *time.Timer
+	stopped bool
 }
 
 type repeatCommand int32
@@ -50,43 +51,42 @@ func (t *RepeatTimer) Reset() {
 // For ease of .Stop()'ing services before .Start()'ing them,
 // we ignore .Stop()'s on nil RepeatTimers.
 func (t *RepeatTimer) Stop() bool {
-	if t == nil {
+	if t == nil || t.stopped {
 		return false
 	}
 	t.input <- RQuit
+	t.stopped = true
 	return true
 }
 
 func (t *RepeatTimer) run() {
-	for {
-		fmt.Println("for")
+	done := false
+	for !done {
 		select {
 		case cmd := <-t.input:
 			// stop goroutine if the input says so
 			// don't close channels, as closed channels mess up select reads
-			if t.processInput(cmd) {
-				t.timer.Stop()
-				return
-			}
+			done = t.processInput(cmd)
 		case <-t.timer.C:
-			fmt.Println("tick")
 			// send if not blocked, then start the next tick
-			// for blocking send, just
-			// t.output <- time.Now()
 			t.trySend()
 			t.timer.Reset(t.dur)
 		}
 	}
+	fmt.Println("end run")
 }
 
 // trySend performs non-blocking send on t.Ch
 func (t *RepeatTimer) trySend() {
 	// TODO: this was blocking in previous version (t.Ch <- t_)
 	// should I use that behavior unstead of unblocking as per throttle?
-	select {
-	case t.output <- time.Now():
-	default:
-	}
+
+	// select {
+	// case t.output <- time.Now():
+	// default:
+	// }
+
+	t.output <- time.Now()
 }
 
 // all modifications of the internal state of ThrottleTimer
@@ -98,6 +98,7 @@ func (t *RepeatTimer) processInput(cmd repeatCommand) (shutdown bool) {
 	case Reset:
 		t.timer.Reset(t.dur)
 	case RQuit:
+		fmt.Println("got quit")
 		t.timer.Stop()
 		shutdown = true
 	default:

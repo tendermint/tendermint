@@ -17,8 +17,9 @@ type ThrottleTimer struct {
 	output chan<- struct{}
 	dur    time.Duration
 
-	timer *time.Timer
-	isSet bool
+	timer   *time.Timer
+	isSet   bool
+	stopped bool
 }
 
 type throttleCommand int32
@@ -82,6 +83,7 @@ func (t *ThrottleTimer) processInput(cmd throttleCommand) (shutdown bool) {
 			t.timer.Reset(t.dur)
 		}
 	case TQuit:
+		t.stopped = true
 		shutdown = true
 		fallthrough
 	case Unset:
@@ -119,7 +121,7 @@ func (t *ThrottleTimer) Unset() {
 // For ease of stopping services before starting them, we ignore Stop on nil
 // ThrottleTimers.
 func (t *ThrottleTimer) Stop() bool {
-	if t == nil {
+	if t == nil || t.stopped {
 		return false
 	}
 	t.input <- TQuit
