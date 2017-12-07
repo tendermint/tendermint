@@ -11,10 +11,11 @@ If a long continuous burst of .Set() calls happens, ThrottleTimer fires
 at most once every "dur".
 */
 type ThrottleTimer struct {
-	Name  string
-	Ch    chan struct{}
-	input chan command
-	dur   time.Duration
+	Name   string
+	Ch     <-chan struct{}
+	input  chan command
+	output chan<- struct{}
+	dur    time.Duration
 
 	timer *time.Timer
 	isSet bool
@@ -28,23 +29,20 @@ const (
 	Quit
 )
 
+// NewThrottleTimer creates a new ThrottleTimer.
 func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
+	c := make(chan struct{})
 	var t = &ThrottleTimer{
-		Name:  name,
-		Ch:    make(chan struct{}),
-		dur:   dur,
-		input: make(chan command),
-		timer: time.NewTimer(dur),
+		Name:   name,
+		Ch:     c,
+		dur:    dur,
+		input:  make(chan command),
+		output: c,
+		timer:  time.NewTimer(dur),
 	}
 	t.timer.Stop()
 	go t.run()
 	return t
-}
-
-// C is the proper way to listen to the timer output.
-// t.Ch will be made private in the (near?) future
-func (t *ThrottleTimer) C() <-chan struct{} {
-	return t.Ch
 }
 
 func (t *ThrottleTimer) run() {
@@ -65,7 +63,7 @@ func (t *ThrottleTimer) run() {
 // trySend performs non-blocking send on t.Ch
 func (t *ThrottleTimer) trySend() {
 	select {
-	case t.Ch <- struct{}{}:
+	case t.output <- struct{}{}:
 		t.isSet = false
 	default:
 		// if we just want to drop, replace this with t.isSet = false
@@ -105,8 +103,21 @@ func (t *ThrottleTimer) Unset() {
 	t.input <- Unset
 }
 
-// For ease of .Stop()'ing services before .Start()'ing them,
-// we ignore .Stop()'s on nil ThrottleTimers
+// Stop prevents the ThrottleTimer from firing. It always returns true. Stop does not
+// close the channel, to prevent a read from the channel succeeding
+// incorrectly.
+//
+// To prevent a timer created with NewThrottleTimer from firing after a call to
+// Stop, check the return value and drain the channel.
+//
+// For example, assuming the program has not received from t.C already:
+//
+// 	if !t.Stop() {
+// 		<-t.C
+// 	}
+//
+// For ease of stopping services before starting them, we ignore Stop on nil
+// ThrottleTimers.
 func (t *ThrottleTimer) Stop() bool {
 	if t == nil {
 		return false
