@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -108,7 +109,7 @@ func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:           "genesis.json",
 		PrivValidator:     "priv_validator.json",
-		Moniker:           "anonymous",
+		Moniker:           defaultMoniker,
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
 		LogLevel:          DefaultPackageLogLevels(),
@@ -455,4 +456,19 @@ func rootify(path, root string) string {
 		return path
 	}
 	return filepath.Join(root, path)
+}
+
+//-----------------------------------------------------------------------------
+// Moniker
+
+var defaultMoniker = getDefaultMoniker()
+
+// getDefaultMoniker returns a default moniker, which is the host name. If runtime
+// fails to get the host name, "anonymous" will be returned.
+func getDefaultMoniker() string {
+	moniker, err := os.Hostname()
+	if err != nil {
+		moniker = "anonymous"
+	}
+	return moniker
 }

@@ -32,7 +32,7 @@ func TestEnsureRoot(t *testing.T) {
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(tmpDir, "config.toml"))
 	require.Nil(err)
-	assert.Equal([]byte(defaultConfig("anonymous")), data)
+	assert.Equal([]byte(defaultConfig(defaultMoniker)), data)
 
 	ensureFiles(t, tmpDir, "data")
 }
@@ -49,7 +49,7 @@ func TestEnsureTestRoot(t *testing.T) {
 	// make sure config is set properly
 	data, err := ioutil.ReadFile(filepath.Join(rootDir, "config.toml"))
 	require.Nil(err)
-	assert.Equal([]byte(testConfig("anonymous")), data)
+	assert.Equal([]byte(testConfig(defaultMoniker)), data)
 
 	// TODO: make sure the cfg returned and testconfig are the same!
 
