@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -17,7 +16,7 @@ type RepeatTimer struct {
 	input  chan repeatCommand
 
 	dur     time.Duration
-	timer   *time.Timer
+	ticker  *time.Ticker
 	stopped bool
 }
 
@@ -36,8 +35,8 @@ func NewRepeatTimer(name string, dur time.Duration) *RepeatTimer {
 		output: c,
 		input:  make(chan repeatCommand),
 
-		timer: time.NewTimer(dur),
-		dur:   dur,
+		dur:    dur,
+		ticker: time.NewTicker(dur),
 	}
 	go t.run()
 	return t
@@ -51,6 +50,7 @@ func (t *RepeatTimer) Reset() {
 // For ease of .Stop()'ing services before .Start()'ing them,
 // we ignore .Stop()'s on nil RepeatTimers.
 func (t *RepeatTimer) Stop() bool {
+	// use t.stopped to gracefully handle many Stop() without blocking
 	if t == nil || t.stopped {
 		return false
 	}
@@ -67,39 +67,33 @@ func (t *RepeatTimer) run() {
 			// stop goroutine if the input says so
 			// don't close channels, as closed channels mess up select reads
 			done = t.processInput(cmd)
-		case <-t.timer.C:
-			// send if not blocked, then start the next tick
+		case <-t.ticker.C:
 			t.trySend()
-			t.timer.Reset(t.dur)
 		}
 	}
-	fmt.Println("end run")
 }
 
 // trySend performs non-blocking send on t.Ch
 func (t *RepeatTimer) trySend() {
-	// TODO: this was blocking in previous version (t.Ch <- t_)
+	// NOTE: this was blocking in previous version (t.Ch <- t_)
 	// should I use that behavior unstead of unblocking as per throttle?
-
-	// select {
-	// case t.output <- time.Now():
-	// default:
-	// }
-
-	t.output <- time.Now()
+	// probably not: https://golang.org/src/time/sleep.go#L132
+	select {
+	case t.output <- time.Now():
+	default:
+	}
 }
 
 // all modifications of the internal state of ThrottleTimer
 // happen in this method. It is only called from the run goroutine
 // so we avoid any race conditions
 func (t *RepeatTimer) processInput(cmd repeatCommand) (shutdown bool) {
-	fmt.Printf("process: %d\n", cmd)
 	switch cmd {
 	case Reset:
-		t.timer.Reset(t.dur)
+		t.ticker.Stop()
+		t.ticker = time.NewTicker(t.dur)
 	case RQuit:
-		fmt.Println("got quit")
-		t.timer.Stop()
+		t.ticker.Stop()
 		shutdown = true
 	default:
 		panic("unknown command!")
