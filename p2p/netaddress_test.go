@@ -51,11 +51,9 @@ func TestNewNetAddressString(t *testing.T) {
 }
 
 func TestNewNetAddressStrings(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-	addrs, err := NewNetAddressStrings([]string{"127.0.0.1:8080", "127.0.0.2:8080"})
-	require.Nil(err)
-
-	assert.Equal(2, len(addrs))
+	addrs, errs := NewNetAddressStrings([]string{"127.0.0.1:8080", "127.0.0.2:8080"})
+	assert.Len(t, errs, 0)
+	assert.Equal(t, 2, len(addrs))
 }
 
 func TestNewNetAddressIPPort(t *testing.T) {
