@@ -32,7 +32,6 @@ build-all: tools
 dist: build-all
 	cd dist && \
 		$(DIST_DIRS) cp ../LICENSE {} \; && \
-		$(DIST_DIRS) cp ../README.rst {} \; && \
 		$(DIST_DIRS) tar -zcf tm-monitor-${VERSION}-{}.tar.gz {} \; && \
 		shasum -a256 ./*.tar.gz > "./tm-monitor_${VERSION}_SHA256SUMS" && \
 		cd ..
