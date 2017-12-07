@@ -20,10 +20,6 @@ import (
 //--------------------------------------------------------
 // types and functions for savings consensus messages
 
-var (
-	walSeparator = []byte{55, 127, 6, 130} // 0x377f0682 - magic number
-)
-
 type TimedWALMessage struct {
 	Time time.Time  `json:"time"` // for debugging purposes
 	Msg  WALMessage `json:"msg"`
@@ -209,11 +205,6 @@ func (enc *WALEncoder) Encode(v interface{}) error {
 
 	_, err := enc.wr.Write(msg)
 
-	if err == nil {
-		// TODO [Anton Kaliaev 23 Oct 2017]: remove separator
-		_, err = enc.wr.Write(walSeparator)
-	}
-
 	return err
 }
 
@@ -278,26 +269,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, fmt.Errorf("failed to decode data: %v", err)
 	}
 
-	// TODO [Anton Kaliaev 23 Oct 2017]: remove separator
-	if err = readSeparator(dec.rd); err != nil {
-		return nil, err
-	}
-
 	return res, err
-}
-
-// readSeparator reads a separator from r. It returns any error from underlying
-// reader or if it's not a separator.
-func readSeparator(r io.Reader) error {
-	b := make([]byte, len(walSeparator))
-	_, err := r.Read(b)
-	if err != nil {
-		return fmt.Errorf("failed to read separator: %v", err)
-	}
-	if !bytes.Equal(b, walSeparator) {
-		return fmt.Errorf("not a separator: %v", b)
-	}
-	return nil
 }
 
 type nilWAL struct{}

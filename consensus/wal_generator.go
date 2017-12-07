@@ -103,7 +103,7 @@ func makePathname() string {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(p)
+	// fmt.Println(p)
 	sep := string(filepath.Separator)
 	return strings.Replace(p, sep, "_", -1)
 }
