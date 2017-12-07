@@ -191,7 +191,7 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 }
 
 // Encode writes the custom encoding of v to the stream.
-func (enc *WALEncoder) Encode(v interface{}) error {
+func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	data := wire.BinaryBytes(v)
 
 	crc := crc32.Checksum(data, crc32c)
