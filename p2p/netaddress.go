@@ -5,8 +5,8 @@
 package p2p
 
 import (
-	"errors"
 	"flag"
+	"fmt"
 	"net"
 	"strconv"
 	"time"
@@ -45,7 +45,6 @@ func NewNetAddress(addr net.Addr) *NetAddress {
 // address in the form of "IP:Port". Also resolves the host if host
 // is not an IP.
 func NewNetAddressString(addr string) (*NetAddress, error) {
-
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
@@ -73,16 +72,18 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 
 // NewNetAddressStrings returns an array of NetAddress'es build using
 // the provided strings.
-func NewNetAddressStrings(addrs []string) ([]*NetAddress, error) {
-	netAddrs := make([]*NetAddress, len(addrs))
-	for i, addr := range addrs {
+func NewNetAddressStrings(addrs []string) ([]*NetAddress, []error) {
+	netAddrs := make([]*NetAddress, 0)
+	errs := make([]error, 0)
+	for _, addr := range addrs {
 		netAddr, err := NewNetAddressString(addr)
 		if err != nil {
-			return nil, errors.New(cmn.Fmt("Error in address %s: %v", addr, err))
+			errs = append(errs, fmt.Errorf("Error in address %s: %v", addr, err))
+		} else {
+			netAddrs = append(netAddrs, netAddr)
 		}
-		netAddrs[i] = netAddr
 	}
-	return netAddrs, nil
+	return netAddrs, errs
 }
 
 // NewNetAddressIPPort returns a new NetAddress using the provided IP
