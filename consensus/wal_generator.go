@@ -1,4 +1,3 @@
-// walgen provides an utility function for generating WAL on the fly.
 package consensus
 
 import (
@@ -23,15 +22,17 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
-// GenWAL generates a consensus WAL. It does this by spining up a new node with a
-// dummy application and special consensus wal instance (byteBufferWAL) and
-// waits until numBlocks are created. Then it returns a WAL body.
-func GenWAL(numBlocks int) (body []byte, err error) {
+// WALWithNBlocks generates a consensus WAL. It does this by spining up a
+// stripped down version of node (proxy app, event bus, consensus state) with a
+// persistent dummy application and special consensus wal instance
+// (byteBufferWAL) and waits until numBlocks are created. Then it returns a WAL
+// content.
+func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	config := getConfig()
 
-	app := dummy.NewPersistentDummyApplication(filepath.Join(config.DBDir(), "genwal"))
+	app := dummy.NewPersistentDummyApplication(filepath.Join(config.DBDir(), "wal_generator"))
 
-	logger := log.TestingLogger().With("walgen", "walgen")
+	logger := log.NewNopLogger() // log.TestingLogger().With("wal_generator", "wal_generator")
 
 	/////////////////////////////////////////////////////////////////////////////
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
@@ -77,6 +78,7 @@ func GenWAL(numBlocks int) (body []byte, err error) {
 	wr := bufio.NewWriter(&b)
 	numBlocksWritten := make(chan struct{})
 	wal := &byteBufferWAL{enc: NewWALEncoder(wr), heightToStop: int64(numBlocks), signalWhenStopsTo: numBlocksWritten}
+	// see wal.go#103
 	wal.Save(EndHeightMessage{0})
 	consensusState.wal = wal
 
@@ -142,11 +144,12 @@ type byteBufferWAL struct {
 	signalWhenStopsTo chan struct{}
 }
 
-var fixedTime, err = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
+// needed for determinism
+var fixedTime, _ = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
 
 // Save writes message to the internal buffer except when heightToStop is
-// reached, in which case it signal the caller via signalWhenStopsTo and skip
-// writing.
+// reached, in which case it will signal the caller via signalWhenStopsTo and
+// skip writing.
 func (w *byteBufferWAL) Save(m WALMessage) {
 	if w.stopped {
 		return

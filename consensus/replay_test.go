@@ -264,9 +264,12 @@ func (w *crashingWAL) Wait()        { w.next.Wait() }
 //------------------------------------------------------------------------------------------
 // Handshake Tests
 
-var (
+const (
 	NUM_BLOCKS = 6
-	mempool    = types.MockMempool{}
+)
+
+var (
+	mempool = types.MockMempool{}
 )
 
 //---------------------------------------
@@ -305,12 +308,12 @@ func TestHandshakeReplayNone(t *testing.T) {
 	}
 }
 
-func writeWAL(walMsgs []byte) string {
+func tempWALWithData(data []byte) string {
 	walFile, err := ioutil.TempFile("", "wal")
 	if err != nil {
 		panic(fmt.Errorf("failed to create temp WAL file: %v", err))
 	}
-	_, err = walFile.Write(walMsgs)
+	_, err = walFile.Write(data)
 	if err != nil {
 		panic(fmt.Errorf("failed to write to temp WAL file: %v", err))
 	}
@@ -324,11 +327,11 @@ func writeWAL(walMsgs []byte) string {
 func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	config := ResetConfig("proxy_test_")
 
-	walBody, err := GenWAL(NUM_BLOCKS)
+	walBody, err := WALWithNBlocks(NUM_BLOCKS)
 	if err != nil {
 		t.Fatal(err)
 	}
-	walFile := writeWAL(walBody)
+	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
 	privVal := types.LoadPrivValidatorFS(config.PrivValidatorFile())

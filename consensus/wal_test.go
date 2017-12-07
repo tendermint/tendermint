@@ -42,11 +42,11 @@ func TestWALEncoderDecoder(t *testing.T) {
 }
 
 func TestSearchForEndHeight(t *testing.T) {
-	walBody, err := GenWAL(6)
+	walBody, err := WALWithNBlocks(6)
 	if err != nil {
 		t.Fatal(err)
 	}
-	walFile := writeWAL(walBody)
+	walFile := tempWALWithData(walBody)
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {
