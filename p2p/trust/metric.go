@@ -73,8 +73,17 @@ type TrustMetric struct {
 	// While true, history data is not modified
 	paused bool
 
+	// Set to true once the metric has been stopped
+	stopped bool
+
 	// Signal channel for stopping the trust metric go-routine
 	stop chan struct{}
+
+	// Slice of signal channels fired when the metric is stopped
+	waitForStop []chan struct{}
+
+	// Slice of signal channels fired when the metric time interval ticker is fired
+	waitForTimeInterval []chan struct{}
 }
 
 // NewMetric returns a trust metric with the default configuration
@@ -259,6 +268,83 @@ func (tm *TrustMetric) Copy() *TrustMetric {
 	}
 }
 
+// WaitForTimeIntervalToPass blocks until the metric
+// go-routine ticker fire again
+func (tm *TrustMetric) WaitForTimeIntervalToPass() {
+	interval := make(chan struct{})
+
+	if tm.AddTimeIntervalWaitChannel(interval) {
+		<-interval
+	}
+}
+
+// SignalTimeIntervalPassed fires all the maintained signal channels
+// and clears the group of signal channels
+func (tm *TrustMetric) SignalTimeIntervalPassed() {
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
+
+	for _, interval := range tm.waitForTimeInterval {
+		interval <- struct{}{}
+	}
+
+	tm.waitForTimeInterval = []chan struct{}{}
+}
+
+// AddTimeIntervalWaitChannel adds a signal channel to a group of
+// waiters for this metric. This method returns true if the channel
+// was added to the group before the metric was stopped
+func (tm *TrustMetric) AddTimeIntervalWaitChannel(interval chan struct{}) bool {
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
+
+	var added bool
+
+	if !tm.stopped {
+		tm.waitForTimeInterval = append(tm.waitForTimeInterval, interval)
+		added = true
+	}
+	return added
+}
+
+// WaitForStop blocks until the metric has completely stopped
+func (tm *TrustMetric) WaitForStop() {
+	stop := make(chan struct{})
+
+	if tm.AddStopWaitChannel(stop) {
+		<-stop
+	}
+}
+
+// SignalStopped fires all the maintained signal channels and sets
+// metric stopped status to true
+func (tm *TrustMetric) SignalStopped() {
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
+
+	for _, stop := range tm.waitForStop {
+		stop <- struct{}{}
+	}
+
+	tm.stopped = true
+}
+
+// AddStopWaitChannel adds a signal channel to a group of waiters
+// for this metric. This method returns true if the channel was
+// added to the group before the metric was stopped
+func (tm *TrustMetric) AddStopWaitChannel(stop chan struct{}) bool {
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
+
+	var added bool
+
+	if !tm.stopped {
+		tm.waitForStop = append(tm.waitForStop, stop)
+		added = true
+	}
+	return added
+}
+
 /* Private methods */
 
 // This method is for a goroutine that handles all requests on the metric
@@ -270,11 +356,15 @@ loop:
 		select {
 		case <-t.C:
 			tm.NextTimeInterval()
+			tm.SignalTimeIntervalPassed()
 		case <-tm.stop:
 			// Stop all further tracking for this metric
 			break loop
 		}
 	}
+
+	// Change the status to stopped and signal the waiters
+	tm.SignalStopped()
 }
 
 // Wakes the trust metric up if it is currently paused

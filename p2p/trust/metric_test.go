@@ -61,30 +61,32 @@ func TestTrustMetricStopPause(t *testing.T) {
 	tm := NewMetricWithConfig(config)
 
 	// Allow some time intervals to pass and pause
-	time.Sleep(50 * time.Millisecond)
+	tm.NextTimeInterval()
+	tm.NextTimeInterval()
 	tm.Pause()
-	// Give the pause some time to take place
-	time.Sleep(10 * time.Millisecond)
 
 	first := tm.Copy().numIntervals
 	// Allow more time to pass and check the intervals are unchanged
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, first, tm.numIntervals)
+	tm.WaitForTimeIntervalToPass()
+	tm.WaitForTimeIntervalToPass()
+	assert.Equal(t, first, tm.Copy().numIntervals)
 
 	// Get the trust metric activated again
 	tm.GoodEvents(5)
 	// Allow some time intervals to pass and stop
-	time.Sleep(50 * time.Millisecond)
+	tm.NextTimeInterval()
+	tm.NextTimeInterval()
 	tm.Stop()
-	// Give the stop some time to take place
-	time.Sleep(10 * time.Millisecond)
+	// Wait for the stop to take place
+	tm.WaitForStop()
 
 	second := tm.Copy().numIntervals
-	// Allow more time to pass and check the intervals are unchanged
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, second, tm.numIntervals)
+	// Allow more intervals to pass and check that the number of intervals match
+	tm.NextTimeInterval()
+	tm.NextTimeInterval()
+	assert.Equal(t, second+2, tm.Copy().numIntervals)
 
-	if first >= second {
+	if first > second {
 		t.Fatalf("numIntervals should always increase or stay the same over time")
 	}
 }
