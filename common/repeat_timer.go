@@ -20,7 +20,7 @@ type RepeatTimer struct {
 	stopped bool
 }
 
-type repeatCommand int32
+type repeatCommand int8
 
 const (
 	Reset repeatCommand = iota
@@ -67,21 +67,21 @@ func (t *RepeatTimer) run() {
 			// stop goroutine if the input says so
 			// don't close channels, as closed channels mess up select reads
 			done = t.processInput(cmd)
-		case <-t.ticker.C:
-			t.trySend()
+		case tick := <-t.ticker.C:
+			t.trySend(tick)
 		}
 	}
 }
 
 // trySend performs non-blocking send on t.Ch
-func (t *RepeatTimer) trySend() {
+func (t *RepeatTimer) trySend(tick time.Time) {
 	// NOTE: this was blocking in previous version (t.Ch <- t_)
-	// should I use that behavior unstead of unblocking as per throttle?
-	// probably not: https://golang.org/src/time/sleep.go#L132
-	select {
-	case t.output <- time.Now():
-	default:
-	}
+	// probably better not: https://golang.org/src/time/sleep.go#L132
+	t.output <- tick
+	// select {
+	// case t.output <- tick:
+	// default:
+	// }
 }
 
 // all modifications of the internal state of ThrottleTimer

@@ -22,7 +22,7 @@ type ThrottleTimer struct {
 	stopped bool
 }
 
-type throttleCommand int32
+type throttleCommand int8
 
 const (
 	Set throttleCommand = iota
@@ -83,7 +83,6 @@ func (t *ThrottleTimer) processInput(cmd throttleCommand) (shutdown bool) {
 			t.timer.Reset(t.dur)
 		}
 	case TQuit:
-		t.stopped = true
 		shutdown = true
 		fallthrough
 	case Unset:
@@ -125,5 +124,6 @@ func (t *ThrottleTimer) Stop() bool {
 		return false
 	}
 	t.input <- TQuit
+	t.stopped = true
 	return true
 }
