@@ -15,6 +15,7 @@ Vagrant.configure("2") do |config|
     add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
 
     # and golang 1.9 support
+    # official repo doesn't have race detection runtime...
     # add-apt-repository ppa:gophers/archive
     add-apt-repository ppa:longsleep/golang-backports
 
@@ -24,8 +25,6 @@ Vagrant.configure("2") do |config|
         make shellcheck bsdmainutils psmisc
     apt-get install -y docker-ce golang-1.9-go
 
-    # needed for go
-    apt-get install -y git
     # needed for docker
     usermod -a -G docker ubuntu
 
