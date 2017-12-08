@@ -10,6 +10,12 @@
   - { regexp: "^#RateLimitInterval", line: "RateLimitInterval=0s" }
   - { regexp: "^#RateLimitBurst", line: "RateLimitBurst=0" }
 
+- name: Create journal directory for permanent logs
+  file: path=/var/log/journal state=directory
+
+- name: Set journal folder with systemd-tmpfiles
+  command: "systemd-tmpfiles --create --prefix /var/log/journal"
+
 - name: Restart journald
   service: name=systemd-journald state=restarted
 
