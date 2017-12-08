@@ -68,20 +68,20 @@ func (t *RepeatTimer) run() {
 			// don't close channels, as closed channels mess up select reads
 			done = t.processInput(cmd)
 		case tick := <-t.ticker.C:
-			t.trySend(tick)
+			t.send(tick)
 		}
 	}
 }
 
-// trySend performs non-blocking send on t.Ch
-func (t *RepeatTimer) trySend(tick time.Time) {
-	// NOTE: this was blocking in previous version (t.Ch <- t_)
-	// probably better not: https://golang.org/src/time/sleep.go#L132
-	t.output <- tick
+// send performs blocking send on t.Ch
+func (t *RepeatTimer) send(tick time.Time) {
+	// XXX: possibly it is better to not block:
+	// https://golang.org/src/time/sleep.go#L132
 	// select {
 	// case t.output <- tick:
 	// default:
 	// }
+	t.output <- tick
 }
 
 // all modifications of the internal state of ThrottleTimer
