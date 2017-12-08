@@ -12,13 +12,13 @@ BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`g
 all: get_vendor_deps install test
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) ./cmd/tendermint
+	go install $(BUILD_FLAGS) ./cmd/tendermint
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
+	go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
+	go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
