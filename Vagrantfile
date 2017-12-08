@@ -10,22 +10,27 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<-SHELL
+    # add docker repo
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+
+    # and golang 1.9 support
+    # add-apt-repository ppa:gophers/archive
+    add-apt-repository ppa:longsleep/golang-backports
+
+    # install base requirements
     apt-get update
-    apt-get install -y --no-install-recommends git wget curl jq \
+    apt-get install -y --no-install-recommends wget curl jq \
         make shellcheck bsdmainutils psmisc
+    apt-get install -y docker-ce golang-1.9-go
 
-    wget -qO- https://get.docker.com/ | sh
-    usermod -a -G docker vagrant
-    apt-get autoremove -y
-
-    curl -O https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz
-    tar -xvf go1.9.linux-amd64.tar.gz
-    rm -rf /usr/local/go
-    mv go /usr/local
-    rm -f go1.9.linux-amd64.tar.gz
+    # needed for go
+    apt-get install -y git
+    # needed for docker
+    usermod -a -G docker ubuntu
 
     mkdir -p /home/ubuntu/go/bin
-    echo 'export PATH=$PATH:/usr/local/go/bin:/home/ubuntu/go/bin' >> /home/ubuntu/.bash_profile
+    echo 'export PATH=$PATH:/usr/lib/go-1.9/bin:/home/ubuntu/go/bin' >> /home/ubuntu/.bash_profile
     echo 'export GOPATH=/home/ubuntu/go' >> /home/ubuntu/.bash_profile
 
     echo 'export LC_ALL=en_US.UTF-8' >> /home/ubuntu/.bash_profile
@@ -35,6 +40,7 @@ Vagrant.configure("2") do |config|
 
     chown -R ubuntu:ubuntu /home/ubuntu/go
 
-    su - ubuntu -c 'cd /home/ubuntu/go/src/github.com/tendermint/tendermint && make get_vendor_deps'
+    # get all deps and tools, ready to install/test
+    su - ubuntu -c 'cd /home/ubuntu/go/src/github.com/tendermint/tendermint && make get_vendor_deps && make tools'
   SHELL
 end
