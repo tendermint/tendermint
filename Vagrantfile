@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/trusty64"
+  config.vm.box = "ubuntu/xenial64"
 
   config.vm.provider "virtualbox" do |v|
     v.memory = 4096
@@ -11,29 +11,30 @@ Vagrant.configure("2") do |config|
 
   config.vm.provision "shell", inline: <<-SHELL
     apt-get update
-    apt-get install -y --no-install-recommends wget curl jq shellcheck bsdmainutils psmisc
+    apt-get install -y --no-install-recommends git wget curl jq \
+        make shellcheck bsdmainutils psmisc
 
     wget -qO- https://get.docker.com/ | sh
     usermod -a -G docker vagrant
     apt-get autoremove -y
 
-    apt-get install -y --no-install-recommends git
     curl -O https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz
     tar -xvf go1.9.linux-amd64.tar.gz
     rm -rf /usr/local/go
     mv go /usr/local
     rm -f go1.9.linux-amd64.tar.gz
-    mkdir -p /home/vagrant/go/bin
-    echo 'export PATH=$PATH:/usr/local/go/bin:/home/vagrant/go/bin' >> /home/vagrant/.bash_profile
-    echo 'export GOPATH=/home/vagrant/go' >> /home/vagrant/.bash_profile
 
-    echo 'export LC_ALL=en_US.UTF-8' >> /home/vagrant/.bash_profile
+    mkdir -p /home/ubuntu/go/bin
+    echo 'export PATH=$PATH:/usr/local/go/bin:/home/ubuntu/go/bin' >> /home/ubuntu/.bash_profile
+    echo 'export GOPATH=/home/ubuntu/go' >> /home/ubuntu/.bash_profile
 
-    mkdir -p /home/vagrant/go/src/github.com/tendermint
-    ln -s /vagrant /home/vagrant/go/src/github.com/tendermint/tendermint
+    echo 'export LC_ALL=en_US.UTF-8' >> /home/ubuntu/.bash_profile
 
-    chown -R vagrant:vagrant /home/vagrant/go
+    mkdir -p /home/ubuntu/go/src/github.com/tendermint
+    ln -s /vagrant /home/ubuntu/go/src/github.com/tendermint/tendermint
 
-    su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_vendor_deps'
+    chown -R ubuntu:ubuntu /home/ubuntu/go
+
+    su - ubuntu -c 'cd /home/ubuntu/go/src/github.com/tendermint/tendermint && make get_vendor_deps'
   SHELL
 end
