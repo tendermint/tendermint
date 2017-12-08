@@ -1,7 +1,6 @@
 package common
 
 import (
-	"sync"
 	"time"
 )
 
@@ -11,76 +10,93 @@ It's good for keeping connections alive.
 A RepeatTimer must be Stop()'d or it will keep a goroutine alive.
 */
 type RepeatTimer struct {
-	Ch chan time.Time
+	Name   string
+	Ch     <-chan time.Time
+	output chan<- time.Time
+	input  chan repeatCommand
 
-	mtx    sync.Mutex
-	name   string
-	ticker *time.Ticker
-	quit   chan struct{}
-	wg     *sync.WaitGroup
-	dur    time.Duration
+	dur     time.Duration
+	ticker  *time.Ticker
+	stopped bool
 }
+
+type repeatCommand int8
+
+const (
+	Reset repeatCommand = iota
+	RQuit
+)
 
 func NewRepeatTimer(name string, dur time.Duration) *RepeatTimer {
+	c := make(chan time.Time)
 	var t = &RepeatTimer{
-		Ch:     make(chan time.Time),
-		ticker: time.NewTicker(dur),
-		quit:   make(chan struct{}),
-		wg:     new(sync.WaitGroup),
-		name:   name,
-		dur:    dur,
-	}
-	t.wg.Add(1)
-	go t.fireRoutine(t.ticker)
-	return t
-}
+		Name:   name,
+		Ch:     c,
+		output: c,
+		input:  make(chan repeatCommand),
 
-func (t *RepeatTimer) fireRoutine(ticker *time.Ticker) {
-	for {
-		select {
-		case t_ := <-ticker.C:
-			t.Ch <- t_
-		case <-t.quit:
-			// needed so we know when we can reset t.quit
-			t.wg.Done()
-			return
-		}
+		dur:    dur,
+		ticker: time.NewTicker(dur),
 	}
+	go t.run()
+	return t
 }
 
 // Wait the duration again before firing.
 func (t *RepeatTimer) Reset() {
-	t.Stop()
-
-	t.mtx.Lock() // Lock
-	defer t.mtx.Unlock()
-
-	t.ticker = time.NewTicker(t.dur)
-	t.quit = make(chan struct{})
-	t.wg.Add(1)
-	go t.fireRoutine(t.ticker)
+	t.input <- Reset
 }
 
 // For ease of .Stop()'ing services before .Start()'ing them,
 // we ignore .Stop()'s on nil RepeatTimers.
 func (t *RepeatTimer) Stop() bool {
-	if t == nil {
+	// use t.stopped to gracefully handle many Stop() without blocking
+	if t == nil || t.stopped {
 		return false
 	}
-	t.mtx.Lock() // Lock
-	defer t.mtx.Unlock()
+	t.input <- RQuit
+	t.stopped = true
+	return true
+}
 
-	exists := t.ticker != nil
-	if exists {
-		t.ticker.Stop() // does not close the channel
+func (t *RepeatTimer) run() {
+	done := false
+	for !done {
 		select {
-		case <-t.Ch:
-			// read off channel if there's anything there
-		default:
+		case cmd := <-t.input:
+			// stop goroutine if the input says so
+			// don't close channels, as closed channels mess up select reads
+			done = t.processInput(cmd)
+		case tick := <-t.ticker.C:
+			t.send(tick)
 		}
-		close(t.quit)
-		t.wg.Wait() // must wait for quit to close else we race Reset
-		t.ticker = nil
 	}
-	return exists
+}
+
+// send performs blocking send on t.Ch
+func (t *RepeatTimer) send(tick time.Time) {
+	// XXX: possibly it is better to not block:
+	// https://golang.org/src/time/sleep.go#L132
+	// select {
+	// case t.output <- tick:
+	// default:
+	// }
+	t.output <- tick
+}
+
+// all modifications of the internal state of ThrottleTimer
+// happen in this method. It is only called from the run goroutine
+// so we avoid any race conditions
+func (t *RepeatTimer) processInput(cmd repeatCommand) (shutdown bool) {
+	switch cmd {
+	case Reset:
+		t.ticker.Stop()
+		t.ticker = time.NewTicker(t.dur)
+	case RQuit:
+		t.ticker.Stop()
+		shutdown = true
+	default:
+		panic("unknown command!")
+	}
+	return shutdown
 }

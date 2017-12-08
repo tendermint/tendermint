@@ -10,7 +10,7 @@ import (
 )
 
 type rCounter struct {
-	input chan time.Time
+	input <-chan time.Time
 	mtx   sync.Mutex
 	count int
 }
@@ -39,11 +39,11 @@ func (c *rCounter) Read() {
 func TestRepeat(test *testing.T) {
 	assert := asrt.New(test)
 
-	dur := time.Duration(50) * time.Millisecond
+	dur := time.Duration(100) * time.Millisecond
 	short := time.Duration(20) * time.Millisecond
 	// delay waits for cnt durations, an a little extra
 	delay := func(cnt int) time.Duration {
-		return time.Duration(cnt)*dur + time.Duration(5)*time.Millisecond
+		return time.Duration(cnt)*dur + time.Duration(10)*time.Millisecond
 	}
 	t := NewRepeatTimer("bar", dur)
 
@@ -70,9 +70,9 @@ func TestRepeat(test *testing.T) {
 	// after a stop, nothing more is sent
 	stopped := t.Stop()
 	assert.True(stopped)
-	time.Sleep(delay(7))
+	time.Sleep(delay(2))
 	assert.Equal(6, c.Count())
 
-	// close channel to stop counter
-	close(t.Ch)
+	// extra calls to stop don't block
+	t.Stop()
 }

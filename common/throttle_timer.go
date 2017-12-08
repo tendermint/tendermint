@@ -13,20 +13,21 @@ at most once every "dur".
 type ThrottleTimer struct {
 	Name   string
 	Ch     <-chan struct{}
-	input  chan command
+	input  chan throttleCommand
 	output chan<- struct{}
 	dur    time.Duration
 
-	timer *time.Timer
-	isSet bool
+	timer   *time.Timer
+	isSet   bool
+	stopped bool
 }
 
-type command int32
+type throttleCommand int8
 
 const (
-	Set command = iota
+	Set throttleCommand = iota
 	Unset
-	Quit
+	TQuit
 )
 
 // NewThrottleTimer creates a new ThrottleTimer.
@@ -36,7 +37,7 @@ func NewThrottleTimer(name string, dur time.Duration) *ThrottleTimer {
 		Name:   name,
 		Ch:     c,
 		dur:    dur,
-		input:  make(chan command),
+		input:  make(chan throttleCommand),
 		output: c,
 		timer:  time.NewTimer(dur),
 	}
@@ -74,14 +75,14 @@ func (t *ThrottleTimer) trySend() {
 // all modifications of the internal state of ThrottleTimer
 // happen in this method. It is only called from the run goroutine
 // so we avoid any race conditions
-func (t *ThrottleTimer) processInput(cmd command) (shutdown bool) {
+func (t *ThrottleTimer) processInput(cmd throttleCommand) (shutdown bool) {
 	switch cmd {
 	case Set:
 		if !t.isSet {
 			t.isSet = true
 			t.timer.Reset(t.dur)
 		}
-	case Quit:
+	case TQuit:
 		shutdown = true
 		fallthrough
 	case Unset:
@@ -119,9 +120,10 @@ func (t *ThrottleTimer) Unset() {
 // For ease of stopping services before starting them, we ignore Stop on nil
 // ThrottleTimers.
 func (t *ThrottleTimer) Stop() bool {
-	if t == nil {
+	if t == nil || t.stopped {
 		return false
 	}
-	t.input <- Quit
+	t.input <- TQuit
+	t.stopped = true
 	return true
 }
