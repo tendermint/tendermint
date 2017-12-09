@@ -43,6 +43,12 @@ test_release:
 test100:
 	@for i in {1..100}; do make test; done
 
+vagrant_test:
+	vagrant up
+	vagrant ssh -c 'make install'
+	vagrant ssh -c 'make test_race'
+	vagrant ssh -c 'make test_integrations'
+
 draw_deps:
 	# requires brew install graphviz or apt-get install graphviz
 	go get github.com/RobotsAndPencils/goviz
