@@ -34,7 +34,7 @@ test_race:
 	@echo "--> Running go test --race"
 	@go test -v -race $(PACKAGES)
 
-test_integrations:
+test_integrations: test
 	@bash ./test/test.sh
 
 test_release:
