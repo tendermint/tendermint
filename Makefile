@@ -24,7 +24,7 @@ build_race:
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
-test:
+test: tools get_vendor_deps
 	@echo "--> Running linter"
 	@make metalinter_test
 	@echo "--> Running go test"
@@ -76,8 +76,8 @@ update_tools:
 
 tools:
 	@echo "--> Installing tools"
-	@go get $(GOTOOLS)
-	@gometalinter.v2 --install
+	@go get -v gopkg.in/alecthomas/gometalinter.v2
+	gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
 
