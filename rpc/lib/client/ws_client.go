@@ -169,8 +169,7 @@ func (c *WSClient) OnStop() {}
 // Stop overrides cmn.Service#Stop. There is no other way to wait until Quit
 // channel is closed.
 func (c *WSClient) Stop() error {
-	err := c.BaseService.Stop()
-	if err == nil {
+	if err := c.BaseService.Stop(); err == nil {
 		// only close user-facing channels when we can't write to them
 		c.wg.Wait()
 		close(c.ResponsesCh)
