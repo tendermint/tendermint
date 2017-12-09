@@ -165,8 +165,15 @@ func (tm *TrustMetric) Pause() {
 }
 
 // Stop tells the metric to stop recording data over time intervals
+// This method also blocks until the metric has completely stopped
 func (tm *TrustMetric) Stop() {
 	tm.stop <- struct{}{}
+
+	wait := make(chan struct{})
+
+	if tm.AddStopWaitChannel(wait) {
+		<-wait
+	}
 }
 
 // BadEvents indicates that an undesirable event(s) took place
@@ -305,15 +312,6 @@ func (tm *TrustMetric) AddTimeIntervalWaitChannel(interval chan struct{}) bool {
 		added = true
 	}
 	return added
-}
-
-// WaitForStop blocks until the metric has completely stopped
-func (tm *TrustMetric) WaitForStop() {
-	stop := make(chan struct{})
-
-	if tm.AddStopWaitChannel(stop) {
-		<-stop
-	}
 }
 
 // SignalStopped fires all the maintained signal channels and sets

@@ -77,8 +77,6 @@ func TestTrustMetricStopPause(t *testing.T) {
 	tm.NextTimeInterval()
 	tm.NextTimeInterval()
 	tm.Stop()
-	// Wait for the stop to take place
-	tm.WaitForStop()
 
 	second := tm.Copy().numIntervals
 	// Allow more intervals to pass and check that the number of intervals match
