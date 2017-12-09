@@ -1,7 +1,7 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/tcnksm/ghr \
-					github.com/alecthomas/gometalinter
+					gopkg.in/alecthomas/gometalinter.v2
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
@@ -77,15 +77,15 @@ update_tools:
 tools:
 	@echo "--> Installing tools"
 	@go get $(GOTOOLS)
-	@gometalinter --install
+	@gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
 
 metalinter:
-	@gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
+	@gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test:
-	@gometalinter --vendor --deadline=600s --disable-all  \
+	@gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \

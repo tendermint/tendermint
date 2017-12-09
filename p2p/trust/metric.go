@@ -188,7 +188,6 @@ loop:
 	}
 }
 
->>>>>>> linter: address gosimple lints:p2p/trust/trustmetric.go
 //---------------------------------------------------------------------------------------
 
 const (
