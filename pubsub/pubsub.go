@@ -38,6 +38,7 @@ type cmd struct {
 // Query defines an interface for a query to be used for subscribing.
 type Query interface {
 	Matches(tags map[string]interface{}) bool
+	String() string
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
