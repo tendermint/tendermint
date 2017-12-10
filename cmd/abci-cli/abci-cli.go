@@ -347,12 +347,6 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
 	for {
-		// TODO:  (@ebuchman, @zramsay, @odeke-em) Implement the actual batch logic
-		printResponse(cmd, args, response{
-			Code: codeBad,
-			Log:  "Unimplemented",
-		})
-		return nil
 
 		line, more, err := bufReader.ReadLine()
 		if more {
@@ -364,6 +358,15 @@ func cmdBatch(cmd *cobra.Command, args []string) error {
 		} else if err != nil {
 			return err
 		}
+
+		if len(line) > 0 { // prevents introduction of extra space leading to argument parse errors
+			args = strings.Split(string(line), " ")
+		}
+
+		if err := muxOnCommands(cmd, args); err != nil {
+			return err
+		}
+		fmt.Println("")
 	}
 	return nil
 }
@@ -394,14 +397,22 @@ var (
 )
 
 func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
-	if len(pArgs) < 2 {
+
+	if len(pArgs) < 1 && cmd.Use != "batch" {
 		return errBadPersistentArgs
 	}
 
-	subCommand, actualArgs := pArgs[1], pArgs[2:]
+	subCommand, actualArgs := pArgs[0], pArgs[1:]
+
+	//if cmd.Use == "batch" {
+	//	cmd.Use = subCommand
+	//}
+
+
 	switch strings.ToLower(subCommand) {
 	case "batch":
-		return cmdBatch(cmd, actualArgs)
+		fmt.Println("WTF")
+		return nil
 	case "check_tx":
 		return cmdCheckTx(cmd, actualArgs)
 	case "commit":
