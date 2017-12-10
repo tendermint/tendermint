@@ -1,11 +1,13 @@
 package rpctypes
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 //----------------------------------------
@@ -135,10 +137,14 @@ type WSRPCConnection interface {
 	GetRemoteAddr() string
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
+	GetEventSubscriber() EventSubscriber
+}
 
-	AddSubscription(string, interface{}) error
-	DeleteSubscription(string) (interface{}, bool)
-	DeleteAllSubscriptions()
+// EventSubscriber mirros tendermint/tendermint/types.EventBusSubscriber
+type EventSubscriber interface {
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
+	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 }
 
 // websocket-only RPCFuncs take this as the first parameter.

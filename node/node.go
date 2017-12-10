@@ -2,7 +2,6 @@ package node
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -446,13 +445,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		onDisconnect := rpcserver.OnDisconnect(func(remoteAddr string) {
-			err := n.eventBus.UnsubscribeAll(context.Background(), remoteAddr)
-			if err != nil {
-				rpcLogger.Error("Error unsubsribing from all on disconnect", "err", err)
-			}
-		})
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, onDisconnect)
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, rpcserver.EventSubscriber(n.eventBus))
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
