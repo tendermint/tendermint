@@ -1,7 +1,7 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/tcnksm/ghr \
-					github.com/alecthomas/gometalinter
+					gopkg.in/alecthomas/gometalinter.v2
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
@@ -74,7 +74,7 @@ get_vendor_deps:
 	@hash glide 2>/dev/null || go get github.com/Masterminds/glide
 	@rm -rf vendor/
 	@echo "--> Running glide install"
-	@glide install
+	$(GOPATH)/bin/glide install
 
 update_tools:
 	@echo "--> Updating tools"
@@ -83,21 +83,22 @@ update_tools:
 tools:
 	@echo "--> Installing tools"
 	@go get $(GOTOOLS)
-	@gometalinter --install
+	$(GOPATH)/bin/gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
 
 metalinter:
-	@gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
+	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test:
-	@gometalinter --vendor --deadline=600s --disable-all  \
+	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
+		--enable=gosimple \
 	 	--enable=misspell \
 		--enable=safesql \
 		./...
 
-		# --enable=gas \
+		#--enable=gas \
 		#--enable=maligned \
 		#--enable=dupl \
 		#--enable=errcheck \
@@ -105,7 +106,6 @@ metalinter_test:
 		#--enable=gocyclo \
 		#--enable=goimports \
 		#--enable=golint \ <== comments on anything exported
-		#--enable=gosimple \
 		#--enable=gotype \
 	 	#--enable=ineffassign \
 	   	#--enable=interfacer \

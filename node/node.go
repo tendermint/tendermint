@@ -373,12 +373,7 @@ func (n *Node) OnStart() error {
 	}
 
 	// start tx indexer
-	err = n.indexerService.Start()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return n.indexerService.Start()
 }
 
 // OnStop stops the Node. It implements cmn.Service.
