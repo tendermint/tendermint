@@ -76,8 +76,8 @@ update_tools:
 	@go get -u $(GOTOOLS)
 
 tools:
-	echo "--> Installing tools"
-	go get $(GOTOOLS)
+	@echo "--> Installing tools"
+	@go get $(GOTOOLS)
 	$(GOPATH)/bin/gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
@@ -86,7 +86,7 @@ metalinter:
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test:
-	gometalinter.v2 --vendor --deadline=600s --disable-all  \
+	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \
