@@ -1,6 +1,7 @@
 package common
 
 import (
+	"bytes"
 	"container/heap"
 )
 
@@ -33,6 +34,10 @@ func (h *Heap) Len() int64 {
 
 func (h *Heap) Push(value interface{}, priority int) {
 	heap.Push(&h.pq, &pqItem{value: value, priority: cmpInt(priority)})
+}
+
+func (h *Heap) PushBytes(value interface{}, priority []byte) {
+	heap.Push(&h.pq, &pqItem{value: value, priority: cmpBytes(priority)})
 }
 
 func (h *Heap) PushComparable(value interface{}, priority Comparable) {
@@ -111,4 +116,10 @@ type cmpInt int
 
 func (i cmpInt) Less(o interface{}) bool {
 	return int(i) < int(o.(cmpInt))
+}
+
+type cmpBytes []byte
+
+func (bz cmpBytes) Less(o interface{}) bool {
+	return bytes.Compare([]byte(bz), []byte(o.(cmpBytes))) < 0
 }
