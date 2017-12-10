@@ -77,7 +77,7 @@ update_tools:
 tools:
 	echo "--> Installing tools"
 	go get $(GOTOOLS)
-	gometalinter.v2 --install
+	$(GOPATH)/bin/gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
 
