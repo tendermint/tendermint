@@ -84,7 +84,7 @@ tools:
 metalinter:
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test: get_vendor_deps
+metalinter_test: tools get_vendor_deps
 	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
