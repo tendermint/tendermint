@@ -50,10 +50,6 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	ch := make(chan interface{})
-	es := wsCtx.GetEventSubscriber()
-	if es == nil {
-		es = eventBus
-	}
 	err = eventBusFor(wsCtx).Subscribe(ctx, addr, q, ch)
 	if err != nil {
 		return nil, err

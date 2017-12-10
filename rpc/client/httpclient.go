@@ -323,6 +323,8 @@ func (w *WSEvents) eventListener() {
 				w.Logger.Error("failed to unmarshal response", "err", err)
 				continue
 			}
+			// NOTE: writing also happens inside mutex so we can't close a channel in
+			// Unsubscribe/UnsubscribeAll.
 			w.mtx.RLock()
 			if ch, ok := w.subscriptions[result.Query]; ok {
 				ch <- result.Data
