@@ -24,24 +24,24 @@ build_race:
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
-test: tools get_vendor_deps
-	echo "--> Running linter"
-	make metalinter_test
-	echo "--> Running go test"
-	go test $(PACKAGES)
+test:
+	@echo "--> Running linter"
+	@make metalinter_test
+	@echo "--> Running go test"
+	@go test $(PACKAGES)
 
 test_race:
-	echo "--> Running go test --race"
-	go test -v -race $(PACKAGES)
+	@echo "--> Running go test --race"
+	@go test -v -race $(PACKAGES)
 
-test_integrations: test
-	bash ./test/test.sh
+test_integrations:
+	@bash ./test/test.sh
 
 test_release:
-	go test -tags release $(PACKAGES)
+	@go test -tags release $(PACKAGES)
 
 test100:
-	for i in {1..100}; do make test; done
+	@for i in {1..100}; do make test; done
 
 draw_deps:
 	# requires brew install graphviz or apt-get install graphviz
@@ -65,10 +65,10 @@ update_deps:
 	@go get -d -u ./...
 
 get_vendor_deps:
-	hash glide 2>/dev/null || go get github.com/Masterminds/glide
-	rm -rf vendor/
-	echo "--> Running glide install"
-	glide install
+	@hash glide 2>/dev/null || go get github.com/Masterminds/glide
+	@rm -rf vendor/
+	@echo "--> Running glide install"
+	@glide install
 
 update_tools:
 	@echo "--> Updating tools"
@@ -76,7 +76,7 @@ update_tools:
 
 tools:
 	echo "--> Installing tools"
-	go get -v gopkg.in/alecthomas/gometalinter.v2
+	go get $(GOTOOLS)
 	gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
@@ -84,7 +84,7 @@ tools:
 metalinter:
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test:
+metalinter_test: get_vendor_deps
 	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
