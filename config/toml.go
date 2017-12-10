@@ -35,7 +35,7 @@ func EnsureRoot(rootDir string) {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		cmn.MustWriteFile(configFilePath, []byte(defaultConfig(defaultMoniker)), 0644)
+		writeConfigFile(configFilePath)
 	}
 }
 
@@ -241,7 +241,7 @@ func ResetTestRoot(testName string) *Config {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		cmn.MustWriteFile(configFilePath, []byte(testConfig(defaultMoniker)), 0644)
+		writeConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
