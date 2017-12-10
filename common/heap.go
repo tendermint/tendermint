@@ -4,25 +4,21 @@ import (
 	"container/heap"
 )
 
-type Comparable interface {
-	Less(o interface{}) bool
-}
-
-//-----------------------------------------------------------------------------
-
 /*
-Example usage:
+	Example usage:
+
+	```
 	h := NewHeap()
 
-	h.Push(String("msg1"), 1)
-	h.Push(String("msg3"), 3)
-	h.Push(String("msg2"), 2)
+	h.Push("msg1", 1)
+	h.Push("msg3", 3)
+	h.Push("msg2", 2)
 
-	fmt.Println(h.Pop())
-	fmt.Println(h.Pop())
-	fmt.Println(h.Pop())
+	fmt.Println(h.Pop()) // msg1
+	fmt.Println(h.Pop()) // msg2
+	fmt.Println(h.Pop()) // msg3
+	```
 */
-
 type Heap struct {
 	pq priorityQueue
 }
@@ -35,7 +31,11 @@ func (h *Heap) Len() int64 {
 	return int64(len(h.pq))
 }
 
-func (h *Heap) Push(value interface{}, priority Comparable) {
+func (h *Heap) Push(value interface{}, priority int) {
+	heap.Push(&h.pq, &pqItem{value: value, priority: cmpInt(priority)})
+}
+
+func (h *Heap) PushComparable(value interface{}, priority Comparable) {
 	heap.Push(&h.pq, &pqItem{value: value, priority: priority})
 }
 
@@ -56,8 +56,6 @@ func (h *Heap) Pop() interface{} {
 }
 
 //-----------------------------------------------------------------------------
-
-///////////////////////
 // From: http://golang.org/pkg/container/heap/#example__priorityQueue
 
 type pqItem struct {
@@ -100,4 +98,17 @@ func (pq *priorityQueue) Update(item *pqItem, value interface{}, priority Compar
 	item.value = value
 	item.priority = priority
 	heap.Fix(pq, item.index)
+}
+
+//--------------------------------------------------------------------------------
+// Comparable
+
+type Comparable interface {
+	Less(o interface{}) bool
+}
+
+type cmpInt int
+
+func (i cmpInt) Less(o interface{}) bool {
+	return int(i) < int(o.(cmpInt))
 }
