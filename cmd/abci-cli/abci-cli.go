@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -348,6 +347,13 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
 	for {
+		// TODO:  (@ebuchman, @zramsay, @odeke-em) Implement the actual batch logic
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "Unimplemented",
+		})
+		return nil
+
 		line, more, err := bufReader.ReadLine()
 		if more {
 			return errors.New("Input line is too long")
@@ -358,19 +364,11 @@ func cmdBatch(cmd *cobra.Command, args []string) error {
 		} else if err != nil {
 			return err
 		}
-
-		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
-		if err != nil {
-			return err
-		}
-		fmt.Println(string(out))
 	}
 	return nil
 }
 
 func cmdConsole(cmd *cobra.Command, args []string) error {
-
 	for {
 		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
@@ -382,18 +380,67 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		}
 
 		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
-		if err != nil {
+		if err := muxOnCommands(cmd, pArgs); err != nil {
 			return err
 		}
-		fmt.Println(string(out))
 	}
+	return nil
+}
+
+var (
+	errBadPersistentArgs = errors.New("expecting persistent args of the form: abci-cli [command] <...>")
+
+	errUnimplemented = errors.New("unimplemented")
+)
+
+func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
+	if len(pArgs) < 2 {
+		return errBadPersistentArgs
+	}
+
+	subCommand, actualArgs := pArgs[1], pArgs[2:]
+	switch strings.ToLower(subCommand) {
+	case "batch":
+		return cmdBatch(cmd, actualArgs)
+	case "check_tx":
+		return cmdCheckTx(cmd, actualArgs)
+	case "commit":
+		return cmdCommit(cmd, actualArgs)
+	case "deliver_tx":
+		return cmdDeliverTx(cmd, actualArgs)
+	case "echo":
+		return cmdEcho(cmd, actualArgs)
+	case "info":
+		return cmdInfo(cmd, actualArgs)
+	case "query":
+		return cmdQuery(cmd, actualArgs)
+	case "set_option":
+		return cmdSetOption(cmd, actualArgs)
+	default:
+		return cmdUnimplemented(cmd, pArgs)
+	}
+}
+
+func cmdUnimplemented(cmd *cobra.Command, args []string) error {
+	// TODO: Print out all the sub-commands available
+	msg := "unimplemented command"
+	if err := cmd.Help(); err != nil {
+		msg = err.Error()
+	}
+	printResponse(cmd, args, response{
+		Code: codeBad,
+		Log:  msg,
+	})
 	return nil
 }
 
 // Have the application echo a message
 func cmdEcho(cmd *cobra.Command, args []string) error {
-	res, err := client.EchoSync(args[0])
+	msg := ""
+	if len(args) > 0 {
+		msg = args[0]
+	}
+	res, err := client.EchoSync(msg)
 	if err != nil {
 		return err
 	}
@@ -419,8 +466,18 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+const codeBad uint32 = 10
+
 // Set an option on the application
 func cmdSetOption(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want at least arguments of the form: <key> <value>",
+		})
+		return nil
+	}
+
 	key, val := args[0], args[1]
 	res, err := client.SetOptionSync(types.RequestSetOption{key, val})
 	if err != nil {
@@ -435,6 +492,13 @@ func cmdSetOption(cmd *cobra.Command, args []string) error {
 
 // Append a new tx to application
 func cmdDeliverTx(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want the tx",
+		})
+		return nil
+	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
@@ -453,6 +517,13 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 
 // Validate a tx
 func cmdCheckTx(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want the tx",
+		})
+		return nil
+	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
@@ -485,6 +556,13 @@ func cmdCommit(cmd *cobra.Command, args []string) error {
 
 // Query application state
 func cmdQuery(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want the query",
+		})
+		return nil
+	}
 	queryBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
