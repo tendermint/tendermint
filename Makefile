@@ -1,7 +1,6 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/tcnksm/ghr \
-					github.com/Masterminds/glide \
 					gopkg.in/alecthomas/gometalinter.v2
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
@@ -83,7 +82,7 @@ tools:
 ### Formatting, linting, and vetting
 
 metalinter:
-	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
+	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test:
 	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --disable-all  \
