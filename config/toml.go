@@ -76,13 +76,10 @@ db_backend = "{{ .BaseConfig.DBBackend }}"
 # Database directory
 db_path = "{{ .BaseConfig.DBPath }}"
 
-# Output level for logging
+# Output level for logging, including package level options
 log_level = "{{ .BaseConfig.LogLevel }}"
 
 ##### additional base config options #####
-
-# The ID of the chain to join (should be signed with every transaction and vote)
-chain_id = "{{ .BaseConfig.ChainID }}"
 
 # Path to the JSON file containing the initial validator set and other meta data
 genesis_file = "{{ .BaseConfig.Genesis }}"

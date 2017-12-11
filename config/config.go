@@ -78,12 +78,13 @@ func (cfg *Config) SetRoot(root string) *Config {
 
 // BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct {
+
+	// chainID is unexposed and immutable but here for convenience
+	chainID string
+
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
-
-	// The ID of the chain to join (should be signed with every transaction and vote)
-	ChainID string `mapstructure:"chain_id"`
 
 	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
@@ -123,6 +124,10 @@ type BaseConfig struct {
 	DBPath string `mapstructure:"db_dir"`
 }
 
+func (c BaseConfig) ChainID() string {
+	return c.chainID
+}
+
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
@@ -143,7 +148,7 @@ func DefaultBaseConfig() BaseConfig {
 // TestBaseConfig returns a base configuration for testing a Tendermint node
 func TestBaseConfig() BaseConfig {
 	conf := DefaultBaseConfig()
-	conf.ChainID = "tendermint_test"
+	conf.chainID = "tendermint_test"
 	conf.ProxyApp = "dummy"
 	conf.FastSync = false
 	conf.DBBackend = "memdb"

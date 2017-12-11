@@ -78,7 +78,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 		Type:             voteType,
 		BlockID:          types.BlockID{hash, header},
 	}
-	err := vs.PrivValidator.SignVote(config.ChainID, vote)
+	err := vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
 }
 
@@ -129,7 +129,7 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	// Make proposal
 	polRound, polBlockID := cs1.Votes.POLInfo()
 	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
-	if err := vs.SignProposal(config.ChainID, proposal); err != nil {
+	if err := vs.SignProposal(cs1.state.ChainID, proposal); err != nil {
 		panic(err)
 	}
 	return
@@ -430,9 +430,10 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		privValidators[i] = privVal
 	}
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
+
 	return &types.GenesisDoc{
 		GenesisTime: time.Now(),
-		ChainID:     config.ChainID,
+		ChainID:     config.ChainID(),
 		Validators:  validators,
 	}, privValidators
 }
