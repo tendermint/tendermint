@@ -272,10 +272,10 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	// simulate failure by closing connection
 	peer.CloseConn()
 
-	// TODO: actually detect the disconnection and wait for reconnect
+	// TODO: remove sleep, detect the disconnection, wait for reconnect
 	npeers := sw.Peers().Size()
 	for i := 0; i < 20; i++ {
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(250 * time.Millisecond)
 		npeers = sw.Peers().Size()
 		if npeers > 0 {
 			break
