@@ -106,25 +106,28 @@ var (
 	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10}}}
 )
 
+// TODO: This test should be simplified ...
+
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	state, bs := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
 	require.Equal(t, bs.Height(), 0, "initially the height should be zero")
 
+	// check there are no blocks at various heights
 	noBlockHeights := []int{0, -1, 100, 1000, 2}
 	for i, height := range noBlockHeights {
 		if g := bs.LoadBlock(height); g != nil {
 			t.Errorf("#%d: height(%d) got a block; want nil", i, height)
 		}
 	}
-	block := makeBlock(bs.Height()+1, state)
 
+	// save a block
+	block := makeBlock(bs.Height()+1, state)
 	validPartSet := block.MakePartSet(2)
 	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10}}}
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
-
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
 	uncontiguousPartSet.AddPart(part2, false)
 
