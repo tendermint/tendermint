@@ -113,5 +113,8 @@ func CanonicalHeartbeat(heartbeat *Heartbeat) CanonicalJSONHeartbeat {
 }
 
 func CanonicalTime(t time.Time) string {
-	return t.Format(timeFormat)
+	// note that sending time over go-wire resets it to
+	// local time, we need to force UTC here, so the
+	// signatures match
+	return t.UTC().Format(timeFormat)
 }
