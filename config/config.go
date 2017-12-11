@@ -244,6 +244,7 @@ func DefaultP2PConfig() *P2PConfig {
 		MaxMsgPacketPayloadSize: 1024,   // 1 kB
 		SendRate:                512000, // 500 kB/s
 		RecvRate:                512000, // 500 kB/s
+		PexReactor:              true,
 	}
 }
 
