@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -13,6 +12,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 /*
@@ -204,20 +204,14 @@ type WSEvents struct {
 	endpoint string
 	ws       *rpcclient.WSClient
 
-	subscriptions map[string]chan<- interface{}
 	mtx           sync.RWMutex
-
-	// used for signaling the goroutine that feeds ws -> EventSwitch
-	quit chan bool
-	done chan bool
+	subscriptions map[string]chan<- interface{}
 }
 
 func newWSEvents(remote, endpoint string) *WSEvents {
 	wsEvents := &WSEvents{
 		endpoint:      endpoint,
 		remote:        remote,
-		quit:          make(chan bool, 1),
-		done:          make(chan bool, 1),
 		subscriptions: make(map[string]chan<- interface{}),
 	}
 
@@ -225,87 +219,86 @@ func newWSEvents(remote, endpoint string) *WSEvents {
 	return wsEvents
 }
 
-// Start is the only way I could think the extend OnStart from
-// events.eventSwitch.  If only it wasn't private...
-// BaseService.Start -> eventSwitch.OnStart -> WSEvents.Start
-func (w *WSEvents) Start() error {
-	ws := rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
+func (w *WSEvents) OnStart() error {
+	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
 		w.redoSubscriptions()
 	}))
-	err := ws.Start()
-	if err == nil {
-		w.ws = ws
-		go w.eventListener()
+	err := w.ws.Start()
+	if err != nil {
+		return err
 	}
-	return err
+
+	go w.eventListener()
+	return nil
 }
 
 // Stop wraps the BaseService/eventSwitch actions as Start does
-func (w *WSEvents) Stop() error {
-	// send a message to quit to stop the eventListener
-	w.quit <- true
-	<-w.done
-	w.ws.Stop()
-	w.ws = nil
-	return nil
-}
-
-func (w *WSEvents) Subscribe(ctx context.Context, query string, out chan<- interface{}) error {
-	if ch := w.getSubscription(query); ch != nil {
-		return errors.New("already subscribed")
-	}
-
-	err := w.ws.Subscribe(ctx, query)
+func (w *WSEvents) OnStop() {
+	err := w.ws.Stop()
 	if err != nil {
-		return errors.Wrap(err, "failed to subscribe")
+		w.Logger.Error("failed to stop WSClient", "err", err)
 	}
-
-	w.mtx.Lock()
-	w.subscriptions[query] = out
-	w.mtx.Unlock()
-
-	return nil
 }
 
-func (w *WSEvents) Unsubscribe(ctx context.Context, query string) error {
-	err := w.ws.Unsubscribe(ctx, query)
+func (w *WSEvents) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
+	q := query.String()
+
+	err := w.ws.Subscribe(ctx, q)
 	if err != nil {
 		return err
 	}
 
 	w.mtx.Lock()
-	defer w.mtx.Unlock()
-	ch, ok := w.subscriptions[query]
-	if ok {
-		close(ch)
-		delete(w.subscriptions, query)
-	}
+	// subscriber param is ignored because Tendermint will override it with
+	// remote IP anyway.
+	w.subscriptions[q] = out
+	w.mtx.Unlock()
 
 	return nil
 }
 
-func (w *WSEvents) UnsubscribeAll(ctx context.Context) error {
+func (w *WSEvents) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
+	q := query.String()
+
+	err := w.ws.Unsubscribe(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	w.mtx.Lock()
+	ch, ok := w.subscriptions[q]
+	if ok {
+		close(ch)
+		delete(w.subscriptions, q)
+	}
+	w.mtx.Unlock()
+
+	return nil
+}
+
+func (w *WSEvents) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	err := w.ws.UnsubscribeAll(ctx)
 	if err != nil {
 		return err
 	}
 
 	w.mtx.Lock()
-	defer w.mtx.Unlock()
 	for _, ch := range w.subscriptions {
 		close(ch)
 	}
 	w.subscriptions = make(map[string]chan<- interface{})
+	w.mtx.Unlock()
+
 	return nil
 }
 
 // After being reconnected, it is necessary to redo subscription to server
 // otherwise no data will be automatically received.
 func (w *WSEvents) redoSubscriptions() {
-	for query := range w.subscriptions {
+	for q := range w.subscriptions {
 		// NOTE: no timeout for resubscribing
 		// FIXME: better logging/handling of errors??
-		w.ws.Subscribe(context.Background(), query)
+		w.ws.Subscribe(context.Background(), q)
 	}
 }
 
@@ -316,34 +309,29 @@ func (w *WSEvents) redoSubscriptions() {
 func (w *WSEvents) eventListener() {
 	for {
 		select {
-		case resp := <-w.ws.ResponsesCh:
-			// res is json.RawMessage
+		case resp, ok := <-w.ws.ResponsesCh:
+			if !ok {
+				return
+			}
 			if resp.Error != nil {
-				// FIXME: better logging/handling of errors??
-				fmt.Printf("ws err: %+v\n", resp.Error.Error())
+				w.Logger.Error("WS error", "err", resp.Error.Error())
 				continue
 			}
 			result := new(ctypes.ResultEvent)
 			err := json.Unmarshal(resp.Result, result)
 			if err != nil {
-				// ignore silently (eg. subscribe, unsubscribe and maybe other events)
-				// TODO: ?
+				w.Logger.Error("failed to unmarshal response", "err", err)
 				continue
 			}
-			if ch := w.getSubscription(result.Query); ch != nil {
+			// NOTE: writing also happens inside mutex so we can't close a channel in
+			// Unsubscribe/UnsubscribeAll.
+			w.mtx.RLock()
+			if ch, ok := w.subscriptions[result.Query]; ok {
 				ch <- result.Data
 			}
-		case <-w.quit:
-			// send a message so we can wait for the routine to exit
-			// before cleaning up the w.ws stuff
-			w.done <- true
+			w.mtx.RUnlock()
+		case <-w.Quit:
 			return
 		}
 	}
-}
-
-func (w *WSEvents) getSubscription(query string) chan<- interface{} {
-	w.mtx.RLock()
-	defer w.mtx.RUnlock()
-	return w.subscriptions[query]
 }

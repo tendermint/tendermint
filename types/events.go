@@ -146,32 +146,32 @@ const (
 )
 
 var (
-	EventQueryBond              = queryForEvent(EventBond)
-	EventQueryUnbond            = queryForEvent(EventUnbond)
-	EventQueryRebond            = queryForEvent(EventRebond)
-	EventQueryDupeout           = queryForEvent(EventDupeout)
-	EventQueryFork              = queryForEvent(EventFork)
-	EventQueryNewBlock          = queryForEvent(EventNewBlock)
-	EventQueryNewBlockHeader    = queryForEvent(EventNewBlockHeader)
-	EventQueryNewRound          = queryForEvent(EventNewRound)
-	EventQueryNewRoundStep      = queryForEvent(EventNewRoundStep)
-	EventQueryTimeoutPropose    = queryForEvent(EventTimeoutPropose)
-	EventQueryCompleteProposal  = queryForEvent(EventCompleteProposal)
-	EventQueryPolka             = queryForEvent(EventPolka)
-	EventQueryUnlock            = queryForEvent(EventUnlock)
-	EventQueryLock              = queryForEvent(EventLock)
-	EventQueryRelock            = queryForEvent(EventRelock)
-	EventQueryTimeoutWait       = queryForEvent(EventTimeoutWait)
-	EventQueryVote              = queryForEvent(EventVote)
-	EventQueryProposalHeartbeat = queryForEvent(EventProposalHeartbeat)
-	EventQueryTx                = queryForEvent(EventTx)
+	EventQueryBond              = QueryForEvent(EventBond)
+	EventQueryUnbond            = QueryForEvent(EventUnbond)
+	EventQueryRebond            = QueryForEvent(EventRebond)
+	EventQueryDupeout           = QueryForEvent(EventDupeout)
+	EventQueryFork              = QueryForEvent(EventFork)
+	EventQueryNewBlock          = QueryForEvent(EventNewBlock)
+	EventQueryNewBlockHeader    = QueryForEvent(EventNewBlockHeader)
+	EventQueryNewRound          = QueryForEvent(EventNewRound)
+	EventQueryNewRoundStep      = QueryForEvent(EventNewRoundStep)
+	EventQueryTimeoutPropose    = QueryForEvent(EventTimeoutPropose)
+	EventQueryCompleteProposal  = QueryForEvent(EventCompleteProposal)
+	EventQueryPolka             = QueryForEvent(EventPolka)
+	EventQueryUnlock            = QueryForEvent(EventUnlock)
+	EventQueryLock              = QueryForEvent(EventLock)
+	EventQueryRelock            = QueryForEvent(EventRelock)
+	EventQueryTimeoutWait       = QueryForEvent(EventTimeoutWait)
+	EventQueryVote              = QueryForEvent(EventVote)
+	EventQueryProposalHeartbeat = QueryForEvent(EventProposalHeartbeat)
+	EventQueryTx                = QueryForEvent(EventTx)
 )
 
 func EventQueryTxFor(tx Tx) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s' AND %s='%X'", EventTypeKey, EventTx, TxHashKey, tx.Hash()))
 }
 
-func queryForEvent(eventType string) tmpubsub.Query {
+func QueryForEvent(eventType string) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
 }
 

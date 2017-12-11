@@ -27,6 +27,14 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.14.0 (TBD)
+
+BREAKING CHANGES:
+- rpc/client: changed Subscribe/Unsubscribe/UnsubscribeAll funcs signatures to be identical to event bus.
+
+IMPROVEMENTS:
+- rpc/client: can act as event bus subscriber (See https://github.com/tendermint/tendermint/issues/945).
+
 ## 0.13.0 (December 6, 2017)
 
 BREAKING CHANGES:

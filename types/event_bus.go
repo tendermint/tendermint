@@ -12,6 +12,12 @@ import (
 
 const defaultCapacity = 1000
 
+type EventBusSubscriber interface {
+	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
+	Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error
+	UnsubscribeAll(ctx context.Context, subscriber string) error
+}
+
 // EventBus is a common bus for all events going through the system. All calls
 // are proxied to underlying pubsub server. All events must be published using
 // EventBus to ensure correct data types.
