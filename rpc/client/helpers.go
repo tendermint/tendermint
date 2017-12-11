@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/pkg/errors"
@@ -57,19 +56,20 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 //
 // This handles subscribing and unsubscribing under the hood
 func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (types.TMEventData, error) {
+	const subscriber = "helpers"
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	evts := make(chan interface{}, 1)
 
 	// register for the next event of this type
-	query := fmt.Sprintf("%s='%s'", types.EventTypeKey, evtTyp)
-	err := c.Subscribe(ctx, query, evts)
+	query := types.QueryForEvent(evtTyp)
+	err := c.Subscribe(ctx, subscriber, query, evts)
 	if err != nil {
 		return types.TMEventData{}, errors.Wrap(err, "failed to subscribe")
 	}
 
 	// make sure to unregister after the test is over
-	defer c.Unsubscribe(ctx, query)
+	defer c.UnsubscribeAll(ctx, subscriber)
 
 	select {
 	case evt := <-evts:

@@ -298,9 +298,9 @@ func (sw *Switch) startInitPeer(peer *peer) {
 
 // DialSeeds dials a list of seeds asynchronously in random order.
 func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
-	netAddrs, err := NewNetAddressStrings(seeds)
-	if err != nil {
-		return err
+	netAddrs, errs := NewNetAddressStrings(seeds)
+	for _, err := range errs {
+		sw.Logger.Error("Error in seed's address", "err", err)
 	}
 
 	if addrBook != nil {

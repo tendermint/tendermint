@@ -23,9 +23,7 @@ func EnsureRoot(rootDir string) {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		// Ask user for moniker
-		// moniker := cfg.Prompt("Type hostname: ", "anonymous")
-		cmn.MustWriteFile(configFilePath, []byte(defaultConfig("anonymous")), 0644)
+		cmn.MustWriteFile(configFilePath, []byte(defaultConfig(defaultMoniker)), 0644)
 	}
 }
 
@@ -81,8 +79,7 @@ func ResetTestRoot(testName string) *Config {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		// Ask user for moniker
-		cmn.MustWriteFile(configFilePath, []byte(testConfig("anonymous")), 0644)
+		cmn.MustWriteFile(configFilePath, []byte(testConfig(defaultMoniker)), 0644)
 	}
 	if !cmn.FileExists(genesisFilePath) {
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)

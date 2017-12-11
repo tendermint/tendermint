@@ -138,7 +138,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 		return false
 	}
 
-	peers := make(map[string]MetricHistoryJSON, 0)
+	peers := make(map[string]MetricHistoryJSON)
 	err := json.Unmarshal(bytes, &peers)
 	if err != nil {
 		cmn.PanicCrisis(cmn.Fmt("Could not unmarshal Trust Metric Store DB data: %v", err))
@@ -160,7 +160,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 func (tms *TrustMetricStore) saveToDB() {
 	tms.Logger.Debug("Saving TrustHistory to DB", "size", tms.size())
 
-	peers := make(map[string]MetricHistoryJSON, 0)
+	peers := make(map[string]MetricHistoryJSON)
 
 	for key, tm := range tms.peerMetrics {
 		// Add an entry for the peer identified by key

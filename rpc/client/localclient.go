@@ -3,19 +3,12 @@ package client
 import (
 	"context"
 
-	"github.com/pkg/errors"
-
 	data "github.com/tendermint/go-wire/data"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	tmquery "github.com/tendermint/tmlibs/pubsub/query"
-)
-
-const (
-	// event bus subscriber
-	subscriber = "rpc-localclient"
+	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
 /*
@@ -33,10 +26,7 @@ For real clients, you probably want to use client.HTTP.  For more
 powerful control during testing, you probably want the "client/mock" package.
 */
 type Local struct {
-	node *nm.Node
-
 	*types.EventBus
-	subscriptions map[string]*tmquery.Query
 }
 
 // NewLocal configures a client that calls the Node directly.
@@ -48,9 +38,7 @@ type Local struct {
 func NewLocal(node *nm.Node) *Local {
 	node.ConfigureRPC()
 	return &Local{
-		node:          node,
-		EventBus:      node.EventBus(),
-		subscriptions: make(map[string]*tmquery.Query),
+		EventBus: node.EventBus(),
 	}
 }
 
@@ -68,7 +56,7 @@ func (Local) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return core.ABCIInfo()
 }
 
-func (c Local) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+func (c *Local) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(path, data, DefaultABCIQueryOptions)
 }
 
@@ -128,34 +116,14 @@ func (Local) TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 	return core.TxSearch(query, prove)
 }
 
-func (c *Local) Subscribe(ctx context.Context, query string, out chan<- interface{}) error {
-	q, err := tmquery.New(query)
-	if err != nil {
-		return errors.Wrap(err, "failed to subscribe")
-	}
-	if err = c.EventBus.Subscribe(ctx, subscriber, q, out); err != nil {
-		return errors.Wrap(err, "failed to subscribe")
-	}
-	c.subscriptions[query] = q
-	return nil
+func (c *Local) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
+	return c.EventBus.Subscribe(ctx, subscriber, query, out)
 }
 
-func (c *Local) Unsubscribe(ctx context.Context, query string) error {
-	q, ok := c.subscriptions[query]
-	if !ok {
-		return errors.New("subscription not found")
-	}
-	if err := c.EventBus.Unsubscribe(ctx, subscriber, q); err != nil {
-		return errors.Wrap(err, "failed to unsubscribe")
-	}
-	delete(c.subscriptions, query)
-	return nil
+func (c *Local) Unsubscribe(ctx context.Context, subscriber string, query tmpubsub.Query) error {
+	return c.EventBus.Unsubscribe(ctx, subscriber, query)
 }
 
-func (c *Local) UnsubscribeAll(ctx context.Context) error {
-	if err := c.EventBus.UnsubscribeAll(ctx, subscriber); err != nil {
-		return errors.Wrap(err, "failed to unsubscribe")
-	}
-	c.subscriptions = make(map[string]*tmquery.Query)
-	return nil
+func (c *Local) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	return c.EventBus.UnsubscribeAll(ctx, subscriber)
 }

@@ -31,6 +31,10 @@ BUG FIXES:
 
 BREAKING CHANGES:
 - consensus/wal: removed separator
+- rpc/client: changed Subscribe/Unsubscribe/UnsubscribeAll funcs signatures to be identical to event bus.
+
+IMPROVEMENTS:
+- rpc/client: can act as event bus subscriber (See https://github.com/tendermint/tendermint/issues/945).
 
 ## 0.13.0 (December 6, 2017)
 

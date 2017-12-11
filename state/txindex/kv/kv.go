@@ -342,7 +342,7 @@ func startKey(c query.Condition, height int64) []byte {
 
 func startKeyForRange(r queryRange, height int64) []byte {
 	if r.lowerBound == nil {
-		return []byte(fmt.Sprintf("%s", r.key))
+		return []byte(r.key)
 	}
 
 	var lowerBound interface{}

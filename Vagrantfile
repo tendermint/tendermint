@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/trusty64"
+  config.vm.box = "ubuntu/xenial64"
 
   config.vm.provider "virtualbox" do |v|
     v.memory = 4096
@@ -10,30 +10,40 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<-SHELL
+    # add docker repo
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+
+    # and golang 1.9 support
+    # official repo doesn't have race detection runtime...
+    # add-apt-repository ppa:gophers/archive
+    add-apt-repository ppa:longsleep/golang-backports
+
+    # install base requirements
     apt-get update
-    apt-get install -y --no-install-recommends wget curl jq shellcheck bsdmainutils psmisc
+    apt-get install -y --no-install-recommends wget curl jq \
+        make shellcheck bsdmainutils psmisc
+    apt-get install -y docker-ce golang-1.9-go
 
-    wget -qO- https://get.docker.com/ | sh
-    usermod -a -G docker vagrant
-    apt-get autoremove -y
+    # needed for docker
+    usermod -a -G docker ubuntu
 
-    apt-get install -y --no-install-recommends git
-    curl -O https://storage.googleapis.com/golang/go1.9.linux-amd64.tar.gz
-    tar -xvf go1.9.linux-amd64.tar.gz
-    rm -rf /usr/local/go
-    mv go /usr/local
-    rm -f go1.9.linux-amd64.tar.gz
-    mkdir -p /home/vagrant/go/bin
-    echo 'export PATH=$PATH:/usr/local/go/bin:/home/vagrant/go/bin' >> /home/vagrant/.bash_profile
-    echo 'export GOPATH=/home/vagrant/go' >> /home/vagrant/.bash_profile
+    # use "EOF" not EOF to avoid variable substitution of $PATH
+    cat << "EOF" >> /home/ubuntu/.bash_profile
+export PATH=$PATH:/usr/lib/go-1.9/bin:/home/ubuntu/go/bin
+export GOPATH=/home/ubuntu/go
+export LC_ALL=en_US.UTF-8
+cd go/src/github.com/tendermint/tendermint
+EOF
 
-    echo 'export LC_ALL=en_US.UTF-8' >> /home/vagrant/.bash_profile
+    mkdir -p /home/ubuntu/go/bin
+    mkdir -p /home/ubuntu/go/src/github.com/tendermint
+    ln -s /vagrant /home/ubuntu/go/src/github.com/tendermint/tendermint
 
-    mkdir -p /home/vagrant/go/src/github.com/tendermint
-    ln -s /vagrant /home/vagrant/go/src/github.com/tendermint/tendermint
+    chown -R ubuntu:ubuntu /home/ubuntu/go
+    chown ubuntu:ubuntu /home/ubuntu/.bash_profile
 
-    chown -R vagrant:vagrant /home/vagrant/go
-
-    su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_vendor_deps'
+    # get all deps and tools, ready to install/test
+    su - ubuntu -c 'cd /home/ubuntu/go/src/github.com/tendermint/tendermint && make get_vendor_deps && make tools'
   SHELL
 end
