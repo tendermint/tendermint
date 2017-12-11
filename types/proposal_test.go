@@ -2,20 +2,30 @@ package types
 
 import (
 	"testing"
+	"time"
 )
 
-var testProposal = &Proposal{
-	Height:           12345,
-	Round:            23456,
-	BlockPartsHeader: PartSetHeader{111, []byte("blockparts")},
-	POLRound:         -1,
+var testProposal *Proposal
+
+func init() {
+	var stamp, err = time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
+	if err != nil {
+		panic(err)
+	}
+	testProposal = &Proposal{
+		Height:           12345,
+		Round:            23456,
+		BlockPartsHeader: PartSetHeader{111, []byte("blockparts")},
+		POLRound:         -1,
+		Timestamp:        stamp,
+	}
 }
 
 func TestProposalSignable(t *testing.T) {
 	signBytes := SignBytes("test_chain_id", testProposal)
 	signStr := string(signBytes)
 
-	expected := `{"chain_id":"test_chain_id","proposal":{"block_parts_header":{"hash":"626C6F636B7061727473","total":111},"height":12345,"pol_block_id":{},"pol_round":-1,"round":23456}}`
+	expected := `{"chain_id":"test_chain_id","proposal":{"block_parts_header":{"hash":"626C6F636B7061727473","total":111},"height":12345,"pol_block_id":{},"pol_round":-1,"round":23456,"timestamp":"2018-02-11T07:09:22.765Z"}}`
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for Proposal. Expected:\n%v\nGot:\n%v", expected, signStr)
 	}
