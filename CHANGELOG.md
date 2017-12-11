@@ -30,6 +30,7 @@ BUG FIXES:
 ## 0.14.0 (TBD)
 
 BREAKING CHANGES:
+- consensus/wal: removed separator
 - rpc/client: changed Subscribe/Unsubscribe/UnsubscribeAll funcs signatures to be identical to event bus.
 
 IMPROVEMENTS:
