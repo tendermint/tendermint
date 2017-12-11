@@ -3,13 +3,14 @@ package types
 import (
 	"time"
 
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 )
 
 // canonical json is go-wire's json for structs with fields in alphabetical order
 
-// timeFormat is RFC3339Millis, used for generating the sigs
-const timeFormat = "2006-01-02T15:04:05.999Z07:00"
+// timeFormat is used for generating the sigs
+const timeFormat = wire.RFC3339Millis
 
 type CanonicalJSONBlockID struct {
 	Hash        data.Bytes                 `json:"hash,omitempty"`

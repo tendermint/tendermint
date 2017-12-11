@@ -420,7 +420,7 @@ func (data *Data) StringIndented(indent string) string {
 
 // BlockID defines the unique ID of a block as its Hash and its PartSetHeader
 type BlockID struct {
-	Hash        data.Bytes    `json:"hash,omitempty"`
+	Hash        data.Bytes    `json:"hash"`
 	PartsHeader PartSetHeader `json:"parts"`
 }
 
