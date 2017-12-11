@@ -33,6 +33,10 @@ BREAKING CHANGES:
 - consensus/wal: removed separator
 - rpc/client: changed Subscribe/Unsubscribe/UnsubscribeAll funcs signatures to be identical to event bus.
 
+FEATURES:
+- new `tendermint lite` command (and `lite/proxy` pkg) for running a light-client RPC proxy.
+    NOTE it is currently insecure and its APIs are not yet covered by semver
+
 IMPROVEMENTS:
 - rpc/client: can act as event bus subscriber (See https://github.com/tendermint/tendermint/issues/945).
 - p2p: use exponential backoff from seconds to hours when attempting to reconnect to persistent peer
