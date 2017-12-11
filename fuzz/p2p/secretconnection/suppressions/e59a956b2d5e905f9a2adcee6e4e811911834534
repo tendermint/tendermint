@@ -1,0 +1,4 @@
+panic: for some reason the connection making failed, err: EOF
+github.com/tendermint/tendermint/fuzz/p2p/secretconnection.Fuzz
+go-fuzz-dep.Main
+main.main

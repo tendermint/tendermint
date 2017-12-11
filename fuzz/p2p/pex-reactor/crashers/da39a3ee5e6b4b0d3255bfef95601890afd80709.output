@@ -1,0 +1,22 @@
+panic: runtime error: index out of range
+
+goroutine 1 [running]:
+github.com/tendermint/tendermint/p2p.DecodeMessage(0x1d10000, 0x0, 0x200000, 0x14f2e00, 0xc42046c4e0, 0xc42006abc0, 0x0, 0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/gopath/src/github.com/tendermint/tendermint/p2p/pex_reactor.go:332 +0x1a4
+github.com/tendermint/tendermint/p2p.(*PEXReactor).Receive(0xc4200afea0, 0x14f7801, 0x14f7880, 0xc42000e088, 0x1d10000, 0x0, 0x200000)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/gopath/src/github.com/tendermint/tendermint/p2p/pex_reactor.go:132 +0x203
+github.com/tendermint/tendermint/fuzz/p2p/pex-reactor.Fuzz(0x1d10000, 0x0, 0x200000, 0x3)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/gopath/src/github.com/tendermint/tendermint/fuzz/p2p/pex-reactor/main.go:17 +0x104
+go-fuzz-dep.Main(0x14ccc38)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/goroot/src/go-fuzz-dep/main.go:49 +0xad
+main.main()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/gopath/src/github.com/tendermint/tendermint/fuzz/p2p/pex-reactor/go.fuzz.main/main.go:10 +0x2d
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/goroot/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/goroot/src/os/signal/signal_unix.go:22 +0x52
+created by os/signal.init.0
+	/var/folders/v3/7z434qpx5v3bw0wh8h2myfpw0000gn/T/go-fuzz-build740202551/goroot/src/os/signal/signal_unix.go:28 +0x59
+exit status 2
