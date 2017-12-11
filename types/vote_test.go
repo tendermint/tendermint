@@ -3,15 +3,18 @@ package types
 import (
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	wire "github.com/tendermint/go-wire"
 )
 
-func TestVoteSignable(t *testing.T) {
+func exampleVote() *Vote {
 	var stamp, err = time.Parse(timeFormat, "2017-12-25T03:00:01.234Z")
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
 
-	vote := &Vote{
+	return &Vote{
 		ValidatorAddress: []byte("addr"),
 		ValidatorIndex:   56789,
 		Height:           12345,
@@ -26,6 +29,10 @@ func TestVoteSignable(t *testing.T) {
 			},
 		},
 	}
+}
+
+func TestVoteSignable(t *testing.T) {
+	vote := exampleVote()
 	signBytes := SignBytes("test_chain_id", vote)
 	signStr := string(signBytes)
 
@@ -34,4 +41,32 @@ func TestVoteSignable(t *testing.T) {
 		// NOTE: when this fails, you probably want to fix up consensus/replay_test too
 		t.Errorf("Got unexpected sign string for Vote. Expected:\n%v\nGot:\n%v", expected, signStr)
 	}
+}
+
+func TestVoteVerifySignature(t *testing.T) {
+	privVal := GenPrivValidatorFS("")
+	pubKey := privVal.GetPubKey()
+
+	vote := exampleVote()
+	signBytes := SignBytes("test_chain_id", vote)
+
+	// sign it
+	signature, err := privVal.Signer.Sign(signBytes)
+	require.NoError(t, err)
+
+	// verify the same vote
+	valid := pubKey.VerifyBytes(SignBytes("test_chain_id", vote), signature)
+	require.True(t, valid)
+
+	// serialize, deserialize and verify again....
+	precommit := new(Vote)
+	bs := wire.BinaryBytes(vote)
+	err = wire.ReadBinaryBytes(bs, &precommit)
+	require.NoError(t, err)
+
+	// verify the transmitted vote
+	newSignBytes := SignBytes("test_chain_id", precommit)
+	require.Equal(t, string(signBytes), string(newSignBytes))
+	valid = pubKey.VerifyBytes(newSignBytes, signature)
+	require.True(t, valid)
 }
