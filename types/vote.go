@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
@@ -53,6 +54,7 @@ type Vote struct {
 	ValidatorIndex   int              `json:"validator_index"`
 	Height           int64            `json:"height"`
 	Round            int              `json:"round"`
+	Timestamp        time.Time        `json:"timestamp"`
 	Type             byte             `json:"type"`
 	BlockID          BlockID          `json:"block_id"` // zero if vote is nil.
 	Signature        crypto.Signature `json:"signature"`
@@ -84,8 +86,9 @@ func (vote *Vote) String() string {
 		cmn.PanicSanity("Unknown vote type")
 	}
 
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %v}",
+	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %v @ %s}",
 		vote.ValidatorIndex, cmn.Fingerprint(vote.ValidatorAddress),
 		vote.Height, vote.Round, vote.Type, typeString,
-		cmn.Fingerprint(vote.BlockID.Hash), vote.Signature)
+		cmn.Fingerprint(vote.BlockID.Hash), vote.Signature,
+		CanonicalTime(vote.Timestamp))
 }

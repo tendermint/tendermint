@@ -15,9 +15,6 @@ var (
 	ErrInvalidBlockPartHash      = errors.New("Error invalid block part hash")
 )
 
-// TimeFormat is RFC3339Millis, used for generating the sigs
-const TimeFormat = "2006-01-02T15:04:05.999Z07:00"
-
 // Proposal defines a block proposal for the consensus.
 // It refers to the block only by its PartSetHeader.
 // It must be signed by the correct proposer for the given Height/Round
@@ -46,16 +43,11 @@ func NewProposal(height int64, round int, blockPartsHeader PartSetHeader, polRou
 	}
 }
 
-// TimeString returns the canonical encoding of timestamp
-func (p *Proposal) TimeString() string {
-	return p.Timestamp.Format(TimeFormat)
-}
-
 // String returns a string representation of the Proposal.
 func (p *Proposal) String() string {
 	return fmt.Sprintf("Proposal{%v/%v %v (%v,%v) %v @ %s}",
 		p.Height, p.Round, p.BlockPartsHeader, p.POLRound,
-		p.POLBlockID, p.Signature, p.TimeString())
+		p.POLBlockID, p.Signature, CanonicalTime(p.Timestamp))
 }
 
 // WriteSignBytes writes the Proposal bytes for signing

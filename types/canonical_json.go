@@ -1,10 +1,15 @@
 package types
 
 import (
+	"time"
+
 	"github.com/tendermint/go-wire/data"
 )
 
 // canonical json is go-wire's json for structs with fields in alphabetical order
+
+// timeFormat is RFC3339Millis, used for generating the sigs
+const timeFormat = "2006-01-02T15:04:05.999Z07:00"
 
 type CanonicalJSONBlockID struct {
 	Hash        data.Bytes                 `json:"hash,omitempty"`
@@ -26,10 +31,11 @@ type CanonicalJSONProposal struct {
 }
 
 type CanonicalJSONVote struct {
-	BlockID CanonicalJSONBlockID `json:"block_id"`
-	Height  int64                `json:"height"`
-	Round   int                  `json:"round"`
-	Type    byte                 `json:"type"`
+	BlockID   CanonicalJSONBlockID `json:"block_id"`
+	Height    int64                `json:"height"`
+	Round     int                  `json:"round"`
+	Timestamp string               `json:"timestamp"`
+	Type      byte                 `json:"type"`
 }
 
 type CanonicalJSONHeartbeat struct {
@@ -79,7 +85,7 @@ func CanonicalProposal(proposal *Proposal) CanonicalJSONProposal {
 	return CanonicalJSONProposal{
 		BlockPartsHeader: CanonicalPartSetHeader(proposal.BlockPartsHeader),
 		Height:           proposal.Height,
-		Timestamp:        proposal.TimeString(),
+		Timestamp:        CanonicalTime(proposal.Timestamp),
 		POLBlockID:       CanonicalBlockID(proposal.POLBlockID),
 		POLRound:         proposal.POLRound,
 		Round:            proposal.Round,
@@ -88,10 +94,11 @@ func CanonicalProposal(proposal *Proposal) CanonicalJSONProposal {
 
 func CanonicalVote(vote *Vote) CanonicalJSONVote {
 	return CanonicalJSONVote{
-		CanonicalBlockID(vote.BlockID),
-		vote.Height,
-		vote.Round,
-		vote.Type,
+		BlockID:   CanonicalBlockID(vote.BlockID),
+		Height:    vote.Height,
+		Round:     vote.Round,
+		Timestamp: CanonicalTime(vote.Timestamp),
+		Type:      vote.Type,
 	}
 }
 
@@ -103,4 +110,8 @@ func CanonicalHeartbeat(heartbeat *Heartbeat) CanonicalJSONHeartbeat {
 		heartbeat.ValidatorAddress,
 		heartbeat.ValidatorIndex,
 	}
+}
+
+func CanonicalTime(t time.Time) string {
+	return t.Format(timeFormat)
 }
