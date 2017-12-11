@@ -27,7 +27,7 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.14.0 (TBD)
+## 0.14.0 (December 11, 2017)
 
 BREAKING CHANGES:
 - consensus/wal: removed separator
