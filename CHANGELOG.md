@@ -35,6 +35,11 @@ BREAKING CHANGES:
 
 IMPROVEMENTS:
 - rpc/client: can act as event bus subscriber (See https://github.com/tendermint/tendermint/issues/945).
+- p2p: use exponential backoff from seconds to hours when attempting to reconnect to persistent peer
+- config: moniker defaults to the machine's hostname instead of "anonymous"
+
+BUG FIXES:
+- p2p: no longer exit if one of the seed addresses is incorrect
 
 ## 0.13.0 (December 6, 2017)
 
