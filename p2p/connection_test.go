@@ -23,7 +23,10 @@ func createTestMConnection(conn net.Conn) *MConnection {
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
 	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := NewMConnection(conn, chDescs, onReceive, onError)
+	cfg := DefaultMConnConfig()
+	cfg.pingTimeout = 40 * time.Millisecond
+	cfg.pongTimeout = 60 * time.Millisecond
+	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
 	return c
 }
@@ -114,6 +117,37 @@ func TestMConnectionStatus(t *testing.T) {
 	status := mconn.Status()
 	assert.NotNil(status)
 	assert.Zero(status.Channels[0].SendQueueSize)
+}
+
+func TestPingPongTimeout(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	receivedCh := make(chan []byte)
+	errorsCh := make(chan interface{})
+	onReceive := func(chID byte, msgBytes []byte) {
+		receivedCh <- msgBytes
+	}
+	onError := func(r interface{}) {
+		errorsCh <- r
+	}
+	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	_, err := mconn.Start()
+	require.Nil(err)
+	defer mconn.Stop()
+
+	select {
+	case receivedBytes := <-receivedCh:
+		t.Fatalf("Expected error, got %v", receivedBytes)
+	case err := <-errorsCh:
+		assert.NotNil(err)
+		assert.False(mconn.IsRunning())
+	case <-time.After(10*time.Millisecond + mconn.config.pingTimeout + mconn.config.pongTimeout):
+		t.Fatal("Did not receive error in ~(pingTimeout + pongTimeout) seconds")
+	}
 }
 
 func TestMConnectionStopsAndReturnsError(t *testing.T) {

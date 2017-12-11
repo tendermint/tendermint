@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -23,7 +24,6 @@ const (
 	minReadBufferSize  = 1024
 	minWriteBufferSize = 65536
 	updateState        = 2 * time.Second
-	pingTimeout        = 40 * time.Second
 
 	// some of these defaults are written in the user config
 	// flushThrottle, sendRate, recvRate
@@ -36,6 +36,8 @@ const (
 	defaultSendRate            = int64(512000) // 500KB/s
 	defaultRecvRate            = int64(512000) // 500KB/s
 	defaultSendTimeout         = 10 * time.Second
+	defaultPingTimeout         = 40 * time.Second
+	defaultPongTimeout         = 60 * time.Second
 )
 
 type receiveCbFunc func(chID byte, msgBytes []byte)
@@ -86,6 +88,7 @@ type MConnection struct {
 	quit         chan struct{}
 	flushTimer   *cmn.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer    *cmn.RepeatTimer   // send pings periodically
+	pongTimer    *cmn.ThrottleTimer // close conn if pong not recv in 1 min
 	chStatsTimer *cmn.RepeatTimer   // update channel stats periodically
 
 	LocalAddress  *NetAddress
@@ -98,8 +101,9 @@ type MConnConfig struct {
 	RecvRate int64 `mapstructure:"recv_rate"`
 
 	maxMsgPacketPayloadSize int
-
-	flushThrottle time.Duration
+	flushThrottle           time.Duration
+	pingTimeout             time.Duration
+	pongTimeout             time.Duration
 }
 
 func (cfg *MConnConfig) maxMsgPacketTotalSize() int {
@@ -113,6 +117,8 @@ func DefaultMConnConfig() *MConnConfig {
 		RecvRate:                defaultRecvRate,
 		maxMsgPacketPayloadSize: defaultMaxMsgPacketPayloadSize,
 		flushThrottle:           defaultFlushThrottle,
+		pingTimeout:             defaultPingTimeout,
+		pongTimeout:             defaultPongTimeout,
 	}
 }
 
@@ -168,7 +174,8 @@ func (c *MConnection) OnStart() error {
 	}
 	c.quit = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
-	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
+	c.pingTimer = cmn.NewRepeatTimer("ping", c.config.pingTimeout)
+	c.pongTimer = cmn.NewThrottleTimer("pong", c.config.pongTimeout)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateState)
 	go c.sendRoutine()
 	go c.recvRoutine()
@@ -180,6 +187,7 @@ func (c *MConnection) OnStop() {
 	c.BaseService.OnStop()
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
+	c.pongTimer.Stop()
 	c.chStatsTimer.Stop()
 	if c.quit != nil {
 		close(c.quit)
@@ -314,7 +322,13 @@ FOR_LOOP:
 			c.Logger.Debug("Send Ping")
 			legacy.WriteOctet(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
-			c.flush()
+			// should be c.flush
+			go c.flush()
+			c.Logger.Debug("Starting pong timer")
+			c.pongTimer.Set()
+		case <-c.pongTimer.Ch:
+			c.Logger.Debug("Pong timeout")
+			err = errors.New("pong timeout")
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
 			legacy.WriteOctet(packetTypePong, c.bufWriter, &n, &err)
@@ -448,8 +462,9 @@ FOR_LOOP:
 			c.Logger.Debug("Receive Ping")
 			c.pong <- struct{}{}
 		case packetTypePong:
-			// do nothing
 			c.Logger.Debug("Receive Pong")
+			// Should we unset pongTimer if we get other packet?
+			c.pongTimer.Unset()
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
 			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
