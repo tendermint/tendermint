@@ -1466,6 +1466,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
+		Timestamp:        time.Now().UTC(),
 		Type:             type_,
 		BlockID:          types.BlockID{hash, header},
 	}
