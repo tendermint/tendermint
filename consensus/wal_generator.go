@@ -91,7 +91,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	case <-numBlocksWritten:
 		wr.Flush()
 		return b.Bytes(), nil
-	case <-time.After(time.Duration(2*numBlocks) * time.Second):
+	case <-time.After(time.Duration(5*numBlocks) * time.Second):
 		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks", numBlocks)
 	}
 }

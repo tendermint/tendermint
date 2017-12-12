@@ -54,27 +54,14 @@ draw_deps:
 	go get github.com/RobotsAndPencils/goviz
 	@goviz -i github.com/tendermint/tendermint/cmd/tendermint -d 3 | dot -Tpng -o dependency-graph.png
 
-list_deps:
-	@go list -f '{{join .Deps "\n"}}' ./... | \
-		grep -v /vendor/ | sort | uniq | \
-		xargs go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}'
-
-get_deps:
-	@echo "--> Running go get"
-	@go get -v -d $(PACKAGES)
-	@go list -f '{{join .TestImports "\n"}}' ./... | \
-		grep -v /vendor/ | sort | uniq | \
-		xargs go get -v -d
-
-update_deps:
-	@echo "--> Updating dependencies"
-	@go get -d -u ./...
-
 get_vendor_deps:
 	@hash glide 2>/dev/null || go get github.com/Masterminds/glide
 	@rm -rf vendor/
 	@echo "--> Running glide install"
-	$(GOPATH)/bin/glide install
+	@$(GOPATH)/bin/glide install
+
+update_vendor_deps:
+	@$(GOPATH)/bin/glide update
 
 update_tools:
 	@echo "--> Updating tools"
@@ -119,4 +106,4 @@ metalinter_test:
 		#--enable=vet \
 		#--enable=vetshadow \
 
-.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps list_deps get_deps get_vendor_deps update_deps update_tools tools test_release
+.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps get_vendor_deps update_vendor_deps update_tools tools test_release
