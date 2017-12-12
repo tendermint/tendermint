@@ -77,7 +77,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)
 	numBlocksWritten := make(chan struct{})
-	wal := &byteBufferWAL{enc: NewWALEncoder(wr), heightToStop: int64(numBlocks), signalWhenStopsTo: numBlocksWritten}
+	wal := newByteBufferWAL(NewWALEncoder(wr), int64(numBlocks), numBlocksWritten)
 	// see wal.go#103
 	wal.Save(EndHeightMessage{0})
 	consensusState.wal = wal
@@ -146,6 +146,14 @@ type byteBufferWAL struct {
 
 // needed for determinism
 var fixedTime, _ = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
+
+func newByteBufferWAL(enc *WALEncoder, nBlocks int64, signalStop chan struct{}) *byteBufferWAL {
+	return &byteBufferWAL{
+		enc:               enc,
+		heightToStop:      nBlocks,
+		signalWhenStopsTo: signalStop,
+	}
+}
 
 // Save writes message to the internal buffer except when heightToStop is
 // reached, in which case it will signal the caller via signalWhenStopsTo and
