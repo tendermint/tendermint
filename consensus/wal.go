@@ -17,6 +17,10 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+const (
+	maxMsgSizeBytes = 10024 // 10MB
+)
+
 //--------------------------------------------------------
 // types and functions for savings consensus messages
 
@@ -271,6 +275,10 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, fmt.Errorf("failed to read length: %v", err)
 	}
 	length := binary.BigEndian.Uint32(b)
+
+	if length > maxMsgSizeBytes {
+		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value %d", length, maxMsgSizeBytes)}
+	}
 
 	data := make([]byte, length)
 	n, err = dec.rd.Read(data)
