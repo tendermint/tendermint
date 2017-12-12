@@ -257,7 +257,7 @@ func NewWALDecoder(rd io.Reader) *WALDecoder {
 func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	b := make([]byte, 4)
 
-	n, err := dec.rd.Read(b)
+	_, err := dec.rd.Read(b)
 	if err == io.EOF {
 		return nil, err
 	}
@@ -267,7 +267,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	crc := binary.BigEndian.Uint32(b)
 
 	b = make([]byte, 4)
-	n, err = dec.rd.Read(b)
+	_, err = dec.rd.Read(b)
 	if err == io.EOF {
 		return nil, err
 	}
@@ -281,12 +281,12 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	}
 
 	data := make([]byte, length)
-	n, err = dec.rd.Read(data)
+	_, err = dec.rd.Read(data)
 	if err == io.EOF {
 		return nil, err
 	}
 	if err != nil {
-		return nil, fmt.Errorf("not enough bytes for data: %v (want: %d, read: %v)", err, length, n)
+		return nil, fmt.Errorf("failed to read data: %v", err)
 	}
 
 	// check checksum before decoding data
