@@ -27,11 +27,15 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.14.0 (TBD)
+## 0.14.0 (December 11, 2017)
 
 BREAKING CHANGES:
 - consensus/wal: removed separator
 - rpc/client: changed Subscribe/Unsubscribe/UnsubscribeAll funcs signatures to be identical to event bus.
+
+FEATURES:
+- new `tendermint lite` command (and `lite/proxy` pkg) for running a light-client RPC proxy.
+    NOTE it is currently insecure and its APIs are not yet covered by semver
 
 IMPROVEMENTS:
 - rpc/client: can act as event bus subscriber (See https://github.com/tendermint/tendermint/issues/945).
