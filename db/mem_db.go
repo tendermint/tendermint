@@ -27,14 +27,14 @@ func NewMemDB() *MemDB {
 func (db *MemDB) Get(key []byte) []byte {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-
+	panicNilKey(key)
 	return db.db[string(key)]
 }
 
 func (db *MemDB) Has(key []byte) bool {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-
+	panicNilKey(key)
 	_, ok := db.db[string(key)]
 	return ok
 }
@@ -42,14 +42,14 @@ func (db *MemDB) Has(key []byte) bool {
 func (db *MemDB) Set(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-
+	panicNilKey(key)
 	db.SetNoLock(key, value)
 }
 
 func (db *MemDB) SetSync(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-
+	panicNilKey(key)
 	db.SetNoLock(key, value)
 }
 
@@ -58,25 +58,27 @@ func (db *MemDB) SetNoLock(key []byte, value []byte) {
 	if value == nil {
 		value = []byte{}
 	}
+	panicNilKey(key)
 	db.db[string(key)] = value
 }
 
 func (db *MemDB) Delete(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-
+	panicNilKey(key)
 	delete(db.db, string(key))
 }
 
 func (db *MemDB) DeleteSync(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-
+	panicNilKey(key)
 	delete(db.db, string(key))
 }
 
 // NOTE: Implements atomicSetDeleter
 func (db *MemDB) DeleteNoLock(key []byte) {
+	panicNilKey(key)
 	delete(db.db, string(key))
 }
 

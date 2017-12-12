@@ -37,6 +37,7 @@ func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
 }
 
 func (db *GoLevelDB) Get(key []byte) []byte {
+	panicNilKey(key)
 	res, err := db.db.Get(key, nil)
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -49,6 +50,7 @@ func (db *GoLevelDB) Get(key []byte) []byte {
 }
 
 func (db *GoLevelDB) Has(key []byte) bool {
+	panicNilKey(key)
 	_, err := db.db.Get(key, nil)
 	if err != nil {
 		if err == errors.ErrNotFound {
@@ -61,6 +63,7 @@ func (db *GoLevelDB) Has(key []byte) bool {
 }
 
 func (db *GoLevelDB) Set(key []byte, value []byte) {
+	panicNilKey(key)
 	err := db.db.Put(key, value, nil)
 	if err != nil {
 		PanicCrisis(err)
@@ -68,6 +71,7 @@ func (db *GoLevelDB) Set(key []byte, value []byte) {
 }
 
 func (db *GoLevelDB) SetSync(key []byte, value []byte) {
+	panicNilKey(key)
 	err := db.db.Put(key, value, &opt.WriteOptions{Sync: true})
 	if err != nil {
 		PanicCrisis(err)
@@ -75,6 +79,7 @@ func (db *GoLevelDB) SetSync(key []byte, value []byte) {
 }
 
 func (db *GoLevelDB) Delete(key []byte) {
+	panicNilKey(key)
 	err := db.db.Delete(key, nil)
 	if err != nil {
 		PanicCrisis(err)
@@ -82,6 +87,7 @@ func (db *GoLevelDB) Delete(key []byte) {
 }
 
 func (db *GoLevelDB) DeleteSync(key []byte) {
+	panicNilKey(key)
 	err := db.db.Delete(key, &opt.WriteOptions{Sync: true})
 	if err != nil {
 		PanicCrisis(err)

@@ -44,6 +44,7 @@ func NewFSDB(dir string) *FSDB {
 func (db *FSDB) Get(key []byte) []byte {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+	panicNilKey(key)
 
 	path := db.nameToPath(key)
 	value, err := read(path)
@@ -58,6 +59,7 @@ func (db *FSDB) Get(key []byte) []byte {
 func (db *FSDB) Has(key []byte) bool {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+	panicNilKey(key)
 
 	path := db.nameToPath(key)
 	_, err := read(path)
@@ -72,6 +74,7 @@ func (db *FSDB) Has(key []byte) bool {
 func (db *FSDB) Set(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+	panicNilKey(key)
 
 	db.SetNoLock(key, value)
 }
@@ -79,12 +82,14 @@ func (db *FSDB) Set(key []byte, value []byte) {
 func (db *FSDB) SetSync(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+	panicNilKey(key)
 
 	db.SetNoLock(key, value)
 }
 
 // NOTE: Implements atomicSetDeleter.
 func (db *FSDB) SetNoLock(key []byte, value []byte) {
+	panicNilKey(key)
 	if value == nil {
 		value = []byte{}
 	}
@@ -98,6 +103,7 @@ func (db *FSDB) SetNoLock(key []byte, value []byte) {
 func (db *FSDB) Delete(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+	panicNilKey(key)
 
 	db.DeleteNoLock(key)
 }
@@ -105,12 +111,14 @@ func (db *FSDB) Delete(key []byte) {
 func (db *FSDB) DeleteSync(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+	panicNilKey(key)
 
 	db.DeleteNoLock(key)
 }
 
 // NOTE: Implements atomicSetDeleter.
 func (db *FSDB) DeleteNoLock(key []byte) {
+	panicNilKey(key)
 	err := remove(string(key))
 	if os.IsNotExist(err) {
 		return

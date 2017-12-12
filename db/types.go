@@ -121,3 +121,10 @@ type Iterator interface {
 func bz(s string) []byte {
 	return []byte(s)
 }
+
+// All DB funcs should panic on nil key.
+func panicNilKey(key []byte) {
+	if key == nil {
+		panic("nil key")
+	}
+}
