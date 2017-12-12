@@ -1,5 +1,7 @@
 package db
 
+import "fmt"
+
 //-----------------------------------------------------------------------------
 // Main entry
 
@@ -26,7 +28,7 @@ func registerDBCreator(backend string, creator dbCreator, force bool) {
 func NewDB(name string, backend string, dir string) DB {
 	db, err := backends[backend](name, dir)
 	if err != nil {
-		PanicSanity(Fmt("Error initializing DB: %v", err))
+		panic(fmt.Sprintf("Error initializing DB: %v", err))
 	}
 	return db
 }

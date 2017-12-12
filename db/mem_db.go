@@ -3,7 +3,6 @@ package db
 import (
 	"bytes"
 	"fmt"
-	"sort"
 	"sync"
 )
 
@@ -16,14 +15,11 @@ func init() {
 type MemDB struct {
 	mtx sync.Mutex
 	db  map[string][]byte
-
-	cwwMutex
 }
 
 func NewMemDB() *MemDB {
 	database := &MemDB{
-		db:       make(map[string][]byte),
-		cwwMutex: NewCWWMutex(),
+		db: make(map[string][]byte),
 	}
 	return database
 }
@@ -33,6 +29,14 @@ func (db *MemDB) Get(key []byte) []byte {
 	defer db.mtx.Unlock()
 
 	return db.db[string(key)]
+}
+
+func (db *MemDB) Has(key []byte) bool {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	_, ok := db.db[string(key)]
+	return ok
 }
 
 func (db *MemDB) Set(key []byte, value []byte) {
@@ -114,27 +118,32 @@ func (db *MemDB) Mutex() *sync.Mutex {
 	return &(db.mtx)
 }
 
-func (db *MemDB) CacheDB() CacheDB {
-	return NewCacheDB(db, db.GetWriteLockVersion())
-}
-
 //----------------------------------------
 
-func (db *MemDB) Iterator() Iterator {
-	it := newMemDBIterator()
-	it.db = db
-	it.cur = 0
+func (db *MemDB) Iterator(start, end []byte) Iterator {
+	/*
+		XXX
+		it := newMemDBIterator()
+		it.db = db
+		it.cur = 0
 
-	db.mtx.Lock()
-	defer db.mtx.Unlock()
+		db.mtx.Lock()
+		defer db.mtx.Unlock()
 
-	// We need a copy of all of the keys.
-	// Not the best, but probably not a bottleneck depending.
-	for key, _ := range db.db {
-		it.keys = append(it.keys, key)
-	}
-	sort.Strings(it.keys)
-	return it
+		// We need a copy of all of the keys.
+		// Not the best, but probably not a bottleneck depending.
+		for key, _ := range db.db {
+			it.keys = append(it.keys, key)
+		}
+		sort.Strings(it.keys)
+		return it
+	*/
+	return nil
+}
+
+func (db *MemDB) ReverseIterator(start, end []byte) Iterator {
+	// XXX
+	return nil
 }
 
 type memDBIterator struct {

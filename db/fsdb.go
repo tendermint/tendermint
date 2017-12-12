@@ -7,7 +7,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -29,8 +28,6 @@ func init() {
 type FSDB struct {
 	mtx sync.Mutex
 	dir string
-
-	cwwMutex
 }
 
 func NewFSDB(dir string) *FSDB {
@@ -39,8 +36,7 @@ func NewFSDB(dir string) *FSDB {
 		panic(errors.Wrap(err, "Creating FSDB dir "+dir))
 	}
 	database := &FSDB{
-		dir:      dir,
-		cwwMutex: NewCWWMutex(),
+		dir: dir,
 	}
 	return database
 }
@@ -57,6 +53,20 @@ func (db *FSDB) Get(key []byte) []byte {
 		panic(errors.Wrap(err, fmt.Sprintf("Getting key %s (0x%X)", string(key), key)))
 	}
 	return value
+}
+
+func (db *FSDB) Has(key []byte) bool {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	path := db.nameToPath(key)
+	_, err := read(path)
+	if os.IsNotExist(err) {
+		return false
+	} else if err != nil {
+		panic(errors.Wrap(err, fmt.Sprintf("Getting key %s (0x%X)", string(key), key)))
+	}
+	return true
 }
 
 func (db *FSDB) Set(key []byte, value []byte) {
@@ -140,27 +150,32 @@ func (db *FSDB) Mutex() *sync.Mutex {
 	return &(db.mtx)
 }
 
-func (db *FSDB) CacheDB() CacheDB {
-	return NewCacheDB(db, db.GetWriteLockVersion())
+func (db *FSDB) Iterator(start, end []byte) Iterator {
+	/*
+		XXX
+		it := newMemDBIterator()
+		it.db = db
+		it.cur = 0
+
+		db.mtx.Lock()
+		defer db.mtx.Unlock()
+
+		// We need a copy of all of the keys.
+		// Not the best, but probably not a bottleneck depending.
+		keys, err := list(db.dir)
+		if err != nil {
+			panic(errors.Wrap(err, fmt.Sprintf("Listing keys in %s", db.dir)))
+		}
+		sort.Strings(keys)
+		it.keys = keys
+		return it
+	*/
+	return nil
 }
 
-func (db *FSDB) Iterator() Iterator {
-	it := newMemDBIterator()
-	it.db = db
-	it.cur = 0
-
-	db.mtx.Lock()
-	defer db.mtx.Unlock()
-
-	// We need a copy of all of the keys.
-	// Not the best, but probably not a bottleneck depending.
-	keys, err := list(db.dir)
-	if err != nil {
-		panic(errors.Wrap(err, fmt.Sprintf("Listing keys in %s", db.dir)))
-	}
-	sort.Strings(keys)
-	it.keys = keys
-	return it
+func (db *FSDB) ReverseIterator(start, end []byte) Iterator {
+	// XXX
+	return nil
 }
 
 func (db *FSDB) nameToPath(name []byte) string {

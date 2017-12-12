@@ -22,8 +22,6 @@ type CLevelDB struct {
 	ro     *levigo.ReadOptions
 	wo     *levigo.WriteOptions
 	woSync *levigo.WriteOptions
-
-	cwwMutex
 }
 
 func NewCLevelDB(name string, dir string) (*CLevelDB, error) {
@@ -45,8 +43,6 @@ func NewCLevelDB(name string, dir string) (*CLevelDB, error) {
 		ro:     ro,
 		wo:     wo,
 		woSync: woSync,
-
-		cwwMutex: NewCWWMutex(),
 	}
 	return database, nil
 }
@@ -57,6 +53,10 @@ func (db *CLevelDB) Get(key []byte) []byte {
 		panic(err)
 	}
 	return res
+}
+
+func (db *CLevelDB) Has(key []byte) bool {
+	panic("not implemented yet")
 }
 
 func (db *CLevelDB) Set(key []byte, value []byte) {
@@ -99,9 +99,9 @@ func (db *CLevelDB) Close() {
 }
 
 func (db *CLevelDB) Print() {
-	itr := db.Iterator()
-	defer itr.Close()
-	for itr.Seek(nil); itr.Valid(); itr.Next() {
+	itr := db.Iterator(BeginningKey(), EndingKey())
+	defer itr.Release()
+	for ; itr.Valid(); itr.Next() {
 		key := itr.Key()
 		value := itr.Value()
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
@@ -118,10 +118,6 @@ func (db *CLevelDB) Stats() map[string]string {
 		stats[key] = str
 	}
 	return stats
-}
-
-func (db *CLevelDB) CacheDB() CacheDB {
-	return NewCacheDB(db, db.GetWriteLockVersion())
 }
 
 //----------------------------------------
@@ -155,10 +151,19 @@ func (mBatch *cLevelDBBatch) Write() {
 //----------------------------------------
 // Iterator
 
-func (db *CLevelDB) Iterator() Iterator {
-	itr := db.db.NewIterator(db.ro)
-	itr.Seek([]byte{0x00})
-	return cLevelDBIterator{itr}
+func (db *CLevelDB) Iterator(start, end []byte) Iterator {
+	/*
+		XXX
+		itr := db.db.NewIterator(db.ro)
+		itr.Seek([]byte{0x00})
+		return cLevelDBIterator{itr}
+	*/
+	return nil
+}
+
+func (db *CLevelDB) ReverseIterator(start, end []byte) Iterator {
+	// XXX
+	return nil
 }
 
 type cLevelDBIterator struct {
@@ -204,7 +209,7 @@ func (c cLevelDBIterator) Prev() {
 	c.itr.Prev()
 }
 
-func (c cLevelDBIterator) Close() {
+func (c cLevelDBIterator) Release() {
 	c.itr.Close()
 }
 

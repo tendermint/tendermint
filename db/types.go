@@ -54,12 +54,23 @@ type SetDeleter interface {
 
 //----------------------------------------
 
+func BeginningKey() []byte {
+	return []byte{}
+}
+
+func EndingKey() []byte {
+	return nil
+}
+
 /*
 	Usage:
 
-	for itr.Seek(mykey); itr.Valid(); itr.Next() {
+	var itr Iterator = ...
+	defer itr.Release()
+
+	for ; itr.Valid(); itr.Next() {
 		k, v := itr.Key(); itr.Value()
-		....
+		// ...
 	}
 */
 type Iterator interface {
@@ -106,6 +117,6 @@ type Iterator interface {
 	// This method is safe to call when Valid returns false.
 	GetError() error
 
-	// Close deallocates the given Iterator.
-	Close()
+	// Release deallocates the given Iterator.
+	Release()
 }

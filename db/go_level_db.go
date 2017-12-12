@@ -22,8 +22,6 @@ func init() {
 
 type GoLevelDB struct {
 	db *leveldb.DB
-
-	cwwMutex
 }
 
 func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
@@ -33,8 +31,7 @@ func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
 		return nil, err
 	}
 	database := &GoLevelDB{
-		db:       db,
-		cwwMutex: NewCWWMutex(),
+		db: db,
 	}
 	return database, nil
 }
@@ -49,6 +46,18 @@ func (db *GoLevelDB) Get(key []byte) []byte {
 		}
 	}
 	return res
+}
+
+func (db *GoLevelDB) Has(key []byte) bool {
+	_, err := db.db.Get(key, nil)
+	if err != nil {
+		if err == errors.ErrNotFound {
+			return false
+		} else {
+			PanicCrisis(err)
+		}
+	}
+	return true
 }
 
 func (db *GoLevelDB) Set(key []byte, value []byte) {
@@ -121,10 +130,6 @@ func (db *GoLevelDB) Stats() map[string]string {
 	return stats
 }
 
-func (db *GoLevelDB) CacheDB() CacheDB {
-	return NewCacheDB(db, db.GetWriteLockVersion())
-}
-
 //----------------------------------------
 // Batch
 
@@ -156,12 +161,21 @@ func (mBatch *goLevelDBBatch) Write() {
 //----------------------------------------
 // Iterator
 
-func (db *GoLevelDB) Iterator() Iterator {
-	itr := &goLevelDBIterator{
-		source: db.db.NewIterator(nil, nil),
-	}
-	itr.Seek(nil)
-	return itr
+func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
+	/*
+		XXX
+		itr := &goLevelDBIterator{
+			source: db.db.NewIterator(nil, nil),
+		}
+		itr.Seek(nil)
+		return itr
+	*/
+	return nil
+}
+
+func (db *GoLevelDB) ReverseIterator(start, end []byte) Iterator {
+	// XXX
+	return nil
 }
 
 type goLevelDBIterator struct {
