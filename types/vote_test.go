@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	wire "github.com/tendermint/go-wire"
 )
 
@@ -18,7 +19,7 @@ func exampleVote() *Vote {
 		ValidatorAddress: []byte("addr"),
 		ValidatorIndex:   56789,
 		Height:           12345,
-		Round:            23456,
+		Round:            2,
 		Timestamp:        stamp,
 		Type:             byte(2),
 		BlockID: BlockID{
@@ -36,10 +37,18 @@ func TestVoteSignable(t *testing.T) {
 	signBytes := SignBytes("test_chain_id", vote)
 	signStr := string(signBytes)
 
-	expected := `{"chain_id":"test_chain_id","vote":{"block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":1000000}},"height":12345,"round":23456,"timestamp":"2017-12-25T03:00:01.234Z","type":2}}`
+	expected := `{"chain_id":"test_chain_id","vote":{"block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":1000000}},"height":12345,"round":2,"timestamp":"2017-12-25T03:00:01.234Z","type":2}}`
 	if signStr != expected {
 		// NOTE: when this fails, you probably want to fix up consensus/replay_test too
 		t.Errorf("Got unexpected sign string for Vote. Expected:\n%v\nGot:\n%v", expected, signStr)
+	}
+}
+
+func TestVoteString(t *testing.T) {
+	str := exampleVote().String()
+	expected := `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`
+	if str != expected {
+		t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
 	}
 }
 
