@@ -77,12 +77,6 @@ type TrustMetric struct {
 	// While true, history data is not modified
 	paused bool
 
-	// Signal channel for stopping the trust metric go-routine
-	stop chan struct{}
-
-	// Signal channel fired when the metric go-routine has stopped
-	done chan struct{}
-
 	// Used during testing in order to control the passing of time intervals
 	testTicker MetricTicker
 }
@@ -109,10 +103,6 @@ func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {
 	tm.historyMaxSize = intervalToHistoryOffset(tm.maxIntervals) + 1
 	// This metric has a perfect history so far
 	tm.historyValue = 1.0
-	// Setup the go-routine stop channel
-	tm.stop = make(chan struct{}, 1)
-	// Setup the go-routine done channel
-	tm.done = make(chan struct{}, 1)
 
 	tm.BaseService = *cmn.NewBaseService(nil, "TrustMetric", tm)
 	return tm
@@ -128,14 +118,8 @@ func (tm *TrustMetric) OnStart() error {
 }
 
 // OnStop implements Service
-// Stop tells the metric to stop recording data over time intervals
-// This method also blocks until the metric has completely stopped
-func (tm *TrustMetric) OnStop() {
-	tm.BaseService.OnStop()
-
-	tm.stop <- struct{}{}
-	<-tm.done
-}
+// Nothing to do since the goroutine shuts down by itself via BaseService.Quit
+func (tm *TrustMetric) OnStop() {}
 
 // Returns a snapshot of the trust metric history data
 func (tm *TrustMetric) HistoryJSON() MetricHistoryJSON {
@@ -293,9 +277,8 @@ func (tm *TrustMetric) Copy() *TrustMetric {
 		good:               tm.good,
 		bad:                tm.bad,
 		paused:             tm.paused,
-		stop:               make(chan struct{}, 1),
-		done:               make(chan struct{}, 1),
 	}
+
 }
 
 /* Private methods */
@@ -315,13 +298,11 @@ loop:
 		select {
 		case <-tick:
 			tm.NextTimeInterval()
-		case <-tm.stop:
+		case <-tm.Quit:
 			// Stop all further tracking for this metric
 			break loop
 		}
 	}
-	// Send the done signal
-	tm.done <- struct{}{}
 }
 
 // Wakes the trust metric up if it is currently paused

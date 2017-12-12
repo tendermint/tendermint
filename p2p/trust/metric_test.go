@@ -42,6 +42,7 @@ func TestTrustMetricConfig(t *testing.T) {
 	assert.Equal(t, dc.ProportionalWeight, tm.proportionalWeight)
 	assert.Equal(t, dc.IntegralWeight, tm.integralWeight)
 	tm.Stop()
+	tm.Wait()
 
 	config.ProportionalWeight = 0.3
 	config.IntegralWeight = 0.7
@@ -52,6 +53,7 @@ func TestTrustMetricConfig(t *testing.T) {
 	assert.Equal(t, config.ProportionalWeight, tm.proportionalWeight)
 	assert.Equal(t, config.IntegralWeight, tm.integralWeight)
 	tm.Stop()
+	tm.Wait()
 }
 
 func TestTrustMetricStopPause(t *testing.T) {
@@ -62,8 +64,8 @@ func TestTrustMetricStopPause(t *testing.T) {
 	tm.SetTicker(tt)
 	tm.Start()
 	// Allow some time intervals to pass and pause
-	tm.NextTimeInterval()
-	tm.NextTimeInterval()
+	tt.NextTick()
+	tt.NextTick()
 	tm.Pause()
 
 	first := tm.Copy().numIntervals
@@ -75,12 +77,14 @@ func TestTrustMetricStopPause(t *testing.T) {
 	// Get the trust metric activated again
 	tm.GoodEvents(5)
 	// Allow some time intervals to pass and stop
-	tm.NextTimeInterval()
-	tm.NextTimeInterval()
+	tt.NextTick()
+	tt.NextTick()
 	tm.Stop()
+	tm.Wait()
 
 	second := tm.Copy().numIntervals
-	// Allow more intervals to pass and check that the number of intervals match
+	// Allow more intervals to pass while the metric is stopped
+	// and check that the number of intervals match
 	tm.NextTimeInterval()
 	tm.NextTimeInterval()
 	assert.Equal(t, second+2, tm.Copy().numIntervals)
