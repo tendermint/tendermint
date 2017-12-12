@@ -29,9 +29,6 @@ func isolate(cmds ...*cobra.Command) cli.Executable {
 	if err := os.Unsetenv("TMHOME"); err != nil {
 		panic(err)
 	}
-	if err := os.Unsetenv("TM_HOME"); err != nil {
-		panic(err)
-	}
 	if err := os.RemoveAll(defaultRoot); err != nil {
 		panic(err)
 	}
