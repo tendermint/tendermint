@@ -152,4 +152,5 @@ type jsonRoundTripper interface {
 var _ jsonRoundTripper = (*ResponseCommit)(nil)
 var _ jsonRoundTripper = (*ResponseQuery)(nil)
 var _ jsonRoundTripper = (*ResponseDeliverTx)(nil)
+var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
 var _ jsonRoundTripper = (*ResponseSetOption)(nil)
