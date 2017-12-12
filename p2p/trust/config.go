@@ -51,6 +51,5 @@ func customConfig(tmc TrustMetricConfig) TrustMetricConfig {
 		tmc.TrackingWindow >= config.IntervalLength {
 		config.TrackingWindow = tmc.TrackingWindow
 	}
-
 	return config
 }

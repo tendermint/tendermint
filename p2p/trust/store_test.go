@@ -8,7 +8,6 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -24,46 +23,50 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 
 	historyDB := dbm.NewDB("trusthistory", "goleveldb", dir)
 
-	config := TrustMetricConfig{
-		TrackingWindow: 5 * time.Minute,
-		IntervalLength: 50 * time.Millisecond,
-	}
-
 	// 0 peers saved
-	store := NewTrustMetricStore(historyDB, config)
+	store := NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
 	store.saveToDB()
 	// Load the data from the file
-	store = NewTrustMetricStore(historyDB, config)
+	store = NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
-	store.loadFromDB()
+	store.Start()
 	// Make sure we still have 0 entries
 	assert.Zero(t, store.Size())
 
+	// 100 TestTickers
+	var tt []*TestTicker
+	for i := 0; i < 100; i++ {
+		// The TestTicker will provide manual control over
+		// the passing of time within the metric
+		tt = append(tt, NewTestTicker())
+	}
 	// 100 peers
 	for i := 0; i < 100; i++ {
 		key := fmt.Sprintf("peer_%d", i)
-		tm := store.GetPeerTrustMetric(key)
+		tm := NewMetric()
+
+		tm.SetTicker(tt[i])
+		tm.Start()
+		store.AddPeerTrustMetric(key, tm)
 
 		tm.BadEvents(10)
 		tm.GoodEvents(1)
 	}
-
 	// Check that we have 100 entries and save
 	assert.Equal(t, 100, store.Size())
-	// Give the metrics time to process the history data
-	time.Sleep(1 * time.Second)
-
-	// Stop all the trust metrics and save
-	for _, tm := range store.peerMetrics {
-		tm.Stop()
+	// Give the 100 metrics time to process the history data
+	for i := 0; i < 100; i++ {
+		tt[i].NextTick()
+		tt[i].NextTick()
 	}
-	store.saveToDB()
+	// Stop all the trust metrics and save
+	store.Stop()
 
 	// Load the data from the DB
-	store = NewTrustMetricStore(historyDB, config)
+	store = NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
-	store.loadFromDB()
+	store.Start()
 
 	// Check that we still have 100 peers with imperfect trust values
 	assert.Equal(t, 100, store.Size())
@@ -71,10 +74,7 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 		assert.NotEqual(t, 1.0, tm.TrustValue())
 	}
 
-	// Stop all the trust metrics
-	for _, tm := range store.peerMetrics {
-		tm.Stop()
-	}
+	store.Stop()
 }
 
 func TestTrustMetricStoreConfig(t *testing.T) {
@@ -88,6 +88,7 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 	// Create a store with custom config
 	store := NewTrustMetricStore(historyDB, config)
 	store.SetLogger(log.TestingLogger())
+	store.Start()
 
 	// Have the store make us a metric with the config
 	tm := store.GetPeerTrustMetric("TestKey")
@@ -95,7 +96,7 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 	// Check that the options made it to the metric
 	assert.Equal(t, 0.5, tm.proportionalWeight)
 	assert.Equal(t, 0.5, tm.integralWeight)
-	tm.Stop()
+	store.Stop()
 }
 
 func TestTrustMetricStoreLookup(t *testing.T) {
@@ -103,6 +104,7 @@ func TestTrustMetricStoreLookup(t *testing.T) {
 
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
+	store.Start()
 
 	// Create 100 peers in the trust metric store
 	for i := 0; i < 100; i++ {
@@ -114,10 +116,7 @@ func TestTrustMetricStoreLookup(t *testing.T) {
 		assert.NotNil(t, ktm, "Expected to find TrustMetric %s but wasn't there.", key)
 	}
 
-	// Stop all the trust metrics
-	for _, tm := range store.peerMetrics {
-		tm.Stop()
-	}
+	store.Stop()
 }
 
 func TestTrustMetricStorePeerScore(t *testing.T) {
@@ -125,6 +124,7 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 
 	store := NewTrustMetricStore(historyDB, DefaultConfig())
 	store.SetLogger(log.TestingLogger())
+	store.Start()
 
 	key := "TestKey"
 	tm := store.GetPeerTrustMetric(key)
@@ -148,5 +148,5 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	// We will remember our experiences with this peer
 	tm = store.GetPeerTrustMetric(key)
 	assert.NotEqual(t, 100, tm.TrustScore())
-	tm.Stop()
+	store.Stop()
 }

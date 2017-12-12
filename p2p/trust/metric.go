@@ -7,6 +7,8 @@ import (
 	"math"
 	"sync"
 	"time"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //---------------------------------------------------------------------------------------
@@ -31,6 +33,8 @@ type MetricHistoryJSON struct {
 // TrustMetric - keeps track of peer reliability
 // See tendermint/docs/architecture/adr-006-trust-metric.md for details
 type TrustMetric struct {
+	cmn.BaseService
+
 	// Mutex that protects the metric from concurrent access
 	mtx sync.Mutex
 
@@ -73,16 +77,18 @@ type TrustMetric struct {
 	// While true, history data is not modified
 	paused bool
 
-	// Signal channel for stopping the trust metric go-routine
-	stop chan struct{}
+	// Used during testing in order to control the passing of time intervals
+	testTicker MetricTicker
 }
 
-// NewMetric returns a trust metric with the default configuration
+// NewMetric returns a trust metric with the default configuration.
+// Use Start to begin tracking the quality of peer behavior over time
 func NewMetric() *TrustMetric {
 	return NewMetricWithConfig(DefaultConfig())
 }
 
-// NewMetricWithConfig returns a trust metric with a custom configuration
+// NewMetricWithConfig returns a trust metric with a custom configuration.
+// Use Start to begin tracking the quality of peer behavior over time
 func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {
 	tm := new(TrustMetric)
 	config := customConfig(tmc)
@@ -97,12 +103,23 @@ func NewMetricWithConfig(tmc TrustMetricConfig) *TrustMetric {
 	tm.historyMaxSize = intervalToHistoryOffset(tm.maxIntervals) + 1
 	// This metric has a perfect history so far
 	tm.historyValue = 1.0
-	// Setup the stop channel
-	tm.stop = make(chan struct{})
 
-	go tm.processRequests()
+	tm.BaseService = *cmn.NewBaseService(nil, "TrustMetric", tm)
 	return tm
 }
+
+// OnStart implements Service
+func (tm *TrustMetric) OnStart() error {
+	if err := tm.BaseService.OnStart(); err != nil {
+		return err
+	}
+	go tm.processRequests()
+	return nil
+}
+
+// OnStop implements Service
+// Nothing to do since the goroutine shuts down by itself via BaseService.Quit
+func (tm *TrustMetric) OnStop() {}
 
 // Returns a snapshot of the trust metric history data
 func (tm *TrustMetric) HistoryJSON() MetricHistoryJSON {
@@ -153,11 +170,6 @@ func (tm *TrustMetric) Pause() {
 
 	// Pause the metric for now
 	tm.paused = true
-}
-
-// Stop tells the metric to stop recording data over time intervals
-func (tm *TrustMetric) Stop() {
-	tm.stop <- struct{}{}
 }
 
 // BadEvents indicates that an undesirable event(s) took place
@@ -232,6 +244,16 @@ func (tm *TrustMetric) NextTimeInterval() {
 	tm.bad = 0
 }
 
+// SetTicker allows a TestTicker to be provided that will manually control
+// the passing of time from the perspective of the TrustMetric.
+// The ticker must be set before Start is called on the metric
+func (tm *TrustMetric) SetTicker(ticker MetricTicker) {
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
+
+	tm.testTicker = ticker
+}
+
 // Copy returns a new trust metric with members containing the same values
 func (tm *TrustMetric) Copy() *TrustMetric {
 	tm.mtx.Lock()
@@ -255,22 +277,28 @@ func (tm *TrustMetric) Copy() *TrustMetric {
 		good:               tm.good,
 		bad:                tm.bad,
 		paused:             tm.paused,
-		stop:               make(chan struct{}),
 	}
+
 }
 
 /* Private methods */
 
 // This method is for a goroutine that handles all requests on the metric
 func (tm *TrustMetric) processRequests() {
-	t := time.NewTicker(tm.intervalLen)
+	t := tm.testTicker
+	if t == nil {
+		// No test ticker was provided, so we create a normal ticker
+		t = NewTicker(tm.intervalLen)
+	}
 	defer t.Stop()
+	// Obtain the raw channel
+	tick := t.GetChannel()
 loop:
 	for {
 		select {
-		case <-t.C:
+		case <-tick:
 			tm.NextTimeInterval()
-		case <-tm.stop:
+		case <-tm.Quit:
 			// Stop all further tracking for this metric
 			break loop
 		}

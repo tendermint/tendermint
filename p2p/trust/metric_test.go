@@ -9,6 +9,7 @@ import (
 
 func TestTrustMetricScores(t *testing.T) {
 	tm := NewMetric()
+	tm.Start()
 
 	// Perfect score
 	tm.GoodEvents(1)
@@ -31,6 +32,7 @@ func TestTrustMetricConfig(t *testing.T) {
 	}
 
 	tm := NewMetricWithConfig(config)
+	tm.Start()
 
 	// The max time intervals should be the TrackingWindow / IntervalLen
 	assert.Equal(t, int(config.TrackingWindow/config.IntervalLength), tm.maxIntervals)
@@ -40,51 +42,54 @@ func TestTrustMetricConfig(t *testing.T) {
 	assert.Equal(t, dc.ProportionalWeight, tm.proportionalWeight)
 	assert.Equal(t, dc.IntegralWeight, tm.integralWeight)
 	tm.Stop()
+	tm.Wait()
 
 	config.ProportionalWeight = 0.3
 	config.IntegralWeight = 0.7
 	tm = NewMetricWithConfig(config)
+	tm.Start()
 
 	// These weights should be equal to our custom values
 	assert.Equal(t, config.ProportionalWeight, tm.proportionalWeight)
 	assert.Equal(t, config.IntegralWeight, tm.integralWeight)
 	tm.Stop()
+	tm.Wait()
 }
 
 func TestTrustMetricStopPause(t *testing.T) {
-	// Cause time intervals to pass quickly
-	config := TrustMetricConfig{
-		TrackingWindow: 5 * time.Minute,
-		IntervalLength: 10 * time.Millisecond,
-	}
-
-	tm := NewMetricWithConfig(config)
-
+	// The TestTicker will provide manual control over
+	// the passing of time within the metric
+	tt := NewTestTicker()
+	tm := NewMetric()
+	tm.SetTicker(tt)
+	tm.Start()
 	// Allow some time intervals to pass and pause
-	time.Sleep(50 * time.Millisecond)
+	tt.NextTick()
+	tt.NextTick()
 	tm.Pause()
-	// Give the pause some time to take place
-	time.Sleep(10 * time.Millisecond)
 
 	first := tm.Copy().numIntervals
 	// Allow more time to pass and check the intervals are unchanged
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, first, tm.numIntervals)
+	tt.NextTick()
+	tt.NextTick()
+	assert.Equal(t, first, tm.Copy().numIntervals)
 
 	// Get the trust metric activated again
 	tm.GoodEvents(5)
 	// Allow some time intervals to pass and stop
-	time.Sleep(50 * time.Millisecond)
+	tt.NextTick()
+	tt.NextTick()
 	tm.Stop()
-	// Give the stop some time to take place
-	time.Sleep(10 * time.Millisecond)
+	tm.Wait()
 
 	second := tm.Copy().numIntervals
-	// Allow more time to pass and check the intervals are unchanged
-	time.Sleep(50 * time.Millisecond)
-	assert.Equal(t, second, tm.numIntervals)
+	// Allow more intervals to pass while the metric is stopped
+	// and check that the number of intervals match
+	tm.NextTimeInterval()
+	tm.NextTimeInterval()
+	assert.Equal(t, second+2, tm.Copy().numIntervals)
 
-	if first >= second {
+	if first > second {
 		t.Fatalf("numIntervals should always increase or stay the same over time")
 	}
 }
