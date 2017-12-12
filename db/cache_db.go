@@ -1,3 +1,4 @@
+/*
 package db
 
 import (
@@ -229,3 +230,4 @@ func (cww *cwwMutex) TryWriteLock(version interface{}) bool {
 	cww.written = new(int32)
 	return true
 }
+*/
