@@ -48,7 +48,7 @@ var _ = wire.RegisterInterface(
 type WAL interface {
 	Save(WALMessage)
 	Group() *auto.Group
-	SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error)
+	SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error)
 
 	Start() error
 	Stop() error
@@ -133,12 +133,17 @@ func (wal *baseWAL) Save(msg WALMessage) {
 	}
 }
 
+// WALSearchOptions are optional arguments to SearchForEndHeight.
+type WALSearchOptions struct {
+	IgnoreDataCorruptionErrors bool
+}
+
 // SearchForEndHeight searches for the EndHeightMessage with the height and
 // returns an auto.GroupReader, whenever it was found or not and an error.
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
-func (wal *baseWAL) SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error) {
+func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
 	var msg *TimedWALMessage
 
 	// NOTE: starting from the last file in the group because we're usually
@@ -158,7 +163,9 @@ func (wal *baseWAL) SearchForEndHeight(height int64) (gr *auto.GroupReader, foun
 				// check next file
 				break
 			}
-			if err != nil {
+			if options.IgnoreDataCorruptionErrors && IsDataCorruptionError(err) {
+				// do nothing
+			} else if err != nil {
 				gr.Close()
 				return nil, false, err
 			}
@@ -210,6 +217,24 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// IsDataCorruptionError returns true if data has been corrupted inside WAL.
+func IsDataCorruptionError(err error) bool {
+	_, ok := err.(DataCorruptionError)
+	return ok
+}
+
+type DataCorruptionError struct {
+	cause error
+}
+
+func (e DataCorruptionError) Error() string {
+	return fmt.Sprintf("DataCorruptionError[%v]", e.cause)
+}
+
+func (e DataCorruptionError) Cause() error {
+	return e.cause
+}
+
 // A WALDecoder reads and decodes custom-encoded WAL messages from an input
 // stream. See WALEncoder for the format used.
 //
@@ -259,14 +284,14 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	// check checksum before decoding data
 	actualCRC := crc32.Checksum(data, crc32c)
 	if actualCRC != crc {
-		return nil, fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)
+		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)}
 	}
 
 	var nn int
 	var res *TimedWALMessage // nolint: gosimple
 	res = wire.ReadBinary(&TimedWALMessage{}, bytes.NewBuffer(data), int(length), &nn, &err).(*TimedWALMessage)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode data: %v", err)
+		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
 	}
 
 	return res, err
@@ -276,7 +301,7 @@ type nilWAL struct{}
 
 func (nilWAL) Save(m WALMessage)  {}
 func (nilWAL) Group() *auto.Group { return nil }
-func (nilWAL) SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error) {
+func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
 	return nil, false, nil
 }
 func (nilWAL) Start() error { return nil }

@@ -253,8 +253,8 @@ func (w *crashingWAL) Save(m WALMessage) {
 }
 
 func (w *crashingWAL) Group() *auto.Group { return w.next.Group() }
-func (w *crashingWAL) SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error) {
-	return w.next.SearchForEndHeight(height)
+func (w *crashingWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
+	return w.next.SearchForEndHeight(height, options)
 }
 
 func (w *crashingWAL) Start() error { return w.next.Start() }
@@ -485,7 +485,7 @@ func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.B
 
 func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	// Search for height marker
-	gr, found, err := wal.SearchForEndHeight(0)
+	gr, found, err := wal.SearchForEndHeight(0, &WALSearchOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
