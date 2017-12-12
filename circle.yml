@@ -7,6 +7,7 @@ machine:
     GOPATH: "$HOME/.go_project"
     PROJECT_PARENT_PATH: "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
     PROJECT_PATH: "$PROJECT_PARENT_PATH/$CIRCLE_PROJECT_REPONAME"
+    PATH: "$HOME/.go_project/bin:${PATH}"
   hosts:
     localhost: 127.0.0.1
 
