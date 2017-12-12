@@ -9,13 +9,10 @@ TMHOME = $${TMHOME:-$$HOME/.tendermint}
 
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
 
-all: get_vendor_deps install test
+all: tools get_vendor_deps install test
 
 install:
 	go install $(BUILD_FLAGS) ./cmd/tendermint
-
-install_metalinter_v2:
-	which gometalinter.v2 || make tools
 
 build:
 	go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
@@ -77,10 +74,10 @@ tools:
 
 ### Formatting, linting, and vetting
 
-metalinter: install_metalinter_v2
+metalinter:
 	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test: install_metalinter_v2
+metalinter_test:
 	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
@@ -109,4 +106,4 @@ metalinter_test: install_metalinter_v2
 		#--enable=vet \
 		#--enable=vetshadow \
 
-.PHONY: install install_metalinter_v2 build build_race dist test test_race test_integrations test100 draw_deps get_vendor_deps update_vendor_deps update_tools tools test_release
+.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps get_vendor_deps update_vendor_deps update_tools tools test_release
