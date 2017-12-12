@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	maxMsgSizeBytes = 10024 // 10MB
+	maxMsgSizeBytes = 1024 // 1MB, must be greater than BlockPartSizeBytes
 )
 
 //--------------------------------------------------------
@@ -139,6 +139,7 @@ func (wal *baseWAL) Save(msg WALMessage) {
 
 // WALSearchOptions are optional arguments to SearchForEndHeight.
 type WALSearchOptions struct {
+	// IgnoreDataCorruptionErrors set to true will result in skipping data corruption errors.
 	IgnoreDataCorruptionErrors bool
 }
 
@@ -227,6 +228,7 @@ func IsDataCorruptionError(err error) bool {
 	return ok
 }
 
+// DataCorruptionError is an error that occures if data on disk was corrupted.
 type DataCorruptionError struct {
 	cause error
 }
