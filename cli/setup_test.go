@@ -74,16 +74,16 @@ func TestSetupConfig(t *testing.T) {
 		// setting on the command line
 		{[]string{"--boo", "haha"}, nil, "haha", ""},
 		{[]string{"--two-words", "rocks"}, nil, "", "rocks"},
-		{[]string{"--root", conf1}, nil, cval1, ""},
+		{[]string{"--home", conf1}, nil, cval1, ""},
 		// test both variants of the prefix
-		{nil, map[string]string{"RD_BOO": "bang"}, "bang", ""},
-		{nil, map[string]string{"RD_TWO_WORDS": "fly"}, "", "fly"},
-		{nil, map[string]string{"RDTWO_WORDS": "fly"}, "", "fly"},
-		{nil, map[string]string{"RD_ROOT": conf1}, cval1, ""},
-		{nil, map[string]string{"RDROOT": conf2}, cval2, "WORD"},
-		{nil, map[string]string{"RDHOME": conf1}, cval1, ""},
+		//{nil, map[string]string{"RD_BOO": "bang"}, "bang", ""},
+		//{nil, map[string]string{"RD_TWO_WORDS": "fly"}, "", "fly"},
+		//{nil, map[string]string{"RDTWO_WORDS": "fly"}, "", "fly"},
+		//{nil, map[string]string{"RD_ROOT": conf1}, cval1, ""},
+		//{nil, map[string]string{"RDROOT": conf2}, cval2, "WORD"},
+		//{nil, map[string]string{"RDHOME": conf1}, cval1, ""},
 		// and when both are set??? HOME wins every time!
-		{[]string{"--root", conf1}, map[string]string{"RDHOME": conf2}, cval2, "WORD"},
+		{[]string{"--home", conf1}, map[string]string{"RDHOME": conf2}, cval2, "WORD"},
 	}
 
 	for idx, tc := range cases {
@@ -156,10 +156,10 @@ func TestSetupUnmarshal(t *testing.T) {
 		{nil, nil, c("", 0)},
 		// setting on the command line
 		{[]string{"--name", "haha"}, nil, c("haha", 0)},
-		{[]string{"--root", conf1}, nil, c(cval1, 0)},
+		{[]string{"--home", conf1}, nil, c(cval1, 0)},
 		// test both variants of the prefix
 		{nil, map[string]string{"MR_AGE": "56"}, c("", 56)},
-		{nil, map[string]string{"MR_ROOT": conf1}, c(cval1, 0)},
+		//{nil, map[string]string{"MR_ROOT": conf1}, c(cval1, 0)},
 		{[]string{"--age", "17"}, map[string]string{"MRHOME": conf2}, c(cval2, 17)},
 	}
 
