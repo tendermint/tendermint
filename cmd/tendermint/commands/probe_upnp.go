@@ -19,7 +19,7 @@ var ProbeUpnpCmd = &cobra.Command{
 func probeUpnp(cmd *cobra.Command, args []string) error {
 	capabilities, err := upnp.Probe(logger)
 	if err != nil {
-		fmt.Println("Probe failed: %v", err)
+		fmt.Println("Probe failed: ", err)
 	} else {
 		fmt.Println("Probe success!")
 		jsonBytes, err := json.Marshal(capabilities)

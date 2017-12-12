@@ -58,27 +58,31 @@ get_vendor_deps:
 	@hash glide 2>/dev/null || go get github.com/Masterminds/glide
 	@rm -rf vendor/
 	@echo "--> Running glide install"
-	@$(GOPATH)/bin/glide install
+	@glide install
+	@make check_tools
 
 update_vendor_deps:
-	@$(GOPATH)/bin/glide update
+	@glide update
 
 update_tools:
 	@echo "--> Updating tools"
 	@go get -u $(GOTOOLS)
 
+check_tools:
+	which gox || make tools
+
 tools:
 	@echo "--> Installing tools"
 	@go get $(GOTOOLS)
-	$(GOPATH)/bin/gometalinter.v2 --install
+	@gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
 
 metalinter:
-	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
+	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test:
-	$(GOPATH)/bin/gometalinter.v2 --vendor --deadline=600s --disable-all  \
+	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \
@@ -106,4 +110,4 @@ metalinter_test:
 		#--enable=vet \
 		#--enable=vetshadow \
 
-.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps get_vendor_deps update_vendor_deps update_tools tools test_release
+.PHONY: install build build_race check_tools dist test test_race test_integrations test100 draw_deps get_vendor_deps update_vendor_deps update_tools tools test_release
