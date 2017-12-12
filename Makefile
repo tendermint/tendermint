@@ -59,6 +59,7 @@ get_vendor_deps:
 	@rm -rf vendor/
 	@echo "--> Running glide install"
 	@glide install
+	@make check_tools
 
 update_vendor_deps:
 	@glide update
@@ -66,6 +67,9 @@ update_vendor_deps:
 update_tools:
 	@echo "--> Updating tools"
 	@go get -u $(GOTOOLS)
+
+check_tools:
+	which gox || make tools
 
 tools:
 	@echo "--> Installing tools"
@@ -106,4 +110,4 @@ metalinter_test:
 		#--enable=vet \
 		#--enable=vetshadow \
 
-.PHONY: install build build_race dist test test_race test_integrations test100 draw_deps get_vendor_deps update_vendor_deps update_tools tools test_release
+.PHONY: install build build_race check_tools dist test test_race test_integrations test100 draw_deps get_vendor_deps update_vendor_deps update_tools tools test_release
