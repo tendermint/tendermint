@@ -54,10 +54,12 @@ type SetDeleter interface {
 
 //----------------------------------------
 
+// BeginningKey is the smallest key.
 func BeginningKey() []byte {
 	return []byte{}
 }
 
+// EndingKey is the largest key.
 func EndingKey() []byte {
 	return nil
 }
@@ -81,8 +83,8 @@ type Iterator interface {
 	// A domain of ([]byte{12, 13}, []byte{12, 14}) will iterate
 	// over anything with the prefix []byte{12, 13}.
 	//
-	// The smallest key is the empty byte array []byte{}.
-	// The largest key is the nil byte array []byte(nil).
+	// The smallest key is the empty byte array []byte{} - see BeginningKey().
+	// The largest key is the nil byte array []byte(nil) - see EndingKey().
 	Domain() (start []byte, end []byte)
 
 	// Valid returns whether the current position is valid.
@@ -100,7 +102,7 @@ type Iterator interface {
 	// If Valid returns false, this method will panic.
 	Key() []byte
 
-	// Value returns the key of the cursor.
+	// Value returns the value of the cursor.
 	//
 	// If Valid returns false, this method will panic.
 	Value() []byte
