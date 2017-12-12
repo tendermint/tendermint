@@ -90,16 +90,10 @@ type Iterator interface {
 	Valid() bool
 
 	// Next moves the iterator to the next sequential key in the database, as
-	// defined by the Comparator in the ReadOptions used to create this Iterator.
+	// defined by order of iteration.
 	//
 	// If Valid returns false, this method will panic.
 	Next()
-
-	// Prev moves the iterator to the previous sequential key in the database, as
-	// defined by the Comparator in the ReadOptions used to create this Iterator.
-	//
-	// If Valid returns false, this method will panic.
-	Prev()
 
 	// Key returns the key of the cursor.
 	//
@@ -119,4 +113,9 @@ type Iterator interface {
 
 	// Release deallocates the given Iterator.
 	Release()
+}
+
+// For testing convenience.
+func bz(s string) []byte {
+	return []byte(s)
 }

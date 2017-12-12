@@ -202,13 +202,6 @@ func (c cLevelDBIterator) Next() {
 	c.itr.Next()
 }
 
-func (c cLevelDBIterator) Prev() {
-	if !c.itr.Valid() {
-		panic("cLevelDBIterator Prev() called when invalid")
-	}
-	c.itr.Prev()
-}
-
 func (c cLevelDBIterator) Release() {
 	c.itr.Close()
 }

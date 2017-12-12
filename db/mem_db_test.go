@@ -19,7 +19,7 @@ func TestMemDbIterator(t *testing.T) {
 		db.Set(k, value)
 	}
 
-	iter := db.Iterator()
+	iter := db.Iterator(BeginningKey(), EndingKey())
 	i := 0
 	for ; iter.Valid(); iter.Next() {
 		assert.Equal(t, db.Get(iter.Key()), iter.Value(), "values dont match for key")
