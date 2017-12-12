@@ -44,20 +44,15 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse a query")
-	}
-
-	err = wsCtx.AddSubscription(query, q)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to add subscription")
+		return nil, errors.Wrap(err, "failed to parse query")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), subscribeTimeout)
 	defer cancel()
 	ch := make(chan interface{})
-	err = eventBus.Subscribe(ctx, addr, q, ch)
+	err = eventBusFor(wsCtx).Subscribe(ctx, addr, q, ch)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to subscribe")
+		return nil, err
 	}
 
 	go func() {
@@ -100,18 +95,31 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsubscribe, error) {
 	addr := wsCtx.GetRemoteAddr()
 	logger.Info("Unsubscribe from query", "remote", addr, "query", query)
-	q, ok := wsCtx.DeleteSubscription(query)
-	if !ok {
-		return nil, errors.New("subscription not found")
+	q, err := tmquery.New(query)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse query")
 	}
-	eventBus.Unsubscribe(context.Background(), addr, q.(*tmquery.Query))
+	err = eventBusFor(wsCtx).Unsubscribe(context.Background(), addr, q)
+	if err != nil {
+		return nil, err
+	}
 	return &ctypes.ResultUnsubscribe{}, nil
 }
 
 func UnsubscribeAll(wsCtx rpctypes.WSRPCContext) (*ctypes.ResultUnsubscribe, error) {
 	addr := wsCtx.GetRemoteAddr()
 	logger.Info("Unsubscribe from all", "remote", addr)
-	eventBus.UnsubscribeAll(context.Background(), addr)
-	wsCtx.DeleteAllSubscriptions()
+	err := eventBusFor(wsCtx).UnsubscribeAll(context.Background(), addr)
+	if err != nil {
+		return nil, err
+	}
 	return &ctypes.ResultUnsubscribe{}, nil
+}
+
+func eventBusFor(wsCtx rpctypes.WSRPCContext) tmtypes.EventBusSubscriber {
+	es := wsCtx.GetEventSubscriber()
+	if es == nil {
+		es = eventBus
+	}
+	return es
 }

@@ -24,35 +24,35 @@ import (
 //
 // ```json
 // {
-//   "error": "",
-//   "result": {
-//     "latest_block_time": 1.49631773695e+18,
-//     "latest_block_height": 22924,
-//     "latest_app_hash": "9D16177BC71E445476174622EA559715C293740C",
-//     "latest_block_hash": "75B36EEF96C277A592D8B14867098C58F68BB180",
-//     "pub_key": {
-//       "data": "68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D",
-//       "type": "ed25519"
-//     },
-//     "node_info": {
-//       "other": [
-//         "wire_version=0.6.2",
-//         "p2p_version=0.5.0",
-//         "consensus_version=v1/0.2.2",
-//         "rpc_version=0.7.0/3",
-//         "tx_index=on",
-//         "rpc_addr=tcp://0.0.0.0:46657"
-//       ],
-//       "version": "0.10.0-rc1-aa22bd84",
-//       "listen_addr": "10.0.2.15:46656",
-//       "remote_addr": "",
-//       "network": "test-chain-6UTNIN",
-//       "moniker": "anonymous",
-//       "pub_key": "659B9E54DD6EF9FEF28FAD40629AF0E4BD3C2563BB037132B054A176E00F1D94"
-//     }
-//   },
-//   "id": "",
-//   "jsonrpc": "2.0"
+// 	"result": {
+// 		"syncing": false,
+// 		"latest_block_time": "2017-12-07T18:19:47.617Z",
+// 		"latest_block_height": 6,
+// 		"latest_app_hash": "",
+// 		"latest_block_hash": "A63D0C3307DEDCCFCC82ED411AE9108B70B29E02",
+// 		"pub_key": {
+// 			"data": "8C9A68070CBE33F9C445862BA1E9D96A75CEB68C0CF6ADD3652D07DCAC5D0380",
+// 			"type": "ed25519"
+// 		},
+// 		"node_info": {
+// 			"other": [
+// 				"wire_version=0.7.2",
+// 				"p2p_version=0.5.0",
+// 				"consensus_version=v1/0.2.2",
+// 				"rpc_version=0.7.0/3",
+// 				"tx_index=on",
+// 				"rpc_addr=tcp://0.0.0.0:46657"
+// 			],
+// 			"version": "0.13.0-14ccc8b",
+// 			"listen_addr": "10.0.2.15:46656",
+// 			"remote_addr": "",
+// 			"network": "test-chain-qhVCa2",
+// 			"moniker": "vagrant-ubuntu-trusty-64",
+// 			"pub_key": "844981FE99ABB19F7816F2D5E94E8A74276AB1153760A7799E925C75401856C6"
+// 		}
+// 	},
+// 	"id": "",
+// 	"jsonrpc": "2.0"
 // }
 // ```
 func Status() (*ctypes.ResultStatus, error) {

@@ -1,8 +1,8 @@
 FROM alpine:3.6
 
 # This is the release of tendermint to pull in.
-ENV TM_VERSION 0.12.0
-ENV TM_SHA256SUM be17469e92f04fc2a3663f891da28edbaa6c37c4d2f746736571887f4790555a
+ENV TM_VERSION 0.13.0
+ENV TM_SHA256SUM 36d773d4c2890addc61cc87a72c1e9c21c89516921b0defb0edfebde719b4b85
 
 # Tendermint will be looking for genesis file in /tendermint (unless you change
 # `genesis_file` in config.toml). You can put your config.toml and private

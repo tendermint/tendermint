@@ -27,6 +27,24 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.14.0 (December 11, 2017)
+
+BREAKING CHANGES:
+- consensus/wal: removed separator
+- rpc/client: changed Subscribe/Unsubscribe/UnsubscribeAll funcs signatures to be identical to event bus.
+
+FEATURES:
+- new `tendermint lite` command (and `lite/proxy` pkg) for running a light-client RPC proxy.
+    NOTE it is currently insecure and its APIs are not yet covered by semver
+
+IMPROVEMENTS:
+- rpc/client: can act as event bus subscriber (See https://github.com/tendermint/tendermint/issues/945).
+- p2p: use exponential backoff from seconds to hours when attempting to reconnect to persistent peer
+- config: moniker defaults to the machine's hostname instead of "anonymous"
+
+BUG FIXES:
+- p2p: no longer exit if one of the seed addresses is incorrect
+
 ## 0.13.0 (December 6, 2017)
 
 BREAKING CHANGES:

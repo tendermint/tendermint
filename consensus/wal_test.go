@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"crypto/rand"
-	"path"
 	"sync"
 	"testing"
 	"time"
@@ -43,7 +42,13 @@ func TestWALEncoderDecoder(t *testing.T) {
 }
 
 func TestSearchForEndHeight(t *testing.T) {
-	wal, err := NewWAL(path.Join(data_dir, "many_blocks.cswal"), false)
+	walBody, err := WALWithNBlocks(6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	walFile := tempWALWithData(walBody)
+
+	wal, err := NewWAL(walFile, false)
 	if err != nil {
 		t.Fatal(err)
 	}

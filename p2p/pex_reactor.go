@@ -20,7 +20,7 @@ const (
 	minNumOutboundPeers      = 10
 	maxPexMessageSize        = 1048576 // 1MB
 
-	// maximum messages one peer can send to us during `msgCountByPeerFlushInterval`
+	// maximum pex messages one peer can send to us during `msgCountByPeerFlushInterval`
 	defaultMaxMsgCountByPeer    = 1000
 	msgCountByPeerFlushInterval = 1 * time.Hour
 )
@@ -247,6 +247,7 @@ func (r *PEXReactor) ensurePeers() {
 
 	// bias to prefer more vetted peers when we have fewer connections.
 	// not perfect, but somewhate ensures that we prioritize connecting to more-vetted
+	// NOTE: range here is [10, 90]. Too high ?
 	newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
 
 	toDial := make(map[string]*NetAddress)

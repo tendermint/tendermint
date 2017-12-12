@@ -7,6 +7,7 @@ machine:
     GOPATH: "$HOME/.go_project"
     PROJECT_PARENT_PATH: "$GOPATH/src/github.com/$CIRCLE_PROJECT_USERNAME"
     PROJECT_PATH: "$PROJECT_PARENT_PATH/$CIRCLE_PROJECT_REPONAME"
+    PATH: "$HOME/.go_project/bin:${PATH}"
   hosts:
     localhost: 127.0.0.1
 
@@ -24,6 +25,7 @@ dependencies:
 
 test:
   override:
+    - cd "$PROJECT_PATH" && make tools && make get_vendor_deps && make metalinter_test
     - cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
         timeout: 1800
   post:

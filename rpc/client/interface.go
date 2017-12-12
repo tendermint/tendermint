@@ -20,8 +20,6 @@ implementation.
 package client
 
 import (
-	"context"
-
 	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -89,7 +87,5 @@ type NetworkClient interface {
 // EventsClient is reactive, you can subscribe to any message, given the proper
 // string. see tendermint/types/events.go
 type EventsClient interface {
-	Subscribe(ctx context.Context, query string, out chan<- interface{}) error
-	Unsubscribe(ctx context.Context, query string) error
-	UnsubscribeAll(ctx context.Context) error
+	types.EventBusSubscriber
 }

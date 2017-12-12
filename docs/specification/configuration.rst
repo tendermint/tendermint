@@ -21,7 +21,8 @@ The main config parameters are defined
 -  ``genesis_file``: The location of the genesis file. *Default*:
    ``"$TMHOME/genesis.json"``
 -  ``log_level``: *Default*: ``"state:info,*:error"``
--  ``moniker``: Name of this node. *Default*: ``"anonymous"``
+-  ``moniker``: Name of this node. *Default*: the host name or ``"anonymous"``
+   if runtime fails to get the host name
 -  ``priv_validator_file``: Validator private key file. *Default*:
    ``"$TMHOME/priv_validator.json"``
 -  ``prof_laddr``: Profile listen address. *Default*: ``""``
