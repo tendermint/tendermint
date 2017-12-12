@@ -22,7 +22,7 @@ const (
 	numBatchMsgPackets = 10
 	minReadBufferSize  = 1024
 	minWriteBufferSize = 65536
-	updateState        = 2 * time.Second
+	updateStats        = 2 * time.Second
 	pingTimeout        = 40 * time.Second
 
 	// some of these defaults are written in the user config
@@ -169,7 +169,7 @@ func (c *MConnection) OnStart() error {
 	c.quit = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
-	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateState)
+	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateStats)
 	go c.sendRoutine()
 	go c.recvRoutine()
 	return nil
