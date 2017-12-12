@@ -9,6 +9,7 @@ import (
 
 func TestTrustMetricScores(t *testing.T) {
 	tm := NewMetric()
+	tm.Start()
 
 	// Perfect score
 	tm.GoodEvents(1)
@@ -31,6 +32,7 @@ func TestTrustMetricConfig(t *testing.T) {
 	}
 
 	tm := NewMetricWithConfig(config)
+	tm.Start()
 
 	// The max time intervals should be the TrackingWindow / IntervalLen
 	assert.Equal(t, int(config.TrackingWindow/config.IntervalLength), tm.maxIntervals)
@@ -44,6 +46,7 @@ func TestTrustMetricConfig(t *testing.T) {
 	config.ProportionalWeight = 0.3
 	config.IntegralWeight = 0.7
 	tm = NewMetricWithConfig(config)
+	tm.Start()
 
 	// These weights should be equal to our custom values
 	assert.Equal(t, config.ProportionalWeight, tm.proportionalWeight)
@@ -52,14 +55,12 @@ func TestTrustMetricConfig(t *testing.T) {
 }
 
 func TestTrustMetricStopPause(t *testing.T) {
-	// Cause time intervals to pass quickly
-	config := TrustMetricConfig{
-		TrackingWindow: 5 * time.Minute,
-		IntervalLength: 10 * time.Millisecond,
-	}
-
-	tm := NewMetricWithConfig(config)
-
+	// The TestTicker will provide manual control over
+	// the passing of time within the metric
+	tt := NewTestTicker()
+	tm := NewMetric()
+	tm.SetTicker(tt)
+	tm.Start()
 	// Allow some time intervals to pass and pause
 	tm.NextTimeInterval()
 	tm.NextTimeInterval()
@@ -67,8 +68,8 @@ func TestTrustMetricStopPause(t *testing.T) {
 
 	first := tm.Copy().numIntervals
 	// Allow more time to pass and check the intervals are unchanged
-	tm.WaitForTimeIntervalToPass()
-	tm.WaitForTimeIntervalToPass()
+	tt.NextTick()
+	tt.NextTick()
 	assert.Equal(t, first, tm.Copy().numIntervals)
 
 	// Get the trust metric activated again

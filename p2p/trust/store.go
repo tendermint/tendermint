@@ -34,7 +34,8 @@ type TrustMetricStore struct {
 }
 
 // NewTrustMetricStore returns a store that saves data to the DB
-// and uses the config when creating new trust metrics
+// and uses the config when creating new trust metrics.
+// Use Start to to initialize the trust metric store
 func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {
 	tms := &TrustMetricStore{
 		peerMetrics: make(map[string]*TrustMetric),
@@ -84,6 +85,18 @@ func (tms *TrustMetricStore) Size() int {
 	return tms.size()
 }
 
+// AddPeerTrustMetric takes an existing trust metric and associates it with a peer key.
+// The caller is expected to call Start on the TrustMetric being added
+func (tms *TrustMetricStore) AddPeerTrustMetric(key string, tm *TrustMetric) {
+	tms.mtx.Lock()
+	defer tms.mtx.Unlock()
+
+	if key == "" || tm == nil {
+		return
+	}
+	tms.peerMetrics[key] = tm
+}
+
 // GetPeerTrustMetric returns a trust metric by peer key
 func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric {
 	tms.mtx.Lock()
@@ -93,6 +106,7 @@ func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric {
 	if !ok {
 		// If the metric is not available, we will create it
 		tm = NewMetricWithConfig(tms.config)
+		tm.Start()
 		// The metric needs to be in the map
 		tms.peerMetrics[key] = tm
 	}
@@ -149,6 +163,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 	for key, p := range peers {
 		tm := NewMetricWithConfig(tms.config)
 
+		tm.Start()
 		tm.Init(p)
 		// Load the peer trust metric into the store
 		tms.peerMetrics[key] = tm
