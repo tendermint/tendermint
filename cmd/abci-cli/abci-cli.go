@@ -359,14 +359,11 @@ func cmdBatch(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		if len(line) > 0 { // prevents introduction of extra space leading to argument parse errors
-			args = strings.Split(string(line), " ")
-		}
-
-		if err := muxOnCommands(cmd, args); err != nil {
+		cmdArgs := persistentArgs(line)
+		if err := muxOnCommands(cmd, cmdArgs); err != nil {
 			return err
 		}
-		fmt.Println("")
+		fmt.Println()
 	}
 	return nil
 }
@@ -397,22 +394,14 @@ var (
 )
 
 func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
-
-	if len(pArgs) < 1 && cmd.Use != "batch" {
+	if len(pArgs) < 2 {
 		return errBadPersistentArgs
 	}
-
-	subCommand, actualArgs := pArgs[0], pArgs[1:]
-
-	//if cmd.Use == "batch" {
-	//	cmd.Use = subCommand
-	//}
-
+	subCommand, actualArgs := pArgs[1], pArgs[2:]
 
 	switch strings.ToLower(subCommand) {
 	case "batch":
-		fmt.Println("WTF")
-		return nil
+		return muxOnCommands(cmd, actualArgs)
 	case "check_tx":
 		return cmdCheckTx(cmd, actualArgs)
 	case "commit":
@@ -437,6 +426,9 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	msg := "unimplemented command"
 	if err := cmd.Help(); err != nil {
 		msg = err.Error()
+	}
+	if len(args) > 0 {
+		msg += fmt.Sprintf(" args: [%s]", strings.Join(args, " "))
 	}
 	printResponse(cmd, args, response{
 		Code: codeBad,
