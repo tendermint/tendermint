@@ -5,18 +5,19 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func checkValid(t *testing.T, itr Iterator, expected bool) {
 	valid := itr.Valid()
-	assert.Equal(t, expected, valid)
+	require.Equal(t, expected, valid)
 }
 
 func checkNext(t *testing.T, itr Iterator, expected bool) {
 	itr.Next()
 	valid := itr.Valid()
-	assert.Equal(t, expected, valid)
+	require.Equal(t, expected, valid)
 }
 
 func checkNextPanics(t *testing.T, itr Iterator) {

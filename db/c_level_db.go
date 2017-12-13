@@ -17,6 +17,8 @@ func init() {
 	registerDBCreator(CLevelDBBackendStr, dbCreator, false)
 }
 
+var _ DB = (*CLevelDB)(nil)
+
 type CLevelDB struct {
 	db     *levigo.DB
 	ro     *levigo.ReadOptions
@@ -158,13 +160,17 @@ func (mBatch *cLevelDBBatch) Write() {
 // Iterator
 
 func (db *CLevelDB) Iterator(start, end []byte) Iterator {
-	/*
-		XXX
-		itr := db.db.NewIterator(db.ro)
-		itr.Seek([]byte{0x00})
-		return cLevelDBIterator{itr}
-	*/
-	return nil
+	itr := db.db.NewIterator(db.ro)
+	if len(start) > 0 {
+		itr.Seek(start)
+	} else {
+		itr.SeekToFirst()
+	}
+	return cLevelDBIterator{
+		itr:   itr,
+		start: start,
+		end:   end,
+	}
 }
 
 func (db *CLevelDB) ReverseIterator(start, end []byte) Iterator {
@@ -172,15 +178,15 @@ func (db *CLevelDB) ReverseIterator(start, end []byte) Iterator {
 	return nil
 }
 
+var _ Iterator = (*cLevelDBIterator)(nil)
+
 type cLevelDBIterator struct {
-	itr *levigo.Iterator
+	itr        *levigo.Iterator
+	start, end []byte
 }
 
-func (c cLevelDBIterator) Seek(key []byte) {
-	if key == nil {
-		key = []byte{0x00}
-	}
-	c.itr.Seek(key)
+func (c cLevelDBIterator) Domain() ([]byte, []byte) {
+	return c.start, c.end
 }
 
 func (c cLevelDBIterator) Valid() bool {
