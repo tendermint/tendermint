@@ -157,7 +157,35 @@ message ResponseBeginBlock{
 }
 
 message ResponseEndBlock{
-  repeated Validator diffs = 1;
+  repeated Validator changes = 1;
+  ConsensusParams consensus_param_changes = 2;
+}
+
+message ConsensusParams{
+    BlockSizeParams block_size_params = 1;
+    TxSizeParams tx_size_params = 2;
+    BlockGossipParams block_gossip_params = 3;
+}
+
+// BlockSizeParams contain limits on the block size.
+message BlockSizeParams{
+    // NOTE: must not be 0 nor greater than 100MB
+    int32 max_bytes = 1;
+    int32 max_txs = 2;
+    int64 max_gas = 3;
+}
+
+// TxSizeParams contain limits on the tx size.
+message TxSizeParams {
+    int32 max_bytes = 1;
+    int64 max_gas = 2;
+}
+
+// BlockGossipParams determine consensus critical
+// elements of how blocks are gossiped
+message BlockGossipParams {
+    // Note: must not be 0
+    int32 block_part_size_bytes = 1;
 }
 
 //----------------------------------------
