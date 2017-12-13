@@ -1,0 +1,3 @@
+{
+  "Enable": ["deadcode", "gosimple", "misspell", "safesql", "errcheck"]
+}
