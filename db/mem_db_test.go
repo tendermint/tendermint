@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMemDbIterator(t *testing.T) {
+func TestMemDBIterator(t *testing.T) {
 	db := NewMemDB()
 	keys := make([][]byte, 100)
 	for i := 0; i < 100; i++ {
