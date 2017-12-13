@@ -144,7 +144,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		r.Logger.Error("Error decoding message", "err", err)
 		return
 	}
-	r.Logger.Info("Received message", "msg", msg)
+	r.Logger.Debug("Received message", "src", src, "chId", chID, "msg", msg)
 
 	switch msg := msg.(type) {
 	case *pexRequestMessage:

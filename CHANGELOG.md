@@ -27,6 +27,12 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.15.0 (TBD)
+
+BREAKING CHANGES:
+- [p2p] enable the Peer Exchange reactor by default
+- [types] add Timestamp field to Proposal/Vote
+
 ## 0.14.0 (December 11, 2017)
 
 BREAKING CHANGES:
