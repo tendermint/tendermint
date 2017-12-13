@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"testing"
+	"time"
 
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -92,6 +93,7 @@ func TestAddVote(t *testing.T) {
 		Height:           height,
 		Round:            round,
 		Type:             VoteTypePrevote,
+		Timestamp:        time.Now().UTC(),
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
 	_, err := signAddVote(val0, vote, voteSet)
@@ -121,6 +123,7 @@ func Test2_3Majority(t *testing.T) {
 		Height:           height,
 		Round:            round,
 		Type:             VoteTypePrevote,
+		Timestamp:        time.Now().UTC(),
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
 	// 6 out of 10 voted for nil.
@@ -176,6 +179,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		ValidatorIndex:   -1,  // NOTE: must fill in
 		Height:           height,
 		Round:            round,
+		Timestamp:        time.Now().UTC(),
 		Type:             VoteTypePrevote,
 		BlockID:          BlockID{blockHash, blockPartsHeader},
 	}
@@ -270,6 +274,7 @@ func TestBadVotes(t *testing.T) {
 		ValidatorIndex:   -1,
 		Height:           height,
 		Round:            round,
+		Timestamp:        time.Now().UTC(),
 		Type:             VoteTypePrevote,
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
@@ -331,6 +336,7 @@ func TestConflicts(t *testing.T) {
 		ValidatorIndex:   -1,
 		Height:           height,
 		Round:            round,
+		Timestamp:        time.Now().UTC(),
 		Type:             VoteTypePrevote,
 		BlockID:          BlockID{nil, PartSetHeader{}},
 	}
@@ -459,6 +465,7 @@ func TestMakeCommit(t *testing.T) {
 		ValidatorIndex:   -1,
 		Height:           height,
 		Round:            round,
+		Timestamp:        time.Now().UTC(),
 		Type:             VoteTypePrecommit,
 		BlockID:          BlockID{blockHash, blockPartsHeader},
 	}

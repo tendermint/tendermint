@@ -2,6 +2,7 @@ package types
 
 import (
 	"testing"
+	"time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
@@ -54,6 +55,7 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []*types.PrivVal
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
+		Timestamp:        time.Now().UTC(),
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}

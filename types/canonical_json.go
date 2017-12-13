@@ -1,10 +1,16 @@
 package types
 
 import (
+	"time"
+
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 )
 
 // canonical json is go-wire's json for structs with fields in alphabetical order
+
+// timeFormat is used for generating the sigs
+const timeFormat = wire.RFC3339Millis
 
 type CanonicalJSONBlockID struct {
 	Hash        data.Bytes                 `json:"hash,omitempty"`
@@ -22,13 +28,15 @@ type CanonicalJSONProposal struct {
 	POLBlockID       CanonicalJSONBlockID       `json:"pol_block_id"`
 	POLRound         int                        `json:"pol_round"`
 	Round            int                        `json:"round"`
+	Timestamp        string                     `json:"timestamp"`
 }
 
 type CanonicalJSONVote struct {
-	BlockID CanonicalJSONBlockID `json:"block_id"`
-	Height  int64                `json:"height"`
-	Round   int                  `json:"round"`
-	Type    byte                 `json:"type"`
+	BlockID   CanonicalJSONBlockID `json:"block_id"`
+	Height    int64                `json:"height"`
+	Round     int                  `json:"round"`
+	Timestamp string               `json:"timestamp"`
+	Type      byte                 `json:"type"`
 }
 
 type CanonicalJSONHeartbeat struct {
@@ -78,6 +86,7 @@ func CanonicalProposal(proposal *Proposal) CanonicalJSONProposal {
 	return CanonicalJSONProposal{
 		BlockPartsHeader: CanonicalPartSetHeader(proposal.BlockPartsHeader),
 		Height:           proposal.Height,
+		Timestamp:        CanonicalTime(proposal.Timestamp),
 		POLBlockID:       CanonicalBlockID(proposal.POLBlockID),
 		POLRound:         proposal.POLRound,
 		Round:            proposal.Round,
@@ -86,10 +95,11 @@ func CanonicalProposal(proposal *Proposal) CanonicalJSONProposal {
 
 func CanonicalVote(vote *Vote) CanonicalJSONVote {
 	return CanonicalJSONVote{
-		CanonicalBlockID(vote.BlockID),
-		vote.Height,
-		vote.Round,
-		vote.Type,
+		BlockID:   CanonicalBlockID(vote.BlockID),
+		Height:    vote.Height,
+		Round:     vote.Round,
+		Timestamp: CanonicalTime(vote.Timestamp),
+		Type:      vote.Type,
 	}
 }
 
@@ -101,4 +111,11 @@ func CanonicalHeartbeat(heartbeat *Heartbeat) CanonicalJSONHeartbeat {
 		heartbeat.ValidatorAddress,
 		heartbeat.ValidatorIndex,
 	}
+}
+
+func CanonicalTime(t time.Time) string {
+	// note that sending time over go-wire resets it to
+	// local time, we need to force UTC here, so the
+	// signatures match
+	return t.UTC().Format(timeFormat)
 }

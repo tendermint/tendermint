@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -165,6 +166,7 @@ func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockI
 		Height:           height,
 		Round:            round,
 		Type:             typ,
+		Timestamp:        time.Now().UTC(),
 		BlockID:          blockID,
 	}
 }
