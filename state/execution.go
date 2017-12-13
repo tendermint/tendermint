@@ -178,7 +178,8 @@ func (s *State) ValidateBlock(block *types.Block) error {
 
 func (s *State) validateBlock(block *types.Block) error {
 	// Basic block validation.
-	err := block.ValidateBasic(s.ChainID, s.LastBlockHeight, s.LastBlockID, s.LastBlockTime, s.AppHash)
+	err := block.ValidateBasic(s.ChainID, s.LastBlockHeight,
+		s.LastBlockTotalTx, s.LastBlockID, s.LastBlockTime, s.AppHash)
 	if err != nil {
 		return err
 	}

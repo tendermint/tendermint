@@ -45,11 +45,12 @@ type State struct {
 	// These fields are updated by SetBlockAndValidators.
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	// LastValidators is used to validate block.LastCommit.
-	LastBlockHeight int64
-	LastBlockID     types.BlockID
-	LastBlockTime   time.Time
-	Validators      *types.ValidatorSet
-	LastValidators  *types.ValidatorSet
+	LastBlockHeight  int64
+	LastBlockTotalTx int64
+	LastBlockID      types.BlockID
+	LastBlockTime    time.Time
+	Validators       *types.ValidatorSet
+	LastValidators   *types.ValidatorSet
 	// When a block returns a validator set change via EndBlock,
 	// the change only applies to the next block.
 	// So, if s.LastBlockHeight causes a valset change,
@@ -113,6 +114,7 @@ func (s *State) Copy() *State {
 	return &State{
 		db:                          s.db,
 		LastBlockHeight:             s.LastBlockHeight,
+		LastBlockTotalTx:            s.LastBlockTotalTx,
 		LastBlockID:                 s.LastBlockID,
 		LastBlockTime:               s.LastBlockTime,
 		Validators:                  s.Validators.Copy(),
@@ -250,16 +252,19 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	nextValSet.IncrementAccum(1)
 
 	s.setBlockAndValidators(header.Height,
+		header.NumTxs,
 		types.BlockID{header.Hash(), blockPartsHeader},
 		header.Time,
 		prevValSet, nextValSet)
 
 }
 
-func (s *State) setBlockAndValidators(height int64, blockID types.BlockID, blockTime time.Time,
+func (s *State) setBlockAndValidators(height int64,
+	newTxs int64, blockID types.BlockID, blockTime time.Time,
 	prevValSet, nextValSet *types.ValidatorSet) {
 
 	s.LastBlockHeight = height
+	s.LastBlockTotalTx += newTxs
 	s.LastBlockID = blockID
 	s.LastBlockTime = blockTime
 	s.Validators = nextValSet

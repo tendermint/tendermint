@@ -23,14 +23,19 @@ type Block struct {
 
 // MakeBlock returns a new block and corresponding partset from the given information.
 // TODO: Add version information to the Block struct.
-func MakeBlock(height int64, chainID string, txs []Tx, commit *Commit,
-	prevBlockID BlockID, valHash, appHash []byte, partSize int) (*Block, *PartSet) {
+func MakeBlock(height int64, chainID string, txs []Tx,
+	totalTxs int64, commit *Commit,
+	prevBlockID BlockID, valHash, appHash []byte,
+	partSize int) (*Block, *PartSet) {
+
+	newTxs := int64(len(txs))
 	block := &Block{
 		Header: &Header{
 			ChainID:        chainID,
 			Height:         height,
 			Time:           time.Now(),
-			NumTxs:         len(txs),
+			NumTxs:         newTxs,
+			TotalTxs:       totalTxs + newTxs,
 			LastBlockID:    prevBlockID,
 			ValidatorsHash: valHash,
 			AppHash:        appHash, // state merkle root of txs from the previous block.
@@ -45,8 +50,10 @@ func MakeBlock(height int64, chainID string, txs []Tx, commit *Commit,
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
-func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64, lastBlockID BlockID,
+func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64,
+	lastBlockTotalTx int64, lastBlockID BlockID,
 	lastBlockTime time.Time, appHash []byte) error {
+
 	if b.ChainID != chainID {
 		return errors.New(cmn.Fmt("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID))
 	}
@@ -60,8 +67,12 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64, lastBlockID
 			return errors.New("Invalid Block.Header.Time")
 		}
 	*/
-	if b.NumTxs != len(b.Data.Txs) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.NumTxs. Expected %v, got %v", len(b.Data.Txs), b.NumTxs))
+	newTxs := int64(len(b.Data.Txs))
+	if b.NumTxs != newTxs {
+		return errors.New(cmn.Fmt("Wrong Block.Header.NumTxs. Expected %v, got %v", newTxs, b.NumTxs))
+	}
+	if b.TotalTxs != lastBlockTotalTx+newTxs {
+		return errors.New(cmn.Fmt("Wrong Block.Header.TotalTxs. Expected %v, got %v", lastBlockTotalTx+newTxs, b.TotalTxs))
 	}
 	if !b.LastBlockID.Equals(lastBlockID) {
 		return errors.New(cmn.Fmt("Wrong Block.Header.LastBlockID.  Expected %v, got %v", lastBlockID, b.LastBlockID))
@@ -160,7 +171,8 @@ type Header struct {
 	ChainID        string     `json:"chain_id"`
 	Height         int64      `json:"height"`
 	Time           time.Time  `json:"time"`
-	NumTxs         int        `json:"num_txs"` // XXX: Can we get rid of this?
+	NumTxs         int64      `json:"num_txs"` // XXX: Can we get rid of this?
+	TotalTxs       int64      `json:"total_txs"`
 	LastBlockID    BlockID    `json:"last_block_id"`
 	LastCommitHash data.Bytes `json:"last_commit_hash"` // commit from validators from the last block
 	DataHash       data.Bytes `json:"data_hash"`        // transactions
@@ -179,6 +191,7 @@ func (h *Header) Hash() data.Bytes {
 		"Height":      h.Height,
 		"Time":        h.Time,
 		"NumTxs":      h.NumTxs,
+		"TotalTxs":    h.TotalTxs,
 		"LastBlockID": h.LastBlockID,
 		"LastCommit":  h.LastCommitHash,
 		"Data":        h.DataHash,
@@ -197,6 +210,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Height:         %v
 %s  Time:           %v
 %s  NumTxs:         %v
+%s  TotalTxs:       %v
 %s  LastBlockID:    %v
 %s  LastCommit:     %v
 %s  Data:           %v
@@ -207,6 +221,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.Height,
 		indent, h.Time,
 		indent, h.NumTxs,
+		indent, h.TotalTxs,
 		indent, h.LastBlockID,
 		indent, h.LastCommitHash,
 		indent, h.DataHash,

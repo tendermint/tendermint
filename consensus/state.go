@@ -863,7 +863,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
-	return types.MakeBlock(cs.Height, cs.state.ChainID, txs, commit,
+	return types.MakeBlock(cs.Height, cs.state.ChainID, txs,
+		cs.state.LastBlockTotalTx, commit,
 		cs.state.LastBlockID, cs.state.Validators.Hash(),
 		cs.state.AppHash, cs.state.Params.BlockPartSizeBytes)
 }
@@ -1200,7 +1201,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Create a copy of the state for staging
 	// and an event cache for txs
 	stateCopy := cs.state.Copy()
-	txEventBuffer := types.NewTxEventBuffer(cs.eventBus, block.NumTxs)
+	txEventBuffer := types.NewTxEventBuffer(cs.eventBus, int(block.NumTxs))
 
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// All calls to the proxyAppConn come here.

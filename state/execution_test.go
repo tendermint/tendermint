@@ -66,7 +66,9 @@ func makeBlock(height int64, state *State) *types.Block {
 	prevParts := types.PartSetHeader{}
 	valHash := state.Validators.Hash()
 	prevBlockID := types.BlockID{prevHash, prevParts}
-	block, _ := types.MakeBlock(height, chainID, makeTxs(height), new(types.Commit),
-		prevBlockID, valHash, state.AppHash, testPartSize)
+	block, _ := types.MakeBlock(height, chainID,
+		makeTxs(height), state.LastBlockTotalTx,
+		new(types.Commit), prevBlockID, valHash,
+		state.AppHash, testPartSize)
 	return block
 }
