@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"os"
+	"path"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,11 +11,16 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+func cleanupDBDir(dir, name string) {
+	os.RemoveAll(path.Join(dir, name) + ".db")
+}
+
 func testBackendGetSetDelete(t *testing.T, backend string) {
 	// Default
 	dir, dirname := cmn.Tempdir(fmt.Sprintf("test_backend_%s_", backend))
 	defer dir.Close()
 	db := NewDB("testdb", backend, dirname)
+
 	key := []byte("abc")
 	require.Nil(t, db.Get(key))
 
@@ -53,6 +59,7 @@ func TestBackendsNilKeys(t *testing.T) {
 	for dbType, creator := range backends {
 		name := cmn.Fmt("test_%x", cmn.RandStr(12))
 		db, err := creator(name, "")
+		defer cleanupDBDir("", name)
 		assert.Nil(t, err)
 
 		assertPanics(t, dbType, "get", func() { db.Get(nil) })
@@ -63,15 +70,13 @@ func TestBackendsNilKeys(t *testing.T) {
 		assertPanics(t, dbType, "deletesync", func() { db.DeleteSync(nil) })
 
 		db.Close()
-		err = os.RemoveAll(name + ".db")
-		assert.Nil(t, err)
 	}
 }
 
 func TestGoLevelDBBackendStr(t *testing.T) {
 	name := cmn.Fmt("test_%x", cmn.RandStr(12))
 	db := NewDB(name, LevelDBBackendStr, "")
-	defer os.RemoveAll(name + ".db")
+	defer cleanupDBDir("", name)
 
 	if _, ok := backends[CLevelDBBackendStr]; !ok {
 		_, ok := db.(*GoLevelDB)

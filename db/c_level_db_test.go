@@ -5,7 +5,6 @@ package db
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -90,7 +89,7 @@ func bytes2Int64(buf []byte) int64 {
 func TestCLevelDBBackendStr(t *testing.T) {
 	name := cmn.Fmt("test_%x", cmn.RandStr(12))
 	db := NewDB(name, LevelDBBackendStr, "")
-	defer os.RemoveAll(name)
+	defer cleanupDBDir("", name)
 
 	_, ok := db.(*CLevelDB)
 	assert.True(t, ok)
