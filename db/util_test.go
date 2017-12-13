@@ -50,7 +50,7 @@ func TestPrefixIteratorMatch3(t *testing.T) {
 		t.Run(fmt.Sprintf("Prefix w/ backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
 			db.SetSync(bz("3"), bz("value_3"))
-			itr := IteratePrefix(db, []byte("2"))
+			itr := IteratePrefix(db, []byte("4"))
 
 			// Once invalid...
 			checkInvalid(t, itr)

@@ -80,11 +80,6 @@ func TestDBIteratorTwoKeys(t *testing.T) {
 				itr := db.Iterator(BeginningKey(), EndingKey())
 				checkValid(t, itr, true)
 
-				for i := 0; i < 10; i++ {
-					checkNext(t, itr, true)
-					checkValid(t, itr, true)
-				}
-
 				checkNext(t, itr, true)
 				checkValid(t, itr, true)
 

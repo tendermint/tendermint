@@ -20,6 +20,8 @@ func init() {
 	registerDBCreator(GoLevelDBBackendStr, dbCreator, false)
 }
 
+var _ DB = (*GoLevelDB)(nil)
+
 type GoLevelDB struct {
 	db *leveldb.DB
 }
@@ -168,15 +170,13 @@ func (mBatch *goLevelDBBatch) Write() {
 // Iterator
 
 func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
-	/*
-		XXX
-		itr := &goLevelDBIterator{
-			source: db.db.NewIterator(nil, nil),
-		}
-		itr.Seek(nil)
-		return itr
-	*/
-	return nil
+	itr := &goLevelDBIterator{
+		source: db.db.NewIterator(nil, nil),
+		start:  start,
+		end:    end,
+	}
+	itr.source.Seek(start)
+	return itr
 }
 
 func (db *GoLevelDB) ReverseIterator(start, end []byte) Iterator {
@@ -184,9 +184,16 @@ func (db *GoLevelDB) ReverseIterator(start, end []byte) Iterator {
 	return nil
 }
 
+var _ Iterator = (*goLevelDBIterator)(nil)
+
 type goLevelDBIterator struct {
-	source  iterator.Iterator
-	invalid bool
+	source     iterator.Iterator
+	invalid    bool
+	start, end []byte
+}
+
+func (it *goLevelDBIterator) Domain() ([]byte, []byte) {
+	return it.start, it.end
 }
 
 // Key returns a copy of the current key.
@@ -217,10 +224,6 @@ func (it *goLevelDBIterator) GetError() error {
 	return it.source.Error()
 }
 
-func (it *goLevelDBIterator) Seek(key []byte) {
-	it.source.Seek(key)
-}
-
 func (it *goLevelDBIterator) Valid() bool {
 	if it.invalid {
 		return false
@@ -244,5 +247,9 @@ func (it *goLevelDBIterator) Prev() {
 }
 
 func (it *goLevelDBIterator) Close() {
+	it.source.Release()
+}
+
+func (it *goLevelDBIterator) Release() {
 	it.source.Release()
 }
