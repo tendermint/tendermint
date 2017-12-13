@@ -290,6 +290,16 @@
             "amount": 100000
           }
         ]
+      },
+      {
+        "name": "Fabo",
+        "address": "DF096FDE8D380FA5B2AD20DB2962C82DDEA1ED9B",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 100
+          }
+        ]
       }
 
     ],
