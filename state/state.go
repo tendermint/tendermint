@@ -238,8 +238,8 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	nextValSet := prevValSet.Copy()
 
 	// update the validator set with the latest abciResponses
-	if len(abciResponses.EndBlock.Diffs) > 0 {
-		err := updateValidators(nextValSet, abciResponses.EndBlock.Diffs)
+	if len(abciResponses.EndBlock.Changes) > 0 {
+		err := updateValidators(nextValSet, abciResponses.EndBlock.Changes)
 		if err != nil {
 			s.logger.Error("Error changing validator set", "err", err)
 			// TODO: err or carry on?

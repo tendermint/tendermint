@@ -18,7 +18,7 @@ import:
 - package: github.com/spf13/viper
   version: v1.0.0
 - package: github.com/tendermint/abci
-  version: ~v0.8.0
+  version: feature/enhance-endblock
   subpackages:
   - client
   - example/dummy
