@@ -5,8 +5,10 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -84,3 +86,12 @@ func bytes2Int64(buf []byte) int64 {
 	return int64(binary.BigEndian.Uint64(buf))
 }
 */
+
+func TestCLevelDBBackendStr(t *testing.T) {
+	name := cmn.Fmt("test_%x", cmn.RandStr(12))
+	db := NewDB(name, LevelDBBackendStr, "")
+	defer os.RemoveAll(name)
+
+	_, ok := db.(*CLevelDB)
+	assert.True(t, ok)
+}

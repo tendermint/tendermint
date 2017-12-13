@@ -58,7 +58,6 @@ func TestBackendsNilKeys(t *testing.T) {
 		name := cmn.Fmt("test_%x", cmn.RandStr(12))
 		db, err := creator(name, "")
 		assert.Nil(t, err)
-		defer os.RemoveAll(name)
 
 		assertPanics(t, dbType, "get", func() { db.Get(nil) })
 		assertPanics(t, dbType, "has", func() { db.Has(nil) })
@@ -68,13 +67,18 @@ func TestBackendsNilKeys(t *testing.T) {
 		assertPanics(t, dbType, "deletesync", func() { db.DeleteSync(nil) })
 
 		db.Close()
+		err = os.RemoveAll(name + ".db")
+		assert.Nil(t, err)
 	}
 }
 
-func TestLevelDBBackendStr(t *testing.T) {
+func TestGoLevelDBBackendStr(t *testing.T) {
 	name := cmn.Fmt("test_%x", cmn.RandStr(12))
 	db := NewDB(name, LevelDBBackendStr, "")
-	defer os.RemoveAll(name)
-	_, ok := db.(*GoLevelDB)
-	assert.True(t, ok)
+	defer os.RemoveAll(name + ".db")
+
+	if _, ok := backends[CLevelDBBackendStr]; !ok {
+		_, ok := db.(*GoLevelDB)
+		assert.True(t, ok)
+	}
 }

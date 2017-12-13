@@ -6,7 +6,7 @@ import "fmt"
 // Main entry
 
 const (
-	LevelDBBackendStr   = "leveldb" // legacy, defaults to goleveldb.
+	LevelDBBackendStr   = "leveldb" // legacy, defaults to goleveldb unless +gcc
 	CLevelDBBackendStr  = "cleveldb"
 	GoLevelDBBackendStr = "goleveldb"
 	MemDBBackendStr     = "memdb"
