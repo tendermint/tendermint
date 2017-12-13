@@ -247,7 +247,7 @@ func list(dirPath string, start, end []byte) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to unescape %s while listing", name)
 		}
-		if checkKeyCondition(n, start, end) {
+		if IsKeyInDomain(n, start, end) {
 			paths = append(paths, n)
 		}
 	}

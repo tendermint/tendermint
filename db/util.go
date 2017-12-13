@@ -39,7 +39,7 @@ func cpIncr(bz []byte) (ret []byte) {
 	return EndingKey()
 }
 
-func checkKeyCondition(key string, start, end []byte) bool {
+func IsKeyInDomain(key string, start, end []byte) bool {
 	leftCondition := bytes.Equal(start, BeginningKey()) || strings.Compare(key, string(start)) >= 0
 	rightCondition := bytes.Equal(end, EndingKey()) || strings.Compare(key, string(end)) < 0
 	return leftCondition && rightCondition
