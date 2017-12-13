@@ -251,17 +251,22 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
 
+	nextParams := s.Params.ApplyChanges(
+		abciResponses.EndBlock.ConsensusParamChanges)
+
 	s.setBlockAndValidators(header.Height,
 		header.NumTxs,
 		types.BlockID{header.Hash(), blockPartsHeader},
 		header.Time,
-		prevValSet, nextValSet)
+		prevValSet, nextValSet,
+		nextParams)
 
 }
 
 func (s *State) setBlockAndValidators(height int64,
 	newTxs int64, blockID types.BlockID, blockTime time.Time,
-	prevValSet, nextValSet *types.ValidatorSet) {
+	prevValSet, nextValSet *types.ValidatorSet,
+	nextParams types.ConsensusParams) {
 
 	s.LastBlockHeight = height
 	s.LastBlockTotalTx += newTxs
@@ -269,6 +274,7 @@ func (s *State) setBlockAndValidators(height int64,
 	s.LastBlockTime = blockTime
 	s.Validators = nextValSet
 	s.LastValidators = prevValSet
+	s.Params = nextParams
 }
 
 // GetValidators returns the last and current validator sets.

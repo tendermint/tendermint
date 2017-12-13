@@ -2,6 +2,8 @@ package types
 
 import (
 	"github.com/pkg/errors"
+
+	abci "github.com/tendermint/abci/types"
 )
 
 const (
@@ -14,6 +16,42 @@ type ConsensusParams struct {
 	BlockSizeParams   `json:"block_size_params"`
 	TxSizeParams      `json:"tx_size_params"`
 	BlockGossipParams `json:"block_gossip_params"`
+}
+
+// ApplyChanges returns a new param set, overriding any
+// parameter that is non-zero in argument
+func (p ConsensusParams) ApplyChanges(c *abci.ConsensusParams) ConsensusParams {
+	if c == nil {
+		return p
+	}
+	res := p
+	// we must defensively consider any structs may be nil
+	if c.BlockSizeParams != nil {
+
+		if c.BlockSizeParams.MaxBytes != 0 {
+			res.BlockSizeParams.MaxBytes = int(c.BlockSizeParams.MaxBytes)
+		}
+		if c.BlockSizeParams.MaxTxs != 0 {
+			res.BlockSizeParams.MaxTxs = int(c.BlockSizeParams.MaxTxs)
+		}
+		if c.BlockSizeParams.MaxGas != 0 {
+			res.BlockSizeParams.MaxGas = int(c.BlockSizeParams.MaxGas)
+		}
+	}
+	if c.TxSizeParams != nil {
+		if c.TxSizeParams.MaxBytes != 0 {
+			res.TxSizeParams.MaxBytes = int(c.TxSizeParams.MaxBytes)
+		}
+		if c.TxSizeParams.MaxGas != 0 {
+			res.TxSizeParams.MaxGas = int(c.TxSizeParams.MaxGas)
+		}
+	}
+	if c.BlockGossipParams != nil {
+		if c.BlockGossipParams.BlockPartSizeBytes != 0 {
+			res.BlockGossipParams.BlockPartSizeBytes = int(c.BlockGossipParams.BlockPartSizeBytes)
+		}
+	}
+	return res
 }
 
 // BlockSizeParams contain limits on the block size.
