@@ -119,7 +119,8 @@ func (db *FSDB) DeleteSync(key []byte) {
 // NOTE: Implements atomicSetDeleter.
 func (db *FSDB) DeleteNoLock(key []byte) {
 	panicNilKey(key)
-	err := remove(string(key))
+	path := db.nameToPath(key)
+	err := remove(path)
 	if os.IsNotExist(err) {
 		return
 	} else if err != nil {
@@ -210,7 +211,7 @@ func read(path string) ([]byte, error) {
 // Write some bytes from a file.
 // CONTRACT: returns os errors directly without wrapping.
 func write(path string, d []byte) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, keyPerm)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, keyPerm)
 	if err != nil {
 		return err
 	}

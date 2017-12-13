@@ -48,6 +48,7 @@ func NewCLevelDB(name string, dir string) (*CLevelDB, error) {
 }
 
 func (db *CLevelDB) Get(key []byte) []byte {
+	panicNilKey(key)
 	res, err := db.db.Get(db.ro, key)
 	if err != nil {
 		panic(err)
@@ -56,10 +57,12 @@ func (db *CLevelDB) Get(key []byte) []byte {
 }
 
 func (db *CLevelDB) Has(key []byte) bool {
+	panicNilKey(key)
 	panic("not implemented yet")
 }
 
 func (db *CLevelDB) Set(key []byte, value []byte) {
+	panicNilKey(key)
 	err := db.db.Put(db.wo, key, value)
 	if err != nil {
 		panic(err)
@@ -67,6 +70,7 @@ func (db *CLevelDB) Set(key []byte, value []byte) {
 }
 
 func (db *CLevelDB) SetSync(key []byte, value []byte) {
+	panicNilKey(key)
 	err := db.db.Put(db.woSync, key, value)
 	if err != nil {
 		panic(err)
@@ -74,6 +78,7 @@ func (db *CLevelDB) SetSync(key []byte, value []byte) {
 }
 
 func (db *CLevelDB) Delete(key []byte) {
+	panicNilKey(key)
 	err := db.db.Delete(db.wo, key)
 	if err != nil {
 		panic(err)
@@ -81,6 +86,7 @@ func (db *CLevelDB) Delete(key []byte) {
 }
 
 func (db *CLevelDB) DeleteSync(key []byte) {
+	panicNilKey(key)
 	err := db.db.Delete(db.woSync, key)
 	if err != nil {
 		panic(err)

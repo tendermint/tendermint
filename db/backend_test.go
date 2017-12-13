@@ -15,30 +15,26 @@ func testBackendGetSetDelete(t *testing.T, backend string) {
 	dir, dirname := cmn.Tempdir(fmt.Sprintf("test_backend_%s_", backend))
 	defer dir.Close()
 	db := NewDB("testdb", backend, dirname)
-	require.Nil(t, db.Get([]byte("")))
+	key := []byte("abc")
+	require.Nil(t, db.Get(key))
 
 	// Set empty ("")
-	db.Set([]byte(""), []byte(""))
-	require.NotNil(t, db.Get([]byte("")))
-	require.Empty(t, db.Get([]byte("")))
+	db.Set(key, []byte(""))
+	require.NotNil(t, db.Get(key))
+	require.Empty(t, db.Get(key))
 
 	// Set empty (nil)
-	db.Set([]byte(""), nil)
-	require.NotNil(t, db.Get([]byte("")))
-	require.Empty(t, db.Get([]byte("")))
+	db.Set(key, nil)
+	require.NotNil(t, db.Get(key))
+	require.Empty(t, db.Get(key))
 
 	// Delete
-	db.Delete([]byte(""))
-	require.Nil(t, db.Get([]byte("")))
+	db.Delete(key)
+	require.Nil(t, db.Get(key))
 }
 
 func TestBackendsGetSetDelete(t *testing.T) {
 	for dbType, _ := range backends {
-		if dbType == "fsdb" {
-			// TODO: handle
-			// fsdb cant deal with length 0 keys
-			continue
-		}
 		testBackendGetSetDelete(t, dbType)
 	}
 }
