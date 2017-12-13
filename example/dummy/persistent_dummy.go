@@ -125,7 +125,7 @@ func (app *PersistentDummyApplication) BeginBlock(req types.RequestBeginBlock) t
 
 // Update the validator set
 func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-	return types.ResponseEndBlock{Diffs: app.changes}
+	return types.ResponseEndBlock{Changes: app.changes}
 }
 
 //---------------------------------------------
