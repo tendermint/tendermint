@@ -190,6 +190,7 @@ func (c cLevelDBIterator) Domain() ([]byte, []byte) {
 }
 
 func (c cLevelDBIterator) Valid() bool {
+	c.assertNoError()
 	return c.itr.Valid()
 }
 
@@ -218,6 +219,8 @@ func (c cLevelDBIterator) Release() {
 	c.itr.Close()
 }
 
-func (c cLevelDBIterator) GetError() error {
-	return c.itr.GetError()
+func (c cLevelDBIterator) assertNoError() {
+	if err := c.itr.GetError(); err != nil {
+		panic(err)
+	}
 }

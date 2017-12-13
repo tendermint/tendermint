@@ -107,12 +107,6 @@ type Iterator interface {
 	// If Valid returns false, this method will panic.
 	Value() []byte
 
-	// GetError returns an IteratorError from LevelDB if it had one during
-	// iteration.
-	//
-	// This method is safe to call when Valid returns false.
-	GetError() error
-
 	// Release deallocates the given Iterator.
 	Release()
 }

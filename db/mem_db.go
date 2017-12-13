@@ -223,8 +223,4 @@ func (it *memDBIterator) Close() {
 	it.keys = nil
 }
 
-func (it *memDBIterator) GetError() error {
-	return nil
-}
-
 func (it *memDBIterator) Release() {}

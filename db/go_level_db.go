@@ -220,11 +220,8 @@ func (it *goLevelDBIterator) Value() []byte {
 	return v
 }
 
-func (it *goLevelDBIterator) GetError() error {
-	return it.source.Error()
-}
-
 func (it *goLevelDBIterator) Valid() bool {
+	it.assertNoError()
 	if it.invalid {
 		return false
 	}
@@ -252,4 +249,10 @@ func (it *goLevelDBIterator) Close() {
 
 func (it *goLevelDBIterator) Release() {
 	it.source.Release()
+}
+
+func (it *goLevelDBIterator) assertNoError() {
+	if err := it.source.Error(); err != nil {
+		panic(err)
+	}
 }
