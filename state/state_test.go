@@ -192,6 +192,71 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	}
 }
 
+func makeParams(blockBytes, blockTx, blockGas, txBytes,
+	txGas, partSize int) types.ConsensusParams {
+
+	return types.ConsensusParams{
+		BlockSizeParams: types.BlockSizeParams{
+			MaxBytes: blockBytes,
+			MaxTxs:   blockTx,
+			MaxGas:   blockGas,
+		},
+		TxSizeParams: types.TxSizeParams{
+			MaxBytes: txBytes,
+			MaxGas:   txGas,
+		},
+		BlockGossipParams: types.BlockGossipParams{
+			BlockPartSizeBytes: partSize,
+		},
+	}
+}
+
+func TestApplyChanges(t *testing.T) {
+	initParams := makeParams(1, 2, 3, 4, 5, 6)
+
+	cases := [...]struct {
+		init     types.ConsensusParams
+		changes  *abci.ConsensusParams
+		expected types.ConsensusParams
+	}{
+		0: {initParams, nil, initParams},
+		1: {initParams, &abci.ConsensusParams{}, initParams},
+		2: {initParams,
+			&abci.ConsensusParams{
+				TxSizeParams: &abci.TxSizeParams{
+					MaxBytes: 123,
+				},
+			},
+			makeParams(1, 2, 3, 123, 5, 6)},
+		3: {initParams,
+			&abci.ConsensusParams{
+				BlockSizeParams: &abci.BlockSizeParams{
+					MaxTxs: 44,
+					MaxGas: 55,
+				},
+			},
+			makeParams(1, 44, 55, 4, 5, 6)},
+		4: {initParams,
+			&abci.ConsensusParams{
+				BlockSizeParams: &abci.BlockSizeParams{
+					MaxTxs: 789,
+				},
+				TxSizeParams: &abci.TxSizeParams{
+					MaxGas: 888,
+				},
+				BlockGossipParams: &abci.BlockGossipParams{
+					BlockPartSizeBytes: 2002,
+				},
+			},
+			makeParams(1, 789, 3, 4, 888, 2002)},
+	}
+
+	for i, tc := range cases {
+		res := applyChanges(tc.init, tc.changes)
+		assert.Equal(t, tc.expected, res, "case %d", i)
+	}
+}
+
 func makeHeaderPartsResponses(state *State, height int64,
 	pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
 

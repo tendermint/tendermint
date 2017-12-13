@@ -251,7 +251,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
 
-	nextParams := s.Params.ApplyChanges(
+	nextParams := applyChanges(s.Params,
 		abciResponses.EndBlock.ConsensusParamChanges)
 
 	s.setBlockAndValidators(header.Height,
@@ -261,6 +261,44 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 		prevValSet, nextValSet,
 		nextParams)
 
+}
+
+// applyChanges returns a new param set, overriding any
+// parameter that is non-zero in argument
+func applyChanges(p types.ConsensusParams,
+	c *abci.ConsensusParams) types.ConsensusParams {
+
+	if c == nil {
+		return p
+	}
+	res := p
+	// we must defensively consider any structs may be nil
+	if c.BlockSizeParams != nil {
+
+		if c.BlockSizeParams.MaxBytes != 0 {
+			res.BlockSizeParams.MaxBytes = int(c.BlockSizeParams.MaxBytes)
+		}
+		if c.BlockSizeParams.MaxTxs != 0 {
+			res.BlockSizeParams.MaxTxs = int(c.BlockSizeParams.MaxTxs)
+		}
+		if c.BlockSizeParams.MaxGas != 0 {
+			res.BlockSizeParams.MaxGas = int(c.BlockSizeParams.MaxGas)
+		}
+	}
+	if c.TxSizeParams != nil {
+		if c.TxSizeParams.MaxBytes != 0 {
+			res.TxSizeParams.MaxBytes = int(c.TxSizeParams.MaxBytes)
+		}
+		if c.TxSizeParams.MaxGas != 0 {
+			res.TxSizeParams.MaxGas = int(c.TxSizeParams.MaxGas)
+		}
+	}
+	if c.BlockGossipParams != nil {
+		if c.BlockGossipParams.BlockPartSizeBytes != 0 {
+			res.BlockGossipParams.BlockPartSizeBytes = int(c.BlockGossipParams.BlockPartSizeBytes)
+		}
+	}
+	return res
 }
 
 func (s *State) setBlockAndValidators(height int64,
