@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -23,6 +24,8 @@ func init() {
 		return NewFSDB(dbPath), nil
 	}, false)
 }
+
+var _ DB = (*FSDB)(nil)
 
 // It's slow.
 type FSDB struct {
@@ -160,26 +163,20 @@ func (db *FSDB) Mutex() *sync.Mutex {
 }
 
 func (db *FSDB) Iterator(start, end []byte) Iterator {
-	/*
-		XXX
-		it := newMemDBIterator()
-		it.db = db
-		it.cur = 0
+	it := newMemDBIterator(db, start, end)
 
-		db.mtx.Lock()
-		defer db.mtx.Unlock()
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
 
-		// We need a copy of all of the keys.
-		// Not the best, but probably not a bottleneck depending.
-		keys, err := list(db.dir)
-		if err != nil {
-			panic(errors.Wrap(err, fmt.Sprintf("Listing keys in %s", db.dir)))
-		}
-		sort.Strings(keys)
-		it.keys = keys
-		return it
-	*/
-	return nil
+	// We need a copy of all of the keys.
+	// Not the best, but probably not a bottleneck depending.
+	keys, err := list(db.dir, start, end)
+	if err != nil {
+		panic(errors.Wrap(err, fmt.Sprintf("Listing keys in %s", db.dir)))
+	}
+	sort.Strings(keys)
+	it.keys = keys
+	return it
 }
 
 func (db *FSDB) ReverseIterator(start, end []byte) Iterator {
@@ -233,7 +230,7 @@ func remove(path string) error {
 // List files of a path.
 // Paths will NOT include dir as the prefix.
 // CONTRACT: returns os errors directly without wrapping.
-func list(dirPath string) (paths []string, err error) {
+func list(dirPath string, start, end []byte) ([]string, error) {
 	dir, err := os.Open(dirPath)
 	if err != nil {
 		return nil, err
@@ -244,12 +241,15 @@ func list(dirPath string) (paths []string, err error) {
 	if err != nil {
 		return nil, err
 	}
-	for i, name := range names {
+	var paths []string
+	for _, name := range names {
 		n, err := url.PathUnescape(name)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to unescape %s while listing", name)
 		}
-		names[i] = n
+		if checkKeyCondition(n, start, end) {
+			paths = append(paths, n)
+		}
 	}
-	return names, nil
+	return paths, nil
 }

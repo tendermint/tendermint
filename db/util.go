@@ -1,5 +1,10 @@
 package db
 
+import (
+	"bytes"
+	"strings"
+)
+
 func IteratePrefix(db DB, prefix []byte) Iterator {
 	var start, end []byte
 	if len(prefix) == 0 {
@@ -32,4 +37,10 @@ func cpIncr(bz []byte) (ret []byte) {
 		}
 	}
 	return EndingKey()
+}
+
+func checkKeyCondition(key string, start, end []byte) bool {
+	leftCondition := bytes.Equal(start, BeginningKey()) || strings.Compare(key, string(start)) >= 0
+	rightCondition := bytes.Equal(end, EndingKey()) || strings.Compare(key, string(end)) < 0
+	return leftCondition && rightCondition
 }

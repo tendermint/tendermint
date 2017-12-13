@@ -1,10 +1,8 @@
 package db
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 )
 
@@ -159,9 +157,7 @@ func (db *MemDB) ReverseIterator(start, end []byte) Iterator {
 func (db *MemDB) getSortedKeys(start, end []byte) []string {
 	keys := []string{}
 	for key, _ := range db.db {
-		leftCondition := bytes.Equal(start, BeginningKey()) || strings.Compare(key, string(start)) >= 0
-		rightCondition := bytes.Equal(end, EndingKey()) || strings.Compare(key, string(end)) < 0
-		if leftCondition && rightCondition {
+		if checkKeyCondition(key, start, end) {
 			keys = append(keys, key)
 		}
 	}
