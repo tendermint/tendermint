@@ -21,7 +21,7 @@ func InitChain(client abcicli.Client) error {
 	}
 	_, err := client.InitChainSync(types.RequestInitChain{Validators: vals})
 	if err != nil {
-		fmt.Println("Failed test: InitChain - %v", err)
+		fmt.Printf("Failed test: InitChain - %v\n", err)
 		return err
 	}
 	fmt.Println("Passed test: InitChain")
@@ -46,7 +46,7 @@ func Commit(client abcicli.Client, hashExp []byte) error {
 	_, data := res.Code, res.Data
 	if err != nil {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("committing %v\nlog: %v", res.GetLog())
+		fmt.Printf("committing %v\nlog: %v", data, res.GetLog())
 		return err
 	}
 	if !bytes.Equal(data, hashExp) {
