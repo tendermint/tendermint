@@ -22,7 +22,8 @@ func main() {
 		cmd.ResetPrivValidatorCmd,
 		cmd.ShowValidatorCmd,
 		cmd.TestnetFilesCmd,
-		cmd.VersionCmd)
+		cmd.VersionCmd,
+	)
 
 	// NOTE:
 	// Users wishing to:
