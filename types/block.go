@@ -25,7 +25,7 @@ type Block struct {
 // TODO: Add version information to the Block struct.
 func MakeBlock(height int64, chainID string, txs []Tx,
 	totalTxs int64, commit *Commit,
-	prevBlockID BlockID, valHash, appHash []byte,
+	prevBlockID BlockID, valHash, appHash, consensusHash []byte,
 	partSize int) (*Block, *PartSet) {
 
 	newTxs := int64(len(txs))
@@ -39,6 +39,7 @@ func MakeBlock(height int64, chainID string, txs []Tx,
 			LastBlockID:    prevBlockID,
 			ValidatorsHash: valHash,
 			AppHash:        appHash, // state merkle root of txs from the previous block.
+			ConsensusHash:  consensusHash,
 		},
 		LastCommit: commit,
 		Data: &Data{
@@ -52,7 +53,7 @@ func MakeBlock(height int64, chainID string, txs []Tx,
 // ValidateBasic performs basic validation that doesn't involve state data.
 func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64,
 	lastBlockTotalTx int64, lastBlockID BlockID,
-	lastBlockTime time.Time, appHash []byte) error {
+	lastBlockTime time.Time, appHash, consensusHash []byte) error {
 
 	if b.ChainID != chainID {
 		return errors.New(cmn.Fmt("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID))
@@ -90,6 +91,13 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64,
 	}
 	if !bytes.Equal(b.AppHash, appHash) {
 		return errors.New(cmn.Fmt("Wrong Block.Header.AppHash.  Expected %X, got %v", appHash, b.AppHash))
+	}
+	// TODO: make testing easier
+	if len(consensusHash) == 0 {
+		panic("food")
+	}
+	if !bytes.Equal(b.ConsensusHash, consensusHash) {
+		return errors.New(cmn.Fmt("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", consensusHash, b.ConsensusHash))
 	}
 	// NOTE: the AppHash and ValidatorsHash are validated later.
 	return nil
@@ -178,6 +186,7 @@ type Header struct {
 	DataHash       data.Bytes `json:"data_hash"`        // transactions
 	ValidatorsHash data.Bytes `json:"validators_hash"`  // validators for the current block
 	AppHash        data.Bytes `json:"app_hash"`         // state after txs from the previous block
+	ConsensusHash  data.Bytes `json:"consensus_hash"`   // consensus params for current block
 }
 
 // Hash returns the hash of the header.
@@ -197,6 +206,7 @@ func (h *Header) Hash() data.Bytes {
 		"Data":        h.DataHash,
 		"Validators":  h.ValidatorsHash,
 		"App":         h.AppHash,
+		"Consensus":   h.ConsensusHash,
 	})
 }
 
@@ -216,6 +226,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Data:           %v
 %s  Validators:     %v
 %s  App:            %v
+%s  Conensus:            %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
@@ -227,6 +238,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.DataHash,
 		indent, h.ValidatorsHash,
 		indent, h.AppHash,
+		indent, h.ConsensusHash,
 		indent, h.Hash())
 }
 

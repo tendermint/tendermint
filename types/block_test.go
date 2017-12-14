@@ -13,6 +13,7 @@ func TestValidateBlock(t *testing.T) {
 	lastID := makeBlockID()
 	valHash := []byte("val")
 	appHash := []byte("app")
+	consensusHash := []byte("consensus-params")
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit,
@@ -21,33 +22,36 @@ func TestValidateBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	block, _ := MakeBlock(h, "hello", txs, 10, commit,
-		lastID, valHash, appHash, 2)
+		lastID, valHash, appHash, consensusHash, 2)
 	require.NotNil(t, block)
 
 	// proper block must pass
-	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, appHash)
+	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, appHash, consensusHash)
 	require.NoError(t, err)
 
 	// wrong chain fails
-	err = block.ValidateBasic("other", h-1, 10, lastID, block.Time, appHash)
+	err = block.ValidateBasic("other", h-1, 10, lastID, block.Time, appHash, consensusHash)
 	require.Error(t, err)
 
 	// wrong height fails
-	err = block.ValidateBasic("hello", h+4, 10, lastID, block.Time, appHash)
+	err = block.ValidateBasic("hello", h+4, 10, lastID, block.Time, appHash, consensusHash)
 	require.Error(t, err)
 
 	// wrong total tx fails
-	err = block.ValidateBasic("hello", h-1, 15, lastID, block.Time, appHash)
+	err = block.ValidateBasic("hello", h-1, 15, lastID, block.Time, appHash, consensusHash)
 	require.Error(t, err)
 
 	// wrong blockid fails
-	err = block.ValidateBasic("hello", h-1, 10, makeBlockID(), block.Time, appHash)
+	err = block.ValidateBasic("hello", h-1, 10, makeBlockID(), block.Time, appHash, consensusHash)
 	require.Error(t, err)
 
 	// wrong app hash fails
-	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, []byte("bad-hash"))
+	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, []byte("bad-hash"), consensusHash)
 	require.Error(t, err)
 
+	// wrong consensus hash fails
+	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, appHash, []byte("wrong-params"))
+	require.Error(t, err)
 }
 
 func makeBlockID() BlockID {

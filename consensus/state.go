@@ -866,7 +866,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	return types.MakeBlock(cs.Height, cs.state.ChainID, txs,
 		cs.state.LastBlockTotalTx, commit,
 		cs.state.LastBlockID, cs.state.Validators.Hash(),
-		cs.state.AppHash, cs.state.Params.BlockPartSizeBytes)
+		cs.state.AppHash, cs.state.Params.Hash(),
+		cs.state.Params.BlockPartSizeBytes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.

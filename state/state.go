@@ -269,8 +269,9 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 
 }
 
-// applyChanges returns a new param set, overriding any
-// parameter that is non-zero in argument
+// applyChanges returns new ConsensusParams
+// whose fields are set to any non-zero fields of c.
+// If c is nil, it returns p unmodified, as it was passed in.
 func applyChanges(p types.ConsensusParams,
 	c *abci.ConsensusParams) types.ConsensusParams {
 
