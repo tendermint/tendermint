@@ -107,7 +107,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 }
 
 // add a validator, remove a validator, update a validator
-func TestValSetChanges(t *testing.T) {
+func TestValSetUpdates(t *testing.T) {
 	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
 	if err != nil {
 		t.Fatal(err)
@@ -188,7 +188,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 	resEndBlock := dummy.EndBlock(types.RequestEndBlock{header.Height})
 	dummy.Commit()
 
-	valsEqual(t, diff, resEndBlock.Changes)
+	valsEqual(t, diff, resEndBlock.Updates)
 
 }
 

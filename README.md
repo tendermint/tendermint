@@ -185,8 +185,8 @@ Here, we describe the requests and responses as function arguments and return va
   * __Arguments__:
     * `Height (int64)`: The block height that ended
   * __Returns__:
-    * `Changes ([]Validator)`: Changed validators with new voting powers (0 to remove)
-    * `ConsensusParamChanges (ConsensusParams)`: Communicate changes to consensus-critical time/size parameters to tendermint core
+    * `Updates ([]Validator)`: Updated validators with new voting powers (0 to remove)
+    * `ConsensusParamChanges (ConsensusParams)`: Changes to consensus-critical time/size parameters to tendermint core
   * __Usage__:<br/>
     Signals the end of a block.  Called prior to each Commit after all transactions. Validator set is updated with the result.
 

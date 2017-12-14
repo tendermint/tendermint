@@ -157,33 +157,35 @@ message ResponseBeginBlock{
 }
 
 message ResponseEndBlock{
-  repeated Validator changes = 1;
-  ConsensusParams consensus_param_changes = 2;
+  repeated Validator updates = 1;
+  ConsensusParams consensus_param_updates = 2;
 }
 
+// ConsensusParams contains all consensus-relevant parameters
+// that can be adjusted by the abci app
 message ConsensusParams{
-    BlockSizeParams block_size_params = 1;
-    TxSizeParams tx_size_params = 2;
-    BlockGossipParams block_gossip_params = 3;
+    BlockSize block_size = 1;
+    TxSize tx_size = 2;
+    BlockGossip block_gossip = 3;
 }
 
-// BlockSizeParams contain limits on the block size.
-message BlockSizeParams{
+// BlockSize contain limits on the block size.
+message BlockSize{
     // NOTE: must not be 0 nor greater than 100MB
     int32 max_bytes = 1;
     int32 max_txs = 2;
     int64 max_gas = 3;
 }
 
-// TxSizeParams contain limits on the tx size.
-message TxSizeParams {
+// TxSize contain limits on the tx size.
+message TxSize{
     int32 max_bytes = 1;
     int64 max_gas = 2;
 }
 
-// BlockGossipParams determine consensus critical
+// BlockGossip determine consensus critical
 // elements of how blocks are gossiped
-message BlockGossipParams {
+message BlockGossip{
     // Note: must not be 0
     int32 block_part_size_bytes = 1;
 }
