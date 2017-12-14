@@ -3,7 +3,7 @@ package db
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +12,7 @@ import (
 )
 
 func cleanupDBDir(dir, name string) {
-	os.RemoveAll(path.Join(dir, name) + ".db")
+	os.RemoveAll(filepath.Join(dir, name) + ".db")
 }
 
 func testBackendGetSetDelete(t *testing.T, backend string) {
@@ -45,15 +45,6 @@ func TestBackendsGetSetDelete(t *testing.T) {
 	}
 }
 
-func assertPanics(t *testing.T, dbType, name string, fn func()) {
-	defer func() {
-		r := recover()
-		assert.NotNil(t, r, cmn.Fmt("expecting %s.%s to panic", dbType, name))
-	}()
-
-	fn()
-}
-
 func TestBackendsNilKeys(t *testing.T) {
 	// test all backends
 	for dbType, creator := range backends {
@@ -62,12 +53,13 @@ func TestBackendsNilKeys(t *testing.T) {
 		defer cleanupDBDir("", name)
 		assert.Nil(t, err)
 
-		assertPanics(t, dbType, "get", func() { db.Get(nil) })
-		assertPanics(t, dbType, "has", func() { db.Has(nil) })
-		assertPanics(t, dbType, "set", func() { db.Set(nil, []byte("abc")) })
-		assertPanics(t, dbType, "setsync", func() { db.SetSync(nil, []byte("abc")) })
-		assertPanics(t, dbType, "delete", func() { db.Delete(nil) })
-		assertPanics(t, dbType, "deletesync", func() { db.DeleteSync(nil) })
+		panicMsg := "expecting %s.%s to panic"
+		assert.Panics(t, func() { db.Get(nil) }, panicMsg, dbType, "get")
+		assert.Panics(t, func() { db.Has(nil) }, panicMsg, dbType, "has")
+		assert.Panics(t, func() { db.Set(nil, []byte("abc")) }, panicMsg, dbType, "set")
+		assert.Panics(t, func() { db.SetSync(nil, []byte("abc")) }, panicMsg, dbType, "setsync")
+		assert.Panics(t, func() { db.Delete(nil) }, panicMsg, dbType, "delete")
+		assert.Panics(t, func() { db.DeleteSync(nil) }, panicMsg, dbType, "deletesync")
 
 		db.Close()
 	}

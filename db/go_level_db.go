@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
@@ -27,7 +27,7 @@ type GoLevelDB struct {
 }
 
 func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
-	dbPath := path.Join(dir, name+".db")
+	dbPath := filepath.Join(dir, name+".db")
 	db, err := leveldb.OpenFile(dbPath, nil)
 	if err != nil {
 		return nil, err
@@ -170,13 +170,17 @@ func (mBatch *goLevelDBBatch) Write() {
 // Iterator
 
 func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
-	itr := &goLevelDBIterator{
-		source: db.db.NewIterator(nil, nil),
+	itr := db.db.NewIterator(nil, nil)
+	if len(start) > 0 {
+		itr.Seek(start)
+	} else {
+		itr.First()
+	}
+	return &goLevelDBIterator{
+		source: itr,
 		start:  start,
 		end:    end,
 	}
-	itr.source.Seek(start)
-	return itr
 }
 
 func (db *GoLevelDB) ReverseIterator(start, end []byte) Iterator {

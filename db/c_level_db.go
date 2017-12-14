@@ -4,7 +4,7 @@ package db
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 
 	"github.com/jmhodges/levigo"
 )
@@ -27,7 +27,7 @@ type CLevelDB struct {
 }
 
 func NewCLevelDB(name string, dir string) (*CLevelDB, error) {
-	dbPath := path.Join(dir, name+".db")
+	dbPath := filepath.Join(dir, name+".db")
 
 	opts := levigo.NewOptions()
 	opts.SetCache(levigo.NewLRUCache(1 << 30))

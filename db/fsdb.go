@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"sync"
@@ -54,7 +53,7 @@ func (db *FSDB) Get(key []byte) []byte {
 	if os.IsNotExist(err) {
 		return nil
 	} else if err != nil {
-		panic(errors.Wrap(err, fmt.Sprintf("Getting key %s (0x%X)", string(key), key)))
+		panic(errors.Wrapf(err, "Getting key %s (0x%X)", string(key), key))
 	}
 	return value
 }
@@ -69,7 +68,7 @@ func (db *FSDB) Has(key []byte) bool {
 	if os.IsNotExist(err) {
 		return false
 	} else if err != nil {
-		panic(errors.Wrap(err, fmt.Sprintf("Getting key %s (0x%X)", string(key), key)))
+		panic(errors.Wrapf(err, "Getting key %s (0x%X)", string(key), key))
 	}
 	return true
 }
@@ -99,7 +98,7 @@ func (db *FSDB) SetNoLock(key []byte, value []byte) {
 	path := db.nameToPath(key)
 	err := write(path, value)
 	if err != nil {
-		panic(errors.Wrap(err, fmt.Sprintf("Setting key %s (0x%X)", string(key), key)))
+		panic(errors.Wrapf(err, "Setting key %s (0x%X)", string(key), key))
 	}
 }
 
@@ -127,7 +126,7 @@ func (db *FSDB) DeleteNoLock(key []byte) {
 	if os.IsNotExist(err) {
 		return
 	} else if err != nil {
-		panic(errors.Wrap(err, fmt.Sprintf("Removing key %s (0x%X)", string(key), key)))
+		panic(errors.Wrapf(err, "Removing key %s (0x%X)", string(key), key))
 	}
 }
 
@@ -172,7 +171,7 @@ func (db *FSDB) Iterator(start, end []byte) Iterator {
 	// Not the best, but probably not a bottleneck depending.
 	keys, err := list(db.dir, start, end)
 	if err != nil {
-		panic(errors.Wrap(err, fmt.Sprintf("Listing keys in %s", db.dir)))
+		panic(errors.Wrapf(err, "Listing keys in %s", db.dir))
 	}
 	sort.Strings(keys)
 	it.keys = keys
@@ -186,7 +185,7 @@ func (db *FSDB) ReverseIterator(start, end []byte) Iterator {
 
 func (db *FSDB) nameToPath(name []byte) string {
 	n := url.PathEscape(string(name))
-	return path.Join(db.dir, n)
+	return filepath.Join(db.dir, n)
 }
 
 // Read some bytes to a file.
