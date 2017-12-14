@@ -2,6 +2,8 @@ package types
 
 import (
 	"github.com/pkg/errors"
+
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 const (
@@ -84,4 +86,17 @@ func (params *ConsensusParams) Validate() error {
 			params.BlockSizeParams.MaxBytes, maxBlockSizeBytes)
 	}
 	return nil
+}
+
+// Hash returns a merkle hash of the parameters to store
+// in the block header
+func (params *ConsensusParams) Hash() []byte {
+	return merkle.SimpleHashFromMap(map[string]interface{}{
+		"block_gossip_part_size_bytes": params.BlockGossipParams.BlockPartSizeBytes,
+		"block_size_max_bytes":         params.BlockSizeParams.MaxBytes,
+		"block_size_max_gas":           params.BlockSizeParams.MaxGas,
+		"block_size_max_txs":           params.BlockSizeParams.MaxTxs,
+		"tx_size_max_bytes":            params.TxSizeParams.MaxBytes,
+		"tx_size_max_gas":              params.TxSizeParams.MaxGas,
+	})
 }
