@@ -92,10 +92,6 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64,
 	if !bytes.Equal(b.AppHash, appHash) {
 		return errors.New(cmn.Fmt("Wrong Block.Header.AppHash.  Expected %X, got %v", appHash, b.AppHash))
 	}
-	// TODO: make testing easier
-	if len(consensusHash) == 0 {
-		panic("food")
-	}
 	if !bytes.Equal(b.ConsensusHash, consensusHash) {
 		return errors.New(cmn.Fmt("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", consensusHash, b.ConsensusHash))
 	}

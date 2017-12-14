@@ -120,7 +120,7 @@ func makeBlock(height int64, state *State) *types.Block {
 	block, _ := types.MakeBlock(height, chainID,
 		makeTxs(height), state.LastBlockTotalTx,
 		new(types.Commit), prevBlockID, valHash,
-		state.AppHash, state.Params.Hash(), testPartSize)
+		state.AppHash, state.LastConsensusHash, testPartSize)
 	return block
 }
 

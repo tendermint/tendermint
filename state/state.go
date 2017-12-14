@@ -59,6 +59,8 @@ type State struct {
 
 	// AppHash is updated after Commit
 	AppHash []byte
+	// LastConsensusHash is updated after Commit
+	LastConsensusHash []byte
 
 	logger log.Logger
 }
@@ -120,6 +122,7 @@ func (s *State) Copy() *State {
 		Validators:                  s.Validators.Copy(),
 		LastValidators:              s.LastValidators.Copy(),
 		AppHash:                     s.AppHash,
+		LastConsensusHash:           s.LastConsensusHash,
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
 		logger:  s.logger,
 		ChainID: s.ChainID,
@@ -319,6 +322,7 @@ func (s *State) setBlockAndValidators(height int64,
 	s.LastBlockTime = blockTime
 	s.Validators = nextValSet
 	s.LastValidators = prevValSet
+	s.LastConsensusHash = s.Params.Hash()
 	s.Params = nextParams
 }
 
@@ -428,6 +432,7 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		Validators:                  types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		AppHash:                     genDoc.AppHash,
+		LastConsensusHash:           genDoc.ConsensusParams.Hash(),
 		LastHeightValidatorsChanged: 1,
 	}, nil
 }
