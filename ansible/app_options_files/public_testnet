@@ -175,7 +175,7 @@
       },
       {
         "name": "peng",
-        "address": "7B8422A210D0F0B8734908C093ECF0E9A768BDB8",
+        "address": "DC97A6E1A3E1FE868B55BA93C7FC626368261E09",
         "coins": [
           {
             "denom": "fermion",
@@ -298,6 +298,20 @@
           {
             "denom": "fermion",
             "amount": 100
+          }
+        ]
+      },
+      {
+        "name": "chjango",
+        "address": "1C0F9000D0AF1CBCAF8EAD636B729797905D6D24",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 100
+          },
+          {
+            "denom": "tokenchjango",
+            "amount": 1000
           }
         ]
       }

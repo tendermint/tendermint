@@ -42,10 +42,14 @@ create_empty_blocks_interval = 60
 [consensus]
 create_empty_blocks_interval = 60
 
+[tx_index]
+index_all_tags = true
+
 {% endif %}
 
 [p2p]
 max_num_peers = 300
+pex = true
 {% if service == 'tendermint' %}
 max_msg_packet_payload_size=65536
 send_rate=51200000 # 50 MB/s
