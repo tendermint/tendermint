@@ -8,6 +8,7 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/syndtr/goleveldb/leveldb/util"
 
 	. "github.com/tendermint/tmlibs/common"
 )
@@ -169,13 +170,24 @@ func (mBatch *goLevelDBBatch) Write() {
 //----------------------------------------
 // Iterator
 
-func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
-	itr := db.db.NewIterator(nil, nil)
-	if len(start) > 0 {
-		itr.Seek(start)
-	} else {
-		itr.First()
+// https://godoc.org/github.com/syndtr/goleveldb/leveldb#DB.NewIterator
+// A nil Range.Start is treated as a key before all keys in the DB.
+// And a nil Range.Limit is treated as a key after all keys in the DB.
+func goLevelDBIterRange(start, end []byte) *util.Range {
+	// XXX: what if start == nil ?
+	if len(start) == 0 {
+		start = nil
 	}
+	return &util.Range{
+		Start: start,
+		Limit: end,
+	}
+}
+
+func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
+	itrRange := goLevelDBIterRange(start, end)
+	itr := db.db.NewIterator(itrRange, nil)
+	itr.Seek(start) // if we don't call this the itr is never valid (?!)
 	return &goLevelDBIterator{
 		source: itr,
 		start:  start,

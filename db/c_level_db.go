@@ -3,6 +3,7 @@
 package db
 
 import (
+	"bytes"
 	"fmt"
 	"path/filepath"
 
@@ -166,7 +167,7 @@ func (db *CLevelDB) Iterator(start, end []byte) Iterator {
 	} else {
 		itr.SeekToFirst()
 	}
-	return cLevelDBIterator{
+	return &cLevelDBIterator{
 		itr:   itr,
 		start: start,
 		end:   end,
@@ -183,43 +184,58 @@ var _ Iterator = (*cLevelDBIterator)(nil)
 type cLevelDBIterator struct {
 	itr        *levigo.Iterator
 	start, end []byte
+	invalid    bool
 }
 
-func (c cLevelDBIterator) Domain() ([]byte, []byte) {
+func (c *cLevelDBIterator) Domain() ([]byte, []byte) {
 	return c.start, c.end
 }
 
-func (c cLevelDBIterator) Valid() bool {
+func (c *cLevelDBIterator) Valid() bool {
 	c.assertNoError()
-	return c.itr.Valid()
+	if c.invalid {
+		return false
+	}
+	c.invalid = !c.itr.Valid()
+	return !c.invalid
 }
 
-func (c cLevelDBIterator) Key() []byte {
-	if !c.itr.Valid() {
+func (c *cLevelDBIterator) Key() []byte {
+	if !c.Valid() {
 		panic("cLevelDBIterator Key() called when invalid")
 	}
 	return c.itr.Key()
 }
 
-func (c cLevelDBIterator) Value() []byte {
-	if !c.itr.Valid() {
+func (c *cLevelDBIterator) Value() []byte {
+	if !c.Valid() {
 		panic("cLevelDBIterator Value() called when invalid")
 	}
 	return c.itr.Value()
 }
 
-func (c cLevelDBIterator) Next() {
-	if !c.itr.Valid() {
+func (c *cLevelDBIterator) Next() {
+	if !c.Valid() {
 		panic("cLevelDBIterator Next() called when invalid")
 	}
 	c.itr.Next()
+	c.checkEndKey() // if we've exceeded the range, we're now invalid
 }
 
-func (c cLevelDBIterator) Release() {
+// levigo has no upper bound when iterating, so need to check ourselves
+func (c *cLevelDBIterator) checkEndKey() []byte {
+	key := c.itr.Key()
+	if c.end != nil && bytes.Compare(key, c.end) > 0 {
+		c.invalid = true
+	}
+	return key
+}
+
+func (c *cLevelDBIterator) Release() {
 	c.itr.Close()
 }
 
-func (c cLevelDBIterator) assertNoError() {
+func (c *cLevelDBIterator) assertNoError() {
 	if err := c.itr.GetError(); err != nil {
 		panic(err)
 	}
