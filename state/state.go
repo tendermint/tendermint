@@ -253,6 +253,12 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 
 	nextParams := applyChanges(s.Params,
 		abciResponses.EndBlock.ConsensusParamChanges)
+	err := nextParams.Validate()
+	if err != nil {
+		s.logger.Error("Error updating consensus params", "err", err)
+		// TODO: err or carry on?
+		nextParams = s.Params
+	}
 
 	s.setBlockAndValidators(header.Height,
 		header.NumTxs,
