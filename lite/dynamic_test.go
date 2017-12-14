@@ -46,7 +46,7 @@ func TestDynamicCert(t *testing.T) {
 
 	for _, tc := range cases {
 		check := tc.keys.GenCommit(chainID, tc.height, nil, tc.vals,
-			[]byte("bar"), tc.first, tc.last)
+			[]byte("bar"), []byte("params"), tc.first, tc.last)
 		err := cert.Certify(check)
 		if tc.proper {
 			assert.Nil(err, "%+v", err)
@@ -71,7 +71,7 @@ func TestDynamicUpdate(t *testing.T) {
 
 	// one valid block to give us a sense of time
 	h := int64(100)
-	good := keys.GenCommit(chainID, h, nil, vals, []byte("foo"), 0, len(keys))
+	good := keys.GenCommit(chainID, h, nil, vals, []byte("foo"), []byte("params"), 0, len(keys))
 	err := cert.Certify(good)
 	require.Nil(err, "%+v", err)
 
@@ -109,7 +109,7 @@ func TestDynamicUpdate(t *testing.T) {
 
 	for _, tc := range cases {
 		fc := tc.keys.GenFullCommit(chainID, tc.height, nil, tc.vals,
-			[]byte("bar"), tc.first, tc.last)
+			[]byte("bar"), []byte("params"), tc.first, tc.last)
 		err := cert.Update(fc)
 		if tc.proper {
 			assert.Nil(err, "%d: %+v", tc.height, err)

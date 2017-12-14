@@ -29,7 +29,7 @@ func TestSerializeFullCommits(t *testing.T) {
 	// build a fc
 	keys := lite.GenValKeys(5)
 	vals := keys.ToValidators(10, 0)
-	fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, 5)
+	fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), 0, 5)
 
 	require.Equal(h, fc.Height())
 	require.Equal(vals.Hash(), fc.ValidatorsHash())
