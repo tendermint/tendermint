@@ -2,6 +2,7 @@ package types
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
@@ -65,6 +66,7 @@ func makeCommit(blockID BlockID, height int64, round int,
 		Round:            round,
 		Type:             VoteTypePrecommit,
 		BlockID:          blockID,
+		Timestamp:        time.Now().UTC(),
 	}
 
 	// all sign
