@@ -3,12 +3,18 @@ package common
 import (
 	crand "crypto/rand"
 	"math/rand"
+	"sync"
 	"time"
 )
 
 const (
 	strChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" // 62 characters
 )
+
+var rng struct {
+	sync.Mutex
+	*rand.Rand
+}
 
 func init() {
 	b := cRandBytes(8)
@@ -17,7 +23,7 @@ func init() {
 		seed |= uint64(b[i])
 		seed <<= 8
 	}
-	rand.Seed(int64(seed))
+	rng.Rand = rand.New(rand.NewSource(int64(seed)))
 }
 
 // Constructs an alphanumeric string of given length.
@@ -25,7 +31,7 @@ func RandStr(length int) string {
 	chars := []byte{}
 MAIN_LOOP:
 	for {
-		val := rand.Int63()
+		val := rng.Int63()
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
 			if v >= 62 {         // only 62 characters in strChars
@@ -45,72 +51,98 @@ MAIN_LOOP:
 }
 
 func RandUint16() uint16 {
-	return uint16(rand.Uint32() & (1<<16 - 1))
+	return uint16(RandUint32() & (1<<16 - 1))
 }
 
 func RandUint32() uint32 {
-	return rand.Uint32()
+	rng.Lock()
+	u32 := rng.Uint32()
+	rng.Unlock()
+	return u32
 }
 
 func RandUint64() uint64 {
-	return uint64(rand.Uint32())<<32 + uint64(rand.Uint32())
+	return uint64(RandUint32())<<32 + uint64(RandUint32())
 }
 
 func RandUint() uint {
-	return uint(rand.Int())
+	rng.Lock()
+	i := rng.Int()
+	rng.Unlock()
+	return uint(i)
 }
 
 func RandInt16() int16 {
-	return int16(rand.Uint32() & (1<<16 - 1))
+	return int16(RandUint32() & (1<<16 - 1))
 }
 
 func RandInt32() int32 {
-	return int32(rand.Uint32())
+	return int32(RandUint32())
 }
 
 func RandInt64() int64 {
-	return int64(rand.Uint32())<<32 + int64(rand.Uint32())
+	return int64(RandUint64())
 }
 
 func RandInt() int {
-	return rand.Int()
+	rng.Lock()
+	i := rng.Int()
+	rng.Unlock()
+	return i
+}
+
+func RandInt31() int32 {
+	rng.Lock()
+	i31 := rng.Int31()
+	rng.Unlock()
+	return i31
+}
+
+func RandInt63() int64 {
+	rng.Lock()
+	i63 := rng.Int63()
+	rng.Unlock()
+	return i63
 }
 
 // Distributed pseudo-exponentially to test for various cases
 func RandUint16Exp() uint16 {
-	bits := rand.Uint32() % 16
+	bits := RandUint32() % 16
 	if bits == 0 {
 		return 0
 	}
 	n := uint16(1 << (bits - 1))
-	n += uint16(rand.Int31()) & ((1 << (bits - 1)) - 1)
+	n += uint16(RandInt31()) & ((1 << (bits - 1)) - 1)
 	return n
 }
 
 // Distributed pseudo-exponentially to test for various cases
 func RandUint32Exp() uint32 {
-	bits := rand.Uint32() % 32
+	bits := RandUint32() % 32
 	if bits == 0 {
 		return 0
 	}
 	n := uint32(1 << (bits - 1))
-	n += uint32(rand.Int31()) & ((1 << (bits - 1)) - 1)
+	n += uint32(RandInt31()) & ((1 << (bits - 1)) - 1)
 	return n
 }
 
 // Distributed pseudo-exponentially to test for various cases
 func RandUint64Exp() uint64 {
-	bits := rand.Uint32() % 64
+	bits := RandUint32() % 64
 	if bits == 0 {
 		return 0
 	}
 	n := uint64(1 << (bits - 1))
-	n += uint64(rand.Int63()) & ((1 << (bits - 1)) - 1)
+	n += uint64(RandInt63()) & ((1 << (bits - 1)) - 1)
 	return n
 }
 
 func RandFloat32() float32 {
-	return rand.Float32()
+	rng.Lock()
+	f32 := rng.Float32()
+	rng.Unlock()
+	return f32
 }
 
 func RandTime() time.Time {
@@ -118,11 +150,24 @@ func RandTime() time.Time {
 }
 
 func RandBytes(n int) []byte {
-	bs := make([]byte, n)
-	for i := 0; i < n; i++ {
-		bs[i] = byte(rand.Intn(256))
-	}
-	return bs
+	return cRandBytes(n)
+}
+
+// RandIntn returns, as an int, a non-negative pseudo-random number in [0, n).
+// It panics if n <= 0
+func RandIntn(n int) int {
+	rng.Lock()
+	i := rng.Intn(n)
+	rng.Unlock()
+	return i
+}
+
+// RandPerm returns a pseudo-random permutation of n integers in [0, n).
+func RandPerm(n int) []int {
+	rng.Lock()
+	perm := rng.Perm(n)
+	rng.Unlock()
+	return perm
 }
 
 // NOTE: This relies on the os's random number generator.
