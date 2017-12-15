@@ -9,8 +9,29 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tmlibs/common"
 )
+
+func TestRandStr(t *testing.T) {
+	l := 243
+	s := common.RandStr(l)
+	assert.Equal(t, l, len(s))
+}
+
+func TestRandBytes(t *testing.T) {
+	l := 243
+	b := common.RandBytes(l)
+	assert.Equal(t, l, len(b))
+}
+
+func TestRandIntn(t *testing.T) {
+	n := 243
+	for i := 0; i < 100; i++ {
+		x := common.RandIntn(n)
+		assert.True(t, x < n)
+	}
+}
 
 // It is essential that these tests run and never repeat their outputs
 // lest we've been pwned and the behavior of our randomness is controlled.

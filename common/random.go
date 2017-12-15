@@ -2,7 +2,7 @@ package common
 
 import (
 	crand "crypto/rand"
-	"math/rand"
+	mrand "math/rand"
 	"sync"
 	"time"
 )
@@ -11,9 +11,11 @@ const (
 	strChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" // 62 characters
 )
 
-var rng struct {
+// pseudo random number generator.
+// seeded with OS randomness (crand)
+var prng struct {
 	sync.Mutex
-	*rand.Rand
+	*mrand.Rand
 }
 
 func init() {
@@ -23,7 +25,7 @@ func init() {
 		seed |= uint64(b[i])
 		seed <<= 8
 	}
-	rng.Rand = rand.New(rand.NewSource(int64(seed)))
+	prng.Rand = mrand.New(mrand.NewSource(int64(seed)))
 }
 
 // Constructs an alphanumeric string of given length.
@@ -31,7 +33,7 @@ func RandStr(length int) string {
 	chars := []byte{}
 MAIN_LOOP:
 	for {
-		val := rng.Int63()
+		val := prng.Int63()
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
 			if v >= 62 {         // only 62 characters in strChars
@@ -55,9 +57,9 @@ func RandUint16() uint16 {
 }
 
 func RandUint32() uint32 {
-	rng.Lock()
-	u32 := rng.Uint32()
-	rng.Unlock()
+	prng.Lock()
+	u32 := prng.Uint32()
+	prng.Unlock()
 	return u32
 }
 
@@ -66,9 +68,9 @@ func RandUint64() uint64 {
 }
 
 func RandUint() uint {
-	rng.Lock()
-	i := rng.Int()
-	rng.Unlock()
+	prng.Lock()
+	i := prng.Int()
+	prng.Unlock()
 	return uint(i)
 }
 
@@ -85,23 +87,23 @@ func RandInt64() int64 {
 }
 
 func RandInt() int {
-	rng.Lock()
-	i := rng.Int()
-	rng.Unlock()
+	prng.Lock()
+	i := prng.Int()
+	prng.Unlock()
 	return i
 }
 
 func RandInt31() int32 {
-	rng.Lock()
-	i31 := rng.Int31()
-	rng.Unlock()
+	prng.Lock()
+	i31 := prng.Int31()
+	prng.Unlock()
 	return i31
 }
 
 func RandInt63() int64 {
-	rng.Lock()
-	i63 := rng.Int63()
-	rng.Unlock()
+	prng.Lock()
+	i63 := prng.Int63()
+	prng.Unlock()
 	return i63
 }
 
@@ -139,9 +141,9 @@ func RandUint64Exp() uint64 {
 }
 
 func RandFloat32() float32 {
-	rng.Lock()
-	f32 := rng.Float32()
-	rng.Unlock()
+	prng.Lock()
+	f32 := prng.Float32()
+	prng.Unlock()
 	return f32
 }
 
@@ -149,6 +151,7 @@ func RandTime() time.Time {
 	return time.Unix(int64(RandUint64Exp()), 0)
 }
 
+// RandBytes returns n random bytes from the OS's source of entropy ie. via crypto/rand.
 func RandBytes(n int) []byte {
 	return cRandBytes(n)
 }
@@ -156,17 +159,17 @@ func RandBytes(n int) []byte {
 // RandIntn returns, as an int, a non-negative pseudo-random number in [0, n).
 // It panics if n <= 0
 func RandIntn(n int) int {
-	rng.Lock()
-	i := rng.Intn(n)
-	rng.Unlock()
+	prng.Lock()
+	i := prng.Intn(n)
+	prng.Unlock()
 	return i
 }
 
 // RandPerm returns a pseudo-random permutation of n integers in [0, n).
 func RandPerm(n int) []int {
-	rng.Lock()
-	perm := rng.Perm(n)
-	rng.Unlock()
+	prng.Lock()
+	perm := prng.Perm(n)
+	prng.Unlock()
 	return perm
 }
 
