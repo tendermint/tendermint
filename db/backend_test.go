@@ -70,12 +70,12 @@ func TestBackendsNilKeys(t *testing.T) {
 }
 
 func TestGoLevelDBBackendStr(t *testing.T) {
-        name := cmn.Fmt("test_%x", cmn.RandStr(12))
-        db := NewDB(name, LevelDBBackendStr, "")
-        defer cleanupDBDir("", name)
- 
-        if _, ok := backends[CLevelDBBackendStr]; !ok {
-                _, ok := db.(*GoLevelDB)
-                assert.True(t, ok)
-        }
+	name := cmn.Fmt("test_%x", cmn.RandStr(12))
+	db := NewDB(name, LevelDBBackendStr, "")
+	defer cleanupDBDir("", name)
+
+	if _, ok := backends[CLevelDBBackendStr]; !ok {
+		_, ok := db.(*GoLevelDB)
+		assert.True(t, ok)
+	}
 }

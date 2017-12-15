@@ -162,16 +162,7 @@ func (mBatch *cLevelDBBatch) Write() {
 
 func (db *CLevelDB) Iterator(start, end []byte) Iterator {
 	itr := db.db.NewIterator(db.ro)
-	if len(start) > 0 {
-		itr.Seek(start)
-	} else {
-		itr.SeekToFirst()
-	}
-	return &cLevelDBIterator{
-		itr:   itr,
-		start: start,
-		end:   end,
-	}
+	return newCLevelDBIterator(itr, start, end)
 }
 
 func (db *CLevelDB) ReverseIterator(start, end []byte) Iterator {
@@ -185,6 +176,21 @@ type cLevelDBIterator struct {
 	itr        *levigo.Iterator
 	start, end []byte
 	invalid    bool
+}
+
+func newCLevelDBIterator(itr *levigo.Iterator, start, end []byte) *cLevelDBIterator {
+
+	if len(start) > 0 {
+		itr.Seek(start)
+	} else {
+		itr.SeekToFirst()
+	}
+
+	return &cLevelDBIterator{
+		itr:   itr,
+		start: start,
+		end:   end,
+	}
 }
 
 func (c *cLevelDBIterator) Domain() ([]byte, []byte) {
@@ -223,12 +229,16 @@ func (c *cLevelDBIterator) Next() {
 }
 
 // levigo has no upper bound when iterating, so need to check ourselves
-func (c *cLevelDBIterator) checkEndKey() []byte {
+func (c *cLevelDBIterator) checkEndKey() {
+	if !c.itr.Valid() {
+		c.invalid = true
+		return
+	}
+
 	key := c.itr.Key()
 	if c.end != nil && bytes.Compare(key, c.end) > 0 {
 		c.invalid = true
 	}
-	return key
 }
 
 func (c *cLevelDBIterator) Close() {
