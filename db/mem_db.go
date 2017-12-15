@@ -157,7 +157,7 @@ func (db *MemDB) ReverseIterator(start, end []byte) Iterator {
 func (db *MemDB) getSortedKeys(start, end []byte) []string {
 	keys := []string{}
 	for key, _ := range db.db {
-		if IsKeyInDomain(key, start, end) {
+		if IsKeyInDomain([]byte(key), start, end) {
 			keys = append(keys, key)
 		}
 	}
@@ -222,5 +222,3 @@ func (it *memDBIterator) Close() {
 	it.db = nil
 	it.keys = nil
 }
-
-func (it *memDBIterator) Release() {}

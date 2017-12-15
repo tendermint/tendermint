@@ -2,7 +2,6 @@ package db
 
 import (
 	"bytes"
-	"strings"
 )
 
 func IteratePrefix(db DB, prefix []byte) Iterator {
@@ -39,8 +38,8 @@ func cpIncr(bz []byte) (ret []byte) {
 	return EndingKey()
 }
 
-func IsKeyInDomain(key string, start, end []byte) bool {
-	leftCondition := bytes.Equal(start, BeginningKey()) || strings.Compare(key, string(start)) >= 0
-	rightCondition := bytes.Equal(end, EndingKey()) || strings.Compare(key, string(end)) < 0
+func IsKeyInDomain(key, start, end []byte) bool {
+	leftCondition := bytes.Equal(start, BeginningKey()) || bytes.Compare(key, start) >= 0
+	rightCondition := bytes.Equal(end, EndingKey()) || bytes.Compare(key, end) < 0
 	return leftCondition && rightCondition
 }

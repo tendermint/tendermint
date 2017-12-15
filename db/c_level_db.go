@@ -109,7 +109,7 @@ func (db *CLevelDB) Close() {
 
 func (db *CLevelDB) Print() {
 	itr := db.Iterator(BeginningKey(), EndingKey())
-	defer itr.Release()
+	defer itr.Close()
 	for ; itr.Valid(); itr.Next() {
 		key := itr.Key()
 		value := itr.Value()
@@ -231,7 +231,7 @@ func (c *cLevelDBIterator) checkEndKey() []byte {
 	return key
 }
 
-func (c *cLevelDBIterator) Release() {
+func (c *cLevelDBIterator) Close() {
 	c.itr.Close()
 }
 

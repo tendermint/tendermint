@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -64,13 +65,7 @@ func (db *FSDB) Has(key []byte) bool {
 	panicNilKey(key)
 
 	path := db.nameToPath(key)
-	_, err := read(path)
-	if os.IsNotExist(err) {
-		return false
-	} else if err != nil {
-		panic(errors.Wrapf(err, "Getting key %s (0x%X)", string(key), key))
-	}
-	return true
+	return cmn.FileExists(path)
 }
 
 func (db *FSDB) Set(key []byte, value []byte) {
@@ -246,7 +241,7 @@ func list(dirPath string, start, end []byte) ([]string, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Failed to unescape %s while listing", name)
 		}
-		if IsKeyInDomain(n, start, end) {
+		if IsKeyInDomain([]byte(n), start, end) {
 			paths = append(paths, n)
 		}
 	}

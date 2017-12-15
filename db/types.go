@@ -68,7 +68,7 @@ func EndingKey() []byte {
 	Usage:
 
 	var itr Iterator = ...
-	defer itr.Release()
+	defer itr.Close()
 
 	for ; itr.Valid(); itr.Next() {
 		k, v := itr.Key(); itr.Value()
@@ -108,7 +108,7 @@ type Iterator interface {
 	Value() []byte
 
 	// Release deallocates the given Iterator.
-	Release()
+	Close()
 }
 
 // For testing convenience.
