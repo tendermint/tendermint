@@ -5,32 +5,23 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func checkValid(t *testing.T, itr Iterator, expected bool) {
 	valid := itr.Valid()
-	assert.Equal(t, expected, valid)
+	require.Equal(t, expected, valid)
 }
 
 func checkNext(t *testing.T, itr Iterator, expected bool) {
 	itr.Next()
 	valid := itr.Valid()
-	assert.Equal(t, expected, valid)
+	require.Equal(t, expected, valid)
 }
 
 func checkNextPanics(t *testing.T, itr Iterator) {
 	assert.Panics(t, func() { itr.Next() }, "checkNextPanics expected panic but didn't")
-}
-
-func checkPrevPanics(t *testing.T, itr Iterator) {
-	assert.Panics(t, func() { itr.Prev() }, "checkPrevPanics expected panic but didn't")
-}
-
-func checkPrev(t *testing.T, itr Iterator, expected bool) {
-	itr.Prev()
-	valid := itr.Valid()
-	assert.Equal(t, expected, valid)
 }
 
 func checkItem(t *testing.T, itr Iterator, key []byte, value []byte) {
@@ -44,7 +35,6 @@ func checkInvalid(t *testing.T, itr Iterator) {
 	checkKeyPanics(t, itr)
 	checkValuePanics(t, itr)
 	checkNextPanics(t, itr)
-	checkPrevPanics(t, itr)
 }
 
 func checkKeyPanics(t *testing.T, itr Iterator) {
@@ -67,7 +57,7 @@ func TestDBIteratorSingleKey(t *testing.T) {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
 			db.SetSync(bz("1"), bz("value_1"))
-			itr := db.Iterator()
+			itr := db.Iterator(BeginningKey(), EndingKey())
 
 			checkValid(t, itr, true)
 			checkNext(t, itr, false)
@@ -88,16 +78,8 @@ func TestDBIteratorTwoKeys(t *testing.T) {
 			db.SetSync(bz("2"), bz("value_1"))
 
 			{ // Fail by calling Next too much
-				itr := db.Iterator()
+				itr := db.Iterator(BeginningKey(), EndingKey())
 				checkValid(t, itr, true)
-
-				for i := 0; i < 10; i++ {
-					checkNext(t, itr, true)
-					checkValid(t, itr, true)
-
-					checkPrev(t, itr, true)
-					checkValid(t, itr, true)
-				}
 
 				checkNext(t, itr, true)
 				checkValid(t, itr, true)
@@ -110,27 +92,6 @@ func TestDBIteratorTwoKeys(t *testing.T) {
 				// Once invalid...
 				checkInvalid(t, itr)
 			}
-
-			{ // Fail by calling Prev too much
-				itr := db.Iterator()
-				checkValid(t, itr, true)
-
-				for i := 0; i < 10; i++ {
-					checkNext(t, itr, true)
-					checkValid(t, itr, true)
-
-					checkPrev(t, itr, true)
-					checkValid(t, itr, true)
-				}
-
-				checkPrev(t, itr, false)
-				checkValid(t, itr, false)
-
-				checkPrevPanics(t, itr)
-
-				// Once invalid...
-				checkInvalid(t, itr)
-			}
 		})
 	}
 }
@@ -139,32 +100,30 @@ func TestDBIteratorEmpty(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
-			itr := db.Iterator()
+			itr := db.Iterator(BeginningKey(), EndingKey())
 
 			checkInvalid(t, itr)
 		})
 	}
 }
 
-func TestDBIteratorEmptySeek(t *testing.T) {
+func TestDBIteratorEmptyBeginAfter(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
-			itr := db.Iterator()
-			itr.Seek(bz("1"))
+			itr := db.Iterator(bz("1"), EndingKey())
 
 			checkInvalid(t, itr)
 		})
 	}
 }
 
-func TestDBIteratorBadSeek(t *testing.T) {
+func TestDBIteratorNonemptyBeginAfter(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
 			db.SetSync(bz("1"), bz("value_1"))
-			itr := db.Iterator()
-			itr.Seek(bz("2"))
+			itr := db.Iterator(bz("2"), EndingKey())
 
 			checkInvalid(t, itr)
 		})
