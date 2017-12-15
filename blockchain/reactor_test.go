@@ -26,8 +26,7 @@ func makeStateAndBlockStore(logger log.Logger) (*sm.State, *BlockStore) {
 	return state, blockStore
 }
 
-func newBlockchainReactor(logger log.Logger, maxBlockHeight int) *BlockchainReactor {
-	logger := log.TestingLogger()
+func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainReactor {
 	state, blockStore := makeStateAndBlockStore(logger)
 
 	// Make the blockchainReactor itself

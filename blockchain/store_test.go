@@ -7,6 +7,7 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +33,7 @@ func TestNewBlockStore(t *testing.T) {
 	db := db.NewMemDB()
 	db.Set(blockStoreKey, []byte(`{"height": 10000}`))
 	bs := NewBlockStore(db)
-	assert.Equal(t, bs.Height(), 10000, "failed to properly parse blockstore")
+	assert.Equal(t, bs.Height(), int64(10000), "failed to properly parse blockstore")
 
 	panicCausers := []struct {
 		data    []byte
@@ -56,7 +57,7 @@ func TestNewBlockStore(t *testing.T) {
 
 	db.Set(blockStoreKey, nil)
 	bs = NewBlockStore(db)
-	assert.Equal(t, bs.Height(), 0, "expecting nil bytes to be unmarshaled alright")
+	assert.Equal(t, bs.Height(), int64(0), "expecting nil bytes to be unmarshaled alright")
 }
 
 func TestBlockStoreGetReader(t *testing.T) {
@@ -110,10 +111,10 @@ var (
 
 func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	state, bs := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-	require.Equal(t, bs.Height(), 0, "initially the height should be zero")
+	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 
 	// check there are no blocks at various heights
-	noBlockHeights := []int{0, -1, 100, 1000, 2}
+	noBlockHeights := []int64{0, -1, 100, 1000, 2}
 	for i, height := range noBlockHeights {
 		if g := bs.LoadBlock(height); g != nil {
 			t.Errorf("#%d: height(%d) got a block; want nil", i, height)
@@ -135,6 +136,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		Height:  1,
 		NumTxs:  100,
 		ChainID: "block_test",
+		Time:    time.Now(),
 	}
 	header2 := header1
 	header2.Height = 4
@@ -306,7 +308,7 @@ func binarySerializeIt(v interface{}) []byte {
 
 func TestLoadBlockPart(t *testing.T) {
 	bs, db := freshBlockStore()
-	height, index := 10, 1
+	height, index := int64(10), 1
 	loadPart := func() (interface{}, error) {
 		part := bs.LoadBlockPart(height, index)
 		return part, nil
@@ -334,7 +336,7 @@ func TestLoadBlockPart(t *testing.T) {
 
 func TestLoadBlockMeta(t *testing.T) {
 	bs, db := freshBlockStore()
-	height := 10
+	height := int64(10)
 	loadMeta := func() (interface{}, error) {
 		meta := bs.LoadBlockMeta(height)
 		return meta, nil
@@ -363,7 +365,7 @@ func TestLoadBlockMeta(t *testing.T) {
 
 func TestBlockFetchAtHeight(t *testing.T) {
 	state, bs := makeStateAndBlockStore(log.NewTMLogger(new(bytes.Buffer)))
-	require.Equal(t, bs.Height(), 0, "initially the height should be zero")
+	require.Equal(t, bs.Height(), int64(0), "initially the height should be zero")
 	block := makeBlock(bs.Height()+1, state)
 
 	partSet := block.MakePartSet(2)

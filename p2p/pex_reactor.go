@@ -264,6 +264,7 @@ func (r *PEXReactor) ensurePeers() {
 		if dialling := r.Switch.IsDialing(try); dialling {
 			continue
 		}
+		// XXX: does this work ?!
 		if connected := r.Switch.Peers().Has(try.IP.String()); connected {
 			continue
 		}
