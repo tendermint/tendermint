@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	cmn "github.com/tendermint/tmlibs/common"
@@ -45,7 +46,7 @@ func NewNetAddress(addr net.Addr) *NetAddress {
 // address in the form of "IP:Port". Also resolves the host if host
 // is not an IP.
 func NewNetAddressString(addr string) (*NetAddress, error) {
-	host, portStr, err := net.SplitHostPort(addr)
+	host, portStr, err := net.SplitHostPort(removeProtocolIfDefined(addr))
 	if err != nil {
 		return nil, err
 	}
@@ -251,3 +252,11 @@ func (na *NetAddress) RFC4843() bool { return rfc4843.Contains(na.IP) }
 func (na *NetAddress) RFC4862() bool { return rfc4862.Contains(na.IP) }
 func (na *NetAddress) RFC6052() bool { return rfc6052.Contains(na.IP) }
 func (na *NetAddress) RFC6145() bool { return rfc6145.Contains(na.IP) }
+
+func removeProtocolIfDefined(addr string) string {
+	if strings.Contains(addr, "://") {
+		return strings.Split(addr, "://")[1]
+	} else {
+		return addr
+	}
+}

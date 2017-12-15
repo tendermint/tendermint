@@ -23,29 +23,31 @@ func TestNewNetAddress(t *testing.T) {
 }
 
 func TestNewNetAddressString(t *testing.T) {
-	assert := assert.New(t)
-
-	tests := []struct {
-		addr    string
-		correct bool
+	testCases := []struct {
+		addr     string
+		expected string
+		correct  bool
 	}{
-		{"127.0.0.1:8080", true},
+		{"127.0.0.1:8080", "127.0.0.1:8080", true},
+		{"tcp://127.0.0.1:8080", "127.0.0.1:8080", true},
+		{"udp://127.0.0.1:8080", "127.0.0.1:8080", true},
+		{"udp//127.0.0.1:8080", "", false},
 		// {"127.0.0:8080", false},
-		{"notahost", false},
-		{"127.0.0.1:notapath", false},
-		{"notahost:8080", false},
-		{"8082", false},
-		{"127.0.0:8080000", false},
+		{"notahost", "", false},
+		{"127.0.0.1:notapath", "", false},
+		{"notahost:8080", "", false},
+		{"8082", "", false},
+		{"127.0.0:8080000", "", false},
 	}
 
-	for _, t := range tests {
-		addr, err := NewNetAddressString(t.addr)
-		if t.correct {
-			if assert.Nil(err, t.addr) {
-				assert.Equal(t.addr, addr.String())
+	for _, tc := range testCases {
+		addr, err := NewNetAddressString(tc.addr)
+		if tc.correct {
+			if assert.Nil(t, err, tc.addr) {
+				assert.Equal(t, tc.expected, addr.String())
 			}
 		} else {
-			assert.NotNil(err, t.addr)
+			assert.NotNil(t, err, tc.addr)
 		}
 	}
 }
