@@ -26,7 +26,7 @@ func (s *State) ValExecBlock(txEventPublisher types.TxEventPublisher, proxyAppCo
 	}
 
 	// Execute the block txs
-	abciResponses, err := execBlockOnProxyApp(txEventPublisher, proxyAppConn, block, s.logger)
+	abciResponses, err := execBlockOnProxyApp(txEventPublisher, proxyAppConn, block, s.logger, s.LastValidators)
 	if err != nil {
 		// There was some error in proxyApp
 		// TODO Report error and wait for proxyApp to be available.
@@ -39,7 +39,7 @@ func (s *State) ValExecBlock(txEventPublisher types.TxEventPublisher, proxyAppCo
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
 // TODO: Generate a bitmap or otherwise store tx validity in state.
-func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn proxy.AppConnConsensus, block *types.Block, logger log.Logger) (*ABCIResponses, error) {
+func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn proxy.AppConnConsensus, block *types.Block, logger log.Logger, lastValidators *types.ValidatorSet) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -76,12 +76,20 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
+	// determine which validators did not sign last block
+	absentVals := make([]int32, 0)
+	for valI, vote := range block.LastCommit.Precommits {
+		if vote == nil {
+			absentVals = append(absentVals, int32(valI))
+		}
+	}
+
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		block.Hash(),
-		types.TM2PB.Header(block.Header),
-		nil,
-		nil,
+		Hash:                block.Hash(),
+		Header:              types.TM2PB.Header(block.Header),
+		AbsentValidators:    absentVals,
+		ByzantineValidators: nil,
 	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
@@ -275,8 +283,8 @@ func (s *State) CommitStateUpdateMempool(proxyAppConn proxy.AppConnConsensus, bl
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
-func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger) ([]byte, error) {
-	_, err := execBlockOnProxyApp(types.NopEventBus{}, appConnConsensus, block, logger)
+func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger, lastValidators *types.ValidatorSet) ([]byte, error) {
+	_, err := execBlockOnProxyApp(types.NopEventBus{}, appConnConsensus, block, logger, lastValidators)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
