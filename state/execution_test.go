@@ -2,6 +2,7 @@ package state
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,23 +61,34 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 		types.NewValidator(val2PrivKey.PubKey(), 5),
 	})
 
-	// but last commit contains only the first validator
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{prevHash, prevParts}
-	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: []*types.Vote{
-		{ValidatorIndex: 0},
-	}}
 
-	valHash := state.Validators.Hash()
-	block, _ := types.MakeBlock(2, chainID, makeTxs(2), lastCommit,
-		prevBlockID, valHash, state.AppHash, testPartSize)
+	now := time.Now().UTC()
+	testCases := []struct {
+		desc                     string
+		lastCommitPrecommits     []*types.Vote
+		expectedAbsentValidators []int32
+	}{
+		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now}, {ValidatorIndex: 1, Timestamp: now}}, []int32{}},
+		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now}, nil}, []int32{1}},
+		{"multiple absent", []*types.Vote{nil, nil}, []int32{0, 1}},
+	}
 
-	_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), lastValidators)
-	require.Nil(t, err)
+	for _, tc := range testCases {
+		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
-	// -> app must receive an index of the absent validator
-	assert.Equal(t, []int32{1}, app.AbsentValidators)
+		valHash := state.Validators.Hash()
+		block, _ := types.MakeBlock(2, chainID, makeTxs(2), state.LastBlockTotalTx, lastCommit,
+			prevBlockID, valHash, state.AppHash, testPartSize)
+
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), lastValidators)
+		require.Nil(t, err, tc.desc)
+
+		// -> app must receive an index of the absent validator
+		assert.Equal(t, tc.expectedAbsentValidators, app.AbsentValidators, tc.desc)
+	}
 }
 
 //----------------------------------------------------------------------------
