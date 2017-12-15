@@ -18,14 +18,20 @@ var prng struct {
 	*mrand.Rand
 }
 
-func init() {
+func reset() {
 	b := cRandBytes(8)
 	var seed uint64
 	for i := 0; i < 8; i++ {
 		seed |= uint64(b[i])
 		seed <<= 8
 	}
+	prng.Lock()
 	prng.Rand = mrand.New(mrand.NewSource(int64(seed)))
+	prng.Unlock()
+}
+
+func init() {
+	reset()
 }
 
 // Constructs an alphanumeric string of given length.
