@@ -32,7 +32,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 
 	app := dummy.NewPersistentDummyApplication(filepath.Join(config.DBDir(), "wal_generator"))
 
-	logger := log.NewNopLogger() // log.TestingLogger().With("wal_generator", "wal_generator")
+	logger := log.TestingLogger().With("wal_generator", "wal_generator")
 
 	/////////////////////////////////////////////////////////////////////////////
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
@@ -91,8 +91,8 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	case <-numBlocksWritten:
 		wr.Flush()
 		return b.Bytes(), nil
-	case <-time.After(time.Duration(5*numBlocks) * time.Second):
-		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks", numBlocks)
+	case <-time.After(1 * time.Minute):
+		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
 
