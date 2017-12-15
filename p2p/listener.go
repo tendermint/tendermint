@@ -38,11 +38,11 @@ const (
 func splitHostPort(addr string) (host string, port int) {
 	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
-		cmn.PanicSanity(err)
+		panic(err)
 	}
 	port, err = strconv.Atoi(portStr)
 	if err != nil {
-		cmn.PanicSanity(err)
+		panic(err)
 	}
 	return host, port
 }
@@ -64,7 +64,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 		}
 	}
 	if err != nil {
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 	// Actual listener local IP & port
 	listenerIP, listenerPort := splitHostPort(listener.Addr().String())
@@ -74,7 +74,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 	var intAddr *NetAddress
 	intAddr, err = NewNetAddressString(lAddr)
 	if err != nil {
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 
 	// Determine external address...
@@ -90,7 +90,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 		extAddr = getNaiveExternalAddress(listenerPort, false, logger)
 	}
 	if extAddr == nil {
-		cmn.PanicCrisis("Could not determine external address!")
+		panic("Could not determine external address!")
 	}
 
 	dl := &DefaultListener{
@@ -132,7 +132,7 @@ func (l *DefaultListener) listenRoutine() {
 		// listener wasn't stopped,
 		// yet we encountered an error.
 		if err != nil {
-			cmn.PanicCrisis(err)
+			panic(err)
 		}
 
 		l.connections <- conn
@@ -205,7 +205,7 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		cmn.PanicCrisis(cmn.Fmt("Could not fetch interface addresses: %v", err))
+		panic(cmn.Fmt("Could not fetch interface addresses: %v", err))
 	}
 
 	for _, a := range addrs {
