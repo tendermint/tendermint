@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	maxMsgSizeBytes = 1024 // 1MB, must be greater than BlockPartSizeBytes
+	// must be greater than params.BlockGossipParams.BlockPartSizeBytes + a few bytes
+	maxMsgSizeBytes = 1024 * 1024 // 1MB
 )
 
 //--------------------------------------------------------
@@ -279,7 +280,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	length := binary.BigEndian.Uint32(b)
 
 	if length > maxMsgSizeBytes {
-		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value %d", length, maxMsgSizeBytes)}
+		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)}
 	}
 
 	data := make([]byte, length)
