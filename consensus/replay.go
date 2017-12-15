@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -95,10 +94,13 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 	cs.replayMode = true
 	defer func() { cs.replayMode = false }()
 
-	// Ensure that ENDHEIGHT for this height doesn't exist
-	// NOTE: This is just a sanity check. As far as we know things work fine without it,
-	// and Handshake could reuse ConsensusState if it weren't for this check (since we can crash after writing ENDHEIGHT).
-	gr, found, err := cs.wal.SearchForEndHeight(csHeight)
+	// Ensure that ENDHEIGHT for this height doesn't exist.
+	// NOTE: This is just a sanity check. As far as we know things work fine
+	// without it, and Handshake could reuse ConsensusState if it weren't for
+	// this check (since we can crash after writing ENDHEIGHT).
+	//
+	// Ignore data corruption errors since this is a sanity check.
+	gr, found, err := cs.wal.SearchForEndHeight(csHeight, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
 	if err != nil {
 		return err
 	}
@@ -112,14 +114,16 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 	}
 
 	// Search for last height marker
-	gr, found, err = cs.wal.SearchForEndHeight(csHeight - 1)
+	//
+	// Ignore data corruption errors in previous heights because we only care about last height
+	gr, found, err = cs.wal.SearchForEndHeight(csHeight-1, &WALSearchOptions{IgnoreDataCorruptionErrors: true})
 	if err == io.EOF {
 		cs.Logger.Error("Replay: wal.group.Search returned EOF", "#ENDHEIGHT", csHeight-1)
 	} else if err != nil {
 		return err
 	}
 	if !found {
-		return errors.New(cmn.Fmt("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1))
+		return fmt.Errorf("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1)
 	}
 	defer gr.Close() // nolint: errcheck
 
@@ -132,9 +136,13 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 		msg, err = dec.Decode()
 		if err == io.EOF {
 			break
+		} else if IsDataCorruptionError(err) {
+			cs.Logger.Debug("data has been corrupted in last height of consensus WAL", "err", err, "height", csHeight)
+			panic(fmt.Sprintf("data has been corrupted (%v) in last height %d of consensus WAL", err, csHeight))
 		} else if err != nil {
 			return err
 		}
+
 		// NOTE: since the priv key is set when the msgs are received
 		// it will attempt to eg double sign but we can just ignore it
 		// since the votes will be replayed and we'll get to the next step
@@ -202,7 +210,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// handshake is done via info request on the query conn
 	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{version.Version})
 	if err != nil {
-		return errors.New(cmn.Fmt("Error calling Info: %v", err))
+		return fmt.Errorf("Error calling Info: %v", err)
 	}
 
 	blockHeight := int64(res.LastBlockHeight)
@@ -218,7 +226,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// replay blocks up to the latest in the blockstore
 	_, err = h.ReplayBlocks(appHash, blockHeight, proxyApp)
 	if err != nil {
-		return errors.New(cmn.Fmt("Error on replay: %v", err))
+		return fmt.Errorf("Error on replay: %v", err)
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced", "appHeight", blockHeight, "appHash", fmt.Sprintf("%X", appHash))
@@ -358,7 +366,7 @@ func (h *Handshaker) replayBlock(height int64, proxyApp proxy.AppConnConsensus) 
 
 func (h *Handshaker) checkAppHash(appHash []byte) error {
 	if !bytes.Equal(h.state.AppHash, appHash) {
-		panic(errors.New(cmn.Fmt("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash)).Error())
+		panic(fmt.Errorf("Tendermint state.AppHash does not match AppHash after replay. Got %X, expected %X", appHash, h.state.AppHash).Error())
 	}
 	return nil
 }

@@ -180,7 +180,7 @@ func (w *byteBufferWAL) Save(m WALMessage) {
 func (w *byteBufferWAL) Group() *auto.Group {
 	panic("not implemented")
 }
-func (w *byteBufferWAL) SearchForEndHeight(height int64) (gr *auto.GroupReader, found bool, err error) {
+func (w *byteBufferWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
 	return nil, false, nil
 }
 
