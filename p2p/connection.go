@@ -333,7 +333,7 @@ FOR_LOOP:
 		case <-c.send:
 			// Send some msgPackets
 			eof := c.sendSomeMsgPackets()
-			c.logger.Debug("finished sendSomeMsgPackets", "eof", eof)
+			c.Logger.Debug("finished sendSomeMsgPackets", "eof", eof)
 			if !eof {
 				// Keep sendRoutine awake.
 				select {
@@ -353,7 +353,7 @@ FOR_LOOP:
 		}
 	}
 
-	c.logger.Debug("sendRoutine: End")
+	c.Logger.Debug("sendRoutine: End")
 	// Cleanup
 }
 
@@ -410,7 +410,7 @@ func (c *MConnection) sendMsgPacket() bool {
 		c.stopForError(err)
 		return true
 	}
-	c.logger.Debug("sendMonitor.Update")
+	c.Logger.Debug("sendMonitor.Update")
 	c.sendMonitor.Update(int(n))
 	c.flushTimer.Set()
 	return false
@@ -424,7 +424,7 @@ func (c *MConnection) recvRoutine() {
 
 FOR_LOOP:
 	for {
-		c.logger.Debug("recvRoutine: recvMonitor.Limit")
+		c.Logger.Debug("recvRoutine: recvMonitor.Limit")
 		// Block until .recvMonitor says we can read.
 		c.recvMonitor.Limit(c.config.maxMsgPacketTotalSize(), atomic.LoadInt64(&c.config.RecvRate), true)
 
@@ -446,9 +446,9 @@ FOR_LOOP:
 		// Read packet type
 		var n int
 		var err error
-		c.logger.Debug("recvRoutine: ReadByte")
+		c.Logger.Debug("recvRoutine: ReadByte")
 		pktType := wire.ReadByte(c.bufReader, &n, &err)
-		c.logger.Debug("recvRoutine: recvMonitor.Update")
+		c.Logger.Debug("recvRoutine: recvMonitor.Update")
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if c.IsRunning() {
@@ -464,15 +464,15 @@ FOR_LOOP:
 			// TODO: prevent abuse, as they cause flush()'s.
 			c.Logger.Debug("Receive Ping")
 			c.pong <- struct{}{}
-			c.logger.Debug("recvRoutine: trigger pong")
+			c.Logger.Debug("recvRoutine: trigger pong")
 		case packetTypePong:
 			// do nothing
 			c.Logger.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
-			c.logger.Debug("recvRoutine: ReadBinaryPtr")
+			c.Logger.Debug("recvRoutine: ReadBinaryPtr")
 			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
-			c.logger.Debug("recvRoutine: recvMonitor.Update")
+			c.Logger.Debug("recvRoutine: recvMonitor.Update")
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -488,9 +488,9 @@ FOR_LOOP:
 				c.stopForError(err)
 			}
 
-			c.logger.Debug("recvRoutine: recvMsgPacket")
+			c.Logger.Debug("recvRoutine: recvMsgPacket")
 			msgBytes, err := channel.recvMsgPacket(pkt)
-			c.logger.Debug("recvRoutine: msgBytes", "msgBytes", msgBytes, "err", err)
+			c.Logger.Debug("recvRoutine: msgBytes", "msgBytes", msgBytes, "err", err)
 			if err != nil {
 				if c.IsRunning() {
 					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
@@ -502,6 +502,7 @@ FOR_LOOP:
 				c.Logger.Debug("Received bytes", "chID", pkt.ChannelID, "msgBytes", msgBytes)
 				// NOTE: This means the reactor.Receive runs in the same thread as the p2p recv routine
 				c.onReceive(pkt.ChannelID, msgBytes)
+				c.Logger.Debug("done onReceive")
 			}
 		default:
 			err := fmt.Errorf("Unknown message type %X", pktType)
@@ -511,9 +512,11 @@ FOR_LOOP:
 
 		// TODO: shouldn't this go in the sendRoutine?
 		// Better to send a ping packet when *we* haven't sent anything for a while.
+		c.Logger.Debug("pingTimer.Reset()")
 		c.pingTimer.Reset()
+		c.Logger.Debug("done pingTimer.Reset()")
 	}
-	c.logger.Debug("recvRoutine: End")
+	c.Logger.Debug("recvRoutine: End")
 
 	// Cleanup
 	close(c.pong)
@@ -590,7 +593,7 @@ type Channel struct {
 
 	maxMsgPacketPayloadSize int
 
-	logger log.Logger
+	Logger log.Logger
 }
 
 func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
@@ -608,7 +611,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 }
 
 func (ch *Channel) SetLogger(l log.Logger) {
-	ch.logger = l
+	ch.Logger = l
 }
 
 // Queues message to send to this channel.
@@ -683,7 +686,7 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 // Not goroutine-safe
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 	packet := ch.nextMsgPacket()
-	ch.logger.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
+	ch.Logger.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
 	writeMsgPacketTo(packet, w, &n, &err)
 	if err == nil {
 		ch.recentlySent += int64(n)
@@ -699,7 +702,7 @@ func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
 // Not goroutine-safe
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
-	ch.logger.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
+	ch.Logger.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if ch.desc.RecvMessageCapacity < len(ch.recving)+len(packet.Bytes) {
 		return nil, wire.ErrBinaryReadOverflow
 	}
