@@ -333,6 +333,7 @@ FOR_LOOP:
 		case <-c.send:
 			// Send some msgPackets
 			eof := c.sendSomeMsgPackets()
+			c.logger.Debug("finished sendSomeMsgPackets", "eof", eof)
 			if !eof {
 				// Keep sendRoutine awake.
 				select {
@@ -352,6 +353,7 @@ FOR_LOOP:
 		}
 	}
 
+	c.logger.Debug("sendRoutine: End")
 	// Cleanup
 }
 
@@ -361,10 +363,12 @@ func (c *MConnection) sendSomeMsgPackets() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
+	c.Logger.Debug("sendMonitor.Limit")
 	c.sendMonitor.Limit(c.config.maxMsgPacketTotalSize(), atomic.LoadInt64(&c.config.SendRate), true)
 
 	// Now send some msgPackets.
 	for i := 0; i < numBatchMsgPackets; i++ {
+		c.Logger.Debug("sendMsgPacket", "i", i)
 		if c.sendMsgPacket() {
 			return true
 		}
@@ -406,6 +410,7 @@ func (c *MConnection) sendMsgPacket() bool {
 		c.stopForError(err)
 		return true
 	}
+	c.logger.Debug("sendMonitor.Update")
 	c.sendMonitor.Update(int(n))
 	c.flushTimer.Set()
 	return false
@@ -419,6 +424,7 @@ func (c *MConnection) recvRoutine() {
 
 FOR_LOOP:
 	for {
+		c.logger.Debug("recvRoutine: recvMonitor.Limit")
 		// Block until .recvMonitor says we can read.
 		c.recvMonitor.Limit(c.config.maxMsgPacketTotalSize(), atomic.LoadInt64(&c.config.RecvRate), true)
 
@@ -440,7 +446,9 @@ FOR_LOOP:
 		// Read packet type
 		var n int
 		var err error
+		c.logger.Debug("recvRoutine: ReadByte")
 		pktType := wire.ReadByte(c.bufReader, &n, &err)
+		c.logger.Debug("recvRoutine: recvMonitor.Update")
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if c.IsRunning() {
@@ -456,12 +464,15 @@ FOR_LOOP:
 			// TODO: prevent abuse, as they cause flush()'s.
 			c.Logger.Debug("Receive Ping")
 			c.pong <- struct{}{}
+			c.logger.Debug("recvRoutine: trigger pong")
 		case packetTypePong:
 			// do nothing
 			c.Logger.Debug("Receive Pong")
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
+			c.logger.Debug("recvRoutine: ReadBinaryPtr")
 			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
+			c.logger.Debug("recvRoutine: recvMonitor.Update")
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -477,7 +488,9 @@ FOR_LOOP:
 				c.stopForError(err)
 			}
 
+			c.logger.Debug("recvRoutine: recvMsgPacket")
 			msgBytes, err := channel.recvMsgPacket(pkt)
+			c.logger.Debug("recvRoutine: msgBytes", "msgBytes", msgBytes, "err", err)
 			if err != nil {
 				if c.IsRunning() {
 					c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
@@ -500,6 +513,7 @@ FOR_LOOP:
 		// Better to send a ping packet when *we* haven't sent anything for a while.
 		c.pingTimer.Reset()
 	}
+	c.logger.Debug("recvRoutine: End")
 
 	// Cleanup
 	close(c.pong)
