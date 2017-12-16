@@ -1,7 +1,6 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/tcnksm/ghr \
-					gopkg.in/alecthomas/gometalinter.v2
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
@@ -74,7 +73,6 @@ check_tools:
 tools:
 	@echo "--> Installing tools"
 	@go get $(GOTOOLS)
-	@gometalinter.v2 --install
 
 ### Formatting, linting, and vetting
 

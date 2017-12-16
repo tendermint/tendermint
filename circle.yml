@@ -25,7 +25,7 @@ dependencies:
 
 test:
   override:
-    - cd "$PROJECT_PATH" && make tools && make get_vendor_deps && make metalinter_test
+    - cd "$PROJECT_PATH" && docker run -v $(pwd):/go/src/github.com/tendermint/tendermint bluecollarcoding/gometalinter /bin/bash -c "cd /go/src/github.com/tendermint/tendermint && make get_vendor_deps && gometalinter --deadline 10m --vendor --config=.gometalinter.json ./..."
     - cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
         timeout: 1800
   post:
