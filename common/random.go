@@ -35,6 +35,7 @@ func init() {
 }
 
 // Constructs an alphanumeric string of given length.
+// It is not safe for cryptographic usage.
 func RandStr(length int) string {
 	chars := []byte{}
 MAIN_LOOP:
@@ -58,10 +59,12 @@ MAIN_LOOP:
 	return string(chars)
 }
 
+// It is not safe for cryptographic usage.
 func RandUint16() uint16 {
 	return uint16(RandUint32() & (1<<16 - 1))
 }
 
+// It is not safe for cryptographic usage.
 func RandUint32() uint32 {
 	prng.Lock()
 	u32 := prng.Uint32()
@@ -69,10 +72,12 @@ func RandUint32() uint32 {
 	return u32
 }
 
+// It is not safe for cryptographic usage.
 func RandUint64() uint64 {
 	return uint64(RandUint32())<<32 + uint64(RandUint32())
 }
 
+// It is not safe for cryptographic usage.
 func RandUint() uint {
 	prng.Lock()
 	i := prng.Int()
@@ -80,18 +85,22 @@ func RandUint() uint {
 	return uint(i)
 }
 
+// It is not safe for cryptographic usage.
 func RandInt16() int16 {
 	return int16(RandUint32() & (1<<16 - 1))
 }
 
+// It is not safe for cryptographic usage.
 func RandInt32() int32 {
 	return int32(RandUint32())
 }
 
+// It is not safe for cryptographic usage.
 func RandInt64() int64 {
 	return int64(RandUint64())
 }
 
+// It is not safe for cryptographic usage.
 func RandInt() int {
 	prng.Lock()
 	i := prng.Int()
@@ -99,6 +108,7 @@ func RandInt() int {
 	return i
 }
 
+// It is not safe for cryptographic usage.
 func RandInt31() int32 {
 	prng.Lock()
 	i31 := prng.Int31()
@@ -106,6 +116,7 @@ func RandInt31() int32 {
 	return i31
 }
 
+// It is not safe for cryptographic usage.
 func RandInt63() int64 {
 	prng.Lock()
 	i63 := prng.Int63()
@@ -114,6 +125,7 @@ func RandInt63() int64 {
 }
 
 // Distributed pseudo-exponentially to test for various cases
+// It is not safe for cryptographic usage.
 func RandUint16Exp() uint16 {
 	bits := RandUint32() % 16
 	if bits == 0 {
@@ -125,6 +137,7 @@ func RandUint16Exp() uint16 {
 }
 
 // Distributed pseudo-exponentially to test for various cases
+// It is not safe for cryptographic usage.
 func RandUint32Exp() uint32 {
 	bits := RandUint32() % 32
 	if bits == 0 {
@@ -136,6 +149,7 @@ func RandUint32Exp() uint32 {
 }
 
 // Distributed pseudo-exponentially to test for various cases
+// It is not safe for cryptographic usage.
 func RandUint64Exp() uint64 {
 	bits := RandUint32() % 64
 	if bits == 0 {
@@ -146,6 +160,7 @@ func RandUint64Exp() uint64 {
 	return n
 }
 
+// It is not safe for cryptographic usage.
 func RandFloat32() float32 {
 	prng.Lock()
 	f32 := prng.Float32()
@@ -153,17 +168,26 @@ func RandFloat32() float32 {
 	return f32
 }
 
+// It is not safe for cryptographic usage.
 func RandTime() time.Time {
 	return time.Unix(int64(RandUint64Exp()), 0)
 }
 
 // RandBytes returns n random bytes from the OS's source of entropy ie. via crypto/rand.
+// It is not safe for cryptographic usage.
 func RandBytes(n int) []byte {
-	return cRandBytes(n)
+	// cRandBytes isn't guaranteed to be fast so instead
+	// use random bytes generated from the internal PRNG
+	bs := make([]byte, n)
+	for i := 0; i < len(bs); i++ {
+		bs[i] = byte(RandInt() & 0xFF)
+	}
+	return bs
 }
 
 // RandIntn returns, as an int, a non-negative pseudo-random number in [0, n).
-// It panics if n <= 0
+// It panics if n <= 0.
+// It is not safe for cryptographic usage.
 func RandIntn(n int) int {
 	prng.Lock()
 	i := prng.Intn(n)
@@ -172,6 +196,7 @@ func RandIntn(n int) int {
 }
 
 // RandPerm returns a pseudo-random permutation of n integers in [0, n).
+// It is not safe for cryptographic usage.
 func RandPerm(n int) []int {
 	prng.Lock()
 	perm := prng.Perm(n)
