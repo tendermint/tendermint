@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/go-wire"
+	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -104,7 +104,7 @@ var (
 	partSet     = block.MakePartSet(2)
 	part1       = partSet.GetPart(0)
 	part2       = partSet.GetPart(1)
-	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10}}}
+	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
 )
 
 // TODO: This test should be simplified ...
@@ -124,7 +124,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	// save a block
 	block := makeBlock(bs.Height()+1, state)
 	validPartSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10}}}
+	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
@@ -143,7 +143,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	// End of setup, test data
 
-	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10}}}
+	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -369,7 +369,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	block := makeBlock(bs.Height()+1, state)
 
 	partSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10}}}
+	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
 
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
