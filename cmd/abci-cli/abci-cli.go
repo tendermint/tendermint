@@ -387,15 +387,9 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var (
-	errBadPersistentArgs = errors.New("expecting persistent args of the form: abci-cli [command] <...>")
-
-	errUnimplemented = errors.New("unimplemented")
-)
-
 func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 	if len(pArgs) < 2 {
-		return errBadPersistentArgs
+		return errors.New("expecting persistent args of the form: abci-cli [command] <...>")
 	}
 	subCommand, actualArgs := pArgs[1], pArgs[2:]
 
