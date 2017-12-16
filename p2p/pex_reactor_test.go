@@ -194,7 +194,6 @@ func createRoutableAddr() (addr string, netAddr *NetAddress) {
 func createRandomPeer(outbound bool) *peer {
 	addr, netAddr := createRoutableAddr()
 	p := &peer{
-		key: cmn.RandStr(12),
 		nodeInfo: &NodeInfo{
 			ListenAddr: addr,
 			RemoteAddr: netAddr.String(),

@@ -13,7 +13,6 @@ import (
 // Returns an empty dummy peer
 func randPeer() *peer {
 	return &peer{
-		key: cmn.RandStr(12),
 		nodeInfo: &NodeInfo{
 			RemoteAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),

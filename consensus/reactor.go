@@ -916,7 +916,10 @@ func (ps *PeerState) SetHasProposalBlockPart(height int64, round int, index int)
 func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		msg := &VoteMessage{vote}
+		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
 		return ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
+	} else {
+		ps.logger.Debug("No vote message to send", "ps", ps)
 	}
 	return false
 }
@@ -1344,7 +1347,7 @@ type HasVoteMessage struct {
 
 // String returns a string representation.
 func (m *HasVoteMessage) String() string {
-	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v} VI:%v]", m.Index, m.Height, m.Round, m.Type, m.Index)
+	return fmt.Sprintf("[HasVote VI:%v V:{%v/%02d/%v}]", m.Index, m.Height, m.Round, m.Type)
 }
 
 //-------------------------------------

@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -48,7 +47,6 @@ type peer struct {
 	config     *PeerConfig
 
 	nodeInfo *NodeInfo
-	key      string
 	Data     *cmn.CMap // User data.
 }
 
@@ -209,8 +207,6 @@ func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	peerNodeInfo.RemoteAddr = p.Addr().String()
 
 	p.nodeInfo = peerNodeInfo
-	p.key = peerNodeInfo.PubKey.KeyString()
-
 	return nil
 }
 
@@ -283,26 +279,18 @@ func (p *peer) CanSend(chID byte) bool {
 	return p.mconn.CanSend(chID)
 }
 
-// WriteTo writes the peer's public key to w.
-func (p *peer) WriteTo(w io.Writer) (int64, error) {
-	var n int
-	var err error
-	wire.WriteString(p.key, w, &n, &err)
-	return int64(n), err
-}
-
 // String representation.
 func (p *peer) String() string {
 	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.key[:12])
+		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.Key())
 	}
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.key[:12])
+	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.Key())
 }
 
 // Equals reports whenever 2 peers are actually represent the same node.
 func (p *peer) Equals(other Peer) bool {
-	return p.key == other.Key()
+	return p.Key() == other.Key()
 }
 
 // Get the data for a given key.
@@ -317,7 +305,7 @@ func (p *peer) Set(key string, data interface{}) {
 
 // Key returns the peer's id key.
 func (p *peer) Key() string {
-	return p.key
+	return p.nodeInfo.ListenAddr // XXX: should probably be PubKey.KeyString()
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
