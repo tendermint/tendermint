@@ -21,6 +21,13 @@ func testBackendGetSetDelete(t *testing.T, backend string) {
 	defer dir.Close()
 	db := NewDB("testdb", backend, dirname)
 
+	// A nonexistent key should return nil, even if the key is empty.
+	require.Nil(t, db.Get([]byte("")))
+
+	// A nonexistent key should return nil, even if the key is nil.
+	require.Nil(t, db.Get(nil))
+
+	// A nonexistent key should return nil.
 	key := []byte("abc")
 	require.Nil(t, db.Get(key))
 
@@ -55,27 +62,89 @@ func withDB(t *testing.T, creator dbCreator, fn func(DB)) {
 }
 
 func TestBackendsNilKeys(t *testing.T) {
-	// test all backends
+	// test all backends.
+	// nil keys are treated as the empty key for most operations.
 	for dbType, creator := range backends {
 		withDB(t, creator, func(db DB) {
-			panicMsg := "expecting %s.%s to panic"
-			assert.Panics(t, func() { db.Get(nil) }, panicMsg, dbType, "get")
-			assert.Panics(t, func() { db.Has(nil) }, panicMsg, dbType, "has")
-			assert.Panics(t, func() { db.Set(nil, []byte("abc")) }, panicMsg, dbType, "set")
-			assert.Panics(t, func() { db.SetSync(nil, []byte("abc")) }, panicMsg, dbType, "setsync")
-			assert.Panics(t, func() { db.Delete(nil) }, panicMsg, dbType, "delete")
-			assert.Panics(t, func() { db.DeleteSync(nil) }, panicMsg, dbType, "deletesync")
+			t.Run(fmt.Sprintf("Testing %s", dbType), func(t *testing.T) {
+
+				expect := func(key, value []byte) {
+					if len(key) == 0 { // nil or empty
+						assert.Equal(t, db.Get(nil), db.Get([]byte("")))
+						assert.Equal(t, db.Has(nil), db.Has([]byte("")))
+					}
+					assert.Equal(t, db.Get(key), value)
+					assert.Equal(t, db.Has(key), value != nil)
+				}
+
+				// Not set
+				expect(nil, nil)
+
+				// Set nil value
+				db.Set(nil, nil)
+				expect(nil, []byte(""))
+
+				// Set empty value
+				db.Set(nil, []byte(""))
+				expect(nil, []byte(""))
+
+				// Set nil, Delete nil
+				db.Set(nil, []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.Delete(nil)
+				expect(nil, nil)
+
+				// Set nil, Delete empty
+				db.Set(nil, []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.Delete([]byte(""))
+				expect(nil, nil)
+
+				// Set empty, Delete nil
+				db.Set([]byte(""), []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.Delete(nil)
+				expect(nil, nil)
+
+				// Set empty, Delete empty
+				db.Set([]byte(""), []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.Delete([]byte(""))
+				expect(nil, nil)
+
+				// SetSync nil, DeleteSync nil
+				db.SetSync(nil, []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.DeleteSync(nil)
+				expect(nil, nil)
+
+				// SetSync nil, DeleteSync empty
+				db.SetSync(nil, []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.DeleteSync([]byte(""))
+				expect(nil, nil)
+
+				// SetSync empty, DeleteSync nil
+				db.SetSync([]byte(""), []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.DeleteSync(nil)
+				expect(nil, nil)
+
+				// SetSync empty, DeleteSync empty
+				db.SetSync([]byte(""), []byte("abc"))
+				expect(nil, []byte("abc"))
+				db.DeleteSync([]byte(""))
+				expect(nil, nil)
+			})
 		})
 	}
 }
 
 func TestGoLevelDBBackendStr(t *testing.T) {
 	name := cmn.Fmt("test_%x", cmn.RandStr(12))
-	db := NewDB(name, LevelDBBackendStr, "")
+	db := NewDB(name, GoLevelDBBackendStr, "")
 	defer cleanupDBDir("", name)
 
-	if _, ok := backends[CLevelDBBackendStr]; !ok {
-		_, ok := db.(*GoLevelDB)
-		assert.True(t, ok)
-	}
+	_, ok := db.(*GoLevelDB)
+	assert.True(t, ok)
 }

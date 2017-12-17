@@ -57,7 +57,7 @@ func TestDBIteratorSingleKey(t *testing.T) {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
 			db.SetSync(bz("1"), bz("value_1"))
-			itr := db.Iterator(BeginningKey(), EndingKey())
+			itr := db.Iterator(nil, nil)
 
 			checkValid(t, itr, true)
 			checkNext(t, itr, false)
@@ -78,7 +78,7 @@ func TestDBIteratorTwoKeys(t *testing.T) {
 			db.SetSync(bz("2"), bz("value_1"))
 
 			{ // Fail by calling Next too much
-				itr := db.Iterator(BeginningKey(), EndingKey())
+				itr := db.Iterator(nil, nil)
 				checkValid(t, itr, true)
 
 				checkNext(t, itr, true)
@@ -96,11 +96,35 @@ func TestDBIteratorTwoKeys(t *testing.T) {
 	}
 }
 
+func TestDBIteratorMany(t *testing.T) {
+	for backend, _ := range backends {
+		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
+			db := newTempDB(t, backend)
+
+			keys := make([][]byte, 100)
+			for i := 0; i < 100; i++ {
+				keys[i] = []byte{byte(i)}
+			}
+
+			value := []byte{5}
+			for _, k := range keys {
+				db.Set(k, value)
+			}
+
+			itr := db.Iterator(nil, nil)
+			defer itr.Close()
+			for ; itr.Valid(); itr.Next() {
+				assert.Equal(t, db.Get(itr.Key()), itr.Value())
+			}
+		})
+	}
+}
+
 func TestDBIteratorEmpty(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
-			itr := db.Iterator(BeginningKey(), EndingKey())
+			itr := db.Iterator(nil, nil)
 
 			checkInvalid(t, itr)
 		})
@@ -111,7 +135,7 @@ func TestDBIteratorEmptyBeginAfter(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
-			itr := db.Iterator(bz("1"), EndingKey())
+			itr := db.Iterator(bz("1"), nil)
 
 			checkInvalid(t, itr)
 		})
@@ -123,7 +147,7 @@ func TestDBIteratorNonemptyBeginAfter(t *testing.T) {
 		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
 			db := newTempDB(t, backend)
 			db.SetSync(bz("1"), bz("value_1"))
-			itr := db.Iterator(bz("2"), EndingKey())
+			itr := db.Iterator(bz("2"), nil)
 
 			checkInvalid(t, itr)
 		})

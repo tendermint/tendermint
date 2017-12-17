@@ -47,7 +47,7 @@ func NewFSDB(dir string) *FSDB {
 func (db *FSDB) Get(key []byte) []byte {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
+	key = escapeKey(key)
 
 	path := db.nameToPath(key)
 	value, err := read(path)
@@ -62,7 +62,7 @@ func (db *FSDB) Get(key []byte) []byte {
 func (db *FSDB) Has(key []byte) bool {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
+	key = escapeKey(key)
 
 	path := db.nameToPath(key)
 	return cmn.FileExists(path)
@@ -71,7 +71,6 @@ func (db *FSDB) Has(key []byte) bool {
 func (db *FSDB) Set(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
 
 	db.SetNoLock(key, value)
 }
@@ -79,17 +78,14 @@ func (db *FSDB) Set(key []byte, value []byte) {
 func (db *FSDB) SetSync(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
 
 	db.SetNoLock(key, value)
 }
 
 // NOTE: Implements atomicSetDeleter.
 func (db *FSDB) SetNoLock(key []byte, value []byte) {
-	panicNilKey(key)
-	if value == nil {
-		value = []byte{}
-	}
+	key = escapeKey(key)
+	value = nonNilBytes(value)
 	path := db.nameToPath(key)
 	err := write(path, value)
 	if err != nil {
@@ -100,7 +96,6 @@ func (db *FSDB) SetNoLock(key []byte, value []byte) {
 func (db *FSDB) Delete(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
 
 	db.DeleteNoLock(key)
 }
@@ -108,14 +103,13 @@ func (db *FSDB) Delete(key []byte) {
 func (db *FSDB) DeleteSync(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
 
 	db.DeleteNoLock(key)
 }
 
 // NOTE: Implements atomicSetDeleter.
 func (db *FSDB) DeleteNoLock(key []byte) {
-	panicNilKey(key)
+	key = escapeKey(key)
 	path := db.nameToPath(key)
 	err := remove(path)
 	if os.IsNotExist(err) {
@@ -157,8 +151,6 @@ func (db *FSDB) Mutex() *sync.Mutex {
 }
 
 func (db *FSDB) Iterator(start, end []byte) Iterator {
-	it := newMemDBIterator(db, start, end)
-
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
@@ -169,13 +161,11 @@ func (db *FSDB) Iterator(start, end []byte) Iterator {
 		panic(errors.Wrapf(err, "Listing keys in %s", db.dir))
 	}
 	sort.Strings(keys)
-	it.keys = keys
-	return it
+	return newMemDBIterator(db, keys, start, end)
 }
 
 func (db *FSDB) ReverseIterator(start, end []byte) Iterator {
-	// XXX
-	return nil
+	panic("not implemented yet") // XXX
 }
 
 func (db *FSDB) nameToPath(name []byte) string {
@@ -221,8 +211,7 @@ func remove(path string) error {
 	return os.Remove(path)
 }
 
-// List files of a path.
-// Paths will NOT include dir as the prefix.
+// List keys in a directory, stripping of escape sequences and dir portions.
 // CONTRACT: returns os errors directly without wrapping.
 func list(dirPath string, start, end []byte) ([]string, error) {
 	dir, err := os.Open(dirPath)
@@ -235,15 +224,31 @@ func list(dirPath string, start, end []byte) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var paths []string
+	var keys []string
 	for _, name := range names {
 		n, err := url.PathUnescape(name)
 		if err != nil {
 			return nil, fmt.Errorf("Failed to unescape %s while listing", name)
 		}
-		if IsKeyInDomain([]byte(n), start, end) {
-			paths = append(paths, n)
+		key := unescapeKey([]byte(n))
+		if IsKeyInDomain(key, start, end, false) {
+			keys = append(keys, string(key))
 		}
 	}
-	return paths, nil
+	return keys, nil
+}
+
+// To support empty or nil keys, while the file system doesn't allow empty
+// filenames.
+func escapeKey(key []byte) []byte {
+	return []byte("k_" + string(key))
+}
+func unescapeKey(escKey []byte) []byte {
+	if len(escKey) < 2 {
+		panic(fmt.Sprintf("Invalid esc key: %x", escKey))
+	}
+	if string(escKey[:2]) != "k_" {
+		panic(fmt.Sprintf("Invalid esc key: %x", escKey))
+	}
+	return escKey[2:]
 }

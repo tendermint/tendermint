@@ -2,31 +2,39 @@ package db
 
 type DB interface {
 
-	// Get returns nil iff key doesn't exist. Panics on nil key.
+	// Get returns nil iff key doesn't exist.
+	// A nil key is interpreted as an empty byteslice.
 	Get([]byte) []byte
 
-	// Has checks if a key exists. Panics on nil key.
+	// Has checks if a key exists.
+	// A nil key is interpreted as an empty byteslice.
 	Has(key []byte) bool
 
-	// Set sets the key. Panics on nil key.
+	// Set sets the key.
+	// A nil key is interpreted as an empty byteslice.
 	Set([]byte, []byte)
 	SetSync([]byte, []byte)
 
-	// Delete deletes the key. Panics on nil key.
+	// Delete deletes the key.
+	// A nil key is interpreted as an empty byteslice.
 	Delete([]byte)
 	DeleteSync([]byte)
 
-	// Iterator over a domain of keys in ascending order. End is exclusive.
+	// Iterate over a domain of keys in ascending order. End is exclusive.
 	// Start must be less than end, or the Iterator is invalid.
+	// A nil start is interpreted as an empty byteslice.
+	// If end is nil, iterates up to the last item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	Iterator(start, end []byte) Iterator
 
-	// Iterator over a domain of keys in descending order. End is exclusive.
+	// Iterate over a domain of keys in descending order. End is exclusive.
 	// Start must be greater than end, or the Iterator is invalid.
+	// If start is nil, iterates from the last/greatest item (inclusive).
+	// If end is nil, iterates up to the first/least item (iclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
 	ReverseIterator(start, end []byte) Iterator
 
-	// Releases the connection.
+	// Closes the connection.
 	Close()
 
 	// Creates a batch for atomic updates.
@@ -53,16 +61,6 @@ type SetDeleter interface {
 }
 
 //----------------------------------------
-
-// BeginningKey is the smallest key.
-func BeginningKey() []byte {
-	return []byte{}
-}
-
-// EndingKey is the largest key.
-func EndingKey() []byte {
-	return nil
-}
 
 /*
 	Usage:
@@ -107,7 +105,7 @@ type Iterator interface {
 	// If Valid returns false, this method will panic.
 	Value() []byte
 
-	// Release deallocates the given Iterator.
+	// Close releases the Iterator.
 	Close()
 }
 
@@ -116,9 +114,12 @@ func bz(s string) []byte {
 	return []byte(s)
 }
 
-// All DB funcs should panic on nil key.
-func panicNilKey(key []byte) {
-	if key == nil {
-		panic("nil key")
+// We defensively turn nil keys or values into []byte{} for
+// most operations.
+func nonNilBytes(bz []byte) []byte {
+	if bz == nil {
+		return []byte{}
+	} else {
+		return bz
 	}
 }

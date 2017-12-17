@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// empty iterator for empty db
+// Empty iterator for empty db.
 func TestPrefixIteratorNoMatchNil(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Prefix w/ backend %s", backend), func(t *testing.T) {
@@ -17,7 +17,7 @@ func TestPrefixIteratorNoMatchNil(t *testing.T) {
 	}
 }
 
-// empty iterator for db populated after iterator created
+// Empty iterator for db populated after iterator created.
 func TestPrefixIteratorNoMatch1(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Prefix w/ backend %s", backend), func(t *testing.T) {
@@ -30,7 +30,7 @@ func TestPrefixIteratorNoMatch1(t *testing.T) {
 	}
 }
 
-// empty iterator for prefix starting above db entry
+// Empty iterator for prefix starting after db entry.
 func TestPrefixIteratorNoMatch2(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Prefix w/ backend %s", backend), func(t *testing.T) {
@@ -38,13 +38,12 @@ func TestPrefixIteratorNoMatch2(t *testing.T) {
 			db.SetSync(bz("3"), bz("value_3"))
 			itr := IteratePrefix(db, []byte("4"))
 
-			// Once invalid...
 			checkInvalid(t, itr)
 		})
 	}
 }
 
-// iterator with single val for db with single val, starting from that val
+// Iterator with single val for db with single val, starting from that val.
 func TestPrefixIteratorMatch1(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Prefix w/ backend %s", backend), func(t *testing.T) {
@@ -62,7 +61,7 @@ func TestPrefixIteratorMatch1(t *testing.T) {
 	}
 }
 
-// iterator with prefix iterates over everything with same prefix
+// Iterator with prefix iterates over everything with same prefix.
 func TestPrefixIteratorMatches1N(t *testing.T) {
 	for backend, _ := range backends {
 		t.Run(fmt.Sprintf("Prefix w/ backend %s", backend), func(t *testing.T) {

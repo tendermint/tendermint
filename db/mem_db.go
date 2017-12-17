@@ -29,14 +29,16 @@ func NewMemDB() *MemDB {
 func (db *MemDB) Get(key []byte) []byte {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
+	key = nonNilBytes(key)
+
 	return db.db[string(key)]
 }
 
 func (db *MemDB) Has(key []byte) bool {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
+	key = nonNilBytes(key)
+
 	_, ok := db.db[string(key)]
 	return ok
 }
@@ -44,43 +46,43 @@ func (db *MemDB) Has(key []byte) bool {
 func (db *MemDB) Set(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
+
 	db.SetNoLock(key, value)
 }
 
 func (db *MemDB) SetSync(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
+
 	db.SetNoLock(key, value)
 }
 
 // NOTE: Implements atomicSetDeleter
 func (db *MemDB) SetNoLock(key []byte, value []byte) {
-	if value == nil {
-		value = []byte{}
-	}
-	panicNilKey(key)
+	key = nonNilBytes(key)
+	value = nonNilBytes(value)
+
 	db.db[string(key)] = value
 }
 
 func (db *MemDB) Delete(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
-	delete(db.db, string(key))
+
+	db.DeleteNoLock(key)
 }
 
 func (db *MemDB) DeleteSync(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	panicNilKey(key)
-	delete(db.db, string(key))
+
+	db.DeleteNoLock(key)
 }
 
 // NOTE: Implements atomicSetDeleter
 func (db *MemDB) DeleteNoLock(key []byte) {
-	panicNilKey(key)
+	key = nonNilBytes(key)
+
 	delete(db.db, string(key))
 }
 
@@ -125,100 +127,92 @@ func (db *MemDB) Mutex() *sync.Mutex {
 //----------------------------------------
 
 func (db *MemDB) Iterator(start, end []byte) Iterator {
-	it := newMemDBIterator(db, start, end)
-
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	// We need a copy of all of the keys.
-	// Not the best, but probably not a bottleneck depending.
-	it.keys = db.getSortedKeys(start, end)
-	return it
+	keys := db.getSortedKeys(start, end, false)
+	return newMemDBIterator(db, keys, start, end)
 }
 
 func (db *MemDB) ReverseIterator(start, end []byte) Iterator {
-	it := newMemDBIterator(db, start, end)
-
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	// We need a copy of all of the keys.
-	// Not the best, but probably not a bottleneck depending.
-	it.keys = db.getSortedKeys(end, start)
-	// reverse the order
-	l := len(it.keys) - 1
-	for i, v := range it.keys {
-		it.keys[i] = it.keys[l-i]
-		it.keys[l-i] = v
-	}
-	return nil
+	keys := db.getSortedKeys(end, start, true)
+	return newMemDBIterator(db, keys, start, end)
 }
 
-func (db *MemDB) getSortedKeys(start, end []byte) []string {
+func (db *MemDB) getSortedKeys(start, end []byte, reverse bool) []string {
 	keys := []string{}
 	for key, _ := range db.db {
-		if IsKeyInDomain([]byte(key), start, end) {
+		if IsKeyInDomain([]byte(key), start, end, false) {
 			keys = append(keys, key)
 		}
 	}
 	sort.Strings(keys)
+	if reverse {
+		nkeys := len(keys)
+		for i := 0; i < nkeys/2; i++ {
+			keys[i] = keys[nkeys-i-1]
+		}
+	}
 	return keys
 }
 
 var _ Iterator = (*memDBIterator)(nil)
 
+// We need a copy of all of the keys.
+// Not the best, but probably not a bottleneck depending.
 type memDBIterator struct {
-	cur        int
-	keys       []string
-	db         DB
-	start, end []byte
+	db    DB
+	cur   int
+	keys  []string
+	start []byte
+	end   []byte
 }
 
-func newMemDBIterator(db DB, start, end []byte) *memDBIterator {
+// Keys is expected to be in reverse order for reverse iterators.
+func newMemDBIterator(db DB, keys []string, start, end []byte) *memDBIterator {
 	return &memDBIterator{
 		db:    db,
+		cur:   0,
+		keys:  keys,
 		start: start,
 		end:   end,
 	}
 }
 
-func (it *memDBIterator) Domain() ([]byte, []byte) {
-	return it.start, it.end
+func (itr *memDBIterator) Domain() ([]byte, []byte) {
+	return itr.start, itr.end
 }
 
-func (it *memDBIterator) Valid() bool {
-	return 0 <= it.cur && it.cur < len(it.keys)
+func (itr *memDBIterator) Valid() bool {
+	return 0 <= itr.cur && itr.cur < len(itr.keys)
 }
 
-func (it *memDBIterator) Next() {
-	if !it.Valid() {
-		panic("memDBIterator Next() called when invalid")
+func (itr *memDBIterator) Next() {
+	itr.assertIsValid()
+	itr.cur++
+}
+
+func (itr *memDBIterator) Key() []byte {
+	itr.assertIsValid()
+	return []byte(itr.keys[itr.cur])
+}
+
+func (itr *memDBIterator) Value() []byte {
+	itr.assertIsValid()
+	key := []byte(itr.keys[itr.cur])
+	return itr.db.Get(key)
+}
+
+func (itr *memDBIterator) Close() {
+	itr.keys = nil
+	itr.db = nil
+}
+
+func (itr *memDBIterator) assertIsValid() {
+	if !itr.Valid() {
+		panic("memDBIterator is invalid")
 	}
-	it.cur++
-}
-
-func (it *memDBIterator) Prev() {
-	if !it.Valid() {
-		panic("memDBIterator Next() called when invalid")
-	}
-	it.cur--
-}
-
-func (it *memDBIterator) Key() []byte {
-	if !it.Valid() {
-		panic("memDBIterator Key() called when invalid")
-	}
-	return []byte(it.keys[it.cur])
-}
-
-func (it *memDBIterator) Value() []byte {
-	if !it.Valid() {
-		panic("memDBIterator Value() called when invalid")
-	}
-	return it.db.Get(it.Key())
-}
-
-func (it *memDBIterator) Close() {
-	it.db = nil
-	it.keys = nil
 }
