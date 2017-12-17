@@ -92,6 +92,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 		wr.Flush()
 		return b.Bytes(), nil
 	case <-time.After(1 * time.Minute):
+		wr.Flush()
 		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
@@ -141,13 +142,13 @@ type byteBufferWAL struct {
 	enc               *WALEncoder
 	stopped           bool
 	heightToStop      int64
-	signalWhenStopsTo chan struct{}
+	signalWhenStopsTo chan<- struct{}
 }
 
 // needed for determinism
 var fixedTime, _ = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
 
-func newByteBufferWAL(enc *WALEncoder, nBlocks int64, signalStop chan struct{}) *byteBufferWAL {
+func newByteBufferWAL(enc *WALEncoder, nBlocks int64, signalStop chan<- struct{}) *byteBufferWAL {
 	return &byteBufferWAL{
 		enc:               enc,
 		heightToStop:      nBlocks,
