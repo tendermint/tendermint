@@ -88,6 +88,9 @@ func SimpleHashFromHashables(items []Hashable) []byte {
 
 // Convenience for SimpleHashFromHashes.
 func SimpleHashFromMap(m map[string]interface{}) []byte {
-	kpPairsH := MakeSortedKVPairs(m)
-	return SimpleHashFromHashables(kpPairsH)
+	sm := NewSimpleMap()
+	for k, v := range m {
+		sm.Set(k, v)
+	}
+	return sm.Hash()
 }
