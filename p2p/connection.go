@@ -185,13 +185,19 @@ func (c *MConnection) OnStart() error {
 
 // OnStop implements BaseService
 func (c *MConnection) OnStop() {
+	c.Logger.Debug("MConn.OnStop")
 	c.BaseService.OnStop()
+	c.Logger.Debug("MConn.flushTimer.Stop")
 	c.flushTimer.Stop()
+	c.Logger.Debug("MConn.pingTimer.Stop")
 	c.pingTimer.Stop()
+	c.Logger.Debug("MConn.chStatsTimer.Stop")
 	c.chStatsTimer.Stop()
 	if c.quit != nil {
+		c.Logger.Debug("MConn: Close Quit")
 		close(c.quit)
 	}
+	c.Logger.Debug("MConn.conn.Close()")
 	c.conn.Close() // nolint: errcheck
 	// We can't close pong safely here because
 	// recvRoutine may write to it after we've stopped.

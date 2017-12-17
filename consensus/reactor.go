@@ -76,8 +76,11 @@ func (conR *ConsensusReactor) OnStart() error {
 
 // OnStop implements BaseService
 func (conR *ConsensusReactor) OnStop() {
+	conR.Logger.Debug("conR.OnStop")
 	conR.BaseReactor.OnStop()
+	conR.Logger.Debug("conR.OnStop: Stopping ConsensusState")
 	conR.conS.Stop()
+	conR.Logger.Debug("conR.OnStop: DONE")
 }
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
@@ -1197,6 +1200,8 @@ func (ps *PeerState) String() string {
 
 // StringIndented returns a string representation of the PeerState
 func (ps *PeerState) StringIndented(indent string) string {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
 	return fmt.Sprintf(`PeerState{
 %s  Key %v
 %s  PRS %v
