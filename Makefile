@@ -1,7 +1,7 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
-					github.com/alecthomas/gometalinter \
+					gopkg.in/alecthomas/gometalinter.v2 \
 					github.com/ckaznocha/protoc-gen-lint \
 					github.com/gogo/protobuf/protoc-gen-gogo \
 					github.com/gogo/protobuf/gogoproto
@@ -62,7 +62,7 @@ get_deps:
 
 ensure_tools:
 	go get -u -v $(GOTOOLS)
-	@gometalinter --install
+	@gometalinter.v2 --install
 
 get_vendor_deps: ensure_tools
 	@rm -rf vendor/
@@ -71,11 +71,11 @@ get_vendor_deps: ensure_tools
 
 metalinter:
 	protoc $(INCLUDE) --lint_out=. types/*.proto
-	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
+	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter_test:
-	protoc $(INCLUDE) --lint_out=. types/*.proto
-	gometalinter --vendor --deadline=600s --disable-all  \
+	#protoc $(INCLUDE) --lint_out=. types/*.proto
+	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
 		--enable=goconst \
