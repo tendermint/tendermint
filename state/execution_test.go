@@ -81,7 +81,7 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 
 		valHash := state.Validators.Hash()
 		block, _ := types.MakeBlock(2, chainID, makeTxs(2), state.LastBlockTotalTx, lastCommit,
-			prevBlockID, valHash, state.AppHash, testPartSize)
+			prevBlockID, valHash, state.AppHash, state.LastConsensusHash, testPartSize)
 
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), lastValidators)
 		require.Nil(t, err, tc.desc)
