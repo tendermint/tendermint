@@ -33,6 +33,8 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	app := dummy.NewPersistentDummyApplication(filepath.Join(config.DBDir(), "wal_generator"))
 
 	logger := log.TestingLogger().With("wal_generator", "wal_generator")
+	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)
+
 
 	/////////////////////////////////////////////////////////////////////////////
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
@@ -63,6 +65,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	if err := eventBus.Start(); err != nil {
 		return nil, errors.Wrap(err, "failed to start event bus")
 	}
+	defer eventBus.Stop()
 	mempool := types.MockMempool{}
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
 	consensusState.SetLogger(logger)
@@ -92,6 +95,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 		wr.Flush()
 		return b.Bytes(), nil
 	case <-time.After(1 * time.Minute):
+    wr.Flush()
 		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
@@ -141,14 +145,15 @@ type byteBufferWAL struct {
 	enc               *WALEncoder
 	stopped           bool
 	heightToStop      int64
-	signalWhenStopsTo chan struct{}
+	signalWhenStopsTo chan<- struct{}
+
 	logger            log.Logger
 }
 
 // needed for determinism
 var fixedTime, _ = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
 
-func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks int64, signalStop chan struct{}) *byteBufferWAL {
+func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks int64, signalStop chan<- struct{}) *byteBufferWAL {
 	return &byteBufferWAL{
 		enc:               enc,
 		heightToStop:      nBlocks,
