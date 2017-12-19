@@ -95,6 +95,4 @@ func TestThrottle(test *testing.T) {
 
 	stopped := t.Stop()
 	assert.True(stopped)
-	// extra calls to stop don't block
-	t.Stop()
 }
