@@ -65,9 +65,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 
 	err := cs.Start()
 	require.NoError(t, err)
-	defer func() {
-		cs.Stop()
-	}()
+	defer cs.Stop()
 
 	// This is just a signal that we haven't halted; its not something contained
 	// in the WAL itself. Assuming the consensus state is running, replay of any
@@ -337,6 +335,8 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	if err := wal.Start(); err != nil {
 		t.Fatal(err)
 	}
+	defer wal.Stop()
+
 	chain, commits, err := makeBlockchainFromWAL(wal)
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -366,6 +366,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
 	}
+	defer proxyApp.Stop()
 
 	// get the latest app hash from the app
 	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{""})
@@ -404,13 +405,13 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
 	}
+	defer proxyApp.Stop()
 
 	validators := types.TM2PB.Validators(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
 		panic(err)
 	}
 
-	defer proxyApp.Stop()
 	switch mode {
 	case 0:
 		for i := 0; i < nBlocks; i++ {
