@@ -80,7 +80,7 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 	abciResponses := NewABCIResponses(block)
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []*abci.KVPair{}}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []*abci.KVPair{}}
-	abciResponses.EndBlock = &abci.ResponseEndBlock{Changes: []*abci.Validator{
+	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorSetUpdates: []*abci.Validator{
 		{
 			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
 			Power:  10,
@@ -196,41 +196,41 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 	txGas, partSize int) types.ConsensusParams {
 
 	return types.ConsensusParams{
-		BlockSizeParams: types.BlockSizeParams{
+		BlockSize: types.BlockSize{
 			MaxBytes: blockBytes,
 			MaxTxs:   blockTx,
 			MaxGas:   blockGas,
 		},
-		TxSizeParams: types.TxSizeParams{
+		TxSize: types.TxSize{
 			MaxBytes: txBytes,
 			MaxGas:   txGas,
 		},
-		BlockGossipParams: types.BlockGossipParams{
+		BlockGossip: types.BlockGossip{
 			BlockPartSizeBytes: partSize,
 		},
 	}
 }
 
-func TestApplyChanges(t *testing.T) {
+func TestApplyUpdates(t *testing.T) {
 	initParams := makeParams(1, 2, 3, 4, 5, 6)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
-		changes  *abci.ConsensusParams
+		updates  *abci.ConsensusParams
 		expected types.ConsensusParams
 	}{
 		0: {initParams, nil, initParams},
 		1: {initParams, &abci.ConsensusParams{}, initParams},
 		2: {initParams,
 			&abci.ConsensusParams{
-				TxSizeParams: &abci.TxSizeParams{
+				TxSize: &abci.TxSize{
 					MaxBytes: 123,
 				},
 			},
 			makeParams(1, 2, 3, 123, 5, 6)},
 		3: {initParams,
 			&abci.ConsensusParams{
-				BlockSizeParams: &abci.BlockSizeParams{
+				BlockSize: &abci.BlockSize{
 					MaxTxs: 44,
 					MaxGas: 55,
 				},
@@ -238,13 +238,13 @@ func TestApplyChanges(t *testing.T) {
 			makeParams(1, 44, 55, 4, 5, 6)},
 		4: {initParams,
 			&abci.ConsensusParams{
-				BlockSizeParams: &abci.BlockSizeParams{
+				BlockSize: &abci.BlockSize{
 					MaxTxs: 789,
 				},
-				TxSizeParams: &abci.TxSizeParams{
+				TxSize: &abci.TxSize{
 					MaxGas: 888,
 				},
-				BlockGossipParams: &abci.BlockGossipParams{
+				BlockGossip: &abci.BlockGossip{
 					BlockPartSizeBytes: 2002,
 				},
 			},
@@ -252,7 +252,7 @@ func TestApplyChanges(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		res := applyChanges(tc.init, tc.changes)
+		res := applyUpdates(tc.init, tc.updates)
 		assert.Equal(t, tc.expected, res, "case %d", i)
 	}
 }
@@ -264,13 +264,13 @@ func makeHeaderPartsResponses(state *State, height int64,
 	_, val := state.Validators.GetByIndex(0)
 	abciResponses := &ABCIResponses{
 		Height:   height,
-		EndBlock: &abci.ResponseEndBlock{Changes: []*abci.Validator{}},
+		EndBlock: &abci.ResponseEndBlock{ValidatorSetUpdates: []*abci.Validator{}},
 	}
 
 	// if the pubkey is new, remove the old and add the new
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			Changes: []*abci.Validator{
+			ValidatorSetUpdates: []*abci.Validator{
 				{val.PubKey.Bytes(), 0},
 				{pubkey.Bytes(), 10},
 			},

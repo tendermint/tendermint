@@ -35,7 +35,6 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	logger := log.TestingLogger().With("wal_generator", "wal_generator")
 	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)
 
-
 	/////////////////////////////////////////////////////////////////////////////
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
 	// NOTE: we can't import node package because of circular dependency
@@ -95,7 +94,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 		wr.Flush()
 		return b.Bytes(), nil
 	case <-time.After(1 * time.Minute):
-    wr.Flush()
+		wr.Flush()
 		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
@@ -147,7 +146,7 @@ type byteBufferWAL struct {
 	heightToStop      int64
 	signalWhenStopsTo chan<- struct{}
 
-	logger            log.Logger
+	logger log.Logger
 }
 
 // needed for determinism

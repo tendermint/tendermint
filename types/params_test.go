@@ -10,8 +10,8 @@ import (
 
 func newConsensusParams(blockSize, partSize int) ConsensusParams {
 	return ConsensusParams{
-		BlockSizeParams:   BlockSizeParams{MaxBytes: blockSize},
-		BlockGossipParams: BlockGossipParams{BlockPartSizeBytes: partSize},
+		BlockSize:   BlockSize{MaxBytes: blockSize},
+		BlockGossip: BlockGossip{BlockPartSizeBytes: partSize},
 	}
 }
 
@@ -45,16 +45,16 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 	txGas, partSize int) ConsensusParams {
 
 	return ConsensusParams{
-		BlockSizeParams: BlockSizeParams{
+		BlockSize: BlockSize{
 			MaxBytes: blockBytes,
 			MaxTxs:   blockTx,
 			MaxGas:   blockGas,
 		},
-		TxSizeParams: TxSizeParams{
+		TxSize: TxSize{
 			MaxBytes: txBytes,
 			MaxGas:   txGas,
 		},
-		BlockGossipParams: BlockGossipParams{
+		BlockGossip: BlockGossip{
 			BlockPartSizeBytes: partSize,
 		},
 	}

@@ -111,11 +111,11 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 		return nil, err
 	}
 
-	valChanges := abciResponses.EndBlock.Changes
+	valSetUpdates := abciResponses.EndBlock.ValidatorSetUpdates
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
-	if len(valChanges) > 0 {
-		logger.Info("Update to validator set", "updates", abci.ValidatorsString(valChanges))
+	if len(valSetUpdates) > 0 {
+		logger.Info("Updates to validator set", "updates", abci.ValidatorsString(valSetUpdates))
 	}
 
 	return abciResponses, nil

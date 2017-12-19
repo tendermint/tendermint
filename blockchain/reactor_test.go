@@ -41,7 +41,7 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		firstBlock := makeBlock(blockHeight, state)
 		secondBlock := makeBlock(blockHeight+1, state)
-		firstParts := firstBlock.MakePartSet(state.Params.BlockGossipParams.BlockPartSizeBytes)
+		firstParts := firstBlock.MakePartSet(state.Params.BlockGossip.BlockPartSizeBytes)
 		blockStore.SaveBlock(firstBlock, firstParts, secondBlock.LastCommit)
 	}
 
@@ -113,7 +113,7 @@ func makeBlock(height int64, state *sm.State) *types.Block {
 		state.LastBlockTotalTx, new(types.Commit),
 		prevBlockID, valHash, state.AppHash,
 		state.LastConsensusHash,
-		state.Params.BlockGossipParams.BlockPartSizeBytes)
+		state.Params.BlockGossip.BlockPartSizeBytes)
 	return block
 }
 

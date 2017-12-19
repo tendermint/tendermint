@@ -22,30 +22,30 @@ The parameters are used to determine the validity of a block (and tx) via the un
 
 ```
 type ConsensusParams struct {
-    BlockSizeParams
-    TxSizeParams
-    BlockGossipParams
+    BlockSize
+    TxSize
+    BlockGossip
 }
 
-type BlockSizeParams struct {
+type BlockSize struct {
     MaxBytes int
     MaxTxs int
     MaxGas int
 }
 
-type TxSizeParams struct {
+type TxSize struct {
     MaxBytes int
     MaxGas int
 }
 
-type BlockGossipParams struct {
+type BlockGossip struct {
     BlockPartSizeBytes int
 }
 ```
 
 The `ConsensusParams` can evolve over time by adding new structs that cover different aspects of the consensus rules.
 
-The `BlockPartSizeBytes` and the `BlockSizeParams.MaxBytes` are enforced to be greater than 0. 
+The `BlockPartSizeBytes` and the `BlockSize.MaxBytes` are enforced to be greater than 0. 
 The former because we need a part size, the latter so that we always have at least some sanity check over the size of blocks.
 
 ### ABCI
@@ -58,7 +58,7 @@ like the BlockPartSize, that the app shouldn't really know about.
 
 #### EndBlock
 
-The EndBlock response includes a `ConsensusParams`, which includes BlockSizeParams and TxSizeParams, but not BlockGossipParams.
+The EndBlock response includes a `ConsensusParams`, which includes BlockSize and TxSize, but not BlockGossip.
 Other param struct can be added to `ConsensusParams` in the future.
 The `0` value is used to denote no change. 
 Any other value will update that parameter in the `State.ConsensusParams`, to be applied for the next block.
@@ -82,4 +82,5 @@ Proposed.
 
 ### Neutral
 
-- The TxSizeParams, which checks validity, may be in conflict with the config's `max_block_size_tx`, which determines proposal sizes
+- The TxSize, which checks validity, may be in conflict with the config's `max_block_size_tx`, which determines proposal sizes
+

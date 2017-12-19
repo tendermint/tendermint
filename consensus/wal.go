@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// must be greater than params.BlockGossipParams.BlockPartSizeBytes + a few bytes
+	// must be greater than params.BlockGossip.BlockPartSizeBytes + a few bytes
 	maxMsgSizeBytes = 1024 * 1024 // 1MB
 )
 

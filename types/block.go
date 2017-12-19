@@ -56,10 +56,10 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64,
 	lastBlockTime time.Time, appHash, consensusHash []byte) error {
 
 	if b.ChainID != chainID {
-		return errors.New(cmn.Fmt("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID))
+		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", chainID, b.ChainID)
 	}
 	if b.Height != lastBlockHeight+1 {
-		return errors.New(cmn.Fmt("Wrong Block.Header.Height. Expected %v, got %v", lastBlockHeight+1, b.Height))
+		return fmt.Errorf("Wrong Block.Header.Height. Expected %v, got %v", lastBlockHeight+1, b.Height)
 	}
 	/*	TODO: Determine bounds for Time
 		See blockchain/reactor "stopSyncingDurationMinutes"
@@ -70,16 +70,16 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64,
 	*/
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
-		return errors.New(cmn.Fmt("Wrong Block.Header.NumTxs. Expected %v, got %v", newTxs, b.NumTxs))
+		return fmt.Errorf("Wrong Block.Header.NumTxs. Expected %v, got %v", newTxs, b.NumTxs)
 	}
 	if b.TotalTxs != lastBlockTotalTx+newTxs {
-		return errors.New(cmn.Fmt("Wrong Block.Header.TotalTxs. Expected %v, got %v", lastBlockTotalTx+newTxs, b.TotalTxs))
+		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", lastBlockTotalTx+newTxs, b.TotalTxs)
 	}
 	if !b.LastBlockID.Equals(lastBlockID) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.LastBlockID.  Expected %v, got %v", lastBlockID, b.LastBlockID))
+		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", lastBlockID, b.LastBlockID)
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.LastCommitHash.  Expected %v, got %v", b.LastCommitHash, b.LastCommit.Hash()))
+		return fmt.Errorf("Wrong Block.Header.LastCommitHash.  Expected %v, got %v", b.LastCommitHash, b.LastCommit.Hash())
 	}
 	if b.Header.Height != 1 {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
@@ -87,13 +87,13 @@ func (b *Block) ValidateBasic(chainID string, lastBlockHeight int64,
 		}
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.DataHash.  Expected %v, got %v", b.DataHash, b.Data.Hash()))
+		return fmt.Errorf("Wrong Block.Header.DataHash.  Expected %v, got %v", b.DataHash, b.Data.Hash())
 	}
 	if !bytes.Equal(b.AppHash, appHash) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.AppHash.  Expected %X, got %v", appHash, b.AppHash))
+		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", appHash, b.AppHash)
 	}
 	if !bytes.Equal(b.ConsensusHash, consensusHash) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", consensusHash, b.ConsensusHash))
+		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", consensusHash, b.ConsensusHash)
 	}
 	// NOTE: the AppHash and ValidatorsHash are validated later.
 	return nil

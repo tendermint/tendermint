@@ -241,8 +241,8 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	nextValSet := prevValSet.Copy()
 
 	// update the validator set with the latest abciResponses
-	if len(abciResponses.EndBlock.Changes) > 0 {
-		err := updateValidators(nextValSet, abciResponses.EndBlock.Changes)
+	if len(abciResponses.EndBlock.ValidatorSetUpdates) > 0 {
+		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorSetUpdates)
 		if err != nil {
 			s.logger.Error("Error changing validator set", "err", err)
 			// TODO: err or carry on?
@@ -254,8 +254,8 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
 
-	nextParams := applyChanges(s.Params,
-		abciResponses.EndBlock.ConsensusParamChanges)
+	nextParams := applyUpdates(s.Params,
+		abciResponses.EndBlock.ConsensusParamUpdates)
 	err := nextParams.Validate()
 	if err != nil {
 		s.logger.Error("Error updating consensus params", "err", err)
@@ -272,10 +272,10 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 
 }
 
-// applyChanges returns new ConsensusParams
+// applyUpdates returns new ConsensusParams
 // whose fields are set to any non-zero fields of c.
 // If c is nil, it returns p unmodified, as it was passed in.
-func applyChanges(p types.ConsensusParams,
+func applyUpdates(p types.ConsensusParams,
 	c *abci.ConsensusParams) types.ConsensusParams {
 
 	if c == nil {
@@ -283,29 +283,29 @@ func applyChanges(p types.ConsensusParams,
 	}
 	res := p
 	// we must defensively consider any structs may be nil
-	if c.BlockSizeParams != nil {
+	if c.BlockSize != nil {
 
-		if c.BlockSizeParams.MaxBytes != 0 {
-			res.BlockSizeParams.MaxBytes = int(c.BlockSizeParams.MaxBytes)
+		if c.BlockSize.MaxBytes != 0 {
+			res.BlockSize.MaxBytes = int(c.BlockSize.MaxBytes)
 		}
-		if c.BlockSizeParams.MaxTxs != 0 {
-			res.BlockSizeParams.MaxTxs = int(c.BlockSizeParams.MaxTxs)
+		if c.BlockSize.MaxTxs != 0 {
+			res.BlockSize.MaxTxs = int(c.BlockSize.MaxTxs)
 		}
-		if c.BlockSizeParams.MaxGas != 0 {
-			res.BlockSizeParams.MaxGas = int(c.BlockSizeParams.MaxGas)
-		}
-	}
-	if c.TxSizeParams != nil {
-		if c.TxSizeParams.MaxBytes != 0 {
-			res.TxSizeParams.MaxBytes = int(c.TxSizeParams.MaxBytes)
-		}
-		if c.TxSizeParams.MaxGas != 0 {
-			res.TxSizeParams.MaxGas = int(c.TxSizeParams.MaxGas)
+		if c.BlockSize.MaxGas != 0 {
+			res.BlockSize.MaxGas = int(c.BlockSize.MaxGas)
 		}
 	}
-	if c.BlockGossipParams != nil {
-		if c.BlockGossipParams.BlockPartSizeBytes != 0 {
-			res.BlockGossipParams.BlockPartSizeBytes = int(c.BlockGossipParams.BlockPartSizeBytes)
+	if c.TxSize != nil {
+		if c.TxSize.MaxBytes != 0 {
+			res.TxSize.MaxBytes = int(c.TxSize.MaxBytes)
+		}
+		if c.TxSize.MaxGas != 0 {
+			res.TxSize.MaxGas = int(c.TxSize.MaxGas)
+		}
+	}
+	if c.BlockGossip != nil {
+		if c.BlockGossip.BlockPartSizeBytes != 0 {
+			res.BlockGossip.BlockPartSizeBytes = int(c.BlockGossip.BlockPartSizeBytes)
 		}
 	}
 	return res
