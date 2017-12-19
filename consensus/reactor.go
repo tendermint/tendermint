@@ -76,11 +76,8 @@ func (conR *ConsensusReactor) OnStart() error {
 
 // OnStop implements BaseService
 func (conR *ConsensusReactor) OnStop() {
-	conR.Logger.Debug("conR.OnStop")
 	conR.BaseReactor.OnStop()
-	conR.Logger.Debug("conR.OnStop: Stopping ConsensusState")
 	conR.conS.Stop()
-	conR.Logger.Debug("conR.OnStop: DONE")
 }
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
@@ -921,8 +918,6 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 		msg := &VoteMessage{vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
 		return ps.Peer.Send(VoteChannel, struct{ ConsensusMessage }{msg})
-	} else {
-		ps.logger.Debug("No vote message to send", "ps", ps)
 	}
 	return false
 }

@@ -210,23 +210,18 @@ func (sw *Switch) OnStart() error {
 // OnStop implements BaseService. It stops all listeners, peers, and reactors.
 func (sw *Switch) OnStop() {
 	// Stop listeners
-	sw.Logger.Debug("Switch: Stopping listeners")
 	for _, listener := range sw.listeners {
 		listener.Stop()
 	}
 	sw.listeners = nil
 	// Stop peers
-	sw.Logger.Debug("Switch: Stopping Peers")
-	for i, peer := range sw.peers.List() {
-		sw.Logger.Debug("Switch: Stopping peer", "i", i, "peer", peer)
+	for _, peer := range sw.peers.List() {
 		peer.Stop()
-		sw.Logger.Debug("Switch: Removing peer", "i", i, "peer", peer)
 		sw.peers.Remove(peer)
 	}
 	// Stop reactors
 	sw.Logger.Debug("Switch: Stopping reactors")
-	for name, reactor := range sw.reactors {
-		sw.Logger.Debug("Switch: Stopping reactor", "name", name)
+	for _, reactor := range sw.reactors {
 		reactor.Stop()
 	}
 }

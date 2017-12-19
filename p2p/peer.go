@@ -237,9 +237,7 @@ func (p *peer) OnStart() error {
 
 // OnStop implements BaseService.
 func (p *peer) OnStop() {
-	p.Logger.Debug("Peer.OnStop")
 	p.BaseService.OnStop()
-	p.Logger.Debug("Peer.mconn.Stop")
 	p.mconn.Stop()
 }
 
