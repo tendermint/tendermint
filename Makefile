@@ -28,6 +28,9 @@ protoc:
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
 	protoc $(INCLUDE) --gogo_out=plugins=grpc:. --lint_out=. types/*.proto
+	@echo "--> adding nolint declarations to protobuf generated files"
+	@awk '/package types/ { print "//nolint: gas"; print; next }1' types/types.pb.go > types/types.pb.go.new
+	@mv types/types.pb.go.new types/types.pb.go
 
 install:
 	@ go install ./cmd/...

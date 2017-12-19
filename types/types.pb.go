@@ -40,6 +40,7 @@ It has these top-level messages:
 	Evidence
 	KVPair
 */
+//nolint: gas
 package types
 
 import proto "github.com/gogo/protobuf/proto"
