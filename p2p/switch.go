@@ -220,6 +220,7 @@ func (sw *Switch) OnStop() {
 		sw.peers.Remove(peer)
 	}
 	// Stop reactors
+	sw.Logger.Debug("Switch: Stopping reactors")
 	for _, reactor := range sw.reactors {
 		reactor.Stop()
 	}

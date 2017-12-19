@@ -264,8 +264,8 @@ func (r *PEXReactor) ensurePeers() {
 		if dialling := r.Switch.IsDialing(try); dialling {
 			continue
 		}
-		// XXX: does this work ?!
-		if connected := r.Switch.Peers().Has(try.IP.String()); connected {
+		// XXX: Should probably use pubkey as peer key ...
+		if connected := r.Switch.Peers().Has(try.String()); connected {
 			continue
 		}
 		r.Logger.Info("Will dial address", "addr", try)

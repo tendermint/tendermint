@@ -389,7 +389,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
 	config := DefaultConsensusConfig()
-	config.TimeoutPropose = 2000
+	config.TimeoutPropose = 100
 	config.TimeoutProposeDelta = 1
 	config.TimeoutPrevote = 10
 	config.TimeoutPrevoteDelta = 1

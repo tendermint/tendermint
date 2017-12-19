@@ -35,6 +35,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	logger := log.TestingLogger().With("wal_generator", "wal_generator")
 	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)
 
+
 	/////////////////////////////////////////////////////////////////////////////
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
 	// NOTE: we can't import node package because of circular dependency
@@ -79,7 +80,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	var b bytes.Buffer
 	wr := bufio.NewWriter(&b)
 	numBlocksWritten := make(chan struct{})
-	wal := newByteBufferWAL(NewWALEncoder(wr), int64(numBlocks), numBlocksWritten)
+	wal := newByteBufferWAL(logger, NewWALEncoder(wr), int64(numBlocks), numBlocksWritten)
 	// see wal.go#103
 	wal.Save(EndHeightMessage{0})
 	consensusState.wal = wal
@@ -94,7 +95,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 		wr.Flush()
 		return b.Bytes(), nil
 	case <-time.After(1 * time.Minute):
-		wr.Flush()
+    wr.Flush()
 		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
@@ -145,16 +146,19 @@ type byteBufferWAL struct {
 	stopped           bool
 	heightToStop      int64
 	signalWhenStopsTo chan<- struct{}
+
+	logger            log.Logger
 }
 
 // needed for determinism
 var fixedTime, _ = time.Parse(time.RFC3339, "2017-01-02T15:04:05Z")
 
-func newByteBufferWAL(enc *WALEncoder, nBlocks int64, signalStop chan<- struct{}) *byteBufferWAL {
+func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks int64, signalStop chan<- struct{}) *byteBufferWAL {
 	return &byteBufferWAL{
 		enc:               enc,
 		heightToStop:      nBlocks,
 		signalWhenStopsTo: signalStop,
+		logger:            logger,
 	}
 }
 
@@ -163,17 +167,21 @@ func newByteBufferWAL(enc *WALEncoder, nBlocks int64, signalStop chan<- struct{}
 // skip writing.
 func (w *byteBufferWAL) Save(m WALMessage) {
 	if w.stopped {
+		w.logger.Debug("WAL already stopped. Not writing message", "msg", m)
 		return
 	}
 
 	if endMsg, ok := m.(EndHeightMessage); ok {
+		w.logger.Debug("WAL write end height message", "height", endMsg.Height, "stopHeight", w.heightToStop)
 		if endMsg.Height == w.heightToStop {
+			w.logger.Debug("Stopping WAL at height", "height", endMsg.Height)
 			w.signalWhenStopsTo <- struct{}{}
 			w.stopped = true
 			return
 		}
 	}
 
+	w.logger.Debug("WAL Write Message", "msg", m)
 	err := w.enc.Encode(&TimedWALMessage{fixedTime, m})
 	if err != nil {
 		panic(fmt.Sprintf("failed to encode the msg %v", m))

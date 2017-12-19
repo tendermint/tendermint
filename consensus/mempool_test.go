@@ -104,8 +104,8 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	go deliverTxsRange(cs, 0, NTxs)
 
 	startTestRound(cs, height, round)
-	ticker := time.NewTicker(time.Second * 20)
 	for nTxs := 0; nTxs < NTxs; {
+		ticker := time.NewTicker(time.Second * 30)
 		select {
 		case b := <-newBlockCh:
 			evt := b.(types.TMEventData).Unwrap().(types.EventDataNewBlock)
