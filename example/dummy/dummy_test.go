@@ -188,7 +188,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 	resEndBlock := dummy.EndBlock(types.RequestEndBlock{header.Height})
 	dummy.Commit()
 
-	valsEqual(t, diff, resEndBlock.Updates)
+	valsEqual(t, diff, resEndBlock.ValidatorSetUpdates)
 
 }
 

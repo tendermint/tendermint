@@ -157,7 +157,7 @@ message ResponseBeginBlock{
 }
 
 message ResponseEndBlock{
-  repeated Validator updates = 1;
+  repeated Validator validator_set_updates = 1;
   ConsensusParams consensus_param_updates = 2;
 }
 
