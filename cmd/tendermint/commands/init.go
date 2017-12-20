@@ -1,8 +1,6 @@
 package commands
 
 import (
-	"os"
-
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/types"
@@ -18,28 +16,29 @@ var InitFilesCmd = &cobra.Command{
 
 func initFiles(cmd *cobra.Command, args []string) {
 	privValFile := config.PrivValidatorFile()
-	if _, err := os.Stat(privValFile); os.IsNotExist(err) {
-		privValidator := types.GenPrivValidatorFS(privValFile)
-		privValidator.Save()
-
-		genFile := config.GenesisFile()
-
-		if _, err := os.Stat(genFile); os.IsNotExist(err) {
-			genDoc := types.GenesisDoc{
-				ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
-			}
-			genDoc.Validators = []types.GenesisValidator{{
-				PubKey: privValidator.GetPubKey(),
-				Power:  10,
-			}}
-
-			if err := genDoc.SaveAs(genFile); err != nil {
-				panic(err)
-			}
-		}
-
-		logger.Info("Initialized tendermint", "genesis", config.GenesisFile(), "priv_validator", config.PrivValidatorFile())
-	} else {
+	privValidator := types.GenPrivValidatorFS(privValFile)
+	if cmn.FileExists(privValFile) {
 		logger.Info("Already initialized", "priv_validator", config.PrivValidatorFile())
+	} else {
+		privValidator.Save()
+		logger.Info("Initialized tendermint", "privValidator")
+	}
+
+	genFile := config.GenesisFile()
+	if cmn.FileExists(genFile) {
+		logger.Info("Already initialized", "geneisis", genFile)
+	} else {
+		genDoc := types.GenesisDoc{
+			ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
+		}
+		genDoc.Validators = []types.GenesisValidator{{
+			PubKey: privValidator.GetPubKey(),
+			Power:  10,
+		}}
+
+		if err := genDoc.SaveAs(genFile); err != nil {
+			panic(err)
+		}
+		logger.Info("Initialized tendermint", "genesis", genFile)
 	}
 }
