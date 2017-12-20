@@ -16,12 +16,14 @@ var InitFilesCmd = &cobra.Command{
 
 func initFiles(cmd *cobra.Command, args []string) {
 	privValFile := config.PrivValidatorFile()
-	privValidator := types.GenPrivValidatorFS(privValFile)
+	var privValidator *types.PrivValidatorFS
 	if cmn.FileExists(privValFile) {
-		logger.Info("Already initialized", "priv_validator", config.PrivValidatorFile())
+		privValidator = types.LoadPrivValidatorFS(privValFile)
+		logger.Info("Already initialized", "priv_validator", privValFile)
 	} else {
+		privValidator = types.GenPrivValidatorFS(privValFile)
 		privValidator.Save()
-		logger.Info("Initialized tendermint", "privValidator")
+		logger.Info("Initialized tendermint", "privValidator", privValFile)
 	}
 
 	genFile := config.GenesisFile()
