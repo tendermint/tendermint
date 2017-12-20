@@ -1,7 +1,8 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
-					github.com/alecthomas/gometalinter \
+					gopkg.in/alecthomas/gometalinter.v2 \
+					github.com/ckaznocha/protoc-gen-lint \
 					github.com/gogo/protobuf/protoc-gen-gogo \
 					github.com/gogo/protobuf/gogoproto
 
@@ -27,6 +28,9 @@ protoc:
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
 	protoc $(INCLUDE) --gogo_out=plugins=grpc:. types/*.proto
+	@ echo "--> adding nolint declarations to protobuf generated files"
+	@ awk '/package types/ { print "//nolint: gas"; print; next }1' types/types.pb.go > types/types.pb.go.new
+	@ mv types/types.pb.go.new types/types.pb.go
 
 install:
 	@ go install ./cmd/...
@@ -59,19 +63,20 @@ get_deps:
 
 ensure_tools:
 	go get -u -v $(GOTOOLS)
-	@ gometalinter --install
+	@ gometalinter.v2 --install
 
 get_vendor_deps: ensure_tools
-	@rm -rf vendor/
-	@echo "--> Running glide install"
+	@ rm -rf vendor/
+	@ echo "--> Running glide install"
 	@ glide install
 
 metalinter_all:
-	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
+	protoc $(INCLUDE) --lint_out=. types/*.proto
+	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 metalinter:
-	@ echo "==> Running linter"
-	gometalinter --vendor --deadline=600s --disable-all  \
+  @ echo "==> Running linter"
+	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
 		--enable=goconst \
@@ -80,12 +85,12 @@ metalinter:
 	 	--enable=ineffassign \
 		--enable=megacheck \
 	 	--enable=misspell \
-	   	--enable=staticcheck \
+	  --enable=staticcheck \
 		--enable=safesql \
-	   	--enable=structcheck \
-	   	--enable=unconvert \
+	  --enable=structcheck \
+	  --enable=unconvert \
 		--enable=unused \
-	   	--enable=varcheck \
+	  --enable=varcheck \
 		--enable=vetshadow \
 		./...
 
@@ -95,8 +100,8 @@ metalinter:
 		#--enable=gocyclo \
 		#--enable=golint \ <== comments on anything exported
 		#--enable=gotype \
-	   	#--enable=interfacer \
-	   	#--enable=unparam \
+	  #--enable=interfacer \
+	  #--enable=unparam \
 		#--enable=vet \
 
 build-docker:
