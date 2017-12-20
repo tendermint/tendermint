@@ -2,13 +2,12 @@ GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
 					gopkg.in/alecthomas/gometalinter.v2 \
-					github.com/ckaznocha/protoc-gen-lint \
 					github.com/gogo/protobuf/protoc-gen-gogo \
 					github.com/gogo/protobuf/gogoproto
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
-all: install test
+all: protoc install test metalinter
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 
@@ -27,10 +26,10 @@ protoc:
 	## On "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	##   ldconfig (may require sudo)
 	## https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) --gogo_out=plugins=grpc:. --lint_out=. types/*.proto
-	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk '/package types/ { print "//nolint: gas"; print; next }1' types/types.pb.go > types/types.pb.go.new
-	@mv types/types.pb.go.new types/types.pb.go
+	protoc $(INCLUDE) --gogo_out=plugins=grpc:. types/*.proto
+	@ echo "--> adding nolint declarations to protobuf generated files"
+	@ awk '/package types/ { print "//nolint: gas"; print; next }1' types/types.pb.go > types/types.pb.go.new
+	@ mv types/types.pb.go.new types/types.pb.go
 
 install:
 	@ go install ./cmd/...
@@ -44,15 +43,13 @@ dist:
 
 test:
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
-	@ echo "==> Running linter"
-	@ make metalinter_test
 	@ echo "==> Running go test"
 	@ go test $(PACKAGES)
 
 test_race:
 	@ find . -path ./vendor -prune -o -name "*.sock" -exec rm {} \;
 	@ echo "==> Running go test --race"
-	@go test -v -race $(PACKAGES)
+	@ go test -v -race $(PACKAGES)
 
 test_integrations:
 	@ bash test.sh
@@ -65,34 +62,34 @@ get_deps:
 
 ensure_tools:
 	go get -u -v $(GOTOOLS)
-	@gometalinter.v2 --install
+	@ gometalinter.v2 --install
 
 get_vendor_deps: ensure_tools
-	@rm -rf vendor/
-	@echo "--> Running glide install"
+	@ rm -rf vendor/
+	@ echo "--> Running glide install"
 	@ glide install
 
-metalinter:
+metalinter_all:
 	protoc $(INCLUDE) --lint_out=. types/*.proto
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test:
-	#protoc $(INCLUDE) --lint_out=. types/*.proto
+metalinter:
+	@ echo "==> Running linter"
 	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
 		--enable=goconst \
 		--enable=goimports \
 		--enable=gosimple \
-	 	--enable=ineffassign \
+		--enable=ineffassign \
 		--enable=megacheck \
-	 	--enable=misspell \
-	   	--enable=staticcheck \
+		--enable=misspell \
+		--enable=staticcheck \
 		--enable=safesql \
-	   	--enable=structcheck \
-	   	--enable=unconvert \
+		--enable=structcheck \
+		--enable=unconvert \
 		--enable=unused \
-	   	--enable=varcheck \
+		--enable=varcheck \
 		--enable=vetshadow \
 		./...
 
@@ -102,8 +99,8 @@ metalinter_test:
 		#--enable=gocyclo \
 		#--enable=golint \ <== comments on anything exported
 		#--enable=gotype \
-	   	#--enable=interfacer \
-	   	#--enable=unparam \
+		#--enable=interfacer \
+		#--enable=unparam \
 		#--enable=vet \
 
 build-docker:
