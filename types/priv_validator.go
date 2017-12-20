@@ -193,8 +193,8 @@ func (privVal *PrivValidatorFS) Reset() {
 	privVal.Save()
 }
 
-// SignVote signs a canonical representation of the vote, along with the chainID.
-// Implements PrivValidator.
+// SignVote signs a canonical representation of the vote, along with the
+// chainID. Implements PrivValidator.
 func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
@@ -206,8 +206,8 @@ func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
 	return nil
 }
 
-// SignProposal signs a canonical representation of the proposal, along with the chainID.
-// Implements PrivValidator.
+// SignProposal signs a canonical representation of the proposal, along with
+// the chainID. Implements PrivValidator.
 func (privVal *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
@@ -219,40 +219,36 @@ func (privVal *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal)
 	return nil
 }
 
-// signBytesHRS signs the given signBytes if the height/round/step (HRS)
-// are greater than the latest state. If the HRS are equal,
-// it returns the privValidator.LastSignature.
+// signBytesHRS signs the given signBytes if the height/round/step (HRS) are
+// greater than the latest state. If the HRS are equal, it returns the
+// privValidator.LastSignature.
 func (privVal *PrivValidatorFS) signBytesHRS(height int64, round int, step int8, signBytes []byte) (crypto.Signature, error) {
-
 	sig := crypto.Signature{}
-	// If height regression, err
+
 	if privVal.LastHeight > height {
 		return sig, errors.New("Height regression")
 	}
-	// More cases for when the height matches
+
 	if privVal.LastHeight == height {
-		// If round regression, err
 		if privVal.LastRound > round {
 			return sig, errors.New("Round regression")
 		}
-		// If step regression, err
+
 		if privVal.LastRound == round {
 			if privVal.LastStep > step {
 				return sig, errors.New("Step regression")
 			} else if privVal.LastStep == step {
 				if privVal.LastSignBytes != nil {
 					if privVal.LastSignature.Empty() {
-						cmn.PanicSanity("privVal: LastSignature is nil but LastSignBytes is not!")
+						panic("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
-					// so we dont sign a conflicting vote or proposal
-					// NOTE: proposals are non-deterministic (include time),
-					// so we can actually lose them, but will still never sign conflicting ones
-					if bytes.Equal(privVal.LastSignBytes, signBytes) {
-						// log.Notice("Using privVal.LastSignature", "sig", privVal.LastSignature)
-						return privVal.LastSignature, nil
-					}
+					// NOTE: we might crash between writing the priv val and writing to
+					// wal. since we have time in votes and proposals, signBytes can be
+					// different from LastSignBytes. we might be signing conflicting
+					// bytes here.
+					return privVal.LastSignature, nil
 				}
-				return sig, errors.New("Step regression")
+				return sig, errors.New("No LastSignature found")
 			}
 		}
 	}
