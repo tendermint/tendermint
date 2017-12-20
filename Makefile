@@ -2,7 +2,6 @@ GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
 					gopkg.in/alecthomas/gometalinter.v2 \
-					github.com/ckaznocha/protoc-gen-lint \
 					github.com/gogo/protobuf/protoc-gen-gogo \
 					github.com/gogo/protobuf/gogoproto
 
@@ -74,7 +73,7 @@ metalinter_all:
 	protoc $(INCLUDE) --lint_out=. types/*.proto
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter_test:
+metalinter:
 	@ echo "==> Running linter"
 	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
