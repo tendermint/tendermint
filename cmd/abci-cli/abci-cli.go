@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -169,7 +168,7 @@ var consoleCmd = &cobra.Command{
 	Short:     "Start an interactive abci console for multiple commands",
 	Long:      "",
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"batch", "echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdConsole(cmd, args)
 	},
@@ -348,6 +347,7 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 func cmdBatch(cmd *cobra.Command, args []string) error {
 	bufReader := bufio.NewReader(os.Stdin)
 	for {
+
 		line, more, err := bufReader.ReadLine()
 		if more {
 			return errors.New("Input line is too long")
@@ -359,18 +359,16 @@ func cmdBatch(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
-		if err != nil {
+		cmdArgs := persistentArgs(line)
+		if err := muxOnCommands(cmd, cmdArgs); err != nil {
 			return err
 		}
-		fmt.Println(string(out))
+		fmt.Println()
 	}
 	return nil
 }
 
 func cmdConsole(cmd *cobra.Command, args []string) error {
-
 	for {
 		fmt.Printf("> ")
 		bufReader := bufio.NewReader(os.Stdin)
@@ -382,18 +380,96 @@ func cmdConsole(cmd *cobra.Command, args []string) error {
 		}
 
 		pArgs := persistentArgs(line)
-		out, err := exec.Command(pArgs[0], pArgs[1:]...).Output() // nolint: gas
-		if err != nil {
+		if err := muxOnCommands(cmd, pArgs); err != nil {
 			return err
 		}
-		fmt.Println(string(out))
 	}
+	return nil
+}
+
+func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
+	if len(pArgs) < 2 {
+		return errors.New("expecting persistent args of the form: abci-cli [command] <...>")
+	}
+
+	// TODO: this parsing is fragile
+	args := []string{}
+	for i := 0; i < len(pArgs); i++ {
+		arg := pArgs[i]
+
+		// check for flags
+		if strings.HasPrefix(arg, "-") {
+			// if it has an equal, we can just skip
+			if strings.Contains(arg, "=") {
+				continue
+			}
+			// if its a boolean, we can just skip
+			_, err := cmd.Flags().GetBool(strings.TrimLeft(arg, "-"))
+			if err == nil {
+				continue
+			}
+
+			// otherwise, we need to skip the next one too
+			i += 1
+			continue
+		}
+
+		// append the actual arg
+		args = append(args, arg)
+	}
+	var subCommand string
+	var actualArgs []string
+	if len(args) > 1 {
+		subCommand = args[1]
+	}
+	if len(args) > 2 {
+		actualArgs = args[2:]
+	}
+	cmd.Use = subCommand // for later print statements ...
+
+	switch strings.ToLower(subCommand) {
+	case "check_tx":
+		return cmdCheckTx(cmd, actualArgs)
+	case "commit":
+		return cmdCommit(cmd, actualArgs)
+	case "deliver_tx":
+		return cmdDeliverTx(cmd, actualArgs)
+	case "echo":
+		return cmdEcho(cmd, actualArgs)
+	case "info":
+		return cmdInfo(cmd, actualArgs)
+	case "query":
+		return cmdQuery(cmd, actualArgs)
+	case "set_option":
+		return cmdSetOption(cmd, actualArgs)
+	default:
+		return cmdUnimplemented(cmd, pArgs)
+	}
+}
+
+func cmdUnimplemented(cmd *cobra.Command, args []string) error {
+	// TODO: Print out all the sub-commands available
+	msg := "unimplemented command"
+	if err := cmd.Help(); err != nil {
+		msg = err.Error()
+	}
+	if len(args) > 0 {
+		msg += fmt.Sprintf(" args: [%s]", strings.Join(args, " "))
+	}
+	printResponse(cmd, args, response{
+		Code: codeBad,
+		Log:  msg,
+	})
 	return nil
 }
 
 // Have the application echo a message
 func cmdEcho(cmd *cobra.Command, args []string) error {
-	res, err := client.EchoSync(args[0])
+	msg := ""
+	if len(args) > 0 {
+		msg = args[0]
+	}
+	res, err := client.EchoSync(msg)
 	if err != nil {
 		return err
 	}
@@ -419,8 +495,18 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+const codeBad uint32 = 10
+
 // Set an option on the application
 func cmdSetOption(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want at least arguments of the form: <key> <value>",
+		})
+		return nil
+	}
+
 	key, val := args[0], args[1]
 	res, err := client.SetOptionSync(types.RequestSetOption{key, val})
 	if err != nil {
@@ -435,6 +521,13 @@ func cmdSetOption(cmd *cobra.Command, args []string) error {
 
 // Append a new tx to application
 func cmdDeliverTx(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want the tx",
+		})
+		return nil
+	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
@@ -453,6 +546,13 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 
 // Validate a tx
 func cmdCheckTx(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want the tx",
+		})
+		return nil
+	}
 	txBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err
@@ -485,6 +585,13 @@ func cmdCommit(cmd *cobra.Command, args []string) error {
 
 // Query application state
 func cmdQuery(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Log:  "want the query",
+		})
+		return nil
+	}
 	queryBytes, err := stringOrHexToBytes(args[0])
 	if err != nil {
 		return err

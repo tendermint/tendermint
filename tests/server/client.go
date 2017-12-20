@@ -46,7 +46,7 @@ func Commit(client abcicli.Client, hashExp []byte) error {
 	_, data := res.Code, res.Data
 	if err != nil {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("committing %v\nlog: %v\n", data, res.GetLog())
+		fmt.Printf("committing %v\nlog: %v\n", res.GetLog(), err)
 		return err
 	}
 	if !bytes.Equal(data, hashExp) {
