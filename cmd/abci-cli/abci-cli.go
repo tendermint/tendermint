@@ -168,7 +168,7 @@ var consoleCmd = &cobra.Command{
 	Short:     "Start an interactive abci console for multiple commands",
 	Long:      "",
 	Args:      cobra.ExactArgs(0),
-	ValidArgs: []string{"batch", "echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
+	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdConsole(cmd, args)
 	},
@@ -391,11 +391,43 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 	if len(pArgs) < 2 {
 		return errors.New("expecting persistent args of the form: abci-cli [command] <...>")
 	}
-	subCommand, actualArgs := pArgs[1], pArgs[2:]
+
+	// TODO: this parsing is fragile
+	args := []string{}
+	for i := 0; i < len(pArgs); i++ {
+		arg := pArgs[i]
+
+		// check for flags
+		if strings.HasPrefix(arg, "-") {
+			// if it has an equal, we can just skip
+			if strings.Contains(arg, "=") {
+				continue
+			}
+			// if its a boolean, we can just skip
+			_, err := cmd.Flags().GetBool(strings.TrimLeft(arg, "-"))
+			if err == nil {
+				continue
+			}
+
+			// otherwise, we need to skip the next one too
+			i += 1
+			continue
+		}
+
+		// append the actual arg
+		args = append(args, arg)
+	}
+	var subCommand string
+	var actualArgs []string
+	if len(args) > 1 {
+		subCommand = args[1]
+	}
+	if len(args) > 2 {
+		actualArgs = args[2:]
+	}
+	cmd.Use = subCommand // for later print statements ...
 
 	switch strings.ToLower(subCommand) {
-	case "batch":
-		return muxOnCommands(cmd, actualArgs)
 	case "check_tx":
 		return cmdCheckTx(cmd, actualArgs)
 	case "commit":
