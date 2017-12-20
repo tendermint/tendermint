@@ -28,7 +28,7 @@ type PersistentDummyApplication struct {
 	app *DummyApplication
 
 	// validator set
-	valSetUpdates []*types.Validator
+	ValUpdates []*types.Validator
 
 	logger log.Logger
 }
@@ -71,7 +71,7 @@ func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.ResponseDelive
 	// format is "val:pubkey/power"
 	if isValidatorTx(tx) {
 		// update validators in the merkle tree
-		// and in app.valSetUpdates
+		// and in app.ValUpdates
 		return app.execValidatorTx(tx)
 	}
 
@@ -119,13 +119,13 @@ func (app *PersistentDummyApplication) InitChain(req types.RequestInitChain) typ
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
-	app.valSetUpdates = make([]*types.Validator, 0)
+	app.ValUpdates = make([]*types.Validator, 0)
 	return types.ResponseBeginBlock{}
 }
 
 // Update the validator set
 func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-	return types.ResponseEndBlock{ValidatorSetUpdates: app.valSetUpdates}
+	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
 //---------------------------------------------
@@ -216,7 +216,7 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 	}
 
 	// we only update the changes array if we successfully updated the tree
-	app.valSetUpdates = append(app.valSetUpdates, v)
+	app.ValUpdates = append(app.ValUpdates, v)
 
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
 }

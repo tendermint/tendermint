@@ -3,7 +3,7 @@
 ## 0.9.0 (TBD)
 
 BREAKING CHANGES:
- - [types] ResponseEndBlock: renamed Diffs field to ValidatorSetUpdates
+ - [types] ResponseEndBlock: renamed Diffs field to ValidatorUpdates
 
 FEATURES:
  - [types] ResponseEndBlock: added ConsensusParamUpdates
