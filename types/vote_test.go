@@ -32,6 +32,29 @@ func exampleVote() *Vote {
 	}
 }
 
+func examplePrevote() *Vote {
+	var stamp, err = time.Parse(timeFormat, "2017-12-25T03:00:01.234Z")
+	if err != nil {
+		panic(err)
+	}
+
+	return &Vote{
+		ValidatorAddress: []byte("addr"),
+		ValidatorIndex:   56789,
+		Height:           12345,
+		Round:            2,
+		Timestamp:        stamp,
+		Type:             byte(1),
+		BlockID: BlockID{
+			Hash: []byte("hash"),
+			PartsHeader: PartSetHeader{
+				Total: 1000000,
+				Hash:  []byte("parts_hash"),
+			},
+		},
+	}
+}
+
 func TestVoteSignable(t *testing.T) {
 	vote := exampleVote()
 	signBytes := SignBytes("test_chain_id", vote)
@@ -45,10 +68,22 @@ func TestVoteSignable(t *testing.T) {
 }
 
 func TestVoteString(t *testing.T) {
-	str := exampleVote().String()
-	expected := `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`
-	if str != expected {
-		t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
+	tc := []struct {
+		name string
+		in   string
+		out  string
+	}{
+		{"Precommit", exampleVote().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
+		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.name, func(st *testing.T) {
+			if tt.in != tt.out {
+				t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", tt.in, tt.out)
+			}
+		})
 	}
 }
 
