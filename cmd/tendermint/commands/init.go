@@ -15,20 +15,22 @@ var InitFilesCmd = &cobra.Command{
 }
 
 func initFiles(cmd *cobra.Command, args []string) {
+	// private validator
 	privValFile := config.PrivValidatorFile()
 	var privValidator *types.PrivValidatorFS
 	if cmn.FileExists(privValFile) {
 		privValidator = types.LoadPrivValidatorFS(privValFile)
-		logger.Info("Already initialized", "priv_validator", privValFile)
+		logger.Info("Found private validator", "path", privValFile)
 	} else {
 		privValidator = types.GenPrivValidatorFS(privValFile)
 		privValidator.Save()
-		logger.Info("Initialized tendermint", "privValidator", privValFile)
+		logger.Info("Genetated private validator", "path", privValFile)
 	}
 
+	// genesis file
 	genFile := config.GenesisFile()
 	if cmn.FileExists(genFile) {
-		logger.Info("Already initialized", "geneisis", genFile)
+		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
 			ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
@@ -41,6 +43,6 @@ func initFiles(cmd *cobra.Command, args []string) {
 		if err := genDoc.SaveAs(genFile); err != nil {
 			panic(err)
 		}
-		logger.Info("Initialized tendermint", "genesis", genFile)
+		logger.Info("Genetated genesis file", "path", genFile)
 	}
 }
