@@ -4,6 +4,7 @@
 
 BREAKING CHANGES:
  - [types] ResponseEndBlock: renamed Diffs field to ValidatorUpdates
+ - [types] changed protobuf field indices for Request and Response oneof types
 
 FEATURES:
  - [types] ResponseEndBlock: added ConsensusParamUpdates
