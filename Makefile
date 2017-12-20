@@ -74,23 +74,23 @@ metalinter_all:
 	protoc $(INCLUDE) --lint_out=. types/*.proto
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
-metalinter:
-  @ echo "==> Running linter"
+metalinter_test:
+	@ echo "==> Running linter"
 	gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=maligned \
 		--enable=deadcode \
 		--enable=goconst \
 		--enable=goimports \
 		--enable=gosimple \
-	 	--enable=ineffassign \
+		--enable=ineffassign \
 		--enable=megacheck \
-	 	--enable=misspell \
-	  --enable=staticcheck \
+		--enable=misspell \
+		--enable=staticcheck \
 		--enable=safesql \
-	  --enable=structcheck \
-	  --enable=unconvert \
+		--enable=structcheck \
+		--enable=unconvert \
 		--enable=unused \
-	  --enable=varcheck \
+		--enable=varcheck \
 		--enable=vetshadow \
 		./...
 
@@ -100,8 +100,8 @@ metalinter:
 		#--enable=gocyclo \
 		#--enable=golint \ <== comments on anything exported
 		#--enable=gotype \
-	  #--enable=interfacer \
-	  #--enable=unparam \
+		#--enable=interfacer \
+		#--enable=unparam \
 		#--enable=vet \
 
 build-docker:
