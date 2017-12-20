@@ -199,12 +199,12 @@ func newCLevelDBIterator(source *levigo.Iterator, start, end []byte, isReverse b
 	}
 }
 
-func (itr *cLevelDBIterator) Domain() ([]byte, []byte) {
+func (itr cLevelDBIterator) Domain() ([]byte, []byte) {
 	return itr.start, itr.end
 }
 
-func (itr *cLevelDBIterator) Valid() bool {
-
+func (itr cLevelDBIterator) Valid() bool {
+  
 	// Once invalid, forever invalid.
 	if itr.isInvalid {
 		return false
@@ -227,33 +227,33 @@ func (itr *cLevelDBIterator) Valid() bool {
 		return false
 	}
 
-	// Valid
+	// It's valid.
 	return true
 }
 
-func (itr *cLevelDBIterator) Key() []byte {
+func (itr cLevelDBIterator) Key() []byte {
 	itr.assertNoError()
 	itr.assertIsValid()
 	return itr.source.Key()
 }
 
-func (itr *cLevelDBIterator) Value() []byte {
+func (itr cLevelDBIterator) Value() []byte {
 	itr.assertNoError()
 	itr.assertIsValid()
 	return itr.source.Value()
 }
 
-func (itr *cLevelDBIterator) Next() {
+func (itr cLevelDBIterator) Next() {
 	itr.assertNoError()
 	itr.assertIsValid()
 	itr.source.Next()
 }
 
-func (itr *cLevelDBIterator) Close() {
+func (itr cLevelDBIterator) Close() {
 	itr.source.Close()
 }
 
-func (itr *cLevelDBIterator) assertNoError() {
+func (itr cLevelDBIterator) assertNoError() {
 	if err := itr.source.GetError(); err != nil {
 		panic(err)
 	}

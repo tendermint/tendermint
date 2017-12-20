@@ -21,27 +21,27 @@ func testBackendGetSetDelete(t *testing.T, backend string) {
 	defer dir.Close()
 	db := NewDB("testdb", backend, dirname)
 
-	// A nonexistent key should return nil, even if the key is empty.
+	// A nonexistent key should return nil, even if the key is empty
 	require.Nil(t, db.Get([]byte("")))
 
-	// A nonexistent key should return nil, even if the key is nil.
+	// A nonexistent key should return nil, even if the key is nil
 	require.Nil(t, db.Get(nil))
 
 	// A nonexistent key should return nil.
 	key := []byte("abc")
 	require.Nil(t, db.Get(key))
 
-	// Set empty ("")
+	// Set empty value.
 	db.Set(key, []byte(""))
 	require.NotNil(t, db.Get(key))
 	require.Empty(t, db.Get(key))
 
-	// Set empty (nil)
+	// Set nil value.
 	db.Set(key, nil)
 	require.NotNil(t, db.Get(key))
 	require.Empty(t, db.Get(key))
 
-	// Delete
+	// Delete.
 	db.Delete(key)
 	require.Nil(t, db.Get(key))
 }
@@ -62,12 +62,13 @@ func withDB(t *testing.T, creator dbCreator, fn func(DB)) {
 }
 
 func TestBackendsNilKeys(t *testing.T) {
-	// test all backends.
-	// nil keys are treated as the empty key for most operations.
+
+	// Test all backends.
 	for dbType, creator := range backends {
 		withDB(t, creator, func(db DB) {
 			t.Run(fmt.Sprintf("Testing %s", dbType), func(t *testing.T) {
 
+				// Nil keys are treated as the empty key for most operations.
 				expect := func(key, value []byte) {
 					if len(key) == 0 { // nil or empty
 						assert.Equal(t, db.Get(nil), db.Get([]byte("")))
