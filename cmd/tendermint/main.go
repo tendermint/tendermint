@@ -5,9 +5,15 @@ import (
 
 	"github.com/tendermint/tmlibs/cli"
 
+	"github.com/tendermint/go-wire/data"
+	"github.com/tendermint/go-wire/data/base58"
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	nm "github.com/tendermint/tendermint/node"
 )
+
+func init() {
+	data.Encoder = base58.BTCEncoder
+}
 
 func main() {
 	rootCmd := cmd.RootCmd

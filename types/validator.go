@@ -1,11 +1,12 @@
 package types
 
 import (
-	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -15,17 +16,32 @@ import (
 // NOTE: The Accum is not included in Validator.Hash();
 // make sure to update that method if changes are made here
 type Validator struct {
-	Address     data.Bytes    `json:"address"`
-	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
+	Address     string `json:"address"`
+	PubKey      string `json:"pub_key"`
+	VotingPower int64  `json:"voting_power"`
 
 	Accum int64 `json:"accum"`
 }
 
 func NewValidator(pubKey crypto.PubKey, votingPower int64) *Validator {
+	pubKeyBytes, err := pubKey.Bytes()
+	if err != nil {
+		panic(err)
+	}
+
+	pubKeyStr, err := data.Encoder.Marshal(pubKeyBytes)
+	if err != nil {
+		panic(err)
+	}
+
+	peerId, err := lpeer.IDFromPublicKey(pubKey)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Validator{
-		Address:     pubKey.Address(),
-		PubKey:      pubKey,
+		Address:     peerId.Pretty(),
+		PubKey:      string(pubKeyStr),
 		VotingPower: votingPower,
 		Accum:       0,
 	}
@@ -38,6 +54,20 @@ func (v *Validator) Copy() *Validator {
 	return &vCopy
 }
 
+// ParsePubKey parses the validator public key.
+func (v *Validator) ParsePubKey() (crypto.PubKey, error) {
+	pubKeyStr := v.PubKey
+	var dat []byte
+	if err := data.Encoder.Unmarshal(&dat, []byte(pubKeyStr)); err != nil {
+		return nil, err
+	}
+	pubKey, err := crypto.UnmarshalPublicKey(dat)
+	if err != nil {
+		return nil, err
+	}
+	return pubKey, nil
+}
+
 // Returns the one with higher Accum.
 func (v *Validator) CompareAccum(other *Validator) *Validator {
 	if v == nil {
@@ -48,9 +78,10 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 	} else if v.Accum < other.Accum {
 		return other
 	} else {
-		if bytes.Compare(v.Address, other.Address) < 0 {
+		addrCmp := strings.Compare(v.Address, other.Address)
+		if addrCmp < 0 {
 			return v
-		} else if bytes.Compare(v.Address, other.Address) > 0 {
+		} else if addrCmp > 0 {
 			return other
 		} else {
 			cmn.PanicSanity("Cannot compare identical validators")
@@ -74,8 +105,8 @@ func (v *Validator) String() string {
 // It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
 	return wire.BinaryRipemd160(struct {
-		Address     data.Bytes
-		PubKey      crypto.PubKey
+		Address     string
+		PubKey      string
 		VotingPower int64
 	}{
 		v.Address,

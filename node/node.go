@@ -1,7 +1,7 @@
 package node
 
 import (
-	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,8 +9,14 @@ import (
 	"net/http"
 	"strings"
 
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	lpeer "github.com/libp2p/go-libp2p-peer"
+	ps "github.com/libp2p/go-libp2p-peerstore"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	ma "github.com/multiformats/go-multiaddr"
+
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -96,9 +102,9 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	privKey          crypto.PrivKeyEd25519   // local node's p2p key
+	privKey          crypto.PrivKey          // local node's p2p key
 	sw               *p2p.Switch             // p2p connections
-	addrBook         *p2p.AddrBook           // known peers
+	peerBook         *p2p.PeerBook           // known peers
 	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
 
 	// services
@@ -114,6 +120,10 @@ type Node struct {
 	rpcListeners     []net.Listener              // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
+
+	// libp2p
+	bhost *bhost.BasicHost
+	snet  *swarm.Network
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.
@@ -170,21 +180,40 @@ func NewNode(config *cfg.Config,
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
 
-	// Generate node PrivKey
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := privValidator.GetPriKey()
+	pubKey := privKey.GetPublic()
+
+	// Generate node peer id
+	pid, err := lpeer.IDFromPrivateKey(privKey)
+	if err != nil {
+		return nil, err
+	}
+
+	peerStore := ps.NewPeerstore()
+	peerStore.AddPrivKey(pid, privKey)
+	peerStore.AddPubKey(pid, pubKey)
+
+	// Create listener
+	swarmNet, err := swarm.NewNetwork(context.Background(), nil, pid, peerStore, nil)
+	if err != nil {
+		return nil, err
+	}
+	bh := bhost.New(swarmNet)
+
+	consensusLogger.Info("Local swarm host built", "peer-id", pid.Pretty())
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.GetAddress(), addr) {
+		if privValidator.GetAddress().Pretty() == addr {
 			fastSync = false
 		}
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.GetAddress()) {
+	if state.Validators.HasAddress(privValidator.GetAddress().Pretty()) {
 		consensusLogger.Info("This node is a validator")
 	} else {
 		consensusLogger.Info("This node is not a validator")
@@ -239,13 +268,14 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+	sw.SetPeerStore(peerStore)
 
 	// Optionally, start the pex reactor
-	var addrBook *p2p.AddrBook
+	var peerBook *p2p.PeerBook
 	var trustMetricStore *trust.TrustMetricStore
 	if config.P2P.PexReactor {
-		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
-		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
+		peerBook = p2p.NewPeerBook(config.P2P.PeerBookFile())
+		peerBook.SetLogger(p2pLogger.With("book", config.P2P.PeerBookFile()))
 
 		// Get the trust metric history data
 		trustHistoryDB, err := dbProvider(&DBContext{"trusthistory", config})
@@ -255,7 +285,7 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
-		pexReactor := p2p.NewPEXReactor(addrBook)
+		pexReactor := p2p.NewPEXReactor(peerBook)
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -265,7 +295,7 @@ func NewNode(config *cfg.Config,
 	// XXX: Query format subject to change
 	if config.FilterPeers {
 		// NOTE: addr is ip:port
-		sw.SetAddrFilter(func(addr net.Addr) error {
+		sw.SetAddrFilter(func(addr ma.Multiaddr) error {
 			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/addr/%s", addr.String())})
 			if err != nil {
 				return err
@@ -275,8 +305,12 @@ func NewNode(config *cfg.Config,
 			}
 			return nil
 		})
-		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
+		sw.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
+			pkeyBytes, err := pubkey.Bytes()
+			if err != nil {
+				return err
+			}
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pkeyBytes)})
 			if err != nil {
 				return err
 			}
@@ -330,7 +364,7 @@ func NewNode(config *cfg.Config,
 
 		privKey:          privKey,
 		sw:               sw,
-		addrBook:         addrBook,
+		peerBook:         peerBook,
 		trustMetricStore: trustMetricStore,
 
 		stateDB:          stateDB,
@@ -344,6 +378,9 @@ func NewNode(config *cfg.Config,
 		txIndexer:        txIndexer,
 		indexerService:   indexerService,
 		eventBus:         eventBus,
+
+		snet:  swarmNet,
+		bhost: bh,
 	}
 	node.BaseService = *cmn.NewBaseService(logger, "Node", node)
 	return node, nil
@@ -367,9 +404,29 @@ func (n *Node) OnStart() error {
 	}
 
 	// Create & add listener
-	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
-	n.sw.AddListener(l)
+	lAddrs := strings.Split(n.config.P2P.ListenAddress, "+")
+	var mAddrs []ma.Multiaddr
+	for _, lAddr := range lAddrs {
+		ma, err := p2p.ParseMultiaddrFlexible(lAddr)
+		if err != nil {
+			return err
+		}
+		mAddrs = append(mAddrs, ma)
+	}
+
+	if len(mAddrs) > 0 {
+		l, err := p2p.NewDefaultListener(
+			mAddrs,
+			n.config.P2P.SkipUPNP,
+			n.Logger.With("module", "p2p"),
+			n.snet,
+			n.bhost,
+		)
+		if err != nil {
+			return err
+		}
+		n.sw.AddListener(l)
+	}
 
 	// Start the switch
 	n.sw.SetNodeInfo(n.makeNodeInfo())
@@ -382,7 +439,16 @@ func (n *Node) OnStart() error {
 	// If seeds exist, add them to the address book and dial out
 	if n.config.P2P.Seeds != "" {
 		// dial out
-		seeds := strings.Split(n.config.P2P.Seeds, ",")
+		seedStrs := strings.Split(n.config.P2P.Seeds, ",")
+		seeds := make([]ps.PeerInfo, len(seedStrs))
+		for i, seedStri := range seedStrs {
+			seed := p2p.Seed(seedStri)
+			pi, err := seed.ParsePeerInfo()
+			if err != nil {
+				return err
+			}
+			seeds[i] = pi
+		}
 		if err := n.DialSeeds(seeds); err != nil {
 			return err
 		}
@@ -438,7 +504,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetSwitch(n.sw)
 	rpccore.SetPubKey(n.privValidator.GetPubKey())
 	rpccore.SetGenesisDoc(n.genesisDoc)
-	rpccore.SetAddrBook(n.addrBook)
+	rpccore.SetPeerBook(n.peerBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
 	rpccore.SetTxIndexer(n.txIndexer)
 	rpccore.SetConsensusReactor(n.consensusReactor)
@@ -540,7 +606,6 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := &p2p.NodeInfo{
-		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
 		Moniker: n.config.Moniker,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
@@ -552,6 +617,7 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 			cmn.Fmt("tx_index=%v", txIndexerStatus),
 		},
 	}
+	nodeInfo.SetPublicKey(n.privKey.GetPublic())
 
 	rpcListenAddr := n.config.RPC.ListenAddress
 	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
@@ -561,9 +627,8 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 	}
 
 	p2pListener := n.sw.Listeners()[0]
-	p2pHost := p2pListener.ExternalAddress().IP.String()
-	p2pPort := p2pListener.ExternalAddress().Port
-	nodeInfo.ListenAddr = cmn.Fmt("%v:%v", p2pHost, p2pPort)
+	p2pAddrString := p2pListener.ExternalAddress().String()
+	nodeInfo.ListenAddr = cmn.Fmt("%s", p2pAddrString)
 
 	return nodeInfo
 }
@@ -576,8 +641,8 @@ func (n *Node) NodeInfo() *p2p.NodeInfo {
 }
 
 // DialSeeds dials the given seeds on the Switch.
-func (n *Node) DialSeeds(seeds []string) error {
-	return n.sw.DialSeeds(n.addrBook, seeds)
+func (n *Node) DialSeeds(seeds []ps.PeerInfo) error {
+	return n.sw.DialSeeds(n.peerBook, seeds)
 }
 
 //------------------------------------------------------------------------------

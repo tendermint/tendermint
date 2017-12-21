@@ -11,7 +11,7 @@ import (
 )
 
 // Returns an empty dummy peer
-func randPeer() *peer {
+func randDummyPeer() *peer {
 	return &peer{
 		nodeInfo: &NodeInfo{
 			RemoteAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
@@ -26,7 +26,7 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 
 	var peerList []Peer
 	for i := 0; i < 5; i++ {
-		p := randPeer()
+		p := randDummyPeer()
 		if err := peerSet.Add(p); err != nil {
 			t.Error(err)
 		}
@@ -70,7 +70,7 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 	peers := []Peer{}
 	N := 100
 	for i := 0; i < N; i++ {
-		peer := randPeer()
+		peer := randDummyPeer()
 		if err := peerSet.Add(peer); err != nil {
 			t.Errorf("Failed to add new peer")
 		}
@@ -94,7 +94,7 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 func TestPeerSetAddDuplicate(t *testing.T) {
 	t.Parallel()
 	peerSet := NewPeerSet()
-	peer := randPeer()
+	peer := randDummyPeer()
 
 	n := 20
 	errsChan := make(chan error)
@@ -128,7 +128,7 @@ func TestPeerSetAddDuplicate(t *testing.T) {
 func TestPeerSetGet(t *testing.T) {
 	t.Parallel()
 	peerSet := NewPeerSet()
-	peer := randPeer()
+	peer := randDummyPeer()
 	assert.Nil(t, peerSet.Get(peer.Key()), "expecting a nil lookup, before .Add")
 
 	if err := peerSet.Add(peer); err != nil {

@@ -1,15 +1,21 @@
 package p2p
 
 import (
+	"context"
+	crand "crypto/rand"
 	"fmt"
 	"math"
 	"math/rand"
-	"net"
 	"time"
 
 	"github.com/pkg/errors"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	inet "github.com/libp2p/go-libp2p-net"
+	lpeer "github.com/libp2p/go-libp2p-peer"
+	ps "github.com/libp2p/go-libp2p-peerstore"
+	ma "github.com/multiformats/go-multiaddr"
+	wdata "github.com/tendermint/go-wire/data"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -73,19 +79,21 @@ incoming messages are received on the reactor.
 type Switch struct {
 	cmn.BaseService
 
-	config       *cfg.P2PConfig
-	peerConfig   *PeerConfig
-	listeners    []Listener
-	reactors     map[string]Reactor
-	chDescs      []*ChannelDescriptor
-	reactorsByCh map[byte]Reactor
-	peers        *PeerSet
-	dialing      *cmn.CMap
-	nodeInfo     *NodeInfo             // our node info
-	nodePrivKey  crypto.PrivKeyEd25519 // our node privkey
+	config          *cfg.P2PConfig
+	peerConfig      *PeerConfig
+	defaultListener *DefaultListener
+	listeners       []Listener
+	reactors        map[string]Reactor
+	chDescs         []*ChannelDescriptor
+	reactorsByCh    map[byte]Reactor
+	peers           *PeerSet
+	dialing         *cmn.CMap
+	nodeInfo        *NodeInfo      // our node info
+	nodePrivKey     crypto.PrivKey // our node privkey
+	peerStore       ps.Peerstore
 
-	filterConnByAddr   func(net.Addr) error
-	filterConnByPubKey func(crypto.PubKeyEd25519) error
+	filterConnByAddr   func(ma.Multiaddr) error
+	filterConnByPubKey func(crypto.PubKey) error
 
 	rng *rand.Rand // seed for randomizing dial times and orders
 }
@@ -181,13 +189,32 @@ func (sw *Switch) NodeInfo() *NodeInfo {
 	return sw.nodeInfo
 }
 
+// SetPeerStore sets the peer store.
+func (sw *Switch) SetPeerStore(p ps.Peerstore) {
+	sw.peerStore = p
+}
+
+// GetPeerStore returns the peer store.
+func (sw *Switch) GetPeerStore() ps.Peerstore {
+	return sw.peerStore
+}
+
 // SetNodePrivKey sets the switch's private key for authenticated encryption.
 // NOTE: Overwrites sw.nodeInfo.PubKey.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
+func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKey) {
 	sw.nodePrivKey = nodePrivKey
 	if sw.nodeInfo != nil {
-		sw.nodeInfo.PubKey = nodePrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
+		pubKey := nodePrivKey.GetPublic()
+		pubKeyData, err := pubKey.Bytes()
+		if err != nil {
+			panic(err)
+		}
+		pubKeyStrData, err := wdata.Encoder.Marshal(pubKeyData)
+		if err != nil {
+			panic(err)
+		}
+		sw.nodeInfo.PubKey = string(pubKeyStrData)
 	}
 }
 
@@ -231,10 +258,11 @@ func (sw *Switch) OnStop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // NOTE: If error is returned, caller is responsible for calling peer.CloseConn()
 func (sw *Switch) addPeer(peer *peer) error {
-
-	if err := sw.FilterConnByAddr(peer.Addr()); err != nil {
-		return err
-	}
+	/*
+		if err := sw.FilterConnByAddr(peer.Connection().RemoteAddress()); err != nil {
+			return err
+		}
+	*/
 
 	if err := sw.FilterConnByPubKey(peer.PubKey()); err != nil {
 		return err
@@ -245,7 +273,8 @@ func (sw *Switch) addPeer(peer *peer) error {
 	}
 
 	// Avoid self
-	if sw.nodeInfo.PubKey.Equals(peer.PubKey().Wrap()) {
+	peer.nodeInfo.SetPublicKey(peer.PubKey())
+	if sw.nodeInfo.PubKey == peer.nodeInfo.PubKey {
 		return errors.New("Ignoring connection from self")
 	}
 
@@ -277,7 +306,7 @@ func (sw *Switch) addPeer(peer *peer) error {
 }
 
 // FilterConnByAddr returns an error if connecting to the given address is forbidden.
-func (sw *Switch) FilterConnByAddr(addr net.Addr) error {
+func (sw *Switch) FilterConnByAddr(addr ma.Multiaddr) error {
 	if sw.filterConnByAddr != nil {
 		return sw.filterConnByAddr(addr)
 	}
@@ -285,7 +314,7 @@ func (sw *Switch) FilterConnByAddr(addr net.Addr) error {
 }
 
 // FilterConnByPubKey returns an error if connecting to the given public key is forbidden.
-func (sw *Switch) FilterConnByPubKey(pubkey crypto.PubKeyEd25519) error {
+func (sw *Switch) FilterConnByPubKey(pubkey crypto.PubKey) error {
 	if sw.filterConnByPubKey != nil {
 		return sw.filterConnByPubKey(pubkey)
 	}
@@ -294,12 +323,12 @@ func (sw *Switch) FilterConnByPubKey(pubkey crypto.PubKeyEd25519) error {
 }
 
 // SetAddrFilter sets the function for filtering connections by address.
-func (sw *Switch) SetAddrFilter(f func(net.Addr) error) {
+func (sw *Switch) SetAddrFilter(f func(ma.Multiaddr) error) {
 	sw.filterConnByAddr = f
 }
 
 // SetPubKeyFilter sets the function for filtering connections by public key.
-func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKeyEd25519) error) {
+func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKey) error) {
 	sw.filterConnByPubKey = f
 }
 
@@ -315,36 +344,35 @@ func (sw *Switch) startInitPeer(peer *peer) {
 	}
 }
 
-// DialSeeds dials a list of seeds asynchronously in random order.
-func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
-	netAddrs, errs := NewNetAddressStrings(seeds)
-	for _, err := range errs {
-		sw.Logger.Error("Error in seed's address", "err", err)
+// DialSeeds dials a list of seed peers.
+func (sw *Switch) DialSeeds(peerBook *PeerBook, seeds []ps.PeerInfo) error {
+	ourPubKey, err := sw.nodeInfo.ParsePublicKey()
+	if err != nil {
+		return err
 	}
 
-	if addrBook != nil {
-		// add seeds to `addrBook`
-		ourAddrS := sw.nodeInfo.ListenAddr
-		ourAddr, _ := NewNetAddressString(ourAddrS)
-		for _, netAddr := range netAddrs {
-			// do not add ourselves
-			if netAddr.Equals(ourAddr) {
-				continue
-			}
-			addrBook.AddAddress(netAddr, ourAddr)
+	ourPeerId, err := lpeer.IDFromPublicKey(ourPubKey)
+	if err != nil {
+		return err
+	}
+
+	if peerBook != nil {
+		for _, peerInfo := range seeds {
+			peerBook.AddPeer(peerInfo.ID, ourPeerId)
 		}
-		addrBook.Save()
+		peerBook.Save()
 	}
 
 	// permute the list, dial them in random order.
-	perm := sw.rng.Perm(len(netAddrs))
+	perm := sw.rng.Perm(len(seeds))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
 			sw.randomSleep(0)
 			j := perm[i]
-			sw.dialSeed(netAddrs[j])
+			sw.DialPeer(seeds[j].ID, true, seeds[j].Addrs...)
 		}(i)
 	}
+
 	return nil
 }
 
@@ -354,44 +382,65 @@ func (sw *Switch) randomSleep(interval time.Duration) {
 	time.Sleep(r + interval)
 }
 
-func (sw *Switch) dialSeed(addr *NetAddress) {
-	peer, err := sw.DialPeerWithAddress(addr, true)
+func (sw *Switch) dialSeed(id lpeer.ID) {
+	_, err := sw.DialPeer(id, true)
 	if err != nil {
-		sw.Logger.Error("Error dialing seed", "err", err)
+		sw.Logger.Error("Error dialing seed", "err", err, "peer-id", id.Pretty())
 	} else {
-		sw.Logger.Info("Connected to seed", "peer", peer)
+		sw.Logger.Info("Connected to seed", "peer", id.Pretty())
 	}
 }
 
-// DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects successfully.
+// DialPeer dials the given peer and runs sw.addPeer if it connects successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
-func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, error) {
-	sw.dialing.Set(addr.IP.String(), addr)
-	defer sw.dialing.Delete(addr.IP.String())
+func (sw *Switch) DialPeer(peerId lpeer.ID, persistent bool, tryAddrs ...ma.Multiaddr) (Peer, error) {
+	sw.dialing.Set(peerId.Pretty(), peerId)
+	defer sw.dialing.Delete(peerId.Pretty())
 
-	sw.Logger.Info("Dialing peer", "address", addr)
-	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
+	ctxParent := context.Background()
+
+	sw.Logger.Info("Attempting to connect to peer", "peer-id", peerId.Pretty())
+	dl := sw.listeners[0].(*DefaultListener)
+
+	ctx, ctxCancel := context.WithTimeout(ctxParent, time.Second*10)
+	defer ctxCancel()
+
+	err := dl.host.Connect(ctx, ps.PeerInfo{
+		ID:    peerId,
+		Addrs: tryAddrs,
+	})
 	if err != nil {
-		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
+		sw.Logger.Error("Failed to reach peer", "err", err)
 		return nil, err
 	}
-	peer.SetLogger(sw.Logger.With("peer", addr))
+
+	outStream, err := dl.host.NewStream(ctxParent, peerId, Protocol)
+	if err != nil {
+		sw.Logger.Error("Failed to open stream to peer", "err", err, "protocol", Protocol)
+	}
+
+	peer, err := newOutboundPeer(outStream, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	peer.SetLogger(sw.Logger.With("peer", peerId.Pretty()))
 	if persistent {
 		peer.makePersistent()
 	}
 	err = sw.addPeer(peer)
 	if err != nil {
-		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
+		sw.Logger.Error("Failed to add peer", "peer", peerId.Pretty())
 		peer.CloseConn()
 		return nil, err
 	}
-	sw.Logger.Info("Dialed and added peer", "address", addr, "peer", peer)
+	sw.Logger.Info("Dialed and added peer", "peer", peerId.Pretty())
 	return peer, nil
 }
 
-// IsDialing returns true if the switch is currently dialing the given address.
-func (sw *Switch) IsDialing(addr *NetAddress) bool {
-	return sw.dialing.Has(addr.IP.String())
+// IsDialing returns true if the switch is currently dialing the given peer.
+func (sw *Switch) IsDialing(peerId string) bool {
+	return sw.dialing.Has(peerId)
 }
 
 // Broadcast runs a go routine for each attempted send, which will block
@@ -447,28 +496,28 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 // If no success after all that, it stops trying, and leaves it
 // to the PEX/Addrbook to find the peer again
 func (sw *Switch) reconnectToPeer(peer Peer) {
-	addr, _ := NewNetAddressString(peer.NodeInfo().RemoteAddr)
+	peerId := peer.PeerID()
 	start := time.Now()
-	sw.Logger.Info("Reconnecting to peer", "peer", peer)
+	sw.Logger.Info("Reconnecting to peer", "peer", peerId.Pretty())
 	for i := 0; i < reconnectAttempts; i++ {
 		if !sw.IsRunning() {
 			return
 		}
 
-		peer, err := sw.DialPeerWithAddress(addr, true)
+		_, err := sw.DialPeer(peerId, true)
 		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
+			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peerId.Pretty())
 			// sleep a set amount
 			sw.randomSleep(reconnectInterval)
 			continue
 		} else {
-			sw.Logger.Info("Reconnected to peer", "peer", peer)
+			sw.Logger.Info("Reconnected to peer", "peer", peerId.Pretty())
 			return
 		}
 	}
 
 	sw.Logger.Error("Failed to reconnect to peer. Beginning exponential backoff",
-		"peer", peer, "elapsed", time.Since(start))
+		"peer", peerId.Pretty(), "elapsed", time.Since(start))
 	for i := 0; i < reconnectBackOffAttempts; i++ {
 		if !sw.IsRunning() {
 			return
@@ -477,16 +526,16 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 		// sleep an exponentially increasing amount
 		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
 		sw.randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
-		peer, err := sw.DialPeerWithAddress(addr, true)
+		_, err := sw.DialPeer(peerId, true)
 		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
+			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peerId.Pretty())
 			continue
 		} else {
-			sw.Logger.Info("Reconnected to peer", "peer", peer)
+			sw.Logger.Info("Reconnected to peer", "peer", peerId.Pretty())
 			return
 		}
 	}
-	sw.Logger.Error("Failed to reconnect to peer. Giving up", "peer", peer, "elapsed", time.Since(start))
+	sw.Logger.Error("Failed to reconnect to peer. Giving up", "peer", peerId.Pretty(), "elapsed", time.Since(start))
 }
 
 // StopPeerGracefully disconnects from a peer gracefully.
@@ -512,16 +561,20 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// ignore connection if we already have enough
-		maxPeers := sw.config.MaxNumPeers
-		if maxPeers <= sw.peers.Size() {
-			sw.Logger.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
-			continue
-		}
+		/*
+			maxPeers := sw.config.MaxNumPeers
+			if maxPeers <= sw.peers.Size() {
+				sw.Logger.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
+				inConn.Close()
+				continue
+			}
+		*/
 
 		// New inbound connection!
 		err := sw.addPeerWithConnectionAndConfig(inConn, sw.peerConfig)
 		if err != nil {
-			sw.Logger.Info("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "err", err)
+			sw.Logger.Info("Ignoring inbound connection: error while adding peer", "err", err)
+			inConn.Close()
 			continue
 		}
 
@@ -534,7 +587,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 }
 
 //------------------------------------------------------------------
-// Connects switches via arbitrary net.Conn. Used for testing.
+// Connects switches via arbitrary inet.Stream. Used for testing.
 
 // MakeConnectedSwitches returns n switches, connected according to the connect func.
 // If connect==Connect2Switches, the switches will be fully connected.
@@ -565,17 +618,23 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 func Connect2Switches(switches []*Switch, i, j int) {
 	switchI := switches[i]
 	switchJ := switches[j]
-	c1, c2 := netPipe()
+	defListenerI := switchI.defaultListener
+	defListenerJ := switchJ.defaultListener
+	// c1, c2 := netPipe()
 	doneCh := make(chan struct{})
 	go func() {
-		err := switchI.addPeerWithConnection(c1)
+		err := defListenerI.host.Connect(context.Background(), ps.PeerInfo{
+			ID: defListenerJ.host.ID(),
+		})
 		if err != nil {
 			panic(err)
 		}
 		doneCh <- struct{}{}
 	}()
 	go func() {
-		err := switchJ.addPeerWithConnection(c2)
+		err := defListenerJ.host.Connect(context.Background(), ps.PeerInfo{
+			ID: defListenerJ.host.ID(),
+		})
 		if err != nil {
 			panic(err)
 		}
@@ -598,23 +657,30 @@ func StartSwitches(switches []*Switch) error {
 }
 
 func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey, pubKey, err := crypto.GenerateEd25519Key(crand.Reader)
+	if err != nil {
+		panic(err)
+	}
+
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	s := initSwitch(i, NewSwitch(cfg))
-	s.SetNodeInfo(&NodeInfo{
-		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
+	ni := &NodeInfo{
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
 		RemoteAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
-	})
+	}
+	if err := ni.SetPublicKey(pubKey); err != nil {
+		panic(err)
+	}
+	s.SetNodeInfo(ni)
 	s.SetNodePrivKey(privKey)
 	return s
 }
 
-func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
+func (sw *Switch) addPeerWithConnection(conn inet.Stream) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
 	if err != nil {
 		if err := conn.Close(); err != nil {
@@ -622,7 +688,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 		}
 		return err
 	}
-	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
+	peer.SetLogger(sw.Logger.With("peer", conn.Conn().RemotePeer().Pretty()))
 	if err = sw.addPeer(peer); err != nil {
 		peer.CloseConn()
 		return err
@@ -631,7 +697,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 	return nil
 }
 
-func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConfig) error {
+func (sw *Switch) addPeerWithConnectionAndConfig(conn inet.Stream, config *PeerConfig) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
 	if err != nil {
 		if err := conn.Close(); err != nil {
@@ -639,7 +705,7 @@ func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConf
 		}
 		return err
 	}
-	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
+	peer.SetLogger(sw.Logger.With("peer", conn.Conn().RemotePeer().Pretty()))
 	if err = sw.addPeer(peer); err != nil {
 		peer.CloseConn()
 		return err

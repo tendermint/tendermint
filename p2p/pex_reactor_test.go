@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	wire "github.com/tendermint/go-wire"
@@ -21,7 +22,7 @@ func TestPEXReactorBasic(t *testing.T) {
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
 	defer os.RemoveAll(dir) // nolint: errcheck
-	book := NewAddrBook(dir+"addrbook.json", true)
+	book := NewPeerBook(dir+"peerbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
@@ -37,7 +38,7 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
 	defer os.RemoveAll(dir) // nolint: errcheck
-	book := NewAddrBook(dir+"addrbook.json", true)
+	book := NewPeerBook(dir+"peerbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
@@ -68,7 +69,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
-	book := NewAddrBook(dir+"addrbook.json", false)
+	book := NewPeerBook(dir+"peerbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
 	// create switches
@@ -86,9 +87,19 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// fill the address book and add listeners
 	for _, s := range switches {
-		addr, _ := NewNetAddressString(s.NodeInfo().ListenAddr)
-		book.AddAddress(addr, addr)
-		s.AddListener(NewDefaultListener("tcp", s.NodeInfo().ListenAddr, true, log.TestingLogger()))
+		pubKey, err := s.NodeInfo().ParsePublicKey()
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		peerId, err := lpeer.IDFromPublicKey(pubKey)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		book.AddPeer(peerId, peerId)
+		// TODO: test this
+		// s.AddListener(NewDefaultListener("tcp", s.NodeInfo().ListenAddr, true, log.TestingLogger()))
 	}
 
 	// start switches
@@ -138,7 +149,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
 	defer os.RemoveAll(dir) // nolint: errcheck
-	book := NewAddrBook(dir+"addrbook.json", false)
+	book := NewPeerBook(dir+"peerbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
@@ -147,9 +158,11 @@ func TestPEXReactorReceive(t *testing.T) {
 	peer := createRandomPeer(false)
 
 	size := book.Size()
-	netAddr, _ := NewNetAddressString(peer.NodeInfo().ListenAddr)
-	addrs := []*NetAddress{netAddr}
-	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	nodePubKey, err := peer.NodeInfo().ParsePublicKey()
+	require.Nil(err)
+	nodeId, err := lpeer.IDFromPublicKey(nodePubKey)
+	require.Nil(err)
+	msg := wire.BinaryBytes(struct{ PexMessage }{&pexPeersMessage{Peers: []lpeer.ID{nodeId}}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(size+1, book.Size())
 
@@ -163,7 +176,7 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(err)
 	defer os.RemoveAll(dir) // nolint: errcheck
-	book := NewAddrBook(dir+"addrbook.json", true)
+	book := NewPeerBook(dir+"peerbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book)
@@ -177,29 +190,28 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 		r.Receive(PexChannel, peer, msg)
 	}
 
-	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ListenAddr))
+	peerPubKey, err := peer.NodeInfo().ParsePublicKey()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	peerId, err := lpeer.IDFromPublicKey(peerPubKey)
+
+	assert.True(r.ReachedMaxMsgCountForPeer(peerId))
 }
 
-func createRoutableAddr() (addr string, netAddr *NetAddress) {
-	for {
-		addr = cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
-		netAddr, _ = NewNetAddressString(addr)
-		if netAddr.Routable() {
-			break
-		}
-	}
+func createRoutableAddr() (addr string) {
+	addr = cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
 	return
 }
 
 func createRandomPeer(outbound bool) *peer {
-	addr, netAddr := createRoutableAddr()
+	addr := createRoutableAddr()
 	p := &peer{
 		nodeInfo: &NodeInfo{
 			ListenAddr: addr,
-			RemoteAddr: netAddr.String(),
 		},
 		outbound: outbound,
-		mconn:    &MConnection{RemoteAddress: netAddr},
+		mconn:    &MConnection{},
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p

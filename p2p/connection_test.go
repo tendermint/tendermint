@@ -1,17 +1,17 @@
 package p2p
 
 import (
-	"net"
 	"testing"
 	"time"
 
+	inet "github.com/libp2p/go-libp2p-net"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 )
 
-func createTestMConnection(conn net.Conn) *MConnection {
+func createTestMConnection(conn inet.Stream) *MConnection {
 	onReceive := func(chID byte, msgBytes []byte) {
 	}
 	onError := func(r interface{}) {
@@ -21,7 +21,7 @@ func createTestMConnection(conn net.Conn) *MConnection {
 	return c
 }
 
-func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
+func createMConnectionWithCallbacks(conn inet.Stream, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
 	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	c := NewMConnection(conn, chDescs, onReceive, onError)
 	c.SetLogger(log.TestingLogger())
@@ -31,7 +31,7 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 func TestMConnectionSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := streamPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -64,7 +64,7 @@ func TestMConnectionSend(t *testing.T) {
 func TestMConnectionReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := streamPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -102,7 +102,7 @@ func TestMConnectionReceive(t *testing.T) {
 func TestMConnectionStatus(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := streamPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -119,7 +119,7 @@ func TestMConnectionStatus(t *testing.T) {
 func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := streamPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -152,7 +152,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 }
 
 func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr chan struct{}) (*MConnection, *MConnection) {
-	server, client := netPipe()
+	server, client := streamPipe()
 
 	onReceive := func(chID byte, msgBytes []byte) {}
 	onError := func(r interface{}) {}
@@ -283,7 +283,7 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 func TestMConnectionTrySend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := streamPipe()
 	defer server.Close()
 	defer client.Close()
 

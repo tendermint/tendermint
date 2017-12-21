@@ -3,7 +3,9 @@ package core
 import (
 	"time"
 
-	crypto "github.com/tendermint/go-crypto"
+	// lpeer "github.com/libp2p/go-libp2p-peer"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	pstore "github.com/libp2p/go-libp2p-peerstore"
 	"github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	p2p "github.com/tendermint/tendermint/p2p"
@@ -32,7 +34,7 @@ type P2P interface {
 	NumPeers() (outbound, inbound, dialig int)
 	NodeInfo() *p2p.NodeInfo
 	IsListening() bool
-	DialSeeds(*p2p.AddrBook, []string) error
+	DialSeeds(*p2p.PeerBook, []pstore.PeerInfo) error
 }
 
 //----------------------------------------------
@@ -54,7 +56,7 @@ var (
 	// objects
 	pubKey           crypto.PubKey
 	genDoc           *types.GenesisDoc // cache the genesis structure
-	addrBook         *p2p.AddrBook
+	addrBook         *p2p.PeerBook
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
@@ -94,7 +96,7 @@ func SetGenesisDoc(doc *types.GenesisDoc) {
 	genDoc = doc
 }
 
-func SetAddrBook(book *p2p.AddrBook) {
+func SetPeerBook(book *p2p.PeerBook) {
 	addrBook = book
 }
 

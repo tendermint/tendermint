@@ -169,15 +169,15 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Ensure that the signer has the right address
-	if !bytes.Equal(valAddr, lookupAddr) {
+	if valAddr != lookupAddr {
 		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
-			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)",
+			"vote.ValidatorAddress (%s) does not match address (%s) for vote.ValidatorIndex (%d)",
 			valAddr, lookupAddr, valIndex)
 	}
 
 	// If we already know of this vote, return false.
 	if existing, ok := voteSet.getVote(valIndex, blockKey); ok {
-		if existing.Signature.Equals(vote.Signature) {
+		if bytes.Equal(existing.Signature.Bytes(), vote.Signature.Bytes()) {
 			return false, nil // duplicate
 		} else {
 			return false, errors.Wrapf(ErrVoteNonDeterministicSignature, "Existing vote: %v; New vote: %v", existing, vote)
@@ -185,7 +185,12 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	}
 
 	// Check signature.
-	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+	valPubKey, err := val.ParsePubKey()
+	if err != nil {
+		return false, errors.Wrapf(err, "Failed to parse vote public key %s", val.PubKey)
+	}
+
+	if err := vote.Verify(voteSet.chainID, valPubKey); err != nil {
 		return false, errors.Wrapf(err, "Failed to verify vote with ChainID %s and PubKey %s", voteSet.chainID, val.PubKey)
 	}
 
@@ -200,6 +205,10 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		return added, nil
 	}
 
+	if !added {
+		cmn.PanicSanity("Expected to add non-conflicting vote")
+	}
+	return added, nil
 }
 
 // Returns (vote, true) if vote exists for valIndex and blockKey
@@ -357,7 +366,7 @@ func (voteSet *VoteSet) GetByIndex(valIndex int) *Vote {
 	return voteSet.votes[valIndex]
 }
 
-func (voteSet *VoteSet) GetByAddress(address []byte) *Vote {
+func (voteSet *VoteSet) GetByAddress(address string) *Vote {
 	if voteSet == nil {
 		return nil
 	}

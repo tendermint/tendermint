@@ -1,26 +1,42 @@
 package p2p
 
 import (
-	golog "log"
-	"net"
+	"crypto/rand"
+	"errors"
+	// golog "log"
+	// "net"
 	"testing"
-	"time"
+	// "time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	// inet "github.com/libp2p/go-libp2p-net"
+	lpeer "github.com/libp2p/go-libp2p-peer"
 )
 
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
-	rp.Start()
-	defer rp.Stop()
+	privKey, pubKey, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
 
-	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), DefaultPeerConfig())
+	peerId, err := lpeer.IDFromPrivateKey(privKey)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	/*
+		rp := &remotePeer{PrivKey: privKey, Config: DefaultPeerConfig()}
+		rp.Start()
+		defer rp.Stop()
+	*/
+
+	p, err := createOutboundPeerAndPerformHandshake(peerId, DefaultPeerConfig())
 	require.Nil(err)
 
 	err = p.Start()
@@ -32,22 +48,32 @@ func TestPeerBasic(t *testing.T) {
 	assert.False(p.IsPersistent())
 	p.makePersistent()
 	assert.True(p.IsPersistent())
-	assert.Equal(rp.Addr().String(), p.Addr().String())
-	assert.Equal(rp.PubKey(), p.PubKey())
+	assert.Equal(peerId.String(), p.PeerID().String())
+	assert.True(pubKey.Equals(p.PubKey()))
 }
 
 func TestPeerWithoutAuthEnc(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	config := DefaultPeerConfig()
-	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
-	rp.Start()
-	defer rp.Stop()
+	privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	/*
+		rp := &remotePeer{PrivKey: privKey, Config: config}
+		rp.Start()
+		defer rp.Stop()
+	*/
 
-	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
+	peerId, err := lpeer.IDFromPrivateKey(privKey)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	p, err := createOutboundPeerAndPerformHandshake(peerId, config)
 	require.Nil(err)
 
 	err = p.Start()
@@ -61,14 +87,24 @@ func TestPeerSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	config := DefaultPeerConfig()
-	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
-	rp.Start()
-	defer rp.Stop()
+	privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+	/*
+		rp := &remotePeer{PrivKey: privKey, Config: config}
+		rp.Start()
+		defer rp.Stop()
+	*/
 
-	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
+	peerId, err := lpeer.IDFromPrivateKey(privKey)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	p, err := createOutboundPeerAndPerformHandshake(peerId, config)
 	require.Nil(err)
 
 	err = p.Start()
@@ -80,83 +116,28 @@ func TestPeerSend(t *testing.T) {
 	assert.True(p.Send(0x01, "Asylum"))
 }
 
-func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
-	chDescs := []*ChannelDescriptor{
-		{ID: 0x01, Priority: 1},
-	}
-	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
-	pk := crypto.GenPrivKeyEd25519()
-	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config)
+func createOutboundPeerAndPerformHandshake(id lpeer.ID, config *PeerConfig) (*peer, error) {
+	_, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	err = p.HandshakeTimeout(&NodeInfo{
-		PubKey:  pk.PubKey().Unwrap().(crypto.PubKeyEd25519),
-		Moniker: "host_peer",
-		Network: "testing",
-		Version: "123.123.123",
-	}, 1*time.Second)
-	if err != nil {
-		return nil, err
-	}
-	return p, nil
-}
-
-type remotePeer struct {
-	PrivKey crypto.PrivKeyEd25519
-	Config  *PeerConfig
-	addr    *NetAddress
-	quit    chan struct{}
-}
-
-func (p *remotePeer) Addr() *NetAddress {
-	return p.addr
-}
-
-func (p *remotePeer) PubKey() crypto.PubKeyEd25519 {
-	return p.PrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
-}
-
-func (p *remotePeer) Start() {
-	l, e := net.Listen("tcp", "127.0.0.1:0") // any available address
-	if e != nil {
-		golog.Fatalf("net.Listen tcp :0: %+v", e)
-	}
-	p.addr = NewNetAddress(l.Addr())
-	p.quit = make(chan struct{})
-	go p.accept(l)
-}
-
-func (p *remotePeer) Stop() {
-	close(p.quit)
-}
-
-func (p *remotePeer) accept(l net.Listener) {
-	for {
-		conn, err := l.Accept()
+	// TODO: determine how to build stream here.
+	return nil, errors.New("not implemented")
+	/*
+		var stream inet.Stream
+		p, err := newOutboundPeer(stream, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config)
 		if err != nil {
-			golog.Fatalf("Failed to accept conn: %+v", err)
+			return nil, err
 		}
-		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p Peer, r interface{}) {}, p.PrivKey, p.Config)
-		if err != nil {
-			golog.Fatalf("Failed to create a peer: %+v", err)
-		}
-		err = peer.HandshakeTimeout(&NodeInfo{
-			PubKey:  p.PrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
-			Moniker: "remote_peer",
+		err = p.HandshakeTimeout(&NodeInfo{
+			PubKey:  pk.PubKey().Unwrap().(crypto.PubKeyEd25519),
+			Moniker: "host_peer",
 			Network: "testing",
 			Version: "123.123.123",
 		}, 1*time.Second)
 		if err != nil {
-			golog.Fatalf("Failed to perform handshake: %+v", err)
+			return nil, err
 		}
-		select {
-		case <-p.quit:
-			if err := conn.Close(); err != nil {
-				golog.Fatal(err)
-			}
-			return
-		default:
-		}
-	}
+		return p, nil
+	*/
 }

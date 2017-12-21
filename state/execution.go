@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -249,12 +249,17 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator)
 	}
 
 	for _, v := range updates {
-		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
+		vPubKey, err := v.ParsePubKey()
 		if err != nil {
 			return err
 		}
 
-		address := pubkey.Address()
+		vPeerID, err := lpeer.IDFromPublicKey(vPubKey)
+		if err != nil {
+			return err
+		}
+
+		address := vPeerID.Pretty()
 		power := int64(v.Power)
 		// mind the overflow from int64
 		if power < 0 {
@@ -264,7 +269,7 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator)
 		_, val := currentSet.GetByAddress(address)
 		if val == nil {
 			// add val
-			added := currentSet.Add(types.NewValidator(pubkey, power))
+			added := currentSet.Add(types.NewValidator(vPubKey, power))
 			if !added {
 				return fmt.Errorf("Failed to add new validator %X with voting power %d", address, power)
 			}
@@ -291,12 +296,17 @@ func changeInVotingPowerMoreOrEqualToOneThird(currentSet *types.ValidatorSet, up
 	acc := int64(0)
 
 	for _, v := range updates {
-		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
+		pubkey, err := v.ParsePubKey()
 		if err != nil {
 			return false, err
 		}
 
-		address := pubkey.Address()
+		peerid, err := lpeer.IDFromPublicKey(pubkey)
+		if err != nil {
+			return false, err
+		}
+
+		address := peerid.Pretty()
 		power := int64(v.Power)
 		// mind the overflow from int64
 		if power < 0 {

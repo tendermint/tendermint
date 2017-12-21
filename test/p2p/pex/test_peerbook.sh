@@ -16,19 +16,19 @@ CLIENT_NAME="pex_addrbook_$ID"
 
 echo "1. restart peer $ID"
 docker stop "local_testnet_$ID"
-# preserve addrbook.json
-docker cp "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json" "/tmp/addrbook.json"
+# preserve peerbook.json
+docker cp "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/peerbook.json" "/tmp/peerbook.json"
 set +e #CIRCLE
 docker rm -vf "local_testnet_$ID"
 set -e
 
 # NOTE that we do not provide seeds
 bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
-docker cp "/tmp/addrbook.json" "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json"
+docker cp "/tmp/peerbook.json" "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/peerbook.json"
 echo "with the following addrbook:"
-cat /tmp/addrbook.json
+cat /tmp/peerbook.json
 # exec doesn't work on circle
-# docker exec "local_testnet_$ID" cat "/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json"
+# docker exec "local_testnet_$ID" cat "/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/peerbook.json"
 echo ""
 
 # if the client runs forever, it means addrbook wasn't saved or was empty

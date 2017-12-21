@@ -6,19 +6,46 @@ import (
 	"strconv"
 	"strings"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	wdata "github.com/tendermint/go-wire/data"
 )
 
 const maxNodeInfoSize = 10240 // 10Kb
 
 type NodeInfo struct {
-	PubKey     crypto.PubKeyEd25519 `json:"pub_key"`
-	Moniker    string               `json:"moniker"`
-	Network    string               `json:"network"`
-	RemoteAddr string               `json:"remote_addr"`
-	ListenAddr string               `json:"listen_addr"`
-	Version    string               `json:"version"` // major.minor.revision
-	Other      []string             `json:"other"`   // other application specific data
+	PubKey     string   `json:"pub_key"`
+	Moniker    string   `json:"moniker"`
+	Network    string   `json:"network"`
+	RemoteAddr string   `json:"remote_addr"`
+	ListenAddr string   `json:"listen_addr"`
+	Version    string   `json:"version"` // major.minor.revision
+	Other      []string `json:"other"`   // other application specific data
+}
+
+// ParsePublicKey parses the node info public key.
+func (info *NodeInfo) ParsePublicKey() (crypto.PubKey, error) {
+	var data []byte
+	if err := wdata.Encoder.Unmarshal(&data, []byte(info.PubKey)); err != nil {
+		return nil, fmt.Errorf("parse public key: %v", err.Error())
+	}
+
+	return crypto.UnmarshalPublicKey(data)
+}
+
+// SetPublicKey sets the pub key.
+func (info *NodeInfo) SetPublicKey(pubKey crypto.PubKey) error {
+	pubKeyBytes, err := pubKey.Bytes()
+	if err != nil {
+		return err
+	}
+
+	data, err := wdata.Encoder.Marshal(pubKeyBytes)
+	if err != nil {
+		return err
+	}
+
+	info.PubKey = string(data)
+	return nil
 }
 
 // CONTRACT: two nodes are compatible if the major/minor versions match and network match

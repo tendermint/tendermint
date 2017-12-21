@@ -3,15 +3,14 @@ package p2p
 import (
 	"bytes"
 	"fmt"
-	"net"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	ma "github.com/multiformats/go-multiaddr"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 
@@ -161,10 +160,10 @@ func TestConnAddrFilter(t *testing.T) {
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := netPipe()
+	c1, c2 := streamPipe()
 
-	s1.SetAddrFilter(func(addr net.Addr) error {
-		if addr.String() == c1.RemoteAddr().String() {
+	s1.SetAddrFilter(func(addr ma.Multiaddr) error {
+		if addr.Equal(c1.Conn().RemoteMultiaddr()) {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
@@ -197,11 +196,16 @@ func TestConnPubKeyFilter(t *testing.T) {
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := netPipe()
+	s2PubKey, err := s2.nodeInfo.ParsePublicKey()
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	c1, c2 := streamPipe()
 
 	// set pubkey filter
-	s1.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
-		if bytes.Equal(pubkey.Bytes(), s2.nodeInfo.PubKey.Bytes()) {
+	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
+		if s2PubKey.Equals(pubkey) {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
@@ -219,70 +223,6 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
 	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
-}
-
-func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
-	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	err := sw.Start()
-	if err != nil {
-		t.Error(err)
-	}
-	defer sw.Stop()
-
-	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
-	rp.Start()
-	defer rp.Stop()
-
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
-	require.Nil(err)
-	err = sw.addPeer(peer)
-	require.Nil(err)
-
-	// simulate failure by closing connection
-	peer.CloseConn()
-
-	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
-	assert.False(peer.IsRunning())
-}
-
-func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
-	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	err := sw.Start()
-	if err != nil {
-		t.Error(err)
-	}
-	defer sw.Stop()
-
-	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
-	rp.Start()
-	defer rp.Stop()
-
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
-	peer.makePersistent()
-	require.Nil(err)
-	err = sw.addPeer(peer)
-	require.Nil(err)
-
-	// simulate failure by closing connection
-	peer.CloseConn()
-
-	// TODO: remove sleep, detect the disconnection, wait for reconnect
-	npeers := sw.Peers().Size()
-	for i := 0; i < 20; i++ {
-		time.Sleep(250 * time.Millisecond)
-		npeers = sw.Peers().Size()
-		if npeers > 0 {
-			break
-		}
-	}
-	assert.NotZero(npeers)
-	assert.False(peer.IsRunning())
 }
 
 func TestSwitchFullConnectivity(t *testing.T) {

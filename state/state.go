@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"time"
 
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	wire "github.com/tendermint/go-wire"
-
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -157,19 +157,26 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	// Make validators slice
 	validators := make([]*types.Validator, len(genDoc.Validators))
 	for i, val := range genDoc.Validators {
-		pubKey := val.PubKey
-		address := pubKey.Address()
+		pubKey, err := val.ParsePubKey()
+		if err != nil {
+			return State{}, err
+		}
+
+		peerID, err := lpeer.IDFromPublicKey(pubKey)
+		if err != nil {
+			return State{}, err
+		}
+		address := peerID.Pretty()
 
 		// Make validator
 		validators[i] = &types.Validator{
 			Address:     address,
-			PubKey:      pubKey,
+			PubKey:      val.PubKey,
 			VotingPower: val.Power,
 		}
 	}
 
 	return State{
-
 		ChainID: genDoc.ChainID,
 
 		LastBlockHeight: 0,

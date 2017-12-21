@@ -4,8 +4,8 @@ import (
 	"strings"
 	"time"
 
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire/data"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
