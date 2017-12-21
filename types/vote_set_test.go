@@ -59,16 +59,6 @@ func withBlockPartsHeader(vote *Vote, blockPartsHeader PartSetHeader) *Vote {
 	return vote
 }
 
-func signAddVote(privVal *PrivValidatorFS, vote *Vote, voteSet *VoteSet) (bool, error) {
-	var err error
-	vote.Signature, err = privVal.Signer.Sign(SignBytes(voteSet.ChainID(), vote))
-	if err != nil {
-		return false, err
-	}
-	added, err := voteSet.AddVote(vote)
-	return added, err
-}
-
 func TestAddVote(t *testing.T) {
 	height, round := int64(1), 0
 	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrevote, 10, 1)

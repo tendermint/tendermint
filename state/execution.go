@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -184,26 +185,69 @@ func (s *State) ValidateBlock(block *types.Block) error {
 	return s.validateBlock(block)
 }
 
-func (s *State) validateBlock(block *types.Block) error {
+// MakeBlock builds a block with the given txs and commit from the current state.
+func (s *State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
+	// build base block
+	block := types.MakeBlock(height, txs, commit)
+
+	// fill header with state data
+	block.ChainID = s.ChainID
+	block.TotalTxs = s.LastBlockTotalTx + block.NumTxs
+	block.LastBlockID = s.LastBlockID
+	block.ValidatorsHash = s.Validators.Hash()
+	block.AppHash = s.AppHash
+	block.ConsensusHash = s.LastConsensusParams.Hash()
+
+	return block, block.MakePartSet(s.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+}
+
+func (s *State) validateBlock(b *types.Block) error {
 	// Basic block validation.
-	err := block.ValidateBasic(s.ChainID, s.LastBlockHeight,
-		s.LastBlockTotalTx, s.LastBlockID, s.LastBlockTime, s.AppHash, s.LastConsensusHash)
-	if err != nil {
+	if err := b.ValidateBasic(); err != nil {
 		return err
 	}
 
+	if b.ChainID != s.ChainID {
+		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", s.ChainID, b.ChainID)
+	}
+	if b.Height != s.LastBlockHeight+1 {
+		return fmt.Errorf("Wrong Block.Header.Height. Expected %v, got %v", s.LastBlockHeight+1, b.Height)
+	}
+	/*	TODO: Determine bounds for Time
+		See blockchain/reactor "stopSyncingDurationMinutes"
+
+		if !b.Time.After(lastBlockTime) {
+			return errors.New("Invalid Block.Header.Time")
+		}
+	*/
+
+	newTxs := int64(len(b.Data.Txs))
+	if b.TotalTxs != s.LastBlockTotalTx+newTxs {
+		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", s.LastBlockTotalTx+newTxs, b.TotalTxs)
+	}
+	if !b.LastBlockID.Equals(s.LastBlockID) {
+		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", s.LastBlockID, b.LastBlockID)
+	}
+
+	if !bytes.Equal(b.AppHash, s.AppHash) {
+		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", s.AppHash, b.AppHash)
+	}
+	if !bytes.Equal(b.ConsensusHash, s.LastConsensusParams.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", s.LastConsensusParams.Hash(), b.ConsensusHash)
+	}
+
 	// Validate block LastCommit.
-	if block.Height == 1 {
-		if len(block.LastCommit.Precommits) != 0 {
+	if b.Height == 1 {
+		if len(b.LastCommit.Precommits) != 0 {
 			return errors.New("Block at height 1 (first block) should have no LastCommit precommits")
 		}
 	} else {
-		if len(block.LastCommit.Precommits) != s.LastValidators.Size() {
+		if len(b.LastCommit.Precommits) != s.LastValidators.Size() {
 			return errors.New(cmn.Fmt("Invalid block commit size. Expected %v, got %v",
-				s.LastValidators.Size(), len(block.LastCommit.Precommits)))
+				s.LastValidators.Size(), len(b.LastCommit.Precommits)))
 		}
 		err := s.LastValidators.VerifyCommit(
-			s.ChainID, s.LastBlockID, block.Height-1, block.LastCommit)
+			s.ChainID, s.LastBlockID, b.Height-1, b.LastCommit)
 		if err != nil {
 			return err
 		}
@@ -235,7 +279,10 @@ func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn
 	fail.Fail() // XXX
 
 	// now update the block and validators
-	s.SetBlockAndValidators(block.Header, partsHeader, abciResponses)
+	err = s.SetBlockAndValidators(block.Header, partsHeader, abciResponses)
+	if err != nil {
+		return fmt.Errorf("Commit failed for application: %v", err)
+	}
 
 	// lock mempool, commit state, update mempoool
 	err = s.CommitStateUpdateMempool(proxyAppConn, block, mempool)
