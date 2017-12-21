@@ -12,11 +12,11 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) *types.Header {
 	return &types.Header{
-		ChainId:        header.ChainID,
+		ChainID:        header.ChainID,
 		Height:         header.Height,
 		Time:           header.Time.Unix(),
 		NumTxs:         int32(header.NumTxs), // XXX: overflow
-		LastBlockId:    TM2PB.BlockID(header.LastBlockID),
+		LastBlockID:    TM2PB.BlockID(header.LastBlockID),
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
 		AppHash:        header.AppHash,
