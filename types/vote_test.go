@@ -9,30 +9,15 @@ import (
 	wire "github.com/tendermint/go-wire"
 )
 
-func exampleVote() *Vote {
-	var stamp, err = time.Parse(timeFormat, "2017-12-25T03:00:01.234Z")
-	if err != nil {
-		panic(err)
-	}
-
-	return &Vote{
-		ValidatorAddress: []byte("addr"),
-		ValidatorIndex:   56789,
-		Height:           12345,
-		Round:            2,
-		Timestamp:        stamp,
-		Type:             byte(2),
-		BlockID: BlockID{
-			Hash: []byte("hash"),
-			PartsHeader: PartSetHeader{
-				Total: 1000000,
-				Hash:  []byte("parts_hash"),
-			},
-		},
-	}
+func examplePrevote() *Vote {
+	return exampleVote(VoteTypePrevote)
 }
 
-func examplePrevote() *Vote {
+func examplePrecommit() *Vote {
+	return exampleVote(VoteTypePrecommit)
+}
+
+func exampleVote(t byte) *Vote {
 	var stamp, err = time.Parse(timeFormat, "2017-12-25T03:00:01.234Z")
 	if err != nil {
 		panic(err)
@@ -44,7 +29,7 @@ func examplePrevote() *Vote {
 		Height:           12345,
 		Round:            2,
 		Timestamp:        stamp,
-		Type:             byte(1),
+		Type:             t,
 		BlockID: BlockID{
 			Hash: []byte("hash"),
 			PartsHeader: PartSetHeader{
@@ -56,7 +41,7 @@ func examplePrevote() *Vote {
 }
 
 func TestVoteSignable(t *testing.T) {
-	vote := exampleVote()
+	vote := examplePrecommit()
 	signBytes := SignBytes("test_chain_id", vote)
 	signStr := string(signBytes)
 
@@ -73,7 +58,7 @@ func TestVoteString(t *testing.T) {
 		in   string
 		out  string
 	}{
-		{"Precommit", exampleVote().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
+		{"Precommit", examplePrecommit().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
 		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
 	}
 
@@ -91,7 +76,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	privVal := GenPrivValidatorFS("")
 	pubKey := privVal.GetPubKey()
 
-	vote := exampleVote()
+	vote := examplePrecommit()
 	signBytes := SignBytes("test_chain_id", vote)
 
 	// sign it
