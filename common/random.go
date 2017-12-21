@@ -40,7 +40,7 @@ func RandStr(length int) string {
 	chars := []byte{}
 MAIN_LOOP:
 	for {
-		val := prng.Int63()
+		val := RandInt63()
 		for i := 0; i < 10; i++ {
 			v := int(val & 0x3f) // rightmost 6 bits
 			if v >= 62 {         // only 62 characters in strChars
