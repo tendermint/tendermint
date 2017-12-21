@@ -1,7 +1,6 @@
 package common
 
 import (
-	"sync"
 	"testing"
 	"time"
 
@@ -9,69 +8,61 @@ import (
 	asrt "github.com/stretchr/testify/assert"
 )
 
-type rCounter struct {
-	input chan time.Time
-	mtx   sync.Mutex
-	count int
-}
-
-func (c *rCounter) Increment() {
-	c.mtx.Lock()
-	c.count++
-	c.mtx.Unlock()
-}
-
-func (c *rCounter) Count() int {
-	c.mtx.Lock()
-	val := c.count
-	c.mtx.Unlock()
-	return val
-}
-
-// Read should run in a go-routine and
-// updates count by one every time a packet comes in
-func (c *rCounter) Read() {
-	for range c.input {
-		c.Increment()
-	}
-}
-
+// NOTE: this only tests with the ManualTicker.
+// How do you test a real-clock ticker properly?
 func TestRepeat(test *testing.T) {
 	assert := asrt.New(test)
 
-	dur := time.Duration(50) * time.Millisecond
-	short := time.Duration(20) * time.Millisecond
-	// delay waits for cnt durations, an a little extra
-	delay := func(cnt int) time.Duration {
-		return time.Duration(cnt)*dur + time.Millisecond
+	ch := make(chan time.Time, 100)
+	// tick fires cnt times on ch
+	tick := func(cnt int) {
+		for i := 0; i < cnt; i++ {
+			ch <- time.Now()
+		}
 	}
-	t := NewRepeatTimer("bar", dur)
+	tock := func(test *testing.T, t *RepeatTimer, cnt int) {
+		for i := 0; i < cnt; i++ {
+			after := time.After(time.Second * 2)
+			select {
+			case <-t.Ch:
+			case <-after:
+				test.Fatal("expected ticker to fire")
+			}
+		}
+		done := true
+		select {
+		case <-t.Ch:
+			done = false
+		default:
+		}
+		assert.True(done)
+	}
+
+	ticker := NewManualTicker(ch)
+	t := NewRepeatTimerWithTicker("bar", ticker)
 
 	// start at 0
-	c := &rCounter{input: t.Ch}
-	go c.Read()
-	assert.Equal(0, c.Count())
+	tock(test, t, 0)
 
 	// wait for 4 periods
-	time.Sleep(delay(4))
-	assert.Equal(4, c.Count())
+	tick(4)
+	tock(test, t, 4)
 
 	// keep reseting leads to no firing
 	for i := 0; i < 20; i++ {
-		time.Sleep(short)
+		time.Sleep(time.Millisecond)
 		t.Reset()
 	}
-	assert.Equal(4, c.Count())
+	tock(test, t, 0)
 
 	// after this, it still works normal
-	time.Sleep(delay(2))
-	assert.Equal(6, c.Count())
+	tick(2)
+	tock(test, t, 2)
 
 	// after a stop, nothing more is sent
 	stopped := t.Stop()
 	assert.True(stopped)
-	time.Sleep(delay(7))
-	assert.Equal(6, c.Count())
+	tock(test, t, 0)
 
 	// close channel to stop counter
 	close(t.Ch)
