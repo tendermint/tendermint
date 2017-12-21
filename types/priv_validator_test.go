@@ -124,6 +124,13 @@ func TestSignVote(t *testing.T) {
 		err = privVal.SignVote("mychainid", c)
 		assert.Error(err, "expected error on signing conflicting vote")
 	}
+
+	// try signing a vote with a different time stamp
+	sig := vote.Signature
+	vote.Timestamp = vote.Timestamp.Add(time.Duration(1000))
+	err = privVal.SignVote("mychainid", vote)
+	assert.NoError(err)
+	assert.Equal(sig, vote.Signature)
 }
 
 func TestSignProposal(t *testing.T) {
@@ -157,6 +164,13 @@ func TestSignProposal(t *testing.T) {
 		err = privVal.SignProposal("mychainid", c)
 		assert.Error(err, "expected error on signing conflicting proposal")
 	}
+
+	// try signing a proposal with a different time stamp
+	sig := proposal.Signature
+	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
+	err = privVal.SignProposal("mychainid", proposal)
+	assert.NoError(err)
+	assert.Equal(sig, proposal.Signature)
 }
 
 func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
