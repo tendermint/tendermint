@@ -99,6 +99,7 @@ func TestSignVote(t *testing.T) {
 	privVal := GenPrivValidatorFS(tempFilePath)
 
 	block1 := BlockID{[]byte{1, 2, 3}, PartSetHeader{}}
+	block2 := BlockID{[]byte{3, 2, 1}, PartSetHeader{}}
 	height, round := int64(10), 1
 	voteType := VoteTypePrevote
 
@@ -116,12 +117,20 @@ func TestSignVote(t *testing.T) {
 		newVote(privVal.Address, 0, height, round-1, voteType, block1),   // round regression
 		newVote(privVal.Address, 0, height-1, round, voteType, block1),   // height regression
 		newVote(privVal.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
+		newVote(privVal.Address, 0, height, round, voteType, block2),     // different block
 	}
 
 	for _, c := range cases {
 		err = privVal.SignVote("mychainid", c)
 		assert.Error(err, "expected error on signing conflicting vote")
 	}
+
+	// try signing a vote with a different time stamp
+	sig := vote.Signature
+	vote.Timestamp = vote.Timestamp.Add(time.Duration(1000))
+	err = privVal.SignVote("mychainid", vote)
+	assert.NoError(err)
+	assert.Equal(sig, vote.Signature)
 }
 
 func TestSignProposal(t *testing.T) {
@@ -131,6 +140,7 @@ func TestSignProposal(t *testing.T) {
 	privVal := GenPrivValidatorFS(tempFilePath)
 
 	block1 := PartSetHeader{5, []byte{1, 2, 3}}
+	block2 := PartSetHeader{10, []byte{3, 2, 1}}
 	height, round := int64(10), 1
 
 	// sign a proposal for first time
@@ -147,12 +157,20 @@ func TestSignProposal(t *testing.T) {
 		newProposal(height, round-1, block1),   // round regression
 		newProposal(height-1, round, block1),   // height regression
 		newProposal(height-2, round+4, block1), // height regression and different round
+		newProposal(height, round, block2),     // different block
 	}
 
 	for _, c := range cases {
 		err = privVal.SignProposal("mychainid", c)
 		assert.Error(err, "expected error on signing conflicting proposal")
 	}
+
+	// try signing a proposal with a different time stamp
+	sig := proposal.Signature
+	proposal.Timestamp = proposal.Timestamp.Add(time.Duration(1000))
+	err = privVal.SignProposal("mychainid", proposal)
+	assert.NoError(err)
+	assert.Equal(sig, proposal.Signature)
 }
 
 func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
