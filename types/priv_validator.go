@@ -222,7 +222,7 @@ func (privVal *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal)
 	return nil
 }
 
-// returns error if HRS regression. returns true if HRS is unchanged
+// returns error if HRS regression or no LastSignBytes. returns true if HRS is unchanged
 func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bool, error) {
 	if privVal.LastHeight > height {
 		return false, errors.New("Height regression")
