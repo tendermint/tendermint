@@ -131,7 +131,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: c8ddf156a7ded132708ff6e435e19ac1852822d7
+  version: b0b740210c60b7fc789382ff3a709426eb71903d
   subpackages:
   - autofile
   - cli
