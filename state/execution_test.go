@@ -23,6 +23,43 @@ var (
 	nTxsPerBlock = 10
 )
 
+/*
+func TestValidateBlock(t *testing.T) {
+	state := state()
+	state.SetLogger(log.TestingLogger())
+
+	block := makeBlock(1, state)
+
+	// proper block must pass
+	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, appHash, consensusHash)
+	require.NoError(t, err)
+
+	// wrong chain fails
+	err = block.ValidateBasic("other", h-1, 10, lastID, block.Time, appHash, consensusHash)
+	require.Error(t, err)
+
+	// wrong height fails
+	err = block.ValidateBasic("hello", h+4, 10, lastID, block.Time, appHash, consensusHash)
+	require.Error(t, err)
+
+	// wrong total tx fails
+	err = block.ValidateBasic("hello", h-1, 15, lastID, block.Time, appHash, consensusHash)
+	require.Error(t, err)
+
+	// wrong blockid fails
+	err = block.ValidateBasic("hello", h-1, 10, makeBlockID(), block.Time, appHash, consensusHash)
+	require.Error(t, err)
+
+	// wrong app hash fails
+	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, []byte("bad-hash"), consensusHash)
+	require.Error(t, err)
+
+	// wrong consensus hash fails
+	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, appHash, []byte("wrong-params"))
+	require.Error(t, err)
+}
+*/
+
 func TestApplyBlock(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(dummy.NewDummyApplication())
 	proxyApp := proxy.NewAppConns(cc, nil)
@@ -33,7 +70,7 @@ func TestApplyBlock(t *testing.T) {
 	state := state()
 	state.SetLogger(log.TestingLogger())
 
-	block := makeBlock(1, state)
+	block := makeBlock(state, 1)
 
 	err = state.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), block, block.MakePartSet(testPartSize).Header(), types.MockMempool{})
 	require.Nil(t, err)
@@ -79,10 +116,7 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	for _, tc := range testCases {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
-		valHash := state.Validators.Hash()
-		block, _ := types.MakeBlock(2, chainID, makeTxs(2), state.LastBlockTotalTx, lastCommit,
-			prevBlockID, valHash, state.AppHash, state.LastConsensusHash, testPartSize)
-
+		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), lastValidators)
 		require.Nil(t, err, tc.desc)
 
@@ -112,15 +146,8 @@ func state() *State {
 	return s
 }
 
-func makeBlock(height int64, state *State) *types.Block {
-	prevHash := state.LastBlockID.Hash
-	prevParts := types.PartSetHeader{}
-	valHash := state.Validators.Hash()
-	prevBlockID := types.BlockID{prevHash, prevParts}
-	block, _ := types.MakeBlock(height, chainID,
-		makeTxs(height), state.LastBlockTotalTx,
-		new(types.Commit), prevBlockID, valHash,
-		state.AppHash, state.LastConsensusHash, testPartSize)
+func makeBlock(state *State, height int64) *types.Block {
+	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit))
 	return block
 }
 

@@ -183,7 +183,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 // maxMsgSize returns the maximum allowable size of a
 // message on the blockchain reactor.
 func (bcR *BlockchainReactor) maxMsgSize() int {
-	return bcR.state.Params.BlockSize.MaxBytes + 2
+	return bcR.state.ConsensusParams.BlockSize.MaxBytes + 2
 }
 
 // Handle messages from the poolReactor telling the reactor what to do.
@@ -251,7 +251,7 @@ FOR_LOOP:
 					// We need both to sync the first block.
 					break SYNC_LOOP
 				}
-				firstParts := first.MakePartSet(bcR.state.Params.BlockPartSizeBytes)
+				firstParts := first.MakePartSet(bcR.state.ConsensusParams.BlockPartSizeBytes)
 				firstPartsHeader := firstParts.Header()
 				// Finally, verify the first block using the second's commit
 				// NOTE: we can probably make this more efficient, but note that calling

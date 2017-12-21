@@ -107,9 +107,9 @@ func TestWALCrash(t *testing.T) {
 		{"block with a smaller part size",
 			func(cs *ConsensusState, ctx context.Context) {
 				// XXX: is there a better way to change BlockPartSizeBytes?
-				params := cs.state.Params
+				params := cs.state.ConsensusParams
 				params.BlockPartSizeBytes = 512
-				cs.state.Params = params
+				cs.state.ConsensusParams = params
 				sendTxs(cs, ctx)
 			},
 			1},
@@ -392,7 +392,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 }
 
 func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
-	testPartSize := st.Params.BlockPartSizeBytes
+	testPartSize := st.ConsensusParams.BlockPartSizeBytes
 	err := st.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool)
 	if err != nil {
 		panic(err)
@@ -590,7 +590,7 @@ func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBl
 	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
 	state.SetLogger(log.TestingLogger().With("module", "state"))
 
-	store := NewMockBlockStore(config, state.Params)
+	store := NewMockBlockStore(config, state.ConsensusParams)
 	return state, store
 }
 

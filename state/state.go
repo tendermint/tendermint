@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// database keys
 var (
 	stateKey         = []byte("stateKey")
 	abciResponsesKey = []byte("abciResponsesKey")
@@ -27,40 +28,51 @@ func calcValidatorsKey(height int64) []byte {
 	return []byte(cmn.Fmt("validatorsKey:%v", height))
 }
 
+/*func calcConsensusParamsKey(height int64) []byte {
+	return []byte(cmn.Fmt("consensusParamsKey:%v", height))
+}*/
+
 //-----------------------------------------------------------------------------
 
-// State represents the latest committed state of the Tendermint consensus,
-// including the last committed block and validator set.
-// Newly committed blocks are validated and executed against the State.
+// State is a short description of the latest committed block of the Tendermint consensus.
+// It keeps all information necessary to validate new blocks,
+// including the last validator set and the consensus params.
+// All fields are exposed so the struct can be easily serialized,
+// but the fields should only be changed by calling state.SetBlockAndValidators.
 // NOTE: not goroutine-safe.
 type State struct {
 	// mtx for writing to db
 	mtx sync.Mutex
 	db  dbm.DB
 
+	// Immutable
 	ChainID string
-	// Consensus parameters used for validating blocks
-	Params types.ConsensusParams
 
-	// These fields are updated by SetBlockAndValidators.
+	// Exposed fields are updated by SetBlockAndValidators.
+
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	// LastValidators is used to validate block.LastCommit.
 	LastBlockHeight  int64
 	LastBlockTotalTx int64
 	LastBlockID      types.BlockID
 	LastBlockTime    time.Time
-	Validators       *types.ValidatorSet
-	LastValidators   *types.ValidatorSet
-	// When a block returns a validator set change via EndBlock,
-	// the change only applies to the next block.
-	// So, if s.LastBlockHeight causes a valset change,
+
+	// LastValidators is used to validate block.LastCommit.
+	// Validators are persisted to the database separately every time they change,
+	// so we can query for historical validator sets.
+	// Note that if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
+	Validators                  *types.ValidatorSet
+	LastValidators              *types.ValidatorSet
 	LastHeightValidatorsChanged int64
 
-	// AppHash is updated after Commit
+	// Consensus parameters used for validating blocks.
+	// Changes returned by EndBlock and updated after Commit.
+	ConsensusParams                  types.ConsensusParams
+	LastConsensusParams              types.ConsensusParams
+	LastHeightConsensusParamsChanged int64
+
+	// The latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
-	// LastConsensusHash is updated after Commit
-	LastConsensusHash []byte
 
 	logger log.Logger
 }
@@ -114,19 +126,26 @@ func (s *State) SetLogger(l log.Logger) {
 // Copy makes a copy of the State for mutating.
 func (s *State) Copy() *State {
 	return &State{
-		db:                          s.db,
-		LastBlockHeight:             s.LastBlockHeight,
-		LastBlockTotalTx:            s.LastBlockTotalTx,
-		LastBlockID:                 s.LastBlockID,
-		LastBlockTime:               s.LastBlockTime,
+		db: s.db,
+
+		ChainID: s.ChainID,
+
+		LastBlockHeight:  s.LastBlockHeight,
+		LastBlockTotalTx: s.LastBlockTotalTx,
+		LastBlockID:      s.LastBlockID,
+		LastBlockTime:    s.LastBlockTime,
+
 		Validators:                  s.Validators.Copy(),
 		LastValidators:              s.LastValidators.Copy(),
-		AppHash:                     s.AppHash,
-		LastConsensusHash:           s.LastConsensusHash,
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
-		logger:  s.logger,
-		ChainID: s.ChainID,
-		Params:  s.Params,
+
+		ConsensusParams:                  s.ConsensusParams,
+		LastConsensusParams:              s.LastConsensusParams,
+		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
+
+		AppHash: s.AppHash,
+
+		logger: s.logger,
 	}
 }
 
@@ -254,20 +273,20 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
 
-	nextParams := applyUpdates(s.Params,
+	nextParams := applyUpdates(s.ConsensusParams,
 		abciResponses.EndBlock.ConsensusParamUpdates)
 	err := nextParams.Validate()
 	if err != nil {
 		s.logger.Error("Error updating consensus params", "err", err)
 		// TODO: err or carry on?
-		nextParams = s.Params
+		nextParams = s.ConsensusParams
 	}
 
 	s.setBlockAndValidators(header.Height,
 		header.NumTxs,
 		types.BlockID{header.Hash(), blockPartsHeader},
 		header.Time,
-		prevValSet, nextValSet,
+		nextValSet,
 		nextParams)
 
 }
@@ -313,17 +332,19 @@ func applyUpdates(p types.ConsensusParams,
 
 func (s *State) setBlockAndValidators(height int64,
 	newTxs int64, blockID types.BlockID, blockTime time.Time,
-	prevValSet, nextValSet *types.ValidatorSet,
-	nextParams types.ConsensusParams) {
+	valSet *types.ValidatorSet,
+	params types.ConsensusParams) {
 
 	s.LastBlockHeight = height
 	s.LastBlockTotalTx += newTxs
 	s.LastBlockID = blockID
 	s.LastBlockTime = blockTime
-	s.Validators = nextValSet
-	s.LastValidators = prevValSet
-	s.LastConsensusHash = s.Params.Hash()
-	s.Params = nextParams
+
+	s.LastValidators = s.Validators.Copy()
+	s.Validators = valSet
+
+	s.LastConsensusParams = s.ConsensusParams
+	s.ConsensusParams = params
 }
 
 // GetValidators returns the last and current validator sets.
@@ -424,15 +445,19 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		db: db,
 
 		ChainID: genDoc.ChainID,
-		Params:  *genDoc.ConsensusParams,
 
-		LastBlockHeight:             0,
-		LastBlockID:                 types.BlockID{},
-		LastBlockTime:               genDoc.GenesisTime,
+		LastBlockHeight: 0,
+		LastBlockID:     types.BlockID{},
+		LastBlockTime:   genDoc.GenesisTime,
+
 		Validators:                  types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
-		AppHash:                     genDoc.AppHash,
-		LastConsensusHash:           genDoc.ConsensusParams.Hash(),
 		LastHeightValidatorsChanged: 1,
+
+		ConsensusParams:                  *genDoc.ConsensusParams,
+		LastConsensusParams:              types.ConsensusParams{},
+		LastHeightConsensusParamsChanged: 1,
+
+		AppHash: genDoc.AppHash,
 	}, nil
 }

@@ -76,7 +76,7 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 	state.LastBlockHeight++
 
 	// build mock responses
-	block := makeBlock(2, state)
+	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []*abci.KVPair{}}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []*abci.KVPair{}}
@@ -260,7 +260,7 @@ func TestApplyUpdates(t *testing.T) {
 func makeHeaderPartsResponses(state *State, height int64,
 	pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
 
-	block := makeBlock(height, state)
+	block := makeBlock(state, height)
 	_, val := state.Validators.GetByIndex(0)
 	abciResponses := &ABCIResponses{
 		Height:   height,
