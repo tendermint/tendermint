@@ -102,14 +102,14 @@ func NewRepeatTimerWithTicker(name string, ticker Ticker) *RepeatTimer {
 		name:   name,
 	}
 	t.wg.Add(1)
-	go t.fireRoutine(t.ticker)
+	go t.fireRoutine(t.ticker.Chan())
 	return t
 }
 
-func (t *RepeatTimer) fireRoutine(ticker Ticker) {
+func (t *RepeatTimer) fireRoutine(ch <-chan time.Time) {
 	for {
 		select {
-		case t_ := <-ticker.Chan():
+		case t_ := <-ch:
 			t.Ch <- t_
 		case <-t.quit:
 			// needed so we know when we can reset t.quit
@@ -129,7 +129,7 @@ func (t *RepeatTimer) Reset() {
 	t.ticker.Reset()
 	t.quit = make(chan struct{})
 	t.wg.Add(1)
-	go t.fireRoutine(t.ticker)
+	go t.fireRoutine(t.ticker.Chan())
 }
 
 // For ease of .Stop()'ing services before .Start()'ing them,
