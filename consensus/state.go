@@ -1338,7 +1338,8 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 
 			return err
 		} else {
-			// Probably an invalid signature. Bad peer.
+			// Probably an invalid signature / Bad peer.
+			// Seems this can also err sometimes with "Unexpected step" - perhaps not from a bad peer ?
 			cs.Logger.Error("Error attempting to add vote", "err", err)
 			return ErrAddingVote
 		}
