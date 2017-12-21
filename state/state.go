@@ -273,8 +273,8 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
 
-	nextParams := applyUpdates(s.ConsensusParams,
-		abciResponses.EndBlock.ConsensusParamUpdates)
+	// NOTE: must not mutate s.ConsensusParams
+	nextParams := s.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
 	err := nextParams.Validate()
 	if err != nil {
 		s.logger.Error("Error updating consensus params", "err", err)
@@ -289,45 +289,6 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 		nextValSet,
 		nextParams)
 
-}
-
-// applyUpdates returns new ConsensusParams
-// whose fields are set to any non-zero fields of c.
-// If c is nil, it returns p unmodified, as it was passed in.
-func applyUpdates(p types.ConsensusParams,
-	c *abci.ConsensusParams) types.ConsensusParams {
-
-	if c == nil {
-		return p
-	}
-	res := p
-	// we must defensively consider any structs may be nil
-	if c.BlockSize != nil {
-
-		if c.BlockSize.MaxBytes != 0 {
-			res.BlockSize.MaxBytes = int(c.BlockSize.MaxBytes)
-		}
-		if c.BlockSize.MaxTxs != 0 {
-			res.BlockSize.MaxTxs = int(c.BlockSize.MaxTxs)
-		}
-		if c.BlockSize.MaxGas != 0 {
-			res.BlockSize.MaxGas = int(c.BlockSize.MaxGas)
-		}
-	}
-	if c.TxSize != nil {
-		if c.TxSize.MaxBytes != 0 {
-			res.TxSize.MaxBytes = int(c.TxSize.MaxBytes)
-		}
-		if c.TxSize.MaxGas != 0 {
-			res.TxSize.MaxGas = int(c.TxSize.MaxGas)
-		}
-	}
-	if c.BlockGossip != nil {
-		if c.BlockGossip.BlockPartSizeBytes != 0 {
-			res.BlockGossip.BlockPartSizeBytes = int(c.BlockGossip.BlockPartSizeBytes)
-		}
-	}
-	return res
 }
 
 func (s *State) setBlockAndValidators(height int64,

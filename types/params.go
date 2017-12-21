@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/pkg/errors"
 
+	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -20,15 +21,15 @@ type ConsensusParams struct {
 
 // BlockSize contain limits on the block size.
 type BlockSize struct {
-	MaxBytes int `json:"max_bytes"` // NOTE: must not be 0 nor greater than 100MB
-	MaxTxs   int `json:"max_txs"`
-	MaxGas   int `json:"max_gas"`
+	MaxBytes int   `json:"max_bytes"` // NOTE: must not be 0 nor greater than 100MB
+	MaxTxs   int   `json:"max_txs"`
+	MaxGas   int64 `json:"max_gas"`
 }
 
 // TxSize contain limits on the tx size.
 type TxSize struct {
-	MaxBytes int `json:"max_bytes"`
-	MaxGas   int `json:"max_gas"`
+	MaxBytes int   `json:"max_bytes"`
+	MaxGas   int64 `json:"max_gas"`
 }
 
 // BlockGossip determine consensus critical elements of how blocks are gossiped
@@ -99,4 +100,43 @@ func (params *ConsensusParams) Hash() []byte {
 		"tx_size_max_bytes":            params.TxSize.MaxBytes,
 		"tx_size_max_gas":              params.TxSize.MaxGas,
 	})
+}
+
+// Update returns a copy of the params with updates from the non-zero fields of p2.
+// NOTE: note: must not modify the original
+func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusParams {
+	res := params // explicit copy
+
+	if params2 == nil {
+		return res
+	}
+
+	// we must defensively consider any structs may be nil
+	// XXX: it's cast city over here. It's ok because we only do int32->int
+	// but still, watch it champ.
+	if params2.BlockSize != nil {
+		if params2.BlockSize.MaxBytes > 0 {
+			res.BlockSize.MaxBytes = int(params2.BlockSize.MaxBytes)
+		}
+		if params2.BlockSize.MaxTxs > 0 {
+			res.BlockSize.MaxTxs = int(params2.BlockSize.MaxTxs)
+		}
+		if params2.BlockSize.MaxGas > 0 {
+			res.BlockSize.MaxGas = params2.BlockSize.MaxGas
+		}
+	}
+	if params2.TxSize != nil {
+		if params2.TxSize.MaxBytes > 0 {
+			res.TxSize.MaxBytes = int(params2.TxSize.MaxBytes)
+		}
+		if params2.TxSize.MaxGas > 0 {
+			res.TxSize.MaxGas = params2.TxSize.MaxGas
+		}
+	}
+	if params2.BlockGossip != nil {
+		if params2.BlockGossip.BlockPartSizeBytes > 0 {
+			res.BlockGossip.BlockPartSizeBytes = int(params2.BlockGossip.BlockPartSizeBytes)
+		}
+	}
+	return res
 }
