@@ -23,42 +23,51 @@ var (
 	nTxsPerBlock = 10
 )
 
-/*
 func TestValidateBlock(t *testing.T) {
 	state := state()
 	state.SetLogger(log.TestingLogger())
 
-	block := makeBlock(1, state)
-
 	// proper block must pass
-	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, appHash, consensusHash)
+	block := makeBlock(state, 1)
+	err := state.ValidateBlock(block)
 	require.NoError(t, err)
 
 	// wrong chain fails
-	err = block.ValidateBasic("other", h-1, 10, lastID, block.Time, appHash, consensusHash)
+	block = makeBlock(state, 1)
+	block.ChainID = "not-the-real-one"
+	err = state.ValidateBlock(block)
 	require.Error(t, err)
 
 	// wrong height fails
-	err = block.ValidateBasic("hello", h+4, 10, lastID, block.Time, appHash, consensusHash)
+	block = makeBlock(state, 1)
+	block.Height += 10
+	err = state.ValidateBlock(block)
 	require.Error(t, err)
 
 	// wrong total tx fails
-	err = block.ValidateBasic("hello", h-1, 15, lastID, block.Time, appHash, consensusHash)
+	block = makeBlock(state, 1)
+	block.TotalTxs += 10
+	err = state.ValidateBlock(block)
 	require.Error(t, err)
 
 	// wrong blockid fails
-	err = block.ValidateBasic("hello", h-1, 10, makeBlockID(), block.Time, appHash, consensusHash)
+	block = makeBlock(state, 1)
+	block.LastBlockID.PartsHeader.Total += 10
+	err = state.ValidateBlock(block)
 	require.Error(t, err)
 
 	// wrong app hash fails
-	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, []byte("bad-hash"), consensusHash)
+	block = makeBlock(state, 1)
+	block.AppHash = []byte("wrong app hash")
+	err = state.ValidateBlock(block)
 	require.Error(t, err)
 
 	// wrong consensus hash fails
-	err = block.ValidateBasic("hello", h-1, 10, lastID, block.Time, appHash, []byte("wrong-params"))
+	block = makeBlock(state, 1)
+	block.ConsensusHash = []byte("wrong consensus hash")
+	err = state.ValidateBlock(block)
 	require.Error(t, err)
 }
-*/
 
 func TestApplyBlock(t *testing.T) {
 	cc := proxy.NewLocalClientCreator(dummy.NewDummyApplication())
