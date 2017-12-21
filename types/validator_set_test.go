@@ -5,8 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	"github.com/stretchr/testify/assert"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -188,6 +189,45 @@ func TestProposerSelection3(t *testing.T) {
 
 		j += times
 	}
+}
+
+func TestValidatorSetIncrementAccumOverflows(t *testing.T) {
+	// NewValidatorSet calls IncrementAccum(1)
+	vset := NewValidatorSet([]*Validator{
+		// too much voting power
+		0: {Address: []byte("a"), VotingPower: mostPositive, Accum: 0},
+		// too big accum
+		1: {Address: []byte("b"), VotingPower: 10, Accum: mostPositive},
+		// almost too big accum
+		2: {Address: []byte("c"), VotingPower: 10, Accum: mostPositive - 5},
+	})
+
+	assert.Equal(t, int64(0), vset.Validators[0].Accum, "0") // because we decrement val with most voting power
+	assert.Equal(t, mostPositive, vset.Validators[1].Accum, "1")
+	assert.Equal(t, mostPositive, vset.Validators[2].Accum, "2")
+}
+
+func TestValidatorSetIncrementAccumUnderflows(t *testing.T) {
+	// NewValidatorSet calls IncrementAccum(1)
+	vset := NewValidatorSet([]*Validator{
+		0: {Address: []byte("a"), VotingPower: mostPositive, Accum: mostNegative},
+		1: {Address: []byte("b"), VotingPower: 1, Accum: mostNegative},
+	})
+
+	vset.IncrementAccum(5)
+
+	assert.Equal(t, mostNegative, vset.Validators[0].Accum, "0")
+	assert.Equal(t, mostNegative, vset.Validators[1].Accum, "1")
+}
+
+func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
+	vset := NewValidatorSet([]*Validator{
+		{Address: []byte("a"), VotingPower: mostPositive, Accum: 0},
+		{Address: []byte("b"), VotingPower: mostPositive, Accum: 0},
+		{Address: []byte("c"), VotingPower: mostPositive, Accum: 0},
+	})
+
+	assert.Equal(t, mostPositive, vset.TotalVotingPower())
 }
 
 func BenchmarkValidatorSetCopy(b *testing.B) {

@@ -48,12 +48,17 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 }
 
 // incrementAccum and update the proposer
-// TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
-		val.Accum += val.VotingPower * int64(times) // TODO: mind overflow
+		res, overflow := signedMulWithOverflowCheck(val.VotingPower, int64(times))
+		// check for overflow both multiplication and sum
+		if !overflow && val.Accum <= mostPositive-res {
+			val.Accum += res
+		} else {
+			val.Accum = mostPositive
+		}
 		validatorsHeap.Push(val, accumComparable{val})
 	}
 
@@ -63,7 +68,13 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 		if i == times-1 {
 			valSet.Proposer = mostest
 		}
-		mostest.Accum -= int64(valSet.TotalVotingPower())
+
+		// mind underflow
+		if mostest.Accum >= mostNegative+valSet.TotalVotingPower() {
+			mostest.Accum -= valSet.TotalVotingPower()
+		} else {
+			mostest.Accum = mostNegative
+		}
 		validatorsHeap.Update(mostest, accumComparable{mostest})
 	}
 }
@@ -117,7 +128,13 @@ func (valSet *ValidatorSet) Size() int {
 func (valSet *ValidatorSet) TotalVotingPower() int64 {
 	if valSet.totalVotingPower == 0 {
 		for _, val := range valSet.Validators {
-			valSet.totalVotingPower += val.VotingPower
+			// mind overflow
+			if valSet.totalVotingPower <= mostPositive-val.VotingPower {
+				valSet.totalVotingPower += val.VotingPower
+			} else {
+				valSet.totalVotingPower = mostPositive
+				return valSet.totalVotingPower
+			}
 		}
 	}
 	return valSet.totalVotingPower
@@ -424,4 +441,24 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*P
 	valSet := NewValidatorSet(vals)
 	sort.Sort(PrivValidatorsByAddress(privValidators))
 	return valSet, privValidators
+}
+
+const mostNegative int64 = -mostPositive - 1
+const mostPositive int64 = 1<<63 - 1
+
+func signedMulWithOverflowCheck(a, b int64) (int64, bool) {
+	if a == 0 || b == 0 {
+		return 0, false
+	}
+	if a == 1 {
+		return b, false
+	}
+	if b == 1 {
+		return a, false
+	}
+	if a == mostNegative || b == mostNegative {
+		return -1, true
+	}
+	c := a * b
+	return c, c/b != a
 }
