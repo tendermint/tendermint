@@ -279,7 +279,10 @@ func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn
 	fail.Fail() // XXX
 
 	// now update the block and validators
-	s.SetBlockAndValidators(block.Header, partsHeader, abciResponses)
+	err = s.SetBlockAndValidators(block.Header, partsHeader, abciResponses)
+	if err != nil {
+		return fmt.Errorf("Commit failed for application: %v", err)
+	}
 
 	// lock mempool, commit state, update mempoool
 	err = s.CommitStateUpdateMempool(proxyAppConn, block, mempool)

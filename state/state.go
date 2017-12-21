@@ -28,9 +28,9 @@ func calcValidatorsKey(height int64) []byte {
 	return []byte(cmn.Fmt("validatorsKey:%v", height))
 }
 
-/*func calcConsensusParamsKey(height int64) []byte {
+func calcConsensusParamsKey(height int64) []byte {
 	return []byte(cmn.Fmt("consensusParamsKey:%v", height))
-}*/
+}
 
 //-----------------------------------------------------------------------------
 
@@ -155,6 +155,7 @@ func (s *State) Save() {
 	defer s.mtx.Unlock()
 
 	s.saveValidatorsInfo()
+	s.saveConsensusParamsInfo()
 	s.db.SetSync(stateKey, s.Bytes())
 }
 
@@ -188,13 +189,13 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 
 // LoadValidators loads the ValidatorSet for a given height.
 func (s *State) LoadValidators(height int64) (*types.ValidatorSet, error) {
-	valInfo := s.loadValidators(height)
+	valInfo := s.loadValidatorsInfo(height)
 	if valInfo == nil {
 		return nil, ErrNoValSetForHeight{height}
 	}
 
 	if valInfo.ValidatorSet == nil {
-		valInfo = s.loadValidators(valInfo.LastHeightChanged)
+		valInfo = s.loadValidatorsInfo(valInfo.LastHeightChanged)
 		if valInfo == nil {
 			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at height %d as
                         last changed from height %d`, valInfo.LastHeightChanged, height))
@@ -204,7 +205,7 @@ func (s *State) LoadValidators(height int64) (*types.ValidatorSet, error) {
 	return valInfo.ValidatorSet, nil
 }
 
-func (s *State) loadValidators(height int64) *ValidatorsInfo {
+func (s *State) loadValidatorsInfo(height int64) *ValidatorsInfo {
 	buf := s.db.Get(calcValidatorsKey(height))
 	if len(buf) == 0 {
 		return nil
@@ -239,6 +240,61 @@ func (s *State) saveValidatorsInfo() {
 	s.db.SetSync(calcValidatorsKey(nextHeight), valInfo.Bytes())
 }
 
+// LoadConsensusParams loads the ConsensusParams for a given height.
+func (s *State) LoadConsensusParams(height int64) (types.ConsensusParams, error) {
+	empty := types.ConsensusParams{}
+
+	paramsInfo := s.loadConsensusParamsInfo(height)
+	if paramsInfo == nil {
+		return empty, ErrNoConsensusParamsForHeight{height}
+	}
+
+	if paramsInfo.ConsensusParams == empty {
+		paramsInfo = s.loadConsensusParamsInfo(paramsInfo.LastHeightChanged)
+		if paramsInfo == nil {
+			cmn.PanicSanity(fmt.Sprintf(`Couldn't find consensus params at height %d as
+                        last changed from height %d`, paramsInfo.LastHeightChanged, height))
+		}
+	}
+
+	return paramsInfo.ConsensusParams, nil
+}
+
+func (s *State) loadConsensusParamsInfo(height int64) *ConsensusParamsInfo {
+	buf := s.db.Get(calcConsensusParamsKey(height))
+	if len(buf) == 0 {
+		return nil
+	}
+
+	paramsInfo := new(ConsensusParamsInfo)
+	r, n, err := bytes.NewReader(buf), new(int), new(error)
+	wire.ReadBinaryPtr(paramsInfo, r, 0, n, err)
+	if *err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(cmn.Fmt(`LoadConsensusParams: Data has been corrupted or its spec has changed:
+                %v\n`, *err))
+	}
+	// TODO: ensure that buf is completely read.
+
+	return paramsInfo
+}
+
+// saveConsensusParamsInfo persists the consensus params for the next block to disk.
+// It should be called from s.Save(), right before the state itself is persisted.
+// If the consensus params did not change after processing the latest block,
+// only the last height for which they changed is persisted.
+func (s *State) saveConsensusParamsInfo() {
+	changeHeight := s.LastHeightConsensusParamsChanged
+	nextHeight := s.LastBlockHeight + 1
+	paramsInfo := &ConsensusParamsInfo{
+		LastHeightChanged: changeHeight,
+	}
+	if changeHeight == nextHeight {
+		paramsInfo.ConsensusParams = s.ConsensusParams
+	}
+	s.db.SetSync(calcConsensusParamsKey(nextHeight), paramsInfo.Bytes())
+}
+
 // Equals returns true if the States are identical.
 func (s *State) Equals(s2 *State) bool {
 	return bytes.Equal(s.Bytes(), s2.Bytes())
@@ -252,7 +308,7 @@ func (s *State) Bytes() []byte {
 // SetBlockAndValidators mutates State variables
 // to update block and validators after running EndBlock.
 func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader,
-	abciResponses *ABCIResponses) {
+	abciResponses *ABCIResponses) error {
 
 	// copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators
@@ -263,8 +319,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
 		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
-			s.logger.Error("Error changing validator set", "err", err)
-			// TODO: err or carry on?
+			return fmt.Errorf("Error changing validator set: %v", err)
 		}
 		// change results from this height but only applies to the next height
 		s.LastHeightValidatorsChanged = header.Height + 1
@@ -273,13 +328,17 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	// Update validator accums and set state variables
 	nextValSet.IncrementAccum(1)
 
-	// NOTE: must not mutate s.ConsensusParams
-	nextParams := s.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
-	err := nextParams.Validate()
-	if err != nil {
-		s.logger.Error("Error updating consensus params", "err", err)
-		// TODO: err or carry on?
-		nextParams = s.ConsensusParams
+	// update the params with the latest abciResponses
+	nextParams := s.ConsensusParams
+	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
+		// NOTE: must not mutate s.ConsensusParams
+		nextParams = s.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
+		err := nextParams.Validate()
+		if err != nil {
+			return fmt.Errorf("Error updating consensus params: %v", err)
+		}
+		// change results from this height but only applies to the next height
+		s.LastHeightConsensusParamsChanged = header.Height + 1
 	}
 
 	s.setBlockAndValidators(header.Height,
@@ -288,7 +347,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 		header.Time,
 		nextValSet,
 		nextParams)
-
+	return nil
 }
 
 func (s *State) setBlockAndValidators(height int64,
@@ -351,6 +410,19 @@ type ValidatorsInfo struct {
 // Bytes serializes the ValidatorsInfo using go-wire
 func (valInfo *ValidatorsInfo) Bytes() []byte {
 	return wire.BinaryBytes(*valInfo)
+}
+
+//-----------------------------------------------------------------------------
+
+// ConsensusParamsInfo represents the latest consensus params, or the last height it changed
+type ConsensusParamsInfo struct {
+	ConsensusParams   types.ConsensusParams
+	LastHeightChanged int64
+}
+
+// Bytes serializes the ConsensusParamsInfo using go-wire
+func (params ConsensusParamsInfo) Bytes() []byte {
+	return wire.BinaryBytes(params)
 }
 
 //------------------------------------------------------------------------
