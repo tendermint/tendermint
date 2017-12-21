@@ -48,11 +48,11 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 		BlockSize: BlockSize{
 			MaxBytes: blockBytes,
 			MaxTxs:   blockTx,
-			MaxGas:   blockGas,
+			MaxGas:   int64(blockGas),
 		},
 		TxSize: TxSize{
 			MaxBytes: txBytes,
-			MaxGas:   txGas,
+			MaxGas:   int64(txGas),
 		},
 		BlockGossip: BlockGossip{
 			BlockPartSizeBytes: partSize,
