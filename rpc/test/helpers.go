@@ -3,7 +3,6 @@ package rpctest
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,8 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	abci "github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/tmlibs/common"
+
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
 	"github.com/tendermint/tendermint/proxy"
@@ -57,9 +58,7 @@ func makePathname() string {
 }
 
 func randPort() int {
-	// returns between base and base + spread
-	base, spread := 20000, 20000
-	return base + rand.Intn(spread)
+	return int(cmn.RandUint16()/2 + 10000)
 }
 
 func makeAddrs() (string, string, string) {

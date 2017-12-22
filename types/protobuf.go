@@ -12,11 +12,11 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) *types.Header {
 	return &types.Header{
-		ChainId:        header.ChainID,
+		ChainID:        header.ChainID,
 		Height:         header.Height,
 		Time:           header.Time.Unix(),
 		NumTxs:         int32(header.NumTxs), // XXX: overflow
-		LastBlockId:    TM2PB.BlockID(header.LastBlockID),
+		LastBlockID:    TM2PB.BlockID(header.LastBlockID),
 		LastCommitHash: header.LastCommitHash,
 		DataHash:       header.DataHash,
 		AppHash:        header.AppHash,
@@ -50,4 +50,22 @@ func (tm2pb) Validators(vals *ValidatorSet) []*types.Validator {
 		validators[i] = TM2PB.Validator(val)
 	}
 	return validators
+}
+
+func (tm2pb) ConsensusParams(params *ConsensusParams) *types.ConsensusParams {
+	return &types.ConsensusParams{
+		BlockSize: &types.BlockSize{
+
+			MaxBytes: int32(params.BlockSize.MaxBytes),
+			MaxTxs:   int32(params.BlockSize.MaxTxs),
+			MaxGas:   params.BlockSize.MaxGas,
+		},
+		TxSize: &types.TxSize{
+			MaxBytes: int32(params.TxSize.MaxBytes),
+			MaxGas:   params.TxSize.MaxGas,
+		},
+		BlockGossip: &types.BlockGossip{
+			BlockPartSizeBytes: int32(params.BlockGossip.BlockPartSizeBytes),
+		},
+	}
 }

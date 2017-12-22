@@ -37,6 +37,10 @@ type (
 	ErrNoValSetForHeight struct {
 		Height int64
 	}
+
+	ErrNoConsensusParamsForHeight struct {
+		Height int64
+	}
 )
 
 func (e ErrUnknownBlock) Error() string {
@@ -60,4 +64,8 @@ func (e ErrStateMismatch) Error() string {
 
 func (e ErrNoValSetForHeight) Error() string {
 	return cmn.Fmt("Could not find validator set for height #%d", e.Height)
+}
+
+func (e ErrNoConsensusParamsForHeight) Error() string {
+	return cmn.Fmt("Could not find consensus params for height #%d", e.Height)
 }

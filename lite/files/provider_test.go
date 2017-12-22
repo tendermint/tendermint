@@ -46,7 +46,7 @@ func TestFileProvider(t *testing.T) {
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(20 + 10*i)
-		check := keys.GenCommit(chainID, h, nil, vals, appHash, 0, 5)
+		check := keys.GenCommit(chainID, h, nil, vals, appHash, []byte("params"), 0, 5)
 		seeds[i] = lite.NewFullCommit(check, vals)
 	}
 

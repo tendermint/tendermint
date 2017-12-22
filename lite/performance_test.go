@@ -33,7 +33,7 @@ func benchmarkGenCommit(b *testing.B, keys lite.ValKeys) {
 	for i := 0; i < b.N; i++ {
 		h := int64(1 + i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
-		keys.GenCommit(chainID, h, nil, vals, appHash, 0, len(keys))
+		keys.GenCommit(chainID, h, nil, vals, appHash, []byte("params"), 0, len(keys))
 	}
 }
 
@@ -105,7 +105,7 @@ func benchmarkCertifyCommit(b *testing.B, keys lite.ValKeys) {
 	chainID := "bench-certify"
 	vals := keys.ToValidators(20, 10)
 	cert := lite.NewStatic(chainID, vals)
-	check := keys.GenCommit(chainID, 123, nil, vals, []byte("foo"), 0, len(keys))
+	check := keys.GenCommit(chainID, 123, nil, vals, []byte("foo"), []byte("params"), 0, len(keys))
 	for i := 0; i < b.N; i++ {
 		err := cert.Certify(check)
 		if err != nil {

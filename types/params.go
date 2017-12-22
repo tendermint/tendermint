@@ -2,6 +2,9 @@ package types
 
 import (
 	"github.com/pkg/errors"
+
+	abci "github.com/tendermint/abci/types"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 const (
@@ -11,58 +14,58 @@ const (
 // ConsensusParams contains consensus critical parameters
 // that determine the validity of blocks.
 type ConsensusParams struct {
-	BlockSizeParams   `json:"block_size_params"`
-	TxSizeParams      `json:"tx_size_params"`
-	BlockGossipParams `json:"block_gossip_params"`
+	BlockSize   `json:"block_size_params"`
+	TxSize      `json:"tx_size_params"`
+	BlockGossip `json:"block_gossip_params"`
 }
 
-// BlockSizeParams contain limits on the block size.
-type BlockSizeParams struct {
-	MaxBytes int `json:"max_bytes"` // NOTE: must not be 0 nor greater than 100MB
-	MaxTxs   int `json:"max_txs"`
-	MaxGas   int `json:"max_gas"`
+// BlockSize contain limits on the block size.
+type BlockSize struct {
+	MaxBytes int   `json:"max_bytes"` // NOTE: must not be 0 nor greater than 100MB
+	MaxTxs   int   `json:"max_txs"`
+	MaxGas   int64 `json:"max_gas"`
 }
 
-// TxSizeParams contain limits on the tx size.
-type TxSizeParams struct {
-	MaxBytes int `json:"max_bytes"`
-	MaxGas   int `json:"max_gas"`
+// TxSize contain limits on the tx size.
+type TxSize struct {
+	MaxBytes int   `json:"max_bytes"`
+	MaxGas   int64 `json:"max_gas"`
 }
 
-// BlockGossipParams determine consensus critical elements of how blocks are gossiped
-type BlockGossipParams struct {
+// BlockGossip determine consensus critical elements of how blocks are gossiped
+type BlockGossip struct {
 	BlockPartSizeBytes int `json:"block_part_size_bytes"` // NOTE: must not be 0
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.
 func DefaultConsensusParams() *ConsensusParams {
 	return &ConsensusParams{
-		DefaultBlockSizeParams(),
-		DefaultTxSizeParams(),
-		DefaultBlockGossipParams(),
+		DefaultBlockSize(),
+		DefaultTxSize(),
+		DefaultBlockGossip(),
 	}
 }
 
-// DefaultBlockSizeParams returns a default BlockSizeParams.
-func DefaultBlockSizeParams() BlockSizeParams {
-	return BlockSizeParams{
+// DefaultBlockSize returns a default BlockSize.
+func DefaultBlockSize() BlockSize {
+	return BlockSize{
 		MaxBytes: 22020096, // 21MB
 		MaxTxs:   100000,
 		MaxGas:   -1,
 	}
 }
 
-// DefaultTxSizeParams returns a default TxSizeParams.
-func DefaultTxSizeParams() TxSizeParams {
-	return TxSizeParams{
+// DefaultTxSize returns a default TxSize.
+func DefaultTxSize() TxSize {
+	return TxSize{
 		MaxBytes: 10240, // 10kB
 		MaxGas:   -1,
 	}
 }
 
-// DefaultBlockGossipParams returns a default BlockGossipParams.
-func DefaultBlockGossipParams() BlockGossipParams {
-	return BlockGossipParams{
+// DefaultBlockGossip returns a default BlockGossip.
+func DefaultBlockGossip() BlockGossip {
+	return BlockGossip{
 		BlockPartSizeBytes: 65536, // 64kB,
 	}
 }
@@ -71,17 +74,69 @@ func DefaultBlockGossipParams() BlockGossipParams {
 // are within their allowed limits, and returns an error if they are not.
 func (params *ConsensusParams) Validate() error {
 	// ensure some values are greater than 0
-	if params.BlockSizeParams.MaxBytes <= 0 {
-		return errors.Errorf("BlockSizeParams.MaxBytes must be greater than 0. Got %d", params.BlockSizeParams.MaxBytes)
+	if params.BlockSize.MaxBytes <= 0 {
+		return errors.Errorf("BlockSize.MaxBytes must be greater than 0. Got %d", params.BlockSize.MaxBytes)
 	}
-	if params.BlockGossipParams.BlockPartSizeBytes <= 0 {
-		return errors.Errorf("BlockGossipParams.BlockPartSizeBytes must be greater than 0. Got %d", params.BlockGossipParams.BlockPartSizeBytes)
+	if params.BlockGossip.BlockPartSizeBytes <= 0 {
+		return errors.Errorf("BlockGossip.BlockPartSizeBytes must be greater than 0. Got %d", params.BlockGossip.BlockPartSizeBytes)
 	}
 
 	// ensure blocks aren't too big
-	if params.BlockSizeParams.MaxBytes > maxBlockSizeBytes {
-		return errors.Errorf("BlockSizeParams.MaxBytes is too big. %d > %d",
-			params.BlockSizeParams.MaxBytes, maxBlockSizeBytes)
+	if params.BlockSize.MaxBytes > maxBlockSizeBytes {
+		return errors.Errorf("BlockSize.MaxBytes is too big. %d > %d",
+			params.BlockSize.MaxBytes, maxBlockSizeBytes)
 	}
 	return nil
+}
+
+// Hash returns a merkle hash of the parameters to store
+// in the block header
+func (params *ConsensusParams) Hash() []byte {
+	return merkle.SimpleHashFromMap(map[string]interface{}{
+		"block_gossip_part_size_bytes": params.BlockGossip.BlockPartSizeBytes,
+		"block_size_max_bytes":         params.BlockSize.MaxBytes,
+		"block_size_max_gas":           params.BlockSize.MaxGas,
+		"block_size_max_txs":           params.BlockSize.MaxTxs,
+		"tx_size_max_bytes":            params.TxSize.MaxBytes,
+		"tx_size_max_gas":              params.TxSize.MaxGas,
+	})
+}
+
+// Update returns a copy of the params with updates from the non-zero fields of p2.
+// NOTE: note: must not modify the original
+func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusParams {
+	res := params // explicit copy
+
+	if params2 == nil {
+		return res
+	}
+
+	// we must defensively consider any structs may be nil
+	// XXX: it's cast city over here. It's ok because we only do int32->int
+	// but still, watch it champ.
+	if params2.BlockSize != nil {
+		if params2.BlockSize.MaxBytes > 0 {
+			res.BlockSize.MaxBytes = int(params2.BlockSize.MaxBytes)
+		}
+		if params2.BlockSize.MaxTxs > 0 {
+			res.BlockSize.MaxTxs = int(params2.BlockSize.MaxTxs)
+		}
+		if params2.BlockSize.MaxGas > 0 {
+			res.BlockSize.MaxGas = params2.BlockSize.MaxGas
+		}
+	}
+	if params2.TxSize != nil {
+		if params2.TxSize.MaxBytes > 0 {
+			res.TxSize.MaxBytes = int(params2.TxSize.MaxBytes)
+		}
+		if params2.TxSize.MaxGas > 0 {
+			res.TxSize.MaxGas = params2.TxSize.MaxGas
+		}
+	}
+	if params2.BlockGossip != nil {
+		if params2.BlockGossip.BlockPartSizeBytes > 0 {
+			res.BlockGossip.BlockPartSizeBytes = int(params2.BlockGossip.BlockPartSizeBytes)
+		}
+	}
+	return res
 }

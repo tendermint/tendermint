@@ -58,7 +58,7 @@ func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(20 + 10*i)
-		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, 5)
+		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), 0, 5)
 	}
 
 	// check provider is empty
@@ -129,7 +129,7 @@ func TestCacheGetsBestHeight(t *testing.T) {
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(10 * (i + 1))
-		fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, 0, 5)
+		fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), 0, 5)
 		err := p2.StoreCommit(fc)
 		require.NoError(err)
 	}

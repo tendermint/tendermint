@@ -863,10 +863,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
-	return types.MakeBlock(cs.Height, cs.state.ChainID, txs,
-		cs.state.LastBlockTotalTx, commit,
-		cs.state.LastBlockID, cs.state.Validators.Hash(),
-		cs.state.AppHash, cs.state.Params.BlockPartSizeBytes)
+	return cs.state.MakeBlock(cs.Height, txs, commit)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1306,7 +1303,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 		var n int
 		var err error
 		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
-			cs.state.Params.BlockSizeParams.MaxBytes, &n, &err).(*types.Block)
+			cs.state.ConsensusParams.BlockSize.MaxBytes, &n, &err).(*types.Block)
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
@@ -1341,7 +1338,8 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 
 			return err
 		} else {
-			// Probably an invalid signature. Bad peer.
+			// Probably an invalid signature / Bad peer.
+			// Seems this can also err sometimes with "Unexpected step" - perhaps not from a bad peer ?
 			cs.Logger.Error("Error attempting to add vote", "err", err)
 			return ErrAddingVote
 		}
