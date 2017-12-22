@@ -11,7 +11,7 @@ import (
 	monitor "github.com/tendermint/tools/tm-monitor/monitor"
 )
 
-var version = "0.2.1"
+var version = "0.3.1"
 
 var logger = log.NewNopLogger()
 
@@ -47,7 +47,7 @@ Examples:
 	}
 
 	if noton {
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "tm-monitor")
+		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	}
 
 	m := startMonitor(flag.Arg(0))

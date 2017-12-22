@@ -1,5 +1,5 @@
-hash: 80c204190057df1e74d32ecd7095e8a1a865c3a06671f1a31d5240e1e3ff2c64
-updated: 2017-05-20T17:49:23.646798165-04:00
+hash: 156fcaac82d95af15aa920438cd12ab6ba1ac0ea5dfe8a5ca7eae94eeae625be
+updated: 2017-12-06T18:01:20.739645218Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 583684b21bfbde9b5fc4403916fd7c807feb0289
@@ -13,22 +13,32 @@ imports:
   - log/term
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
+- name: github.com/go-playground/locales
+  version: e4cbcb5d0652150d40ad0646651076b6bd2be4f6
+  subpackages:
+  - currency
+- name: github.com/go-playground/universal-translator
+  version: 71201497bace774495daed26a3874fd339e0b538
 - name: github.com/go-stack/stack
   version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
 - name: github.com/golang/protobuf
   version: 69b215d01a5606c843240eab4937eab3acee6530
   subpackages:
   - proto
+  - ptypes
+  - ptypes/any
+  - ptypes/duration
+  - ptypes/timestamp
 - name: github.com/gorilla/websocket
-  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
+  version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/pkg/errors
-  version: bfd5150e4e41705ded2129ec33379de1cb90b513
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/tendermint/abci
-  version: 864d1f80b36b440bde030a5c18d8ac3aa8c2949d
+  version: 76ef8a0697c6179220a74c479b36c27a5b53008a
   subpackages:
   - client
   - example/dummy
@@ -39,15 +49,16 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 7dff40942a64cdeefefa9446b2d104750b349f8a
+  version: dd20358a264c772b4a83e477b0cfce4c88a7001d
 - name: github.com/tendermint/go-wire
-  version: 5f88da3dbc1a72844e6dfaf274ce87f851d488eb
+  version: b6fc872b42d41158a60307db4da051dd6f179415
   subpackages:
   - data
 - name: github.com/tendermint/tendermint
-  version: 267f134d44e76efb2adef5f0c993da8a5d5bd1b8
+  version: c7f923c5b0d0f0f26566281aa251259d1bef3a6c
   subpackages:
   - config
+  - consensus/types
   - p2p
   - p2p/upnp
   - rpc/core/types
@@ -56,7 +67,7 @@ imports:
   - rpc/lib/types
   - types
 - name: github.com/tendermint/tmlibs
-  version: 306795ae1d8e4f4a10dcc8bdb32a00455843c9d5
+  version: b854baa1fce7101c90b1d301b3359bb412f981c0
   subpackages:
   - common
   - events
@@ -84,19 +95,31 @@ imports:
   - internal/timeseries
   - lex/httplex
   - trace
-- name: google.golang.org/grpc
-  version: 8b2e129857480cb0f07ef7d9d10b8b252c7ac984
+- name: google.golang.org/genproto
+  version: 7f0da29060c682909f650ad8ed4e515bd74fa12a
   subpackages:
+  - googleapis/rpc/status
+- name: google.golang.org/grpc
+  version: f7bf885db0b7479a537ec317c6e48ce53145f3db
+  subpackages:
+  - balancer
   - codes
+  - connectivity
   - credentials
+  - grpclb/grpc_lb_v1/messages
   - grpclog
   - internal
+  - keepalive
   - metadata
   - naming
   - peer
+  - resolver
   - stats
+  - status
   - tap
   - transport
+- name: gopkg.in/go-playground/validator.v9
+  version: 61caf9d3038e1af346dbf5c2e16f6678e1548364
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9

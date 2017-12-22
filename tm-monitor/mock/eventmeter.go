@@ -1,11 +1,10 @@
 package mock
 
 import (
-	"log"
+	stdlog "log"
 	"reflect"
 
-	gokitlog "github.com/go-kit/kit/log"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tmlibs/log"
 	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 )
 
@@ -17,7 +16,7 @@ type EventMeter struct {
 
 func (e *EventMeter) Start() error                                      { return nil }
 func (e *EventMeter) Stop()                                             {}
-func (e *EventMeter) SetLogger(l gokitlog.Logger)                       {}
+func (e *EventMeter) SetLogger(l log.Logger)                            {}
 func (e *EventMeter) RegisterLatencyCallback(cb em.LatencyCallbackFunc) { e.latencyCallback = cb }
 func (e *EventMeter) RegisterDisconnectCallback(cb em.DisconnectCallbackFunc) {
 	e.disconnectCallback = cb
@@ -43,13 +42,13 @@ func (e *EventMeter) Call(callback string, args ...interface{}) {
 }
 
 type RpcClient struct {
-	Stubs map[string]ctypes.TMResult
+	Stubs map[string]interface{}
 }
 
 func (c *RpcClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
 	s, ok := c.Stubs[method]
 	if !ok {
-		log.Fatalf("Call to %s, but no stub is defined for it", method)
+		stdlog.Fatalf("Call to %s, but no stub is defined for it", method)
 	}
 
 	rv, rt := reflect.ValueOf(result), reflect.TypeOf(result)

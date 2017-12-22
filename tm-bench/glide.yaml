@@ -1,16 +1,20 @@
 package: github.com/tendermint/tools/tm-bench
 import:
-- package: github.com/pkg/errors
-- package: github.com/tendermint/go-rpc
-  version: develop
-  subpackages:
-  - client
-  - types
-- package: github.com/tendermint/tools
-  version: develop
-  subpackages:
-  - tm-monitor/monitor
 - package: github.com/go-kit/kit
   subpackages:
+  - log/term
+- package: github.com/gorilla/websocket
+- package: github.com/pkg/errors
+- package: github.com/rcrowley/go-metrics
+- package: github.com/tendermint/tendermint
+  version: v0.12.1
+  subpackages:
+  - rpc/lib/types
+  - types
+- package: github.com/tendermint/tmlibs
+  subpackages:
   - log
-  - term
+- package: github.com/tendermint/tools
+  version: c36867e971f4d717e7ceb2c3d451a64e9a101b99
+  subpackages:
+  - tm-monitor/monitor
