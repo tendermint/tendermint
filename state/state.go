@@ -35,6 +35,10 @@ func calcConsensusParamsKey(height int64) []byte {
 	return []byte(cmn.Fmt("consensusParamsKey:%v", height))
 }
 
+func calcResultsKey(height int64) []byte {
+	return []byte(cmn.Fmt("resultsKey:%v", height))
+}
+
 //-----------------------------------------------------------------------------
 
 // State is a short description of the latest committed block of the Tendermint consensus.
@@ -75,7 +79,7 @@ type State struct {
 	LastHeightConsensusParamsChanged int64
 
 	// Store LastABCIResults along with hash
-	LastResults    ABCIResults
+	LastResults    ABCIResults // TODO: remove??
 	LastResultHash []byte
 
 	// The latest AppHash we've received from calling abci.Commit()
@@ -163,6 +167,7 @@ func (s *State) Save() {
 
 	s.saveValidatorsInfo()
 	s.saveConsensusParamsInfo()
+	s.saveResults()
 	s.db.SetSync(stateKey, s.Bytes())
 }
 
@@ -300,6 +305,39 @@ func (s *State) saveConsensusParamsInfo() {
 		paramsInfo.ConsensusParams = s.ConsensusParams
 	}
 	s.db.SetSync(calcConsensusParamsKey(nextHeight), paramsInfo.Bytes())
+}
+
+// LoadResults loads the ABCIResults for a given height.
+func (s *State) LoadResults(height int64) (ABCIResults, error) {
+	resInfo := s.loadResults(height)
+	if resInfo == nil {
+		return nil, ErrNoResultsForHeight{height}
+	}
+	return resInfo, nil
+}
+
+func (s *State) loadResults(height int64) ABCIResults {
+	buf := s.db.Get(calcResultsKey(height))
+	if len(buf) == 0 {
+		return nil
+	}
+
+	v := new(ABCIResults)
+	err := wire.ReadBinaryBytes(buf, v)
+	if err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(cmn.Fmt(`LoadResults: Data has been corrupted or its spec has changed:
+                %v\n`, err))
+	}
+	return *v
+}
+
+// saveResults persists the results for the last block to disk.
+// It should be called from s.Save(), right before the state itself is persisted.
+func (s *State) saveResults() {
+	nextHeight := s.LastBlockHeight + 1
+	results := s.LastResults
+	s.db.SetSync(calcResultsKey(nextHeight), results.Bytes())
 }
 
 // Equals returns true if the States are identical.
@@ -442,6 +480,11 @@ func NewResults(del []*abci.ResponseDeliverTx) ABCIResults {
 		}
 	}
 	return res
+}
+
+// Bytes serializes the ABCIResponse using go-wire
+func (a ABCIResults) Bytes() []byte {
+	return wire.BinaryBytes(a)
 }
 
 // Hash returns a merkle hash of all results

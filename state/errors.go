@@ -41,6 +41,10 @@ type (
 	ErrNoConsensusParamsForHeight struct {
 		Height int64
 	}
+
+	ErrNoResultsForHeight struct {
+		Height int64
+	}
 )
 
 func (e ErrUnknownBlock) Error() string {
@@ -68,4 +72,8 @@ func (e ErrNoValSetForHeight) Error() string {
 
 func (e ErrNoConsensusParamsForHeight) Error() string {
 	return cmn.Fmt("Could not find consensus params for height #%d", e.Height)
+}
+
+func (e ErrNoResultsForHeight) Error() string {
+	return cmn.Fmt("Could not find results for height #%d", e.Height)
 }

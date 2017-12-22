@@ -313,6 +313,73 @@ func TestABCIResults(t *testing.T) {
 	}
 }
 
+// TestResultsSaveLoad tests saving and loading abci results.
+func TestResultsSaveLoad(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+	// nolint: vetshadow
+	assert := assert.New(t)
+
+	cases := [...]struct {
+		// height is implied index+2
+		// as block 1 is created from genesis
+		added    []*abci.ResponseDeliverTx
+		expected ABCIResults
+	}{
+		0: {
+			[]*abci.ResponseDeliverTx{},
+			ABCIResults{},
+		},
+		1: {
+			[]*abci.ResponseDeliverTx{
+				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+			},
+			ABCIResults{
+				{32, []byte("Hello")},
+			}},
+		2: {
+			[]*abci.ResponseDeliverTx{
+				{Code: 383},
+				{Data: []byte("Gotcha!"),
+					Tags: []*abci.KVPair{
+						abci.KVPairInt("a", 1),
+						abci.KVPairString("build", "stuff"),
+					}},
+			},
+			ABCIResults{
+				{383, []byte{}},
+				{0, []byte("Gotcha!")},
+			}},
+		3: {
+			nil,
+			ABCIResults{},
+		},
+	}
+
+	// query all before, should return error
+	for i := range cases {
+		h := int64(i + 2)
+		res, err := state.LoadResults(h)
+		assert.Error(err, "%d: %#v", i, res)
+	}
+
+	// add all cases
+	for i, tc := range cases {
+		h := int64(i + 1) // last block height, one below what we save
+		header, parts, responses := makeHeaderPartsResults(state, h, tc.added)
+		state.SetBlockAndValidators(header, parts, responses)
+		state.Save()
+	}
+
+	// query all before, should return expected value
+	for i, tc := range cases {
+		h := int64(i + 2)
+		res, err := state.LoadResults(h)
+		assert.NoError(err, "%d", i)
+		assert.Equal(tc.expected, res, "%d", i)
+	}
+}
+
 func makeParams(blockBytes, blockTx, blockGas, txBytes,
 	txGas, partSize int) types.ConsensusParams {
 
@@ -509,4 +576,16 @@ func makeHeaderPartsResponsesParams(state *State, height int64,
 type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams
+}
+
+func makeHeaderPartsResults(state *State, height int64,
+	results []*abci.ResponseDeliverTx) (*types.Header, types.PartSetHeader, *ABCIResponses) {
+
+	block := makeBlock(state, height)
+	abciResponses := &ABCIResponses{
+		Height:    height,
+		DeliverTx: results,
+		EndBlock:  &abci.ResponseEndBlock{},
+	}
+	return block.Header, types.PartSetHeader{}, abciResponses
 }
