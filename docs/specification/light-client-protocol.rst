@@ -5,8 +5,8 @@ Light clients are an important part of the complete blockchain system
 for most applications. Tendermint provides unique speed and security
 properties for light client applications.
 
-See our developing `light-client
-repository <https://github.com/tendermint/light-client>`__.
+See our `lite package
+<https://godoc.org/github.com/tendermint/tendermint/lite>`__.
 
 Overview
 --------

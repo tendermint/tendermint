@@ -194,8 +194,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 }
 
 func TestReactorValidatorSetChanges(t *testing.T) {
-	nPeers := 7
-	nVals := 4
+	nPeers := 9
+	nVals := 6
 	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentDummy)
 
 	logger := log.TestingLogger()

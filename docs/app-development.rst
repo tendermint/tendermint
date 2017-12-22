@@ -403,14 +403,16 @@ pick up from when it restarts. See information on the Handshake, below.
 EndBlock
 ^^^^^^^^
 
-The EndBlock request can be used to run some code at the end of every
-block. Additionally, the response may contain a list of validators,
-which can be used to update the validator set. To add a new validator or
-update an existing one, simply include them in the list returned in the
-EndBlock response. To remove one, include it in the list with a
-``power`` equal to ``0``. Tendermint core will take care of updating the
-validator set. Note validator set changes are only available in v0.8.0
-and up.
+The EndBlock request can be used to run some code at the end of every block.
+Additionally, the response may contain a list of validators, which can be used
+to update the validator set. To add a new validator or update an existing one,
+simply include them in the list returned in the EndBlock response. To remove
+one, include it in the list with a ``power`` equal to ``0``. Tendermint core
+will take care of updating the validator set. Note you can not update more than
+1/3 of validators in one block because this will make it impossible for a light
+client to prove the transition externally. See the `light client docs
+<https://godoc.org/github.com/tendermint/tendermint/lite#hdr-How_We_Track_Validators>`__
+for details on how it tracks validators.
 
 .. container:: toggle
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/abci/types"
 
@@ -130,81 +131,56 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
 }
 
-// TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
+// TestValidatorChangesSaveLoad tests saving and loading a validator set with
+// changes.
 func TestValidatorChangesSaveLoad(t *testing.T) {
+	const valSetSize = 6
 	tearDown, _, state := setupTestCase(t)
+	state.Validators = genValSet(valSetSize)
+	state.Save()
 	defer tearDown(t)
-	// nolint: vetshadow
-	assert := assert.New(t)
 
-	// change vals at these heights
-	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
-	N := len(changeHeights)
+	const height = 1
+	pubkey := crypto.GenPrivKeyEd25519().PubKey()
+	// swap the first validator with a new one ^^^ (validator set size stays the same)
+	header, parts, responses := makeHeaderPartsResponses(state, height, pubkey)
+	err := state.SetBlockAndValidators(header, parts, responses)
+	require.Nil(t, err)
+	state.saveValidatorsInfo()
 
-	// each valset is just one validator.
-	// create list of them
-	pubkeys := make([]crypto.PubKey, N+1)
-	_, val := state.Validators.GetByIndex(0)
-	pubkeys[0] = val.PubKey
-	for i := 1; i < N+1; i++ {
-		pubkeys[i] = crypto.GenPrivKeyEd25519().PubKey()
-	}
+	v, err := state.LoadValidators(height + 1)
+	assert.Nil(t, err)
+	assert.Equal(t, valSetSize, v.Size())
 
-	// build the validator history by running SetBlockAndValidators
-	// with the right validator set for each height
-	highestHeight := changeHeights[N-1] + 5
-	changeIndex := 0
-	pubkey := pubkeys[changeIndex]
-	for i := int64(1); i < highestHeight; i++ {
-		// when we get to a change height,
-		// use the next pubkey
-		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
-			changeIndex++
-			pubkey = pubkeys[changeIndex]
-		}
-		header, parts, responses := makeHeaderPartsResponses(state, i, pubkey)
-		state.SetBlockAndValidators(header, parts, responses)
-		state.saveValidatorsInfo()
-	}
-
-	// make all the test cases by using the same validator until after the change
-	testCases := make([]valChangeTestCase, highestHeight)
-	changeIndex = 0
-	pubkey = pubkeys[changeIndex]
-	for i := int64(1); i < highestHeight+1; i++ {
-		// we we get to the height after a change height
-		// use the next pubkey (note our counter starts at 0 this time)
-		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
-			changeIndex++
-			pubkey = pubkeys[changeIndex]
-		}
-		testCases[i-1] = valChangeTestCase{i, pubkey}
-	}
-
-	for _, testCase := range testCases {
-		v, err := state.LoadValidators(testCase.height)
-		assert.Nil(err, fmt.Sprintf("expected no err at height %d", testCase.height))
-		assert.Equal(v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
-		addr, _ := v.GetByIndex(0)
-
-		assert.Equal(addr, testCase.vals.Address(), fmt.Sprintf(`unexpected pubkey at
-                height %d`, testCase.height))
+	index, val := v.GetByAddress(pubkey.Address())
+	assert.NotNil(t, val)
+	if index < 0 {
+		t.Fatal("expected to find newly added validator")
 	}
 }
 
-// TestConsensusParamsChangesSaveLoad tests saving and loading consensus params with changes.
+func genValSet(size int) *types.ValidatorSet {
+	vals := make([]*types.Validator, size)
+	for i := 0; i < size; i++ {
+		vals[i] = types.NewValidator(crypto.GenPrivKeyEd25519().PubKey(), 10)
+	}
+	return types.NewValidatorSet(vals)
+}
+
+// TestConsensusParamsChangesSaveLoad tests saving and loading consensus params
+// with changes.
 func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
+	const valSetSize = 20
+	state.Validators = genValSet(valSetSize)
+	state.Save()
 	defer tearDown(t)
-	// nolint: vetshadow
-	assert := assert.New(t)
 
 	// change vals at these heights
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
-	// each valset is just one validator.
-	// create list of them
+	// create list of new vals
 	params := make([]types.ConsensusParams, N+1)
 	params[0] = state.ConsensusParams
 	for i := 1; i < N+1; i++ {
@@ -225,7 +201,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, parts, responses := makeHeaderPartsResponsesParams(state, i, cp)
-		state.SetBlockAndValidators(header, parts, responses)
+		err := state.SetBlockAndValidators(header, parts, responses)
+		require.Nil(t, err)
 		state.saveConsensusParamsInfo()
 	}
 
@@ -245,8 +222,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 	for _, testCase := range testCases {
 		p, err := state.LoadConsensusParams(testCase.height)
-		assert.Nil(err, fmt.Sprintf("expected no err at height %d", testCase.height))
-		assert.Equal(testCase.params, p, fmt.Sprintf(`unexpected consensus params at
+		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
+		assert.Equal(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))
 	}
 }
@@ -268,6 +245,20 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 			BlockPartSizeBytes: partSize,
 		},
 	}
+}
+
+func TestLessThanOneThirdOfValidatorUpdatesEnforced(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+
+	height := state.LastBlockHeight + 1
+	block := makeBlock(state, height)
+	abciResponses := &ABCIResponses{
+		Height:   height,
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{{PubKey: []byte("a"), Power: 10}}},
+	}
+	err := state.SetBlockAndValidators(block.Header, types.PartSetHeader{}, abciResponses)
+	assert.NotNil(t, err, "expected err when trying to update more than 1/3 of validators")
 }
 
 func TestApplyUpdates(t *testing.T) {
