@@ -155,7 +155,6 @@ func TestAppCalls(t *testing.T) {
 		}
 
 		// make sure we can lookup the tx with proof
-		// ptx, err := c.Tx(bres.Hash, true)
 		ptx, err := c.Tx(bres.Hash, true)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.EqualValues(txh, ptx.Height)
@@ -167,6 +166,15 @@ func TestAppCalls(t *testing.T) {
 		appHash := block.BlockMeta.Header.AppHash
 		assert.True(len(appHash) > 0)
 		assert.EqualValues(apph, block.BlockMeta.Header.Height)
+
+		// now check the results
+		blockResults, err := c.BlockResults(&apph)
+		require.Nil(err, "%d: %+v", i, err)
+		assert.Equal(apph, blockResults.Height)
+		if assert.Equal(1, len(blockResults.Results)) {
+			// check success code
+			assert.EqualValues(0, blockResults.Results[0].Code)
+		}
 
 		// check blockchain info, now that we know there is info
 		// TODO: is this commented somewhere that they are returned

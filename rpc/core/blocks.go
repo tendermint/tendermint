@@ -312,3 +312,66 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 	commit := blockStore.LoadBlockCommit(height)
 	return ctypes.NewResultCommit(header, commit, true), nil
 }
+
+// BlockResults gets ABCIResults at a given height.
+// If no height is provided, it will fetch the latest block.
+//
+// Results are for the tx of the last block with the same index.
+// Thus response.results[5] is the results of executing
+// getBlock(h-1).Txs[5]
+//
+// ```shell
+// curl 'localhost:46657/block_results?height=10'
+// ```
+//
+// ```go
+// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// info, err := client.BlockResults(10)
+// ```
+//
+//
+// > The above command returns JSON structured like this:
+//
+// ```json
+// {
+//  "height": 88,
+//  "results": [
+//   {
+//    "code": 0,
+//    "data": "CAFE00F00D"
+//   },
+//   {
+//    "code": 102,
+//    "data": ""
+//   }
+//  ]
+// }
+// ```
+func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
+	var height int64
+	if heightPtr != nil {
+		height = *heightPtr
+		if height <= 0 {
+			return nil, fmt.Errorf("Height must be greater than 0")
+		}
+		storeHeight := blockStore.Height()
+		if height > storeHeight {
+			return nil, fmt.Errorf("Height must be less than or equal to the current blockchain height")
+		}
+	} else {
+		height = blockStore.Height()
+	}
+
+	// load the results
+	state := consensusState.GetState()
+	results, err := state.LoadResults(height)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &ctypes.ResultBlockResults{
+		Height:  height,
+		Results: results,
+	}
+	return res, nil
+}

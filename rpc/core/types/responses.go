@@ -33,6 +33,11 @@ type ResultCommit struct {
 	CanonicalCommit bool `json:"canonical"`
 }
 
+type ResultBlockResults struct {
+	Height  int64             `json:"height"`
+	Results types.ABCIResults `json:"results"`
+}
+
 // NewResultCommit is a helper to initialize the ResultCommit with
 // the embedded struct
 func NewResultCommit(header *types.Header, commit *types.Commit,
