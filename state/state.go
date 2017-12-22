@@ -79,8 +79,9 @@ type State struct {
 	LastHeightConsensusParamsChanged int64
 
 	// Store LastABCIResults along with hash
-	LastResults    ABCIResults // TODO: remove??
-	LastResultHash []byte
+	LastResults        ABCIResults // TODO: remove??
+	LastResultHash     []byte      // this is the one for the next block to propose
+	LastLastResultHash []byte      // this verifies the last block?
 
 	// The latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
@@ -155,6 +156,9 @@ func (s *State) Copy() *State {
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 
 		AppHash: s.AppHash,
+
+		LastResults:    s.LastResults,
+		LastResultHash: s.LastResultHash,
 
 		logger: s.logger,
 	}
