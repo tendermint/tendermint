@@ -4,66 +4,86 @@ import (
 	"testing"
 	"time"
 
-	// make govet noshadow happy...
-	asrt "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
-// NOTE: this only tests with the ManualTicker.
+// NOTE: this only tests with the LogicalTicker.
 // How do you test a real-clock ticker properly?
-func TestRepeat(test *testing.T) {
-	assert := asrt.New(test)
+func TestRepeat(t *testing.T) {
 
 	ch := make(chan time.Time, 100)
-	// tick fires cnt times on ch
+	lt := time.Time{} // zero time is year 1
+
+	// tick fires `cnt` times for each second.
 	tick := func(cnt int) {
 		for i := 0; i < cnt; i++ {
-			ch <- time.Now()
+			lt = lt.Add(time.Second)
+			ch <- lt
 		}
 	}
-	tock := func(test *testing.T, t *RepeatTimer, cnt int) {
+
+	// tock consumes Ticker.Chan() events `cnt` times.
+	tock := func(t *testing.T, rt *RepeatTimer, cnt int) {
 		for i := 0; i < cnt; i++ {
-			after := time.After(time.Second * 2)
+			timeout := time.After(time.Second * 2)
 			select {
-			case <-t.Ch:
-			case <-after:
-				test.Fatal("expected ticker to fire")
+			case _ = <-rt.Chan():
+			case <-timeout:
+				panic("QWE")
+				t.Fatal("expected RepeatTimer to fire")
 			}
 		}
 		done := true
 		select {
-		case <-t.Ch:
+		case <-rt.Chan():
 			done = false
 		default:
 		}
-		assert.True(done)
+		assert.True(t, done)
 	}
 
-	ticker := NewManualTicker(ch)
-	t := NewRepeatTimerWithTicker("bar", ticker)
+	tm := NewLogicalTickerMaker(ch)
+	dur := time.Duration(0) // dontcare
+	rt := NewRepeatTimerWithTickerMaker("bar", dur, tm)
 
-	// start at 0
-	tock(test, t, 0)
+	// Start at 0.
+	tock(t, rt, 0)
+	tick(1) // init time
 
-	// wait for 4 periods
-	tick(4)
-	tock(test, t, 4)
+	tock(t, rt, 0)
+	tick(1) // wait 1 periods
+	tock(t, rt, 1)
+	tick(2) // wait 2 periods
+	tock(t, rt, 2)
+	tick(3) // wait 3 periods
+	tock(t, rt, 3)
+	tick(4) // wait 4 periods
+	tock(t, rt, 4)
 
-	// keep reseting leads to no firing
+	// Multiple resets leads to no firing.
 	for i := 0; i < 20; i++ {
 		time.Sleep(time.Millisecond)
-		t.Reset()
+		rt.Reset()
 	}
-	tock(test, t, 0)
 
-	// after this, it still works normal
-	tick(2)
-	tock(test, t, 2)
+	// After this, it works as new.
+	tock(t, rt, 0)
+	tick(1) // init time
 
-	// after a stop, nothing more is sent
-	stopped := t.Stop()
-	assert.True(stopped)
-	tock(test, t, 0)
+	tock(t, rt, 0)
+	tick(1) // wait 1 periods
+	tock(t, rt, 1)
+	tick(2) // wait 2 periods
+	tock(t, rt, 2)
+	tick(3) // wait 3 periods
+	tock(t, rt, 3)
+	tick(4) // wait 4 periods
+	tock(t, rt, 4)
 
-	// close channel to stop counter
-	close(t.Ch)
+	// After a stop, nothing more is sent.
+	rt.Stop()
+	tock(t, rt, 0)
+
+	// Another stop panics.
+	assert.Panics(t, func() { rt.Stop() })
 }
