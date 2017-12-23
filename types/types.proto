@@ -43,10 +43,10 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  repeated Validator validators = 1;
+  repeated Validator validators = 1 [(gogoproto.nullable) = false];
 }
 
-message RequestQuery{
+message RequestQuery {
   bytes data = 1;
   string path = 2;
   int64 height = 3;
@@ -55,9 +55,9 @@ message RequestQuery{
 
 message RequestBeginBlock {
   bytes hash = 1;
-  Header header = 2;
+  Header header = 2 [(gogoproto.nullable) = false];
   repeated int32 absent_validators = 3;
-  repeated Evidence byzantine_validators = 4;
+  repeated Evidence byzantine_validators = 4 [(gogoproto.nullable) = false];
 }
 
 message RequestCheckTx {
@@ -68,7 +68,7 @@ message RequestDeliverTx {
   bytes tx = 1;
 }
 
-message RequestEndBlock{
+message RequestEndBlock {
   int64 height = 1;
 }
 
@@ -146,11 +146,11 @@ message ResponseDeliverTx {
   uint32 code = 1;
   bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
   string log = 3;
-  repeated KVPair tags = 4;
+  repeated KVPair tags = 4 [(gogoproto.nullable) = false];
 }
 
 message ResponseEndBlock {
-  repeated Validator validator_updates = 1;
+  repeated Validator validator_updates = 1 [(gogoproto.nullable) = false];
   ConsensusParams consensus_param_updates = 2;
 }
 
@@ -179,7 +179,7 @@ message BlockSize {
 }
 
 // TxSize contain limits on the tx size.
-message TxSize{
+message TxSize {
   int32 max_bytes = 1;
   int64 max_gas = 2;
 }
@@ -199,7 +199,7 @@ message Header {
   int64 height = 2;
   int64 time = 3;
   int32 num_txs = 4;
-  BlockID last_block_id = 5 [(gogoproto.customname) = "LastBlockID"];
+  BlockID last_block_id = 5 [(gogoproto.customname) = "LastBlockID", (gogoproto.nullable) = false];
   bytes last_commit_hash = 6;
   bytes data_hash = 7;
   bytes validators_hash = 8;
@@ -208,7 +208,7 @@ message Header {
 
 message BlockID {
   bytes hash = 1;
-  PartSetHeader parts = 2;
+  PartSetHeader parts = 2 [(gogoproto.nullable) = false];
 }
 
 message PartSetHeader {

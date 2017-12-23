@@ -13,11 +13,11 @@ import (
 
 func InitChain(client abcicli.Client) error {
 	total := 10
-	vals := make([]*types.Validator, total)
+	vals := make([]types.Validator, total)
 	for i := 0; i < total; i++ {
 		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
 		power := cmn.RandInt()
-		vals[i] = &types.Validator{pubkey, int64(power)}
+		vals[i] = types.Validator{pubkey, int64(power)}
 	}
 	_, err := client.InitChainSync(types.RequestInitChain{Validators: vals})
 	if err != nil {

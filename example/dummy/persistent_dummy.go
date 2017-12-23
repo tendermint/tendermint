@@ -28,7 +28,7 @@ type PersistentDummyApplication struct {
 	app *DummyApplication
 
 	// validator set
-	ValUpdates []*types.Validator
+	ValUpdates []types.Validator
 
 	logger log.Logger
 }
@@ -119,7 +119,7 @@ func (app *PersistentDummyApplication) InitChain(req types.RequestInitChain) typ
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
-	app.ValUpdates = make([]*types.Validator, 0)
+	app.ValUpdates = make([]types.Validator, 0)
 	return types.ResponseBeginBlock{}
 }
 
@@ -131,7 +131,7 @@ func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types
 //---------------------------------------------
 // update validators
 
-func (app *PersistentDummyApplication) Validators() (validators []*types.Validator) {
+func (app *PersistentDummyApplication) Validators() (validators []types.Validator) {
 	app.app.state.Iterate(func(key, value []byte) bool {
 		if isValidatorTx(key) {
 			validator := new(types.Validator)
@@ -139,7 +139,7 @@ func (app *PersistentDummyApplication) Validators() (validators []*types.Validat
 			if err != nil {
 				panic(err)
 			}
-			validators = append(validators, validator)
+			validators = append(validators, *validator)
 		}
 		return false
 	})
@@ -190,11 +190,11 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 	}
 
 	// update
-	return app.updateValidator(&types.Validator{pubkey, power})
+	return app.updateValidator(types.Validator{pubkey, power})
 }
 
 // add, update, or remove a validator
-func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types.ResponseDeliverTx {
+func (app *PersistentDummyApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey))
 	if v.Power == 0 {
 		// remove validator
@@ -207,7 +207,7 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
-		if err := types.WriteMessage(v, value); err != nil {
+		if err := types.WriteMessage(&v, value); err != nil {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}

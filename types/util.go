@@ -11,7 +11,7 @@ import (
 //------------------------------------------------------------------------------
 
 // Validators is a list of validators that implements the Sort interface
-type Validators []*Validator
+type Validators []Validator
 
 func (v Validators) Len() int {
 	return len(v)
