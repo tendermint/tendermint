@@ -314,11 +314,11 @@ FOR_LOOP:
 			// NOTE: flushTimer.Set() must be called every time
 			// something is written to .bufWriter.
 			c.flush()
-		case <-c.chStatsTimer.Ch:
+		case <-c.chStatsTimer.Chan():
 			for _, channel := range c.channels {
 				channel.updateStats()
 			}
-		case <-c.pingTimer.Ch:
+		case <-c.pingTimer.Chan():
 			c.Logger.Debug("Send Ping")
 			legacy.WriteOctet(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
