@@ -424,8 +424,8 @@ error if the change in voting power is more or equal than 1/3.
     .. code-block:: go
 
         // Update the validator set
-        func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
-          return types.ResponseEndBlock{Diffs: app.changes}
+        func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
+          return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
         }
 
 .. container:: toggle
