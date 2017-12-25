@@ -149,7 +149,7 @@ type Header struct {
 	LastCommitHash data.Bytes `json:"last_commit_hash"` // commit from validators from the last block
 	DataHash       data.Bytes `json:"data_hash"`        // transactions
 
-	// hashes from the app
+	// hashes from the app output from the prev block
 	ValidatorsHash data.Bytes `json:"validators_hash"` // validators for the current block
 	ConsensusHash  data.Bytes `json:"consensus_hash"`  // consensus params for current block
 	AppHash        data.Bytes `json:"app_hash"`        // state after txs from the previous block

@@ -13,14 +13,13 @@ import (
 
 //-----------------------------------------------------------------------------
 
-// ABCIResult is just the essential info to prove
-// success/failure of a DeliverTx
+// ABCIResult is the deterministic component of a ResponseDeliverTx.
 type ABCIResult struct {
 	Code uint32     `json:"code"`
 	Data data.Bytes `json:"data"`
 }
 
-// Hash creates a canonical json hash of the ABCIResult
+// Hash returns the canonical json hash of the ABCIResult
 func (a ABCIResult) Hash() []byte {
 	// stupid canonical json output, easy to check in any language
 	bs := fmt.Sprintf(`{"code":%d,"data":"%s"}`, a.Code, a.Data)
@@ -36,12 +35,16 @@ type ABCIResults []ABCIResult
 func NewResults(del []*abci.ResponseDeliverTx) ABCIResults {
 	res := make(ABCIResults, len(del))
 	for i, d := range del {
-		res[i] = ABCIResult{
-			Code: d.Code,
-			Data: d.Data,
-		}
+		res[i] = NewResultFromResponse(d)
 	}
 	return res
+}
+
+func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
+	return ABCIResult{
+		Code: response.Code,
+		Data: response.Data,
+	}
 }
 
 // Bytes serializes the ABCIResponse using go-wire

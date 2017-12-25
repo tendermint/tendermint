@@ -52,25 +52,25 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
-			// reqDeliverTx := req.(abci.RequestDeliverTx)
-			txResult := r.DeliverTx
-			if txResult.Code == abci.CodeTypeOK {
+			txRes := r.DeliverTx
+			if txRes.Code == abci.CodeTypeOK {
 				validTxs++
 			} else {
-				logger.Debug("Invalid tx", "code", txResult.Code, "log", txResult.Log)
+				logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 				invalidTxs++
 			}
 
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
+			tx := types.Tx(req.GetDeliverTx().Tx)
 			txEventPublisher.PublishEventTx(types.EventDataTx{types.TxResult{
 				Height: block.Height,
 				Index:  uint32(txIndex),
-				Tx:     types.Tx(req.GetDeliverTx().Tx),
-				Result: *txResult,
+				Tx:     tx,
+				Result: *txRes,
 			}})
 
-			abciResponses.DeliverTx[txIndex] = txResult
+			abciResponses.DeliverTx[txIndex] = txRes
 			txIndex++
 		}
 	}
@@ -83,6 +83,8 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 			absentVals = append(absentVals, int32(valI))
 		}
 	}
+
+	// TODO: determine which validators were byzantine
 
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
@@ -322,7 +324,7 @@ func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn
 	fail.Fail() // XXX
 
 	// save the results before we commit
-	s.SaveABCIResponses(abciResponses)
+	s.SaveABCIResponses(block.Height, abciResponses)
 
 	fail.Fail() // XXX
 
