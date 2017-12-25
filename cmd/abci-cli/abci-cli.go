@@ -299,49 +299,37 @@ func persistentArgs(line []byte) []string {
 
 //--------------------------------------------------------------------------------
 
-func or(err1 error, err2 error) error {
-	if err1 == nil {
-		return err2
+func compose(fs []func() error) error {
+	if len(fs) == 0 {
+		return nil
 	} else {
-		return err1
+		err := fs[0]()
+		if err == nil {
+			return compose(fs[1:])
+		} else {
+			return err
+		}
 	}
 }
 
 func cmdTest(cmd *cobra.Command, args []string) error {
-	fmt.Println("Running tests")
-
-	err := servertest.InitChain(client)
-	fmt.Println("")
-	err = or(err, servertest.SetOption(client, "serial", "on"))
-	fmt.Println("")
-	err = or(err, servertest.Commit(client, nil))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil))
-	fmt.Println("")
-	err = or(err, servertest.Commit(client, nil))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeOK, nil))
-	fmt.Println("")
-	err = or(err, servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1}))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte{0x01}, code.CodeTypeOK, nil))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x02}, code.CodeTypeOK, nil))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x03}, code.CodeTypeOK, nil))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x00, 0x04}, code.CodeTypeOK, nil))
-	fmt.Println("")
-	err = or(err, servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil))
-	fmt.Println("")
-	err = or(err, servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5}))
-
-	if err != nil {
-		return errors.New("Some checks didn't pass, please inspect stdout to see the exact failures.")
-	}
-	return nil
+	return compose(
+		[]func() error{
+			func() error { return servertest.InitChain(client) },
+			func() error { return servertest.SetOption(client, "serial", "on") },
+			func() error { return servertest.Commit(client, nil) },
+			func() error { return servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil) },
+			func() error { return servertest.Commit(client, nil) },
+			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeOK, nil) },
+			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
+			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil) },
+			func() error { return servertest.DeliverTx(client, []byte{0x01}, code.CodeTypeOK, nil) },
+			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x02}, code.CodeTypeOK, nil) },
+			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x03}, code.CodeTypeOK, nil) },
+			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x04}, code.CodeTypeOK, nil) },
+			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil) },
+			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5})},
+		})
 }
 
 func cmdBatch(cmd *cobra.Command, args []string) error {
