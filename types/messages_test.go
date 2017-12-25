@@ -19,7 +19,7 @@ func TestMarshalJSON(t *testing.T) {
 		Code: 1,
 		Data: []byte("hello"),
 		Gas:  43,
-		Fee:  12,
+		Fee:  KI64Pair{[]byte("pho"), 12},
 	}
 	b, err = json.Marshal(&r1)
 	assert.Nil(t, err)

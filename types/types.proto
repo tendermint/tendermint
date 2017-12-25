@@ -139,7 +139,7 @@ message ResponseCheckTx {
   bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
   string log = 3;
   int64 gas = 4;
-  int64 fee = 5;
+  KI64Pair fee = 5 [(gogoproto.nullable) = false];
 }
 
 message ResponseDeliverTx {
@@ -230,14 +230,13 @@ message Evidence {
 // Abstract types
 
 message KVPair {
-  string key = 1;
-  enum Type {
-    STRING = 0;
-    INT = 1;
-  }
-  Type value_type = 2;
-  string value_string = 3;
-  int64 value_int = 4;
+  bytes key = 1;
+  bytes value = 2;
+}
+
+message KI64Pair {
+  bytes key = 1;
+  int64 value = 2;
 }
 
 //----------------------------------------

@@ -40,8 +40,8 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	app.state.Set(key, value)
 
 	tags := []types.KVPair{
-		{Key: "app.creator", ValueType: types.KVPair_STRING, ValueString: "jae"},
-		{Key: "app.key", ValueType: types.KVPair_STRING, ValueString: string(key)},
+		{[]byte("app.creator"), []byte("jae")},
+		{[]byte("app.key"), key},
 	}
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }
