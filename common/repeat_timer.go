@@ -42,11 +42,11 @@ func (t *defaultTicker) Stop() {
 //----------------------------------------
 // LogicalTickerMaker
 
-// Construct a TickerMaker that always uses `ch`.
+// Construct a TickerMaker that always uses `source`.
 // It's useful for simulating a deterministic clock.
-func NewLogicalTickerMaker(ch chan time.Time) TickerMaker {
+func NewLogicalTickerMaker(source chan time.Time) TickerMaker {
 	return func(dur time.Duration) Ticker {
-		return newLogicalTicker(ch, dur)
+		return newLogicalTicker(source, dur)
 	}
 }
 
@@ -66,8 +66,8 @@ func newLogicalTicker(source <-chan time.Time, interval time.Duration) Ticker {
 	return lt
 }
 
-// We clearly need a new goroutine, for logicalTicker may have been created
-// from a goroutine separate from the source.
+// We need a goroutine to read times from t.source
+// and fire on t.Chan() when `interval` has passed.
 func (t *logicalTicker) fireRoutine(interval time.Duration) {
 	source := t.source
 

@@ -29,7 +29,6 @@ func TestRepeat(t *testing.T) {
 			select {
 			case _ = <-rt.Chan():
 			case <-timeout:
-				panic("QWE")
 				t.Fatal("expected RepeatTimer to fire")
 			}
 		}
@@ -43,7 +42,7 @@ func TestRepeat(t *testing.T) {
 	}
 
 	tm := NewLogicalTickerMaker(ch)
-	dur := time.Duration(0) // dontcare
+	dur := time.Duration(10 * time.Millisecond) // less than a second
 	rt := NewRepeatTimerWithTickerMaker("bar", dur, tm)
 
 	// Start at 0.
