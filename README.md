@@ -200,4 +200,3 @@ Here, we describe the requests and responses as function arguments and return va
     * `Log (string)`: Debug or error message
   * __Usage__:<br/>
     Return a Merkle root hash of the application state.
-

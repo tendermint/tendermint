@@ -1,3 +1,4 @@
 vendor
 .glide
 types/types.pb.go
+*.sw[op]
