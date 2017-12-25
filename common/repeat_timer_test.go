@@ -7,8 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// NOTE: this only tests with the LogicalTicker.
-// How do you test a real-clock ticker properly?
+func TestDefaultTicker(t *testing.T) {
+	ticker := defaultTickerMaker(time.Millisecond * 10)
+	<-ticker.Chan()
+	ticker.Stop()
+}
+
 func TestRepeat(t *testing.T) {
 
 	ch := make(chan time.Time, 100)
