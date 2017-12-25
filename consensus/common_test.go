@@ -347,7 +347,7 @@ func consensusLogger() log.Logger {
 }
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application, configOpts ...func(*cfg.Config)) []*ConsensusState {
-	genDoc, privVals := randGenesisDoc(nValidators, false, 10)
+	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
 	css := make([]*ConsensusState, nValidators)
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {

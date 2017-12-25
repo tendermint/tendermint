@@ -122,18 +122,15 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 }
 
 func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator) error {
-	// ## prevent update of 1/3+ at once
-	//
-	// If more than 1/3 validators changed in one block, then a light
-	// client could never prove the transition externally. See
-	// ./lite/doc.go for details on how a light client tracks
-	// validators.
-	maxUpdates := currentSet.Size() / 3
-	if maxUpdates == 0 { // if current set size is less than 3
-		maxUpdates = 1
+	// If more or equal than 1/3 of total voting power changed in one block, then
+	// a light client could never prove the transition externally. See
+	// ./lite/doc.go for details on how a light client tracks validators.
+	vp23, err := changeInVotingPowerMoreOrEqualToOneThird(currentSet, updates)
+	if err != nil {
+		return err
 	}
-	if len(updates) > maxUpdates {
-		return errors.New("Can not update more than 1/3 of validators at once")
+	if vp23 {
+		return errors.New("the change in voting power must be strictly less than 1/3")
 	}
 
 	for _, v := range updates {
@@ -172,6 +169,42 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator)
 		}
 	}
 	return nil
+}
+
+func changeInVotingPowerMoreOrEqualToOneThird(currentSet *types.ValidatorSet, updates []*abci.Validator) (bool, error) {
+	threshold := currentSet.TotalVotingPower() * 1 / 3
+	acc := int64(0)
+
+	for _, v := range updates {
+		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
+		if err != nil {
+			return false, err
+		}
+
+		address := pubkey.Address()
+		power := int64(v.Power)
+		// mind the overflow from int64
+		if power < 0 {
+			return false, fmt.Errorf("Power (%d) overflows int64", v.Power)
+		}
+
+		_, val := currentSet.GetByAddress(address)
+		if val == nil {
+			acc += power
+		} else {
+			np := val.VotingPower - power
+			if np < 0 {
+				np = -np
+			}
+			acc += np
+		}
+
+		if acc >= threshold {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // return a bit array of validators that signed the last commit

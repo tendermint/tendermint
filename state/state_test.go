@@ -134,7 +134,7 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with
 // changes.
 func TestValidatorChangesSaveLoad(t *testing.T) {
-	const valSetSize = 6
+	const valSetSize = 7
 	tearDown, _, state := setupTestCase(t)
 	state.Validators = genValSet(valSetSize)
 	state.Save()
@@ -171,16 +171,14 @@ func genValSet(size int) *types.ValidatorSet {
 // with changes.
 func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
-	const valSetSize = 20
-	state.Validators = genValSet(valSetSize)
-	state.Save()
 	defer tearDown(t)
 
 	// change vals at these heights
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
-	// create list of new vals
+	// each valset is just one validator
+	// create list of them
 	params := make([]types.ConsensusParams, N+1)
 	params[0] = state.ConsensusParams
 	for i := 1; i < N+1; i++ {
@@ -247,18 +245,21 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 	}
 }
 
-func TestLessThanOneThirdOfValidatorUpdatesEnforced(t *testing.T) {
+func TestLessThanOneThirdOfVotingPowerPerBlockEnforced(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
 
 	height := state.LastBlockHeight + 1
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		Height:   height,
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{{PubKey: []byte("a"), Power: 10}}},
+		Height: height,
+		// 1 val (vp: 10) => less than 3 is ok
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{
+			{PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(), Power: 3},
+		}},
 	}
 	err := state.SetBlockAndValidators(block.Header, types.PartSetHeader{}, abciResponses)
-	assert.NotNil(t, err, "expected err when trying to update more than 1/3 of validators")
+	assert.Error(t, err)
 }
 
 func TestApplyUpdates(t *testing.T) {
