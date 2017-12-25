@@ -9,6 +9,7 @@ import (
 )
 
 // Get block headers for minHeight <= height <= maxHeight.
+// Block headers are returned in descending order (highest first).
 //
 // ```shell
 // curl 'localhost:46657/blockchain?minHeight=10&maxHeight=10'
@@ -314,11 +315,10 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 }
 
 // BlockResults gets ABCIResults at a given height.
-// If no height is provided, it will fetch the latest block.
+// If no height is provided, it will fetch results for the latest block.
 //
-// Results are for the tx of the last block with the same index.
-// Thus response.results[5] is the results of executing
-// getBlock(h-1).Txs[5]
+// Results are for the height of the block containing the txs.
+// Thus response.results[5] is the results of executing getBlock(h).Txs[5]
 //
 // ```shell
 // curl 'localhost:46657/block_results?height=10'
@@ -364,7 +364,7 @@ func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 
 	// load the results
 	state := consensusState.GetState()
-	results, err := state.LoadResults(height)
+	results, err := state.LoadABCIResponses(height)
 	if err != nil {
 		return nil, err
 	}

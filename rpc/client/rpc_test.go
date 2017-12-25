@@ -168,17 +168,15 @@ func TestAppCalls(t *testing.T) {
 		assert.EqualValues(apph, block.BlockMeta.Header.Height)
 
 		// now check the results
-		blockResults, err := c.BlockResults(&apph)
+		blockResults, err := c.BlockResults(&txh)
 		require.Nil(err, "%d: %+v", i, err)
-		assert.Equal(apph, blockResults.Height)
-		if assert.Equal(1, len(blockResults.Results)) {
+		assert.Equal(txh, blockResults.Height)
+		if assert.Equal(1, len(blockResults.Results.DeliverTx)) {
 			// check success code
-			assert.EqualValues(0, blockResults.Results[0].Code)
+			assert.EqualValues(0, blockResults.Results.DeliverTx[0].Code)
 		}
 
 		// check blockchain info, now that we know there is info
-		// TODO: is this commented somewhere that they are returned
-		// in order of descending height???
 		info, err := c.BlockchainInfo(apph, apph)
 		require.Nil(err, "%d: %+v", i, err)
 		assert.True(info.LastHeight >= apph)
