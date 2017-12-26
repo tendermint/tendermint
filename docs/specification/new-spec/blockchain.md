@@ -5,11 +5,12 @@ Here we describe the data structures in the Tendermint blockchain and the rules 
 # Data Structures
 
 The Tendermint blockchains consists of a short list of basic data types:
-blocks, headers, votes, block ids, and signatures.
+`Block`, `Header`, `Vote`, `BlockID`, and `Signature`.
 
 ## Block
 
-A block consists of a header, a list of transactions, and a list of votes (the commit).
+A block consists of a header, a list of transactions, a list of votes (the commit),
+and a list of evidence if malfeasance (ie. signing conflicting votes).
 
 ```
 type Block struct {
@@ -54,14 +55,16 @@ type Header struct {
 }
 ```
 
+Further details on each of this fields is taken up below.
+
 ## BlockID
 
 The `BlockID` contains two distinct Merkle roots of the block.
 The first, used as the block's main hash, is the Merkle root
 of all the fields in the header. The second, used for secure gossipping of
 the block during consensus, is the Merkle root of the complete serialized block
-cut into pieces. The `BlockID` includes these two hashes, as well as the number of
-pieces.
+cut into parts. The `BlockID` includes these two hashes, as well as the number of
+parts.
 
 ```
 type BlockID struct {
@@ -75,7 +78,6 @@ type BlockID struct {
 
 A vote is a signed message from a validator for a particular block.
 The vote includes information about the validator signing it.
-There are two types of votes, but they have identical structure:
 
 ```
 type Vote struct {
@@ -90,11 +92,20 @@ type Vote struct {
 }
 ```
 
+
+There are two types of votes:
+a prevote has `vote.Type == 1` and
+a precommit has `vote.Type == 2`.
+
 ## Signature
 
 Tendermint allows for multiple signature schemes to be used by prepending a single type-byte
-to the signature bytes. Different signatures may also come in different lengths, but this length
-is not made explicit. Currently, Tendermint supports Ed25519 and Secp256k1
+to the signature bytes. Different signatures may also come with fixed or variable lengths.
+Currently, Tendermint supports Ed25519 and Secp256k1.
+
+### ED25519
+
+An ED25519 signature has `Type == 0x1`. It looks like:
 
 ```
 // Implements Signature
@@ -102,7 +113,15 @@ type Ed25519Signature struct {
     Type        int8        = 0x1
     Signature   [64]byte
 }
+```
 
+where `Signature` is the 64 byte signature.
+
+### Secp256k1
+
+A `Secp256k1` signature has `Type == 0x2`. It looks like:
+
+```
 // Implements Signature
 type Secp256k1Signature struct {
     Type        int8        = 0x2
@@ -110,19 +129,28 @@ type Secp256k1Signature struct {
 }
 ```
 
+where `Signature` is the DER encoded signature, ie:
+
+```
+0x30 <length of whole message> <0x02> <length of R> <R> 0x2 <length of S> <S>.
+```
+
 # Validation
 
-Here we go through every element of a block and describe the rules for validation.
+Here we describe the validation rules for every element in block.
 Blocks which do not satisfy these rules are considered invalid.
 
-In the following, `block` refers to the block under consideration,
-`prevBlock` refers to the `block` at the previous height,
-`state` refers to an object that keeps track of the validator set
-and the consensus parameters as they are updated by the application,
-and `app` refers to the responses returned by the application during the
-execution of the `prevBlock`.
-
 We abuse notation by using something that looks like Go, supplemented with English.
+A statement such as `x == y` is an assertion - if it fails, the item is invalid.
+
+We refer to certain globally available objects:
+`block` is the block under consideration,
+`prevBlock` is the `block` at the previous height,
+`state` keeps track of the validator set
+and the consensus parameters as they are updated by the application,
+and `app` is the set of responses returned by the application during the
+execution of the `prevBlock`. Elements of an object are accessed as expected,
+ie. `block.Header`. See the definitions of `state` and `app` elsewhere.
 
 ## Header
 
@@ -251,13 +279,14 @@ Arbitrary length array of arbitrary length byte-arrays.
 
 ## LastCommit
 
+The first height is an exception - it requires the LastCommit to be empty:
+
 ```
 if block.Header.Height == 1 {
     len(b.LastCommit) == 0
 }
 ```
 
-The first height is an exception - it requires the LastCommit to be empty.
 Otherwise, we require:
 
 ```
@@ -278,7 +307,7 @@ for i, vote := range block.LastCommit{
     talliedVotingPower += votingPower
 }
 
-talliedVotingPower > state.LastValidators.TotalVotingPower()
+talliedVotingPower > (2/3) * state.LastValidators.TotalVotingPower()
 ```
 
 Includes one (possibly nil) vote for every current validator.
@@ -287,7 +316,7 @@ All votes must be for the same height and round.
 All votes must be for the previous block.
 All votes must have a valid signature from the corresponding validator.
 The sum total of the voting power of the validators that voted
-must be greater than the total voting power of the complete validator set.
+must be greater than 2/3 of the total voting power of the complete validator set.
 
 ## Evidence
 
