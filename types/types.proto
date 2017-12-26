@@ -4,8 +4,11 @@ package types;
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/tendermint/tmlibs/common/types.proto";
 
 // This file is copied from http://github.com/tendermint/abci
+// NOTE: When using custom types, mind the warnings.
+// https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
 
 //----------------------------------------
 // Request types
@@ -124,9 +127,9 @@ message ResponseInitChain {
 message ResponseQuery {
   uint32 code = 1;
   int64 index = 2;
-  bytes key = 3 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  bytes value = 4 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  bytes proof = 5 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes key = 3;
+  bytes value = 4;
+  bytes proof = 5;
   int64 height = 6;
   string log = 7;
 }
@@ -136,17 +139,17 @@ message ResponseBeginBlock {
 
 message ResponseCheckTx {
   uint32 code = 1;
-  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes data = 2;
   string log = 3;
   int64 gas = 4;
-  KI64Pair fee = 5 [(gogoproto.nullable) = false];
+  common.KI64Pair fee = 5 [(gogoproto.nullable) = false];
 }
 
 message ResponseDeliverTx {
   uint32 code = 1;
-  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes data = 2;
   string log = 3;
-  repeated KVPair tags = 4 [(gogoproto.nullable) = false];
+  repeated common.KVPair tags = 4 [(gogoproto.nullable) = false];
 }
 
 message ResponseEndBlock {
@@ -156,7 +159,7 @@ message ResponseEndBlock {
 
 message ResponseCommit {
   uint32 code = 1;
-  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes data = 2;
   string log = 3;
 }
 
@@ -224,19 +227,6 @@ message Validator {
 message Evidence {
   bytes pub_key = 1;
   int64 height = 2;
-}
-
-//----------------------------------------
-// Abstract types
-
-message KVPair {
-  bytes key = 1;
-  bytes value = 2;
-}
-
-message KI64Pair {
-  bytes key = 1;
-  int64 value = 2;
 }
 
 //----------------------------------------

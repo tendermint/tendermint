@@ -3,9 +3,6 @@ package types
 import (
 	"bytes"
 	"encoding/json"
-
-	"github.com/tendermint/go-wire/data"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //------------------------------------------------------------------------------
@@ -35,12 +32,12 @@ func ValidatorsString(vs Validators) string {
 	}
 	b, err := json.Marshal(s)
 	if err != nil {
-		cmn.PanicSanity(err.Error())
+		panic(err.Error())
 	}
 	return string(b)
 }
 
 type validatorPretty struct {
-	PubKey data.Bytes `json:"pub_key"`
-	Power  int64      `json:"power"`
+	PubKey []byte `json:"pub_key"`
+	Power  int64  `json:"power"`
 }

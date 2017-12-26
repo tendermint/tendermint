@@ -7,6 +7,7 @@ import (
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
 	"github.com/tendermint/iavl"
+	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
@@ -38,7 +39,7 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	}
 	app.state.Set(key, value)
 
-	tags := []types.KVPair{
+	tags := []cmn.KVPair{
 		{[]byte("app.creator"), []byte("jae")},
 		{[]byte("app.key"), key},
 	}

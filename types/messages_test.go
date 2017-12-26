@@ -8,6 +8,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func TestMarshalJSON(t *testing.T) {
@@ -19,7 +20,7 @@ func TestMarshalJSON(t *testing.T) {
 		Code: 1,
 		Data: []byte("hello"),
 		Gas:  43,
-		Fee:  KI64Pair{[]byte("pho"), 12},
+		Fee:  cmn.KI64Pair{[]byte("pho"), 12},
 	}
 	b, err = json.Marshal(&r1)
 	assert.Nil(t, err)

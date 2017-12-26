@@ -51,8 +51,7 @@ func Commit(client abcicli.Client, hashExp []byte) error {
 	}
 	if !bytes.Equal(data, hashExp) {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n",
-			data.Bytes(), hashExp)
+		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n", data, hashExp)
 		return errors.New("CommitTx failed")
 	}
 	fmt.Println("Passed test: Commit")
