@@ -18,7 +18,7 @@ func startClient(abciType string) abcicli.Client {
 	}
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	client.SetLogger(logger.With("module", "abcicli"))
-	if err := client.Start(); err != nil {
+	if _, err := client.Start(); err != nil {
 		panicf("connecting to abci_app: %v", err.Error())
 	}
 

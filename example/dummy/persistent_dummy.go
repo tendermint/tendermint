@@ -40,7 +40,7 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 		panic(err)
 	}
 
-	stateTree := iavl.NewVersionedTree(500, db)
+	stateTree := iavl.NewVersionedTree(db, 500)
 	stateTree.Load()
 
 	return &PersistentDummyApplication{
@@ -55,8 +55,7 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	res := app.app.Info(req)
-	var latestVersion uint64 = app.app.state.LatestVersion() // TODO: change to int64
-	res.LastBlockHeight = int64(latestVersion)
+	res.LastBlockHeight = app.app.state.Version64()
 	res.LastBlockAppHash = app.app.state.Hash()
 	return res
 }
@@ -87,11 +86,11 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.ResponseCheckTx 
 func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
 
 	// Save a new version for next height
-	height := app.app.state.LatestVersion() + 1
+	var height int64
 	var appHash []byte
 	var err error
 
-	appHash, err = app.app.state.SaveVersion(height)
+	appHash, height, err = app.app.state.SaveVersion()
 	if err != nil {
 		// if this wasn't a dummy app, we'd do something smarter
 		panic(err)

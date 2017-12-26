@@ -41,9 +41,9 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	})
 	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
+	proof, err := iavl.ReadKeyProof(resQuery.Proof)
 	require.Nil(t, err)
-	err = proof.Verify([]byte(key), resQuery.Value, proof.RootHash)
+	err = proof.Verify([]byte(key), resQuery.Value, proof.Root())
 	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }
 
@@ -215,14 +215,14 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 
 	server := abciserver.NewSocketServer(socket, app)
 	server.SetLogger(logger.With("module", "abci-server"))
-	if err := server.Start(); err != nil {
+	if _, err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
 	// Connect to the socket
 	client := abcicli.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
-	if err := client.Start(); err != nil {
+	if _, err := client.Start(); err != nil {
 		server.Stop()
 		return nil, nil, err
 	}
@@ -238,13 +238,13 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, c
 	gapp := types.NewGRPCApplication(app)
 	server := abciserver.NewGRPCServer(socket, gapp)
 	server.SetLogger(logger.With("module", "abci-server"))
-	if err := server.Start(); err != nil {
+	if _, err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
 	client := abcicli.NewGRPCClient(socket, true)
 	client.SetLogger(logger.With("module", "abci-client"))
-	if err := client.Start(); err != nil {
+	if _, err := client.Start(); err != nil {
 		server.Stop()
 		return nil, nil, err
 	}
@@ -310,8 +310,8 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
+	proof, err := iavl.ReadKeyProof(resQuery.Proof)
 	require.Nil(t, err)
-	err = proof.Verify([]byte(key), resQuery.Value, proof.RootHash)
+	err = proof.Verify([]byte(key), resQuery.Value, proof.Root())
 	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }

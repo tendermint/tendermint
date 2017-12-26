@@ -6,7 +6,6 @@ import (
 
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/iavl"
 	dbm "github.com/tendermint/tmlibs/db"
 )
@@ -20,7 +19,7 @@ type DummyApplication struct {
 }
 
 func NewDummyApplication() *DummyApplication {
-	state := iavl.NewVersionedTree(0, dbm.NewMemDB())
+	state := iavl.NewVersionedTree(dbm.NewMemDB(), 0)
 	return &DummyApplication{state: state}
 }
 
@@ -56,9 +55,7 @@ func (app *DummyApplication) Commit() types.ResponseCommit {
 	var err error
 
 	if app.state.Size() > 0 {
-		// just add one more to height (kind of arbitrarily stupid)
-		height := app.state.LatestVersion() + 1
-		hash, err = app.state.SaveVersion(height)
+		hash, _, err = app.state.SaveVersion()
 		if err != nil {
 			// if this wasn't a dummy app, we'd do something smarter
 			panic(err)
@@ -78,7 +75,7 @@ func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
-		resQuery.Proof = wire.BinaryBytes(proof)
+		resQuery.Proof = proof.Bytes()
 		if value != nil {
 			resQuery.Log = "exists"
 		} else {
