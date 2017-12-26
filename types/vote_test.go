@@ -9,7 +9,15 @@ import (
 	wire "github.com/tendermint/go-wire"
 )
 
-func exampleVote() *Vote {
+func examplePrevote() *Vote {
+	return exampleVote(VoteTypePrevote)
+}
+
+func examplePrecommit() *Vote {
+	return exampleVote(VoteTypePrecommit)
+}
+
+func exampleVote(t byte) *Vote {
 	var stamp, err = time.Parse(timeFormat, "2017-12-25T03:00:01.234Z")
 	if err != nil {
 		panic(err)
@@ -21,7 +29,7 @@ func exampleVote() *Vote {
 		Height:           12345,
 		Round:            2,
 		Timestamp:        stamp,
-		Type:             byte(2),
+		Type:             t,
 		BlockID: BlockID{
 			Hash: []byte("hash"),
 			PartsHeader: PartSetHeader{
@@ -33,7 +41,7 @@ func exampleVote() *Vote {
 }
 
 func TestVoteSignable(t *testing.T) {
-	vote := exampleVote()
+	vote := examplePrecommit()
 	signBytes := SignBytes("test_chain_id", vote)
 	signStr := string(signBytes)
 
@@ -45,10 +53,22 @@ func TestVoteSignable(t *testing.T) {
 }
 
 func TestVoteString(t *testing.T) {
-	str := exampleVote().String()
-	expected := `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`
-	if str != expected {
-		t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", expected, str)
+	tc := []struct {
+		name string
+		in   string
+		out  string
+	}{
+		{"Precommit", examplePrecommit().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
+		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.name, func(st *testing.T) {
+			if tt.in != tt.out {
+				t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", tt.in, tt.out)
+			}
+		})
 	}
 }
 
@@ -56,7 +76,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	privVal := GenPrivValidatorFS("")
 	pubKey := privVal.GetPubKey()
 
-	vote := exampleVote()
+	vote := examplePrecommit()
 	signBytes := SignBytes("test_chain_id", vote)
 
 	// sign it
@@ -78,4 +98,25 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.Equal(t, string(signBytes), string(newSignBytes))
 	valid = pubKey.VerifyBytes(newSignBytes, signature)
 	require.True(t, valid)
+}
+
+func TestIsVoteTypeValid(t *testing.T) {
+	tc := []struct {
+		name string
+		in   byte
+		out  bool
+	}{
+		{"Prevote", VoteTypePrevote, true},
+		{"Precommit", VoteTypePrecommit, true},
+		{"InvalidType", byte(3), false},
+	}
+
+	for _, tt := range tc {
+		tt := tt
+		t.Run(tt.name, func(st *testing.T) {
+			if rs := IsVoteTypeValid(tt.in); rs != tt.out {
+				t.Errorf("Got unexpected Vote type. Expected:\n%v\nGot:\n%v", rs, tt.out)
+			}
+		})
+	}
 }
