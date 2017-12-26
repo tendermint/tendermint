@@ -5,7 +5,7 @@ Here we describe the data structures in the Tendermint blockchain and the rules 
 # Data Structures
 
 The Tendermint blockchains consists of a short list of basic data types:
-`Block`, `Header`, `Vote`, `BlockID`, and `Signature`.
+`Block`, `Header`, `Vote`, `BlockID`, `Signature`, and `Evidence`.
 
 ## Block
 
@@ -135,6 +135,10 @@ where `Signature` is the DER encoded signature, ie:
 0x30 <length of whole message> <0x02> <length of R> <R> 0x2 <length of S> <S>.
 ```
 
+## Evidence
+
+TODO
+
 # Validation
 
 Here we describe the validation rules for every element in block.
@@ -171,6 +175,8 @@ block.Header.Height > 0
 block.Header.Height == prevBlock.Header.Height + 1
 ```
 
+The height is an incrementing integer. The first block has `block.Header.Height == 1`.
+
 ### Time
 
 The median of the timestamps of the valid votes in the block.LastCommit.
@@ -202,13 +208,17 @@ block.Header.LastCommitHash == SimpleMerkleRoot(block.LastCommit)
 Simple Merkle root of the votes included in the block.
 These are the votes that committed the previous block.
 
+The first block has `block.Header.LastCommitHash == []byte{}`
+
 ### TotalTxs
 
 ```
-block.Header.TotalTxs == prevBlock.Header.TotalTxs + block.header.NumTxs
+block.Header.TotalTxs == prevBlock.Header.TotalTxs + block.Header.NumTxs
 ```
 
 The cumulative sum of all transactions included in this blockchain.
+
+The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 
 ### LastBlockID
 
@@ -224,6 +234,8 @@ block.HeaderLastBlockID == BlockID{
 Previous block's BlockID. Note it depends on the ConsensusParams,
 which are held in the `state` and may be updated by the application.
 
+The first block has `block.Header.LastBlockID == BlockID{}`.
+
 ### ResultsHash
 
 ```
@@ -231,6 +243,8 @@ block.ResultsHash == SimpleMerkleRoot(app.Results)
 ```
 
 Simple Merkle root of the results of the transactions in the previous block.
+
+The first block has `block.Header.ResultsHash == []byte{}`.
 
 ### AppHash
 
@@ -240,6 +254,8 @@ block.AppHash == app.AppHash
 
 Arbitrary byte array returned by the application after executing and commiting the previous block.
 
+The first block has `block.Header.AppHash == []byte{}`.
+
 ### ValidatorsHash
 
 ```
@@ -248,7 +264,7 @@ block.ValidatorsHash == SimpleMerkleRoot(state.Validators)
 
 Simple Merkle root of the current validator set that is committing the block.
 This can be used to validate the `LastCommit` included in the next block.
-May be updated by the applicatoin.
+May be updated by the application.
 
 ### ConsensusParamsHash
 
@@ -261,9 +277,15 @@ May be updated by the application.
 
 ### Proposer
 
+```
+block.Header.Proposer in state.Validators
+```
+
 Original proposer of the block.
 
-TODO
+NOTE: this field can only be further verified by real-time participants in the consensus.
+This is because the same block can be proposed in multiple rounds for the same height
+and we do not track the initial round the block was proposed.
 
 ### EvidenceHash
 

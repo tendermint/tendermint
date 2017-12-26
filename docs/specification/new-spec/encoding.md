@@ -31,6 +31,8 @@ The length-prefix consists of a single byte and corresponds to the length of the
 
 Negative integers are encoded by flipping the leading bit of the length-prefix to a `1`.
 
+Zero is encoded as `0x00`. It is not length-prefixed.
+
 
 Examples:
 
@@ -40,6 +42,8 @@ encode(uint(70000)) == [0x03, 0x01, 0x11, 0x70]
 
 encode(int(-6))     == [0xF1, 0x06]
 encode(int(-70000)) == [0xF3, 0x01, 0x11, 0x70]
+
+encode(int(0))      == [0x00]
 ```
 
 ### Strings
@@ -47,9 +51,12 @@ encode(int(-70000)) == [0xF3, 0x01, 0x11, 0x70]
 An encoded string is a length prefix followed by the underlying bytes of the string.
 The length-prefix is itself encoded as an `int`.
 
+The empty string is encoded as `0x00`. It is not length-prefixed.
+
 Examples:
 
 ```
+encode("")      == [0x00]
 encode("a")     == [0x01, 0x01, 0x61]
 encode("hello") == [0x01, 0x05, 0x68, 0x65, 0x6C, 0x6C, 0x6F]
 encode("¥")     == [0x01, 0x02, 0xC2, 0xA5]
@@ -74,9 +81,12 @@ encode([2]string{"abc", "efg"}) == [0x01, 0x03, 0x61, 0x62, 0x63, 0x01, 0x03, 0x
 An encoded variable-length array is a length prefix followed by the concatenation of the encoding of its elements.
 The length-prefix is itself encoded as an `int`.
 
+An empty slice is encoded as `0x00`. It is not length-prefixed.
+
 Examples:
 
 ```
+encode([]int8{})                == [0x00]
 encode([]int8{1, 2, 3, 4})      == [0x01, 0x04, 0x01, 0x02, 0x03, 0x04]
 encode([]int16{1, 2, 3, 4})     == [0x01, 0x04, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04]
 encode([]int{1, 2, 3, 4})       == [0x01, 0x04, 0x01, 0x01, 0x01, 0x02, 0x01, 0x03, 0x01, 0x4]
