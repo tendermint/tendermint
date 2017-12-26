@@ -1,6 +1,6 @@
 # Tendermint Encoding
 
-## Serialization
+## Binary Serialization (TMBIN)
 
 Tendermint aims to encode data structures in a manner similar to how the corresponding Go structs are laid out in memory.
 Variable length items are length-prefixed.
@@ -128,7 +128,7 @@ encode(MyStruct{4, "hello", time.Time("Mon Jan 2 15:04:05 -0700 MST 2006")}) ==
 
 ## Merkle Trees
 
-Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
+Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
 
 RIPEMD160 is always used as the hashing function.
 
@@ -152,3 +152,27 @@ func SimpleMerkleRoot(hashes [][]byte) []byte{
 Note we abuse notion and call `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` by sorting elements of the `struct` according to field name and then hashing them.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
+
+## JSON (TMJSON)
+
+Signed messages (eg. votes, proposals) in the consensus are encoded in TMJSON, rather than TMBIN.
+TMJSON is JSON where `[]byte` are encoded as uppercase hex, rather than base64.
+
+When signing, the elements of a message are sorted by key and the sorted message is embedded in an outer JSON that includes a `chain_id` field.
+We call this encoding the CanonicalSignBytes. For instance, CanonicalSignBytes for a vote would look like:
+
+```
+{"chain_id":"my-chain-id","vote":{"block_id":{"hash":DEADBEEF,"parts":{"hash":BEEFDEAD,"total":3}},"height":3,"round":2,"timestamp":1234567890, "type":2}
+```
+
+Note how the fields within each level are sorted.
+
+## Other
+
+### MakeParts
+
+TMBIN encode an object and slice it into parts.
+
+```
+MakeParts(object, partSize)
+```

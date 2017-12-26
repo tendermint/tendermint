@@ -68,9 +68,13 @@ parts.
 
 ```
 type BlockID struct {
-    HeaderHash  []byte
-    NumParts    int32
-    PartsHash   []byte
+    Hash []byte
+    Parts PartsHeader
+}
+
+type PartsHeader struct {
+    Hash []byte
+    Total int32
 }
 ```
 
@@ -141,7 +145,7 @@ TODO
 
 # Validation
 
-Here we describe the validation rules for every element in block.
+Here we describe the validation rules for every element in a block.
 Blocks which do not satisfy these rules are considered invalid.
 
 We abuse notation by using something that looks like Go, supplemented with English.
@@ -150,11 +154,10 @@ A statement such as `x == y` is an assertion - if it fails, the item is invalid.
 We refer to certain globally available objects:
 `block` is the block under consideration,
 `prevBlock` is the `block` at the previous height,
-`state` keeps track of the validator set
-and the consensus parameters as they are updated by the application,
-and `app` is the set of responses returned by the application during the
-execution of the `prevBlock`. Elements of an object are accessed as expected,
-ie. `block.Header`. See the definitions of `state` and `app` elsewhere.
+and `state` keeps track of the validator set, the consensus parameters
+and other results from the application.
+Elements of an object are accessed as expected,
+ie. `block.Header`. See [here](state.md) for the definition of `state`.
 
 ## Header
 
@@ -180,7 +183,7 @@ The height is an incrementing integer. The first block has `block.Header.Height 
 ### Time
 
 The median of the timestamps of the valid votes in the block.LastCommit.
-Corresponds to the number of milliseconds since January 1, 1970.
+Corresponds to the number of nanoseconds, with millisecond resolution, since January 1, 1970.
 Increments with every new block.
 
 ### NumTxs
@@ -223,11 +226,13 @@ The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 ### LastBlockID
 
 ```
-parts := MakeBlockParts(block, state.ConsensusParams.BlockGossip.BlockPartSize)
+parts := MakeParts(block, state.ConsensusParams.BlockGossip.BlockPartSize)
 block.HeaderLastBlockID == BlockID{
     SimpleMerkleRoot(block.Header),
-    len(parts),
-    SimpleMerkleRoot(parts),
+    PartsHeader{
+        SimpleMerkleRoot(parts),
+        len(parts),
+    },
 }
 ```
 
@@ -239,7 +244,7 @@ The first block has `block.Header.LastBlockID == BlockID{}`.
 ### ResultsHash
 
 ```
-block.ResultsHash == SimpleMerkleRoot(app.Results)
+block.ResultsHash == SimpleMerkleRoot(state.LastResults)
 ```
 
 Simple Merkle root of the results of the transactions in the previous block.
@@ -249,7 +254,7 @@ The first block has `block.Header.ResultsHash == []byte{}`.
 ### AppHash
 
 ```
-block.AppHash == app.AppHash
+block.AppHash == state.AppHash
 ```
 
 Arbitrary byte array returned by the application after executing and commiting the previous block.
@@ -281,7 +286,7 @@ May be updated by the application.
 block.Header.Proposer in state.Validators
 ```
 
-Original proposer of the block.
+Original proposer of the block. Must be a current validator.
 
 NOTE: this field can only be further verified by real-time participants in the consensus.
 This is because the same block can be proposed in multiple rounds for the same height
@@ -323,13 +328,13 @@ for i, vote := range block.LastCommit{
     vote.Round == block.LastCommit.Round()
     vote.BlockID == block.LastBlockID
 
-    pubkey, votingPower := state.LastValidators.Get(i)
-    VerifyVoteSignature(block.ChainID, vote, pubkey)
+    val := state.LastValidators[i]
+    vote.Verify(block.ChainID, val.PubKey) == true
 
-    talliedVotingPower += votingPower
+    talliedVotingPower += val.VotingPower
 }
 
-talliedVotingPower > (2/3) * state.LastValidators.TotalVotingPower()
+talliedVotingPower > (2/3) * TotalVotingPower(state.LastValidators)
 ```
 
 Includes one (possibly nil) vote for every current validator.
@@ -339,6 +344,24 @@ All votes must be for the previous block.
 All votes must have a valid signature from the corresponding validator.
 The sum total of the voting power of the validators that voted
 must be greater than 2/3 of the total voting power of the complete validator set.
+
+### Vote
+
+A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
+When stored in the blockchain or propagated over the network, votes are encoded in TMBIN.
+For signing, votes are encoded in JSON, and the ChainID is included, in the form of the `CanonicalSignBytes`.
+
+We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the CanonicalSignBytes
+using the given ChainID:
+
+```
+func (v Vote) Verify(chainID string, pubKey PubKey) bool {
+    return pubKey.Verify(v.Signature, CanonicalSignBytes(chainID, v))
+}
+```
+
+where `pubKey.Verify` performs the approprioate digital signature verification of the `pubKey`
+against the given signature and message bytes.
 
 ## Evidence
 
@@ -352,3 +375,15 @@ Every piece of evidence contains two conflicting votes from a single validator t
 was active at the height indicated in the votes.
 The votes must not be too old.
 
+
+# Execution
+
+Once a block is validated, it can be executed against the state.
+
+The state follows the recursive equation:
+
+```
+app = NewABCIApp
+state(1) = InitialState
+state(h+1) <- Execute(state(h), app, block(h))
+```
