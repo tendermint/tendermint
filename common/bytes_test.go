@@ -10,23 +10,20 @@ import (
 
 // This is a trivial test for protobuf compatibility.
 func TestMarshal(t *testing.T) {
-	assert := assert.New(t)
-
 	b := []byte("hello world")
 	dataB := Bytes(b)
 	b2, err := dataB.Marshal()
-	assert.Nil(err)
-	assert.Equal(b, b2)
+	assert.Nil(t, err)
+	assert.Equal(t, b, b2)
 
 	var dataB2 Bytes
 	err = (&dataB2).Unmarshal(b)
-	assert.Nil(err)
-	assert.Equal(dataB, dataB2)
+	assert.Nil(t, err)
+	assert.Equal(t, dataB, dataB2)
 }
 
 // Test that the hex encoding works.
 func TestJSONMarshal(t *testing.T) {
-	assert := assert.New(t)
 
 	type TestStruct struct {
 		B1 []byte
@@ -51,7 +48,7 @@ func TestJSONMarshal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(string(jsonBytes), tc.expected)
+			assert.Equal(t, string(jsonBytes), tc.expected)
 
 			// TODO do fuzz testing to ensure that unmarshal fails
 
@@ -61,8 +58,8 @@ func TestJSONMarshal(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			assert.Equal(ts2.B1, tc.input)
-			assert.Equal(ts2.B2, Bytes(tc.input))
+			assert.Equal(t, ts2.B1, tc.input)
+			assert.Equal(t, ts2.B2, Bytes(tc.input))
 		})
 	}
 }
