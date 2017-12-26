@@ -1,20 +1,40 @@
 package clist
 
 /*
+
 The purpose of CList is to provide a goroutine-safe linked-list.
 This list can be traversed concurrently by any number of goroutines.
 However, removed CElements cannot be added back.
 NOTE: Not all methods of container/list are (yet) implemented.
 NOTE: Removed elements need to DetachPrev or DetachNext consistently
 to ensure garbage collection of removed elements.
+
 */
 
 import (
 	"sync"
 )
 
-// CElement is an element of a linked-list
-// Traversal from a CElement are goroutine-safe.
+/*
+
+CElement is an element of a linked-list
+Traversal from a CElement are goroutine-safe.
+
+We can't avoid using WaitGroups or for-loops given the documentation
+spec without re-implementing the primitives that already exist in
+golang/sync. Notice that WaitGroup allows many go-routines to be
+simultaneously released, which is what we want. Mutex doesn't do
+this. RWMutex does this, but it's clumsy to use in the way that a
+WaitGroup would be used -- and we'd end up having two RWMutex's for
+prev/next each, which is doubly confusing.
+
+sync.Cond would be sort-of useful, but we don't need a write-lock in
+the for-loop. Use sync.Cond when you need serial access to the
+"condition". In our case our condition is if `next != nil || removed`,
+and there's no reason to serialize that condition for goroutines
+waiting on NextWait() (since it's just a read operation).
+
+*/
 type CElement struct {
 	mtx     sync.RWMutex
 	prev    *CElement
