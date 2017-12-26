@@ -246,20 +246,75 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 }
 
 func TestLessThanOneThirdOfVotingPowerPerBlockEnforced(t *testing.T) {
-	tearDown, _, state := setupTestCase(t)
-	defer tearDown(t)
+	testCases := []struct {
+		initialValSetSize int
+		shouldErr         bool
+		valUpdatesFn      func(vals *types.ValidatorSet) []*abci.Validator
+	}{
+		///////////// 1 val (vp: 10) => less than 3 is ok ////////////////////////
+		// adding 1 validator => 10
+		0: {1, false, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 2},
+			}
+		}},
+		1: {1, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 3},
+			}
+		}},
+		2: {1, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 100},
+			}
+		}},
 
-	height := state.LastBlockHeight + 1
-	block := makeBlock(state, height)
-	abciResponses := &ABCIResponses{
-		Height: height,
-		// 1 val (vp: 10) => less than 3 is ok
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{
-			{PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(), Power: 3},
+		///////////// 3 val (vp: 30) => less than 10 is ok ////////////////////////
+		// adding and removing validator => 20
+		3: {3, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			_, firstVal := vals.GetByIndex(0)
+			return []*abci.Validator{
+				{PubKey: firstVal.PubKey.Bytes(), Power: 0},
+				{PubKey: pk(), Power: 10},
+			}
+		}},
+		// adding 1 validator => 10
+		4: {3, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 10},
+			}
+		}},
+		// adding 2 validators => 8
+		5: {3, false, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 4},
+				{PubKey: pk(), Power: 4},
+			}
 		}},
 	}
-	err := state.SetBlockAndValidators(block.Header, types.PartSetHeader{}, abciResponses)
-	assert.Error(t, err)
+
+	for i, tc := range testCases {
+		tearDown, _, state := setupTestCase(t)
+		state.Validators = genValSet(tc.initialValSetSize)
+		state.Save()
+		height := state.LastBlockHeight + 1
+		block := makeBlock(state, height)
+		abciResponses := &ABCIResponses{
+			Height:   height,
+			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: tc.valUpdatesFn(state.Validators)},
+		}
+		err := state.SetBlockAndValidators(block.Header, types.PartSetHeader{}, abciResponses)
+		if tc.shouldErr {
+			assert.Error(t, err, "#%d", i)
+		} else {
+			assert.NoError(t, err, "#%d", i)
+		}
+		tearDown(t)
+	}
+}
+
+func pk() []byte {
+	return crypto.GenPrivKeyEd25519().PubKey().Bytes()
 }
 
 func TestApplyUpdates(t *testing.T) {
