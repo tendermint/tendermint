@@ -46,7 +46,7 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  repeated Validator validators = 1 [(gogoproto.nullable) = false];
+  repeated Validator validators = 1 [(gogoproto.nullable)=false];
 }
 
 message RequestQuery {
@@ -58,9 +58,9 @@ message RequestQuery {
 
 message RequestBeginBlock {
   bytes hash = 1;
-  Header header = 2 [(gogoproto.nullable) = false];
+  Header header = 2 [(gogoproto.nullable)=false];
   repeated int32 absent_validators = 3;
-  repeated Evidence byzantine_validators = 4 [(gogoproto.nullable) = false];
+  repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
 }
 
 message RequestCheckTx {
@@ -141,19 +141,24 @@ message ResponseCheckTx {
   uint32 code = 1;
   bytes data = 2;
   string log = 3;
-  int64 gas = 4;
-  common.KI64Pair fee = 5 [(gogoproto.nullable) = false];
+  int64 gas_wanted  = 4;
+  // int64 gas_used = 5;
+  repeated common.KVPair tags = 6 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  common.KI64Pair fee = 7 [(gogoproto.nullable)=false];
 }
 
 message ResponseDeliverTx {
   uint32 code = 1;
   bytes data = 2;
   string log = 3;
-  repeated common.KVPair tags = 4 [(gogoproto.nullable) = false];
+  int64 gas_wanted = 4;
+  int64 gas_used = 5;
+  repeated common.KVPair tags = 6 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  // common.KI64Pair fee = 7;
 }
 
 message ResponseEndBlock {
-  repeated Validator validator_updates = 1 [(gogoproto.nullable) = false];
+  repeated Validator validator_updates = 1 [(gogoproto.nullable)=false];
   ConsensusParams consensus_param_updates = 2;
 }
 
@@ -198,11 +203,11 @@ message BlockGossip {
 // Blockchain Types
 
 message Header {
-  string chain_id = 1 [(gogoproto.customname) = "ChainID"];
+  string chain_id = 1 [(gogoproto.customname)="ChainID"];
   int64 height = 2;
   int64 time = 3;
   int32 num_txs = 4;
-  BlockID last_block_id = 5 [(gogoproto.customname) = "LastBlockID", (gogoproto.nullable) = false];
+  BlockID last_block_id = 5 [(gogoproto.customname)="LastBlockID", (gogoproto.nullable)=false];
   bytes last_commit_hash = 6;
   bytes data_hash = 7;
   bytes validators_hash = 8;
@@ -211,7 +216,7 @@ message Header {
 
 message BlockID {
   bytes hash = 1;
-  PartSetHeader parts = 2 [(gogoproto.nullable) = false];
+  PartSetHeader parts = 2 [(gogoproto.nullable)=false];
 }
 
 message PartSetHeader {

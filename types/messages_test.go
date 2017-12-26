@@ -17,10 +17,10 @@ func TestMarshalJSON(t *testing.T) {
 	assert.True(t, strings.Contains(string(b), "code"))
 
 	r1 := ResponseCheckTx{
-		Code: 1,
-		Data: []byte("hello"),
-		Gas:  43,
-		Fee:  cmn.KI64Pair{[]byte("pho"), 12},
+		Code:      1,
+		Data:      []byte("hello"),
+		GasWanted: 43,
+		Fee:       cmn.KI64Pair{[]byte("pho"), 12},
 	}
 	b, err = json.Marshal(&r1)
 	assert.Nil(t, err)
