@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"testing/quick"
 
 	"github.com/stretchr/testify/assert"
 	crypto "github.com/tendermint/go-crypto"
@@ -191,6 +192,16 @@ func TestProposerSelection3(t *testing.T) {
 	}
 }
 
+func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
+	vset := NewValidatorSet([]*Validator{
+		{Address: []byte("a"), VotingPower: mostPositive, Accum: 0},
+		{Address: []byte("b"), VotingPower: mostPositive, Accum: 0},
+		{Address: []byte("c"), VotingPower: mostPositive, Accum: 0},
+	})
+
+	assert.Equal(t, mostPositive, vset.TotalVotingPower())
+}
+
 func TestValidatorSetIncrementAccumOverflows(t *testing.T) {
 	// NewValidatorSet calls IncrementAccum(1)
 	vset := NewValidatorSet([]*Validator{
@@ -220,14 +231,24 @@ func TestValidatorSetIncrementAccumUnderflows(t *testing.T) {
 	assert.Equal(t, mostNegative, vset.Validators[1].Accum, "1")
 }
 
-func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
-	vset := NewValidatorSet([]*Validator{
-		{Address: []byte("a"), VotingPower: mostPositive, Accum: 0},
-		{Address: []byte("b"), VotingPower: mostPositive, Accum: 0},
-		{Address: []byte("c"), VotingPower: mostPositive, Accum: 0},
-	})
+func TestSafeMul(t *testing.T) {
+	f := func(a, b int64) bool {
+		c, overflow := safeMul(a, b)
+		return overflow || (!overflow && c == a*b)
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
+}
 
-	assert.Equal(t, mostPositive, vset.TotalVotingPower())
+func TestSafeAdd(t *testing.T) {
+	f := func(a, b int64) bool {
+		c, overflow := safeAdd(a, b)
+		return overflow || (!overflow && c == a+b)
+	}
+	if err := quick.Check(f, nil); err != nil {
+		t.Error(err)
+	}
 }
 
 func BenchmarkValidatorSetCopy(b *testing.B) {
