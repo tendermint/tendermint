@@ -118,6 +118,27 @@ encode(MyStruct{4, "hello", time.Time("Mon Jan 2 15:04:05 -0700 MST 2006")}) ==
 
 ## Merkle Trees
 
-SimpleMerkleRoot
+Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
 
-MakeBlockParts
+RIPEMD160 is always used as the hashing function.
+
+The function `SimpleMerkleRoot` is a simple recursive function defined as follows:
+
+```
+func SimpleMerkleRoot(hashes [][]byte) []byte{
+	switch len(hashes) {
+	case 0:
+		return nil
+	case 1:
+		return hashes[0]
+	default:
+		left := SimpleMerkleRoot(hashes[:(len(hashes)+1)/2])
+		right := SimpleMerkleRoot(hashes[(len(hashes)+1)/2:])
+		return RIPEMD160(append(left, right))
+	}
+}
+```
+
+Note we abuse notion and call `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
+For `struct` arguments, we compute a `[][]byte` by sorting elements of the `struct` according to field name and then hashing them.
+For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
