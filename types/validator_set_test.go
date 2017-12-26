@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"math"
 	"strings"
 	"testing"
 	"testing/quick"
@@ -194,41 +195,41 @@ func TestProposerSelection3(t *testing.T) {
 
 func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
-		{Address: []byte("a"), VotingPower: mostPositive, Accum: 0},
-		{Address: []byte("b"), VotingPower: mostPositive, Accum: 0},
-		{Address: []byte("c"), VotingPower: mostPositive, Accum: 0},
+		{Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
+		{Address: []byte("b"), VotingPower: math.MaxInt64, Accum: 0},
+		{Address: []byte("c"), VotingPower: math.MaxInt64, Accum: 0},
 	})
 
-	assert.Equal(t, mostPositive, vset.TotalVotingPower())
+	assert.EqualValues(t, math.MaxInt64, vset.TotalVotingPower())
 }
 
 func TestValidatorSetIncrementAccumOverflows(t *testing.T) {
 	// NewValidatorSet calls IncrementAccum(1)
 	vset := NewValidatorSet([]*Validator{
 		// too much voting power
-		0: {Address: []byte("a"), VotingPower: mostPositive, Accum: 0},
+		0: {Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
 		// too big accum
-		1: {Address: []byte("b"), VotingPower: 10, Accum: mostPositive},
+		1: {Address: []byte("b"), VotingPower: 10, Accum: math.MaxInt64},
 		// almost too big accum
-		2: {Address: []byte("c"), VotingPower: 10, Accum: mostPositive - 5},
+		2: {Address: []byte("c"), VotingPower: 10, Accum: math.MaxInt64 - 5},
 	})
 
 	assert.Equal(t, int64(0), vset.Validators[0].Accum, "0") // because we decrement val with most voting power
-	assert.Equal(t, mostPositive, vset.Validators[1].Accum, "1")
-	assert.Equal(t, mostPositive, vset.Validators[2].Accum, "2")
+	assert.EqualValues(t, math.MaxInt64, vset.Validators[1].Accum, "1")
+	assert.EqualValues(t, math.MaxInt64, vset.Validators[2].Accum, "2")
 }
 
 func TestValidatorSetIncrementAccumUnderflows(t *testing.T) {
 	// NewValidatorSet calls IncrementAccum(1)
 	vset := NewValidatorSet([]*Validator{
-		0: {Address: []byte("a"), VotingPower: mostPositive, Accum: mostNegative},
-		1: {Address: []byte("b"), VotingPower: 1, Accum: mostNegative},
+		0: {Address: []byte("a"), VotingPower: math.MaxInt64, Accum: math.MinInt64},
+		1: {Address: []byte("b"), VotingPower: 1, Accum: math.MinInt64},
 	})
 
 	vset.IncrementAccum(5)
 
-	assert.Equal(t, mostNegative, vset.Validators[0].Accum, "0")
-	assert.Equal(t, mostNegative, vset.Validators[1].Accum, "1")
+	assert.EqualValues(t, math.MinInt64, vset.Validators[0].Accum, "0")
+	assert.EqualValues(t, math.MinInt64, vset.Validators[1].Accum, "1")
 }
 
 func TestSafeMul(t *testing.T) {
@@ -249,6 +250,26 @@ func TestSafeAdd(t *testing.T) {
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
 	}
+}
+
+func TestSafeMulClip(t *testing.T) {
+	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MinInt64, math.MinInt64))
+	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MaxInt64, math.MinInt64))
+	assert.EqualValues(t, math.MinInt64, safeMulClip(math.MinInt64, math.MaxInt64))
+	assert.EqualValues(t, math.MaxInt64, safeMulClip(math.MaxInt64, 2))
+}
+
+func TestSafeAddClip(t *testing.T) {
+	assert.EqualValues(t, math.MaxInt64, safeAddClip(math.MaxInt64, 10))
+	assert.EqualValues(t, math.MaxInt64, safeAddClip(math.MaxInt64, math.MaxInt64))
+	assert.EqualValues(t, math.MinInt64, safeAddClip(math.MinInt64, -10))
+}
+
+func TestSafeSubClip(t *testing.T) {
+	assert.EqualValues(t, math.MinInt64, safeSubClip(math.MinInt64, 10))
+	assert.EqualValues(t, 0, safeSubClip(math.MinInt64, math.MinInt64))
+	assert.EqualValues(t, math.MinInt64, safeSubClip(math.MinInt64, math.MaxInt64))
+	assert.EqualValues(t, math.MaxInt64, safeSubClip(math.MaxInt64, -10))
 }
 
 func BenchmarkValidatorSetCopy(b *testing.B) {

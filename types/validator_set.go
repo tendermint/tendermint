@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -53,17 +54,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
 		// check for overflow both multiplication and sum
-		res, overflow := safeMul(val.VotingPower, int64(times))
-		if !overflow {
-			res2, overflow2 := safeAdd(val.Accum, res)
-			if !overflow2 {
-				val.Accum = res2
-			} else {
-				val.Accum = mostPositive
-			}
-		} else {
-			val.Accum = mostPositive
-		}
+		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
 		validatorsHeap.Push(val, accumComparable{val})
 	}
 
@@ -75,12 +66,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 		}
 
 		// mind underflow
-		res, underflow := safeSub(mostest.Accum, valSet.TotalVotingPower())
-		if !underflow {
-			mostest.Accum = res
-		} else {
-			mostest.Accum = mostNegative
-		}
+		mostest.Accum = safeSubClip(mostest.Accum, valSet.TotalVotingPower())
 		validatorsHeap.Update(mostest, accumComparable{mostest})
 	}
 }
@@ -135,13 +121,7 @@ func (valSet *ValidatorSet) TotalVotingPower() int64 {
 	if valSet.totalVotingPower == 0 {
 		for _, val := range valSet.Validators {
 			// mind overflow
-			res, overflow := safeAdd(valSet.totalVotingPower, val.VotingPower)
-			if !overflow {
-				valSet.totalVotingPower = res
-			} else {
-				valSet.totalVotingPower = mostPositive
-				return valSet.totalVotingPower
-			}
+			valSet.totalVotingPower = safeAddClip(valSet.totalVotingPower, val.VotingPower)
 		}
 	}
 	return valSet.totalVotingPower
@@ -453,9 +433,6 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*P
 ///////////////////////////////////////////////////////////////////////////////
 // Safe multiplication and addition/subtraction
 
-const mostNegative int64 = -mostPositive - 1
-const mostPositive int64 = 1<<63 - 1
-
 func safeMul(a, b int64) (int64, bool) {
 	if a == 0 || b == 0 {
 		return 0, false
@@ -466,7 +443,7 @@ func safeMul(a, b int64) (int64, bool) {
 	if b == 1 {
 		return a, false
 	}
-	if a == mostNegative || b == mostNegative {
+	if a == math.MinInt64 || b == math.MinInt64 {
 		return -1, true
 	}
 	c := a * b
@@ -474,14 +451,55 @@ func safeMul(a, b int64) (int64, bool) {
 }
 
 func safeAdd(a, b int64) (int64, bool) {
-	if b > 0 && a > mostPositive-b {
+	if b > 0 && a > math.MaxInt64-b {
 		return -1, true
-	} else if b < 0 && a < mostNegative-b {
+	} else if b < 0 && a < math.MinInt64-b {
 		return -1, true
 	}
 	return a + b, false
 }
 
 func safeSub(a, b int64) (int64, bool) {
-	return safeAdd(a, -b)
+	if b > 0 && a < math.MinInt64+b {
+		return -1, true
+	} else if b < 0 && a > math.MaxInt64+b {
+		return -1, true
+	}
+	return a - b, false
+}
+
+func safeMulClip(a, b int64) int64 {
+	c, overflow := safeMul(a, b)
+	if overflow {
+		if (a < 0 || b < 0) && !(a < 0 && b < 0) {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
+}
+
+func safeAddClip(a, b int64) int64 {
+	c, overflow := safeAdd(a, b)
+	if overflow {
+		if b < 0 {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
+}
+
+func safeSubClip(a, b int64) int64 {
+	c, overflow := safeSub(a, b)
+	if overflow {
+		if b > 0 {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
 }
