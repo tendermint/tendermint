@@ -2,38 +2,69 @@
 
 GOTOOLS = \
 	github.com/Masterminds/glide \
-	github.com/alecthomas/gometalinter
+	github.com/alecthomas/gometalinter.v2
+GOTOOLS_CHECK = glide gometalinter.v2
 
-REPO:=github.com/tendermint/tmlibs
+all: check get_vendor_deps build test install metalinter
 
-all: test
+check: check_tools
 
-NOVENDOR = go list github.com/tendermint/tmlibs/... | grep -v /vendor/
 
-test:
-	go test -tags gcc `glide novendor`
+########################################
+###  Build
 
-get_vendor_deps: ensure_tools
+build:
+	# Nothing to build!
+
+install:
+	# Nothing to install!
+
+
+########################################
+### Tools & dependencies
+
+check_tools:
+	@# https://stackoverflow.com/a/25668869
+	@echo "Found tools: $(foreach tool,$(GOTOOLS_CHECK),\
+        $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
+
+get_tools:
+	@echo "--> Installing tools"
+	go get -u -v $(GOTOOLS)
+	@gometalinter.v2 --install
+
+update_tools:
+	@echo "--> Updating tools"
+	@go get -u $(GOTOOLS)
+
+get_vendor_deps:
 	@rm -rf vendor/
 	@echo "--> Running glide install"
 	@glide install
 
-ensure_tools:
-	go get $(GOTOOLS)
 
-metalinter: ensure_tools
-	@gometalinter --install
-	gometalinter --vendor --deadline=600s --enable-all --disable=lll ./...
+########################################
+### Testing
 
-metalinter_test: ensure_tools
-	@gometalinter --install
-	gometalinter --vendor --deadline=600s --disable-all  \
+test:
+	go test -tags gcc `glide novendor`
+
+
+########################################
+### Formatting, linting, and vetting
+
+fmt:
+	@go fmt ./...
+
+metalinter:
+	@echo "==> Running linter"
+	gometalinter.v2 --vendor --deadline=600s --disable-all  \
+		--enable=maligned \
 		--enable=deadcode \
-		--enable=gas \
 		--enable=goconst \
+		--enable=goimports \
 		--enable=gosimple \
 		--enable=ineffassign \
-		--enable=interfacer \
 		--enable=megacheck \
 		--enable=misspell \
 		--enable=staticcheck \
@@ -43,13 +74,23 @@ metalinter_test: ensure_tools
 		--enable=unused \
 		--enable=varcheck \
 		--enable=vetshadow \
-		--enable=vet \
 		./...
-		#--enable=aligncheck \
+		#--enable=gas \
 		#--enable=dupl \
 		#--enable=errcheck \
 		#--enable=gocyclo \
-		#--enable=goimports \
 		#--enable=golint \ <== comments on anything exported
 		#--enable=gotype \
+		#--enable=interfacer \
 		#--enable=unparam \
+		#--enable=vet \
+
+metalinter_all:
+	protoc $(INCLUDE) --lint_out=. types/*.proto
+	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
+
+
+# To avoid unintended conflicts with file names, always add to .PHONY
+# unless there is a reason not to.
+# https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
+.PHONY: check build check_tools get_tools update_tools get_vendor_deps test fmt metalinter metalinter_all
