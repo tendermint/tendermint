@@ -97,7 +97,7 @@ func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
 	}
 
 	app.logger.Info("Commit block", "height", height, "root", appHash)
-	return types.ResponseCommit{Code: code.CodeTypeOK, Data: appHash}
+	return types.ResponseCommit{Data: appHash}
 }
 
 func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {

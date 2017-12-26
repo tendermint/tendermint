@@ -28,7 +28,7 @@ func (v Validators) Swap(i, j int) {
 func ValidatorsString(vs Validators) string {
 	s := make([]validatorPretty, len(vs))
 	for i, v := range vs {
-		s[i] = validatorPretty{v.PubKey, v.Power}
+		s[i] = validatorPretty(v)
 	}
 	b, err := json.Marshal(s)
 	if err != nil {

@@ -40,6 +40,7 @@ message RequestInfo {
   string version = 1;
 }
 
+// nondeterministic
 message RequestSetOption {
   string key = 1;
   string value = 2;
@@ -98,6 +99,7 @@ message Response {
   }
 }
 
+// nondeterministic
 message ResponseException {
   string error = 1;
 }
@@ -116,9 +118,12 @@ message ResponseInfo {
   bytes last_block_app_hash = 4;
 }
 
+// nondeterministic
 message ResponseSetOption {
   uint32 code = 1;
-  string log  = 2;
+  // bytes data = 2;
+  string log = 3;
+  string info = 4;
 }
 
 message ResponseInitChain {
@@ -126,12 +131,14 @@ message ResponseInitChain {
 
 message ResponseQuery {
   uint32 code = 1;
-  int64 index = 2;
-  bytes key = 3;
-  bytes value = 4;
-  bytes proof = 5;
-  int64 height = 6;
-  string log = 7;
+  // bytes data = 2; // use "value" instead.
+  string log = 3; // nondeterministic
+  string info = 4; // nondeterministic
+  int64 index = 5;
+  bytes key = 6;
+  bytes value = 7;
+  bytes proof = 8;
+  int64 height = 9;
 }
 
 message ResponseBeginBlock {
@@ -140,21 +147,23 @@ message ResponseBeginBlock {
 message ResponseCheckTx {
   uint32 code = 1;
   bytes data = 2;
-  string log = 3;
-  int64 gas_wanted  = 4;
-  // int64 gas_used = 5;
-  repeated common.KVPair tags = 6 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
-  common.KI64Pair fee = 7 [(gogoproto.nullable)=false];
+  string log = 3; // nondeterministic
+  string info = 4; // nondeterministic
+  int64 gas_wanted  = 5;
+  // int64 gas_used = 6;
+  repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  common.KI64Pair fee = 8 [(gogoproto.nullable)=false];
 }
 
 message ResponseDeliverTx {
   uint32 code = 1;
   bytes data = 2;
-  string log = 3;
-  int64 gas_wanted = 4;
-  int64 gas_used = 5;
-  repeated common.KVPair tags = 6 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
-  // common.KI64Pair fee = 7;
+  string log = 3; // nondeterministic
+  string info = 4; // nondeterministic
+  int64 gas_wanted = 5;
+  int64 gas_used = 6;
+  repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  // common.KI64Pair fee = 8;
 }
 
 message ResponseEndBlock {
@@ -163,9 +172,8 @@ message ResponseEndBlock {
 }
 
 message ResponseCommit {
-  uint32 code = 1;
+  // reserve 1
   bytes data = 2;
-  string log = 3;
 }
 
 //----------------------------------------

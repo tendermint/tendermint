@@ -63,7 +63,7 @@ func (app *DummyApplication) Commit() types.ResponseCommit {
 		}
 	}
 
-	return types.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
+	return types.ResponseCommit{Data: hash}
 }
 
 func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {

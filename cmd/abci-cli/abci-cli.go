@@ -92,6 +92,7 @@ type response struct {
 	// generic abci response
 	Data []byte
 	Code uint32
+	Info string
 	Log  string
 
 	Query *queryResponse
@@ -508,14 +509,11 @@ func cmdSetOption(cmd *cobra.Command, args []string) error {
 	}
 
 	key, val := args[0], args[1]
-	res, err := client.SetOptionSync(types.RequestSetOption{key, val})
+	_, err := client.SetOptionSync(types.RequestSetOption{key, val})
 	if err != nil {
 		return err
 	}
-	printResponse(cmd, args, response{
-		Code: res.Code,
-		Log:  res.Log,
-	})
+	printResponse(cmd, args, response{Log: "OK (SetOption doesn't return anything.)"}) // NOTE: Nothing to show...
 	return nil
 }
 
@@ -539,6 +537,7 @@ func cmdDeliverTx(cmd *cobra.Command, args []string) error {
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
+		Info: res.Info,
 		Log:  res.Log,
 	})
 	return nil
@@ -549,7 +548,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,
-			Log:  "want the tx",
+			Info: "want the tx",
 		})
 		return nil
 	}
@@ -564,6 +563,7 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 	printResponse(cmd, args, response{
 		Code: res.Code,
 		Data: res.Data,
+		Info: res.Info,
 		Log:  res.Log,
 	})
 	return nil
@@ -576,9 +576,7 @@ func cmdCommit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printResponse(cmd, args, response{
-		Code: res.Code,
 		Data: res.Data,
-		Log:  res.Log,
 	})
 	return nil
 }
@@ -588,7 +586,8 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		printResponse(cmd, args, response{
 			Code: codeBad,
-			Log:  "want the query",
+			Info: "want the query",
+			Log:  "",
 		})
 		return nil
 	}
@@ -608,6 +607,7 @@ func cmdQuery(cmd *cobra.Command, args []string) error {
 	}
 	printResponse(cmd, args, response{
 		Code: resQuery.Code,
+		Info: resQuery.Info,
 		Log:  resQuery.Log,
 		Query: &queryResponse{
 			Key:    resQuery.Key,

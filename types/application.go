@@ -42,7 +42,7 @@ func (BaseApplication) Info(req RequestInfo) ResponseInfo {
 }
 
 func (BaseApplication) SetOption(req RequestSetOption) ResponseSetOption {
-	return ResponseSetOption{Code: CodeTypeOK}
+	return ResponseSetOption{}
 }
 
 func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
@@ -54,7 +54,7 @@ func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
 }
 
 func (BaseApplication) Commit() ResponseCommit {
-	return ResponseCommit{Code: CodeTypeOK}
+	return ResponseCommit{}
 }
 
 func (BaseApplication) Query(req RequestQuery) ResponseQuery {
