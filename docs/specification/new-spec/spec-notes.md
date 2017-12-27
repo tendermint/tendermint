@@ -1,0 +1,3 @@
+- Remove BlockID from Commit
+- Actually validate the ValidatorsHash
+- Move blockHeight=1 exception for LastCommit to ValidateBasic
