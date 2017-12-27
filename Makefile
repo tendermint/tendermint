@@ -3,11 +3,12 @@ GOTOOLS = \
 	github.com/Masterminds/glide \
 	github.com/tcnksm/ghr \
 	gopkg.in/alecthomas/gometalinter.v2
-GOTOOLS_CHECK = gox glide ghr gometalinter.v2
+GO_MIN_VERSION=1.9.2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
+GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
 
 all: check build test install metalinter
 
@@ -35,9 +36,17 @@ install:
 ### Tools & dependencies
 
 check_tools:
-	@# https://stackoverflow.com/a/25668869
-	@echo "Found tools: $(foreach tool,$(GOTOOLS_CHECK),\
-        $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
+	@echo "Checking go availability"
+	@test -x $(shell which go)
+	@echo "Checking go version $(GO_VERSION) >= $(GO_MIN_VERSION)"
+	@test $(shell echo $(GO_VERSION) | grep -o '^[[:digit:]]\+' ) -ge $(shell echo $(GO_MIN_VERSION) | grep -o '^[[:digit:]]\+' )
+	@test $(shell echo $(GO_VERSION) | grep -o '.[[:digit:]]\+.' | grep -o '[[:digit:]]\+' ) -ge $(shell echo $(GO_MIN_VERSION) | grep -o '.[[:digit:]]\+.' | grep -o '[[:digit:]]\+' )
+	@test $(shell echo $(GO_VERSION) | grep -o '[[:digit:]]\+$$' ) -ge $(shell echo $(GO_MIN_VERSION) | grep -o '[[:digit:]]\+$$' )
+	@echo "Checking GOPATH is set"
+	@test -n "$(GOPATH)"
+	@echo Checking GOPATH/bin is in PATH
+	@[[ $(PATH) =~ (^|:)$(GOPATH)/bin($$|:) ]]
+	@for tool in $(GOTOOLS) ; do toolname=$${tool/*\//} ; which $$toolname && echo "Found $${tool}." || ERR="$$ERR $$toolname" ; done && if [ -n "$$ERR" ]; then echo "ERROR: Missing:$${ERR}" ; false ; fi
 
 get_tools:
 	@echo "--> Installing tools"
