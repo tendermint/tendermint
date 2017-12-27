@@ -131,9 +131,62 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
 }
 
+// TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
+func TestOneValidatorChangesSaveLoad(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+
+	// change vals at these heights
+	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
+	N := len(changeHeights)
+
+	// build the validator history by running SetBlockAndValidators
+	// with the right validator set for each height
+	highestHeight := changeHeights[N-1] + 5
+	changeIndex := 0
+	_, val := state.Validators.GetByIndex(0)
+	power := val.VotingPower
+	for i := int64(1); i < highestHeight; i++ {
+		// when we get to a change height,
+		// use the next pubkey
+		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
+			changeIndex++
+			power += 1
+		}
+		header, parts, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
+		err := state.SetBlockAndValidators(header, parts, responses)
+		assert.Nil(t, err)
+		state.saveValidatorsInfo()
+	}
+
+	// on each change height, increment the power by one.
+	testCases := make([]int64, highestHeight)
+	changeIndex = 0
+	power = val.VotingPower
+	for i := int64(1); i < highestHeight+1; i++ {
+		// we we get to the height after a change height
+		// use the next pubkey (note our counter starts at 0 this time)
+		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
+			changeIndex++
+			power += 1
+		}
+		testCases[i-1] = power
+	}
+
+	for i, power := range testCases {
+		v, err := state.LoadValidators(int64(i + 1))
+		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", i))
+		assert.Equal(t, v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
+		_, val := v.GetByIndex(0)
+
+		assert.Equal(t, val.VotingPower, power, fmt.Sprintf(`unexpected powerat
+                height %d`, i))
+	}
+}
+
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with
 // changes.
-func TestValidatorChangesSaveLoad(t *testing.T) {
+func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, _, state := setupTestCase(t)
 	state.Validators = genValSet(valSetSize)
@@ -143,7 +196,7 @@ func TestValidatorChangesSaveLoad(t *testing.T) {
 	const height = 1
 	pubkey := crypto.GenPrivKeyEd25519().PubKey()
 	// swap the first validator with a new one ^^^ (validator set size stays the same)
-	header, parts, responses := makeHeaderPartsResponses(state, height, pubkey)
+	header, parts, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
 	err := state.SetBlockAndValidators(header, parts, responses)
 	require.Nil(t, err)
 	state.saveValidatorsInfo()
@@ -363,17 +416,17 @@ func TestApplyUpdates(t *testing.T) {
 	}
 }
 
-func makeHeaderPartsResponses(state *State, height int64,
+func makeHeaderPartsResponsesValPubKeyChange(state *State, height int64,
 	pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
 
 	block := makeBlock(state, height)
-	_, val := state.Validators.GetByIndex(0)
 	abciResponses := &ABCIResponses{
 		Height:   height,
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
 	}
 
 	// if the pubkey is new, remove the old and add the new
+	_, val := state.Validators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []*abci.Validator{
@@ -386,9 +439,26 @@ func makeHeaderPartsResponses(state *State, height int64,
 	return block.Header, types.PartSetHeader{}, abciResponses
 }
 
-type valChangeTestCase struct {
-	height int64
-	vals   crypto.PubKey
+func makeHeaderPartsResponsesValPowerChange(state *State, height int64,
+	power int64) (*types.Header, types.PartSetHeader, *ABCIResponses) {
+
+	block := makeBlock(state, height)
+	abciResponses := &ABCIResponses{
+		Height:   height,
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
+	}
+
+	// if the pubkey is new, remove the old and add the new
+	_, val := state.Validators.GetByIndex(0)
+	if val.VotingPower != power {
+		abciResponses.EndBlock = &abci.ResponseEndBlock{
+			ValidatorUpdates: []*abci.Validator{
+				{val.PubKey.Bytes(), power},
+			},
+		}
+	}
+
+	return block.Header, types.PartSetHeader{}, abciResponses
 }
 
 func makeHeaderPartsResponsesParams(state *State, height int64,
