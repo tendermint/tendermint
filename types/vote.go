@@ -14,12 +14,13 @@ import (
 )
 
 var (
-	ErrVoteUnexpectedStep          = errors.New("Unexpected step")
-	ErrVoteInvalidValidatorIndex   = errors.New("Invalid validator index")
-	ErrVoteInvalidValidatorAddress = errors.New("Invalid validator address")
-	ErrVoteInvalidSignature        = errors.New("Invalid signature")
-	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
-	ErrVoteNil                     = errors.New("Nil vote")
+	ErrVoteUnexpectedStep            = errors.New("Unexpected step")
+	ErrVoteInvalidValidatorIndex     = errors.New("Invalid validator index")
+	ErrVoteInvalidValidatorAddress   = errors.New("Invalid validator address")
+	ErrVoteInvalidSignature          = errors.New("Invalid signature")
+	ErrVoteInvalidBlockHash          = errors.New("Invalid block hash")
+	ErrVoteNonDeterministicSignature = errors.New("Non-deterministic signature")
+	ErrVoteNil                       = errors.New("Nil vote")
 )
 
 type ErrVoteConflictingVotes struct {

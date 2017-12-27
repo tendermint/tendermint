@@ -149,10 +149,10 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 
 	// Signatures must be valid
 	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteA), dve.VoteA.Signature) {
-		return ErrVoteInvalidSignature
+		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
 	}
 	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteB), dve.VoteB.Signature) {
-		return ErrVoteInvalidSignature
+		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
 	}
 
 	return nil
