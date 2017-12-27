@@ -11,6 +11,47 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
+// GetState loads the most recent state from the database,
+// or creates a new one from the given genesisFile and persists the result
+// to the database.
+func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
+	state := LoadState(stateDB)
+	if state == nil {
+		var err error
+		state, err = MakeGenesisStateFromFile(stateDB, genesisFile)
+		if err != nil {
+			return nil, err
+		}
+		state.Save()
+	}
+
+	return state, nil
+}
+
+// LoadState loads the State from the database.
+func LoadState(db dbm.DB) *State {
+	return loadState(db, stateKey)
+}
+
+func loadState(db dbm.DB, key []byte) *State {
+	buf := db.Get(key)
+	if len(buf) == 0 {
+		return nil
+	}
+
+	s := &State{db: db}
+	r, n, err := bytes.NewReader(buf), new(int), new(error)
+	wire.ReadBinaryPtr(&s, r, 0, n, err)
+	if *err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:
+                %v\n`, *err))
+	}
+	// TODO: ensure that buf is completely read.
+
+	return s
+}
+
 //------------------------------------------------------------------------
 
 // ABCIResponses retains the responses

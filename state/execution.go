@@ -213,7 +213,7 @@ func changeInVotingPowerMoreOrEqualToOneThird(currentSet *types.ValidatorSet, up
 // Validate block
 
 // MakeBlock builds a block with the given txs and commit from the current state.
-func (s *State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
+func (s State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
 	// build base block
 	block := types.MakeBlock(height, txs, commit)
 
@@ -309,7 +309,7 @@ func (s State) validateBlock(b *types.Block) error {
 // It returns the priority of this evidence, or an error.
 // NOTE: return error may be ErrNoValSetForHeight, in which case the validator set
 // for the evidence height could not be loaded.
-func VerifyEvidence(s State, evidence types.Evidence) (priority int64, err error) {
+func (s State) VerifyEvidence(evidence types.Evidence) (priority int64, err error) {
 	height := s.LastBlockHeight
 	evidenceAge := height - evidence.Height()
 	maxAge := s.ConsensusParams.EvidenceParams.MaxAge

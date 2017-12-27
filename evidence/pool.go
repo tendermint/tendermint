@@ -21,7 +21,7 @@ type EvidencePool struct {
 	evidenceChan chan types.Evidence
 }
 
-func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, state *types.State) *EvidencePool {
+func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, state types.State) *EvidencePool {
 	evpool := &EvidencePool{
 		params:        params,
 		logger:        log.NewNopLogger(),

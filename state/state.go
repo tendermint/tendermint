@@ -8,7 +8,6 @@ import (
 
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
 
 	wire "github.com/tendermint/go-wire"
 
@@ -38,15 +37,12 @@ func calcABCIResponsesKey(height int64) []byte {
 // It keeps all information necessary to validate new blocks,
 // including the last validator set and the consensus params.
 // All fields are exposed so the struct can be easily serialized,
-// but the fields should only be changed by calling state.SetBlockAndValidators.
+// but none of them should be mutated directly.
+// Instead, use state.Copy() ro state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
-	db dbm.DB
-
 	// Immutable
 	ChainID string
-
-	// Exposed fields are updated by SetBlockAndValidators.
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight  int64
@@ -73,65 +69,11 @@ type State struct {
 
 	// The latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
-
-	logger log.Logger
-}
-
-func (s *State) DB() dbm.DB {
-	return s.db
-}
-
-// GetState loads the most recent state from the database,
-// or creates a new one from the given genesisFile and persists the result
-// to the database.
-func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
-	state := LoadState(stateDB)
-	if state == nil {
-		var err error
-		state, err = MakeGenesisStateFromFile(stateDB, genesisFile)
-		if err != nil {
-			return nil, err
-		}
-		state.Save()
-	}
-
-	return state, nil
-}
-
-// LoadState loads the State from the database.
-func LoadState(db dbm.DB) *State {
-	return loadState(db, stateKey)
-}
-
-func loadState(db dbm.DB, key []byte) *State {
-	buf := db.Get(key)
-	if len(buf) == 0 {
-		return nil
-	}
-
-	s := &State{db: db}
-	r, n, err := bytes.NewReader(buf), new(int), new(error)
-	wire.ReadBinaryPtr(&s, r, 0, n, err)
-	if *err != nil {
-		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:
-                %v\n`, *err))
-	}
-	// TODO: ensure that buf is completely read.
-
-	return s
-}
-
-// SetLogger sets the logger on the State.
-func (s *State) SetLogger(l log.Logger) {
-	s.logger = l
 }
 
 // Copy makes a copy of the State for mutating.
-func (s *State) Copy() *State {
+func (s State) Copy() State {
 	return &State{
-		db: s.db,
-
 		ChainID: s.ChainID,
 
 		LastBlockHeight:  s.LastBlockHeight,
@@ -149,36 +91,30 @@ func (s *State) Copy() *State {
 		AppHash: s.AppHash,
 
 		LastResultsHash: s.LastResultsHash,
-
-		logger: s.logger,
 	}
 }
 
-// Save persists the State to the database.
-func (s *State) Save() {
+// Save persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
+func (s State) Save(db dbm.DB) {
 	nextHeight := s.LastBlockHeight + 1
-
-	// persist everything to db
-	db := s.db
 	saveValidatorsInfo(db, nextHeight, s.LastHeightValidatorsChanged, s.Validators)
 	saveConsensusParamsInfo(db, nextHeight, s.LastHeightConsensusParamsChanged, s.ConsensusParams)
 	db.SetSync(stateKey, s.Bytes())
 }
 
 // Equals returns true if the States are identical.
-func (s *State) Equals(s2 *State) bool {
+func (s State) Equals(s2 State) bool {
 	return bytes.Equal(s.Bytes(), s2.Bytes())
 }
 
 // Bytes serializes the State using go-wire.
-func (s *State) Bytes() []byte {
+func (s State) Bytes() []byte {
 	return wire.BinaryBytes(s)
 }
 
-// SetBlockAndValidators mutates State variables
-// to update block and validators after running EndBlock.
-func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader types.PartSetHeader,
-	abciResponses *ABCIResponses) error {
+// NextState returns a new State updated according to the header and responses.
+func (s State) NextState(header *types.Header, blockPartsHeader types.PartSetHeader,
+	abciResponses *ABCIResponses) (State, error) {
 
 	// copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators
@@ -186,13 +122,14 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 	nextValSet := prevValSet.Copy()
 
 	// update the validator set with the latest abciResponses
+	lastHeightValsChanged := s.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
 		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
 			return fmt.Errorf("Error changing validator set: %v", err)
 		}
 		// change results from this height but only applies to the next height
-		s.LastHeightValidatorsChanged = header.Height + 1
+		lastHeightValsChanged = header.Height + 1
 	}
 
 	// Update validator accums and set state variables
@@ -200,6 +137,7 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 
 	// update the params with the latest abciResponses
 	nextParams := s.ConsensusParams
+	lastHeightParamsChanged := s.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
 		nextParams = s.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
@@ -208,40 +146,27 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 			return fmt.Errorf("Error updating consensus params: %v", err)
 		}
 		// change results from this height but only applies to the next height
-		s.LastHeightConsensusParamsChanged = header.Height + 1
+		lastHeightParamsChanged = header.Height + 1
 	}
 
-	s.setBlockAndValidators(header.Height,
-		header.NumTxs,
-		types.BlockID{header.Hash(), blockPartsHeader},
-		header.Time,
-		nextValSet,
-		nextParams,
-		abciResponses.ResultsHash())
-	return nil
-}
-
-func (s *State) setBlockAndValidators(height int64,
-	newTxs int64, blockID types.BlockID, blockTime time.Time,
-	valSet *types.ValidatorSet,
-	params types.ConsensusParams,
-	resultsHash []byte) {
-
-	s.LastBlockHeight = height
-	s.LastBlockTotalTx += newTxs
-	s.LastBlockID = blockID
-	s.LastBlockTime = blockTime
-
-	s.LastValidators = s.Validators.Copy()
-	s.Validators = valSet
-
-	s.ConsensusParams = params
-
-	s.LastResultsHash = resultsHash
+	return State{
+		ChainID:                          s.ChainID,
+		LastBlockHeight:                  header.Height,
+		LastBlockTotalTx:                 s.LastBlockTotalTx + header.NumTxs,
+		LastBlockID:                      types.BlockID{header.Hash(), blockPartsHeader},
+		LastBlockTime:                    header.Time,
+		Validators:                       nextValSet,
+		LastValidators:                   s.Validators.Copy(),
+		LastHeightValidatorsChanged:      lastHeightValsChanged,
+		ConsensusParams:                  nextParams,
+		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
+		LastResultsHash:                  abciResponses.ResultsHash(),
+		AppHash:                          nil,
+	}
 }
 
 // GetValidators returns the last and current validator sets.
-func (s *State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
+func (s State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
 }
 
@@ -252,12 +177,12 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 // file.
 //
 // Used during replay and in tests.
-func MakeGenesisStateFromFile(db dbm.DB, genDocFile string) (*State, error) {
+func MakeGenesisStateFromFile(genDocFile string) (*State, error) {
 	genDoc, err := MakeGenesisDocFromFile(genDocFile)
 	if err != nil {
 		return nil, err
 	}
-	return MakeGenesisState(db, genDoc)
+	return MakeGenesisState(genDoc)
 }
 
 // MakeGenesisDocFromFile reads and unmarshals genesis doc from the given file.
@@ -274,7 +199,7 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 }
 
 // MakeGenesisState creates state from types.GenesisDoc.
-func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
+func MakeGenesisState(genDoc *types.GenesisDoc) (*State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
 		return nil, fmt.Errorf("Error in genesis file: %v", err)
@@ -295,7 +220,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 	}
 
 	return &State{
-		db: db,
 
 		ChainID: genDoc.ChainID,
 
