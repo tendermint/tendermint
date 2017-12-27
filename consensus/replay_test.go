@@ -261,9 +261,8 @@ const (
 )
 
 var (
-	NUM_BLOCKS = 6 // number of blocks in the test_data/many_blocks.cswal
-	mempool    = types.MockMempool{}
-	evpool     = types.MockEvidencePool{}
+	mempool = types.MockMempool{}
+	evpool  = types.MockEvidencePool{}
 )
 
 //---------------------------------------

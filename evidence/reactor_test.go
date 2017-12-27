@@ -37,11 +37,11 @@ func makeAndConnectEvidenceReactors(config *cfg.Config, N int) []*EvidenceReacto
 	logger := evidenceLogger()
 	for i := 0; i < N; i++ {
 
-		config := &cfg.EvidenceConfig{}
+		params := types.EvidenceParams{}
 		store := NewEvidenceStore(dbm.NewMemDB())
 		state := mockState{}
-		pool := NewEvidencePool(config, store, state)
-		reactors[i] = NewEvidenceReactor(config, pool)
+		pool := NewEvidencePool(params, store, state)
+		reactors[i] = NewEvidenceReactor(pool)
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
@@ -102,7 +102,7 @@ func _waitForEvidence(t *testing.T, wg *sync.WaitGroup, evs types.EvidenceList, 
 func sendEvidence(t *testing.T, evpool *EvidencePool, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := newMockGoodEvidence(i, 2, []byte("val"))
+		ev := newMockGoodEvidence(int64(i), 2, []byte("val"))
 		err := evpool.AddEvidence(ev)
 		assert.Nil(t, err)
 		evList[i] = ev

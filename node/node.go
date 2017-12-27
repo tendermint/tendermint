@@ -210,16 +210,15 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Make Evidence Reactor
-	evidenceConfig := &cfg.EvidenceConfig{} // TODO
 	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
 	if err != nil {
 		return nil, err
 	}
 	evidenceLogger := logger.With("module", "evidence")
 	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
-	evidencePool := evidence.NewEvidencePool(evidenceConfig, evidenceStore, state)
+	evidencePool := evidence.NewEvidencePool(state.ConsensusParams.EvidenceParams, evidenceStore, state)
 	evidencePool.SetLogger(evidenceLogger)
-	evidenceReactor := evidence.NewEvidenceReactor(evidenceConfig, evidencePool)
+	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 
 	// Make ConsensusReactor

@@ -13,7 +13,7 @@ type voteData struct {
 	valid bool
 }
 
-func makeVote(val *PrivValidatorFS, chainID string, valIndex, height, round, step int, blockID BlockID) *Vote {
+func makeVote(val *PrivValidatorFS, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
 	v := &Vote{
 		ValidatorAddress: val.PubKey.Address(),
 		ValidatorIndex:   valIndex,
@@ -25,17 +25,6 @@ func makeVote(val *PrivValidatorFS, chainID string, valIndex, height, round, ste
 	sig := val.PrivKey.Sign(SignBytes(chainID, v))
 	v.Signature = sig
 	return v
-
-}
-
-func makeBlockID(hash string, partSetSize int, partSetHash string) BlockID {
-	return BlockID{
-		Hash: []byte(hash),
-		PartsHeader: PartSetHeader{
-			Total: partSetSize,
-			Hash:  []byte(partSetHash),
-		},
-	}
 
 }
 

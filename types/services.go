@@ -76,7 +76,7 @@ type BlockStore interface {
 // State defines the stateful interface used to verify evidence.
 // UNSTABLE
 type State interface {
-	VerifyEvidence(Evidence) (priority int, err error)
+	VerifyEvidence(Evidence) (priority int64, err error)
 }
 
 //------------------------------------------------------

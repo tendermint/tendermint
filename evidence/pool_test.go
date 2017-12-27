@@ -6,14 +6,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
 type mockState struct{}
 
-func (m mockState) VerifyEvidence(ev types.Evidence) (int, error) {
+func (m mockState) VerifyEvidence(ev types.Evidence) (int64, error) {
 	err := ev.Verify("")
 	return 10, err
 }
@@ -21,10 +20,10 @@ func (m mockState) VerifyEvidence(ev types.Evidence) (int, error) {
 func TestEvidencePool(t *testing.T) {
 	assert := assert.New(t)
 
-	config := &cfg.EvidenceConfig{}
+	params := types.EvidenceParams{}
 	store := NewEvidenceStore(dbm.NewMemDB())
 	state := mockState{}
-	pool := NewEvidencePool(config, store, state)
+	pool := NewEvidencePool(params, store, state)
 
 	goodEvidence := newMockGoodEvidence(5, 1, []byte("val1"))
 	badEvidence := MockBadEvidence{goodEvidence}

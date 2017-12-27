@@ -388,9 +388,9 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 // It returns the priority of this evidence, or an error.
 // NOTE: return error may be ErrNoValSetForHeight, in which case the validator set
 // for the evidence height could not be loaded.
-func (s *State) VerifyEvidence(evidence types.Evidence) (priority int, err error) {
+func (s *State) VerifyEvidence(evidence types.Evidence) (priority int64, err error) {
 	evidenceAge := s.LastBlockHeight - evidence.Height()
-	maxAge := s.Params.EvidenceParams.MaxAge
+	maxAge := s.ConsensusParams.EvidenceParams.MaxAge
 	if evidenceAge > maxAge {
 		return priority, fmt.Errorf("Evidence from height %d is too old. Min height is %d",
 			evidence.Height(), s.LastBlockHeight-maxAge)
@@ -416,7 +416,7 @@ func (s *State) VerifyEvidence(evidence types.Evidence) (priority int, err error
 		return priority, fmt.Errorf("Address %X was validator %d at height %d, not %d", addr, valIdx, height, idx)
 	}
 
-	priority = int(val.VotingPower)
+	priority = val.VotingPower
 	return priority, nil
 }
 

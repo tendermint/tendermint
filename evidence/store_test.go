@@ -19,7 +19,7 @@ func TestStoreAddDuplicate(t *testing.T) {
 	db := dbm.NewMemDB()
 	store := NewEvidenceStore(db)
 
-	priority := 10
+	priority := int64(10)
 	ev := newMockGoodEvidence(2, 1, []byte("val1"))
 
 	added := store.AddNewEvidence(ev, priority)
@@ -42,7 +42,7 @@ func TestStoreMark(t *testing.T) {
 	assert.Equal(0, len(priorityEv))
 	assert.Equal(0, len(pendingEv))
 
-	priority := 10
+	priority := int64(10)
 	ev := newMockGoodEvidence(2, 1, []byte("val1"))
 
 	added := store.AddNewEvidence(ev, priority)
@@ -90,7 +90,7 @@ func TestStorePriority(t *testing.T) {
 	// sorted by priority and then height
 	cases := []struct {
 		ev       MockGoodEvidence
-		priority int
+		priority int64
 	}{
 		{newMockGoodEvidence(2, 1, []byte("val1")), 17},
 		{newMockGoodEvidence(5, 2, []byte("val2")), 15},
@@ -122,16 +122,16 @@ var _ = wire.RegisterInterface(
 )
 
 type MockGoodEvidence struct {
-	Height_  int
+	Height_  int64
 	Address_ []byte
 	Index_   int
 }
 
-func newMockGoodEvidence(height, index int, address []byte) MockGoodEvidence {
+func newMockGoodEvidence(height int64, index int, address []byte) MockGoodEvidence {
 	return MockGoodEvidence{height, address, index}
 }
 
-func (e MockGoodEvidence) Height() int     { return e.Height_ }
+func (e MockGoodEvidence) Height() int64   { return e.Height_ }
 func (e MockGoodEvidence) Address() []byte { return e.Address_ }
 func (e MockGoodEvidence) Index() int      { return e.Index_ }
 func (e MockGoodEvidence) Hash() []byte {

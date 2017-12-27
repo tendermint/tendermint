@@ -40,7 +40,7 @@ type BlockGossip struct {
 
 // EvidenceParams determine how we handle evidence of malfeasance
 type EvidenceParams struct {
-	MaxAge int `json:"max_age"` // only accept new evidence more recent than this
+	MaxAge int64 `json:"max_age"` // only accept new evidence more recent than this
 }
 
 // DefaultConsensusParams returns a default ConsensusParams.

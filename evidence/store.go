@@ -32,7 +32,7 @@ Schema for indexing evidence (note you need both height and hash to find a piece
 
 type EvidenceInfo struct {
 	Committed bool
-	Priority  int
+	Priority  int64
 	Evidence  types.Evidence
 }
 
@@ -47,15 +47,15 @@ func keyLookup(evidence types.Evidence) []byte {
 }
 
 // big endian padded hex
-func be(h int) string {
+func be(h int64) string {
 	return fmt.Sprintf("%0.16X", h)
 }
 
-func keyLookupFromHeightAndHash(height int, hash []byte) []byte {
+func keyLookupFromHeightAndHash(height int64, hash []byte) []byte {
 	return _key("%s/%s/%X", baseKeyLookup, be(height), hash)
 }
 
-func keyOutqueue(evidence types.Evidence, priority int) []byte {
+func keyOutqueue(evidence types.Evidence, priority int64) []byte {
 	return _key("%s/%s/%s/%X", baseKeyOutqueue, be(priority), be(evidence.Height()), evidence.Hash())
 }
 
@@ -111,7 +111,7 @@ func (store *EvidenceStore) ListEvidence(prefixKey string) (evidence []types.Evi
 }
 
 // GetEvidence fetches the evidence with the given height and hash.
-func (store *EvidenceStore) GetEvidence(height int, hash []byte) *EvidenceInfo {
+func (store *EvidenceStore) GetEvidence(height int64, hash []byte) *EvidenceInfo {
 	key := keyLookupFromHeightAndHash(height, hash)
 	val := store.db.Get(key)
 
@@ -125,7 +125,7 @@ func (store *EvidenceStore) GetEvidence(height int, hash []byte) *EvidenceInfo {
 
 // AddNewEvidence adds the given evidence to the database.
 // It returns false if the evidence is already stored.
-func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int) bool {
+func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int64) bool {
 	// check if we already have seen it
 	ei_ := store.GetEvidence(evidence.Height(), evidence.Hash())
 	if ei_ != nil && ei_.Evidence != nil {

@@ -3,14 +3,13 @@ package evidence
 import (
 	"github.com/tendermint/tmlibs/log"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
 )
 
 // EvidencePool maintains a pool of valid evidence
 // in an EvidenceStore.
 type EvidencePool struct {
-	config *cfg.EvidenceConfig
+	params types.EvidenceParams
 	logger log.Logger
 
 	state         types.State
@@ -19,9 +18,9 @@ type EvidencePool struct {
 	evidenceChan chan types.Evidence
 }
 
-func NewEvidencePool(config *cfg.EvidenceConfig, evidenceStore *EvidenceStore, state types.State) *EvidencePool {
+func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, state types.State) *EvidencePool {
 	evpool := &EvidencePool{
-		config:        config,
+		params:        params,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceStore,
 		state:         state,

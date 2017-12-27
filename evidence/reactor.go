@@ -9,7 +9,6 @@ import (
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 
-	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -24,15 +23,13 @@ const (
 // EvidenceReactor handles evpool evidence broadcasting amongst peers.
 type EvidenceReactor struct {
 	p2p.BaseReactor
-	config   *cfg.EvidenceConfig
 	evpool   *EvidencePool
 	eventBus *types.EventBus
 }
 
 // NewEvidenceReactor returns a new EvidenceReactor with the given config and evpool.
-func NewEvidenceReactor(config *cfg.EvidenceConfig, evpool *EvidencePool) *EvidenceReactor {
+func NewEvidenceReactor(evpool *EvidencePool) *EvidenceReactor {
 	evR := &EvidenceReactor{
-		config: config,
 		evpool: evpool,
 	}
 	evR.BaseReactor = *p2p.NewBaseReactor("EvidenceReactor", evR)

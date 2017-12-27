@@ -28,7 +28,7 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
-	Height() int                 // height of the equivocation
+	Height() int64               // height of the equivocation
 	Address() []byte             // address of the equivocating validator
 	Index() int                  // index of the validator in the validator set
 	Hash() []byte                // hash of the evidence
@@ -104,7 +104,7 @@ func (dve *DuplicateVoteEvidence) String() string {
 }
 
 // Height returns the height this evidence refers to.
-func (dve *DuplicateVoteEvidence) Height() int {
+func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
 }
 
