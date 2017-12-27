@@ -184,7 +184,9 @@ The height is an incrementing integer. The first block has `block.Header.Height 
 
 The median of the timestamps of the valid votes in the block.LastCommit.
 Corresponds to the number of nanoseconds, with millisecond resolution, since January 1, 1970.
-Increments with every new block.
+
+Note the timestamp in a vote must be greater by at least one millisecond than that of the
+block being voted on.
 
 ### NumTxs
 
@@ -226,12 +228,12 @@ The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 ### LastBlockID
 
 ```
-parts := MakeParts(block, state.ConsensusParams.BlockGossip.BlockPartSize)
-block.HeaderLastBlockID == BlockID{
-    SimpleMerkleRoot(block.Header),
+prevBlockParts := MakeParts(prevBlock, state.LastConsensusParams.BlockGossip.BlockPartSize)
+block.Header.LastBlockID == BlockID {
+    Hash: SimpleMerkleRoot(prevBlock.Header),
     PartsHeader{
-        SimpleMerkleRoot(parts),
-        len(parts),
+        Hash: SimpleMerkleRoot(prevBlockParts),
+        Total: len(prevBlockParts),
     },
 }
 ```
@@ -274,7 +276,7 @@ May be updated by the application.
 ### ConsensusParamsHash
 
 ```
-block.ValidatorsHash == SimpleMerkleRoot(state.ConsensusParams)
+block.ConsensusParamsHash == SimpleMerkleRoot(state.ConsensusParams)
 ```
 
 Simple Merkle root of the consensus parameters.
