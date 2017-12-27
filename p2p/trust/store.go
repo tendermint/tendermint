@@ -21,7 +21,7 @@ type TrustMetricStore struct {
 	cmn.BaseService
 
 	// Maps a Peer.Key to that peer's TrustMetric
-	peerMetrics map[string]*TrustMetric
+	reactorPeerMetrics map[string]map[string]*TrustMetric
 
 	// Mutex that protects the map and history data file
 	mtx sync.Mutex
@@ -38,9 +38,9 @@ type TrustMetricStore struct {
 // Use Start to to initialize the trust metric store
 func NewTrustMetricStore(db dbm.DB, tmc TrustMetricConfig) *TrustMetricStore {
 	tms := &TrustMetricStore{
-		peerMetrics: make(map[string]*TrustMetric),
-		db:          db,
-		config:      tmc,
+		reactorPeerMetrics: make(map[string]map[string]*TrustMetric),
+		db:                 db,
+		config:             tmc,
 	}
 
 	tms.BaseService = *cmn.NewBaseService(nil, "TrustMetricStore", tms)
@@ -69,8 +69,10 @@ func (tms *TrustMetricStore) OnStop() {
 	defer tms.mtx.Unlock()
 
 	// Stop all trust metric go-routines
-	for _, tm := range tms.peerMetrics {
-		tm.Stop()
+	for _, peers := range tms.reactorPeerMetrics {
+		for _, tm := range peers {
+			tm.Stop()
+		}
 	}
 
 	// Make the final trust history data save
@@ -85,31 +87,30 @@ func (tms *TrustMetricStore) Size() int {
 	return tms.size()
 }
 
-// AddPeerTrustMetric takes an existing trust metric and associates it with a peer key.
+// AddPeerTrustMetric takes an existing trust metric and associates it with a peer and reactor ID.
 // The caller is expected to call Start on the TrustMetric being added
-func (tms *TrustMetricStore) AddPeerTrustMetric(key string, tm *TrustMetric) {
+func (tms *TrustMetricStore) AddPeerTrustMetric(peer, reactor string, tm *TrustMetric) {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
-	if key == "" || tm == nil {
-		return
-	}
-	tms.peerMetrics[key] = tm
+	tms.addPeerTrustMetric(peer, reactor, tm)
 }
 
 // GetPeerTrustMetric returns a trust metric by peer key
-func (tms *TrustMetricStore) GetPeerTrustMetric(key string) *TrustMetric {
+func (tms *TrustMetricStore) GetPeerTrustMetric(peer, reactor string) *TrustMetric {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
-	tm, ok := tms.peerMetrics[key]
-	if !ok {
-		// If the metric is not available, we will create it
-		tm = NewMetricWithConfig(tms.config)
-		tm.Start()
-		// The metric needs to be in the map
-		tms.peerMetrics[key] = tm
+	// If the metric is in the store, return it to the caller
+	if peers, ok := tms.reactorPeerMetrics[reactor]; ok {
+		if tm, found := peers[peer]; found {
+			return tm
+		}
 	}
+	// Otherwise, initialize a new metric for the caller to use
+	tm := NewMetricWithConfig(tms.config)
+	tms.addPeerTrustMetric(peer, reactor, tm)
+	tm.Start()
 	return tm
 }
 
@@ -118,9 +119,11 @@ func (tms *TrustMetricStore) PeerDisconnected(key string) {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
-	// If the Peer that disconnected has a metric, pause it
-	if tm, ok := tms.peerMetrics[key]; ok {
-		tm.Pause()
+	// If the peer that disconnected had metrics, pause them
+	for _, peers := range tms.reactorPeerMetrics {
+		if tm, ok := peers[key]; ok {
+			tm.Pause()
+		}
 	}
 }
 
@@ -135,9 +138,27 @@ func (tms *TrustMetricStore) SaveToDB() {
 
 /* Private methods */
 
+// addPeerTrustMetric takes an existing trust metric and associates it with a peer and reactor ID.
+// This version of the method assumes the mutex has already been acquired
+func (tms *TrustMetricStore) addPeerTrustMetric(peer, reactor string, tm *TrustMetric) {
+	if peer == "" || reactor == "" || tm == nil {
+		return
+	}
+	// Check if we have a peer/metric map for this reactor yet
+	if _, ok := tms.reactorPeerMetrics[reactor]; !ok {
+		tms.reactorPeerMetrics[reactor] = make(map[string]*TrustMetric)
+	}
+	tms.reactorPeerMetrics[reactor][peer] = tm
+}
+
 // size returns the number of entries in the store without acquiring the mutex
 func (tms *TrustMetricStore) size() int {
-	return len(tms.peerMetrics)
+	var size int
+
+	for _, peers := range tms.reactorPeerMetrics {
+		size += len(peers)
+	}
+	return size
 }
 
 /* Loading & Saving */
@@ -152,21 +173,24 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 		return false
 	}
 
-	peers := make(map[string]MetricHistoryJSON)
-	err := json.Unmarshal(bytes, &peers)
+	history := make(map[string]map[string]MetricHistoryJSON)
+	err := json.Unmarshal(bytes, &history)
 	if err != nil {
 		cmn.PanicCrisis(cmn.Fmt("Could not unmarshal Trust Metric Store DB data: %v", err))
 	}
 
 	// If history data exists in the file,
 	// load it into trust metric
-	for key, p := range peers {
-		tm := NewMetricWithConfig(tms.config)
+	for reactor, peers := range history {
+		for peer, data := range peers {
+			tm := NewMetricWithConfig(tms.config)
 
-		tm.Start()
-		tm.Init(p)
-		// Load the peer trust metric into the store
-		tms.peerMetrics[key] = tm
+			tm.Start()
+			tm.Init(data)
+			// Load the peer trust metric into the store
+			tms.addPeerTrustMetric(peer, reactor, tm)
+
+		}
 	}
 	return true
 }
@@ -175,15 +199,19 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 func (tms *TrustMetricStore) saveToDB() {
 	tms.Logger.Debug("Saving TrustHistory to DB", "size", tms.size())
 
-	peers := make(map[string]MetricHistoryJSON)
+	history := make(map[string]map[string]MetricHistoryJSON)
 
-	for key, tm := range tms.peerMetrics {
-		// Add an entry for the peer identified by key
-		peers[key] = tm.HistoryJSON()
+	for reactor, peers := range tms.reactorPeerMetrics {
+		history[reactor] = make(map[string]MetricHistoryJSON)
+
+		for peer, tm := range peers {
+			// Add an entry for the metric
+			history[reactor][peer] = tm.HistoryJSON()
+		}
 	}
 
 	// Write all the data back to the DB
-	bytes, err := json.Marshal(peers)
+	bytes, err := json.Marshal(history)
 	if err != nil {
 		tms.Logger.Error("Failed to encode the TrustHistory", "err", err)
 		return

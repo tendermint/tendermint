@@ -21,6 +21,9 @@ import (
 )
 
 const (
+	// ConsensusReactorID is the name used by various services to identify the Consensus reactor
+	ConsensusReactorID = "CONSENSUS"
+
 	StateChannel       = byte(0x20)
 	DataChannel        = byte(0x21)
 	VoteChannel        = byte(0x22)

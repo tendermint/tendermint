@@ -16,6 +16,9 @@ import (
 )
 
 const (
+	// BlockchainReactorID is the name used by various services to identify the Blockchain reactor
+	BlockchainReactorID = "BLOCKCHAIN"
+
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
 

@@ -17,6 +17,9 @@ import (
 )
 
 const (
+	// MempoolReactorID is the name used by various services to identify the Mempool reactor
+	MempoolReactorID = "MEMPOOL"
+
 	MempoolChannel = byte(0x30)
 
 	maxMempoolMessageSize      = 1048576 // 1MB TODO make it configurable

@@ -12,6 +12,9 @@ import (
 )
 
 const (
+	// PexReactorID is the name used by various services to identify the PEX reactor
+	PexReactorID = "PEX"
+
 	// PexChannel is a channel for PEX messages
 	PexChannel = byte(0x00)
 

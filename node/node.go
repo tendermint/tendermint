@@ -221,9 +221,9 @@ func NewNode(config *cfg.Config,
 
 	sw := p2p.NewSwitch(config.P2P)
 	sw.SetLogger(p2pLogger)
-	sw.AddReactor("MEMPOOL", mempoolReactor)
-	sw.AddReactor("BLOCKCHAIN", bcReactor)
-	sw.AddReactor("CONSENSUS", consensusReactor)
+	sw.AddReactor(MempoolReactorID, mempoolReactor)
+	sw.AddReactor(BlockchainReactorID, bcReactor)
+	sw.AddReactor(ConsensusReactorID, consensusReactor)
 
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
@@ -242,7 +242,7 @@ func NewNode(config *cfg.Config,
 
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		pexReactor.SetLogger(p2pLogger)
-		sw.AddReactor("PEX", pexReactor)
+		sw.AddReactor(PexReactorID, pexReactor)
 	}
 
 	// Filter peers by addr or pubkey with an ABCI query.

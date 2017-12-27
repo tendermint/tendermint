@@ -48,7 +48,7 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 
 		tm.SetTicker(tt[i])
 		tm.Start()
-		store.AddPeerTrustMetric(key, tm)
+		store.AddPeerTrustMetric(key, "TestReactorID", tm)
 
 		tm.BadEvents(10)
 		tm.GoodEvents(1)
@@ -70,10 +70,11 @@ func TestTrustMetricStoreSaveLoad(t *testing.T) {
 
 	// Check that we still have 100 peers with imperfect trust values
 	assert.Equal(t, 100, store.Size())
-	for _, tm := range store.peerMetrics {
-		assert.NotEqual(t, 1.0, tm.TrustValue())
+	for _, peers := range store.reactorPeerMetrics {
+		for _, tm := range peers {
+			assert.NotEqual(t, 1.0, tm.TrustValue())
+		}
 	}
-
 	store.Stop()
 }
 
@@ -91,7 +92,7 @@ func TestTrustMetricStoreConfig(t *testing.T) {
 	store.Start()
 
 	// Have the store make us a metric with the config
-	tm := store.GetPeerTrustMetric("TestKey")
+	tm := store.GetPeerTrustMetric("TestKey", "TestReactorID")
 
 	// Check that the options made it to the metric
 	assert.Equal(t, 0.5, tm.proportionalWeight)
@@ -109,13 +110,12 @@ func TestTrustMetricStoreLookup(t *testing.T) {
 	// Create 100 peers in the trust metric store
 	for i := 0; i < 100; i++ {
 		key := fmt.Sprintf("peer_%d", i)
-		store.GetPeerTrustMetric(key)
+		store.GetPeerTrustMetric(key, "TestReactorID")
 
 		// Check that the trust metric was successfully entered
-		ktm := store.peerMetrics[key]
+		ktm := store.reactorPeerMetrics["TestReactorID"][key]
 		assert.NotNil(t, ktm, "Expected to find TrustMetric %s but wasn't there.", key)
 	}
-
 	store.Stop()
 }
 
@@ -127,7 +127,7 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	store.Start()
 
 	key := "TestKey"
-	tm := store.GetPeerTrustMetric(key)
+	tm := store.GetPeerTrustMetric(key, "TestReactorID")
 
 	// This peer is innocent so far
 	first := tm.TrustScore()
@@ -146,7 +146,7 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	store.PeerDisconnected(key)
 
 	// We will remember our experiences with this peer
-	tm = store.GetPeerTrustMetric(key)
+	tm = store.GetPeerTrustMetric(key, "TestReactorID")
 	assert.NotEqual(t, 100, tm.TrustScore())
 	store.Stop()
 }
