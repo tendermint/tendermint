@@ -193,19 +193,9 @@ func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, e
 // }
 // ```
 func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
-	if heightPtr == nil {
-		height := blockStore.Height()
-		blockMeta := blockStore.LoadBlockMeta(height)
-		block := blockStore.LoadBlock(height)
-		return &ctypes.ResultBlock{blockMeta, block}, nil
-	}
-
-	height := *heightPtr
-	if height <= 0 {
-		return nil, fmt.Errorf("Height must be greater than 0")
-	}
-	if height > blockStore.Height() {
-		return nil, fmt.Errorf("Height must be less than the current blockchain height")
+	height, _, err := getHeight(blockStore, heightPtr)
+	if err != nil {
+		return nil, err
 	}
 
 	blockMeta := blockStore.LoadBlockMeta(height)
@@ -284,20 +274,9 @@ func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
 // }
 // ```
 func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
-	if heightPtr == nil {
-		height := blockStore.Height()
-		header := blockStore.LoadBlockMeta(height).Header
-		commit := blockStore.LoadSeenCommit(height)
-		return ctypes.NewResultCommit(header, commit, false), nil
-	}
-
-	height := *heightPtr
-	if height <= 0 {
-		return nil, fmt.Errorf("Height must be greater than 0")
-	}
-	storeHeight := blockStore.Height()
-	if height > storeHeight {
-		return nil, fmt.Errorf("Height must be less than or equal to the current blockchain height")
+	height, storeHeight, err := getHeight(blockStore, heightPtr)
+	if err != nil {
+		return nil, err
 	}
 
 	header := blockStore.LoadBlockMeta(height).Header
@@ -334,7 +313,7 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 //
 // ```json
 // {
-//  "height": 88,
+//  "height": 10,
 //  "results": [
 //   {
 //    "code": 0,
@@ -348,18 +327,9 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 // }
 // ```
 func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
-	var height int64
-	if heightPtr != nil {
-		height = *heightPtr
-		if height <= 0 {
-			return nil, fmt.Errorf("Height must be greater than 0")
-		}
-		storeHeight := blockStore.Height()
-		if height > storeHeight {
-			return nil, fmt.Errorf("Height must be less than or equal to the current blockchain height")
-		}
-	} else {
-		height = blockStore.Height()
+	height, _, err := getHeight(blockStore, heightPtr)
+	if err != nil {
+		return nil, err
 	}
 
 	// load the results
@@ -374,4 +344,20 @@ func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 		Results: results,
 	}
 	return res, nil
+}
+
+func getHeight(blockStore types.BlockStore, heightPtr *int64) (reqHeight int64, storeHeight int64, err error) {
+	storeHeight = blockStore.Height()
+	if heightPtr != nil {
+		reqHeight = *heightPtr
+		if reqHeight <= 0 {
+			return 0, 0, fmt.Errorf("Height must be greater than 0")
+		}
+		if reqHeight > storeHeight {
+			return 0, 0, fmt.Errorf("Height must be less than or equal to the current blockchain height")
+		}
+	} else {
+		reqHeight = blockStore.Height()
+	}
+	return reqHeight, storeHeight, nil
 }

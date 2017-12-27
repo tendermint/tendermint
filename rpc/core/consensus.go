@@ -43,12 +43,11 @@ import (
 // }
 // ```
 func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
-	if heightPtr == nil {
-		blockHeight, validators := consensusState.GetValidators()
-		return &ctypes.ResultValidators{blockHeight, validators}, nil
+	height, _, err := getHeight(blockStore, heightPtr)
+	if err != nil {
+		return nil, err
 	}
 
-	height := *heightPtr
 	state := consensusState.GetState()
 	validators, err := state.LoadValidators(height)
 	if err != nil {
