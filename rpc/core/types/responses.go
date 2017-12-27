@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/go-wire/data"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -31,6 +32,11 @@ type ResultCommit struct {
 	// one level in the json output
 	types.SignedHeader
 	CanonicalCommit bool `json:"canonical"`
+}
+
+type ResultBlockResults struct {
+	Height  int64                `json:"height"`
+	Results *state.ABCIResponses `json:"results"`
 }
 
 // NewResultCommit is a helper to initialize the ResultCommit with

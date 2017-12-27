@@ -68,7 +68,7 @@ func TestStateSaveLoad(t *testing.T) {
 }
 
 // TestABCIResponsesSaveLoad tests saving and loading ABCIResponses.
-func TestABCIResponsesSaveLoad(t *testing.T) {
+func TestABCIResponsesSaveLoad1(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
 	// nolint: vetshadow
@@ -87,13 +87,82 @@ func TestABCIResponsesSaveLoad(t *testing.T) {
 			Power:  10,
 		},
 	}}
-	abciResponses.txs = nil
 
-	state.SaveABCIResponses(abciResponses)
-	loadedAbciResponses := state.LoadABCIResponses()
+	state.SaveABCIResponses(block.Height, abciResponses)
+	loadedAbciResponses, err := state.LoadABCIResponses(block.Height)
+	assert.Nil(err)
 	assert.Equal(abciResponses, loadedAbciResponses,
 		cmn.Fmt(`ABCIResponses don't match: Got %v, Expected %v`, loadedAbciResponses,
 			abciResponses))
+}
+
+// TestResultsSaveLoad tests saving and loading abci results.
+func TestABCIResponsesSaveLoad2(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+	// nolint: vetshadow
+	assert := assert.New(t)
+
+	cases := [...]struct {
+		// height is implied index+2
+		// as block 1 is created from genesis
+		added    []*abci.ResponseDeliverTx
+		expected types.ABCIResults
+	}{
+		0: {
+			[]*abci.ResponseDeliverTx{},
+			types.ABCIResults{},
+		},
+		1: {
+			[]*abci.ResponseDeliverTx{
+				{Code: 32, Data: []byte("Hello"), Log: "Huh?"},
+			},
+			types.ABCIResults{
+				{32, []byte("Hello")},
+			}},
+		2: {
+			[]*abci.ResponseDeliverTx{
+				{Code: 383},
+				{Data: []byte("Gotcha!"),
+					Tags: []*abci.KVPair{
+						abci.KVPairInt("a", 1),
+						abci.KVPairString("build", "stuff"),
+					}},
+			},
+			types.ABCIResults{
+				{383, []byte{}},
+				{0, []byte("Gotcha!")},
+			}},
+		3: {
+			nil,
+			types.ABCIResults{},
+		},
+	}
+
+	// query all before, should return error
+	for i := range cases {
+		h := int64(i + 1)
+		res, err := state.LoadABCIResponses(h)
+		assert.Error(err, "%d: %#v", i, res)
+	}
+
+	// add all cases
+	for i, tc := range cases {
+		h := int64(i + 1) // last block height, one below what we save
+		responses := &ABCIResponses{
+			DeliverTx: tc.added,
+			EndBlock:  &abci.ResponseEndBlock{},
+		}
+		state.SaveABCIResponses(h, responses)
+	}
+
+	// query all before, should return expected value
+	for i, tc := range cases {
+		h := int64(i + 1)
+		res, err := state.LoadABCIResponses(h)
+		assert.NoError(err, "%d", i)
+		assert.Equal(tc.expected.Hash(), res.ResultsHash(), "%d", i)
+	}
 }
 
 // TestValidatorSimpleSaveLoad tests saving and loading validators.
@@ -353,7 +422,6 @@ func TestLessThanOneThirdOfVotingPowerPerBlockEnforced(t *testing.T) {
 		height := state.LastBlockHeight + 1
 		block := makeBlock(state, height)
 		abciResponses := &ABCIResponses{
-			Height:   height,
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: tc.valUpdatesFn(state.Validators)},
 		}
 		err := state.SetBlockAndValidators(block.Header, types.PartSetHeader{}, abciResponses)
@@ -421,7 +489,6 @@ func makeHeaderPartsResponsesValPubKeyChange(state *State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		Height:   height,
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
 	}
 
@@ -444,7 +511,6 @@ func makeHeaderPartsResponsesValPowerChange(state *State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		Height:   height,
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
 	}
 
@@ -466,7 +532,6 @@ func makeHeaderPartsResponsesParams(state *State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		Height:   height,
 		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
 	return block.Header, types.PartSetHeader{}, abciResponses
@@ -475,4 +540,15 @@ func makeHeaderPartsResponsesParams(state *State, height int64,
 type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams
+}
+
+func makeHeaderPartsResults(state *State, height int64,
+	results []*abci.ResponseDeliverTx) (*types.Header, types.PartSetHeader, *ABCIResponses) {
+
+	block := makeBlock(state, height)
+	abciResponses := &ABCIResponses{
+		DeliverTx: results,
+		EndBlock:  &abci.ResponseEndBlock{},
+	}
+	return block.Header, types.PartSetHeader{}, abciResponses
 }

@@ -45,6 +45,7 @@ type ABCIClient interface {
 // signatures and prove anything about the chain
 type SignClient interface {
 	Block(height *int64) (*ctypes.ResultBlock, error)
+	BlockResults(height *int64) (*ctypes.ResultBlockResults, error)
 	Commit(height *int64) (*ctypes.ResultCommit, error)
 	Validators(height *int64) (*ctypes.ResultValidators, error)
 	Tx(hash []byte, prove bool) (*ctypes.ResultTx, error)

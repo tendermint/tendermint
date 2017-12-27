@@ -52,25 +52,25 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 			// TODO: make use of res.Log
 			// TODO: make use of this info
 			// Blocks may include invalid txs.
-			// reqDeliverTx := req.(abci.RequestDeliverTx)
-			txResult := r.DeliverTx
-			if txResult.Code == abci.CodeTypeOK {
+			txRes := r.DeliverTx
+			if txRes.Code == abci.CodeTypeOK {
 				validTxs++
 			} else {
-				logger.Debug("Invalid tx", "code", txResult.Code, "log", txResult.Log)
+				logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 				invalidTxs++
 			}
 
 			// NOTE: if we count we can access the tx from the block instead of
 			// pulling it from the req
+			tx := types.Tx(req.GetDeliverTx().Tx)
 			txEventPublisher.PublishEventTx(types.EventDataTx{types.TxResult{
 				Height: block.Height,
 				Index:  uint32(txIndex),
-				Tx:     types.Tx(req.GetDeliverTx().Tx),
-				Result: *txResult,
+				Tx:     tx,
+				Result: *txRes,
 			}})
 
-			abciResponses.DeliverTx[txIndex] = txResult
+			abciResponses.DeliverTx[txIndex] = txRes
 			txIndex++
 		}
 	}
@@ -83,6 +83,8 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 			absentVals = append(absentVals, int32(valI))
 		}
 	}
+
+	// TODO: determine which validators were byzantine
 
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
@@ -240,17 +242,19 @@ func (s *State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*
 	block.LastBlockID = s.LastBlockID
 	block.ValidatorsHash = s.Validators.Hash()
 	block.AppHash = s.AppHash
-	block.ConsensusHash = s.LastConsensusParams.Hash()
+	block.ConsensusHash = s.ConsensusParams.Hash()
+	block.LastResultsHash = s.LastResultsHash
 
 	return block, block.MakePartSet(s.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
 func (s *State) validateBlock(b *types.Block) error {
-	// Basic block validation.
+	// validate internal consistency
 	if err := b.ValidateBasic(); err != nil {
 		return err
 	}
 
+	// validate basic info
 	if b.ChainID != s.ChainID {
 		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", s.ChainID, b.ChainID)
 	}
@@ -265,19 +269,27 @@ func (s *State) validateBlock(b *types.Block) error {
 		}
 	*/
 
+	// validate prev block info
+	if !b.LastBlockID.Equals(s.LastBlockID) {
+		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", s.LastBlockID, b.LastBlockID)
+	}
 	newTxs := int64(len(b.Data.Txs))
 	if b.TotalTxs != s.LastBlockTotalTx+newTxs {
 		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", s.LastBlockTotalTx+newTxs, b.TotalTxs)
 	}
-	if !b.LastBlockID.Equals(s.LastBlockID) {
-		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", s.LastBlockID, b.LastBlockID)
-	}
 
+	// validate app info
 	if !bytes.Equal(b.AppHash, s.AppHash) {
 		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", s.AppHash, b.AppHash)
 	}
-	if !bytes.Equal(b.ConsensusHash, s.LastConsensusParams.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", s.LastConsensusParams.Hash(), b.ConsensusHash)
+	if !bytes.Equal(b.ConsensusHash, s.ConsensusParams.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", s.ConsensusParams.Hash(), b.ConsensusHash)
+	}
+	if !bytes.Equal(b.LastResultsHash, s.LastResultsHash) {
+		return fmt.Errorf("Wrong Block.Header.LastResultsHash.  Expected %X, got %v", s.LastResultsHash, b.LastResultsHash)
+	}
+	if !bytes.Equal(b.ValidatorsHash, s.Validators.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v", s.Validators.Hash(), b.ValidatorsHash)
 	}
 
 	// Validate block LastCommit.
@@ -318,7 +330,7 @@ func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn
 	fail.Fail() // XXX
 
 	// save the results before we commit
-	s.SaveABCIResponses(abciResponses)
+	s.SaveABCIResponses(block.Height, abciResponses)
 
 	fail.Fail() // XXX
 

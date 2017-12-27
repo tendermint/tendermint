@@ -152,6 +152,15 @@ func (c *HTTP) Block(height *int64) (*ctypes.ResultBlock, error) {
 	return result, nil
 }
 
+func (c *HTTP) BlockResults(height *int64) (*ctypes.ResultBlockResults, error) {
+	result := new(ctypes.ResultBlockResults)
+	_, err := c.rpc.Call("block_results", map[string]interface{}{"height": height}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "Block Result")
+	}
+	return result, nil
+}
+
 func (c *HTTP) Commit(height *int64) (*ctypes.ResultCommit, error) {
 	result := new(ctypes.ResultCommit)
 	_, err := c.rpc.Call("commit", map[string]interface{}{"height": height}, result)

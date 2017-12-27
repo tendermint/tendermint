@@ -107,14 +107,15 @@ func TestWALCrash(t *testing.T) {
 		{"block with a smaller part size",
 			func(cs *ConsensusState, ctx context.Context) {
 				// XXX: is there a better way to change BlockPartSizeBytes?
-				params := cs.state.ConsensusParams
-				params.BlockPartSizeBytes = 512
-				cs.state.ConsensusParams = params
-				sendTxs(cs, ctx)
+				cs.state.ConsensusParams.BlockPartSizeBytes = 512
+				cs.state.Save()
+				go sendTxs(cs, ctx)
 			},
 			1},
 		{"many non-empty blocks",
-			sendTxs,
+			func(cs *ConsensusState, ctx context.Context) {
+				go sendTxs(cs, ctx)
+			},
 			3},
 	}
 
@@ -147,7 +148,7 @@ LOOP:
 
 		// start sending transactions
 		ctx, cancel := context.WithCancel(context.Background())
-		go initFn(cs, ctx)
+		initFn(cs, ctx)
 
 		// clean up WAL file from the previous iteration
 		walFile := cs.config.WalFile()

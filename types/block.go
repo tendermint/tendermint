@@ -149,10 +149,11 @@ type Header struct {
 	LastCommitHash data.Bytes `json:"last_commit_hash"` // commit from validators from the last block
 	DataHash       data.Bytes `json:"data_hash"`        // transactions
 
-	// hashes from the app
-	ValidatorsHash data.Bytes `json:"validators_hash"` // validators for the current block
-	ConsensusHash  data.Bytes `json:"consensus_hash"`  // consensus params for current block
-	AppHash        data.Bytes `json:"app_hash"`        // state after txs from the previous block
+	// hashes from the app output from the prev block
+	ValidatorsHash  data.Bytes `json:"validators_hash"`   // validators for the current block
+	ConsensusHash   data.Bytes `json:"consensus_hash"`    // consensus params for current block
+	AppHash         data.Bytes `json:"app_hash"`          // state after txs from the previous block
+	LastResultsHash data.Bytes `json:"last_results_hash"` // root hash of all results from the txs from the previous block
 }
 
 // Hash returns the hash of the header.
@@ -173,6 +174,7 @@ func (h *Header) Hash() data.Bytes {
 		"Validators":  h.ValidatorsHash,
 		"App":         h.AppHash,
 		"Consensus":   h.ConsensusHash,
+		"Results":     h.LastResultsHash,
 	})
 }
 
@@ -192,7 +194,8 @@ func (h *Header) StringIndented(indent string) string {
 %s  Data:           %v
 %s  Validators:     %v
 %s  App:            %v
-%s  Conensus:            %v
+%s  Conensus:       %v
+%s  Results:        %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
@@ -205,6 +208,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.ValidatorsHash,
 		indent, h.AppHash,
 		indent, h.ConsensusHash,
+		indent, h.LastResultsHash,
 		indent, h.Hash())
 }
 

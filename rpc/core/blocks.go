@@ -9,6 +9,7 @@ import (
 )
 
 // Get block headers for minHeight <= height <= maxHeight.
+// Block headers are returned in descending order (highest first).
 //
 // ```shell
 // curl 'localhost:46657/blockchain?minHeight=10&maxHeight=10'
@@ -192,19 +193,10 @@ func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, e
 // }
 // ```
 func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
-	if heightPtr == nil {
-		height := blockStore.Height()
-		blockMeta := blockStore.LoadBlockMeta(height)
-		block := blockStore.LoadBlock(height)
-		return &ctypes.ResultBlock{blockMeta, block}, nil
-	}
-
-	height := *heightPtr
-	if height <= 0 {
-		return nil, fmt.Errorf("Height must be greater than 0")
-	}
-	if height > blockStore.Height() {
-		return nil, fmt.Errorf("Height must be less than the current blockchain height")
+	storeHeight := blockStore.Height()
+	height, err := getHeight(storeHeight, heightPtr)
+	if err != nil {
+		return nil, err
 	}
 
 	blockMeta := blockStore.LoadBlockMeta(height)
@@ -283,20 +275,10 @@ func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
 // }
 // ```
 func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
-	if heightPtr == nil {
-		height := blockStore.Height()
-		header := blockStore.LoadBlockMeta(height).Header
-		commit := blockStore.LoadSeenCommit(height)
-		return ctypes.NewResultCommit(header, commit, false), nil
-	}
-
-	height := *heightPtr
-	if height <= 0 {
-		return nil, fmt.Errorf("Height must be greater than 0")
-	}
 	storeHeight := blockStore.Height()
-	if height > storeHeight {
-		return nil, fmt.Errorf("Height must be less than or equal to the current blockchain height")
+	height, err := getHeight(storeHeight, heightPtr)
+	if err != nil {
+		return nil, err
 	}
 
 	header := blockStore.LoadBlockMeta(height).Header
@@ -311,4 +293,72 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 	// Return the canonical commit (comes from the block at height+1)
 	commit := blockStore.LoadBlockCommit(height)
 	return ctypes.NewResultCommit(header, commit, true), nil
+}
+
+// BlockResults gets ABCIResults at a given height.
+// If no height is provided, it will fetch results for the latest block.
+//
+// Results are for the height of the block containing the txs.
+// Thus response.results[5] is the results of executing getBlock(h).Txs[5]
+//
+// ```shell
+// curl 'localhost:46657/block_results?height=10'
+// ```
+//
+// ```go
+// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// info, err := client.BlockResults(10)
+// ```
+//
+//
+// > The above command returns JSON structured like this:
+//
+// ```json
+// {
+//  "height": 10,
+//  "results": [
+//   {
+//    "code": 0,
+//    "data": "CAFE00F00D"
+//   },
+//   {
+//    "code": 102,
+//    "data": ""
+//   }
+//  ]
+// }
+// ```
+func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
+	storeHeight := blockStore.Height()
+	height, err := getHeight(storeHeight, heightPtr)
+	if err != nil {
+		return nil, err
+	}
+
+	// load the results
+	state := consensusState.GetState()
+	results, err := state.LoadABCIResponses(height)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &ctypes.ResultBlockResults{
+		Height:  height,
+		Results: results,
+	}
+	return res, nil
+}
+
+func getHeight(storeHeight int64, heightPtr *int64) (int64, error) {
+	if heightPtr != nil {
+		height := *heightPtr
+		if height <= 0 {
+			return 0, fmt.Errorf("Height must be greater than 0")
+		}
+		if height > storeHeight {
+			return 0, fmt.Errorf("Height must be less than or equal to the current blockchain height")
+		}
+		return height, nil
+	}
+	return storeHeight, nil
 }

@@ -20,8 +20,7 @@ import (
 
 // database keys
 var (
-	stateKey         = []byte("stateKey")
-	abciResponsesKey = []byte("abciResponsesKey")
+	stateKey = []byte("stateKey")
 )
 
 func calcValidatorsKey(height int64) []byte {
@@ -30,6 +29,10 @@ func calcValidatorsKey(height int64) []byte {
 
 func calcConsensusParamsKey(height int64) []byte {
 	return []byte(cmn.Fmt("consensusParamsKey:%v", height))
+}
+
+func calcABCIResponsesKey(height int64) []byte {
+	return []byte(cmn.Fmt("abciResponsesKey:%v", height))
 }
 
 //-----------------------------------------------------------------------------
@@ -68,8 +71,10 @@ type State struct {
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
 	ConsensusParams                  types.ConsensusParams
-	LastConsensusParams              types.ConsensusParams
 	LastHeightConsensusParamsChanged int64
+
+	// Merkle root of the results from executing prev block
+	LastResultsHash []byte
 
 	// The latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
@@ -140,10 +145,11 @@ func (s *State) Copy() *State {
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
 
 		ConsensusParams:                  s.ConsensusParams,
-		LastConsensusParams:              s.LastConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 
 		AppHash: s.AppHash,
+
+		LastResultsHash: s.LastResultsHash,
 
 		logger: s.logger,
 	}
@@ -161,17 +167,18 @@ func (s *State) Save() {
 
 // SaveABCIResponses persists the ABCIResponses to the database.
 // This is useful in case we crash after app.Commit and before s.Save().
-func (s *State) SaveABCIResponses(abciResponses *ABCIResponses) {
-	s.db.SetSync(abciResponsesKey, abciResponses.Bytes())
+// Responses are indexed by height so they can also be loaded later to produce Merkle proofs.
+func (s *State) SaveABCIResponses(height int64, abciResponses *ABCIResponses) {
+	s.db.SetSync(calcABCIResponsesKey(height), abciResponses.Bytes())
 }
 
-// LoadABCIResponses loads the ABCIResponses from the database.
+// LoadABCIResponses loads the ABCIResponses for the given height from the database.
 // This is useful for recovering from crashes where we called app.Commit and before we called
-// s.Save()
-func (s *State) LoadABCIResponses() *ABCIResponses {
-	buf := s.db.Get(abciResponsesKey)
+// s.Save(). It can also be used to produce Merkle proofs of the result of txs.
+func (s *State) LoadABCIResponses(height int64) (*ABCIResponses, error) {
+	buf := s.db.Get(calcABCIResponsesKey(height))
 	if len(buf) == 0 {
-		return nil
+		return nil, ErrNoABCIResponsesForHeight{height}
 	}
 
 	abciResponses := new(ABCIResponses)
@@ -184,7 +191,7 @@ func (s *State) LoadABCIResponses() *ABCIResponses {
 	}
 	// TODO: ensure that buf is completely read.
 
-	return abciResponses
+	return abciResponses, nil
 }
 
 // LoadValidators loads the ValidatorSet for a given height.
@@ -346,14 +353,16 @@ func (s *State) SetBlockAndValidators(header *types.Header, blockPartsHeader typ
 		types.BlockID{header.Hash(), blockPartsHeader},
 		header.Time,
 		nextValSet,
-		nextParams)
+		nextParams,
+		abciResponses.ResultsHash())
 	return nil
 }
 
 func (s *State) setBlockAndValidators(height int64,
 	newTxs int64, blockID types.BlockID, blockTime time.Time,
 	valSet *types.ValidatorSet,
-	params types.ConsensusParams) {
+	params types.ConsensusParams,
+	resultsHash []byte) {
 
 	s.LastBlockHeight = height
 	s.LastBlockTotalTx += newTxs
@@ -363,8 +372,9 @@ func (s *State) setBlockAndValidators(height int64,
 	s.LastValidators = s.Validators.Copy()
 	s.Validators = valSet
 
-	s.LastConsensusParams = s.ConsensusParams
 	s.ConsensusParams = params
+
+	s.LastResultsHash = resultsHash
 }
 
 // GetValidators returns the last and current validator sets.
@@ -374,29 +384,29 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 
 //------------------------------------------------------------------------
 
-// ABCIResponses retains the responses of the various ABCI calls during block processing.
-// It is persisted to disk before calling Commit.
+// ABCIResponses retains the responses
+// of the various ABCI calls during block processing.
+// It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
-	Height int64
-
 	DeliverTx []*abci.ResponseDeliverTx
 	EndBlock  *abci.ResponseEndBlock
-
-	txs types.Txs // reference for indexing results by hash
 }
 
 // NewABCIResponses returns a new ABCIResponses
 func NewABCIResponses(block *types.Block) *ABCIResponses {
 	return &ABCIResponses{
-		Height:    block.Height,
 		DeliverTx: make([]*abci.ResponseDeliverTx, block.NumTxs),
-		txs:       block.Data.Txs,
 	}
 }
 
 // Bytes serializes the ABCIResponse using go-wire
 func (a *ABCIResponses) Bytes() []byte {
 	return wire.BinaryBytes(*a)
+}
+
+func (a *ABCIResponses) ResultsHash() []byte {
+	results := types.NewResults(a.DeliverTx)
+	return results.Hash()
 }
 
 //-----------------------------------------------------------------------------
@@ -488,7 +498,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		LastHeightValidatorsChanged: 1,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastConsensusParams:              types.ConsensusParams{},
 		LastHeightConsensusParamsChanged: 1,
 
 		AppHash: genDoc.AppHash,
