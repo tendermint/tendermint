@@ -249,11 +249,12 @@ func (s *State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*
 }
 
 func (s *State) validateBlock(b *types.Block) error {
-	// Basic block validation.
+	// validate internal consistency
 	if err := b.ValidateBasic(); err != nil {
 		return err
 	}
 
+	// validate basic info
 	if b.ChainID != s.ChainID {
 		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", s.ChainID, b.ChainID)
 	}
@@ -268,14 +269,16 @@ func (s *State) validateBlock(b *types.Block) error {
 		}
 	*/
 
+	// validate prev block info
+	if !b.LastBlockID.Equals(s.LastBlockID) {
+		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", s.LastBlockID, b.LastBlockID)
+	}
 	newTxs := int64(len(b.Data.Txs))
 	if b.TotalTxs != s.LastBlockTotalTx+newTxs {
 		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", s.LastBlockTotalTx+newTxs, b.TotalTxs)
 	}
-	if !b.LastBlockID.Equals(s.LastBlockID) {
-		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", s.LastBlockID, b.LastBlockID)
-	}
 
+	// validate app info
 	if !bytes.Equal(b.AppHash, s.AppHash) {
 		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", s.AppHash, b.AppHash)
 	}
@@ -284,6 +287,9 @@ func (s *State) validateBlock(b *types.Block) error {
 	}
 	if !bytes.Equal(b.LastResultsHash, s.LastResultsHash) {
 		return fmt.Errorf("Wrong Block.Header.LastResultsHash.  Expected %X, got %v", s.LastResultsHash, b.LastResultsHash)
+	}
+	if !bytes.Equal(b.ValidatorsHash, s.Validators.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v", s.Validators.Hash(), b.ValidatorsHash)
 	}
 
 	// Validate block LastCommit.

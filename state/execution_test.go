@@ -73,6 +73,12 @@ func TestValidateBlock(t *testing.T) {
 	block.LastResultsHash = []byte("wrong results hash")
 	err = state.ValidateBlock(block)
 	require.Error(t, err)
+
+	// wrong validators hash fails
+	block = makeBlock(state, 1)
+	block.ValidatorsHash = []byte("wrong validators hash")
+	err = state.ValidateBlock(block)
+	require.Error(t, err)
 }
 
 func TestApplyBlock(t *testing.T) {
