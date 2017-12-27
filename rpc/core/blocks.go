@@ -193,7 +193,8 @@ func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, e
 // }
 // ```
 func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
-	height, _, err := getHeight(blockStore, heightPtr)
+	storeHeight := blockStore.Height()
+	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +275,8 @@ func Block(heightPtr *int64) (*ctypes.ResultBlock, error) {
 // }
 // ```
 func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
-	height, storeHeight, err := getHeight(blockStore, heightPtr)
+	storeHeight := blockStore.Height()
+	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -327,7 +329,8 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 // }
 // ```
 func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
-	height, _, err := getHeight(blockStore, heightPtr)
+	storeHeight := blockStore.Height()
+	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {
 		return nil, err
 	}
@@ -346,18 +349,16 @@ func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 	return res, nil
 }
 
-func getHeight(blockStore types.BlockStore, heightPtr *int64) (reqHeight int64, storeHeight int64, err error) {
-	storeHeight = blockStore.Height()
+func getHeight(storeHeight int64, heightPtr *int64) (int64, error) {
 	if heightPtr != nil {
-		reqHeight = *heightPtr
-		if reqHeight <= 0 {
-			return 0, 0, fmt.Errorf("Height must be greater than 0")
+		height := *heightPtr
+		if height <= 0 {
+			return 0, fmt.Errorf("Height must be greater than 0")
 		}
-		if reqHeight > storeHeight {
-			return 0, 0, fmt.Errorf("Height must be less than or equal to the current blockchain height")
+		if height > storeHeight {
+			return 0, fmt.Errorf("Height must be less than or equal to the current blockchain height")
 		}
-	} else {
-		reqHeight = blockStore.Height()
+		return height, nil
 	}
-	return reqHeight, storeHeight, nil
+	return storeHeight, nil
 }

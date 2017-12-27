@@ -43,7 +43,8 @@ import (
 // }
 // ```
 func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
-	height, _, err := getHeight(blockStore, heightPtr)
+	storeHeight := blockStore.Height()
+	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {
 		return nil, err
 	}
