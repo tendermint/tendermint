@@ -156,6 +156,23 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	if !conR.FastSync() {
 		conR.sendNewRoundStepMessages(peer)
 	}
+
+	// Getting the peer metric initializes it in the store
+	tms := conR.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(peer.String(), ConsensusReactorID)
+}
+
+// MarkPeer implements Reactor.
+// It updates a peer's metric with good or bad events taking place within this reactor
+func (conR *ConsensusReactor) MarkPeer(peer Peer, good bool, events int) {
+	tms := conR.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(peer.String(), ConsensusReactorID)
+
+	if good {
+		tm.GoodEvents(events)
+	} else {
+		tm.BadEvents(events)
+	}
 }
 
 // RemovePeer implements Reactor
@@ -163,6 +180,11 @@ func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if !conR.IsRunning() {
 		return
 	}
+
+	tms := conR.Switch.MetricStore()
+	// Pause tracking of this peer
+	tms.PeerDisconnected(peer.String(), ConsensusReactorID)
+
 	// TODO
 	//peer.Get(PeerStateKey).(*PeerState).Disconnect()
 }

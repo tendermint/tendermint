@@ -11,6 +11,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p/trust"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -36,6 +37,7 @@ type Reactor interface {
 	SetSwitch(*Switch)
 	GetChannels() []*ChannelDescriptor
 	AddPeer(peer Peer)
+	MarkPeer(peer Peer, good bool, events int)
 	RemovePeer(peer Peer, reason interface{})
 	Receive(chID byte, peer Peer, msgBytes []byte) // CONTRACT: msgBytes are not nil
 }
@@ -80,6 +82,7 @@ type Switch struct {
 	chDescs      []*ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
+	metricStore  *trust.TrustMetricStore // trust metrics for all peers
 	dialing      *cmn.CMap
 	nodeInfo     *NodeInfo             // our node info
 	nodePrivKey  crypto.PrivKeyEd25519 // our node privkey
@@ -179,6 +182,18 @@ func (sw *Switch) SetNodeInfo(nodeInfo *NodeInfo) {
 // NOTE: Not goroutine safe.
 func (sw *Switch) NodeInfo() *NodeInfo {
 	return sw.nodeInfo
+}
+
+// MetricStore - Returns the switch's TrustMetricStore.
+// NOTE: Not goroutine safe.
+func (sw *Switch) MetricStore() *trust.TrustMetricStore {
+	return sw.metricStore
+}
+
+// SetMetricStore - Sets the switch's TrustMetricStore for allowing all reactors to access the metrics.
+// NOTE: Not goroutine safe.
+func (sw *Switch) SetMetricStore(tms *trust.TrustMetricStore) {
+	sw.metricStore = tms
 }
 
 // SetNodePrivKey sets the switch's private key for authenticated encryption.

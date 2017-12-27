@@ -143,7 +143,7 @@ func TestTrustMetricStorePeerScore(t *testing.T) {
 	if second > first {
 		t.Errorf("A greater number of bad events should lower the trust score")
 	}
-	store.PeerDisconnected(key)
+	store.PeerDisconnected(key, "TestReactorID")
 
 	// We will remember our experiences with this peer
 	tm = store.GetPeerTrustMetric(key, "TestReactorID")

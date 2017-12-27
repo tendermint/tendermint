@@ -101,6 +101,10 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 // AddPeer implements Reactor by adding peer to the address book (if inbound)
 // or by requesting more addresses (if outbound).
 func (r *PEXReactor) AddPeer(p Peer) {
+	// Getting the peer metric initializes it in the store
+	tms := r.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(p.String(), PexReactorID)
+
 	if p.IsOutbound() {
 		// For outbound peers, the address is already in the books.
 		// Either it was added in DialSeeds or when we
@@ -119,10 +123,24 @@ func (r *PEXReactor) AddPeer(p Peer) {
 	}
 }
 
+// MarkPeer implements Reactor.
+// It updates a peer's metric with good or bad events taking place within this reactor
+func (r *PEXReactor) MarkPeer(peer Peer, good bool, events int) {
+	tms := r.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(peer.String(), PexReactorID)
+
+	if good {
+		tm.GoodEvents(events)
+	} else {
+		tm.BadEvents(events)
+	}
+}
+
 // RemovePeer implements Reactor.
 func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
-	// If we aren't keeping track of local temp data for each peer here, then we
-	// don't have to do anything.
+	tms := r.Switch.MetricStore()
+	// Pause tracking of this peer
+	tms.PeerDisconnected(p.String(), PexReactorID)
 }
 
 // Receive implements Reactor by handling incoming PEX messages.

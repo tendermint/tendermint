@@ -63,12 +63,33 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
+	// Getting the peer metric initializes it in the store
+	tms := memR.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(peer.String(), MempoolReactorID)
+
 	go memR.broadcastTxRoutine(peer)
+}
+
+// MarkPeer implements Reactor.
+// It updates a peer's metric with good or bad events taking place within this reactor
+func (memR *MempoolReactor) MarkPeer(peer Peer, good bool, events int) {
+	tms := memR.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(peer.String(), MempoolReactorID)
+
+	if good {
+		tm.GoodEvents(events)
+	} else {
+		tm.BadEvents(events)
+	}
 }
 
 // RemovePeer implements Reactor.
 func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	// broadcast routine checks if peer is gone and returns
+
+	tms := memR.Switch.MetricStore()
+	// Pause tracking of this peer
+	tms.PeerDisconnected(peer.String(), MempoolReactorID)
 }
 
 // Receive implements Reactor.

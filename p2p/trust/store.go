@@ -115,13 +115,13 @@ func (tms *TrustMetricStore) GetPeerTrustMetric(peer, reactor string) *TrustMetr
 }
 
 // PeerDisconnected pauses the trust metric associated with the peer identified by the key
-func (tms *TrustMetricStore) PeerDisconnected(key string) {
+func (tms *TrustMetricStore) PeerDisconnected(peer, reactor string) {
 	tms.mtx.Lock()
 	defer tms.mtx.Unlock()
 
 	// If the peer that disconnected had metrics, pause them
-	for _, peers := range tms.reactorPeerMetrics {
-		if tm, ok := peers[key]; ok {
+	if peers, ok := tms.reactorPeerMetrics[reactor]; ok {
+		if tm, found := peers[peer]; found {
 			tm.Pause()
 		}
 	}

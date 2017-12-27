@@ -125,10 +125,31 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	}
 	// peer is added to the pool once we receive the first
 	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
+
+	// Getting the peer metric initializes it in the store
+	tms := bcR.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(peer.String(), BlockchainReactorID)
+}
+
+// MarkPeer implements Reactor.
+// It updates a peer's metric with good or bad events taking place within this reactor
+func (bcR *BlockchainReactor) MarkPeer(peer Peer, good bool, events int) {
+	tms := bcR.Switch.MetricStore()
+	tm := tms.GetPeerTrustMetric(peer.String(), BlockchainReactorID)
+
+	if good {
+		tm.GoodEvents(events)
+	} else {
+		tm.BadEvents(events)
+	}
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
 func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
+	tms := bcR.Switch.MetricStore()
+	// Pause tracking of this peer
+	tms.PeerDisconnected(peer.String(), BlockchainReactorID)
+
 	bcR.pool.RemovePeer(peer.Key())
 }
 
