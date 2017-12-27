@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
@@ -379,17 +380,40 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// If seeds exist, add them to the address book and dial out
-	if n.config.P2P.Seeds != "" {
-		// dial out
-		seeds := strings.Split(n.config.P2P.Seeds, ",")
-		if err := n.DialSeeds(seeds); err != nil {
-			return err
-		}
+	err = n.dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect()
+	if err != nil {
+		return err
 	}
 
 	// start tx indexer
 	return n.indexerService.Start()
+}
+
+func (n *Node) dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect() error {
+	if n.config.P2P.Seeds == "" {
+		return nil
+	}
+
+	seeds := strings.Split(n.config.P2P.Seeds, ",")
+
+	// prefer peers from address book
+	if n.config.P2P.PexReactor && n.addrBook.Size() > 0 {
+		// give some time to PexReactor to connect us to other peers
+		const fallbackToSeedsAfterSec = 30 * time.Second
+		go func() {
+			time.Sleep(fallbackToSeedsAfterSec)
+			// fallback to dialing seeds if for some reason we can't connect to any
+			// peers
+			outbound, inbound, _ := n.sw.NumPeers()
+			if n.IsRunning() && outbound+inbound == 0 {
+				n.DialSeeds(seeds)
+			}
+		}()
+		return nil
+	}
+
+	// add seeds to the address book and dial out
+	return n.DialSeeds(seeds)
 }
 
 // OnStop stops the Node. It implements cmn.Service.
