@@ -75,7 +75,7 @@ type State struct {
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
-	LastResultHash []byte
+	LastResultsHash []byte
 
 	// The latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
@@ -151,7 +151,7 @@ func (s *State) Copy() *State {
 
 		AppHash: s.AppHash,
 
-		LastResultHash: s.LastResultHash,
+		LastResultsHash: s.LastResultsHash,
 
 		logger: s.logger,
 	}
@@ -377,7 +377,7 @@ func (s *State) setBlockAndValidators(height int64,
 	s.LastConsensusParams = s.ConsensusParams
 	s.ConsensusParams = params
 
-	s.LastResultHash = resultsHash
+	s.LastResultsHash = resultsHash
 }
 
 // GetValidators returns the last and current validator sets.
@@ -387,9 +387,9 @@ func (s *State) GetValidators() (last *types.ValidatorSet, current *types.Valida
 
 //------------------------------------------------------------------------
 
-// ABCIResponses retains the deterministic components of the responses
+// ABCIResponses retains the responses
 // of the various ABCI calls during block processing.
-// It is persisted to disk before calling Commit.
+// It is persisted to disk for each height before calling Commit.
 type ABCIResponses struct {
 	DeliverTx []*abci.ResponseDeliverTx
 	EndBlock  *abci.ResponseEndBlock

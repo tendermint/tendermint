@@ -120,11 +120,11 @@ func genHeader(chainID string, height int64, txs types.Txs,
 		TotalTxs: int64(len(txs)),
 		// LastBlockID
 		// LastCommitHash
-		ValidatorsHash: vals.Hash(),
-		DataHash:       txs.Hash(),
-		AppHash:        appHash,
-		ConsensusHash:  consHash,
-		ResultsHash:    resHash,
+		ValidatorsHash:  vals.Hash(),
+		DataHash:        txs.Hash(),
+		AppHash:         appHash,
+		ConsensusHash:   consHash,
+		LastResultsHash: resHash,
 	}
 }
 

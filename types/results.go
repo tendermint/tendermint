@@ -1,10 +1,6 @@
 package types
 
 import (
-	"fmt"
-
-	"golang.org/x/crypto/ripemd160"
-
 	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
@@ -14,18 +10,15 @@ import (
 //-----------------------------------------------------------------------------
 
 // ABCIResult is the deterministic component of a ResponseDeliverTx.
+// TODO: add Tags
 type ABCIResult struct {
 	Code uint32     `json:"code"`
 	Data data.Bytes `json:"data"`
 }
 
-// Hash returns the canonical json hash of the ABCIResult
+// Hash returns the canonical hash of the ABCIResult
 func (a ABCIResult) Hash() []byte {
-	// stupid canonical json output, easy to check in any language
-	bs := fmt.Sprintf(`{"code":%d,"data":"%s"}`, a.Code, a.Data)
-	var hasher = ripemd160.New()
-	hasher.Write([]byte(bs))
-	return hasher.Sum(nil)
+	return wire.BinaryRipemd160(a)
 }
 
 // ABCIResults wraps the deliver tx results to return a proof

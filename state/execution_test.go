@@ -70,7 +70,7 @@ func TestValidateBlock(t *testing.T) {
 
 	// wrong results hash fails
 	block = makeBlock(state, 1)
-	block.ResultsHash = []byte("wrong results hash")
+	block.LastResultsHash = []byte("wrong results hash")
 	err = state.ValidateBlock(block)
 	require.Error(t, err)
 }

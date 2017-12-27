@@ -422,7 +422,6 @@ func TestLessThanOneThirdOfVotingPowerPerBlockEnforced(t *testing.T) {
 		height := state.LastBlockHeight + 1
 		block := makeBlock(state, height)
 		abciResponses := &ABCIResponses{
-			Height:   height,
 			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: tc.valUpdatesFn(state.Validators)},
 		}
 		err := state.SetBlockAndValidators(block.Header, types.PartSetHeader{}, abciResponses)
@@ -512,7 +511,6 @@ func makeHeaderPartsResponsesValPowerChange(state *State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		Height:   height,
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
 	}
 
