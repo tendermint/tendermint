@@ -209,27 +209,8 @@ func changeInVotingPowerMoreOrEqualToOneThird(currentSet *types.ValidatorSet, up
 	return false, nil
 }
 
-// return a bit array of validators that signed the last commit
-// NOTE: assumes commits have already been authenticated
-/* function is currently unused
-func commitBitArrayFromBlock(block *types.Block) *cmn.BitArray {
-	signed := cmn.NewBitArray(len(block.LastCommit.Precommits))
-	for i, precommit := range block.LastCommit.Precommits {
-		if precommit != nil {
-			signed.SetIndex(i, true) // val_.LastCommitHeight = block.Height - 1
-		}
-	}
-	return signed
-}
-*/
-
 //-----------------------------------------------------
 // Validate block
-
-// ValidateBlock validates the block against the state.
-func (s *State) ValidateBlock(block *types.Block) error {
-	return s.validateBlock(block)
-}
 
 // MakeBlock builds a block with the given txs and commit from the current state.
 func (s *State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
@@ -248,7 +229,12 @@ func (s *State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*
 	return block, block.MakePartSet(s.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
-func (s *State) validateBlock(b *types.Block) error {
+// ValidateBlock validates the block against the state.
+func (s State) ValidateBlock(block *types.Block) error {
+	return s.validateBlock(block)
+}
+
+func (s State) validateBlock(b *types.Block) error {
 	// validate internal consistency
 	if err := b.ValidateBasic(); err != nil {
 		return err
@@ -310,7 +296,7 @@ func (s *State) validateBlock(b *types.Block) error {
 	}
 
 	for _, ev := range b.Evidence.Evidence {
-		if _, err := s.VerifyEvidence(ev); err != nil {
+		if _, err := VerifyEvidence(s, ev); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
 		}
 	}
@@ -318,9 +304,56 @@ func (s *State) validateBlock(b *types.Block) error {
 	return nil
 }
 
+// VerifyEvidence verifies the evidence fully by checking it is internally
+// consistent and corresponds to an existing or previous validator.
+// It returns the priority of this evidence, or an error.
+// NOTE: return error may be ErrNoValSetForHeight, in which case the validator set
+// for the evidence height could not be loaded.
+func VerifyEvidence(s State, evidence types.Evidence) (priority int64, err error) {
+	height := s.LastBlockHeight
+	evidenceAge := height - evidence.Height()
+	maxAge := s.ConsensusParams.EvidenceParams.MaxAge
+	if evidenceAge > maxAge {
+		return priority, fmt.Errorf("Evidence from height %d is too old. Min height is %d",
+			evidence.Height(), height-maxAge)
+	}
+
+	if err := evidence.Verify(s.ChainID); err != nil {
+		return priority, err
+	}
+
+	// The address must have been an active validator at the height
+	ev := evidence
+	height, addr, idx := ev.Height(), ev.Address(), ev.Index()
+	valset, err := LoadValidators(s.db, height)
+	if err != nil {
+		// XXX/TODO: what do we do if we can't load the valset?
+		// eg. if we have pruned the state or height is too high?
+		return priority, err
+	}
+	valIdx, val := valset.GetByAddress(addr)
+	if val == nil {
+		return priority, fmt.Errorf("Address %X was not a validator at height %d", addr, height)
+	} else if idx != valIdx {
+		return priority, fmt.Errorf("Address %X was validator %d at height %d, not %d", addr, valIdx, height, idx)
+	}
+
+	priority = val.VotingPower
+	return priority, nil
+}
+
 //-----------------------------------------------------------------------------
 // ApplyBlock validates & executes the block, updates state w/ ABCI responses,
 // then commits and updates the mempool atomically, then saves state.
+
+// BlockExecutor provides the context and accessories for properly executing a block.
+type BlockExecutor struct {
+	txEventPublisher types.TxEventPublisher
+	proxyApp         proxy.AppConnConsensus
+
+	mempool types.Mempool
+	evpool  types.EvidencePool
+}
 
 // ApplyBlock validates the block against the state, executes it against the app,
 // commits it, and saves the block and state. It's the only function that needs to be called
@@ -337,7 +370,7 @@ func (s *State) ApplyBlock(txEventPublisher types.TxEventPublisher, proxyAppConn
 	fail.Fail() // XXX
 
 	// save the results before we commit
-	s.SaveABCIResponses(block.Height, abciResponses)
+	SaveABCIResponses(s.db, block.Height, abciResponses)
 
 	fail.Fail() // XXX
 

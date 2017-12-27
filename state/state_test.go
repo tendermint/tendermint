@@ -88,8 +88,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 		},
 	}}
 
-	state.SaveABCIResponses(block.Height, abciResponses)
-	loadedAbciResponses, err := state.LoadABCIResponses(block.Height)
+	SaveABCIResponses(state.db, block.Height, abciResponses)
+	loadedAbciResponses, err := LoadABCIResponses(state.db, block.Height)
 	assert.Nil(err)
 	assert.Equal(abciResponses, loadedAbciResponses,
 		cmn.Fmt(`ABCIResponses don't match: Got %v, Expected %v`, loadedAbciResponses,
@@ -142,7 +142,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	// query all before, should return error
 	for i := range cases {
 		h := int64(i + 1)
-		res, err := state.LoadABCIResponses(h)
+		res, err := LoadABCIResponses(state.db, h)
 		assert.Error(err, "%d: %#v", i, res)
 	}
 
@@ -153,13 +153,13 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			DeliverTx: tc.added,
 			EndBlock:  &abci.ResponseEndBlock{},
 		}
-		state.SaveABCIResponses(h, responses)
+		SaveABCIResponses(state.db, h, responses)
 	}
 
 	// query all before, should return expected value
 	for i, tc := range cases {
 		h := int64(i + 1)
-		res, err := state.LoadABCIResponses(h)
+		res, err := LoadABCIResponses(state.db, h)
 		assert.NoError(err, "%d", i)
 		assert.Equal(tc.expected.Hash(), res.ResultsHash(), "%d", i)
 	}
@@ -173,30 +173,32 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	// can't load anything for height 0
-	v, err := state.LoadValidators(0)
+	v, err := LoadValidators(state.db, 0)
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at height 0")
 
 	// should be able to load for height 1
-	v, err = state.LoadValidators(1)
+	v, err = LoadValidators(state.db, 1)
 	assert.Nil(err, "expected no err at height 1")
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// increment height, save; should be able to load for next height
 	state.LastBlockHeight++
-	state.saveValidatorsInfo()
-	v, err = state.LoadValidators(state.LastBlockHeight + 1)
+	nextHeight := state.LastBlockHeight + 1
+	saveValidatorsInfo(state.db, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
+	v, err = LoadValidators(state.db, nextHeight)
 	assert.Nil(err, "expected no err")
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// increment height, save; should be able to load for next height
 	state.LastBlockHeight += 10
-	state.saveValidatorsInfo()
-	v, err = state.LoadValidators(state.LastBlockHeight + 1)
+	nextHeight = state.LastBlockHeight + 1
+	saveValidatorsInfo(state.db, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
+	v, err = LoadValidators(state.db, nextHeight)
 	assert.Nil(err, "expected no err")
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// should be able to load for next next height
-	_, err = state.LoadValidators(state.LastBlockHeight + 2)
+	_, err = LoadValidators(state.db, state.LastBlockHeight+2)
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
 }
 
@@ -225,7 +227,8 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		header, parts, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
 		err := state.SetBlockAndValidators(header, parts, responses)
 		assert.Nil(t, err)
-		state.saveValidatorsInfo()
+		nextHeight := state.LastBlockHeight + 1
+		saveValidatorsInfo(state.db, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
 	}
 
 	// on each change height, increment the power by one.
@@ -243,7 +246,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	}
 
 	for i, power := range testCases {
-		v, err := state.LoadValidators(int64(i + 1))
+		v, err := LoadValidators(state.db, int64(i+1))
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", i))
 		assert.Equal(t, v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
 		_, val := v.GetByIndex(0)
@@ -268,9 +271,10 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	header, parts, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
 	err := state.SetBlockAndValidators(header, parts, responses)
 	require.Nil(t, err)
-	state.saveValidatorsInfo()
+	nextHeight := state.LastBlockHeight + 1
+	saveValidatorsInfo(state.db, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
 
-	v, err := state.LoadValidators(height + 1)
+	v, err := LoadValidators(state.db, height+1)
 	assert.Nil(t, err)
 	assert.Equal(t, valSetSize, v.Size())
 
@@ -323,7 +327,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		header, parts, responses := makeHeaderPartsResponsesParams(state, i, cp)
 		err := state.SetBlockAndValidators(header, parts, responses)
 		require.Nil(t, err)
-		state.saveConsensusParamsInfo()
+		nextHeight := state.LastBlockHeight + 1
+		saveConsensusParamsInfo(state.db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
 	}
 
 	// make all the test cases by using the same params until after the change
@@ -341,7 +346,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		p, err := state.LoadConsensusParams(testCase.height)
+		p, err := LoadConsensusParams(state.db, testCase.height)
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
 		assert.Equal(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))

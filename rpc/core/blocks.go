@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -337,7 +338,7 @@ func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 
 	// load the results
 	state := consensusState.GetState()
-	results, err := state.LoadABCIResponses(height)
+	results, err := sm.LoadABCIResponses(state.DB(), height)
 	if err != nil {
 		return nil, err
 	}

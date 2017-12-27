@@ -9,22 +9,24 @@ import (
 // EvidencePool maintains a pool of valid evidence
 // in an EvidenceStore.
 type EvidencePool struct {
-	params types.EvidenceParams
 	logger log.Logger
 
-	state         types.State // TODO: update this on commit!
 	evidenceStore *EvidenceStore
+
+	chainID         string
+	lastBlockHeight int64
+	params          types.EvidenceParams
 
 	// never close
 	evidenceChan chan types.Evidence
 }
 
-func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, state types.State) *EvidencePool {
+func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, state *types.State) *EvidencePool {
 	evpool := &EvidencePool{
 		params:        params,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceStore,
-		state:         state,
+		state:         *state,
 		evidenceChan:  make(chan types.Evidence),
 	}
 	return evpool
@@ -56,7 +58,7 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 	// TODO: check if we already have evidence for this
 	// validator at this height so we dont get spammed
 
-	priority, err := evpool.state.VerifyEvidence(evidence)
+	priority, err := sm.VerifyEvidence(evpool.state, evidence)
 	if err != nil {
 		// TODO: if err is just that we cant find it cuz we pruned, ignore.
 		// TODO: if its actually bad evidence, punish peer

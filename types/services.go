@@ -71,15 +71,6 @@ type BlockStore interface {
 }
 
 //------------------------------------------------------
-// state
-
-// State defines the stateful interface used to verify evidence.
-// UNSTABLE
-type State interface {
-	VerifyEvidence(Evidence) (priority int64, err error)
-}
-
-//------------------------------------------------------
 // evidence pool
 
 // EvidencePool defines the EvidencePool interface used by the ConsensusState.
