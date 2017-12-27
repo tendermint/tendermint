@@ -47,20 +47,20 @@ func keyLookup(evidence types.Evidence) []byte {
 }
 
 // big endian padded hex
-func be(h int64) string {
+func bE(h int64) string {
 	return fmt.Sprintf("%0.16X", h)
 }
 
 func keyLookupFromHeightAndHash(height int64, hash []byte) []byte {
-	return _key("%s/%s/%X", baseKeyLookup, be(height), hash)
+	return _key("%s/%s/%X", baseKeyLookup, bE(height), hash)
 }
 
 func keyOutqueue(evidence types.Evidence, priority int64) []byte {
-	return _key("%s/%s/%s/%X", baseKeyOutqueue, be(priority), be(evidence.Height()), evidence.Hash())
+	return _key("%s/%s/%s/%X", baseKeyOutqueue, bE(priority), bE(evidence.Height()), evidence.Hash())
 }
 
 func keyPending(evidence types.Evidence) []byte {
-	return _key("%s/%s/%X", baseKeyPending, be(evidence.Height()), evidence.Hash())
+	return _key("%s/%s/%X", baseKeyPending, bE(evidence.Height()), evidence.Hash())
 }
 
 func _key(fmt_ string, o ...interface{}) []byte {
@@ -170,9 +170,6 @@ func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	ei := store.getEvidenceInfo(evidence)
 	ei.Committed = true
 
-	// TODO: we should use the state db and db.Sync in state.Save instead.
-	// Else, if we call this before state.Save, we may never mark committed evidence as committed.
-	// Else, if we call this after state.Save, we may get stuck broadcasting evidence we never know we committed.
 	lookupKey := keyLookup(evidence)
 	store.db.SetSync(lookupKey, wire.BinaryBytes(ei))
 }

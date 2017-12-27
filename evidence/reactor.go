@@ -66,8 +66,8 @@ func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
 	// send the peer our high-priority evidence.
 	// the rest will be sent by the broadcastRoutine
-	evidence := evR.evpool.PriorityEvidence()
-	msg := &EvidenceListMessage{evidence}
+	evidences := evR.evpool.PriorityEvidence()
+	msg := &EvidenceListMessage{evidences}
 	success := peer.Send(EvidenceChannel, struct{ EvidenceMessage }{msg})
 	if !success {
 		// TODO: remove peer ?
@@ -108,8 +108,8 @@ func (evR *EvidenceReactor) SetEventBus(b *types.EventBus) {
 	evR.eventBus = b
 }
 
-// broadcast new evidence to all peers.
-// broadcasts must be non-blocking so routine is always available to read off EvidenceChan.
+// Broadcast new evidence to all peers.
+// Broadcasts must be non-blocking so routine is always available to read off EvidenceChan.
 func (evR *EvidenceReactor) broadcastRoutine() {
 	ticker := time.NewTicker(time.Second * broadcastEvidenceIntervalS)
 	for {

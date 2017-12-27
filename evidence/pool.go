@@ -12,9 +12,10 @@ type EvidencePool struct {
 	params types.EvidenceParams
 	logger log.Logger
 
-	state         types.State
+	state         types.State // TODO: update this on commit!
 	evidenceStore *EvidenceStore
 
+	// never close
 	evidenceChan chan types.Evidence
 }
 
@@ -52,10 +53,13 @@ func (evpool *EvidencePool) PendingEvidence() []types.Evidence {
 // AddEvidence checks the evidence is valid and adds it to the pool.
 // Blocks on the EvidenceChan.
 func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
+	// TODO: check if we already have evidence for this
+	// validator at this height so we dont get spammed
 
-	// XXX: is this thread safe ?
 	priority, err := evpool.state.VerifyEvidence(evidence)
 	if err != nil {
+		// TODO: if err is just that we cant find it cuz we pruned, ignore.
+		// TODO: if its actually bad evidence, punish peer
 		return err
 	}
 
@@ -67,6 +71,7 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 
 	evpool.logger.Info("Verified new evidence of byzantine behaviour", "evidence", evidence)
 
+	// never closes. always safe to send on
 	evpool.evidenceChan <- evidence
 	return nil
 }
