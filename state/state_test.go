@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/abci/types"
 
@@ -131,79 +132,105 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 }
 
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
-func TestValidatorChangesSaveLoad(t *testing.T) {
+func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
-	assert := assert.New(t)
 
 	// change vals at these heights
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
-
-	// each valset is just one validator.
-	// create list of them
-	pubkeys := make([]crypto.PubKey, N+1)
-	_, val := state.Validators.GetByIndex(0)
-	pubkeys[0] = val.PubKey
-	for i := 1; i < N+1; i++ {
-		pubkeys[i] = crypto.GenPrivKeyEd25519().PubKey()
-	}
 
 	// build the validator history by running SetBlockAndValidators
 	// with the right validator set for each height
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
-	pubkey := pubkeys[changeIndex]
+	_, val := state.Validators.GetByIndex(0)
+	power := val.VotingPower
 	for i := int64(1); i < highestHeight; i++ {
 		// when we get to a change height,
 		// use the next pubkey
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
-			pubkey = pubkeys[changeIndex]
+			power += 1
 		}
-		header, parts, responses := makeHeaderPartsResponses(state, i, pubkey)
-		state.SetBlockAndValidators(header, parts, responses)
+		header, parts, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
+		err := state.SetBlockAndValidators(header, parts, responses)
+		assert.Nil(t, err)
 		state.saveValidatorsInfo()
 	}
 
-	// make all the test cases by using the same validator until after the change
-	testCases := make([]valChangeTestCase, highestHeight)
+	// on each change height, increment the power by one.
+	testCases := make([]int64, highestHeight)
 	changeIndex = 0
-	pubkey = pubkeys[changeIndex]
+	power = val.VotingPower
 	for i := int64(1); i < highestHeight+1; i++ {
 		// we we get to the height after a change height
 		// use the next pubkey (note our counter starts at 0 this time)
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
 			changeIndex++
-			pubkey = pubkeys[changeIndex]
+			power += 1
 		}
-		testCases[i-1] = valChangeTestCase{i, pubkey}
+		testCases[i-1] = power
 	}
 
-	for _, testCase := range testCases {
-		v, err := state.LoadValidators(testCase.height)
-		assert.Nil(err, fmt.Sprintf("expected no err at height %d", testCase.height))
-		assert.Equal(v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
-		addr, _ := v.GetByIndex(0)
+	for i, power := range testCases {
+		v, err := state.LoadValidators(int64(i + 1))
+		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", i))
+		assert.Equal(t, v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
+		_, val := v.GetByIndex(0)
 
-		assert.Equal(addr, testCase.vals.Address(), fmt.Sprintf(`unexpected pubkey at
-                height %d`, testCase.height))
+		assert.Equal(t, val.VotingPower, power, fmt.Sprintf(`unexpected powerat
+                height %d`, i))
 	}
 }
 
-// TestConsensusParamsChangesSaveLoad tests saving and loading consensus params with changes.
+// TestValidatorChangesSaveLoad tests saving and loading a validator set with
+// changes.
+func TestManyValidatorChangesSaveLoad(t *testing.T) {
+	const valSetSize = 7
+	tearDown, _, state := setupTestCase(t)
+	state.Validators = genValSet(valSetSize)
+	state.Save()
+	defer tearDown(t)
+
+	const height = 1
+	pubkey := crypto.GenPrivKeyEd25519().PubKey()
+	// swap the first validator with a new one ^^^ (validator set size stays the same)
+	header, parts, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
+	err := state.SetBlockAndValidators(header, parts, responses)
+	require.Nil(t, err)
+	state.saveValidatorsInfo()
+
+	v, err := state.LoadValidators(height + 1)
+	assert.Nil(t, err)
+	assert.Equal(t, valSetSize, v.Size())
+
+	index, val := v.GetByAddress(pubkey.Address())
+	assert.NotNil(t, val)
+	if index < 0 {
+		t.Fatal("expected to find newly added validator")
+	}
+}
+
+func genValSet(size int) *types.ValidatorSet {
+	vals := make([]*types.Validator, size)
+	for i := 0; i < size; i++ {
+		vals[i] = types.NewValidator(crypto.GenPrivKeyEd25519().PubKey(), 10)
+	}
+	return types.NewValidatorSet(vals)
+}
+
+// TestConsensusParamsChangesSaveLoad tests saving and loading consensus params
+// with changes.
 func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	tearDown, _, state := setupTestCase(t)
 	defer tearDown(t)
-	// nolint: vetshadow
-	assert := assert.New(t)
 
 	// change vals at these heights
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
-	// each valset is just one validator.
+	// each valset is just one validator
 	// create list of them
 	params := make([]types.ConsensusParams, N+1)
 	params[0] = state.ConsensusParams
@@ -225,7 +252,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, parts, responses := makeHeaderPartsResponsesParams(state, i, cp)
-		state.SetBlockAndValidators(header, parts, responses)
+		err := state.SetBlockAndValidators(header, parts, responses)
+		require.Nil(t, err)
 		state.saveConsensusParamsInfo()
 	}
 
@@ -245,8 +273,8 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 
 	for _, testCase := range testCases {
 		p, err := state.LoadConsensusParams(testCase.height)
-		assert.Nil(err, fmt.Sprintf("expected no err at height %d", testCase.height))
-		assert.Equal(testCase.params, p, fmt.Sprintf(`unexpected consensus params at
+		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", testCase.height))
+		assert.Equal(t, testCase.params, p, fmt.Sprintf(`unexpected consensus params at
                 height %d`, testCase.height))
 	}
 }
@@ -268,6 +296,78 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 			BlockPartSizeBytes: partSize,
 		},
 	}
+}
+
+func TestLessThanOneThirdOfVotingPowerPerBlockEnforced(t *testing.T) {
+	testCases := []struct {
+		initialValSetSize int
+		shouldErr         bool
+		valUpdatesFn      func(vals *types.ValidatorSet) []*abci.Validator
+	}{
+		///////////// 1 val (vp: 10) => less than 3 is ok ////////////////////////
+		// adding 1 validator => 10
+		0: {1, false, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 2},
+			}
+		}},
+		1: {1, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 3},
+			}
+		}},
+		2: {1, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 100},
+			}
+		}},
+
+		///////////// 3 val (vp: 30) => less than 10 is ok ////////////////////////
+		// adding and removing validator => 20
+		3: {3, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			_, firstVal := vals.GetByIndex(0)
+			return []*abci.Validator{
+				{PubKey: firstVal.PubKey.Bytes(), Power: 0},
+				{PubKey: pk(), Power: 10},
+			}
+		}},
+		// adding 1 validator => 10
+		4: {3, true, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 10},
+			}
+		}},
+		// adding 2 validators => 8
+		5: {3, false, func(vals *types.ValidatorSet) []*abci.Validator {
+			return []*abci.Validator{
+				{PubKey: pk(), Power: 4},
+				{PubKey: pk(), Power: 4},
+			}
+		}},
+	}
+
+	for i, tc := range testCases {
+		tearDown, _, state := setupTestCase(t)
+		state.Validators = genValSet(tc.initialValSetSize)
+		state.Save()
+		height := state.LastBlockHeight + 1
+		block := makeBlock(state, height)
+		abciResponses := &ABCIResponses{
+			Height:   height,
+			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: tc.valUpdatesFn(state.Validators)},
+		}
+		err := state.SetBlockAndValidators(block.Header, types.PartSetHeader{}, abciResponses)
+		if tc.shouldErr {
+			assert.Error(t, err, "#%d", i)
+		} else {
+			assert.NoError(t, err, "#%d", i)
+		}
+		tearDown(t)
+	}
+}
+
+func pk() []byte {
+	return crypto.GenPrivKeyEd25519().PubKey().Bytes()
 }
 
 func TestApplyUpdates(t *testing.T) {
@@ -316,17 +416,17 @@ func TestApplyUpdates(t *testing.T) {
 	}
 }
 
-func makeHeaderPartsResponses(state *State, height int64,
+func makeHeaderPartsResponsesValPubKeyChange(state *State, height int64,
 	pubkey crypto.PubKey) (*types.Header, types.PartSetHeader, *ABCIResponses) {
 
 	block := makeBlock(state, height)
-	_, val := state.Validators.GetByIndex(0)
 	abciResponses := &ABCIResponses{
 		Height:   height,
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
 	}
 
 	// if the pubkey is new, remove the old and add the new
+	_, val := state.Validators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []*abci.Validator{
@@ -339,9 +439,26 @@ func makeHeaderPartsResponses(state *State, height int64,
 	return block.Header, types.PartSetHeader{}, abciResponses
 }
 
-type valChangeTestCase struct {
-	height int64
-	vals   crypto.PubKey
+func makeHeaderPartsResponsesValPowerChange(state *State, height int64,
+	power int64) (*types.Header, types.PartSetHeader, *ABCIResponses) {
+
+	block := makeBlock(state, height)
+	abciResponses := &ABCIResponses{
+		Height:   height,
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
+	}
+
+	// if the pubkey is new, remove the old and add the new
+	_, val := state.Validators.GetByIndex(0)
+	if val.VotingPower != power {
+		abciResponses.EndBlock = &abci.ResponseEndBlock{
+			ValidatorUpdates: []*abci.Validator{
+				{val.PubKey.Bytes(), power},
+			},
+		}
+	}
+
+	return block.Header, types.PartSetHeader{}, abciResponses
 }
 
 func makeHeaderPartsResponsesParams(state *State, height int64,

@@ -403,14 +403,17 @@ pick up from when it restarts. See information on the Handshake, below.
 EndBlock
 ^^^^^^^^
 
-The EndBlock request can be used to run some code at the end of every
-block. Additionally, the response may contain a list of validators,
-which can be used to update the validator set. To add a new validator or
-update an existing one, simply include them in the list returned in the
-EndBlock response. To remove one, include it in the list with a
-``power`` equal to ``0``. Tendermint core will take care of updating the
-validator set. Note validator set changes are only available in v0.8.0
-and up.
+The EndBlock request can be used to run some code at the end of every block.
+Additionally, the response may contain a list of validators, which can be used
+to update the validator set. To add a new validator or update an existing one,
+simply include them in the list returned in the EndBlock response. To remove
+one, include it in the list with a ``power`` equal to ``0``. Tendermint core
+will take care of updating the validator set. Note the change in voting power
+must be strictly less than 1/3 per block. Otherwise it will be impossible for a
+light client to prove the transition externally. See the `light client docs
+<https://godoc.org/github.com/tendermint/tendermint/lite#hdr-How_We_Track_Validators>`__
+for details on how it tracks validators. Tendermint core will fail with an
+error if the change in voting power is more or equal than 1/3.
 
 .. container:: toggle
 
@@ -421,8 +424,8 @@ and up.
     .. code-block:: go
 
         // Update the validator set
-        func (app *PersistentDummyApplication) EndBlock(height uint64) (resEndBlock types.ResponseEndBlock) {
-          return types.ResponseEndBlock{Diffs: app.changes}
+        func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
+          return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
         }
 
 .. container:: toggle

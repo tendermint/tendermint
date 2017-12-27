@@ -180,7 +180,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
-	updateValidatorTx = dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 100)
+	updateValidatorTx = dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 26)
 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)

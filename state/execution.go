@@ -10,7 +10,6 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -112,9 +111,9 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 		return nil, err
 	}
 
-	valUpdates := abciResponses.EndBlock.ValidatorUpdates
-
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
+
+	valUpdates := abciResponses.EndBlock.ValidatorUpdates
 	if len(valUpdates) > 0 {
 		logger.Info("Updates to validators", "updates", abci.ValidatorsString(valUpdates))
 	}
@@ -122,10 +121,19 @@ func execBlockOnProxyApp(txEventPublisher types.TxEventPublisher, proxyAppConn p
 	return abciResponses, nil
 }
 
-func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.Validator) error {
-	// TODO: prevent change of 1/3+ at once
+func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator) error {
+	// If more or equal than 1/3 of total voting power changed in one block, then
+	// a light client could never prove the transition externally. See
+	// ./lite/doc.go for details on how a light client tracks validators.
+	vp23, err := changeInVotingPowerMoreOrEqualToOneThird(currentSet, updates)
+	if err != nil {
+		return err
+	}
+	if vp23 {
+		return errors.New("the change in voting power must be strictly less than 1/3")
+	}
 
-	for _, v := range changedValidators {
+	for _, v := range updates {
 		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
 		if err != nil {
 			return err
@@ -135,32 +143,68 @@ func updateValidators(validators *types.ValidatorSet, changedValidators []*abci.
 		power := int64(v.Power)
 		// mind the overflow from int64
 		if power < 0 {
-			return errors.New(cmn.Fmt("Power (%d) overflows int64", v.Power))
+			return fmt.Errorf("Power (%d) overflows int64", v.Power)
 		}
 
-		_, val := validators.GetByAddress(address)
+		_, val := currentSet.GetByAddress(address)
 		if val == nil {
 			// add val
-			added := validators.Add(types.NewValidator(pubkey, power))
+			added := currentSet.Add(types.NewValidator(pubkey, power))
 			if !added {
-				return errors.New(cmn.Fmt("Failed to add new validator %X with voting power %d", address, power))
+				return fmt.Errorf("Failed to add new validator %X with voting power %d", address, power)
 			}
 		} else if v.Power == 0 {
 			// remove val
-			_, removed := validators.Remove(address)
+			_, removed := currentSet.Remove(address)
 			if !removed {
-				return errors.New(cmn.Fmt("Failed to remove validator %X)"))
+				return fmt.Errorf("Failed to remove validator %X", address)
 			}
 		} else {
 			// update val
 			val.VotingPower = power
-			updated := validators.Update(val)
+			updated := currentSet.Update(val)
 			if !updated {
-				return errors.New(cmn.Fmt("Failed to update validator %X with voting power %d", address, power))
+				return fmt.Errorf("Failed to update validator %X with voting power %d", address, power)
 			}
 		}
 	}
 	return nil
+}
+
+func changeInVotingPowerMoreOrEqualToOneThird(currentSet *types.ValidatorSet, updates []*abci.Validator) (bool, error) {
+	threshold := currentSet.TotalVotingPower() * 1 / 3
+	acc := int64(0)
+
+	for _, v := range updates {
+		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
+		if err != nil {
+			return false, err
+		}
+
+		address := pubkey.Address()
+		power := int64(v.Power)
+		// mind the overflow from int64
+		if power < 0 {
+			return false, fmt.Errorf("Power (%d) overflows int64", v.Power)
+		}
+
+		_, val := currentSet.GetByAddress(address)
+		if val == nil {
+			acc += power
+		} else {
+			np := val.VotingPower - power
+			if np < 0 {
+				np = -np
+			}
+			acc += np
+		}
+
+		if acc >= threshold {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // return a bit array of validators that signed the last commit
@@ -243,8 +287,8 @@ func (s *State) validateBlock(b *types.Block) error {
 		}
 	} else {
 		if len(b.LastCommit.Precommits) != s.LastValidators.Size() {
-			return errors.New(cmn.Fmt("Invalid block commit size. Expected %v, got %v",
-				s.LastValidators.Size(), len(b.LastCommit.Precommits)))
+			return fmt.Errorf("Invalid block commit size. Expected %v, got %v",
+				s.LastValidators.Size(), len(b.LastCommit.Precommits))
 		}
 		err := s.LastValidators.VerifyCommit(
 			s.ChainID, s.LastBlockID, b.Height-1, b.LastCommit)
