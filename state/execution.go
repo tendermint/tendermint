@@ -242,7 +242,7 @@ func (s *State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*
 	block.LastBlockID = s.LastBlockID
 	block.ValidatorsHash = s.Validators.Hash()
 	block.AppHash = s.AppHash
-	block.ConsensusHash = s.LastConsensusParams.Hash()
+	block.ConsensusHash = s.ConsensusParams.Hash()
 	block.LastResultsHash = s.LastResultsHash
 
 	return block, block.MakePartSet(s.ConsensusParams.BlockGossip.BlockPartSizeBytes)
@@ -279,8 +279,8 @@ func (s *State) validateBlock(b *types.Block) error {
 	if !bytes.Equal(b.AppHash, s.AppHash) {
 		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", s.AppHash, b.AppHash)
 	}
-	if !bytes.Equal(b.ConsensusHash, s.LastConsensusParams.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", s.LastConsensusParams.Hash(), b.ConsensusHash)
+	if !bytes.Equal(b.ConsensusHash, s.ConsensusParams.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", s.ConsensusParams.Hash(), b.ConsensusHash)
 	}
 	if !bytes.Equal(b.LastResultsHash, s.LastResultsHash) {
 		return fmt.Errorf("Wrong Block.Header.LastResultsHash.  Expected %X, got %v", s.LastResultsHash, b.LastResultsHash)

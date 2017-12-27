@@ -71,7 +71,6 @@ type State struct {
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
 	ConsensusParams                  types.ConsensusParams
-	LastConsensusParams              types.ConsensusParams
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
@@ -146,7 +145,6 @@ func (s *State) Copy() *State {
 		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
 
 		ConsensusParams:                  s.ConsensusParams,
-		LastConsensusParams:              s.LastConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 
 		AppHash: s.AppHash,
@@ -374,7 +372,6 @@ func (s *State) setBlockAndValidators(height int64,
 	s.LastValidators = s.Validators.Copy()
 	s.Validators = valSet
 
-	s.LastConsensusParams = s.ConsensusParams
 	s.ConsensusParams = params
 
 	s.LastResultsHash = resultsHash
@@ -501,7 +498,6 @@ func MakeGenesisState(db dbm.DB, genDoc *types.GenesisDoc) (*State, error) {
 		LastHeightValidatorsChanged: 1,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastConsensusParams:              types.ConsensusParams{},
 		LastHeightConsensusParamsChanged: 1,
 
 		AppHash: genDoc.AppHash,
