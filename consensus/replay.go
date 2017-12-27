@@ -323,6 +323,7 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 	// Note that we don't have an old version of the state,
 	// so we by-pass state validation/mutation using sm.ExecCommitBlock.
 	// This also means we won't be saving validator sets if they change during this period.
+	// TODO: Load the historical information to fix this and just use state.ApplyBlock
 	//
 	// If mutateState == true, the final block is replayed with h.replayBlock()
 
@@ -354,11 +355,13 @@ func (h *Handshaker) replayBlocks(proxyApp proxy.AppConns, appBlockHeight, store
 // ApplyBlock on the proxyApp with the last block.
 func (h *Handshaker) replayBlock(height int64, proxyApp proxy.AppConnConsensus) ([]byte, error) {
 	mempool := types.MockMempool{}
+	evpool := types.MockEvidencePool{}
 
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	if err := h.state.ApplyBlock(types.NopEventBus{}, proxyApp, block, meta.BlockID.PartsHeader, mempool); err != nil {
+	if err := h.state.ApplyBlock(types.NopEventBus{}, proxyApp,
+		block, meta.BlockID.PartsHeader, mempool, evpool); err != nil {
 		return nil, err
 	}
 

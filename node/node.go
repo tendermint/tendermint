@@ -19,6 +19,7 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/trust"
@@ -107,6 +108,7 @@ type Node struct {
 	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
 	consensusState   *consensus.ConsensusState   // latest consensus state
 	consensusReactor *consensus.ConsensusReactor // for participating in the consensus
+	evidencePool     *evidence.EvidencePool      // tracking evidence
 	proxyApp         proxy.AppConns              // connection to the application
 	rpcListeners     []net.Listener              // rpc servers
 	txIndexer        txindex.TxIndexer
@@ -128,9 +130,6 @@ func NewNode(config *cfg.Config,
 	}
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
-	consensusLogger := logger.With("module", "consensus")
-	stateLogger := logger.With("module", "state")
-
 	// Get State
 	stateDB, err := dbProvider(&DBContext{"state", config})
 	if err != nil {
@@ -149,6 +148,7 @@ func NewNode(config *cfg.Config,
 		saveGenesisDoc(stateDB, genDoc)
 	}
 
+	stateLogger := logger.With("module", "state")
 	state := sm.LoadState(stateDB)
 	if state == nil {
 		state, err = sm.MakeGenesisState(stateDB, genDoc)
@@ -161,6 +161,7 @@ func NewNode(config *cfg.Config,
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
 	// and sync tendermint and the app by replaying any necessary blocks
+	consensusLogger := logger.With("module", "consensus")
 	handshaker := consensus.NewHandshaker(state, blockStore)
 	handshaker.SetLogger(consensusLogger)
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
@@ -208,8 +209,21 @@ func NewNode(config *cfg.Config,
 		mempool.EnableTxsAvailable()
 	}
 
+	// Make Evidence Reactor
+	evidenceDB, err := dbProvider(&DBContext{"evidence", config})
+	if err != nil {
+		return nil, err
+	}
+	evidenceLogger := logger.With("module", "evidence")
+	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
+	evidencePool := evidence.NewEvidencePool(state.ConsensusParams.EvidenceParams, evidenceStore, state.Copy())
+	evidencePool.SetLogger(evidenceLogger)
+	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
+	evidenceReactor.SetLogger(evidenceLogger)
+
 	// Make ConsensusReactor
-	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
+	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(),
+		proxyApp.Consensus(), blockStore, mempool, evidencePool)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
@@ -224,6 +238,7 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
+	sw.AddReactor("EVIDENCE", evidenceReactor)
 
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
@@ -323,6 +338,7 @@ func NewNode(config *cfg.Config,
 		mempoolReactor:   mempoolReactor,
 		consensusState:   consensusState,
 		consensusReactor: consensusReactor,
+		evidencePool:     evidencePool,
 		proxyApp:         proxyApp,
 		txIndexer:        txIndexer,
 		indexerService:   indexerService,
@@ -416,6 +432,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetMempool(n.mempoolReactor.Mempool)
+	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetSwitch(n.sw)
 	rpccore.SetPubKey(n.privValidator.GetPubKey())
 	rpccore.SetGenesisDoc(n.genesisDoc)
@@ -487,6 +504,11 @@ func (n *Node) ConsensusReactor() *consensus.ConsensusReactor {
 // MempoolReactor returns the Node's MempoolReactor.
 func (n *Node) MempoolReactor() *mempl.MempoolReactor {
 	return n.mempoolReactor
+}
+
+// EvidencePool returns the Node's EvidencePool.
+func (n *Node) EvidencePool() *evidence.EvidencePool {
+	return n.evidencePool
 }
 
 // EventBus returns the Node's EventBus.

@@ -10,18 +10,18 @@ import (
 	"github.com/tendermint/tmlibs/merkle"
 )
 
-// Tx represents a transaction, which may contain arbitrary bytes.
+// Tx is an arbitrary byte array.
+// NOTE: Tx has no types at this level, so when go-wire encoded it's just length-prefixed.
+// Alternatively, it may make sense to add types here and let
+// []byte be type 0x1 so we can have versioned txs if need be in the future.
 type Tx []byte
 
-// Hash returns the hash of the go-wire encoded Tx.
-// Tx has no types at this level, so go-wire encoding only adds length-prefix.
-// NOTE: It may make sense to add types here one day and let []byte be type 0x1
-// so we can have versioned txs if need be in the future.
+// Hash computes the RIPEMD160 hash of the go-wire encoded transaction.
 func (tx Tx) Hash() []byte {
 	return merkle.SimpleHashFromBinary(tx)
 }
 
-// String returns a string representation of the Tx.
+// String returns the hex-encoded transaction as a string.
 func (tx Tx) String() string {
 	return fmt.Sprintf("Tx{%X}", []byte(tx))
 }
@@ -29,7 +29,7 @@ func (tx Tx) String() string {
 // Txs is a slice of Tx.
 type Txs []Tx
 
-// Hash returns the simple Merkle root hash of the Txs.
+// Hash returns the simple Merkle root hash of the transactions.
 func (txs Txs) Hash() []byte {
 	// Recursive impl.
 	// Copied from tmlibs/merkle to avoid allocations
@@ -87,6 +87,7 @@ func (txs Txs) Proof(i int) TxProof {
 	}
 }
 
+// TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
 	Index, Total int
 	RootHash     data.Bytes
@@ -94,12 +95,13 @@ type TxProof struct {
 	Proof        merkle.SimpleProof
 }
 
+// LeadHash returns the hash of the transaction this proof refers to.
 func (tp TxProof) LeafHash() []byte {
 	return tp.Data.Hash()
 }
 
-// Validate returns nil if it matches the dataHash, and is internally consistent
-// otherwise, returns a sensible error
+// Validate verifies the proof. It returns nil if the RootHash matches the dataHash argument,
+// and if the proof is internally consistent. Otherwise, it returns a sensible error.
 func (tp TxProof) Validate(dataHash []byte) error {
 	if !bytes.Equal(dataHash, tp.RootHash) {
 		return errors.New("Proof matches different data hash")

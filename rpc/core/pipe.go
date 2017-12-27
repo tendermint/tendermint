@@ -45,6 +45,7 @@ var (
 	// interfaces defined in types and above
 	blockStore     types.BlockStore
 	mempool        types.Mempool
+	evidencePool   types.EvidencePool
 	consensusState Consensus
 	p2pSwitch      P2P
 
@@ -65,6 +66,10 @@ func SetBlockStore(bs types.BlockStore) {
 
 func SetMempool(mem types.Mempool) {
 	mempool = mem
+}
+
+func SetEvidencePool(evpool types.EvidencePool) {
+	evidencePool = evpool
 }
 
 func SetConsensusState(cs Consensus) {

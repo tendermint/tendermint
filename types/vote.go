@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -13,21 +14,31 @@ import (
 )
 
 var (
-	ErrVoteUnexpectedStep          = errors.New("Unexpected step")
-	ErrVoteInvalidValidatorIndex   = errors.New("Invalid validator index")
-	ErrVoteInvalidValidatorAddress = errors.New("Invalid validator address")
-	ErrVoteInvalidSignature        = errors.New("Invalid signature")
-	ErrVoteInvalidBlockHash        = errors.New("Invalid block hash")
-	ErrVoteNil                     = errors.New("Nil vote")
+	ErrVoteUnexpectedStep            = errors.New("Unexpected step")
+	ErrVoteInvalidValidatorIndex     = errors.New("Invalid validator index")
+	ErrVoteInvalidValidatorAddress   = errors.New("Invalid validator address")
+	ErrVoteInvalidSignature          = errors.New("Invalid signature")
+	ErrVoteInvalidBlockHash          = errors.New("Invalid block hash")
+	ErrVoteNonDeterministicSignature = errors.New("Non-deterministic signature")
+	ErrVoteNil                       = errors.New("Nil vote")
 )
 
 type ErrVoteConflictingVotes struct {
-	VoteA *Vote
-	VoteB *Vote
+	*DuplicateVoteEvidence
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
-	return "Conflicting votes"
+	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
+}
+
+func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflictingVotes {
+	return &ErrVoteConflictingVotes{
+		&DuplicateVoteEvidence{
+			PubKey: val.PubKey,
+			VoteA:  voteA,
+			VoteB:  voteB,
+		},
+	}
 }
 
 // Types of votes
@@ -91,4 +102,15 @@ func (vote *Vote) String() string {
 		vote.Height, vote.Round, vote.Type, typeString,
 		cmn.Fingerprint(vote.BlockID.Hash), vote.Signature,
 		CanonicalTime(vote.Timestamp))
+}
+
+func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
+	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
+		return ErrVoteInvalidValidatorAddress
+	}
+
+	if !pubKey.VerifyBytes(SignBytes(chainID, vote), vote.Signature) {
+		return ErrVoteInvalidSignature
+	}
+	return nil
 }

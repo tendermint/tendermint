@@ -10,7 +10,7 @@ import (
 
 func TestValidateBlock(t *testing.T) {
 	txs := []Tx{Tx("foo"), Tx("bar")}
-	lastID := makeBlockID()
+	lastID := makeBlockIDRandom()
 	h := int64(3)
 
 	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit,
@@ -58,7 +58,18 @@ func TestValidateBlock(t *testing.T) {
 	require.Error(t, err)
 }
 
-func makeBlockID() BlockID {
+func makeBlockIDRandom() BlockID {
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 	return BlockID{blockHash, blockPartsHeader}
+}
+
+func makeBlockID(hash string, partSetSize int, partSetHash string) BlockID {
+	return BlockID{
+		Hash: []byte(hash),
+		PartsHeader: PartSetHeader{
+			Total: partSetSize,
+			Hash:  []byte(partSetHash),
+		},
+	}
+
 }

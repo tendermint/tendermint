@@ -4,7 +4,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 )
 
-// NOTE: all types in this file are considered UNSTABLE
+// NOTE/XXX: all type definitions in this file are considered UNSTABLE
 
 //------------------------------------------------------
 // blockchain services types
@@ -14,7 +14,7 @@ import (
 //------------------------------------------------------
 // mempool
 
-// Mempool defines the mempool interface.
+// Mempool defines the mempool interface as used by the ConsensusState.
 // Updates to the mempool need to be synchronized with committing a block
 // so apps can reset their transient state on Commit
 // UNSTABLE
@@ -63,9 +63,38 @@ type BlockStoreRPC interface {
 	LoadSeenCommit(height int64) *Commit
 }
 
-// BlockStore defines the BlockStore interface.
+// BlockStore defines the BlockStore interface used by the ConsensusState.
 // UNSTABLE
 type BlockStore interface {
 	BlockStoreRPC
 	SaveBlock(block *Block, blockParts *PartSet, seenCommit *Commit)
 }
+
+//------------------------------------------------------
+// state
+
+// State defines the stateful interface used to verify evidence.
+// UNSTABLE
+type State interface {
+	VerifyEvidence(Evidence) (priority int64, err error)
+}
+
+//------------------------------------------------------
+// evidence pool
+
+// EvidencePool defines the EvidencePool interface used by the ConsensusState.
+// UNSTABLE
+type EvidencePool interface {
+	PendingEvidence() []Evidence
+	AddEvidence(Evidence) error
+	MarkEvidenceAsCommitted([]Evidence)
+}
+
+// MockMempool is an empty implementation of a Mempool, useful for testing.
+// UNSTABLE
+type MockEvidencePool struct {
+}
+
+func (m MockEvidencePool) PendingEvidence() []Evidence        { return nil }
+func (m MockEvidencePool) AddEvidence(Evidence) error         { return nil }
+func (m MockEvidencePool) MarkEvidenceAsCommitted([]Evidence) {}

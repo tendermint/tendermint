@@ -272,7 +272,9 @@ FOR_LOOP:
 					// NOTE: we could improve performance if we
 					// didn't make the app commit to disk every block
 					// ... but we would need a way to get the hash without it persisting
-					err := bcR.state.ApplyBlock(bcR.eventBus, bcR.proxyAppConn, first, firstPartsHeader, types.MockMempool{})
+					err := bcR.state.ApplyBlock(bcR.eventBus, bcR.proxyAppConn,
+						first, firstPartsHeader,
+						types.MockMempool{}, types.MockEvidencePool{}) // TODO unmock!
 					if err != nil {
 						// TODO This is bad, are we zombie?
 						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))

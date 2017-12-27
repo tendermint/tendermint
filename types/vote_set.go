@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -145,27 +147,32 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 
 	// Ensure that validator index was set
 	if valIndex < 0 {
-		return false, ErrVoteInvalidValidatorIndex
+		return false, errors.Wrap(ErrVoteInvalidValidatorIndex, "Index < 0")
 	} else if len(valAddr) == 0 {
-		return false, ErrVoteInvalidValidatorAddress
+		return false, errors.Wrap(ErrVoteInvalidValidatorAddress, "Empty address")
 	}
 
 	// Make sure the step matches.
 	if (vote.Height != voteSet.height) ||
 		(vote.Round != voteSet.round) ||
 		(vote.Type != voteSet.type_) {
-		return false, ErrVoteUnexpectedStep
+		return false, errors.Wrapf(ErrVoteUnexpectedStep, "Got %d/%d/%d, expected %d/%d/%d",
+			voteSet.height, voteSet.round, voteSet.type_,
+			vote.Height, vote.Round, vote.Type)
 	}
 
 	// Ensure that signer is a validator.
 	lookupAddr, val := voteSet.valSet.GetByIndex(valIndex)
 	if val == nil {
-		return false, ErrVoteInvalidValidatorIndex
+		return false, errors.Wrapf(ErrVoteInvalidValidatorIndex,
+			"Cannot find validator %d in valSet of size %d", valIndex, voteSet.valSet.Size())
 	}
 
 	// Ensure that the signer has the right address
 	if !bytes.Equal(valAddr, lookupAddr) {
-		return false, ErrVoteInvalidValidatorAddress
+		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
+			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)",
+			valAddr, lookupAddr, valIndex)
 	}
 
 	// If we already know of this vote, return false.
@@ -173,23 +180,19 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		if existing.Signature.Equals(vote.Signature) {
 			return false, nil // duplicate
 		} else {
-			return false, ErrVoteInvalidSignature // NOTE: assumes deterministic signatures
+			return false, errors.Wrapf(ErrVoteNonDeterministicSignature, "Existing vote: %v; New vote: %v", existing, vote)
 		}
 	}
 
 	// Check signature.
-	if !val.PubKey.VerifyBytes(SignBytes(voteSet.chainID, vote), vote.Signature) {
-		// Bad signature.
-		return false, ErrVoteInvalidSignature
+	if err := vote.Verify(voteSet.chainID, val.PubKey); err != nil {
+		return false, errors.Wrapf(err, "Failed to verify vote with ChainID %s and PubKey %s", voteSet.chainID, val.PubKey)
 	}
 
 	// Add vote and get conflicting vote if any
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
 	if conflicting != nil {
-		return added, &ErrVoteConflictingVotes{
-			VoteA: conflicting,
-			VoteB: vote,
-		}
+		return added, NewConflictingVoteError(val, conflicting, vote)
 	} else {
 		if !added {
 			cmn.PanicSanity("Expected to add non-conflicting vote")

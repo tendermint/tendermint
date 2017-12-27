@@ -66,7 +66,8 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	}
 	defer eventBus.Stop()
 	mempool := types.MockMempool{}
-	consensusState := NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool)
+	evpool := types.MockEvidencePool{}
+	consensusState := NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil {

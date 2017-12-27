@@ -100,17 +100,10 @@ type PeerState interface {
 	GetHeight() int64
 }
 
-// Peer describes a peer.
-type Peer interface {
-	IsRunning() bool
-	Send(byte, interface{}) bool
-	Get(string) interface{}
-}
-
 // Send new mempool txs to peer.
 // TODO: Handle mempool or reactor shutdown?
 // As is this routine may block forever if no new txs come in.
-func (memR *MempoolReactor) broadcastTxRoutine(peer Peer) {
+func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 	if !memR.config.Broadcast {
 		return
 	}

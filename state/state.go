@@ -195,6 +195,7 @@ func (s *State) LoadABCIResponses(height int64) (*ABCIResponses, error) {
 }
 
 // LoadValidators loads the ValidatorSet for a given height.
+// Returns ErrNoValSetForHeight if the validator set can't be found for this height.
 func (s *State) LoadValidators(height int64) (*types.ValidatorSet, error) {
 	valInfo := s.loadValidatorsInfo(height)
 	if valInfo == nil {
@@ -380,6 +381,43 @@ func (s *State) setBlockAndValidators(height int64,
 // GetValidators returns the last and current validator sets.
 func (s *State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
+}
+
+// VerifyEvidence verifies the evidence fully by checking it is internally
+// consistent and corresponds to an existing or previous validator.
+// It returns the priority of this evidence, or an error.
+// NOTE: return error may be ErrNoValSetForHeight, in which case the validator set
+// for the evidence height could not be loaded.
+func (s *State) VerifyEvidence(evidence types.Evidence) (priority int64, err error) {
+	evidenceAge := s.LastBlockHeight - evidence.Height()
+	maxAge := s.ConsensusParams.EvidenceParams.MaxAge
+	if evidenceAge > maxAge {
+		return priority, fmt.Errorf("Evidence from height %d is too old. Min height is %d",
+			evidence.Height(), s.LastBlockHeight-maxAge)
+	}
+
+	if err := evidence.Verify(s.ChainID); err != nil {
+		return priority, err
+	}
+
+	// The address must have been an active validator at the height
+	ev := evidence
+	height, addr, idx := ev.Height(), ev.Address(), ev.Index()
+	valset, err := s.LoadValidators(height)
+	if err != nil {
+		// XXX/TODO: what do we do if we can't load the valset?
+		// eg. if we have pruned the state or height is too high?
+		return priority, err
+	}
+	valIdx, val := valset.GetByAddress(addr)
+	if val == nil {
+		return priority, fmt.Errorf("Address %X was not a validator at height %d", addr, height)
+	} else if idx != valIdx {
+		return priority, fmt.Errorf("Address %X was validator %d at height %d, not %d", addr, valIdx, height, idx)
+	}
+
+	priority = val.VotingPower
+	return priority, nil
 }
 
 //------------------------------------------------------------------------
