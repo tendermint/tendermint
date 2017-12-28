@@ -26,8 +26,8 @@ type BlockExecutor struct {
 	// execute the app against this
 	proxyApp proxy.AppConnConsensus
 
-	// tx events
-	txEventPublisher types.TxEventPublisher
+	// events
+	eventBus types.BlockEventPublisher
 
 	// update these with block results after commit
 	mempool types.Mempool
@@ -36,27 +36,29 @@ type BlockExecutor struct {
 	logger log.Logger
 }
 
-// NewBlockExecutor returns a new BlockExecutor.
+// NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
+// Call SetEventBus to provide one.
 func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus,
 	mempool types.Mempool, evpool types.EvidencePool) *BlockExecutor {
 	return &BlockExecutor{
-		db:               db,
-		proxyApp:         proxyApp,
-		txEventPublisher: types.NopEventBus{},
-		mempool:          mempool,
-		evpool:           evpool,
-		logger:           logger,
+		db:       db,
+		proxyApp: proxyApp,
+		eventBus: types.NopEventBus{},
+		mempool:  mempool,
+		evpool:   evpool,
+		logger:   logger,
 	}
 }
 
-// SetTxEventPublisher - set the transaction event publisher. If not called,
-// it defaults to types.NopEventBus.
-func (blockExec *BlockExecutor) SetTxEventPublisher(txEventPublisher types.TxEventPublisher) {
-	blockExec.txEventPublisher = txEventPublisher
+// SetEventBus - sets the event bus for publishing block related events.
+// If not called, it defaults to types.NopEventBus.
+func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) {
+	blockExec.eventBus = eventBus
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
-// commits it, and saves the block and state. It's the only function that needs to be called
+// fires the relevent events, commits the app, and saves the new state and responses.
+// It's the only function that needs to be called
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block *types.Block) (State, error) {
@@ -69,8 +71,6 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 	if err != nil {
 		return s, ErrProxyAppConn(err)
 	}
-
-	fireEvents(blockExec.txEventPublisher, block, abciResponses)
 
 	fail.Fail() // XXX
 
@@ -96,6 +96,12 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 	// update the app hash and save the state
 	s.AppHash = appHash
 	SaveState(blockExec.db, s)
+
+	fail.Fail() // XXX
+
+	// events are fired after everything else
+	// NOTE: if we crash between Commit and Save, events wont be fired during replay
+	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses)
 
 	return s, nil
 }
@@ -354,14 +360,26 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 	}, nil
 }
 
-func fireEvents(txEventPublisher types.TxEventPublisher, block *types.Block, abciResponses *ABCIResponses) {
+// Fire NewBlock, NewBlockHeader.
+// Fire TxEvent for every tx.
+// NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
+func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *types.Block, abciResponses *ABCIResponses) {
+	// NOTE: do we still need this buffer ?
+	txEventBuffer := types.NewTxEventBuffer(eventBus, int(block.NumTxs))
 	for i, tx := range block.Data.Txs {
-		txEventPublisher.PublishEventTx(types.EventDataTx{types.TxResult{
+		txEventBuffer.PublishEventTx(types.EventDataTx{types.TxResult{
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
 			Result: *(abciResponses.DeliverTx[i]),
 		}})
+	}
+
+	eventBus.PublishEventNewBlock(types.EventDataNewBlock{block})
+	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{block.Header})
+	err := txEventBuffer.Flush()
+	if err != nil {
+		logger.Error("Failed to flush event buffer", "err", err)
 	}
 }
 

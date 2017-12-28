@@ -1203,8 +1203,6 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Create a copy of the state for staging
 	// and an event cache for txs
 	stateCopy := cs.state.Copy()
-	txEventBuffer := types.NewTxEventBuffer(cs.eventBus, int(block.NumTxs))
-	cs.blockExec.SetTxEventPublisher(txEventBuffer)
 
 	// Execute and commit the block, update and save the state, and update the mempool.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
@@ -1217,22 +1215,6 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 			cs.Logger.Error("Failed to kill this process - please do so manually", "err", err)
 		}
 		return
-	}
-
-	fail.Fail() // XXX
-
-	// Fire event for new block.
-	// NOTE: If we fail before firing, these events will never fire
-	//
-	// TODO: Either
-	//	* Fire before persisting state, in ApplyBlock
-	//	* Fire on start up if we haven't written any new WAL msgs
-	//   Both options mean we may fire more than once. Is that fine ?
-	cs.eventBus.PublishEventNewBlock(types.EventDataNewBlock{block})
-	cs.eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{block.Header})
-	err = txEventBuffer.Flush()
-	if err != nil {
-		cs.Logger.Error("Failed to flush event buffer", "err", err)
 	}
 
 	fail.Fail() // XXX

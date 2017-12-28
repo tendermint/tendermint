@@ -284,7 +284,6 @@ FOR_LOOP:
 
 					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-					// TODO: should we be firing events? need to fire NewBlock events manually ...
 					// NOTE: we could improve performance if we
 					// didn't make the app commit to disk every block
 					// ... but we would need a way to get the hash without it persisting
