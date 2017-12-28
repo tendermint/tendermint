@@ -57,7 +57,7 @@ func TestStateSaveLoad(t *testing.T) {
 	assert := assert.New(t)
 
 	state.LastBlockHeight++
-	SaveState(stateDB, state, state.AppHash)
+	SaveState(stateDB, state)
 
 	loadedState := LoadState(stateDB)
 	assert.True(state.Equals(loadedState),
@@ -261,7 +261,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, stateDB, state := setupTestCase(t)
 	state.Validators = genValSet(valSetSize)
-	SaveState(stateDB, state, state.AppHash)
+	SaveState(stateDB, state)
 	defer tearDown(t)
 
 	const height = 1
@@ -425,7 +425,7 @@ func TestLessThanOneThirdOfVotingPowerPerBlockEnforced(t *testing.T) {
 	for i, tc := range testCases {
 		tearDown, stateDB, state := setupTestCase(t)
 		state.Validators = genValSet(tc.initialValSetSize)
-		SaveState(stateDB, state, state.AppHash)
+		SaveState(stateDB, state)
 		height := state.LastBlockHeight + 1
 		block := makeBlock(state, height)
 		abciResponses := &ABCIResponses{

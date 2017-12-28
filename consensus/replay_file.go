@@ -18,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -104,11 +105,11 @@ type playback struct {
 	count int // how many lines/msgs into the file are we
 
 	// replays can be reset to beginning
-	fileName     string    // so we can close/reopen the file
-	genesisState *sm.State // so the replay session knows where to restart from
+	fileName     string   // so we can close/reopen the file
+	genesisState sm.State // so the replay session knows where to restart from
 }
 
-func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState *sm.State) *playback {
+func newPlayback(fileName string, fp *os.File, cs *ConsensusState, genState sm.State) *playback {
 	return &playback{
 		cs:           cs,
 		fp:           fp,
@@ -123,7 +124,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 	pb.cs.Stop()
 	pb.cs.Wait()
 
-	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.proxyAppConn,
+	newCS := NewConsensusState(pb.cs.config, pb.genesisState.Copy(), pb.cs.blockExec,
 		pb.cs.blockStore, pb.cs.mempool, pb.cs.evpool)
 	newCS.SetEventBus(pb.cs.eventBus)
 	newCS.startForReplay()
@@ -285,14 +286,14 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 
 	// Get State
 	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
-	state, err := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
+	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(state, blockStore))
+	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(stateDB, state, blockStore))
 	err = proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
@@ -303,8 +304,13 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(cmn.Fmt("Failed to start event bus: %v", err))
 	}
 
-	consensusState := NewConsensusState(csConfig, state.Copy(), proxyApp.Consensus(),
-		blockStore, types.MockMempool{}, types.MockEvidencePool{})
+	mempool, evpool := types.MockMempool{}, types.MockEvidencePool{}
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(),
+		nil, proxyApp.Consensus(),
+		mempool, evpool)
+
+	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,
+		blockStore, mempool, evpool)
 
 	consensusState.SetEventBus(eventBus)
 	return consensusState

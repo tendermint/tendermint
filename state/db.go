@@ -36,7 +36,7 @@ func GetState(stateDB dbm.DB, genesisFile string) (State, error) {
 		if err != nil {
 			return state, err
 		}
-		SaveState(stateDB, state, state.AppHash)
+		SaveState(stateDB, state)
 	}
 
 	return state, nil
@@ -66,9 +66,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 }
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
-// It sets the given appHash on the state before persisting.
-func SaveState(db dbm.DB, s State, appHash []byte) {
-	s.AppHash = appHash
+func SaveState(db dbm.DB, s State) {
 	nextHeight := s.LastBlockHeight + 1
 	saveValidatorsInfo(db, nextHeight, s.LastHeightValidatorsChanged, s.Validators)
 	saveConsensusParamsInfo(db, nextHeight, s.LastHeightConsensusParamsChanged, s.ConsensusParams)

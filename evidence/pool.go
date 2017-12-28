@@ -21,13 +21,13 @@ type EvidencePool struct {
 	evidenceChan chan types.Evidence
 }
 
-func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, state types.State) *EvidencePool {
+func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore) *EvidencePool {
 	evpool := &EvidencePool{
 		params:        params,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceStore,
-		state:         *state,
-		evidenceChan:  make(chan types.Evidence),
+		// state:         *state,
+		evidenceChan: make(chan types.Evidence),
 	}
 	return evpool
 }
@@ -58,12 +58,15 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 	// TODO: check if we already have evidence for this
 	// validator at this height so we dont get spammed
 
-	priority, err := sm.VerifyEvidence(evpool.state, evidence)
-	if err != nil {
-		// TODO: if err is just that we cant find it cuz we pruned, ignore.
-		// TODO: if its actually bad evidence, punish peer
-		return err
-	}
+	// TODO
+	var priority int64
+	/*
+		priority, err := sm.VerifyEvidence(evpool.state, evidence)
+		if err != nil {
+			// TODO: if err is just that we cant find it cuz we pruned, ignore.
+			// TODO: if its actually bad evidence, punish peer
+			return err
+		}*/
 
 	added := evpool.evidenceStore.AddNewEvidence(evidence, priority)
 	if !added {

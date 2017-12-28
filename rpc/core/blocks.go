@@ -337,8 +337,7 @@ func BlockResults(heightPtr *int64) (*ctypes.ResultBlockResults, error) {
 	}
 
 	// load the results
-	state := consensusState.GetState()
-	results, err := sm.LoadABCIResponses(state.DB(), height)
+	results, err := sm.LoadABCIResponses(stateDB, height)
 	if err != nil {
 		return nil, err
 	}

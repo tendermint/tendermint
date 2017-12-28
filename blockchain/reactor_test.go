@@ -21,7 +21,7 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	// Get State
 	stateDB := dbm.NewMemDB()
 	state, _ := sm.GetState(stateDB, config.GenesisFile())
-	sm.SaveState(stateDB, state, state.AppHash)
+	sm.SaveState(stateDB, state)
 
 	return state, blockStore
 }

@@ -30,6 +30,10 @@ type BlockExecutor struct {
 	evpool  types.EvidencePool
 }
 
+func (blockExec *BlockExecutor) SetTxEventPublisher(txEventPublisher types.TxEventPublisher) {
+	blockExec.txEventPublisher = txEventPublisher
+}
+
 // NewBlockExecutor returns a new BlockExecutor.
 func NewBlockExecutor(db dbm.DB, logger log.Logger,
 	txEventer types.TxEventPublisher, proxyApp proxy.AppConnConsensus,
@@ -82,8 +86,9 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 
 	fail.Fail() // XXX
 
-	// save the state and the validators
-	SaveState(blockExec.db, s, appHash)
+	// update the app hash and save the state
+	s.AppHash = appHash
+	SaveState(blockExec.db, s)
 
 	return s, nil
 }
@@ -110,7 +115,7 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 		blockExec.logger.Debug("Commit.Log: " + res.Log)
 	}
 
-	blockExec.logger.Info("Committed state", "height", block.Height, "txs", block.NumTxs, "hash", res.Data)
+	blockExec.logger.Info("Committed state", "height", block.Height, "txs", block.NumTxs, "appHash", res.Data)
 
 	// Update evpool
 	blockExec.evpool.MarkEvidenceAsCommitted(block.Evidence.Evidence)
@@ -343,16 +348,14 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 }
 
 func fireEvents(txEventPublisher types.TxEventPublisher, block *types.Block, abciResponses *ABCIResponses) {
-	// TODO: Fire events
-	/*
-		tx := types.Tx(req.GetDeliverTx().Tx)
+	for i, tx := range block.Data.Txs {
 		txEventPublisher.PublishEventTx(types.EventDataTx{types.TxResult{
 			Height: block.Height,
-			Index:  uint32(txIndex),
+			Index:  uint32(i),
 			Tx:     tx,
-			Result: *txRes,
+			Result: *(abciResponses.DeliverTx[i]),
 		}})
-	*/
+	}
 }
 
 //----------------------------------------------------------------------------------------------------

@@ -91,7 +91,7 @@ func (s State) Bytes() []byte {
 
 // IsEmpty returns true if the State is equal to the empty State.
 func (s State) IsEmpty() bool {
-	return s.LastBlockHeight == 0 // XXX can't compare to Empty
+	return s.Validators == nil // XXX can't compare to Empty
 }
 
 // GetValidators returns the last and current validator sets.

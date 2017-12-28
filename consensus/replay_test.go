@@ -54,7 +54,6 @@ func init() {
 func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, blockDB dbm.DB, stateDB dbm.DB) {
 	logger := log.TestingLogger()
 	state, _ := sm.GetState(stateDB, consensusReplayConfig.GenesisFile())
-	state.SetLogger(logger.With("module", "state"))
 	privValidator := loadPrivValidator(consensusReplayConfig)
 	cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, dummy.NewDummyApplication(), blockDB)
 	cs.SetLogger(logger)
@@ -98,22 +97,22 @@ func sendTxs(cs *ConsensusState, ctx context.Context) {
 func TestWALCrash(t *testing.T) {
 	testCases := []struct {
 		name         string
-		initFn       func(*ConsensusState, context.Context)
+		initFn       func(dbm.DB, *ConsensusState, context.Context)
 		heightToStop int64
 	}{
 		{"empty block",
-			func(cs *ConsensusState, ctx context.Context) {},
+			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {},
 			1},
 		{"block with a smaller part size",
-			func(cs *ConsensusState, ctx context.Context) {
+			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
 				// XXX: is there a better way to change BlockPartSizeBytes?
 				cs.state.ConsensusParams.BlockPartSizeBytes = 512
-				cs.state.Save()
+				sm.SaveState(stateDB, cs.state)
 				go sendTxs(cs, ctx)
 			},
 			1},
 		{"many non-empty blocks",
-			func(cs *ConsensusState, ctx context.Context) {
+			func(stateDB dbm.DB, cs *ConsensusState, ctx context.Context) {
 				go sendTxs(cs, ctx)
 			},
 			3},
@@ -126,7 +125,7 @@ func TestWALCrash(t *testing.T) {
 	}
 }
 
-func crashWALandCheckLiveness(t *testing.T, initFn func(*ConsensusState, context.Context), heightToStop int64) {
+func crashWALandCheckLiveness(t *testing.T, initFn func(dbm.DB, *ConsensusState, context.Context), heightToStop int64) {
 	walPaniced := make(chan error)
 	crashingWal := &crashingWAL{panicCh: walPaniced, heightToStop: heightToStop}
 
@@ -139,8 +138,7 @@ LOOP:
 		// create consensus state from a clean slate
 		logger := log.NewNopLogger()
 		stateDB := dbm.NewMemDB()
-		state, _ := sm.MakeGenesisStateFromFile(stateDB, consensusReplayConfig.GenesisFile())
-		state.SetLogger(logger.With("module", "state"))
+		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		privValidator := loadPrivValidator(consensusReplayConfig)
 		blockDB := dbm.NewMemDB()
 		cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, dummy.NewDummyApplication(), blockDB)
@@ -148,7 +146,7 @@ LOOP:
 
 		// start sending transactions
 		ctx, cancel := context.WithCancel(context.Background())
-		initFn(cs, ctx)
+		initFn(stateDB, cs, ctx)
 
 		// clean up WAL file from the previous iteration
 		walFile := cs.config.WalFile()
@@ -344,12 +342,13 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatalf(err.Error())
 	}
 
-	state, store := stateAndStore(config, privVal.GetPubKey())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
 	store.chain = chain
 	store.commits = commits
 
 	// run the chain through state.ApplyBlock to build up the tendermint state
-	latestAppHash := buildTMStateFromChain(config, state, chain, mode)
+	state = buildTMStateFromChain(config, stateDB, state, chain, mode)
+	latestAppHash := state.AppHash
 
 	// make a new client creator
 	dummyApp := dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "2"))
@@ -358,12 +357,12 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, nil)
-		state, _ := stateAndStore(config, privVal.GetPubKey())
-		buildAppStateFromChain(proxyApp, state, chain, nBlocks, mode)
+		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey())
+		buildAppStateFromChain(proxyApp, stateDB, state, chain, nBlocks, mode)
 	}
 
 	// now start the app using the handshake - it should sync
-	handshaker := NewHandshaker(state, store)
+	handshaker := NewHandshaker(stateDB, state, store)
 	proxyApp := proxy.NewAppConns(clientCreator2, handshaker)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -393,16 +392,21 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	}
 }
 
-func applyBlock(st *sm.State, blk *types.Block, proxyApp proxy.AppConns) {
+func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
 	testPartSize := st.ConsensusParams.BlockPartSizeBytes
-	err := st.ApplyBlock(types.NopEventBus{}, proxyApp.Consensus(), blk, blk.MakePartSet(testPartSize).Header(), mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(),
+		types.NopEventBus{}, proxyApp.Consensus(), mempool, evpool)
+
+	blkID := types.BlockID{blk.Hash(), blk.MakePartSet(testPartSize).Header()}
+	newState, err := blockExec.ApplyBlock(st, blkID, blk)
 	if err != nil {
 		panic(err)
 	}
+	return newState
 }
 
-func buildAppStateFromChain(proxyApp proxy.AppConns,
-	state *sm.State, chain []*types.Block, nBlocks int, mode uint) {
+func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
+	state sm.State, chain []*types.Block, nBlocks int, mode uint) {
 	// start a new app without handshake, play nBlocks blocks
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
@@ -418,24 +422,24 @@ func buildAppStateFromChain(proxyApp proxy.AppConns,
 	case 0:
 		for i := 0; i < nBlocks; i++ {
 			block := chain[i]
-			applyBlock(state, block, proxyApp)
+			state = applyBlock(stateDB, state, block, proxyApp)
 		}
 	case 1, 2:
 		for i := 0; i < nBlocks-1; i++ {
 			block := chain[i]
-			applyBlock(state, block, proxyApp)
+			state = applyBlock(stateDB, state, block, proxyApp)
 		}
 
 		if mode == 2 {
 			// update the dummy height and apphash
 			// as if we ran commit but not
-			applyBlock(state, chain[nBlocks-1], proxyApp)
+			state = applyBlock(stateDB, state, chain[nBlocks-1], proxyApp)
 		}
 	}
 
 }
 
-func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.Block, mode uint) []byte {
+func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
 	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "1")))
 	proxyApp := proxy.NewAppConns(clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
@@ -449,31 +453,26 @@ func buildTMStateFromChain(config *cfg.Config, state *sm.State, chain []*types.B
 		panic(err)
 	}
 
-	var latestAppHash []byte
-
 	switch mode {
 	case 0:
 		// sync right up
 		for _, block := range chain {
-			applyBlock(state, block, proxyApp)
+			state = applyBlock(stateDB, state, block, proxyApp)
 		}
 
-		latestAppHash = state.AppHash
 	case 1, 2:
 		// sync up to the penultimate as if we stored the block.
 		// whether we commit or not depends on the appHash
 		for _, block := range chain[:len(chain)-1] {
-			applyBlock(state, block, proxyApp)
+			state = applyBlock(stateDB, state, block, proxyApp)
 		}
 
 		// apply the final block to a state copy so we can
 		// get the right next appHash but keep the state back
-		stateCopy := state.Copy()
-		applyBlock(stateCopy, chain[len(chain)-1], proxyApp)
-		latestAppHash = stateCopy.AppHash
+		applyBlock(stateDB, state, chain[len(chain)-1], proxyApp)
 	}
 
-	return latestAppHash
+	return state
 }
 
 //--------------------------
@@ -587,13 +586,11 @@ func readPieceFromWAL(msg *TimedWALMessage) interface{} {
 }
 
 // fresh state and mock store
-func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (*sm.State, *mockBlockStore) {
+func stateAndStore(config *cfg.Config, pubKey crypto.PubKey) (dbm.DB, sm.State, *mockBlockStore) {
 	stateDB := dbm.NewMemDB()
-	state, _ := sm.MakeGenesisStateFromFile(stateDB, config.GenesisFile())
-	state.SetLogger(log.TestingLogger().With("module", "state"))
-
+	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	store := NewMockBlockStore(config, state.ConsensusParams)
-	return state, store
+	return stateDB, state, store
 }
 
 //----------------------------------

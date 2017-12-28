@@ -102,7 +102,8 @@ type Node struct {
 	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
 
 	// services
-	eventBus         *types.EventBus             // pub/sub for services
+	eventBus         *types.EventBus // pub/sub for services
+	stateDB          dbm.DB
 	blockStore       *bc.BlockStore              // store the blockchain to disk
 	bcReactor        *bc.BlockchainReactor       // for fast-syncing
 	mempoolReactor   *mempl.MempoolReactor       // for gossipping transactions
@@ -148,21 +149,20 @@ func NewNode(config *cfg.Config,
 		saveGenesisDoc(stateDB, genDoc)
 	}
 
-	stateLogger := logger.With("module", "state")
 	state := sm.LoadState(stateDB)
-	if state == nil {
-		state, err = sm.MakeGenesisState(stateDB, genDoc)
+	if state.IsEmpty() {
+		state, err = sm.MakeGenesisState(genDoc)
 		if err != nil {
 			return nil, err
 		}
-		state.Save()
+		sm.SaveState(stateDB, state)
 	}
-	state.SetLogger(stateLogger)
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
-	// and sync tendermint and the app by replaying any necessary blocks
+	// and sync tendermint and the app by performing a handshake
+	// and replaying any necessary blocks
 	consensusLogger := logger.With("module", "consensus")
-	handshaker := consensus.NewHandshaker(state, blockStore)
+	handshaker := consensus.NewHandshaker(stateDB, state, blockStore)
 	handshaker.SetLogger(consensusLogger)
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
@@ -172,7 +172,6 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
-	state.SetLogger(stateLogger)
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
@@ -194,10 +193,6 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator")
 	}
 
-	// Make BlockchainReactor
-	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
-	bcReactor.SetLogger(logger.With("module", "blockchain"))
-
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
 	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight)
@@ -216,14 +211,24 @@ func NewNode(config *cfg.Config,
 	}
 	evidenceLogger := logger.With("module", "evidence")
 	evidenceStore := evidence.NewEvidenceStore(evidenceDB)
-	evidencePool := evidence.NewEvidencePool(state.ConsensusParams.EvidenceParams, evidenceStore, state.Copy())
+	evidencePool := evidence.NewEvidencePool(state.ConsensusParams.EvidenceParams, evidenceStore) // , state.Copy())
 	evidencePool.SetLogger(evidenceLogger)
 	evidenceReactor := evidence.NewEvidenceReactor(evidencePool)
 	evidenceReactor.SetLogger(evidenceLogger)
 
+	blockExecLogger := logger.With("module", "state")
+	// make block executor for consensus and blockchain reactors to execute blocks
+	blockExec := sm.NewBlockExecutor(stateDB, blockExecLogger,
+		nil, proxyApp.Consensus(),
+		mempool, evidencePool)
+
+	// Make BlockchainReactor
+	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
+	bcReactor.SetLogger(logger.With("module", "blockchain"))
+
 	// Make ConsensusReactor
 	consensusState := consensus.NewConsensusState(config.Consensus, state.Copy(),
-		proxyApp.Consensus(), blockStore, mempool, evidencePool)
+		blockExec, blockStore, mempool, evidencePool)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
@@ -291,7 +296,6 @@ func NewNode(config *cfg.Config,
 	eventBus.SetLogger(logger.With("module", "events"))
 
 	// services which will be publishing and/or subscribing for messages (events)
-	bcReactor.SetEventBus(eventBus)
 	consensusReactor.SetEventBus(eventBus)
 
 	// Transaction indexing
@@ -333,6 +337,7 @@ func NewNode(config *cfg.Config,
 		addrBook:         addrBook,
 		trustMetricStore: trustMetricStore,
 
+		stateDB:          stateDB,
 		blockStore:       blockStore,
 		bcReactor:        bcReactor,
 		mempoolReactor:   mempoolReactor,
@@ -429,6 +434,7 @@ func (n *Node) AddListener(l p2p.Listener) {
 // ConfigureRPC sets all variables in rpccore so they will serve
 // rpc calls from this node
 func (n *Node) ConfigureRPC() {
+	rpccore.SetStateDB(n.stateDB)
 	rpccore.SetBlockStore(n.blockStore)
 	rpccore.SetConsensusState(n.consensusState)
 	rpccore.SetMempool(n.mempoolReactor.Mempool)

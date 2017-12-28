@@ -50,8 +50,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 		return nil, err
 	}
 
-	state := consensusState.GetState()
-	validators, err := sm.LoadValidators(state.DB(), height)
+	validators, err := sm.LoadValidators(stateDB, height)
 	if err != nil {
 		return nil, err
 	}

@@ -17,7 +17,6 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -75,15 +74,16 @@ type ConsensusState struct {
 	privValidator types.PrivValidator // for signing votes
 
 	// services for creating and executing blocks
-	proxyAppConn proxy.AppConnConsensus
-	blockStore   types.BlockStore
-	mempool      types.Mempool
-	evpool       types.EvidencePool
+	// TODO: encapsulate all of this in one "BlockManager"
+	blockExec  *sm.BlockExecutor
+	blockStore types.BlockStore
+	mempool    types.Mempool
+	evpool     types.EvidencePool
 
 	// internal state
 	mtx sync.Mutex
 	cstypes.RoundState
-	state *sm.State // State until height-1.
+	state sm.State // State until height-1.
 
 	// state changes may be triggered by msgs from peers,
 	// msgs from ourself, or by timeouts
@@ -114,10 +114,10 @@ type ConsensusState struct {
 }
 
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state *sm.State, proxyAppConn proxy.AppConnConsensus, blockStore types.BlockStore, mempool types.Mempool, evpool types.EvidencePool) *ConsensusState {
+func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore types.BlockStore, mempool types.Mempool, evpool types.EvidencePool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
-		proxyAppConn:     proxyAppConn,
+		blockExec:        blockExec,
 		blockStore:       blockStore,
 		mempool:          mempool,
 		peerMsgQueue:     make(chan msgInfo, msgQueueSize),
@@ -162,7 +162,7 @@ func (cs *ConsensusState) String() string {
 }
 
 // GetState returns a copy of the chain state.
-func (cs *ConsensusState) GetState() *sm.State {
+func (cs *ConsensusState) GetState() sm.State {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	return cs.state.Copy()
@@ -399,7 +399,7 @@ func (cs *ConsensusState) sendInternalMessage(mi msgInfo) {
 
 // Reconstruct LastCommit from SeenCommit, which we saved along with the block,
 // (which happens even before saving the state)
-func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
+func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 	if state.LastBlockHeight == 0 {
 		return
 	}
@@ -422,12 +422,12 @@ func (cs *ConsensusState) reconstructLastCommit(state *sm.State) {
 
 // Updates ConsensusState and increments height to match that of state.
 // The round becomes 0 and cs.Step becomes cstypes.RoundStepNewHeight.
-func (cs *ConsensusState) updateToState(state *sm.State) {
+func (cs *ConsensusState) updateToState(state sm.State) {
 	if cs.CommitRound > -1 && 0 < cs.Height && cs.Height != state.LastBlockHeight {
 		cmn.PanicSanity(cmn.Fmt("updateToState() expected state height of %v but found %v",
 			cs.Height, state.LastBlockHeight))
 	}
-	if cs.state != nil && cs.state.LastBlockHeight+1 != cs.Height {
+	if !cs.state.IsEmpty() && cs.state.LastBlockHeight+1 != cs.Height {
 		// This might happen when someone else is mutating cs.state.
 		// Someone forgot to pass in state.Copy() somewhere?!
 		cmn.PanicSanity(cmn.Fmt("Inconsistent cs.state.LastBlockHeight+1 %v vs cs.Height %v",
@@ -437,7 +437,7 @@ func (cs *ConsensusState) updateToState(state *sm.State) {
 	// If state isn't further out than cs.state, just ignore.
 	// This happens when SwitchToConsensus() is called in the reactor.
 	// We don't want to reset e.g. the Votes.
-	if cs.state != nil && (state.LastBlockHeight <= cs.state.LastBlockHeight) {
+	if !cs.state.IsEmpty() && (state.LastBlockHeight <= cs.state.LastBlockHeight) {
 		cs.Logger.Info("Ignoring updateToState()", "newHeight", state.LastBlockHeight+1, "oldHeight", cs.state.LastBlockHeight+1)
 		return
 	}
@@ -922,7 +922,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 	}
 
 	// Validate proposal block
-	err := cs.state.ValidateBlock(cs.ProposalBlock)
+	err := sm.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
@@ -1030,7 +1030,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	if cs.ProposalBlock.HashesTo(blockID.Hash) {
 		cs.Logger.Info("enterPrecommit: +2/3 prevoted proposal block. Locking", "hash", blockID.Hash)
 		// Validate the block.
-		if err := cs.state.ValidateBlock(cs.ProposalBlock); err != nil {
+		if err := sm.ValidateBlock(cs.state, cs.ProposalBlock); err != nil {
 			cmn.PanicConsensus(cmn.Fmt("enterPrecommit: +2/3 prevoted for an invalid block: %v", err))
 		}
 		cs.LockedRound = round
@@ -1165,7 +1165,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	if !block.HashesTo(blockID.Hash) {
 		cmn.PanicSanity(cmn.Fmt("Cannot finalizeCommit, ProposalBlock does not hash to commit hash"))
 	}
-	if err := cs.state.ValidateBlock(block); err != nil {
+	if err := sm.ValidateBlock(cs.state, block); err != nil {
 		cmn.PanicConsensus(cmn.Fmt("+2/3 committed an invalid block: %v", err))
 	}
 
@@ -1204,13 +1204,12 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// and an event cache for txs
 	stateCopy := cs.state.Copy()
 	txEventBuffer := types.NewTxEventBuffer(cs.eventBus, int(block.NumTxs))
+	cs.blockExec.SetTxEventPublisher(txEventBuffer)
 
 	// Execute and commit the block, update and save the state, and update the mempool.
-	// All calls to the proxyAppConn come here.
 	// NOTE: the block.AppHash wont reflect these txs until the next block
-	err := stateCopy.ApplyBlock(txEventBuffer, cs.proxyAppConn,
-		block, blockParts.Header(),
-		cs.mempool, cs.evpool)
+	var err error
+	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{block.Hash(), blockParts.Header()}, block)
 	if err != nil {
 		cs.Logger.Error("Error on ApplyBlock. Did the application crash? Please restart tendermint", "err", err)
 		err := cmn.Kill()

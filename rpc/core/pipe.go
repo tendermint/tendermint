@@ -11,6 +11,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -20,7 +21,7 @@ var subscribeTimeout = 5 * time.Second
 // These interfaces are used by RPC and must be thread safe
 
 type Consensus interface {
-	GetState() *sm.State
+	GetState() sm.State
 	GetValidators() (int64, []*types.Validator)
 	GetRoundState() *cstypes.RoundState
 }
@@ -43,6 +44,7 @@ var (
 	proxyAppQuery proxy.AppConnQuery
 
 	// interfaces defined in types and above
+	stateDB        dbm.DB
 	blockStore     types.BlockStore
 	mempool        types.Mempool
 	evidencePool   types.EvidencePool
@@ -59,6 +61,10 @@ var (
 
 	logger log.Logger
 )
+
+func SetStateDB(db dbm.DB) {
+	stateDB = db
+}
 
 func SetBlockStore(bs types.BlockStore) {
 	blockStore = bs
