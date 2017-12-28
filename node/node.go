@@ -380,40 +380,44 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	err = n.dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect()
-	if err != nil {
-		return err
+	// Always connect to manual peers
+	if n.config.P2P.ManualPeers != "" {
+		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.ManualPeers, ","), true)
+		if err != nil {
+			return err
+		}
+	}
+
+	if n.config.P2P.Seeds != "" {
+		err = n.dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect(strings.Split(n.config.P2P.Seeds, ","))
+		if err != nil {
+			return err
+		}
 	}
 
 	// start tx indexer
 	return n.indexerService.Start()
 }
 
-func (n *Node) dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect() error {
-	if n.config.P2P.Seeds == "" {
-		return nil
-	}
-
-	seeds := strings.Split(n.config.P2P.Seeds, ",")
-
+func (n *Node) dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect(seeds []string) error {
 	// prefer peers from address book
 	if n.config.P2P.PexReactor && n.addrBook.Size() > 0 {
-		// give some time to PexReactor to connect us to other peers
-		const fallbackToSeedsAfterSec = 30 * time.Second
+		// give some time for PexReactor to connect us to other peers
+		const fallbackToSeedsAfter = 30 * time.Second
 		go func() {
-			time.Sleep(fallbackToSeedsAfterSec)
+			time.Sleep(fallbackToSeedsAfter)
 			// fallback to dialing seeds if for some reason we can't connect to any
 			// peers
 			outbound, inbound, _ := n.sw.NumPeers()
 			if n.IsRunning() && outbound+inbound == 0 {
-				n.DialSeeds(seeds)
+				// TODO: ignore error?
+				n.sw.DialPeersAsync(n.addrBook, seeds, false)
 			}
 		}()
 		return nil
 	}
 
-	// add seeds to the address book and dial out
-	return n.DialSeeds(seeds)
+	return n.sw.DialPeersAsync(n.addrBook, seeds, false)
 }
 
 // OnStop stops the Node. It implements cmn.Service.
@@ -597,11 +601,6 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 // NodeInfo returns the Node's Info from the Switch.
 func (n *Node) NodeInfo() *p2p.NodeInfo {
 	return n.sw.NodeInfo()
-}
-
-// DialSeeds dials the given seeds on the Switch.
-func (n *Node) DialSeeds(seeds []string) error {
-	return n.sw.DialSeeds(n.addrBook, seeds)
 }
 
 //------------------------------------------------------------------------------

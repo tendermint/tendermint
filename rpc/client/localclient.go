@@ -84,8 +84,8 @@ func (Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return core.DumpConsensusState()
 }
 
-func (Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
-	return core.UnsafeDialSeeds(seeds)
+func (Local) DialManualPeers(manual_peers []string) (*ctypes.ResultDialManualPeers, error) {
+	return core.UnsafeDialManualPeers(manual_peers)
 }
 
 func (Local) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {

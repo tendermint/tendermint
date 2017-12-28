@@ -9,7 +9,7 @@ PROXY_APP=$4
 ID=1
 
 echo "----------------------------------------------------------------------"
-echo "Testing pex creates the addrbook and uses it if seeds are not provided"
+echo "Testing pex creates the addrbook and uses it if manual_peers are not provided"
 echo "(assuming peers are started with pex enabled)"
 
 CLIENT_NAME="pex_addrbook_$ID"
@@ -22,7 +22,7 @@ set +e #CIRCLE
 docker rm -vf "local_testnet_$ID"
 set -e
 
-# NOTE that we do not provide seeds
+# NOTE that we do not provide manual_peers
 bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
 docker cp "/tmp/addrbook.json" "local_testnet_$ID:/go/src/github.com/tendermint/tendermint/test/p2p/data/mach1/core/addrbook.json"
 echo "with the following addrbook:"
@@ -35,7 +35,7 @@ echo ""
 bash test/p2p/client.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$CLIENT_NAME" "test/p2p/pex/check_peer.sh $ID $N"
 
 echo "----------------------------------------------------------------------"
-echo "Testing other peers connect to us if we have neither seeds nor the addrbook"
+echo "Testing other peers connect to us if we have neither manual_peers nor the addrbook"
 echo "(assuming peers are started with pex enabled)"
 
 CLIENT_NAME="pex_no_addrbook_$ID"
@@ -46,7 +46,7 @@ set +e #CIRCLE
 docker rm -vf "local_testnet_$ID"
 set -e 
 
-# NOTE that we do not provide seeds
+# NOTE that we do not provide manual_peers
 bash test/p2p/peer.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$ID" "$PROXY_APP" "--p2p.pex --rpc.unsafe"
 
 # if the client runs forever, it means other peers have removed us from their books (which should not happen)

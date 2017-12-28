@@ -94,7 +94,7 @@ Endpoints that require arguments:
 /broadcast_tx_commit?tx=_
 /broadcast_tx_sync?tx=_
 /commit?height=_
-/dial_seeds?seeds=_
+/dial_manual_peers?manual_peers=_
 /subscribe?event=_
 /tx?hash=_&prove=_
 /unsafe_start_cpu_profiler?filename=_

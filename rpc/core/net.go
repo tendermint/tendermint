@@ -54,18 +54,18 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 	}, nil
 }
 
-func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+func UnsafeDialManualPeers(manual_peers []string) (*ctypes.ResultDialManualPeers, error) {
 
-	if len(seeds) == 0 {
-		return &ctypes.ResultDialSeeds{}, fmt.Errorf("No seeds provided")
+	if len(manual_peers) == 0 {
+		return &ctypes.ResultDialManualPeers{}, fmt.Errorf("No manual peers provided")
 	}
-	// starts go routines to dial each seed after random delays
-	logger.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
-	err := p2pSwitch.DialSeeds(addrBook, seeds)
+	// starts go routines to dial each peer after random delays
+	logger.Info("DialManualPeers", "addrBook", addrBook, "manual_peers", manual_peers)
+	err := p2pSwitch.DialPeersAsync(addrBook, manual_peers, true)
 	if err != nil {
-		return &ctypes.ResultDialSeeds{}, err
+		return &ctypes.ResultDialManualPeers{}, err
 	}
-	return &ctypes.ResultDialSeeds{"Dialing seeds in progress. See /net_info for details"}, nil
+	return &ctypes.ResultDialManualPeers{"Dialing manual peers in progress. See /net_info for details"}, nil
 }
 
 // Get genesis file.

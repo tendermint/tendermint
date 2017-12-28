@@ -107,8 +107,8 @@ func (c Client) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo()
 }
 
-func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
-	return core.UnsafeDialSeeds(seeds)
+func (c Client) DialManualPeers(manual_peers []string) (*ctypes.ResultDialManualPeers, error) {
+	return core.UnsafeDialManualPeers(manual_peers)
 }
 
 func (c Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {

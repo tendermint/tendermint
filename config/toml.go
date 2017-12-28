@@ -42,6 +42,7 @@ laddr = "tcp://0.0.0.0:46657"
 [p2p]
 laddr = "tcp://0.0.0.0:46656"
 seeds = ""
+manual_peers = ""
 `
 
 func defaultConfig(moniker string) string {
@@ -106,6 +107,7 @@ laddr = "tcp://0.0.0.0:36657"
 [p2p]
 laddr = "tcp://0.0.0.0:36656"
 seeds = ""
+manual_peers = ""
 `
 
 func testConfig(moniker string) (testConfig string) {

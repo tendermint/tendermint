@@ -170,7 +170,7 @@ type RPCConfig struct {
 	// NOTE: This server only supports /broadcast_tx_commit
 	GRPCListenAddress string `mapstructure:"grpc_laddr"`
 
-	// Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
+	// Activate unsafe RPC commands like /dial_manual_peers and /unsafe_flush_mempool
 	Unsafe bool `mapstructure:"unsafe"`
 }
 
@@ -203,7 +203,12 @@ type P2PConfig struct {
 	ListenAddress string `mapstructure:"laddr"`
 
 	// Comma separated list of seed nodes to connect to
+	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
+
+	// Comma separated list of manual peers to connect to
+	// We always connect to these
+	ManualPeers string `mapstructure:"manual_peers"`
 
 	// Skip UPNP port forwarding
 	SkipUPNP bool `mapstructure:"skip_upnp"`

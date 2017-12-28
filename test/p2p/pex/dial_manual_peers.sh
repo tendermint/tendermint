@@ -19,13 +19,13 @@ for i in `seq 1 $N`; do
 done
 
 set -e
-# seeds need quotes
-seeds="\"$(test/p2p/ip.sh 1):46656\""
+# manual_peers need quotes
+manual_peers="\"$(test/p2p/ip.sh 1):46656\""
 for i in `seq 2 $N`; do
-	seeds="$seeds,\"$(test/p2p/ip.sh $i):46656\""
+	manual_peers="$manual_peers,\"$(test/p2p/ip.sh $i):46656\""
 done
-echo $seeds
+echo $manual_peers
 
-echo $seeds
+echo $manual_peers
 IP=$(test/p2p/ip.sh 1)
-curl --data-urlencode "seeds=[$seeds]" "$IP:46657/dial_seeds"
+curl --data-urlencode "manual_peers=[$manual_peers]" "$IP:46657/dial_manual_peers"
