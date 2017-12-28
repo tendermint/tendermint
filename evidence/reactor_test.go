@@ -39,8 +39,7 @@ func makeAndConnectEvidenceReactors(config *cfg.Config, N int) []*EvidenceReacto
 
 		params := types.EvidenceParams{}
 		store := NewEvidenceStore(dbm.NewMemDB())
-		state := mockState{}
-		pool := NewEvidencePool(params, store, state)
+		pool := NewEvidencePool(params, store, mockState)
 		reactors[i] = NewEvidenceReactor(pool)
 		reactors[i].SetLogger(logger.With("validator", i))
 	}

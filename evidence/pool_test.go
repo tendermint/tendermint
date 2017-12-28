@@ -6,24 +6,19 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
-type mockState struct{}
-
-func (m mockState) VerifyEvidence(ev types.Evidence) (int64, error) {
-	err := ev.Verify("")
-	return 10, err
-}
+var mockState = sm.State{}
 
 func TestEvidencePool(t *testing.T) {
 	assert := assert.New(t)
 
 	params := types.EvidenceParams{}
 	store := NewEvidenceStore(dbm.NewMemDB())
-	state := mockState{}
-	pool := NewEvidencePool(params, store, state)
+	pool := NewEvidencePool(params, store, mockState)
 
 	goodEvidence := newMockGoodEvidence(5, 1, []byte("val1"))
 	badEvidence := MockBadEvidence{goodEvidence}

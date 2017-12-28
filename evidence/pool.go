@@ -3,6 +3,7 @@ package evidence
 import (
 	"github.com/tendermint/tmlibs/log"
 
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -13,16 +14,16 @@ type EvidencePool struct {
 
 	evidenceStore *EvidenceStore
 
-	chainID         string
-	lastBlockHeight int64
-	params          types.EvidenceParams
+	state  sm.State
+	params types.EvidenceParams
 
 	// never close
 	evidenceChan chan types.Evidence
 }
 
-func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore) *EvidencePool {
+func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, state sm.State) *EvidencePool {
 	evpool := &EvidencePool{
+		state:         state,
 		params:        params,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceStore,
@@ -58,15 +59,25 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 	// TODO: check if we already have evidence for this
 	// validator at this height so we dont get spammed
 
-	// TODO
+	if err := sm.VerifyEvidence(evpool.state, evidence); err != nil {
+		return err
+	}
+
 	var priority int64
-	/*
-		priority, err := sm.VerifyEvidence(evpool.state, evidence)
-		if err != nil {
-			// TODO: if err is just that we cant find it cuz we pruned, ignore.
-			// TODO: if its actually bad evidence, punish peer
-			return err
-		}*/
+	/* // Needs a db ...
+	// TODO: if err is just that we cant find it cuz we pruned, ignore.
+	// TODO: if its actually bad evidence, punish peer
+
+	valset, err := LoadValidators(s.db, ev.Height())
+	if err != nil {
+		// XXX/TODO: what do we do if we can't load the valset?
+		// eg. if we have pruned the state or height is too high?
+		return err
+	}
+	if err := VerifyEvidenceValidator(valSet, ev); err != nil {
+		return types.NewEvidenceInvalidErr(ev, err)
+	}
+	*/
 
 	added := evpool.evidenceStore.AddNewEvidence(evidence, priority)
 	if !added {

@@ -113,12 +113,14 @@ func TestStorePriority(t *testing.T) {
 
 //-------------------------------------------
 const (
-	evidenceTypeMock = byte(0x01)
+	evidenceTypeMockGood = byte(0x01)
+	evidenceTypeMockBad  = byte(0x02)
 )
 
 var _ = wire.RegisterInterface(
 	struct{ types.Evidence }{},
-	wire.ConcreteType{MockGoodEvidence{}, evidenceTypeMock},
+	wire.ConcreteType{MockGoodEvidence{}, evidenceTypeMockGood},
+	wire.ConcreteType{MockBadEvidence{}, evidenceTypeMockBad},
 )
 
 type MockGoodEvidence struct {
