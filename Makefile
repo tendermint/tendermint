@@ -2,8 +2,8 @@ GOTOOLS = \
 	github.com/mitchellh/gox \
 	github.com/Masterminds/glide \
 	github.com/tcnksm/ghr \
-	gopkg.in/alecthomas/gometalinter.v2
-GOTOOLS_CHECK = gox glide ghr gometalinter.v2
+	#gopkg.in/alecthomas/gometalinter.v2
+GOTOOLS_CHECK = gox glide ghr #gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
@@ -42,7 +42,7 @@ check_tools:
 get_tools:
 	@echo "--> Installing tools"
 	go get -u -v $(GOTOOLS)
-	@gometalinter.v2 --install
+	#@gometalinter.v2 --install
 
 update_tools:
 	@echo "--> Updating tools"
@@ -62,11 +62,11 @@ draw_deps:
 ########################################
 ### Testing
 
-test:
+test_unit:
 	@echo "--> Running go test"
 	@go test $(PACKAGES)
 
-test_race:
+test_unit_race:
 	@echo "--> Running go test --race"
 	@go test -v -race $(PACKAGES)
 
