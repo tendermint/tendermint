@@ -32,7 +32,7 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 	// Make the blockchainReactor itself
 	fastSync := true
 	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(),
-		nil, nil, types.MockMempool{}, types.MockEvidencePool{})
+		types.NopEventBus{}, nil, types.MockMempool{}, types.MockEvidencePool{})
 
 	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
