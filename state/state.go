@@ -6,9 +6,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-
 	wire "github.com/tendermint/go-wire"
 
 	"github.com/tendermint/tendermint/types"
@@ -18,18 +15,6 @@ import (
 var (
 	stateKey = []byte("stateKey")
 )
-
-func calcValidatorsKey(height int64) []byte {
-	return []byte(cmn.Fmt("validatorsKey:%v", height))
-}
-
-func calcConsensusParamsKey(height int64) []byte {
-	return []byte(cmn.Fmt("consensusParamsKey:%v", height))
-}
-
-func calcABCIResponsesKey(height int64) []byte {
-	return []byte(cmn.Fmt("abciResponsesKey:%v", height))
-}
 
 //-----------------------------------------------------------------------------
 
@@ -94,16 +79,6 @@ func (s State) Copy() State {
 	}
 }
 
-// Save persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
-// It sets the given appHash on the state before persisting.
-func (s State) Save(db dbm.DB, appHash []byte) {
-	s.AppHash = appHash
-	nextHeight := s.LastBlockHeight + 1
-	saveValidatorsInfo(db, nextHeight, s.LastHeightValidatorsChanged, s.Validators)
-	saveConsensusParamsInfo(db, nextHeight, s.LastHeightConsensusParamsChanged, s.ConsensusParams)
-	db.SetSync(stateKey, s.Bytes())
-}
-
 // Equals returns true if the States are identical.
 func (s State) Equals(s2 State) bool {
 	return bytes.Equal(s.Bytes(), s2.Bytes())
@@ -114,64 +89,34 @@ func (s State) Bytes() []byte {
 	return wire.BinaryBytes(s)
 }
 
-// NextState returns a new State updated according to the header and responses.
-func (s State) NextState(blockID types.BlockID, header *types.Header,
-	abciResponses *ABCIResponses) (State, error) {
-
-	// copy the valset so we can apply changes from EndBlock
-	// and update s.LastValidators and s.Validators
-	prevValSet := s.Validators.Copy()
-	nextValSet := prevValSet.Copy()
-
-	// update the validator set with the latest abciResponses
-	lastHeightValsChanged := s.LastHeightValidatorsChanged
-	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorUpdates)
-		if err != nil {
-			return s, fmt.Errorf("Error changing validator set: %v", err)
-		}
-		// change results from this height but only applies to the next height
-		lastHeightValsChanged = header.Height + 1
-	}
-
-	// Update validator accums and set state variables
-	nextValSet.IncrementAccum(1)
-
-	// update the params with the latest abciResponses
-	nextParams := s.ConsensusParams
-	lastHeightParamsChanged := s.LastHeightConsensusParamsChanged
-	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
-		// NOTE: must not mutate s.ConsensusParams
-		nextParams = s.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
-		err := nextParams.Validate()
-		if err != nil {
-			return s, fmt.Errorf("Error updating consensus params: %v", err)
-		}
-		// change results from this height but only applies to the next height
-		lastHeightParamsChanged = header.Height + 1
-	}
-
-	// NOTE: the AppHash has not been populated.
-	// It will be filled on state.Save.
-	return State{
-		ChainID:                          s.ChainID,
-		LastBlockHeight:                  header.Height,
-		LastBlockTotalTx:                 s.LastBlockTotalTx + header.NumTxs,
-		LastBlockID:                      blockID,
-		LastBlockTime:                    header.Time,
-		Validators:                       nextValSet,
-		LastValidators:                   s.Validators.Copy(),
-		LastHeightValidatorsChanged:      lastHeightValsChanged,
-		ConsensusParams:                  nextParams,
-		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
-		LastResultsHash:                  abciResponses.ResultsHash(),
-		AppHash:                          nil,
-	}, nil
+// IsEmpty returns true if the State is equal to the empty State.
+func (s State) IsEmpty() bool {
+	return s.LastBlockHeight == 0 // XXX can't compare to Empty
 }
 
 // GetValidators returns the last and current validator sets.
 func (s State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
 	return s.LastValidators, s.Validators
+}
+
+//------------------------------------------------------------------------
+// Create a block from the latest state
+
+// MakeBlock builds a block with the given txs and commit from the current state.
+func (s State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
+	// build base block
+	block := types.MakeBlock(height, txs, commit)
+
+	// fill header with state data
+	block.ChainID = s.ChainID
+	block.TotalTxs = s.LastBlockTotalTx + block.NumTxs
+	block.LastBlockID = s.LastBlockID
+	block.ValidatorsHash = s.Validators.Hash()
+	block.AppHash = s.AppHash
+	block.ConsensusHash = s.ConsensusParams.Hash()
+	block.LastResultsHash = s.LastResultsHash
+
+	return block, block.MakePartSet(s.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
 //------------------------------------------------------------------------
@@ -181,10 +126,10 @@ func (s State) GetValidators() (last *types.ValidatorSet, current *types.Validat
 // file.
 //
 // Used during replay and in tests.
-func MakeGenesisStateFromFile(genDocFile string) (*State, error) {
+func MakeGenesisStateFromFile(genDocFile string) (State, error) {
 	genDoc, err := MakeGenesisDocFromFile(genDocFile)
 	if err != nil {
-		return nil, err
+		return State{}, err
 	}
 	return MakeGenesisState(genDoc)
 }
@@ -203,10 +148,10 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 }
 
 // MakeGenesisState creates state from types.GenesisDoc.
-func MakeGenesisState(genDoc *types.GenesisDoc) (*State, error) {
+func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return nil, fmt.Errorf("Error in genesis file: %v", err)
+		return State{}, fmt.Errorf("Error in genesis file: %v", err)
 	}
 
 	// Make validators slice
@@ -223,7 +168,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (*State, error) {
 		}
 	}
 
-	return &State{
+	return State{
 
 		ChainID: genDoc.ChainID,
 

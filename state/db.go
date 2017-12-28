@@ -11,37 +11,50 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
+//------------------------------------------------------------------------
+
+func calcValidatorsKey(height int64) []byte {
+	return []byte(cmn.Fmt("validatorsKey:%v", height))
+}
+
+func calcConsensusParamsKey(height int64) []byte {
+	return []byte(cmn.Fmt("consensusParamsKey:%v", height))
+}
+
+func calcABCIResponsesKey(height int64) []byte {
+	return []byte(cmn.Fmt("abciResponsesKey:%v", height))
+}
+
 // GetState loads the most recent state from the database,
 // or creates a new one from the given genesisFile and persists the result
 // to the database.
-func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
+func GetState(stateDB dbm.DB, genesisFile string) (State, error) {
 	state := LoadState(stateDB)
-	if state == nil {
+	if state.IsEmpty() {
 		var err error
 		state, err = MakeGenesisStateFromFile(genesisFile)
 		if err != nil {
-			return nil, err
+			return state, err
 		}
-		state.Save(stateDB, state.AppHash)
+		SaveState(stateDB, state, state.AppHash)
 	}
 
 	return state, nil
 }
 
 // LoadState loads the State from the database.
-func LoadState(db dbm.DB) *State {
+func LoadState(db dbm.DB) State {
 	return loadState(db, stateKey)
 }
 
-func loadState(db dbm.DB, key []byte) *State {
+func loadState(db dbm.DB, key []byte) (state State) {
 	buf := db.Get(key)
 	if len(buf) == 0 {
-		return nil
+		return state
 	}
 
-	s := new(State)
 	r, n, err := bytes.NewReader(buf), new(int), new(error)
-	wire.ReadBinaryPtr(&s, r, 0, n, err)
+	wire.ReadBinaryPtr(&state, r, 0, n, err)
 	if *err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:
@@ -49,7 +62,17 @@ func loadState(db dbm.DB, key []byte) *State {
 	}
 	// TODO: ensure that buf is completely read.
 
-	return s
+	return state
+}
+
+// SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
+// It sets the given appHash on the state before persisting.
+func SaveState(db dbm.DB, s State, appHash []byte) {
+	s.AppHash = appHash
+	nextHeight := s.LastBlockHeight + 1
+	saveValidatorsInfo(db, nextHeight, s.LastHeightValidatorsChanged, s.Validators)
+	saveConsensusParamsInfo(db, nextHeight, s.LastHeightConsensusParamsChanged, s.ConsensusParams)
+	db.SetSync(stateKey, s.Bytes())
 }
 
 //------------------------------------------------------------------------
@@ -104,7 +127,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 // SaveABCIResponses persists the ABCIResponses to the database.
 // This is useful in case we crash after app.Commit and before s.Save().
 // Responses are indexed by height so they can also be loaded later to produce Merkle proofs.
-func SaveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
+func saveABCIResponses(db dbm.DB, height int64, abciResponses *ABCIResponses) {
 	db.SetSync(calcABCIResponsesKey(height), abciResponses.Bytes())
 }
 
