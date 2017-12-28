@@ -18,11 +18,11 @@ func GetState(stateDB dbm.DB, genesisFile string) (*State, error) {
 	state := LoadState(stateDB)
 	if state == nil {
 		var err error
-		state, err = MakeGenesisStateFromFile(stateDB, genesisFile)
+		state, err = MakeGenesisStateFromFile(genesisFile)
 		if err != nil {
 			return nil, err
 		}
-		state.Save()
+		state.Save(stateDB, state.AppHash)
 	}
 
 	return state, nil
@@ -39,7 +39,7 @@ func loadState(db dbm.DB, key []byte) *State {
 		return nil
 	}
 
-	s := &State{db: db}
+	s := new(State)
 	r, n, err := bytes.NewReader(buf), new(int), new(error)
 	wire.ReadBinaryPtr(&s, r, 0, n, err)
 	if *err != nil {

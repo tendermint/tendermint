@@ -73,7 +73,7 @@ type State struct {
 
 // Copy makes a copy of the State for mutating.
 func (s State) Copy() State {
-	return &State{
+	return State{
 		ChainID: s.ChainID,
 
 		LastBlockHeight:  s.LastBlockHeight,
@@ -95,7 +95,9 @@ func (s State) Copy() State {
 }
 
 // Save persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
-func (s State) Save(db dbm.DB) {
+// It sets the given appHash on the state before persisting.
+func (s State) Save(db dbm.DB, appHash []byte) {
+	s.AppHash = appHash
 	nextHeight := s.LastBlockHeight + 1
 	saveValidatorsInfo(db, nextHeight, s.LastHeightValidatorsChanged, s.Validators)
 	saveConsensusParamsInfo(db, nextHeight, s.LastHeightConsensusParamsChanged, s.ConsensusParams)
@@ -113,7 +115,7 @@ func (s State) Bytes() []byte {
 }
 
 // NextState returns a new State updated according to the header and responses.
-func (s State) NextState(header *types.Header, blockPartsHeader types.PartSetHeader,
+func (s State) NextState(blockID types.BlockID, header *types.Header,
 	abciResponses *ABCIResponses) (State, error) {
 
 	// copy the valset so we can apply changes from EndBlock
@@ -126,7 +128,7 @@ func (s State) NextState(header *types.Header, blockPartsHeader types.PartSetHea
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
 		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
-			return fmt.Errorf("Error changing validator set: %v", err)
+			return s, fmt.Errorf("Error changing validator set: %v", err)
 		}
 		// change results from this height but only applies to the next height
 		lastHeightValsChanged = header.Height + 1
@@ -143,17 +145,19 @@ func (s State) NextState(header *types.Header, blockPartsHeader types.PartSetHea
 		nextParams = s.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
 		err := nextParams.Validate()
 		if err != nil {
-			return fmt.Errorf("Error updating consensus params: %v", err)
+			return s, fmt.Errorf("Error updating consensus params: %v", err)
 		}
 		// change results from this height but only applies to the next height
 		lastHeightParamsChanged = header.Height + 1
 	}
 
+	// NOTE: the AppHash has not been populated.
+	// It will be filled on state.Save.
 	return State{
 		ChainID:                          s.ChainID,
 		LastBlockHeight:                  header.Height,
 		LastBlockTotalTx:                 s.LastBlockTotalTx + header.NumTxs,
-		LastBlockID:                      types.BlockID{header.Hash(), blockPartsHeader},
+		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
 		Validators:                       nextValSet,
 		LastValidators:                   s.Validators.Copy(),
@@ -162,7 +166,7 @@ func (s State) NextState(header *types.Header, blockPartsHeader types.PartSetHea
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
 		LastResultsHash:                  abciResponses.ResultsHash(),
 		AppHash:                          nil,
-	}
+	}, nil
 }
 
 // GetValidators returns the last and current validator sets.
