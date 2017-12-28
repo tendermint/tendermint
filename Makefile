@@ -92,6 +92,10 @@ test_persistence:
 	# run the persistence tests using bash
 	docker run --name run_test -t tester bash test/persist/test.sh
 
+test_persistence_ci:
+	docker run --name run_test -e CIRCLECI=true -t tester bash test/persist/test.sh
+
+
 test_libs:
 	# checkout every github.com/tendermint dir and run its tests
 	# NOTE: on release-* or master branches only (set by Jenkins)

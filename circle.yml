@@ -25,13 +25,13 @@ dependencies:
 
 test:
   override:
-   - cd "$PROJECT_PATH" && make get_tools && make get_vendor_deps
-   - case ${CIRCLE_NODE_INDEX} in 0) cd "$PROJECT_PATH" && make test_unit;; 1) cd "$PROJECT_PATH" && make test_unit_race;; esac:
+   - cd "$PROJECT_PATH" && make build_docker_test_image
+   - case ${CIRCLE_NODE_INDEX} in 0) cd "$PROJECT_PATH" && make test_unit;; 1) cd "$PROJECT_PATH" && make test_unit_race;; 2) cd "$PROJECT_PATH" && make test_cover_ci;; 3) cd "$PROJECT_PATH" && make test_apps_ci;; 4) cd "$PROJECT_PATH" && make test_persistence_ci;; esac:
         parallel: true
    #- cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
         timeout: 1800
-  post:
-    - cd "$PROJECT_PATH" && mv test_integrations.log "${CIRCLE_ARTIFACTS}"
-    - cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
-    - cd "$PROJECT_PATH" && mv coverage.txt "${CIRCLE_ARTIFACTS}"
-    - cd "$PROJECT_PATH" && cp test/logs/messages "${CIRCLE_ARTIFACTS}/docker_logs.txt"
+  #post:
+    #- cd "$PROJECT_PATH" && mv test_integrations.log "${CIRCLE_ARTIFACTS}"
+    #- cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
+    #- cd "$PROJECT_PATH" && mv coverage.txt "${CIRCLE_ARTIFACTS}"
+    #- cd "$PROJECT_PATH" && cp test/logs/messages "${CIRCLE_ARTIFACTS}/docker_logs.txt"
