@@ -18,6 +18,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -128,7 +129,7 @@ func makeAddrs() (string, string, string) {
 // getConfig returns a config for test cases
 func getConfig() *cfg.Config {
 	pathname := makePathname()
-	c := cfg.ResetTestRoot(pathname)
+	c := cfg.ResetTestRoot(fmt.Sprintf("%s_%d", pathname, cmn.RandInt()))
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
