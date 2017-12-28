@@ -10,6 +10,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -17,12 +18,7 @@ import (
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	blockStore := NewBlockStore(dbm.NewMemDB())
-
-	// Get State
-	stateDB := dbm.NewMemDB()
-	state, _ := sm.GetState(stateDB, config.GenesisFile())
-	sm.SaveState(stateDB, state)
-
+	state, _ := sm.LoadStateFromDBOrGenesisFile(dbm.NewMemDB(), config.GenesisFile())
 	return state, blockStore
 }
 
@@ -31,8 +27,8 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 
 	// Make the blockchainReactor itself
 	fastSync := true
-	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(),
-		types.NopEventBus{}, nil, types.MockMempool{}, types.MockEvidencePool{})
+	var nilApp proxy.AppConnConsensus
+	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nilApp, types.MockMempool{}, types.MockEvidencePool{})
 
 	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))

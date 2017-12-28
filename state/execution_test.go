@@ -32,8 +32,7 @@ func TestApplyBlock(t *testing.T) {
 
 	state, stateDB := state(), dbm.NewMemDB()
 
-	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(),
-		types.NopEventBus{}, proxyApp.Consensus(),
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
 		types.MockMempool{}, types.MockEvidencePool{})
 
 	block := makeBlock(state, 1)
@@ -55,14 +54,6 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	defer proxyApp.Stop()
 
 	state := state()
-
-	// there were 2 validators
-	/*val1PrivKey := crypto.GenPrivKeyEd25519()
-	val2PrivKey := crypto.GenPrivKeyEd25519()
-	lastValidators := types.NewValidatorSet([]*types.Validator{
-		types.NewValidator(val1PrivKey.PubKey(), 10),
-		types.NewValidator(val2PrivKey.PubKey(), 5),
-	})*/
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}

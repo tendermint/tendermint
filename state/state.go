@@ -23,7 +23,7 @@ var (
 // including the last validator set and the consensus params.
 // All fields are exposed so the struct can be easily serialized,
 // but none of them should be mutated directly.
-// Instead, use state.Copy() ro state.NextState(...).
+// Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
 	// Immutable

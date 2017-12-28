@@ -20,32 +20,39 @@ import (
 
 // BlockExecutor provides the context and accessories for properly executing a block.
 type BlockExecutor struct {
-	db     dbm.DB
-	logger log.Logger
+	// save state, validators, consensus params, abci responses here
+	db dbm.DB
 
+	// execute the app against this
+	proxyApp proxy.AppConnConsensus
+
+	// tx events
 	txEventPublisher types.TxEventPublisher
-	proxyApp         proxy.AppConnConsensus
 
+	// update these with block results after commit
 	mempool types.Mempool
 	evpool  types.EvidencePool
-}
 
-func (blockExec *BlockExecutor) SetTxEventPublisher(txEventPublisher types.TxEventPublisher) {
-	blockExec.txEventPublisher = txEventPublisher
+	logger log.Logger
 }
 
 // NewBlockExecutor returns a new BlockExecutor.
-func NewBlockExecutor(db dbm.DB, logger log.Logger,
-	txEventer types.TxEventPublisher, proxyApp proxy.AppConnConsensus,
+func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus,
 	mempool types.Mempool, evpool types.EvidencePool) *BlockExecutor {
 	return &BlockExecutor{
-		db,
-		logger,
-		txEventer,
-		proxyApp,
-		mempool,
-		evpool,
+		db:               db,
+		proxyApp:         proxyApp,
+		txEventPublisher: types.NopEventBus{},
+		mempool:          mempool,
+		evpool:           evpool,
+		logger:           logger,
 	}
+}
+
+// SetTxEventPublisher - set the transaction event publisher. If not called,
+// it defaults to types.NopEventBus.
+func (blockExec *BlockExecutor) SetTxEventPublisher(txEventPublisher types.TxEventPublisher) {
+	blockExec.txEventPublisher = txEventPublisher
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,

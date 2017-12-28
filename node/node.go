@@ -138,6 +138,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	// Get genesis doc
+	// TODO: move to state package?
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
 		genDoc, err = genesisDocProvider()
@@ -149,13 +150,9 @@ func NewNode(config *cfg.Config,
 		saveGenesisDoc(stateDB, genDoc)
 	}
 
-	state := sm.LoadState(stateDB)
-	if state.IsEmpty() {
-		state, err = sm.MakeGenesisState(genDoc)
-		if err != nil {
-			return nil, err
-		}
-		sm.SaveState(stateDB, state)
+	state, err := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+	if err != nil {
+		return nil, err
 	}
 
 	// Create the proxyApp, which manages connections (consensus, mempool, query)
@@ -218,9 +215,7 @@ func NewNode(config *cfg.Config,
 
 	blockExecLogger := logger.With("module", "state")
 	// make block executor for consensus and blockchain reactors to execute blocks
-	blockExec := sm.NewBlockExecutor(stateDB, blockExecLogger,
-		types.NopEventBus{}, proxyApp.Consensus(),
-		mempool, evidencePool)
+	blockExec := sm.NewBlockExecutor(stateDB, blockExecLogger, proxyApp.Consensus(), mempool, evidencePool)
 
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)

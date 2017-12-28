@@ -363,14 +363,10 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 
 // ApplyBlock on the proxyApp with the last block.
 func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.AppConnConsensus) (sm.State, error) {
-	mempool := types.MockMempool{}
-	evpool := types.MockEvidencePool{}
-
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger,
-		types.NopEventBus{}, proxyApp, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, types.MockMempool{}, types.MockEvidencePool{})
 
 	var err error
 	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)

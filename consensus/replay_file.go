@@ -305,9 +305,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	}
 
 	mempool, evpool := types.MockMempool{}, types.MockEvidencePool{}
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(),
-		types.NopEventBus{}, proxyApp.Consensus(),
-		mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,
 		blockStore, mempool, evpool)

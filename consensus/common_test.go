@@ -265,8 +265,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 
 	// Make ConsensusReactor
 	stateDB := dbm.NewMemDB() // XXX !!
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(),
-		types.NopEventBus{}, proxyAppConnCon, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
 	cs.SetLogger(log.TestingLogger())
 	cs.SetPrivValidator(pv)
@@ -356,8 +355,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	logger := consensusLogger()
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		state, _ := sm.MakeGenesisState(genDoc)
-		sm.SaveState(stateDB, state)
+		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
 		for _, opt := range configOpts {
 			opt(thisConfig)
@@ -381,8 +379,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	logger := consensusLogger()
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
-		state, _ := sm.MakeGenesisState(genDoc)
-		sm.SaveState(stateDB, state)
+		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
 		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal types.PrivValidator

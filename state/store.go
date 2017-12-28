@@ -25,14 +25,31 @@ func calcABCIResponsesKey(height int64) []byte {
 	return []byte(cmn.Fmt("abciResponsesKey:%v", height))
 }
 
-// GetState loads the most recent state from the database,
-// or creates a new one from the given genesisFile and persists the result
+// LoadStateFromDBOrGenesisFile loads the most recent state from the database,
+// or creates a new one from the given genesisFilePath and persists the result
 // to the database.
-func GetState(stateDB dbm.DB, genesisFile string) (State, error) {
+func LoadStateFromDBOrGenesisFile(stateDB dbm.DB, genesisFilePath string) (State, error) {
 	state := LoadState(stateDB)
 	if state.IsEmpty() {
 		var err error
-		state, err = MakeGenesisStateFromFile(genesisFile)
+		state, err = MakeGenesisStateFromFile(genesisFilePath)
+		if err != nil {
+			return state, err
+		}
+		SaveState(stateDB, state)
+	}
+
+	return state, nil
+}
+
+// LoadStateFromDBOrGenesisDoc loads the most recent state from the database,
+// or creates a new one from the given genesisDoc and persists the result
+// to the database.
+func LoadStateFromDBOrGenesisDoc(stateDB dbm.DB, genesisDoc *types.GenesisDoc) (State, error) {
+	state := LoadState(stateDB)
+	if state.IsEmpty() {
+		var err error
+		state, err = MakeGenesisState(genesisDoc)
 		if err != nil {
 			return state, err
 		}
@@ -67,6 +84,10 @@ func loadState(db dbm.DB, key []byte) (state State) {
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
 func SaveState(db dbm.DB, s State) {
+	saveState(db, s, stateKey)
+}
+
+func saveState(db dbm.DB, s State, key []byte) {
 	nextHeight := s.LastBlockHeight + 1
 	saveValidatorsInfo(db, nextHeight, s.LastHeightValidatorsChanged, s.Validators)
 	saveConsensusParamsInfo(db, nextHeight, s.LastHeightConsensusParamsChanged, s.ConsensusParams)

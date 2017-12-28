@@ -53,7 +53,7 @@ func init() {
 
 func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, blockDB dbm.DB, stateDB dbm.DB) {
 	logger := log.TestingLogger()
-	state, _ := sm.GetState(stateDB, consensusReplayConfig.GenesisFile())
+	state, _ := sm.LoadStateFromDBOrGenesisFile(stateDB, consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
 	cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, dummy.NewDummyApplication(), blockDB)
 	cs.SetLogger(logger)
@@ -394,8 +394,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 func applyBlock(stateDB dbm.DB, st sm.State, blk *types.Block, proxyApp proxy.AppConns) sm.State {
 	testPartSize := st.ConsensusParams.BlockPartSizeBytes
-	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(),
-		types.NopEventBus{}, proxyApp.Consensus(), mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	blkID := types.BlockID{blk.Hash(), blk.MakePartSet(testPartSize).Header()}
 	newState, err := blockExec.ApplyBlock(st, blkID, blk)

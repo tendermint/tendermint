@@ -27,8 +27,7 @@ func NewEvidencePool(params types.EvidenceParams, evidenceStore *EvidenceStore, 
 		params:        params,
 		logger:        log.NewNopLogger(),
 		evidenceStore: evidenceStore,
-		// state:         *state,
-		evidenceChan: make(chan types.Evidence),
+		evidenceChan:  make(chan types.Evidence),
 	}
 	return evpool
 }
