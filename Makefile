@@ -62,6 +62,9 @@ draw_deps:
 ########################################
 ### Testing
 
+build_docker_test_image:
+	docker build -t tester -f ./test/docker/Dockerfile .
+
 test_unit:
 	@echo "--> Running go test"
 	@go test $(PACKAGES)
