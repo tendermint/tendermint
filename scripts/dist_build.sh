@@ -31,7 +31,7 @@ echo "==> Building..."
 		-os="${XC_OS}" \
 		-arch="${XC_ARCH}" \
 		-osarch="!darwin/arm !solaris/amd64 !freebsd/amd64" \
-		-ldflags "-s -w -X ${GIT_IMPORT}.GitCommit='${GIT_COMMIT}'" \
+		-ldflags "-s -w -X ${GIT_IMPORT}.GitCommit=${GIT_COMMIT}" \
 		-output "build/pkg/{{.OS}}_{{.Arch}}/tendermint" \
 		-tags="${BUILD_TAGS}" \
 		github.com/tendermint/tendermint/cmd/tendermint
