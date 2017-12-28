@@ -24,7 +24,7 @@ function start_procs(){
     PID_DUMMY=$!
 
     # before starting tendermint, remove the rpc socket
-    rm $RPC_ADDR
+    rm -f $RPC_ADDR
     if [[ "$indexToFail" == "" ]]; then
         # run in background, dont fail
         if [[ "$CIRCLECI" == true ]]; then

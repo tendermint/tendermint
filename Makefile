@@ -62,16 +62,42 @@ draw_deps:
 ########################################
 ### Testing
 
+## required to be run first by most tests
 build_docker_test_image:
 	docker build -t tester -f ./test/docker/Dockerfile .
 
-test_unit:
-	@echo "--> Running go test"
-	@go test $(PACKAGES)
+### coverage, app, persistence, and libs tests
+test_cover:
+	# cleanup
+	bash ./test/test.sh
+	# run the go unit tests with coverage (in docker)
+	docker run --name run_test -t tester bash test/test_cover.sh
+	
+test_cover_ci:
+	# run the go unit tests with coverage (in docker, for circle)
+	docker run --name run_test -e CIRCLECI=true -t tester bash test/test_cover.sh
 
-test_unit_race:
-	@echo "--> Running go test --race"
-	@go test -v -race $(PACKAGES)
+test_apps:
+	# cleanup
+	bash ./test/test.sh
+	# run the app tests using bash
+	docker run --name run_test -t tester bash test/app/test.sh
+
+test_apps_ci:	
+	docker run --name run_test -e CIRCLECI=true -t tester bash test/app/test.sh
+
+test_persistence:
+	# cleanup
+	bash ./test/test.sh
+	# run the persistence tests using bash
+	docker run --name run_test -t tester bash test/persist/test.sh
+
+test_libs:
+	# checkout every github.com/tendermint dir and run its tests
+	# NOTE: on release-* or master branches only (set by Jenkins)
+	docker run --name run_test -t tester bash test/test_libs.sh
+
+
 
 test_integrations:
 	@bash ./test/test.sh
@@ -87,6 +113,15 @@ vagrant_test:
 	vagrant ssh -c 'make install'
 	vagrant ssh -c 'make test_race'
 	vagrant ssh -c 'make test_integrations'
+
+### go tests without docker
+test_unit:
+	@echo "--> Running go test"
+	@go test $(PACKAGES)
+
+test_unit_race:
+	@echo "--> Running go test --race"
+	@go test -v -race $(PACKAGES)
 
 
 ########################################
