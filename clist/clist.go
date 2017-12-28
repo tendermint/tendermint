@@ -18,7 +18,7 @@ import (
 /*
 
 CElement is an element of a linked-list
-Traversal from a CElement are goroutine-safe.
+Traversal from a CElement is goroutine-safe.
 
 We can't avoid using WaitGroups or for-loops given the documentation
 spec without re-implementing the primitives that already exist in
@@ -220,6 +220,7 @@ func (l *CList) Front() *CElement {
 }
 
 func (l *CList) FrontWait() *CElement {
+	// Loop until the head is non-nil else wait and try again
 	for {
 		l.mtx.RLock()
 		head := l.head
@@ -230,8 +231,7 @@ func (l *CList) FrontWait() *CElement {
 			return head
 		}
 		wg.Wait()
-		// l.head doesn't necessarily exist here.
-		// That's why we need to continue a for-loop.
+		// NOTE: If you think l.head exists here, think harder.
 	}
 }
 
