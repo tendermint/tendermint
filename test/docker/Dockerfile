@@ -25,6 +25,7 @@ ADD scripts scripts
 RUN bash scripts/install_abci_apps.sh
 
 # Now copy in the code
+# NOTE: this will overwrite whatever is in vendor/
 COPY . $REPO
 
 RUN go install ./cmd/tendermint
