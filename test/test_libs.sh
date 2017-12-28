@@ -1,6 +1,9 @@
 #! /bin/bash
 set -e
 
+# NOTE: this test is meant to be run only on release-* or master branches
+# this logic is addressed in the Jenkins configuration
+
 # set glide.lock path
 if [[ "$GLIDE" == "" ]]; then
 	GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
