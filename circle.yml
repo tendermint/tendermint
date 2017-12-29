@@ -25,7 +25,7 @@ dependencies:
 
 test:
   override:
-   - case ${CIRCLE_NODE_INDEX} in 0) cd "$PROJECT_PATH" && make build_docker_test_image && make test_cover_ci;; 1) cd "$PROJECT_PATH" && make build_docker_test_image && make build_docker_test_image && make test_apps_ci;; 2) cd "$PROJECT_PATH" && make build_docker_test_image && make test_persistence_ci;; 3) cd "$PROJECT_PATH" && make build_docker_test_image && make test_p2p;; esac:
+   - case ${CIRCLE_NODE_INDEX} in 0) cd "$PROJECT_PATH" && make build_docker_test_image && make test_cover_ci;; 1) cd "$PROJECT_PATH" && make build_docker_test_image && make test_apps_ci;; 2) cd "$PROJECT_PATH" && make build_docker_test_image && make test_persistence_ci;; 3) cd "$PROJECT_PATH" && make build_docker_test_image && make test_p2p;; esac:
         parallel: true
    #- cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
         timeout: 1800
