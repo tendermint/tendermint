@@ -75,7 +75,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 	require.NoError(t, err)
 	select {
 	case <-newBlockCh:
-	case <-time.After(10 * time.Second):
+	case <-time.After(60 * time.Second):
 		t.Fatalf("Timed out waiting for new block (see trace above)")
 	}
 }
