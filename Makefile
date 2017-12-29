@@ -1,13 +1,13 @@
 GOTOOLS = \
 					github.com/mitchellh/gox \
 					github.com/Masterminds/glide \
-					gopkg.in/alecthomas/gometalinter.v2 \
 					github.com/gogo/protobuf/protoc-gen-gogo \
 					github.com/gogo/protobuf/gogoproto
+					#gopkg.in/alecthomas/gometalinter.v2 \
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
-all: protoc install test metalinter
+all: protoc install test
 
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 
@@ -62,7 +62,7 @@ get_deps:
 
 ensure_tools:
 	go get -u -v $(GOTOOLS)
-	@ gometalinter.v2 --install
+	#@ gometalinter.v2 --install
 
 get_vendor_deps: ensure_tools
 	@ rm -rf vendor/
