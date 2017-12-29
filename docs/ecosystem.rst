@@ -1,7 +1,7 @@
 Tendermint Ecosystem
 ====================
 
-The growing list of applications  built using various pieces of the Tendermint stack can be found at:
+The growing list of applications built using various pieces of the Tendermint stack can be found at:
 
 * https://tendermint.com/ecosystem
 
