@@ -56,6 +56,14 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 	blockExec.eventBus = eventBus
 }
 
+// ValidateBlock validates the given block against the given state.
+// If the block is invalid, it returns an error.
+// Validation does not mutate state, but does require historical information from the stateDB,
+// ie. to verify evidence from a validator at an old height.
+func (blockExec *BlockExecutor) ValidateBlock(s State, block *types.Block) error {
+	return validateBlock(blockExec.db, s, block)
+}
+
 // ApplyBlock validates the block against the state, executes it against the app,
 // fires the relevent events, commits the app, and saves the new state and responses.
 // It's the only function that needs to be called
@@ -63,7 +71,7 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // It takes a blockID to avoid recomputing the parts hash.
 func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block *types.Block) (State, error) {
 
-	if err := validateBlock(s, block); err != nil {
+	if err := blockExec.ValidateBlock(s, block); err != nil {
 		return s, ErrInvalidBlock(err)
 	}
 

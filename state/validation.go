@@ -6,17 +6,18 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/types"
+	dbm "github.com/tendermint/tmlibs/db"
 )
 
 //-----------------------------------------------------
 // Validate block
 
 // ValidateBlock validates the block against the state.
-func ValidateBlock(s State, block *types.Block) error {
-	return validateBlock(s, block)
+func _ValidateBlock(s State, block *types.Block) error {
+	return validateBlock(dbm.NewMemDB(), s, block)
 }
 
-func validateBlock(s State, b *types.Block) error {
+func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 	// validate internal consistency
 	if err := b.ValidateBasic(); err != nil {
 		return err

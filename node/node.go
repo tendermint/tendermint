@@ -291,7 +291,7 @@ func NewNode(config *cfg.Config,
 	eventBus.SetLogger(logger.With("module", "events"))
 
 	// services which will be publishing and/or subscribing for messages (events)
-	blockExec.SetEventBus(eventBus)
+	// consensusReactor will set it on consensusState and blockExecutor
 	consensusReactor.SetEventBus(eventBus)
 
 	// Transaction indexing
