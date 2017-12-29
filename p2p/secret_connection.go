@@ -38,7 +38,7 @@ type SecretConnection struct {
 	recvBuffer []byte
 	recvNonce  *[24]byte
 	sendNonce  *[24]byte
-	remPubKey  crypto.PubKeyEd25519
+	remPubKey  crypto.PubKey
 	shrSecret  *[32]byte // shared secret
 }
 
@@ -46,9 +46,9 @@ type SecretConnection struct {
 // Returns nil if error in handshake.
 // Caller should call conn.Close()
 // See docs/sts-final.pdf for more information.
-func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25519) (*SecretConnection, error) {
+func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
 
-	locPubKey := locPrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
+	locPubKey := locPrivKey.PubKey()
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
@@ -100,12 +100,12 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25
 	}
 
 	// We've authorized.
-	sc.remPubKey = remPubKey.Unwrap().(crypto.PubKeyEd25519)
+	sc.remPubKey = remPubKey
 	return sc, nil
 }
 
 // Returns authenticated remote pubkey
-func (sc *SecretConnection) RemotePubKey() crypto.PubKeyEd25519 {
+func (sc *SecretConnection) RemotePubKey() crypto.PubKey {
 	return sc.remPubKey
 }
 
@@ -258,8 +258,8 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 	return hash32(append(loPubKey[:], hiPubKey[:]...))
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKeyEd25519) (signature crypto.SignatureEd25519) {
-	signature = locPrivKey.Sign(challenge[:]).Unwrap().(crypto.SignatureEd25519)
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature crypto.Signature) {
+	signature = locPrivKey.Sign(challenge[:])
 	return
 }
 
@@ -268,7 +268,7 @@ type authSigMessage struct {
 	Sig crypto.Signature
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signature crypto.SignatureEd25519) (*authSigMessage, error) {
+func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature crypto.Signature) (*authSigMessage, error) {
 	var recvMsg authSigMessage
 	var err1, err2 error
 

@@ -200,7 +200,7 @@ func TestConnPubKeyFilter(t *testing.T) {
 	c1, c2 := netPipe()
 
 	// set pubkey filter
-	s1.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
+	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
 		if bytes.Equal(pubkey.Bytes(), s2.nodeInfo.PubKey.Bytes()) {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
@@ -232,7 +232,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -259,7 +259,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 

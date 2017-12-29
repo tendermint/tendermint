@@ -96,7 +96,6 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	privKey          crypto.PrivKeyEd25519   // local node's p2p key
 	sw               *p2p.Switch             // p2p connections
 	addrBook         *p2p.AddrBook           // known peers
 	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
@@ -169,9 +168,6 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
-
-	// Generate node PrivKey
-	privKey := crypto.GenPrivKeyEd25519()
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -275,7 +271,7 @@ func NewNode(config *cfg.Config,
 			}
 			return nil
 		})
-		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
+		sw.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
 			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
 			if err != nil {
 				return err
@@ -328,7 +324,6 @@ func NewNode(config *cfg.Config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		privKey:          privKey,
 		sw:               sw,
 		addrBook:         addrBook,
 		trustMetricStore: trustMetricStore,
@@ -371,9 +366,13 @@ func (n *Node) OnStart() error {
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
+	// Generate node PrivKey
+	// TODO: Load
+	privKey := crypto.GenPrivKeyEd25519().Wrap()
+
 	// Start the switch
-	n.sw.SetNodeInfo(n.makeNodeInfo())
-	n.sw.SetNodePrivKey(n.privKey)
+	n.sw.SetNodeInfo(n.makeNodeInfo(privKey.PubKey()))
+	n.sw.SetNodePrivKey(privKey)
 	err = n.sw.Start()
 	if err != nil {
 		return err
@@ -534,13 +533,13 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func (n *Node) makeNodeInfo() *p2p.NodeInfo {
+func (n *Node) makeNodeInfo(pubKey crypto.PubKey) *p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := &p2p.NodeInfo{
-		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
+		PubKey:  pubKey,
 		Moniker: n.config.Moniker,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,

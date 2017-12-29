@@ -81,11 +81,11 @@ type Switch struct {
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *cmn.CMap
-	nodeInfo     *NodeInfo             // our node info
-	nodePrivKey  crypto.PrivKeyEd25519 // our node privkey
+	nodeInfo     *NodeInfo      // our node info
+	nodePrivKey  crypto.PrivKey // our node privkey
 
 	filterConnByAddr   func(net.Addr) error
-	filterConnByPubKey func(crypto.PubKeyEd25519) error
+	filterConnByPubKey func(crypto.PubKey) error
 
 	rng *rand.Rand // seed for randomizing dial times and orders
 }
@@ -184,10 +184,10 @@ func (sw *Switch) NodeInfo() *NodeInfo {
 // SetNodePrivKey sets the switch's private key for authenticated encryption.
 // NOTE: Overwrites sw.nodeInfo.PubKey.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
+func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKey) {
 	sw.nodePrivKey = nodePrivKey
 	if sw.nodeInfo != nil {
-		sw.nodeInfo.PubKey = nodePrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
+		sw.nodeInfo.PubKey = nodePrivKey.PubKey()
 	}
 }
 
@@ -285,7 +285,7 @@ func (sw *Switch) FilterConnByAddr(addr net.Addr) error {
 }
 
 // FilterConnByPubKey returns an error if connecting to the given public key is forbidden.
-func (sw *Switch) FilterConnByPubKey(pubkey crypto.PubKeyEd25519) error {
+func (sw *Switch) FilterConnByPubKey(pubkey crypto.PubKey) error {
 	if sw.filterConnByPubKey != nil {
 		return sw.filterConnByPubKey(pubkey)
 	}
@@ -299,7 +299,7 @@ func (sw *Switch) SetAddrFilter(f func(net.Addr) error) {
 }
 
 // SetPubKeyFilter sets the function for filtering connections by public key.
-func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKeyEd25519) error) {
+func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKey) error) {
 	sw.filterConnByPubKey = f
 }
 
@@ -603,14 +603,14 @@ func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	// TODO: let the config be passed in?
 	s := initSwitch(i, NewSwitch(cfg))
 	s.SetNodeInfo(&NodeInfo{
-		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
+		PubKey:     privKey.PubKey(),
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
 		RemoteAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	})
-	s.SetNodePrivKey(privKey)
+	s.SetNodePrivKey(privKey.Wrap())
 	return s
 }
 
