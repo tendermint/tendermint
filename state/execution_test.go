@@ -82,6 +82,51 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	}
 }
 
+// TestBeginBlockByzantineValidators ensures we send byzantine validators list.
+func TestBeginBlockByzantineValidators(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc, nil)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state := state()
+
+	prevHash := state.LastBlockID.Hash
+	prevParts := types.PartSetHeader{}
+	prevBlockID := types.BlockID{prevHash, prevParts}
+
+	height1, idx1, val1 := int64(8), 0, []byte("val1")
+	height2, idx2, val2 := int64(3), 1, []byte("val2")
+	ev1 := types.NewMockGoodEvidence(height1, idx1, val1)
+	ev2 := types.NewMockGoodEvidence(height2, idx2, val2)
+
+	testCases := []struct {
+		desc                        string
+		evidence                    []types.Evidence
+		expectedByzantineValidators []*abci.Evidence
+	}{
+		{"none byzantine", []types.Evidence{}, []*abci.Evidence{}},
+		{"one byzantine", []types.Evidence{ev1}, []*abci.Evidence{{ev1.Address(), ev1.Height()}}},
+		{"multiple byzantine", []types.Evidence{ev1, ev2}, []*abci.Evidence{
+			{ev1.Address(), ev1.Height()},
+			{ev2.Address(), ev2.Height()}}},
+	}
+
+	for _, tc := range testCases {
+		lastCommit := &types.Commit{BlockID: prevBlockID}
+
+		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
+		block.Evidence.Evidence = tc.evidence
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
+		require.Nil(t, err, tc.desc)
+
+		// -> app must receive an index of the byzantine validator
+		assert.Equal(t, tc.expectedByzantineValidators, app.ByzantineValidators, tc.desc)
+	}
+}
+
 //----------------------------------------------------------------------------
 
 // make some bogus txs
@@ -115,7 +160,8 @@ var _ abci.Application = (*testApp)(nil)
 type testApp struct {
 	abci.BaseApplication
 
-	AbsentValidators []int32
+	AbsentValidators    []int32
+	ByzantineValidators []*abci.Evidence
 }
 
 func NewDummyApplication() *testApp {
@@ -128,6 +174,7 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 
 func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
 	app.AbsentValidators = req.AbsentValidators
+	app.ByzantineValidators = req.ByzantineValidators
 	return abci.ResponseBeginBlock{}
 }
 

@@ -191,13 +191,20 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 
 	// TODO: determine which validators were byzantine
+	byzantineVals := make([]*abci.Evidence, len(block.Evidence.Evidence))
+	for i, ev := range block.Evidence.Evidence {
+		byzantineVals[i] = &abci.Evidence{
+			PubKey: ev.Address(), // XXX
+			Height: ev.Height(),
+		}
+	}
 
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              types.TM2PB.Header(block.Header),
 		AbsentValidators:    absentVals,
-		ByzantineValidators: nil,
+		ByzantineValidators: byzantineVals,
 	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)

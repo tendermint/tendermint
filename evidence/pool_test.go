@@ -53,8 +53,8 @@ func TestEvidencePool(t *testing.T) {
 	store := NewEvidenceStore(dbm.NewMemDB())
 	pool := NewEvidencePool(stateDB, store)
 
-	goodEvidence := newMockGoodEvidence(height, 0, valAddr)
-	badEvidence := MockBadEvidence{goodEvidence}
+	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
+	badEvidence := types.MockBadEvidence{goodEvidence}
 
 	err := pool.AddEvidence(badEvidence)
 	assert.NotNil(err)
