@@ -21,7 +21,7 @@ func InitChain(client abcicli.Client) error {
 	}
 	_, err := client.InitChainSync(types.RequestInitChain{Validators: vals})
 	if err != nil {
-		fmt.Println("Failed test: InitChain - %v", err)
+		fmt.Printf("Failed test: InitChain - %v\n", err)
 		return err
 	}
 	fmt.Println("Passed test: InitChain")
@@ -33,7 +33,7 @@ func SetOption(client abcicli.Client, key, value string) error {
 	log := res.GetLog()
 	if err != nil {
 		fmt.Println("Failed test: SetOption")
-		fmt.Printf("setting %v=%v: \nlog: %v", key, value, log)
+		fmt.Printf("setting %v=%v: \nlog: %v\n", key, value, log)
 		fmt.Println("Failed test: SetOption")
 		return err
 	}
@@ -46,12 +46,12 @@ func Commit(client abcicli.Client, hashExp []byte) error {
 	_, data := res.Code, res.Data
 	if err != nil {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("committing %v\nlog: %v", res.GetLog())
+		fmt.Printf("committing %v\nlog: %v\n", res.GetLog(), err)
 		return err
 	}
 	if !bytes.Equal(data, hashExp) {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("Commit hash was unexpected. Got %X expected %X",
+		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n",
 			data.Bytes(), hashExp)
 		return errors.New("CommitTx failed")
 	}
@@ -64,13 +64,13 @@ func DeliverTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: DeliverTx")
-		fmt.Printf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v",
+		fmt.Printf("DeliverTx response code was unexpected. Got %v expected %v. Log: %v\n",
 			code, codeExp, log)
 		return errors.New("DeliverTx error")
 	}
 	if !bytes.Equal(data, dataExp) {
 		fmt.Println("Failed test: DeliverTx")
-		fmt.Printf("DeliverTx response data was unexpected. Got %X expected %X",
+		fmt.Printf("DeliverTx response data was unexpected. Got %X expected %X\n",
 			data, dataExp)
 		return errors.New("DeliverTx error")
 	}
@@ -83,13 +83,13 @@ func CheckTx(client abcicli.Client, txBytes []byte, codeExp uint32, dataExp []by
 	code, data, log := res.Code, res.Data, res.Log
 	if code != codeExp {
 		fmt.Println("Failed test: CheckTx")
-		fmt.Printf("CheckTx response code was unexpected. Got %v expected %v. Log: %v",
+		fmt.Printf("CheckTx response code was unexpected. Got %v expected %v. Log: %v\n",
 			code, codeExp, log)
 		return errors.New("CheckTx")
 	}
 	if !bytes.Equal(data, dataExp) {
 		fmt.Println("Failed test: CheckTx")
-		fmt.Printf("CheckTx response data was unexpected. Got %X expected %X",
+		fmt.Printf("CheckTx response data was unexpected. Got %X expected %X\n",
 			data, dataExp)
 		return errors.New("CheckTx")
 	}

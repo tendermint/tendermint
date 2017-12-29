@@ -2,6 +2,7 @@ package types
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -137,3 +138,19 @@ func (r *ResponseCommit) UnmarshalJSON(b []byte) error {
 	reader := bytes.NewBuffer(b)
 	return jsonpbUnmarshaller.Unmarshal(reader, r)
 }
+
+// Some compile time assertions to ensure we don't
+// have accidental runtime surprises later on.
+
+// jsonEncodingRoundTripper ensures that asserted
+// interfaces implement both MarshalJSON and UnmarshalJSON
+type jsonRoundTripper interface {
+	json.Marshaler
+	json.Unmarshaler
+}
+
+var _ jsonRoundTripper = (*ResponseCommit)(nil)
+var _ jsonRoundTripper = (*ResponseQuery)(nil)
+var _ jsonRoundTripper = (*ResponseDeliverTx)(nil)
+var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
+var _ jsonRoundTripper = (*ResponseSetOption)(nil)
