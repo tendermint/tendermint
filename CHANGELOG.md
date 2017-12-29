@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.0 (December 29, 2017)
+
+BREAKING:
+ - [cli] remove --root
+ - [pubsub] add String() method to Query interface
+
+IMPROVEMENTS:
+ - [common] use a thread-safe and well seeded non-crypto rng
+
+BUG FIXES
+ - [clist] fix misuse of wait group
+ - [common] introduce Ticker interface and logicalTicker for better testing of timers
+
 ## 0.5.0 (December 5, 2017)
 
 BREAKING:
