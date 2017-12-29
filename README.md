@@ -26,6 +26,12 @@ and securely replicates it on many machines.
 
 For more information, from introduction to install to application development, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
 
+## Minimum requirements
+
+Requirement|Notes
+---|---
+Go version | Go1.9 or higher
+
 ## Install
 
 To download pre-built binaries, see our [downloads page](https://tendermint.com/downloads).
