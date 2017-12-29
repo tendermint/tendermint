@@ -31,7 +31,7 @@ func TestRepeat(t *testing.T) {
 		for i := 0; i < cnt; i++ {
 			timeout := time.After(time.Second * 2)
 			select {
-			case _ = <-rt.Chan():
+			case <-rt.Chan():
 			case <-timeout:
 				t.Fatal("expected RepeatTimer to fire")
 			}

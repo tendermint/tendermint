@@ -36,8 +36,7 @@ func (t *defaultTicker) Chan() <-chan time.Time {
 
 // Implements Ticker
 func (t *defaultTicker) Stop() {
-	tt := time.Ticker(*t)
-	tt.Stop()
+	((*time.Ticker)(t)).Stop()
 }
 
 //----------------------------------------
