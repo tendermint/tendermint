@@ -4,19 +4,23 @@ type DB interface {
 
 	// Get returns nil iff key doesn't exist.
 	// A nil key is interpreted as an empty byteslice.
+	// CONTRACT: key, value readonly []byte
 	Get([]byte) []byte
 
 	// Has checks if a key exists.
 	// A nil key is interpreted as an empty byteslice.
+	// CONTRACT: key, value readonly []byte
 	Has(key []byte) bool
 
 	// Set sets the key.
 	// A nil key is interpreted as an empty byteslice.
+	// CONTRACT: key, value readonly []byte
 	Set([]byte, []byte)
 	SetSync([]byte, []byte)
 
 	// Delete deletes the key.
 	// A nil key is interpreted as an empty byteslice.
+	// CONTRACT: key readonly []byte
 	Delete([]byte)
 	DeleteSync([]byte)
 
@@ -25,6 +29,7 @@ type DB interface {
 	// A nil start is interpreted as an empty byteslice.
 	// If end is nil, iterates up to the last item (inclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
+	// CONTRACT: start, end readonly []byte
 	Iterator(start, end []byte) Iterator
 
 	// Iterate over a domain of keys in descending order. End is exclusive.
@@ -32,6 +37,7 @@ type DB interface {
 	// If start is nil, iterates from the last/greatest item (inclusive).
 	// If end is nil, iterates up to the first/least item (iclusive).
 	// CONTRACT: No writes may happen within a domain while an iterator exists over it.
+	// CONTRACT: start, end readonly []byte
 	ReverseIterator(start, end []byte) Iterator
 
 	// Closes the connection.
@@ -56,11 +62,12 @@ type Batch interface {
 }
 
 type SetDeleter interface {
-	Set(key, value []byte)
-	Delete(key []byte)
+	Set(key, value []byte) // CONTRACT: key, value readonly []byte
+	Delete(key []byte)     // CONTRACT: key readonly []byte
 }
 
 //----------------------------------------
+// Iterator
 
 /*
 	Usage:
@@ -83,6 +90,7 @@ type Iterator interface {
 	//
 	// The smallest key is the empty byte array []byte{} - see BeginningKey().
 	// The largest key is the nil byte array []byte(nil) - see EndingKey().
+	// CONTRACT: start, end readonly []byte
 	Domain() (start []byte, end []byte)
 
 	// Valid returns whether the current position is valid.
@@ -96,14 +104,14 @@ type Iterator interface {
 	Next()
 
 	// Key returns the key of the cursor.
-	//
 	// If Valid returns false, this method will panic.
-	Key() []byte
+	// CONTRACT: key readonly []byte
+	Key() (key []byte)
 
 	// Value returns the value of the cursor.
-	//
 	// If Valid returns false, this method will panic.
-	Value() []byte
+	// CONTRACT: value readonly []byte
+	Value() (value []byte)
 
 	// Close releases the Iterator.
 	Close()

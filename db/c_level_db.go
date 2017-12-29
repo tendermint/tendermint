@@ -50,6 +50,7 @@ func NewCLevelDB(name string, dir string) (*CLevelDB, error) {
 	return database, nil
 }
 
+// Implements DB.
 func (db *CLevelDB) Get(key []byte) []byte {
 	key = nonNilBytes(key)
 	res, err := db.db.Get(db.ro, key)
@@ -59,10 +60,12 @@ func (db *CLevelDB) Get(key []byte) []byte {
 	return res
 }
 
+// Implements DB.
 func (db *CLevelDB) Has(key []byte) bool {
 	return db.Get(key) != nil
 }
 
+// Implements DB.
 func (db *CLevelDB) Set(key []byte, value []byte) {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
@@ -72,6 +75,7 @@ func (db *CLevelDB) Set(key []byte, value []byte) {
 	}
 }
 
+// Implements DB.
 func (db *CLevelDB) SetSync(key []byte, value []byte) {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
@@ -81,6 +85,7 @@ func (db *CLevelDB) SetSync(key []byte, value []byte) {
 	}
 }
 
+// Implements DB.
 func (db *CLevelDB) Delete(key []byte) {
 	key = nonNilBytes(key)
 	err := db.db.Delete(db.wo, key)
@@ -89,6 +94,7 @@ func (db *CLevelDB) Delete(key []byte) {
 	}
 }
 
+// Implements DB.
 func (db *CLevelDB) DeleteSync(key []byte) {
 	key = nonNilBytes(key)
 	err := db.db.Delete(db.woSync, key)
@@ -101,6 +107,7 @@ func (db *CLevelDB) DB() *levigo.DB {
 	return db.db
 }
 
+// Implements DB.
 func (db *CLevelDB) Close() {
 	db.db.Close()
 	db.ro.Close()
@@ -108,6 +115,7 @@ func (db *CLevelDB) Close() {
 	db.woSync.Close()
 }
 
+// Implements DB.
 func (db *CLevelDB) Print() {
 	itr := db.Iterator(nil, nil)
 	defer itr.Close()
@@ -118,6 +126,7 @@ func (db *CLevelDB) Print() {
 	}
 }
 
+// Implements DB.
 func (db *CLevelDB) Stats() map[string]string {
 	// TODO: Find the available properties for the C LevelDB implementation
 	keys := []string{}
@@ -133,6 +142,7 @@ func (db *CLevelDB) Stats() map[string]string {
 //----------------------------------------
 // Batch
 
+// Implements DB.
 func (db *CLevelDB) NewBatch() Batch {
 	batch := levigo.NewWriteBatch()
 	return &cLevelDBBatch{db, batch}
@@ -143,14 +153,17 @@ type cLevelDBBatch struct {
 	batch *levigo.WriteBatch
 }
 
+// Implements Batch.
 func (mBatch *cLevelDBBatch) Set(key, value []byte) {
 	mBatch.batch.Put(key, value)
 }
 
+// Implements Batch.
 func (mBatch *cLevelDBBatch) Delete(key []byte) {
 	mBatch.batch.Delete(key)
 }
 
+// Implements Batch.
 func (mBatch *cLevelDBBatch) Write() {
 	err := mBatch.db.db.Write(mBatch.db.wo, mBatch.batch)
 	if err != nil {
@@ -204,7 +217,7 @@ func (itr cLevelDBIterator) Domain() ([]byte, []byte) {
 }
 
 func (itr cLevelDBIterator) Valid() bool {
-  
+
 	// Once invalid, forever invalid.
 	if itr.isInvalid {
 		return false

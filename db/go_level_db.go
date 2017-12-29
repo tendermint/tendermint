@@ -39,6 +39,7 @@ func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
 	return database, nil
 }
 
+// Implements DB.
 func (db *GoLevelDB) Get(key []byte) []byte {
 	key = nonNilBytes(key)
 	res, err := db.db.Get(key, nil)
@@ -52,10 +53,12 @@ func (db *GoLevelDB) Get(key []byte) []byte {
 	return res
 }
 
+// Implements DB.
 func (db *GoLevelDB) Has(key []byte) bool {
 	return db.Get(key) != nil
 }
 
+// Implements DB.
 func (db *GoLevelDB) Set(key []byte, value []byte) {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
@@ -65,6 +68,7 @@ func (db *GoLevelDB) Set(key []byte, value []byte) {
 	}
 }
 
+// Implements DB.
 func (db *GoLevelDB) SetSync(key []byte, value []byte) {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
@@ -74,6 +78,7 @@ func (db *GoLevelDB) SetSync(key []byte, value []byte) {
 	}
 }
 
+// Implements DB.
 func (db *GoLevelDB) Delete(key []byte) {
 	key = nonNilBytes(key)
 	err := db.db.Delete(key, nil)
@@ -82,6 +87,7 @@ func (db *GoLevelDB) Delete(key []byte) {
 	}
 }
 
+// Implements DB.
 func (db *GoLevelDB) DeleteSync(key []byte) {
 	key = nonNilBytes(key)
 	err := db.db.Delete(key, &opt.WriteOptions{Sync: true})
@@ -94,10 +100,12 @@ func (db *GoLevelDB) DB() *leveldb.DB {
 	return db.db
 }
 
+// Implements DB.
 func (db *GoLevelDB) Close() {
 	db.db.Close()
 }
 
+// Implements DB.
 func (db *GoLevelDB) Print() {
 	str, _ := db.db.GetProperty("leveldb.stats")
 	fmt.Printf("%v\n", str)
@@ -110,6 +118,7 @@ func (db *GoLevelDB) Print() {
 	}
 }
 
+// Implements DB.
 func (db *GoLevelDB) Stats() map[string]string {
 	keys := []string{
 		"leveldb.num-files-at-level{n}",
@@ -135,6 +144,7 @@ func (db *GoLevelDB) Stats() map[string]string {
 //----------------------------------------
 // Batch
 
+// Implements DB.
 func (db *GoLevelDB) NewBatch() Batch {
 	batch := new(leveldb.Batch)
 	return &goLevelDBBatch{db, batch}
@@ -145,18 +155,21 @@ type goLevelDBBatch struct {
 	batch *leveldb.Batch
 }
 
+// Implements Batch.
 func (mBatch *goLevelDBBatch) Set(key, value []byte) {
 	mBatch.batch.Put(key, value)
 }
 
+// Implements Batch.
 func (mBatch *goLevelDBBatch) Delete(key []byte) {
 	mBatch.batch.Delete(key)
 }
 
+// Implements Batch.
 func (mBatch *goLevelDBBatch) Write() {
 	err := mBatch.db.db.Write(mBatch.batch, nil)
 	if err != nil {
-		PanicCrisis(err)
+		panic(err)
 	}
 }
 
@@ -164,6 +177,17 @@ func (mBatch *goLevelDBBatch) Write() {
 // Iterator
 // NOTE This is almost identical to db/c_level_db.Iterator
 // Before creating a third version, refactor.
+
+// Implements DB.
+func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
+	itr := db.db.NewIterator(nil, nil)
+	return newGoLevelDBIterator(itr, start, end, false)
+}
+
+// Implements DB.
+func (db *GoLevelDB) ReverseIterator(start, end []byte) Iterator {
+	panic("not implemented yet") // XXX
+}
 
 type goLevelDBIterator struct {
 	source    iterator.Iterator
@@ -189,19 +213,12 @@ func newGoLevelDBIterator(source iterator.Iterator, start, end []byte, isReverse
 	}
 }
 
-func (db *GoLevelDB) Iterator(start, end []byte) Iterator {
-	itr := db.db.NewIterator(nil, nil)
-	return newGoLevelDBIterator(itr, start, end, false)
-}
-
-func (db *GoLevelDB) ReverseIterator(start, end []byte) Iterator {
-	panic("not implemented yet") // XXX
-}
-
+// Implements Iterator.
 func (itr *goLevelDBIterator) Domain() ([]byte, []byte) {
 	return itr.start, itr.end
 }
 
+// Implements Iterator.
 func (itr *goLevelDBIterator) Valid() bool {
 
 	// Once invalid, forever invalid.
@@ -230,24 +247,32 @@ func (itr *goLevelDBIterator) Valid() bool {
 	return true
 }
 
+// Implements Iterator.
 func (itr *goLevelDBIterator) Key() []byte {
+	// Key returns a copy of the current key.
+	// See https://github.com/syndtr/goleveldb/blob/52c212e6c196a1404ea59592d3f1c227c9f034b2/leveldb/iterator/iter.go#L88
 	itr.assertNoError()
 	itr.assertIsValid()
-	return itr.source.Key()
+	return cp(itr.source.Key())
 }
 
+// Implements Iterator.
 func (itr *goLevelDBIterator) Value() []byte {
+	// Value returns a copy of the current value.
+	// See https://github.com/syndtr/goleveldb/blob/52c212e6c196a1404ea59592d3f1c227c9f034b2/leveldb/iterator/iter.go#L88
 	itr.assertNoError()
 	itr.assertIsValid()
-	return itr.source.Value()
+	return cp(itr.source.Value())
 }
 
+// Implements Iterator.
 func (itr *goLevelDBIterator) Next() {
 	itr.assertNoError()
 	itr.assertIsValid()
 	itr.source.Next()
 }
 
+// Implements Iterator.
 func (itr *goLevelDBIterator) Close() {
 	itr.source.Release()
 }
