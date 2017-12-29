@@ -95,6 +95,10 @@ test_persistence:
 test_persistence_ci:
 	docker run --name run_test -e CIRCLECI=true -t tester bash test/persist/test.sh
 
+test_p2p:
+	# requires 'tester' the image from above
+	bash test/p2p/test.sh tester
+
 
 test_libs:
 	# checkout every github.com/tendermint dir and run its tests
