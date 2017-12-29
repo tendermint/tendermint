@@ -3,6 +3,7 @@ package evidence
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -13,14 +14,46 @@ import (
 
 var mockState = sm.State{}
 
+func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
+	stateDB := dbm.NewMemDB()
+
+	// create validator set and state
+	valSet := &types.ValidatorSet{
+		Validators: []*types.Validator{
+			{Address: valAddr},
+		},
+	}
+	state := sm.State{
+		LastBlockHeight:             0,
+		LastBlockTime:               time.Now(),
+		Validators:                  valSet,
+		LastHeightValidatorsChanged: 1,
+		ConsensusParams: types.ConsensusParams{
+			EvidenceParams: types.EvidenceParams{
+				MaxAge: 1000000,
+			},
+		},
+	}
+
+	// save all states up to height
+	for i := int64(0); i < height; i++ {
+		state.LastBlockHeight = i
+		sm.SaveState(stateDB, state)
+	}
+
+	return stateDB
+}
+
 func TestEvidencePool(t *testing.T) {
 	assert := assert.New(t)
 
-	params := types.EvidenceParams{}
+	valAddr := []byte("val1")
+	height := int64(5)
+	stateDB := initializeValidatorState(valAddr, height)
 	store := NewEvidenceStore(dbm.NewMemDB())
-	pool := NewEvidencePool(params, store, mockState)
+	pool := NewEvidencePool(stateDB, store)
 
-	goodEvidence := newMockGoodEvidence(5, 1, []byte("val1"))
+	goodEvidence := newMockGoodEvidence(height, 0, valAddr)
 	badEvidence := MockBadEvidence{goodEvidence}
 
 	err := pool.AddEvidence(badEvidence)

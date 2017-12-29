@@ -79,20 +79,9 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 	}
 
 	for _, ev := range b.Evidence.Evidence {
-		if err := VerifyEvidence(s, ev); err != nil {
+		if err := VerifyEvidence(stateDB, s, ev); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
 		}
-		/* // Needs a db ...
-		valset, err := LoadValidators(s.db, ev.Height())
-		if err != nil {
-			// XXX/TODO: what do we do if we can't load the valset?
-			// eg. if we have pruned the state or height is too high?
-			return err
-		}
-		if err := VerifyEvidenceValidator(valSet, ev); err != nil {
-			return types.NewEvidenceInvalidErr(ev, err)
-		}
-		*/
 	}
 
 	return nil
@@ -103,7 +92,7 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 
 // VerifyEvidence verifies the evidence fully by checking it is internally
 // consistent and sufficiently recent.
-func VerifyEvidence(s State, evidence types.Evidence) error {
+func VerifyEvidence(stateDB dbm.DB, s State, evidence types.Evidence) error {
 	height := s.LastBlockHeight
 
 	evidenceAge := height - evidence.Height()
@@ -116,22 +105,23 @@ func VerifyEvidence(s State, evidence types.Evidence) error {
 	if err := evidence.Verify(s.ChainID); err != nil {
 		return err
 	}
-	return nil
-}
 
-// VerifyEvidenceValidator returns the voting power of the validator at the height of the evidence.
-// It returns an error if the validator did not exist or does not match that loaded from the historical validator set.
-func VerifyEvidenceValidator(valset *types.ValidatorSet, evidence types.Evidence) (priority int64, err error) {
+	valset, err := LoadValidators(stateDB, evidence.Height())
+	if err != nil {
+		// TODO: if err is just that we cant find it cuz we pruned, ignore.
+		// TODO: if its actually bad evidence, punish peer
+		return err
+	}
+
 	// The address must have been an active validator at the height
 	ev := evidence
 	height, addr, idx := ev.Height(), ev.Address(), ev.Index()
 	valIdx, val := valset.GetByAddress(addr)
 	if val == nil {
-		return priority, fmt.Errorf("Address %X was not a validator at height %d", addr, height)
+		return fmt.Errorf("Address %X was not a validator at height %d", addr, height)
 	} else if idx != valIdx {
-		return priority, fmt.Errorf("Address %X was validator %d at height %d, not %d", addr, valIdx, height, idx)
+		return fmt.Errorf("Address %X was validator %d at height %d, not %d", addr, valIdx, height, idx)
 	}
 
-	priority = val.VotingPower
-	return priority, nil
+	return nil
 }

@@ -107,6 +107,11 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 
 	fail.Fail() // XXX
 
+	// Update evpool now that state is saved
+	// TODO: handle the crash/recover scenario
+	// ie. (may need to call Update for last block)
+	blockExec.evpool.Update(block)
+
 	// events are fired after everything else
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses)
@@ -137,9 +142,6 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 	}
 
 	blockExec.logger.Info("Committed state", "height", block.Height, "txs", block.NumTxs, "appHash", res.Data)
-
-	// Update evpool
-	blockExec.evpool.MarkEvidenceAsCommitted(block.Evidence.Evidence)
 
 	// Update mempool.
 	if err := blockExec.mempool.Update(block.Height, block.Txs); err != nil {

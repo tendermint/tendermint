@@ -78,7 +78,7 @@ type BlockStore interface {
 type EvidencePool interface {
 	PendingEvidence() []Evidence
 	AddEvidence(Evidence) error
-	MarkEvidenceAsCommitted([]Evidence)
+	Update(*Block)
 }
 
 // MockMempool is an empty implementation of a Mempool, useful for testing.
@@ -86,6 +86,6 @@ type EvidencePool interface {
 type MockEvidencePool struct {
 }
 
-func (m MockEvidencePool) PendingEvidence() []Evidence        { return nil }
-func (m MockEvidencePool) AddEvidence(Evidence) error         { return nil }
-func (m MockEvidencePool) MarkEvidenceAsCommitted([]Evidence) {}
+func (m MockEvidencePool) PendingEvidence() []Evidence { return nil }
+func (m MockEvidencePool) AddEvidence(Evidence) error  { return nil }
+func (m MockEvidencePool) Update(*Block)               {}
