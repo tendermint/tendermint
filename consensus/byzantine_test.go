@@ -255,6 +255,10 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 		br.reactor.sendNewRoundStepMessages(peer)
 	}
 }
+func (br *ByzantineReactor) MarkPeer(peer p2p.Peer, good bool, events, severity int) {
+	// Does not currently mark during a test
+	return
+}
 func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	br.reactor.RemovePeer(peer, reason)
 }

@@ -102,8 +102,11 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 // or by requesting more addresses (if outbound).
 func (r *PEXReactor) AddPeer(p Peer) {
 	// Getting the peer metric initializes it in the store
-	tms := r.Switch.MetricStore()
-	tm := tms.GetPeerTrustMetric(p.String(), PexReactorID)
+	if r.Switch != nil {
+		if tms := r.Switch.MetricStore(); tms != nil {
+			_ = tms.GetPeerTrustMetric(p.Key(), PexReactorID)
+		}
+	}
 
 	if p.IsOutbound() {
 		// For outbound peers, the address is already in the books.
@@ -115,32 +118,55 @@ func (r *PEXReactor) AddPeer(p Peer) {
 	} else { // For inbound connections, the peer is its own source
 		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
 		if err != nil {
-			// peer gave us a bad ListenAddr. TODO: punish
+			// peer gave us a bad ListenAddr
+			r.MarkPeer(p, false, 1, Bad)
 			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
 			return
 		}
+		r.MarkPeer(p, true, 1, Correct)
 		r.book.AddAddress(addr, addr)
 	}
 }
 
 // MarkPeer implements Reactor.
 // It updates a peer's metric with good or bad events taking place within this reactor
-func (r *PEXReactor) MarkPeer(peer Peer, good bool, events int) {
-	tms := r.Switch.MetricStore()
-	tm := tms.GetPeerTrustMetric(peer.String(), PexReactorID)
+func (r *PEXReactor) MarkPeer(peer Peer, good bool, events, severity int) {
+	if r.Switch == nil {
+		return
+	}
 
+	tms := r.Switch.MetricStore()
+	if tms == nil {
+		return
+	}
+
+	// Modify the number of events based on severity
+	num := events
+	switch severity {
+	case Fatal, Good:
+		num *= 10
+	case Bad, Correct:
+		// These result in events * 1
+	case Neutral:
+		num *= 0
+	}
+
+	tm := tms.GetPeerTrustMetric(peer.Key(), PexReactorID)
 	if good {
-		tm.GoodEvents(events)
+		tm.GoodEvents(num)
 	} else {
-		tm.BadEvents(events)
+		tm.BadEvents(num)
 	}
 }
 
 // RemovePeer implements Reactor.
 func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
-	tms := r.Switch.MetricStore()
-	// Pause tracking of this peer
-	tms.PeerDisconnected(p.String(), PexReactorID)
+	if r.Switch != nil {
+		if tms := r.Switch.MetricStore(); tms != nil {
+			// Pause tracking of this peer
+			tms.PeerDisconnected(p.Key(), PexReactorID)
+		}
+	}
 }
 
 // Receive implements Reactor by handling incoming PEX messages.
@@ -157,6 +183,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	if r.ReachedMaxMsgCountForPeer(srcAddrStr) {
 		r.Logger.Error("Maximum number of messages reached for peer", "peer", srcAddrStr)
 		// TODO remove src from peers?
+		r.MarkPeer(src, false, 1, Fatal)
 		return
 	}
 
@@ -297,8 +324,17 @@ func (r *PEXReactor) ensurePeers() {
 	for _, item := range toDial {
 		go func(picked *NetAddress) {
 			_, err := r.Switch.DialPeerWithAddress(picked, false)
+			peer := r.addrToSrcPeer(picked)
 			if err != nil {
 				r.book.MarkAttempt(picked)
+				// Negatively mark the peer that provided the address
+				if peer != nil {
+					r.MarkPeer(peer, false, 1, Bad)
+				}
+			}
+			// Positively mark the peer that provided the dialed address
+			if peer != nil {
+				r.MarkPeer(peer, true, 1, Good)
 			}
 		}(item)
 	}
@@ -312,6 +348,18 @@ func (r *PEXReactor) ensurePeers() {
 			r.RequestPEX(peer)
 		}
 	}
+}
+
+// addrToSrcPeer return the Peer that provided the address in the param
+func (r *PEXReactor) addrToSrcPeer(addr *NetAddress) Peer {
+	peers := r.Switch.Peers().List()
+
+	for _, p := range peers {
+		if addr.String() == p.NodeInfo().RemoteAddr {
+			return p
+		}
+	}
+	return nil
 }
 
 func (r *PEXReactor) flushMsgCountByPeer() {

@@ -136,6 +136,12 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
+	// Get the trust metric history data
+	trustHistoryDB, err := dbProvider(&DBContext{"trusthistory", config})
+	if err != nil {
+		return nil, err
+	}
+
 	// Get genesis doc
 	genDoc, err := loadGenesisDoc(stateDB)
 	if err != nil {
@@ -192,9 +198,20 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator")
 	}
 
+	// Make the P2P Switch
+	p2pLogger := logger.With("module", "p2p")
+	sw := p2p.NewSwitch(config.P2P)
+	sw.SetLogger(p2pLogger)
+
+	// Make the TrustMetricStore for peer behavior tracking
+	trustMetricStore := trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
+	trustMetricStore.SetLogger(p2pLogger)
+	sw.SetMetricStore(trustMetricStore)
+
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), proxyApp.Consensus(), blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
+	sw.AddReactor(bc.BlockchainReactorID, bcReactor)
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
@@ -202,6 +219,7 @@ func NewNode(config *cfg.Config,
 	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
+	sw.AddReactor(mempl.MempoolReactorID, mempoolReactor)
 
 	if config.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()
@@ -215,14 +233,7 @@ func NewNode(config *cfg.Config,
 	}
 	consensusReactor := consensus.NewConsensusReactor(consensusState, fastSync)
 	consensusReactor.SetLogger(consensusLogger)
-
-	p2pLogger := logger.With("module", "p2p")
-
-	sw := p2p.NewSwitch(config.P2P)
-	sw.SetLogger(p2pLogger)
-	sw.AddReactor(MempoolReactorID, mempoolReactor)
-	sw.AddReactor(BlockchainReactorID, bcReactor)
-	sw.AddReactor(ConsensusReactorID, consensusReactor)
+	sw.AddReactor(consensus.ConsensusReactorID, consensusReactor)
 
 	// Optionally, start the pex reactor
 	var addrBook *p2p.AddrBook
@@ -230,18 +241,9 @@ func NewNode(config *cfg.Config,
 		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
-		// Get the trust metric history data
-		trustHistoryDB, err := dbProvider(&DBContext{"trusthistory", config})
-		if err != nil {
-			return nil, err
-		}
-		trustMetricStore := trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
-		trustMetricStore.SetLogger(p2pLogger)
-		sw.SetMetricStore(trustMetricStore)
-
 		pexReactor := p2p.NewPEXReactor(addrBook)
 		pexReactor.SetLogger(p2pLogger)
-		sw.AddReactor(PexReactorID, pexReactor)
+		sw.AddReactor(p2p.PexReactorID, pexReactor)
 	}
 
 	// Filter peers by addr or pubkey with an ABCI query.

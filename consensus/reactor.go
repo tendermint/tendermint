@@ -158,16 +158,37 @@ func (conR *ConsensusReactor) AddPeer(peer p2p.Peer) {
 	}
 
 	// Getting the peer metric initializes it in the store
-	tms := conR.Switch.MetricStore()
-	tm := tms.GetPeerTrustMetric(peer.String(), ConsensusReactorID)
+	if conR.Switch != nil {
+		if tms := conR.Switch.MetricStore(); tms != nil {
+			_ = tms.GetPeerTrustMetric(peer.Key(), ConsensusReactorID)
+		}
+	}
 }
 
 // MarkPeer implements Reactor.
 // It updates a peer's metric with good or bad events taking place within this reactor
-func (conR *ConsensusReactor) MarkPeer(peer Peer, good bool, events int) {
-	tms := conR.Switch.MetricStore()
-	tm := tms.GetPeerTrustMetric(peer.String(), ConsensusReactorID)
+func (conR *ConsensusReactor) MarkPeer(peer p2p.Peer, good bool, events, severity int) {
+	if conR.Switch == nil {
+		return
+	}
 
+	tms := conR.Switch.MetricStore()
+	if tms == nil {
+		return
+	}
+
+	// Modify the number of events based on severity
+	num := events
+	switch severity {
+	case p2p.Fatal, p2p.Good:
+		num *= 10
+	case p2p.Bad, p2p.Correct:
+		// These result in events * 1
+	case p2p.Neutral:
+		num *= 0
+	}
+
+	tm := tms.GetPeerTrustMetric(peer.Key(), ConsensusReactorID)
 	if good {
 		tm.GoodEvents(events)
 	} else {
@@ -181,9 +202,12 @@ func (conR *ConsensusReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 		return
 	}
 
-	tms := conR.Switch.MetricStore()
-	// Pause tracking of this peer
-	tms.PeerDisconnected(peer.String(), ConsensusReactorID)
+	if conR.Switch != nil {
+		if tms := conR.Switch.MetricStore(); tms != nil {
+			// Pause tracking of this peer
+			tms.PeerDisconnected(peer.Key(), ConsensusReactorID)
+		}
+	}
 
 	// TODO
 	//peer.Get(PeerStateKey).(*PeerState).Disconnect()
@@ -204,10 +228,11 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
-		// TODO punish peer?
+		conR.MarkPeer(src, false, 1, p2p.Bad)
 		return
 	}
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
+	conR.MarkPeer(src, true, 1, p2p.Correct)
 
 	// Get peer states
 	ps := src.Get(types.PeerStateKey).(*PeerState)

@@ -31,13 +31,22 @@ const (
 	reconnectBackOffBaseSeconds = 3
 )
 
+// The following constants modify the number of events sent to a metric based on severity
+const (
+	Fatal = iota
+	Bad
+	Neutral
+	Correct
+	Good
+)
+
 type Reactor interface {
 	cmn.Service // Start, Stop
 
 	SetSwitch(*Switch)
 	GetChannels() []*ChannelDescriptor
 	AddPeer(peer Peer)
-	MarkPeer(peer Peer, good bool, events int)
+	MarkPeer(peer Peer, good bool, events, severity int)
 	RemovePeer(peer Peer, reason interface{})
 	Receive(chID byte, peer Peer, msgBytes []byte) // CONTRACT: msgBytes are not nil
 }
