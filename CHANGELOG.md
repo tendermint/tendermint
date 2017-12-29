@@ -50,6 +50,7 @@ BUG FIXES:
 - [lite] fix race
 - [state] validate block.Header.ValidatorsHash
 - [p2p] allow seed addresses to be prefixed with eg. `tcp://`
+- [p2p] use consistent key to refer to peers so we dont try to connect to existing peers
 - [cmd] fix `tendermint init` to ignore files that are there and generate files that aren't.
 
 ## 0.14.0 (December 11, 2017)
