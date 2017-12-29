@@ -5,152 +5,224 @@ import (
 	"time"
 )
 
+// Used by RepeatTimer the first time,
+// and every time it's Reset() after Stop().
+type TickerMaker func(dur time.Duration) Ticker
+
 // Ticker is a basic ticker interface.
 type Ticker interface {
+
+	// Never changes, never closes.
 	Chan() <-chan time.Time
+
+	// Stopping a stopped Ticker will panic.
 	Stop()
-	Reset()
 }
 
-// DefaultTicker wraps the stdlibs Ticker implementation.
-type DefaultTicker struct {
-	t   *time.Ticker
-	dur time.Duration
+//----------------------------------------
+// defaultTickerMaker
+
+func defaultTickerMaker(dur time.Duration) Ticker {
+	ticker := time.NewTicker(dur)
+	return (*defaultTicker)(ticker)
 }
 
-// NewDefaultTicker returns a new DefaultTicker
-func NewDefaultTicker(dur time.Duration) *DefaultTicker {
-	return &DefaultTicker{
-		time.NewTicker(dur),
-		dur,
+type defaultTicker time.Ticker
+
+// Implements Ticker
+func (t *defaultTicker) Chan() <-chan time.Time {
+	return t.C
+}
+
+// Implements Ticker
+func (t *defaultTicker) Stop() {
+	((*time.Ticker)(t)).Stop()
+}
+
+//----------------------------------------
+// LogicalTickerMaker
+
+// Construct a TickerMaker that always uses `source`.
+// It's useful for simulating a deterministic clock.
+func NewLogicalTickerMaker(source chan time.Time) TickerMaker {
+	return func(dur time.Duration) Ticker {
+		return newLogicalTicker(source, dur)
+	}
+}
+
+type logicalTicker struct {
+	source <-chan time.Time
+	ch     chan time.Time
+	quit   chan struct{}
+}
+
+func newLogicalTicker(source <-chan time.Time, interval time.Duration) Ticker {
+	lt := &logicalTicker{
+		source: source,
+		ch:     make(chan time.Time),
+		quit:   make(chan struct{}),
+	}
+	go lt.fireRoutine(interval)
+	return lt
+}
+
+// We need a goroutine to read times from t.source
+// and fire on t.Chan() when `interval` has passed.
+func (t *logicalTicker) fireRoutine(interval time.Duration) {
+	source := t.source
+
+	// Init `lasttime`
+	lasttime := time.Time{}
+	select {
+	case lasttime = <-source:
+	case <-t.quit:
+		return
+	}
+	// Init `lasttime` end
+
+	timeleft := interval
+	for {
+		select {
+		case newtime := <-source:
+			elapsed := newtime.Sub(lasttime)
+			timeleft -= elapsed
+			if timeleft <= 0 {
+				// Block for determinism until the ticker is stopped.
+				select {
+				case t.ch <- newtime:
+				case <-t.quit:
+					return
+				}
+				// Reset timeleft.
+				// Don't try to "catch up" by sending more.
+				// "Ticker adjusts the intervals or drops ticks to make up for
+				// slow receivers" - https://golang.org/pkg/time/#Ticker
+				timeleft = interval
+			}
+		case <-t.quit:
+			return // done
+		}
 	}
 }
 
 // Implements Ticker
-func (t *DefaultTicker) Chan() <-chan time.Time {
-	return t.t.C
+func (t *logicalTicker) Chan() <-chan time.Time {
+	return t.ch // immutable
 }
 
 // Implements Ticker
-func (t *DefaultTicker) Stop() {
-	t.t.Stop()
-	t.t = nil
-}
-
-// Implements Ticker
-func (t *DefaultTicker) Reset() {
-	t.t = time.NewTicker(t.dur)
-}
-
-// ManualTicker wraps a channel that can be manually sent on
-type ManualTicker struct {
-	ch chan time.Time
-}
-
-// NewManualTicker returns a new ManualTicker
-func NewManualTicker(ch chan time.Time) *ManualTicker {
-	return &ManualTicker{
-		ch: ch,
-	}
-}
-
-// Implements Ticker
-func (t *ManualTicker) Chan() <-chan time.Time {
-	return t.ch
-}
-
-// Implements Ticker
-func (t *ManualTicker) Stop() {
-	// noop
-}
-
-// Implements Ticker
-func (t *ManualTicker) Reset() {
-	// noop
+func (t *logicalTicker) Stop() {
+	close(t.quit) // it *should* panic when stopped twice.
 }
 
 //---------------------------------------------------------------------
 
 /*
-RepeatTimer repeatedly sends a struct{}{} to .Ch after each "dur" period.
-It's good for keeping connections alive.
-A RepeatTimer must be Stop()'d or it will keep a goroutine alive.
+	RepeatTimer repeatedly sends a struct{}{} to `.Chan()` after each `dur`
+	period. (It's good for keeping connections alive.)
+	A RepeatTimer must be stopped, or it will keep a goroutine alive.
 */
 type RepeatTimer struct {
-	Ch chan time.Time
+	name string
+	ch   chan time.Time
+	tm   TickerMaker
 
 	mtx    sync.Mutex
-	name   string
+	dur    time.Duration
 	ticker Ticker
 	quit   chan struct{}
-	wg     *sync.WaitGroup
 }
 
-// NewRepeatTimer returns a RepeatTimer with the DefaultTicker.
+// NewRepeatTimer returns a RepeatTimer with a defaultTicker.
 func NewRepeatTimer(name string, dur time.Duration) *RepeatTimer {
-	ticker := NewDefaultTicker(dur)
-	return NewRepeatTimerWithTicker(name, ticker)
+	return NewRepeatTimerWithTickerMaker(name, dur, defaultTickerMaker)
 }
 
-// NewRepeatTimerWithTicker returns a RepeatTimer with the given ticker.
-func NewRepeatTimerWithTicker(name string, ticker Ticker) *RepeatTimer {
+// NewRepeatTimerWithTicker returns a RepeatTimer with the given ticker
+// maker.
+func NewRepeatTimerWithTickerMaker(name string, dur time.Duration, tm TickerMaker) *RepeatTimer {
 	var t = &RepeatTimer{
-		Ch:     make(chan time.Time),
-		ticker: ticker,
-		quit:   make(chan struct{}),
-		wg:     new(sync.WaitGroup),
 		name:   name,
+		ch:     make(chan time.Time),
+		tm:     tm,
+		dur:    dur,
+		ticker: nil,
+		quit:   nil,
 	}
-	t.wg.Add(1)
-	go t.fireRoutine(t.ticker.Chan())
+	t.reset()
 	return t
 }
 
-func (t *RepeatTimer) fireRoutine(ch <-chan time.Time) {
+func (t *RepeatTimer) fireRoutine(ch <-chan time.Time, quit <-chan struct{}) {
 	for {
 		select {
 		case t_ := <-ch:
-			t.Ch <- t_
-		case <-t.quit:
-			// needed so we know when we can reset t.quit
-			t.wg.Done()
+			t.ch <- t_
+		case <-quit: // NOTE: `t.quit` races.
 			return
 		}
 	}
 }
 
-// Wait the duration again before firing.
-func (t *RepeatTimer) Reset() {
-	t.Stop()
-
-	t.mtx.Lock() // Lock
-	defer t.mtx.Unlock()
-
-	t.ticker.Reset()
-	t.quit = make(chan struct{})
-	t.wg.Add(1)
-	go t.fireRoutine(t.ticker.Chan())
+func (t *RepeatTimer) Chan() <-chan time.Time {
+	return t.ch
 }
 
-// For ease of .Stop()'ing services before .Start()'ing them,
-// we ignore .Stop()'s on nil RepeatTimers.
-func (t *RepeatTimer) Stop() bool {
-	if t == nil {
-		return false
-	}
-	t.mtx.Lock() // Lock
+func (t *RepeatTimer) Stop() {
+	t.mtx.Lock()
 	defer t.mtx.Unlock()
 
-	exists := t.ticker != nil
-	if exists {
-		t.ticker.Stop() // does not close the channel
+	t.stop()
+}
+
+// Wait the duration again before firing.
+func (t *RepeatTimer) Reset() {
+	t.mtx.Lock()
+	defer t.mtx.Unlock()
+
+	t.reset()
+}
+
+//----------------------------------------
+// Misc.
+
+// CONTRACT: (non-constructor) caller should hold t.mtx.
+func (t *RepeatTimer) reset() {
+	if t.ticker != nil {
+		t.stop()
+	}
+	t.ticker = t.tm(t.dur)
+	t.quit = make(chan struct{})
+	go t.fireRoutine(t.ticker.Chan(), t.quit)
+}
+
+// CONTRACT: caller should hold t.mtx.
+func (t *RepeatTimer) stop() {
+	if t.ticker == nil {
+		/*
+			Similar to the case of closing channels twice:
+			https://groups.google.com/forum/#!topic/golang-nuts/rhxMiNmRAPk
+			Stopping a RepeatTimer twice implies that you do
+			not know whether you are done or not.
+			If you're calling stop on a stopped RepeatTimer,
+			you probably have race conditions.
+		*/
+		panic("Tried to stop a stopped RepeatTimer")
+	}
+	t.ticker.Stop()
+	t.ticker = nil
+	/*
+		XXX
+		From https://golang.org/pkg/time/#Ticker:
+		"Stop the ticker to release associated resources"
+		"After Stop, no more ticks will be sent"
+		So we shouldn't have to do the below.
+
 		select {
-		case <-t.Ch:
+		case <-t.ch:
 			// read off channel if there's anything there
 		default:
 		}
-		close(t.quit)
-		t.wg.Wait() // must wait for quit to close else we race Reset
-	}
-	return exists
+	*/
+	close(t.quit)
 }
