@@ -29,11 +29,11 @@ func TestRepeat(t *testing.T) {
 	// tock consumes Ticker.Chan() events `cnt` times.
 	tock := func(t *testing.T, rt *RepeatTimer, cnt int) {
 		for i := 0; i < cnt; i++ {
-			timeout := time.After(time.Second * 2)
+			timeout := time.After(time.Second * 10)
 			select {
 			case <-rt.Chan():
 			case <-timeout:
-				t.Fatal("expected RepeatTimer to fire")
+				panic("expected RepeatTimer to fire")
 			}
 		}
 		done := true
