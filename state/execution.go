@@ -65,7 +65,7 @@ func (blockExec *BlockExecutor) ValidateBlock(s State, block *types.Block) error
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
-// fires the relevent events, commits the app, and saves the new state and responses.
+// fires the relevant events, commits the app, and saves the new state and responses.
 // It's the only function that needs to be called
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.

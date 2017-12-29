@@ -12,11 +12,6 @@ import (
 //-----------------------------------------------------
 // Validate block
 
-// ValidateBlock validates the block against the state.
-func _ValidateBlock(s State, block *types.Block) error {
-	return validateBlock(dbm.NewMemDB(), s, block)
-}
-
 func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 	// validate internal consistency
 	if err := b.ValidateBasic(); err != nil {
