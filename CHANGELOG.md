@@ -25,6 +25,13 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.16.0 (TBD)
+
+BREAKING CHANGES:
+- rpc: `/unsafe_dial_seeds` renamed to `/unsafe_dial_manual_peers`
+- [p2p] old `seeds` is now `manual_peers` (persistent peers to which TM will always connect to)
+- [p2p] now `seeds` only used for getting addresses (if addrbook is empty; not persistent)
+
 ## 0.15.0 (December 29, 2017)
 
 BREAKING CHANGES:
