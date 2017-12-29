@@ -86,14 +86,11 @@ func TestClientSubscribesTwice(t *testing.T) {
 
 	ch2 := make(chan interface{}, 1)
 	err = s.Subscribe(ctx, clientID, q, ch2)
-	require.NoError(t, err)
-
-	_, ok := <-ch1
-	assert.False(t, ok)
+	require.Error(t, err)
 
 	err = s.PublishWithTags(ctx, "Spider-Man", map[string]interface{}{"tm.events.type": "NewBlock"})
 	require.NoError(t, err)
-	assertReceive(t, "Spider-Man", ch2)
+	assertReceive(t, "Spider-Man", ch1)
 }
 
 func TestUnsubscribe(t *testing.T) {
@@ -117,6 +114,27 @@ func TestUnsubscribe(t *testing.T) {
 	assert.False(t, ok)
 }
 
+func TestResubscribe(t *testing.T) {
+	s := pubsub.NewServer()
+	s.SetLogger(log.TestingLogger())
+	s.Start()
+	defer s.Stop()
+
+	ctx := context.Background()
+	ch := make(chan interface{})
+	err := s.Subscribe(ctx, clientID, query.Empty{}, ch)
+	require.NoError(t, err)
+	err = s.Unsubscribe(ctx, clientID, query.Empty{})
+	require.NoError(t, err)
+	ch = make(chan interface{})
+	err = s.Subscribe(ctx, clientID, query.Empty{}, ch)
+	require.NoError(t, err)
+
+	err = s.Publish(ctx, "Cable")
+	require.NoError(t, err)
+	assertReceive(t, "Cable", ch)
+}
+
 func TestUnsubscribeAll(t *testing.T) {
 	s := pubsub.NewServer()
 	s.SetLogger(log.TestingLogger())
@@ -125,9 +143,9 @@ func TestUnsubscribeAll(t *testing.T) {
 
 	ctx := context.Background()
 	ch1, ch2 := make(chan interface{}, 1), make(chan interface{}, 1)
-	err := s.Subscribe(ctx, clientID, query.Empty{}, ch1)
+	err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"), ch1)
 	require.NoError(t, err)
-	err = s.Subscribe(ctx, clientID, query.Empty{}, ch2)
+	err = s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlockHeader'"), ch2)
 	require.NoError(t, err)
 
 	err = s.UnsubscribeAll(ctx, clientID)

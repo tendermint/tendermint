@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	RootFlag     = "root"
 	HomeFlag     = "home"
 	TraceFlag    = "trace"
 	OutputFlag   = "output"
@@ -28,14 +27,9 @@ type Executable interface {
 }
 
 // PrepareBaseCmd is meant for tendermint and other servers
-func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) Executor {
+func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor {
 	cobra.OnInitialize(func() { initEnv(envPrefix) })
-	cmd.PersistentFlags().StringP(RootFlag, "r", defautRoot, "DEPRECATED. Use --home")
-	// -h is already reserved for --help as part of the cobra framework
-	// do you want to try something else??
-	// also, default must be empty, so we can detect this unset and fall back
-	// to --root / TM_ROOT / TMROOT
-	cmd.PersistentFlags().String(HomeFlag, "", "root directory for config and data")
+	cmd.PersistentFlags().StringP(HomeFlag, "", defaultHome, "directory for config and data")
 	cmd.PersistentFlags().Bool(TraceFlag, false, "print out full stack trace on errors")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(bindFlagsLoadViper, cmd.PersistentPreRunE)
 	return Executor{cmd, os.Exit}
@@ -45,11 +39,11 @@ func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defautRoot string) Executor {
 //
 // This adds --encoding (hex, btc, base64) and --output (text, json) to
 // the command.  These only really make sense in interactive commands.
-func PrepareMainCmd(cmd *cobra.Command, envPrefix, defautRoot string) Executor {
+func PrepareMainCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor {
 	cmd.PersistentFlags().StringP(EncodingFlag, "e", "hex", "Binary encoding (hex|b64|btc)")
 	cmd.PersistentFlags().StringP(OutputFlag, "o", "text", "Output format (text|json)")
 	cmd.PersistentPreRunE = concatCobraCmdFuncs(setEncoding, validateOutput, cmd.PersistentPreRunE)
-	return PrepareBaseCmd(cmd, envPrefix, defautRoot)
+	return PrepareBaseCmd(cmd, envPrefix, defaultHome)
 }
 
 // initEnv sets to use ENV variables if set.
@@ -136,17 +130,10 @@ func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// rootDir is command line flag, env variable, or default $HOME/.tlc
-	// NOTE: we support both --root and --home for now, but eventually only --home
-	// Also ensure we set the correct rootDir under HomeFlag so we dont need to
-	// repeat this logic elsewhere.
-	rootDir := viper.GetString(HomeFlag)
-	if rootDir == "" {
-		rootDir = viper.GetString(RootFlag)
-		viper.Set(HomeFlag, rootDir)
-	}
+	homeDir := viper.GetString(HomeFlag)
+	viper.Set(HomeFlag, homeDir)
 	viper.SetConfigName("config") // name of config file (without extension)
-	viper.AddConfigPath(rootDir)  // search root directory
+	viper.AddConfigPath(homeDir)  // search root directory
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {

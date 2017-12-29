@@ -3,7 +3,6 @@ package common
 import (
 	"encoding/binary"
 	"fmt"
-	"math/rand"
 	"strings"
 	"sync"
 )
@@ -212,12 +211,12 @@ func (bA *BitArray) PickRandom() (int, bool) {
 	if length == 0 {
 		return 0, false
 	}
-	randElemStart := rand.Intn(length)
+	randElemStart := RandIntn(length)
 	for i := 0; i < length; i++ {
 		elemIdx := ((i + randElemStart) % length)
 		if elemIdx < length-1 {
 			if bA.Elems[elemIdx] > 0 {
-				randBitStart := rand.Intn(64)
+				randBitStart := RandIntn(64)
 				for j := 0; j < 64; j++ {
 					bitIdx := ((j + randBitStart) % 64)
 					if (bA.Elems[elemIdx] & (uint64(1) << uint(bitIdx))) > 0 {
@@ -232,7 +231,7 @@ func (bA *BitArray) PickRandom() (int, bool) {
 			if elemBits == 0 {
 				elemBits = 64
 			}
-			randBitStart := rand.Intn(elemBits)
+			randBitStart := RandIntn(elemBits)
 			for j := 0; j < elemBits; j++ {
 				bitIdx := ((j + randBitStart) % elemBits)
 				if (bA.Elems[elemIdx] & (uint64(1) << uint(bitIdx))) > 0 {

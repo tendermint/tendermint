@@ -13,6 +13,8 @@ package pubsub
 
 import (
 	"context"
+	"errors"
+	"sync"
 
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -38,6 +40,7 @@ type cmd struct {
 // Query defines an interface for a query to be used for subscribing.
 type Query interface {
 	Matches(tags map[string]interface{}) bool
+	String() string
 }
 
 // Server allows clients to subscribe/unsubscribe for messages, publishing
@@ -47,6 +50,9 @@ type Server struct {
 
 	cmds    chan cmd
 	cmdsCap int
+
+	mtx           sync.RWMutex
+	subscriptions map[string]map[string]struct{} // subscriber -> query -> struct{}
 }
 
 // Option sets a parameter for the server.
@@ -56,7 +62,9 @@ type Option func(*Server)
 // for a detailed description of how to configure buffering. If no options are
 // provided, the resulting server's queue is unbuffered.
 func NewServer(options ...Option) *Server {
-	s := &Server{}
+	s := &Server{
+		subscriptions: make(map[string]map[string]struct{}),
+	}
 	s.BaseService = *cmn.NewBaseService(nil, "PubSub", s)
 
 	for _, option := range options {
@@ -82,17 +90,33 @@ func BufferCapacity(cap int) Option {
 }
 
 // BufferCapacity returns capacity of the internal server's queue.
-func (s Server) BufferCapacity() int {
+func (s *Server) BufferCapacity() int {
 	return s.cmdsCap
 }
 
 // Subscribe creates a subscription for the given client. It accepts a channel
-// on which messages matching the given query can be received. If the
-// subscription already exists, the old channel will be closed. An error will
-// be returned to the caller if the context is canceled.
+// on which messages matching the given query can be received. An error will be
+// returned to the caller if the context is canceled or if subscription already
+// exist for pair clientID and query.
 func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, out chan<- interface{}) error {
+	s.mtx.RLock()
+	clientSubscriptions, ok := s.subscriptions[clientID]
+	if ok {
+		_, ok = clientSubscriptions[query.String()]
+	}
+	s.mtx.RUnlock()
+	if ok {
+		return errors.New("already subscribed")
+	}
+
 	select {
 	case s.cmds <- cmd{op: sub, clientID: clientID, query: query, ch: out}:
+		s.mtx.Lock()
+		if _, ok = s.subscriptions[clientID]; !ok {
+			s.subscriptions[clientID] = make(map[string]struct{})
+		}
+		s.subscriptions[clientID][query.String()] = struct{}{}
+		s.mtx.Unlock()
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -100,10 +124,24 @@ func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, ou
 }
 
 // Unsubscribe removes the subscription on the given query. An error will be
-// returned to the caller if the context is canceled.
+// returned to the caller if the context is canceled or if subscription does
+// not exist.
 func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) error {
+	s.mtx.RLock()
+	clientSubscriptions, ok := s.subscriptions[clientID]
+	if ok {
+		_, ok = clientSubscriptions[query.String()]
+	}
+	s.mtx.RUnlock()
+	if !ok {
+		return errors.New("subscription not found")
+	}
+
 	select {
 	case s.cmds <- cmd{op: unsub, clientID: clientID, query: query}:
+		s.mtx.Lock()
+		delete(clientSubscriptions, query.String())
+		s.mtx.Unlock()
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -111,10 +149,20 @@ func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) 
 }
 
 // UnsubscribeAll removes all client subscriptions. An error will be returned
-// to the caller if the context is canceled.
+// to the caller if the context is canceled or if subscription does not exist.
 func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
+	s.mtx.RLock()
+	_, ok := s.subscriptions[clientID]
+	s.mtx.RUnlock()
+	if !ok {
+		return errors.New("subscription not found")
+	}
+
 	select {
 	case s.cmds <- cmd{op: unsub, clientID: clientID}:
+		s.mtx.Lock()
+		delete(s.subscriptions, clientID)
+		s.mtx.Unlock()
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
@@ -186,13 +234,8 @@ loop:
 
 func (state *state) add(clientID string, q Query, ch chan<- interface{}) {
 	// add query if needed
-	if clientToChannelMap, ok := state.queries[q]; !ok {
+	if _, ok := state.queries[q]; !ok {
 		state.queries[q] = make(map[string]chan<- interface{})
-	} else {
-		// check if already subscribed
-		if oldCh, ok := clientToChannelMap[clientID]; ok {
-			close(oldCh)
-		}
 	}
 
 	// create subscription

@@ -1,78 +1,92 @@
 package common
 
 import (
-	"sync"
 	"testing"
 	"time"
 
-	// make govet noshadow happy...
-	asrt "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 )
 
-type rCounter struct {
-	input chan time.Time
-	mtx   sync.Mutex
-	count int
+func TestDefaultTicker(t *testing.T) {
+	ticker := defaultTickerMaker(time.Millisecond * 10)
+	<-ticker.Chan()
+	ticker.Stop()
 }
 
-func (c *rCounter) Increment() {
-	c.mtx.Lock()
-	c.count++
-	c.mtx.Unlock()
-}
+func TestRepeat(t *testing.T) {
 
-func (c *rCounter) Count() int {
-	c.mtx.Lock()
-	val := c.count
-	c.mtx.Unlock()
-	return val
-}
+	ch := make(chan time.Time, 100)
+	lt := time.Time{} // zero time is year 1
 
-// Read should run in a go-routine and
-// updates count by one every time a packet comes in
-func (c *rCounter) Read() {
-	for range c.input {
-		c.Increment()
+	// tick fires `cnt` times for each second.
+	tick := func(cnt int) {
+		for i := 0; i < cnt; i++ {
+			lt = lt.Add(time.Second)
+			ch <- lt
+		}
 	}
-}
 
-func TestRepeat(test *testing.T) {
-	assert := asrt.New(test)
-
-	dur := time.Duration(50) * time.Millisecond
-	short := time.Duration(20) * time.Millisecond
-	// delay waits for cnt durations, an a little extra
-	delay := func(cnt int) time.Duration {
-		return time.Duration(cnt)*dur + time.Millisecond
+	// tock consumes Ticker.Chan() events `cnt` times.
+	tock := func(t *testing.T, rt *RepeatTimer, cnt int) {
+		for i := 0; i < cnt; i++ {
+			timeout := time.After(time.Second * 10)
+			select {
+			case <-rt.Chan():
+			case <-timeout:
+				panic("expected RepeatTimer to fire")
+			}
+		}
+		done := true
+		select {
+		case <-rt.Chan():
+			done = false
+		default:
+		}
+		assert.True(t, done)
 	}
-	t := NewRepeatTimer("bar", dur)
 
-	// start at 0
-	c := &rCounter{input: t.Ch}
-	go c.Read()
-	assert.Equal(0, c.Count())
+	tm := NewLogicalTickerMaker(ch)
+	dur := time.Duration(10 * time.Millisecond) // less than a second
+	rt := NewRepeatTimerWithTickerMaker("bar", dur, tm)
 
-	// wait for 4 periods
-	time.Sleep(delay(4))
-	assert.Equal(4, c.Count())
+	// Start at 0.
+	tock(t, rt, 0)
+	tick(1) // init time
 
-	// keep reseting leads to no firing
+	tock(t, rt, 0)
+	tick(1) // wait 1 periods
+	tock(t, rt, 1)
+	tick(2) // wait 2 periods
+	tock(t, rt, 2)
+	tick(3) // wait 3 periods
+	tock(t, rt, 3)
+	tick(4) // wait 4 periods
+	tock(t, rt, 4)
+
+	// Multiple resets leads to no firing.
 	for i := 0; i < 20; i++ {
-		time.Sleep(short)
-		t.Reset()
+		time.Sleep(time.Millisecond)
+		rt.Reset()
 	}
-	assert.Equal(4, c.Count())
 
-	// after this, it still works normal
-	time.Sleep(delay(2))
-	assert.Equal(6, c.Count())
+	// After this, it works as new.
+	tock(t, rt, 0)
+	tick(1) // init time
 
-	// after a stop, nothing more is sent
-	stopped := t.Stop()
-	assert.True(stopped)
-	time.Sleep(delay(7))
-	assert.Equal(6, c.Count())
+	tock(t, rt, 0)
+	tick(1) // wait 1 periods
+	tock(t, rt, 1)
+	tick(2) // wait 2 periods
+	tock(t, rt, 2)
+	tick(3) // wait 3 periods
+	tock(t, rt, 3)
+	tick(4) // wait 4 periods
+	tock(t, rt, 4)
 
-	// close channel to stop counter
-	close(t.Ch)
+	// After a stop, nothing more is sent.
+	rt.Stop()
+	tock(t, rt, 0)
+
+	// Another stop panics.
+	assert.Panics(t, func() { rt.Stop() })
 }
