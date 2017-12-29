@@ -175,6 +175,13 @@ func QueryForEvent(eventType string) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
 }
 
+// BlockEventPublisher publishes all block related events
+type BlockEventPublisher interface {
+	PublishEventNewBlock(block EventDataNewBlock) error
+	PublishEventNewBlockHeader(header EventDataNewBlockHeader) error
+	PublishEventTx(EventDataTx) error
+}
+
 type TxEventPublisher interface {
 	PublishEventTx(EventDataTx) error
 }

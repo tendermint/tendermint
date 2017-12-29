@@ -3,9 +3,7 @@
 ## Roadmap
 
 BREAKING CHANGES:
-- Upgrade the header to support better proofs on validtors, results, evidence, and possibly more
 - Better support for injecting randomness
-- Pass evidence/voteInfo through ABCI
 - Upgrade consensus for more real-time use of evidence
 
 FEATURES:
@@ -32,6 +30,27 @@ BUG FIXES:
 BREAKING CHANGES:
 - [p2p] enable the Peer Exchange reactor by default
 - [types] add Timestamp field to Proposal/Vote
+- [types] add new fields to Header: TotalTxs, ConsensusParamsHash, LastResultsHash, EvidenceHash
+- [types] add Evidence to Block
+- [types] simplify ValidateBasic
+- [state] updates to support changes to the header
+- [state] Enforce <1/3 of validator set can change at a time
+
+FEATURES:
+- [state] Send indices of absent validators and addresses of byzantine validators in BeginBlock
+- [state] Historical ConsensusParams and ABCIResponses
+- [docs] Specification for the base Tendermint data structures.
+- [evidence] New evidence reactor for gossiping and managing evidence
+- [rpc] `/block_results?height=X` returns the DeliverTx results for a given height.
+
+IMPROVEMENTS:
+- [consensus] Better handling of corrupt WAL file
+
+BUG FIXES:
+- [lite] fix race
+- [state] validate block.Header.ValidatorsHash
+- [p2p] allow seed addresses to be prefixed with eg. `tcp://`
+- [cmd] fix `tendermint init` to ignore files that are there and generate files that aren't.
 
 ## 0.14.0 (December 11, 2017)
 

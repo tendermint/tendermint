@@ -4,6 +4,7 @@ import (
 	cm "github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -49,8 +50,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 		return nil, err
 	}
 
-	state := consensusState.GetState()
-	validators, err := state.LoadValidators(height)
+	validators, err := sm.LoadValidators(stateDB, height)
 	if err != nil {
 		return nil, err
 	}

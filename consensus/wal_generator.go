@@ -47,13 +47,12 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	}
 	stateDB := db.NewMemDB()
 	blockStoreDB := db.NewMemDB()
-	state, err := sm.MakeGenesisState(stateDB, genDoc)
-	state.SetLogger(logger.With("module", "state"))
+	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make genesis state")
 	}
 	blockStore := bc.NewBlockStore(blockStoreDB)
-	handshaker := NewHandshaker(state, blockStore)
+	handshaker := NewHandshaker(stateDB, state, blockStore)
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app), handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -68,7 +67,8 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	defer eventBus.Stop()
 	mempool := types.MockMempool{}
 	evpool := types.MockEvidencePool{}
-	consensusState := NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
+	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil {

@@ -10,19 +10,15 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
 
-func makeStateAndBlockStore(logger log.Logger) (*sm.State, *BlockStore) {
+func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	blockStore := NewBlockStore(dbm.NewMemDB())
-
-	// Get State
-	state, _ := sm.GetState(dbm.NewMemDB(), config.GenesisFile())
-	state.SetLogger(logger.With("module", "state"))
-	state.Save()
-
+	state, _ := sm.LoadStateFromDBOrGenesisFile(dbm.NewMemDB(), config.GenesisFile())
 	return state, blockStore
 }
 
@@ -31,7 +27,10 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 
 	// Make the blockchainReactor itself
 	fastSync := true
-	bcReactor := NewBlockchainReactor(state.Copy(), nil, blockStore, fastSync)
+	var nilApp proxy.AppConnConsensus
+	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nilApp, types.MockMempool{}, types.MockEvidencePool{})
+
+	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Next: we need to set a switch in order for peers to be added in
@@ -51,7 +50,7 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 func TestNoBlockMessageResponse(t *testing.T) {
 	maxBlockHeight := int64(20)
 
-	bcr := newBlockchainReactor(log.NewNopLogger(), maxBlockHeight)
+	bcr := newBlockchainReactor(log.TestingLogger(), maxBlockHeight)
 	bcr.Start()
 	defer bcr.Stop()
 
@@ -71,6 +70,8 @@ func TestNoBlockMessageResponse(t *testing.T) {
 		{100, false},
 	}
 
+	// receive a request message from peer,
+	// wait to hear response
 	for _, tt := range tests {
 		reqBlockMsg := &bcBlockRequestMessage{tt.height}
 		reqBlockBytes := wire.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
@@ -104,7 +105,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func makeBlock(height int64, state *sm.State) *types.Block {
+func makeBlock(height int64, state sm.State) *types.Block {
 	block, _ := state.MakeBlock(height, makeTxs(height), new(types.Commit))
 	return block
 }
