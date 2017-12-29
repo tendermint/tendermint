@@ -25,7 +25,7 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.15.0 (TBD)
+## 0.15.0 (December 29, 2017)
 
 BREAKING CHANGES:
 - [p2p] enable the Peer Exchange reactor by default
