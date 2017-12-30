@@ -10,63 +10,63 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"net"
 	"os"
 	"sync"
 	"time"
 
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
-	// addresses under which the address manager will claim to need more addresses.
-	needAddressThreshold = 1000
+	// peers under which the peer manager will claim to need more peers.
+	needPeerThreshold = 1000
 
-	// interval used to dump the address cache to disk for future use.
-	dumpAddressInterval = time.Minute * 2
+	// interval used to dump the peer cache to disk for future use.
+	dumpPeerInterval = time.Minute * 2
 
-	// max addresses in each old address bucket.
+	// max peers in each old peer bucket.
 	oldBucketSize = 64
 
-	// buckets we split old addresses over.
+	// buckets we split old peers over.
 	oldBucketCount = 64
 
-	// max addresses in each new address bucket.
+	// max peers in each new peer bucket.
 	newBucketSize = 64
 
-	// buckets that we spread new addresses over.
+	// buckets that we spread new peers over.
 	newBucketCount = 256
 
-	// old buckets over which an address group will be spread.
+	// old buckets over which an peer group will be spread.
 	oldBucketsPerGroup = 4
 
-	// new buckets over which a source address group will be spread.
+	// new buckets over which a source peer group will be spread.
 	newBucketsPerGroup = 32
 
-	// buckets a frequently seen new address may end up in.
-	maxNewBucketsPerAddress = 4
+	// buckets a frequently seen new peer may end up in.
+	maxNewBucketsPerPeer = 4
 
-	// days before which we assume an address has vanished
+	// days before which we assume an peer has vanished
 	// if we have not seen it announced in that long.
 	numMissingDays = 30
 
-	// tries without a single success before we assume an address is bad.
+	// tries without a single success before we assume an peer is bad.
 	numRetries = 3
 
-	// max failures we will accept without a success before considering an address bad.
+	// max failures we will accept without a success before considering an peer bad.
 	maxFailures = 10
 
-	// days since the last success before we will consider evicting an address.
+	// days since the last success before we will consider evicting an peer.
 	minBadDays = 7
 
-	// % of total addresses known returned by GetSelection.
+	// % of total peers known returned by GetSelection.
 	getSelectionPercent = 23
 
-	// min addresses that must be returned by GetSelection. Useful for bootstrapping.
+	// min peers that must be returned by GetSelection. Useful for bootstrapping.
 	minGetSelection = 32
 
-	// max addresses returned by GetSelection
+	// max peers returned by GetSelection
 	// NOTE: this must match "maxPexMessageSize"
 	maxGetSelection = 250
 )
@@ -76,60 +76,58 @@ const (
 	bucketTypeOld = 0x02
 )
 
-// AddrBook - concurrency safe peer address manager.
-type AddrBook struct {
+// PeerBook - concurrency safe peer identity manager.
+type PeerBook struct {
 	cmn.BaseService
 
 	// immutable after creation
-	filePath          string
-	routabilityStrict bool
-	key               string
+	filePath string
+	key      string
 
 	// accessed concurrently
 	mtx        sync.Mutex
 	rand       *rand.Rand
-	ourAddrs   map[string]*NetAddress
-	addrLookup map[string]*knownAddress // new & old
-	bucketsOld []map[string]*knownAddress
-	bucketsNew []map[string]*knownAddress
+	ourPeers   map[string]lpeer.ID
+	peerLookup map[string]*knownPeer // new & old
+	bucketsOld []map[string]*knownPeer
+	bucketsNew []map[string]*knownPeer
 	nOld       int
 	nNew       int
 
 	wg sync.WaitGroup
 }
 
-// NewAddrBook creates a new address book.
-// Use Start to begin processing asynchronous address updates.
-func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
-	am := &AddrBook{
-		rand:              rand.New(rand.NewSource(time.Now().UnixNano())),
-		ourAddrs:          make(map[string]*NetAddress),
-		addrLookup:        make(map[string]*knownAddress),
-		filePath:          filePath,
-		routabilityStrict: routabilityStrict,
+// NewPeerBook creates a new peer book.
+// Use Start to begin processing asynchronous peer updates.
+func NewPeerBook(filePath string) *PeerBook {
+	am := &PeerBook{
+		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
+		ourPeers:   make(map[string]lpeer.ID),
+		peerLookup: make(map[string]*knownPeer),
+		filePath:   filePath,
 	}
 	am.init()
-	am.BaseService = *cmn.NewBaseService(nil, "AddrBook", am)
+	am.BaseService = *cmn.NewBaseService(nil, "PeerBook", am)
 	return am
 }
 
 // When modifying this, don't forget to update loadFromFile()
-func (a *AddrBook) init() {
+func (a *PeerBook) init() {
 	a.key = crypto.CRandHex(24) // 24/2 * 8 = 96 bits
 	// New addr buckets
-	a.bucketsNew = make([]map[string]*knownAddress, newBucketCount)
+	a.bucketsNew = make([]map[string]*knownPeer, newBucketCount)
 	for i := range a.bucketsNew {
-		a.bucketsNew[i] = make(map[string]*knownAddress)
+		a.bucketsNew[i] = make(map[string]*knownPeer)
 	}
 	// Old addr buckets
-	a.bucketsOld = make([]map[string]*knownAddress, oldBucketCount)
+	a.bucketsOld = make([]map[string]*knownPeer, oldBucketCount)
 	for i := range a.bucketsOld {
-		a.bucketsOld[i] = make(map[string]*knownAddress)
+		a.bucketsOld[i] = make(map[string]*knownPeer)
 	}
 }
 
 // OnStart implements Service.
-func (a *AddrBook) OnStart() error {
+func (a *PeerBook) OnStart() error {
 	if err := a.BaseService.OnStart(); err != nil {
 		return err
 	}
@@ -144,62 +142,62 @@ func (a *AddrBook) OnStart() error {
 }
 
 // OnStop implements Service.
-func (a *AddrBook) OnStop() {
+func (a *PeerBook) OnStop() {
 	a.BaseService.OnStop()
 }
 
-func (a *AddrBook) Wait() {
+func (a *PeerBook) Wait() {
 	a.wg.Wait()
 }
 
-// AddOurAddress adds another one of our addresses.
-func (a *AddrBook) AddOurAddress(addr *NetAddress) {
+// AddOurPeer adds another one of our peers.
+func (a *PeerBook) AddOurPeer(peer lpeer.ID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	a.Logger.Info("Add our address to book", "addr", addr)
-	a.ourAddrs[addr.String()] = addr
+	a.Logger.Info("Add our peer to book", "id", peer.Pretty())
+	a.ourPeers[peer.Pretty()] = peer
 }
 
-// OurAddresses returns a list of our addresses.
-func (a *AddrBook) OurAddresses() []*NetAddress {
-	addrs := []*NetAddress{}
-	for _, addr := range a.ourAddrs {
+// OurPeers returns a list of our peers.
+func (a *PeerBook) OurPeers() []lpeer.ID {
+	addrs := []lpeer.ID{}
+	for _, addr := range a.ourPeers {
 		addrs = append(addrs, addr)
 	}
 	return addrs
 }
 
-// AddAddress adds the given address as received from the given source.
+// AddPeer adds the given peer as received from the given source.
 // NOTE: addr must not be nil
-func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) error {
+func (a *PeerBook) AddPeer(id lpeer.ID, src lpeer.ID) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	return a.addAddress(addr, src)
+	return a.addPeer(id, src)
 }
 
-// NeedMoreAddrs returns true if there are not have enough addresses in the book.
-func (a *AddrBook) NeedMoreAddrs() bool {
-	return a.Size() < needAddressThreshold
+// NeedMoreAddrs returns true if there are not have enough peers in the book.
+func (a *PeerBook) NeedMoreAddrs() bool {
+	return a.Size() < needPeerThreshold
 }
 
-// Size returns the number of addresses in the book.
-func (a *AddrBook) Size() int {
+// Size returns the number of peers in the book.
+func (a *PeerBook) Size() int {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	return a.size()
 }
 
-func (a *AddrBook) size() int {
+func (a *PeerBook) size() int {
 	return a.nNew + a.nOld
 }
 
-// PickAddress picks an address to connect to.
-// The address is picked randomly from an old or new bucket according
+// PickPeer picks a peer to connect to.
+// The peer is picked randomly from an old or new bucket according
 // to the newBias argument, which must be between [0, 100] (or else is truncated to that range)
-// and determines how biased we are to pick an address from a new bucket.
-// PickAddress returns nil if the AddrBook is empty or if we try to pick
+// and determines how biased we are to pick an peer from a new bucket.
+// PickPeer returns nil if the PeerBook is empty or if we try to pick
 // from an empty bucket.
-func (a *AddrBook) PickAddress(newBias int) *NetAddress {
+func (a *PeerBook) PickPeer(newBias int) *string {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -213,12 +211,12 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 		newBias = 0
 	}
 
-	// Bias between new and old addresses.
+	// Bias between new and old peers.
 	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(newBias))
 	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(newBias)
 
 	// pick a random peer from a random bucket
-	var bucket map[string]*knownAddress
+	var bucket map[string]*knownPeer
 	pickFromOldBucket := (newCorrelation+oldCorrelation)*a.rand.Float64() < oldCorrelation
 	if (pickFromOldBucket && a.nOld == 0) ||
 		(!pickFromOldBucket && a.nNew == 0) {
@@ -236,7 +234,7 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 	randIndex := a.rand.Intn(len(bucket))
 	for _, ka := range bucket {
 		if randIndex == 0 {
-			return ka.Addr
+			return &ka.ID
 		}
 		randIndex--
 	}
@@ -245,10 +243,10 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 
 // MarkGood marks the peer as good and moves it into an "old" bucket.
 // XXX: we never call this!
-func (a *AddrBook) MarkGood(addr *NetAddress) {
+func (a *PeerBook) MarkGood(peer lpeer.ID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrLookup[addr.String()]
+	ka := a.peerLookup[peer.Pretty()]
 	if ka == nil {
 		return
 	}
@@ -258,39 +256,39 @@ func (a *AddrBook) MarkGood(addr *NetAddress) {
 	}
 }
 
-// MarkAttempt marks that an attempt was made to connect to the address.
-func (a *AddrBook) MarkAttempt(addr *NetAddress) {
+// MarkAttempt marks that an attempt was made to connect to the peer.
+func (a *PeerBook) MarkAttempt(peer lpeer.ID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrLookup[addr.String()]
+	ka := a.peerLookup[peer.Pretty()]
 	if ka == nil {
 		return
 	}
 	ka.markAttempt()
 }
 
-// MarkBad currently just ejects the address. In the future, consider
+// MarkBad currently just ejects the peer. In the future, consider
 // blacklisting.
-func (a *AddrBook) MarkBad(addr *NetAddress) {
-	a.RemoveAddress(addr)
+func (a *PeerBook) MarkBad(addr lpeer.ID) {
+	a.RemovePeer(addr)
 }
 
-// RemoveAddress removes the address from the book.
-func (a *AddrBook) RemoveAddress(addr *NetAddress) {
+// RemovePeer removes the peer from the book.
+func (a *PeerBook) RemovePeer(peer lpeer.ID) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrLookup[addr.String()]
+	ka := a.peerLookup[peer.Pretty()]
 	if ka == nil {
 		return
 	}
-	a.Logger.Info("Remove address from book", "addr", addr)
+	a.Logger.Info("Remove peer from book", "peer-id", peer)
 	a.removeFromAllBuckets(ka)
 }
 
 /* Peer exchange */
 
-// GetSelection randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
-func (a *AddrBook) GetSelection() []*NetAddress {
+// GetSelection randomly selects some peers (old & new). Suitable for peer-exchange protocols.
+func (a *PeerBook) GetSelection() []lpeer.ID {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -298,46 +296,47 @@ func (a *AddrBook) GetSelection() []*NetAddress {
 		return nil
 	}
 
-	allAddr := make([]*NetAddress, a.size())
+	allPeers := make([]lpeer.ID, a.size())
 	i := 0
-	for _, v := range a.addrLookup {
-		allAddr[i] = v.Addr
+	for _, v := range a.peerLookup {
+		pid, _, _ := v.parseIds()
+		allPeers[i] = pid
 		i++
 	}
 
-	numAddresses := cmn.MaxInt(
-		cmn.MinInt(minGetSelection, len(allAddr)),
-		len(allAddr)*getSelectionPercent/100)
-	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
+	numPeeres := cmn.MaxInt(
+		cmn.MinInt(minGetSelection, len(allPeers)),
+		len(allPeers)*getSelectionPercent/100)
+	numPeeres = cmn.MinInt(maxGetSelection, numPeeres)
 
 	// Fisher-Yates shuffle the array. We only need to do the first
-	// `numAddresses' since we are throwing the rest.
-	// XXX: What's the point of this if we already loop randomly through addrLookup ?
-	for i := 0; i < numAddresses; i++ {
+	// `numPeeres' since we are throwing the rest.
+	// XXX: What's the point of this if we already loop randomly through peerLookup ?
+	for i := 0; i < numPeeres; i++ {
 		// pick a number between current index and the end
-		j := rand.Intn(len(allAddr)-i) + i
-		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
+		j := rand.Intn(len(allPeers)-i) + i
+		allPeers[i], allPeers[j] = allPeers[j], allPeers[i]
 	}
 
 	// slice off the limit we are willing to share.
-	return allAddr[:numAddresses]
+	return allPeers[:numPeeres]
 }
 
 /* Loading & Saving */
 
 type addrBookJSON struct {
 	Key   string
-	Addrs []*knownAddress
+	Addrs []*knownPeer
 }
 
-func (a *AddrBook) saveToFile(filePath string) {
-	a.Logger.Info("Saving AddrBook to file", "size", a.Size())
+func (a *PeerBook) saveToFile(filePath string) {
+	a.Logger.Info("Saving PeerBook to file", "size", a.Size())
 
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	// Compile Addrs
-	addrs := []*knownAddress{}
-	for _, ka := range a.addrLookup {
+	addrs := []*knownPeer{}
+	for _, ka := range a.peerLookup {
 		addrs = append(addrs, ka)
 	}
 
@@ -348,18 +347,18 @@ func (a *AddrBook) saveToFile(filePath string) {
 
 	jsonBytes, err := json.MarshalIndent(aJSON, "", "\t")
 	if err != nil {
-		a.Logger.Error("Failed to save AddrBook to file", "err", err)
+		a.Logger.Error("Failed to save PeerBook to file", "err", err)
 		return
 	}
 	err = cmn.WriteFileAtomic(filePath, jsonBytes, 0644)
 	if err != nil {
-		a.Logger.Error("Failed to save AddrBook to file", "file", filePath, "err", err)
+		a.Logger.Error("Failed to save PeerBook to file", "file", filePath, "err", err)
 	}
 }
 
 // Returns false if file does not exist.
 // cmn.Panics if file is corrupt.
-func (a *AddrBook) loadFromFile(filePath string) bool {
+func (a *PeerBook) loadFromFile(filePath string) bool {
 	// If doesn't exist, do nothing.
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
@@ -386,9 +385,9 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 	for _, ka := range aJSON.Addrs {
 		for _, bucketIndex := range ka.Buckets {
 			bucket := a.getBucket(ka.BucketType, bucketIndex)
-			bucket[ka.Addr.String()] = ka
+			bucket[ka.ID] = ka
 		}
-		a.addrLookup[ka.Addr.String()] = ka
+		a.peerLookup[ka.ID] = ka
 		if ka.BucketType == bucketTypeNew {
 			a.nNew++
 		} else {
@@ -399,17 +398,17 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 }
 
 // Save saves the book.
-func (a *AddrBook) Save() {
-	a.Logger.Info("Saving AddrBook to file", "size", a.Size())
+func (a *PeerBook) Save() {
+	a.Logger.Info("Saving PeerBook to file", "size", a.Size())
 	a.saveToFile(a.filePath)
 }
 
 /* Private methods */
 
-func (a *AddrBook) saveRoutine() {
+func (a *PeerBook) saveRoutine() {
 	defer a.wg.Done()
 
-	saveFileTicker := time.NewTicker(dumpAddressInterval)
+	saveFileTicker := time.NewTicker(dumpPeerInterval)
 out:
 	for {
 		select {
@@ -421,10 +420,10 @@ out:
 	}
 	saveFileTicker.Stop()
 	a.saveToFile(a.filePath)
-	a.Logger.Info("Address handler done")
+	a.Logger.Info("Peer handler done")
 }
 
-func (a *AddrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAddress {
+func (a *PeerBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownPeer {
 	switch bucketType {
 	case bucketTypeNew:
 		return a.bucketsNew[bucketIdx]
@@ -438,97 +437,97 @@ func (a *AddrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 
 // Adds ka to new bucket. Returns false if it couldn't do it cuz buckets full.
 // NOTE: currently it always returns true.
-func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
+func (a *PeerBook) addToNewBucket(ka *knownPeer, bucketIdx int) bool {
 	// Sanity check
 	if ka.isOld() {
-		a.Logger.Error(cmn.Fmt("Cannot add address already in old bucket to a new bucket: %v", ka))
+		a.Logger.Error(cmn.Fmt("Cannot add peer already in old bucket to a new bucket: %v", ka))
 		return false
 	}
 
-	addrStr := ka.Addr.String()
+	peerIdStr := ka.ID
 	bucket := a.getBucket(bucketTypeNew, bucketIdx)
 
 	// Already exists?
-	if _, ok := bucket[addrStr]; ok {
+	if _, ok := bucket[peerIdStr]; ok {
 		return true
 	}
 
-	// Enforce max addresses.
+	// Enforce max peers.
 	if len(bucket) > newBucketSize {
 		a.Logger.Info("new bucket is full, expiring old ")
 		a.expireNew(bucketIdx)
 	}
 
 	// Add to bucket.
-	bucket[addrStr] = ka
+	bucket[peerIdStr] = ka
 	if ka.addBucketRef(bucketIdx) == 1 {
 		a.nNew++
 	}
 
-	// Ensure in addrLookup
-	a.addrLookup[addrStr] = ka
+	// Ensure in peerLookup
+	a.peerLookup[peerIdStr] = ka
 
 	return true
 }
 
 // Adds ka to old bucket. Returns false if it couldn't do it cuz buckets full.
-func (a *AddrBook) addToOldBucket(ka *knownAddress, bucketIdx int) bool {
+func (a *PeerBook) addToOldBucket(ka *knownPeer, bucketIdx int) bool {
 	// Sanity check
 	if ka.isNew() {
-		a.Logger.Error(cmn.Fmt("Cannot add new address to old bucket: %v", ka))
+		a.Logger.Error(cmn.Fmt("Cannot add new peer to old bucket: %v", ka))
 		return false
 	}
 	if len(ka.Buckets) != 0 {
-		a.Logger.Error(cmn.Fmt("Cannot add already old address to another old bucket: %v", ka))
+		a.Logger.Error(cmn.Fmt("Cannot add already old peer to another old bucket: %v", ka))
 		return false
 	}
 
-	addrStr := ka.Addr.String()
+	peerIdStr := ka.ID
 	bucket := a.getBucket(bucketTypeOld, bucketIdx)
 
 	// Already exists?
-	if _, ok := bucket[addrStr]; ok {
+	if _, ok := bucket[peerIdStr]; ok {
 		return true
 	}
 
-	// Enforce max addresses.
+	// Enforce max peers.
 	if len(bucket) > oldBucketSize {
 		return false
 	}
 
 	// Add to bucket.
-	bucket[addrStr] = ka
+	bucket[peerIdStr] = ka
 	if ka.addBucketRef(bucketIdx) == 1 {
 		a.nOld++
 	}
 
-	// Ensure in addrLookup
-	a.addrLookup[addrStr] = ka
+	// Ensure in peerLookup
+	a.peerLookup[peerIdStr] = ka
 
 	return true
 }
 
-func (a *AddrBook) removeFromBucket(ka *knownAddress, bucketType byte, bucketIdx int) {
+func (a *PeerBook) removeFromBucket(ka *knownPeer, bucketType byte, bucketIdx int) {
 	if ka.BucketType != bucketType {
 		a.Logger.Error(cmn.Fmt("Bucket type mismatch: %v", ka))
 		return
 	}
 	bucket := a.getBucket(bucketType, bucketIdx)
-	delete(bucket, ka.Addr.String())
+	delete(bucket, ka.ID)
 	if ka.removeBucketRef(bucketIdx) == 0 {
 		if bucketType == bucketTypeNew {
 			a.nNew--
 		} else {
 			a.nOld--
 		}
-		delete(a.addrLookup, ka.Addr.String())
+		delete(a.peerLookup, ka.ID)
 	}
 }
 
-func (a *AddrBook) removeFromAllBuckets(ka *knownAddress) {
+func (a *PeerBook) removeFromAllBuckets(ka *knownPeer) {
 	for _, bucketIdx := range ka.Buckets {
 		bucket := a.getBucket(ka.BucketType, bucketIdx)
-		delete(bucket, ka.Addr.String())
+		delete(bucket, ka.ID)
 	}
 	ka.Buckets = nil
 	if ka.BucketType == bucketTypeNew {
@@ -536,12 +535,12 @@ func (a *AddrBook) removeFromAllBuckets(ka *knownAddress) {
 	} else {
 		a.nOld--
 	}
-	delete(a.addrLookup, ka.Addr.String())
+	delete(a.peerLookup, ka.ID)
 }
 
-func (a *AddrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
+func (a *PeerBook) pickOldest(bucketType byte, bucketIdx int) *knownPeer {
 	bucket := a.getBucket(bucketType, bucketIdx)
-	var oldest *knownAddress
+	var oldest *knownPeer
 	for _, ka := range bucket {
 		if oldest == nil || ka.LastAttempt.Before(oldest.LastAttempt) {
 			oldest = ka
@@ -550,16 +549,13 @@ func (a *AddrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 	return oldest
 }
 
-func (a *AddrBook) addAddress(addr, src *NetAddress) error {
-	if a.routabilityStrict && !addr.Routable() {
-		return fmt.Errorf("Cannot add non-routable address %v", addr)
-	}
-	if _, ok := a.ourAddrs[addr.String()]; ok {
-		// Ignore our own listener address.
-		return fmt.Errorf("Cannot add ourselves with address %v", addr)
+func (a *PeerBook) addPeer(id lpeer.ID, src lpeer.ID) error {
+	if _, ok := a.ourPeers[id.Pretty()]; ok {
+		// Ignore our own listener peer.
+		return fmt.Errorf("Cannot add ourselves with peer %v", id.Pretty())
 	}
 
-	ka := a.addrLookup[addr.String()]
+	ka := a.peerLookup[id.Pretty()]
 
 	if ka != nil {
 		// Already old.
@@ -567,7 +563,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) error {
 			return nil
 		}
 		// Already in max new buckets.
-		if len(ka.Buckets) == maxNewBucketsPerAddress {
+		if len(ka.Buckets) == maxNewBucketsPerPeer {
 			return nil
 		}
 		// The more entries we have, the less likely we are to add more.
@@ -576,23 +572,23 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) error {
 			return nil
 		}
 	} else {
-		ka = newKnownAddress(addr, src)
+		ka = newKnownPeer(id, src)
 	}
 
-	bucket := a.calcNewBucket(addr, src)
+	bucket := a.calcNewBucket(id, src)
 	a.addToNewBucket(ka, bucket)
 
-	a.Logger.Info("Added new address", "address", addr, "total", a.size())
+	a.Logger.Info("Added new peer", "peer", id.Pretty(), "total", a.size())
 	return nil
 }
 
 // Make space in the new buckets by expiring the really bad entries.
 // If no bad entries are available we remove the oldest.
-func (a *AddrBook) expireNew(bucketIdx int) {
-	for addrStr, ka := range a.bucketsNew[bucketIdx] {
+func (a *PeerBook) expireNew(bucketIdx int) {
+	for peerIdStr, ka := range a.bucketsNew[bucketIdx] {
 		// If an entry is bad, throw it away
 		if ka.isBad() {
-			a.Logger.Info(cmn.Fmt("expiring bad address %v", addrStr))
+			a.Logger.Info(cmn.Fmt("expiring bad peer %v", peerIdStr))
 			a.removeFromBucket(ka, bucketTypeNew, bucketIdx)
 			return
 		}
@@ -603,17 +599,17 @@ func (a *AddrBook) expireNew(bucketIdx int) {
 	a.removeFromBucket(oldest, bucketTypeNew, bucketIdx)
 }
 
-// Promotes an address from new to old.
+// Promotes an peer from new to old.
 // TODO: Move to old probabilistically.
 // The better a node is, the less likely it should be evicted from an old bucket.
-func (a *AddrBook) moveToOld(ka *knownAddress) {
+func (a *PeerBook) moveToOld(ka *knownPeer) {
 	// Sanity check
 	if ka.isOld() {
-		a.Logger.Error(cmn.Fmt("Cannot promote address that is already old %v", ka))
+		a.Logger.Error(cmn.Fmt("Cannot promote peer that is already old %v", ka))
 		return
 	}
 	if len(ka.Buckets) == 0 {
-		a.Logger.Error(cmn.Fmt("Cannot promote address that isn't in any new buckets %v", ka))
+		a.Logger.Error(cmn.Fmt("Cannot promote peer that isn't in any new buckets %v", ka))
 		return
 	}
 
@@ -625,14 +621,16 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 	ka.BucketType = bucketTypeOld
 
 	// Try to add it to its oldBucket destination.
-	oldBucketIdx := a.calcOldBucket(ka.Addr)
+	kaId, _, _ := ka.parseIds()
+	oldBucketIdx := a.calcOldBucket(kaId)
 	added := a.addToOldBucket(ka, oldBucketIdx)
 	if !added {
 		// No room, must evict something
 		oldest := a.pickOldest(bucketTypeOld, oldBucketIdx)
 		a.removeFromBucket(oldest, bucketTypeOld, oldBucketIdx)
 		// Find new bucket to put oldest in
-		newBucketIdx := a.calcNewBucket(oldest.Addr, oldest.Src)
+		oldestId, oldestSrc, _ := oldest.parseIds()
+		newBucketIdx := a.calcNewBucket(oldestId, oldestSrc)
 		added := a.addToNewBucket(oldest, newBucketIdx)
 		// No space in newBucket either, just put it in freedBucket from above.
 		if !added {
@@ -651,11 +649,11 @@ func (a *AddrBook) moveToOld(ka *knownAddress) {
 
 // doublesha256(  key + sourcegroup +
 //                int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
-func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
+func (a *PeerBook) calcNewBucket(addr, src lpeer.ID) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
-	data1 = append(data1, []byte(a.groupKey(addr))...)
-	data1 = append(data1, []byte(a.groupKey(src))...)
+	data1 = append(data1, []byte(addr)...)
+	data1 = append(data1, []byte(src)...)
 	hash1 := doubleSha256(data1)
 	hash64 := binary.BigEndian.Uint64(hash1)
 	hash64 %= newBucketsPerGroup
@@ -663,19 +661,19 @@ func (a *AddrBook) calcNewBucket(addr, src *NetAddress) int {
 	binary.BigEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, []byte(a.key)...)
-	data2 = append(data2, a.groupKey(src)...)
+	data2 = append(data2, []byte(src)...)
 	data2 = append(data2, hashbuf[:]...)
 
 	hash2 := doubleSha256(data2)
 	return int(binary.BigEndian.Uint64(hash2) % newBucketCount)
 }
 
-// doublesha256(  key + group +
+// doublesha256(  key + peerid +
 //                int64(doublesha256(key + addr))%buckets_per_group  ) % num_old_buckets
-func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
+func (a *PeerBook) calcOldBucket(peer lpeer.ID) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
-	data1 = append(data1, []byte(addr.String())...)
+	data1 = append(data1, []byte(peer.Pretty())...)
 	hash1 := doubleSha256(data1)
 	hash64 := binary.BigEndian.Uint64(hash1)
 	hash64 %= oldBucketsPerGroup
@@ -683,73 +681,24 @@ func (a *AddrBook) calcOldBucket(addr *NetAddress) int {
 	binary.BigEndian.PutUint64(hashbuf[:], hash64)
 	data2 := []byte{}
 	data2 = append(data2, []byte(a.key)...)
-	data2 = append(data2, a.groupKey(addr)...)
+	data2 = append(data2, []byte(peer)...)
 	data2 = append(data2, hashbuf[:]...)
 
 	hash2 := doubleSha256(data2)
 	return int(binary.BigEndian.Uint64(hash2) % oldBucketCount)
 }
 
-// Return a string representing the network group of this address.
-// This is the /16 for IPv4, the /32 (/36 for he.net) for IPv6, the string
-// "local" for a local address and the string "unroutable" for an unroutable
-// address.
-func (a *AddrBook) groupKey(na *NetAddress) string {
-	if a.routabilityStrict && na.Local() {
-		return "local"
-	}
-	if a.routabilityStrict && !na.Routable() {
-		return "unroutable"
-	}
-
-	if ipv4 := na.IP.To4(); ipv4 != nil {
-		return (&net.IPNet{IP: na.IP, Mask: net.CIDRMask(16, 32)}).String()
-	}
-	if na.RFC6145() || na.RFC6052() {
-		// last four bytes are the ip address
-		ip := net.IP(na.IP[12:16])
-		return (&net.IPNet{IP: ip, Mask: net.CIDRMask(16, 32)}).String()
-	}
-
-	if na.RFC3964() {
-		ip := net.IP(na.IP[2:7])
-		return (&net.IPNet{IP: ip, Mask: net.CIDRMask(16, 32)}).String()
-
-	}
-	if na.RFC4380() {
-		// teredo tunnels have the last 4 bytes as the v4 address XOR
-		// 0xff.
-		ip := net.IP(make([]byte, 4))
-		for i, byte := range na.IP[12:16] {
-			ip[i] = byte ^ 0xff
-		}
-		return (&net.IPNet{IP: ip, Mask: net.CIDRMask(16, 32)}).String()
-	}
-
-	// OK, so now we know ourselves to be a IPv6 address.
-	// bitcoind uses /32 for everything, except for Hurricane Electric's
-	// (he.net) IP range, which it uses /36 for.
-	bits := 32
-	heNet := &net.IPNet{IP: net.ParseIP("2001:470::"),
-		Mask: net.CIDRMask(32, 128)}
-	if heNet.Contains(na.IP) {
-		bits = 36
-	}
-
-	return (&net.IPNet{IP: na.IP, Mask: net.CIDRMask(bits, 128)}).String()
-}
-
 //-----------------------------------------------------------------------------
 
 /*
-   knownAddress
+   knownPeer
 
-   tracks information about a known network address that is used
-   to determine how viable an address is.
+   tracks information about a known network peer that is used
+   to determine how viable an peer is.
 */
-type knownAddress struct {
-	Addr        *NetAddress
-	Src         *NetAddress
+type knownPeer struct {
+	ID          string
+	Src         string
 	Attempts    int32
 	LastAttempt time.Time
 	LastSuccess time.Time
@@ -757,10 +706,10 @@ type knownAddress struct {
 	Buckets     []int
 }
 
-func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
-	return &knownAddress{
-		Addr:        addr,
-		Src:         src,
+func newKnownPeer(id lpeer.ID, src lpeer.ID) *knownPeer {
+	return &knownPeer{
+		ID:          id.Pretty(),
+		Src:         src.Pretty(),
 		Attempts:    0,
 		LastAttempt: time.Now(),
 		BucketType:  bucketTypeNew,
@@ -768,28 +717,37 @@ func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
 	}
 }
 
-func (ka *knownAddress) isOld() bool {
+func (ka *knownPeer) parseIds() (id lpeer.ID, src lpeer.ID, err error) {
+	id, err = lpeer.IDB58Decode(ka.ID)
+	if err != nil {
+		return
+	}
+	src, err = lpeer.IDB58Decode(ka.Src)
+	return
+}
+
+func (ka *knownPeer) isOld() bool {
 	return ka.BucketType == bucketTypeOld
 }
 
-func (ka *knownAddress) isNew() bool {
+func (ka *knownPeer) isNew() bool {
 	return ka.BucketType == bucketTypeNew
 }
 
-func (ka *knownAddress) markAttempt() {
+func (ka *knownPeer) markAttempt() {
 	now := time.Now()
 	ka.LastAttempt = now
 	ka.Attempts += 1
 }
 
-func (ka *knownAddress) markGood() {
+func (ka *knownPeer) markGood() {
 	now := time.Now()
 	ka.LastAttempt = now
 	ka.Attempts = 0
 	ka.LastSuccess = now
 }
 
-func (ka *knownAddress) addBucketRef(bucketIdx int) int {
+func (ka *knownPeer) addBucketRef(bucketIdx int) int {
 	for _, bucket := range ka.Buckets {
 		if bucket == bucketIdx {
 			// TODO refactor to return error?
@@ -801,7 +759,7 @@ func (ka *knownAddress) addBucketRef(bucketIdx int) int {
 	return len(ka.Buckets)
 }
 
-func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
+func (ka *knownPeer) removeBucketRef(bucketIdx int) int {
 	buckets := []int{}
 	for _, bucket := range ka.Buckets {
 		if bucket != bucketIdx {
@@ -818,7 +776,7 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
 }
 
 /*
-   An address is bad if the address in question is a New address, has not been tried in the last
+   An peer is bad if the peer in question is a New peer, has not been tried in the last
    minute, and meets one of the following criteria:
 
    1) It claims to be from the future
@@ -826,12 +784,12 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
    3) It has failed at least three times and never succeeded
    4) It has failed ten times in the last week
 
-   All addresses that meet these criteria are assumed to be worthless and not
+   All peers that meet these criteria are assumed to be worthless and not
    worth keeping hold of.
 
    XXX: so a good peer needs us to call MarkGood before the conditions above are reached!
 */
-func (ka *knownAddress) isBad() bool {
+func (ka *knownPeer) isBad() bool {
 	// Is Old --> good
 	if ka.BucketType == bucketTypeOld {
 		return false

@@ -110,12 +110,12 @@ for _, peer := range switch.Peers().List() {
 }
 ```
 
-### PexReactor/AddrBook
+### PexReactor/PeerBook
 
 A `PEXReactor` reactor implementation is provided to automate peer discovery.
 
 ```go
-book := p2p.NewAddrBook(addrBookFilePath)
+book := p2p.NewPeerBook(peerBookFilePath)
 pexReactor := p2p.NewPEXReactor(book)
 ...
 switch := NewSwitch([]Reactor{pexReactor, myReactor, ...})

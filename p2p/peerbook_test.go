@@ -1,11 +1,13 @@
 package p2p
 
 import (
-	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"testing"
+	"time"
 
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -23,104 +25,104 @@ func createTempFileName(prefix string) string {
 	return fname
 }
 
-func TestAddrBookPickAddress(t *testing.T) {
+func TestPeerBookPickPeer(t *testing.T) {
 	assert := assert.New(t)
 	fname := createTempFileName("addrbook_test")
 
 	// 0 addresses
-	book := NewAddrBook(fname, true)
+	book := NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	assert.Zero(book.Size())
 
-	addr := book.PickAddress(50)
+	addr := book.PickPeer(50)
 	assert.Nil(addr, "expected no address")
 
-	randAddrs := randNetAddressPairs(t, 1)
+	randAddrs := randNetPeerPairs(t, 1)
 	addrSrc := randAddrs[0]
-	book.AddAddress(addrSrc.addr, addrSrc.src)
+	book.AddPeer(addrSrc.addr, addrSrc.src)
 
 	// pick an address when we only have new address
-	addr = book.PickAddress(0)
+	addr = book.PickPeer(0)
 	assert.NotNil(addr, "expected an address")
-	addr = book.PickAddress(50)
+	addr = book.PickPeer(50)
 	assert.NotNil(addr, "expected an address")
-	addr = book.PickAddress(100)
+	addr = book.PickPeer(100)
 	assert.NotNil(addr, "expected an address")
 
 	// pick an address when we only have old address
 	book.MarkGood(addrSrc.addr)
-	addr = book.PickAddress(0)
+	addr = book.PickPeer(0)
 	assert.NotNil(addr, "expected an address")
-	addr = book.PickAddress(50)
+	addr = book.PickPeer(50)
 	assert.NotNil(addr, "expected an address")
 
 	// in this case, nNew==0 but we biased 100% to new, so we return nil
-	addr = book.PickAddress(100)
+	addr = book.PickPeer(100)
 	assert.Nil(addr, "did not expected an address")
 }
 
-func TestAddrBookSaveLoad(t *testing.T) {
+func TestPeerBookSaveLoad(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
 	// 0 addresses
-	book := NewAddrBook(fname, true)
+	book := NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
+	book = NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
 	assert.Zero(t, book.Size())
 
 	// 100 addresses
-	randAddrs := randNetAddressPairs(t, 100)
+	randAddrs := randNetPeerPairs(t, 100)
 
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
+		book.AddPeer(addrSrc.addr, addrSrc.src)
 	}
 
 	assert.Equal(t, 100, book.Size())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
+	book = NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
 	assert.Equal(t, 100, book.Size())
 }
 
-func TestAddrBookLookup(t *testing.T) {
+func TestPeerBookLookup(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
-	randAddrs := randNetAddressPairs(t, 100)
+	randAddrs := randNetPeerPairs(t, 100)
 
-	book := NewAddrBook(fname, true)
+	book := NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
 		src := addrSrc.src
-		book.AddAddress(addr, src)
+		book.AddPeer(addr, src)
 
-		ka := book.addrLookup[addr.String()]
-		assert.NotNil(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
+		ka := book.peerLookup[addr.Pretty()]
+		assert.NotNil(t, ka, "Expected to find KnownPeer %v but wasn't there.", addr.Pretty())
 
-		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
-			t.Fatalf("KnownAddress doesn't match addr & src")
+		if !(ka.ID == addr && ka.Src == src) {
+			t.Fatalf("KnownPeer doesn't match addr & src")
 		}
 	}
 }
 
-func TestAddrBookPromoteToOld(t *testing.T) {
+func TestPeerBookPromoteToOld(t *testing.T) {
 	assert := assert.New(t)
 	fname := createTempFileName("addrbook_test")
 
-	randAddrs := randNetAddressPairs(t, 100)
+	randAddrs := randNetPeerPairs(t, 100)
 
-	book := NewAddrBook(fname, true)
+	book := NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
+		book.AddPeer(addrSrc.addr, addrSrc.src)
 	}
 
 	// Attempt all addresses.
@@ -147,67 +149,64 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 	assert.Equal(book.Size(), 100, "expecting book size to be 100")
 }
 
-func TestAddrBookHandlesDuplicates(t *testing.T) {
+func TestPeerBookHandlesDuplicates(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 
-	book := NewAddrBook(fname, true)
+	book := NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 
-	randAddrs := randNetAddressPairs(t, 100)
+	randAddrs := randNetPeerPairs(t, 100)
 
-	differentSrc := randIPv4Address(t)
+	differentSrc := randPeer()
 	for _, addrSrc := range randAddrs {
-		book.AddAddress(addrSrc.addr, addrSrc.src)
-		book.AddAddress(addrSrc.addr, addrSrc.src)  // duplicate
-		book.AddAddress(addrSrc.addr, differentSrc) // different src
+		book.AddPeer(addrSrc.addr, addrSrc.src)
+		book.AddPeer(addrSrc.addr, addrSrc.src)  // duplicate
+		book.AddPeer(addrSrc.addr, differentSrc) // different src
 	}
 
 	assert.Equal(t, 100, book.Size())
 }
 
-type netAddressPair struct {
-	addr *NetAddress
-	src  *NetAddress
+type peerPair struct {
+	addr lpeer.ID
+	src  lpeer.ID
 }
 
-func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
-	randAddrs := make([]netAddressPair, n)
+func randNetPeerPairs(t *testing.T, n int) []peerPair {
+	randAddrs := make([]peerPair, n)
 	for i := 0; i < n; i++ {
-		randAddrs[i] = netAddressPair{addr: randIPv4Address(t), src: randIPv4Address(t)}
+		randAddrs[i] = peerPair{addr: randPeer(), src: randPeer()}
 	}
 	return randAddrs
 }
 
-func randIPv4Address(t *testing.T) *NetAddress {
-	for {
-		ip := fmt.Sprintf("%v.%v.%v.%v",
-			rand.Intn(254)+1,
-			rand.Intn(255),
-			rand.Intn(255),
-			rand.Intn(255),
-		)
-		port := rand.Intn(65535-1) + 1
-		addr, err := NewNetAddressString(fmt.Sprintf("%v:%v", ip, port))
-		assert.Nil(t, err, "error generating rand network address")
-		if addr.Routable() {
-			return addr
-		}
+var randIdSource = rand.New(rand.NewSource(time.Now().Unix()))
+
+func randPeer() lpeer.ID {
+	_, pubKey, err := crypto.GenerateEd25519Key(randIdSource)
+	if err != nil {
+		panic(err)
 	}
+	id, err := lpeer.IDFromPublicKey(pubKey)
+	if err != nil {
+		panic(err)
+	}
+	return id
 }
 
-func TestAddrBookRemoveAddress(t *testing.T) {
+func TestPeerBookRemovePeer(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
-	book := NewAddrBook(fname, true)
+	book := NewPeerBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 
-	addr := randIPv4Address(t)
-	book.AddAddress(addr, addr)
+	addr := randPeer()
+	book.AddPeer(addr, addr)
 	assert.Equal(t, 1, book.Size())
 
-	book.RemoveAddress(addr)
+	book.RemovePeer(addr)
 	assert.Equal(t, 0, book.Size())
 
-	nonExistingAddr := randIPv4Address(t)
-	book.RemoveAddress(nonExistingAddr)
+	nonExistingAddr := randPeer()
+	book.RemovePeer(nonExistingAddr)
 	assert.Equal(t, 0, book.Size())
 }

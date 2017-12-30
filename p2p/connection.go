@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"net"
 	"runtime/debug"
 	"sync/atomic"
 	"time"
 
+	inet "github.com/libp2p/go-libp2p-net"
+	ma "github.com/multiformats/go-multiaddr"
 	wire "github.com/tendermint/go-wire"
 	tmlegacy "github.com/tendermint/go-wire/nowriter/tmlegacy"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -70,7 +71,7 @@ Inbound message bytes are handled with an onReceive callback function.
 type MConnection struct {
 	cmn.BaseService
 
-	conn        net.Conn
+	conn        inet.Stream
 	bufReader   *bufio.Reader
 	bufWriter   *bufio.Writer
 	sendMonitor *flow.Monitor
@@ -89,8 +90,8 @@ type MConnection struct {
 	pingTimer    *cmn.RepeatTimer   // send pings periodically
 	chStatsTimer *cmn.RepeatTimer   // update channel stats periodically
 
-	LocalAddress  *NetAddress
-	RemoteAddress *NetAddress
+	LocalAddress  ma.Multiaddr
+	RemoteAddress ma.Multiaddr
 }
 
 // MConnConfig is a MConnection configuration.
@@ -117,8 +118,8 @@ func DefaultMConnConfig() *MConnConfig {
 	}
 }
 
-// NewMConnection wraps net.Conn and creates multiplex connection
-func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
+// NewMConnection wraps inet.Stream and creates multiplex connection
+func NewMConnection(conn inet.Stream, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc) *MConnection {
 	return NewMConnectionWithConfig(
 		conn,
 		chDescs,
@@ -127,8 +128,8 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 		DefaultMConnConfig())
 }
 
-// NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
-func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
+// NewMConnectionWithConfig wraps inet.Stream and creates multiplex connection with a config
+func NewMConnectionWithConfig(conn inet.Stream, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
 	mconn := &MConnection{
 		conn:        conn,
 		bufReader:   bufio.NewReaderSize(conn, minReadBufferSize),
@@ -141,8 +142,8 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 		onError:     onError,
 		config:      config,
 
-		LocalAddress:  NewNetAddress(conn.LocalAddr()),
-		RemoteAddress: NewNetAddress(conn.RemoteAddr()),
+		LocalAddress:  conn.Conn().LocalMultiaddr(),
+		RemoteAddress: conn.Conn().RemoteMultiaddr(),
 	}
 
 	// Create channels
@@ -201,7 +202,14 @@ func (c *MConnection) OnStop() {
 }
 
 func (c *MConnection) String() string {
-	return fmt.Sprintf("MConn{%v}", c.conn.RemoteAddr())
+	return "MConn{unknown}"
+	/*
+		conn := c.conn.Conn()
+		if conn == nil {
+			return "MConn{unknown}"
+		}
+		return fmt.Sprintf("MConn{%s}", conn.RemoteMultiaddr().String())
+	*/
 }
 
 func (c *MConnection) flush() {

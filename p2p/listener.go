@@ -4,17 +4,18 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"time"
 
-	"github.com/tendermint/tendermint/p2p/upnp"
+	inet "github.com/libp2p/go-libp2p-net"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	bhost "github.com/libp2p/go-libp2p/p2p/host/basic"
+	ma "github.com/multiformats/go-multiaddr"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
 
 type Listener interface {
-	Connections() <-chan net.Conn
-	InternalAddress() *NetAddress
-	ExternalAddress() *NetAddress
+	Connections() <-chan inet.Stream
+	ExternalAddress() ma.Multiaddr
 	String() string
 	Stop() error
 }
@@ -23,10 +24,8 @@ type Listener interface {
 type DefaultListener struct {
 	cmn.BaseService
 
-	listener    net.Listener
-	intAddr     *NetAddress
-	extAddr     *NetAddress
-	connections chan net.Conn
+	host        *bhost.BasicHost
+	connections chan inet.Stream
 }
 
 const (
@@ -48,161 +47,75 @@ func splitHostPort(addr string) (host string, port int) {
 }
 
 // skipUPNP: If true, does not try getUPNPExternalAddress()
-func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log.Logger) Listener {
-	// Local listen IP & port
-	lAddrIP, lAddrPort := splitHostPort(lAddr)
-
-	// Create listener
-	var listener net.Listener
-	var err error
-	for i := 0; i < tryListenSeconds; i++ {
-		listener, err = net.Listen(protocol, lAddr)
-		if err == nil {
-			break
-		} else if i < tryListenSeconds-1 {
-			time.Sleep(time.Second * 1)
-		}
+func NewDefaultListener(
+	localMa []ma.Multiaddr,
+	skipUPNP bool,
+	logger log.Logger,
+	snet *swarm.Network,
+	bh *bhost.BasicHost,
+) (Listener, error) {
+	logger.Info("Building default swarm handler")
+	for _, ma := range localMa {
+		logger.Info("Adding local swarm listener", "addr", ma.String())
 	}
-	if err != nil {
-		panic(err)
-	}
-	// Actual listener local IP & port
-	listenerIP, listenerPort := splitHostPort(listener.Addr().String())
-	logger.Info("Local listener", "ip", listenerIP, "port", listenerPort)
-
-	// Determine internal address...
-	var intAddr *NetAddress
-	intAddr, err = NewNetAddressString(lAddr)
-	if err != nil {
-		panic(err)
-	}
-
-	// Determine external address...
-	var extAddr *NetAddress
-	if !skipUPNP {
-		// If the lAddrIP is INADDR_ANY, try UPnP
-		if lAddrIP == "" || lAddrIP == "0.0.0.0" {
-			extAddr = getUPNPExternalAddress(lAddrPort, listenerPort, logger)
-		}
-	}
-	// Otherwise just use the local address...
-	if extAddr == nil {
-		extAddr = getNaiveExternalAddress(listenerPort, false, logger)
-	}
-	if extAddr == nil {
-		panic("Could not determine external address!")
+	if err := snet.Listen(localMa...); err != nil {
+		return nil, err
 	}
 
 	dl := &DefaultListener{
-		listener:    listener,
-		intAddr:     intAddr,
-		extAddr:     extAddr,
-		connections: make(chan net.Conn, numBufferedConnections),
+		host:        bh,
+		connections: make(chan inet.Stream, numBufferedConnections),
 	}
+
 	dl.BaseService = *cmn.NewBaseService(logger, "DefaultListener", dl)
-	err = dl.Start() // Started upon construction
-	if err != nil {
+	// Started upon construction
+	if err := dl.Start(); err != nil {
 		logger.Error("Error starting base service", "err", err)
+		return dl, err
 	}
-	return dl
+
+	return dl, nil
 }
 
 func (l *DefaultListener) OnStart() error {
 	if err := l.BaseService.OnStart(); err != nil {
 		return err
 	}
-	go l.listenRoutine()
+	l.host.SetStreamHandler(Protocol, l.streamHandler)
 	return nil
+}
+
+// streamHandler handles incoming streams on the protocol.
+func (l *DefaultListener) streamHandler(stream inet.Stream) {
+	if !l.IsRunning() {
+		stream.Close()
+		return
+	}
+
+	l.connections <- stream
 }
 
 func (l *DefaultListener) OnStop() {
 	l.BaseService.OnStop()
-	l.listener.Close() // nolint: errcheck
-}
-
-// Accept connections and pass on the channel
-func (l *DefaultListener) listenRoutine() {
-	for {
-		conn, err := l.listener.Accept()
-
-		if !l.IsRunning() {
-			break // Go to cleanup
-		}
-
-		// listener wasn't stopped,
-		// yet we encountered an error.
-		if err != nil {
-			panic(err)
-		}
-
-		l.connections <- conn
-	}
-
-	// Cleanup
-	close(l.connections)
-	for range l.connections {
-		// Drain
-	}
+	l.host.Close()
 }
 
 // A channel of inbound connections.
 // It gets closed when the listener closes.
-func (l *DefaultListener) Connections() <-chan net.Conn {
+func (l *DefaultListener) Connections() <-chan inet.Stream {
 	return l.connections
 }
 
-func (l *DefaultListener) InternalAddress() *NetAddress {
-	return l.intAddr
-}
-
-func (l *DefaultListener) ExternalAddress() *NetAddress {
-	return l.extAddr
-}
-
-// NOTE: The returned listener is already Accept()'ing.
-// So it's not suitable to pass into http.Serve().
-func (l *DefaultListener) NetListener() net.Listener {
-	return l.listener
+func (l *DefaultListener) ExternalAddress() ma.Multiaddr {
+	return l.host.Addrs()[0]
 }
 
 func (l *DefaultListener) String() string {
-	return fmt.Sprintf("Listener(@%v)", l.extAddr)
+	return fmt.Sprintf("Listener(@%v)", l.ExternalAddress().String())
 }
 
 /* external address helpers */
-
-// UPNP external address discovery & port mapping
-func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *NetAddress {
-	logger.Info("Getting UPNP external address")
-	nat, err := upnp.Discover()
-	if err != nil {
-		logger.Info("Could not perform UPNP discover", "err", err)
-		return nil
-	}
-
-	ext, err := nat.GetExternalAddress()
-	if err != nil {
-		logger.Info("Could not get UPNP external address", "err", err)
-		return nil
-	}
-
-	// UPnP can't seem to get the external port, so let's just be explicit.
-	if externalPort == 0 {
-		externalPort = defaultExternalPort
-	}
-
-	externalPort, err = nat.AddPortMapping("tcp", externalPort, internalPort, "tendermint", 0)
-	if err != nil {
-		logger.Info("Could not add UPNP port mapping", "err", err)
-		return nil
-	}
-
-	logger.Info("Got UPNP external address", "address", ext)
-	return NewNetAddressIPPort(ext, uint16(externalPort))
-}
-
-// TODO: use syscalls: see issue #712
-func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *NetAddress {
+func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) ma.Multiaddr {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		panic(cmn.Fmt("Could not fetch interface addresses: %v", err))
@@ -217,7 +130,11 @@ func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *
 		if v4 == nil || (!settleForLocal && v4[0] == 127) {
 			continue
 		} // loopback
-		return NewNetAddressIPPort(ipnet.IP, uint16(port))
+		maddr, err := ma.NewMultiaddr(fmt.Sprintf("/ip4/%s/tcp/%d", ipnet.IP.String(), port))
+		if err != nil {
+			cmn.PanicCrisis(err)
+		}
+		return maddr
 	}
 
 	// try again, but settle for local

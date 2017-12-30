@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -17,9 +17,19 @@ import (
 
 // GenesisValidator is an initial validator.
 type GenesisValidator struct {
-	PubKey crypto.PubKey `json:"pub_key"`
-	Power  int64         `json:"power"`
-	Name   string        `json:"name"`
+	PubKey string `json:"pub_key"`
+	Power  int64  `json:"power"`
+	Name   string `json:"name"`
+}
+
+// ParsePubKey parses the public key field.
+func (v *GenesisValidator) ParsePubKey() (crypto.PubKey, error) {
+	var dat []byte
+	if err := data.Encoder.Unmarshal(&dat, []byte(v.PubKey)); err != nil {
+		return nil, err
+	}
+
+	return crypto.UnmarshalPublicKey(dat)
 }
 
 // GenesisDoc defines the initial conditions for a tendermint blockchain, in particular its validator set.
@@ -45,7 +55,12 @@ func (genDoc *GenesisDoc) SaveAs(file string) error {
 func (genDoc *GenesisDoc) ValidatorHash() []byte {
 	vals := make([]*Validator, len(genDoc.Validators))
 	for i, v := range genDoc.Validators {
-		vals[i] = NewValidator(v.PubKey, v.Power)
+		pubKey, err := v.ParsePubKey()
+		if err != nil {
+			panic(err)
+		}
+
+		vals[i] = NewValidator(pubKey, v.Power)
 	}
 	vset := NewValidatorSet(vals)
 	return vset.Hash()

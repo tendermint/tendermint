@@ -1,10 +1,11 @@
 package lite
 
 import (
+	"crypto/rand"
 	"time"
 
-	crypto "github.com/tendermint/go-crypto"
-
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -23,7 +24,11 @@ type ValKeys []crypto.PrivKey
 func GenValKeys(n int) ValKeys {
 	res := make(ValKeys, n)
 	for i := range res {
-		res[i] = crypto.GenPrivKeyEd25519().Wrap()
+		privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		if err != nil {
+			panic(err)
+		}
+		res[i] = privKey
 	}
 	return res
 }
@@ -32,7 +37,11 @@ func GenValKeys(n int) ValKeys {
 func (v ValKeys) Change(i int) ValKeys {
 	res := make(ValKeys, len(v))
 	copy(res, v)
-	res[i] = crypto.GenPrivKeyEd25519().Wrap()
+	privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	res[i] = privKey
 	return res
 }
 
@@ -46,7 +55,11 @@ func (v ValKeys) Extend(n int) ValKeys {
 func GenSecpValKeys(n int) ValKeys {
 	res := make(ValKeys, n)
 	for i := range res {
-		res[i] = crypto.GenPrivKeySecp256k1().Wrap()
+		privKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+		if err != nil {
+			panic(err)
+		}
+		res[i] = privKey
 	}
 	return res
 }
@@ -64,7 +77,7 @@ func (v ValKeys) ExtendSecp(n int) ValKeys {
 func (v ValKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 	res := make([]*types.Validator, len(v))
 	for i, k := range v {
-		res[i] = types.NewValidator(k.PubKey(), init+int64(i)*inc)
+		res[i] = types.NewValidator(k.GetPublic(), init+int64(i)*inc)
 	}
 	return types.NewValidatorSet(res)
 }
@@ -90,7 +103,11 @@ func (v ValKeys) signHeader(header *types.Header, first, last int) *types.Commit
 }
 
 func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey) *types.Vote {
-	addr := key.PubKey().Address()
+	peerID, err := lpeer.IDFromPrivateKey(key)
+	if err != nil {
+		panic(err)
+	}
+	addr := peerID.Pretty()
 	idx, _ := vals.GetByAddress(addr)
 	vote := &types.Vote{
 		ValidatorAddress: addr,
@@ -103,7 +120,10 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 	}
 	// Sign it
 	signBytes := types.SignBytes(header.ChainID, vote)
-	vote.Signature = key.Sign(signBytes)
+	vote.Signature, err = key.Sign(signBytes)
+	if err != nil {
+		panic(err)
+	}
 	return vote
 }
 

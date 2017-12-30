@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -46,8 +47,16 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 		// Read priv_validator.json to populate vals
 		privValFile := path.Join(dataDir, mach, "priv_validator.json")
 		privVal := types.LoadPrivValidatorFS(privValFile)
+		pubKeyBytes, err := privVal.GetPubKey().Bytes()
+		if err != nil {
+			cmn.Exit(err.Error())
+		}
+		pubKeyStr, err := data.Encoder.Marshal(pubKeyBytes)
+		if err != nil {
+			cmn.Exit(err.Error())
+		}
 		genVals[i] = types.GenesisValidator{
-			PubKey: privVal.GetPubKey(),
+			PubKey: string(pubKeyStr),
 			Power:  1,
 			Name:   mach,
 		}

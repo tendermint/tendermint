@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	lpeer "github.com/libp2p/go-libp2p-peer"
+	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -29,7 +31,7 @@ func (err *ErrEvidenceInvalid) Error() string {
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
 	Height() int64               // height of the equivocation
-	Address() []byte             // address of the equivocating validator
+	Address() string             // address of the equivocating validator
 	Index() int                  // index of the validator in the validator set
 	Hash() []byte                // hash of the evidence
 	Verify(chainID string) error // verify the evidence
@@ -92,7 +94,7 @@ var _ = wire.RegisterInterface(
 
 // DuplicateVoteEvidence contains evidence a validator signed two conflicting votes.
 type DuplicateVoteEvidence struct {
-	PubKey crypto.PubKey
+	PubKey string
 	VoteA  *Vote
 	VoteB  *Vote
 }
@@ -108,9 +110,35 @@ func (dve *DuplicateVoteEvidence) Height() int64 {
 	return dve.VoteA.Height
 }
 
+// ParsePubKey derives the crypto.PubKey from the PubKey string.
+func (dve *DuplicateVoteEvidence) ParsePubKey() (crypto.PubKey, error) {
+	var pubKeyDat []byte
+	if err := data.Encoder.Unmarshal(&pubKeyDat, []byte(dve.PubKey)); err != nil {
+		return nil, err
+	}
+
+	return crypto.UnmarshalPublicKey(pubKeyDat)
+}
+
+// ParsePeerID parses the peer ID from the public key.
+func (dve *DuplicateVoteEvidence) ParsePeerID() (lpeer.ID, crypto.PubKey, error) {
+	pubKey, err := dve.ParsePubKey()
+	if pubKey == nil || err != nil {
+		return "", pubKey, err
+	}
+
+	peerID, err := lpeer.IDFromPublicKey(pubKey)
+	return peerID, pubKey, err
+}
+
 // Address returns the address of the validator.
-func (dve *DuplicateVoteEvidence) Address() []byte {
-	return dve.PubKey.Address()
+func (dve *DuplicateVoteEvidence) Address() string {
+	peerID, _, _ := dve.ParsePeerID()
+	if len(peerID) == 0 {
+		return ""
+	}
+
+	return peerID.Pretty()
 }
 
 // Index returns the index of the validator.
@@ -134,8 +162,8 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 	}
 
 	// Address must be the same
-	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
-		return fmt.Errorf("DuplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X", dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress)
+	if dve.VoteA.ValidatorAddress != dve.VoteB.ValidatorAddress {
+		return fmt.Errorf("DuplicateVoteEvidence Error: Validator addresses do not match. Got %s and %s", dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress)
 	}
 	// XXX: Should we enforce index is the same ?
 	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
@@ -148,10 +176,15 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 	}
 
 	// Signatures must be valid
-	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteA), dve.VoteA.Signature) {
+	dvePub, err := dve.ParsePubKey()
+	if err != nil {
+		return fmt.Errorf("DuplicateVoteEvidence Error: PubKey is invalid: %v", err.Error())
+	}
+
+	if verOk, _ := dvePub.Verify(SignBytes(chainID, dve.VoteA), dve.VoteA.Signature.Bytes()); !verOk {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
 	}
-	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteB), dve.VoteB.Signature) {
+	if verOk, _ := dvePub.Verify(SignBytes(chainID, dve.VoteB), dve.VoteB.Signature.Bytes()); !verOk {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
 	}
 
@@ -173,17 +206,17 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 // UNSTABLE
 type MockGoodEvidence struct {
 	Height_  int64
-	Address_ []byte
+	Address_ string
 	Index_   int
 }
 
 // UNSTABLE
-func NewMockGoodEvidence(height int64, index int, address []byte) MockGoodEvidence {
+func NewMockGoodEvidence(height int64, index int, address string) MockGoodEvidence {
 	return MockGoodEvidence{height, address, index}
 }
 
 func (e MockGoodEvidence) Height() int64   { return e.Height_ }
-func (e MockGoodEvidence) Address() []byte { return e.Address_ }
+func (e MockGoodEvidence) Address() string { return e.Address_ }
 func (e MockGoodEvidence) Index() int      { return e.Index_ }
 func (e MockGoodEvidence) Hash() []byte {
 	return []byte(fmt.Sprintf("%d-%d", e.Height_, e.Index_))
@@ -192,7 +225,7 @@ func (e MockGoodEvidence) Verify(chainID string) error { return nil }
 func (e MockGoodEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockGoodEvidence)
 	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_) &&
+		e.Address_ == e2.Address_ &&
 		e.Index_ == e2.Index_
 }
 func (e MockGoodEvidence) String() string {
@@ -208,7 +241,7 @@ func (e MockBadEvidence) Verify(chainID string) error { return fmt.Errorf("MockB
 func (e MockBadEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockBadEvidence)
 	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_) &&
+		e.Address_ == e2.Address_ &&
 		e.Index_ == e2.Index_
 }
 func (e MockBadEvidence) String() string {

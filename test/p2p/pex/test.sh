@@ -8,8 +8,8 @@ PROXY_APP=$4
 
 cd $GOPATH/src/github.com/tendermint/tendermint
 
-echo "Test reconnecting from the address book"
-bash test/p2p/pex/test_addrbook.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
+echo "Test reconnecting from the peer book"
+bash test/p2p/pex/test_peerbook.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP
 
 echo "Test connecting via /dial_seeds"
 bash test/p2p/pex/test_dial_seeds.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP

@@ -74,7 +74,7 @@ R[0] = raw data for current time interval
 
 ### Trust Metric Store
 
-Similar to the P2P subsystem AddrBook, the trust metric store will maintain information relevant to Tendermint peers. Additionally, the trust metric store will ensure that trust metrics will only be active for peers that a node is currently and directly engaged with.
+Similar to the P2P subsystem PeerBook, the trust metric store will maintain information relevant to Tendermint peers. Additionally, the trust metric store will ensure that trust metrics will only be active for peers that a node is currently and directly engaged with.
 
 Reactors will provide a peer key to the trust metric store in order to retrieve the associated trust metric. The trust metric can then record new positive and negative events experienced by the reactor, as well as provided the current trust score calculated by the metric.
 

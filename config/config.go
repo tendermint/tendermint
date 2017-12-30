@@ -199,20 +199,21 @@ func TestRPCConfig() *RPCConfig {
 type P2PConfig struct {
 	RootDir string `mapstructure:"home"`
 
-	// Address to listen for incoming connections
+	// Plus + separated addresses to listen for incoming connections.
+	// Format: 192.168.1.1:5000 OR /ip4/192.168.1.1/tcp/5000
 	ListenAddress string `mapstructure:"laddr"`
 
-	// Comma separated list of seed nodes to connect to
+	// Comma separated list of seed peers to connect to, with list of addresses.
+	// Format: peerid[@192.168.1.1:5000 ] OR /ip4/192.168.1.1/tcp/5000/p2p/peerid
+	// Example: QmYtUc4iTCbbfVSDNKvtQqrfyezPPnFvE33wFmutw9PBBk@192.168.1.1:5000
+	// Example: /ip4/192.168.1.1/tcp/5000/p2p/QmYtUc4iTCbbfVSDNKvtQqrfyezPPnFvE33wFmutw9PBBk
 	Seeds string `mapstructure:"seeds"`
 
 	// Skip UPNP port forwarding
 	SkipUPNP bool `mapstructure:"skip_upnp"`
 
-	// Path to address book
-	AddrBook string `mapstructure:"addr_book_file"`
-
-	// Set true for strict address routability rules
-	AddrBookStrict bool `mapstructure:"addr_book_strict"`
+	// Path to peer book
+	PeerBook string `mapstructure:"peer_book_file"`
 
 	// Set true to enable the peer-exchange reactor
 	PexReactor bool `mapstructure:"pex"`
@@ -236,9 +237,8 @@ type P2PConfig struct {
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:           "tcp://0.0.0.0:46656",
-		AddrBook:                "addrbook.json",
-		AddrBookStrict:          true,
+		ListenAddress:           "/ip4/0.0.0.0/tcp/46656",
+		PeerBook:                "peerbook.json",
 		MaxNumPeers:             50,
 		FlushThrottleTimeout:    100,
 		MaxMsgPacketPayloadSize: 1024,   // 1 kB
@@ -256,9 +256,9 @@ func TestP2PConfig() *P2PConfig {
 	return conf
 }
 
-// AddrBookFile returns the full path to the address book
-func (p *P2PConfig) AddrBookFile() string {
-	return rootify(p.AddrBook, p.RootDir)
+// PeerBookFile returns the full path to the address book
+func (p *P2PConfig) PeerBookFile() string {
+	return rootify(p.PeerBook, p.RootDir)
 }
 
 //-----------------------------------------------------------------------------

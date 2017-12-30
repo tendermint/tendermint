@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -16,12 +15,12 @@ import (
 // json field tags because we always want the JSON
 // representation to be in its canonical form.
 type Heartbeat struct {
-	ValidatorAddress data.Bytes       `json:"validator_address"`
-	ValidatorIndex   int              `json:"validator_index"`
-	Height           int64            `json:"height"`
-	Round            int              `json:"round"`
-	Sequence         int              `json:"sequence"`
-	Signature        crypto.Signature `json:"signature"`
+	ValidatorAddress string     `json:"validator_address"`
+	ValidatorIndex   int        `json:"validator_index"`
+	Height           int64      `json:"height"`
+	Round            int        `json:"round"`
+	Sequence         int        `json:"sequence"`
+	Signature        data.Bytes `json:"signature"`
 }
 
 // WriteSignBytes writes the Heartbeat for signing.
@@ -49,6 +48,6 @@ func (heartbeat *Heartbeat) String() string {
 	}
 
 	return fmt.Sprintf("Heartbeat{%v:%X %v/%02d (%v) %v}",
-		heartbeat.ValidatorIndex, cmn.Fingerprint(heartbeat.ValidatorAddress),
+		heartbeat.ValidatorIndex, cmn.Fingerprint([]byte(heartbeat.ValidatorAddress)),
 		heartbeat.Height, heartbeat.Round, heartbeat.Sequence, heartbeat.Signature)
 }

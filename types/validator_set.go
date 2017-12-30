@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
 	"strings"
@@ -81,18 +80,18 @@ func (valSet *ValidatorSet) Copy() *ValidatorSet {
 	}
 }
 
-func (valSet *ValidatorSet) HasAddress(address []byte) bool {
+func (valSet *ValidatorSet) HasAddress(address string) bool {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
-		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
+		return strings.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	return idx != len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address)
+	return idx != len(valSet.Validators) && valSet.Validators[idx].Address == address
 }
 
-func (valSet *ValidatorSet) GetByAddress(address []byte) (index int, val *Validator) {
+func (valSet *ValidatorSet) GetByAddress(address string) (index int, val *Validator) {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
-		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
+		return strings.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	if idx != len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address) {
+	if idx != len(valSet.Validators) && valSet.Validators[idx].Address == address {
 		return idx, valSet.Validators[idx].Copy()
 	} else {
 		return 0, nil
@@ -102,9 +101,9 @@ func (valSet *ValidatorSet) GetByAddress(address []byte) (index int, val *Valida
 // GetByIndex returns the validator by index.
 // It returns nil values if index < 0 or
 // index >= len(ValidatorSet.Validators)
-func (valSet *ValidatorSet) GetByIndex(index int) (address []byte, val *Validator) {
+func (valSet *ValidatorSet) GetByIndex(index int) (address string, val *Validator) {
 	if index < 0 || index >= len(valSet.Validators) {
-		return nil, nil
+		return "", nil
 	}
 	val = valSet.Validators[index]
 	return val.Address, val.Copy()
@@ -136,7 +135,7 @@ func (valSet *ValidatorSet) GetProposer() (proposer *Validator) {
 func (valSet *ValidatorSet) findProposer() *Validator {
 	var proposer *Validator
 	for _, val := range valSet.Validators {
-		if proposer == nil || !bytes.Equal(val.Address, proposer.Address) {
+		if proposer == nil || val.Address != proposer.Address {
 			proposer = proposer.CompareAccum(val)
 		}
 	}
@@ -157,7 +156,7 @@ func (valSet *ValidatorSet) Hash() []byte {
 func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	val = val.Copy()
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
-		return bytes.Compare(val.Address, valSet.Validators[i].Address) <= 0
+		return strings.Compare(val.Address, valSet.Validators[i].Address) <= 0
 	})
 	if idx == len(valSet.Validators) {
 		valSet.Validators = append(valSet.Validators, val)
@@ -165,7 +164,7 @@ func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 		valSet.Proposer = nil
 		valSet.totalVotingPower = 0
 		return true
-	} else if bytes.Equal(valSet.Validators[idx].Address, val.Address) {
+	} else if valSet.Validators[idx].Address == val.Address {
 		return false
 	} else {
 		newValidators := make([]*Validator, len(valSet.Validators)+1)
@@ -193,11 +192,11 @@ func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
 	}
 }
 
-func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool) {
+func (valSet *ValidatorSet) Remove(address string) (val *Validator, removed bool) {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
-		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
+		return strings.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	if idx == len(valSet.Validators) || !bytes.Equal(valSet.Validators[idx].Address, address) {
+	if idx == len(valSet.Validators) || valSet.Validators[idx].Address != address {
 		return nil, false
 	} else {
 		removedVal := valSet.Validators[idx]
@@ -251,7 +250,15 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 		_, val := valSet.GetByIndex(idx)
 		// Validate signature
 		precommitSignBytes := SignBytes(chainID, precommit)
-		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+		pubKey, err := val.ParsePubKey()
+		if err != nil {
+			return err
+		}
+		sigOk, err := pubKey.Verify(precommitSignBytes, precommit.Signature.Bytes())
+		if err != nil {
+			return err
+		}
+		if !sigOk {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
 		if !blockID.Equals(precommit.BlockID) {
@@ -325,7 +332,11 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 
 		// Validate signature old school
 		precommitSignBytes := SignBytes(chainID, precommit)
-		if !ov.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+		ovPubKey, err := ov.ParsePubKey()
+		if err != nil {
+			return err
+		}
+		if sigOk, _ := ovPubKey.Verify(precommitSignBytes, precommit.Signature.Bytes()); !sigOk {
 			return errors.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
@@ -333,7 +344,7 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 
 		// check new school
 		_, cv := newSet.GetByIndex(idx)
-		if cv.PubKey.Equals(ov.PubKey) {
+		if cv.PubKey == ov.PubKey {
 			// make sure this is properly set in the current block as well
 			newVotingPower += cv.VotingPower
 		}
@@ -384,7 +395,7 @@ func (vs ValidatorsByAddress) Len() int {
 }
 
 func (vs ValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(vs[i].Address, vs[j].Address) == -1
+	return strings.Compare(vs[i].Address, vs[j].Address) == -1
 }
 
 func (vs ValidatorsByAddress) Swap(i, j int) {
@@ -404,7 +415,7 @@ type accumComparable struct {
 func (ac accumComparable) Less(o interface{}) bool {
 	other := o.(accumComparable).Validator
 	larger := ac.CompareAccum(other)
-	return bytes.Equal(larger.Address, ac.Address)
+	return larger.Address == ac.Address
 }
 
 //----------------------------------------

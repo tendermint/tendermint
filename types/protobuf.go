@@ -39,7 +39,7 @@ func (tm2pb) PartSetHeader(partSetHeader PartSetHeader) *types.PartSetHeader {
 
 func (tm2pb) Validator(val *Validator) *types.Validator {
 	return &types.Validator{
-		PubKey: val.PubKey.Bytes(),
+		PubKey: val.PubKey,
 		Power:  val.VotingPower,
 	}
 }

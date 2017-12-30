@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"time"
 
+	lpeer "github.com/libp2p/go-libp2p-peer"
+	ps "github.com/libp2p/go-libp2p-peerstore"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -23,12 +25,13 @@ const (
 	// maximum pex messages one peer can send to us during `msgCountByPeerFlushInterval`
 	defaultMaxMsgCountByPeer    = 1000
 	msgCountByPeerFlushInterval = 1 * time.Hour
+	pexPeerAddrTtl              = 30 * time.Second
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
 // adequate number of peers are connected to the switch.
 //
-// It uses `AddrBook` (address book) to store `NetAddress`es of the peers.
+// It uses `PeerBook` (address book) to store `NetAddress`es of the peers.
 //
 // ## Preventing abuse
 //
@@ -44,7 +47,7 @@ const (
 type PEXReactor struct {
 	BaseReactor
 
-	book              *AddrBook
+	book              *PeerBook
 	ensurePeersPeriod time.Duration
 
 	// tracks message count by peer, so we can prevent abuse
@@ -53,7 +56,7 @@ type PEXReactor struct {
 }
 
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook) *PEXReactor {
+func NewPEXReactor(b *PeerBook) *PEXReactor {
 	r := &PEXReactor{
 		book:              b,
 		ensurePeersPeriod: defaultEnsurePeersPeriod,
@@ -106,13 +109,7 @@ func (r *PEXReactor) AddPeer(p Peer) {
 			r.RequestPEX(p)
 		}
 	} else { // For inbound connections, the peer is its own source
-		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
-		if err != nil {
-			// peer gave us a bad ListenAddr. TODO: punish
-			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
-			return
-		}
-		r.book.AddAddress(addr, addr)
+		r.book.AddPeer(p.PeerID(), p.PeerID())
 	}
 }
 
@@ -124,17 +121,11 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	srcAddrStr := src.NodeInfo().RemoteAddr
-	srcAddr, err := NewNetAddressString(srcAddrStr)
-	if err != nil {
-		// this should never happen. TODO: cancel conn
-		r.Logger.Error("Error in Receive: invalid peer address", "addr", srcAddrStr, "err", err)
-		return
-	}
+	srcPeerId := src.PeerID()
 
-	r.IncrementMsgCountForPeer(srcAddrStr)
-	if r.ReachedMaxMsgCountForPeer(srcAddrStr) {
-		r.Logger.Error("Maximum number of messages reached for peer", "peer", srcAddrStr)
+	r.IncrementMsgCountForPeer(srcPeerId)
+	if r.ReachedMaxMsgCountForPeer(srcPeerId) {
+		r.Logger.Error("Maximum number of messages reached for peer", "peer", srcPeerId.Pretty())
 		// TODO remove src from peers?
 		return
 	}
@@ -150,14 +141,31 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	case *pexRequestMessage:
 		// src requested some peers.
 		// NOTE: we might send an empty selection
-		r.SendAddrs(src, r.book.GetSelection())
-	case *pexAddrsMessage:
+		peerIds := r.book.GetSelection()
+		outSeeds := make([]Seed, len(peerIds))
+		peerStore := r.Switch.GetPeerStore()
+		for i, pid := range peerIds {
+			peerAddrs := peerStore.Addrs(pid)
+			outSeeds[i] = NewSeed(ps.PeerInfo{
+				ID:    pid,
+				Addrs: peerAddrs,
+			})
+		}
+		r.SendPeers(src, outSeeds)
+	case *pexPeersMessage:
 		// We received some peer addresses from src.
 		// TODO: (We don't want to get spammed with bad peers)
-		for _, addr := range msg.Addrs {
-			if addr != nil {
-				r.book.AddAddress(addr, srcAddr)
+		peerStore := r.Switch.GetPeerStore()
+		for _, peer := range msg.Peers {
+			peerInfo, err := peer.ParsePeerInfo()
+			if err != nil {
+				r.Logger.Error(fmt.Sprintf("Peer seed format invalid: %v", err.Error()))
+				continue
 			}
+			if len(peerInfo.Addrs) > 0 {
+				peerStore.AddAddrs(peerInfo.ID, peerInfo.Addrs, pexPeerAddrTtl)
+			}
+			r.book.AddPeer(peerInfo.ID, srcPeerId)
 		}
 	default:
 		r.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
@@ -169,9 +177,9 @@ func (r *PEXReactor) RequestPEX(p Peer) {
 	p.Send(PexChannel, struct{ PexMessage }{&pexRequestMessage{}})
 }
 
-// SendAddrs sends addrs to the peer.
-func (r *PEXReactor) SendAddrs(p Peer, addrs []*NetAddress) {
-	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+// SendPeers sends peer ids to the peer.
+func (r *PEXReactor) SendPeers(p Peer, peers []Seed) {
+	p.Send(PexChannel, struct{ PexMessage }{&pexPeersMessage{Peers: peers}})
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -187,19 +195,19 @@ func (r *PEXReactor) SetMaxMsgCountByPeer(v uint16) {
 // ReachedMaxMsgCountForPeer returns true if we received too many
 // messages from peer with address `addr`.
 // NOTE: assumes the value in the CMap is non-nil
-func (r *PEXReactor) ReachedMaxMsgCountForPeer(addr string) bool {
-	return r.msgCountByPeer.Get(addr).(uint16) >= r.maxMsgCountByPeer
+func (r *PEXReactor) ReachedMaxMsgCountForPeer(peerId lpeer.ID) bool {
+	return r.msgCountByPeer.Get(string(peerId)).(uint16) >= r.maxMsgCountByPeer
 }
 
 // Increment or initialize the msg count for the peer in the CMap
-func (r *PEXReactor) IncrementMsgCountForPeer(addr string) {
+func (r *PEXReactor) IncrementMsgCountForPeer(peerId lpeer.ID) {
 	var count uint16
-	countI := r.msgCountByPeer.Get(addr)
+	countI := r.msgCountByPeer.Get(string(peerId))
 	if countI != nil {
 		count = countI.(uint16)
 	}
 	count++
-	r.msgCountByPeer.Set(addr, count)
+	r.msgCountByPeer.Set(string(peerId), count)
 }
 
 // Ensures that sufficient peers are connected. (continuous)
@@ -250,36 +258,36 @@ func (r *PEXReactor) ensurePeers() {
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
 
-	toDial := make(map[string]*NetAddress)
+	toDial := make(map[string]struct{})
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
-		try := r.book.PickAddress(newBias)
+		try := r.book.PickPeer(newBias)
 		if try == nil {
 			continue
 		}
-		if _, selected := toDial[try.IP.String()]; selected {
+		if _, selected := toDial[*try]; selected {
 			continue
 		}
-		if dialling := r.Switch.IsDialing(try); dialling {
+		if dialling := r.Switch.IsDialing(*try); dialling {
 			continue
 		}
-		// XXX: Should probably use pubkey as peer key ...
-		if connected := r.Switch.Peers().Has(try.String()); connected {
+		if connected := r.Switch.Peers().Has(*try); connected {
 			continue
 		}
-		r.Logger.Info("Will dial address", "addr", try)
-		toDial[try.IP.String()] = try
+		r.Logger.Info("Will dial peer", "id", *try)
+		toDial[*try] = struct{}{}
 	}
 
 	// Dial picked addresses
-	for _, item := range toDial {
-		go func(picked *NetAddress) {
-			_, err := r.Switch.DialPeerWithAddress(picked, false)
+	for item := range toDial {
+		itemPeerID, _ := lpeer.IDB58Decode(item)
+		go func(picked lpeer.ID) {
+			_, err := r.Switch.DialPeer(picked, false)
 			if err != nil {
 				r.book.MarkAttempt(picked)
 			}
-		}(item)
+		}(itemPeerID)
 	}
 
 	// If we need more addresses, pick a random peer and ask for more.
@@ -316,13 +324,13 @@ const (
 )
 
 // PexMessage is a primary type for PEX messages. Underneath, it could contain
-// either pexRequestMessage, or pexAddrsMessage messages.
+// either pexRequestMessage, or pexPeersMessage messages.
 type PexMessage interface{}
 
 var _ = wire.RegisterInterface(
 	struct{ PexMessage }{},
 	wire.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
-	wire.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
+	wire.ConcreteType{&pexPeersMessage{}, msgTypeAddrs},
 )
 
 // DecodeMessage implements interface registered above.
@@ -344,13 +352,21 @@ func (m *pexRequestMessage) String() string {
 	return "[pexRequest]"
 }
 
-/*
-A message with announced peer addresses.
-*/
-type pexAddrsMessage struct {
-	Addrs []*NetAddress
+// pexPeersMessage is a message with announced peer addresses.
+type pexPeersMessage struct {
+	Peers []Seed
 }
 
-func (m *pexAddrsMessage) String() string {
-	return fmt.Sprintf("[pexAddrs %v]", m.Addrs)
+func (m *pexPeersMessage) String() string {
+	var msgBuf bytes.Buffer
+	msgBuf.WriteString("[pexPeers ")
+	for i, peer := range m.Peers {
+		if i != 0 {
+			msgBuf.WriteString(", ")
+		}
+		msgBuf.WriteString(string(peer))
+	}
+	msgBuf.WriteRune(']')
+
+	return msgBuf.String()
 }

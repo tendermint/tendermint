@@ -1,13 +1,13 @@
 package types
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"time"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	lpeer "github.com/libp2p/go-libp2p-peer"
 	"github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -28,7 +28,12 @@ type ErrVoteConflictingVotes struct {
 }
 
 func (err *ErrVoteConflictingVotes) Error() string {
-	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
+	peerID, _, errInner := err.ParsePeerID()
+	if errInner != nil {
+		return fmt.Sprintf("Conflicting votes from validator with invalid public key: %s", errInner.Error())
+	}
+
+	return fmt.Sprintf("Conflicting votes from validator %v", peerID.Pretty())
 }
 
 func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflictingVotes {
@@ -61,14 +66,14 @@ func IsVoteTypeValid(type_ byte) bool {
 
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	ValidatorAddress data.Bytes       `json:"validator_address"`
-	ValidatorIndex   int              `json:"validator_index"`
-	Height           int64            `json:"height"`
-	Round            int              `json:"round"`
-	Timestamp        time.Time        `json:"timestamp"`
-	Type             byte             `json:"type"`
-	BlockID          BlockID          `json:"block_id"` // zero if vote is nil.
-	Signature        crypto.Signature `json:"signature"`
+	ValidatorAddress string     `json:"validator_address"`
+	ValidatorIndex   int        `json:"validator_index"`
+	Height           int64      `json:"height"`
+	Round            int        `json:"round"`
+	Timestamp        time.Time  `json:"timestamp"`
+	Type             byte       `json:"type"`
+	BlockID          BlockID    `json:"block_id"` // zero if vote is nil.
+	Signature        data.Bytes `json:"signature"`
 }
 
 func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
@@ -98,19 +103,25 @@ func (vote *Vote) String() string {
 	}
 
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %v @ %s}",
-		vote.ValidatorIndex, cmn.Fingerprint(vote.ValidatorAddress),
+		vote.ValidatorIndex, cmn.Fingerprint([]byte(vote.ValidatorAddress)),
 		vote.Height, vote.Round, vote.Type, typeString,
 		cmn.Fingerprint(vote.BlockID.Hash), vote.Signature,
 		CanonicalTime(vote.Timestamp))
 }
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
-	if !bytes.Equal(pubKey.Address(), vote.ValidatorAddress) {
+	peerID, err := lpeer.IDFromPublicKey(pubKey)
+	if err != nil {
+		return err
+	}
+
+	if peerID.Pretty() != vote.ValidatorAddress {
 		return ErrVoteInvalidValidatorAddress
 	}
 
-	if !pubKey.VerifyBytes(SignBytes(chainID, vote), vote.Signature) {
+	if isValid, _ := pubKey.Verify(SignBytes(chainID, vote), vote.Signature.Bytes()); !isValid {
 		return ErrVoteInvalidSignature
 	}
+
 	return nil
 }

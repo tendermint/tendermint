@@ -3,6 +3,8 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	crypto "github.com/libp2p/go-libp2p-crypto"
+	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -27,7 +29,6 @@ func initFiles(cmd *cobra.Command, args []string) {
 		logger.Info("Genetated private validator", "path", privValFile)
 	}
 
-	// genesis file
 	genFile := config.GenesisFile()
 	if cmn.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)
@@ -35,14 +36,21 @@ func initFiles(cmd *cobra.Command, args []string) {
 		genDoc := types.GenesisDoc{
 			ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
 		}
+		pubKeyBytes, err := crypto.MarshalPublicKey(privValidator.GetPubKey())
+		if err != nil {
+			panic(err)
+		}
+		pubKeyStr, err := data.Encoder.Marshal(pubKeyBytes)
+		if err != nil {
+			panic(err)
+		}
 		genDoc.Validators = []types.GenesisValidator{{
-			PubKey: privValidator.GetPubKey(),
+			PubKey: string(pubKeyStr),
 			Power:  10,
 		}}
-
 		if err := genDoc.SaveAs(genFile); err != nil {
 			panic(err)
 		}
-		logger.Info("Genetated genesis file", "path", genFile)
+		logger.Info("Generated genesis file", "path", genFile)
 	}
 }

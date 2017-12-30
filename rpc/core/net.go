@@ -3,6 +3,9 @@ package core
 import (
 	"fmt"
 
+	// lpeer "github.com/libp2p/go-libp2p-peer"
+	ps "github.com/libp2p/go-libp2p-peerstore"
+	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -55,17 +58,27 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 }
 
 func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
-
 	if len(seeds) == 0 {
 		return &ctypes.ResultDialSeeds{}, fmt.Errorf("No seeds provided")
 	}
+
+	seedPeers := make([]ps.PeerInfo, len(seeds))
+	for i, seedStr := range seeds {
+		seed := p2p.Seed(seedStr)
+		peerInfo, err := seed.ParsePeerInfo()
+		if err != nil {
+			return nil, err
+		}
+		seedPeers[i] = peerInfo
+	}
+
 	// starts go routines to dial each seed after random delays
 	logger.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
-	err := p2pSwitch.DialSeeds(addrBook, seeds)
+	err := p2pSwitch.DialSeeds(addrBook, seedPeers)
 	if err != nil {
 		return &ctypes.ResultDialSeeds{}, err
 	}
-	return &ctypes.ResultDialSeeds{"Dialing seeds in progress. See /net_info for details"}, nil
+	return &ctypes.ResultDialSeeds{Log: "Dialing seeds in progress. See /net_info for details"}, nil
 }
 
 // Get genesis file.
