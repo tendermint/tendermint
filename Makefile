@@ -1,19 +1,20 @@
-GOTOOLS = \
+GOTOOLS := \
 	github.com/mitchellh/gox \
 	github.com/Masterminds/glide \
 	github.com/tcnksm/ghr \
 	gopkg.in/alecthomas/gometalinter.v2
-GO_MIN_VERSION=1.9.2
+GO_MIN_VERSION := 1.9.2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
+GOPATH ?= $(shell go env GOPATH)
+GOROOT ?= $(shell go env GOROOT)
+BUILD_FLAGS = -gcflags "-trimpath $(GOPATH)" -asmflags "-trimpath $(GOPATH)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
 GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
 
 all: check build test install metalinter
 
 check: check_tools get_vendor_deps
-
 
 ########################################
 ### Build
@@ -36,17 +37,20 @@ install:
 ### Tools & dependencies
 
 check_tools:
-	@echo "Checking go availability"
-	@test -x $(shell which go)
-	@echo "Checking go version $(GO_VERSION) >= $(GO_MIN_VERSION)"
-	@test $(shell echo $(GO_VERSION) | grep -o '^[[:digit:]]\+' ) -ge $(shell echo $(GO_MIN_VERSION) | grep -o '^[[:digit:]]\+' )
-	@test $(shell echo $(GO_VERSION) | grep -o '.[[:digit:]]\+.' | grep -o '[[:digit:]]\+' ) -ge $(shell echo $(GO_MIN_VERSION) | grep -o '.[[:digit:]]\+.' | grep -o '[[:digit:]]\+' )
-	@test $(shell echo $(GO_VERSION) | grep -o '[[:digit:]]\+$$' ) -ge $(shell echo $(GO_MIN_VERSION) | grep -o '[[:digit:]]\+$$' )
-	@echo "Checking GOPATH is set"
-	@test -n "$(GOPATH)"
-	@echo Checking GOPATH/bin is in PATH
-	@[[ $(PATH) =~ (^|:)$(GOPATH)/bin($$|:) ]]
-	@for tool in $(GOTOOLS) ; do toolname=$${tool/*\//} ; which $$toolname && echo "Found $${tool}." || ERR="$$ERR $$toolname" ; done && if [ -n "$$ERR" ]; then echo "ERROR: Missing:$${ERR}" ; false ; fi
+ifeq ($(GO_VERSION),)
+	$(error go not found)
+endif
+ifneq ($(GO_VERSION),$(GO_MIN_VERSION))
+	$(warning WARNING: build will not be deterministic. go version should be $(GO_MIN_VERSION))
+endif
+ifneq ($(GOROOT),/usr/local/go)
+	$(warning WARNING: build will not be deterministic. GOPATH should be set to /usr/local/go)
+endif
+ifneq ($(findstring $(GOPATH)/bin,$(PATH)),$(GOPATH)/bin)
+	$(warning WARNING: PATH does not contain GOPATH/bin. Some external dependencies might be unavailable.) 
+endif
+# https://stackoverflow.com/a/25668869
+	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),$(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH. Add GOPATH/bin to PATH and run 'make get_tools'")))"
 
 get_tools:
 	@echo "--> Installing tools"
