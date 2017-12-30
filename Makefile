@@ -16,6 +16,7 @@ all: check build test install metalinter
 
 check: check_tools get_vendor_deps
 
+
 ########################################
 ### Build
 
