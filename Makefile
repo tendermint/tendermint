@@ -9,7 +9,8 @@ BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
 GOPATH ?= $(shell go env GOPATH)
 GOROOT ?= $(shell go env GOROOT)
-BUILD_FLAGS = -gcflags "-trimpath $(GOPATH)" -asmflags "-trimpath $(GOPATH)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
+GOGCCFLAGS ?= $(shell go env GOGCCFLAGS)
+BUILD_FLAGS = -gcflags "-trimpath $(GOPATH)" -asmflags "-trimpath $(GOPATH)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=7 HEAD`"
 GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
 
 all: check build test install metalinter
@@ -43,6 +44,9 @@ ifeq ($(GO_VERSION),)
 endif
 ifneq ($(GO_VERSION),$(GO_MIN_VERSION))
 	$(warning WARNING: build will not be deterministic. go version should be $(GO_MIN_VERSION))
+endif
+ifneq ($(findstring -fdebug-prefix-map,$(GOGCCFLAGS)),-fdebug-prefix-map)
+	$(warning WARNING: build will not be deterministic. The compiler does not support the '-fdebug-prefix-map' flag.)
 endif
 ifneq ($(GOROOT),/usr/local/go)
 	$(warning WARNING: build will not be deterministic. GOPATH should be set to /usr/local/go)
