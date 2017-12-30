@@ -14,6 +14,8 @@ type memStoreProvider struct {
 	// btree would be more efficient for larger sets
 	byHeight fullCommits
 	byHash   map[string]FullCommit
+
+	sorted bool
 }
 
 // fullCommits just exists to allow easy sorting
@@ -52,7 +54,7 @@ func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 	defer m.mtx.Unlock()
 	m.byHash[key] = fc
 	m.byHeight = append(m.byHeight, fc)
-	sort.Sort(m.byHeight)
+	m.sorted = false
 	return nil
 }
 
@@ -60,12 +62,51 @@ func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 func (m *memStoreProvider) GetByHeight(h int64) (FullCommit, error) {
 	m.mtx.RLock()
 	defer m.mtx.RUnlock()
-
+	if !m.sorted {
+		sort.Sort(m.byHeight)
+		m.sorted = true
+	}
 	// search from highest to lowest
 	for i := len(m.byHeight) - 1; i >= 0; i-- {
-		fc := m.byHeight[i]
-		if fc.Height() <= h {
+		if fc := m.byHeight[i]; fc.Height() <= h {
 			return fc, nil
+		}
+	}
+	return FullCommit{}, liteErr.ErrCommitNotFound()
+}
+
+// GetByHeight returns the FullCommit for height h or an error if the commit is not found.
+func (m *memStoreProvider) GetByHeightBinarySearch(h int64) (FullCommit, error) {
+	m.mtx.RLock()
+	defer m.mtx.RUnlock()
+	if !m.sorted {
+		sort.Sort(m.byHeight)
+		m.sorted = true
+	}
+	low, high := 0, len(m.byHeight)-1
+	var mid int
+	var hmid int64
+	var midFC FullCommit
+	// Our goal is to either find:
+	//   * item ByHeight with the query
+	//   * heighest height with a height <= query
+	for low <= high {
+		mid = int(uint(low+high) >> 1) // Avoid an overflow
+		midFC = m.byHeight[mid]
+		hmid = midFC.Height()
+		switch {
+		case hmid == h:
+			return midFC, nil
+		case hmid < h:
+			low = mid + 1
+		case hmid > h:
+			high = mid - 1
+		}
+	}
+
+	if high >= 0 {
+		if highFC := m.byHeight[high]; highFC.Height() < h {
+			return highFC, nil
 		}
 	}
 	return FullCommit{}, liteErr.ErrCommitNotFound()

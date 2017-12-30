@@ -2,6 +2,7 @@ package lite_test
 
 import (
 	"fmt"
+	"math/rand"
 	"testing"
 
 	"github.com/tendermint/tendermint/lite"
@@ -114,4 +115,113 @@ func benchmarkCertifyCommit(b *testing.B, keys lite.ValKeys) {
 		}
 	}
 
+}
+
+type algo bool
+
+const (
+	linearSearch = true
+	binarySearch = false
+)
+
+var (
+	fcs5, h5       = genFullCommits(nil, nil, 5)
+	fcs50, h50     = genFullCommits(fcs5, h5, 50)
+	fcs100, h100   = genFullCommits(fcs50, h50, 100)
+	fcs500, h500   = genFullCommits(fcs100, h100, 500)
+	fcs1000, h1000 = genFullCommits(fcs500, h500, 1000)
+)
+
+func BenchmarkMemStoreProviderGetByHeightLinearSearch5(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs5, h5, linearSearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightLinearSearch50(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs50, h50, linearSearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightLinearSearch100(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs100, h100, linearSearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightLinearSearch500(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs500, h500, linearSearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightLinearSearch1000(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs1000, h1000, linearSearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightBinarySearch5(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs5, h5, binarySearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightBinarySearch50(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs50, h50, binarySearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightBinarySearch100(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs100, h100, binarySearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightBinarySearch500(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs500, h500, binarySearch)
+}
+
+func BenchmarkMemStoreProviderGetByHeightBinarySearch1000(b *testing.B) {
+	benchmarkMemStoreProviderGetByHeight(b, fcs1000, h1000, binarySearch)
+}
+
+var rng = rand.New(rand.NewSource(10))
+
+func benchmarkMemStoreProviderGetByHeight(b *testing.B, fcs []lite.FullCommit, fHeights []int64, algo algo) {
+	b.StopTimer()
+	mp := lite.NewMemStoreProvider()
+	for i, fc := range fcs {
+		if err := mp.StoreCommit(fc); err != nil {
+			b.Fatalf("FullCommit #%d: err: %v", i, err)
+		}
+	}
+	qHeights := make([]int64, len(fHeights))
+	copy(qHeights, fHeights)
+	// Append some non-existent heights to trigger the worst cases.
+	qHeights = append(qHeights, 19, -100, -10000, 1e7, -17, 31, -1e9)
+
+	searchFn := mp.GetByHeight
+	if algo == binarySearch {
+		searchFn = mp.(interface {
+			GetByHeightBinarySearch(h int64) (lite.FullCommit, error)
+		}).GetByHeightBinarySearch
+	}
+
+	hPerm := rng.Perm(len(qHeights))
+	b.StartTimer()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, j := range hPerm {
+			h := qHeights[j]
+			if _, err := searchFn(h); err != nil {
+			}
+		}
+	}
+	b.ReportAllocs()
+}
+
+func genFullCommits(prevFC []lite.FullCommit, prevH []int64, want int) ([]lite.FullCommit, []int64) {
+	fcs := make([]lite.FullCommit, len(prevFC))
+	copy(fcs, prevFC)
+	heights := make([]int64, len(prevH))
+	copy(heights, prevH)
+
+	appHash := []byte("benchmarks")
+	chainID := "benchmarks-gen-full-commits"
+	n := want
+	keys := lite.GenValKeys(2 + (n / 3))
+	for i := 0; i < n; i++ {
+		vals := keys.ToValidators(10, int64(n/2))
+		h := int64(20 + 10*i)
+		fcs = append(fcs, keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5))
+		heights = append(heights, h)
+	}
+	return fcs, heights
 }

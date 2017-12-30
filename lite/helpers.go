@@ -78,6 +78,9 @@ func (v ValKeys) signHeader(header *types.Header, first, last int) *types.Commit
 
 	// fill in the votes we want
 	for i := first; i < last; i++ {
+		if i >= len(v) {
+			break
+		}
 		vote := makeVote(header, vset, v[i])
 		votes[vote.ValidatorIndex] = vote
 	}
