@@ -2,7 +2,8 @@ package types
 
 import (
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -14,11 +15,11 @@ const (
 	stepPrecommit = 3
 )
 
-func voteToStep(vote *Vote) int8 {
+func voteToStep(vote *types.Vote) int8 {
 	switch vote.Type {
-	case VoteTypePrevote:
+	case types.VoteTypePrevote:
 		return stepPrevote
-	case VoteTypePrecommit:
+	case types.VoteTypePrecommit:
 		return stepPrecommit
 	default:
 		cmn.PanicSanity("Unknown vote type")
@@ -51,7 +52,10 @@ type ValidatorID struct {
 
 type PrivValidatorStore interface {
 	GetSigner(TypePrivValidator) Signer
+	SetSigner(Signer)
+
 	GetCarefulSigner(TypePrivValidator) CarefulSigner
+	SetCarefulSigner(CarefulSigner)
 }
 
 //----------------------------------------------------------------------------
@@ -66,9 +70,9 @@ type Signer interface {
 // CarefulSigner signs votes, proposals, and heartbeats,
 // but is careful not to double sign!
 type CarefulSigner interface {
-	SignVote(signer Signer, chainID string, vote *Vote) error
-	SignProposal(signer Signer, chainID string, proposal *Proposal) error
-	SignHeartbeat(signer Signer, chainID string, heartbeat *Heartbeat) error
+	SignVote(signer Signer, chainID string, vote *types.Vote) error
+	SignProposal(signer Signer, chainID string, proposal *types.Proposal) error
+	SignHeartbeat(signer Signer, chainID string, heartbeat *types.Heartbeat) error
 
 	String() string // latest state
 }
@@ -79,9 +83,9 @@ type PrivValidator interface {
 	Address() data.Bytes // redundant since .PubKey().Address()
 	PubKey() crypto.PubKey
 
-	SignVote(chainID string, vote *Vote) error
-	SignProposal(chainID string, proposal *Proposal) error
-	SignHeartbeat(chainID string, heartbeat *Heartbeat) error
+	SignVote(chainID string, vote *types.Vote) error
+	SignProposal(chainID string, proposal *types.Proposal) error
+	SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error
 }
 
 //----------------------------------------------------------------------------

@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -9,6 +8,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -33,20 +33,20 @@ func (pv *DefaultPrivValidator) PubKey() crypto.PubKey {
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (pv *DefaultPrivValidator) SignVote(chainID string, vote *Vote) error {
-	return pv.Info.SignVote(pv.Signer, chainID, vote)
+func (pv *DefaultPrivValidator) SignVote(chainID string, vote *types.Vote) error {
+	return pv.CarefulSigner.SignVote(pv.Signer, chainID, vote)
 }
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (pv *DefaultPrivValidator) SignProposal(chainID string, proposal *Proposal) error {
-	return pv.Info.SignProposal(pv.Signer, chainID, proposal)
+func (pv *DefaultPrivValidator) SignProposal(chainID string, proposal *types.Proposal) error {
+	return pv.CarefulSigner.SignProposal(pv.Signer, chainID, proposal)
 }
 
 // SignHeartbeat signs a canonical representation of the heartbeat, along with the chainID.
 // Implements PrivValidator.
-func (pv *DefaultPrivValidator) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
-	return pv.Info.SignHeartbeat(pv.Signer, chainID, proposal)
+func (pv *DefaultPrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
+	return pv.CarefulSigner.SignHeartbeat(pv.Signer, chainID, heartbeat)
 }
 
 // String returns a string representation of the DefaultPrivValidator.
@@ -54,11 +54,14 @@ func (pv *DefaultPrivValidator) String() string {
 	return fmt.Sprintf("PrivValidator{%v %v}", pv.Address(), pv.CarefulSigner.String())
 }
 
+func (pv *DefaultPrivValidator) Save() {
+}
+
 //----------------------------------------------------------------
 
 // GenDefaultPrivValidator generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
-func GenDefaultPrivValidator(filePath string, db dbm.DB) *DefaultPrivValidator {
+func GenDefaultPrivValidator(filePath string, store PrivValidatorStore) *DefaultPrivValidator {
 	privKey := crypto.GenPrivKeyEd25519().Wrap()
 	id := ValidatorID{privKey.PubKey().Address(), privKey.PubKey()}
 
@@ -67,16 +70,22 @@ func GenDefaultPrivValidator(filePath string, db dbm.DB) *DefaultPrivValidator {
 		Type: TypePrivValidatorKeyStoreUnencrypted,
 	}
 
-	// TODO: save info to file path
+	infoBytes, err := json.Marshal(info)
+	if err != nil {
+		panic(err)
+	}
+	err = cmn.WriteFileAtomic(filePath, infoBytes, 0600)
+	if err != nil {
+		panic(err)
+	}
 
-	// TODO: save key to store
-
-	// TODO: save initial sign info to db
+	signer := NewDefaultSigner(privKey)
+	carefulSigner := NewLastSignedInfo(store.SetCarefulSigner)
 
 	return &DefaultPrivValidator{
 		ID:            id,
-		Signer:        NewDefaultSigner(privKey),
-		CarefulSigner: NewLastSignedInfo(),
+		Signer:        signer,
+		CarefulSigner: carefulSigner,
 	}
 }
 
@@ -109,7 +118,6 @@ func LoadOrGenDefaultPrivValidator(filePath string, store PrivValidatorStore) *D
 		pv = LoadDefaultPrivValidator(filePath, store)
 	} else {
 		pv = GenDefaultPrivValidator(filePath, store)
-		pv.Save()
 	}
 	return pv
 }
@@ -196,19 +204,3 @@ func (pv *DefaultPrivValidator) Reset() {
 */
 
 //-------------------------------------
-
-type PrivValidatorsByAddress []*DefaultPrivValidator
-
-func (pvs PrivValidatorsByAddress) Len() int {
-	return len(pvs)
-}
-
-func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(pvs[i].Address(), pvs[j].Address()) == -1
-}
-
-func (pvs PrivValidatorsByAddress) Swap(i, j int) {
-	it := pvs[i]
-	pvs[i] = pvs[j]
-	pvs[j] = it
-}

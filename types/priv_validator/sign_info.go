@@ -8,19 +8,10 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-data"
+	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
-
-//-------------------------------------
-
-type DefaultConsensusSigner struct {
-	*LastSignedInfo
-	commitj
-}
-
-func NewDefaultConsensusSigner() {}
 
 //-------------------------------------
 
@@ -32,17 +23,26 @@ type LastSignedInfo struct {
 	LastStep      int8             `json:"last_step"`
 	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
 	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
+
+	saveFn func(CarefulSigner)
+}
+
+func NewLastSignedInfo(saveFn func(CarefulSigner)) *LastSignedInfo {
+	return &LastSignedInfo{
+		LastStep: -1,
+		saveFn:   saveFn,
+	}
 }
 
 func (info *LastSignedInfo) String() string {
-	return fmt.Sprintf("LH:%v, LR:%v, LS:%v", pv.Address(), info.LastHeight, info.LastRound, info.LastStep)
+	return fmt.Sprintf("LH:%v, LR:%v, LS:%v", info.LastHeight, info.LastRound, info.LastStep)
 }
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements ConsensusSigner.
 func (info *LastSignedInfo) SignVote(signer Signer, chainID string, vote *types.Vote) error {
 	signature, err := info.sign(signer, vote.Height, vote.Round, voteToStep(vote),
-		SignBytes(chainID, vote), checkVotesOnlyDifferByTimestamp)
+		types.SignBytes(chainID, vote), checkVotesOnlyDifferByTimestamp)
 	if err != nil {
 		return errors.New(cmn.Fmt("Error signing vote: %v", err))
 	}
@@ -54,7 +54,7 @@ func (info *LastSignedInfo) SignVote(signer Signer, chainID string, vote *types.
 // the chainID. Implements ConsensusSigner.
 func (info *LastSignedInfo) SignProposal(signer Signer, chainID string, proposal *types.Proposal) error {
 	signature, err := info.sign(signer, proposal.Height, proposal.Round, stepPropose,
-		SignBytes(chainID, proposal), checkProposalsOnlyDifferByTimestamp)
+		types.SignBytes(chainID, proposal), checkProposalsOnlyDifferByTimestamp)
 	if err != nil {
 		return fmt.Errorf("Error signing proposal: %v", err)
 	}
@@ -66,7 +66,7 @@ func (info *LastSignedInfo) SignProposal(signer Signer, chainID string, proposal
 // Implements CosnensusSigner.
 func (info *LastSignedInfo) SignHeartbeat(signer Signer, chainID string, heartbeat *types.Heartbeat) error {
 	var err error
-	heartbeat.Signature, err = signer.Sign(SignBytes(chainID, heartbeat))
+	heartbeat.Signature, err = signer.Sign(types.SignBytes(chainID, heartbeat))
 	return err
 }
 
@@ -102,7 +102,7 @@ func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, err
 }
 
 // Set height/round/step and signature on the info
-func (info *LastSignedInfo) Save(height int64, round int, step int8,
+func (info *LastSignedInfo) save(height int64, round int, step int8,
 	signBytes []byte, sig crypto.Signature) {
 
 	info.LastHeight = height
@@ -111,7 +111,7 @@ func (info *LastSignedInfo) Save(height int64, round int, step int8,
 	info.LastSignature = sig
 	info.LastSignBytes = signBytes
 
-	// TODO: persist
+	info.saveFn(info)
 }
 
 func (info *LastSignedInfo) Reset() {
@@ -155,7 +155,7 @@ func (info *LastSignedInfo) sign(signer Signer, height int64, round int, step in
 		return sig, err
 	}
 
-	info.save(height, round, step, signBytes, sign)
+	info.save(height, round, step, signBytes, sig)
 	return sig, nil
 }
 
@@ -165,7 +165,7 @@ type checkOnlyDifferByTimestamp func([]byte, []byte) bool
 
 // returns true if the only difference in the votes is their timestamp
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
-	var lastVote, newVote CanonicalJSONOnceVote
+	var lastVote, newVote types.CanonicalJSONOnceVote
 	if err := json.Unmarshal(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
@@ -174,7 +174,7 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
 	}
 
 	// set the times to the same value and check equality
-	now := CanonicalTime(time.Now())
+	now := types.CanonicalTime(time.Now())
 	lastVote.Vote.Timestamp = now
 	newVote.Vote.Timestamp = now
 	lastVoteBytes, _ := json.Marshal(lastVote)
@@ -185,7 +185,7 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
 
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
-	var lastProposal, newProposal CanonicalJSONOnceProposal
+	var lastProposal, newProposal types.CanonicalJSONOnceProposal
 	if err := json.Unmarshal(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
@@ -194,7 +194,7 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) boo
 	}
 
 	// set the times to the same value and check equality
-	now := CanonicalTime(time.Now())
+	now := types.CanonicalTime(time.Now())
 	lastProposal.Proposal.Timestamp = now
 	newProposal.Proposal.Timestamp = now
 	lastProposalBytes, _ := json.Marshal(lastProposal)

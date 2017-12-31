@@ -192,7 +192,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Add vote and get conflicting vote if any
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
 	if conflicting != nil {
-		return added, NewConflictingVoteError(val, conflicting, vote)
+		return added, NewConflictingVoteError(val.PubKey, conflicting, vote)
 	} else {
 		if !added {
 			cmn.PanicSanity("Expected to add non-conflicting vote")

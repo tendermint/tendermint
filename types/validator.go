@@ -108,13 +108,38 @@ func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
 
 // RandValidator returns a randomized validator, useful for testing.
 // UNSTABLE
-func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidatorFS) {
-	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorFS(tempFilePath)
+func RandValidator(randPower bool, minPower int64) (*Validator, Signer) {
+	privVal := GenSigner()
 	votePower := minPower
 	if randPower {
 		votePower += int64(cmn.RandUint32())
 	}
 	val := NewValidator(privVal.PubKey(), votePower)
 	return val, privVal
+}
+
+type Signer interface {
+	Address() []byte
+	PubKey() crypto.PubKey
+	Sign([]byte) (crypto.Signature, error)
+}
+
+func GenSigner() Signer {
+	return nil
+}
+
+type PrivValidatorsByAddress []Signer
+
+func (pvs PrivValidatorsByAddress) Len() int {
+	return len(pvs)
+}
+
+func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
+	return bytes.Compare(pvs[i].Address(), pvs[j].Address()) == -1
+}
+
+func (pvs PrivValidatorsByAddress) Swap(i, j int) {
+	it := pvs[i]
+	pvs[i] = pvs[j]
+	pvs[j] = it
 }

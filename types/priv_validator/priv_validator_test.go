@@ -1,17 +1,9 @@
 package types
 
 import (
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
-	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -19,18 +11,19 @@ func TestGenLoadValidator(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorFS(tempFilePath)
+	privVal := GenDefaultPrivValidator(tempFilePath, nil)
 
 	height := int64(100)
-	privVal.LastHeight = height
-	privVal.Save()
-	addr := privVal.GetAddress()
+	privVal.CarefulSigner.(*LastSignedInfo).LastHeight = height
+	privVal.CarefulSigner.(*LastSignedInfo).saveFn(privVal.CarefulSigner)
+	addr := privVal.Address()
 
-	privVal = LoadPrivValidatorFS(tempFilePath)
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
-	assert.Equal(height, privVal.LastHeight, "expected privval.LastHeight to have been saved")
+	privVal = LoadDefaultPrivValidator(tempFilePath, nil)
+	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
+	assert.Equal(height, privVal.CarefulSigner.(*LastSignedInfo).LastHeight, "expected privval.LastHeight to have been saved")
 }
 
+/*
 func TestLoadOrGenValidator(t *testing.T) {
 	assert := assert.New(t)
 
@@ -192,3 +185,4 @@ func newProposal(height int64, round int, partsHeader PartSetHeader) *Proposal {
 		BlockPartsHeader: partsHeader,
 	}
 }
+*/
