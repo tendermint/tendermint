@@ -141,9 +141,6 @@ func (tms *TrustMetricStore) SaveToDB() {
 // addPeerTrustMetric takes an existing trust metric and associates it with a peer and reactor ID.
 // This version of the method assumes the mutex has already been acquired
 func (tms *TrustMetricStore) addPeerTrustMetric(peer, reactor string, tm *TrustMetric) {
-	if peer == "" || reactor == "" || tm == nil {
-		return
-	}
 	// Check if we have a peer/metric map for this reactor yet
 	if _, ok := tms.reactorPeerMetrics[reactor]; !ok {
 		tms.reactorPeerMetrics[reactor] = make(map[string]*TrustMetric)
@@ -181,14 +178,14 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 
 	// If history data exists in the file,
 	// load it into trust metric
-	for reactor, peers := range history {
-		for peer, data := range peers {
+	for reactorID, peerKeys := range history {
+		for pk, data := range peerKeys {
 			tm := NewMetricWithConfig(tms.config)
 
 			tm.Start()
 			tm.Init(data)
 			// Load the peer trust metric into the store
-			tms.addPeerTrustMetric(peer, reactor, tm)
+			tms.addPeerTrustMetric(pk, reactorID, tm)
 
 		}
 	}
@@ -201,12 +198,12 @@ func (tms *TrustMetricStore) saveToDB() {
 
 	history := make(map[string]map[string]MetricHistoryJSON)
 
-	for reactor, peers := range tms.reactorPeerMetrics {
-		history[reactor] = make(map[string]MetricHistoryJSON)
+	for reactorID, peerKeys := range tms.reactorPeerMetrics {
+		history[reactorID] = make(map[string]MetricHistoryJSON)
 
-		for peer, tm := range peers {
+		for pk, tm := range peerKeys {
 			// Add an entry for the metric
-			history[reactor][peer] = tm.HistoryJSON()
+			history[reactorID][pk] = tm.HistoryJSON()
 		}
 	}
 

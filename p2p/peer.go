@@ -9,8 +9,18 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/p2p/trust"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+)
+
+// The following constants modify the number of events sent to a metric based on severity
+const (
+	PeerMarkFatal = iota
+	PeerMarkBad
+	PeerMarkNeutral
+	PeerMarkCorrect
+	PeerMarkGood
 )
 
 // Peer is an interface representing a peer connected on a reactor.
@@ -22,6 +32,7 @@ type Peer interface {
 	IsPersistent() bool
 	NodeInfo() *NodeInfo
 	Status() ConnectionStatus
+	Mark(reactorID string, good bool, events, severity int)
 
 	Send(byte, interface{}) bool
 	TrySend(byte, interface{}) bool
@@ -46,8 +57,9 @@ type peer struct {
 	persistent bool
 	config     *PeerConfig
 
-	nodeInfo *NodeInfo
-	Data     *cmn.CMap // User data.
+	nodeInfo    *NodeInfo
+	metricStore *trust.TrustMetricStore // trust metrics for all peers
+	Data        *cmn.CMap               // User data.
 }
 
 // PeerConfig is a Peer configuration.
@@ -317,9 +329,45 @@ func (p *peer) NodeInfo() *NodeInfo {
 	return &n
 }
 
+// MetricStore - Returns the peer's TrustMetricStore
+func (p *peer) MetricStore() *trust.TrustMetricStore {
+	return p.metricStore
+}
+
+// SetMetricStore - Sets the switch's TrustMetricStore for allowing all reactors to access the metrics
+func (p *peer) SetMetricStore(tms *trust.TrustMetricStore) {
+	p.metricStore = tms
+}
+
 // Status returns the peer's ConnectionStatus.
 func (p *peer) Status() ConnectionStatus {
 	return p.mconn.Status()
+}
+
+// It updates a peer's metric with good or bad events taking place within this reactor
+func (p *peer) Mark(reactorID string, good bool, events, severity int) {
+	tms := p.MetricStore()
+	if tms == nil {
+		return
+	}
+
+	// Modify the number of events based on severity
+	num := events
+	switch severity {
+	case PeerMarkFatal, PeerMarkGood:
+		num *= 10
+	case PeerMarkBad, PeerMarkCorrect:
+		// These result in events * 1
+	case PeerMarkNeutral:
+		num = 0
+	}
+
+	tm := tms.GetPeerTrustMetric(p.Key(), reactorID)
+	if good {
+		tm.GoodEvents(events)
+	} else {
+		tm.BadEvents(events)
+	}
 }
 
 func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {

@@ -107,6 +107,11 @@ func (bcR *BlockchainReactor) OnStop() {
 	bcR.pool.Stop()
 }
 
+// GetID implements Reactor
+func (bcR *BlockchainReactor) GetID() string {
+	return BlockchainReactorID
+}
+
 // GetChannels implements Reactor
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
@@ -125,44 +130,6 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 	}
 	// peer is added to the pool once we receive the first
 	// bcStatusResponseMessage from the peer and call pool.SetPeerHeight
-
-	// Getting the peer metric initializes it in the store
-	if bcR.Switch != nil {
-		if tms := bcR.Switch.MetricStore(); tms != nil {
-			_ = tms.GetPeerTrustMetric(peer.Key(), BlockchainReactorID)
-		}
-	}
-}
-
-// MarkPeer implements Reactor.
-// It updates a peer's metric with good or bad events taking place within this reactor
-func (bcR *BlockchainReactor) MarkPeer(peer p2p.Peer, good bool, events, severity int) {
-	if bcR.Switch == nil {
-		return
-	}
-
-	tms := bcR.Switch.MetricStore()
-	if tms == nil {
-		return
-	}
-
-	// Modify the number of events based on severity
-	num := events
-	switch severity {
-	case p2p.Fatal, p2p.Good:
-		num *= 10
-	case p2p.Bad, p2p.Correct:
-		// These result in events * 1
-	case p2p.Neutral:
-		num *= 0
-	}
-
-	tm := tms.GetPeerTrustMetric(peer.Key(), BlockchainReactorID)
-	if good {
-		tm.GoodEvents(events)
-	} else {
-		tm.BadEvents(events)
-	}
 }
 
 // RemovePeer implements Reactor by removing peer from the pool.
@@ -170,7 +137,7 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if bcR.Switch != nil {
 		if tms := bcR.Switch.MetricStore(); tms != nil {
 			// Pause tracking of this peer
-			tms.PeerDisconnected(peer.Key(), BlockchainReactorID)
+			tms.PeerDisconnected(peer.Key(), bcR.GetID())
 		}
 	}
 
@@ -185,13 +152,10 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage, src p2p.
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		msg := &bcBlockResponseMessage{Block: block}
-
-		bcR.MarkPeer(src, true, 1, p2p.Correct)
 		return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
-	bcR.MarkPeer(src, false, 1, p2p.Bad)
 
 	return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{
 		&bcNoBlockResponseMessage{Height: msg.Height},
@@ -273,7 +237,6 @@ FOR_LOOP:
 			peer := bcR.Switch.Peers().Get(peerID)
 			if peer != nil {
 				bcR.Switch.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
-				bcR.MarkPeer(peer, false, 1, p2p.Bad)
 			}
 		case <-statusUpdateTicker.C:
 			// ask for status updates

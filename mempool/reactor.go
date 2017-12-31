@@ -49,6 +49,11 @@ func (memR *MempoolReactor) SetLogger(l log.Logger) {
 	memR.Mempool.SetLogger(l)
 }
 
+// GetID implements Reactor
+func (memR *MempoolReactor) GetID() string {
+	return MempoolReactorID
+}
+
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
@@ -63,45 +68,7 @@ func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
 // AddPeer implements Reactor.
 // It starts a broadcast routine ensuring all txs are forwarded to the given peer.
 func (memR *MempoolReactor) AddPeer(peer p2p.Peer) {
-	// Getting the peer metric initializes it in the store
-	if memR.Switch != nil {
-		if tms := memR.Switch.MetricStore(); tms != nil {
-			_ = tms.GetPeerTrustMetric(peer.Key(), MempoolReactorID)
-		}
-	}
-
 	go memR.broadcastTxRoutine(peer)
-}
-
-// MarkPeer implements Reactor.
-// It updates a peer's metric with good or bad events taking place within this reactor
-func (memR *MempoolReactor) MarkPeer(peer p2p.Peer, good bool, events, severity int) {
-	if memR.Switch == nil {
-		return
-	}
-
-	tms := memR.Switch.MetricStore()
-	if tms == nil {
-		return
-	}
-
-	// Modify the number of events based on severity
-	num := events
-	switch severity {
-	case p2p.Fatal, p2p.Good:
-		num *= 10
-	case p2p.Bad, p2p.Correct:
-		// These result in events * 1
-	case p2p.Neutral:
-		num *= 0
-	}
-
-	tm := tms.GetPeerTrustMetric(peer.Key(), MempoolReactorID)
-	if good {
-		tm.GoodEvents(events)
-	} else {
-		tm.BadEvents(events)
-	}
 }
 
 // RemovePeer implements Reactor.
@@ -111,7 +78,7 @@ func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	if memR.Switch != nil {
 		if tms := memR.Switch.MetricStore(); tms != nil {
 			// Pause tracking of this peer
-			tms.PeerDisconnected(peer.Key(), MempoolReactorID)
+			tms.PeerDisconnected(peer.Key(), memR.GetID())
 		}
 	}
 }
@@ -128,11 +95,13 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *TxMessage:
-		err := memR.Mempool.CheckTx(msg.Tx, nil)
+		success := func(*abci.Response) {
+			src.Mark(memR.GetID(), true, 1, p2p.PeerMarkCorrect)
+		}
+		err := memR.Mempool.CheckTx(msg.Tx, success)
 		if err != nil {
 			memR.Logger.Info("Could not check tx", "tx", msg.Tx, "err", err)
 		}
-		memR.MarkPeer(src, true, 1, p2p.Correct)
 		// broadcasting happens from go routines per peer
 	default:
 		memR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))

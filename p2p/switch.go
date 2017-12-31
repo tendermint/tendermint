@@ -31,22 +31,13 @@ const (
 	reconnectBackOffBaseSeconds = 3
 )
 
-// The following constants modify the number of events sent to a metric based on severity
-const (
-	Fatal = iota
-	Bad
-	Neutral
-	Correct
-	Good
-)
-
 type Reactor interface {
 	cmn.Service // Start, Stop
 
+	GetID() string
 	SetSwitch(*Switch)
 	GetChannels() []*ChannelDescriptor
 	AddPeer(peer Peer)
-	MarkPeer(peer Peer, good bool, events, severity int)
 	RemovePeer(peer Peer, reason interface{})
 	Receive(chID byte, peer Peer, msgBytes []byte) // CONTRACT: msgBytes are not nil
 }
@@ -333,6 +324,9 @@ func (sw *Switch) startInitPeer(peer *peer) {
 		// Should never happen
 		sw.Logger.Error("Error starting peer", "peer", peer, "err", err)
 	}
+
+	// Set the trust metric store to the new peer before adding to reactors
+	peer.SetMetricStore(sw.MetricStore())
 
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)

@@ -56,6 +56,10 @@ func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReacto
 	return tr
 }
 
+func (tr *TestReactor) GetID() string {
+	return "TestReactor"
+}
+
 func (tr *TestReactor) GetChannels() []*ChannelDescriptor {
 	return tr.channels
 }
@@ -64,11 +68,6 @@ func (tr *TestReactor) AddPeer(peer Peer) {
 	tr.mtx.Lock()
 	defer tr.mtx.Unlock()
 	tr.peersAdded = append(tr.peersAdded, peer)
-}
-
-func (tr *TestReactor) MarkPeer(peer Peer, good bool, events, severity int) {
-	// Does not currently mark during a test
-	return
 }
 
 func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {

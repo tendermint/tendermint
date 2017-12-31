@@ -238,6 +238,7 @@ func NewByzantineReactor(conR *ConsensusReactor) *ByzantineReactor {
 	}
 }
 
+func (br *ByzantineReactor) GetID() string                         { return "ByzantineReactor" }
 func (br *ByzantineReactor) SetSwitch(s *p2p.Switch)               { br.reactor.SetSwitch(s) }
 func (br *ByzantineReactor) GetChannels() []*p2p.ChannelDescriptor { return br.reactor.GetChannels() }
 func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
@@ -254,10 +255,6 @@ func (br *ByzantineReactor) AddPeer(peer p2p.Peer) {
 	if !br.reactor.fastSync {
 		br.reactor.sendNewRoundStepMessages(peer)
 	}
-}
-func (br *ByzantineReactor) MarkPeer(peer p2p.Peer, good bool, events, severity int) {
-	// Does not currently mark during a test
-	return
 }
 func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 	br.reactor.RemovePeer(peer, reason)

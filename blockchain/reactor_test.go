@@ -140,11 +140,12 @@ func (tp *bcrTestPeer) TrySend(chID byte, value interface{}) bool {
 	return true
 }
 
-func (tp *bcrTestPeer) Send(chID byte, data interface{}) bool { return tp.TrySend(chID, data) }
-func (tp *bcrTestPeer) NodeInfo() *p2p.NodeInfo               { return nil }
-func (tp *bcrTestPeer) Status() p2p.ConnectionStatus          { return p2p.ConnectionStatus{} }
-func (tp *bcrTestPeer) Key() string                           { return tp.key }
-func (tp *bcrTestPeer) IsOutbound() bool                      { return false }
-func (tp *bcrTestPeer) IsPersistent() bool                    { return true }
-func (tp *bcrTestPeer) Get(s string) interface{}              { return s }
-func (tp *bcrTestPeer) Set(string, interface{})               {}
+func (tp *bcrTestPeer) Send(chID byte, data interface{}) bool                  { return tp.TrySend(chID, data) }
+func (tp *bcrTestPeer) NodeInfo() *p2p.NodeInfo                                { return nil }
+func (tp *bcrTestPeer) Status() p2p.ConnectionStatus                           { return p2p.ConnectionStatus{} }
+func (tp *bcrTestPeer) Key() string                                            { return tp.key }
+func (tp *bcrTestPeer) IsOutbound() bool                                       { return false }
+func (tp *bcrTestPeer) IsPersistent() bool                                     { return true }
+func (tp *bcrTestPeer) Mark(reactorID string, good bool, events, severity int) {}
+func (tp *bcrTestPeer) Get(s string) interface{}                               { return s }
+func (tp *bcrTestPeer) Set(string, interface{})                                {}
