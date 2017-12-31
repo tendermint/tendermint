@@ -93,6 +93,17 @@ encode([]int{1, 2, 3, 4})       == [0x01, 0x04, 0x01, 0x01, 0x01, 0x02, 0x01, 0x
 encode([]string{"abc", "efg"})  == [0x01, 0x02, 0x01, 0x03, 0x61, 0x62, 0x63, 0x01, 0x03, 0x65, 0x66, 0x67]
 ```
 
+### BitArray
+BitArray is encoded as an `int` of the number of bits, and with an array of `uint64` to encode 
+value of each array element.
+
+```
+type BitArray struct {
+    Bits  int      
+    Elems []uint64 
+}
+```
+
 ### Time
 
 Time is encoded as an `int64` of the number of nanoseconds since January 1, 1970,
@@ -175,4 +186,14 @@ TMBIN encode an object and slice it into parts.
 
 ```
 MakeParts(object, partSize)
+```
+
+### Part
+
+```
+type Part struct {
+	Index int                
+	Bytes byte[]         
+	Proof byte[]             
+}
 ```
