@@ -65,7 +65,8 @@ func (blockExec *BlockExecutor) ValidateBlock(s State, block *types.Block) error
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
-// fires the relevant events, commits the app, and saves the new state and responses.
+// fires the relevant events, commits the app, and persists the new state and responses.
+// It returns the new state, or an error.
 // It's the only function that needs to be called
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
@@ -255,20 +256,22 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator)
 		}
 
 		address := pubkey.Address()
-		power := int64(v.Power)
-		// mind the overflow from int64
+		power := v.Power
 		if power < 0 {
-			return fmt.Errorf("Power (%d) overflows int64", v.Power)
+			return fmt.Errorf("Power (%d) must be positive int64", v.Power)
 		}
 
 		_, val := currentSet.GetByAddress(address)
 		if val == nil {
-			// add val
+			// add val with positive voting power
+			if power == 0 {
+				return fmt.Errorf("Cannot add new validator %X with 0 voting power", address)
+			}
 			added := currentSet.Add(types.NewValidator(pubkey, power))
 			if !added {
 				return fmt.Errorf("Failed to add new validator %X with voting power %d", address, power)
 			}
-		} else if v.Power == 0 {
+		} else if power == 0 {
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {

@@ -63,7 +63,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 		if i == times-1 {
 			valSet.Proposer = mostest
 		}
-		mostest.Accum -= int64(valSet.TotalVotingPower())
+		mostest.Accum -= valSet.TotalVotingPower()
 		validatorsHeap.Update(mostest, accumComparable{mostest})
 	}
 }
