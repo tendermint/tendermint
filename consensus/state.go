@@ -19,6 +19,7 @@ import (
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 )
 
 //-----------------------------------------------------------------------------
@@ -71,7 +72,7 @@ type ConsensusState struct {
 
 	// config details
 	config        *cfg.ConsensusConfig
-	privValidator types.PrivValidator // for signing votes
+	privValidator priv_val.PrivValidator // for signing votes
 
 	// services for creating and executing blocks
 	// TODO: encapsulate all of this in one "BlockManager"
@@ -189,7 +190,7 @@ func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
 }
 
 // SetPrivValidator sets the private validator account for signing votes.
-func (cs *ConsensusState) SetPrivValidator(priv types.PrivValidator) {
+func (cs *ConsensusState) SetPrivValidator(priv priv_val.PrivValidator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	cs.privValidator = priv
@@ -711,7 +712,7 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 	counter := 0
-	addr := cs.privValidator.GetAddress()
+	addr := cs.privValidator.Address()
 	valIndex, v := cs.Validators.GetByAddress(addr)
 	if v == nil {
 		// not a validator
@@ -772,7 +773,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	if !cs.isProposer() {
 		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
-		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+		if cs.Validators.HasAddress(cs.privValidator.Address()) {
 			cs.Logger.Debug("This node is a validator")
 		} else {
 			cs.Logger.Debug("This node is not a validator")
@@ -785,7 +786,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 }
 
 func (cs *ConsensusState) isProposer() bool {
-	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.GetAddress())
+	return bytes.Equal(cs.Validators.GetProposer().Address, cs.privValidator.Address())
 }
 
 func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
@@ -1317,7 +1318,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 		if err == ErrVoteHeightMismatch {
 			return err
 		} else if voteErr, ok := err.(*types.ErrVoteConflictingVotes); ok {
-			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.GetAddress()) {
+			if bytes.Equal(vote.ValidatorAddress, cs.privValidator.Address()) {
 				cs.Logger.Error("Found conflicting vote from ourselves. Did you unsafe_reset a validator?", "height", vote.Height, "round", vote.Round, "type", vote.Type)
 				return err
 			}
@@ -1444,7 +1445,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 }
 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
-	addr := cs.privValidator.GetAddress()
+	addr := cs.privValidator.Address()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
 		ValidatorAddress: addr,
@@ -1462,7 +1463,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 // sign the vote and publish on internalMsgQueue
 func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
 	// if we don't have a key or we're not in the validator set, do nothing
-	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.Address()) {
 		return nil
 	}
 	vote, err := cs.signVote(type_, hash, header)

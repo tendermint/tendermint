@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -50,11 +50,11 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 func resetPrivValidatorFS(privValFile string, logger log.Logger) {
 	// Get PrivValidator
 	if _, err := os.Stat(privValFile); err == nil {
-		privValidator := types.LoadPrivValidatorFS(privValFile)
+		privValidator := priv_val.LoadDefaultPrivValidator(privValFile)
 		privValidator.Reset()
 		logger.Info("Reset PrivValidator", "file", privValFile)
 	} else {
-		privValidator := types.GenPrivValidatorFS(privValFile)
+		privValidator := priv_val.GenDefaultPrivValidator(privValFile)
 		privValidator.Save()
 		logger.Info("Generated PrivValidator", "file", privValFile)
 	}

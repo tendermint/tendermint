@@ -143,3 +143,5 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 	pvs[i] = pvs[j]
 	pvs[j] = it
 }
+
+//---------------------------------------------------------------------

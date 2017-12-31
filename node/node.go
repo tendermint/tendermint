@@ -33,6 +33,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -76,7 +77,7 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	return NewNode(config,
-		types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile()),
+		priv_val.LoadOrGenDefaultPrivValidator(config.PrivValidatorFile()),
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -92,8 +93,8 @@ type Node struct {
 
 	// config
 	config        *cfg.Config
-	genesisDoc    *types.GenesisDoc   // initial validator set
-	privValidator types.PrivValidator // local node's validator key
+	genesisDoc    *types.GenesisDoc      // initial validator set
+	privValidator priv_val.PrivValidator // local node's validator key
 
 	// network
 	privKey          crypto.PrivKeyEd25519   // local node's p2p key
@@ -118,7 +119,7 @@ type Node struct {
 
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
-	privValidator types.PrivValidator,
+	privValidator priv_val.PrivValidator,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
@@ -178,16 +179,18 @@ func NewNode(config *cfg.Config,
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.GetAddress(), addr) {
+		if bytes.Equal(privValidator.Address(), addr) {
 			fastSync = false
 		}
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.GetAddress()) {
-		consensusLogger.Info("This node is a validator")
+	if state.Validators.HasAddress(privValidator.Address()) {
+		consensusLogger.Info("This node is a validator",
+			"addr", privValidator.Address(), "pubkey", privValidator.PubKey())
 	} else {
-		consensusLogger.Info("This node is not a validator")
+		consensusLogger.Info("This node is not a validator",
+			"addr", privValidator.Address(), "pubkey", privValidator.PubKey())
 	}
 
 	// Make MempoolReactor
@@ -436,7 +439,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetMempool(n.mempoolReactor.Mempool)
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetSwitch(n.sw)
-	rpccore.SetPubKey(n.privValidator.GetPubKey())
+	rpccore.SetPubKey(n.privValidator.PubKey())
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())
@@ -520,7 +523,7 @@ func (n *Node) EventBus() *types.EventBus {
 
 // PrivValidator returns the Node's PrivValidator.
 // XXX: for convenience only!
-func (n *Node) PrivValidator() types.PrivValidator {
+func (n *Node) PrivValidator() priv_val.PrivValidator {
 	return n.privValidator
 }
 

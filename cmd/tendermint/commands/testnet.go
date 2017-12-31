@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -45,9 +46,9 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 		}
 		// Read priv_validator.json to populate vals
 		privValFile := path.Join(dataDir, mach, "priv_validator.json")
-		privVal := types.LoadPrivValidatorFS(privValFile)
+		privVal := priv_val.LoadDefaultPrivValidator(privValFile)
 		genVals[i] = types.GenesisValidator{
-			PubKey: privVal.GetPubKey(),
+			PubKey: privVal.PubKey(),
 			Power:  1,
 			Name:   mach,
 		}
@@ -89,6 +90,6 @@ func ensurePrivValidator(file string) {
 	if cmn.FileExists(file) {
 		return
 	}
-	privValidator := types.GenPrivValidatorFS(file)
+	privValidator := priv_val.GenDefaultPrivValidator(file)
 	privValidator.Save()
 }

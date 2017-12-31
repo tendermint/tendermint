@@ -3,8 +3,10 @@ package types
 import (
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: type ?
@@ -56,6 +58,35 @@ type PrivValidatorStore interface {
 
 	GetCarefulSigner(TypePrivValidator) CarefulSigner
 	SetCarefulSigner(CarefulSigner)
+}
+
+type DefaultStore struct {
+	db            dbm.DB
+	signer        Signer
+	carefulSigner CarefulSigner
+}
+
+func NewDefaultStore(db dbm.DB) *DefaultStore {
+	return &DefaultStore{
+		db: db,
+	}
+
+}
+
+func (pvs *DefaultStore) GetSigner(typ TypePrivValidator) Signer {
+	return pvs.signer
+}
+
+func (pvs *DefaultStore) SetSigner(signer Signer) {
+	pvs.signer = signer
+}
+
+func (pvs *DefaultStore) GetCarefulSigner(typ TypePrivValidator) CarefulSigner {
+	return pvs.carefulSigner
+}
+
+func (pvs *DefaultStore) SetCarefulSigner(signer CarefulSigner) {
+	pvs.carefulSigner = signer
 }
 
 //----------------------------------------------------------------------------

@@ -10,7 +10,6 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //-------------------------------------
@@ -23,51 +22,16 @@ type LastSignedInfo struct {
 	LastStep      int8             `json:"last_step"`
 	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
 	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
-
-	saveFn func(CarefulSigner)
 }
 
-func NewLastSignedInfo(saveFn func(CarefulSigner)) *LastSignedInfo {
+func NewLastSignedInfo() *LastSignedInfo {
 	return &LastSignedInfo{
 		LastStep: -1,
-		saveFn:   saveFn,
 	}
 }
 
 func (info *LastSignedInfo) String() string {
 	return fmt.Sprintf("LH:%v, LR:%v, LS:%v", info.LastHeight, info.LastRound, info.LastStep)
-}
-
-// SignVote signs a canonical representation of the vote, along with the
-// chainID. Implements ConsensusSigner.
-func (info *LastSignedInfo) SignVote(signer Signer, chainID string, vote *types.Vote) error {
-	signature, err := info.sign(signer, vote.Height, vote.Round, voteToStep(vote),
-		types.SignBytes(chainID, vote), checkVotesOnlyDifferByTimestamp)
-	if err != nil {
-		return errors.New(cmn.Fmt("Error signing vote: %v", err))
-	}
-	vote.Signature = signature
-	return nil
-}
-
-// SignProposal signs a canonical representation of the proposal, along with
-// the chainID. Implements ConsensusSigner.
-func (info *LastSignedInfo) SignProposal(signer Signer, chainID string, proposal *types.Proposal) error {
-	signature, err := info.sign(signer, proposal.Height, proposal.Round, stepPropose,
-		types.SignBytes(chainID, proposal), checkProposalsOnlyDifferByTimestamp)
-	if err != nil {
-		return fmt.Errorf("Error signing proposal: %v", err)
-	}
-	proposal.Signature = signature
-	return nil
-}
-
-// SignHeartbeat signs a canonical representation of the heartbeat, along with the chainID.
-// Implements CosnensusSigner.
-func (info *LastSignedInfo) SignHeartbeat(signer Signer, chainID string, heartbeat *types.Heartbeat) error {
-	var err error
-	heartbeat.Signature, err = signer.Sign(types.SignBytes(chainID, heartbeat))
-	return err
 }
 
 // Verify returns an error if there is a height/round/step regression
@@ -102,7 +66,7 @@ func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, err
 }
 
 // Set height/round/step and signature on the info
-func (info *LastSignedInfo) save(height int64, round int, step int8,
+func (info *LastSignedInfo) Set(height int64, round int, step int8,
 	signBytes []byte, sig crypto.Signature) {
 
 	info.LastHeight = height
@@ -110,8 +74,6 @@ func (info *LastSignedInfo) save(height int64, round int, step int8,
 	info.LastStep = step
 	info.LastSignature = sig
 	info.LastSignBytes = signBytes
-
-	info.saveFn(info)
 }
 
 func (info *LastSignedInfo) Reset() {
@@ -120,43 +82,6 @@ func (info *LastSignedInfo) Reset() {
 	info.LastStep = 0
 	info.LastSignature = crypto.Signature{}
 	info.LastSignBytes = nil
-}
-
-//-------------------------------------
-
-// Sign signs the given signBytes with the signer if the height/round/step (HRS) are
-// greater than the latest state of the LastSignedInfo. If the HRS are equal and the only thing changed is the timestamp,
-// it returns the privValidator.LastSignature. Else it returns an error.
-func (info *LastSignedInfo) sign(signer Signer, height int64, round int, step int8,
-	signBytes []byte, checkFn checkOnlyDifferByTimestamp) (crypto.Signature, error) {
-
-	sig := crypto.Signature{}
-
-	sameHRS, err := info.Verify(height, round, step)
-	if err != nil {
-		return sig, err
-	}
-
-	// We might crash before writing to the wal,
-	// causing us to try to re-sign for the same HRS
-	if sameHRS {
-		// if they're the same or only differ by timestamp,
-		// return the LastSignature. Otherwise, error
-		if bytes.Equal(signBytes, info.LastSignBytes) ||
-			checkFn(info.LastSignBytes, signBytes) {
-			return info.LastSignature, nil
-		}
-		return sig, fmt.Errorf("Conflicting data")
-	}
-
-	// Sign
-	sig, err = signer.Sign(signBytes)
-	if err != nil {
-		return sig, err
-	}
-
-	info.save(height, round, step, signBytes, sig)
-	return sig, nil
 }
 
 //-------------------------------------
