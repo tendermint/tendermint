@@ -23,13 +23,13 @@ func TestGenLoadValidator(t *testing.T) {
 	privVal := GenDefaultPrivValidator(tempFilePath)
 
 	height := int64(100)
-	privVal.CarefulSigner.LastHeight = height
+	privVal.CarefulSigner.LastSignedInfo.Height = height
 	privVal.Save()
 	addr := privVal.Address()
 
 	privVal = LoadDefaultPrivValidator(tempFilePath)
 	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
-	assert.Equal(height, privVal.CarefulSigner.LastHeight, "expected privval.LastHeight to have been saved")
+	assert.Equal(height, privVal.CarefulSigner.LastSignedInfo.Height, "expected privval.LastHeight to have been saved")
 }
 
 func TestLoadOrGenValidator(t *testing.T) {
@@ -81,10 +81,10 @@ func TestUnmarshalValidator(t *testing.T) {
   },
   "careful_signer": {
     "last_signed_info": {
-      "last_height": 0,
-      "last_round": 0,
-      "last_step": 0,
-      "last_signature": null
+      "height": 0,
+      "round": 0,
+      "step": 0,
+      "signature": null
 	}
   }
 }`, addrStr, pubStr, privStr)

@@ -115,7 +115,7 @@ func GenDefaultPrivValidator(filePath string) *DefaultPrivValidator {
 
 	info := PrivValidatorInfo{
 		ID:   id,
-		Type: TypePrivValidatorKeyStoreUnencrypted,
+		Type: TypeUnencrypted,
 	}
 
 	signer := NewDefaultSigner(privKey)

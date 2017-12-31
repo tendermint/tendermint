@@ -31,9 +31,9 @@ func voteToStep(vote *types.Vote) int8 {
 type TypePrivValidator string
 
 const (
-	TypePrivValidatorKeyStoreUnencrypted = "keystore-unencrypted"
-	TypePrivValidatorKeyStoreEncrypted   = "keystore-encrypted"
-	TypePrivValidatorLedgerNanoS         = "ledger-nano-s"
+	TypeUnencrypted = "unencrypted"
+	TypeEncrypted   = "encrypted"
+	TypeLedgerNanoS = "ledger-nano-s"
 	// ...
 )
 

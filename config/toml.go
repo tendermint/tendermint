@@ -138,7 +138,7 @@ var testPrivValidator = `{
         "data": "3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
       }
     },
-    "type": "keystore-unencrypted"
+    "type": "unencrypted"
   },
   "signer": {
     "priv_key": {
@@ -148,9 +148,9 @@ var testPrivValidator = `{
   },
   "careful_signer": {
     "last_signed_info": {
-      "last_height": 0,
-      "last_round": 0,
-      "last_step": 0
+      "height": 0,
+      "round": 0,
+      "step": 0
     }
   }
 }`

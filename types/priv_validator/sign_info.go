@@ -17,21 +17,21 @@ import (
 // LastSignedInfo contains information about the latest
 // data signed by a validator to help prevent double signing.
 type LastSignedInfo struct {
-	LastHeight    int64            `json:"last_height"`
-	LastRound     int              `json:"last_round"`
-	LastStep      int8             `json:"last_step"`
-	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
-	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
+	Height    int64            `json:"height"`
+	Round     int              `json:"round"`
+	Step      int8             `json:"step"`
+	Signature crypto.Signature `json:"signature,omitempty"` // so we dont lose signatures
+	SignBytes data.Bytes       `json:"signbytes,omitempty"` // so we dont lose signatures
 }
 
 func NewLastSignedInfo() *LastSignedInfo {
 	return &LastSignedInfo{
-		LastStep: -1,
+		Step: -1,
 	}
 }
 
 func (info *LastSignedInfo) String() string {
-	return fmt.Sprintf("LH:%v, LR:%v, LS:%v", info.LastHeight, info.LastRound, info.LastStep)
+	return fmt.Sprintf("LH:%v, LR:%v, LS:%v", info.Height, info.Round, info.Step)
 }
 
 // Verify returns an error if there is a height/round/step regression
@@ -39,21 +39,21 @@ func (info *LastSignedInfo) String() string {
 // It returns true if HRS matches exactly and the LastSignature exists.
 // It panics if the HRS matches, the LastSignBytes are not empty, but the LastSignature is empty.
 func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, error) {
-	if info.LastHeight > height {
+	if info.Height > height {
 		return false, errors.New("Height regression")
 	}
 
-	if info.LastHeight == height {
-		if info.LastRound > round {
+	if info.Height == height {
+		if info.Round > round {
 			return false, errors.New("Round regression")
 		}
 
-		if info.LastRound == round {
-			if info.LastStep > step {
+		if info.Round == round {
+			if info.Step > step {
 				return false, errors.New("Step regression")
-			} else if info.LastStep == step {
-				if info.LastSignBytes != nil {
-					if info.LastSignature.Empty() {
+			} else if info.Step == step {
+				if info.SignBytes != nil {
+					if info.Signature.Empty() {
 						panic("info: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -69,19 +69,19 @@ func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, err
 func (info *LastSignedInfo) Set(height int64, round int, step int8,
 	signBytes []byte, sig crypto.Signature) {
 
-	info.LastHeight = height
-	info.LastRound = round
-	info.LastStep = step
-	info.LastSignature = sig
-	info.LastSignBytes = signBytes
+	info.Height = height
+	info.Round = round
+	info.Step = step
+	info.Signature = sig
+	info.SignBytes = signBytes
 }
 
 func (info *LastSignedInfo) Reset() {
-	info.LastHeight = 0
-	info.LastRound = 0
-	info.LastStep = 0
-	info.LastSignature = crypto.Signature{}
-	info.LastSignBytes = nil
+	info.Height = 0
+	info.Round = 0
+	info.Step = 0
+	info.Signature = crypto.Signature{}
+	info.SignBytes = nil
 }
 
 //-------------------------------------
