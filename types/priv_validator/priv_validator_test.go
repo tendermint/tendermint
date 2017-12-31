@@ -1,9 +1,18 @@
 package types
 
 import (
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	crypto "github.com/tendermint/go-crypto"
+	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -11,19 +20,18 @@ func TestGenLoadValidator(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenDefaultPrivValidator(tempFilePath, nil)
+	privVal := GenDefaultPrivValidator(tempFilePath)
 
 	height := int64(100)
-	privVal.CarefulSigner.(*LastSignedInfo).LastHeight = height
-	privVal.CarefulSigner.(*LastSignedInfo).saveFn(privVal.CarefulSigner)
+	privVal.CarefulSigner.LastHeight = height
+	privVal.Save()
 	addr := privVal.Address()
 
-	privVal = LoadDefaultPrivValidator(tempFilePath, nil)
+	privVal = LoadDefaultPrivValidator(tempFilePath)
 	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
-	assert.Equal(height, privVal.CarefulSigner.(*LastSignedInfo).LastHeight, "expected privval.LastHeight to have been saved")
+	assert.Equal(height, privVal.CarefulSigner.LastHeight, "expected privval.LastHeight to have been saved")
 }
 
-/*
 func TestLoadOrGenValidator(t *testing.T) {
 	assert := assert.New(t)
 
@@ -31,10 +39,10 @@ func TestLoadOrGenValidator(t *testing.T) {
 	if err := os.Remove(tempFilePath); err != nil {
 		t.Error(err)
 	}
-	privVal := LoadOrGenPrivValidatorFS(tempFilePath)
-	addr := privVal.GetAddress()
-	privVal = LoadOrGenPrivValidatorFS(tempFilePath)
-	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
+	privVal := LoadOrGenDefaultPrivValidator(tempFilePath)
+	addr := privVal.Address()
+	privVal = LoadOrGenDefaultPrivValidator(tempFilePath)
+	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
 }
 
 func TestUnmarshalValidator(t *testing.T) {
@@ -55,29 +63,40 @@ func TestUnmarshalValidator(t *testing.T) {
 	require.Nil(err, "%+v", err)
 
 	serialized := fmt.Sprintf(`{
-  "address": "%s",
-  "pub_key": {
-    "type": "ed25519",
-    "data": "%s"
+  "info": {
+	"id": {
+  	  "address": "%s",
+  	  "pub_key": {
+        "type": "ed25519",
+      	"data": "%s"
+	  }
+	},
+	"type": "unencrypted"
   },
-  "last_height": 0,
-  "last_round": 0,
-  "last_step": 0,
-  "last_signature": null,
-  "priv_key": {
-    "type": "ed25519",
-    "data": "%s"
+  "signer": {
+    "priv_key": {
+      "type": "ed25519",
+      "data": "%s"
+    }
+  },
+  "careful_signer": {
+    "last_signed_info": {
+      "last_height": 0,
+      "last_round": 0,
+      "last_step": 0,
+      "last_signature": null
+	}
   }
 }`, addrStr, pubStr, privStr)
 
-	val := PrivValidatorFS{}
+	val := DefaultPrivValidator{}
 	err = json.Unmarshal([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
-	assert.EqualValues(addrBytes, val.GetAddress())
-	assert.EqualValues(pubKey, val.GetPubKey())
-	assert.EqualValues(privKey, val.PrivKey)
+	assert.EqualValues(addrBytes, val.Address())
+	assert.EqualValues(pubKey, val.PubKey())
+	assert.EqualValues(privKey, val.Signer.PrivKey)
 
 	// export it and make sure it is the same
 	out, err := json.Marshal(val)
@@ -89,15 +108,15 @@ func TestSignVote(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorFS(tempFilePath)
+	privVal := GenDefaultPrivValidator(tempFilePath)
 
-	block1 := BlockID{[]byte{1, 2, 3}, PartSetHeader{}}
-	block2 := BlockID{[]byte{3, 2, 1}, PartSetHeader{}}
+	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
+	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{}}
 	height, round := int64(10), 1
-	voteType := VoteTypePrevote
+	voteType := types.VoteTypePrevote
 
 	// sign a vote for first time
-	vote := newVote(privVal.Address, 0, height, round, voteType, block1)
+	vote := newVote(privVal.Address(), 0, height, round, voteType, block1)
 	err := privVal.SignVote("mychainid", vote)
 	assert.NoError(err, "expected no error signing vote")
 
@@ -106,11 +125,11 @@ func TestSignVote(t *testing.T) {
 	assert.NoError(err, "expected no error on signing same vote")
 
 	// now try some bad votes
-	cases := []*Vote{
-		newVote(privVal.Address, 0, height, round-1, voteType, block1),   // round regression
-		newVote(privVal.Address, 0, height-1, round, voteType, block1),   // height regression
-		newVote(privVal.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
-		newVote(privVal.Address, 0, height, round, voteType, block2),     // different block
+	cases := []*types.Vote{
+		newVote(privVal.Address(), 0, height, round-1, voteType, block1),   // round regression
+		newVote(privVal.Address(), 0, height-1, round, voteType, block1),   // height regression
+		newVote(privVal.Address(), 0, height-2, round+4, voteType, block1), // height regression and different round
+		newVote(privVal.Address(), 0, height, round, voteType, block2),     // different block
 	}
 
 	for _, c := range cases {
@@ -130,10 +149,10 @@ func TestSignProposal(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorFS(tempFilePath)
+	privVal := GenDefaultPrivValidator(tempFilePath)
 
-	block1 := PartSetHeader{5, []byte{1, 2, 3}}
-	block2 := PartSetHeader{10, []byte{3, 2, 1}}
+	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
+	block2 := types.PartSetHeader{10, []byte{3, 2, 1}}
 	height, round := int64(10), 1
 
 	// sign a proposal for first time
@@ -146,7 +165,7 @@ func TestSignProposal(t *testing.T) {
 	assert.NoError(err, "expected no error on signing same proposal")
 
 	// now try some bad Proposals
-	cases := []*Proposal{
+	cases := []*types.Proposal{
 		newProposal(height, round-1, block1),   // round regression
 		newProposal(height-1, round, block1),   // height regression
 		newProposal(height-2, round+4, block1), // height regression and different round
@@ -166,8 +185,8 @@ func TestSignProposal(t *testing.T) {
 	assert.Equal(sig, proposal.Signature)
 }
 
-func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
-	return &Vote{
+func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
+	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
 		Height:           height,
@@ -178,11 +197,10 @@ func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockI
 	}
 }
 
-func newProposal(height int64, round int, partsHeader PartSetHeader) *Proposal {
-	return &Proposal{
+func newProposal(height int64, round int, partsHeader types.PartSetHeader) *types.Proposal {
+	return &types.Proposal{
 		Height:           height,
 		Round:            round,
 		BlockPartsHeader: partsHeader,
 	}
 }
-*/

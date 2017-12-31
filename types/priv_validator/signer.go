@@ -4,6 +4,8 @@ import crypto "github.com/tendermint/go-crypto"
 
 //-----------------------------------------------------------------
 
+var _ Signer = (*DefaultSigner)(nil)
+
 // DefaultSigner implements Signer.
 // It uses a standard, unencrypted, in-memory crypto.PrivKey.
 type DefaultSigner struct {

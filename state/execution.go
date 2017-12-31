@@ -258,7 +258,7 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator)
 		address := pubkey.Address()
 		power := v.Power
 		if power < 0 {
-			return fmt.Errorf("Power (%d) must be positive int64", v.Power)
+			return fmt.Errorf("Power (%d) must be positive int64", power)
 		}
 
 		_, val := currentSet.GetByAddress(address)

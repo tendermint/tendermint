@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+var _ PrivValidator = (*DefaultPrivValidator)(nil)
+
 // DefaultPrivValidator implements PrivValidator.
 type DefaultPrivValidator struct {
 	Info          PrivValidatorInfo     `json:"info"`
@@ -19,6 +22,22 @@ type DefaultPrivValidator struct {
 	CarefulSigner *DefaultCarefulSigner `json:"careful_signer"`
 
 	filePath string
+}
+
+func NewTestPrivValidator(signer types.TestSigner) *DefaultPrivValidator {
+	_, tempFilePath := cmn.Tempfile("priv_validator_")
+	pv := &DefaultPrivValidator{
+		Info: PrivValidatorInfo{
+			ID: ValidatorID{
+				Address: signer.Address(),
+				PubKey:  signer.PubKey(),
+			},
+		},
+		Signer:   NewDefaultSigner(signer.(*types.DefaultTestSigner).PrivKey),
+		filePath: tempFilePath,
+	}
+	pv.CarefulSigner = NewDefaultCarefulSigner(pv.defaultSaveFn)
+	return pv
 }
 
 // Address returns the address of the validator.
@@ -140,4 +159,22 @@ func LoadOrGenDefaultPrivValidator(filePath string) *DefaultPrivValidator {
 		pv.Save()
 	}
 	return pv
+}
+
+//--------------------------------------------------------------
+
+type PrivValidatorsByAddress []*DefaultPrivValidator
+
+func (pvs PrivValidatorsByAddress) Len() int {
+	return len(pvs)
+}
+
+func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
+	return bytes.Compare(pvs[i].Address(), pvs[j].Address()) == -1
+}
+
+func (pvs PrivValidatorsByAddress) Swap(i, j int) {
+	it := pvs[i]
+	pvs[i] = pvs[j]
+	pvs[j] = it
 }

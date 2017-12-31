@@ -73,14 +73,14 @@ func TestVoteString(t *testing.T) {
 }
 
 func TestVoteVerifySignature(t *testing.T) {
-	privVal := GenPrivValidatorFS("")
-	pubKey := privVal.GetPubKey()
+	privVal := GenSigner()
+	pubKey := privVal.PubKey()
 
 	vote := examplePrecommit()
 	signBytes := SignBytes("test_chain_id", vote)
 
 	// sign it
-	signature, err := privVal.Signer.Sign(signBytes)
+	signature, err := privVal.Sign(signBytes)
 	require.NoError(t, err)
 
 	// verify the same vote

@@ -6,7 +6,7 @@ import (
 
 func MakeCommit(blockID BlockID, height int64, round int,
 	voteSet *VoteSet,
-	validators []Signer) (*Commit, error) {
+	validators []TestSigner) (*Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
@@ -30,7 +30,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 	return voteSet.MakeCommit(), nil
 }
 
-func signAddVote(privVal Signer, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+func signAddVote(privVal TestSigner, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
 	vote.Signature, err = privVal.Sign(SignBytes(voteSet.ChainID(), vote))
 	if err != nil {
 		return false, err

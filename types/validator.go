@@ -108,7 +108,7 @@ func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
 
 // RandValidator returns a randomized validator, useful for testing.
 // UNSTABLE
-func RandValidator(randPower bool, minPower int64) (*Validator, Signer) {
+func RandValidator(randPower bool, minPower int64) (*Validator, TestSigner) {
 	privVal := GenSigner()
 	votePower := minPower
 	if randPower {
@@ -118,17 +118,37 @@ func RandValidator(randPower bool, minPower int64) (*Validator, Signer) {
 	return val, privVal
 }
 
-type Signer interface {
-	Address() []byte
+type TestSigner interface {
+	Address() data.Bytes
 	PubKey() crypto.PubKey
 	Sign([]byte) (crypto.Signature, error)
 }
 
-func GenSigner() Signer {
-	return nil
+func GenSigner() TestSigner {
+	return &DefaultTestSigner{
+		crypto.GenPrivKeyEd25519().Wrap(),
+	}
 }
 
-type PrivValidatorsByAddress []Signer
+type DefaultTestSigner struct {
+	crypto.PrivKey
+}
+
+func (ds *DefaultTestSigner) Address() data.Bytes {
+	return ds.PubKey().Address()
+}
+
+func (ds *DefaultTestSigner) PubKey() crypto.PubKey {
+	return ds.PrivKey.PubKey()
+}
+
+func (ds *DefaultTestSigner) Sign(msg []byte) (crypto.Signature, error) {
+	return ds.PrivKey.Sign(msg), nil
+}
+
+//-------------------------------------------------------------
+
+type PrivValidatorsByAddress []TestSigner
 
 func (pvs PrivValidatorsByAddress) Len() int {
 	return len(pvs)

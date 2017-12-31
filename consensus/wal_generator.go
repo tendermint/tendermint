@@ -41,7 +41,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
 	// NOTE: we can't import node package because of circular dependency
 	privValidatorFile := config.PrivValidatorFile()
-	privValidator := priv_val.GenDefaultPrivValidator(privValidatorFile)
+	privValidator := priv_val.LoadDefaultPrivValidator(privValidatorFile)
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read genesis file")

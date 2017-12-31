@@ -27,6 +27,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -325,7 +326,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := types.LoadPrivValidatorFS(config.PrivValidatorFile())
+	privVal := priv_val.LoadDefaultPrivValidator(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {
@@ -342,7 +343,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatalf(err.Error())
 	}
 
-	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
+	stateDB, state, store := stateAndStore(config, privVal.PubKey())
 	store.chain = chain
 	store.commits = commits
 
@@ -357,7 +358,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, nil)
-		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey())
+		stateDB, state, _ := stateAndStore(config, privVal.PubKey())
 		buildAppStateFromChain(proxyApp, stateDB, state, chain, nBlocks, mode)
 	}
 
