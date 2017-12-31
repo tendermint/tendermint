@@ -1,13 +1,16 @@
 package types
 
-import crypto "github.com/tendermint/go-crypto"
+import (
+	crypto "github.com/tendermint/go-crypto"
+)
 
 //-----------------------------------------------------------------
 
 var _ Signer = (*DefaultSigner)(nil)
 
 // DefaultSigner implements Signer.
-// It uses a standard, unencrypted, in-memory crypto.PrivKey.
+// It uses an in-memory crypto.PrivKey that is
+// persisted to disk unencrypted.
 type DefaultSigner struct {
 	PrivKey crypto.PrivKey `json:"priv_key"`
 }
@@ -23,5 +26,3 @@ func NewDefaultSigner(priv crypto.PrivKey) *DefaultSigner {
 func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
 	return ds.PrivKey.Sign(msg), nil
 }
-
-//-----------------------------------------------------------------

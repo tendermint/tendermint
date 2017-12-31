@@ -16,28 +16,13 @@ import (
 var _ PrivValidator = (*DefaultPrivValidator)(nil)
 
 // DefaultPrivValidator implements PrivValidator.
+// It uses the DefaultCarefulSigner to prevent double signing.
 type DefaultPrivValidator struct {
 	Info          PrivValidatorInfo     `json:"info"`
 	Signer        *DefaultSigner        `json:"signer"`
 	CarefulSigner *DefaultCarefulSigner `json:"careful_signer"`
 
 	filePath string
-}
-
-func NewTestPrivValidator(signer types.TestSigner) *DefaultPrivValidator {
-	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	pv := &DefaultPrivValidator{
-		Info: PrivValidatorInfo{
-			ID: ValidatorID{
-				Address: signer.Address(),
-				PubKey:  signer.PubKey(),
-			},
-		},
-		Signer:   NewDefaultSigner(signer.(*types.DefaultTestSigner).PrivKey),
-		filePath: tempFilePath,
-	}
-	pv.CarefulSigner = NewDefaultCarefulSigner(pv.defaultSaveFn)
-	return pv
 }
 
 // Address returns the address of the validator.
@@ -108,7 +93,8 @@ func (pv *DefaultPrivValidator) Reset() {
 
 //----------------------------------------------------------------
 
-// GenDefaultPrivValidator generates a new validator with randomly generated private key.
+// GenDefaultPrivValidator generates a new validator with randomly generated private key
+// and the given filePath. It does not persist to file.
 func GenDefaultPrivValidator(filePath string) *DefaultPrivValidator {
 	privKey := crypto.GenPrivKeyEd25519().Wrap()
 	id := ValidatorID{privKey.PubKey().Address(), privKey.PubKey()}
@@ -162,6 +148,24 @@ func LoadOrGenDefaultPrivValidator(filePath string) *DefaultPrivValidator {
 }
 
 //--------------------------------------------------------------
+
+// NewTestPrivValidator returns a DefaultPrivValidator with a tempfile
+// for the file path.
+func NewTestPrivValidator(signer types.TestSigner) *DefaultPrivValidator {
+	_, tempFilePath := cmn.Tempfile("priv_validator_")
+	pv := &DefaultPrivValidator{
+		Info: PrivValidatorInfo{
+			ID: ValidatorID{
+				Address: signer.Address(),
+				PubKey:  signer.PubKey(),
+			},
+		},
+		Signer:   NewDefaultSigner(signer.(*types.DefaultTestSigner).PrivKey),
+		filePath: tempFilePath,
+	}
+	pv.CarefulSigner = NewDefaultCarefulSigner(pv.defaultSaveFn)
+	return pv
+}
 
 type PrivValidatorsByAddress []*DefaultPrivValidator
 

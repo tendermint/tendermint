@@ -26,7 +26,7 @@ type LastSignedInfo struct {
 
 func NewLastSignedInfo() *LastSignedInfo {
 	return &LastSignedInfo{
-		Step: -1,
+		Step: stepNone,
 	}
 }
 
