@@ -10,19 +10,19 @@ Each peer has an ID defined as `peer.ID == peer.PrivKey.Address()`, where `Addre
 
 Peer ID's must come with some Proof-of-Work; that is,
 they must satisfy `peer.PrivKey.Address() < target` for some difficulty target.
-This ensures they are not too easy to generate.
+This ensures they are not too easy to generate. To begin, let `target == 2^240`.
 
-A single peer ID can have multiple IP addresses associated with - for simplicity, we only keep track
-of the latest one.
+A single peer ID can have multiple IP addresses associated with it.
+For simplicity, we only keep track of the latest one.
 
 When attempting to connect to a peer, we use the PeerURL: `<ID>@<IP>:<PORT>`.
 We will attempt to connect to the peer at IP:PORT, and verify,
 via authenticated encryption, that it is in possession of the private key
 corresponding to `<ID>`. This prevents man-in-the-middle attacks on the peer layer.
 
-Peers can also be connected to without specifying an ID, ie. `<IP>:<PORT>`.
-In this case, the peer cannot be authenticated and other means, such as a VPN,
-must be used.
+Peers can also be connected to without specifying an ID, ie. just `<IP>:<PORT>`.
+In this case, the peer must be authenticated out-of-band of Tendermint,
+for instance via VPN
 
 ## Connections
 
@@ -40,18 +40,27 @@ It goes as follows:
 - send the ephemeral public key to the peer
 - wait to receive the peer's ephemeral public key
 - compute the Diffie-Hellman shared secret using the peers ephemeral public key and our ephemeral private key
-- generate nonces to use for encryption
-    - TODO
-- all communications from now on are encrypted using the shared secret
-- generate a common challenge to sign
+- generate two nonces to use for encryption (sending and receiving) as follows:
+    - sort the ephemeral public keys in ascending order and concatenate them
+    - RIPEMD160 the result
+    - append 4 empty bytes (extending the hash to 24-bytes)
+    - the result is nonce1
+    - flip the last bit of nonce1 to get nonce2
+    - if we had the smaller ephemeral pubkey, use nonce1 for receiving, nonce2 for sending;
+        else the opposite
+- all communications from now on are encrypted using the shared secret and the nonces, where each nonce
+- we now have an encrypted channel, but still need to authenticate
+increments by 2 every time it is used
+- generate a common challenge to sign:
+    - SHA256 of the sorted (lowest first) and concatenated ephemeral pub keys
 - sign the common challenge with our persistent private key
-- send the signed challenge and persistent public key to the peer
-- wait to receive the signed challenge and persistent public key from the peer
-- verify the signature in the signed challenge using the peers persistent public key
+- send the go-wire encoded persistent pubkey and signature to the peer
+- wait to receive the persistent public key and signature from the peer
+- verify the signature on the challenge using the peer's persistent public key
 
 
 If this is an outgoing connection (we dialed the peer) and we used a peer ID,
-then finally verify that the `peer.PubKey` corresponds to the peer ID we dialed,
+then finally verify that the peer's persistent public key corresponds to the peer ID we dialed,
 ie. `peer.PubKey.Address() == <ID>`.
 
 The connection has now been authenticated. All traffic is encrypted.
@@ -60,21 +69,20 @@ Note that only the dialer can authenticate the identity of the peer,
 but this is what we care about since when we join the network we wish to
 ensure we have reached the intended peer (and are not being MITMd).
 
-
 ### Peer Filter
 
-Before continuing, we check if the new peer has the same ID has ourselves or
+Before continuing, we check if the new peer has the same ID as ourselves or
 an existing peer. If so, we disconnect.
 
 We also check the peer's address and public key against
 an optional whitelist which can be managed through the ABCI app -
-if the whitelist is enabled and the peer is not on it, the connection is
+if the whitelist is enabled and the peer does not qualigy, the connection is
 terminated.
 
 
 ### Tendermint Version Handshake
 
-The Tendermint Version Handshake allows the peers to exchange their NodeInfo, which contains:
+The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 
 ```
 type NodeInfo struct {
@@ -95,11 +103,16 @@ The connection is disconnected if:
 - `peer.NodeInfo.Version` Major is not the same as ours
 - `peer.NodeInfo.Version` Minor is not the same as ours
 - `peer.NodeInfo.Network` is not the same as ours
+- `peer.Channels` does not intersect with our known Channels.
 
 
-At this point, if we have not disconnected, the peer is valid and added to the switch,
-so it is added to all reactors.
+At this point, if we have not disconnected, the peer is valid.
+It is added to the switch and hence all reactors via the `AddPeer` method.
+Note that each reactor may handle multiple channels.
 
+## Connection Activity
 
-### Connection Activity
+Once a peer is added, incoming messages for a given reactor are handled through
+that reactor's `Receive` method, and output messages are sent directly by the Reactors
+on each peer. A typical reactor maintains per-peer go-routine/s that handle this.
 
