@@ -289,4 +289,4 @@ its own pattern of messages.
 For more information, see the `application developers
 guide <./app-development.html>`__. For examples of running an ABCI
 app with Tendermint, see the `getting started
-guide <./getting-started.html>`__.
+guide <./getting-started.html>`__. Next is the ABCI specification.
