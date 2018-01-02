@@ -201,7 +201,7 @@ func createRandomPeer(outbound bool) *peer {
 			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
 		outbound: outbound,
-		mconn:    &MConnection{RemoteAddress: netAddr},
+		mconn:    &MConnection{},
 	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p

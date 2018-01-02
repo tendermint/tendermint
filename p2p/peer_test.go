@@ -122,7 +122,7 @@ func (p *remotePeer) Start() {
 	if e != nil {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
-	p.addr = NewNetAddress(l.Addr())
+	p.addr = NewNetAddress("", l.Addr())
 	p.quit = make(chan struct{})
 	go p.accept(l)
 }

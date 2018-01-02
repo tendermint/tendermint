@@ -12,6 +12,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -622,6 +623,7 @@ func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	})
 	s.SetNodeKey(nodeKey)
+	s.SetLogger(log.TestingLogger())
 	return s
 }
 
