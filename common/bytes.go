@@ -26,7 +26,7 @@ func (bz HexBytes) MarshalJSON() ([]byte, error) {
 	jbz := make([]byte, len(s)+2)
 	jbz[0] = '"'
 	copy(jbz[1:], []byte(s))
-	jbz[1] = '"'
+	jbz[len(jbz)-1] = '"'
 	return jbz, nil
 }
 
