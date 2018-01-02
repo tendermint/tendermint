@@ -232,10 +232,15 @@ func (sw *Switch) OnStop() {
 // NOTE: If error is returned, caller is responsible for calling peer.CloseConn()
 func (sw *Switch) addPeer(peer *peer) error {
 
+	// Avoid self
+	if sw.nodeInfo.PubKey.Equals(peer.PubKey().Wrap()) {
+		return errors.New("Ignoring connection from self")
+	}
+
+	// Filter peer against white list
 	if err := sw.FilterConnByAddr(peer.Addr()); err != nil {
 		return err
 	}
-
 	if err := sw.FilterConnByPubKey(peer.PubKey()); err != nil {
 		return err
 	}
@@ -244,20 +249,15 @@ func (sw *Switch) addPeer(peer *peer) error {
 		return err
 	}
 
-	// Avoid self
-	if sw.nodeInfo.PubKey.Equals(peer.PubKey().Wrap()) {
-		return errors.New("Ignoring connection from self")
+	// Avoid duplicate
+	if sw.peers.Has(peer.Key()) {
+		return ErrSwitchDuplicatePeer
+
 	}
 
 	// Check version, chain id
 	if err := sw.nodeInfo.CompatibleWith(peer.NodeInfo()); err != nil {
 		return err
-	}
-
-	// Check for duplicate peer
-	if sw.peers.Has(peer.Key()) {
-		return ErrSwitchDuplicatePeer
-
 	}
 
 	// Start peer

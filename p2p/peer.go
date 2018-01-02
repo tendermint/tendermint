@@ -304,6 +304,7 @@ func (p *peer) Set(key string, data interface{}) {
 }
 
 // Key returns the peer's id key.
+// TODO: call this ID
 func (p *peer) Key() string {
 	return p.nodeInfo.ListenAddr // XXX: should probably be PubKey.KeyString()
 }
