@@ -325,6 +325,7 @@ func (sw *Switch) startInitPeer(peer *peer) {
 // DialSeeds dials a list of seeds asynchronously in random order.
 func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 	netAddrs, errs := NewNetAddressStrings(seeds)
+	// TODO: IDs
 	for _, err := range errs {
 		sw.Logger.Error("Error in seed's address", "err", err)
 	}
@@ -373,8 +374,8 @@ func (sw *Switch) dialSeed(addr *NetAddress) {
 // DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, error) {
-	sw.dialing.Set(addr.IP.String(), addr)
-	defer sw.dialing.Delete(addr.IP.String())
+	sw.dialing.Set(string(addr.ID), addr)
+	defer sw.dialing.Delete(string(addr.ID))
 
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, sw.peerConfig)
@@ -396,9 +397,9 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, 
 	return peer, nil
 }
 
-// IsDialing returns true if the switch is currently dialing the given address.
-func (sw *Switch) IsDialing(addr *NetAddress) bool {
-	return sw.dialing.Has(addr.IP.String())
+// IsDialing returns true if the switch is currently dialing the given ID.
+func (sw *Switch) IsDialing(id ID) bool {
+	return sw.dialing.Has(string(id))
 }
 
 // Broadcast runs a go routine for each attempted send, which will block
@@ -454,7 +455,8 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 // If no success after all that, it stops trying, and leaves it
 // to the PEX/Addrbook to find the peer again
 func (sw *Switch) reconnectToPeer(peer Peer) {
-	addr, _ := NewNetAddressString(peer.NodeInfo().RemoteAddr)
+	netAddr, _ := NewNetAddressString(peer.NodeInfo().RemoteAddr)
+	netAddr.ID = peer.ID() // TODO: handle above
 	start := time.Now()
 	sw.Logger.Info("Reconnecting to peer", "peer", peer)
 	for i := 0; i < reconnectAttempts; i++ {
@@ -462,7 +464,7 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 			return
 		}
 
-		peer, err := sw.DialPeerWithAddress(addr, true)
+		peer, err := sw.DialPeerWithAddress(netAddr, true)
 		if err != nil {
 			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
 			// sleep a set amount
@@ -484,7 +486,7 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 		// sleep an exponentially increasing amount
 		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
 		sw.randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
-		peer, err := sw.DialPeerWithAddress(addr, true)
+		peer, err := sw.DialPeerWithAddress(netAddr, true)
 		if err != nil {
 			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
 			continue

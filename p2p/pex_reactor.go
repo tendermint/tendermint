@@ -107,6 +107,7 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		}
 	} else { // For inbound connections, the peer is its own source
 		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
+		addr.ID = p.ID() // TODO: handle in NewNetAddress func
 		if err != nil {
 			// peer gave us a bad ListenAddr. TODO: punish
 			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
@@ -154,9 +155,9 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	case *pexAddrsMessage:
 		// We received some peer addresses from src.
 		// TODO: (We don't want to get spammed with bad peers)
-		for _, addr := range msg.Addrs {
-			if addr != nil {
-				r.book.AddAddress(addr, srcAddr)
+		for _, netAddr := range msg.Addrs {
+			if netAddr != nil {
+				r.book.AddAddress(netAddr, srcAddr)
 			}
 		}
 	default:
@@ -170,8 +171,8 @@ func (r *PEXReactor) RequestPEX(p Peer) {
 }
 
 // SendAddrs sends addrs to the peer.
-func (r *PEXReactor) SendAddrs(p Peer, addrs []*NetAddress) {
-	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+func (r *PEXReactor) SendAddrs(p Peer, netAddrs []*NetAddress) {
+	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: netAddrs}})
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -258,19 +259,19 @@ func (r *PEXReactor) ensurePeers() {
 		if try == nil {
 			continue
 		}
-		if _, selected := toDial[try.IP.String()]; selected {
+		if _, selected := toDial[string(try.ID)]; selected {
 			continue
 		}
-		if dialling := r.Switch.IsDialing(try); dialling {
+		if dialling := r.Switch.IsDialing(try.ID); dialling {
 			continue
 		}
 		// XXX: Should probably use pubkey as peer key ...
 		// TODO: use the ID correctly
-		if connected := r.Switch.Peers().Has(ID(try.String())); connected {
+		if connected := r.Switch.Peers().Has(try.ID); connected {
 			continue
 		}
 		r.Logger.Info("Will dial address", "addr", try)
-		toDial[try.IP.String()] = try
+		toDial[string(try.ID)] = try
 	}
 
 	// Dial picked addresses

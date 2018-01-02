@@ -16,8 +16,9 @@ import (
 )
 
 // NetAddress defines information about a peer on the network
-// including its IP address, and port.
+// including its ID, IP address, and port.
 type NetAddress struct {
+	ID   ID
 	IP   net.IP
 	Port uint16
 	str  string
@@ -122,10 +123,15 @@ func (na *NetAddress) Less(other interface{}) bool {
 // String representation.
 func (na *NetAddress) String() string {
 	if na.str == "" {
-		na.str = net.JoinHostPort(
+
+		addrStr := net.JoinHostPort(
 			na.IP.String(),
 			strconv.FormatUint(uint64(na.Port), 10),
 		)
+		if na.ID != "" {
+			addrStr = fmt.Sprintf("%s@%s", na.ID, addrStr)
+		}
+		na.str = addrStr
 	}
 	return na.str
 }

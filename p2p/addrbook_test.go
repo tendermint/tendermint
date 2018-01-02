@@ -1,12 +1,14 @@
 package p2p
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -102,7 +104,7 @@ func TestAddrBookLookup(t *testing.T) {
 		src := addrSrc.src
 		book.AddAddress(addr, src)
 
-		ka := book.addrLookup[addr.String()]
+		ka := book.addrLookup[addr.ID]
 		assert.NotNil(t, ka, "Expected to find KnownAddress %v but wasn't there.", addr)
 
 		if !(ka.Addr.Equals(addr) && ka.Src.Equals(src)) {
@@ -188,6 +190,7 @@ func randIPv4Address(t *testing.T) *NetAddress {
 		)
 		port := rand.Intn(65535-1) + 1
 		addr, err := NewNetAddressString(fmt.Sprintf("%v:%v", ip, port))
+		addr.ID = ID(hex.EncodeToString(cmn.RandBytes(20))) // TODO
 		assert.Nil(t, err, "error generating rand network address")
 		if addr.Routable() {
 			return addr

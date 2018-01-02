@@ -10,6 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -197,6 +198,7 @@ func createRandomPeer(outbound bool) *peer {
 		nodeInfo: &NodeInfo{
 			ListenAddr: addr,
 			RemoteAddr: netAddr.String(),
+			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
 		outbound: outbound,
 		mconn:    &MConnection{RemoteAddress: netAddr},

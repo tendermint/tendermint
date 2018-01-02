@@ -12,6 +12,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+type ID string
+
 //------------------------------------------------------------------------------
 // Persistent peer ID
 // TODO: encrypt on disk
@@ -21,8 +23,6 @@ import (
 type NodeKey struct {
 	PrivKey crypto.PrivKey `json:"priv_key"` // our priv key
 }
-
-type ID string
 
 // ID returns the peer's canonical ID - the hash of its public key.
 func (nodeKey *NodeKey) ID() ID {
