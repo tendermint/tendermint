@@ -13,8 +13,8 @@ import (
 // listener to an event, and sends a string "data".
 func TestAddListenerForEventFireOnce(t *testing.T) {
 	evsw := NewEventSwitch()
-	started, err := evsw.Start()
-	if !started || err != nil {
+	err := evsw.Start()
+	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
 	messages := make(chan EventData)
@@ -33,8 +33,8 @@ func TestAddListenerForEventFireOnce(t *testing.T) {
 // listener to an event, and sends a thousand integers.
 func TestAddListenerForEventFireMany(t *testing.T) {
 	evsw := NewEventSwitch()
-	started, err := evsw.Start()
-	if !started || err != nil {
+	err := evsw.Start()
+	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
 	doneSum := make(chan uint64)
@@ -62,8 +62,8 @@ func TestAddListenerForEventFireMany(t *testing.T) {
 // of the three events.
 func TestAddListenerForDifferentEvents(t *testing.T) {
 	evsw := NewEventSwitch()
-	started, err := evsw.Start()
-	if !started || err != nil {
+	err := evsw.Start()
+	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
 	doneSum := make(chan uint64)
@@ -107,8 +107,8 @@ func TestAddListenerForDifferentEvents(t *testing.T) {
 // for each of the three events.
 func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 	evsw := NewEventSwitch()
-	started, err := evsw.Start()
-	if !started || err != nil {
+	err := evsw.Start()
+	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
 	doneSum1 := make(chan uint64)
@@ -167,8 +167,8 @@ func TestAddDifferentListenerForDifferentEvents(t *testing.T) {
 // the listener and fires a thousand integers for the second event.
 func TestAddAndRemoveListener(t *testing.T) {
 	evsw := NewEventSwitch()
-	started, err := evsw.Start()
-	if !started || err != nil {
+	err := evsw.Start()
+	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
 	doneSum1 := make(chan uint64)
@@ -212,8 +212,8 @@ func TestAddAndRemoveListener(t *testing.T) {
 // TestRemoveListener does basic tests on adding and removing
 func TestRemoveListener(t *testing.T) {
 	evsw := NewEventSwitch()
-	started, err := evsw.Start()
-	if !started || err != nil {
+	err := evsw.Start()
+	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
 	count := 10
@@ -265,8 +265,8 @@ func TestRemoveListener(t *testing.T) {
 // `go test -race`, to examine for possible race conditions.
 func TestRemoveListenersAsync(t *testing.T) {
 	evsw := NewEventSwitch()
-	started, err := evsw.Start()
-	if !started || err != nil {
+	err := evsw.Start()
+	if err != nil {
 		t.Errorf("Failed to start EventSwitch, error: %v", err)
 	}
 	doneSum1 := make(chan uint64)

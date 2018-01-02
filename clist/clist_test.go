@@ -149,7 +149,7 @@ func _TestGCRandom(t *testing.T) {
 func TestScanRightDeleteRandom(t *testing.T) {
 
 	const numElements = 10000
-	const numTimes = 100000
+	const numTimes = 1000
 	const numScanners = 10
 
 	l := New()

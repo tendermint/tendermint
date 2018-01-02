@@ -1,23 +1,41 @@
 package common
 
 import (
+	"errors"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/tendermint/tmlibs/log"
 )
 
+var (
+	ErrAlreadyStarted = errors.New("already started")
+	ErrAlreadyStopped = errors.New("already stopped")
+)
+
+// Service defines a service that can be started, stopped, and reset.
 type Service interface {
-	Start() (bool, error)
+	// Start the service.
+	// If it's already started or stopped, will return an error.
+	// If OnStart() returns an error, it's returned by Start()
+	Start() error
 	OnStart() error
 
-	Stop() bool
+	// Stop the service.
+	// If it's already stopped, will return an error.
+	// OnStop must never error.
+	Stop() error
 	OnStop()
 
-	Reset() (bool, error)
+	// Reset the service.
+	// Panics by default - must be overwritten to enable reset.
+	Reset() error
 	OnReset() error
 
+	// Return true if the service is running
 	IsRunning() bool
 
+	// String representation of the service
 	String() string
 
 	SetLogger(log.Logger)
@@ -94,11 +112,11 @@ func (bs *BaseService) SetLogger(l log.Logger) {
 }
 
 // Implements Servce
-func (bs *BaseService) Start() (bool, error) {
+func (bs *BaseService) Start() error {
 	if atomic.CompareAndSwapUint32(&bs.started, 0, 1) {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
 			bs.Logger.Error(Fmt("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
-			return false, nil
+			return ErrAlreadyStopped
 		} else {
 			bs.Logger.Info(Fmt("Starting %v", bs.name), "impl", bs.impl)
 		}
@@ -106,12 +124,12 @@ func (bs *BaseService) Start() (bool, error) {
 		if err != nil {
 			// revert flag
 			atomic.StoreUint32(&bs.started, 0)
-			return false, err
+			return err
 		}
-		return true, err
+		return nil
 	} else {
 		bs.Logger.Debug(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
-		return false, nil
+		return ErrAlreadyStarted
 	}
 }
 
@@ -121,15 +139,15 @@ func (bs *BaseService) Start() (bool, error) {
 func (bs *BaseService) OnStart() error { return nil }
 
 // Implements Service
-func (bs *BaseService) Stop() bool {
+func (bs *BaseService) Stop() error {
 	if atomic.CompareAndSwapUint32(&bs.stopped, 0, 1) {
 		bs.Logger.Info(Fmt("Stopping %v", bs.name), "impl", bs.impl)
 		bs.impl.OnStop()
 		close(bs.Quit)
-		return true
+		return nil
 	} else {
 		bs.Logger.Debug(Fmt("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
-		return false
+		return ErrAlreadyStopped
 	}
 }
 
@@ -139,17 +157,17 @@ func (bs *BaseService) Stop() bool {
 func (bs *BaseService) OnStop() {}
 
 // Implements Service
-func (bs *BaseService) Reset() (bool, error) {
+func (bs *BaseService) Reset() error {
 	if !atomic.CompareAndSwapUint32(&bs.stopped, 1, 0) {
 		bs.Logger.Debug(Fmt("Can't reset %v. Not stopped", bs.name), "impl", bs.impl)
-		return false, nil
+		return fmt.Errorf("can't reset running %s", bs.name)
 	}
 
 	// whether or not we've started, we can reset
 	atomic.CompareAndSwapUint32(&bs.started, 1, 0)
 
 	bs.Quit = make(chan struct{})
-	return true, bs.impl.OnReset()
+	return bs.impl.OnReset()
 }
 
 // Implements Service

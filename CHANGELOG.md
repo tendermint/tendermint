@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.6.0 (December 29, 2017)
+
+BREAKING:
+ - [cli] remove --root
+ - [pubsub] add String() method to Query interface
+
+IMPROVEMENTS:
+ - [common] use a thread-safe and well seeded non-crypto rng
+
+BUG FIXES
+ - [clist] fix misuse of wait group
+ - [common] introduce Ticker interface and logicalTicker for better testing of timers
+
+## 0.5.0 (December 5, 2017)
+
+BREAKING:
+ - [common] replace Service#Start, Service#Stop first return value (bool) with an
+   error (ErrAlreadyStarted, ErrAlreadyStopped)
+ - [common] replace Service#Reset first return value (bool) with an error
+ - [process] removed
+
+FEATURES:
+ - [common] IntInSlice and StringInSlice functions
+ - [pubsub/query] introduce `Condition` struct, expose `Operator`, and add `query.Conditions()`
+
+## 0.4.1 (November 27, 2017)
+
+FEATURES:
+ - [common] `Keys()` method on `CMap`
+
+IMPROVEMENTS:
+ - [log] complex types now encoded as "%+v" by default if `String()` method is undefined (previously resulted in error)
+ - [log] logger logs its own errors
+
+BUG FIXES:
+ - [common] fixed `Kill()` to build on Windows (Windows does not have `syscall.Kill`)
+
 ## 0.4.0 (October 26, 2017)
 
 BREAKING:

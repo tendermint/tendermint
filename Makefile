@@ -10,7 +10,6 @@ all: check get_vendor_deps protoc build test install metalinter
 
 check: check_tools
 
-
 ########################################
 ###  Build
 
@@ -62,7 +61,6 @@ get_vendor_deps:
 	@echo "--> Running glide install"
 	@glide install
 
-
 ########################################
 ### Testing
 
@@ -95,7 +93,9 @@ metalinter:
 		--enable=varcheck \
 		--enable=vetshadow \
 		./...
+
 		#--enable=gas \
+		#--enable=aligncheck \
 		#--enable=dupl \
 		#--enable=errcheck \
 		#--enable=gocyclo \
