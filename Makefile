@@ -1,8 +1,9 @@
 GOTOOLS = \
 	github.com/Masterminds/glide \
-	github.com/alecthomas/gometalinter.v2 \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/gogo/protobuf/gogoproto
+	# github.com/alecthomas/gometalinter.v2 \
+
 GOTOOLS_CHECK = glide gometalinter.v2 protoc protoc-gen-gogo
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
@@ -40,7 +41,7 @@ check_tools:
 get_tools:
 	@echo "--> Installing tools"
 	go get -u -v $(GOTOOLS)
-	@gometalinter.v2 --install
+	# @gometalinter.v2 --install
 
 get_protoc:
 	@# https://github.com/google/protobuf/releases
