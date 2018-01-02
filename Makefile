@@ -77,7 +77,6 @@ fmt:
 metalinter:
 	@echo "==> Running linter"
 	gometalinter.v2 --vendor --deadline=600s --disable-all  \
-		--enable=maligned \
 		--enable=deadcode \
 		--enable=goconst \
 		--enable=goimports \
@@ -94,6 +93,7 @@ metalinter:
 		--enable=vetshadow \
 		./...
 
+		#--enable=maligned \
 		#--enable=gas \
 		#--enable=aligncheck \
 		#--enable=dupl \
