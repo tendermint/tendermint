@@ -60,8 +60,8 @@ func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 
 // GetByHeight returns the FullCommit for height h or an error if the commit is not found.
 func (m *memStoreProvider) GetByHeight(h int64) (FullCommit, error) {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	if !m.sorted {
 		sort.Sort(m.byHeight)
 		m.sorted = true
@@ -77,8 +77,8 @@ func (m *memStoreProvider) GetByHeight(h int64) (FullCommit, error) {
 
 // GetByHeight returns the FullCommit for height h or an error if the commit is not found.
 func (m *memStoreProvider) GetByHeightBinarySearch(h int64) (FullCommit, error) {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 	if !m.sorted {
 		sort.Sort(m.byHeight)
 		m.sorted = true

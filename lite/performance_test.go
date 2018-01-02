@@ -3,6 +3,7 @@ package lite_test
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"testing"
 
 	"github.com/tendermint/tendermint/lite"
@@ -124,13 +125,20 @@ const (
 	binarySearch = false
 )
 
-var (
-	fcs5, h5       = genFullCommits(nil, nil, 5)
-	fcs50, h50     = genFullCommits(fcs5, h5, 50)
-	fcs100, h100   = genFullCommits(fcs50, h50, 100)
-	fcs500, h500   = genFullCommits(fcs100, h100, 500)
-	fcs1000, h1000 = genFullCommits(fcs500, h500, 1000)
-)
+// Lazy load the commits
+var fcs5, fcs50, fcs100, fcs500, fcs1000 []lite.FullCommit
+var h5, h50, h100, h500, h1000 []int64
+var commitsOnce sync.Once
+
+func lazyGenerateFullCommits() {
+	commitsOnce.Do(func() {
+		fcs5, h5 = genFullCommits(nil, nil, 5)
+		fcs50, h50 = genFullCommits(fcs5, h5, 50)
+		fcs100, h100 = genFullCommits(fcs50, h50, 100)
+		fcs500, h500 = genFullCommits(fcs100, h100, 500)
+		fcs1000, h1000 = genFullCommits(fcs500, h500, 1000)
+	})
+}
 
 func BenchmarkMemStoreProviderGetByHeightLinearSearch5(b *testing.B) {
 	benchmarkMemStoreProviderGetByHeight(b, fcs5, h5, linearSearch)
@@ -175,6 +183,8 @@ func BenchmarkMemStoreProviderGetByHeightBinarySearch1000(b *testing.B) {
 var rng = rand.New(rand.NewSource(10))
 
 func benchmarkMemStoreProviderGetByHeight(b *testing.B, fcs []lite.FullCommit, fHeights []int64, algo algo) {
+	lazyGenerateFullCommits()
+
 	b.StopTimer()
 	mp := lite.NewMemStoreProvider()
 	for i, fc := range fcs {
