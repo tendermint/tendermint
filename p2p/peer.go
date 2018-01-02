@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -17,7 +18,7 @@ import (
 type Peer interface {
 	cmn.Service
 
-	Key() string
+	ID() ID
 	IsOutbound() bool
 	IsPersistent() bool
 	NodeInfo() *NodeInfo
@@ -282,15 +283,15 @@ func (p *peer) CanSend(chID byte) bool {
 // String representation.
 func (p *peer) String() string {
 	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.Key())
+		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
 	}
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.Key())
+	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
 }
 
 // Equals reports whenever 2 peers are actually represent the same node.
 func (p *peer) Equals(other Peer) bool {
-	return p.Key() == other.Key()
+	return p.ID() == other.ID()
 }
 
 // Get the data for a given key.
@@ -303,10 +304,9 @@ func (p *peer) Set(key string, data interface{}) {
 	p.Data.Set(key, data)
 }
 
-// Key returns the peer's id key.
-// TODO: call this ID
-func (p *peer) Key() string {
-	return p.nodeInfo.ListenAddr // XXX: should probably be PubKey.KeyString()
+// Key returns the peer's ID - the hex encoded hash of its pubkey.
+func (p *peer) ID() ID {
+	return ID(hex.EncodeToString(p.nodeInfo.PubKey.Address()))
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.

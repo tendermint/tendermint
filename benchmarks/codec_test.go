@@ -17,7 +17,7 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	status := &ctypes.ResultStatus{
 		NodeInfo: &p2p.NodeInfo{
-			PubKey:     pubKey.Unwrap().(crypto.PubKeyEd25519),
+			PubKey:     pubKey,
 			Moniker:    "SOMENAME",
 			Network:    "SOMENAME",
 			RemoteAddr: "SOMEADDR",
@@ -42,7 +42,7 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:     pubKey,
 		Moniker:    "SOMENAME",
@@ -63,7 +63,7 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:     pubKey,
 		Moniker:    "SOMENAME",

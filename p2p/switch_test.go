@@ -28,7 +28,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerKey string
+	PeerID  ID
 	Bytes   []byte
 	Counter int
 }
@@ -77,7 +77,7 @@ func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
 		//fmt.Printf("Received: %X, %X\n", chID, msgBytes)
-		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.Key(), msgBytes, tr.msgsCounter})
+		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.ID(), msgBytes, tr.msgsCounter})
 		tr.msgsCounter++
 	}
 }

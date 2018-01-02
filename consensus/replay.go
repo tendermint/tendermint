@@ -61,21 +61,21 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan
 			}
 		}
 	case msgInfo:
-		peerKey := m.PeerKey
-		if peerKey == "" {
-			peerKey = "local"
+		peerID := m.PeerID
+		if peerID == "" {
+			peerID = "local"
 		}
 		switch msg := m.Msg.(type) {
 		case *ProposalMessage:
 			p := msg.Proposal
 			cs.Logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
-				p.BlockPartsHeader, "pol", p.POLRound, "peer", peerKey)
+				p.BlockPartsHeader, "pol", p.POLRound, "peer", peerID)
 		case *BlockPartMessage:
-			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerKey)
+			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
 		case *VoteMessage:
 			v := msg.Vote
 			cs.Logger.Info("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
-				"blockID", v.BlockID, "peer", peerKey)
+				"blockID", v.BlockID, "peer", peerID)
 		}
 
 		cs.handleMsg(m)

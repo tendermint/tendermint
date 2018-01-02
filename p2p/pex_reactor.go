@@ -265,7 +265,8 @@ func (r *PEXReactor) ensurePeers() {
 			continue
 		}
 		// XXX: Should probably use pubkey as peer key ...
-		if connected := r.Switch.Peers().Has(try.String()); connected {
+		// TODO: use the ID correctly
+		if connected := r.Switch.Peers().Has(ID(try.String())); connected {
 			continue
 		}
 		r.Logger.Info("Will dial address", "addr", try)

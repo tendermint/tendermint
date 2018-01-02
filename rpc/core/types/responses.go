@@ -99,7 +99,7 @@ type ResultValidators struct {
 
 type ResultDumpConsensusState struct {
 	RoundState      *cstypes.RoundState                `json:"round_state"`
-	PeerRoundStates map[string]*cstypes.PeerRoundState `json:"peer_round_states"`
+	PeerRoundStates map[p2p.ID]*cstypes.PeerRoundState `json:"peer_round_states"`
 }
 
 type ResultBroadcastTx struct {

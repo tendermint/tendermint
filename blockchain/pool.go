@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
@@ -56,16 +57,16 @@ type BlockPool struct {
 	height     int64 // the lowest key in requesters.
 	numPending int32 // number of requests pending assignment or block response
 	// peers
-	peers         map[string]*bpPeer
+	peers         map[p2p.ID]*bpPeer
 	maxPeerHeight int64
 
 	requestsCh chan<- BlockRequest
-	timeoutsCh chan<- string
+	timeoutsCh chan<- p2p.ID
 }
 
-func NewBlockPool(start int64, requestsCh chan<- BlockRequest, timeoutsCh chan<- string) *BlockPool {
+func NewBlockPool(start int64, requestsCh chan<- BlockRequest, timeoutsCh chan<- p2p.ID) *BlockPool {
 	bp := &BlockPool{
-		peers: make(map[string]*bpPeer),
+		peers: make(map[p2p.ID]*bpPeer),
 
 		requesters: make(map[int64]*bpRequester),
 		height:     start,
@@ -210,7 +211,7 @@ func (pool *BlockPool) RedoRequest(height int64) {
 }
 
 // TODO: ensure that blocks come in order for each peer.
-func (pool *BlockPool) AddBlock(peerID string, block *types.Block, blockSize int) {
+func (pool *BlockPool) AddBlock(peerID p2p.ID, block *types.Block, blockSize int) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -240,7 +241,7 @@ func (pool *BlockPool) MaxPeerHeight() int64 {
 }
 
 // Sets the peer's alleged blockchain height.
-func (pool *BlockPool) SetPeerHeight(peerID string, height int64) {
+func (pool *BlockPool) SetPeerHeight(peerID p2p.ID, height int64) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -258,14 +259,14 @@ func (pool *BlockPool) SetPeerHeight(peerID string, height int64) {
 	}
 }
 
-func (pool *BlockPool) RemovePeer(peerID string) {
+func (pool *BlockPool) RemovePeer(peerID p2p.ID) {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
 	pool.removePeer(peerID)
 }
 
-func (pool *BlockPool) removePeer(peerID string) {
+func (pool *BlockPool) removePeer(peerID p2p.ID) {
 	for _, requester := range pool.requesters {
 		if requester.getPeerID() == peerID {
 			if requester.getBlock() != nil {
@@ -321,14 +322,14 @@ func (pool *BlockPool) requestersLen() int64 {
 	return int64(len(pool.requesters))
 }
 
-func (pool *BlockPool) sendRequest(height int64, peerID string) {
+func (pool *BlockPool) sendRequest(height int64, peerID p2p.ID) {
 	if !pool.IsRunning() {
 		return
 	}
 	pool.requestsCh <- BlockRequest{height, peerID}
 }
 
-func (pool *BlockPool) sendTimeout(peerID string) {
+func (pool *BlockPool) sendTimeout(peerID p2p.ID) {
 	if !pool.IsRunning() {
 		return
 	}
@@ -357,7 +358,7 @@ func (pool *BlockPool) debug() string {
 
 type bpPeer struct {
 	pool        *BlockPool
-	id          string
+	id          p2p.ID
 	recvMonitor *flow.Monitor
 
 	height     int64
@@ -368,7 +369,7 @@ type bpPeer struct {
 	logger log.Logger
 }
 
-func newBPPeer(pool *BlockPool, peerID string, height int64) *bpPeer {
+func newBPPeer(pool *BlockPool, peerID p2p.ID, height int64) *bpPeer {
 	peer := &bpPeer{
 		pool:       pool,
 		id:         peerID,
@@ -434,7 +435,7 @@ type bpRequester struct {
 	redoCh     chan struct{}
 
 	mtx    sync.Mutex
-	peerID string
+	peerID p2p.ID
 	block  *types.Block
 }
 
@@ -458,7 +459,7 @@ func (bpr *bpRequester) OnStart() error {
 }
 
 // Returns true if the peer matches
-func (bpr *bpRequester) setBlock(block *types.Block, peerID string) bool {
+func (bpr *bpRequester) setBlock(block *types.Block, peerID p2p.ID) bool {
 	bpr.mtx.Lock()
 	if bpr.block != nil || bpr.peerID != peerID {
 		bpr.mtx.Unlock()
@@ -477,7 +478,7 @@ func (bpr *bpRequester) getBlock() *types.Block {
 	return bpr.block
 }
 
-func (bpr *bpRequester) getPeerID() string {
+func (bpr *bpRequester) getPeerID() p2p.ID {
 	bpr.mtx.Lock()
 	defer bpr.mtx.Unlock()
 	return bpr.peerID
@@ -551,5 +552,5 @@ OUTER_LOOP:
 
 type BlockRequest struct {
 	Height int64
-	PeerID string
+	PeerID p2p.ID
 }

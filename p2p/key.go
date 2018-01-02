@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -21,14 +22,24 @@ type NodeKey struct {
 	PrivKey crypto.PrivKey `json:"priv_key"` // our priv key
 }
 
+type ID string
+
 // ID returns the peer's canonical ID - the hash of its public key.
-func (nodeKey *NodeKey) ID() []byte {
+func (nodeKey *NodeKey) ID() ID {
+	return ID(hex.EncodeToString(nodeKey.id()))
+}
+
+func (nodeKey *NodeKey) id() []byte {
 	return nodeKey.PrivKey.PubKey().Address()
 }
 
 // PubKey returns the peer's PubKey
 func (nodeKey *NodeKey) PubKey() crypto.PubKey {
 	return nodeKey.PrivKey.PubKey()
+}
+
+func (nodeKey *NodeKey) SatisfiesTarget(target []byte) bool {
+	return bytes.Compare(nodeKey.id(), target) < 0
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath,
@@ -41,8 +52,8 @@ func LoadOrGenNodeKey(filePath string, target []byte) (*NodeKey, error) {
 		if err != nil {
 			return nil, err
 		}
-		if bytes.Compare(nodeKey.ID(), target) >= 0 {
-			return nil, fmt.Errorf("Loaded ID (%X) does not satisfy target (%X)", nodeKey.ID(), target)
+		if !nodeKey.SatisfiesTarget(target) {
+			return nil, fmt.Errorf("Loaded ID (%s) does not satisfy target (%X)", nodeKey.ID(), target)
 		}
 		return nodeKey, nil
 	} else {
