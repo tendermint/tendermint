@@ -239,9 +239,8 @@ func (sw *Switch) OnStop() {
 // NOTE: This performs a blocking handshake before the peer is added.
 // NOTE: If error is returned, caller is responsible for calling peer.CloseConn()
 func (sw *Switch) addPeer(peer *peer) error {
-
 	// Avoid self
-	if sw.nodeInfo.PubKey.Equals(peer.PubKey().Wrap()) {
+	if sw.nodeKey.ID() == peer.ID() {
 		return errors.New("Ignoring connection from self")
 	}
 
@@ -385,6 +384,14 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, 
 		return nil, err
 	}
 	peer.SetLogger(sw.Logger.With("peer", addr))
+
+	// authenticate peer
+	if addr.ID == "" {
+		peer.Logger.Info("Dialed peer with unknown ID - unable to authenticate", "addr", addr)
+	} else if addr.ID != peer.ID() {
+		return nil, fmt.Errorf("Failed to authenticate peer %v. Connected to peer with ID %s", addr, peer.ID())
+	}
+
 	if persistent {
 		peer.makePersistent()
 	}

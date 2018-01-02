@@ -92,6 +92,7 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 		}
 		return nil, err
 	}
+
 	return peer, nil
 }
 
@@ -218,13 +219,12 @@ func (p *peer) Addr() net.Addr {
 
 // PubKey returns peer's public key.
 func (p *peer) PubKey() crypto.PubKey {
-	if p.config.AuthEnc {
+	if p.NodeInfo() != nil {
+		return p.nodeInfo.PubKey
+	} else if p.config.AuthEnc {
 		return p.conn.(*SecretConnection).RemotePubKey()
 	}
-	if p.NodeInfo() == nil {
-		panic("Attempt to get peer's PubKey before calling Handshake")
-	}
-	return p.PubKey()
+	panic("Attempt to get peer's PubKey before calling Handshake")
 }
 
 // OnStart implements BaseService.
@@ -306,7 +306,7 @@ func (p *peer) Set(key string, data interface{}) {
 
 // Key returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return ID(hex.EncodeToString(p.nodeInfo.PubKey.Address()))
+	return ID(hex.EncodeToString(p.PubKey().Address()))
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
