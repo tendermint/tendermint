@@ -367,12 +367,20 @@ func (n *Node) OnStart() error {
 	n.sw.AddListener(l)
 
 	// Generate node PrivKey
-	// TODO: Load
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	// TODO: both the loading function and the target
+	// will need to be configurable
+	difficulty := uint8(16) // number of leading 0s in bitstring
+	target := p2p.MakePoWTarget(difficulty)
+	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile(), target)
+	if err != nil {
+		return err
+	}
+	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
 	// Start the switch
-	n.sw.SetNodeInfo(n.makeNodeInfo(privKey.PubKey()))
-	n.sw.SetNodePrivKey(privKey)
+	n.sw.SetNodeInfo(n.makeNodeInfo(nodeKey.PubKey()))
+	n.sw.SetNodeKey(nodeKey)
+	n.sw.SetPeerIDTarget(target)
 	err = n.sw.Start()
 	if err != nil {
 		return err

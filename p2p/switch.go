@@ -81,8 +81,9 @@ type Switch struct {
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *cmn.CMap
-	nodeInfo     *NodeInfo      // our node info
-	nodePrivKey  crypto.PrivKey // our node privkey
+	nodeInfo     *NodeInfo // our node info
+	nodeKey      *NodeKey  // our node privkey
+	peerIDTarget []byte
 
 	filterConnByAddr   func(net.Addr) error
 	filterConnByPubKey func(crypto.PubKey) error
@@ -181,14 +182,20 @@ func (sw *Switch) NodeInfo() *NodeInfo {
 	return sw.nodeInfo
 }
 
-// SetNodePrivKey sets the switch's private key for authenticated encryption.
+// SetNodeKey sets the switch's private key for authenticated encryption.
 // NOTE: Overwrites sw.nodeInfo.PubKey.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKey) {
-	sw.nodePrivKey = nodePrivKey
+func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
+	sw.nodeKey = nodeKey
 	if sw.nodeInfo != nil {
-		sw.nodeInfo.PubKey = nodePrivKey.PubKey()
+		sw.nodeInfo.PubKey = nodeKey.PubKey()
 	}
+}
+
+// SetPeerIDTarget sets the target for incoming peer ID's -
+// the ID must be less than the target
+func (sw *Switch) SetPeerIDTarget(target []byte) {
+	sw.peerIDTarget = target
 }
 
 // OnStart implements BaseService. It starts all the reactors, peers, and listeners.
@@ -370,7 +377,7 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, 
 	defer sw.dialing.Delete(addr.IP.String())
 
 	sw.Logger.Info("Dialing peer", "address", addr)
-	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
+	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, sw.peerConfig)
 	if err != nil {
 		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
 		return nil, err
@@ -598,24 +605,26 @@ func StartSwitches(switches []*Switch) error {
 }
 
 func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
-	privKey := crypto.GenPrivKeyEd25519()
 	// new switch, add reactors
 	// TODO: let the config be passed in?
+	nodeKey := &NodeKey{
+		PrivKey: crypto.GenPrivKeyEd25519().Wrap(),
+	}
 	s := initSwitch(i, NewSwitch(cfg))
 	s.SetNodeInfo(&NodeInfo{
-		PubKey:     privKey.PubKey(),
+		PubKey:     nodeKey.PubKey(),
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
 		RemoteAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	})
-	s.SetNodePrivKey(privKey.Wrap())
+	s.SetNodeKey(nodeKey)
 	return s
 }
 
 func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
-	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, sw.peerConfig)
+	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, sw.peerConfig)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
@@ -632,7 +641,7 @@ func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
 }
 
 func (sw *Switch) addPeerWithConnectionAndConfig(conn net.Conn, config *PeerConfig) error {
-	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, config)
+	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)

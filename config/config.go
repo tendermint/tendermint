@@ -72,6 +72,9 @@ type BaseConfig struct {
 	// A JSON file containing the private key to use as a validator in the consensus protocol
 	PrivValidator string `mapstructure:"priv_validator_file"`
 
+	// A JSON file containing the private key to use for p2p authenticated encryption
+	NodeKey string `mapstructure:"node_key"`
+
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
@@ -109,6 +112,7 @@ func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:           "genesis.json",
 		PrivValidator:     "priv_validator.json",
+		NodeKey:           "node_key.json",
 		Moniker:           defaultMoniker,
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
@@ -139,6 +143,11 @@ func (b BaseConfig) GenesisFile() string {
 // PrivValidatorFile returns the full path to the priv_validator.json file
 func (b BaseConfig) PrivValidatorFile() string {
 	return rootify(b.PrivValidator, b.RootDir)
+}
+
+// NodeKeyFile returns the full path to the node_key.json file
+func (b BaseConfig) NodeKeyFile() string {
+	return rootify(b.NodeKey, b.RootDir)
 }
 
 // DBDir returns the full path to the database directory
