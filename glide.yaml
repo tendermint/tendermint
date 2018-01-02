@@ -23,7 +23,6 @@ import:
 - package: golang.org/x/crypto
   subpackages:
   - ripemd160
-- package: gopkg.in/go-playground/validator.v9
 testImport:
 - package: github.com/stretchr/testify
   subpackages:

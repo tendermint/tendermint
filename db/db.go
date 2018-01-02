@@ -1,46 +1,16 @@
 package db
 
-import . "github.com/tendermint/tmlibs/common"
+import "fmt"
 
-type DB interface {
-	Get([]byte) []byte
-	Set([]byte, []byte)
-	SetSync([]byte, []byte)
-	Delete([]byte)
-	DeleteSync([]byte)
-	Close()
-	NewBatch() Batch
-	Iterator() Iterator
-	IteratorPrefix([]byte) Iterator
-
-	// For debugging
-	Print()
-	Stats() map[string]string
-}
-
-type Batch interface {
-	Set(key, value []byte)
-	Delete(key []byte)
-	Write()
-}
-
-type Iterator interface {
-	Next() bool
-
-	Key() []byte
-	Value() []byte
-
-	Release()
-	Error() error
-}
-
-//-----------------------------------------------------------------------------
+//----------------------------------------
+// Main entry
 
 const (
-	LevelDBBackendStr   = "leveldb" // legacy, defaults to goleveldb.
+	LevelDBBackendStr   = "leveldb" // legacy, defaults to goleveldb unless +gcc
 	CLevelDBBackendStr  = "cleveldb"
 	GoLevelDBBackendStr = "goleveldb"
 	MemDBBackendStr     = "memdb"
+	FSDBBackendStr      = "fsdb" // using the filesystem naively
 )
 
 type dbCreator func(name string, dir string) (DB, error)
@@ -58,7 +28,7 @@ func registerDBCreator(backend string, creator dbCreator, force bool) {
 func NewDB(name string, backend string, dir string) DB {
 	db, err := backends[backend](name, dir)
 	if err != nil {
-		PanicSanity(Fmt("Error initializing DB: %v", err))
+		panic(fmt.Sprintf("Error initializing DB: %v", err))
 	}
 	return db
 }

@@ -22,6 +22,7 @@ func (se StackError) Error() string {
 
 // A panic resulting from a sanity check means there is a programmer error
 // and some guarantee is not satisfied.
+// XXX DEPRECATED
 func PanicSanity(v interface{}) {
 	panic(Fmt("Panicked on a Sanity Check: %v", v))
 }
@@ -29,17 +30,20 @@ func PanicSanity(v interface{}) {
 // A panic here means something has gone horribly wrong, in the form of data corruption or
 // failure of the operating system. In a correct/healthy system, these should never fire.
 // If they do, it's indicative of a much more serious problem.
+// XXX DEPRECATED
 func PanicCrisis(v interface{}) {
 	panic(Fmt("Panicked on a Crisis: %v", v))
 }
 
 // Indicates a failure of consensus. Someone was malicious or something has
 // gone horribly wrong. These should really boot us into an "emergency-recover" mode
+// XXX DEPRECATED
 func PanicConsensus(v interface{}) {
 	panic(Fmt("Panicked on a Consensus Failure: %v", v))
 }
 
 // For those times when we're not sure if we should panic
+// XXX DEPRECATED
 func PanicQ(v interface{}) {
 	panic(Fmt("Panicked questionably: %v", v))
 }
