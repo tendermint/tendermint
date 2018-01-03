@@ -5,30 +5,31 @@ the next block to be added to the Tendermint blockchain. The protocol proceeds i
 each round is a try to reach agreement on the next block. A round starts by having a dedicated
 process (called proposer) suggesting to other processes what should be the next block with
 the `ProposalMessage`.
-The processes respond by voting for a block with `VoteMessage` (there are two kinds of vote messages, prevote
-and precommit votes). Note that a proposal message is just a suggestion what the next block should be; a
-validator might vote with a `VoteMessage` for a different block. If in some round, enough number
-of processes vote for the same block, then this block is committed and later added to the blockchain.
-`ProposalMessage` and `VoteMessage` are signed by the private key of the validator.
-The internals of the protocol and how it ensures safety and liveness properties are
+The processes respond by voting for a block with `VoteMessage` (there are two kinds of vote
+messages, prevote and precommit votes). Note that a proposal message is just a suggestion what the
+next block should be; a validator might vote with a `VoteMessage` for a different block. If in some
+round, enough number of processes vote for the same block, then this block is committed and later
+added to the blockchain. `ProposalMessage` and `VoteMessage` are signed by the private key of the
+validator. The internals of the protocol and how it ensures safety and liveness properties are
 explained [here](https://github.com/tendermint/spec).
 
-For efficiency reasons, validators in Tendermint consensus protocol do not agree directly on the block
-as the block size is big, i.e., they don't embed the block inside `Proposal` and `VoteMessage`. Instead, they
-reach agreement on the `BlockID` (see `BlockID` definition in [Blockchain](blockchain.md) section)
-that uniquely identifies each block. The block itself is disseminated to validator processes using
-peer-to-peer gossiping protocol. It starts by having a proposer first splitting a block into a
-number of block parts, that are then gossiped between processes using `BlockPartMessage`.
+For efficiency reasons, validators in Tendermint consensus protocol do not agree directly on the
+block as the block size is big, i.e., they don't embed the block inside `Proposal` and
+`VoteMessage`. Instead, they reach agreement on the `BlockID` (see `BlockID` definition in
+[Blockchain](blockchain.md) section) that uniquely identifies each block. The block itself is
+disseminated to validator processes using peer-to-peer gossiping protocol. It starts by having a
+proposer first splitting a block into a number of block parts, that are then gossiped between
+processes using `BlockPartMessage`.
 
 Validators in Tendermint communicate by peer-to-peer gossiping protocol. Each validator is connected
 only to a subset of processes called peers. By the gossiping protocol, a validator send to its peers
 all needed  information (`ProposalMessage`, `VoteMessage` and `BlockPartMessage`) so they can
-reach agreement on some block, and also obtain the content of the chosen block (block parts). As part of
-the gossiping protocol, processes also send auxiliary messages that inform peers about the
+reach agreement on some block, and also obtain the content of the chosen block (block parts). As
+part of the gossiping protocol, processes also send auxiliary messages that inform peers about the
 executed steps of the core consensus algorithm (`NewRoundStepMessage` and `CommitStepMessage`), and
 also messages that inform peers what votes the process has seen (`HasVoteMessage`,
-`VoteSetMaj23Message` and `VoteSetBitsMessage`). These messages are then used in the gossiping protocol
-to determine what messages a process should send to its peers.
+`VoteSetMaj23Message` and `VoteSetBitsMessage`). These messages are then used in the gossiping
+protocol to determine what messages a process should send to its peers.
 
 We now describe the content of each message exchanged during Tendermint consensus protocol.
 
@@ -45,9 +46,9 @@ type ProposalMessage struct {
 
 ### Proposal
 
-Proposal contains height and round for which this proposal is made, BlockID as a unique identifier of proposed
-block, timestamp, and two fields (POLRound and POLBlockID) that are needed for termination of the consensus.
-The message is signed by the validator private key.
+Proposal contains height and round for which this proposal is made, BlockID as a unique identifier
+of proposed block, timestamp, and two fields (POLRound and POLBlockID) that are needed for
+termination of the consensus. The message is signed by the validator private key.
 
 ```go
 type Proposal struct {
@@ -67,10 +68,11 @@ BlockID contains PartSetHeader.
 
 ## VoteMessage
 
-VoteMessage is sent to vote for some block (or to inform others that a process does not vote in the current round).
-Vote is defined in [Blockchain](blockchain.md) section and contains validator's information (validator address
-and index), height and round for which the vote is sent, vote type, blockID if process vote for some
-block (`nil` otherwise) and a timestamp when the vote is sent. The message is signed by the validator private key.
+VoteMessage is sent to vote for some block (or to inform others that a process does not vote in the
+current round). Vote is defined in [Blockchain](blockchain.md) section and contains validator's
+information (validator address and index), height and round for which the vote is sent, vote type,
+blockID if process vote for some block (`nil` otherwise) and a timestamp when the vote is sent. The
+message is signed by the validator private key.
 
 ```go
 type VoteMessage struct {
@@ -120,9 +122,9 @@ type Heartbeat struct {
 
 ## NewRoundStepMessage
 
-NewRoundStepMessage is sent for every step transition during the core consensus algorithm execution. It is
-used in the gossip part of the Tendermint protocol to inform peers about a current height/round/step
-a process is in.
+NewRoundStepMessage is sent for every step transition during the core consensus algorithm execution.
+It is used in the gossip part of the Tendermint protocol to inform peers about a current
+height/round/step a process is in.
 
 ```go
 type NewRoundStepMessage struct {
@@ -136,10 +138,10 @@ type NewRoundStepMessage struct {
 
 ## CommitStepMessage
 
-CommitStepMessage is sent when an agreement on some block is reached. It contains height for which agreement
-is reached, block parts header that describes the decided block and is used to obtain all block parts,
-and a bit array of the block parts a process currently has, so its peers can know what parts
-it is missing so they can send them.
+CommitStepMessage is sent when an agreement on some block is reached. It contains height for which
+agreement is reached, block parts header that describes the decided block and is used to obtain all
+block parts, and a bit array of the block parts a process currently has, so its peers can know what
+parts it is missing so they can send them.
 
 ```go
 type CommitStepMessage struct {

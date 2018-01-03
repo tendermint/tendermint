@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	wire "github.com/tendermint/go-wire"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -28,7 +29,8 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 	// Make the blockchainReactor itself
 	fastSync := true
 	var nilApp proxy.AppConnConsensus
-	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nilApp, types.MockMempool{}, types.MockEvidencePool{})
+	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nilApp,
+		types.MockMempool{}, types.MockEvidencePool{})
 
 	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
@@ -130,7 +132,8 @@ func newbcrTestPeer(id p2p.ID) *bcrTestPeer {
 func (tp *bcrTestPeer) lastValue() interface{} { return <-tp.ch }
 
 func (tp *bcrTestPeer) TrySend(chID byte, value interface{}) bool {
-	if _, ok := value.(struct{ BlockchainMessage }).BlockchainMessage.(*bcStatusResponseMessage); ok {
+	if _, ok := value.(struct{ BlockchainMessage }).
+		BlockchainMessage.(*bcStatusResponseMessage); ok {
 		// Discard status response messages since they skew our results
 		// We only want to deal with:
 		// + bcBlockResponseMessage
