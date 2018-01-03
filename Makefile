@@ -68,10 +68,8 @@ build_docker_test_image:
 
 ### coverage, app, persistence, and libs tests
 test_cover:
-	# cleanup
-	bash ./test/cleanup.sh
 	# run the go unit tests with coverage (in docker)
-	docker run --name run_test -t tester bash test/test_cover.sh
+	docker run --name run_test1 -t tester bash test/test_cover.sh
 	# copy the coverage results out of docker container
 	docker cp run_test:/go/src/github.com/tendermint/tendermint/coverage.txt .
 	
@@ -79,13 +77,13 @@ test_apps:
 	# cleanup
 	bash ./test/cleanup.sh
 	# run the app tests using bash
-	docker run --name run_test -t tester bash test/app/test.sh
+	docker run --name run_test2 -t tester bash test/app/test.sh
 
 test_persistence:
 	# cleanup
 	bash ./test/cleanup.sh
 	# run the persistence tests using bash
-	docker run --name run_test -t tester bash test/persist/test.sh
+	docker run --name run_test3 -t tester bash test/persist/test.sh
 
 
 test_p2p:
