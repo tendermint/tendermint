@@ -14,7 +14,7 @@ PROD_LDFLAGS ?= -w -s
 XC_ARCH ?= 386 amd64 arm
 XC_OS ?= solaris darwin freebsd linux windows
 XC_OSARCH ?= !darwin/arm !solaris/amd64 !freebsd/amd64
-BUILD_OUTPUT ?= build/pkg/{{.OS}}_{{.Arch}}/tendermint
+BUILD_OUTPUT ?= $(GOPATH)/bin/{{.OS}}_{{.Arch}}/tendermint
 
 GOX_FLAGS = -os="$(XC_OS)" -arch="$(XC_ARCH)" -osarch="$(XC_OSARCH)" -output="$(BUILD_OUTPUT)"
 ifeq ($(BUILD_FLAGS_RACE),YES)
@@ -37,7 +37,7 @@ build_cc:
 	$(shell which gox) $(BUILD_FLAGS) $(GOX_FLAGS) ./cmd/tendermint/
 
 build:
-	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=build/tendermint
+	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
 
 build_race:
 	$(shell which go) build $(BUILD_FLAGS) -race -o "$(BUILD_OUTPUT)" ./cmd/tendermint/
@@ -50,7 +50,6 @@ dist:
 
 install:
 	make build
-	cp build/tendermint $GOPATH/bin
 
 
 ########################################
