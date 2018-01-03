@@ -10,7 +10,7 @@ TMHOME ?= $(HOME)/.tendermint
 GOPATH ?= $(shell go env GOPATH)
 GOROOT ?= $(shell go env GOROOT)
 GOGCCFLAGS ?= $(shell go env GOGCCFLAGS)
-PROD_LDFLAGS ?= -w -s
+#LDFLAGS_EXTRA ?= -w -s
 XC_ARCH ?= 386 amd64 arm
 XC_OS ?= solaris darwin freebsd linux windows
 XC_OSARCH ?= !darwin/arm !solaris/amd64 !freebsd/amd64
@@ -22,7 +22,7 @@ RACEFLAG=-race
 else
 RACEFLAG=
 endif
-BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "$(PROD_LDFLAGS) -X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=7 HEAD)" $(RACEFLAG)
+BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=7 HEAD) $(LDFLAGS_EXTRA)" $(RACEFLAG)
 GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
 
 all: check build test install metalinter
@@ -33,16 +33,20 @@ check: check_tools get_vendor_deps
 ########################################
 ### Build
 
-build_cc:
+build_cc: check_tools
 	$(shell which gox) $(BUILD_FLAGS) $(GOX_FLAGS) ./cmd/tendermint/
 
 build:
-	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
+ifeq ($(OS),Windows_NT)
+	make build_cc XC_ARCH=amd64 XC_OS=windows BUILD_OUTPUT=$(GOPATH)/bin/tendermint
+else
+	make build_cc XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
+endif
 
 build_race:
+#TODO: Wait for this to be merged: https://github.com/mitchellh/gox/pull/105 Then switch over to make build and remove the go build line.
+#	make build BUILD_FLAGS_RACE=YES
 	$(shell which go) build $(BUILD_FLAGS) -race -o "$(BUILD_OUTPUT)" ./cmd/tendermint/
-#For the future when this is merged: https://github.com/mitchellh/gox/pull/105
-#	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS=$(shell uname -s) BUILD_FLAGS_RACE=YES BUILD_OUTPUT=build/tendermint
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
