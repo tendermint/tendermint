@@ -32,7 +32,8 @@ dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 install:
-	go install $(BUILD_FLAGS) ./cmd/tendermint
+	make build
+	cp build/tendermint $GOPATH/bin
 
 
 ########################################
