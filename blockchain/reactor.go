@@ -182,7 +182,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
+		queued := src.TrySend(BlockchainChannel,
+			struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
 		if !queued {
 			// sorry
 		}
@@ -300,7 +301,8 @@ FOR_LOOP:
 					state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 					if err != nil {
 						// TODO This is bad, are we zombie?
-						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v",
+							first.Height, first.Hash(), err))
 					}
 					blocksSynced++
 
