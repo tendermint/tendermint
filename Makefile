@@ -66,25 +66,33 @@ draw_deps:
 build_docker_test_image:
 	docker build -t tester -f ./test/docker/Dockerfile .
 
+clean_tests:
+	docker rm -f rsyslog
+	docker rm -vf run_test
+	docker rm -vf run_test1
+	docker rm -vf run_test2
+	docker rm -vf run_test3
+
 ### coverage, app, persistence, and libs tests
 test_cover:
 	# run the go unit tests with coverage (in docker)
 	bash test/test_cover.sh
 	
-test_apps:
+test_apps: clean_tests
 	# run the app tests using bash
 	docker run --name run_test2 -t tester bash test/app/test.sh
 
-test_persistence:
+test_persistence: clean_tests
 	# run the persistence tests using bash
 	docker run --name run_test3 -t tester bash test/persist/test.sh
 
 
-test_p2p:
+test_p2p: clean_tests
 	mkdir test/logs
 	docker run -d -v "test/logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
+	ls test/logs
 
 
 test_libs:
