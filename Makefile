@@ -4,13 +4,25 @@ GOTOOLS := \
 	github.com/tcnksm/ghr \
 	gopkg.in/alecthomas/gometalinter.v2
 GO_MIN_VERSION := 1.9.2
-PACKAGES=$(shell go list ./... | grep -v '/vendor/')
-BUILD_TAGS?=tendermint
-TMHOME = $${TMHOME:-$$HOME/.tendermint}
+PACKAGES := $(shell go list ./... | grep -v '/vendor/')
+BUILD_TAGS ?= tendermint
+TMHOME ?= $(HOME)/.tendermint
 GOPATH ?= $(shell go env GOPATH)
 GOROOT ?= $(shell go env GOROOT)
 GOGCCFLAGS ?= $(shell go env GOGCCFLAGS)
-BUILD_FLAGS = -gcflags "-trimpath $(GOPATH)" -asmflags "-trimpath $(GOPATH)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=7 HEAD`"
+PROD_LDFLAGS ?= -w -s
+XC_ARCH ?= 386 amd64 arm
+XC_OS ?= solaris darwin freebsd linux windows
+XC_OSARCH ?= !darwin/arm !solaris/amd64 !freebsd/amd64
+BUILD_OUTPUT ?= $(GOPATH)/bin/{{.OS}}_{{.Arch}}/tendermint
+
+GOX_FLAGS = -os="$(XC_OS)" -arch="$(XC_ARCH)" -osarch="$(XC_OSARCH)" -output="$(BUILD_OUTPUT)"
+ifeq ($(BUILD_FLAGS_RACE),YES)
+RACEFLAG=-race
+else
+RACEFLAG=
+endif
+BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "$(PROD_LDFLAGS) -X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=7 HEAD)" $(RACEFLAG)
 GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
 
 all: check build test install metalinter
@@ -21,11 +33,16 @@ check: check_tools get_vendor_deps
 ########################################
 ### Build
 
+build_cc:
+	$(shell which gox) $(BUILD_FLAGS) $(GOX_FLAGS) ./cmd/tendermint/
+
 build:
-	go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
+	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
 
 build_race:
-	go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
+	$(shell which go) build $(BUILD_FLAGS) -race -o "$(BUILD_OUTPUT)" ./cmd/tendermint/
+#For the future when this is merged: https://github.com/mitchellh/gox/pull/105
+#	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS=$(shell uname -s) BUILD_FLAGS_RACE=YES BUILD_OUTPUT=build/tendermint
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
@@ -33,7 +50,6 @@ dist:
 
 install:
 	make build
-	cp build/tendermint $GOPATH/bin
 
 
 ########################################
