@@ -9,6 +9,7 @@ It contains the following components:
 - [Encoding and Digests](encoding.md)
 - [Blockchain](blockchain.md)
 - [State](state.md)
+- [P2P](p2p/node.md)
 
 ## Overview
 
