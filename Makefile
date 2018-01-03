@@ -69,9 +69,7 @@ build_docker_test_image:
 ### coverage, app, persistence, and libs tests
 test_cover:
 	# run the go unit tests with coverage (in docker)
-	docker run --name run_test1 -t tester bash test/test_cover.sh
-	# copy the coverage results out of docker container
-	docker cp run_test1:/go/src/github.com/tendermint/tendermint/coverage.txt .
+	bash test/test_cover.sh
 	
 test_apps:
 	# run the app tests using bash
