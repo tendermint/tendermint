@@ -1,13 +1,29 @@
-GOTOOLS = \
+GOTOOLS := \
 	github.com/mitchellh/gox \
 	github.com/Masterminds/glide \
 	github.com/tcnksm/ghr \
 	gopkg.in/alecthomas/gometalinter.v2
-GOTOOLS_CHECK = gox glide ghr gometalinter.v2
-PACKAGES=$(shell go list ./... | grep -v '/vendor/')
-BUILD_TAGS?=tendermint
-TMHOME = $${TMHOME:-$$HOME/.tendermint}
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
+GO_MIN_VERSION := 1.9.2
+PACKAGES := $(shell go list ./... | grep -v '/vendor/')
+BUILD_TAGS ?= tendermint
+TMHOME ?= $(HOME)/.tendermint
+GOPATH ?= $(shell go env GOPATH)
+GOROOT ?= $(shell go env GOROOT)
+GOGCCFLAGS ?= $(shell go env GOGCCFLAGS)
+PROD_LDFLAGS ?= -w -s
+XC_ARCH ?= 386 amd64 arm
+XC_OS ?= solaris darwin freebsd linux windows
+XC_OSARCH ?= !darwin/arm !solaris/amd64 !freebsd/amd64
+BUILD_OUTPUT ?= $(GOPATH)/bin/{{.OS}}_{{.Arch}}/tendermint
+
+GOX_FLAGS = -os="$(XC_OS)" -arch="$(XC_ARCH)" -osarch="$(XC_OSARCH)" -output="$(BUILD_OUTPUT)"
+ifeq ($(BUILD_FLAGS_RACE),YES)
+RACEFLAG=-race
+else
+RACEFLAG=
+endif
+BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "$(PROD_LDFLAGS) -X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=7 HEAD)" $(RACEFLAG)
+GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
 
 all: check build test install metalinter
 
@@ -17,27 +33,46 @@ check: check_tools get_vendor_deps
 ########################################
 ### Build
 
+build_cc:
+	$(shell which gox) $(BUILD_FLAGS) $(GOX_FLAGS) ./cmd/tendermint/
+
 build:
-	go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
+	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
 
 build_race:
-	go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
+	$(shell which go) build $(BUILD_FLAGS) -race -o "$(BUILD_OUTPUT)" ./cmd/tendermint/
+#For the future when this is merged: https://github.com/mitchellh/gox/pull/105
+#	make build_cc PROD_LDFLAGS="" XC_ARCH=amd64 XC_OS=$(shell uname -s) BUILD_FLAGS_RACE=YES BUILD_OUTPUT=build/tendermint
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 install:
-	go install $(BUILD_FLAGS) ./cmd/tendermint
+	make build
 
 
 ########################################
 ### Tools & dependencies
 
 check_tools:
-	@# https://stackoverflow.com/a/25668869
-	@echo "Found tools: $(foreach tool,$(GOTOOLS_CHECK),\
-        $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
+ifeq ($(GO_VERSION),)
+	$(error go not found)
+endif
+ifneq ($(GO_VERSION),$(GO_MIN_VERSION))
+	$(warning WARNING: build will not be deterministic. go version should be $(GO_MIN_VERSION))
+endif
+ifneq ($(findstring -fdebug-prefix-map,$(GOGCCFLAGS)),-fdebug-prefix-map)
+	$(warning WARNING: build will not be deterministic. The compiler does not support the '-fdebug-prefix-map' flag.)
+endif
+ifneq ($(GOROOT),/usr/local/go)
+	$(warning WARNING: build will not be deterministic. GOPATH should be set to /usr/local/go)
+endif
+ifneq ($(findstring $(GOPATH)/bin,$(PATH)),$(GOPATH)/bin)
+	$(warning WARNING: PATH does not contain GOPATH/bin. Some external dependencies might be unavailable.) 
+endif
+# https://stackoverflow.com/a/25668869
+	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),$(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH. Add GOPATH/bin to PATH and run 'make get_tools'")))"
 
 get_tools:
 	@echo "--> Installing tools"
