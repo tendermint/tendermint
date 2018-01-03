@@ -22,9 +22,3 @@ echo
 echo "* [$(date +"%T")] starting rsyslog container"
 docker rm -f rsyslog || true
 docker run -d -v "$LOGS_DIR:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
-
-pwd
-
-#TODO
-## copy the coverage results out of docker container
-#docker cp run_test:/go/src/github.com/tendermint/tendermint/coverage.txt .

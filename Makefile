@@ -69,33 +69,28 @@ build_docker_test_image:
 ### coverage, app, persistence, and libs tests
 test_cover:
 	# cleanup
-	bash ./test/test.sh
+	bash ./test/cleanup.sh
 	# run the go unit tests with coverage (in docker)
 	docker run --name run_test -t tester bash test/test_cover.sh
+	# copy the coverage results out of docker container
+	docker cp run_test:/go/src/github.com/tendermint/tendermint/coverage.txt .
 	
-test_cover_ci:
-	# run the go unit tests with coverage (in docker, for circle)
-	docker run --name run_test -e CIRCLECI=true -t tester bash test/test_cover.sh
-
 test_apps:
 	# cleanup
-	bash ./test/test.sh
+	bash ./test/cleanup.sh
 	# run the app tests using bash
 	docker run --name run_test -t tester bash test/app/test.sh
 
-test_apps_ci:	
-	docker run --name run_test -e CIRCLECI=true -t tester bash test/app/test.sh
-
 test_persistence:
 	# cleanup
-	bash ./test/test.sh
+	bash ./test/cleanup.sh
 	# run the persistence tests using bash
 	docker run --name run_test -t tester bash test/persist/test.sh
 
-test_persistence_ci:
-	docker run --name run_test -e CIRCLECI=true -t tester bash test/persist/test.sh
 
 test_p2p:
+	# cleanup
+	bash ./test/cleanup.sh
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
 
@@ -104,11 +99,6 @@ test_libs:
 	# checkout every github.com/tendermint dir and run its tests
 	# NOTE: on release-* or master branches only (set by Jenkins)
 	docker run --name run_test -t tester bash test/test_libs.sh
-
-
-
-test_integrations:
-	@bash ./test/test.sh
 
 test_release:
 	@go test -tags release $(PACKAGES)
