@@ -67,11 +67,11 @@ build_docker_test_image:
 	docker build -t tester -f ./test/docker/Dockerfile .
 
 clean_tests:
-	docker rm -f rsyslog
-	docker rm -vf run_test
-	docker rm -vf run_test1
-	docker rm -vf run_test2
-	docker rm -vf run_test3
+	docker rm -f rsyslog || true
+	docker rm -vf run_test || true
+	docker rm -vf run_test1 || true
+	docker rm -vf run_test2 || true
+	docker rm -vf run_test3 || true
 
 ### coverage, app, persistence, and libs tests
 test_cover:
