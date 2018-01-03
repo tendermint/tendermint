@@ -48,9 +48,6 @@ build_race:
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
-install:
-	make build
-
 
 ########################################
 ### Tools & dependencies
