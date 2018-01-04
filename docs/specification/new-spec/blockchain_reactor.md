@@ -1,7 +1,14 @@
 # Blockchain Reactor
 
-The Blockchain Reactor's high level responsibility is to request blocks from peers or provide them
-with blocks, validate and persist the blocks to disk and play blocks to the ABCI app.
+The Blockchain Reactor's high level responsibility is to enable peers who are
+far behind the current state of the consensus to quickly catch up by downloading
+many blocks in parallel, verifying their commits, and executing them against the
+ABCI application.
+
+Tendermint full nodes run the Blockchain Reactor as a service to provide blocks
+to new nodes. New nodes run the Blockchain Reactor in "fast_sync" mode,
+where they actively make requests for more blocks until they sync up.
+Once caught up, they disable "fast_sync" mode, and turn on the Consensus Reactor.
 
 ## Message Types
 
@@ -25,7 +32,7 @@ type bcNoBlockResponseMessage struct {
 }
 
 type bcBlockResponseMessage struct {
-    Block *types.Block
+    Block Block
 }
 
 type bcStatusRequestMessage struct {
@@ -36,7 +43,7 @@ type bcStatusResponseMessage struct {
 }
 ```
 
-## Block Reactor
+## Blockchain Reactor
 
 * coordinates the pool for syncing
 * coordinates the store for persistence
