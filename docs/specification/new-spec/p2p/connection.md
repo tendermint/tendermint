@@ -1,4 +1,4 @@
-## MConnection
+# MConnection
 
 `MConnection` is a multiplex connection:
 
@@ -12,24 +12,25 @@ initialization of the connection.
 
 The `MConnection` supports three packet types: Ping, Pong, and Msg.
 
-### Ping and Pong
+## Ping and Pong
 
-The ping and pong messages consist of writing a single byte to the connection; 0x1 and 0x2, respectively
+The ping and pong messages consist of writing a single byte to the connection; 0x1 and 0x2,
+respectively.
 
-When we haven't received any messages on an `MConnection` in a time `pingTimeout`, we send a ping message.
-When a ping is received on the `MConnection`, a pong is sent in response.
+When we haven't received any messages on an `MConnection` in a time `pingTimeout`, we send a ping
+message. When a ping is received on the `MConnection`, a pong is sent in response.
 
 If a pong is not received in sufficient time, the peer's score should be decremented (TODO).
 
-### Msg
+## Msg
 
 Messages in channels are chopped into smaller msgPackets for multiplexing.
 
-```
+```go
 type msgPacket struct {
-	ChannelID byte
-	EOF       byte // 1 means message ends here.
-	Bytes     []byte
+    ChannelID byte
+    EOF       byte // 1 means message ends here.
+    Bytes     []byte
 }
 ```
 
@@ -40,14 +41,16 @@ is returned for processing by the corresponding channels `onReceive` function.
 
 ### Multiplexing
 
-Messages are sent from a single `sendRoutine`, which loops over a select statement that results in the sending
-of a ping, a pong, or a batch of data messages. The batch of data messages may include messages from multiple channels.
-Message bytes are queued for sending in their respective channel, with each channel holding one unsent message at a time.
-Messages are chosen for a batch one a time from the channel with the lowest ratio of recently sent bytes to channel priority.
+Messages are sent from a single `sendRoutine`, which loops over a select statement that results in
+the sending of a ping, a pong, or a batch of data messages. The batch of data messages may include
+messages from multiple channels. Message bytes are queued for sending in their respective channel,
+with each channel holding one unsent message at a time. Messages are chosen for a batch one a time
+from the channel with the lowest ratio of recently sent bytes to channel priority.
 
 ## Sending Messages
 
 There are two methods for sending messages:
+
 ```go
 func (m MConnection) Send(chID byte, msg interface{}) bool {}
 func (m MConnection) TrySend(chID byte, msg interface{}) bool {}
@@ -64,9 +67,9 @@ queue is full.
 
 ## Peer
 
-Each peer has one `MConnection` instance, and includes other information such as whether the connection
-was outbound, whether the connection should be recreated if it closes, various identity information about the node,
-and other higher level thread-safe data used by the reactors.
+Each peer has one `MConnection` instance, and includes other information such as whether the
+connection was outbound, whether the connection should be recreated if it closes, various identity
+information about the node, and other higher level thread-safe data used by the reactors.
 
 ## Switch/Reactor
 
@@ -91,9 +94,7 @@ func (reactor MyReactor) Receive(chID byte, peer *Peer, msgBytes []byte) {
 
 // Other Reactor methods omitted for brevity
 ...
-
 switch := NewSwitch([]Reactor{MyReactor{}})
-
 ...
 
 // Send a random message to all outbound connections
@@ -114,3 +115,4 @@ pexReactor := p2p.NewPEXReactor(book)
 ...
 switch := NewSwitch([]Reactor{pexReactor, myReactor, ...})
 ```
+

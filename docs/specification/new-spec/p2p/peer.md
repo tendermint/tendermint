@@ -5,8 +5,10 @@ and how other peers are found.
 
 ## Peer Identity
 
-Tendermint peers are expected to maintain long-term persistent identities in the form of a private key.
-Each peer has an ID defined as `peer.ID == peer.PrivKey.Address()`, where `Address` uses the scheme defined in go-crypto.
+Tendermint peers are expected to maintain long-term persistent identities in the form of a private
+key.
+Each peer has an ID defined as `peer.ID == peer.PrivKey.Address()`, where `Address` uses the scheme
+defined in go-crypto.
 
 Peer ID's must come with some Proof-of-Work; that is,
 they must satisfy `peer.PrivKey.Address() < target` for some difficulty target.
@@ -36,28 +38,30 @@ Both handshakes have configurable timeouts (they should complete quickly).
 Tendermint implements the Station-to-Station protocol
 using ED25519 keys for Diffie-Helman key-exchange and NACL SecretBox for encryption.
 It goes as follows:
+
 - generate an emphemeral ED25519 keypair
 - send the ephemeral public key to the peer
 - wait to receive the peer's ephemeral public key
-- compute the Diffie-Hellman shared secret using the peers ephemeral public key and our ephemeral private key
+- compute the Diffie-Hellman shared secret using the peers ephemeral public key and our ephemeral
+private key
 - generate two nonces to use for encryption (sending and receiving) as follows:
-    - sort the ephemeral public keys in ascending order and concatenate them
-    - RIPEMD160 the result
-    - append 4 empty bytes (extending the hash to 24-bytes)
-    - the result is nonce1
-    - flip the last bit of nonce1 to get nonce2
-    - if we had the smaller ephemeral pubkey, use nonce1 for receiving, nonce2 for sending;
-        else the opposite
-- all communications from now on are encrypted using the shared secret and the nonces, where each nonce
+  - sort the ephemeral public keys in ascending order and concatenate them
+  - RIPEMD160 the result
+  - append 4 empty bytes (extending the hash to 24-bytes)
+  - the result is nonce1
+  - flip the last bit of nonce1 to get nonce2
+  - if we had the smaller ephemeral pubkey, use nonce1 for receiving, nonce2 for sending;
+    else the opposite
+- all communications from now on are encrypted using the shared secret and the nonces, where each
+nonce
 - we now have an encrypted channel, but still need to authenticate
 increments by 2 every time it is used
 - generate a common challenge to sign:
-    - SHA256 of the sorted (lowest first) and concatenated ephemeral pub keys
+  - SHA256 of the sorted (lowest first) and concatenated ephemeral pub keys
 - sign the common challenge with our persistent private key
 - send the go-wire encoded persistent pubkey and signature to the peer
 - wait to receive the persistent public key and signature from the peer
 - verify the signature on the challenge using the peer's persistent public key
-
 
 If this is an outgoing connection (we dialed the peer) and we used a peer ID,
 then finally verify that the peer's persistent public key corresponds to the peer ID we dialed,
@@ -84,22 +88,23 @@ terminated.
 
 The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 
-```
+```go
 type NodeInfo struct {
-	PubKey     crypto.PubKey `json:"pub_key"`
-	Moniker    string        `json:"moniker"`
-	Network    string        `json:"network"`
-	RemoteAddr string        `json:"remote_addr"`
-	ListenAddr string        `json:"listen_addr"` // accepting in
-	Version    string        `json:"version"` // major.minor.revision
+    PubKey     crypto.PubKey `json:"pub_key"`
+    Moniker    string        `json:"moniker"`
+    Network    string        `json:"network"`
+    RemoteAddr string        `json:"remote_addr"`
+    ListenAddr string        `json:"listen_addr"` // accepting in
+    Version    string        `json:"version"` // major.minor.revision
     Channels   []int8        `json:"channels"` // active reactor channels
-	Other      []string      `json:"other"`   // other application specific data
+    Other      []string      `json:"other"`   // other application specific data
 }
 ```
 
 The connection is disconnected if:
 - `peer.NodeInfo.PubKey != peer.PubKey`
-- `peer.NodeInfo.Version` is not formatted as `X.X.X` where X are integers known as Major, Minor, and Revision
+- `peer.NodeInfo.Version` is not formatted as `X.X.X` where X are integers known as Major, Minor,
+and Revision
 - `peer.NodeInfo.Version` Major is not the same as ours
 - `peer.NodeInfo.Version` Minor is not the same as ours
 - `peer.NodeInfo.Network` is not the same as ours

@@ -1,7 +1,8 @@
 # Tendermint Peer Discovery
 
-A Tendermint P2P network has different kinds of nodes with different requirements for connectivity to others.
-This document describes what kind of nodes Tendermint should enable and how they should work.
+A Tendermint P2P network has different kinds of nodes with different requirements for connectivity
+to others. This document describes what kind of nodes Tendermint should enable and how they should
+work.
 
 ## Seeds
 
@@ -17,12 +18,13 @@ See [reputation] for details on peer quality.
 ## New Full Node
 
 A new node needs a few things to connect to the network:
-- a list of seeds, which can be provided to Tendermint via config file or flags,
-or hardcoded into the software by in-process apps
+- a list of seeds, which can be provided to Tendermint via config file or flags, or hardcoded into
+in the software by in-process apps
 - a `ChainID`, also called `Network` at the p2p layer
 - a recent block height, H, and hash, HASH for the blockchain.
 
-The values `H` and `HASH` must be received and corroborated by means external to Tendermint, and specific to the user - ie. via the user's trusted social consensus.
+The values `H` and `HASH` must be received and corroborated by means external to Tendermint, and
+specific to the user - ie. via the user's trusted social consensus.
 This requirement to validate `H` and `HASH` out-of-band and via social consensus
 is the essential difference in security models between Proof-of-Work and Proof-of-Stake blockchains.
 
@@ -49,14 +51,18 @@ These nodes require the highest security, and should not accept incoming connect
 They should maintain outgoing connections to a controlled set of "Sentry Nodes" that serve
 as their proxy shield to the rest of the network.
 
-Validators that know and trust each other can accept incoming connections from one another and maintain direct private connectivity via VPN.
+Validators that know and trust each other can accept incoming connections from one another and
+maintain direct private connectivity via VPN.
 
 ## Sentry Node
 
 Sentry nodes are guardians of a validator node and provide it access to the rest of the network.
-Sentry nodes may be dynamic, but should maintain persistent connections to some evolving random subset of each other.
-They should always expect to have direct incoming connections from the validator node and its backup/s.
+Sentry nodes may be dynamic, but should maintain persistent connections to some evolving random
+subset of each other.
+They should always expect to have direct incoming connections from the validator node and its
+backup/s.
 They do not report the validator node's address in the PEX.
 They may be more strict about the quality of peers they keep.
 
-Sentry nodes belonging to validators that trust each other may wish to maintain persistent connections via VPN with one another, but only report each other sparingly in the PEX.
+Sentry nodes belonging to validators that trust each other may wish to maintain persistent
+connections via VPN with one another, but only report each other sparingly in the PEX.
