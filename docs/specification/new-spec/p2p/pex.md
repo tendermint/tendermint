@@ -64,6 +64,7 @@ but always giving us the chance to discover new good peers.
 ## Select Peers to Exchange
 
 When we’re asked for peers, we select them as follows:
+
 - select at most `maxGetSelection` peers
 - try to select at least `minGetSelection` peers - if we have less than that, select them all.
 - select a random, unbiased `getSelectionPercent` of the peers
@@ -76,8 +77,8 @@ There are various cases where we decide a peer has misbehaved and we disconnect 
 When this happens, the peer is removed from the address book and black listed for
 some amount of time. We call this "Disconnect and Mark".
 Note that the bad behaviour may be detected outside the PEX reactor itseld
-(for instance, in the mconnection, or another reactor), but it must be communicated to the PEX reactor
-so it can remove and mark the peer.
+(for instance, in the mconnection, or another reactor), but it must be communicated to the PEX
+reactor so it can remove and mark the peer.
 
 In the PEX, if a peer sends us unsolicited lists of peers,
 or if the peer sends too many requests for more peers in a given amount of time,
