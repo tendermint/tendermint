@@ -12,6 +12,25 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// TODO: type ?
+const (
+	stepNone      int8 = 0 // Used to distinguish the initial state
+	stepPropose   int8 = 1
+	stepPrevote   int8 = 2
+	stepPrecommit int8 = 3
+)
+
+func voteToStep(vote *types.Vote) int8 {
+	switch vote.Type {
+	case types.VoteTypePrevote:
+		return stepPrevote
+	case types.VoteTypePrecommit:
+		return stepPrecommit
+	default:
+		panic("Unknown vote type")
+	}
+}
+
 //-------------------------------------
 
 // LastSignedInfo contains information about the latest
@@ -76,12 +95,92 @@ func (info *LastSignedInfo) Set(height int64, round int, step int8,
 	info.SignBytes = signBytes
 }
 
+// Reset resets all the values.
+// XXX: Unsafe.
 func (info *LastSignedInfo) Reset() {
 	info.Height = 0
 	info.Round = 0
 	info.Step = 0
 	info.Signature = crypto.Signature{}
 	info.SignBytes = nil
+}
+
+// SignVote checks the height/round/step (HRS) are greater than the latest state of the LastSignedInfo.
+// If so, it signs the vote, updates the LastSignedInfo, and sets the signature on the vote.
+// If the HRS are equal and the only thing changed is the timestamp, it sets the vote.Timestamp to the previous
+// value and the Signature to the LastSignedInfo.Signature.
+// Else it returns an error.
+func (lsi *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *types.Vote) error {
+	height, round, step := vote.Height, vote.Round, voteToStep(vote)
+	signBytes := types.SignBytes(chainID, vote)
+
+	sameHRS, err := lsi.Verify(height, round, step)
+	if err != nil {
+		return err
+	}
+
+	// We might crash before writing to the wal,
+	// causing us to try to re-sign for the same HRS.
+	// If signbytes are the same, use the last signature.
+	// If they only differ by timestamp, use last timestamp and signature
+	// Otherwise, return error
+	if sameHRS {
+		if bytes.Equal(signBytes, lsi.SignBytes) {
+			vote.Signature = lsi.Signature
+		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(lsi.SignBytes, signBytes); ok {
+			vote.Timestamp = timestamp
+			vote.Signature = lsi.Signature
+		} else {
+			err = fmt.Errorf("Conflicting data")
+		}
+		return err
+	}
+	sig, err := signer.Sign(signBytes)
+	if err != nil {
+		return err
+	}
+	lsi.Set(height, round, step, signBytes, sig)
+	vote.Signature = sig
+	return nil
+}
+
+// SignProposal checks if the height/round/step (HRS) are greater than the latest state of the LastSignedInfo.
+// If so, it signs the proposal, updates the LastSignedInfo, and sets the signature on the proposal.
+// If the HRS are equal and the only thing changed is the timestamp, it sets the timestamp to the previous
+// value and the Signature to the LastSignedInfo.Signature.
+// Else it returns an error.
+func (lsi *LastSignedInfo) SignProposal(signer types.Signer, chainID string, proposal *types.Proposal) error {
+	height, round, step := proposal.Height, proposal.Round, stepPropose
+	signBytes := types.SignBytes(chainID, proposal)
+
+	sameHRS, err := lsi.Verify(height, round, step)
+	if err != nil {
+		return err
+	}
+
+	// We might crash before writing to the wal,
+	// causing us to try to re-sign for the same HRS.
+	// If signbytes are the same, use the last signature.
+	// If they only differ by timestamp, use last timestamp and signature
+	// Otherwise, return error
+	if sameHRS {
+		if bytes.Equal(signBytes, lsi.SignBytes) {
+			proposal.Signature = lsi.Signature
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(lsi.SignBytes, signBytes); ok {
+			proposal.Timestamp = timestamp
+			proposal.Signature = lsi.Signature
+		} else {
+			err = fmt.Errorf("Conflicting data")
+		}
+		return err
+	}
+	sig, err := signer.Sign(signBytes)
+	if err != nil {
+		return err
+	}
+	lsi.Set(height, round, step, signBytes, sig)
+	proposal.Signature = sig
+	return nil
 }
 
 //-------------------------------------

@@ -1,26 +1,19 @@
 {
-  "info": {
-    "id": {
-      "address": "4C5F061DAC28660853904A66705B12CA2B317572",
-      "pub_key": {
-        "type": "ed25519",
-        "data": "AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
-      }
-    },
-    "type": "unencrypted"
-  },
-  "signer": {
-    "priv_key": {
+  "id": {
+    "address": "4C5F061DAC28660853904A66705B12CA2B317572",
+    "pub_key": {
       "type": "ed25519",
-      "data": "C1A4E47F349FC5F556F4A9A27BA776B94424C312BAA6CF6EE44B867348D7C3F2AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
+      "data": "AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
     }
   },
-  "careful_signer": {
-    "last_signed_info": {
-      "height": 0,
-      "round": 0,
-      "step": 0,
-      "signature": null
-    }
+  "priv_key": {
+    "type": "ed25519",
+    "data": "C1A4E47F349FC5F556F4A9A27BA776B94424C312BAA6CF6EE44B867348D7C3F2AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
+  },
+  "last_signed_info": {
+    "height": 0,
+    "round": 0,
+    "step": 0,
+    "signature": null
   }
 }

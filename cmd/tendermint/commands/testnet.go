@@ -46,7 +46,7 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 		}
 		// Read priv_validator.json to populate vals
 		privValFile := path.Join(dataDir, mach, "priv_validator.json")
-		privVal := priv_val.LoadDefaultPrivValidator(privValFile)
+		privVal := priv_val.LoadPrivValidatorJSON(privValFile)
 		genVals[i] = types.GenesisValidator{
 			PubKey: privVal.PubKey(),
 			Power:  1,
@@ -90,6 +90,6 @@ func ensurePrivValidator(file string) {
 	if cmn.FileExists(file) {
 		return
 	}
-	privValidator := priv_val.GenDefaultPrivValidator(file)
+	privValidator := priv_val.GenPrivValidatorJSON(file)
 	privValidator.Save()
 }

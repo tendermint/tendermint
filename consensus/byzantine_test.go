@@ -269,7 +269,7 @@ func (br *ByzantineReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 // byzantine privValidator
 
 type ByzantinePrivValidator struct {
-	priv_val.Signer
+	types.Signer
 
 	pv priv_val.PrivValidator
 }
@@ -277,7 +277,7 @@ type ByzantinePrivValidator struct {
 // Return a priv validator that will sign anything
 func NewByzantinePrivValidator(pv priv_val.PrivValidator) *ByzantinePrivValidator {
 	return &ByzantinePrivValidator{
-		Signer: pv.(*priv_val.DefaultPrivValidator).Signer,
+		Signer: pv.(*priv_val.PrivValidatorJSON).PrivValidatorUnencrypted.PrivKey,
 		pv:     pv,
 	}
 }

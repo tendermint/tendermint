@@ -278,10 +278,10 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	return cs
 }
 
-func loadPrivValidator(config *cfg.Config) *priv_val.DefaultPrivValidator {
+func loadPrivValidator(config *cfg.Config) *priv_val.PrivValidatorJSON {
 	privValidatorFile := config.PrivValidatorFile()
 	ensureDir(path.Dir(privValidatorFile), 0700)
-	privValidator := priv_val.LoadOrGenDefaultPrivValidator(privValidatorFile)
+	privValidator := priv_val.LoadOrGenPrivValidatorJSON(privValidatorFile)
 	privValidator.Reset()
 	return privValidator
 }
@@ -388,7 +388,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 			privVal = privVals[i]
 		} else {
 			_, tempFilePath := cmn.Tempfile("priv_validator_")
-			privVal = priv_val.GenDefaultPrivValidator(tempFilePath)
+			privVal = priv_val.GenPrivValidatorJSON(tempFilePath)
 		}
 
 		app := appFunc()
@@ -415,9 +415,9 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 //-------------------------------------------------------------------------------
 // genesis
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*priv_val.DefaultPrivValidator) {
+func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*priv_val.PrivValidatorJSON) {
 	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]*priv_val.DefaultPrivValidator, numValidators)
+	privValidators := make([]*priv_val.PrivValidatorJSON, numValidators)
 	for i := 0; i < numValidators; i++ {
 		val, signer := types.RandValidator(randPower, minPower)
 		privVal := priv_val.NewTestPrivValidator(signer)
@@ -435,7 +435,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}, privValidators
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []*priv_val.DefaultPrivValidator) {
+func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []*priv_val.PrivValidatorJSON) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	db := dbm.NewMemDB()

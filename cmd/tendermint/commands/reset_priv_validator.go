@@ -50,11 +50,11 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 func resetPrivValidatorFS(privValFile string, logger log.Logger) {
 	// Get PrivValidator
 	if _, err := os.Stat(privValFile); err == nil {
-		privValidator := priv_val.LoadDefaultPrivValidator(privValFile)
+		privValidator := priv_val.LoadPrivValidatorJSON(privValFile)
 		privValidator.Reset()
 		logger.Info("Reset PrivValidator", "file", privValFile)
 	} else {
-		privValidator := priv_val.GenDefaultPrivValidator(privValFile)
+		privValidator := priv_val.GenPrivValidatorJSON(privValFile)
 		privValidator.Save()
 		logger.Info("Generated PrivValidator", "file", privValFile)
 	}

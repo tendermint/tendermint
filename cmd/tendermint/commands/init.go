@@ -18,12 +18,12 @@ var InitFilesCmd = &cobra.Command{
 func initFiles(cmd *cobra.Command, args []string) {
 	// private validator
 	privValFile := config.PrivValidatorFile()
-	var privValidator *priv_val.DefaultPrivValidator
+	var privValidator *priv_val.PrivValidatorJSON
 	if cmn.FileExists(privValFile) {
-		privValidator = priv_val.LoadDefaultPrivValidator(privValFile)
+		privValidator = priv_val.LoadPrivValidatorJSON(privValFile)
 		logger.Info("Found private validator", "path", privValFile)
 	} else {
-		privValidator = priv_val.GenDefaultPrivValidator(privValFile)
+		privValidator = priv_val.GenPrivValidatorJSON(privValFile)
 		privValidator.Save()
 		logger.Info("Genetated private validator", "path", privValFile)
 	}

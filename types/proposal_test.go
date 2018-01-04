@@ -12,7 +12,7 @@ import (
 var testProposal *Proposal
 
 func init() {
-	var stamp, err = time.Parse(timeFormat, "2018-02-11T07:09:22.765Z")
+	var stamp, err = time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
 	if err != nil {
 		panic(err)
 	}

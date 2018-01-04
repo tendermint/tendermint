@@ -326,7 +326,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := priv_val.LoadDefaultPrivValidator(config.PrivValidatorFile())
+	privVal := priv_val.LoadPrivValidatorJSON(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {

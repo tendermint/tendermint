@@ -113,7 +113,7 @@ func NewTendermint(app abci.Application) *nm.Node {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	logger = log.NewFilter(logger, log.AllowError())
 	privValidatorFile := config.PrivValidatorFile()
-	privValidator := priv_val.LoadOrGenDefaultPrivValidator(privValidatorFile)
+	privValidator := priv_val.LoadOrGenPrivValidatorJSON(privValidatorFile)
 	papp := proxy.NewLocalClientCreator(app)
 	node, err := nm.NewNode(config, privValidator, papp,
 		nm.DefaultGenesisDocProviderFunc(config),

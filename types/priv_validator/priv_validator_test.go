@@ -20,16 +20,16 @@ func TestGenLoadValidator(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenDefaultPrivValidator(tempFilePath)
+	privVal := GenPrivValidatorJSON(tempFilePath)
 
 	height := int64(100)
-	privVal.CarefulSigner.LastSignedInfo.Height = height
+	privVal.LastSignedInfo.Height = height
 	privVal.Save()
 	addr := privVal.Address()
 
-	privVal = LoadDefaultPrivValidator(tempFilePath)
+	privVal = LoadPrivValidatorJSON(tempFilePath)
 	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
-	assert.Equal(height, privVal.CarefulSigner.LastSignedInfo.Height, "expected privval.LastHeight to have been saved")
+	assert.Equal(height, privVal.LastSignedInfo.Height, "expected privval.LastHeight to have been saved")
 }
 
 func TestLoadOrGenValidator(t *testing.T) {
@@ -39,9 +39,9 @@ func TestLoadOrGenValidator(t *testing.T) {
 	if err := os.Remove(tempFilePath); err != nil {
 		t.Error(err)
 	}
-	privVal := LoadOrGenDefaultPrivValidator(tempFilePath)
+	privVal := LoadOrGenPrivValidatorJSON(tempFilePath)
 	addr := privVal.Address()
-	privVal = LoadOrGenDefaultPrivValidator(tempFilePath)
+	privVal = LoadOrGenPrivValidatorJSON(tempFilePath)
 	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
 }
 
@@ -63,7 +63,6 @@ func TestUnmarshalValidator(t *testing.T) {
 	require.Nil(err, "%+v", err)
 
 	serialized := fmt.Sprintf(`{
-  "info": {
 	"id": {
   	  "address": "%s",
   	  "pub_key": {
@@ -71,32 +70,26 @@ func TestUnmarshalValidator(t *testing.T) {
       	"data": "%s"
 	  }
 	},
-	"type": "unencrypted"
-  },
-  "signer": {
     "priv_key": {
       "type": "ed25519",
       "data": "%s"
-    }
-  },
-  "careful_signer": {
+    },
     "last_signed_info": {
       "height": 0,
       "round": 0,
       "step": 0,
       "signature": null
 	}
-  }
 }`, addrStr, pubStr, privStr)
 
-	val := DefaultPrivValidator{}
+	val := PrivValidatorJSON{}
 	err = json.Unmarshal([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
 	assert.EqualValues(addrBytes, val.Address())
 	assert.EqualValues(pubKey, val.PubKey())
-	assert.EqualValues(privKey, val.Signer.PrivKey)
+	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
 	out, err := json.Marshal(val)
@@ -108,7 +101,7 @@ func TestSignVote(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenDefaultPrivValidator(tempFilePath)
+	privVal := GenPrivValidatorJSON(tempFilePath)
 
 	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
 	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{}}
@@ -149,7 +142,7 @@ func TestSignProposal(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenDefaultPrivValidator(tempFilePath)
+	privVal := GenPrivValidatorJSON(tempFilePath)
 
 	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
 	block2 := types.PartSetHeader{10, []byte{3, 2, 1}}
@@ -187,7 +180,7 @@ func TestSignProposal(t *testing.T) {
 
 func TestDifferByTimestamp(t *testing.T) {
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenDefaultPrivValidator(tempFilePath)
+	privVal := GenPrivValidatorJSON(tempFilePath)
 
 	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
 	height, round := int64(10), 1

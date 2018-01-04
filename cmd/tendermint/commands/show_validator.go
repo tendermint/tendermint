@@ -17,7 +17,7 @@ var ShowValidatorCmd = &cobra.Command{
 }
 
 func showValidator(cmd *cobra.Command, args []string) {
-	privValidator := priv_val.LoadOrGenDefaultPrivValidator(config.PrivValidatorFile())
+	privValidator := priv_val.LoadOrGenPrivValidatorJSON(config.PrivValidatorFile())
 	pubKeyJSONBytes, _ := data.ToJSON(privValidator.PubKey)
 	fmt.Println(string(pubKeyJSONBytes))
 }

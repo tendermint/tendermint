@@ -6,6 +6,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tendermint/types"
 )
 
 type PrivValidatorV1 struct {
@@ -19,7 +20,7 @@ type PrivValidatorV1 struct {
 	PrivKey       crypto.PrivKey   `json:"priv_key"`
 }
 
-func UpgradePrivValidator(filePath string) (*DefaultPrivValidator, error) {
+func UpgradePrivValidator(filePath string) (*PrivValidatorJSON, error) {
 	b, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -31,18 +32,13 @@ func UpgradePrivValidator(filePath string) (*DefaultPrivValidator, error) {
 		return nil, err
 	}
 
-	pvNew := &DefaultPrivValidator{
-		Info: PrivValidatorInfo{
-			ID: ValidatorID{
+	pvNew := &PrivValidatorJSON{
+		PrivValidatorUnencrypted: &PrivValidatorUnencrypted{
+			ID: types.ValidatorID{
 				Address: pv.Address,
 				PubKey:  pv.PubKey,
 			},
-			Type: TypeUnencrypted,
-		},
-		Signer: &DefaultSigner{
-			PrivKey: pv.PrivKey,
-		},
-		CarefulSigner: &DefaultCarefulSigner{
+			PrivKey: PrivKey(pv.PrivKey),
 			LastSignedInfo: &LastSignedInfo{
 				Height:    pv.LastHeight,
 				Round:     pv.LastRound,
