@@ -8,4 +8,4 @@ Components:
 * [Config](./config.md) - how to configure it
 * [External Messages](./messages.md) - The messages we accept over p2p and rpc interfaces
 * [Functionality](./functionality.md) - high-level description of the functionality it provides
-* [Local Services](./services.md) - Interfaces with consensus and abci services
+* [Concurrency Model](./concurrency.md) - What guarantees we provide, what locks we require.
