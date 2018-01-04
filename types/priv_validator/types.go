@@ -9,10 +9,10 @@ import (
 
 // TODO: type ?
 const (
-	stepNone      = 0 // Used to distinguish the initial state
-	stepPropose   = 1
-	stepPrevote   = 2
-	stepPrecommit = 3
+	stepNone      int8 = 0 // Used to distinguish the initial state
+	stepPropose   int8 = 1
+	stepPrevote   int8 = 2
+	stepPrecommit int8 = 3
 )
 
 func voteToStep(vote *types.Vote) int8 {

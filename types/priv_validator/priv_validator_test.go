@@ -185,6 +185,58 @@ func TestSignProposal(t *testing.T) {
 	assert.Equal(sig, proposal.Signature)
 }
 
+func TestDifferByTimestamp(t *testing.T) {
+	_, tempFilePath := cmn.Tempfile("priv_validator_")
+	privVal := GenDefaultPrivValidator(tempFilePath)
+
+	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
+	height, round := int64(10), 1
+	chainID := "mychainid"
+
+	// test proposal
+	{
+		proposal := newProposal(height, round, block1)
+		err := privVal.SignProposal(chainID, proposal)
+		assert.NoError(t, err, "expected no error signing proposal")
+		signBytes := types.SignBytes(chainID, proposal)
+		sig := proposal.Signature
+		timeStamp := clipToMS(proposal.Timestamp)
+
+		// manipulate the timestamp. should get changed back
+		proposal.Timestamp = proposal.Timestamp.Add(time.Millisecond)
+		proposal.Signature = crypto.Signature{}
+		err = privVal.SignProposal("mychainid", proposal)
+		assert.NoError(t, err, "expected no error on signing same proposal")
+
+		assert.Equal(t, timeStamp, proposal.Timestamp)
+		assert.Equal(t, signBytes, types.SignBytes(chainID, proposal))
+		assert.Equal(t, sig, proposal.Signature)
+	}
+
+	// test vote
+	{
+		voteType := types.VoteTypePrevote
+		blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
+		vote := newVote(privVal.Address(), 0, height, round, voteType, blockID)
+		err := privVal.SignVote("mychainid", vote)
+		assert.NoError(t, err, "expected no error signing vote")
+
+		signBytes := types.SignBytes(chainID, vote)
+		sig := vote.Signature
+		timeStamp := clipToMS(vote.Timestamp)
+
+		// manipulate the timestamp. should get changed back
+		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
+		vote.Signature = crypto.Signature{}
+		err = privVal.SignVote("mychainid", vote)
+		assert.NoError(t, err, "expected no error on signing same vote")
+
+		assert.Equal(t, timeStamp, vote.Timestamp)
+		assert.Equal(t, signBytes, types.SignBytes(chainID, vote))
+		assert.Equal(t, sig, vote.Signature)
+	}
+}
+
 func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
@@ -202,5 +254,13 @@ func newProposal(height int64, round int, partsHeader types.PartSetHeader) *type
 		Height:           height,
 		Round:            round,
 		BlockPartsHeader: partsHeader,
+		Timestamp:        time.Now().UTC(),
 	}
+}
+
+func clipToMS(t time.Time) time.Time {
+	nano := t.UnixNano()
+	million := int64(1000000)
+	nano = (nano / million) * million
+	return time.Unix(0, nano).UTC()
 }

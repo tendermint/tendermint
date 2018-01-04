@@ -34,26 +34,24 @@ func (dcs *DefaultCarefulSigner) Reset() {
 }
 
 // SignVote signs a canonical representation of the vote, along with the
-// chainID. Implements CarefulSigner.
+// chainID. It sets the signature on the vote. If a previous vote was signed
+// that is identical except for the timestamp, it sets the timestamp to the previous value.
+// Implements CarefulSigner.
 func (dcs *DefaultCarefulSigner) SignVote(signer Signer, chainID string, vote *types.Vote) error {
-	signature, err := dcs.sign(signer, vote.Height, vote.Round, voteToStep(vote),
-		types.SignBytes(chainID, vote), checkVotesOnlyDifferByTimestamp)
-	if err != nil {
+	if err := dcs.signVote(signer, chainID, vote); err != nil {
 		return errors.New(cmn.Fmt("Error signing vote: %v", err))
 	}
-	vote.Signature = signature
 	return nil
 }
 
 // SignProposal signs a canonical representation of the proposal, along with
-// the chainID. Implements CarefulSigner.
+// the chainID. It sets the signature on the proposal. If a previous proposal was signed
+// that is identical except for the timestamp, it sets the timestamp to the previous value.
+// Implements CarefulSigner.
 func (dcs *DefaultCarefulSigner) SignProposal(signer Signer, chainID string, proposal *types.Proposal) error {
-	signature, err := dcs.sign(signer, proposal.Height, proposal.Round, stepPropose,
-		types.SignBytes(chainID, proposal), checkProposalsOnlyDifferByTimestamp)
-	if err != nil {
+	if err := dcs.signProposal(signer, chainID, proposal); err != nil {
 		return fmt.Errorf("Error signing proposal: %v", err)
 	}
-	proposal.Signature = signature
 	return nil
 }
 
@@ -65,40 +63,84 @@ func (dcs *DefaultCarefulSigner) SignHeartbeat(signer Signer, chainID string, he
 	return err
 }
 
-// Sign signs the given signBytes with the signer if the height/round/step (HRS) are
-// greater than the latest state of the LastSignedInfo.
-// If the HRS are equal and the only thing changed is the timestamp,
-// it returns the LastSignature. Else it returns an error.
-func (dcs *DefaultCarefulSigner) sign(signer Signer, height int64, round int, step int8,
-	signBytes []byte, checkFn checkOnlyDifferByTimestamp) (crypto.Signature, error) {
-
-	sig := crypto.Signature{}
+// signVote signs the given vote with the signer and sets the vote.Signature if the height/round/step (HRS) are
+// greater than the latest state of the LastSignedInfo. If the HRS are equal and the only thing changed
+// is the timestamp, it sets the timestamp to the previous value and the Signature to the LastSignedInfo.Signature.
+// Else it returns an error.
+func (dcs *DefaultCarefulSigner) signVote(signer Signer, chainID string, vote *types.Vote) error {
+	height, round, step := vote.Height, vote.Round, voteToStep(vote)
+	signBytes := types.SignBytes(chainID, vote)
 
 	sameHRS, err := dcs.LastSignedInfo.Verify(height, round, step)
 	if err != nil {
-		return sig, err
+		return err
 	}
 
 	// We might crash before writing to the wal,
-	// causing us to try to re-sign for the same HRS
+	// causing us to try to re-sign for the same HRS.
+	// If signbytes are the same, use the last signature.
+	// If they only differ by timestamp, use last timestamp and signature
+	// Otherwise, return error
 	if sameHRS {
-		// if they're the same or only differ by timestamp,
-		// return the LastSignature. Otherwise, error
-		if bytes.Equal(signBytes, dcs.LastSignedInfo.SignBytes) ||
-			checkFn(dcs.LastSignedInfo.SignBytes, signBytes) {
-			return dcs.LastSignedInfo.Signature, nil
+		if bytes.Equal(signBytes, dcs.LastSignedInfo.SignBytes) {
+			vote.Signature = dcs.LastSignedInfo.Signature
+		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(dcs.LastSignedInfo.SignBytes, signBytes); ok {
+			vote.Timestamp = timestamp
+			vote.Signature = dcs.LastSignedInfo.Signature
+		} else {
+			err = fmt.Errorf("Conflicting data")
 		}
-		return sig, fmt.Errorf("Conflicting data")
+		return err
 	}
 
-	// Sign
-	sig, err = signer.Sign(signBytes)
+	// It passed the checks. Sign the vote
+	sig, err := signer.Sign(signBytes)
 	if err != nil {
-		return sig, err
+		return err
+	}
+	dcs.save(height, round, step, signBytes, sig)
+	vote.Signature = sig
+	return nil
+}
+
+// signProposal signs the given proposal with the signer and sets the proposal.Signature if the height/round/step (HRS) are
+// greater than the latest state of the LastSignedInfo. If the HRS are equal and the only thing changed
+// is the timestamp, it sets the timestamp to the previous value and the Signature to the LastSignedInfo.Signature.
+// Else it returns an error.
+func (dcs *DefaultCarefulSigner) signProposal(signer Signer, chainID string, proposal *types.Proposal) error {
+	height, round, step := proposal.Height, proposal.Round, stepPropose
+	signBytes := types.SignBytes(chainID, proposal)
+
+	sameHRS, err := dcs.LastSignedInfo.Verify(height, round, step)
+	if err != nil {
+		return err
 	}
 
+	// We might crash before writing to the wal,
+	// causing us to try to re-sign for the same HRS.
+	// If signbytes are the same, use the last signature.
+	// If they only differ by timestamp, use last timestamp and signature
+	// Otherwise, return error
+	if sameHRS {
+		if bytes.Equal(signBytes, dcs.LastSignedInfo.SignBytes) {
+			proposal.Signature = dcs.LastSignedInfo.Signature
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(dcs.LastSignedInfo.SignBytes, signBytes); ok {
+			proposal.Timestamp = timestamp
+			proposal.Signature = dcs.LastSignedInfo.Signature
+		} else {
+			err = fmt.Errorf("Conflicting data")
+		}
+		return err
+	}
+
+	// It passed the checks. Sign the proposal
+	sig, err := signer.Sign(signBytes)
+	if err != nil {
+		return err
+	}
 	dcs.save(height, round, step, signBytes, sig)
-	return sig, nil
+	proposal.Signature = sig
+	return nil
 }
 
 func (dcs *DefaultCarefulSigner) save(height int64, round int, step int8,

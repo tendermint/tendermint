@@ -86,16 +86,20 @@ func (info *LastSignedInfo) Reset() {
 
 //-------------------------------------
 
-type checkOnlyDifferByTimestamp func([]byte, []byte) bool
-
-// returns true if the only difference in the votes is their timestamp
-func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
+// returns the timestamp from the lastSignBytes.
+// returns true if the only difference in the votes is their timestamp.
+func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote types.CanonicalJSONOnceVote
 	if err := json.Unmarshal(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
 	if err := json.Unmarshal(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
+	}
+
+	lastTime, err := time.Parse(types.TimeFormat, lastVote.Vote.Timestamp)
+	if err != nil {
+		panic(err)
 	}
 
 	// set the times to the same value and check equality
@@ -105,17 +109,23 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
 	lastVoteBytes, _ := json.Marshal(lastVote)
 	newVoteBytes, _ := json.Marshal(newVote)
 
-	return bytes.Equal(newVoteBytes, lastVoteBytes)
+	return lastTime, bytes.Equal(newVoteBytes, lastVoteBytes)
 }
 
+// returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the proposals is their timestamp
-func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
+func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal types.CanonicalJSONOnceProposal
 	if err := json.Unmarshal(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
 	if err := json.Unmarshal(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
+	}
+
+	lastTime, err := time.Parse(types.TimeFormat, lastProposal.Proposal.Timestamp)
+	if err != nil {
+		panic(err)
 	}
 
 	// set the times to the same value and check equality
@@ -125,5 +135,5 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) boo
 	lastProposalBytes, _ := json.Marshal(lastProposal)
 	newProposalBytes, _ := json.Marshal(newProposal)
 
-	return bytes.Equal(newProposalBytes, lastProposalBytes)
+	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }
