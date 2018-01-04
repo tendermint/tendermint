@@ -82,9 +82,14 @@ test_race:
 	@echo "==> Running go test --race"
 	@go test -v -race $(PACKAGES)
 
+test_cover:
+	@ bash tests/test_cover.sh
+
 test_integrations:
 	@bash test.sh
 
+fmt:
+	@ go fmt ./...
 
 ########################################
 ### Formatting, linting, and vetting
