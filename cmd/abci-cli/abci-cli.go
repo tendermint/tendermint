@@ -54,8 +54,8 @@ var (
 
 var RootCmd = &cobra.Command{
 	Use:   "abci-cli",
-	Short: "",
-	Long:  "",
+	Short: "the ABCI CLI tool wraps an ABCI client",
+	Long:  "the ABCI CLI tool wraps an ABCI client and is used for testing ABCI servers",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		switch cmd.Use {
@@ -111,26 +111,26 @@ func Execute() error {
 }
 
 func addGlobalFlags() {
-	RootCmd.PersistentFlags().StringVarP(&flagAddress, "address", "", "tcp://0.0.0.0:46658", "Address of application socket")
-	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "Either socket or grpc")
-	RootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "Print the command and results as if it were a console session")
-	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "Set the logger level")
+	RootCmd.PersistentFlags().StringVarP(&flagAddress, "address", "", "tcp://0.0.0.0:46658", "address of application socket")
+	RootCmd.PersistentFlags().StringVarP(&flagAbci, "abci", "", "socket", "either socket or grpc")
+	RootCmd.PersistentFlags().BoolVarP(&flagVerbose, "verbose", "v", false, "print the command and results as if it were a console session")
+	RootCmd.PersistentFlags().StringVarP(&flagLogLevel, "log_level", "", "debug", "set the logger level")
 }
 
 func addQueryFlags() {
-	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "Path to prefix query with")
-	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "Height to query the blockchain at")
-	queryCmd.PersistentFlags().BoolVarP(&flagProve, "prove", "", false, "Whether or not to return a merkle proof of the query result")
+	queryCmd.PersistentFlags().StringVarP(&flagPath, "path", "", "/store", "path to prefix query with")
+	queryCmd.PersistentFlags().IntVarP(&flagHeight, "height", "", 0, "height to query the blockchain at")
+	queryCmd.PersistentFlags().BoolVarP(&flagProve, "prove", "", false, "whether or not to return a merkle proof of the query result")
 }
 
 func addCounterFlags() {
-	counterCmd.PersistentFlags().StringVarP(&flagAddrC, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
-	counterCmd.PersistentFlags().BoolVarP(&flagSerial, "serial", "", false, "Enforce incrementing (serial) transactions")
+	counterCmd.PersistentFlags().StringVarP(&flagAddrC, "addr", "", "tcp://0.0.0.0:46658", "listen address")
+	counterCmd.PersistentFlags().BoolVarP(&flagSerial, "serial", "", false, "enforce incrementing (serial) transactions")
 }
 
 func addDummyFlags() {
-	dummyCmd.PersistentFlags().StringVarP(&flagAddrD, "addr", "", "tcp://0.0.0.0:46658", "Listen address")
-	dummyCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "Directory to use for a database")
+	dummyCmd.PersistentFlags().StringVarP(&flagAddrD, "addr", "", "tcp://0.0.0.0:46658", "listen address")
+	dummyCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
 func addCommands() {
 	RootCmd.AddCommand(batchCmd)
@@ -155,18 +155,39 @@ func addCommands() {
 
 var batchCmd = &cobra.Command{
 	Use:   "batch",
-	Short: "Run a batch of abci commands against an application",
-	Long:  "",
-	Args:  cobra.ExactArgs(0),
+	Short: "run a batch of abci commands against an application",
+	Long: `run a batch of abci commands against an application
+
+This command is run by piping in a file containing a series of commands
+you'd like to run:
+
+    abci-cli batch < example.file
+
+where example.file looks something like:
+
+    set_option serial on
+    check_tx 0x00
+    check_tx 0xff
+    deliver_tx 0x00
+    check_tx 0x00
+    deliver_tx 0x01
+    deliver_tx 0x04
+    info
+`,
+	Args: cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdBatch(cmd, args)
 	},
 }
 
 var consoleCmd = &cobra.Command{
-	Use:       "console",
-	Short:     "Start an interactive abci console for multiple commands",
-	Long:      "",
+	Use:   "console",
+	Short: "start an interactive ABCI console for multiple commands",
+	Long: `start an interactive ABCI console for multiple commands
+	
+This command opens an interactive console for running any of the other commands
+without opening a new connection each time
+`,
 	Args:      cobra.ExactArgs(0),
 	ValidArgs: []string{"echo", "info", "set_option", "deliver_tx", "check_tx", "commit", "query"},
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -176,8 +197,8 @@ var consoleCmd = &cobra.Command{
 
 var echoCmd = &cobra.Command{
 	Use:   "echo",
-	Short: "Have the application echo a message",
-	Long:  "",
+	Short: "have the application echo a message",
+	Long:  "have the application echo a message",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdEcho(cmd, args)
@@ -185,8 +206,8 @@ var echoCmd = &cobra.Command{
 }
 var infoCmd = &cobra.Command{
 	Use:   "info",
-	Short: "Get some info about the application",
-	Long:  "",
+	Short: "get some info about the application",
+	Long:  "get some info about the application",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdInfo(cmd, args)
@@ -194,8 +215,8 @@ var infoCmd = &cobra.Command{
 }
 var setOptionCmd = &cobra.Command{
 	Use:   "set_option",
-	Short: "Set an option on the application",
-	Long:  "",
+	Short: "set an option on the application",
+	Long:  "set an option on the application",
 	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdSetOption(cmd, args)
@@ -204,8 +225,8 @@ var setOptionCmd = &cobra.Command{
 
 var deliverTxCmd = &cobra.Command{
 	Use:   "deliver_tx",
-	Short: "Deliver a new transaction to the application",
-	Long:  "",
+	Short: "deliver a new transaction to the application",
+	Long:  "deliver a new transaction to the application",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdDeliverTx(cmd, args)
@@ -214,8 +235,8 @@ var deliverTxCmd = &cobra.Command{
 
 var checkTxCmd = &cobra.Command{
 	Use:   "check_tx",
-	Short: "Validate a transaction",
-	Long:  "",
+	Short: "validate a transaction",
+	Long:  "validate a transaction",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCheckTx(cmd, args)
@@ -224,8 +245,8 @@ var checkTxCmd = &cobra.Command{
 
 var commitCmd = &cobra.Command{
 	Use:   "commit",
-	Short: "Commit the application state and return the Merkle root hash",
-	Long:  "",
+	Short: "commit the application state and return the Merkle root hash",
+	Long:  "commit the application state and return the Merkle root hash",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCommit(cmd, args)
@@ -234,8 +255,8 @@ var commitCmd = &cobra.Command{
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print abci console version",
-	Long:  "",
+	Short: "print ABCI console version",
+	Long:  "print ABCI console version",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fmt.Println(version.Version)
@@ -245,8 +266,8 @@ var versionCmd = &cobra.Command{
 
 var queryCmd = &cobra.Command{
 	Use:   "query",
-	Short: "Query the application state",
-	Long:  "",
+	Short: "query the application state",
+	Long:  "query the application state",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdQuery(cmd, args)
@@ -256,7 +277,7 @@ var queryCmd = &cobra.Command{
 var counterCmd = &cobra.Command{
 	Use:   "counter",
 	Short: "ABCI demo example",
-	Long:  "",
+	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCounter(cmd, args)
@@ -266,7 +287,7 @@ var counterCmd = &cobra.Command{
 var dummyCmd = &cobra.Command{
 	Use:   "dummy",
 	Short: "ABCI demo example",
-	Long:  "",
+	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdDummy(cmd, args)
@@ -275,8 +296,8 @@ var dummyCmd = &cobra.Command{
 
 var testCmd = &cobra.Command{
 	Use:   "test",
-	Short: "Run integration tests",
-	Long:  "",
+	Short: "run integration tests",
+	Long:  "run integration tests",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdTest(cmd, args)
