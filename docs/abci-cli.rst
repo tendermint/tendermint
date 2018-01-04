@@ -53,7 +53,7 @@ Now run ``abci-cli`` to see the list of commands:
       -h, --help             help for abci-cli
       -v, --verbose          print the command and results as if it were a console session
 
-                                          Use "abci-cli [command] --help" for more information about a command.
+    Use "abci-cli [command] --help" for more information about a command.
 
 
 Dummy - First Example
@@ -66,14 +66,56 @@ The most important messages are ``deliver_tx``, ``check_tx``, and
 ``commit``, but there are others for convenience, configuration, and
 information purposes.
 
-Let's start a dummy application, which was installed at the same time as
-``abci-cli`` above. The dummy just stores transactions in a merkle tree:
+We'll start a dummy application, which was installed at the same time as
+``abci-cli`` above. The dummy just stores transactions in a merkle tree.
+
+Its code can be found `here <https://github.com/tendermint/abci/blob/master/cmd/abci-cli/abci-cli.go>`__ and looks like:
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Dummy Example**
+
+    .. code-block:: go
+
+        func cmdDummy(cmd *cobra.Command, args []string) error {
+        	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+        
+        	// Create the application - in memory or persisted to disk
+        	var app types.Application
+        	if flagPersist == "" {
+        		app = dummy.NewDummyApplication()
+        	} else {
+        		app = dummy.NewPersistentDummyApplication(flagPersist)
+        		app.(*dummy.PersistentDummyApplication).SetLogger(logger.With("module", "dummy"))
+        	}
+        
+        	// Start the listener
+        	srv, err := server.NewServer(flagAddrD, flagAbci, app)
+        	if err != nil {
+        		return err
+        	}
+        	srv.SetLogger(logger.With("module", "abci-server"))
+        	if err := srv.Start(); err != nil {
+        		return err
+        	}
+        
+        	// Wait forever
+        	cmn.TrapSignal(func() {
+        		// Cleanup
+        		srv.Stop()
+        	})
+        	return nil
+        }
+
+Start by running:
 
 ::
 
     abci-cli dummy
 
-In another terminal, run
+And in another terminal, run
 
 ::
 
@@ -187,6 +229,41 @@ Counter - Another Example
 Now that we've got the hang of it, let's try another application, the
 "counter" app.
 
+Like the dummy app, its code can be found `here <https://github.com/tendermint/abci/blob/master/cmd/abci-cli/abci-cli.go>`__ and looks like:
+
+.. container:: toggle
+
+    .. container:: header
+
+        **Show/Hide Counter Example**
+
+    .. code-block:: go
+
+        func cmdCounter(cmd *cobra.Command, args []string) error {
+        
+        	app := counter.NewCounterApplication(flagSerial)
+        
+        	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+        
+        	// Start the listener
+        	srv, err := server.NewServer(flagAddrC, flagAbci, app)
+        	if err != nil {
+        		return err
+        	}
+        	srv.SetLogger(logger.With("module", "abci-server"))
+        	if err := srv.Start(); err != nil {
+        		return err
+        	}
+        
+        	// Wait forever
+        	cmn.TrapSignal(func() {
+        		// Cleanup
+        		srv.Stop()
+        	})
+        	return nil
+        }
+
+
 The counter app doesn't use a Merkle tree, it just counts how many times
 we've sent a transaction, asked for a hash, or committed the state. The
 result of ``commit`` is just the number of transactions sent.
@@ -261,7 +338,7 @@ But the ultimate flexibility comes from being able to write the
 application easily in any language.
 
 We have implemented the counter in a number of languages (see the
-example directory).
+`example directory <https://github.com/tendermint/abci/tree/master/example`__).
 
 To run the Node JS version, ``cd`` to ``example/js`` and run
 
@@ -289,4 +366,4 @@ its own pattern of messages.
 For more information, see the `application developers
 guide <./app-development.html>`__. For examples of running an ABCI
 app with Tendermint, see the `getting started
-guide <./getting-started.html>`__.
+guide <./getting-started.html>`__. Next is the ABCI specification.

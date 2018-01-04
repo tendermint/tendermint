@@ -171,29 +171,38 @@ texinfo_documents = [
      'Database'),
 ]
 
-repo = "https://raw.githubusercontent.com/tendermint/tools/"
-branch = "master"
+# ---- customization -------------------------
 
-tools = "./tools"
-assets = tools + "/assets"
+tools_repo = "https://raw.githubusercontent.com/tendermint/tools/"
+tools_branch = "master"
 
-if os.path.isdir(tools) != True:
-    os.mkdir(tools)
-if os.path.isdir(assets) != True:
-    os.mkdir(assets)
+tools_dir = "./tools"
+assets_dir = tools_dir + "/assets"
 
-urllib.urlretrieve(repo+branch+'/ansible/README.rst', filename=tools+'/ansible.rst')
-urllib.urlretrieve(repo+branch+'/ansible/assets/a_plus_t.png', filename=assets+'/a_plus_t.png')
+if os.path.isdir(tools_dir) != True:
+    os.mkdir(tools_dir)
+if os.path.isdir(assets_dir) != True:
+    os.mkdir(assets_dir)
 
-urllib.urlretrieve(repo+branch+'/docker/README.rst', filename=tools+'/docker.rst')
+urllib.urlretrieve(tools_repo+tools_branch+'/ansible/README.rst', filename=tools_dir+'/ansible.rst')
+urllib.urlretrieve(tools_repo+tools_branch+'/ansible/assets/a_plus_t.png', filename=assets_dir+'/a_plus_t.png')
 
-urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/README.rst', filename=tools+'/mintnet-kubernetes.rst')
-urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/gce1.png', filename=assets+'/gce1.png')
-urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/gce2.png', filename=assets+'/gce2.png')
-urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/statefulset.png', filename=assets+'/statefulset.png')
-urllib.urlretrieve(repo+branch+'/mintnet-kubernetes/assets/t_plus_k.png', filename=assets+'/t_plus_k.png')
+urllib.urlretrieve(tools_repo+tools_branch+'/docker/README.rst', filename=tools_dir+'/docker.rst')
 
-urllib.urlretrieve(repo+branch+'/terraform-digitalocean/README.rst', filename=tools+'/terraform-digitalocean.rst')
-urllib.urlretrieve(repo+branch+'/tm-bench/README.rst', filename=tools+'/benchmarking-and-monitoring.rst')
+urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/README.rst', filename=tools_dir+'/mintnet-kubernetes.rst')
+urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/gce1.png', filename=assets_dir+'/gce1.png')
+urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/gce2.png', filename=assets_dir+'/gce2.png')
+urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/statefulset.png', filename=assets_dir+'/statefulset.png')
+urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/t_plus_k.png', filename=assets_dir+'/t_plus_k.png')
+
+urllib.urlretrieve(tools_repo+tools_branch+'/terraform-digitalocean/README.rst', filename=tools_dir+'/terraform-digitalocean.rst')
+urllib.urlretrieve(tools_repo+tools_branch+'/tm-bench/README.rst', filename=tools_dir+'/benchmarking-and-monitoring.rst')
 # the readme for below is included in tm-bench
 # urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-monitor/README.rst', filename='tools/tm-monitor.rst')
+
+#### abci spec #################################
+
+abci_repo = "https://raw.githubusercontent.com/tendermint/abci/"
+abci_branch = "spec-docs"
+
+urllib.urlretrieve(abci_repo+abci_branch+'/specification.rst', filename='abci-spec.rst')
