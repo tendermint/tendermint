@@ -89,7 +89,9 @@ test_persistence: clean_tests
 
 test_p2p: clean_tests
 	mkdir test/logs
-	docker run -d -v "test/logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
+	cd test/
+	docker run -d -v "logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
+	cd ..
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
 	ls test/logs
