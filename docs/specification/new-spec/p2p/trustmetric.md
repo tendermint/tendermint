@@ -1,11 +1,4 @@
 
-# Peer Strategy
-
-Peers are managed using an address book and a trust metric.
-The book keeps a record of vetted peers and unvetted peers.
-When we need more peers, we pick them randomly from the addrbook with some
-configurable bias for unvetted peers. When we’re asked for peers, we provide a random selection with no bias.
-
 The trust metric tracks the quality of the peers.
 When a peer exceeds a certain quality for a certain amount of time,
 it is marked as vetted in the addrbook.
@@ -17,7 +10,7 @@ possibly only if its below some absolute minimum ?
 Peer quality is tracked in the connection and across the reactors.
 Behaviours are defined as one of:
     - fatal - something outright malicious. we should disconnect and remember them.
-        - bad - any kind of timeout, msgs that dont unmarshal, or fail other validity checks, or msgs we didn't ask for or arent expecting
-            - neutral - normal correct behaviour. unknown channels/msg types (version upgrades).
-                - good - some random majority of peers per reactor sending us useful messages
+    - bad - any kind of timeout, msgs that dont unmarshal, or fail other validity checks, or msgs we didn't ask for or arent expecting
+    - neutral - normal correct behaviour. unknown channels/msg types (version upgrades).
+    - good - some random majority of peers per reactor sending us useful messages
 

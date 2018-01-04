@@ -9,5 +9,6 @@ See:
 - [docs/connection] for details on how connections and multiplexing work
 - [docs/peer] for details on peer ID, handshakes, and peer exchange
 - [docs/node] for details about different types of nodes and how they should work
-- [docs/reputation] for details on how peer reputation is managed
+- [docs/pex] for details on peer discovery and exchange
+- [docs/config] for details on some config options
 

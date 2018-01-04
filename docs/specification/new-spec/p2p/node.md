@@ -3,11 +3,6 @@
 A Tendermint P2P network has different kinds of nodes with different requirements for connectivity to others.
 This document describes what kind of nodes Tendermint should enable and how they should work.
 
-## Node startup options
---p2p.seed_mode // If present, this node operates in seed mode.  It will kick incoming peers after sharing some peers.
---p2p.seeds “1.2.3.4:466656,2.3.4.5:4444” // Dials these seeds to get peers and disconnects.
---p2p.persistent_peers “1.2.3.4:46656,2.3.4.5:466656” // These connections will be auto-redialed.  If dial_seeds and persistent intersect, the user will be WARNED that seeds may auto-close connections and the node may not be able to keep the connection persistent
-
 ## Seeds
 
 Seeds are the first point of contact for a new node.
@@ -17,21 +12,35 @@ Seeds should operate full nodes, and with the PEX reactor in a "crawler" mode
 that continuously explores to validate the availability of peers.
 
 Seeds should only respond with some top percentile of the best peers it knows about.
+See [reputation] for details on peer quality.
 
 ## New Full Node
 
-A new node has seeds hardcoded into the software, but they can also be set manually (config file or flags).
-The new node must also have access to a recent block height, H, and hash, HASH.
+A new node needs a few things to connect to the network:
+- a list of seeds, which can be provided to Tendermint via config file or flags,
+or hardcoded into the software by in-process apps
+- a `ChainID`, also called `Network` at the p2p layer
+- a recent block height, H, and hash, HASH for the blockchain.
 
-The node then queries some seeds for peers for its chain,
+The values `H` and `HASH` must be received and corroborated by means external to Tendermint, and specific to the user - ie. via the user's trusted social consensus.
+This requirement to validate `H` and `HASH` out-of-band and via social consensus
+is the essential difference in security models between Proof-of-Work and Proof-of-Stake blockchains.
+
+With the above, the node then queries some seeds for peers for its chain,
 dials those peers, and runs the Tendermint protocols with those it successfully connects to.
 
 When the peer catches up to height H, it ensures the block hash matches HASH.
+If not, Tendermint will exit, and the user must try again - either they are connected
+to bad peers or their social consensus was invalidated.
 
 ## Restarted Full Node
 
 A node checks its address book on startup and attempts to connect to peers from there.
 If it can't connect to any peers after some time, it falls back to the seeds to find more.
+
+Restarted full nodes can run the `blockchain` or `consensus` reactor protocols to sync up
+to the latest state of the blockchain, assuming they aren't too far behind.
+If they are too far behind, they may need to validate a recent `H` and `HASH` out-of-band again.
 
 ## Validator Node
 
