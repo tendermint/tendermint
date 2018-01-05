@@ -14,7 +14,7 @@ GOGCCFLAGS ?= $(shell go env GOGCCFLAGS)
 XC_ARCH ?= 386 amd64 arm
 XC_OS ?= solaris darwin freebsd linux windows
 XC_OSARCH ?= !darwin/arm !solaris/amd64 !freebsd/amd64
-BUILD_OUTPUT ?= $(GOPATH)/bin/{{.OS}}_{{.Arch}}/tendermint
+BUILD_OUTPUT ?= ./build/{{.OS}}_{{.Arch}}/tendermint
 
 GOX_FLAGS = -os="$(XC_OS)" -arch="$(XC_ARCH)" -osarch="$(XC_OSARCH)" -output="$(BUILD_OUTPUT)"
 ifeq ($(BUILD_FLAGS_RACE),YES)
@@ -22,8 +22,13 @@ RACEFLAG=-race
 else
 RACEFLAG=
 endif
-BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=7 HEAD) $(LDFLAGS_EXTRA)" $(RACEFLAG)
+BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=8 HEAD) $(LDFLAGS_EXTRA)" $(RACEFLAG)
 GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
+#Check that that minor version of GO meets the minimum required
+GO_MINOR_VERSION := $(shell grep -o \.[[:digit:]][[:digit:]]*\. <<< $(GO_VERSION) | grep -o [[:digit:]]* )
+GO_MIN_MINOR_VERSION := $(shell grep -o \.[[:digit:]][[:digit:]]*\. <<< $(GO_MIN_VERSION) | grep -o [[:digit:]]* )
+GO_MINOR_VERSION_CHECK := $(shell test $(GO_MINOR_VERSION) -ge $(GO_MIN_MINOR_VERSION) && echo YES)
+
 
 all: check build test install metalinter
 
@@ -33,14 +38,14 @@ check: check_tools get_vendor_deps
 ########################################
 ### Build
 
-build_cc: check_tools
+build_xc: check_tools
 	$(shell which gox) $(BUILD_FLAGS) $(GOX_FLAGS) ./cmd/tendermint/
 
 build:
 ifeq ($(OS),Windows_NT)
-	make build_cc XC_ARCH=amd64 XC_OS=windows BUILD_OUTPUT=$(GOPATH)/bin/tendermint
+	make build_xc XC_ARCH=amd64 XC_OS=windows BUILD_OUTPUT=$(GOPATH)/bin/tendermint
 else
-	make build_cc XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
+	make build_xc XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
 endif
 
 build_race:
@@ -63,15 +68,26 @@ check_tools:
 ifeq ($(GO_VERSION),)
 	$(error go not found)
 endif
+#Check minimum required go version
 ifneq ($(GO_VERSION),$(GO_MIN_VERSION))
 	$(warning WARNING: build will not be deterministic. go version should be $(GO_MIN_VERSION))
+ifneq ($(GO_MINOR_VERSION_CHECK),YES)
+	$(error ERROR: The minor version of Go ($(GO_VERSION)) is lower than the minimum required ($(GO_MIN_VERSION)))
 endif
+endif
+#-fdebug-prefix-map switches the temporary, randomized workdir name in the binary to a static text
 ifneq ($(findstring -fdebug-prefix-map,$(GOGCCFLAGS)),-fdebug-prefix-map)
 	$(warning WARNING: build will not be deterministic. The compiler does not support the '-fdebug-prefix-map' flag.)
 endif
+#GOROOT string is copied into the binary. For deterministic builds, we agree to keep it at /usr/local/go. (Default for golang:1.9.2 docker image, linux and osx.)
 ifneq ($(GOROOT),/usr/local/go)
-	$(warning WARNING: build will not be deterministic. GOPATH should be set to /usr/local/go)
+	$(warning WARNING: build will not be deterministic. GOROOT should be set to /usr/local/go)
 endif
+#GOPATH string is copied into the binary. Although the -trimpath flag tries to eliminate it, it doesn't do it everywhere in Go 1.9.2. For deterministic builds we agree to keep it at /go. (Default for golang:1.9.2 docker image.)
+ifneq ($(GOPATH),/go)
+	$(warning WARNING: build will not be deterministic. GOPATH should be set to /go)
+endif
+#External dependencies defined in GOTOOLS are built with get_tools. If they are already available on the system (for exmaple using a package manager), then get_tools might not be necessary.
 ifneq ($(findstring $(GOPATH)/bin,$(PATH)),$(GOPATH)/bin)
 	$(warning WARNING: PATH does not contain GOPATH/bin. Some external dependencies might be unavailable.) 
 endif

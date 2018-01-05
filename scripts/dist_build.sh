@@ -10,7 +10,7 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 cd "$DIR"
 
 # Make sure build tools are available, get VENDORED dependencies and build
-make get_tools get_vendor_deps build_cc
+make get_tools get_vendor_deps build_xc
 
 # Zip all the files.
 echo "==> Packaging..."
