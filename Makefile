@@ -82,11 +82,17 @@ test_race:
 	@echo "==> Running go test --race"
 	@go test -v -race $(PACKAGES)
 
+### three tests tested by Jenkins
 test_cover:
 	@ bash tests/test_cover.sh
 
-test_integrations:
-	@bash test.sh
+test_app:
+	# test the counter using a go test script
+	@ bash tests/test_app/test.sh
+
+test_cli:
+	# test the cli against the examples in the tutorial at tendermint.com
+	@ bash tests/test_cli/test.sh
 
 fmt:
 	@ go fmt ./...
