@@ -23,16 +23,20 @@ type Inquiring struct {
 //
 // Example: The trusted provider should a CacheProvider, MemProvider or files.Provider. The source
 // provider should be a client.HTTPProvider.
-func NewInquiring(chainID string, fc FullCommit, trusted Provider, source Provider) *Inquiring {
+func NewInquiring(chainID string, fc FullCommit, trusted Provider,
+	source Provider) (*Inquiring, error) {
+
 	// store the data in trusted
-	// TODO: StoredCommit() can return an error and we need to handle this.
-	trusted.StoreCommit(fc)
+	err := trusted.StoreCommit(fc)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Inquiring{
 		cert:    NewDynamic(chainID, fc.Validators, fc.Height()),
 		trusted: trusted,
 		Source:  source,
-	}
+	}, nil
 }
 
 // ChainID returns the chain id.
