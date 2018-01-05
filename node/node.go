@@ -77,8 +77,20 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+	var privVal types.PrivValidator
+	privVal = types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
+	/*
+		if config.PrivValidatorAddr != "" {
+			pvsc := priv_val.NewPrivValidatorSocketClient(logger.With("module", "priv_val"),
+				config.PrivValidatorAddr)
+			pvsc.Start()
+			privVal = pvsc
+		}
+	*/
+	fmt.Println("PRIV", config.PrivValidatorAddr)
+
 	return NewNode(config,
-		types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile()),
+		privVal,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,

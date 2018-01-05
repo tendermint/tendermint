@@ -103,6 +103,9 @@ type BaseConfig struct {
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
+	// TCP or UNIX socket address of the PrivValidator server
+	PrivValidatorAddr string `mapstructure:"priv_validator_addr"`
+
 	// TCP or UNIX socket address of the ABCI application,
 	// or the name of an ABCI application compiled in with the Tendermint binary
 	ProxyApp string `mapstructure:"proxy_app"`
