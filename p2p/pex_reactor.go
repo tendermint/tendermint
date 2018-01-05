@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"reflect"
+	"sort"
 	"time"
 
 	wire "github.com/tendermint/go-wire"
@@ -23,6 +24,10 @@ const (
 	// maximum pex messages one peer can send to us during `msgCountByPeerFlushInterval`
 	defaultMaxMsgCountByPeer    = 1000
 	msgCountByPeerFlushInterval = 1 * time.Hour
+
+	// Seed/Crawler constants
+	defaultSeedDisconnectWaitPeriod = 2 * time.Minute
+	defaultCrawlPeerInterval        = 30 * time.Second
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
@@ -47,18 +52,22 @@ type PEXReactor struct {
 	book              *AddrBook
 	ensurePeersPeriod time.Duration
 
+	// Seed/Crawler Mode
+	runningSeedCrawler bool
+
 	// tracks message count by peer, so we can prevent abuse
 	msgCountByPeer    *cmn.CMap
 	maxMsgCountByPeer uint16
 }
 
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook) *PEXReactor {
+func NewPEXReactor(b *AddrBook, sm bool) *PEXReactor {
 	r := &PEXReactor{
-		book:              b,
-		ensurePeersPeriod: defaultEnsurePeersPeriod,
-		msgCountByPeer:    cmn.NewCMap(),
-		maxMsgCountByPeer: defaultMaxMsgCountByPeer,
+		book:               b,
+		runningSeedCrawler: sm,
+		ensurePeersPeriod:  defaultEnsurePeersPeriod,
+		msgCountByPeer:     cmn.NewCMap(),
+		maxMsgCountByPeer:  defaultMaxMsgCountByPeer,
 	}
 	r.BaseReactor = *NewBaseReactor("PEXReactor", r)
 	return r
@@ -73,7 +82,14 @@ func (r *PEXReactor) OnStart() error {
 	if err != nil && err != cmn.ErrAlreadyStarted {
 		return err
 	}
-	go r.ensurePeersRoutine()
+
+	// Check if this node should run
+	// in seed/crawler mode
+	if r.runningSeedCrawler {
+		go r.seedCrawlerMode()
+	} else {
+		go r.ensurePeersRoutine()
+	}
 	go r.flushMsgCountByPeer()
 	return nil
 }
@@ -290,6 +306,160 @@ func (r *PEXReactor) ensurePeers() {
 			r.Logger.Info("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
 			r.RequestPEX(peer)
 		}
+	}
+}
+
+// Explores the network searching for more peers. (continuous)
+// Seed/Crawler Mode causes this node to quickly disconnect
+// from peers, except other seed nodes.
+func (r *PEXReactor) seedCrawlerMode() {
+	// Do an initial crawl
+	r.crawlPeers()
+
+	// Fire periodically
+	ticker := time.NewTicker(5 * time.Second)
+
+	for {
+		select {
+		case <-ticker.C:
+			r.attemptDisconnects()
+			r.crawlPeers()
+		case <-r.Quit:
+			return
+		}
+	}
+}
+
+// crawlStatus handles temporary data needed for the
+// network crawling performed during seed/crawler mode.
+type crawlStatus struct {
+	// The remote address of a potential peer we learned about
+	Addr *NetAddress
+
+	// Not empty if we are connected to the address
+	PeerID string
+
+	// The last time we attempt to reach this address
+	LastAttempt time.Time
+
+	// The last time we successfully reached this address
+	LastSuccess time.Time
+}
+
+// oldestAttempt implements sort.Interface for []crawlStatus
+// based on the LastAttempt field.
+type oldestAttempt []crawlStatus
+
+func (oa oldestAttempt) Len() int           { return len(oa) }
+func (oa oldestAttempt) Swap(i, j int)      { oa[i], oa[j] = oa[j], oa[i] }
+func (oa oldestAttempt) Less(i, j int) bool { return oa[i].LastAttempt.Before(oa[j].LastAttempt) }
+
+// getCrawlStatus returns addresses of potential peers that we wish to validate.
+// NOTE: The status information is ordered as described above.
+func (r *PEXReactor) getCrawlStatus() []crawlStatus {
+	var oa oldestAttempt
+
+	addrs := r.book.List()
+	// Go through all the addresses in the AddressBook
+	for _, addr := range addrs {
+		oa = append(oa, crawlStatus{
+			Addr:        addr.Addr,
+			PeerID:      r.addrToPeerKey(addr.Addr),
+			LastAttempt: addr.LastAttempt,
+			LastSuccess: addr.LastSuccess,
+		})
+	}
+	sort.Sort(oa)
+	return oa
+}
+
+// addrToPeerKey returns the Peer.Key() if the Peer is currently
+// connected and has the RemoteAddr equal to the addr parameter.
+func (r *PEXReactor) addrToPeerKey(addr *NetAddress) string {
+	var id string
+
+	peers := r.Switch.peers.List()
+	for _, p := range peers {
+		if addr.String() == p.NodeInfo().RemoteAddr {
+			id = p.Key()
+			break
+		}
+	}
+	return id
+}
+
+// crawlPeers will crawl the network looking for new peer addresses. (once)
+//
+// TODO Basically, we need to work harder on our good-peer/bad-peer marking.
+// What we're currently doing in terms of marking good/bad peers is just a
+// placeholder. It should not be the case that an address becomes old/vetted
+// upon a single successful connection.
+func (r *PEXReactor) crawlPeers() {
+	crawlerStatus := r.getCrawlStatus()
+
+	now := time.Now()
+	// Use addresses we know of to reach additional peers
+	for _, cs := range crawlerStatus {
+		// Do not dial peers that are already connected
+		if cs.PeerID != "" {
+			continue
+		}
+		// Do not attempt to connect with peers we recently dialed
+		if now.Sub(cs.LastAttempt) < defaultCrawlPeerInterval {
+			continue
+		}
+		// Otherwise, attempt to connect with the known address
+		p, err := r.Switch.DialPeerWithAddress(cs.Addr, false)
+		if err != nil {
+			r.book.MarkAttempt(cs.Addr)
+			continue
+		}
+		// Enter the peer ID into our crawl status information
+		cs.PeerID = p.Key()
+		r.book.MarkGood(cs.Addr)
+	}
+	// Crawl the connected peers asking for more addresses
+	for _, cs := range crawlerStatus {
+		if cs.PeerID == "" {
+			continue
+		}
+		// We will wait a minimum period of time before crawling peers again
+		if now.Sub(cs.LastAttempt) >= defaultCrawlPeerInterval {
+			p := r.Switch.peers.Get(cs.PeerID)
+			if p != nil {
+				r.RequestPEX(p)
+			}
+		}
+	}
+}
+
+// attemptDisconnects checks the crawlStatus info for Peers to disconnect from. (once)
+func (r *PEXReactor) attemptDisconnects() {
+	crawlerStatus := r.getCrawlStatus()
+
+	now := time.Now()
+	// Go through each peer we have connected with
+	// looking for opportunities to disconnect
+	for _, cs := range crawlerStatus {
+		if cs.PeerID == "" {
+			continue
+		}
+		// Remain connected to each peer for a minimum period of time
+		if now.Sub(cs.LastSuccess) < defaultSeedDisconnectWaitPeriod {
+			continue
+		}
+		// Fetch the Peer using the saved ID
+		p := r.Switch.peers.Get(cs.PeerID)
+		if p == nil {
+			continue
+		}
+		// Do not disconnect from persistent peers.
+		// Specifically, we need to remain connected to other seeds
+		if p.IsPersistent() {
+			continue
+		}
+		// Otherwise, disconnect from the peer
+		r.Switch.StopPeerGracefully(p)
 	}
 }
 
