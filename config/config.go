@@ -217,6 +217,9 @@ type P2PConfig struct {
 	// Set true to enable the peer-exchange reactor
 	PexReactor bool `mapstructure:"pex"`
 
+	// Set true to enable the peer-exchange reactor seed/crawler mode
+	SeedMode bool `mapstructure:"seed_mode"`
+
 	// Maximum number of peers to connect to
 	MaxNumPeers int `mapstructure:"max_num_peers"`
 
@@ -245,6 +248,7 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                512000, // 500 kB/s
 		RecvRate:                512000, // 500 kB/s
 		PexReactor:              true,
+		SeedMode:                false,
 	}
 }
 
