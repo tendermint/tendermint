@@ -44,6 +44,6 @@ EOF
     chown ubuntu:ubuntu /home/ubuntu/.bash_profile
 
     # get all deps and tools, ready to install/test
-    su - ubuntu -c 'cd /home/ubuntu/go/src/github.com/tendermint/tendermint && make get_vendor_deps && make tools'
+    su - ubuntu -c 'cd /home/ubuntu/go/src/github.com/tendermint/tendermint && make get_tools && make get_vendor_deps'
   SHELL
 end
