@@ -32,15 +32,14 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectEvidenceReactors(config *cfg.Config, N int) []*EvidenceReactor {
+func makeAndConnectEvidenceReactors(config *cfg.Config, stateDBs []dbm.DB) []*EvidenceReactor {
+	N := len(stateDBs)
 	reactors := make([]*EvidenceReactor, N)
 	logger := evidenceLogger()
 	for i := 0; i < N; i++ {
 
-		params := types.EvidenceParams{}
 		store := NewEvidenceStore(dbm.NewMemDB())
-		state := mockState{}
-		pool := NewEvidencePool(params, store, state)
+		pool := NewEvidencePool(stateDBs[i], store)
 		reactors[i] = NewEvidenceReactor(pool)
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
@@ -99,10 +98,10 @@ func _waitForEvidence(t *testing.T, wg *sync.WaitGroup, evs types.EvidenceList, 
 	wg.Done()
 }
 
-func sendEvidence(t *testing.T, evpool *EvidencePool, n int) types.EvidenceList {
+func sendEvidence(t *testing.T, evpool *EvidencePool, valAddr []byte, n int) types.EvidenceList {
 	evList := make([]types.Evidence, n)
 	for i := 0; i < n; i++ {
-		ev := newMockGoodEvidence(int64(i), 2, []byte("val"))
+		ev := types.NewMockGoodEvidence(int64(i+1), 0, valAddr)
 		err := evpool.AddEvidence(ev)
 		assert.Nil(t, err)
 		evList[i] = ev
@@ -111,17 +110,28 @@ func sendEvidence(t *testing.T, evpool *EvidencePool, n int) types.EvidenceList 
 }
 
 var (
-	NUM_EVIDENCE = 1000
+	NUM_EVIDENCE = 1
 	TIMEOUT      = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
 func TestReactorBroadcastEvidence(t *testing.T) {
 	config := cfg.TestConfig()
 	N := 7
-	reactors := makeAndConnectEvidenceReactors(config, N)
 
-	// send a bunch of evidence to the first reactor's evpool
+	// create statedb for everyone
+	stateDBs := make([]dbm.DB, N)
+	valAddr := []byte("myval")
+	// we need validators saved for heights at least as high as we have evidence for
+	height := int64(NUM_EVIDENCE) + 10
+	for i := 0; i < N; i++ {
+		stateDBs[i] = initializeValidatorState(valAddr, height)
+	}
+
+	// make reactors from statedb
+	reactors := makeAndConnectEvidenceReactors(config, stateDBs)
+
+	// send a bunch of valid evidence to the first reactor's evpool
 	// and wait for them all to be received in the others
-	evList := sendEvidence(t, reactors[0].evpool, NUM_EVIDENCE)
+	evList := sendEvidence(t, reactors[0].evpool, valAddr, NUM_EVIDENCE)
 	waitForEvidence(t, evList, reactors)
 }

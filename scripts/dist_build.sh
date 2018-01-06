@@ -9,32 +9,8 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 # Change into that dir because we expect that.
 cd "$DIR"
 
-# Get the git commit
-GIT_COMMIT="$(git rev-parse --short HEAD)"
-GIT_IMPORT="github.com/tendermint/tendermint/version"
-
-# Determine the arch/os combos we're building for
-XC_ARCH=${XC_ARCH:-"386 amd64 arm"}
-XC_OS=${XC_OS:-"solaris darwin freebsd linux windows"}
-
-# Make sure build tools are available.
-make tools
-
-# Get VENDORED dependencies
-make get_vendor_deps
-
-# Build!
-# ldflags: -s Omit the symbol table and debug information.
-#	         -w Omit the DWARF symbol table.
-echo "==> Building..."
-"$(which gox)" \
-		-os="${XC_OS}" \
-		-arch="${XC_ARCH}" \
-		-osarch="!darwin/arm !solaris/amd64 !freebsd/amd64" \
-		-ldflags "-s -w -X ${GIT_IMPORT}.GitCommit=${GIT_COMMIT}" \
-		-output "build/pkg/{{.OS}}_{{.Arch}}/tendermint" \
-		-tags="${BUILD_TAGS}" \
-		github.com/tendermint/tendermint/cmd/tendermint
+# Make sure build tools are available, get VENDORED dependencies and build
+make get_tools get_vendor_deps build_xc
 
 # Zip all the files.
 echo "==> Packaging..."

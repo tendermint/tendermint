@@ -1,8 +1,6 @@
 package evidence
 
 import (
-	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +18,7 @@ func TestStoreAddDuplicate(t *testing.T) {
 	store := NewEvidenceStore(db)
 
 	priority := int64(10)
-	ev := newMockGoodEvidence(2, 1, []byte("val1"))
+	ev := types.NewMockGoodEvidence(2, 1, []byte("val1"))
 
 	added := store.AddNewEvidence(ev, priority)
 	assert.True(added)
@@ -43,7 +41,7 @@ func TestStoreMark(t *testing.T) {
 	assert.Equal(0, len(pendingEv))
 
 	priority := int64(10)
-	ev := newMockGoodEvidence(2, 1, []byte("val1"))
+	ev := types.NewMockGoodEvidence(2, 1, []byte("val1"))
 
 	added := store.AddNewEvidence(ev, priority)
 	assert.True(added)
@@ -89,15 +87,15 @@ func TestStorePriority(t *testing.T) {
 
 	// sorted by priority and then height
 	cases := []struct {
-		ev       MockGoodEvidence
+		ev       types.MockGoodEvidence
 		priority int64
 	}{
-		{newMockGoodEvidence(2, 1, []byte("val1")), 17},
-		{newMockGoodEvidence(5, 2, []byte("val2")), 15},
-		{newMockGoodEvidence(10, 2, []byte("val2")), 13},
-		{newMockGoodEvidence(100, 2, []byte("val2")), 11},
-		{newMockGoodEvidence(90, 2, []byte("val2")), 11},
-		{newMockGoodEvidence(80, 2, []byte("val2")), 11},
+		{types.NewMockGoodEvidence(2, 1, []byte("val1")), 17},
+		{types.NewMockGoodEvidence(5, 2, []byte("val2")), 15},
+		{types.NewMockGoodEvidence(10, 2, []byte("val2")), 13},
+		{types.NewMockGoodEvidence(100, 2, []byte("val2")), 11},
+		{types.NewMockGoodEvidence(90, 2, []byte("val2")), 11},
+		{types.NewMockGoodEvidence(80, 2, []byte("val2")), 11},
 	}
 
 	for _, c := range cases {
@@ -113,52 +111,12 @@ func TestStorePriority(t *testing.T) {
 
 //-------------------------------------------
 const (
-	evidenceTypeMock = byte(0x01)
+	evidenceTypeMockGood = byte(0x01)
+	evidenceTypeMockBad  = byte(0x02)
 )
 
 var _ = wire.RegisterInterface(
 	struct{ types.Evidence }{},
-	wire.ConcreteType{MockGoodEvidence{}, evidenceTypeMock},
+	wire.ConcreteType{types.MockGoodEvidence{}, evidenceTypeMockGood},
+	wire.ConcreteType{types.MockBadEvidence{}, evidenceTypeMockBad},
 )
-
-type MockGoodEvidence struct {
-	Height_  int64
-	Address_ []byte
-	Index_   int
-}
-
-func newMockGoodEvidence(height int64, index int, address []byte) MockGoodEvidence {
-	return MockGoodEvidence{height, address, index}
-}
-
-func (e MockGoodEvidence) Height() int64   { return e.Height_ }
-func (e MockGoodEvidence) Address() []byte { return e.Address_ }
-func (e MockGoodEvidence) Index() int      { return e.Index_ }
-func (e MockGoodEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%d", e.Height_, e.Index_))
-}
-func (e MockGoodEvidence) Verify(chainID string) error { return nil }
-func (e MockGoodEvidence) Equal(ev types.Evidence) bool {
-	e2 := ev.(MockGoodEvidence)
-	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_) &&
-		e.Index_ == e2.Index_
-}
-func (e MockGoodEvidence) String() string {
-	return fmt.Sprintf("GoodEvidence: %d/%s/%d", e.Height_, e.Address_, e.Index_)
-}
-
-type MockBadEvidence struct {
-	MockGoodEvidence
-}
-
-func (e MockBadEvidence) Verify(chainID string) error { return fmt.Errorf("MockBadEvidence") }
-func (e MockBadEvidence) Equal(ev types.Evidence) bool {
-	e2 := ev.(MockBadEvidence)
-	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_) &&
-		e.Index_ == e2.Index_
-}
-func (e MockBadEvidence) String() string {
-	return fmt.Sprintf("BadEvidence: %d/%s/%d", e.Height_, e.Address_, e.Index_)
-}

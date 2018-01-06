@@ -1,5 +1,5 @@
-hash: bd982742a0aee39426f3866914a59f7c47e68dc8dedb87219e2099c0d9c19f7e
-updated: 2017-12-21T17:45:25.372327218Z
+hash: 072c8e685dd519c1f509da67379b70451a681bf3ef6cbd82900a1f68c55bbe16
+updated: 2017-12-29T11:08:17.355999228-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2e60448ffcc6bf78332d1fe590260095f554dd78
@@ -64,19 +64,17 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/magiconair/properties
-  version: 8d7837e64d3c1ee4e54a880c5a920ab4316fc90a
+  version: 49d762b9817ba1c2e9d0c69183c2b4a8b8f1d934
 - name: github.com/mitchellh/mapstructure
   version: 06020f85339e21b2478f756a78e295255ffa4d6a
-- name: github.com/pelletier/go-buffruneio
-  version: c37440a7cf42ac63b919c752ca73a85067e05992
 - name: github.com/pelletier/go-toml
-  version: b8b5e7696574464b2f9bf303a7b37781bb52889f
+  version: 0131db6d737cfbbfb678f8b7d92e55e27ce46224
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/rcrowley/go-metrics
-  version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
+  version: e181e095bae94582363434144c61a9653aff6e50
 - name: github.com/spf13/afero
-  version: 5660eeed305fe5f69c8fc6cf899132a459a97064
+  version: 57afd63c68602b63ed976de00dd066ccb3c319db
   subpackages:
   - mem
 - name: github.com/spf13/cast
@@ -105,7 +103,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: e4b9f1abe794a2117a59738a1294e09b46d0fa00
+  version: 5d5ea6869b91cadb55dbc4211ad7b326f053a33e
   subpackages:
   - client
   - example/code
@@ -131,7 +129,7 @@ imports:
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: 662a886dc20600ce11e1d684a15b83b5813e7277
+  version: 91b4b534ad78e442192c8175db92a06a51064064
   subpackages:
   - autofile
   - cli
@@ -146,7 +144,7 @@ imports:
   - pubsub/query
   - test
 - name: golang.org/x/crypto
-  version: d585fd2cc9195196078f516b69daff6744ef5e84
+  version: 95a4943f35d008beabde8c11e5075a1b714e6419
   subpackages:
   - curve25519
   - nacl/box
@@ -167,11 +165,11 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: d818ba11af4465e00c1998bd3f8a55603b422290
+  version: 83801418e1b59fb1880e363299581ee543af32ca
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: eb22672bea55af56d225d4e35405f4d2e9f062a0
+  version: e19ae1496984b1c655b8044a65c0300a3c878dd3
   subpackages:
   - secure/bidirule
   - transform
@@ -203,7 +201,7 @@ imports:
 - name: gopkg.in/go-playground/validator.v9
   version: b1f51f36f1c98cc97f777d6fc9d4b05eaa0cabb5
 - name: gopkg.in/yaml.v2
-  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
+  version: 287cf08546ab5e7e37d55a84f7ed3fd1db036de5
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9

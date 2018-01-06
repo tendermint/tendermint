@@ -3,9 +3,7 @@
 ## Roadmap
 
 BREAKING CHANGES:
-- Upgrade the header to support better proofs on validtors, results, evidence, and possibly more
 - Better support for injecting randomness
-- Pass evidence/voteInfo through ABCI
 - Upgrade consensus for more real-time use of evidence
 - the files usually found in `~/.tendermint` (`config.toml`, `genesis.json`, and `priv_validator.json`) are now in `~/.tendermint/config`. The `$TMHOME/data/` directory remains unchanged.
 
@@ -28,11 +26,33 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.15.0 (TBD)
+## 0.15.0 (December 29, 2017)
 
 BREAKING CHANGES:
 - [p2p] enable the Peer Exchange reactor by default
 - [types] add Timestamp field to Proposal/Vote
+- [types] add new fields to Header: TotalTxs, ConsensusParamsHash, LastResultsHash, EvidenceHash
+- [types] add Evidence to Block
+- [types] simplify ValidateBasic
+- [state] updates to support changes to the header
+- [state] Enforce <1/3 of validator set can change at a time
+
+FEATURES:
+- [state] Send indices of absent validators and addresses of byzantine validators in BeginBlock
+- [state] Historical ConsensusParams and ABCIResponses
+- [docs] Specification for the base Tendermint data structures.
+- [evidence] New evidence reactor for gossiping and managing evidence
+- [rpc] `/block_results?height=X` returns the DeliverTx results for a given height.
+
+IMPROVEMENTS:
+- [consensus] Better handling of corrupt WAL file
+
+BUG FIXES:
+- [lite] fix race
+- [state] validate block.Header.ValidatorsHash
+- [p2p] allow seed addresses to be prefixed with eg. `tcp://`
+- [p2p] use consistent key to refer to peers so we dont try to connect to existing peers
+- [cmd] fix `tendermint init` to ignore files that are there and generate files that aren't.
 
 ## 0.14.0 (December 11, 2017)
 

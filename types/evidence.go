@@ -167,3 +167,50 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	// just check their hashes
 	return bytes.Equal(merkle.SimpleHashFromBinary(dve), merkle.SimpleHashFromBinary(ev))
 }
+
+//-----------------------------------------------------------------
+
+// UNSTABLE
+type MockGoodEvidence struct {
+	Height_  int64
+	Address_ []byte
+	Index_   int
+}
+
+// UNSTABLE
+func NewMockGoodEvidence(height int64, index int, address []byte) MockGoodEvidence {
+	return MockGoodEvidence{height, address, index}
+}
+
+func (e MockGoodEvidence) Height() int64   { return e.Height_ }
+func (e MockGoodEvidence) Address() []byte { return e.Address_ }
+func (e MockGoodEvidence) Index() int      { return e.Index_ }
+func (e MockGoodEvidence) Hash() []byte {
+	return []byte(fmt.Sprintf("%d-%d", e.Height_, e.Index_))
+}
+func (e MockGoodEvidence) Verify(chainID string) error { return nil }
+func (e MockGoodEvidence) Equal(ev Evidence) bool {
+	e2 := ev.(MockGoodEvidence)
+	return e.Height_ == e2.Height_ &&
+		bytes.Equal(e.Address_, e2.Address_) &&
+		e.Index_ == e2.Index_
+}
+func (e MockGoodEvidence) String() string {
+	return fmt.Sprintf("GoodEvidence: %d/%s/%d", e.Height_, e.Address_, e.Index_)
+}
+
+// UNSTABLE
+type MockBadEvidence struct {
+	MockGoodEvidence
+}
+
+func (e MockBadEvidence) Verify(chainID string) error { return fmt.Errorf("MockBadEvidence") }
+func (e MockBadEvidence) Equal(ev Evidence) bool {
+	e2 := ev.(MockBadEvidence)
+	return e.Height_ == e2.Height_ &&
+		bytes.Equal(e.Address_, e2.Address_) &&
+		e.Index_ == e2.Index_
+}
+func (e MockBadEvidence) String() string {
+	return fmt.Sprintf("BadEvidence: %d/%s/%d", e.Height_, e.Address_, e.Index_)
+}

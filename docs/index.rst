@@ -53,6 +53,7 @@ Tendermint 102
    :maxdepth: 2
 
    abci-cli.rst
+   abci-spec.rst
    app-architecture.rst
    app-development.rst
    how-to-read-logs.rst

@@ -18,6 +18,7 @@ import (
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -46,13 +47,12 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	}
 	stateDB := db.NewMemDB()
 	blockStoreDB := db.NewMemDB()
-	state, err := sm.MakeGenesisState(stateDB, genDoc)
-	state.SetLogger(logger.With("module", "state"))
+	state, err := sm.MakeGenesisState(genDoc)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to make genesis state")
 	}
 	blockStore := bc.NewBlockStore(blockStoreDB)
-	handshaker := NewHandshaker(state, blockStore)
+	handshaker := NewHandshaker(stateDB, state, blockStore)
 	proxyApp := proxy.NewAppConns(proxy.NewLocalClientCreator(app), handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -67,7 +67,8 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	defer eventBus.Stop()
 	mempool := types.MockMempool{}
 	evpool := types.MockEvidencePool{}
-	consensusState := NewConsensusState(config.Consensus, state.Copy(), proxyApp.Consensus(), blockStore, mempool, evpool)
+	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
+	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
 	if privValidator != nil {
@@ -128,7 +129,7 @@ func makeAddrs() (string, string, string) {
 // getConfig returns a config for test cases
 func getConfig() *cfg.Config {
 	pathname := makePathname()
-	c := cfg.ResetTestRoot(pathname)
+	c := cfg.ResetTestRoot(fmt.Sprintf("%s_%d", pathname, cmn.RandInt()))
 
 	// and we use random ports to run in parallel
 	tm, rpc, grpc := makeAddrs()
