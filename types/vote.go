@@ -31,10 +31,10 @@ func (err *ErrVoteConflictingVotes) Error() string {
 	return fmt.Sprintf("Conflicting votes from validator %v", err.PubKey.Address())
 }
 
-func NewConflictingVoteError(val *Validator, voteA, voteB *Vote) *ErrVoteConflictingVotes {
+func NewConflictingVoteError(val crypto.PubKey, voteA, voteB *Vote) *ErrVoteConflictingVotes {
 	return &ErrVoteConflictingVotes{
 		&DuplicateVoteEvidence{
-			PubKey: val.PubKey,
+			PubKey: val,
 			VoteA:  voteA,
 			VoteB:  voteB,
 		},

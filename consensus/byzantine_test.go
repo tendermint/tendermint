@@ -7,11 +7,14 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+
 	crypto "github.com/tendermint/go-crypto"
 	data "github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
+
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 )
 
 func init() {
@@ -268,23 +271,23 @@ func (br *ByzantineReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 type ByzantinePrivValidator struct {
 	types.Signer
 
-	pv types.PrivValidator
+	pv priv_val.PrivValidator
 }
 
 // Return a priv validator that will sign anything
-func NewByzantinePrivValidator(pv types.PrivValidator) *ByzantinePrivValidator {
+func NewByzantinePrivValidator(pv priv_val.PrivValidator) *ByzantinePrivValidator {
 	return &ByzantinePrivValidator{
-		Signer: pv.(*types.PrivValidatorFS).Signer,
+		Signer: pv.(*priv_val.PrivValidatorJSON).PrivValidatorUnencrypted.PrivKey,
 		pv:     pv,
 	}
 }
 
-func (privVal *ByzantinePrivValidator) GetAddress() data.Bytes {
-	return privVal.pv.GetAddress()
+func (privVal *ByzantinePrivValidator) Address() data.Bytes {
+	return privVal.pv.Address()
 }
 
-func (privVal *ByzantinePrivValidator) GetPubKey() crypto.PubKey {
-	return privVal.pv.GetPubKey()
+func (privVal *ByzantinePrivValidator) PubKey() crypto.PubKey {
+	return privVal.pv.PubKey()
 }
 
 func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) (err error) {
@@ -303,5 +306,5 @@ func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *
 }
 
 func (privVal *ByzantinePrivValidator) String() string {
-	return cmn.Fmt("PrivValidator{%X}", privVal.GetAddress())
+	return cmn.Fmt("PrivValidator{%X}", privVal.Address())
 }

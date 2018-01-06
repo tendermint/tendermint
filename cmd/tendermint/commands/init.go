@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -17,12 +18,12 @@ var InitFilesCmd = &cobra.Command{
 func initFiles(cmd *cobra.Command, args []string) {
 	// private validator
 	privValFile := config.PrivValidatorFile()
-	var privValidator *types.PrivValidatorFS
+	var privValidator *priv_val.PrivValidatorJSON
 	if cmn.FileExists(privValFile) {
-		privValidator = types.LoadPrivValidatorFS(privValFile)
+		privValidator = priv_val.LoadPrivValidatorJSON(privValFile)
 		logger.Info("Found private validator", "path", privValFile)
 	} else {
-		privValidator = types.GenPrivValidatorFS(privValFile)
+		privValidator = priv_val.GenPrivValidatorJSON(privValFile)
 		privValidator.Save()
 		logger.Info("Genetated private validator", "path", privValFile)
 	}
@@ -36,7 +37,7 @@ func initFiles(cmd *cobra.Command, args []string) {
 			ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
 		}
 		genDoc.Validators = []types.GenesisValidator{{
-			PubKey: privValidator.GetPubKey(),
+			PubKey: privValidator.PubKey(),
 			Power:  10,
 		}}
 

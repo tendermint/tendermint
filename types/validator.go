@@ -108,13 +108,60 @@ func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
 
 // RandValidator returns a randomized validator, useful for testing.
 // UNSTABLE
-func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidatorFS) {
-	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorFS(tempFilePath)
+func RandValidator(randPower bool, minPower int64) (*Validator, TestSigner) {
+	privVal := GenSigner()
 	votePower := minPower
 	if randPower {
 		votePower += int64(cmn.RandUint32())
 	}
-	val := NewValidator(privVal.GetPubKey(), votePower)
+	val := NewValidator(privVal.PubKey(), votePower)
 	return val, privVal
 }
+
+type TestSigner interface {
+	Address() data.Bytes
+	PubKey() crypto.PubKey
+	Sign([]byte) (crypto.Signature, error)
+}
+
+func GenSigner() TestSigner {
+	return &DefaultTestSigner{
+		crypto.GenPrivKeyEd25519().Wrap(),
+	}
+}
+
+type DefaultTestSigner struct {
+	crypto.PrivKey
+}
+
+func (ds *DefaultTestSigner) Address() data.Bytes {
+	return ds.PubKey().Address()
+}
+
+func (ds *DefaultTestSigner) PubKey() crypto.PubKey {
+	return ds.PrivKey.PubKey()
+}
+
+func (ds *DefaultTestSigner) Sign(msg []byte) (crypto.Signature, error) {
+	return ds.PrivKey.Sign(msg), nil
+}
+
+//-------------------------------------------------------------
+
+type PrivValidatorsByAddress []TestSigner
+
+func (pvs PrivValidatorsByAddress) Len() int {
+	return len(pvs)
+}
+
+func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
+	return bytes.Compare(pvs[i].Address(), pvs[j].Address()) == -1
+}
+
+func (pvs PrivValidatorsByAddress) Swap(i, j int) {
+	it := pvs[i]
+	pvs[i] = pvs[j]
+	pvs[j] = it
+}
+
+//---------------------------------------------------------------------

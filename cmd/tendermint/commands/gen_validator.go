@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 )
 
 // GenValidatorCmd allows the generation of a keypair for a
@@ -18,7 +18,7 @@ var GenValidatorCmd = &cobra.Command{
 }
 
 func genValidator(cmd *cobra.Command, args []string) {
-	privValidator := types.GenPrivValidatorFS("")
+	privValidator := priv_val.GenPrivValidatorJSON("")
 	privValidatorJSONBytes, err := json.MarshalIndent(privValidator, "", "\t")
 	if err != nil {
 		panic(err)

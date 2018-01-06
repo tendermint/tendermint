@@ -1,16 +1,18 @@
 package types
 
-import "time"
+import (
+	"time"
+)
 
 func MakeCommit(blockID BlockID, height int64, round int,
 	voteSet *VoteSet,
-	validators []*PrivValidatorFS) (*Commit, error) {
+	validators []TestSigner) (*Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
 
 		vote := &Vote{
-			ValidatorAddress: validators[i].GetAddress(),
+			ValidatorAddress: validators[i].Address(),
 			ValidatorIndex:   i,
 			Height:           height,
 			Round:            round,
@@ -28,8 +30,8 @@ func MakeCommit(blockID BlockID, height int64, round int,
 	return voteSet.MakeCommit(), nil
 }
 
-func signAddVote(privVal *PrivValidatorFS, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	vote.Signature, err = privVal.Signer.Sign(SignBytes(voteSet.ChainID(), vote))
+func signAddVote(privVal TestSigner, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+	vote.Signature, err = privVal.Sign(SignBytes(voteSet.ChainID(), vote))
 	if err != nil {
 		return false, err
 	}

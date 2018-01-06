@@ -18,7 +18,7 @@ func examplePrecommit() *Vote {
 }
 
 func exampleVote(t byte) *Vote {
-	var stamp, err = time.Parse(timeFormat, "2017-12-25T03:00:01.234Z")
+	var stamp, err = time.Parse(TimeFormat, "2017-12-25T03:00:01.234Z")
 	if err != nil {
 		panic(err)
 	}
@@ -73,14 +73,14 @@ func TestVoteString(t *testing.T) {
 }
 
 func TestVoteVerifySignature(t *testing.T) {
-	privVal := GenPrivValidatorFS("")
-	pubKey := privVal.GetPubKey()
+	privVal := GenSigner()
+	pubKey := privVal.PubKey()
 
 	vote := examplePrecommit()
 	signBytes := SignBytes("test_chain_id", vote)
 
 	// sign it
-	signature, err := privVal.Signer.Sign(signBytes)
+	signature, err := privVal.Sign(signBytes)
 	require.NoError(t, err)
 
 	// verify the same vote

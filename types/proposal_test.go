@@ -12,7 +12,7 @@ import (
 var testProposal *Proposal
 
 func init() {
-	var stamp, err = time.Parse(timeFormat, "2018-02-11T07:09:22.765Z")
+	var stamp, err = time.Parse(TimeFormat, "2018-02-11T07:09:22.765Z")
 	if err != nil {
 		panic(err)
 	}
@@ -44,14 +44,14 @@ func TestProposalString(t *testing.T) {
 }
 
 func TestProposalVerifySignature(t *testing.T) {
-	privVal := GenPrivValidatorFS("")
-	pubKey := privVal.GetPubKey()
+	privVal := GenSigner()
+	pubKey := privVal.PubKey()
 
 	prop := NewProposal(4, 2, PartSetHeader{777, []byte("proper")}, 2, BlockID{})
 	signBytes := SignBytes("test_chain_id", prop)
 
 	// sign it
-	signature, err := privVal.Signer.Sign(signBytes)
+	signature, err := privVal.Sign(signBytes)
 	require.NoError(t, err)
 
 	// verify the same proposal
@@ -78,9 +78,9 @@ func BenchmarkProposalWriteSignBytes(b *testing.B) {
 }
 
 func BenchmarkProposalSign(b *testing.B) {
-	privVal := GenPrivValidatorFS("")
+	privVal := GenSigner()
 	for i := 0; i < b.N; i++ {
-		_, err := privVal.Signer.Sign(SignBytes("test_chain_id", testProposal))
+		_, err := privVal.Sign(SignBytes("test_chain_id", testProposal))
 		if err != nil {
 			b.Error(err)
 		}
@@ -89,9 +89,9 @@ func BenchmarkProposalSign(b *testing.B) {
 
 func BenchmarkProposalVerifySignature(b *testing.B) {
 	signBytes := SignBytes("test_chain_id", testProposal)
-	privVal := GenPrivValidatorFS("")
-	signature, _ := privVal.Signer.Sign(signBytes)
-	pubKey := privVal.GetPubKey()
+	privVal := GenSigner()
+	signature, _ := privVal.Sign(signBytes)
+	pubKey := privVal.PubKey()
 
 	for i := 0; i < b.N; i++ {
 		pubKey.VerifyBytes(SignBytes("test_chain_id", testProposal), signature)
