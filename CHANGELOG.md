@@ -1,13 +1,17 @@
 # Changelog
 
-## 0.9.0 (TBD)
+## 0.9.0 (December 28, 2017)
 
 BREAKING CHANGES:
+ - [types] Id -> ID
  - [types] ResponseEndBlock: renamed Diffs field to ValidatorUpdates
  - [types] changed protobuf field indices for Request and Response oneof types
 
 FEATURES:
  - [types] ResponseEndBlock: added ConsensusParamUpdates
+
+BUG FIXES:
+ - [cmd] fix console and batch commands to use a single persistent connection
 
 ## 0.8.0 (December 6, 2017)
 
