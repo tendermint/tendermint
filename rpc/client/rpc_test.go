@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/abci/types"
+
 	"github.com/tendermint/iavl"
 
 	"github.com/tendermint/tendermint/rpc/client"
@@ -205,11 +206,11 @@ func TestAppCalls(t *testing.T) {
 		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
 		pres := _pres.Response
 		if assert.Nil(err) && assert.True(pres.IsOK()) {
-			proof, err := iavl.ReadKeyExistsProof(pres.Proof)
+			proof, err := iavl.ReadKeyProof(pres.Proof)
 			if assert.Nil(err) {
 				key := pres.Key
 				value := pres.Value
-				assert.EqualValues(appHash, proof.RootHash)
+				assert.EqualValues(appHash, proof.Root())
 				valid := proof.Verify(key, value, appHash)
 				assert.Nil(valid)
 			}
@@ -300,7 +301,8 @@ func TestTx(t *testing.T) {
 				// time to verify the proof
 				proof := ptx.Proof
 				if tc.prove && assert.EqualValues(tx, proof.Data) {
-					assert.True(proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+					assert.True(proof.Proof.Verify(proof.Index, proof.Total, txHash,
+						proof.RootHash))
 				}
 			}
 		}
