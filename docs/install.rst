@@ -6,19 +6,6 @@ From Binary
 
 To download pre-built binaries, see the `Download page <https://tendermint.com/download>`__.
 
-From Source using Docker
-------------------------
-
-If you have docker running, all you need is the ``golang`` image to build tendermint.
-If you don't, you can get help setting it up `here <https://docs.docker.com/engine/installation/>`__.
-
-::
-    mkdir $HOME/tendermintbin
-    docker run --rm -it -v $HOME/tendermintbin:/go/bin:Z golang:1.9.2 /bin/bash -c "go-wrapper download github.com/tendermint/tendermint/cmd/tendermint ; make -C /go/src/github.com/tendermint/tendermint get_tools get_vendor_deps build_cc"
-
-You will find the ``tendermint`` binaries for different architectures and operating systems in your ``$HOME/tendermintbin`` folder.
-
-
 From Source
 -----------
 
