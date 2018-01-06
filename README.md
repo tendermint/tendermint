@@ -15,6 +15,24 @@ Previously, the ABCI was referred to as TMSP.
 
 The community has provided a number of addtional implementations, see the [Tendermint Ecosystem](https://tendermint.com/ecosystem)
 
+## Specification
+
+The [primary specification](https://github.com/tendermint/abci/blob/master/types/types.proto)
+is made using Protocol Buffers. To build it, run
+
+```
+make protoc
+```
+
+See `protoc --help` and [the Protocol Buffers site](https://developers.google.com/protocol-buffers)
+for details on compiling for other languages. Note we also include a [GRPC](http://www.grpc.io/docs)
+service definition.
+
+For the specification as an interface in Go, see the
+[types/application.go file](https://github.com/tendermint/abci/blob/master/types/application.go).
+
+See the [spec file](specification.rst) for a detailed description of the message types.
+
 ## Install
 
 ```
@@ -140,8 +158,3 @@ func cmdDummy(cmd *cobra.Command, args []string) error {
 }
 ```
 
-and can be found in [this file](cmd/abci-cli/abci-cli.go).
-
-## Specification
-
-See the [spec file](specification.rst) for more information.

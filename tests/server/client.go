@@ -13,11 +13,11 @@ import (
 
 func InitChain(client abcicli.Client) error {
 	total := 10
-	vals := make([]*types.Validator, total)
+	vals := make([]types.Validator, total)
 	for i := 0; i < total; i++ {
 		pubkey := crypto.GenPrivKeyEd25519FromSecret([]byte(cmn.Fmt("test%d", i))).PubKey().Bytes()
 		power := cmn.RandInt()
-		vals[i] = &types.Validator{pubkey, int64(power)}
+		vals[i] = types.Validator{pubkey, int64(power)}
 	}
 	_, err := client.InitChainSync(types.RequestInitChain{Validators: vals})
 	if err != nil {
@@ -29,12 +29,10 @@ func InitChain(client abcicli.Client) error {
 }
 
 func SetOption(client abcicli.Client, key, value string) error {
-	res, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: value})
-	log := res.GetLog()
+	_, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: value})
 	if err != nil {
 		fmt.Println("Failed test: SetOption")
-		fmt.Printf("setting %v=%v: \nlog: %v\n", key, value, log)
-		fmt.Println("Failed test: SetOption")
+		fmt.Printf("error while setting %v=%v: \nerror: %v\n", key, value)
 		return err
 	}
 	fmt.Println("Passed test: SetOption")
@@ -43,16 +41,15 @@ func SetOption(client abcicli.Client, key, value string) error {
 
 func Commit(client abcicli.Client, hashExp []byte) error {
 	res, err := client.CommitSync()
-	_, data := res.Code, res.Data
+	data := res.Data
 	if err != nil {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("committing %v\nlog: %v\n", res.GetLog(), err)
+		fmt.Printf("error while committing: %v\n", err)
 		return err
 	}
 	if !bytes.Equal(data, hashExp) {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n",
-			data.Bytes(), hashExp)
+		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n", data, hashExp)
 		return errors.New("CommitTx failed")
 	}
 	fmt.Println("Passed test: Commit")

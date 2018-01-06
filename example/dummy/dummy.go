@@ -6,8 +6,8 @@ import (
 
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/iavl"
+	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
@@ -20,7 +20,7 @@ type DummyApplication struct {
 }
 
 func NewDummyApplication() *DummyApplication {
-	state := iavl.NewVersionedTree(0, dbm.NewMemDB())
+	state := iavl.NewVersionedTree(dbm.NewMemDB(), 0)
 	return &DummyApplication{state: state}
 }
 
@@ -39,9 +39,9 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	}
 	app.state.Set(key, value)
 
-	tags := []*types.KVPair{
-		{Key: "app.creator", ValueType: types.KVPair_STRING, ValueString: "jae"},
-		{Key: "app.key", ValueType: types.KVPair_STRING, ValueString: string(key)},
+	tags := []cmn.KVPair{
+		{[]byte("app.creator"), []byte("jae")},
+		{[]byte("app.key"), key},
 	}
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }
@@ -56,16 +56,14 @@ func (app *DummyApplication) Commit() types.ResponseCommit {
 	var err error
 
 	if app.state.Size() > 0 {
-		// just add one more to height (kind of arbitrarily stupid)
-		height := app.state.LatestVersion() + 1
-		hash, err = app.state.SaveVersion(height)
+		hash, _, err = app.state.SaveVersion()
 		if err != nil {
 			// if this wasn't a dummy app, we'd do something smarter
 			panic(err)
 		}
 	}
 
-	return types.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
+	return types.ResponseCommit{Data: hash}
 }
 
 func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
@@ -78,7 +76,7 @@ func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
-		resQuery.Proof = wire.BinaryBytes(proof)
+		resQuery.Proof = proof.Bytes()
 		if value != nil {
 			resQuery.Log = "exists"
 		} else {

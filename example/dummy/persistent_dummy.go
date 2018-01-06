@@ -28,7 +28,7 @@ type PersistentDummyApplication struct {
 	app *DummyApplication
 
 	// validator set
-	ValUpdates []*types.Validator
+	ValUpdates []types.Validator
 
 	logger log.Logger
 }
@@ -40,7 +40,7 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 		panic(err)
 	}
 
-	stateTree := iavl.NewVersionedTree(500, db)
+	stateTree := iavl.NewVersionedTree(db, 500)
 	stateTree.Load()
 
 	return &PersistentDummyApplication{
@@ -55,8 +55,7 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	res := app.app.Info(req)
-	var latestVersion uint64 = app.app.state.LatestVersion() // TODO: change to int64
-	res.LastBlockHeight = int64(latestVersion)
+	res.LastBlockHeight = app.app.state.Version64()
 	res.LastBlockAppHash = app.app.state.Hash()
 	return res
 }
@@ -87,18 +86,18 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.ResponseCheckTx 
 func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
 
 	// Save a new version for next height
-	height := app.app.state.LatestVersion() + 1
+	var height int64
 	var appHash []byte
 	var err error
 
-	appHash, err = app.app.state.SaveVersion(height)
+	appHash, height, err = app.app.state.SaveVersion()
 	if err != nil {
 		// if this wasn't a dummy app, we'd do something smarter
 		panic(err)
 	}
 
 	app.logger.Info("Commit block", "height", height, "root", appHash)
-	return types.ResponseCommit{Code: code.CodeTypeOK, Data: appHash}
+	return types.ResponseCommit{Data: appHash}
 }
 
 func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
@@ -119,7 +118,7 @@ func (app *PersistentDummyApplication) InitChain(req types.RequestInitChain) typ
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
-	app.ValUpdates = make([]*types.Validator, 0)
+	app.ValUpdates = make([]types.Validator, 0)
 	return types.ResponseBeginBlock{}
 }
 
@@ -131,7 +130,7 @@ func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types
 //---------------------------------------------
 // update validators
 
-func (app *PersistentDummyApplication) Validators() (validators []*types.Validator) {
+func (app *PersistentDummyApplication) Validators() (validators []types.Validator) {
 	app.app.state.Iterate(func(key, value []byte) bool {
 		if isValidatorTx(key) {
 			validator := new(types.Validator)
@@ -139,7 +138,7 @@ func (app *PersistentDummyApplication) Validators() (validators []*types.Validat
 			if err != nil {
 				panic(err)
 			}
-			validators = append(validators, validator)
+			validators = append(validators, *validator)
 		}
 		return false
 	})
@@ -190,11 +189,11 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 	}
 
 	// update
-	return app.updateValidator(&types.Validator{pubkey, power})
+	return app.updateValidator(types.Validator{pubkey, power})
 }
 
 // add, update, or remove a validator
-func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types.ResponseDeliverTx {
+func (app *PersistentDummyApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey))
 	if v.Power == 0 {
 		// remove validator
@@ -207,7 +206,7 @@ func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
-		if err := types.WriteMessage(v, value); err != nil {
+		if err := types.WriteMessage(&v, value); err != nil {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}

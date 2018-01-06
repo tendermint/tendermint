@@ -8,18 +8,20 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func TestMarshalJSON(t *testing.T) {
 	b, err := json.Marshal(&ResponseDeliverTx{})
 	assert.Nil(t, err)
-	assert.True(t, strings.Contains(string(b), "code"))
+	// Do not include empty fields.
+	assert.False(t, strings.Contains(string(b), "code"))
 
 	r1 := ResponseCheckTx{
-		Code: 1,
-		Data: []byte("hello"),
-		Gas:  43,
-		Fee:  12,
+		Code:      1,
+		Data:      []byte("hello"),
+		GasWanted: 43,
+		Fee:       cmn.KI64Pair{[]byte("pho"), 12},
 	}
 	b, err = json.Marshal(&r1)
 	assert.Nil(t, err)

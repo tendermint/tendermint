@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.0 (TBD)
+
+BREAKING CHANGES:
+
+- [types] Drop gogo custom type magic with data.Bytes
+- [types] Add `info string` field to responses for SetOption, Query, CheckTx, DeliverTx
+- [types] Remove IsOk/IsErr  methods from response types.
+- [types] Replace KVPair with common.KVPair
+- [types] Updates to CheckTx/DeliverTx around tags and fees
+- [types] Remove code and log from Commit
+
 ## 0.9.0 (December 28, 2017)
 
 BREAKING CHANGES:

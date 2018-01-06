@@ -37,9 +37,6 @@ func commit(client abcicli.Client, hashExp []byte) {
 	if err != nil {
 		panicf("client error: %v", err)
 	}
-	if res.IsErr() {
-		panicf("committing err %v\n", res)
-	}
 	if !bytes.Equal(res.Data, hashExp) {
 		panicf("Commit hash was unexpected. Got %X expected %X", res.Data, hashExp)
 	}

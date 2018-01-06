@@ -30,15 +30,17 @@ func (app *CounterApplication) SetOption(req types.RequestSetOption) types.Respo
 	if key == "serial" && value == "on" {
 		app.serial = true
 	} else {
-		return types.ResponseSetOption{
-			Code: code.CodeTypeBadOption,
-			Log:  cmn.Fmt("Unknown key (%s) or value (%s)", key, value),
-		}
+		/*
+			TODO Panic and have the ABCI server pass an exception.
+			The client can call SetOptionSync() and get an `error`.
+			return types.ResponseSetOption{
+				Error: cmn.Fmt("Unknown key (%s) or value (%s)", key, value),
+			}
+		*/
+		return types.ResponseSetOption{}
 	}
 
-	return types.ResponseSetOption{
-		Code: code.CodeTypeOK,
-	}
+	return types.ResponseSetOption{}
 }
 
 func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
@@ -83,11 +85,11 @@ func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
 	app.hashCount++
 	if app.txCount == 0 {
-		return types.ResponseCommit{Code: code.CodeTypeOK}
+		return types.ResponseCommit{}
 	}
 	hash := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return types.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
+	return types.ResponseCommit{Data: hash}
 }
 
 func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
