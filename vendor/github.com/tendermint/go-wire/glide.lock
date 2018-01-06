@@ -1,0 +1,48 @@
+hash: ef298394075ed9e51238956557635cfe6d592e74d3801b10faa6a6b0059216bc
+updated: 2017-05-15T09:15:54.260968491-04:00
+imports:
+- name: github.com/clipperhouse/typewriter
+  version: c1a48da378ebb7db1db9f35981b5cc24bf2e5b85
+- name: github.com/go-stack/stack
+  version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
+- name: github.com/mattn/go-colorable
+  version: ded68f7a9561c023e790de24279db7ebf473ea80
+- name: github.com/mattn/go-isatty
+  version: fc9e8d8ef48496124e79ae0df75490096eccf6fe
+- name: github.com/pkg/errors
+  version: ff09b135c25aae272398c51a07235b90a75aa4f0
+- name: github.com/tendermint/log15
+  version: ae0f3d6450da9eac7074b439c8e1c3cabf0d5ce6
+  subpackages:
+  - term
+- name: github.com/tendermint/tmlibs
+  version: 2f8551d3b614dd0c0c6c114c42ab25901cc41a52
+  subpackages:
+  - common
+- name: golang.org/x/crypto
+  version: c7af5bf2638a1164f2eb5467c39c6cffbd13a02e
+  subpackages:
+  - ripemd160
+- name: golang.org/x/sys
+  version: 9ccfe848b9db8435a24c424abbc07a921adf1df5
+  subpackages:
+  - unix
+- name: golang.org/x/tools
+  version: 144c6642b5d832d6c44a53dad6ee61665dd432ce
+  subpackages:
+  - go/ast/astutil
+  - imports
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 4d4bfba8f1d1027c4fdbe371823030df51419987
+  subpackages:
+  - assert
+  - require

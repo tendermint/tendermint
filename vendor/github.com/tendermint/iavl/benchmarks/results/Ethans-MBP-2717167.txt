@@ -1,0 +1,116 @@
+cd benchmarks && \
+		go test -bench=RandomBytes . && \
+		go test -bench=Small . && \
+		go test -bench=Medium . && \
+		go test -bench=BenchmarkMemKeySizes .
+BenchmarkRandomBytes/random-4-4         	20000000	        63.1 ns/op
+BenchmarkRandomBytes/random-16-4        	20000000	        88.9 ns/op
+BenchmarkRandomBytes/random-32-4        	10000000	       123 ns/op
+BenchmarkRandomBytes/random-100-4       	 5000000	       275 ns/op
+BenchmarkRandomBytes/random-1000-4      	 1000000	      2131 ns/op
+PASS
+ok  	github.com/tendermint/merkleeyes/iavl/benchmarks	8.390s
+Init Tree took 0.42 MB
+BenchmarkSmall/nodb-1000-100-4-10/query-miss-4         	 5000000	       345 ns/op
+BenchmarkSmall/nodb-1000-100-4-10/query-hits-4         	 5000000	       320 ns/op
+BenchmarkSmall/nodb-1000-100-4-10/update-4             	  200000	      7959 ns/op
+BenchmarkSmall/nodb-1000-100-4-10/tmsp-4               	  100000	     25878 ns/op
+BenchmarkSmall/nodb-1000-100-4-10/insert-4             	  100000	     28215 ns/op
+BenchmarkSmall/nodb-1000-100-4-10/delete-4             	  100000	     15757 ns/op
+Init Tree took 0.84 MB
+BenchmarkSmall/memdb-1000-100-4-10/query-miss-4        	  500000	      3296 ns/op
+BenchmarkSmall/memdb-1000-100-4-10/query-hits-4        	  300000	      3664 ns/op
+BenchmarkSmall/memdb-1000-100-4-10/update-4            	   50000	     25869 ns/op
+BenchmarkSmall/memdb-1000-100-4-10/tmsp-4              	   30000	     87781 ns/op
+BenchmarkSmall/memdb-1000-100-4-10/insert-4            	   20000	     70119 ns/op
+BenchmarkSmall/memdb-1000-100-4-10/delete-4            	   50000	     49289 ns/op
+Init Tree took 0.47 MB
+BenchmarkSmall/goleveldb-1000-100-4-10/query-miss-4    	  300000	      5219 ns/op
+BenchmarkSmall/goleveldb-1000-100-4-10/query-hits-4    	  300000	      6329 ns/op
+BenchmarkSmall/goleveldb-1000-100-4-10/update-4        	   30000	     65849 ns/op
+BenchmarkSmall/goleveldb-1000-100-4-10/tmsp-4          	   10000	    157153 ns/op
+BenchmarkSmall/goleveldb-1000-100-4-10/insert-4        	   10000	    223123 ns/op
+BenchmarkSmall/goleveldb-1000-100-4-10/delete-4        	   20000	    105517 ns/op
+Init Tree took 0.48 MB
+BenchmarkSmall/leveldb-1000-100-4-10/query-miss-4      	  200000	      6629 ns/op
+BenchmarkSmall/leveldb-1000-100-4-10/query-hits-4      	  200000	      7247 ns/op
+BenchmarkSmall/leveldb-1000-100-4-10/update-4          	   20000	     60328 ns/op
+BenchmarkSmall/leveldb-1000-100-4-10/tmsp-4            	   10000	    133760 ns/op
+BenchmarkSmall/leveldb-1000-100-4-10/insert-4          	   10000	    128193 ns/op
+BenchmarkSmall/leveldb-1000-100-4-10/delete-4          	   20000	     87809 ns/op
+PASS
+ok  	github.com/tendermint/merkleeyes/iavl/benchmarks	57.747s
+Init Tree took 47.20 MB
+BenchmarkMedium/nodb-100000-100-16-40/query-miss-4         	 1000000	      1372 ns/op
+BenchmarkMedium/nodb-100000-100-16-40/query-hits-4         	 1000000	      1630 ns/op
+BenchmarkMedium/nodb-100000-100-16-40/update-4             	   50000	     27774 ns/op
+BenchmarkMedium/nodb-100000-100-16-40/tmsp-4               	   50000	     35904 ns/op
+BenchmarkMedium/nodb-100000-100-16-40/insert-4             	   50000	     29889 ns/op
+BenchmarkMedium/nodb-100000-100-16-40/delete-4             	  100000	     21200 ns/op
+Init Tree took 85.08 MB
+BenchmarkMedium/memdb-100000-100-16-40/query-miss-4        	  200000	      8863 ns/op
+BenchmarkMedium/memdb-100000-100-16-40/query-hits-4        	  200000	      9878 ns/op
+BenchmarkMedium/memdb-100000-100-16-40/update-4            	   20000	     75840 ns/op
+BenchmarkMedium/memdb-100000-100-16-40/tmsp-4              	   10000	    112251 ns/op
+BenchmarkMedium/memdb-100000-100-16-40/insert-4            	   20000	    103080 ns/op
+BenchmarkMedium/memdb-100000-100-16-40/delete-4            	   20000	     66677 ns/op
+Init Tree took 45.17 MB
+BenchmarkMedium/goleveldb-100000-100-16-40/query-miss-4    	   50000	     21601 ns/op
+BenchmarkMedium/goleveldb-100000-100-16-40/query-hits-4    	   50000	     27372 ns/op
+BenchmarkMedium/goleveldb-100000-100-16-40/update-4        	   10000	    148820 ns/op
+BenchmarkMedium/goleveldb-100000-100-16-40/tmsp-4          	    5000	    319488 ns/op
+BenchmarkMedium/goleveldb-100000-100-16-40/insert-4        	    2000	    530568 ns/op
+BenchmarkMedium/goleveldb-100000-100-16-40/delete-4        	    2000	    569455 ns/op
+Init Tree took 36.12 MB
+BenchmarkMedium/leveldb-100000-100-16-40/query-miss-4      	   50000	     23190 ns/op
+BenchmarkMedium/leveldb-100000-100-16-40/query-hits-4      	   50000	     27447 ns/op
+BenchmarkMedium/leveldb-100000-100-16-40/update-4          	   10000	    147662 ns/op
+BenchmarkMedium/leveldb-100000-100-16-40/tmsp-4            	    5000	    310984 ns/op
+BenchmarkMedium/leveldb-100000-100-16-40/insert-4          	    2000	    549814 ns/op
+BenchmarkMedium/leveldb-100000-100-16-40/delete-4          	    2000	    716094 ns/op
+PASS
+ok  	github.com/tendermint/merkleeyes/iavl/benchmarks	202.957s
+Init Tree took 49.20 MB
+BenchmarkMemKeySizes/nodb-100000-100-4-80/query-miss-4         	 1000000	      1079 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-4-80/query-hits-4         	 1000000	      1122 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-4-80/update-4             	  100000	     25405 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-4-80/tmsp-4               	   50000	     35486 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-4-80/insert-4             	   50000	     29162 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-4-80/delete-4             	  100000	     19531 ns/op
+Init Tree took 50.40 MB
+BenchmarkMemKeySizes/nodb-100000-100-16-80/query-miss-4        	 1000000	      1224 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-16-80/query-hits-4        	 1000000	      1262 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-16-80/update-4            	   50000	     25344 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-16-80/tmsp-4              	   50000	     33859 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-16-80/insert-4            	   50000	     28705 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-16-80/delete-4            	  100000	     19679 ns/op
+Init Tree took 52.00 MB
+BenchmarkMemKeySizes/nodb-100000-100-32-80/query-miss-4        	 1000000	      1333 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-32-80/query-hits-4        	 1000000	      1348 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-32-80/update-4            	   50000	     25319 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-32-80/tmsp-4              	   50000	     33329 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-32-80/insert-4            	   50000	     29624 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-32-80/delete-4            	  100000	     20300 ns/op
+Init Tree took 55.20 MB
+BenchmarkMemKeySizes/nodb-100000-100-64-80/query-miss-4        	 1000000	      1503 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-64-80/query-hits-4        	 1000000	      1412 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-64-80/update-4            	   50000	     26542 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-64-80/tmsp-4              	   50000	     33529 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-64-80/insert-4            	   50000	     32928 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-64-80/delete-4            	  100000	     22184 ns/op
+Init Tree took 61.60 MB
+BenchmarkMemKeySizes/nodb-100000-100-128-80/query-miss-4       	  500000	      2234 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-128-80/query-hits-4       	 1000000	      2012 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-128-80/update-4           	   50000	     28088 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-128-80/tmsp-4             	   50000	     49556 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-128-80/insert-4           	   50000	     31738 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-128-80/delete-4           	  100000	     20232 ns/op
+Init Tree took 74.40 MB
+BenchmarkMemKeySizes/nodb-100000-100-256-80/query-miss-4       	  500000	      2222 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-256-80/query-hits-4       	 1000000	      1592 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-256-80/update-4           	   50000	     29363 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-256-80/tmsp-4             	   50000	     37905 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-256-80/insert-4           	   50000	     33531 ns/op
+BenchmarkMemKeySizes/nodb-100000-100-256-80/delete-4           	  100000	     19828 ns/op
+PASS
+ok  	github.com/tendermint/merkleeyes/iavl/benchmarks	147.856s

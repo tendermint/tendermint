@@ -1,0 +1,112 @@
+{
+package expr
+
+import (
+	"bytes"
+  "encoding/hex"
+	"errors"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
+  "strconv"
+	"strings"
+	"unicode"
+	"unicode/utf8"
+)
+}
+
+Start ← items_:Item+ _ EOF {
+    items := items_.([]interface{})
+    if len(items) == 1 {
+        return items[0], nil
+    }
+    return Tuple(items), nil
+}
+
+Item ← _ it:(Array / Tuple / Hex / TypedNumeric / UntypedNumeric / Placeholder / String) {
+    return it, nil
+}
+
+Array ← '[' items:Item* _ ']' {
+    return Array(items.([]interface{})), nil
+}
+
+Tuple ← '(' items:Item+ _ ')' {
+    return Tuple(items.([]interface{})), nil
+}
+
+UntypedNumeric ← number:Integer {
+    return Numeric{
+      Type: "i",
+      Number: number.(string),
+    }, nil
+}
+
+TypedNumeric ← t:Type ':' number:Integer {
+    return Numeric{
+      Type: t.(string),
+      Number: number.(string),
+    }, nil
+}
+
+Hex ← HexLengthPrefixed / HexRaw
+
+HexLengthPrefixed ← "0x" hexbytes:HexBytes {
+    return NewBytes(hexbytes.([]byte), true), nil
+}
+
+HexRaw ← "x" hexbytes:HexBytes {
+    return NewBytes(hexbytes.([]byte), false), nil
+}
+
+HexBytes ← [0-9abcdefABCDEF]+ {
+    bytez, err := hex.DecodeString(string(c.text))
+    if err != nil {
+        return nil, err
+    }
+    return bytez, nil
+}
+
+Type ← ("u64" / "i64") {
+    return string(c.text), nil
+}
+
+Integer ← '-'? [0-9]+ {
+    return string(c.text), nil
+}
+
+Label ← [0-9a-zA-Z:]+ {
+    return string(c.text), nil
+}
+
+Placeholder ← '<' label:Label '>' {
+    return Placeholder{
+      Label: label.(string),
+    }, nil
+}
+
+String ← '"' ( !EscapedChar . / '\\' EscapeSequence )* '"' {
+    // TODO : the forward slash (solidus) is not a valid escape in Go, it will
+    // fail if there's one in the string
+    text, err := strconv.Unquote(string(c.text))
+    if err != nil {
+      return nil, err
+    } else {
+      return NewString(text), nil
+    }
+}
+
+EscapedChar ← [\x00-\x1f"\\]
+
+EscapeSequence ← SingleCharEscape / UnicodeEscape
+
+SingleCharEscape ← ["\\/bfnrt]
+
+UnicodeEscape ← 'u' HexDigit HexDigit HexDigit HexDigit
+
+HexDigit ← [0-9a-f]i
+
+_ "whitespace" ← [ \n\t\r]*
+
+EOF ← !.
