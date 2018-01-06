@@ -1,23 +1,6 @@
 Specification
 =============
 
-The `primary
-specification <https://github.com/tendermint/abci/blob/master/types/types.proto>`__
-is made using Protocol Buffers. To build it, run
-
-::
-
-    make protoc
-
-See ``protoc --help`` and `the Protocol Buffers
-site <https://developers.google.com/protocol-buffers/>`__ for details on
-compiling for other languages. Note we also include a
-`GRPC <http://www.grpc.io/docs>`__ service definition.
-
-For the specification as an interface in Go, see the
-`types/application.go
-file <https://github.com/tendermint/abci/blob/master/types/application.go>`__.
-
 Message Types
 ~~~~~~~~~~~~~
 
