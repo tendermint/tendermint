@@ -55,7 +55,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 	for _, val := range valSet.Validators {
 		// check for overflow both multiplication and sum
 		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
-		validatorsHeap.Push(val, accumComparable{val})
+		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
 	// Decrement the validator with most accum times times

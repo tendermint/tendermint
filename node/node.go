@@ -271,7 +271,7 @@ func NewNode(config *cfg.Config,
 				return err
 			}
 			if resQuery.IsErr() {
-				return resQuery
+				return fmt.Errorf("Error querying abci app: %v", resQuery)
 			}
 			return nil
 		})
@@ -281,7 +281,7 @@ func NewNode(config *cfg.Config,
 				return err
 			}
 			if resQuery.IsErr() {
-				return resQuery
+				return fmt.Errorf("Error querying abci app: %v", resQuery)
 			}
 			return nil
 		})

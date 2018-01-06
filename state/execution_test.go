@@ -12,6 +12,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -105,11 +106,11 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	testCases := []struct {
 		desc                        string
 		evidence                    []types.Evidence
-		expectedByzantineValidators []*abci.Evidence
+		expectedByzantineValidators []abci.Evidence
 	}{
-		{"none byzantine", []types.Evidence{}, []*abci.Evidence{}},
-		{"one byzantine", []types.Evidence{ev1}, []*abci.Evidence{{ev1.Address(), ev1.Height()}}},
-		{"multiple byzantine", []types.Evidence{ev1, ev2}, []*abci.Evidence{
+		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
+		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{ev1.Address(), ev1.Height()}}},
+		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
 			{ev1.Address(), ev1.Height()},
 			{ev2.Address(), ev2.Height()}}},
 	}
@@ -161,7 +162,7 @@ type testApp struct {
 	abci.BaseApplication
 
 	AbsentValidators    []int32
-	ByzantineValidators []*abci.Evidence
+	ByzantineValidators []abci.Evidence
 }
 
 func NewDummyApplication() *testApp {
@@ -179,7 +180,7 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 }
 
 func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Tags: []*abci.KVPair{}}
+	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
 }
 
 func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {
