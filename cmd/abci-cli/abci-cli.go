@@ -79,7 +79,7 @@ var RootCmd = &cobra.Command{
 				return err
 			}
 			client.SetLogger(logger.With("module", "abci-client"))
-			if _, err := client.Start(); err != nil {
+			if err := client.Start(); err != nil {
 				return err
 			}
 		}
@@ -185,7 +185,7 @@ var consoleCmd = &cobra.Command{
 	Use:   "console",
 	Short: "start an interactive ABCI console for multiple commands",
 	Long: `start an interactive ABCI console for multiple commands
-	
+
 This command opens an interactive console for running any of the other commands
 without opening a new connection each time
 `,
@@ -642,7 +642,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	srv.SetLogger(logger.With("module", "abci-server"))
-	if _, err := srv.Start(); err != nil {
+	if err := srv.Start(); err != nil {
 		return err
 	}
 
@@ -672,7 +672,7 @@ func cmdDummy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	srv.SetLogger(logger.With("module", "abci-server"))
-	if _, err := srv.Start(); err != nil {
+	if err := srv.Start(); err != nil {
 		return err
 	}
 

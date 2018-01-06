@@ -1,12 +1,12 @@
-hash: 2fe5021646e1cdb80999a9fe0a88a6b695409fa9891b28a97682d2782c9d26ab
-updated: 2017-12-26T04:41:15.383754675-08:00
+hash: 1fbe2d780f4901d78d2e986a694e6335ae07715317c7d680db64e1d69f08aff7
+updated: 2018-01-05T22:07:26.119496005-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
   subpackages:
   - btcec
 - name: github.com/go-kit/kit
-  version: e3b2152e0063c5f05efea89ecbe297852af2a92d
+  version: e2b298466b32c7cd5579a9b9b07e968fc9d9452c
   subpackages:
   - log
   - log/level
@@ -14,7 +14,7 @@ imports:
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
-  version: 259ab82a6cad3992b4e21ff5cac294ccb06474bc
+  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
@@ -25,7 +25,7 @@ imports:
   - sortkeys
   - types
 - name: github.com/golang/protobuf
-  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
+  version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
   subpackages:
   - proto
   - ptypes
@@ -41,13 +41,13 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/pkg/errors
-  version: f15c970de5b76fac0b59abb32d62c17cc7bed265
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/pflag
-  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
+  version: 97afa5e7ca8a08a383cb259e06636b5e2cc7897f
 - name: github.com/syndtr/goleveldb
-  version: adf24ef3f94bd13ec4163060b21a5678f22b429b
+  version: b89cc31ef7977104127d34c1bd31ebd1a9db2199
   subpackages:
   - leveldb
   - leveldb/cache
@@ -62,27 +62,27 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/ed25519
-  version: d8387025d2b9d158cf4efb07e7ebf814bcce2057
+  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
   subpackages:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 9472476a8b5814d42b96881e28a01536acfdabb3
+  version: 3ebe3250ff67e8af92f00ec3dc427c14a7eb1066
 - name: github.com/tendermint/go-wire
   version: 27be46e25124ddf775e23317a83647ce62a93f6b
   subpackages:
   - data
 - name: github.com/tendermint/iavl
-  version: 7f42f4ea5187ac0184ded22a038e77faba035606
+  version: ed0bbf0acc51e75f72c76099293113c2d67199b9
 - name: github.com/tendermint/tmlibs
-  version: b25df389db3c98f4b964bd39511c199f02d07715
+  version: 1afc0340069d38e71f137bc9e4fa4fadf12f76df
   subpackages:
   - common
   - db
   - log
   - process
 - name: golang.org/x/crypto
-  version: 94eea52f7b742c7cbe0b03b22f0c4c8631ece122
+  version: edd5e9b0879d13ee6970a50153d85b8fec9f7686
   subpackages:
   - nacl/secretbox
   - openpgp/armor
@@ -91,7 +91,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: d866cfc389cec985d6fda2859936a575a55a3ab6
+  version: cd69bc3fc700721b709c3a59e16e24c67b58f6ff
   subpackages:
   - context
   - http2
@@ -101,14 +101,14 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 75cc3cad82b5f47d3fb229ddda8c5167da14f294
+  version: c01e4764d870b77f8abe5096ee19ad20d80e8075
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: a8101f21cf983e773d0c1133ebc5424792003214
+  version: f676e0f3ac6395ff1a529ae59a6670878a8371a6
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
@@ -132,7 +132,7 @@ imports:
   - transport
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
@@ -140,7 +140,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  version: 2aa2c176b9dab406a6970f6a55f513e8a8c8b18f
   subpackages:
   - assert
   - require

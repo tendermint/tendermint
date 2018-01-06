@@ -215,14 +215,14 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 
 	server := abciserver.NewSocketServer(socket, app)
 	server.SetLogger(logger.With("module", "abci-server"))
-	if _, err := server.Start(); err != nil {
+	if err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
 	// Connect to the socket
 	client := abcicli.NewSocketClient(socket, false)
 	client.SetLogger(logger.With("module", "abci-client"))
-	if _, err := client.Start(); err != nil {
+	if err := client.Start(); err != nil {
 		server.Stop()
 		return nil, nil, err
 	}
@@ -238,13 +238,13 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, c
 	gapp := types.NewGRPCApplication(app)
 	server := abciserver.NewGRPCServer(socket, gapp)
 	server.SetLogger(logger.With("module", "abci-server"))
-	if _, err := server.Start(); err != nil {
+	if err := server.Start(); err != nil {
 		return nil, nil, err
 	}
 
 	client := abcicli.NewGRPCClient(socket, true)
 	client.SetLogger(logger.With("module", "abci-client"))
-	if _, err := client.Start(); err != nil {
+	if err := client.Start(); err != nil {
 		server.Stop()
 		return nil, nil, err
 	}
