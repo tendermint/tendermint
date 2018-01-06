@@ -54,7 +54,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
 		val.Accum += val.VotingPower * int64(times) // TODO: mind overflow
-		validatorsHeap.Push(val, accumComparable{val})
+		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
 	// Decrement the validator with most accum times times

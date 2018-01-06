@@ -3,6 +3,7 @@ package types
 import (
 	"time"
 
+	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/go-wire/data"
 )
@@ -40,11 +41,11 @@ type CanonicalJSONVote struct {
 }
 
 type CanonicalJSONHeartbeat struct {
-	Height           int64      `json:"height"`
-	Round            int        `json:"round"`
-	Sequence         int        `json:"sequence"`
-	ValidatorAddress data.Bytes `json:"validator_address"`
-	ValidatorIndex   int        `json:"validator_index"`
+	Height           int64          `json:"height"`
+	Round            int            `json:"round"`
+	Sequence         int            `json:"sequence"`
+	ValidatorAddress crypto.Address `json:"validator_address"`
+	ValidatorIndex   int            `json:"validator_index"`
 }
 
 //------------------------------------

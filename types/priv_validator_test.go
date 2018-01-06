@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -173,7 +172,7 @@ func TestSignProposal(t *testing.T) {
 	assert.Equal(sig, proposal.Signature)
 }
 
-func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
+func newVote(addr crypto.Address, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
 	return &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
