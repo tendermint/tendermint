@@ -1,29 +1,36 @@
+# Repository specific variables
+BINARY := tendermint
+TMHOME ?= $(HOME)/.tendermint
+LDFLAGS_VERSIONING := -X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=8 HEAD)
+#Enable the below to omit the symbol table and debug information from the binary
+#LDFLAGS_EXTRA ?= -w -s
 GOTOOLS := \
-	github.com/mitchellh/gox \
+	github.com/tendermint/gox \
 	github.com/Masterminds/glide \
 	github.com/tcnksm/ghr \
 	gopkg.in/alecthomas/gometalinter.v2
 GO_MIN_VERSION := 1.9.2
+
+#Generic, overrideable build variables
 PACKAGES := $(shell go list ./... | grep -v '/vendor/')
-BUILD_TAGS ?= tendermint
-TMHOME ?= $(HOME)/.tendermint
+BUILD_TAGS ?= $(BINARY)
 GOPATH ?= $(shell go env GOPATH)
 GOROOT ?= $(shell go env GOROOT)
 GOGCCFLAGS ?= $(shell go env GOGCCFLAGS)
-#LDFLAGS_EXTRA ?= -w -s
 XC_ARCH ?= 386 amd64 arm
 XC_OS ?= solaris darwin freebsd linux windows
 XC_OSARCH ?= !darwin/arm !solaris/amd64 !freebsd/amd64
-BUILD_OUTPUT ?= ./build/{{.OS}}_{{.Arch}}/tendermint
+BUILD_OUTPUT ?= ./build/{{.OS}}_{{.Arch}}/$(BINARY)
 
+#Generic fix build variables
 GOX_FLAGS = -os="$(XC_OS)" -arch="$(XC_ARCH)" -osarch="$(XC_OSARCH)" -output="$(BUILD_OUTPUT)"
 ifeq ($(BUILD_FLAGS_RACE),YES)
 RACEFLAG=-race
 else
 RACEFLAG=
 endif
-BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=$(shell git rev-parse --short=8 HEAD) $(LDFLAGS_EXTRA)" $(RACEFLAG)
-GO_VERSION:=$(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
+BUILD_FLAGS = -asmflags "-trimpath $(GOPATH)" -gcflags "-trimpath $(GOPATH)" -tags "$(BUILD_TAGS)" -ldflags "$(LDFLAGS_VERSIONING) $(LD_FLAGS_EXTRA)" $(RACEFLAG)
+GO_VERSION := $(shell go version | grep -o '[[:digit:]]\+.[[:digit:]]\+.[[:digit:]]\+')
 #Check that that minor version of GO meets the minimum required
 GO_MINOR_VERSION := $(shell grep -o \.[[:digit:]][[:digit:]]*\. <<< $(GO_VERSION) | grep -o [[:digit:]]* )
 GO_MIN_MINOR_VERSION := $(shell grep -o \.[[:digit:]][[:digit:]]*\. <<< $(GO_MIN_VERSION) | grep -o [[:digit:]]* )
@@ -39,19 +46,17 @@ check: check_tools get_vendor_deps
 ### Build
 
 build_xc: check_tools
-	$(shell which gox) $(BUILD_FLAGS) $(GOX_FLAGS) ./cmd/tendermint/
+	$(shell which gox) $(BUILD_FLAGS) $(GOX_FLAGS) ./cmd/$(BINARY)/
 
 build:
 ifeq ($(OS),Windows_NT)
-	make build_xc XC_ARCH=amd64 XC_OS=windows BUILD_OUTPUT=$(GOPATH)/bin/tendermint
+	make build_xc XC_ARCH=amd64 XC_OS=windows BUILD_OUTPUT=$(GOPATH)/bin/$(BINARY)
 else
-	make build_xc XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/tendermint
+	make build_xc XC_ARCH=amd64 XC_OS="$(shell uname -s)" BUILD_OUTPUT=$(GOPATH)/bin/$(BINARY)
 endif
 
 build_race:
-#TODO: Wait for this to be merged: https://github.com/mitchellh/gox/pull/105 Then switch over to make build and remove the go build line.
-#	make build BUILD_FLAGS_RACE=YES
-	$(shell which go) build $(BUILD_FLAGS) -race -o "$(BUILD_OUTPUT)" ./cmd/tendermint/
+	make build BUILD_FLAGS_RACE=YES
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
@@ -184,4 +189,4 @@ metalinter_all:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test test_race test_integrations test_release test100 vagrant_test fmt metalinter metalinter_all
+.PHONY: check builkd_xc build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test test_race test_integrations test_release test100 vagrant_test fmt metalinter metalinter_all
