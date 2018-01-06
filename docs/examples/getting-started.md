@@ -120,6 +120,6 @@ tendermint node --home ./node3 --proxy_app=dummy --p2p.seeds IP1:46656,IP2:46656
 tendermint node --home ./node4 --proxy_app=dummy --p2p.seeds IP1:46656,IP2:46656,IP3:46656
 ```
 
-Note that after the third node is started, blocks will start to stream in because >2/3 of validators (defined in the `genesis.json` have come online.
+Note that after the third node is started, blocks will start to stream in because >2/3 of validators (defined in the `genesis.json` have come online). Seeds can also be specified in the `config.toml`. See [this PR](https://github.com/tendermint/tendermint/pull/792) for more information about configuration options.
 
-Transactions can be sent as covered in the single, local node example above.
+Transactions can then be sent as covered in the single, local node example above.
