@@ -6,7 +6,7 @@ Tendermint is ...
 
 ## Install
 
-Note: Quick Start on a fresh machine can be done with [this script](./install_tendermint.sh); tested on Ubuntu 16.04. It is used in the cluster deployment below.
+Note: Quick Start on a fresh machine can be done with [this script](https://gist.githubusercontent.com/zramsay/4bca8907a97ad825c30cfdc6f72ba97b/raw/b94bf36e34181a2960f9fe0d3eff260d03b6064e/install_tendermint.sh); tested on Ubuntu 16.04. It is used in the cluster deployment below.
 
 Requires: 
 - `go` minimum version 1.9.2
@@ -99,12 +99,12 @@ where the value is returned in hex.
 
 ## Cluster of Nodes
 
-First create four Ubuntu cloud machines. The following was testing on Digital Ocean Ubuntu 16.04 (3GB/1CPU, 20GB SSD). We'll refer to their respective IP addresses below as IP1, IP2, IP3, IP4.
+First create four Ubuntu cloud machines. The following was testing on Digital Ocean Ubuntu 16.04 x64 (3GB/1CPU, 20GB SSD). We'll refer to their respective IP addresses below as IP1, IP2, IP3, IP4.
 
-Then, `ssh` into each machine, and `curl` then execute [this script](./install_tendermint.sh):
+Then, `ssh` into each machine, and `curl` then execute [this script](https://gist.githubusercontent.com/zramsay/4bca8907a97ad825c30cfdc6f72ba97b/raw/b94bf36e34181a2960f9fe0d3eff260d03b6064e/install_tendermint.sh):
 
 ```
-curl -o tmint.sh https://gist.githubusercontent.com/zramsay/4bca8907a97ad825c30cfdc6f72ba97b/raw/910c16c15bcc134e2cee1d471223799df80fcb4f/install_tendermint.sh
+curl -o tmint.sh https://gist.githubusercontent.com/zramsay/4bca8907a97ad825c30cfdc6f72ba97b/raw/b94bf36e34181a2960f9fe0d3eff260d03b6064e/install_tendermint.sh
 bash tmint.sh
 source ~/.profile
 ```
