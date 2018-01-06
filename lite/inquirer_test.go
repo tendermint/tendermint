@@ -37,14 +37,15 @@ func TestInquirerValidPath(t *testing.T) {
 	}
 
 	// initialize a certifier with the initial state
-	cert, _ := lite.NewInquiring(chainID, commits[0], trust, source)
+	cert, err := lite.NewInquiring(chainID, commits[0], trust, source)
+	require.Nil(err)
 
 	// this should fail validation....
 	commit := commits[count-1].Commit
-	err := cert.Certify(commit)
+	err = cert.Certify(commit)
 	require.NotNil(err)
 
-	// add a few seed in the middle should be insufficient
+	// adding a few commits in the middle should be insufficient
 	for i := 10; i < 13; i++ {
 		err := source.StoreCommit(commits[i])
 		require.Nil(err)
