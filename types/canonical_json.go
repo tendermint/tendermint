@@ -40,11 +40,11 @@ type CanonicalJSONVote struct {
 }
 
 type CanonicalJSONHeartbeat struct {
-	Height           int64      `json:"height"`
-	Round            int        `json:"round"`
-	Sequence         int        `json:"sequence"`
-	ValidatorAddress data.Bytes `json:"validator_address"`
-	ValidatorIndex   int        `json:"validator_index"`
+	Height           int64   `json:"height"`
+	Round            int     `json:"round"`
+	Sequence         int     `json:"sequence"`
+	ValidatorAddress Address `json:"validator_address"`
+	ValidatorIndex   int     `json:"validator_index"`
 }
 
 //------------------------------------

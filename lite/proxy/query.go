@@ -86,9 +86,14 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 	   // https://github.com/tendermint/tendermint/issues/1183
 	if len(resp.Value) > 0 {
 		// The key was found, construct a proof of existence.
-		eproof, err := iavl.ReadKeyExistsProof(resp.Proof)
+		proof, err := iavl.ReadKeyProof(resp.Proof)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "Error reading proof")
+		}
+
+		eproof, ok := proof.(*iavl.KeyExistsProof)
+		if !ok {
+			return nil, nil, errors.New("Expected KeyExistsProof for non-empty value")
 		}
 
 		// Validate the proof against the certified header to ensure data integrity.
@@ -100,11 +105,16 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 	}
 
 	// The key wasn't found, construct a proof of non-existence.
-	var aproof *iavl.KeyAbsentProof
-	aproof, err = iavl.ReadKeyAbsentProof(resp.Proof)
+	proof, err := iavl.ReadKeyProof(resp.Proof)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Error reading proof")
 	}
+
+	aproof, ok := proof.(*iavl.KeyAbsentProof)
+	if !ok {
+		return nil, nil, errors.New("Expected KeyAbsentProof for empty Value")
+	}
+
 	// Validate the proof against the certified header to ensure data integrity.
 	err = aproof.Verify(resp.Key, nil, commit.Header.AppHash)
 	if err != nil {

@@ -10,13 +10,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
+	cmn "github.com/tendermint/tmlibs/common"
+	dbm "github.com/tendermint/tmlibs/db"
+	"github.com/tendermint/tmlibs/pubsub/query"
+
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	db "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/pubsub/query"
 )
 
 const (
@@ -27,13 +27,13 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store        db.DB
+	store        dbm.DB
 	tagsToIndex  []string
 	indexAllTags bool
 }
 
 // NewTxIndex creates new KV indexer.
-func NewTxIndex(store db.DB, options ...func(*TxIndex)) *TxIndex {
+func NewTxIndex(store dbm.DB, options ...func(*TxIndex)) *TxIndex {
 	txi := &TxIndex{store: store, tagsToIndex: make([]string, 0), indexAllTags: false}
 	for _, o := range options {
 		o(txi)
@@ -87,7 +87,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 
 		// index tx by tags
 		for _, tag := range result.Result.Tags {
-			if txi.indexAllTags || cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
+			if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
 				storeBatch.Set(keyForTag(tag, result), hash)
 			}
 		}
@@ -109,7 +109,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 
 	// index tx by tags
 	for _, tag := range result.Result.Tags {
-		if txi.indexAllTags || cmn.StringInSlice(tag.Key, txi.tagsToIndex) {
+		if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
 			b.Set(keyForTag(tag, result), hash)
 		}
 	}
@@ -270,18 +270,18 @@ func isRangeOperation(op query.Operator) bool {
 
 func (txi *TxIndex) match(c query.Condition, startKey []byte) (hashes [][]byte) {
 	if c.Op == query.OpEqual {
-		it := txi.store.IteratorPrefix(startKey)
-		defer it.Release()
-		for it.Next() {
+		it := dbm.IteratePrefix(txi.store, startKey)
+		defer it.Close()
+		for ; it.Valid(); it.Next() {
 			hashes = append(hashes, it.Value())
 		}
 	} else if c.Op == query.OpContains {
 		// XXX: doing full scan because startKey does not apply here
 		// For example, if startKey = "account.owner=an" and search query = "accoutn.owner CONSISTS an"
 		// we can't iterate with prefix "account.owner=an" because we might miss keys like "account.owner=Ulan"
-		it := txi.store.Iterator()
-		defer it.Release()
-		for it.Next() {
+		it := txi.store.Iterator(nil, nil)
+		defer it.Close()
+		for ; it.Valid(); it.Next() {
 			if !isTagKey(it.Key()) {
 				continue
 			}
@@ -296,10 +296,10 @@ func (txi *TxIndex) match(c query.Condition, startKey []byte) (hashes [][]byte) 
 }
 
 func (txi *TxIndex) matchRange(r queryRange, startKey []byte) (hashes [][]byte) {
-	it := txi.store.IteratorPrefix(startKey)
-	defer it.Release()
+	it := dbm.IteratePrefix(txi.store, startKey)
+	defer it.Close()
 LOOP:
-	for it.Next() {
+	for ; it.Valid(); it.Next() {
 		if !isTagKey(it.Key()) {
 			continue
 		}
@@ -376,17 +376,8 @@ func extractValueFromKey(key []byte) string {
 	return parts[1]
 }
 
-func keyForTag(tag *abci.KVPair, result *types.TxResult) []byte {
-	switch tag.ValueType {
-	case abci.KVPair_STRING:
-		return []byte(fmt.Sprintf("%s/%v/%d/%d", tag.Key, tag.ValueString, result.Height, result.Index))
-	case abci.KVPair_INT:
-		return []byte(fmt.Sprintf("%s/%v/%d/%d", tag.Key, tag.ValueInt, result.Height, result.Index))
-	// case abci.KVPair_TIME:
-	// 	return []byte(fmt.Sprintf("%s/%d/%d/%d", tag.Key, tag.ValueTime.Unix(), result.Height, result.Index))
-	default:
-		panic(fmt.Sprintf("Undefined value type: %v", tag.ValueType))
-	}
+func keyForTag(tag cmn.KVPair, result *types.TxResult) []byte {
+	return []byte(fmt.Sprintf("%s/%d/%d", tag.Key, result.Height, result.Index))
 }
 
 ///////////////////////////////////////////////////////////////////////////////

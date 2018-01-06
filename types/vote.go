@@ -9,7 +9,6 @@ import (
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -59,9 +58,12 @@ func IsVoteTypeValid(type_ byte) bool {
 	}
 }
 
+// Address is hex bytes. TODO: crypto.Address
+type Address = cmn.HexBytes
+
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
-	ValidatorAddress data.Bytes       `json:"validator_address"`
+	ValidatorAddress Address          `json:"validator_address"`
 	ValidatorIndex   int              `json:"validator_index"`
 	Height           int64            `json:"height"`
 	Round            int              `json:"round"`

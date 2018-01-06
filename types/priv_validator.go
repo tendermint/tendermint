@@ -38,7 +38,7 @@ func voteToStep(vote *Vote) int8 {
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes, proposals, and heartbeats, and never double signs.
 type PrivValidator interface {
-	GetAddress() data.Bytes // redundant since .PubKey().Address()
+	GetAddress() Address // redundant since .PubKey().Address()
 	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error
@@ -50,7 +50,7 @@ type PrivValidator interface {
 // to prevent double signing. The Signer itself can be mutated to use
 // something besides the default, for instance a hardware signer.
 type PrivValidatorFS struct {
-	Address       data.Bytes       `json:"address"`
+	Address       Address   `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
 	LastHeight    int64            `json:"last_height"`
 	LastRound     int              `json:"last_round"`
@@ -96,7 +96,7 @@ func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
 
 // GetAddress returns the address of the validator.
 // Implements PrivValidator.
-func (pv *PrivValidatorFS) GetAddress() data.Bytes {
+func (pv *PrivValidatorFS) GetAddress() Address {
 	return pv.Address
 }
 
