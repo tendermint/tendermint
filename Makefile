@@ -84,8 +84,7 @@ test_apps: clean_tests
 
 test_persistence: clean_tests
 	# run the persistence tests using bash
-	docker run --name run_test3 -t tester bash test/persist/test.sh
-
+	bash test/persist/test_failure_indices.sh
 
 test_p2p: clean_tests
 	mkdir test/logs
