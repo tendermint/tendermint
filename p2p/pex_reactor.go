@@ -28,6 +28,7 @@ const (
 	// Seed/Crawler constants
 	defaultSeedDisconnectWaitPeriod = 2 * time.Minute
 	defaultCrawlPeerInterval        = 30 * time.Second
+	defaultSeedModePeriod           = 5 * time.Second
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
@@ -53,7 +54,7 @@ type PEXReactor struct {
 	ensurePeersPeriod time.Duration
 
 	// Seed/Crawler Mode
-	runningSeedCrawler bool
+	seedMode bool
 
 	// tracks message count by peer, so we can prevent abuse
 	msgCountByPeer    *cmn.CMap
@@ -61,13 +62,13 @@ type PEXReactor struct {
 }
 
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook, sm bool) *PEXReactor {
+func NewPEXReactor(b *AddrBook, seedMode bool) *PEXReactor {
 	r := &PEXReactor{
-		book:               b,
-		runningSeedCrawler: sm,
-		ensurePeersPeriod:  defaultEnsurePeersPeriod,
-		msgCountByPeer:     cmn.NewCMap(),
-		maxMsgCountByPeer:  defaultMaxMsgCountByPeer,
+		book:              b,
+		seedMode:          seedMode,
+		ensurePeersPeriod: defaultEnsurePeersPeriod,
+		msgCountByPeer:    cmn.NewCMap(),
+		maxMsgCountByPeer: defaultMaxMsgCountByPeer,
 	}
 	r.BaseReactor = *NewBaseReactor("PEXReactor", r)
 	return r
@@ -85,7 +86,7 @@ func (r *PEXReactor) OnStart() error {
 
 	// Check if this node should run
 	// in seed/crawler mode
-	if r.runningSeedCrawler {
+	if r.seedMode {
 		go r.seedCrawlerMode()
 	} else {
 		go r.ensurePeersRoutine()
@@ -313,11 +314,8 @@ func (r *PEXReactor) ensurePeers() {
 // Seed/Crawler Mode causes this node to quickly disconnect
 // from peers, except other seed nodes.
 func (r *PEXReactor) seedCrawlerMode() {
-	// Do an initial crawl
 	r.crawlPeers()
-
-	// Fire periodically
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(defaultSeedModePeriod)
 
 	for {
 		select {
@@ -359,33 +357,20 @@ func (oa oldestAttempt) Less(i, j int) bool { return oa[i].LastAttempt.Before(oa
 func (r *PEXReactor) getCrawlStatus() []crawlStatus {
 	var oa oldestAttempt
 
-	addrs := r.book.List()
+	addrs := r.book.ListOfKnownAddresses()
 	// Go through all the addresses in the AddressBook
 	for _, addr := range addrs {
+		p := r.Switch.peers.GetByRemoteAddr(addr.Addr)
+
 		oa = append(oa, crawlStatus{
 			Addr:        addr.Addr,
-			PeerID:      r.addrToPeerKey(addr.Addr),
+			PeerID:      p.Key(),
 			LastAttempt: addr.LastAttempt,
 			LastSuccess: addr.LastSuccess,
 		})
 	}
 	sort.Sort(oa)
 	return oa
-}
-
-// addrToPeerKey returns the Peer.Key() if the Peer is currently
-// connected and has the RemoteAddr equal to the addr parameter.
-func (r *PEXReactor) addrToPeerKey(addr *NetAddress) string {
-	var id string
-
-	peers := r.Switch.peers.List()
-	for _, p := range peers {
-		if addr.String() == p.NodeInfo().RemoteAddr {
-			id = p.Key()
-			break
-		}
-	}
-	return id
 }
 
 // crawlPeers will crawl the network looking for new peer addresses. (once)

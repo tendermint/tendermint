@@ -169,8 +169,16 @@ func (a *AddrBook) OurAddresses() []*NetAddress {
 	return addrs
 }
 
-// List returns a list of new and old addresses.
-func (a *AddrBook) List() []*knownAddress {
+// AddAddress adds the given address as received from the given source.
+// NOTE: addr must not be nil
+func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) error {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	return a.addAddress(addr, src)
+}
+
+// ListOfKnownAddresses returns the new and old addresses.
+func (a *AddrBook) ListOfKnownAddresses() []*knownAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -179,14 +187,6 @@ func (a *AddrBook) List() []*knownAddress {
 		addrs = append(addrs, addr.copy())
 	}
 	return addrs
-}
-
-// AddAddress adds the given address as received from the given source.
-// NOTE: addr must not be nil
-func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) error {
-	a.mtx.Lock()
-	defer a.mtx.Unlock()
-	return a.addAddress(addr, src)
 }
 
 // NeedMoreAddrs returns true if there are not have enough addresses in the book.

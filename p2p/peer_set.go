@@ -61,6 +61,20 @@ func (ps *PeerSet) Has(peerKey string) bool {
 	return ok
 }
 
+// FindByRemoteAddr returns the Peer iff the PeerSet contains
+// the peer with a RemoteAddr equal to the addr parameter.
+func (ps *PeerSet) GetByRemoteAddr(addr *NetAddress) Peer {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	for _, p := range ps.list {
+		if addr.String() == p.NodeInfo().RemoteAddr {
+			return p
+		}
+	}
+	return nil
+}
+
 // Get looks up a peer by the provided peerKey.
 func (ps *PeerSet) Get(peerKey string) Peer {
 	ps.mtx.Lock()
