@@ -1,5 +1,7 @@
 #! /bin/bash
 
+# XXX this ought to be triggered by jenkins
+
 go get -d github.com/tendermint/abci
 
 # get the abci commit used by tendermint
