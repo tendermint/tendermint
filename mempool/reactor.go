@@ -96,7 +96,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	switch msg := msg.(type) {
 	case *TxMessage:
 		success := func(*abci.Response) {
-			src.Mark(memR.GetID(), true, 1, p2p.PeerMarkCorrect)
+			src.MarkAsGoodNEventsWithSeverity(memR.GetID(), 1, p2p.PeerMarkCorrect)
 		}
 		err := memR.Mempool.CheckTx(msg.Tx, success)
 		if err != nil {

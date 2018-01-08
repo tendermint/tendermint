@@ -117,7 +117,7 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
 		if err != nil {
 			// peer gave us a bad ListenAddr
-			p.Mark(r.GetID(), false, 1, PeerMarkBad)
+			p.MarkAsBadNEventsWithSeverity(r.GetID(), 1, PeerMarkBad)
 			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
 			return
 		}
@@ -149,7 +149,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	if r.ReachedMaxMsgCountForPeer(srcAddrStr) {
 		r.Logger.Error("Maximum number of messages reached for peer", "peer", srcAddrStr)
 		// TODO remove src from peers?
-		src.Mark(r.GetID(), false, 1, PeerMarkFatal)
+		src.MarkAsBadNEventsWithSeverity(r.GetID(), 1, PeerMarkFatal)
 		return
 	}
 
@@ -295,12 +295,12 @@ func (r *PEXReactor) ensurePeers() {
 				r.book.MarkAttempt(picked)
 				// Negatively mark the peer that provided the address
 				if peer != nil {
-					peer.Mark(r.GetID(), false, 1, PeerMarkBad)
+					peer.MarkAsBadNEventsWithSeverity(r.GetID(), 1, PeerMarkBad)
 				}
 			}
 			// Positively mark the peer that provided the dialed address
 			if peer != nil {
-				peer.Mark(r.GetID(), true, 1, PeerMarkGood)
+				peer.MarkAsGoodNEventsWithSeverity(r.GetID(), 1, PeerMarkGood)
 			}
 		}(item)
 	}

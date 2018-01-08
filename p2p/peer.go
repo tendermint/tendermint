@@ -15,8 +15,11 @@ import (
 )
 
 // The following constants modify the number of events sent to a metric based on severity
+
+type Severity int
+
 const (
-	PeerMarkFatal = iota
+	PeerMarkFatal Severity = iota
 	PeerMarkBad
 	PeerMarkNeutral
 	PeerMarkCorrect
@@ -32,7 +35,8 @@ type Peer interface {
 	IsPersistent() bool
 	NodeInfo() *NodeInfo
 	Status() ConnectionStatus
-	Mark(reactorID string, good bool, events, severity int)
+	MarkAsGoodNEventsWithSeverity(trustMetricID string, events int, s Severity)
+	MarkAsBadNEventsWithSeverity(trustMetricID string, events int, s Severity)
 
 	Send(byte, interface{}) bool
 	TrySend(byte, interface{}) bool
@@ -345,29 +349,48 @@ func (p *peer) Status() ConnectionStatus {
 }
 
 // It updates a peer's metric with good or bad events taking place within this reactor
-func (p *peer) Mark(reactorID string, good bool, events, severity int) {
+func (p *peer) MarkAsGoodNEventsWithSeverity(trustMetricID string, events int, s Severity) {
 	tms := p.MetricStore()
 	if tms == nil {
 		return
 	}
 
 	// Modify the number of events based on severity
-	num := events
-	switch severity {
-	case PeerMarkFatal, PeerMarkGood:
-		num *= 10
-	case PeerMarkBad, PeerMarkCorrect:
+	switch s {
+	case PeerMarkGood:
+		events *= 10
+	case PeerMarkCorrect:
 		// These result in events * 1
 	case PeerMarkNeutral:
-		num = 0
+		events = 0
+	default:
+		events = 0
 	}
 
-	tm := tms.GetPeerTrustMetric(p.Key(), reactorID)
-	if good {
-		tm.GoodEvents(events)
-	} else {
-		tm.BadEvents(events)
+	tm := tms.GetPeerTrustMetric(p.Key(), trustMetricID)
+	tm.GoodEvents(events)
+}
+
+func (p *peer) MarkAsBadNEventsWithSeverity(trustMetricID string, events int, s Severity) {
+	tms := p.MetricStore()
+	if tms == nil {
+		return
 	}
+
+	// Modify the number of events based on severity
+	switch s {
+	case PeerMarkFatal:
+		events *= 10
+	case PeerMarkBad:
+		// These result in events * 1
+	case PeerMarkNeutral:
+		events = 0
+	default:
+		events = 0
+	}
+
+	tm := tms.GetPeerTrustMetric(p.Key(), trustMetricID)
+	tm.BadEvents(events)
 }
 
 func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {

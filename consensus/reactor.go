@@ -195,7 +195,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
-		src.Mark(conR.GetID(), false, 1, p2p.PeerMarkBad)
+		src.MarkAsBadNEventsWithSeverity(conR.GetID(), 1, p2p.PeerMarkBad)
 		return
 	}
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
