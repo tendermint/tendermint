@@ -1,0 +1,19 @@
+package: github.com/tendermint/iavl
+import:
+- package: github.com/tendermint/go-wire
+  version: develop
+- package: github.com/tendermint/tmlibs
+  version: develop
+  subpackages:
+  - common
+  - db
+  - merkle
+- package: golang.org/x/crypto
+  subpackages:
+  - ripemd160
+testImport:
+- package: github.com/stretchr/testify
+  version: ^1.1.4
+  subpackages:
+  - assert
+  - require

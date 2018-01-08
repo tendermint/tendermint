@@ -1,0 +1,258 @@
+syntax = "proto3";
+package types;
+
+// For more information on gogo.proto, see:
+// https://github.com/gogo/protobuf/blob/master/extensions.md
+import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+
+// This file is copied from http://github.com/tendermint/abci
+
+//----------------------------------------
+// Request types
+
+message Request {
+  oneof value {
+    RequestEcho echo = 2;
+    RequestFlush flush = 3;
+    RequestInfo info = 4;
+    RequestSetOption set_option = 5;
+    RequestInitChain init_chain = 6;
+    RequestQuery query = 7;
+    RequestBeginBlock begin_block = 8;
+    RequestCheckTx check_tx = 9;
+    RequestDeliverTx deliver_tx = 19;
+    RequestEndBlock end_block = 11;
+    RequestCommit commit = 12;
+  }
+}
+
+message RequestEcho {
+  string message = 1;
+}
+
+message RequestFlush {
+}
+
+message RequestInfo {
+  string version = 1;
+}
+
+message RequestSetOption {
+  string key = 1;
+  string value = 2;
+}
+
+message RequestInitChain {
+  repeated Validator validators = 1;
+}
+
+message RequestQuery{
+  bytes data = 1;
+  string path = 2;
+  int64 height = 3;
+  bool prove = 4;
+}
+
+message RequestBeginBlock {
+  bytes hash = 1;
+  Header header = 2;
+  repeated int32 absent_validators = 3;
+  repeated Evidence byzantine_validators = 4;
+}
+
+message RequestCheckTx {
+  bytes tx = 1;
+}
+
+message RequestDeliverTx {
+  bytes tx = 1;
+}
+
+message RequestEndBlock{
+  int64 height = 1;
+}
+
+message RequestCommit {
+}
+
+//----------------------------------------
+// Response types
+
+message Response {
+  oneof value {
+    ResponseException exception = 1;
+    ResponseEcho echo = 2;
+    ResponseFlush flush = 3;
+    ResponseInfo info = 4;
+    ResponseSetOption set_option = 5;
+    ResponseInitChain init_chain = 6;
+    ResponseQuery query = 7;
+    ResponseBeginBlock begin_block = 8;
+    ResponseCheckTx check_tx = 9;
+    ResponseDeliverTx deliver_tx = 10;
+    ResponseEndBlock end_block = 11;
+    ResponseCommit commit = 12;
+  }
+}
+
+message ResponseException {
+  string error = 1;
+}
+
+message ResponseEcho {
+  string message = 1;
+}
+
+message ResponseFlush {
+}
+
+message ResponseInfo {
+  string data = 1;
+  string version = 2;
+  int64 last_block_height = 3;
+  bytes last_block_app_hash = 4;
+}
+
+message ResponseSetOption {
+  uint32 code = 1;
+  string log  = 2;
+}
+
+message ResponseInitChain {
+}
+
+message ResponseQuery {
+  uint32 code = 1;
+  int64 index = 2;
+  bytes key = 3 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes value = 4 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  bytes proof = 5 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  int64 height = 6;
+  string log = 7;
+}
+
+message ResponseBeginBlock {
+}
+
+message ResponseCheckTx {
+  uint32 code = 1;
+  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  string log = 3;
+  int64 gas = 4;
+  int64 fee = 5;
+}
+
+message ResponseDeliverTx {
+  uint32 code = 1;
+  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  string log = 3;
+  repeated KVPair tags = 4;
+}
+
+message ResponseEndBlock {
+  repeated Validator validator_updates = 1;
+  ConsensusParams consensus_param_updates = 2;
+}
+
+message ResponseCommit {
+  uint32 code = 1;
+  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
+  string log = 3;
+}
+
+//----------------------------------------
+// Misc.
+
+// ConsensusParams contains all consensus-relevant parameters
+// that can be adjusted by the abci app
+message ConsensusParams {
+  BlockSize block_size = 1;
+  TxSize tx_size = 2;
+  BlockGossip block_gossip = 3;
+}
+
+// BlockSize contain limits on the block size.
+message BlockSize {
+  int32 max_bytes = 1;
+  int32 max_txs = 2;
+  int64 max_gas = 3;
+}
+
+// TxSize contain limits on the tx size.
+message TxSize{
+  int32 max_bytes = 1;
+  int64 max_gas = 2;
+}
+
+// BlockGossip determine consensus critical
+// elements of how blocks are gossiped
+message BlockGossip {
+  // Note: must not be 0
+  int32 block_part_size_bytes = 1;
+}
+
+//----------------------------------------
+// Blockchain Types
+
+message Header {
+  string chain_id = 1 [(gogoproto.customname) = "ChainID"];
+  int64 height = 2;
+  int64 time = 3;
+  int32 num_txs = 4;
+  BlockID last_block_id = 5 [(gogoproto.customname) = "LastBlockID"];
+  bytes last_commit_hash = 6;
+  bytes data_hash = 7;
+  bytes validators_hash = 8;
+  bytes app_hash = 9;
+}
+
+message BlockID {
+  bytes hash = 1;
+  PartSetHeader parts = 2;
+}
+
+message PartSetHeader {
+  int32 total = 1;
+  bytes hash = 2;
+}
+
+message Validator {
+  bytes pub_key = 1;
+  int64 power = 2;
+}
+
+message Evidence {
+  bytes pub_key = 1;
+  int64 height = 2;
+}
+
+//----------------------------------------
+// Abstract types
+
+message KVPair {
+  string key = 1;
+  enum Type {
+    STRING = 0;
+    INT = 1;
+  }
+  Type value_type = 2;
+  string value_string = 3;
+  int64 value_int = 4;
+}
+
+//----------------------------------------
+// Service Definition
+
+service ABCIApplication {
+  rpc Echo(RequestEcho) returns (ResponseEcho) ;
+  rpc Flush(RequestFlush) returns (ResponseFlush);
+  rpc Info(RequestInfo) returns (ResponseInfo);
+  rpc SetOption(RequestSetOption) returns (ResponseSetOption);
+  rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
+  rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
+  rpc Query(RequestQuery) returns (ResponseQuery);
+  rpc Commit(RequestCommit) returns (ResponseCommit);
+  rpc InitChain(RequestInitChain) returns (ResponseInitChain);
+  rpc BeginBlock(RequestBeginBlock) returns (ResponseBeginBlock);
+  rpc EndBlock(RequestEndBlock) returns (ResponseEndBlock);
+}

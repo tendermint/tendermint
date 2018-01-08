@@ -1,5 +1,5 @@
-hash: 072c8e685dd519c1f509da67379b70451a681bf3ef6cbd82900a1f68c55bbe16
-updated: 2017-12-29T11:08:17.355999228-05:00
+hash: c7ced71107828e3c448f76b2c0a25d26331b1018fdd59043e251d1ba433bceb1
+updated: 2018-01-06T17:51:08.106529+01:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 2e60448ffcc6bf78332d1fe590260095f554dd78
@@ -10,7 +10,7 @@ imports:
 - name: github.com/fsnotify/fsnotify
   version: 4da3e2cfbabc9f751898f250b49f2439785783a1
 - name: github.com/go-kit/kit
-  version: 953e747656a7bbb5e1f998608b460458958b70cc
+  version: 4dc7be5d2d12881735283bcab7352178e190fc71
   subpackages:
   - log
   - log/level
@@ -126,8 +126,6 @@ imports:
   - nowriter/tmlegacy
 - name: github.com/tendermint/iavl
   version: 594cc0c062a7174475f0ab654384038d77067917
-  subpackages:
-  - iavl
 - name: github.com/tendermint/tmlibs
   version: 91b4b534ad78e442192c8175db92a06a51064064
   subpackages:
@@ -212,7 +210,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 2aa2c176b9dab406a6970f6a55f513e8a8c8b18f
+  version: b91bfb9ebec76498946beb6af7c0230c7cc7ba6c
   subpackages:
   - assert
   - require
