@@ -25,22 +25,14 @@ function start_procs(){
     PID_DUMMY=$!
 
     # before starting tendermint, remove the rpc socket
-    rm $RPC_ADDR
+    rm -f $RPC_ADDR
     if [[ "$indexToFail" == "" ]]; then
         # run in background, dont fail
-        if [[ "$CIRCLECI" == true ]]; then
-            $TM_CMD &
-        else
             $TM_CMD &> "tendermint_${name}.log" & 
-        fi
         PID_TENDERMINT=$!
     else
         # run in foreground, fail
-        if [[ "$CIRCLECI" == true ]]; then
-            FAIL_TEST_INDEX=$indexToFail $TM_CMD
-        else 
             FAIL_TEST_INDEX=$indexToFail $TM_CMD &> "tendermint_${name}.log"
-        fi
         PID_TENDERMINT=$!
     fi
 }
@@ -87,7 +79,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
 
     # tendermint should already have exited when it hits the fail index
     # but kill -9 for good measure
-    kill_procs
+    # kill_procs
 
     start_procs 2
 
