@@ -106,7 +106,10 @@ devdoc_save:
 	$(call DEVDOC_SAVE)
 
 devdoc_clean:
-	docker rmi $$(docker images -f "dangling=true" -q)
+	docker rmi -f $$(docker images -f "dangling=true" -q)
+
+devdoc_update:
+	docker pull tendermint/devdoc
 
 
 ########################################
