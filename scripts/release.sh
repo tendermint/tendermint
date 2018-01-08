@@ -25,9 +25,9 @@ sh -c "'$DIR/scripts/dist.sh'"
 # Pushing binaries to S3
 sh -c "'$DIR/scripts/publish.sh'"
 
-echo "==> Crafting a Github release"
-today=$(date +"%B-%d-%Y")
-ghr -b "https://github.com/tendermint/tendermint/blob/master/CHANGELOG.md#${VERSION//.}-${today,}" "v$VERSION" "$DIR/build/dist"
+# echo "==> Crafting a Github release"
+# today=$(date +"%B-%d-%Y")
+# ghr -b "https://github.com/tendermint/tendermint/blob/master/CHANGELOG.md#${VERSION//.}-${today,}" "v$VERSION" "$DIR/build/dist"
 
 # Build and push Docker image
 

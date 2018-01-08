@@ -1,13 +1,9 @@
 GOTOOLS = \
-	github.com/mitchellh/gox \
-	github.com/Masterminds/glide \
-	github.com/tcnksm/ghr \
+	github.com/tendermint/glide \
 	# gopkg.in/alecthomas/gometalinter.v2
-GOTOOLS_CHECK = gox glide ghr gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
-TMHOME = $${TMHOME:-$$HOME/.tendermint}
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short HEAD`"
+BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
 all: check build test install
 
@@ -18,25 +14,27 @@ check: check_tools get_vendor_deps
 ### Build
 
 build:
-	go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
+	go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
+	go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
+
+install:
+	go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+
+########################################
+### Distribution
 
 # dist builds binaries for all platforms and packages them for distribution
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
-
-install:
-	go install $(BUILD_FLAGS) ./cmd/tendermint
-
 
 ########################################
 ### Tools & dependencies
 
 check_tools:
 	@# https://stackoverflow.com/a/25668869
-	@echo "Found tools: $(foreach tool,$(GOTOOLS_CHECK),\
+	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
 
 get_tools:
