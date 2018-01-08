@@ -2,7 +2,8 @@
 
 ## Overview
 
-Tendermint is ...
+This is a quick start guide. If you have a vague idea about how Tendermint works
+and want to get started right away, continue. Otherwise, [review the documentation](http://tendermint.readthedocs.io/en/master/)
 
 ## Install
 
