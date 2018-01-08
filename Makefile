@@ -68,10 +68,6 @@ build_docker_test_image:
 
 clean_tests:
 	docker rm -f rsyslog || true
-	docker rm -vf run_test || true
-	docker rm -vf run_test1 || true
-	docker rm -vf run_test2 || true
-	docker rm -vf run_test3 || true
 
 ### coverage, app, persistence, and libs tests
 test_cover:
@@ -80,10 +76,12 @@ test_cover:
 	
 test_apps: clean_tests
 	# run the app tests using bash
-	docker run --name run_test2 -t tester bash test/app/test.sh
+	# TODO requires `abci-cli` installed
+	bash test/app/test.sh
 
 test_persistence: clean_tests
 	# run the persistence tests using bash
+	# requires `abci-cli` installed
 	bash test/persist/test_failure_indices.sh
 
 test_p2p: clean_tests
