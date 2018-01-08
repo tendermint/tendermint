@@ -20,6 +20,9 @@ check: check_tools get_vendor_deps
 build:
 	go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
 
+build_darwin_amd64:
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(BUILD_FLAGS) -o build/tendermint_darwin_amd64 ./cmd/tendermint/
+
 build_race:
 	go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
 
