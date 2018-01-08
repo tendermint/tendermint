@@ -87,6 +87,27 @@ vagrant_test:
 
 
 ########################################
+### Devdoc
+
+DEVDOC_SAVE = docker commit `docker ps -a -n 1 -q` devdoc:local
+
+devdoc_init:
+	docker run -it -v "$(CURDIR):/go/src/github.com/tendermint/tendermint" -w "/go/src/github.com/tendermint/tendermint" tendermint/devdoc echo
+	# TODO make this safer
+	$(call DEVDOC_SAVE)
+
+devdoc:
+	docker run -it -v "$(CURDIR):/go/src/github.com/tendermint/tendermint" -w "/go/src/github.com/tendermint/tendermint" devdoc:local bash
+
+devdoc_save:
+	# TODO make this safer
+	$(call DEVDOC_SAVE)
+
+devdoc_clean:
+	docker rmi $$(docker images -f "dangling=true" -q)
+
+
+########################################
 ### Formatting, linting, and vetting
 
 fmt:
