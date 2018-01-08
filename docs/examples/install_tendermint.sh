@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# XXX: this script is meant to be used only on a fresh Ubuntu 16.04 instance
+# and has only been tested on Digital Ocean
+
 # get and unpack golang
 curl -O https://storage.googleapis.com/golang/go1.9.2.linux-amd64.tar.gz
 tar -xvf go1.9.2.linux-amd64.tar.gz
