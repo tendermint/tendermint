@@ -7,7 +7,7 @@ Here we describe configuration options around the Peer Exchange.
 `--p2p.seed_mode`
 
 The node operates in seed mode. In seed mode, a node continuously crawls the network for peers,
-and upon incoming connection shares some peers and disconnect.
+and upon incoming connection shares some peers and disconnects.
 
 ## Seeds
 

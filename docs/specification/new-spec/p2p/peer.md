@@ -82,14 +82,14 @@ The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 
 ```
 type NodeInfo struct {
-	PubKey     crypto.PubKey
-	Moniker    string
-	Network    string
-	RemoteAddr string
-	ListenAddr string
-	Version    string
-    Channels   []int8
-	Other      []string
+  PubKey     crypto.PubKey
+  Moniker    string
+  Network    string
+  RemoteAddr string
+  ListenAddr string
+  Version    string
+  Channels   []int8
+  Other      []string
 }
 ```
 
