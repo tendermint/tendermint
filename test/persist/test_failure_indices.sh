@@ -15,31 +15,19 @@ DUMMY_CMD="abci-cli dummy --persist $TMHOME/dummy" # &> dummy_${name}.log"
 function start_procs(){
     name=$1
     indexToFail=$2
-    echo "Starting persistent dummy and tendermint"
-    if [[ "$CIRCLECI" == true ]]; then
-        $DUMMY_CMD &
-    else
-        $DUMMY_CMD &> "dummy_${name}.log" &
-    fi
+    echo "Starting persistent dummy and tendermint: $name"
+    $DUMMY_CMD &> "dummy_${name}.log" &
     PID_DUMMY=$!
 
     # before starting tendermint, remove the rpc socket
-    rm $RPC_ADDR
+    rm -f $RPC_ADDR
     if [[ "$indexToFail" == "" ]]; then
         # run in background, dont fail
-        if [[ "$CIRCLECI" == true ]]; then
-            $TM_CMD &
-        else
-            $TM_CMD &> "tendermint_${name}.log" & 
-        fi
+        $TM_CMD &> "tendermint_${name}.log" & 
         PID_TENDERMINT=$!
     else
         # run in foreground, fail
-        if [[ "$CIRCLECI" == true ]]; then
-            FAIL_TEST_INDEX=$indexToFail $TM_CMD
-        else 
-            FAIL_TEST_INDEX=$indexToFail $TM_CMD &> "tendermint_${name}.log"
-        fi
+        FAIL_TEST_INDEX=$indexToFail $TM_CMD &> "tendermint_${name}.log"
         PID_TENDERMINT=$!
     fi
 }
@@ -86,7 +74,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
 
     # tendermint should already have exited when it hits the fail index
     # but kill -9 for good measure
-    kill_procs
+    # kill_procs
 
     start_procs 2
 

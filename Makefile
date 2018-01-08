@@ -2,8 +2,8 @@ GOTOOLS = \
 	github.com/mitchellh/gox \
 	github.com/Masterminds/glide \
 	github.com/tcnksm/ghr \
-	gopkg.in/alecthomas/gometalinter.v2
-GOTOOLS_CHECK = gox glide ghr gometalinter.v2
+	#gopkg.in/alecthomas/gometalinter.v2
+GOTOOLS_CHECK = gox glide ghr #gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
@@ -42,7 +42,7 @@ check_tools:
 get_tools:
 	@echo "--> Installing tools"
 	go get -u -v $(GOTOOLS)
-	@gometalinter.v2 --install
+	#@gometalinter.v2 --install
 
 update_tools:
 	@echo "--> Updating tools"
@@ -62,16 +62,42 @@ draw_deps:
 ########################################
 ### Testing
 
-test:
-	@echo "--> Running go test"
-	@go test $(PACKAGES)
+## required to be run first by most tests
+build_docker_test_image:
+	docker build -t tester -f ./test/docker/Dockerfile .
 
-test_race:
-	@echo "--> Running go test --race"
-	@go test -v -race $(PACKAGES)
+clean_tests:
+	docker rm -f rsyslog || true
 
-test_integrations:
-	@bash ./test/test.sh
+### coverage, app, persistence, and libs tests
+test_cover:
+	# run the go unit tests with coverage (in docker)
+	bash test/test_cover.sh
+	
+test_apps: clean_tests
+	# run the app tests using bash
+	# TODO requires `abci-cli` installed
+	bash test/app/test.sh
+
+test_persistence: clean_tests
+	# run the persistence tests using bash
+	# requires `abci-cli` installed
+	bash test/persist/test_failure_indices.sh
+
+test_p2p: clean_tests
+	mkdir test/logs
+	cd test/
+	docker run -d -v "logs:/var/log/" -p 127.0.0.1:5514:514/udp --name rsyslog voxxit/rsyslog
+	cd ..
+	# requires 'tester' the image from above
+	bash test/p2p/test.sh tester
+	ls test/logs
+
+
+test_libs:
+	# checkout every github.com/tendermint dir and run its tests
+	# NOTE: on release-* or master branches only (set by Jenkins)
+	docker run --name run_test -t tester bash test/test_libs.sh
 
 test_release:
 	@go test -tags release $(PACKAGES)
@@ -84,6 +110,15 @@ vagrant_test:
 	vagrant ssh -c 'make install'
 	vagrant ssh -c 'make test_race'
 	vagrant ssh -c 'make test_integrations'
+
+### go tests without docker
+test_unit:
+	@echo "--> Running go test"
+	@go test $(PACKAGES)
+
+test_unit_race:
+	@echo "--> Running go test --race"
+	@go test -v -race $(PACKAGES)
 
 
 ########################################
