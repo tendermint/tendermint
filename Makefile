@@ -1,9 +1,8 @@
 GOTOOLS = \
-	github.com/mitchellh/gox \
-	github.com/Masterminds/glide \
+	github.com/tendermint/glide \
 	github.com/tcnksm/ghr \
 	gopkg.in/alecthomas/gometalinter.v2
-GOTOOLS_CHECK = gox glide ghr gometalinter.v2
+GOTOOLS_CHECK = glide ghr gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
