@@ -89,7 +89,7 @@ func (m *memStoreProvider) GetByHeightBinarySearch(h int64) (FullCommit, error) 
 	var midFC FullCommit
 	// Our goal is to either find:
 	//   * item ByHeight with the query
-	//   * heighest height with a height <= query
+	//   * greatest height with a height <= query
 	for low <= high {
 		mid = int(uint(low+high) >> 1) // Avoid an overflow
 		midFC = m.byHeight[mid]
