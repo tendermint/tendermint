@@ -127,10 +127,14 @@ Some fields from the config file can be overwritten with flags.
 No Empty Blocks
 ---------------
 
-This much requested feature was implemented in version 0.10.3. While the default behaviour of ``tendermint`` is still to create blocks approximately once per second, it is possible to disable empty blocks or set a block creation interval. In the former case, blocks will be created when there are new transactions or when the AppHash changes.
+This much requested feature was implemented in version 0.10.3. While the
+default behaviour of ``tendermint`` is still to create blocks approximately
+once per second, it is possible to disable empty blocks or set a block creation
+interval. In the former case, blocks will be created when there are new
+transactions or when the AppHash changes.
 
-To configure tendermint to not produce empty blocks unless there are txs or the app hash changes, 
-run tendermint with this additional flag:
+To configure tendermint to not produce empty blocks unless there are
+transactions or the app hash changes, run tendermint with this additional flag:
 
 ::
 
@@ -246,13 +250,17 @@ conflicting messages.
 Note also that the ``pub_key`` (the public key) in the
 ``priv_validator.json`` is also present in the ``genesis.json``.
 
-The genesis file contains the list of public keys which may participate
-in the consensus, and their corresponding voting power. Greater than 2/3
-of the voting power must be active (ie. the corresponding private keys
-must be producing signatures) for the consensus to make progress. In our
-case, the genesis file contains the public key of our
-``priv_validator.json``, so a tendermint node started with the default
-root directory will be able to make new blocks, as we've already seen.
+The genesis file contains the list of public keys which may participate in the
+consensus, and their corresponding voting power. Greater than 2/3 of the voting
+power must be active (ie. the corresponding private keys must be producing
+signatures) for the consensus to make progress. In our case, the genesis file
+contains the public key of our ``priv_validator.json``, so a tendermint node
+started with the default root directory will be able to make progress. Voting
+power uses an `int64` but must be positive, thus the range is: 0 through
+9223372036854775807. Because of how the current proposer selection algorithm works,
+we do not recommend having voting powers greater than 10^12 (ie. 1 trillion)
+(see `Proposals section of Byzantine Consensus Algorithm
+<./specification/byzantine-consensus-algorithm.html#proposals>`__ for details).
 
 If we want to add more nodes to the network, we have two choices: we can
 add a new validator node, who will also participate in the consensus by
