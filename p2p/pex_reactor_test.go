@@ -24,7 +24,7 @@ func TestPEXReactorBasic(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 
 	assert.NotNil(r)
@@ -40,7 +40,7 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 
 	size := book.Size()
@@ -76,7 +76,7 @@ func TestPEXReactorRunning(t *testing.T) {
 		switches[i] = makeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
 			sw.SetLogger(log.TestingLogger().With("switch", i))
 
-			r := NewPEXReactor(book)
+			r := NewPEXReactor(book, &PEXReactorConfig{})
 			r.SetLogger(log.TestingLogger())
 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
 			sw.AddReactor("pex", r)
@@ -141,7 +141,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 
 	peer := createRandomPeer(false)
@@ -166,7 +166,7 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 	r.SetMaxMsgCountByPeer(5)
 

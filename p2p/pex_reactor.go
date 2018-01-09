@@ -45,6 +45,7 @@ type PEXReactor struct {
 	BaseReactor
 
 	book              *AddrBook
+	config            *PEXReactorConfig
 	ensurePeersPeriod time.Duration
 
 	// tracks message count by peer, so we can prevent abuse
@@ -52,10 +53,18 @@ type PEXReactor struct {
 	maxMsgCountByPeer uint16
 }
 
+// PEXReactorConfig holds reactor specific configuration data.
+type PEXReactorConfig struct {
+	// Seeds is a list of addresses reactor may use if it can't connect to peers
+	// in the addrbook.
+	Seeds []string
+}
+
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook) *PEXReactor {
+func NewPEXReactor(b *AddrBook, config *PEXReactorConfig) *PEXReactor {
 	r := &PEXReactor{
 		book:              b,
+		config:            config,
 		ensurePeersPeriod: defaultEnsurePeersPeriod,
 		msgCountByPeer:    cmn.NewCMap(),
 		maxMsgCountByPeer: defaultMaxMsgCountByPeer,
@@ -238,7 +247,7 @@ func (r *PEXReactor) ensurePeersRoutine() {
 // placeholder. It should not be the case that an address becomes old/vetted
 // upon a single successful connection.
 func (r *PEXReactor) ensurePeers() {
-	numOutPeers, _, numDialing := r.Switch.NumPeers()
+	numOutPeers, numInPeers, numDialing := r.Switch.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
 	r.Logger.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
 	if numToDial <= 0 {
@@ -290,6 +299,12 @@ func (r *PEXReactor) ensurePeers() {
 			r.Logger.Info("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
 			r.RequestPEX(peer)
 		}
+	}
+
+	// If we can't connect to any known address, fallback to dialing seeds
+	if numOutPeers+numInPeers+numDialing == 0 {
+		r.Logger.Info("No addresses to dial nor connected peers. Will dial seeds", "seeds", r.config.Seeds)
+		r.Switch.DialPeersAsync(r.book, r.config.Seeds, false)
 	}
 }
 

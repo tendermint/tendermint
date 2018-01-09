@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
@@ -256,7 +255,8 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
-		pexReactor := p2p.NewPEXReactor(addrBook)
+		pexReactor := p2p.NewPEXReactor(addrBook,
+			&p2p.PEXReactorConfig{Seeds: strings.Split(config.P2P.Seeds, ",")})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -388,36 +388,8 @@ func (n *Node) OnStart() error {
 		}
 	}
 
-	if n.config.P2P.Seeds != "" {
-		err = n.dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect(strings.Split(n.config.P2P.Seeds, ","))
-		if err != nil {
-			return err
-		}
-	}
-
 	// start tx indexer
 	return n.indexerService.Start()
-}
-
-func (n *Node) dialSeedsIfAddrBookIsEmptyOrPEXFailedToConnect(seeds []string) error {
-	// prefer peers from address book
-	if n.config.P2P.PexReactor && n.addrBook.Size() > 0 {
-		// give some time for PexReactor to connect us to other peers
-		const fallbackToSeedsAfter = 30 * time.Second
-		go func() {
-			time.Sleep(fallbackToSeedsAfter)
-			// fallback to dialing seeds if for some reason we can't connect to any
-			// peers
-			outbound, inbound, _ := n.sw.NumPeers()
-			if n.IsRunning() && outbound+inbound == 0 {
-				// TODO: ignore error?
-				n.sw.DialPeersAsync(n.addrBook, seeds, false)
-			}
-		}()
-		return nil
-	}
-
-	return n.sw.DialPeersAsync(n.addrBook, seeds, false)
 }
 
 // OnStop stops the Node. It implements cmn.Service.
