@@ -49,7 +49,7 @@ The main config parameters are defined
 -  ``p2p.pex``: Enable Peer-Exchange (dev feature). *Default*: ``false``
 -  ``p2p.seeds``: Comma delimited host:port seed nodes. *Default*:
    ``""``
--  ``p2p.manual_peers``: Comma delimited host:port manual peers. *Default*:
+-  ``p2p.persistent_peers``: Comma delimited host:port persistent peers. *Default*:
    ``""``
 -  ``p2p.skip_upnp``: Skip UPNP detection. *Default*: ``false``
 

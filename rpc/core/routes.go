@@ -38,7 +38,7 @@ var Routes = map[string]*rpc.RPCFunc{
 
 func AddUnsafeRoutes() {
 	// control API
-	Routes["dial_manual_peers"] = rpc.NewRPCFunc(UnsafeDialManualPeers, "manual_peers")
+	Routes["dial_persistent_peers"] = rpc.NewRPCFunc(UnsafeDialPersistentPeers, "persistent_peers")
 	Routes["unsafe_flush_mempool"] = rpc.NewRPCFunc(UnsafeFlushMempool, "")
 
 	// profiler API

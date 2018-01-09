@@ -380,9 +380,9 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// Always connect to manual peers
-	if n.config.P2P.ManualPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.ManualPeers, ","), true)
+	// Always connect to persistent peers
+	if n.config.P2P.PersistentPeers != "" {
+		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.PersistentPeers, ","), true)
 		if err != nil {
 			return err
 		}

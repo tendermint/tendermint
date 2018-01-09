@@ -82,7 +82,7 @@ type ResultNetInfo struct {
 	Peers     []Peer   `json:"peers"`
 }
 
-type ResultDialManualPeers struct {
+type ResultDialPersistentPeers struct {
 	Log string `json:"log"`
 }
 

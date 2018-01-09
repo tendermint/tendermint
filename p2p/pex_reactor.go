@@ -100,7 +100,7 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 func (r *PEXReactor) AddPeer(p Peer) {
 	if p.IsOutbound() {
 		// For outbound peers, the address is already in the books.
-		// Either it was added in DialManualPeers or when we
+		// Either it was added in DialPersistentPeers or when we
 		// received the peer's address in r.Receive
 		if r.book.NeedMoreAddrs() {
 			r.RequestPEX(p)

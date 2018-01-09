@@ -270,14 +270,14 @@ For instance,
 
 ::
 
-    tendermint node --p2p.manual_peers "1.2.3.4:46656,5.6.7.8:46656"
+    tendermint node --p2p.persistent_peers "1.2.3.4:46656,5.6.7.8:46656"
 
-Alternatively, you can use the ``/dial_manual_peers`` endpoint of the RPC to
+Alternatively, you can use the ``/dial_persistent_peers`` endpoint of the RPC to
 specify peers for a running node to connect to:
 
 ::
 
-    curl --data-urlencode "manual_peers=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46657/dial_manual_peers
+    curl --data-urlencode "persistent_peers=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46657/dial_persistent_peers
 
 Additionally, the peer-exchange protocol can be enabled using the
 ``--pex`` flag, though this feature is `still under
@@ -290,7 +290,7 @@ Adding a Non-Validator
 
 Adding a non-validator is simple. Just copy the original
 ``genesis.json`` to ``~/.tendermint`` on the new machine and start the
-node, specifying manual_peers as necessary. If no manual_peers are specified, the node
+node, specifying persistent_peers as necessary. If no persistent_peers are specified, the node
 won't make any blocks, because it's not a validator, and it won't hear
 about any blocks, because it's not connected to the other peer.
 
@@ -363,7 +363,7 @@ and the new ``priv_validator.json`` to the ``~/.tendermint`` on a new
 machine.
 
 Now run ``tendermint node`` on both machines, and use either
-``--p2p.manual_peers`` or the ``/dial_manual_peers`` to get them to peer up. They
+``--p2p.persistent_peers`` or the ``/dial_persistent_peers`` to get them to peer up. They
 should start making blocks, and will only continue to do so as long as
 both of them are online.
 
