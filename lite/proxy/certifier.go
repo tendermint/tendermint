@@ -25,6 +25,11 @@ func GetCertifier(chainID, rootDir, nodeAddr string) (*lite.Inquiring, error) {
 	if err != nil {
 		return nil, err
 	}
-	cert := lite.NewInquiring(chainID, fc, trust, source)
+
+	cert, err := lite.NewInquiring(chainID, fc, trust, source)
+	if err != nil {
+		return nil, err
+	}
+
 	return cert, nil
 }
