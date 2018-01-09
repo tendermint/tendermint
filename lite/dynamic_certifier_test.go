@@ -23,7 +23,7 @@ func TestDynamicCert(t *testing.T) {
 	vals := keys.ToValidators(20, 10)
 	// and a certifier based on our known set
 	chainID := "test-dyno"
-	cert := lite.NewDynamic(chainID, vals, 0)
+	cert := lite.NewDynamicCertifier(chainID, vals, 0)
 
 	cases := []struct {
 		keys        lite.ValKeys
@@ -67,7 +67,7 @@ func TestDynamicUpdate(t *testing.T) {
 	chainID := "test-dyno-up"
 	keys := lite.GenValKeys(5)
 	vals := keys.ToValidators(20, 0)
-	cert := lite.NewDynamic(chainID, vals, 40)
+	cert := lite.NewDynamicCertifier(chainID, vals, 40)
 
 	// one valid block to give us a sense of time
 	h := int64(100)

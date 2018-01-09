@@ -6,9 +6,9 @@ import (
 	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
-var _ Certifier = &Dynamic{}
+var _ Certifier = (*DynamicCertifier)(nil)
 
-// Dynamic uses a Static for Certify, but adds an
+// DynamicCertifier uses a StaticCertifier for Certify, but adds an
 // Update method to allow for a change of validators.
 //
 // You can pass in a FullCommit with another validator set,
@@ -17,46 +17,48 @@ var _ Certifier = &Dynamic{}
 // validator set for the next Certify call.
 // For security, it will only follow validator set changes
 // going forward.
-type Dynamic struct {
-	cert       *Static
+type DynamicCertifier struct {
+	cert       *StaticCertifier
 	lastHeight int64
 }
 
 // NewDynamic returns a new dynamic certifier.
-func NewDynamic(chainID string, vals *types.ValidatorSet, height int64) *Dynamic {
-	return &Dynamic{
-		cert:       NewStatic(chainID, vals),
+func NewDynamicCertifier(chainID string, vals *types.ValidatorSet, height int64) *DynamicCertifier {
+	return &DynamicCertifier{
+		cert:       NewStaticCertifier(chainID, vals),
 		lastHeight: height,
 	}
 }
 
 // ChainID returns the chain id of this certifier.
-func (c *Dynamic) ChainID() string {
-	return c.cert.ChainID()
+// Implements Certifier.
+func (dc *DynamicCertifier) ChainID() string {
+	return dc.cert.ChainID()
 }
 
 // Validators returns the validators of this certifier.
-func (c *Dynamic) Validators() *types.ValidatorSet {
-	return c.cert.vSet
+func (dc *DynamicCertifier) Validators() *types.ValidatorSet {
+	return dc.cert.vSet
 }
 
 // Hash returns the hash of this certifier.
-func (c *Dynamic) Hash() []byte {
-	return c.cert.Hash()
+func (dc *DynamicCertifier) Hash() []byte {
+	return dc.cert.Hash()
 }
 
 // LastHeight returns the last height of this certifier.
-func (c *Dynamic) LastHeight() int64 {
-	return c.lastHeight
+func (dc *DynamicCertifier) LastHeight() int64 {
+	return dc.lastHeight
 }
 
 // Certify will verify whether the commit is valid and will update the height if it is or return an
 // error if it is not.
-func (c *Dynamic) Certify(check Commit) error {
-	err := c.cert.Certify(check)
+// Implements Certifier.
+func (dc *DynamicCertifier) Certify(check Commit) error {
+	err := dc.cert.Certify(check)
 	if err == nil {
 		// update last seen height if input is valid
-		c.lastHeight = check.Height()
+		dc.lastHeight = check.Height()
 	}
 	return err
 }
@@ -65,15 +67,15 @@ func (c *Dynamic) Certify(check Commit) error {
 // the certifying validator set if safe to do so.
 //
 // Returns an error if update is impossible (invalid proof or IsTooMuchChangeErr)
-func (c *Dynamic) Update(fc FullCommit) error {
+func (dc *DynamicCertifier) Update(fc FullCommit) error {
 	// ignore all checkpoints in the past -> only to the future
 	h := fc.Height()
-	if h <= c.lastHeight {
+	if h <= dc.lastHeight {
 		return liteErr.ErrPastTime()
 	}
 
 	// first, verify if the input is self-consistent....
-	err := fc.ValidateBasic(c.ChainID())
+	err := fc.ValidateBasic(dc.ChainID())
 	if err != nil {
 		return err
 	}
@@ -82,14 +84,13 @@ func (c *Dynamic) Update(fc FullCommit) error {
 	// would be approved by the currently known validator set
 	// as well as the new set
 	commit := fc.Commit.Commit
-	err = c.Validators().VerifyCommitAny(fc.Validators, c.ChainID(),
-		commit.BlockID, h, commit)
+	err = dc.Validators().VerifyCommitAny(fc.Validators, dc.ChainID(), commit.BlockID, h, commit)
 	if err != nil {
 		return liteErr.ErrTooMuchChange()
 	}
 
 	// looks good, we can update
-	c.cert = NewStatic(c.ChainID(), fc.Validators)
-	c.lastHeight = h
+	dc.cert = NewStaticCertifier(dc.ChainID(), fc.Validators)
+	dc.lastHeight = h
 	return nil
 }

@@ -369,8 +369,6 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 
 //-------------------------------------
 
-type checkOnlyDifferByTimestamp func([]byte, []byte) bool
-
 // returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {

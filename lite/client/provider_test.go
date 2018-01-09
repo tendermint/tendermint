@@ -35,7 +35,7 @@ func TestProvider(t *testing.T) {
 
 	// let's check this is valid somehow
 	assert.Nil(seed.ValidateBasic(chainID))
-	cert := lite.NewStatic(chainID, seed.Validators)
+	cert := lite.NewStaticCertifier(chainID, seed.Validators)
 
 	// historical queries now work :)
 	lower := sh - 5
