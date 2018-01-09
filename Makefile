@@ -74,15 +74,17 @@ test_cover:
 	# run the go unit tests with coverage (in docker)
 	bash test/test_cover.sh
 	
-test_apps: clean_tests
+test_apps:
 	# run the app tests using bash
 	# TODO requires `abci-cli` installed
 	bash test/app/test.sh
 
-test_persistence: clean_tests
+test_persistence:
 	# run the persistence tests using bash
 	# requires `abci-cli` installed
-	bash test/persist/test_failure_indices.sh
+	docker run --name run_persistence -t tester bash test/persist/test_failure_indices.sh
+
+	# bash test/persist/test_failure_indices.sh
 
 test_p2p: clean_tests
 	mkdir test/logs
