@@ -1,12 +1,14 @@
+## P2P Multiplex Connection
+
+...
+
 ## MConnection
 
-`MConnection` is a multiplex connection:
-
-__multiplex__ *noun* a system or signal involving simultaneous transmission of
-several messages along a single channel of communication.
-
-Each `MConnection` handles message transmission on multiple abstract communication
-`Channel`s.  Each channel has a globally unique byte id.
+`MConnection` is a multiplex connection that supports multiple independent streams
+with distinct quality of service guarantees atop a single TCP connection.
+Each stream is known as a `Channel` and each `Channel` has a globally unique byte id.
+Each `Channel` also has a relative priority that determines the quality of service
+of the `Channel` in comparison to the others.
 The byte id and the relative priorities of each `Channel` are configured upon
 initialization of the connection.
 
@@ -14,12 +16,13 @@ The `MConnection` supports three packet types: Ping, Pong, and Msg.
 
 ### Ping and Pong
 
-The ping and pong messages consist of writing a single byte to the connection; 0x1 and 0x2, respectively
+The ping and pong messages consist of writing a single byte to the connection; 0x1 and 0x2, respectively.
 
 When we haven't received any messages on an `MConnection` in a time `pingTimeout`, we send a ping message.
-When a ping is received on the `MConnection`, a pong is sent in response.
+When a ping is received on the `MConnection`, a pong is sent in response only if there are no other messages
+to send and the peer has not sent us too many pings.
 
-If a pong is not received in sufficient time, the peer's score should be decremented (TODO).
+If a pong or message is not received in sufficient time after a ping, disconnect from the peer.
 
 ### Msg
 
@@ -57,8 +60,8 @@ func (m MConnection) TrySend(chID byte, msg interface{}) bool {}
 for the channel with the given id byte `chID`.  The message `msg` is serialized
 using the `tendermint/wire` submodule's `WriteBinary()` reflection routine.
 
-`TrySend(chID, msg)` is a nonblocking call that returns false if the channel's
-queue is full.
+`TrySend(chID, msg)` is a nonblocking call that queues the message msg in the channel
+with the given id byte chID if the queue is not full; otherwise it returns false immediately.
 
 `Send()` and `TrySend()` are also exposed for each `Peer`.
 
@@ -102,15 +105,4 @@ for _, peer := range switch.Peers().List() {
         peer.Send(MyChannelID, "Here's a random message")
     }
 }
-```
-
-### PexReactor/AddrBook
-
-A `PEXReactor` reactor implementation is provided to automate peer discovery.
-
-```go
-book := p2p.NewAddrBook(addrBookFilePath)
-pexReactor := p2p.NewPEXReactor(book)
-...
-switch := NewSwitch([]Reactor{pexReactor, myReactor, ...})
 ```

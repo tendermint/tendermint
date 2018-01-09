@@ -37,7 +37,7 @@ func TestInquirerValidPath(t *testing.T) {
 	}
 
 	// initialize a certifier with the initial state
-	cert, err := lite.NewInquiring(chainID, commits[0], trust, source)
+	cert, err := lite.NewInquiringCertifier(chainID, commits[0], trust, source)
 	require.Nil(err)
 
 	// this should fail validation....
@@ -88,7 +88,7 @@ func TestInquirerMinimalPath(t *testing.T) {
 	}
 
 	// initialize a certifier with the initial state
-	cert, _ := lite.NewInquiring(chainID, commits[0], trust, source)
+	cert, _ := lite.NewInquiringCertifier(chainID, commits[0], trust, source)
 
 	// this should fail validation....
 	commit := commits[count-1].Commit
@@ -138,7 +138,7 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	}
 
 	// initialize a certifier with the initial state
-	cert, _ := lite.NewInquiring(chainID, commits[0], trust, source)
+	cert, _ := lite.NewInquiringCertifier(chainID, commits[0], trust, source)
 
 	// store a few commits as trust
 	for _, i := range []int{2, 5} {
