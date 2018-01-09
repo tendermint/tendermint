@@ -129,7 +129,7 @@ No Empty Blocks
 
 This much requested feature was implemented in version 0.10.3. While the default behaviour of ``tendermint`` is still to create blocks approximately once per second, it is possible to disable empty blocks or set a block creation interval. In the former case, blocks will be created when there are new transactions or when the AppHash changes.
 
-To configure tendermint to not produce empty blocks unless there are txs or the app hash changes, 
+To configure tendermint to not produce empty blocks unless there are txs or the app hash changes,
 run tendermint with this additional flag:
 
 ::
@@ -263,36 +263,47 @@ with the consensus protocol.
 Peers
 ~~~~~
 
-To connect to peers on start-up, specify them in the ``config.toml`` or
-on the command line.
+If you are starting Tendermint core for the first time, it will need some peers.
+
+You can provide a list of seeds (nodes, whole purpose is providing you with
+peers) in the ``config.toml`` or on the command line.
 
 For instance,
 
 ::
 
-    tendermint node --p2p.persistent_peers "1.2.3.4:46656,5.6.7.8:46656"
+    tendermint node --p2p.seeds "1.2.3.4:46656,5.6.7.8:46656"
 
-Alternatively, you can use the ``/dial_persistent_peers`` endpoint of the RPC to
-specify peers for a running node to connect to:
+Alternatively, you can use the ``/dial_seeds`` endpoint of the RPC to
+specify seeds for a running node to connect to:
 
 ::
 
-    curl --data-urlencode "persistent_peers=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46657/dial_persistent_peers
+    curl --data-urlencode "seeds=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46657/dial_seeds
 
-Additionally, the peer-exchange protocol can be enabled using the
-``--pex`` flag, though this feature is `still under
-development <https://github.com/tendermint/tendermint/issues/598>`__. If
-``--pex`` is enabled, peers will gossip about known peers and form a
-more resilient network.
+Note, if the peer-exchange protocol (PEX) is enabled (default), you should not
+normally need seeds after the first start. Peers will be gossipping about known
+peers and forming a network, storing peer addresses in the addrbook.
+
+If you want Tendermint to connect to specific set of addresses and maintain a
+persistent connection with each, you can use the ``--p2p.persistent_peers``
+flag or the corresponding setting in the ``config.toml`` or the
+``/dial_persistent_peers`` RPC endpoint to do it without stopping Tendermint
+core instance.
+
+::
+
+    tendermint node --p2p.persistent_peers "10.11.12.13:46656,10.11.12.14:46656"
+    curl --data-urlencode "persistent_peers=[\"10.11.12.13:46656\",\"10.11.12.14:46656\"]" localhost:46657/dial_persistent_peers
 
 Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
 
-Adding a non-validator is simple. Just copy the original
-``genesis.json`` to ``~/.tendermint`` on the new machine and start the
-node, specifying persistent_peers as necessary. If no persistent_peers are specified, the node
-won't make any blocks, because it's not a validator, and it won't hear
-about any blocks, because it's not connected to the other peer.
+Adding a non-validator is simple. Just copy the original ``genesis.json`` to
+``~/.tendermint`` on the new machine and start the node, specifying seeds or
+persistent peers. If no seeds or persistent peers are specified, the node won't
+make any blocks, because it's not a validator, and it won't hear about any
+blocks, because it's not connected to the other peers.
 
 Adding a Validator
 ~~~~~~~~~~~~~~~~~~
