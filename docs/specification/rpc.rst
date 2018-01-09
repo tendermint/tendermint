@@ -111,6 +111,7 @@ An HTTP Get request to the root RPC endpoint (e.g.
     http://localhost:46657/broadcast_tx_commit?tx=_
     http://localhost:46657/broadcast_tx_sync?tx=_
     http://localhost:46657/commit?height=_
+    http://localhost:46657/dial_seeds?seeds=_
     http://localhost:46657/dial_persistent_peers?persistent_peers=_
     http://localhost:46657/subscribe?event=_
     http://localhost:46657/tx?hash=_&prove=_

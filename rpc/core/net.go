@@ -1,8 +1,7 @@
 package core
 
 import (
-	"fmt"
-
+	"github.com/pkg/errors"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -54,10 +53,22 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 	}, nil
 }
 
-func UnsafeDialPersistentPeers(persistent_peers []string) (*ctypes.ResultDialPersistentPeers, error) {
+func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+	if len(seeds) == 0 {
+		return &ctypes.ResultDialSeeds{}, errors.New("No seeds provided")
+	}
+	// starts go routines to dial each peer after random delays
+	logger.Info("DialSeeds", "addrBook", addrBook, "seeds", seeds)
+	err := p2pSwitch.DialPeersAsync(addrBook, seeds, false)
+	if err != nil {
+		return &ctypes.ResultDialSeeds{}, err
+	}
+	return &ctypes.ResultDialSeeds{"Dialing seeds in progress. See /net_info for details"}, nil
+}
 
+func UnsafeDialPersistentPeers(persistent_peers []string) (*ctypes.ResultDialPersistentPeers, error) {
 	if len(persistent_peers) == 0 {
-		return &ctypes.ResultDialPersistentPeers{}, fmt.Errorf("No persistent peers provided")
+		return &ctypes.ResultDialPersistentPeers{}, errors.New("No persistent peers provided")
 	}
 	// starts go routines to dial each peer after random delays
 	logger.Info("DialPersistentPeers", "addrBook", addrBook, "persistent_peers", persistent_peers)

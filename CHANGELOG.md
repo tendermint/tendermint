@@ -28,9 +28,11 @@ BUG FIXES:
 ## 0.16.0 (TBD)
 
 BREAKING CHANGES:
-- rpc: `/unsafe_dial_seeds` renamed to `/unsafe_dial_persistent_peers`
 - [p2p] old `seeds` is now `persistent_peers` (persistent peers to which TM will always connect to)
 - [p2p] now `seeds` only used for getting addresses (if addrbook is empty; not persistent)
+
+FEATURES:
+- [p2p] added new `/dial_persistent_peers` **unsafe** endpoint
 
 ## 0.15.0 (December 29, 2017)
 

@@ -84,6 +84,10 @@ func (Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return core.DumpConsensusState()
 }
 
+func (Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+	return core.UnsafeDialSeeds(seeds)
+}
+
 func (Local) DialPersistentPeers(persistent_peers []string) (*ctypes.ResultDialPersistentPeers, error) {
 	return core.UnsafeDialPersistentPeers(persistent_peers)
 }

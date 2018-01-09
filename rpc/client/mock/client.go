@@ -107,6 +107,10 @@ func (c Client) NetInfo() (*ctypes.ResultNetInfo, error) {
 	return core.NetInfo()
 }
 
+func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
+	return core.UnsafeDialSeeds(seeds)
+}
+
 func (c Client) DialPersistentPeers(persistent_peers []string) (*ctypes.ResultDialPersistentPeers, error) {
 	return core.UnsafeDialPersistentPeers(persistent_peers)
 }
