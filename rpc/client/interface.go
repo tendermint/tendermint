@@ -33,7 +33,8 @@ type ABCIClient interface {
 	// reading from abci app
 	ABCIInfo() (*ctypes.ResultABCIInfo, error)
 	ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error)
-	ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
+	ABCIQueryWithOptions(path string, data data.Bytes,
+		opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
 
 	// writing to abci app
 	BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)
