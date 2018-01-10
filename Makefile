@@ -70,9 +70,12 @@ clean_tests:
 	docker rm -f rsyslog || true
 
 ### coverage, app, persistence, and libs tests
-test_cover:
+test_cover_fast:
 	# run the go unit tests with coverage (in docker)
-	bash test/test_cover.sh
+	bash test/test_cover.sh fast
+
+test_cover_slow:
+	bash test/test_cover.sh slow
 	
 test_apps:
 	# run the app tests using bash
