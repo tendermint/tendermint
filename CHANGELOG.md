@@ -5,6 +5,7 @@
 BREAKING CHANGES:
 - Better support for injecting randomness
 - Upgrade consensus for more real-time use of evidence
+- the files usually found in `~/.tendermint` (`config.toml`, `genesis.json`, and `priv_validator.json`) are now in `~/.tendermint/config`. The `$TMHOME/data/` directory remains unchanged.
 
 FEATURES:
 - Peer reputation management

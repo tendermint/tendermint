@@ -18,7 +18,7 @@ func init() {
 func TestPeerCatchupRounds(t *testing.T) {
 	valSet, privVals := types.RandValidatorSet(10, 1)
 
-	hvs := NewHeightVoteSet(config.ChainID, 1, valSet)
+	hvs := NewHeightVoteSet(config.ChainID(), 1, valSet)
 
 	vote999_0 := makeVoteHR(t, 1, 999, privVals, 0)
 	added, err := hvs.AddVote(vote999_0, "peer1")
@@ -59,7 +59,7 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []*types.PrivVal
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}
-	chainID := config.ChainID
+	chainID := config.ChainID()
 	err := privVal.SignVote(chainID, vote)
 	if err != nil {
 		panic(cmn.Fmt("Error signing vote: %v", err))
