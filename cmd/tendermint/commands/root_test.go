@@ -4,6 +4,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -107,4 +108,56 @@ func TestRootConfig(t *testing.T) {
 		assert.Equal(tc.maxPeer, config.P2P.MaxNumPeers, i)
 	}
 
+}
+
+func TestParseInvalidConfig(t *testing.T) {
+	assert := assert.New(t)
+	cases := []struct {
+		cvals   map[string]string
+		verify  bool
+		wantErr string
+	}{
+		// Unwanted flags in the global "scope/namespace"
+		{verify: true, wantErr: "abc", cvals: map[string]string{"fast_sync": "false", "abc": "de"}},
+		{verify: false, wantErr: "", cvals: map[string]string{"fast_sync": "false", "la": "CA"}},
+		{verify: false, wantErr: "", cvals: map[string]string{"moniker": "foo"}},
+		{verify: false, wantErr: "", cvals: nil},
+
+		// No invalid fields present, despite the verify flag
+		{verify: true, wantErr: "", cvals: map[string]string{"moniker": "foo"}},
+		{verify: true, wantErr: "", cvals: nil},
+
+		// Unwanted flags in the sub commands
+		{
+			verify: true, wantErr: "rpc:\n\taseed\n\tbanx\n",
+			cvals: map[string]string{"rpc.aseed": "bonjour", "rpc.banx": "bar"},
+		},
+		{verify: false, wantErr: "", cvals: map[string]string{"rpc.aseed": "bonjour"}},
+	}
+
+	for i, tt := range cases {
+		viper.Reset()
+		if tt.verify {
+			viper.Set(verifyFlag, "true")
+		}
+		for k, v := range tt.cvals {
+			viper.Set(k, v)
+		}
+
+		// To avoid clutter in the current directory,
+		// use the designated defaultRoot at HOME
+		viper.Set("HOME", defaultRoot)
+
+		_, err := ParseConfig()
+		if tt.wantErr != "" {
+			if err == nil {
+				t.Errorf("#%d: want non-nil err", i)
+			} else if g, w := err.Error(), tt.wantErr; !strings.Contains(g, w) {
+				t.Errorf("#%d: got=%q wantSubstring=%q", i, g, w)
+			}
+			continue
+		}
+
+		assert.Nil(err, "#%d", i)
+	}
 }
