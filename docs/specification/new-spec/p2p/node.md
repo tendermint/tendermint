@@ -39,8 +39,10 @@ A node checks its address book on startup and attempts to connect to peers from 
 If it can't connect to any peers after some time, it falls back to the seeds to find more.
 
 Restarted full nodes can run the `blockchain` or `consensus` reactor protocols to sync up
-to the latest state of the blockchain, assuming they aren't too far behind.
-If they are too far behind, they may need to validate a recent `H` and `HASH` out-of-band again.
+to the latest state of the blockchain from wherever they were last.
+In a Proof-of-Stake context, if they are sufficiently far behind (greater than the length
+of the unbonding period), they will need to validate a recent `H` and `HASH` out-of-band again
+so they know they have synced the correct chain.
 
 ## Validator Node
 
@@ -54,6 +56,7 @@ Validators that know and trust each other can accept incoming connections from o
 ## Sentry Node
 
 Sentry nodes are guardians of a validator node and provide it access to the rest of the network.
+They should be well connected to other full nodes on the network.
 Sentry nodes may be dynamic, but should maintain persistent connections to some evolving random subset of each other.
 They should always expect to have direct incoming connections from the validator node and its backup/s.
 They do not report the validator node's address in the PEX.

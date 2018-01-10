@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -48,12 +49,12 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 }
 
 // incrementAccum and update the proposer
-// TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
-		val.Accum += val.VotingPower * int64(times) // TODO: mind overflow
+		// check for overflow both multiplication and sum
+		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
 		validatorsHeap.Push(val, accumComparable{val})
 	}
 
@@ -63,7 +64,9 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 		if i == times-1 {
 			valSet.Proposer = mostest
 		}
-		mostest.Accum -= int64(valSet.TotalVotingPower())
+
+		// mind underflow
+		mostest.Accum = safeSubClip(mostest.Accum, valSet.TotalVotingPower())
 		validatorsHeap.Update(mostest, accumComparable{mostest})
 	}
 }
@@ -117,7 +120,8 @@ func (valSet *ValidatorSet) Size() int {
 func (valSet *ValidatorSet) TotalVotingPower() int64 {
 	if valSet.totalVotingPower == 0 {
 		for _, val := range valSet.Validators {
-			valSet.totalVotingPower += val.VotingPower
+			// mind overflow
+			valSet.totalVotingPower = safeAddClip(valSet.totalVotingPower, val.VotingPower)
 		}
 	}
 	return valSet.totalVotingPower
@@ -424,4 +428,78 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*P
 	valSet := NewValidatorSet(vals)
 	sort.Sort(PrivValidatorsByAddress(privValidators))
 	return valSet, privValidators
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Safe multiplication and addition/subtraction
+
+func safeMul(a, b int64) (int64, bool) {
+	if a == 0 || b == 0 {
+		return 0, false
+	}
+	if a == 1 {
+		return b, false
+	}
+	if b == 1 {
+		return a, false
+	}
+	if a == math.MinInt64 || b == math.MinInt64 {
+		return -1, true
+	}
+	c := a * b
+	return c, c/b != a
+}
+
+func safeAdd(a, b int64) (int64, bool) {
+	if b > 0 && a > math.MaxInt64-b {
+		return -1, true
+	} else if b < 0 && a < math.MinInt64-b {
+		return -1, true
+	}
+	return a + b, false
+}
+
+func safeSub(a, b int64) (int64, bool) {
+	if b > 0 && a < math.MinInt64+b {
+		return -1, true
+	} else if b < 0 && a > math.MaxInt64+b {
+		return -1, true
+	}
+	return a - b, false
+}
+
+func safeMulClip(a, b int64) int64 {
+	c, overflow := safeMul(a, b)
+	if overflow {
+		if (a < 0 || b < 0) && !(a < 0 && b < 0) {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
+}
+
+func safeAddClip(a, b int64) int64 {
+	c, overflow := safeAdd(a, b)
+	if overflow {
+		if b < 0 {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
+}
+
+func safeSubClip(a, b int64) int64 {
+	c, overflow := safeSub(a, b)
+	if overflow {
+		if b > 0 {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
 }
