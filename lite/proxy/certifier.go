@@ -6,7 +6,7 @@ import (
 	"github.com/tendermint/tendermint/lite/files"
 )
 
-func GetCertifier(chainID, rootDir, nodeAddr string) (*lite.Inquiring, error) {
+func GetCertifier(chainID, rootDir, nodeAddr string) (*lite.InquiringCertifier, error) {
 	trust := lite.NewCacheProvider(
 		lite.NewMemStoreProvider(),
 		files.NewProvider(rootDir),
@@ -26,7 +26,7 @@ func GetCertifier(chainID, rootDir, nodeAddr string) (*lite.Inquiring, error) {
 		return nil, err
 	}
 
-	cert, err := lite.NewInquiring(chainID, fc, trust, source)
+	cert, err := lite.NewInquiringCertifier(chainID, fc, trust, source)
 	if err != nil {
 		return nil, err
 	}

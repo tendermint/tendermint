@@ -185,9 +185,9 @@ func NewNode(config *cfg.Config,
 
 	// Log whether this node is a validator or an observer
 	if state.Validators.HasAddress(privValidator.GetAddress()) {
-		consensusLogger.Info("This node is a validator")
+		consensusLogger.Info("This node is a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	} else {
-		consensusLogger.Info("This node is not a validator")
+		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	}
 
 	// Make MempoolReactor
