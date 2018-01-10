@@ -344,33 +344,38 @@ type crawlStatus struct {
 	LastSuccess time.Time
 }
 
-// oldestAttempt implements sort.Interface for []crawlStatus
+// oldestFirst implements sort.Interface for []crawlStatus
 // based on the LastAttempt field.
-type oldestAttempt []crawlStatus
+type oldestFirst []crawlStatus
 
-func (oa oldestAttempt) Len() int           { return len(oa) }
-func (oa oldestAttempt) Swap(i, j int)      { oa[i], oa[j] = oa[j], oa[i] }
-func (oa oldestAttempt) Less(i, j int) bool { return oa[i].LastAttempt.Before(oa[j].LastAttempt) }
+func (of oldestFirst) Len() int           { return len(of) }
+func (of oldestFirst) Swap(i, j int)      { of[i], of[j] = of[j], of[i] }
+func (of oldestFirst) Less(i, j int) bool { return of[i].LastAttempt.Before(of[j].LastAttempt) }
 
 // getCrawlStatus returns addresses of potential peers that we wish to validate.
 // NOTE: The status information is ordered as described above.
 func (r *PEXReactor) getCrawlStatus() []crawlStatus {
-	var oa oldestAttempt
+	var of oldestFirst
 
 	addrs := r.book.ListOfKnownAddresses()
 	// Go through all the addresses in the AddressBook
 	for _, addr := range addrs {
-		p := r.Switch.peers.GetByRemoteAddr(addr.Addr)
+		var peerID string
 
-		oa = append(oa, crawlStatus{
+		// Check if a peer is already connected from this addr
+		if p := r.Switch.peers.GetByRemoteAddr(addr.Addr); p != nil {
+			peerID = p.Key()
+		}
+
+		of = append(of, crawlStatus{
 			Addr:        addr.Addr,
-			PeerID:      p.Key(),
+			PeerID:      peerID,
 			LastAttempt: addr.LastAttempt,
 			LastSuccess: addr.LastSuccess,
 		})
 	}
-	sort.Sort(oa)
-	return oa
+	sort.Sort(of)
+	return of
 }
 
 // crawlPeers will crawl the network looking for new peer addresses. (once)
@@ -410,9 +415,10 @@ func (r *PEXReactor) crawlPeers() {
 		}
 		// We will wait a minimum period of time before crawling peers again
 		if now.Sub(cs.LastAttempt) >= defaultCrawlPeerInterval {
-			p := r.Switch.peers.Get(cs.PeerID)
+			p := r.Switch.Peers().Get(cs.PeerID)
 			if p != nil {
 				r.RequestPEX(p)
+				r.book.MarkAttempt(cs.Addr)
 			}
 		}
 	}
@@ -434,7 +440,7 @@ func (r *PEXReactor) attemptDisconnects() {
 			continue
 		}
 		// Fetch the Peer using the saved ID
-		p := r.Switch.peers.Get(cs.PeerID)
+		p := r.Switch.Peers().Get(cs.PeerID)
 		if p == nil {
 			continue
 		}
