@@ -293,16 +293,17 @@ func (r *PEXReactor) ensurePeers() {
 
 	// If we need more addresses, pick a random peer and ask for more.
 	if r.book.NeedMoreAddrs() {
-		if peers := r.Switch.Peers().List(); len(peers) > 0 {
-			i := rand.Int() % len(peers) // nolint: gas
-			peer := peers[i]
-			r.Logger.Info("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
+		peers := r.Switch.Peers().List()
+		peersCount := len(peers)
+		if peersCount > 0 {
+			peer := peers[rand.Int()%peersCount] // nolint: gas
+			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestPEX(peer)
 		}
 	}
 
-	// If we can't connect to any known address, fallback to dialing seeds
-	if numOutPeers+numInPeers+numDialing == 0 {
+	// If we are not connected to nor dialing anybody, fallback to dialing seeds.
+	if numOutPeers+numInPeers+numDialing+len(toDial) == 0 {
 		r.Logger.Info("No addresses to dial nor connected peers. Will dial seeds", "seeds", r.config.Seeds)
 		r.Switch.DialPeersAsync(r.book, r.config.Seeds, false)
 	}
