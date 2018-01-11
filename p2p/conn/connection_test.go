@@ -339,8 +339,6 @@ func TestMConnectionTrySend(t *testing.T) {
 	go func() {
 		mconn.TrySend(0x01, msg)
 		resultCh <- "TrySend"
-	}()
-	go func() {
 		mconn.Send(0x01, msg)
 		resultCh <- "Send"
 	}()
