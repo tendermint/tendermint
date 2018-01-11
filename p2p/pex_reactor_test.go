@@ -24,7 +24,7 @@ func TestPEXReactorBasic(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, false)
 	r.SetLogger(log.TestingLogger())
 
 	assert.NotNil(r)
@@ -40,7 +40,7 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, false)
 	r.SetLogger(log.TestingLogger())
 
 	size := book.Size()
@@ -76,7 +76,7 @@ func TestPEXReactorRunning(t *testing.T) {
 		switches[i] = makeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
 			sw.SetLogger(log.TestingLogger().With("switch", i))
 
-			r := NewPEXReactor(book)
+			r := NewPEXReactor(book, false)
 			r.SetLogger(log.TestingLogger())
 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
 			sw.AddReactor("pex", r)
@@ -141,7 +141,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, false)
 	r.SetLogger(log.TestingLogger())
 
 	peer := createRandomPeer(false)
@@ -166,7 +166,7 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, false)
 	r.SetLogger(log.TestingLogger())
 	r.SetMaxMsgCountByPeer(5)
 
@@ -178,6 +178,51 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	}
 
 	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ListenAddr))
+}
+
+func TestPEXReactorCrawlStatus(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+	book := NewAddrBook(dir+"addrbook.json", false)
+	book.SetLogger(log.TestingLogger())
+
+	var r *PEXReactor
+	// Seed/Crawler mode uses data from the Switch
+	makeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
+		r = NewPEXReactor(book, true)
+		r.SetLogger(log.TestingLogger())
+		sw.SetLogger(log.TestingLogger().With("switch", i))
+		sw.AddReactor("pex", r)
+		return sw
+	})
+
+	// Create a peer, and add it to the peer set
+	peer := createRandomPeer(false)
+	r.Switch.peers.Add(peer)
+	// Add the peer address to the address book
+	addr1, _ := NewNetAddressString(peer.NodeInfo().ListenAddr)
+	r.book.AddAddress(addr1, addr1)
+	// Add an address to the book that does not have a peer
+	_, addr2 := createRoutableAddr()
+	r.book.AddAddress(addr2, addr1)
+
+	// Get the crawl status data
+	status := r.getCrawlStatus()
+
+	// Make sure it has the proper number of elements
+	assert.Equal(2, len(status))
+
+	var num int
+	for _, cs := range status {
+		if cs.PeerID != "" {
+			num++
+		}
+	}
+	// Check that only one has been identified as a connected peer
+	assert.Equal(1, num)
 }
 
 func createRoutableAddr() (addr string, netAddr *NetAddress) {

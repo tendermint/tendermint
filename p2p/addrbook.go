@@ -177,6 +177,18 @@ func (a *AddrBook) AddAddress(addr *NetAddress, src *NetAddress) error {
 	return a.addAddress(addr, src)
 }
 
+// ListOfKnownAddresses returns the new and old addresses.
+func (a *AddrBook) ListOfKnownAddresses() []*knownAddress {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	addrs := []*knownAddress{}
+	for _, addr := range a.addrLookup {
+		addrs = append(addrs, addr.copy())
+	}
+	return addrs
+}
+
 // NeedMoreAddrs returns true if there are not have enough addresses in the book.
 func (a *AddrBook) NeedMoreAddrs() bool {
 	return a.Size() < needAddressThreshold
@@ -765,6 +777,18 @@ func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
 		LastAttempt: time.Now(),
 		BucketType:  bucketTypeNew,
 		Buckets:     nil,
+	}
+}
+
+func (ka *knownAddress) copy() *knownAddress {
+	return &knownAddress{
+		Addr:        ka.Addr,
+		Src:         ka.Src,
+		Attempts:    ka.Attempts,
+		LastAttempt: ka.LastAttempt,
+		LastSuccess: ka.LastSuccess,
+		BucketType:  ka.BucketType,
+		Buckets:     ka.Buckets,
 	}
 }
 
