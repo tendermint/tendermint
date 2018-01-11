@@ -202,40 +202,17 @@ func (sw *Switch) OnStop() {
 
 // Broadcast runs a go routine for each attempted send, which will block
 // trying to send for defaultSendTimeoutSeconds. Returns a channel
-// which receives broadcast result for each attempted send (success=false if times out).
+// which receives success values for each attempted send (false if times out).
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
 // TODO: Something more intelligent.
-
-type BroadcastResult struct {
-	PeerKey string
-	Success bool
-}
-
-func (sw *Switch) Broadcast(chID byte, msg interface{}) chan BroadcastResult {
-	successChan := make(chan BroadcastResult, len(sw.peers.List()))
+func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
+	successChan := make(chan bool, len(sw.peers.List()))
 	sw.Logger.Debug("Broadcast", "channel", chID, "msg", msg)
 	for _, peer := range sw.peers.List() {
 		go func(peer Peer) {
 			success := peer.Send(chID, msg)
-			successChan <- BroadcastResult{peer.Key(), success}
+			successChan <- success
 		}(peer)
-	}
-	return successChan
-}
-
-func (sw *Switch) TryBroadcast(chID byte, msg interface{}) chan BroadcastResult {
-	successChan := make(chan BroadcastResult, len(sw.peers.List()))
-	sw.Logger.Debug("TryBroadcast", "channel", chID, "msg", msg)
-	for _, peer := range sw.peers.List() {
-		success := peer.TrySend(chID, msg)
-		if success {
-			successChan <- BroadcastResult{peer.Key(), success}
-		} else {
-			go func(peer Peer) {
-				success := peer.Send(chID, msg)
-				successChan <- BroadcastResult{peer.Key(), success}
-			}(peer)
-		}
 	}
 	return successChan
 }

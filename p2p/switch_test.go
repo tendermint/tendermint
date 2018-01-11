@@ -128,17 +128,14 @@ func TestSwitches(t *testing.T) {
 	ch0Msg := "channel zero"
 	ch1Msg := "channel foo"
 	ch2Msg := "channel bar"
-	ch3Msg := "channel baz"
 
 	s1.Broadcast(byte(0x00), ch0Msg)
 	s1.Broadcast(byte(0x01), ch1Msg)
 	s1.Broadcast(byte(0x02), ch2Msg)
-	s1.TryBroadcast(byte(0x03), ch3Msg)
 
 	assertMsgReceivedWithTimeout(t, ch0Msg, byte(0x00), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 	assertMsgReceivedWithTimeout(t, ch1Msg, byte(0x01), s2.Reactor("foo").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
-	assertMsgReceivedWithTimeout(t, ch3Msg, byte(0x03), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 }
 
 func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
@@ -331,11 +328,8 @@ func BenchmarkSwitches(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
 		successChan := s1.Broadcast(chID, "test data")
-		for res := range successChan {
-			if !s1.peers.Has(res.PeerKey) {
-				b.Error("Unexpected peerKey: " + res.PeerKey)
-			}
-			if res.Success {
+		for s := range successChan {
+			if s {
 				numSuccess++
 			} else {
 				numFailure++
