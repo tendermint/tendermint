@@ -339,12 +339,8 @@ func TestMConnectionTrySend(t *testing.T) {
 	go func() {
 		mconn.TrySend(0x01, msg)
 		resultCh <- "TrySend"
-		mconn.Send(0x01, msg)
-		resultCh <- "Send"
 	}()
 	assert.False(mconn.CanSend(0x01))
 	assert.False(mconn.TrySend(0x01, msg))
 	assert.Equal("TrySend", <-resultCh)
-	server.Read(make([]byte, len(msg)))
-	assert.Equal("Send", <-resultCh) // Order constrained by parallel blocking above
 }
