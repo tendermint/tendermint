@@ -137,6 +137,11 @@ func TestPongTimeoutResultsInError(t *testing.T) {
 	require.Nil(t, err)
 	defer mconn.Stop()
 
+	go func() {
+		// read ping
+		server.Read(make([]byte, 1))
+	}()
+
 	expectErrorAfter := 10*time.Millisecond + mconn.config.pingInterval + mconn.config.pongTimeout
 	select {
 	case msgBytes := <-receivedCh:

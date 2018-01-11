@@ -332,7 +332,7 @@ FOR_LOOP:
 			c.Logger.Debug("Send Ping")
 			wire.WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
-			go c.flush()
+			c.flush()
 			c.Logger.Debug("Starting pong timer")
 			c.pongTimer.Reset(c.config.pongTimeout)
 		case <-c.pongTimer.C:
