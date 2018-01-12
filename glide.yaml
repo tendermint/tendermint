@@ -34,7 +34,7 @@ import:
   subpackages:
   - iavl
 - package: github.com/tendermint/tmlibs
-  version: develop
+  version: sdk2
   subpackages:
   - autofile
   - cli

@@ -1,5 +1,5 @@
-hash: 9801afb65cc8d4465675fb8868dab5af013ec6bcee3a10ffde7ca1d195785f09
-updated: 2018-01-05T22:27:39.686736779-05:00
+hash: cce989d647cfe49f4e5d0e664d2c08ede278eb91c356912c145809058794f944
+updated: 2018-01-12T17:51:51.008413371-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
@@ -58,19 +58,17 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/magiconair/properties
-  version: 8d7837e64d3c1ee4e54a880c5a920ab4316fc90a
+  version: 49d762b9817ba1c2e9d0c69183c2b4a8b8f1d934
 - name: github.com/mitchellh/mapstructure
   version: 06020f85339e21b2478f756a78e295255ffa4d6a
-- name: github.com/pelletier/go-buffruneio
-  version: c37440a7cf42ac63b919c752ca73a85067e05992
 - name: github.com/pelletier/go-toml
-  version: 13d49d4606eb801b8f01ae542b4afc4c6ee3d84a
+  version: 0131db6d737cfbbfb678f8b7d92e55e27ce46224
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/rcrowley/go-metrics
   version: 1f30fe9094a513ce4c700b9a54458bbb0c96996c
 - name: github.com/spf13/afero
-  version: 5660eeed305fe5f69c8fc6cf899132a459a97064
+  version: 57afd63c68602b63ed976de00dd066ccb3c319db
   subpackages:
   - mem
 - name: github.com/spf13/cast
@@ -99,7 +97,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: e1e3ea4e7f898de08fe40e93fa46246d6adf7d91
+  version: 2bd556205d1679683fddcd5a91eeccf37a8a1007
   subpackages:
   - client
   - example/code
@@ -113,19 +111,18 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 3ebe3250ff67e8af92f00ec3dc427c14a7eb1066
+  version: 67a47e6a0bf474a76f6a8f09b39cfdf382f39b90
 - name: github.com/tendermint/go-wire
   version: 27be46e25124ddf775e23317a83647ce62a93f6b
   subpackages:
   - data
   - data/base58
-  - nowriter/tmlegacy
 - name: github.com/tendermint/iavl
   version: ed0bbf0acc51e75f72c76099293113c2d67199b9
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: 1afc0340069d38e71f137bc9e4fa4fadf12f76df
+  version: 2bb538b150f197a04a0b969a27e9ea24d35edbc1
   subpackages:
   - autofile
   - cli
@@ -161,7 +158,7 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/sys
-  version: 8dbc5d05d6edcc104950cc299a1ce6641235bc86
+  version: 83801418e1b59fb1880e363299581ee543af32ca
   subpackages:
   - unix
 - name: golang.org/x/text
@@ -195,7 +192,7 @@ imports:
   - tap
   - transport
 - name: gopkg.in/yaml.v2
-  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
+  version: 287cf08546ab5e7e37d55a84f7ed3fd1db036de5
 testImports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
