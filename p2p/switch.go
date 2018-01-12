@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -200,20 +201,28 @@ func (sw *Switch) OnStop() {
 //---------------------------------------------------------------------
 // Peers
 
-// Broadcast runs a go routine for each attempted send, which will block
-// trying to send for defaultSendTimeoutSeconds. Returns a channel
-// which receives success values for each attempted send (false if times out).
+// Broadcast runs a go routine for each attempted send, which will block trying
+// to send for defaultSendTimeoutSeconds. Returns a channel which receives
+// success values for each attempted send (false if times out). Channel will be
+// closed once msg send to all peers.
+//
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
-// TODO: Something more intelligent.
 func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
 	sw.Logger.Debug("Broadcast", "channel", chID, "msg", msg)
+	var wg sync.WaitGroup
 	for _, peer := range sw.peers.List() {
+		wg.Add(1)
 		go func(peer Peer) {
+			defer wg.Done()
 			success := peer.Send(chID, msg)
 			successChan <- success
 		}(peer)
 	}
+	go func() {
+		wg.Wait()
+		close(successChan)
+	}()
 	return successChan
 }
 
