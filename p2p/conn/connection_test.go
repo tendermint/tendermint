@@ -24,8 +24,8 @@ func createTestMConnection(conn net.Conn) *MConnection {
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
 	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	cfg := DefaultMConnConfig()
-	cfg.pingInterval = 40 * time.Millisecond
-	cfg.pongTimeout = 35 * time.Millisecond
+	cfg.pingInterval = 60 * time.Millisecond
+	cfg.pongTimeout = 45 * time.Millisecond
 	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
 	return c
@@ -119,7 +119,7 @@ func TestMConnectionStatus(t *testing.T) {
 	assert.Zero(status.Channels[0].SendQueueSize)
 }
 
-func TestPongTimeoutResultsInError(t *testing.T) {
+func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	server, client := net.Pipe()
 	defer server.Close()
 	defer client.Close()
@@ -142,7 +142,7 @@ func TestPongTimeoutResultsInError(t *testing.T) {
 		server.Read(make([]byte, 1))
 	}()
 
-	expectErrorAfter := 10*time.Millisecond + mconn.config.pingInterval + mconn.config.pongTimeout
+	expectErrorAfter := (mconn.config.pingInterval + mconn.config.pongTimeout) * 2
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected error, but got %v", msgBytes)

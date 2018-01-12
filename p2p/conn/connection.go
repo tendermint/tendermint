@@ -34,8 +34,8 @@ const (
 	defaultSendRate            = int64(512000) // 500KB/s
 	defaultRecvRate            = int64(512000) // 500KB/s
 	defaultSendTimeout         = 10 * time.Second
-	defaultPingInterval        = 40 * time.Second
-	defaultPongTimeout         = 35 * time.Second
+	defaultPingInterval        = 60 * time.Second
+	defaultPongTimeout         = 45 * time.Second
 )
 
 type receiveCbFunc func(chID byte, msgBytes []byte)
@@ -134,7 +134,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
 func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
 	if config.pongTimeout >= config.pingInterval {
-		panic("pongTimeout must be less than pingInterval")
+		panic("pongTimeout must be less than pingInterval (otherwise, next ping will reset pong timer)")
 	}
 
 	mconn := &MConnection{
