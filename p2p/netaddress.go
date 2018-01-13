@@ -50,8 +50,8 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 }
 
 // NewNetAddressString returns a new NetAddress using the provided
-// address in the form of "IP:Port". Also resolves the host if host
-// is not an IP.
+// address in the form of "ID@IP:Port", where the ID is optional.
+// Also resolves the host if host is not an IP.
 func NewNetAddressString(addr string) (*NetAddress, error) {
 	addr = removeProtocolIfDefined(addr)
 
@@ -63,8 +63,9 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, fmt.Sprintf("Address (%s) contains invalid ID", addr))
 		}
-		if len(idBytes) != 20 {
-			return nil, fmt.Errorf("Address (%s) contains ID of invalid length (%d). Should be 20 hex-encoded bytes", len(idBytes))
+		if len(idBytes) != IDByteLength {
+			return nil, fmt.Errorf("Address (%s) contains ID of invalid length (%d). Should be %d hex-encoded bytes",
+				addr, len(idBytes), IDByteLength)
 		}
 		id, addr = ID(idStr), spl[1]
 	}

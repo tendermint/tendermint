@@ -190,7 +190,7 @@ func randIPv4Address(t *testing.T) *NetAddress {
 		)
 		port := rand.Intn(65535-1) + 1
 		addr, err := NewNetAddressString(fmt.Sprintf("%v:%v", ip, port))
-		addr.ID = ID(hex.EncodeToString(cmn.RandBytes(20))) // TODO
+		addr.ID = ID(hex.EncodeToString(cmn.RandBytes(20)))
 		assert.Nil(t, err, "error generating rand network address")
 		if addr.Routable() {
 			return addr

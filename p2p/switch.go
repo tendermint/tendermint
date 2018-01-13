@@ -94,6 +94,7 @@ type Switch struct {
 
 var (
 	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
+	ErrSwitchConnectToSelf = errors.New("Connect to self")
 )
 
 func NewSwitch(config *cfg.P2PConfig) *Switch {
@@ -241,7 +242,7 @@ func (sw *Switch) OnStop() {
 func (sw *Switch) addPeer(peer *peer) error {
 	// Avoid self
 	if sw.nodeKey.ID() == peer.ID() {
-		return errors.New("Ignoring connection from self")
+		return ErrSwitchConnectToSelf
 	}
 
 	// Filter peer against white list

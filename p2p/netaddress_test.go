@@ -48,6 +48,13 @@ func TestNewNetAddressString(t *testing.T) {
 		{"tcp://this-isnot-hex@127.0.0.1:8080", "", false},
 		{"tcp://xxxxbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
 		{"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
+
+		{"tcp://@127.0.0.1:8080", "", false},
+		{"tcp://@", "", false},
+		{"", "", false},
+		{"@", "", false},
+		{" @", "", false},
+		{" @ ", "", false},
 	}
 
 	for _, tc := range testCases {

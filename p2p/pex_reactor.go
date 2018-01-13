@@ -109,19 +109,20 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 func (r *PEXReactor) AddPeer(p Peer) {
 	if p.IsOutbound() {
 		// For outbound peers, the address is already in the books.
-		// Either it was added in DialPersistentPeers or when we
+		// Either it was added in DialPeersAsync or when we
 		// received the peer's address in r.Receive
 		if r.book.NeedMoreAddrs() {
 			r.RequestPEX(p)
 		}
-	} else { // For inbound connections, the peer is its own source
-		addr, err := NewNetAddressString(p.NodeInfo().ListenAddr)
-		addr.ID = p.ID() // TODO: handle in NewNetAddress func
+	} else {
+		addrStr := fmt.Sprintf("%s@%s", p.ID(), p.NodeInfo().ListenAddr)
+		addr, err := NewNetAddressString(addrStr)
 		if err != nil {
 			// peer gave us a bad ListenAddr. TODO: punish
 			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
 			return
 		}
+		// For inbound connections, the peer is its own source
 		r.book.AddAddress(addr, addr)
 	}
 }

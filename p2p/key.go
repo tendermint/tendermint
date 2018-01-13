@@ -11,7 +11,12 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+// ID is a hex-encoded crypto.Address
 type ID string
+
+// IDByteLength is the length of a crypto.Address. Currently only 20.
+// TODO: support other length addresses ?
+const IDByteLength = 20
 
 //------------------------------------------------------------------------------
 // Persistent peer ID
