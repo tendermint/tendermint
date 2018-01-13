@@ -30,11 +30,7 @@ type NodeKey struct {
 
 // ID returns the peer's canonical ID - the hash of its public key.
 func (nodeKey *NodeKey) ID() ID {
-	return ID(hex.EncodeToString(nodeKey.id()))
-}
-
-func (nodeKey *NodeKey) id() []byte {
-	return nodeKey.PrivKey.PubKey().Address()
+	return PubKeyToID(nodeKey.PubKey())
 }
 
 // PubKey returns the peer's PubKey
@@ -42,8 +38,10 @@ func (nodeKey *NodeKey) PubKey() crypto.PubKey {
 	return nodeKey.PrivKey.PubKey()
 }
 
-func (nodeKey *NodeKey) SatisfiesTarget(target []byte) bool {
-	return bytes.Compare(nodeKey.id(), target) < 0
+// PubKeyToID returns the ID corresponding to the given PubKey.
+// It's the hex-encoding of the pubKey.Address().
+func PubKeyToID(pubKey crypto.PubKey) ID {
+	return ID(hex.EncodeToString(pubKey.Address()))
 }
 
 // LoadOrGenNodeKey attempts to load the NodeKey from the given filePath.

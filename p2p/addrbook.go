@@ -283,7 +283,7 @@ func (a *AddrBook) RemoveAddress(addr *NetAddress) {
 	if ka == nil {
 		return
 	}
-	a.Logger.Info("Remove address from book", "addr", ka.Addr)
+	a.Logger.Info("Remove address from book", "addr", ka.Addr, "ID", ka.ID)
 	a.removeFromAllBuckets(ka)
 }
 

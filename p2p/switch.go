@@ -84,7 +84,6 @@ type Switch struct {
 	dialing      *cmn.CMap
 	nodeInfo     *NodeInfo // our node info
 	nodeKey      *NodeKey  // our node privkey
-	peerIDTarget []byte
 
 	filterConnByAddr   func(net.Addr) error
 	filterConnByPubKey func(crypto.PubKey) error
@@ -192,12 +191,6 @@ func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 	if sw.nodeInfo != nil {
 		sw.nodeInfo.PubKey = nodeKey.PubKey()
 	}
-}
-
-// SetPeerIDTarget sets the target for incoming peer ID's -
-// the ID must be less than the target
-func (sw *Switch) SetPeerIDTarget(target []byte) {
-	sw.peerIDTarget = target
 }
 
 // OnStart implements BaseService. It starts all the reactors, peers, and listeners.
@@ -460,8 +453,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 // If no success after all that, it stops trying, and leaves it
 // to the PEX/Addrbook to find the peer again
 func (sw *Switch) reconnectToPeer(peer Peer) {
-	netAddr, _ := NewNetAddressString(peer.NodeInfo().RemoteAddr)
-	netAddr.ID = peer.ID() // TODO: handle above
+	netAddr := peer.NodeInfo().NetAddress()
 	start := time.Now()
 	sw.Logger.Info("Reconnecting to peer", "peer", peer)
 	for i := 0; i < reconnectAttempts; i++ {

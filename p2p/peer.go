@@ -304,7 +304,7 @@ func (p *peer) Set(key string, data interface{}) {
 	p.Data.Set(key, data)
 }
 
-// Key returns the peer's ID - the hex encoded hash of its pubkey.
+// ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
 	return ID(hex.EncodeToString(p.PubKey().Address()))
 }

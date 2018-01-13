@@ -11,6 +11,8 @@ import (
 
 const maxNodeInfoSize = 10240 // 10Kb
 
+// NodeInfo is the basic node information exchanged
+// between two peers during the Tendermint P2P handshake
 type NodeInfo struct {
 	PubKey     crypto.PubKey `json:"pub_key"`     // authenticated pubkey
 	Moniker    string        `json:"moniker"`     // arbitrary moniker
@@ -52,6 +54,16 @@ func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 	}
 
 	return nil
+}
+
+func (info *NodeInfo) NetAddress() *NetAddress {
+	id := PubKeyToID(info.PubKey)
+	addr := info.ListenAddr
+	netAddr, err := NewNetAddressString(IDAddressString(id, addr))
+	if err != nil {
+		panic(err) // everything should be well formed by now
+	}
+	return netAddr
 }
 
 func (info *NodeInfo) ListenHost() string {

@@ -115,14 +115,8 @@ func (r *PEXReactor) AddPeer(p Peer) {
 			r.RequestPEX(p)
 		}
 	} else {
-		addrStr := fmt.Sprintf("%s@%s", p.ID(), p.NodeInfo().ListenAddr)
-		addr, err := NewNetAddressString(addrStr)
-		if err != nil {
-			// peer gave us a bad ListenAddr. TODO: punish
-			r.Logger.Error("Error in AddPeer: invalid peer address", "addr", p.NodeInfo().ListenAddr, "err", err)
-			return
-		}
 		// For inbound connections, the peer is its own source
+		addr := p.NodeInfo().NetAddress()
 		r.book.AddAddress(addr, addr)
 	}
 }
@@ -261,7 +255,7 @@ func (r *PEXReactor) ensurePeers() {
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
 
-	toDial := make(map[string]*NetAddress)
+	toDial := make(map[ID]*NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
@@ -269,19 +263,17 @@ func (r *PEXReactor) ensurePeers() {
 		if try == nil {
 			continue
 		}
-		if _, selected := toDial[string(try.ID)]; selected {
+		if _, selected := toDial[try.ID]; selected {
 			continue
 		}
 		if dialling := r.Switch.IsDialing(try.ID); dialling {
 			continue
 		}
-		// XXX: Should probably use pubkey as peer key ...
-		// TODO: use the ID correctly
 		if connected := r.Switch.Peers().Has(try.ID); connected {
 			continue
 		}
 		r.Logger.Info("Will dial address", "addr", try)
-		toDial[string(try.ID)] = try
+		toDial[try.ID] = try
 	}
 
 	// Dial picked addresses

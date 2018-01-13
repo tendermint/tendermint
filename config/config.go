@@ -95,7 +95,7 @@ type BaseConfig struct {
 	PrivValidator string `mapstructure:"priv_validator_file"`
 
 	// A JSON file containing the private key to use for p2p authenticated encryption
-	NodeKey string `mapstructure:"node_key"`
+	NodeKey string `mapstructure:"node_key_file"`
 
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`

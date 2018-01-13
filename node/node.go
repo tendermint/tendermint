@@ -368,7 +368,7 @@ func (n *Node) OnStart() error {
 	n.sw.AddListener(l)
 
 	// Generate node PrivKey
-	// TODO: the loading function will need to be configurable
+	// TODO: pass in like priv_val
 	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
 	if err != nil {
 		return err
