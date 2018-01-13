@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math/big"
 
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -42,35 +41,18 @@ func (nodeKey *NodeKey) SatisfiesTarget(target []byte) bool {
 	return bytes.Compare(nodeKey.id(), target) < 0
 }
 
-// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath,
-// and checks that the corresponding ID is less than the target.
-// If the file does not exist, it generates and saves a new NodeKey
-// with ID less than target.
-func LoadOrGenNodeKey(filePath string, target []byte) (*NodeKey, error) {
+// LoadOrGenNodeKey attempts to load the NodeKey from the given filePath.
+// If the file does not exist, it generates and saves a new NodeKey.
+func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	if cmn.FileExists(filePath) {
 		nodeKey, err := loadNodeKey(filePath)
 		if err != nil {
 			return nil, err
 		}
-		if !nodeKey.SatisfiesTarget(target) {
-			return nil, fmt.Errorf("Loaded ID (%s) does not satisfy target (%X)", nodeKey.ID(), target)
-		}
 		return nodeKey, nil
 	} else {
-		return genNodeKey(filePath, target)
+		return genNodeKey(filePath)
 	}
-}
-
-// MakePoWTarget returns a 20 byte target byte array.
-func MakePoWTarget(difficulty uint8) []byte {
-	zeroPrefixLen := (int(difficulty) / 8)
-	prefix := bytes.Repeat([]byte{0}, zeroPrefixLen)
-	mod := (difficulty % 8)
-	if mod > 0 {
-		nonZeroPrefix := byte(1 << (8 - mod))
-		prefix = append(prefix, nonZeroPrefix)
-	}
-	return append(prefix, bytes.Repeat([]byte{255}, 20-len(prefix))...)
 }
 
 func loadNodeKey(filePath string) (*NodeKey, error) {
@@ -86,8 +68,8 @@ func loadNodeKey(filePath string) (*NodeKey, error) {
 	return nodeKey, nil
 }
 
-func genNodeKey(filePath string, target []byte) (*NodeKey, error) {
-	privKey := genPrivKeyEd25519PoW(target).Wrap()
+func genNodeKey(filePath string) (*NodeKey, error) {
+	privKey := crypto.GenPrivKeyEd25519().Wrap()
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}
@@ -103,20 +85,26 @@ func genNodeKey(filePath string, target []byte) (*NodeKey, error) {
 	return nodeKey, nil
 }
 
-// generate key with address satisfying the difficult target
-func genPrivKeyEd25519PoW(target []byte) crypto.PrivKeyEd25519 {
-	secret := crypto.CRandBytes(32)
-	var privKey crypto.PrivKeyEd25519
-	for i := 0; ; i++ {
-		privKey = crypto.GenPrivKeyEd25519FromSecret(secret)
-		if bytes.Compare(privKey.PubKey().Address(), target) < 0 {
-			break
-		}
-		z := new(big.Int)
-		z.SetBytes(secret)
-		z = z.Add(z, big.NewInt(1))
-		secret = z.Bytes()
+//------------------------------------------------------------------------------
 
+// MakePoWTarget returns the big-endian encoding of 2^(targetBits - difficulty) - 1.
+// It can be used as a Proof of Work target.
+// NOTE: targetBits must be a multiple of 8 and difficulty must be less than targetBits.
+func MakePoWTarget(difficulty, targetBits uint) []byte {
+	if targetBits%8 != 0 {
+		panic(fmt.Sprintf("targetBits (%d) not a multiple of 8", targetBits))
 	}
-	return privKey
+	if difficulty >= targetBits {
+		panic(fmt.Sprintf("difficulty (%d) >= targetBits (%d)", difficulty, targetBits))
+	}
+	targetBytes := targetBits / 8
+	zeroPrefixLen := (int(difficulty) / 8)
+	prefix := bytes.Repeat([]byte{0}, zeroPrefixLen)
+	mod := (difficulty % 8)
+	if mod > 0 {
+		nonZeroPrefix := byte(1<<(8-mod) - 1)
+		prefix = append(prefix, nonZeroPrefix)
+	}
+	tailLen := int(targetBytes) - len(prefix)
+	return append(prefix, bytes.Repeat([]byte{0xFF}, tailLen)...)
 }
