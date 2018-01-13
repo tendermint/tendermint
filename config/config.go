@@ -7,6 +7,25 @@ import (
 	"time"
 )
 
+// Note: Most of the structs & relevant comments + the
+// default configuration options were used to manually
+// generate the config.toml. Please reflect any changes
+// made here in the defaultConfigTemplate constant in
+// config/toml.go
+var (
+	DefaultTendermintDir = ".tendermint"
+	defaultConfigDir     = "config"
+	defaultDataDir       = "data"
+
+	defaultConfigFileName  = "config.toml"
+	defaultGenesisJSONName = "genesis.json"
+	defaultPrivValName     = "priv_validator.json"
+
+	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
+	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
+	defaultPrivValPath     = filepath.Join(defaultConfigDir, defaultPrivValName)
+)
+
 // Config defines the top level configuration for a Tendermint node
 type Config struct {
 	// Top level options use an anonymous struct
@@ -59,17 +78,18 @@ func (cfg *Config) SetRoot(root string) *Config {
 
 // BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct {
+
+	// chainID is unexposed and immutable but here for convenience
+	chainID string
+
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
 
-	// The ID of the chain to join (should be signed with every transaction and vote)
-	ChainID string `mapstructure:"chain_id"`
-
-	// A JSON file containing the initial validator set and other meta data
+	// Path to the JSON file containing the initial validator set and other meta data
 	Genesis string `mapstructure:"genesis_file"`
 
-	// A JSON file containing the private key to use as a validator in the consensus protocol
+	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
 	PrivValidator string `mapstructure:"priv_validator_file"`
 
 	// A custom human readable name for this node
@@ -104,11 +124,15 @@ type BaseConfig struct {
 	DBPath string `mapstructure:"db_dir"`
 }
 
+func (c BaseConfig) ChainID() string {
+	return c.chainID
+}
+
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:           "genesis.json",
-		PrivValidator:     "priv_validator.json",
+		Genesis:           defaultGenesisJSONPath,
+		PrivValidator:     defaultPrivValPath,
 		Moniker:           defaultMoniker,
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
@@ -124,7 +148,7 @@ func DefaultBaseConfig() BaseConfig {
 // TestBaseConfig returns a base configuration for testing a Tendermint node
 func TestBaseConfig() BaseConfig {
 	conf := DefaultBaseConfig()
-	conf.ChainID = "tendermint_test"
+	conf.chainID = "tendermint_test"
 	conf.ProxyApp = "dummy"
 	conf.FastSync = false
 	conf.DBBackend = "memdb"
@@ -284,7 +308,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		Recheck:      true,
 		RecheckEmpty: true,
 		Broadcast:    true,
-		WalPath:      "data/mempool.wal",
+		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
 	}
 }
 
@@ -304,7 +328,7 @@ type ConsensusConfig struct {
 	WalLight bool   `mapstructure:"wal_light"`
 	walFile  string // overrides WalPath if set
 
-	// All timeouts are in ms
+	// All timeouts are in milliseconds
 	TimeoutPropose        int `mapstructure:"timeout_propose"`
 	TimeoutProposeDelta   int `mapstructure:"timeout_propose_delta"`
 	TimeoutPrevote        int `mapstructure:"timeout_prevote"`
@@ -324,7 +348,7 @@ type ConsensusConfig struct {
 	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
 	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
 
-	// Reactor sleep duration parameters are in ms
+	// Reactor sleep duration parameters are in milliseconds
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
 }
@@ -372,7 +396,7 @@ func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
 // DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
-		WalPath:                     "data/cs.wal/wal",
+		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
 		WalLight:                    false,
 		TimeoutPropose:              3000,
 		TimeoutProposeDelta:         500,
