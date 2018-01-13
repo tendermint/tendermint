@@ -13,12 +13,12 @@ func TestNewNetAddress(t *testing.T) {
 
 	tcpAddr, err := net.ResolveTCPAddr("tcp", "127.0.0.1:8080")
 	require.Nil(err)
-	addr := NewNetAddress(tcpAddr)
+	addr := NewNetAddress("", tcpAddr)
 
 	assert.Equal("127.0.0.1:8080", addr.String())
 
 	assert.NotPanics(func() {
-		NewNetAddress(&net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8000})
+		NewNetAddress("", &net.UDPAddr{IP: net.ParseIP("127.0.0.1"), Port: 8000})
 	}, "Calling NewNetAddress with UDPAddr should not panic in testing")
 }
 
@@ -38,6 +38,23 @@ func TestNewNetAddressString(t *testing.T) {
 		{"notahost:8080", "", false},
 		{"8082", "", false},
 		{"127.0.0:8080000", "", false},
+
+		{"deadbeef@127.0.0.1:8080", "", false},
+		{"this-isnot-hex@127.0.0.1:8080", "", false},
+		{"xxxxbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
+		{"deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
+
+		{"tcp://deadbeef@127.0.0.1:8080", "", false},
+		{"tcp://this-isnot-hex@127.0.0.1:8080", "", false},
+		{"tcp://xxxxbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "", false},
+		{"tcp://deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef@127.0.0.1:8080", true},
+
+		{"tcp://@127.0.0.1:8080", "", false},
+		{"tcp://@", "", false},
+		{"", "", false},
+		{"@", "", false},
+		{" @", "", false},
+		{" @ ", "", false},
 	}
 
 	for _, tc := range testCases {

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -17,7 +18,7 @@ import (
 type Peer interface {
 	cmn.Service
 
-	Key() string
+	ID() ID
 	IsOutbound() bool
 	IsPersistent() bool
 	NodeInfo() *NodeInfo
@@ -77,7 +78,7 @@ func DefaultPeerConfig() *PeerConfig {
 }
 
 func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
 
 	conn, err := dial(addr, config)
 	if err != nil {
@@ -91,17 +92,18 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 		}
 		return nil, err
 	}
+
 	return peer, nil
 }
 
 func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
 
 	return newPeerFromConnAndConfig(conn, false, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
 }
 
 func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
 
 	conn := rawConn
 
@@ -204,8 +206,6 @@ func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 		return errors.Wrap(err, "Error removing deadline")
 	}
 
-	peerNodeInfo.RemoteAddr = p.Addr().String()
-
 	p.nodeInfo = peerNodeInfo
 	return nil
 }
@@ -216,14 +216,13 @@ func (p *peer) Addr() net.Addr {
 }
 
 // PubKey returns peer's public key.
-func (p *peer) PubKey() crypto.PubKeyEd25519 {
-	if p.config.AuthEnc {
+func (p *peer) PubKey() crypto.PubKey {
+	if p.NodeInfo() != nil {
+		return p.nodeInfo.PubKey
+	} else if p.config.AuthEnc {
 		return p.conn.(*SecretConnection).RemotePubKey()
 	}
-	if p.NodeInfo() == nil {
-		panic("Attempt to get peer's PubKey before calling Handshake")
-	}
-	return p.PubKey()
+	panic("Attempt to get peer's PubKey before calling Handshake")
 }
 
 // OnStart implements BaseService.
@@ -282,15 +281,15 @@ func (p *peer) CanSend(chID byte) bool {
 // String representation.
 func (p *peer) String() string {
 	if p.outbound {
-		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.Key())
+		return fmt.Sprintf("Peer{%v %v out}", p.mconn, p.ID())
 	}
 
-	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.Key())
+	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
 }
 
 // Equals reports whenever 2 peers are actually represent the same node.
 func (p *peer) Equals(other Peer) bool {
-	return p.Key() == other.Key()
+	return p.ID() == other.ID()
 }
 
 // Get the data for a given key.
@@ -303,9 +302,9 @@ func (p *peer) Set(key string, data interface{}) {
 	p.Data.Set(key, data)
 }
 
-// Key returns the peer's id key.
-func (p *peer) Key() string {
-	return p.nodeInfo.ListenAddr // XXX: should probably be PubKey.KeyString()
+// ID returns the peer's ID - the hex encoded hash of its pubkey.
+func (p *peer) ID() ID {
+	return ID(hex.EncodeToString(p.PubKey().Address()))
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.

@@ -11,14 +11,15 @@ import (
 
 const maxNodeInfoSize = 10240 // 10Kb
 
+// NodeInfo is the basic node information exchanged
+// between two peers during the Tendermint P2P handshake
 type NodeInfo struct {
-	PubKey     crypto.PubKeyEd25519 `json:"pub_key"`
-	Moniker    string               `json:"moniker"`
-	Network    string               `json:"network"`
-	RemoteAddr string               `json:"remote_addr"`
-	ListenAddr string               `json:"listen_addr"`
-	Version    string               `json:"version"` // major.minor.revision
-	Other      []string             `json:"other"`   // other application specific data
+	PubKey     crypto.PubKey `json:"pub_key"`     // authenticated pubkey
+	Moniker    string        `json:"moniker"`     // arbitrary moniker
+	Network    string        `json:"network"`     // network/chain ID
+	ListenAddr string        `json:"listen_addr"` // accepting incoming
+	Version    string        `json:"version"`     // major.minor.revision
+	Other      []string      `json:"other"`       // other application specific data
 }
 
 // CONTRACT: two nodes are compatible if the major/minor versions match and network match
@@ -54,6 +55,20 @@ func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 	return nil
 }
 
+func (info *NodeInfo) ID() ID {
+	return PubKeyToID(info.PubKey)
+}
+
+func (info *NodeInfo) NetAddress() *NetAddress {
+	id := PubKeyToID(info.PubKey)
+	addr := info.ListenAddr
+	netAddr, err := NewNetAddressString(IDAddressString(id, addr))
+	if err != nil {
+		panic(err) // everything should be well formed by now
+	}
+	return netAddr
+}
+
 func (info *NodeInfo) ListenHost() string {
 	host, _, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
 	return host
@@ -69,7 +84,7 @@ func (info *NodeInfo) ListenPort() int {
 }
 
 func (info NodeInfo) String() string {
-	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [remote %v, listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.RemoteAddr, info.ListenAddr, info.Version, info.Other)
+	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {

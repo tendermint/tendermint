@@ -16,7 +16,7 @@ func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -43,7 +43,7 @@ func TestPeerWithoutAuthEnc(t *testing.T) {
 	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: config}
 	rp.Start()
 	defer rp.Stop()
 
@@ -64,7 +64,7 @@ func TestPeerSend(t *testing.T) {
 	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: config}
 	rp.Start()
 	defer rp.Stop()
 
@@ -85,13 +85,13 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 		{ID: 0x01, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
-	pk := crypto.GenPrivKeyEd25519()
+	pk := crypto.GenPrivKeyEd25519().Wrap()
 	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config)
 	if err != nil {
 		return nil, err
 	}
 	err = p.HandshakeTimeout(&NodeInfo{
-		PubKey:  pk.PubKey().Unwrap().(crypto.PubKeyEd25519),
+		PubKey:  pk.PubKey(),
 		Moniker: "host_peer",
 		Network: "testing",
 		Version: "123.123.123",
@@ -103,7 +103,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 }
 
 type remotePeer struct {
-	PrivKey crypto.PrivKeyEd25519
+	PrivKey crypto.PrivKey
 	Config  *PeerConfig
 	addr    *NetAddress
 	quit    chan struct{}
@@ -113,8 +113,8 @@ func (p *remotePeer) Addr() *NetAddress {
 	return p.addr
 }
 
-func (p *remotePeer) PubKey() crypto.PubKeyEd25519 {
-	return p.PrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
+func (p *remotePeer) PubKey() crypto.PubKey {
+	return p.PrivKey.PubKey()
 }
 
 func (p *remotePeer) Start() {
@@ -122,7 +122,7 @@ func (p *remotePeer) Start() {
 	if e != nil {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
-	p.addr = NewNetAddress(l.Addr())
+	p.addr = NewNetAddress("", l.Addr())
 	p.quit = make(chan struct{})
 	go p.accept(l)
 }
@@ -142,10 +142,11 @@ func (p *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 		err = peer.HandshakeTimeout(&NodeInfo{
-			PubKey:  p.PrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
-			Moniker: "remote_peer",
-			Network: "testing",
-			Version: "123.123.123",
+			PubKey:     p.PrivKey.PubKey(),
+			Moniker:    "remote_peer",
+			Network:    "testing",
+			Version:    "123.123.123",
+			ListenAddr: l.Addr().String(),
 		}, 1*time.Second)
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)

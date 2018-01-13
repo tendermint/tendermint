@@ -11,4 +11,3 @@ See:
 - [docs/node] for details about different types of nodes and how they should work
 - [docs/pex] for details on peer discovery and exchange
 - [docs/config] for details on some config options
-
