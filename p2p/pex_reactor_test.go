@@ -184,7 +184,7 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 		r.Receive(PexChannel, peer, msg)
 	}
 
-	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ListenAddr))
+	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ID()))
 }
 
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
@@ -243,8 +243,7 @@ func createRandomPeer(outbound bool) *peer {
 	addr, netAddr := createRoutableAddr()
 	p := &peer{
 		nodeInfo: &NodeInfo{
-			ListenAddr: addr,
-			RemoteAddr: netAddr.String(),
+			ListenAddr: netAddr.String(),
 			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
 		outbound: outbound,

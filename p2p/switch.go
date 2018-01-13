@@ -615,7 +615,6 @@ func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
-		RemoteAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	})
 	s.SetNodeKey(nodeKey)

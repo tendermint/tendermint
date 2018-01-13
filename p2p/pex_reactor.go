@@ -129,17 +129,11 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	srcAddrStr := src.NodeInfo().RemoteAddr
-	srcAddr, err := NewNetAddressString(srcAddrStr)
-	if err != nil {
-		// this should never happen. TODO: cancel conn
-		r.Logger.Error("Error in Receive: invalid peer address", "addr", srcAddrStr, "err", err)
-		return
-	}
+	srcAddr := src.NodeInfo().NetAddress()
 
-	r.IncrementMsgCountForPeer(srcAddrStr)
-	if r.ReachedMaxMsgCountForPeer(srcAddrStr) {
-		r.Logger.Error("Maximum number of messages reached for peer", "peer", srcAddrStr)
+	r.IncrementMsgCountForPeer(srcAddr.ID)
+	if r.ReachedMaxMsgCountForPeer(srcAddr.ID) {
+		r.Logger.Error("Maximum number of messages reached for peer", "peer", srcAddr)
 		// TODO remove src from peers?
 		return
 	}
@@ -192,19 +186,19 @@ func (r *PEXReactor) SetMaxMsgCountByPeer(v uint16) {
 // ReachedMaxMsgCountForPeer returns true if we received too many
 // messages from peer with address `addr`.
 // NOTE: assumes the value in the CMap is non-nil
-func (r *PEXReactor) ReachedMaxMsgCountForPeer(addr string) bool {
-	return r.msgCountByPeer.Get(addr).(uint16) >= r.maxMsgCountByPeer
+func (r *PEXReactor) ReachedMaxMsgCountForPeer(peerID ID) bool {
+	return r.msgCountByPeer.Get(string(peerID)).(uint16) >= r.maxMsgCountByPeer
 }
 
 // Increment or initialize the msg count for the peer in the CMap
-func (r *PEXReactor) IncrementMsgCountForPeer(addr string) {
+func (r *PEXReactor) IncrementMsgCountForPeer(peerID ID) {
 	var count uint16
-	countI := r.msgCountByPeer.Get(addr)
+	countI := r.msgCountByPeer.Get(string(peerID))
 	if countI != nil {
 		count = countI.(uint16)
 	}
 	count++
-	r.msgCountByPeer.Set(addr, count)
+	r.msgCountByPeer.Set(string(peerID), count)
 }
 
 // Ensures that sufficient peers are connected. (continuous)

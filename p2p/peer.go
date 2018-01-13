@@ -206,8 +206,6 @@ func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 		return errors.Wrap(err, "Error removing deadline")
 	}
 
-	peerNodeInfo.RemoteAddr = p.Addr().String()
-
 	p.nodeInfo = peerNodeInfo
 	return nil
 }

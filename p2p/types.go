@@ -17,7 +17,6 @@ type NodeInfo struct {
 	PubKey     crypto.PubKey `json:"pub_key"`     // authenticated pubkey
 	Moniker    string        `json:"moniker"`     // arbitrary moniker
 	Network    string        `json:"network"`     // network/chain ID
-	RemoteAddr string        `json:"remote_addr"` // address for the connection
 	ListenAddr string        `json:"listen_addr"` // accepting incoming
 	Version    string        `json:"version"`     // major.minor.revision
 	Other      []string      `json:"other"`       // other application specific data
@@ -56,6 +55,10 @@ func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 	return nil
 }
 
+func (info *NodeInfo) ID() ID {
+	return PubKeyToID(info.PubKey)
+}
+
 func (info *NodeInfo) NetAddress() *NetAddress {
 	id := PubKeyToID(info.PubKey)
 	addr := info.ListenAddr
@@ -81,7 +84,7 @@ func (info *NodeInfo) ListenPort() int {
 }
 
 func (info NodeInfo) String() string {
-	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [remote %v, listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.RemoteAddr, info.ListenAddr, info.Version, info.Other)
+	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {

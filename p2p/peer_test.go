@@ -142,10 +142,11 @@ func (p *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 		err = peer.HandshakeTimeout(&NodeInfo{
-			PubKey:  p.PrivKey.PubKey(),
-			Moniker: "remote_peer",
-			Network: "testing",
-			Version: "123.123.123",
+			PubKey:     p.PrivKey.PubKey(),
+			Moniker:    "remote_peer",
+			Network:    "testing",
+			Version:    "123.123.123",
+			ListenAddr: l.Addr().String(),
 		}, 1*time.Second)
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
