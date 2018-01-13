@@ -66,17 +66,17 @@ func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return &ctypes.ResultDialSeeds{"Dialing seeds in progress. See /net_info for details"}, nil
 }
 
-func UnsafeDialPersistentPeers(persistent_peers []string) (*ctypes.ResultDialPersistentPeers, error) {
-	if len(persistent_peers) == 0 {
-		return &ctypes.ResultDialPersistentPeers{}, errors.New("No persistent peers provided")
+func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
+	if len(peers) == 0 {
+		return &ctypes.ResultDialPeers{}, errors.New("No peers provided")
 	}
 	// starts go routines to dial each peer after random delays
-	logger.Info("DialPersistentPeers", "addrBook", addrBook, "persistent_peers", persistent_peers)
-	err := p2pSwitch.DialPeersAsync(addrBook, persistent_peers, true)
+	logger.Info("DialPeers", "addrBook", addrBook, "peers", peers, "persistent", persistent)
+	err := p2pSwitch.DialPeersAsync(addrBook, peers, persistent)
 	if err != nil {
-		return &ctypes.ResultDialPersistentPeers{}, err
+		return &ctypes.ResultDialPeers{}, err
 	}
-	return &ctypes.ResultDialPersistentPeers{"Dialing persistent peers in progress. See /net_info for details"}, nil
+	return &ctypes.ResultDialPeers{"Dialing peers in progress. See /net_info for details"}, nil
 }
 
 // Get genesis file.

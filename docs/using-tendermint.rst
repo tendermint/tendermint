@@ -287,7 +287,7 @@ specify seeds for a running node to connect to:
 
 ::
 
-    curl --data-urlencode "seeds=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46657/dial_seeds
+    curl 'localhost:46657/dial_seeds?seeds=\["1.2.3.4:46656","5.6.7.8:46656"\]'
 
 Note, if the peer-exchange protocol (PEX) is enabled (default), you should not
 normally need seeds after the first start. Peers will be gossipping about known
@@ -296,13 +296,13 @@ peers and forming a network, storing peer addresses in the addrbook.
 If you want Tendermint to connect to specific set of addresses and maintain a
 persistent connection with each, you can use the ``--p2p.persistent_peers``
 flag or the corresponding setting in the ``config.toml`` or the
-``/dial_persistent_peers`` RPC endpoint to do it without stopping Tendermint
+``/dial_peers`` RPC endpoint to do it without stopping Tendermint
 core instance.
 
 ::
 
     tendermint node --p2p.persistent_peers "10.11.12.13:46656,10.11.12.14:46656"
-    curl --data-urlencode "persistent_peers=[\"10.11.12.13:46656\",\"10.11.12.14:46656\"]" localhost:46657/dial_persistent_peers
+    curl 'localhost:46657/dial_peers?persistent=true&peers=\["1.2.3.4:46656","5.6.7.8:46656"\]'
 
 Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -382,7 +382,7 @@ and the new ``priv_validator.json`` to the ``~/.tendermint/config`` on a new
 machine.
 
 Now run ``tendermint node`` on both machines, and use either
-``--p2p.persistent_peers`` or the ``/dial_persistent_peers`` to get them to peer up. They
+``--p2p.persistent_peers`` or the ``/dial_peers`` to get them to peer up. They
 should start making blocks, and will only continue to do so as long as
 both of them are online.
 

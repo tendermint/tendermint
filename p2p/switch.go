@@ -323,7 +323,7 @@ func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent 
 	}
 
 	if addrBook != nil {
-		// add persistent peers to `addrBook`
+		// add peers to `addrBook`
 		ourAddrS := sw.nodeInfo.ListenAddr
 		ourAddr, _ := NewNetAddressString(ourAddrS)
 		for _, netAddr := range netAddrs {

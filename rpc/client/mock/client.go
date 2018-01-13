@@ -111,8 +111,8 @@ func (c Client) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(seeds)
 }
 
-func (c Client) DialPersistentPeers(persistent_peers []string) (*ctypes.ResultDialPersistentPeers, error) {
-	return core.UnsafeDialPersistentPeers(persistent_peers)
+func (c Client) DialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
+	return core.UnsafeDialPeers(peers, persistent)
 }
 
 func (c Client) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {

@@ -86,7 +86,7 @@ type ResultDialSeeds struct {
 	Log string `json:"log"`
 }
 
-type ResultDialPersistentPeers struct {
+type ResultDialPeers struct {
 	Log string `json:"log"`
 }
 
