@@ -88,6 +88,9 @@ like the file below, however, double check by inspecting the
     # Comma separated list of seed nodes to connect to
     seeds = ""
 
+    # Comma separated list of nodes to keep persistent connections to
+    persistent_peers = ""
+
     # Path to address book
     addr_book_file = "addrbook.json"
 

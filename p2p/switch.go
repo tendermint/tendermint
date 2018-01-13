@@ -16,7 +16,7 @@ import (
 
 const (
 	// wait a random amount of time from this interval
-	// before dialing seeds or reconnecting to help prevent DoS
+	// before dialing peers or reconnecting to help prevent DoS
 	dialRandomizerIntervalMilliseconds = 3000
 
 	// repeatedly try to reconnect for a few minutes
@@ -315,15 +315,15 @@ func (sw *Switch) startInitPeer(peer *peer) {
 	}
 }
 
-// DialSeeds dials a list of seeds asynchronously in random order.
-func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
-	netAddrs, errs := NewNetAddressStrings(seeds)
+// DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
+func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent bool) error {
+	netAddrs, errs := NewNetAddressStrings(peers)
 	for _, err := range errs {
-		sw.Logger.Error("Error in seed's address", "err", err)
+		sw.Logger.Error("Error in peer's address", "err", err)
 	}
 
 	if addrBook != nil {
-		// add seeds to `addrBook`
+		// add peers to `addrBook`
 		ourAddrS := sw.nodeInfo.ListenAddr
 		ourAddr, _ := NewNetAddressString(ourAddrS)
 		for _, netAddr := range netAddrs {
@@ -342,7 +342,12 @@ func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 		go func(i int) {
 			sw.randomSleep(0)
 			j := perm[i]
-			sw.dialSeed(netAddrs[j])
+			peer, err := sw.DialPeerWithAddress(netAddrs[j], persistent)
+			if err != nil {
+				sw.Logger.Error("Error dialing peer", "err", err)
+			} else {
+				sw.Logger.Info("Connected to peer", "peer", peer)
+			}
 		}(i)
 	}
 	return nil
@@ -352,15 +357,6 @@ func (sw *Switch) DialSeeds(addrBook *AddrBook, seeds []string) error {
 func (sw *Switch) randomSleep(interval time.Duration) {
 	r := time.Duration(sw.rng.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
 	time.Sleep(r + interval)
-}
-
-func (sw *Switch) dialSeed(addr *NetAddress) {
-	peer, err := sw.DialPeerWithAddress(addr, true)
-	if err != nil {
-		sw.Logger.Error("Error dialing seed", "err", err)
-	} else {
-		sw.Logger.Info("Connected to seed", "peer", peer)
-	}
 }
 
 // DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects successfully.

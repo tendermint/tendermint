@@ -86,6 +86,10 @@ type ResultDialSeeds struct {
 	Log string `json:"log"`
 }
 
+type ResultDialPeers struct {
+	Log string `json:"log"`
+}
+
 type Peer struct {
 	p2p.NodeInfo     `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`

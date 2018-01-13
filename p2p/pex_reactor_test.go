@@ -24,7 +24,7 @@ func TestPEXReactorBasic(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 
 	assert.NotNil(r)
@@ -40,7 +40,7 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 
 	size := book.Size()
@@ -76,7 +76,7 @@ func TestPEXReactorRunning(t *testing.T) {
 		switches[i] = makeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
 			sw.SetLogger(log.TestingLogger().With("switch", i))
 
-			r := NewPEXReactor(book)
+			r := NewPEXReactor(book, &PEXReactorConfig{})
 			r.SetLogger(log.TestingLogger())
 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
 			sw.AddReactor("pex", r)
@@ -107,6 +107,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 func assertSomePeersWithTimeout(t *testing.T, switches []*Switch, checkPeriod, timeout time.Duration) {
 	ticker := time.NewTicker(checkPeriod)
+	remaining := timeout
 	for {
 		select {
 		case <-ticker.C:
@@ -118,16 +119,21 @@ func assertSomePeersWithTimeout(t *testing.T, switches []*Switch, checkPeriod, t
 					allGood = false
 				}
 			}
+			remaining -= checkPeriod
+			if remaining < 0 {
+				remaining = 0
+			}
 			if allGood {
 				return
 			}
-		case <-time.After(timeout):
+		case <-time.After(remaining):
 			numPeersStr := ""
 			for i, s := range switches {
 				outbound, inbound, _ := s.NumPeers()
 				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
 			}
 			t.Errorf("expected all switches to be connected to at least one peer (switches: %s)", numPeersStr)
+			return
 		}
 	}
 }
@@ -141,7 +147,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", false)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 
 	peer := createRandomPeer(false)
@@ -166,7 +172,7 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	book := NewAddrBook(dir+"addrbook.json", true)
 	book.SetLogger(log.TestingLogger())
 
-	r := NewPEXReactor(book)
+	r := NewPEXReactor(book, &PEXReactorConfig{})
 	r.SetLogger(log.TestingLogger())
 	r.SetMaxMsgCountByPeer(5)
 
@@ -178,6 +184,47 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	}
 
 	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ListenAddr))
+}
+
+func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	book := NewAddrBook(dir+"addrbook.json", false)
+	book.SetLogger(log.TestingLogger())
+
+	// 1. create seed
+	seed := makeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
+		sw.SetLogger(log.TestingLogger())
+
+		r := NewPEXReactor(book, &PEXReactorConfig{})
+		r.SetLogger(log.TestingLogger())
+		r.SetEnsurePeersPeriod(250 * time.Millisecond)
+		sw.AddReactor("pex", r)
+		return sw
+	})
+	seed.AddListener(NewDefaultListener("tcp", seed.NodeInfo().ListenAddr, true, log.TestingLogger()))
+	err = seed.Start()
+	require.Nil(t, err)
+	defer seed.Stop()
+
+	// 2. create usual peer
+	sw := makeSwitch(config, 1, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
+		sw.SetLogger(log.TestingLogger())
+
+		r := NewPEXReactor(book, &PEXReactorConfig{Seeds: []string{seed.NodeInfo().ListenAddr}})
+		r.SetLogger(log.TestingLogger())
+		r.SetEnsurePeersPeriod(250 * time.Millisecond)
+		sw.AddReactor("pex", r)
+		return sw
+	})
+	err = sw.Start()
+	require.Nil(t, err)
+	defer sw.Stop()
+
+	// 3. check that peer at least connects to seed
+	assertSomePeersWithTimeout(t, []*Switch{sw}, 10*time.Millisecond, 10*time.Second)
 }
 
 func createRoutableAddr() (addr string, netAddr *NetAddress) {

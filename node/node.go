@@ -255,7 +255,8 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
-		pexReactor := p2p.NewPEXReactor(addrBook)
+		pexReactor := p2p.NewPEXReactor(addrBook,
+			&p2p.PEXReactorConfig{Seeds: strings.Split(config.P2P.Seeds, ",")})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -379,11 +380,10 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// If seeds exist, add them to the address book and dial out
-	if n.config.P2P.Seeds != "" {
-		// dial out
-		seeds := strings.Split(n.config.P2P.Seeds, ",")
-		if err := n.DialSeeds(seeds); err != nil {
+	// Always connect to persistent peers
+	if n.config.P2P.PersistentPeers != "" {
+		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.PersistentPeers, ","), true)
+		if err != nil {
 			return err
 		}
 	}
@@ -573,11 +573,6 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 // NodeInfo returns the Node's Info from the Switch.
 func (n *Node) NodeInfo() *p2p.NodeInfo {
 	return n.sw.NodeInfo()
-}
-
-// DialSeeds dials the given seeds on the Switch.
-func (n *Node) DialSeeds(seeds []string) error {
-	return n.sw.DialSeeds(n.addrBook, seeds)
 }
 
 //------------------------------------------------------------------------------
