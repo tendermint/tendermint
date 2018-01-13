@@ -45,6 +45,7 @@ type PEXReactor struct {
 	BaseReactor
 
 	book              *AddrBook
+	config            *PEXReactorConfig
 	ensurePeersPeriod time.Duration
 
 	// tracks message count by peer, so we can prevent abuse
@@ -52,10 +53,18 @@ type PEXReactor struct {
 	maxMsgCountByPeer uint16
 }
 
+// PEXReactorConfig holds reactor specific configuration data.
+type PEXReactorConfig struct {
+	// Seeds is a list of addresses reactor may use if it can't connect to peers
+	// in the addrbook.
+	Seeds []string
+}
+
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook) *PEXReactor {
+func NewPEXReactor(b *AddrBook, config *PEXReactorConfig) *PEXReactor {
 	r := &PEXReactor{
 		book:              b,
+		config:            config,
 		ensurePeersPeriod: defaultEnsurePeersPeriod,
 		msgCountByPeer:    cmn.NewCMap(),
 		maxMsgCountByPeer: defaultMaxMsgCountByPeer,
@@ -100,7 +109,7 @@ func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
 func (r *PEXReactor) AddPeer(p Peer) {
 	if p.IsOutbound() {
 		// For outbound peers, the address is already in the books.
-		// Either it was added in DialSeeds or when we
+		// Either it was added in DialPersistentPeers or when we
 		// received the peer's address in r.Receive
 		if r.book.NeedMoreAddrs() {
 			r.RequestPEX(p)
@@ -239,7 +248,7 @@ func (r *PEXReactor) ensurePeersRoutine() {
 // placeholder. It should not be the case that an address becomes old/vetted
 // upon a single successful connection.
 func (r *PEXReactor) ensurePeers() {
-	numOutPeers, _, numDialing := r.Switch.NumPeers()
+	numOutPeers, numInPeers, numDialing := r.Switch.NumPeers()
 	numToDial := minNumOutboundPeers - (numOutPeers + numDialing)
 	r.Logger.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
 	if numToDial <= 0 {
@@ -286,12 +295,19 @@ func (r *PEXReactor) ensurePeers() {
 
 	// If we need more addresses, pick a random peer and ask for more.
 	if r.book.NeedMoreAddrs() {
-		if peers := r.Switch.Peers().List(); len(peers) > 0 {
-			i := rand.Int() % len(peers) // nolint: gas
-			peer := peers[i]
-			r.Logger.Info("No addresses to dial. Sending pexRequest to random peer", "peer", peer)
+		peers := r.Switch.Peers().List()
+		peersCount := len(peers)
+		if peersCount > 0 {
+			peer := peers[rand.Int()%peersCount] // nolint: gas
+			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestPEX(peer)
 		}
+	}
+
+	// If we are not connected to nor dialing anybody, fallback to dialing seeds.
+	if numOutPeers+numInPeers+numDialing+len(toDial) == 0 {
+		r.Logger.Info("No addresses to dial nor connected peers. Will dial seeds", "seeds", r.config.Seeds)
+		r.Switch.DialPeersAsync(r.book, r.config.Seeds, false)
 	}
 }
 

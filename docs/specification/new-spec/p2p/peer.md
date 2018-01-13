@@ -5,15 +5,11 @@ and how other peers are found.
 
 ## Peer Identity
 
-Tendermint peers are expected to maintain long-term persistent identities in the form of a private key.
-Each peer has an ID defined as `peer.ID == peer.PrivKey.Address()`, where `Address` uses the scheme defined in go-crypto.
-
-Peer ID's must come with some Proof-of-Work; that is,
-they must satisfy `peer.PrivKey.Address() < target` for some difficulty target.
-This ensures they are not too easy to generate. To begin, let `target == 2^240`.
+Tendermint peers are expected to maintain long-term persistent identities in the form of a public key.
+Each peer has an ID defined as `peer.ID == peer.PubKey.Address()`, where `Address` uses the scheme defined in go-crypto.
 
 A single peer ID can have multiple IP addresses associated with it.
-For simplicity, we only keep track of the latest one.
+TODO: define how to deal with this.
 
 When attempting to connect to a peer, we use the PeerURL: `<ID>@<IP>:<PORT>`.
 We will attempt to connect to the peer at IP:PORT, and verify,
@@ -22,7 +18,7 @@ corresponding to `<ID>`. This prevents man-in-the-middle attacks on the peer lay
 
 Peers can also be connected to without specifying an ID, ie. just `<IP>:<PORT>`.
 In this case, the peer must be authenticated out-of-band of Tendermint,
-for instance via VPN
+for instance via VPN.
 
 ## Connections
 
@@ -49,8 +45,8 @@ It goes as follows:
     - if we had the smaller ephemeral pubkey, use nonce1 for receiving, nonce2 for sending;
         else the opposite
 - all communications from now on are encrypted using the shared secret and the nonces, where each nonce
-- we now have an encrypted channel, but still need to authenticate
 increments by 2 every time it is used
+- we now have an encrypted channel, but still need to authenticate
 - generate a common challenge to sign:
     - SHA256 of the sorted (lowest first) and concatenated ephemeral pub keys
 - sign the common challenge with our persistent private key
@@ -76,7 +72,7 @@ an existing peer. If so, we disconnect.
 
 We also check the peer's address and public key against
 an optional whitelist which can be managed through the ABCI app -
-if the whitelist is enabled and the peer does not qualigy, the connection is
+if the whitelist is enabled and the peer does not qualify, the connection is
 terminated.
 
 
@@ -86,14 +82,14 @@ The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 
 ```
 type NodeInfo struct {
-	PubKey     crypto.PubKey `json:"pub_key"`
-	Moniker    string        `json:"moniker"`
-	Network    string        `json:"network"`
-	RemoteAddr string        `json:"remote_addr"`
-	ListenAddr string        `json:"listen_addr"` // accepting in
-	Version    string        `json:"version"` // major.minor.revision
-    Channels   []int8        `json:"channels"` // active reactor channels
-	Other      []string      `json:"other"`   // other application specific data
+  PubKey     crypto.PubKey
+  Moniker    string
+  Network    string
+  RemoteAddr string
+  ListenAddr string
+  Version    string
+  Channels   []int8
+  Other      []string
 }
 ```
 

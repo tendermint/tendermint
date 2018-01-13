@@ -5,6 +5,7 @@
 BREAKING CHANGES:
 - Better support for injecting randomness
 - Upgrade consensus for more real-time use of evidence
+- the files usually found in `~/.tendermint` (`config.toml`, `genesis.json`, and `priv_validator.json`) are now in `~/.tendermint/config`. The `$TMHOME/data/` directory remains unchanged.
 
 FEATURES:
 - Peer reputation management
@@ -24,6 +25,15 @@ IMPROVEMENTS:
 BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
+
+## 0.16.0 (TBD)
+
+BREAKING CHANGES:
+- [p2p] old `seeds` is now `persistent_peers` (persistent peers to which TM will always connect to)
+- [p2p] now `seeds` only used for getting addresses (if addrbook is empty; not persistent)
+
+FEATURES:
+- [p2p] added new `/dial_persistent_peers` **unsafe** endpoint
 
 ## 0.15.0 (December 29, 2017)
 

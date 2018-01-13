@@ -51,7 +51,7 @@ tendermint node \
   --proxy_app dummy \
   --p2p.laddr tcp://127.0.0.1:56666 \
   --rpc.laddr tcp://127.0.0.1:56667 \
-  --p2p.seeds 127.0.0.1:56656 \
+  --p2p.persistent_peers 127.0.0.1:56656 \
   --log_level error &
 
 # wait for node to start up so we only count time where we are actually syncing

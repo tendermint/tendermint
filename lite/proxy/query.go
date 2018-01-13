@@ -51,7 +51,7 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 
 	// make sure the proof is the proper height
 	if resp.IsErr() {
-		err = errors.Errorf("Query error %d: %d", resp.Code)
+		err = errors.Errorf("Query error for key %d: %d", key, resp.Code)
 		return nil, nil, err
 	}
 	if len(resp.Key) == 0 || len(resp.Proof) == 0 {
@@ -79,7 +79,7 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "Couldn't verify proof")
 		}
-		return &ctypes.ResultABCIQuery{resp}, eproof, nil
+		return &ctypes.ResultABCIQuery{Response: resp}, eproof, nil
 	}
 
 	// The key wasn't found, construct a proof of non-existence.
@@ -93,13 +93,12 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Couldn't verify proof")
 	}
-	return &ctypes.ResultABCIQuery{resp}, aproof, ErrNoData()
+	return &ctypes.ResultABCIQuery{Response: resp}, aproof, ErrNoData()
 }
 
 // GetCertifiedCommit gets the signed header for a given height
 // and certifies it.  Returns error if unable to get a proven header.
-func GetCertifiedCommit(h int64, node rpcclient.Client,
-	cert lite.Certifier) (empty lite.Commit, err error) {
+func GetCertifiedCommit(h int64, node rpcclient.Client, cert lite.Certifier) (lite.Commit, error) {
 
 	// FIXME: cannot use cert.GetByHeight for now, as it also requires
 	// Validators and will fail on querying tendermint for non-current height.
@@ -107,14 +106,18 @@ func GetCertifiedCommit(h int64, node rpcclient.Client,
 	rpcclient.WaitForHeight(node, h, nil)
 	cresp, err := node.Commit(&h)
 	if err != nil {
-		return
+		return lite.Commit{}, err
 	}
-	commit := client.CommitFromResult(cresp)
 
+	commit := client.CommitFromResult(cresp)
 	// validate downloaded checkpoint with our request and trust store.
 	if commit.Height() != h {
-		return empty, certerr.ErrHeightMismatch(h, commit.Height())
+		return lite.Commit{}, certerr.ErrHeightMismatch(h, commit.Height())
 	}
-	err = cert.Certify(commit)
+
+	if err = cert.Certify(commit); err != nil {
+		return lite.Commit{}, err
+	}
+
 	return commit, nil
 }

@@ -21,7 +21,7 @@ func TestStaticCert(t *testing.T) {
 	vals := keys.ToValidators(20, 10)
 	// and a certifier based on our known set
 	chainID := "test-static"
-	cert := lite.NewStatic(chainID, vals)
+	cert := lite.NewStaticCertifier(chainID, vals)
 
 	cases := []struct {
 		keys        lite.ValKeys

@@ -32,7 +32,7 @@ type P2P interface {
 	NumPeers() (outbound, inbound, dialig int)
 	NodeInfo() *p2p.NodeInfo
 	IsListening() bool
-	DialSeeds(*p2p.AddrBook, []string) error
+	DialPeersAsync(*p2p.AddrBook, []string, bool) error
 }
 
 //----------------------------------------------
