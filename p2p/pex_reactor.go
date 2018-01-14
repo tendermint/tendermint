@@ -21,6 +21,11 @@ const (
 	defaultEnsurePeersPeriod = 30 * time.Second
 	minNumOutboundPeers      = 10
 	maxPexMessageSize        = 1048576 // 1MB
+
+	// Seed/Crawler constants
+	defaultSeedDisconnectWaitPeriod = 2 * time.Minute
+	defaultCrawlPeerInterval        = 2 * time.Minute
+	defaultCrawlPeersPeriod         = 30 * time.Second
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
@@ -79,7 +84,13 @@ func (r *PEXReactor) OnStart() error {
 		return err
 	}
 
-	go r.ensurePeersRoutine()
+	// Check if this node should run
+	// in seed/crawler mode
+	if r.config.SeedMode {
+		go r.crawlPeersRoutine()
+	} else {
+		go r.ensurePeersRoutine()
+	}
 	return nil
 }
 
@@ -338,7 +349,7 @@ func (r *PEXReactor) checkSeeds() error {
 // Explores the network searching for more peers. (continuous)
 // Seed/Crawler Mode causes this node to quickly disconnect
 // from peers, except other seed nodes.
-func (r *PEXReactor) seedCrawlerMode() {
+func (r *PEXReactor) crawlPeersRoutine() {
 	// Do an initial crawl
 	r.crawlPeers()
 
