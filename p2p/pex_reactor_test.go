@@ -153,9 +153,11 @@ func TestPEXReactorReceive(t *testing.T) {
 
 	peer := createRandomPeer(false)
 
+	// we have to send a request to receive responses
+	r.RequestPEX(peer)
+
 	size := book.Size()
-	netAddr, _ := NewNetAddressString(peer.NodeInfo().ListenAddr)
-	addrs := []*NetAddress{netAddr}
+	addrs := []*NetAddress{peer.NodeInfo().NetAddress()}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(size+1, book.Size())
@@ -164,7 +166,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	r.Receive(PexChannel, peer, msg)
 }
 
-func TestPEXReactorAbuseFromPeer(t *testing.T) {
+func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	dir, err := ioutil.TempDir("", "pex_reactor")
@@ -174,17 +176,66 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 	book.SetLogger(log.TestingLogger())
 
 	r := NewPEXReactor(book, &PEXReactorConfig{})
+	sw := makeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch { return sw })
+	sw.SetLogger(log.TestingLogger())
+	sw.AddReactor("PEX", r)
+	r.SetSwitch(sw)
 	r.SetLogger(log.TestingLogger())
-	r.SetMaxMsgCountByPeer(5)
 
-	peer := createRandomPeer(false)
+	peer := newMockPeer()
 
+	id := string(peer.ID())
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
-	for i := 0; i < 10; i++ {
-		r.Receive(PexChannel, peer, msg)
-	}
 
-	assert.True(r.ReachedMaxMsgCountForPeer(peer.NodeInfo().ID()))
+	// first time creates the entry
+	r.Receive(PexChannel, peer, msg)
+	assert.True(r.lastReceivedRequests.Has(id))
+
+	// next time sets the last time value
+	r.Receive(PexChannel, peer, msg)
+	assert.True(r.lastReceivedRequests.Has(id))
+
+	// third time is too many too soon - peer is removed
+	r.Receive(PexChannel, peer, msg)
+	assert.False(r.lastReceivedRequests.Has(id))
+	assert.False(sw.Peers().Has(peer.ID()))
+
+}
+
+func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+	book := NewAddrBook(dir+"addrbook.json", true)
+	book.SetLogger(log.TestingLogger())
+
+	r := NewPEXReactor(book, &PEXReactorConfig{})
+	sw := makeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch { return sw })
+	sw.SetLogger(log.TestingLogger())
+	sw.AddReactor("PEX", r)
+	r.SetSwitch(sw)
+	r.SetLogger(log.TestingLogger())
+
+	peer := newMockPeer()
+
+	id := string(peer.ID())
+
+	// request addrs from the peer
+	r.RequestPEX(peer)
+	assert.True(r.requestsSent.Has(id))
+
+	addrs := []*NetAddress{peer.NodeInfo().NetAddress()}
+	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+
+	// receive some addrs. should clear the request
+	r.Receive(PexChannel, peer, msg)
+	assert.False(r.requestsSent.Has(id))
+
+	// receiving more addrs causes a disconnect
+	r.Receive(PexChannel, peer, msg)
+	assert.False(sw.Peers().Has(peer.ID()))
 }
 
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
@@ -252,3 +303,36 @@ func createRandomPeer(outbound bool) *peer {
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p
 }
+
+type mockPeer struct {
+	*cmn.BaseService
+	pubKey               crypto.PubKey
+	addr                 *NetAddress
+	outbound, persistent bool
+}
+
+func newMockPeer() mockPeer {
+	_, netAddr := createRoutableAddr()
+	mp := mockPeer{
+		addr:   netAddr,
+		pubKey: crypto.GenPrivKeyEd25519().Wrap().PubKey(),
+	}
+	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
+	mp.Start()
+	return mp
+}
+
+func (mp mockPeer) ID() ID             { return PubKeyToID(mp.pubKey) }
+func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
+func (mp mockPeer) IsPersistent() bool { return mp.persistent }
+func (mp mockPeer) NodeInfo() NodeInfo {
+	return NodeInfo{
+		PubKey:     mp.pubKey,
+		ListenAddr: mp.addr.DialString(),
+	}
+}
+func (mp mockPeer) Status() ConnectionStatus       { return ConnectionStatus{} }
+func (mp mockPeer) Send(byte, interface{}) bool    { return false }
+func (mp mockPeer) TrySend(byte, interface{}) bool { return false }
+func (mp mockPeer) Set(string, interface{})        {}
+func (mp mockPeer) Get(string) interface{}         { return nil }
