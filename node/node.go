@@ -544,9 +544,9 @@ func (n *Node) makeNodeInfo(pubKey crypto.PubKey) *p2p.NodeInfo {
 	}
 	nodeInfo := &p2p.NodeInfo{
 		PubKey:  pubKey,
-		Moniker: n.config.Moniker,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
+		Moniker: n.config.Moniker,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
 			cmn.Fmt("p2p_version=%v", p2p.Version),

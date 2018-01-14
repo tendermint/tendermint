@@ -115,7 +115,8 @@ func (r *PEXReactor) AddPeer(p Peer) {
 			r.RequestPEX(p)
 		}
 	} else {
-		// For inbound connections, the peer is its own source
+		// For inbound connections, the peer is its own source,
+		// and its NodeInfo has already been validated
 		addr := p.NodeInfo().NetAddress()
 		r.book.AddAddress(addr, addr)
 	}
@@ -130,7 +131,6 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	srcAddr := src.NodeInfo().NetAddress()
-
 	r.IncrementMsgCountForPeer(srcAddr.ID)
 	if r.ReachedMaxMsgCountForPeer(srcAddr.ID) {
 		r.Logger.Error("Maximum number of messages reached for peer", "peer", srcAddr)

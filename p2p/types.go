@@ -12,14 +12,30 @@ import (
 const maxNodeInfoSize = 10240 // 10Kb
 
 // NodeInfo is the basic node information exchanged
-// between two peers during the Tendermint P2P handshake
+// between two peers during the Tendermint P2P handshake.
 type NodeInfo struct {
+	// Authenticate
 	PubKey     crypto.PubKey `json:"pub_key"`     // authenticated pubkey
-	Moniker    string        `json:"moniker"`     // arbitrary moniker
-	Network    string        `json:"network"`     // network/chain ID
 	ListenAddr string        `json:"listen_addr"` // accepting incoming
-	Version    string        `json:"version"`     // major.minor.revision
-	Other      []string      `json:"other"`       // other application specific data
+
+	// Check compatibility
+	Network string `json:"network"` // network/chain ID
+	Version string `json:"version"` // major.minor.revision
+
+	// Sanitize
+	Moniker string   `json:"moniker"` // arbitrary moniker
+	Other   []string `json:"other"`   // other application specific data
+}
+
+// Validate checks the self-reported NodeInfo is safe.
+// It returns an error if the info.PubKey doesn't match the given pubKey.
+// TODO: constraints for Moniker/Other? Or is that for the UI ?
+func (info *NodeInfo) Validate(pubKey crypto.PubKey) error {
+	if !info.PubKey.Equals(pubKey) {
+		return fmt.Errorf("info.PubKey (%v) doesn't match peer.PubKey (%v)",
+			info.PubKey, pubKey)
+	}
+	return nil
 }
 
 // CONTRACT: two nodes are compatible if the major/minor versions match and network match

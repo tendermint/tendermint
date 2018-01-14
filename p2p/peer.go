@@ -195,18 +195,12 @@ func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 		return errors.Wrap(err2, "Error during handshake/read")
 	}
 
-	if p.config.AuthEnc {
-		// Check that the professed PubKey matches the sconn's.
-		if !peerNodeInfo.PubKey.Equals(p.PubKey().Wrap()) {
-			return fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
-				peerNodeInfo.PubKey, p.PubKey())
-		}
-	}
-
 	// Remove deadline
 	if err := p.conn.SetDeadline(time.Time{}); err != nil {
 		return errors.Wrap(err, "Error removing deadline")
 	}
+
+	// TODO: fix the peerNodeInfo.ListenAddr
 
 	p.nodeInfo = peerNodeInfo
 	return nil

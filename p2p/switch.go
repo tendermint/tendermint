@@ -359,38 +359,12 @@ func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent 
 	return nil
 }
 
-// DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects successfully.
+// DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects and authenticates successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, error) {
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
-
-	sw.Logger.Info("Dialing peer", "address", addr)
-	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, sw.peerConfig)
-	if err != nil {
-		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
-		return nil, err
-	}
-	peer.SetLogger(sw.Logger.With("peer", addr))
-
-	// authenticate peer
-	if addr.ID == "" {
-		peer.Logger.Info("Dialed peer with unknown ID - unable to authenticate", "addr", addr)
-	} else if addr.ID != peer.ID() {
-		return nil, fmt.Errorf("Failed to authenticate peer %v. Connected to peer with ID %s", addr, peer.ID())
-	}
-
-	if persistent {
-		peer.makePersistent()
-	}
-	err = sw.addPeer(peer)
-	if err != nil {
-		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
-		peer.CloseConn()
-		return nil, err
-	}
-	sw.Logger.Info("Dialed and added peer", "address", addr, "peer", peer)
-	return peer, nil
+	return sw.addOutboundPeerWithConfig(addr, sw.peerConfig, persistent)
 }
 
 // sleep for interval plus some random amount of ms on [0, dialRandomizerIntervalMilliseconds]
@@ -451,10 +425,6 @@ func (sw *Switch) listenerRoutine(l Listener) {
 			sw.Logger.Info("Ignoring inbound connection: error while adding peer", "address", inConn.RemoteAddr().String(), "err", err)
 			continue
 		}
-
-		// NOTE: We don't yet have the listening port of the
-		// remote (if they have a listener at all).
-		// The peerHandshake will handle that.
 	}
 
 	// cleanup
@@ -477,15 +447,52 @@ func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) er
 	return nil
 }
 
-// addPeer checks the given peer's validity, performs a handshake, and adds the
-// peer to the switch and to all registered reactors.
-// We already have an authenticated SecretConnection with the peer.
+// dial the peer; make secret connection; authenticate against the dialed ID;
+// add the peer.
+func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) (Peer, error) {
+	sw.Logger.Info("Dialing peer", "address", addr)
+	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config)
+	if err != nil {
+		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
+		return nil, err
+	}
+	peer.SetLogger(sw.Logger.With("peer", addr))
+
+	// authenticate peer
+	if addr.ID == "" {
+		peer.Logger.Info("Dialed peer with unknown ID - unable to authenticate", "addr", addr)
+	} else if addr.ID != peer.ID() {
+		return nil, fmt.Errorf("Failed to authenticate peer %v. Connected to peer with ID %s", addr, peer.ID())
+	}
+
+	if persistent {
+		peer.makePersistent()
+	}
+	err = sw.addPeer(peer)
+	if err != nil {
+		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
+		peer.CloseConn()
+		return nil, err
+	}
+	sw.Logger.Info("Dialed and added peer", "address", addr, "peer", peer)
+	return peer, nil
+}
+
+// addPeer performs the Tendermint P2P handshake with a peer
+// that already has a SecretConnection. If all goes well,
+// it starts the peer and adds it to the switch.
 // NOTE: This performs a blocking handshake before the peer is added.
 // NOTE: If error is returned, caller is responsible for calling peer.CloseConn()
 func (sw *Switch) addPeer(peer *peer) error {
 	// Avoid self
 	if sw.nodeKey.ID() == peer.ID() {
 		return ErrSwitchConnectToSelf
+	}
+
+	// Avoid duplicate
+	if sw.peers.Has(peer.ID()) {
+		return ErrSwitchDuplicatePeer
+
 	}
 
 	// Filter peer against white list
@@ -501,10 +508,9 @@ func (sw *Switch) addPeer(peer *peer) error {
 		return err
 	}
 
-	// Avoid duplicate
-	if sw.peers.Has(peer.ID()) {
-		return ErrSwitchDuplicatePeer
-
+	// Validate the peers nodeInfo against the pubkey
+	if err := peer.NodeInfo().Validate(peer.PubKey()); err != nil {
+		return err
 	}
 
 	// Check version, chain id
@@ -512,7 +518,7 @@ func (sw *Switch) addPeer(peer *peer) error {
 		return err
 	}
 
-	// Start peer
+	// All good. Start peer
 	if sw.IsRunning() {
 		sw.startInitPeer(peer)
 	}
