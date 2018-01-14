@@ -72,6 +72,11 @@ func (r *PEXReactor) OnStart() error {
 	if err != nil && err != cmn.ErrAlreadyStarted {
 		return err
 	}
+
+	if err := r.checkSeeds(); err != nil {
+		return err
+	}
+
 	go r.ensurePeersRoutine()
 	return nil
 }
@@ -222,6 +227,11 @@ func (r *PEXReactor) ensurePeersRoutine() {
 	ensurePeersPeriodMs := r.ensurePeersPeriod.Nanoseconds() / 1e6
 	time.Sleep(time.Duration(rand.Int63n(ensurePeersPeriodMs)) * time.Millisecond)
 
+	// fire once immediately.
+	// ensures we dial the seeds right away if the book is empty
+	r.ensurePeers()
+
+	// fire periodically
 	ticker := time.NewTicker(r.ensurePeersPeriod)
 	for {
 		select {
@@ -301,10 +311,43 @@ func (r *PEXReactor) ensurePeers() {
 		}
 	}
 
-	// If we are not connected to nor dialing anybody, fallback to dialing seeds.
+	// If we are not connected to nor dialing anybody, fallback to dialing a seed.
 	if numOutPeers+numInPeers+numDialing+len(toDial) == 0 {
-		r.Logger.Info("No addresses to dial nor connected peers. Will dial seeds", "seeds", r.config.Seeds)
-		r.Switch.DialPeersAsync(r.book, r.config.Seeds, false)
+		r.Logger.Info("No addresses to dial nor connected peers. Falling back to seeds")
+		r.dialSeed()
+	}
+}
+
+func (r *PEXReactor) checkSeeds() error {
+	lSeeds := len(r.config.Seeds)
+	if lSeeds > 0 {
+		seedAddrs, errs := NewNetAddressStrings(r.config.Seeds)
+		for _, err := range errs {
+			if err != nil {
+				return err
+			}
+		}
+	}
+}
+
+func (r *PEXReactor) dialSeed() error {
+	lSeeds := len(r.config.Seeds)
+	if lSeeds > 0 {
+		seedAddrs, _ := NewNetAddressStrings(r.config.Seeds)
+
+		perm := r.Switch.rng.Perm(lSeeds)
+		for _, i := range perm {
+			// dial a random seed
+			seedAddr := seedAddrs[i]
+			peer, err := sw.DialPeerWithAddress(seedAddr, false)
+			if err != nil {
+				sw.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
+			} else {
+				sw.Logger.Info("Connected to seed", "peer", peer)
+				return
+			}
+		}
+		sw.Logger.Error("Couldn't connect to any seeds")
 	}
 }
 
