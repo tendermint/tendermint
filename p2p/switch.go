@@ -318,18 +318,16 @@ func (sw *Switch) IsDialing(id ID) bool {
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
 func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
-	// TODO: IDs
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
 
 	if addrBook != nil {
 		// add peers to `addrBook`
-		ourAddrS := sw.nodeInfo.ListenAddr
-		ourAddr, _ := NewNetAddressString(ourAddrS)
+		ourAddr := sw.nodeInfo.NetAddress()
 		for _, netAddr := range netAddrs {
-			// do not add ourselves
-			if netAddr.Equals(ourAddr) {
+			// do not add our address or ID
+			if netAddr.Same(ourAddr) {
 				continue
 			}
 			addrBook.AddAddress(netAddr, ourAddr)
