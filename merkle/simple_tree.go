@@ -28,17 +28,14 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	"github.com/tendermint/go-wire"
-	. "github.com/tendermint/tmlibs/common"
 )
 
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {
-	var n int
-	var err error
 	var hasher = ripemd160.New()
-	wire.WriteByteSlice(left, hasher, &n, &err)
-	wire.WriteByteSlice(right, hasher, &n, &err)
+	err := wire.EncodeByteSlice(hasher, left)
+	err = wire.EncodeByteSlice(hasher, right)
 	if err != nil {
-		PanicCrisis(err)
+		panic(err)
 	}
 	return hasher.Sum(nil)
 }
@@ -68,11 +65,12 @@ func SimpleHashFromBinaries(items []interface{}) []byte {
 
 // General Convenience
 func SimpleHashFromBinary(item interface{}) []byte {
-	hasher, n, err := ripemd160.New(), new(int), new(error)
-	wire.WriteBinary(item, hasher, n, err)
-	if *err != nil {
-		PanicCrisis(err)
+	hasher := ripemd160.New()
+	bz, err := wire.MarshalBinary(item)
+	if err != nil {
+		panic(err)
 	}
+	hasher.Write(bz)
 	return hasher.Sum(nil)
 }
 

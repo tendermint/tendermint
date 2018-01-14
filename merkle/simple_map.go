@@ -26,7 +26,7 @@ func (sm *SimpleMap) Set(key string, value interface{}) {
 	if hashable, ok := value.(Hashable); ok {
 		vBytes = hashable.Hash()
 	} else {
-		vBytes = wire.BinaryBytes(value)
+		vBytes, _ = wire.MarshalBinary(value)
 	}
 
 	sm.kvs = append(sm.kvs, cmn.KVPair{
@@ -65,14 +65,14 @@ func (sm *SimpleMap) KVPairs() cmn.KVPairs {
 type kvPair cmn.KVPair
 
 func (kv kvPair) Hash() []byte {
-	hasher, n, err := ripemd160.New(), new(int), new(error)
-	wire.WriteByteSlice(kv.Key, hasher, n, err)
-	if *err != nil {
-		panic(*err)
+	hasher := ripemd160.New()
+	err := wire.EncodeByteSlice(hasher, kv.Key)
+	if err != nil {
+		panic(err)
 	}
-	wire.WriteByteSlice(kv.Value, hasher, n, err)
-	if *err != nil {
-		panic(*err)
+	err = wire.EncodeByteSlice(hasher, kv.Value)
+	if err != nil {
+		panic(err)
 	}
 	return hasher.Sum(nil)
 }

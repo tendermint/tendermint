@@ -16,6 +16,7 @@ import:
   - leveldb/errors
   - leveldb/opt
 - package: github.com/tendermint/go-wire
+  version: sdk2
   subpackages:
   - data
   - data/base58
