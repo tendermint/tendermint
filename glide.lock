@@ -1,10 +1,14 @@
-hash: 325b2f9c7e84696f88fa88126a22eb1e1e91c2be5f60402d17bfaad6713b33c2
-updated: 2017-12-28T18:27:21.247160207-08:00
+hash: 1990fb145d5c5098b5ee467c59506e81b6c3b973667eeb63d83abd7ef831b919
+updated: 2018-01-14T13:29:55.282854028-08:00
 imports:
+- name: github.com/davecgh/go-spew
+  version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
+  subpackages:
+  - spew
 - name: github.com/fsnotify/fsnotify
-  version: 4da3e2cfbabc9f751898f250b49f2439785783a1
+  version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/go-kit/kit
-  version: e2b298466b32c7cd5579a9b9b07e968fc9d9452c
+  version: 953e747656a7bbb5e1f998608b460458958b70cc
   subpackages:
   - log
   - log/level
@@ -12,7 +16,7 @@ imports:
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
-  version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
+  version: 259ab82a6cad3992b4e21ff5cac294ccb06474bc
 - name: github.com/gogo/protobuf
   version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
   subpackages:
@@ -26,6 +30,7 @@ imports:
   subpackages:
   - hcl/ast
   - hcl/parser
+  - hcl/printer
   - hcl/scanner
   - hcl/strconv
   - hcl/token
@@ -39,21 +44,15 @@ imports:
 - name: github.com/kr/logfmt
   version: b84e30acd515aadc4b783ad4ff83aff3299bdfe0
 - name: github.com/magiconair/properties
-  version: 8d7837e64d3c1ee4e54a880c5a920ab4316fc90a
-- name: github.com/mattn/go-colorable
-  version: 6fcc0c1fd9b620311d821b106a400b35dc95c497
-- name: github.com/mattn/go-isatty
-  version: a5cdd64afdee435007ee3e9f6ed4684af949d568
+  version: 49d762b9817ba1c2e9d0c69183c2b4a8b8f1d934
 - name: github.com/mitchellh/mapstructure
-  version: 06020f85339e21b2478f756a78e295255ffa4d6a
-- name: github.com/pelletier/go-buffruneio
-  version: c37440a7cf42ac63b919c752ca73a85067e05992
+  version: b4575eea38cca1123ec2dc90c26529b5c5acfcff
 - name: github.com/pelletier/go-toml
-  version: 13d49d4606eb801b8f01ae542b4afc4c6ee3d84a
+  version: 0131db6d737cfbbfb678f8b7d92e55e27ce46224
 - name: github.com/pkg/errors
-  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+  version: e881fd58d78e04cf6d0de1217f8707c8cc2249bc
 - name: github.com/spf13/afero
-  version: 5660eeed305fe5f69c8fc6cf899132a459a97064
+  version: 57afd63c68602b63ed976de00dd066ccb3c319db
   subpackages:
   - mem
 - name: github.com/spf13/cast
@@ -61,13 +60,13 @@ imports:
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/jwalterweatherman
-  version: 12bd96e66386c1960ab0f74ced1362f66f552f7b
+  version: 7c0cea34c8ece3fbeb2b27ab9b59511d360fb394
 - name: github.com/spf13/pflag
-  version: 97afa5e7ca8a08a383cb259e06636b5e2cc7897f
+  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/spf13/viper
-  version: 8ef37cbca71638bf32f3d5e194117d4cb46da163
+  version: aafc9e6bc7b7bb53ddaa75a5ef49a17d6e654be5
 - name: github.com/syndtr/goleveldb
-  version: b89cc31ef7977104127d34c1bd31ebd1a9db2199
+  version: 34011bf325bce385408353a30b101fe5e923eb6e
   subpackages:
   - leveldb
   - leveldb/cache
@@ -82,40 +81,31 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/go-wire
-  version: 27be46e25124ddf775e23317a83647ce62a93f6b
-  subpackages:
-  - data
-  - data/base58
+  version: b93ebdd4f306833936c243561ec30af3455dc764
 - name: github.com/tendermint/log15
   version: f91285dece9f4875421b481da3e613d83d44f29b
-  subpackages:
-  - term
 - name: golang.org/x/crypto
-  version: edd5e9b0879d13ee6970a50153d85b8fec9f7686
+  version: 13931e22f9e72ea58bb73048bc752b48c6d4d4ac
   subpackages:
   - ripemd160
 - name: golang.org/x/sys
-  version: 8dbc5d05d6edcc104950cc299a1ce6641235bc86
+  version: 810d7000345868fc619eb81f46307107118f4ae1
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: c01e4764d870b77f8abe5096ee19ad20d80e8075
+  version: e19ae1496984b1c655b8044a65c0300a3c878dd3
   subpackages:
   - transform
   - unicode/norm
 - name: gopkg.in/yaml.v2
-  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
+  version: d670f9405373e636a5a2765eea47fac0c9bc91a4
 testImports:
-- name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
-  subpackages:
-  - spew
 - name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 2aa2c176b9dab406a6970f6a55f513e8a8c8b18f
+  version: b91bfb9ebec76498946beb6af7c0230c7cc7ba6c
   subpackages:
   - assert
   - require

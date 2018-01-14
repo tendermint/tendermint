@@ -16,9 +16,7 @@ import:
   - leveldb/errors
   - leveldb/opt
 - package: github.com/tendermint/go-wire
-  subpackages:
-  - data
-  - data/base58
+  version: sdk2
 - package: github.com/tendermint/log15
 - package: golang.org/x/crypto
   subpackages:
