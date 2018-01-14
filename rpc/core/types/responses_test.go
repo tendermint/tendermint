@@ -17,7 +17,7 @@ func TestStatusIndexer(t *testing.T) {
 	status = &ResultStatus{}
 	assert.False(status.TxIndexEnabled())
 
-	status.NodeInfo = &p2p.NodeInfo{}
+	status.NodeInfo = p2p.NodeInfo{}
 	assert.False(status.TxIndexEnabled())
 
 	cases := []struct {

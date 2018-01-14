@@ -127,12 +127,25 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	return na
 }
 
-// Equals reports whether na and other are the same addresses.
+// Equals reports whether na and other are the same addresses,
+// including their ID, IP, and Port.
 func (na *NetAddress) Equals(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() == o.String()
 	}
+	return false
+}
 
+// Same returns true is na has the same non-empty ID or DialString as other.
+func (na *NetAddress) Same(other interface{}) bool {
+	if o, ok := other.(*NetAddress); ok {
+		if na.DialString() == o.DialString() {
+			return true
+		}
+		if na.ID != "" && na.ID == o.ID {
+			return true
+		}
+	}
 	return false
 }
 

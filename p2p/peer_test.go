@@ -30,7 +30,7 @@ func TestPeerBasic(t *testing.T) {
 	assert.True(p.IsRunning())
 	assert.True(p.IsOutbound())
 	assert.False(p.IsPersistent())
-	p.makePersistent()
+	p.persistent = true
 	assert.True(p.IsPersistent())
 	assert.Equal(rp.Addr().String(), p.Addr().String())
 	assert.Equal(rp.PubKey(), p.PubKey())
@@ -86,11 +86,11 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519().Wrap()
-	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config)
+	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config, false)
 	if err != nil {
 		return nil, err
 	}
-	err = p.HandshakeTimeout(&NodeInfo{
+	err = p.HandshakeTimeout(NodeInfo{
 		PubKey:  pk.PubKey(),
 		Moniker: "host_peer",
 		Network: "testing",
@@ -141,7 +141,7 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
-		err = peer.HandshakeTimeout(&NodeInfo{
+		err = peer.HandshakeTimeout(NodeInfo{
 			PubKey:     p.PrivKey.PubKey(),
 			Moniker:    "remote_peer",
 			Network:    "testing",
