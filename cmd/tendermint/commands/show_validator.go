@@ -1,11 +1,11 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -18,6 +18,6 @@ var ShowValidatorCmd = &cobra.Command{
 
 func showValidator(cmd *cobra.Command, args []string) {
 	privValidator := types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
-	pubKeyJSONBytes, _ := data.ToJSON(privValidator.PubKey)
+	pubKeyJSONBytes, _ := json.Marshal(privValidator.PubKey) // TODO: use go-wire ?
 	fmt.Println(string(pubKeyJSONBytes))
 }
