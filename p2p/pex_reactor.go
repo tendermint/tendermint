@@ -39,8 +39,8 @@ type PEXReactor struct {
 	ensurePeersPeriod time.Duration
 
 	// maps to prevent abuse
-	requestsSent         *cmn.CMap // unanswered send requests
-	lastReceivedRequests *cmn.CMap // last time peer requested from us
+	requestsSent         *cmn.CMap // ID->struct{}: unanswered send requests
+	lastReceivedRequests *cmn.CMap // ID->time.Time: last time peer requested from us
 }
 
 // PEXReactorConfig holds reactor specific configuration data.
@@ -73,6 +73,7 @@ func (r *PEXReactor) OnStart() error {
 		return err
 	}
 
+	// return err if user provided a bad seed address
 	if err := r.checkSeeds(); err != nil {
 		return err
 	}
@@ -166,7 +167,7 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	lastReceived := v.(time.Time)
 	if lastReceived.Equal(time.Time{}) {
 		// first time gets a free pass. then we start tracking the time
-		lastReceived := time.Now()
+		lastReceived = time.Now()
 		r.lastReceivedRequests.Set(id, lastReceived)
 		return nil
 	}
@@ -318,37 +319,42 @@ func (r *PEXReactor) ensurePeers() {
 	}
 }
 
+// check seed addresses are well formed
 func (r *PEXReactor) checkSeeds() error {
 	lSeeds := len(r.config.Seeds)
-	if lSeeds > 0 {
-		seedAddrs, errs := NewNetAddressStrings(r.config.Seeds)
-		for _, err := range errs {
-			if err != nil {
-				return err
-			}
+	if lSeeds == 0 {
+		return nil
+	}
+	_, errs := NewNetAddressStrings(r.config.Seeds)
+	for _, err := range errs {
+		if err != nil {
+			return err
 		}
 	}
+	return nil
 }
 
-func (r *PEXReactor) dialSeed() error {
+// randomly dial seeds until we connect to one or exhaust them
+func (r *PEXReactor) dialSeed() {
 	lSeeds := len(r.config.Seeds)
-	if lSeeds > 0 {
-		seedAddrs, _ := NewNetAddressStrings(r.config.Seeds)
-
-		perm := r.Switch.rng.Perm(lSeeds)
-		for _, i := range perm {
-			// dial a random seed
-			seedAddr := seedAddrs[i]
-			peer, err := sw.DialPeerWithAddress(seedAddr, false)
-			if err != nil {
-				sw.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
-			} else {
-				sw.Logger.Info("Connected to seed", "peer", peer)
-				return
-			}
-		}
-		sw.Logger.Error("Couldn't connect to any seeds")
+	if lSeeds == 0 {
+		return
 	}
+	seedAddrs, _ := NewNetAddressStrings(r.config.Seeds)
+
+	perm := r.Switch.rng.Perm(lSeeds)
+	for _, i := range perm {
+		// dial a random seed
+		seedAddr := seedAddrs[i]
+		peer, err := r.Switch.DialPeerWithAddress(seedAddr, false)
+		if err != nil {
+			r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
+		} else {
+			r.Switch.Logger.Info("Connected to seed", "peer", peer)
+			return
+		}
+	}
+	r.Switch.Logger.Error("Couldn't connect to any seeds")
 }
 
 //-----------------------------------------------------------------------------

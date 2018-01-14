@@ -183,6 +183,8 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	r.SetLogger(log.TestingLogger())
 
 	peer := newMockPeer()
+	sw.peers.Add(peer)
+	assert.True(sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
@@ -190,16 +192,17 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	// first time creates the entry
 	r.Receive(PexChannel, peer, msg)
 	assert.True(r.lastReceivedRequests.Has(id))
+	assert.True(sw.Peers().Has(peer.ID()))
 
 	// next time sets the last time value
 	r.Receive(PexChannel, peer, msg)
 	assert.True(r.lastReceivedRequests.Has(id))
+	assert.True(sw.Peers().Has(peer.ID()))
 
 	// third time is too many too soon - peer is removed
 	r.Receive(PexChannel, peer, msg)
 	assert.False(r.lastReceivedRequests.Has(id))
 	assert.False(sw.Peers().Has(peer.ID()))
-
 }
 
 func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
@@ -219,12 +222,15 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	r.SetLogger(log.TestingLogger())
 
 	peer := newMockPeer()
+	sw.peers.Add(peer)
+	assert.True(sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
 
 	// request addrs from the peer
 	r.RequestPEX(peer)
 	assert.True(r.requestsSent.Has(id))
+	assert.True(sw.Peers().Has(peer.ID()))
 
 	addrs := []*NetAddress{peer.NodeInfo().NetAddress()}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
@@ -232,6 +238,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, msg)
 	assert.False(r.requestsSent.Has(id))
+	assert.True(sw.Peers().Has(peer.ID()))
 
 	// receiving more addrs causes a disconnect
 	r.Receive(PexChannel, peer, msg)
