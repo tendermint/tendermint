@@ -251,8 +251,12 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
+		var seeds []string
+		if config.P2P.Seeds != "" {
+			seeds = strings.Split(config.P2P.Seeds, ",")
+		}
 		pexReactor := p2p.NewPEXReactor(addrBook,
-			&p2p.PEXReactorConfig{Seeds: strings.Split(config.P2P.Seeds, ",")})
+			&p2p.PEXReactorConfig{Seeds: seeds})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
