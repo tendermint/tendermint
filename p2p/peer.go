@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -21,7 +20,7 @@ type Peer interface {
 	ID() ID
 	IsOutbound() bool
 	IsPersistent() bool
-	NodeInfo() *NodeInfo
+	NodeInfo() NodeInfo
 	Status() ConnectionStatus
 
 	Send(byte, interface{}) bool
@@ -47,7 +46,7 @@ type peer struct {
 	persistent bool
 	config     *PeerConfig
 
-	nodeInfo *NodeInfo
+	nodeInfo NodeInfo
 	Data     *cmn.CMap // User data.
 }
 
@@ -128,7 +127,7 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 		}
 	}
 
-	// Key and NodeInfo are set after Handshake
+	// NodeInfo is set after Handshake
 	p := &peer{
 		outbound: outbound,
 		conn:     conn,
@@ -169,23 +168,23 @@ func (p *peer) IsPersistent() bool {
 
 // HandshakeTimeout performs a handshake between a given node and the peer.
 // NOTE: blocking
-func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) error {
+func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) error {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	if err := p.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return errors.Wrap(err, "Error setting deadline")
 	}
 
-	var peerNodeInfo = new(NodeInfo)
+	var peerNodeInfo NodeInfo
 	var err1 error
 	var err2 error
 	cmn.Parallel(
 		func() {
 			var n int
-			wire.WriteBinary(ourNodeInfo, p.conn, &n, &err1)
+			wire.WriteBinary(&ourNodeInfo, p.conn, &n, &err1)
 		},
 		func() {
 			var n int
-			wire.ReadBinary(peerNodeInfo, p.conn, maxNodeInfoSize, &n, &err2)
+			wire.ReadBinary(&peerNodeInfo, p.conn, maxNodeInfoSize, &n, &err2)
 			p.Logger.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
@@ -213,7 +212,7 @@ func (p *peer) Addr() net.Addr {
 
 // PubKey returns peer's public key.
 func (p *peer) PubKey() crypto.PubKey {
-	if p.NodeInfo() != nil {
+	if !p.nodeInfo.PubKey.Empty() {
 		return p.nodeInfo.PubKey
 	} else if p.config.AuthEnc {
 		return p.conn.(*SecretConnection).RemotePubKey()
@@ -300,16 +299,12 @@ func (p *peer) Set(key string, data interface{}) {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return ID(hex.EncodeToString(p.PubKey().Address()))
+	return PubKeyToID(p.PubKey())
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
-func (p *peer) NodeInfo() *NodeInfo {
-	if p.nodeInfo == nil {
-		return nil
-	}
-	n := *p.nodeInfo // copy
-	return &n
+func (p *peer) NodeInfo() NodeInfo {
+	return p.nodeInfo
 }
 
 // Status returns the peer's ConnectionStatus.

@@ -30,7 +30,7 @@ type NodeInfo struct {
 // Validate checks the self-reported NodeInfo is safe.
 // It returns an error if the info.PubKey doesn't match the given pubKey.
 // TODO: constraints for Moniker/Other? Or is that for the UI ?
-func (info *NodeInfo) Validate(pubKey crypto.PubKey) error {
+func (info NodeInfo) Validate(pubKey crypto.PubKey) error {
 	if !info.PubKey.Equals(pubKey) {
 		return fmt.Errorf("info.PubKey (%v) doesn't match peer.PubKey (%v)",
 			info.PubKey, pubKey)
@@ -39,7 +39,7 @@ func (info *NodeInfo) Validate(pubKey crypto.PubKey) error {
 }
 
 // CONTRACT: two nodes are compatible if the major/minor versions match and network match
-func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
+func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	iMajor, iMinor, _, iErr := splitVersion(info.Version)
 	oMajor, oMinor, _, oErr := splitVersion(other.Version)
 
@@ -71,11 +71,11 @@ func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 	return nil
 }
 
-func (info *NodeInfo) ID() ID {
+func (info NodeInfo) ID() ID {
 	return PubKeyToID(info.PubKey)
 }
 
-func (info *NodeInfo) NetAddress() *NetAddress {
+func (info NodeInfo) NetAddress() *NetAddress {
 	id := PubKeyToID(info.PubKey)
 	addr := info.ListenAddr
 	netAddr, err := NewNetAddressString(IDAddressString(id, addr))
@@ -85,12 +85,12 @@ func (info *NodeInfo) NetAddress() *NetAddress {
 	return netAddr
 }
 
-func (info *NodeInfo) ListenHost() string {
+func (info NodeInfo) ListenHost() string {
 	host, _, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
 	return host
 }
 
-func (info *NodeInfo) ListenPort() int {
+func (info NodeInfo) ListenPort() int {
 	_, port, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
 	port_i, err := strconv.Atoi(port)
 	if err != nil {

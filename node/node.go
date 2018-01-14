@@ -537,12 +537,12 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func (n *Node) makeNodeInfo(pubKey crypto.PubKey) *p2p.NodeInfo {
+func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
-	nodeInfo := &p2p.NodeInfo{
+	nodeInfo := p2p.NodeInfo{
 		PubKey:  pubKey,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
@@ -574,7 +574,7 @@ func (n *Node) makeNodeInfo(pubKey crypto.PubKey) *p2p.NodeInfo {
 //------------------------------------------------------------------------------
 
 // NodeInfo returns the Node's Info from the Switch.
-func (n *Node) NodeInfo() *p2p.NodeInfo {
+func (n *Node) NodeInfo() p2p.NodeInfo {
 	return n.sw.NodeInfo()
 }
 

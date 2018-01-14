@@ -52,8 +52,8 @@ type Switch struct {
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *cmn.CMap
-	nodeInfo     *NodeInfo // our node info
-	nodeKey      *NodeKey  // our node privkey
+	nodeInfo     NodeInfo // our node info
+	nodeKey      *NodeKey // our node privkey
 
 	filterConnByAddr   func(net.Addr) error
 	filterConnByPubKey func(crypto.PubKey) error
@@ -70,7 +70,6 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
-		nodeInfo:     nil,
 	}
 
 	// Ensure we have a completely undeterministic PRNG. cmd.RandInt64() draws
@@ -141,24 +140,20 @@ func (sw *Switch) IsListening() bool {
 
 // SetNodeInfo sets the switch's NodeInfo for checking compatibility and handshaking with other nodes.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeInfo(nodeInfo *NodeInfo) {
+func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
 // NodeInfo returns the switch's NodeInfo.
 // NOTE: Not goroutine safe.
-func (sw *Switch) NodeInfo() *NodeInfo {
+func (sw *Switch) NodeInfo() NodeInfo {
 	return sw.nodeInfo
 }
 
 // SetNodeKey sets the switch's private key for authenticated encryption.
-// NOTE: Overwrites sw.nodeInfo.PubKey.
 // NOTE: Not goroutine safe.
 func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 	sw.nodeKey = nodeKey
-	if sw.nodeInfo != nil {
-		sw.nodeInfo.PubKey = nodeKey.PubKey()
-	}
 }
 
 //---------------------------------------------------------------------

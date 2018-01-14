@@ -242,7 +242,7 @@ func createRoutableAddr() (addr string, netAddr *NetAddress) {
 func createRandomPeer(outbound bool) *peer {
 	addr, netAddr := createRoutableAddr()
 	p := &peer{
-		nodeInfo: &NodeInfo{
+		nodeInfo: NodeInfo{
 			ListenAddr: netAddr.String(),
 			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
