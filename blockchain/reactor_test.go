@@ -142,7 +142,7 @@ func (tp *bcrTestPeer) TrySend(chID byte, value interface{}) bool {
 }
 
 func (tp *bcrTestPeer) Send(chID byte, data interface{}) bool { return tp.TrySend(chID, data) }
-func (tp *bcrTestPeer) NodeInfo() *p2p.NodeInfo               { return nil }
+func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo                { return p2p.NodeInfo{} }
 func (tp *bcrTestPeer) Status() p2p.ConnectionStatus          { return p2p.ConnectionStatus{} }
 func (tp *bcrTestPeer) ID() p2p.ID                            { return tp.id }
 func (tp *bcrTestPeer) IsOutbound() bool                      { return false }
