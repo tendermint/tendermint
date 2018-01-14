@@ -7,15 +7,15 @@ import:
 - package: github.com/spf13/cobra
   version: v0.0.1
 - package: github.com/tendermint/go-crypto
-  version: develop
+  version: sdk2
 - package: github.com/tendermint/go-wire
-  version: develop
+  version: sdk2
   subpackages:
   - data
 - package: github.com/tendermint/iavl
   version: sdk2
 - package: github.com/tendermint/tmlibs
-  version: develop
+  version: sdk2
   subpackages:
   - common
   - db

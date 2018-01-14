@@ -1,33 +1,47 @@
 package types
 
 import (
+	"bufio"
+	"encoding/binary"
 	"io"
 
 	"github.com/gogo/protobuf/proto"
 	wire "github.com/tendermint/go-wire"
 )
 
-// WriteMessage writes a length-delimited protobuf message.
+const (
+	maxMsgSize = 104857600 // 100MB
+)
+
+// WriteMessage writes a varint length-delimited protobuf message.
 func WriteMessage(msg proto.Message, w io.Writer) error {
 	bz, err := proto.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	var n int
-	wire.WriteByteSlice(bz, w, &n, &err)
-	return err
+	return wire.EncodeByteSlice(w, bz)
 }
 
-// ReadMessage reads a length delimited protobuf message.
+// ReadMessage reads a varint length-delimited protobuf message.
 func ReadMessage(r io.Reader, msg proto.Message) error {
-	var n int
-	var err error
-	bz := wire.ReadByteSlice(r, 0, &n, &err) //XXX: no max
+	return readProtoMsg(r, msg, maxMsgSize)
+}
+
+func readProtoMsg(r io.Reader, msg proto.Message, maxSize int) error {
+	reader := bufio.NewReader(r)
+	length64, err := binary.ReadVarint(reader)
 	if err != nil {
 		return err
 	}
-	err = proto.Unmarshal(bz, msg)
-	return err
+	length := int(length64)
+	if length < 0 || length > maxSize {
+		return io.ErrShortBuffer
+	}
+	buf := make([]byte, length)
+	if _, err := io.ReadFull(reader, buf); err != nil {
+		return err
+	}
+	return proto.Unmarshal(buf, msg)
 }
 
 //----------------------------------------

@@ -32,6 +32,26 @@ func TestMarshalJSON(t *testing.T) {
 	assert.Equal(t, r1, r2)
 }
 
+func TestWriteReadMessageSimple(t *testing.T) {
+	cases := []proto.Message{
+		&RequestEcho{
+			Message: "Hello",
+		},
+	}
+
+	for _, c := range cases {
+		buf := new(bytes.Buffer)
+		err := WriteMessage(c, buf)
+		assert.Nil(t, err)
+
+		msg := new(RequestEcho)
+		err = ReadMessage(buf, msg)
+		assert.Nil(t, err)
+
+		assert.Equal(t, c, msg)
+	}
+}
+
 func TestWriteReadMessage(t *testing.T) {
 	cases := []proto.Message{
 		&Header{
