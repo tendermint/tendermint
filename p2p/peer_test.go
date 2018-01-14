@@ -30,7 +30,7 @@ func TestPeerBasic(t *testing.T) {
 	assert.True(p.IsRunning())
 	assert.True(p.IsOutbound())
 	assert.False(p.IsPersistent())
-	p.makePersistent()
+	p.persistent = true
 	assert.True(p.IsPersistent())
 	assert.Equal(rp.Addr().String(), p.Addr().String())
 	assert.Equal(rp.PubKey(), p.PubKey())
@@ -86,7 +86,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519().Wrap()
-	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config)
+	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config, false)
 	if err != nil {
 		return nil, err
 	}

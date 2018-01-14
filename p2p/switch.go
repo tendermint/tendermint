@@ -428,9 +428,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config)
 	if err != nil {
-		if err := conn.Close(); err != nil {
-			sw.Logger.Error("Error closing connection", "err", err)
-		}
+		peer.CloseConn()
 		return err
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
@@ -446,7 +444,7 @@ func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) er
 // add the peer.
 func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) (Peer, error) {
 	sw.Logger.Info("Dialing peer", "address", addr)
-	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config)
+	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config, persistent)
 	if err != nil {
 		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
 		return nil, err
@@ -457,12 +455,10 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 	if addr.ID == "" {
 		peer.Logger.Info("Dialed peer with unknown ID - unable to authenticate", "addr", addr)
 	} else if addr.ID != peer.ID() {
+		peer.CloseConn()
 		return nil, fmt.Errorf("Failed to authenticate peer %v. Connected to peer with ID %s", addr, peer.ID())
 	}
 
-	if persistent {
-		peer.makePersistent()
-	}
 	err = sw.addPeer(peer)
 	if err != nil {
 		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
