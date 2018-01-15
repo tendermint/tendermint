@@ -48,7 +48,7 @@ type SecretConnection struct {
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25519) (*SecretConnection, error) {
 
-	locPubKey := locPrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
+	locPubKey := locPrivKey.PubKey().(crypto.PubKeyEd25519)
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
@@ -100,7 +100,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25
 	}
 
 	// We've authorized.
-	sc.remPubKey = remPubKey.Unwrap().(crypto.PubKeyEd25519)
+	sc.remPubKey = remPubKey.(crypto.PubKeyEd25519)
 	return sc, nil
 }
 
@@ -259,7 +259,7 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 }
 
 func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKeyEd25519) (signature crypto.SignatureEd25519) {
-	signature = locPrivKey.Sign(challenge[:]).Unwrap().(crypto.SignatureEd25519)
+	signature = locPrivKey.Sign(challenge[:]).(crypto.SignatureEd25519)
 	return
 }
 
@@ -274,17 +274,18 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKeyEd25519, signa
 
 	cmn.Parallel(
 		func() {
-			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
-			_, err1 = sc.Write(msgBytes)
+			var msgBytes []byte
+			msgBytes, err1 = wire.MarshalBinary(authSigMessage{pubKey, signature})
+			if err1 == nil {
+				_, err1 = sc.Write(msgBytes)
+			}
 		},
 		func() {
 			readBuffer := make([]byte, authSigMsgSize)
 			_, err2 = io.ReadFull(sc, readBuffer)
-			if err2 != nil {
-				return
+			if err2 == nil {
+				err2 = wire.UnmarshalBinary(readBuffer, &recvMsg) // authSigMsgSize
 			}
-			n := int(0) // not used.
-			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
 		})
 
 	if err1 != nil {
