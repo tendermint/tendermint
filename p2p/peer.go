@@ -13,6 +13,12 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+// XXX: should this be here?
+func init() {
+	wire.RegisterInterface((*crypto.Signature)(nil), nil)
+	wire.RegisterConcrete(&crypto.SignatureEd25519{}, "com.tendermint.go-crypto.signature_ed25519", nil)
+}
+
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
