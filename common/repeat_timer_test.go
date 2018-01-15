@@ -1,6 +1,7 @@
 package common
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -13,29 +14,42 @@ func TestDefaultTicker(t *testing.T) {
 	ticker.Stop()
 }
 
-func TestRepeat(t *testing.T) {
+func TestRepeatTimer(t *testing.T) {
 
 	ch := make(chan time.Time, 100)
-	lt := time.Time{} // zero time is year 1
+	mtx := new(sync.Mutex)
 
-	// tick fires `cnt` times for each second.
-	tick := func(cnt int) {
-		for i := 0; i < cnt; i++ {
-			lt = lt.Add(time.Second)
-			ch <- lt
-		}
+	// tick() fires from start to end
+	// (exclusive) in milliseconds with incr.
+	// It locks on mtx, so subsequent calls
+	// run in series.
+	tick := func(startMs, endMs, incrMs time.Duration) {
+		mtx.Lock()
+		go func() {
+			for tMs := startMs; tMs < endMs; tMs += incrMs {
+				lt := time.Time{}
+				lt = lt.Add(tMs * time.Millisecond)
+				ch <- lt
+			}
+			mtx.Unlock()
+		}()
 	}
 
-	// tock consumes Ticker.Chan() events `cnt` times.
-	tock := func(t *testing.T, rt *RepeatTimer, cnt int) {
-		for i := 0; i < cnt; i++ {
-			timeout := time.After(time.Second * 10)
-			select {
-			case <-rt.Chan():
-			case <-timeout:
-				panic("expected RepeatTimer to fire")
-			}
+	// tock consumes Ticker.Chan() events and checks them against the ms in "timesMs".
+	tock := func(t *testing.T, rt *RepeatTimer, timesMs []int64) {
+
+		// Check against timesMs.
+		for _, timeMs := range timesMs {
+			tyme := <-rt.Chan()
+			sinceMs := tyme.Sub(time.Time{}) / time.Millisecond
+			assert.Equal(t, timeMs, int64(sinceMs))
 		}
+
+		// TODO detect number of running
+		// goroutines to ensure that
+		// no other times will fire.
+		// See https://github.com/tendermint/tmlibs/issues/120.
+		time.Sleep(time.Millisecond * 100)
 		done := true
 		select {
 		case <-rt.Chan():
@@ -46,46 +60,44 @@ func TestRepeat(t *testing.T) {
 	}
 
 	tm := NewLogicalTickerMaker(ch)
-	dur := time.Duration(10 * time.Millisecond) // less than a second
-	rt := NewRepeatTimerWithTickerMaker("bar", dur, tm)
+	rt := NewRepeatTimerWithTickerMaker("bar", time.Second, tm)
 
-	// Start at 0.
-	tock(t, rt, 0)
-	tick(1) // init time
+	/* NOTE: Useful for debugging deadlocks...
+	go func() {
+		time.Sleep(time.Second * 3)
+		trace := make([]byte, 102400)
+		count := runtime.Stack(trace, true)
+		fmt.Printf("Stack of %d bytes: %s\n", count, trace)
+	}()
+	*/
 
-	tock(t, rt, 0)
-	tick(1) // wait 1 periods
-	tock(t, rt, 1)
-	tick(2) // wait 2 periods
-	tock(t, rt, 2)
-	tick(3) // wait 3 periods
-	tock(t, rt, 3)
-	tick(4) // wait 4 periods
-	tock(t, rt, 4)
+	tick(0, 1000, 10)
+	tock(t, rt, []int64{})
+	tick(1000, 2000, 10)
+	tock(t, rt, []int64{1000})
+	tick(2005, 5000, 10)
+	tock(t, rt, []int64{2005, 3005, 4005})
+	tick(5001, 5999, 1)
+	// Read 5005 instead of 5001 because
+	// it's 1 second greater than 4005.
+	tock(t, rt, []int64{5005})
+	tick(6000, 7005, 1)
+	tock(t, rt, []int64{6005})
+	tick(7033, 8032, 1)
+	tock(t, rt, []int64{7033})
 
-	// Multiple resets leads to no firing.
-	for i := 0; i < 20; i++ {
-		time.Sleep(time.Millisecond)
-		rt.Reset()
-	}
-
-	// After this, it works as new.
-	tock(t, rt, 0)
-	tick(1) // init time
-
-	tock(t, rt, 0)
-	tick(1) // wait 1 periods
-	tock(t, rt, 1)
-	tick(2) // wait 2 periods
-	tock(t, rt, 2)
-	tick(3) // wait 3 periods
-	tock(t, rt, 3)
-	tick(4) // wait 4 periods
-	tock(t, rt, 4)
+	// After a reset, nothing happens
+	// until two ticks are received.
+	rt.Reset()
+	tock(t, rt, []int64{})
+	tick(8040, 8041, 1)
+	tock(t, rt, []int64{})
+	tick(9555, 9556, 1)
+	tock(t, rt, []int64{9555})
 
 	// After a stop, nothing more is sent.
 	rt.Stop()
-	tock(t, rt, 0)
+	tock(t, rt, []int64{})
 
 	// Another stop panics.
 	assert.Panics(t, func() { rt.Stop() })

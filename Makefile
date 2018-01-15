@@ -62,11 +62,15 @@ get_vendor_deps:
 	@echo "--> Running glide install"
 	@glide install
 
+
 ########################################
 ### Testing
 
 test:
 	go test -tags gcc `glide novendor`
+
+test100:
+	@for i in {1..100}; do make test; done
 
 
 ########################################

@@ -80,13 +80,11 @@ func (t *logicalTicker) fireRoutine(interval time.Duration) {
 	}
 	// Init `lasttime` end
 
-	timeleft := interval
 	for {
 		select {
 		case newtime := <-source:
 			elapsed := newtime.Sub(lasttime)
-			timeleft -= elapsed
-			if timeleft <= 0 {
+			if interval <= elapsed {
 				// Block for determinism until the ticker is stopped.
 				select {
 				case t.ch <- newtime:
@@ -97,7 +95,7 @@ func (t *logicalTicker) fireRoutine(interval time.Duration) {
 				// Don't try to "catch up" by sending more.
 				// "Ticker adjusts the intervals or drops ticks to make up for
 				// slow receivers" - https://golang.org/pkg/time/#Ticker
-				timeleft = interval
+				lasttime = newtime
 			}
 		case <-t.quit:
 			return // done
