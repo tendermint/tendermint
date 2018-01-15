@@ -377,7 +377,7 @@ func extractValueFromKey(key []byte) string {
 }
 
 func keyForTag(tag cmn.KVPair, result *types.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%d", tag.Key, result.Height, result.Index))
+	return []byte(fmt.Sprintf("%s/%s/%d/%d", tag.Key, tag.Value, result.Height, result.Index))
 }
 
 ///////////////////////////////////////////////////////////////////////////////
