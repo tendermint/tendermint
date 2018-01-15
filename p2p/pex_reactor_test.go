@@ -149,11 +149,13 @@ func TestPEXReactorReceive(t *testing.T) {
 	size := book.Size()
 	netAddr, _ := NewNetAddressString(peer.NodeInfo().ListenAddr)
 	addrs := []*NetAddress{netAddr}
-	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	msg, err := wire.MarshalBinary(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	require.Nil(err)
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(size+1, book.Size())
 
-	msg = wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	msg, err = wire.MarshalBinary(struct{ PexMessage }{&pexRequestMessage{}})
+	require.Nil(err)
 	r.Receive(PexChannel, peer, msg)
 }
 
@@ -172,7 +174,8 @@ func TestPEXReactorAbuseFromPeer(t *testing.T) {
 
 	peer := createRandomPeer(false)
 
-	msg := wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	msg, err := wire.MarshalBinary(struct{ PexMessage }{&pexRequestMessage{}})
+	require.Nil(err)
 	for i := 0; i < 10; i++ {
 		r.Receive(PexChannel, peer, msg)
 	}

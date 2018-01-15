@@ -144,8 +144,12 @@ func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reacto
 		case <-ticker.C:
 			msgs := reactor.getMsgs(channel)
 			if len(msgs) > 0 {
-				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+				data, err := wire.MarshalBinary(msg)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(msgs[0].Bytes, data) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", data, msgs[0].Bytes)
 				}
 				return
 			}

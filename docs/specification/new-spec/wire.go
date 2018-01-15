@@ -62,8 +62,8 @@ func main() {
 }
 
 func encode(i interface{}) {
-	Println(wire.BinaryBytes(i))
-
+	data, _ := wire.MarshalBinary(i)
+	Println(data)
 }
 
 func Println(b []byte) {

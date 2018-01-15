@@ -77,7 +77,10 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.BinaryBytes(nodeInfo)
+		jsonBytes, err := wire.MarshalBinary(nodeInfo)
+		if err != nil {
+			b.Fatal(err)
+		}
 		counter += len(jsonBytes)
 	}
 
