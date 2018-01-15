@@ -22,7 +22,7 @@ func makeVote(val *PrivValidatorFS, chainID string, valIndex int, height int64, 
 		Type:             byte(step),
 		BlockID:          blockID,
 	}
-	sig := val.PrivKey.Sign(SignBytes(chainID, v))
+	sig := val.PrivKey.Sign(v.SignBytes(chainID))
 	v.Signature = sig
 	return v
 
@@ -41,7 +41,7 @@ func TestEvidence(t *testing.T) {
 
 	vote1 := makeVote(val, chainID, 0, 10, 2, 1, blockID)
 	badVote := makeVote(val, chainID, 0, 10, 2, 1, blockID)
-	badVote.Signature = val2.PrivKey.Sign(SignBytes(chainID, badVote))
+	badVote.Signature = val2.PrivKey.Sign(badVote.SignBytes(chainID))
 
 	cases := []voteData{
 		{vote1, makeVote(val, chainID, 0, 10, 2, 1, blockID2), true}, // different block ids

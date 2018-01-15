@@ -83,10 +83,10 @@ const (
 	evidenceTypeDuplicateVote = byte(0x01)
 )
 
-var _ = wire.RegisterInterface(
-	struct{ Evidence }{},
-	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
-)
+func init() {
+	wire.RegisterInterface((*Evidence)(nil), nil)
+	wire.RegisterConcrete(&DuplicateVoteEvidence{}, "com.tendermint.types.duplicate_vote_evidence", nil)
+}
 
 //-------------------------------------------
 
