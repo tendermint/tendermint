@@ -4,10 +4,17 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
+
+// XXX: should this be here?
+func init() {
+	wire.RegisterInterface((*crypto.PubKey)(nil), nil)
+	wire.RegisterConcrete(&crypto.PubKeyEd25519{}, "com.tendermint.go-crypto.pub_key_ed25519", nil)
+}
 
 // Volatile state for each Validator
 // NOTE: The Accum is not included in Validator.Hash();
