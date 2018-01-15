@@ -51,7 +51,7 @@ func TestTxSearch(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
 	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte{1}},
+		{Key: []byte("account.number"), Value: []byte("1")},
 		{Key: []byte("account.owner"), Value: []byte("Ivan")},
 		{Key: []byte("not_allowed"), Value: []byte("Vlad")},
 	})
@@ -108,8 +108,8 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
 	txResult := txResultWithTags([]cmn.KVPair{
-		{Key: []byte("account.number"), Value: []byte{1}},
-		{Key: []byte("account.number"), Value: []byte{2}},
+		{Key: []byte("account.number"), Value: []byte("1")},
+		{Key: []byte("account.number"), Value: []byte("2")},
 	})
 
 	err := indexer.Index(txResult)
@@ -127,7 +127,7 @@ func TestIndexAllTags(t *testing.T) {
 
 	txResult := txResultWithTags([]cmn.KVPair{
 		cmn.KVPair{[]byte("account.owner"), []byte("Ivan")},
-		cmn.KVPair{[]byte("account.number"), []byte{1}},
+		cmn.KVPair{[]byte("account.number"), []byte("1")},
 	})
 
 	err := indexer.Index(txResult)
