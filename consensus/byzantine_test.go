@@ -287,17 +287,17 @@ func (privVal *ByzantinePrivValidator) GetPubKey() crypto.PubKey {
 }
 
 func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) (err error) {
-	vote.Signature, err = privVal.Sign(types.SignBytes(chainID, vote))
+	vote.Signature, err = privVal.Sign(vote.SignBytes(chainID))
 	return err
 }
 
 func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) (err error) {
-	proposal.Signature, _ = privVal.Sign(types.SignBytes(chainID, proposal))
+	proposal.Signature, _ = privVal.Sign(proposal.SignBytes(chainID))
 	return nil
 }
 
 func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) (err error) {
-	heartbeat.Signature, _ = privVal.Sign(types.SignBytes(chainID, heartbeat))
+	heartbeat.Signature, _ = privVal.Sign(heartbeat.SignBytes(chainID))
 	return nil
 }
 
