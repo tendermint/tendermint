@@ -104,7 +104,10 @@ func (store *EvidenceStore) ListEvidence(prefixKey string) (evidence []types.Evi
 		val := iter.Value()
 
 		var ei EvidenceInfo
-		wire.ReadBinaryBytes(val, &ei)
+		err := wire.UnmarshalBinary(val, &ei)
+		if err != nil {
+			panic(err)
+		}
 		evidence = append(evidence, ei.Evidence)
 	}
 	return evidence
@@ -119,7 +122,10 @@ func (store *EvidenceStore) GetEvidence(height int64, hash []byte) *EvidenceInfo
 		return nil
 	}
 	var ei EvidenceInfo
-	wire.ReadBinaryBytes(val, &ei)
+	err := wire.UnmarshalBinary(val, &ei)
+	if err != nil {
+		panic(err)
+	}
 	return &ei
 }
 
@@ -137,7 +143,10 @@ func (store *EvidenceStore) AddNewEvidence(evidence types.Evidence, priority int
 		Priority:  priority,
 		Evidence:  evidence,
 	}
-	eiBytes := wire.BinaryBytes(ei)
+	eiBytes, err := wire.MarshalBinary(ei)
+	if err != nil {
+		panic(err)
+	}
 
 	// add it to the store
 	key := keyOutqueue(evidence, priority)
@@ -171,7 +180,11 @@ func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	ei.Committed = true
 
 	lookupKey := keyLookup(evidence)
-	store.db.SetSync(lookupKey, wire.BinaryBytes(ei))
+	eiBytes, err := wire.MarshalBinary(ei)
+	if err != nil {
+		panic(err)
+	}
+	store.db.SetSync(lookupKey, eiBytes)
 }
 
 //---------------------------------------------------
@@ -181,6 +194,9 @@ func (store *EvidenceStore) getEvidenceInfo(evidence types.Evidence) EvidenceInf
 	key := keyLookup(evidence)
 	var ei EvidenceInfo
 	b := store.db.Get(key)
-	wire.ReadBinaryBytes(b, &ei)
+	err := wire.UnmarshalBinary(b, &ei)
+	if err != nil {
+		panic(err)
+	}
 	return ei
 }
