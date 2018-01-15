@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/wire"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -145,8 +145,12 @@ func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reacto
 		case <-ticker.C:
 			msgs := reactor.getMsgs(channel)
 			if len(msgs) > 0 {
-				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+				bz, err := wire.MarshalBinary(msg)
+				if err != nil {
+					t.Fatalf("Failed to marshal msg: %v", err)
+				}
+				if !bytes.Equal(msgs[0].Bytes, bz) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", bz, msgs[0].Bytes)
 				}
 				return
 			}
@@ -233,7 +237,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -260,7 +264,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 

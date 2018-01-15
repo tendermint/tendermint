@@ -20,8 +20,8 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -30,7 +30,7 @@ const dataLenSize = 2 // uint16 to describe the length, is <= dataMaxSize
 const dataMaxSize = 1024
 const totalFrameSize = dataMaxSize + dataLenSize
 const sealedFrameSize = totalFrameSize + secretbox.Overhead
-const authSigMsgSize = (32 + 1) + (64 + 1) // fixed size (length prefixed) byte arrays
+const authSigMsgSize = (32 + 4) + (64 + 4) // fixed size (length prefixed) byte arrays
 
 // Implements net.Conn
 type SecretConnection struct {
@@ -46,9 +46,8 @@ type SecretConnection struct {
 // Returns nil if error in handshake.
 // Caller should call conn.Close()
 // See docs/sts-final.pdf for more information.
-func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
-
-	locPubKey := locPrivKey.PubKey()
+func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKeyEd25519) (*SecretConnection, error) {
+	locPubKey := locPrivKey.PubKey().(crypto.PubKeyEd25519)
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()
@@ -100,7 +99,7 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	}
 
 	// We've authorized.
-	sc.remPubKey = remPubKey
+	sc.remPubKey = remPubKey.(crypto.PubKeyEd25519)
 	return sc, nil
 }
 
@@ -258,8 +257,8 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 	return hash32(append(loPubKey[:], hiPubKey[:]...))
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature crypto.Signature) {
-	signature = locPrivKey.Sign(challenge[:])
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKeyEd25519) (signature crypto.SignatureEd25519) {
+	signature = locPrivKey.Sign(challenge[:]).(crypto.SignatureEd25519)
 	return
 }
 
@@ -274,17 +273,18 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 
 	cmn.Parallel(
 		func() {
-			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
-			_, err1 = sc.Write(msgBytes)
+			var msgBytes []byte
+			msgBytes, err1 = wire.MarshalBinary(authSigMessage{pubKey, signature})
+			if err1 == nil {
+				_, err1 = sc.Write(msgBytes)
+			}
 		},
 		func() {
 			readBuffer := make([]byte, authSigMsgSize)
 			_, err2 = io.ReadFull(sc, readBuffer)
-			if err2 != nil {
-				return
+			if err2 == nil {
+				err2 = wire.UnmarshalBinary(readBuffer, &recvMsg) // authSigMsgSize
 			}
-			n := int(0) // not used.
-			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
 		})
 
 	if err1 != nil {

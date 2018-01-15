@@ -1,8 +1,8 @@
 package wire
 
 import (
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 )
 
 // Expose access to a global wire codec
