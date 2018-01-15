@@ -1,14 +1,11 @@
 package blockchain
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
 	"sync"
 	"time"
-
-	wire "github.com/tendermint/go-wire"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -16,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const (
@@ -349,26 +347,22 @@ const (
 // BlockchainMessage is a generic message for this reactor.
 type BlockchainMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ BlockchainMessage }{},
-	wire.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
-	wire.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
-	wire.ConcreteType{&bcNoBlockResponseMessage{}, msgTypeNoBlockResponse},
-	wire.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
-	wire.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
-)
+func init() {
+	wire.RegisterInterface((*BlockchainMessage)(nil), nil)
+	wire.RegisterConcrete(&bcBlockRequestMessage{}, "com.tendermint.blockchain.block_request", nil)
+	wire.RegisterConcrete(&bcBlockResponseMessage{}, "com.tendermint.blockchain.block_response", nil)
+	wire.RegisterConcrete(&bcNoBlockResponseMessage{}, "com.tendermint.blockchain.no_block_response", nil)
+	wire.RegisterConcrete(&bcStatusResponseMessage{}, "com.tendermint.blockchain.status_response", nil)
+	wire.RegisterConcrete(&bcStatusRequestMessage{}, "com.tendermint.blockchain.status_request", nil)
+}
 
 // DecodeMessage decodes BlockchainMessage.
 // TODO: ensure that bz is completely read.
 func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage, err error) {
 	msgType = bz[0]
-	n := int(0)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
-	if err != nil && n != len(bz) {
-		err = errors.New("DecodeMessage() had bytes left over")
-	}
-	return
+	bcMsg := struct{ BlockchainMessage }{}
+	err = wire.UnmarshalBinary(bz, bcMsg) // maxSize
+	return msgType, bcMsg.BlockchainMessage, err
 }
 
 //-------------------------------------
