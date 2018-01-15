@@ -34,7 +34,10 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(status)
+		jsonBytes, err := wire.MarshalJSON(status)
+		if err != nil {
+			b.Fatal(err)
+		}
 		counter += len(jsonBytes)
 	}
 
@@ -56,7 +59,10 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(nodeInfo)
+		jsonBytes, err := wire.MarshalJSON(nodeInfo)
+		if err != nil {
+			b.Fatal(err)
+		}
 		counter += len(jsonBytes)
 	}
 }

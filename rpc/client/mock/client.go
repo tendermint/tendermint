@@ -16,7 +16,6 @@ package mock
 import (
 	"reflect"
 
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"

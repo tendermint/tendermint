@@ -7,8 +7,8 @@ import (
 
 	"context"
 
-	"github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/rpc/grpc"
+	wire "github.com/tendermint/go-wire"
+	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 )
 
 var grpcAddr = "tcp://localhost:36656"
@@ -32,5 +32,10 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(string(wire.JSONBytes(res)))
+	data, err := wire.MarshalJSON(res)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(string(data))
 }
