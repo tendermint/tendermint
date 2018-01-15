@@ -3,7 +3,6 @@ package types
 import (
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
 	"github.com/tendermint/go-crypto"
@@ -50,10 +49,14 @@ func (p *Proposal) String() string {
 		p.POLBlockID, p.Signature, CanonicalTime(p.Timestamp))
 }
 
-// WriteSignBytes writes the Proposal bytes for signing
-func (p *Proposal) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
-	wire.WriteJSON(CanonicalJSONOnceProposal{
+// SignBytes returns the Proposal bytes for signing
+func (p *Proposal) SignBytes(chainID string) []byte {
+	bz, err := wire.MarshalJSON(CanonicalJSONOnceProposal{
 		ChainID:  chainID,
 		Proposal: CanonicalProposal(p),
-	}, w, n, err)
+	})
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
