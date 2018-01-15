@@ -1,30 +1,20 @@
 package types
 
 import (
-	"bytes"
-	"io"
-
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
 // Signable is an interface for all signable things.
 // It typically removes signatures before serializing.
+// SignBytes returns the bytes to be signed
+// NOTE: chainIDs are part of the SignBytes but not
+// necessarily the object themselves.
+// NOTE: Expected to panic if there is an error marshalling.
 type Signable interface {
-	WriteSignBytes(chainID string, w io.Writer, n *int, err *error)
-}
-
-// SignBytes is a convenience method for getting the bytes to sign of a Signable.
-func SignBytes(chainID string, o Signable) []byte {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	o.WriteSignBytes(chainID, buf, n, err)
-	if *err != nil {
-		cmn.PanicCrisis(err)
-	}
-	return buf.Bytes()
+	SignBytes(chainID string) []byte
 }
 
 // HashSignBytes is a convenience method for getting the hash of the bytes of a signable
 func HashSignBytes(chainID string, o Signable) []byte {
-	return merkle.SimpleHashFromBinary(SignBytes(chainID, o))
+	return merkle.SimpleHashFromBinary(o.SignBytes(chainID))
 }

@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -279,7 +278,7 @@ func NewByzantinePrivValidator(pv types.PrivValidator) *ByzantinePrivValidator {
 	}
 }
 
-func (privVal *ByzantinePrivValidator) GetAddress() data.Bytes {
+func (privVal *ByzantinePrivValidator) GetAddress() crypto.Address {
 	return privVal.pv.GetAddress()
 }
 
@@ -288,17 +287,17 @@ func (privVal *ByzantinePrivValidator) GetPubKey() crypto.PubKey {
 }
 
 func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) (err error) {
-	vote.Signature, err = privVal.Sign(types.SignBytes(chainID, vote))
+	vote.Signature, err = privVal.Sign(vote.SignBytes(chainID))
 	return err
 }
 
 func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) (err error) {
-	proposal.Signature, _ = privVal.Sign(types.SignBytes(chainID, proposal))
+	proposal.Signature, _ = privVal.Sign(proposal.SignBytes(chainID))
 	return nil
 }
 
 func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) (err error) {
-	heartbeat.Signature, _ = privVal.Sign(types.SignBytes(chainID, heartbeat))
+	heartbeat.Signature, _ = privVal.Sign(heartbeat.SignBytes(chainID))
 	return nil
 }
 

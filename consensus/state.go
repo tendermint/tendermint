@@ -1261,7 +1261,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifyBytes(types.SignBytes(cs.state.ChainID, proposal), proposal.Signature) {
+	if !cs.Validators.GetProposer().PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
 		return ErrInvalidProposalSignature
 	}
 
@@ -1289,10 +1289,14 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		var n int
-		var err error
-		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
-			cs.state.ConsensusParams.BlockSize.MaxBytes, &n, &err).(*types.Block)
+		block := new(types.Block)
+		bz := cs.ProposalBlockParts.Bytes()
+		// cs.state.ConsensusParams.BlockSize.MaxBytes
+		err := wire.UnmarshalBinary(bz, block)
+		if err != nil {
+			return false, err
+		}
+		cs.ProposalBlock = block
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {

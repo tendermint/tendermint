@@ -11,7 +11,6 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -38,7 +37,7 @@ func voteToStep(vote *Vote) int8 {
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes, proposals, and heartbeats, and never double signs.
 type PrivValidator interface {
-	GetAddress() data.Bytes // redundant since .PubKey().Address()
+	GetAddress() crypto.Address // redundant since .PubKey().Address()
 	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error
@@ -50,13 +49,13 @@ type PrivValidator interface {
 // to prevent double signing. The Signer itself can be mutated to use
 // something besides the default, for instance a hardware signer.
 type PrivValidatorFS struct {
-	Address       data.Bytes       `json:"address"`
+	Address       crypto.Address   `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
 	LastHeight    int64            `json:"last_height"`
 	LastRound     int              `json:"last_round"`
 	LastStep      int8             `json:"last_step"`
 	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
-	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
+	LastSignBytes cmn.HexBytes     `json:"last_signbytes,omitempty"` // so we dont lose signatures
 
 	// PrivKey should be empty if a Signer other than the default is being used.
 	PrivKey crypto.PrivKey `json:"priv_key"`
@@ -96,7 +95,7 @@ func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
 
 // GetAddress returns the address of the validator.
 // Implements PrivValidator.
-func (pv *PrivValidatorFS) GetAddress() data.Bytes {
+func (pv *PrivValidatorFS) GetAddress() crypto.Address {
 	return pv.Address
 }
 
@@ -109,7 +108,7 @@ func (pv *PrivValidatorFS) GetPubKey() crypto.PubKey {
 // GenPrivValidatorFS generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
 func GenPrivValidatorFS(filePath string) *PrivValidatorFS {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	return &PrivValidatorFS{
 		Address:  privKey.PubKey().Address(),
 		PubKey:   privKey.PubKey(),
@@ -186,10 +185,11 @@ func (privVal *PrivValidatorFS) save() {
 // Reset resets all fields in the PrivValidatorFS.
 // NOTE: Unsafe!
 func (privVal *PrivValidatorFS) Reset() {
+	var sig crypto.Signature
 	privVal.LastHeight = 0
 	privVal.LastRound = 0
 	privVal.LastStep = 0
-	privVal.LastSignature = crypto.Signature{}
+	privVal.LastSignature = sig
 	privVal.LastSignBytes = nil
 	privVal.Save()
 }
@@ -232,7 +232,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 				return false, errors.New("Step regression")
 			} else if privVal.LastStep == step {
 				if privVal.LastSignBytes != nil {
-					if privVal.LastSignature.Empty() {
+					if privVal.LastSignature == nil {
 						panic("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -249,7 +249,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
 func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
-	signBytes := SignBytes(chainID, vote)
+	signBytes := vote.SignBytes(chainID)
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
 	if err != nil {
@@ -288,7 +288,7 @@ func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
-	signBytes := SignBytes(chainID, proposal)
+	signBytes := proposal.SignBytes(chainID)
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
 	if err != nil {
@@ -340,7 +340,7 @@ func (privVal *PrivValidatorFS) SignHeartbeat(chainID string, heartbeat *Heartbe
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	var err error
-	heartbeat.Signature, err = privVal.Sign(SignBytes(chainID, heartbeat))
+	heartbeat.Signature, err = privVal.Sign(heartbeat.SignBytes(chainID))
 	return err
 }
 

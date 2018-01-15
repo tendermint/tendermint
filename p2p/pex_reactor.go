@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -319,19 +318,18 @@ const (
 // either pexRequestMessage, or pexAddrsMessage messages.
 type PexMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ PexMessage }{},
-	wire.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
-	wire.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
-)
+func init() {
+	wire.RegisterInterface((*PexMessage)(nil), nil)
+	wire.RegisterConcrete(&pexRequestMessage{}, "com.tendermint.p2p.request", nil)
+	wire.RegisterConcrete(&pexAddrsMessage{}, "com.tendermint.p2p.addrs", nil)
+}
 
 // DecodeMessage implements interface registered above.
 func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
 	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
-	return
+	pexMsg := struct{ PexMessage }{}
+	err = wire.UnmarshalBinary(bz, pexMsg) // maxPexMessageSize
+	return msgType, pexMsg.PexMessage, err
 }
 
 /*

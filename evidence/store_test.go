@@ -115,8 +115,7 @@ const (
 	evidenceTypeMockBad  = byte(0x02)
 )
 
-var _ = wire.RegisterInterface(
-	struct{ types.Evidence }{},
-	wire.ConcreteType{types.MockGoodEvidence{}, evidenceTypeMockGood},
-	wire.ConcreteType{types.MockBadEvidence{}, evidenceTypeMockBad},
-)
+func init() {
+	wire.RegisterConcrete(&types.MockGoodEvidence{}, "com.tendermint.types.mock_good_evidence", nil)
+	wire.RegisterConcrete(&types.MockBadEvidence{}, "com.tendermint.types.mock_bad_evidence", nil)
+}

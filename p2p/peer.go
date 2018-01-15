@@ -13,6 +13,12 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+// XXX: should this be here?
+func init() {
+	wire.RegisterInterface((*crypto.Signature)(nil), nil)
+	wire.RegisterConcrete(&crypto.SignatureEd25519{}, "com.tendermint.go-crypto.signature_ed25519", nil)
+}
+
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
@@ -176,12 +182,16 @@ func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 	var err2 error
 	cmn.Parallel(
 		func() {
-			var n int
-			wire.WriteBinary(ourNodeInfo, p.conn, &n, &err1)
+			var bz []byte
+			bz, err1 = wire.MarshalBinary(ourNodeInfo)
+			if err1 == nil {
+				_, err1 = p.conn.Write(bz)
+			}
 		},
 		func() {
-			var n int
-			wire.ReadBinary(peerNodeInfo, p.conn, maxNodeInfoSize, &n, &err2)
+			var bz []byte
+			// XXX/TODO: read bz from p.conn
+			err2 = wire.UnmarshalBinary(bz, peerNodeInfo) // maxNodeInfoSize
 			p.Logger.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
@@ -193,7 +203,7 @@ func (p *peer) HandshakeTimeout(ourNodeInfo *NodeInfo, timeout time.Duration) er
 
 	if p.config.AuthEnc {
 		// Check that the professed PubKey matches the sconn's.
-		if !peerNodeInfo.PubKey.Equals(p.PubKey().Wrap()) {
+		if !peerNodeInfo.PubKey.Equals(p.PubKey()) {
 			return fmt.Errorf("Ignoring connection with unmatching pubkey: %v vs %v",
 				peerNodeInfo.PubKey, p.PubKey())
 		}

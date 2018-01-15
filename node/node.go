@@ -271,7 +271,7 @@ func NewNode(config *cfg.Config,
 				return err
 			}
 			if resQuery.IsErr() {
-				return resQuery
+				return fmt.Errorf("Error querying abci app: %v", resQuery)
 			}
 			return nil
 		})
@@ -281,7 +281,7 @@ func NewNode(config *cfg.Config,
 				return err
 			}
 			if resQuery.IsErr() {
-				return resQuery
+				return fmt.Errorf("Error querying abci app: %v", resQuery)
 			}
 			return nil
 		})
@@ -540,7 +540,7 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := &p2p.NodeInfo{
-		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
+		PubKey:  n.privKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker: n.config.Moniker,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,

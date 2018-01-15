@@ -9,8 +9,6 @@ import (
 
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -22,7 +20,7 @@ var (
 
 type Part struct {
 	Index int                `json:"index"`
-	Bytes data.Bytes         `json:"bytes"`
+	Bytes cmn.HexBytes       `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 
 	// Cache
@@ -58,8 +56,8 @@ func (part *Part) StringIndented(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total int        `json:"total"`
-	Hash  data.Bytes `json:"hash"`
+	Total int          `json:"total"`
+	Hash  cmn.HexBytes `json:"hash"`
 }
 
 func (psh PartSetHeader) String() string {
@@ -72,10 +70,6 @@ func (psh PartSetHeader) IsZero() bool {
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 	return psh.Total == other.Total && bytes.Equal(psh.Hash, other.Hash)
-}
-
-func (psh PartSetHeader) WriteSignBytes(w io.Writer, n *int, err *error) {
-	wire.WriteJSON(CanonicalPartSetHeader(psh), w, n, err)
 }
 
 //-------------------------------------
@@ -221,6 +215,12 @@ func (ps *PartSet) GetPart(index int) *Part {
 
 func (ps *PartSet) IsComplete() bool {
 	return ps.count == ps.total
+}
+
+// XXX/TODO!
+func (ps *PartSet) Bytes() []byte {
+	return ps.parts[0].Bytes // XXX: append them all together ?
+
 }
 
 func (ps *PartSet) GetReader() io.Reader {

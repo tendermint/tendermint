@@ -55,7 +55,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 	for _, val := range valSet.Validators {
 		// check for overflow both multiplication and sum
 		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
-		validatorsHeap.Push(val, accumComparable{val})
+		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
 	// Decrement the validator with most accum times times
@@ -254,7 +254,7 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 		}
 		_, val := valSet.GetByIndex(idx)
 		// Validate signature
-		precommitSignBytes := SignBytes(chainID, precommit)
+		precommitSignBytes := precommit.SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
@@ -328,7 +328,7 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 		seen[vi] = true
 
 		// Validate signature old school
-		precommitSignBytes := SignBytes(chainID, precommit)
+		precommitSignBytes := precommit.SignBytes(chainID)
 		if !ov.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return errors.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}

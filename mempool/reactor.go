@@ -1,7 +1,6 @@
 package mempool
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"time"
@@ -152,18 +151,17 @@ const (
 // MempoolMessage is a message sent or received by the MempoolReactor.
 type MempoolMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ MempoolMessage }{},
-	wire.ConcreteType{&TxMessage{}, msgTypeTx},
-)
+func init() {
+	wire.RegisterInterface((*MempoolMessage)(nil), nil)
+	wire.RegisterConcrete(&TxMessage{}, "com.tendermint.mempool.tx_message", nil)
+}
 
 // DecodeMessage decodes a byte-array into a MempoolMessage.
 func DecodeMessage(bz []byte) (msgType byte, msg MempoolMessage, err error) {
 	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ MempoolMessage }{}, r, maxMempoolMessageSize, n, &err).(struct{ MempoolMessage }).MempoolMessage
-	return
+	memMsg := struct{ MempoolMessage }{}
+	err = wire.UnmarshalBinary(bz, memMsg) // maxMempoolMessageSize
+	return msgType, memMsg.MempoolMessage, err
 }
 
 //-------------------------------------

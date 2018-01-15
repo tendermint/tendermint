@@ -11,13 +11,10 @@ import (
 	"time"
 
 	wire "github.com/tendermint/go-wire"
-	tmlegacy "github.com/tendermint/go-wire/nowriter/tmlegacy"
 	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
 	"github.com/tendermint/tmlibs/log"
 )
-
-var legacy = tmlegacy.TMEncoderLegacy{}
 
 const (
 	numBatchMsgPackets = 10
@@ -60,7 +57,7 @@ There are two methods for sending messages:
 `Send(chID, msg)` is a blocking call that waits until `msg` is successfully queued
 for the channel with the given id byte `chID`, or until the request times out.
 The message `msg` is serialized using the `tendermint/wire` submodule's
-`WriteBinary()` reflection routine.
+`MarshalBinary()` reflection routine.
 
 `TrySend(chID, msg)` is a nonblocking call that returns false if the channel's
 queue is full.
@@ -236,7 +233,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
+	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg)
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -245,7 +242,12 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	success := channel.sendBytes(wire.BinaryBytes(msg))
+	bz, err := wire.MarshalBinary(msg)
+	if err != nil {
+		c.Logger.Error(cmn.Fmt("Error marshaling message: %v", err))
+		return false
+	}
+	success := channel.sendBytes(bz)
 	if success {
 		// Wake up sendRoutine if necessary
 		select {
@@ -274,7 +276,12 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	ok = channel.trySendBytes(wire.BinaryBytes(msg))
+	bz, err := wire.MarshalBinary(msg)
+	if err != nil {
+		c.Logger.Error(cmn.Fmt("Error marshaling msg: %v", err))
+		return false
+	}
+	ok = channel.trySendBytes(bz)
 	if ok {
 		// Wake up sendRoutine if necessary
 		select {
@@ -307,7 +314,6 @@ func (c *MConnection) sendRoutine() {
 
 FOR_LOOP:
 	for {
-		var n int
 		var err error
 		select {
 		case <-c.flushTimer.Ch:
@@ -320,13 +326,13 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Chan():
 			c.Logger.Debug("Send Ping")
-			legacy.WriteOctet(packetTypePing, c.bufWriter, &n, &err)
-			c.sendMonitor.Update(int(n))
+			err = wire.EncodeByte(c.bufWriter, packetTypePing)
+			c.sendMonitor.Update(1)
 			c.flush()
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			legacy.WriteOctet(packetTypePong, c.bufWriter, &n, &err)
-			c.sendMonitor.Update(int(n))
+			err = wire.EncodeByte(c.bufWriter, packetTypePong)
+			c.sendMonitor.Update(1)
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
@@ -437,10 +443,10 @@ FOR_LOOP:
 		*/
 
 		// Read packet type
-		var n int
 		var err error
-		pktType := wire.ReadByte(c.bufReader, &n, &err)
-		c.recvMonitor.Update(int(n))
+
+		pktType, err := c.bufReader.ReadByte()
+		c.recvMonitor.Update(1)
 		if err != nil {
 			if c.IsRunning() {
 				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
@@ -459,8 +465,7 @@ FOR_LOOP:
 			// do nothing
 			c.Logger.Debug("Receive Pong")
 		case packetTypeMsg:
-			pkt, n, err := msgPacket{}, int(0), error(nil)
-			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
+			pkt, n, err := readPacket(c.bufReader)
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -505,6 +510,14 @@ FOR_LOOP:
 	for range c.pong {
 		// Drain
 	}
+}
+
+// XXX: how to read from r ?
+func readPacket(r *bufio.Reader) (msgPacket, int, error) {
+	pkt := msgPacket{}
+	var bz []byte
+	err := wire.UnmarshalBinary(bz, &pkt) // c.config.maxMsgPacketTotalSize()
+	return pkt, len(bz), err
 }
 
 type ConnectionStatus struct {
@@ -669,16 +682,26 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 	packet := ch.nextMsgPacket()
 	ch.Logger.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
-	writeMsgPacketTo(packet, w, &n, &err)
-	if err == nil {
-		ch.recentlySent += int64(n)
-	}
-	return
-}
 
-func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
-	legacy.WriteOctet(packetTypeMsg, w, n, err)
-	wire.WriteBinary(packet, w, n, err)
+	// write the packet type byte
+	err = wire.EncodeByte(w, packetTypeMsg)
+	if err != nil {
+		return n, err
+	}
+	n1 := 1
+
+	// write the msg bytes
+	bz, err := wire.MarshalBinary(packet)
+	if err != nil {
+		return n, err
+	}
+	n2, err := w.Write(bz)
+	if err != nil {
+		return n, err
+	}
+	n = n1 + n2
+	ch.recentlySent += int64(n)
+	return
 }
 
 // Handles incoming msgPackets. Returns a msg bytes if msg is complete.
@@ -686,7 +709,7 @@ func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	ch.Logger.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if ch.desc.RecvMessageCapacity < len(ch.recving)+len(packet.Bytes) {
-		return nil, wire.ErrBinaryReadOverflow
+		return nil, fmt.Errorf("ErrBinaryReadOverflow")
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {

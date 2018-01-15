@@ -515,8 +515,8 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case EndHeightMessage:
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
-				var n int
-				block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+				block := new(types.Block)
+				err := wire.UnmarshalBinary(thisBlockParts.Bytes(), block)
 				if err != nil {
 					panic(err)
 				}
@@ -548,8 +548,8 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		}
 	}
 	// grab the last block too
-	var n int
-	block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+	block := new(types.Block)
+	err = wire.UnmarshalBinary(thisBlockParts.Bytes(), block)
 	if err != nil {
 		panic(err)
 	}

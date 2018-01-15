@@ -3,8 +3,8 @@ package proxy
 import (
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-wire/data"
 	"github.com/tendermint/iavl"
+	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/lite"
 	"github.com/tendermint/tendermint/lite/client"
@@ -21,7 +21,7 @@ import (
 // If val is empty, proof should be KeyMissingProof
 func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Certifier) (
-	val data.Bytes, height int64, proof iavl.KeyProof, err error) {
+	val cmn.HexBytes, height int64, proof iavl.KeyProof, err error) {
 
 	if reqHeight < 0 {
 		err = errors.Errorf("Height cannot be negative")
@@ -69,9 +69,14 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 
 	if len(resp.Value) > 0 {
 		// The key was found, construct a proof of existence.
-		eproof, err := iavl.ReadKeyExistsProof(resp.Proof)
+		proof, err := iavl.ReadKeyProof(resp.Proof)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "Error reading proof")
+		}
+
+		eproof, ok := proof.(*iavl.KeyExistsProof)
+		if !ok {
+			return nil, nil, errors.New("Expected KeyExistsProof for non-empty value")
 		}
 
 		// Validate the proof against the certified header to ensure data integrity.
@@ -83,11 +88,16 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 	}
 
 	// The key wasn't found, construct a proof of non-existence.
-	var aproof *iavl.KeyAbsentProof
-	aproof, err = iavl.ReadKeyAbsentProof(resp.Proof)
+	proof, err := iavl.ReadKeyProof(resp.Proof)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Error reading proof")
 	}
+
+	aproof, ok := proof.(*iavl.KeyAbsentProof)
+	if !ok {
+		return nil, nil, errors.New("Expected KeyAbsentProof for empty Value")
+	}
+
 	// Validate the proof against the certified header to ensure data integrity.
 	err = aproof.Verify(resp.Key, nil, commit.Header.AppHash)
 	if err != nil {

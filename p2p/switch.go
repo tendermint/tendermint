@@ -187,7 +187,7 @@ func (sw *Switch) NodeInfo() *NodeInfo {
 func (sw *Switch) SetNodePrivKey(nodePrivKey crypto.PrivKeyEd25519) {
 	sw.nodePrivKey = nodePrivKey
 	if sw.nodeInfo != nil {
-		sw.nodeInfo.PubKey = nodePrivKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
+		sw.nodeInfo.PubKey = nodePrivKey.PubKey().(crypto.PubKeyEd25519)
 	}
 }
 
@@ -245,7 +245,7 @@ func (sw *Switch) addPeer(peer *peer) error {
 	}
 
 	// Avoid self
-	if sw.nodeInfo.PubKey.Equals(peer.PubKey().Wrap()) {
+	if sw.nodeInfo.PubKey.Equals(peer.PubKey()) {
 		return errors.New("Ignoring connection from self")
 	}
 
@@ -603,7 +603,7 @@ func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	// TODO: let the config be passed in?
 	s := initSwitch(i, NewSwitch(cfg))
 	s.SetNodeInfo(&NodeInfo{
-		PubKey:     privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
+		PubKey:     privKey.PubKey().(crypto.PubKeyEd25519),
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,

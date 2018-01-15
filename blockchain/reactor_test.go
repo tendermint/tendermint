@@ -74,7 +74,10 @@ func TestNoBlockMessageResponse(t *testing.T) {
 	// wait to hear response
 	for _, tt := range tests {
 		reqBlockMsg := &bcBlockRequestMessage{tt.height}
-		reqBlockBytes := wire.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
+		reqBlockBytes, err := wire.MarshalBinary(struct{ BlockchainMessage }{reqBlockMsg})
+		if err != nil {
+			t.Fatal(err)
+		}
 		bcr.Receive(chID, peer, reqBlockBytes)
 		value := peer.lastValue()
 		msg := value.(struct{ BlockchainMessage }).BlockchainMessage

@@ -2,11 +2,9 @@ package types
 
 import (
 	"fmt"
-	"io"
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -16,7 +14,7 @@ import (
 // json field tags because we always want the JSON
 // representation to be in its canonical form.
 type Heartbeat struct {
-	ValidatorAddress data.Bytes       `json:"validator_address"`
+	ValidatorAddress crypto.Address   `json:"validator_address"`
 	ValidatorIndex   int              `json:"validator_index"`
 	Height           int64            `json:"height"`
 	Round            int              `json:"round"`
@@ -24,13 +22,17 @@ type Heartbeat struct {
 	Signature        crypto.Signature `json:"signature"`
 }
 
-// WriteSignBytes writes the Heartbeat for signing.
+// SignBytes returns the Heartbeat bytes for signing.
 // It panics if the Heartbeat is nil.
-func (heartbeat *Heartbeat) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
-	wire.WriteJSON(CanonicalJSONOnceHeartbeat{
+func (heartbeat *Heartbeat) SignBytes(chainID string) []byte {
+	bz, err := wire.MarshalJSON(CanonicalJSONOnceHeartbeat{
 		chainID,
 		CanonicalHeartbeat(heartbeat),
-	}, w, n, err)
+	})
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // Copy makes a copy of the Heartbeat.

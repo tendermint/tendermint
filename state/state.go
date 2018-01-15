@@ -86,7 +86,11 @@ func (s State) Equals(s2 State) bool {
 
 // Bytes serializes the State using go-wire.
 func (s State) Bytes() []byte {
-	return wire.BinaryBytes(s)
+	bz, err := wire.MarshalBinary(s)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // IsEmpty returns true if the State is equal to the empty State.

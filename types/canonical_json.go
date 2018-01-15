@@ -3,8 +3,9 @@ package types
 import (
 	"time"
 
+	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // canonical json is go-wire's json for structs with fields in alphabetical order
@@ -13,13 +14,13 @@ import (
 const timeFormat = wire.RFC3339Millis
 
 type CanonicalJSONBlockID struct {
-	Hash        data.Bytes                 `json:"hash,omitempty"`
+	Hash        cmn.HexBytes               `json:"hash,omitempty"`
 	PartsHeader CanonicalJSONPartSetHeader `json:"parts,omitempty"`
 }
 
 type CanonicalJSONPartSetHeader struct {
-	Hash  data.Bytes `json:"hash"`
-	Total int        `json:"total"`
+	Hash  cmn.HexBytes `json:"hash"`
+	Total int          `json:"total"`
 }
 
 type CanonicalJSONProposal struct {
@@ -40,11 +41,11 @@ type CanonicalJSONVote struct {
 }
 
 type CanonicalJSONHeartbeat struct {
-	Height           int64      `json:"height"`
-	Round            int        `json:"round"`
-	Sequence         int        `json:"sequence"`
-	ValidatorAddress data.Bytes `json:"validator_address"`
-	ValidatorIndex   int        `json:"validator_index"`
+	Height           int64          `json:"height"`
+	Round            int            `json:"round"`
+	Sequence         int            `json:"sequence"`
+	ValidatorAddress crypto.Address `json:"validator_address"`
+	ValidatorIndex   int            `json:"validator_index"`
 }
 
 //------------------------------------

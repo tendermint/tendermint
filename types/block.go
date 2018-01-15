@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -85,7 +83,7 @@ func (b *Block) FillHeader() {
 
 // Hash computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
-func (b *Block) Hash() data.Bytes {
+func (b *Block) Hash() cmn.HexBytes {
 	if b == nil || b.Header == nil || b.Data == nil || b.LastCommit == nil {
 		return nil
 	}
@@ -96,7 +94,11 @@ func (b *Block) Hash() data.Bytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 func (b *Block) MakePartSet(partSize int) *PartSet {
-	return NewPartSetFromData(wire.BinaryBytes(b), partSize)
+	bz, err := wire.MarshalBinary(b)
+	if err != nil {
+		panic(err)
+	}
+	return NewPartSetFromData(bz, partSize)
 }
 
 // HashesTo is a convenience function that checks if a block hashes to the given argument.
@@ -160,22 +162,22 @@ type Header struct {
 	TotalTxs    int64   `json:"total_txs"`
 
 	// hashes of block data
-	LastCommitHash data.Bytes `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       data.Bytes `json:"data_hash"`        // transactions
+	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
+	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
 
 	// hashes from the app output from the prev block
-	ValidatorsHash  data.Bytes `json:"validators_hash"`   // validators for the current block
-	ConsensusHash   data.Bytes `json:"consensus_hash"`    // consensus params for current block
-	AppHash         data.Bytes `json:"app_hash"`          // state after txs from the previous block
-	LastResultsHash data.Bytes `json:"last_results_hash"` // root hash of all results from the txs from the previous block
+	ValidatorsHash  cmn.HexBytes `json:"validators_hash"`   // validators for the current block
+	ConsensusHash   cmn.HexBytes `json:"consensus_hash"`    // consensus params for current block
+	AppHash         cmn.HexBytes `json:"app_hash"`          // state after txs from the previous block
+	LastResultsHash cmn.HexBytes `json:"last_results_hash"` // root hash of all results from the txs from the previous block
 
 	// consensus info
-	EvidenceHash data.Bytes `json:"evidence_hash"` // evidence included in the block
+	EvidenceHash cmn.HexBytes `json:"evidence_hash"` // evidence included in the block
 }
 
 // Hash returns the hash of the header.
 // Returns nil if ValidatorHash is missing.
-func (h *Header) Hash() data.Bytes {
+func (h *Header) Hash() cmn.HexBytes {
 	if len(h.ValidatorsHash) == 0 {
 		return nil
 	}
@@ -245,7 +247,7 @@ type Commit struct {
 
 	// Volatile
 	firstPrecommit *Vote
-	hash           data.Bytes
+	hash           cmn.HexBytes
 	bitArray       *cmn.BitArray
 }
 
@@ -354,7 +356,7 @@ func (commit *Commit) ValidateBasic() error {
 }
 
 // Hash returns the hash of the commit
-func (commit *Commit) Hash() data.Bytes {
+func (commit *Commit) Hash() cmn.HexBytes {
 	if commit.hash == nil {
 		bs := make([]interface{}, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {
@@ -402,11 +404,11 @@ type Data struct {
 	Txs Txs `json:"txs"`
 
 	// Volatile
-	hash data.Bytes
+	hash cmn.HexBytes
 }
 
 // Hash returns the hash of the data
-func (data *Data) Hash() data.Bytes {
+func (data *Data) Hash() cmn.HexBytes {
 	if data.hash == nil {
 		data.hash = data.Txs.Hash() // NOTE: leaves of merkle tree are TxIDs
 	}
@@ -440,11 +442,11 @@ type EvidenceData struct {
 	Evidence EvidenceList `json:"evidence"`
 
 	// Volatile
-	hash data.Bytes
+	hash cmn.HexBytes
 }
 
 // Hash returns the hash of the data.
-func (data *EvidenceData) Hash() data.Bytes {
+func (data *EvidenceData) Hash() cmn.HexBytes {
 	if data.hash == nil {
 		data.hash = data.Evidence.Hash()
 	}
@@ -476,7 +478,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 
 // BlockID defines the unique ID of a block as its Hash and its PartSetHeader
 type BlockID struct {
-	Hash        data.Bytes    `json:"hash"`
+	Hash        cmn.HexBytes  `json:"hash"`
 	PartsHeader PartSetHeader `json:"parts"`
 }
 
@@ -493,17 +495,11 @@ func (blockID BlockID) Equals(other BlockID) bool {
 
 // Key returns a machine-readable string representation of the BlockID
 func (blockID BlockID) Key() string {
-	return string(blockID.Hash) + string(wire.BinaryBytes(blockID.PartsHeader))
-}
-
-// WriteSignBytes writes the canonical bytes of the BlockID to the given writer for digital signing
-func (blockID BlockID) WriteSignBytes(w io.Writer, n *int, err *error) {
-	if blockID.IsZero() {
-		wire.WriteTo([]byte("null"), w, n, err)
-	} else {
-		wire.WriteJSON(CanonicalBlockID(blockID), w, n, err)
+	bz, err := wire.MarshalBinary(blockID.PartsHeader)
+	if err != nil {
+		panic(err)
 	}
-
+	return string(blockID.Hash) + string(bz)
 }
 
 // String returns a human readable string representation of the BlockID

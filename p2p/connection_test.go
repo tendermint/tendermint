@@ -202,10 +202,10 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	msg := "Ant-Man"
 
 	// send badly encoded msgPacket
-	var n int
-	var err error
-	wire.WriteByte(packetTypeMsg, client, &n, &err)
-	wire.WriteByteSlice([]byte(msg), client, &n, &err)
+	err := wire.EncodeByte(client, packetTypeMsg)
+	require.Nil(err)
+	err = wire.EncodeByteSlice(client, []byte(msg))
+	require.Nil(err)
 	assert.True(expectSend(chOnErr), "badly encoded msgPacket")
 }
 
@@ -245,14 +245,15 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	client := mconnClient.conn
 
 	// send msg thats just right
-	var n int
-	var err error
 	packet := msgPacket{
 		ChannelID: 0x01,
 		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-5),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
+	bz, err := wire.MarshalBinary(packet)
+	require.Nil(err)
+	_, err = client.Write(bz)
+	require.Nil(err)
 	assert.True(expectSend(chOnRcv), "msg just right")
 
 	// send msg thats too long
@@ -261,7 +262,10 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-4),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
+	bz, err = wire.MarshalBinary(packet)
+	require.Nil(err)
+	_, err = client.Write(bz)
+	require.Nil(err)
 	assert.True(expectSend(chOnErr), "msg too long")
 }
 
@@ -274,9 +278,8 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	defer mconnServer.Stop()
 
 	// send msg with unknown msg type
-	var n int
-	var err error
-	wire.WriteByte(0x04, mconnClient.conn, &n, &err)
+	err := wire.EncodeByte(mconnClient.conn, 0x04)
+	require.Nil(err)
 	assert.True(expectSend(chOnErr), "unknown msg type")
 }
 

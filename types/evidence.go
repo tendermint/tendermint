@@ -83,10 +83,10 @@ const (
 	evidenceTypeDuplicateVote = byte(0x01)
 )
 
-var _ = wire.RegisterInterface(
-	struct{ Evidence }{},
-	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
-)
+func init() {
+	wire.RegisterInterface((*Evidence)(nil), nil)
+	wire.RegisterConcrete(&DuplicateVoteEvidence{}, "com.tendermint.types.duplicate_vote_evidence", nil)
+}
 
 //-------------------------------------------
 
@@ -148,10 +148,10 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 	}
 
 	// Signatures must be valid
-	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteA), dve.VoteA.Signature) {
+	if !dve.PubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
 	}
-	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteB), dve.VoteB.Signature) {
+	if !dve.PubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
 	}
 

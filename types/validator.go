@@ -3,21 +3,26 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"io"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/merkle"
 )
+
+// XXX: should this be here?
+func init() {
+	wire.RegisterInterface((*crypto.PubKey)(nil), nil)
+	wire.RegisterConcrete(&crypto.PubKeyEd25519{}, "com.tendermint.go-crypto.pub_key_ed25519", nil)
+}
 
 // Volatile state for each Validator
 // NOTE: The Accum is not included in Validator.Hash();
 // make sure to update that method if changes are made here
 type Validator struct {
-	Address     data.Bytes    `json:"address"`
-	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
+	Address     crypto.Address `json:"address"`
+	PubKey      crypto.PubKey  `json:"pub_key"`
+	VotingPower int64          `json:"voting_power"`
 
 	Accum int64 `json:"accum"`
 }
@@ -73,8 +78,8 @@ func (v *Validator) String() string {
 // Hash computes the unique ID of a validator with a given voting power.
 // It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
-	return wire.BinaryRipemd160(struct {
-		Address     data.Bytes
+	return merkle.SimpleHashFromBinary(struct {
+		Address     crypto.Address
 		PubKey      crypto.PubKey
 		VotingPower int64
 	}{
@@ -82,25 +87,6 @@ func (v *Validator) Hash() []byte {
 		v.PubKey,
 		v.VotingPower,
 	})
-}
-
-//-------------------------------------
-
-var ValidatorCodec = validatorCodec{}
-
-type validatorCodec struct{}
-
-func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int, err *error) {
-	wire.WriteBinary(o.(*Validator), w, n, err)
-}
-
-func (vc validatorCodec) Decode(r io.Reader, n *int, err *error) interface{} {
-	return wire.ReadBinary(&Validator{}, r, 0, n, err)
-}
-
-func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
-	cmn.PanicSanity("ValidatorCodec.Compare not implemented")
-	return 0
 }
 
 //--------------------------------------------------------------------------------

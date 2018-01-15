@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -186,18 +185,19 @@ func TestDifferByTimestamp(t *testing.T) {
 		proposal := newProposal(height, round, block1)
 		err := privVal.SignProposal(chainID, proposal)
 		assert.NoError(t, err, "expected no error signing proposal")
-		signBytes := SignBytes(chainID, proposal)
+		signBytes := proposal.SignBytes(chainID)
 		sig := proposal.Signature
 		timeStamp := clipToMS(proposal.Timestamp)
 
 		// manipulate the timestamp. should get changed back
 		proposal.Timestamp = proposal.Timestamp.Add(time.Millisecond)
-		proposal.Signature = crypto.Signature{}
+		var emptySig crypto.Signature
+		proposal.Signature = emptySig
 		err = privVal.SignProposal("mychainid", proposal)
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
 		assert.Equal(t, timeStamp, proposal.Timestamp)
-		assert.Equal(t, signBytes, SignBytes(chainID, proposal))
+		assert.Equal(t, signBytes, proposal.SignBytes(chainID))
 		assert.Equal(t, sig, proposal.Signature)
 	}
 
@@ -209,23 +209,24 @@ func TestDifferByTimestamp(t *testing.T) {
 		err := privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
 
-		signBytes := SignBytes(chainID, vote)
+		signBytes := vote.SignBytes(chainID)
 		sig := vote.Signature
 		timeStamp := clipToMS(vote.Timestamp)
 
 		// manipulate the timestamp. should get changed back
 		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
-		vote.Signature = crypto.Signature{}
+		var emptySig crypto.Signature
+		vote.Signature = emptySig
 		err = privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error on signing same vote")
 
 		assert.Equal(t, timeStamp, vote.Timestamp)
-		assert.Equal(t, signBytes, SignBytes(chainID, vote))
+		assert.Equal(t, signBytes, vote.SignBytes(chainID))
 		assert.Equal(t, sig, vote.Signature)
 	}
 }
 
-func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
+func newVote(addr crypto.Address, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
 	return &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,

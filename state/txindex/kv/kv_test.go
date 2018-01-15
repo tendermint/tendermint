@@ -11,6 +11,7 @@ import (
 	abci "github.com/tendermint/abci/types"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 	db "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/pubsub/query"
 )
@@ -19,7 +20,7 @@ func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []*abci.KVPair{}}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []cmn.KVPair{}}}
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
@@ -34,7 +35,7 @@ func TestTxIndex(t *testing.T) {
 	assert.Equal(t, txResult, loadedTxResult)
 
 	tx2 := types.Tx("BYE BYE WORLD")
-	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []*abci.KVPair{}}}
+	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []cmn.KVPair{}}}
 	hash2 := tx2.Hash()
 
 	err = indexer.Index(txResult2)
@@ -49,10 +50,10 @@ func TestTxSearch(t *testing.T) {
 	allowedTags := []string{"account.number", "account.owner", "account.date"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
-	txResult := txResultWithTags([]*abci.KVPair{
-		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 1},
-		{Key: "account.owner", ValueType: abci.KVPair_STRING, ValueString: "Ivan"},
-		{Key: "not_allowed", ValueType: abci.KVPair_STRING, ValueString: "Vlad"},
+	txResult := txResultWithTags([]cmn.KVPair{
+		{Key: []byte("account.number"), Value: []byte("1")},
+		{Key: []byte("account.owner"), Value: []byte("Ivan")},
+		{Key: []byte("not_allowed"), Value: []byte("Vlad")},
 	})
 	hash := txResult.Tx.Hash()
 
@@ -106,9 +107,9 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	allowedTags := []string{"account.number"}
 	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
 
-	txResult := txResultWithTags([]*abci.KVPair{
-		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 1},
-		{Key: "account.number", ValueType: abci.KVPair_INT, ValueInt: 2},
+	txResult := txResultWithTags([]cmn.KVPair{
+		{Key: []byte("account.number"), Value: []byte("1")},
+		{Key: []byte("account.number"), Value: []byte("2")},
 	})
 
 	err := indexer.Index(txResult)
@@ -124,9 +125,9 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 func TestIndexAllTags(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexAllTags())
 
-	txResult := txResultWithTags([]*abci.KVPair{
-		abci.KVPairString("account.owner", "Ivan"),
-		abci.KVPairInt("account.number", 1),
+	txResult := txResultWithTags([]cmn.KVPair{
+		cmn.KVPair{[]byte("account.owner"), []byte("Ivan")},
+		cmn.KVPair{[]byte("account.number"), []byte("1")},
 	})
 
 	err := indexer.Index(txResult)
@@ -143,14 +144,14 @@ func TestIndexAllTags(t *testing.T) {
 	assert.Equal(t, []*types.TxResult{txResult}, results)
 }
 
-func txResultWithTags(tags []*abci.KVPair) *types.TxResult {
+func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
 	tx := types.Tx("HELLO WORLD")
 	return &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: tags}}
 }
 
 func benchmarkTxIndex(txsCount int, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []*abci.KVPair{}}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []cmn.KVPair{}}}
 
 	dir, err := ioutil.TempDir("", "tx_index_db")
 	if err != nil {
