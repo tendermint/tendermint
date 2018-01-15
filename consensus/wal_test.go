@@ -72,10 +72,7 @@ var initOnce sync.Once
 
 func registerInterfacesOnce() {
 	initOnce.Do(func() {
-		var _ = wire.RegisterInterface(
-			struct{ WALMessage }{},
-			wire.ConcreteType{[]byte{}, 0x10},
-		)
+		wire.RegisterConcrete([]byte{}, "com.tendermint.consensus.wal.empty_message", nil)
 	})
 }
 
