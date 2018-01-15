@@ -3,7 +3,6 @@ package blockchain
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"runtime/debug"
 	"strings"
 	"testing"
@@ -57,38 +56,6 @@ func TestNewBlockStore(t *testing.T) {
 	db.Set(blockStoreKey, nil)
 	bs = NewBlockStore(db)
 	assert.Equal(t, bs.Height(), int64(0), "expecting nil bytes to be unmarshaled alright")
-}
-
-func TestBlockStoreGetReader(t *testing.T) {
-	db := db.NewMemDB()
-	// Initial setup
-	db.Set([]byte("Foo"), []byte("Bar"))
-	db.Set([]byte("Foo1"), nil)
-
-	bs := NewBlockStore(db)
-
-	tests := [...]struct {
-		key  []byte
-		want []byte
-	}{
-		0: {key: []byte("Foo"), want: []byte("Bar")},
-		1: {key: []byte("KnoxNonExistent"), want: nil},
-		2: {key: []byte("Foo1"), want: []byte{}},
-	}
-
-	for i, tt := range tests {
-		r := bs.GetReader(tt.key)
-		if r == nil {
-			assert.Nil(t, tt.want, "#%d: expected a non-nil reader", i)
-			continue
-		}
-		slurp, err := ioutil.ReadAll(r)
-		if err != nil {
-			t.Errorf("#%d: unexpected Read err: %v", i, err)
-		} else {
-			assert.Equal(t, slurp, tt.want, "#%d: mismatch", i)
-		}
-	}
 }
 
 func freshBlockStore() (*BlockStore, db.DB) {
@@ -298,11 +265,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func binarySerializeIt(v interface{}) []byte {
-	var n int
-	var err error
-	buf := new(bytes.Buffer)
-	wire.WriteBinary(v, buf, &n, &err)
-	return buf.Bytes()
+	data, err := wire.MarshalBinary(v)
+	if err != nil {
+		panic(err)
+	}
+	return data
 }
 
 func TestLoadBlockPart(t *testing.T) {
