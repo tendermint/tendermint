@@ -217,6 +217,12 @@ func (ps *PartSet) IsComplete() bool {
 	return ps.count == ps.total
 }
 
+// XXX/TODO!
+func (ps *PartSet) Bytes() []byte {
+	return ps.parts[0].Bytes // XXX: append them all together ?
+
+}
+
 func (ps *PartSet) GetReader() io.Reader {
 	if !ps.IsComplete() {
 		cmn.PanicSanity("Cannot GetReader() on incomplete PartSet")
