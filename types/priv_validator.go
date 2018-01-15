@@ -234,10 +234,11 @@ func (privVal *PrivValidatorFS) save() {
 // Reset resets all fields in the PrivValidatorFS.
 // NOTE: Unsafe!
 func (privVal *PrivValidatorFS) Reset() {
+	var sig crypto.Signature
 	privVal.LastHeight = 0
 	privVal.LastRound = 0
 	privVal.LastStep = 0
-	privVal.LastSignature = crypto.Signature{}
+	privVal.LastSignature = sig
 	privVal.LastSignBytes = nil
 	privVal.Save()
 }
@@ -297,7 +298,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
 func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
-	signBytes := SignBytes(chainID, vote)
+	signBytes := vote.SignBytes(chainID)
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
 	if err != nil {
@@ -336,7 +337,7 @@ func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
-	signBytes := SignBytes(chainID, proposal)
+	signBytes := proposal.SignBytes(chainID)
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
 	if err != nil {
@@ -388,7 +389,7 @@ func (privVal *PrivValidatorFS) SignHeartbeat(chainID string, heartbeat *Heartbe
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	var err error
-	heartbeat.Signature, err = privVal.Sign(SignBytes(chainID, heartbeat))
+	heartbeat.Signature, err = privVal.Sign(heartbeat.SignBytes(chainID))
 	return err
 }
 
