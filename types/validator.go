@@ -3,11 +3,10 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/merkle"
 )
 
 // Volatile state for each Validator
@@ -72,7 +71,7 @@ func (v *Validator) String() string {
 // Hash computes the unique ID of a validator with a given voting power.
 // It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
-	return wire.BinaryRipemd160(struct {
+	return merkle.SimpleHashFromBinary(struct {
 		Address     crypto.Address
 		PubKey      crypto.PubKey
 		VotingPower int64
@@ -81,25 +80,6 @@ func (v *Validator) Hash() []byte {
 		v.PubKey,
 		v.VotingPower,
 	})
-}
-
-//-------------------------------------
-
-var ValidatorCodec = validatorCodec{}
-
-type validatorCodec struct{}
-
-func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int, err *error) {
-	wire.WriteBinary(o.(*Validator), w, n, err)
-}
-
-func (vc validatorCodec) Decode(r io.Reader, n *int, err *error) interface{} {
-	return wire.ReadBinary(&Validator{}, r, 0, n, err)
-}
-
-func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
-	cmn.PanicSanity("ValidatorCodec.Compare not implemented")
-	return 0
 }
 
 //--------------------------------------------------------------------------------

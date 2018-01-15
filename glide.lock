@@ -1,10 +1,14 @@
-hash: cce989d647cfe49f4e5d0e664d2c08ede278eb91c356912c145809058794f944
-updated: 2018-01-12T17:51:51.008413371-05:00
+hash: 0c98e29b61f23e4d11dc636643f2518ae5006afd7cfd3c506492b4b18f19adf9
+updated: 2018-01-14T18:48:23.563254951-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
   subpackages:
   - btcec
+- name: github.com/davecgh/go-spew
+  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  subpackages:
+  - spew
 - name: github.com/ebuchman/fail-test
   version: 95f809107225be108efcf10a3509e4ea6ceef3c4
 - name: github.com/fsnotify/fsnotify
@@ -97,7 +101,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 2bd556205d1679683fddcd5a91eeccf37a8a1007
+  version: 4243954d8d940f9ee0646a83d48ea7a1a907529e
   subpackages:
   - client
   - example/code
@@ -111,15 +115,15 @@ imports:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 67a47e6a0bf474a76f6a8f09b39cfdf382f39b90
+  version: 32741be2126500d600cede1e2016bbbe2754cb46
 - name: github.com/tendermint/go-wire
-  version: 27be46e25124ddf775e23317a83647ce62a93f6b
+  version: b93ebdd4f306833936c243561ec30af3455dc764
 - name: github.com/tendermint/iavl
-  version: ed0bbf0acc51e75f72c76099293113c2d67199b9
+  version: 1dfe265ab4b491418e88e1da6577a8ad594fc989
   subpackages:
   - iavl
 - name: github.com/tendermint/tmlibs
-  version: 2bb538b150f197a04a0b969a27e9ea24d35edbc1
+  version: f2bc5432c31974bb3f5b1a80a53c38e37d481b8d
   subpackages:
   - autofile
   - cli
@@ -191,16 +195,12 @@ imports:
 - name: gopkg.in/yaml.v2
   version: 287cf08546ab5e7e37d55a84f7ed3fd1db036de5
 testImports:
-- name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
-  subpackages:
-  - spew
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: 2aa2c176b9dab406a6970f6a55f513e8a8c8b18f
+  version: b91bfb9ebec76498946beb6af7c0230c7cc7ba6c
   subpackages:
   - assert
   - require

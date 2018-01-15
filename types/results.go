@@ -18,7 +18,7 @@ type ABCIResult struct {
 
 // Hash returns the canonical hash of the ABCIResult
 func (a ABCIResult) Hash() []byte {
-	return wire.BinaryRipemd160(a)
+	return merkle.SimpleHashFromBinary(a)
 }
 
 // ABCIResults wraps the deliver tx results to return a proof
@@ -42,7 +42,11 @@ func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
 
 // Bytes serializes the ABCIResponse using go-wire
 func (a ABCIResults) Bytes() []byte {
-	return wire.BinaryBytes(a)
+	bz, err := wire.MarshalBinary(a)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // Hash returns a merkle hash of all results
