@@ -1,9 +1,8 @@
 GOTOOLS = \
-	github.com/mitchellh/gox \
-	github.com/Masterminds/glide \
+	github.com/tendermint/glide \
 	github.com/tcnksm/ghr \
 	gopkg.in/alecthomas/gometalinter.v2
-GOTOOLS_CHECK = gox glide ghr gometalinter.v2
+GOTOOLS_CHECK = glide ghr gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 TMHOME = $${TMHOME:-$$HOME/.tendermint}
@@ -19,6 +18,9 @@ check: check_tools get_vendor_deps
 
 build:
 	go build $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint/
+
+build_darwin_amd64:
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(BUILD_FLAGS) -o build/tendermint_darwin_amd64 ./cmd/tendermint/
 
 build_race:
 	go build -race $(BUILD_FLAGS) -o build/tendermint ./cmd/tendermint
@@ -84,6 +86,30 @@ vagrant_test:
 	vagrant ssh -c 'make install'
 	vagrant ssh -c 'make test_race'
 	vagrant ssh -c 'make test_integrations'
+
+
+########################################
+### Devdoc
+
+DEVDOC_SAVE = docker commit `docker ps -a -n 1 -q` devdoc:local
+
+devdoc_init:
+	docker run -it -v "$(CURDIR):/go/src/github.com/tendermint/tendermint" -w "/go/src/github.com/tendermint/tendermint" tendermint/devdoc echo
+	# TODO make this safer
+	$(call DEVDOC_SAVE)
+
+devdoc:
+	docker run -it -v "$(CURDIR):/go/src/github.com/tendermint/tendermint" -w "/go/src/github.com/tendermint/tendermint" devdoc:local bash
+
+devdoc_save:
+	# TODO make this safer
+	$(call DEVDOC_SAVE)
+
+devdoc_clean:
+	docker rmi -f $$(docker images -f "dangling=true" -q)
+
+devdoc_update:
+	docker pull tendermint/devdoc
 
 
 ########################################

@@ -107,6 +107,23 @@ data into the new chain.
 However, any bump in the PATCH version should be compatible with existing histories
 (if not please open an [issue](https://github.com/tendermint/tendermint/issues)).
 
+### Docker Deterministic Builds
+
+If you don't want to set up your local environment, but you're fine using Docker, then the following commands
+will get you building tendermint using a docker container running Alpine linux.
+
+```golang
+> make devdoc_update
+> make devdoc_init
+> make devdoc
+% make get_tools
+% make get_vendor_deps
+% make build_darwin_amd64
+% sha256sum build/tendermint_darwin_amd64
+% exit
+> make devdoc_save # Save the glide dependencies etc.  Run save sparingly, it creates a new layer.
+```
+
 ## Code of Conduct
 
 Please read, understand and adhere to our [code of conduct](CODE_OF_CONDUCT.md).
