@@ -34,7 +34,8 @@ const (
 	dialRetryIntervalSeconds = 1
 )
 
-// NewPrivValidatorSocket returns an instance of PrivValidatorSocket.
+// NewPrivValidatorSocketClient returns an instance of
+// PrivValidatorSocketClient.
 func NewPrivValidatorSocketClient(logger log.Logger, socketAddr string) *PrivValidatorSocketClient {
 	pvsc := &PrivValidatorSocketClient{
 		SocketAddress: socketAddr,
@@ -43,6 +44,7 @@ func NewPrivValidatorSocketClient(logger log.Logger, socketAddr string) *PrivVal
 	return pvsc
 }
 
+// OnStart implements cmn.Service.
 func (pvsc *PrivValidatorSocketClient) OnStart() error {
 	if err := pvsc.BaseService.OnStart(); err != nil {
 		return err
@@ -63,6 +65,7 @@ RETRY_LOOP:
 	}
 }
 
+// OnStop implements cmn.Service.
 func (pvsc *PrivValidatorSocketClient) OnStop() {
 	pvsc.BaseService.OnStop()
 
@@ -71,11 +74,13 @@ func (pvsc *PrivValidatorSocketClient) OnStop() {
 	}
 }
 
+// Address is an alias for PubKey().Address().
 func (pvsc *PrivValidatorSocketClient) Address() data.Bytes {
 	pubKey := pvsc.PubKey()
 	return pubKey.Address()
 }
 
+// PubKey implements PrivValidator.
 func (pvsc *PrivValidatorSocketClient) PubKey() crypto.PubKey {
 	res, err := readWrite(pvsc.conn, PubKeyMsg{})
 	if err != nil {
@@ -84,6 +89,7 @@ func (pvsc *PrivValidatorSocketClient) PubKey() crypto.PubKey {
 	return res.(PubKeyMsg).PubKey
 }
 
+// SignVote implements PrivValidator.
 func (pvsc *PrivValidatorSocketClient) SignVote(chainID string, vote *types.Vote) error {
 	res, err := readWrite(pvsc.conn, SignVoteMsg{Vote: vote})
 	if err != nil {
@@ -93,6 +99,7 @@ func (pvsc *PrivValidatorSocketClient) SignVote(chainID string, vote *types.Vote
 	return nil
 }
 
+// SignProposal implements PrivValidator.
 func (pvsc *PrivValidatorSocketClient) SignProposal(chainID string, proposal *types.Proposal) error {
 	res, err := readWrite(pvsc.conn, SignProposalMsg{Proposal: proposal})
 	if err != nil {
@@ -102,6 +109,7 @@ func (pvsc *PrivValidatorSocketClient) SignProposal(chainID string, proposal *ty
 	return nil
 }
 
+// SignHeartbeat implements PrivValidator.
 func (pvsc *PrivValidatorSocketClient) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
 	res, err := readWrite(pvsc.conn, SignHeartbeatMsg{Heartbeat: heartbeat})
 	if err != nil {
@@ -126,6 +134,8 @@ type PrivValidatorSocketServer struct {
 	chainID string
 }
 
+// NewPrivValidatorSocketServer returns an instance of
+// PrivValidatorSocketServer.
 func NewPrivValidatorSocketServer(logger log.Logger, socketAddr, chainID string, privVal PrivValidator) *PrivValidatorSocketServer {
 	proto, addr := cmn.ProtocolAndAddress(socketAddr)
 	pvss := &PrivValidatorSocketServer{
@@ -138,6 +148,7 @@ func NewPrivValidatorSocketServer(logger log.Logger, socketAddr, chainID string,
 	return pvss
 }
 
+// OnStart implements cmn.Service.
 func (pvss *PrivValidatorSocketServer) OnStart() error {
 	if err := pvss.BaseService.OnStart(); err != nil {
 		return err
@@ -151,6 +162,7 @@ func (pvss *PrivValidatorSocketServer) OnStart() error {
 	return nil
 }
 
+// OnStop implements cmn.Service.
 func (pvss *PrivValidatorSocketServer) OnStop() {
 	pvss.BaseService.OnStop()
 	if err := pvss.listener.Close(); err != nil {
@@ -226,6 +238,8 @@ const (
 	msgTypeSignHeartbeat = byte(0x12)
 )
 
+// PrivValidatorSocketMsg is a message sent between PrivValidatorSocket client
+// and server.
 type PrivValidatorSocketMsg interface{}
 
 var _ = wire.RegisterInterface(
@@ -256,18 +270,22 @@ func decodeMsg(bz []byte) (msg PrivValidatorSocketMsg, err error) {
 	return msg, err
 }
 
+// PubKeyMsg is a PrivValidatorSocket message containing the public key.
 type PubKeyMsg struct {
 	PubKey crypto.PubKey
 }
 
+// SignVoteMsg is a PrivValidatorSocket message containing a vote.
 type SignVoteMsg struct {
 	Vote *types.Vote
 }
 
+// SignProposalMsg is a PrivValidatorSocket message containing a Proposal.
 type SignProposalMsg struct {
 	Proposal *types.Proposal
 }
 
+// SignHeartbeatMsg is a PrivValidatorSocket message containing a Heartbeat.
 type SignHeartbeatMsg struct {
 	Heartbeat *types.Heartbeat
 }
