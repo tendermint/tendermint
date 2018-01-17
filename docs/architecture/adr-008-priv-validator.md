@@ -8,7 +8,7 @@ For instance, see https://github.com/tendermint/tendermint/issues/673
 
 The goal is to have a clean PrivValidator interface like:
 
-``
+```
 type PrivValidator interface {
 	Address() data.Bytes
 	PubKey() crypto.PubKey
@@ -60,6 +60,7 @@ type ValidatorID struct {
 	Address data.Bytes    `json:"address"`
 	PubKey  crypto.PubKey `json:"pub_key"`
 }
+```
 
 ### LastSignedInfo
 
