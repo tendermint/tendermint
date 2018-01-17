@@ -15,6 +15,7 @@ type ValidatorID struct {
 
 //----------------------------------------------------------------------------
 
+// Signer signs a message.
 type Signer interface {
 	Sign(msg []byte) (crypto.Signature, error)
 }
