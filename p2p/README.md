@@ -1,13 +1,11 @@
-# `tendermint/tendermint/p2p`
+# p2p
 
-[![CircleCI](https://circleci.com/gh/tendermint/tendermint/p2p.svg?style=svg)](https://circleci.com/gh/tendermint/tendermint/p2p)
+The p2p package provides an abstraction around peer-to-peer communication.
 
-`tendermint/tendermint/p2p` provides an abstraction around peer-to-peer communication.<br/>
+Docs:
 
-See:
-
-- [docs/connection] for details on how connections and multiplexing work
-- [docs/peer] for details on peer ID, handshakes, and peer exchange
-- [docs/node] for details about different types of nodes and how they should work
-- [docs/pex] for details on peer discovery and exchange
-- [docs/config] for details on some config options
+- [Connection](../docs/specification/new-spec/p2p/connection.md) for details on how connections and multiplexing work
+- [Peer](../docs/specification/new-spec/p2p/peer.md) for details on peer ID, handshakes, and peer exchange
+- [Node](../docs/specification/new-spec/p2p/node.md) for details about different types of nodes and how they should work
+- [Pex](../docs/specification/new-spec/p2p/pex.md) for details on peer discovery and exchange
+- [Config](../docs/specification/new-spec/p2p/config.md) for details on some config option
