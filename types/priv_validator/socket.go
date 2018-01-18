@@ -126,7 +126,6 @@ func (pvsc *PrivValidatorSocketClient) SignHeartbeat(chainID string, heartbeat *
 type PrivValidatorSocketServer struct {
 	cmn.BaseService
 
-	conn        net.Conn
 	proto, addr string
 	listener    net.Listener
 
@@ -165,12 +164,13 @@ func (pvss *PrivValidatorSocketServer) OnStart() error {
 // OnStop implements cmn.Service.
 func (pvss *PrivValidatorSocketServer) OnStop() {
 	pvss.BaseService.OnStop()
-	if err := pvss.listener.Close(); err != nil {
-		pvss.Logger.Error("Error closing listener", "err", err)
+
+	if pvss.listener == nil {
+		return
 	}
 
-	if err := pvss.conn.Close(); err != nil {
-		pvss.Logger.Error("Error closing connection", "conn", pvss.conn, "err", err)
+	if err := pvss.listener.Close(); err != nil {
+		pvss.Logger.Error("Error closing listener", "err", err)
 	}
 }
 
@@ -178,8 +178,8 @@ func (pvss *PrivValidatorSocketServer) acceptConnectionsRoutine() {
 	for {
 		// Accept a connection
 		pvss.Logger.Info("Waiting for new connection...")
-		var err error
-		pvss.conn, err = pvss.listener.Accept()
+
+		conn, err := pvss.listener.Accept()
 		if err != nil {
 			if !pvss.IsRunning() {
 				return // Ignore error from listener closing.
@@ -198,7 +198,7 @@ func (pvss *PrivValidatorSocketServer) acceptConnectionsRoutine() {
 
 			var n int
 			var err error
-			b := wire.ReadByteSlice(pvss.conn, 0, &n, &err) //XXX: no max
+			b := wire.ReadByteSlice(conn, 0, &n, &err) //XXX: no max
 			req_, err := decodeMsg(b)
 			if err != nil {
 				panic(err)
@@ -221,7 +221,7 @@ func (pvss *PrivValidatorSocketServer) acceptConnectionsRoutine() {
 			}
 
 			b = wire.BinaryBytes(res)
-			_, err = pvss.conn.Write(b)
+			_, err = conn.Write(b)
 			if err != nil {
 				panic(err)
 			}
