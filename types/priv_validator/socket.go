@@ -199,25 +199,25 @@ func (pvss *PrivValidatorSocketServer) acceptConnectionsRoutine() {
 			var n int
 			var err error
 			b := wire.ReadByteSlice(conn, 0, &n, &err) //XXX: no max
-			req_, err := decodeMsg(b)
+			req, err := decodeMsg(b)
 			if err != nil {
 				panic(err)
 			}
 			var res PrivValidatorSocketMsg
-			switch req := req_.(type) {
+			switch r := req.(type) {
 			case PubKeyMsg:
 				res = PubKeyMsg{pvss.privVal.PubKey()}
 			case SignVoteMsg:
-				pvss.privVal.SignVote(pvss.chainID, req.Vote)
-				res = SignVoteMsg{req.Vote}
+				pvss.privVal.SignVote(pvss.chainID, r.Vote)
+				res = SignVoteMsg{r.Vote}
 			case SignProposalMsg:
-				pvss.privVal.SignProposal(pvss.chainID, req.Proposal)
-				res = SignProposalMsg{req.Proposal}
+				pvss.privVal.SignProposal(pvss.chainID, r.Proposal)
+				res = SignProposalMsg{r.Proposal}
 			case SignHeartbeatMsg:
-				pvss.privVal.SignHeartbeat(pvss.chainID, req.Heartbeat)
-				res = SignHeartbeatMsg{req.Heartbeat}
+				pvss.privVal.SignHeartbeat(pvss.chainID, r.Heartbeat)
+				res = SignHeartbeatMsg{r.Heartbeat}
 			default:
-				panic(fmt.Sprintf("unknown msg: %v", req_))
+				panic(fmt.Sprintf("unknown msg: %v", r))
 			}
 
 			b = wire.BinaryBytes(res)
