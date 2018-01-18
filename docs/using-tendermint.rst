@@ -105,15 +105,24 @@ To send a UTF8 string byte array, quote the value of the tx pramater:
 
 ::
 
-    curl http://localhost:46657/broadcast_tx_commit?tx="hello"
+    curl 'http://localhost:46657/broadcast_tx_commit?tx="hello"'
 
 which sends a 5 byte transaction: "h e l l o" [68 65 6c 6c 6f].
+
+Note the URL must be wrapped with single quoes, else bash will ignore the double quotes.
+To avoid the single quotes, escape the double quotes:
+
+::
+
+    curl http://localhost:46657/broadcast_tx_commit?tx=\"hello\"
+
+
 
 Using a special character:
 
 ::
 
-    curl http://localhost:46657/broadcast_tx_commit?tx="€5"
+    curl 'http://localhost:46657/broadcast_tx_commit?tx="€5"'
 
 sends a 4 byte transaction: "€5" (UTF8) [e2 82 ac 35].
 
@@ -129,13 +138,7 @@ With ``POST`` (using ``json``), the raw hex must be ``base64`` encoded:
 
 ::
 
-    curl -X POST http://localhots:46657
-    {
-      "method": broadcast_tx_commit",
-      "jsonrpc": "2.0",
-      "params": {"tx": "AQIDBA=="},
-      "id": ""
-    }
+    curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:46657
 
 which sends the same 4 byte transaction: [01 02 03 04].
 
