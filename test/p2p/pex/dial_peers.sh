@@ -19,13 +19,14 @@ for i in `seq 1 $N`; do
 done
 
 set -e
-# persistent_peers need quotes
-persistent_peers="\"$(test/p2p/ip.sh 1):46656\""
+# peers need quotes
+peers="\"$(test/p2p/ip.sh 1):46656\""
 for i in `seq 2 $N`; do
-	persistent_peers="$persistent_peers,\"$(test/p2p/ip.sh $i):46656\""
+	peers="$peers,\"$(test/p2p/ip.sh $i):46656\""
 done
-echo $persistent_peers
+echo $peers
 
-echo $persistent_peers
+echo $peers
 IP=$(test/p2p/ip.sh 1)
-curl --data-urlencode "persistent_peers=[$persistent_peers]" "$IP:46657/dial_persistent_peers"
+curl "$IP:46657/dial_peers?persistent=true&peers=\[$peers\]"
+
