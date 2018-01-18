@@ -199,6 +199,10 @@ func (pvss *PrivValidatorSocketServer) acceptConnectionsRoutine() {
 			var n int
 			var err error
 			b := wire.ReadByteSlice(conn, 0, &n, &err) //XXX: no max
+			if err != nil {
+				panic(err)
+			}
+
 			req, err := decodeMsg(b)
 			if err != nil {
 				panic(err)
