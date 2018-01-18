@@ -79,7 +79,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
 
     # tendermint should already have exited when it hits the fail index
     # but kill -9 for good measure
-    # kill_procs
+    kill_procs
 
     start_procs 2
 
