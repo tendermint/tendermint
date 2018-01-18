@@ -25,10 +25,4 @@ dependencies:
 
 test:
   override:
-    - cd "$PROJECT_PATH" && set -o pipefail && make test_integrations 2>&1 | tee test_integrations.log:
-        timeout: 1800
-  post:
-    - cd "$PROJECT_PATH" && mv test_integrations.log "${CIRCLE_ARTIFACTS}"
-    - cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
-    - cd "$PROJECT_PATH" && mv coverage.txt "${CIRCLE_ARTIFACTS}"
-    - cd "$PROJECT_PATH" && cp test/logs/messages "${CIRCLE_ARTIFACTS}/docker_logs.txt"
+    - cd "$PROJECT_PATH" && set -o pipefail && echo "hi"
