@@ -68,7 +68,7 @@ Transactions
 ------------
 
 To send a transaction, use ``curl`` to make requests to the Tendermint
-RPC server:
+RPC server, for example:
 
 ::
 
@@ -92,6 +92,54 @@ and the ``latest_app_hash`` in particular:
 Visit http://localhost:46657 in your browser to see the list of other
 endpoints. Some take no arguments (like ``/status``), while others
 specify the argument name and use ``_`` as a placeholder.
+
+Formatting
+~~~~~~~~~~
+
+The following nuances when sending/formatting transactions should
+be taken into account:
+
+With ``GET``:
+
+To send a UTF8 string byte array, quote the value of the tx pramater:
+
+::
+
+    curl http://localhost:46657/broadcast_tx_commit?tx="hello"
+
+which sends a 5 byte transaction: "h e l l o" [68 65 6c 6c 6f].
+
+Using a special character:
+
+::
+
+    curl http://localhost:46657/broadcast_tx_commit?tx="€5"
+
+sends a 4 byte transaction: "€5" (UTF8) [e2 82 ac 35].
+
+To send as raw hex, omit quotes AND prefix the hex string with ``0x``:
+
+::
+
+    curl http://localhost:46657/broadcast_tx_commit?tx=0x01020304
+
+which sends a 4 byte transaction: [01 02 03 04].
+
+With ``POST`` (using ``json``), the raw hex must be ``base64`` encoded:
+
+::
+
+    curl -X POST http://localhots:46657
+    {
+      "method": broadcast_tx_commit",
+      "jsonrpc": "2.0",
+      "params": {"tx": "AQIDBA=="},
+      "id": ""
+    }
+
+which sends the same 4 byte transaction: [01 02 03 04].
+
+Note that raw hex cannot be used in ``POST`` transactions.
 
 Reset
 -----
@@ -195,6 +243,9 @@ after the transaction is committed (ie. included in a block), but that
 can take on the order of a second. For a quick result, use
 ``broadcast_tx_sync``, but the transaction will not be committed until
 later, and by that point its effect on the state may change.
+
+Note: see the Transactions => Formatting section for details about
+transaction formating.
 
 Tendermint Networks
 -------------------
