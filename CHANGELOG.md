@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0 (TBD)
+
+BREAKING:
+
+ - [cli] WriteDemoConfig -> WriteConfigValues
+
 ## 0.6.0 (December 29, 2017)
 
 BREAKING:
