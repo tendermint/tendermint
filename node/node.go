@@ -189,6 +189,7 @@ func NewNode(config *cfg.Config,
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
 	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight)
+	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)

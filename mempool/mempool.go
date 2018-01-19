@@ -3,7 +3,6 @@ package mempool
 import (
 	"bytes"
 	"container/list"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,7 +48,7 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 
 */
 
-const cacheSize = 100000
+var ErrTxInCache = errors.New("Tx already exists in cache")
 
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
@@ -92,9 +91,8 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		recheckCursor: nil,
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
-		cache:         newTxCache(cacheSize),
+		cache:         newTxCache(config.CacheSize),
 	}
-	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
 }
@@ -131,7 +129,7 @@ func (mem *Mempool) CloseWAL() bool {
 	return true
 }
 
-func (mem *Mempool) initWAL() {
+func (mem *Mempool) InitWAL() {
 	walDir := mem.config.WalDir()
 	if walDir != "" {
 		err := cmn.EnsureDir(walDir, 0700)
@@ -192,7 +190,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	// CACHE
 	if mem.cache.Exists(tx) {
-		return fmt.Errorf("Tx already exists in cache")
+		return ErrTxInCache
 	}
 	mem.cache.Push(tx)
 	// END CACHE
@@ -449,7 +447,7 @@ func newTxCache(cacheSize int) *txCache {
 // Reset resets the txCache to empty.
 func (cache *txCache) Reset() {
 	cache.mtx.Lock()
-	cache.map_ = make(map[string]struct{}, cacheSize)
+	cache.map_ = make(map[string]struct{}, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }

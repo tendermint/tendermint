@@ -60,9 +60,9 @@ func TestConfig() *Config {
 		BaseConfig: TestBaseConfig(),
 		RPC:        TestRPCConfig(),
 		P2P:        TestP2PConfig(),
-		Mempool:    DefaultMempoolConfig(),
+		Mempool:    TestMempoolConfig(),
 		Consensus:  TestConsensusConfig(),
-		TxIndex:    DefaultTxIndexConfig(),
+		TxIndex:    TestTxIndexConfig(),
 	}
 }
 
@@ -313,6 +313,7 @@ type MempoolConfig struct {
 	RecheckEmpty bool   `mapstructure:"recheck_empty"`
 	Broadcast    bool   `mapstructure:"broadcast"`
 	WalPath      string `mapstructure:"wal_dir"`
+	CacheSize    int    `mapstructure:"cache_size"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -322,7 +323,15 @@ func DefaultMempoolConfig() *MempoolConfig {
 		RecheckEmpty: true,
 		Broadcast:    true,
 		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
+		CacheSize:    100000,
 	}
+}
+
+// TestMempoolConfig returns a configuration for testing the Tendermint mempool
+func TestMempoolConfig() *MempoolConfig {
+	config := DefaultMempoolConfig()
+	config.CacheSize = 1000
+	return config
 }
 
 // WalDir returns the full path to the mempool's write-ahead log
@@ -490,6 +499,11 @@ func DefaultTxIndexConfig() *TxIndexConfig {
 		IndexTags:    "",
 		IndexAllTags: false,
 	}
+}
+
+// TestTxIndexConfig returns a default configuration for the transaction indexer.
+func TestTxIndexConfig() *TxIndexConfig {
+	return DefaultTxIndexConfig()
 }
 
 //-----------------------------------------------------------------------------
