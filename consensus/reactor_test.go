@@ -31,31 +31,24 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	eventBuses := make([]*types.EventBus, N)
-	logger := consensusLogger()
 	for i := 0; i < N; i++ {
-		/*thisLogger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
+		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
-		thisLogger := logger
-
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].conS.SetLogger(thisLogger.With("validator", i))
-		reactors[i].SetLogger(thisLogger.With("validator", i))
+		reactors[i].SetLogger(css[i].Logger.With("validator", "i"))
 
-		eventBuses[i] = types.NewEventBus()
-		eventBuses[i].SetLogger(thisLogger.With("module", "events", "validator", i))
-		err := eventBuses[i].Start()
-		require.NoError(t, err)
-
+		// eventBus is already started with the cs
+		eventBuses[i] = css[i].eventBus
 		reactors[i].SetEventBus(eventBuses[i])
 
 		eventChans[i] = make(chan interface{}, 1)
-		err = eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
 		require.NoError(t, err)
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("CONSENSUS", reactors[i])
-		s.SetLogger(reactors[i].Logger.With("module", "p2p", "validator", i))
+		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
 		return s
 	}, p2p.Connect2Switches)
 
@@ -84,7 +77,7 @@ func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuse
 }
 
 // Ensure a testnet makes blocks
-func TestReactor(t *testing.T) {
+func TestReactorBasic(t *testing.T) {
 	N := 4
 	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
