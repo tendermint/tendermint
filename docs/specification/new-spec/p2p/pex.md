@@ -8,10 +8,10 @@ to good peers and to gossip peers to others.
 
 Certain peers are special in that they are specified by the user as `persistent`,
 which means we auto-redial them if the connection fails.
-Some such peers can additional be marked as `private`, which means
-we will not gossip them to others.
+Some peers can be marked as `private`, which means
+we will not put them in the address book or gossip them to others.
 
-All others peers are tracked using an address book.
+All peers except private peers are tracked using the address book.
 
 ## Discovery
 
@@ -31,7 +31,7 @@ Peers are added to the address book from the PEX when they first connect to us o
 when we hear about them from other peers.
 
 The address book is arranged in sets of buckets, and distinguishes between
-vetted and unvetted peers. It keeps different sets of buckets for vetted and
+vetted (old) and unvetted (new) peers. It keeps different sets of buckets for vetted and
 unvetted peers. Buckets provide randomization over peer selection.
 
 A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets.
@@ -52,7 +52,7 @@ If a peer becomes unvetted (either a new peer, or one that was previously vetted
 a randomly selected one of the unvetted peers is removed from the address book.
 
 More fine-grained tracking of peer behaviour can be done using
-a Trust Metric, but it's best to start with something simple.
+a trust metric (see below), but it's best to start with something simple.
 
 ## Select Peers to Dial
 
@@ -75,7 +75,7 @@ Send the selected peers. Note we select peers for sending without bias for vette
 There are various cases where we decide a peer has misbehaved and we disconnect from them.
 When this happens, the peer is removed from the address book and black listed for
 some amount of time. We call this "Disconnect and Mark".
-Note that the bad behaviour may be detected outside the PEX reactor itseld
+Note that the bad behaviour may be detected outside the PEX reactor itself
 (for instance, in the mconnection, or another reactor), but it must be communicated to the PEX reactor
 so it can remove and mark the peer.
 
@@ -86,9 +86,13 @@ we Disconnect and Mark.
 ## Trust Metric
 
 The quality of peers can be tracked in more fine-grained detail using a
-Proportional-Integral-Derrivative (PID) controller that incorporates
+Proportional-Integral-Derivative (PID) controller that incorporates
 current, past, and rate-of-change data to inform peer quality.
 
 While a PID trust metric has been implemented, it remains for future work
 to use it in the PEX.
+
+See the [trustmetric](../../../architecture/adr-006-trust-metric.md )
+and [trustmetric useage](../../../architecture/adr-007-trust-metric-usage.md )
+architecture docs for more details.
 
