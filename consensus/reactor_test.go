@@ -35,7 +35,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].SetLogger(css[i].Logger.With("validator", "i"))
+		reactors[i].SetLogger(css[i].Logger.With("validator", "i", "module", "consensus"))
 
 		// eventBus is already started with the cs
 		eventBuses[i] = css[i].eventBus
@@ -83,9 +83,8 @@ func TestReactorBasic(t *testing.T) {
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 }
 
@@ -106,9 +105,8 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// wait till everyone sends a proposal heartbeat
-	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N, func(j int) {
 		<-heartbeatChans[j]
-		wg.Done()
 	}, css)
 
 	// send a tx
@@ -117,9 +115,8 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 	}
 
 	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 }
 
@@ -140,9 +137,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	}
 
 	// wait till everyone makes block 1
-	timeoutWaitGroup(t, nVals, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, nVals, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 
 	//---------------------------------------------------------------------------
@@ -203,9 +199,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	}
 
 	// wait till everyone makes block 1
-	timeoutWaitGroup(t, nPeers, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, nPeers, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 
 	//---------------------------------------------------------------------------
@@ -293,16 +288,13 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N-1, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N-1, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 }
 
 func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
-	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
-		defer wg.Done()
-
+	timeoutWaitGroup(t, n, func(j int) {
 		css[j].Logger.Debug("waitForAndValidateBlock")
 		newBlockI, ok := <-eventChans[j]
 		if !ok {
@@ -320,8 +312,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 }
 
 func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
-	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
-		defer wg.Done()
+	timeoutWaitGroup(t, n, func(j int) {
 		ntxs := 0
 	BLOCK_TX_LOOP:
 		for {
@@ -352,8 +343,7 @@ func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]st
 }
 
 func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState) {
-	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
-		defer wg.Done()
+	timeoutWaitGroup(t, n, func(j int) {
 
 		var newBlock *types.Block
 	LOOP:
@@ -391,11 +381,14 @@ func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	return nil
 }
 
-func timeoutWaitGroup(t *testing.T, n int, f func(*sync.WaitGroup, int), css []*ConsensusState) {
+func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*ConsensusState) {
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
-		go f(wg, i)
+		go func(j int) {
+			f(j)
+			wg.Done()
+		}(i)
 	}
 
 	done := make(chan struct{})

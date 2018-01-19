@@ -294,6 +294,7 @@ func TestP2PConfig() *P2PConfig {
 	conf := DefaultP2PConfig()
 	conf.ListenAddress = "tcp://0.0.0.0:36656"
 	conf.SkipUPNP = true
+	conf.FlushThrottleTimeout = 10
 	return conf
 }
 
@@ -438,6 +439,8 @@ func TestConsensusConfig() *ConsensusConfig {
 	config.TimeoutPrecommitDelta = 1
 	config.TimeoutCommit = 10
 	config.SkipTimeoutCommit = true
+	config.PeerGossipSleepDuration = 5
+	config.PeerQueryMaj23SleepDuration = 50
 	return config
 }
 
