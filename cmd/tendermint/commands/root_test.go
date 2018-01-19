@@ -1,7 +1,10 @@
 package commands
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"testing"
 
@@ -12,6 +15,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tmlibs/cli"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var (
@@ -22,89 +26,151 @@ const (
 	rootName = "root"
 )
 
-// isolate provides a clean setup and returns a copy of RootCmd you can
-// modify in the test cases.
-// NOTE: it unsets all TM* env variables.
-func isolate(cmds ...*cobra.Command) cli.Executable {
+// clearConfig clears env vars, the given root dir, and resets viper.
+func clearConfig(dir string) {
 	if err := os.Unsetenv("TMHOME"); err != nil {
 		panic(err)
 	}
 	if err := os.Unsetenv("TM_HOME"); err != nil {
 		panic(err)
 	}
-	if err := os.RemoveAll(defaultRoot); err != nil {
+
+	if err := os.RemoveAll(dir); err != nil {
 		panic(err)
 	}
-
 	viper.Reset()
 	config = cfg.DefaultConfig()
-	r := &cobra.Command{
-		Use:               rootName,
-		PersistentPreRunE: RootCmd.PersistentPreRunE,
-	}
-	r.AddCommand(cmds...)
-	wr := cli.PrepareBaseCmd(r, "TM", defaultRoot)
-	return wr
 }
 
-func TestRootConfig(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
-	// we pre-create a config file we can refer to in the rest of
-	// the test cases.
-	cvals := map[string]string{
-		"moniker":   "monkey",
-		"fast_sync": "false",
+// prepare new rootCmd
+func testRootCmd() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:               RootCmd.Use,
+		PersistentPreRunE: RootCmd.PersistentPreRunE,
+		Run:               func(cmd *cobra.Command, args []string) {},
 	}
-	// proper types of the above settings
-	cfast := false
-	conf, err := cli.WriteDemoConfig(cvals)
-	require.Nil(err)
+	registerFlagsRootCmd(rootCmd)
+	var l string
+	rootCmd.PersistentFlags().String("log", l, "Log")
+	return rootCmd
+}
 
+func testSetup(rootDir string, args []string, env map[string]string) error {
+	clearConfig(defaultRoot)
+
+	rootCmd := testRootCmd()
+	cmd := cli.PrepareBaseCmd(rootCmd, "TM", defaultRoot)
+
+	// run with the args and env
+	args = append([]string{rootCmd.Use}, args...)
+	return cli.RunWithArgs(cmd, args, env)
+}
+
+func TestRootHome(t *testing.T) {
+	newRoot := filepath.Join(defaultRoot, "something-else")
+	cases := []struct {
+		args []string
+		env  map[string]string
+		root string
+	}{
+		{nil, nil, defaultRoot},
+		{[]string{"--home", newRoot}, nil, newRoot},
+		{nil, map[string]string{"TMHOME": newRoot}, newRoot},
+	}
+
+	for i, tc := range cases {
+		idxString := strconv.Itoa(i)
+
+		err := testSetup(defaultRoot, tc.args, tc.env)
+		require.Nil(t, err, idxString)
+
+		assert.Equal(t, tc.root, config.RootDir, idxString)
+		assert.Equal(t, tc.root, config.P2P.RootDir, idxString)
+		assert.Equal(t, tc.root, config.Consensus.RootDir, idxString)
+		assert.Equal(t, tc.root, config.Mempool.RootDir, idxString)
+	}
+}
+
+func TestRootFlagsEnv(t *testing.T) {
+
+	// defaults
 	defaults := cfg.DefaultConfig()
-	dmax := defaults.P2P.MaxNumPeers
+	defaultLogLvl := defaults.LogLevel
 
 	cases := []struct {
 		args     []string
 		env      map[string]string
-		root     string
-		moniker  string
-		fastSync bool
-		maxPeer  int
+		logLevel string
 	}{
-		{nil, nil, defaultRoot, defaults.Moniker, defaults.FastSync, dmax},
-		// try multiple ways of setting root (two flags, cli vs. env)
-		{[]string{"--home", conf}, nil, conf, cvals["moniker"], cfast, dmax},
-		{nil, map[string]string{"TMHOME": conf}, conf, cvals["moniker"], cfast, dmax},
-		// check setting p2p subflags two different ways
-		{[]string{"--p2p.max_num_peers", "420"}, nil, defaultRoot, defaults.Moniker, defaults.FastSync, 420},
-		{nil, map[string]string{"TM_P2P_MAX_NUM_PEERS": "17"}, defaultRoot, defaults.Moniker, defaults.FastSync, 17},
-		// try to set env that have no flags attached...
-		{[]string{"--home", conf}, map[string]string{"TM_MONIKER": "funny"}, conf, "funny", cfast, dmax},
+		{[]string{"--log", "debug"}, nil, defaultLogLvl},                 // wrong flag
+		{[]string{"--log_level", "debug"}, nil, "debug"},                 // right flag
+		{nil, map[string]string{"TM_LOW": "debug"}, defaultLogLvl},       // wrong env flag
+		{nil, map[string]string{"MT_LOG_LEVEL": "debug"}, defaultLogLvl}, // wrong env prefix
+		{nil, map[string]string{"TM_LOG_LEVEL": "debug"}, "debug"},       // right env
 	}
 
-	for idx, tc := range cases {
-		i := strconv.Itoa(idx)
-		// test command that does nothing, except trigger unmarshalling in root
-		noop := &cobra.Command{
-			Use: "noop",
-			RunE: func(cmd *cobra.Command, args []string) error {
-				return nil
-			},
-		}
-		noop.Flags().Int("p2p.max_num_peers", defaults.P2P.MaxNumPeers, "")
-		cmd := isolate(noop)
+	for i, tc := range cases {
+		idxString := strconv.Itoa(i)
 
-		args := append([]string{rootName, noop.Use}, tc.args...)
-		err := cli.RunWithArgs(cmd, args, tc.env)
-		require.Nil(err, i)
-		assert.Equal(tc.root, config.RootDir, i)
-		assert.Equal(tc.root, config.P2P.RootDir, i)
-		assert.Equal(tc.root, config.Consensus.RootDir, i)
-		assert.Equal(tc.root, config.Mempool.RootDir, i)
-		assert.Equal(tc.moniker, config.Moniker, i)
-		assert.Equal(tc.fastSync, config.FastSync, i)
-		assert.Equal(tc.maxPeer, config.P2P.MaxNumPeers, i)
+		err := testSetup(defaultRoot, tc.args, tc.env)
+		require.Nil(t, err, idxString)
+
+		assert.Equal(t, tc.logLevel, config.LogLevel, idxString)
+	}
+}
+
+func TestRootConfig(t *testing.T) {
+
+	// write non-default config
+	nonDefaultLogLvl := "abc:debug"
+	cvals := map[string]string{
+		"log_level": nonDefaultLogLvl,
 	}
 
+	cases := []struct {
+		args []string
+		env  map[string]string
+
+		logLvl string
+	}{
+		{nil, nil, nonDefaultLogLvl},                                     // should load config
+		{[]string{"--log_level=abc:info"}, nil, "abc:info"},              // flag over rides
+		{nil, map[string]string{"TM_LOG_LEVEL": "abc:info"}, "abc:info"}, // env over rides
+	}
+
+	for i, tc := range cases {
+		idxString := strconv.Itoa(i)
+		clearConfig(defaultRoot)
+
+		// XXX: path must match cfg.defaultConfigPath
+		configFilePath := filepath.Join(defaultRoot, "config")
+		err := cmn.EnsureDir(configFilePath, 0700)
+		require.Nil(t, err)
+
+		// write the non-defaults to a different path
+		// TODO: support writing sub configs so we can test that too
+		err = WriteConfigVals(configFilePath, cvals)
+		require.Nil(t, err)
+
+		rootCmd := testRootCmd()
+		cmd := cli.PrepareBaseCmd(rootCmd, "TM", defaultRoot)
+
+		// run with the args and env
+		tc.args = append([]string{rootCmd.Use}, tc.args...)
+		err = cli.RunWithArgs(cmd, tc.args, tc.env)
+		require.Nil(t, err, idxString)
+
+		assert.Equal(t, tc.logLvl, config.LogLevel, idxString)
+	}
+}
+
+// WriteConfigVals writes a toml file with the given values.
+// It returns an error if writing was impossible.
+func WriteConfigVals(dir string, vals map[string]string) error {
+	data := ""
+	for k, v := range vals {
+		data = data + fmt.Sprintf("%s = \"%s\"\n", k, v)
+	}
+	cfile := filepath.Join(dir, "config.toml")
+	return ioutil.WriteFile(cfile, []byte(data), 0666)
 }

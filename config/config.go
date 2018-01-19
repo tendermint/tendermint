@@ -7,11 +7,12 @@ import (
 	"time"
 )
 
-// Note: Most of the structs & relevant comments + the
+// NOTE: Most of the structs & relevant comments + the
 // default configuration options were used to manually
 // generate the config.toml. Please reflect any changes
 // made here in the defaultConfigTemplate constant in
 // config/toml.go
+// NOTE: tmlibs/cli must know to look in the config dir!
 var (
 	DefaultTendermintDir = ".tendermint"
 	defaultConfigDir     = "config"
@@ -59,9 +60,9 @@ func TestConfig() *Config {
 		BaseConfig: TestBaseConfig(),
 		RPC:        TestRPCConfig(),
 		P2P:        TestP2PConfig(),
-		Mempool:    DefaultMempoolConfig(),
+		Mempool:    TestMempoolConfig(),
 		Consensus:  TestConsensusConfig(),
-		TxIndex:    DefaultTxIndexConfig(),
+		TxIndex:    TestTxIndexConfig(),
 	}
 }
 
@@ -293,6 +294,7 @@ func TestP2PConfig() *P2PConfig {
 	conf := DefaultP2PConfig()
 	conf.ListenAddress = "tcp://0.0.0.0:36656"
 	conf.SkipUPNP = true
+	conf.FlushThrottleTimeout = 10
 	return conf
 }
 
@@ -311,6 +313,7 @@ type MempoolConfig struct {
 	RecheckEmpty bool   `mapstructure:"recheck_empty"`
 	Broadcast    bool   `mapstructure:"broadcast"`
 	WalPath      string `mapstructure:"wal_dir"`
+	CacheSize    int    `mapstructure:"cache_size"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -320,7 +323,15 @@ func DefaultMempoolConfig() *MempoolConfig {
 		RecheckEmpty: true,
 		Broadcast:    true,
 		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
+		CacheSize:    100000,
 	}
+}
+
+// TestMempoolConfig returns a configuration for testing the Tendermint mempool
+func TestMempoolConfig() *MempoolConfig {
+	config := DefaultMempoolConfig()
+	config.CacheSize = 1000
+	return config
 }
 
 // WalDir returns the full path to the mempool's write-ahead log
@@ -437,6 +448,8 @@ func TestConsensusConfig() *ConsensusConfig {
 	config.TimeoutPrecommitDelta = 1
 	config.TimeoutCommit = 10
 	config.SkipTimeoutCommit = true
+	config.PeerGossipSleepDuration = 5
+	config.PeerQueryMaj23SleepDuration = 50
 	return config
 }
 
@@ -486,6 +499,11 @@ func DefaultTxIndexConfig() *TxIndexConfig {
 		IndexTags:    "",
 		IndexAllTags: false,
 	}
+}
+
+// TestTxIndexConfig returns a default configuration for the transaction indexer.
+func TestTxIndexConfig() *TxIndexConfig {
+	return DefaultTxIndexConfig()
 }
 
 //-----------------------------------------------------------------------------

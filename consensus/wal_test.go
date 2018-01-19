@@ -41,7 +41,7 @@ func TestWALEncoderDecoder(t *testing.T) {
 	}
 }
 
-func TestSearchForEndHeight(t *testing.T) {
+func TestWALSearchForEndHeight(t *testing.T) {
 	walBody, err := WALWithNBlocks(6)
 	if err != nil {
 		t.Fatal(err)

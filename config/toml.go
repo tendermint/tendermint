@@ -20,6 +20,8 @@ func init() {
 
 /****** these are for production settings ***********/
 
+// EnsureRoot creates the root, config, and data directories if they don't exist,
+// and panics if it fails.
 func EnsureRoot(rootDir string) {
 	if err := cmn.EnsureDir(rootDir, 0700); err != nil {
 		cmn.PanicSanity(err.Error())
