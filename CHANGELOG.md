@@ -25,6 +25,14 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.15.1 (January 19, 2018)
+
+IMPROVEMENTS:
+- [docs] consensus and p2p specs
+
+BUG FIXES:
+- [types] priv val revert time to last signed time
+
 ## 0.15.0 (December 29, 2017)
 
 BREAKING CHANGES:
