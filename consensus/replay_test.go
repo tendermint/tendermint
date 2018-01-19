@@ -81,14 +81,12 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 }
 
 func sendTxs(cs *ConsensusState, ctx context.Context) {
-	i := 0
-	tx := []byte{byte(i)}
 	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			tx[0] = byte(i)
+			tx := []byte{byte(i)}
 			cs.mempool.CheckTx(tx, nil)
 			i++
 		}
