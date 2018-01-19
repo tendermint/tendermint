@@ -326,7 +326,9 @@ Peers
 ~~~~~
 
 To connect to peers on start-up, specify them in the ``$TMHOME/config/config.toml`` or
-on the command line.
+on the command line. Use `seeds` to specify seed nodes from which you can get many other
+peer addresses, and ``persistent_peers`` to specify peers that your node will maintain
+persistent connections with.
 
 For instance,
 
@@ -335,26 +337,35 @@ For instance,
     tendermint node --p2p.seeds "1.2.3.4:46656,5.6.7.8:46656"
 
 Alternatively, you can use the ``/dial_seeds`` endpoint of the RPC to
-specify peers for a running node to connect to:
+specify seeds for a running node to connect to:
 
 ::
 
-    curl --data-urlencode "seeds=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46657/dial_seeds
+    curl 'localhost:46657/dial_seeds?seeds=\["1.2.3.4:46656","5.6.7.8:46656"\]'
 
-Additionally, the peer-exchange protocol can be enabled using the
-``--pex`` flag, though this feature is `still under
-development <https://github.com/tendermint/tendermint/issues/598>`__. If
-``--pex`` is enabled, peers will gossip about known peers and form a
-more resilient network.
+Note, if the peer-exchange protocol (PEX) is enabled (default), you should not
+normally need seeds after the first start. Peers will be gossipping about known
+peers and forming a network, storing peer addresses in the addrbook.
+
+If you want Tendermint to connect to specific set of addresses and maintain a
+persistent connection with each, you can use the ``--p2p.persistent_peers``
+flag or the corresponding setting in the ``config.toml`` or the
+``/dial_peers`` RPC endpoint to do it without stopping Tendermint
+core instance.
+
+::
+
+    tendermint node --p2p.persistent_peers "10.11.12.13:46656,10.11.12.14:46656"
+    curl 'localhost:46657/dial_peers?persistent=true&peers=\["1.2.3.4:46656","5.6.7.8:46656"\]'
 
 Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Adding a non-validator is simple. Just copy the original
 ``genesis.json`` to ``~/.tendermint/config`` on the new machine and start the
-node, specifying seeds as necessary. If no seeds are specified, the node
-won't make any blocks, because it's not a validator, and it won't hear
-about any blocks, because it's not connected to the other peer.
+node, specifying seeds or persistent peers as necessary. If no seeds or persistent
+peers are specified, the node won't make any blocks, because it's not a validator,
+and it won't hear about any blocks, because it's not connected to the other peer.
 
 Adding a Validator
 ~~~~~~~~~~~~~~~~~~
@@ -425,7 +436,7 @@ and the new ``priv_validator.json`` to the ``~/.tendermint/config`` on a new
 machine.
 
 Now run ``tendermint node`` on both machines, and use either
-``--p2p.seeds`` or the ``/dial_seeds`` to get them to peer up. They
+``--p2p.persistent_peers`` or the ``/dial_peers`` to get them to peer up. They
 should start making blocks, and will only continue to do so as long as
 both of them are online.
 

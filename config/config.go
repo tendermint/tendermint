@@ -20,10 +20,12 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 	defaultPrivValName     = "priv_validator.json"
+	defaultNodeKeyName     = "node_key.json"
 
 	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
 	defaultPrivValPath     = filepath.Join(defaultConfigDir, defaultPrivValName)
+	defaultNodeKeyPath     = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -92,6 +94,9 @@ type BaseConfig struct {
 	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
 	PrivValidator string `mapstructure:"priv_validator_file"`
 
+	// A JSON file containing the private key to use for p2p authenticated encryption
+	NodeKey string `mapstructure:"node_key_file"`
+
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
@@ -133,6 +138,7 @@ func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
 		Genesis:           defaultGenesisJSONPath,
 		PrivValidator:     defaultPrivValPath,
+		NodeKey:           defaultNodeKeyPath,
 		Moniker:           defaultMoniker,
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
@@ -165,6 +171,11 @@ func (b BaseConfig) PrivValidatorFile() string {
 	return rootify(b.PrivValidator, b.RootDir)
 }
 
+// NodeKeyFile returns the full path to the node_key.json file
+func (b BaseConfig) NodeKeyFile() string {
+	return rootify(b.NodeKey, b.RootDir)
+}
+
 // DBDir returns the full path to the database directory
 func (b BaseConfig) DBDir() string {
 	return rootify(b.DBPath, b.RootDir)
@@ -194,7 +205,7 @@ type RPCConfig struct {
 	// NOTE: This server only supports /broadcast_tx_commit
 	GRPCListenAddress string `mapstructure:"grpc_laddr"`
 
-	// Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
+	// Activate unsafe RPC commands like /dial_persistent_peers and /unsafe_flush_mempool
 	Unsafe bool `mapstructure:"unsafe"`
 }
 
@@ -227,7 +238,12 @@ type P2PConfig struct {
 	ListenAddress string `mapstructure:"laddr"`
 
 	// Comma separated list of seed nodes to connect to
+	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
+
+	// Comma separated list of persistent peers to connect to
+	// We always connect to these
+	PersistentPeers string `mapstructure:"persistent_peers"`
 
 	// Skip UPNP port forwarding
 	SkipUPNP bool `mapstructure:"skip_upnp"`

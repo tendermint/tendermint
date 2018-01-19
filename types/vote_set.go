@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -58,7 +59,7 @@ type VoteSet struct {
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
 	maj23         *BlockID               // First 2/3 majority seen
 	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
-	peerMaj23s    map[string]BlockID     // Maj23 for each peer
+	peerMaj23s    map[p2p.ID]BlockID     // Maj23 for each peer
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -77,7 +78,7 @@ func NewVoteSet(chainID string, height int64, round int, type_ byte, valSet *Val
 		sum:           0,
 		maj23:         nil,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
-		peerMaj23s:    make(map[string]BlockID),
+		peerMaj23s:    make(map[p2p.ID]BlockID),
 	}
 }
 
@@ -290,7 +291,7 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 // this can cause memory issues.
 // TODO: implement ability to remove peers too
 // NOTE: VoteSet must not be nil
-func (voteSet *VoteSet) SetPeerMaj23(peerID string, blockID BlockID) {
+func (voteSet *VoteSet) SetPeerMaj23(peerID p2p.ID, blockID BlockID) {
 	if voteSet == nil {
 		cmn.PanicSanity("SetPeerMaj23() on nil VoteSet")
 	}

@@ -88,9 +88,6 @@ type MConnection struct {
 	flushTimer   *cmn.ThrottleTimer // flush writes as necessary but throttled.
 	pingTimer    *cmn.RepeatTimer   // send pings periodically
 	chStatsTimer *cmn.RepeatTimer   // update channel stats periodically
-
-	LocalAddress  *NetAddress
-	RemoteAddress *NetAddress
 }
 
 // MConnConfig is a MConnection configuration.
@@ -140,9 +137,6 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 		onReceive:   onReceive,
 		onError:     onError,
 		config:      config,
-
-		LocalAddress:  NewNetAddress(conn.LocalAddr()),
-		RemoteAddress: NewNetAddress(conn.RemoteAddr()),
 	}
 
 	// Create channels

@@ -6,8 +6,8 @@ import (
 
 // IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
-	Has(key string) bool
-	Get(key string) Peer
+	Has(key ID) bool
+	Get(key ID) Peer
 	List() []Peer
 	Size() int
 }
@@ -18,7 +18,7 @@ type IPeerSet interface {
 // Iteration over the peers is super fast and thread-safe.
 type PeerSet struct {
 	mtx    sync.Mutex
-	lookup map[string]*peerSetItem
+	lookup map[ID]*peerSetItem
 	list   []Peer
 }
 
@@ -30,7 +30,7 @@ type peerSetItem struct {
 // NewPeerSet creates a new peerSet with a list of initial capacity of 256 items.
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
-		lookup: make(map[string]*peerSetItem),
+		lookup: make(map[ID]*peerSetItem),
 		list:   make([]Peer, 0, 256),
 	}
 }
@@ -40,7 +40,7 @@ func NewPeerSet() *PeerSet {
 func (ps *PeerSet) Add(peer Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	if ps.lookup[peer.Key()] != nil {
+	if ps.lookup[peer.ID()] != nil {
 		return ErrSwitchDuplicatePeer
 	}
 
@@ -48,13 +48,13 @@ func (ps *PeerSet) Add(peer Peer) error {
 	// Appending is safe even with other goroutines
 	// iterating over the ps.list slice.
 	ps.list = append(ps.list, peer)
-	ps.lookup[peer.Key()] = &peerSetItem{peer, index}
+	ps.lookup[peer.ID()] = &peerSetItem{peer, index}
 	return nil
 }
 
 // Has returns true iff the PeerSet contains
 // the peer referred to by this peerKey.
-func (ps *PeerSet) Has(peerKey string) bool {
+func (ps *PeerSet) Has(peerKey ID) bool {
 	ps.mtx.Lock()
 	_, ok := ps.lookup[peerKey]
 	ps.mtx.Unlock()
@@ -62,7 +62,7 @@ func (ps *PeerSet) Has(peerKey string) bool {
 }
 
 // Get looks up a peer by the provided peerKey.
-func (ps *PeerSet) Get(peerKey string) Peer {
+func (ps *PeerSet) Get(peerKey ID) Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	item, ok := ps.lookup[peerKey]
@@ -77,7 +77,7 @@ func (ps *PeerSet) Get(peerKey string) Peer {
 func (ps *PeerSet) Remove(peer Peer) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	item := ps.lookup[peer.Key()]
+	item := ps.lookup[peer.ID()]
 	if item == nil {
 		return
 	}
@@ -90,18 +90,18 @@ func (ps *PeerSet) Remove(peer Peer) {
 	// If it's the last peer, that's an easy special case.
 	if index == len(ps.list)-1 {
 		ps.list = newList
-		delete(ps.lookup, peer.Key())
+		delete(ps.lookup, peer.ID())
 		return
 	}
 
 	// Replace the popped item with the last item in the old list.
 	lastPeer := ps.list[len(ps.list)-1]
-	lastPeerKey := lastPeer.Key()
+	lastPeerKey := lastPeer.ID()
 	lastPeerItem := ps.lookup[lastPeerKey]
 	newList[index] = lastPeer
 	lastPeerItem.index = index
 	ps.list = newList
-	delete(ps.lookup, peer.Key())
+	delete(ps.lookup, peer.ID())
 }
 
 // Size returns the number of unique items in the peerSet.

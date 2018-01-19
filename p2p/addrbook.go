@@ -5,6 +5,7 @@
 package p2p
 
 import (
+	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -89,7 +90,7 @@ type AddrBook struct {
 	mtx        sync.Mutex
 	rand       *rand.Rand
 	ourAddrs   map[string]*NetAddress
-	addrLookup map[string]*knownAddress // new & old
+	addrLookup map[ID]*knownAddress // new & old
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
 	nOld       int
@@ -104,7 +105,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *AddrBook {
 	am := &AddrBook{
 		rand:              rand.New(rand.NewSource(time.Now().UnixNano())),
 		ourAddrs:          make(map[string]*NetAddress),
-		addrLookup:        make(map[string]*knownAddress),
+		addrLookup:        make(map[ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
 	}
@@ -244,11 +245,11 @@ func (a *AddrBook) PickAddress(newBias int) *NetAddress {
 }
 
 // MarkGood marks the peer as good and moves it into an "old" bucket.
-// XXX: we never call this!
+// TODO: call this from somewhere
 func (a *AddrBook) MarkGood(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrLookup[addr.String()]
+	ka := a.addrLookup[addr.ID]
 	if ka == nil {
 		return
 	}
@@ -262,7 +263,7 @@ func (a *AddrBook) MarkGood(addr *NetAddress) {
 func (a *AddrBook) MarkAttempt(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrLookup[addr.String()]
+	ka := a.addrLookup[addr.ID]
 	if ka == nil {
 		return
 	}
@@ -279,11 +280,11 @@ func (a *AddrBook) MarkBad(addr *NetAddress) {
 func (a *AddrBook) RemoveAddress(addr *NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
-	ka := a.addrLookup[addr.String()]
+	ka := a.addrLookup[addr.ID]
 	if ka == nil {
 		return
 	}
-	a.Logger.Info("Remove address from book", "addr", addr)
+	a.Logger.Info("Remove address from book", "addr", ka.Addr, "ID", ka.ID)
 	a.removeFromAllBuckets(ka)
 }
 
@@ -300,8 +301,8 @@ func (a *AddrBook) GetSelection() []*NetAddress {
 
 	allAddr := make([]*NetAddress, a.size())
 	i := 0
-	for _, v := range a.addrLookup {
-		allAddr[i] = v.Addr
+	for _, ka := range a.addrLookup {
+		allAddr[i] = ka.Addr
 		i++
 	}
 
@@ -388,7 +389,7 @@ func (a *AddrBook) loadFromFile(filePath string) bool {
 			bucket := a.getBucket(ka.BucketType, bucketIndex)
 			bucket[ka.Addr.String()] = ka
 		}
-		a.addrLookup[ka.Addr.String()] = ka
+		a.addrLookup[ka.ID()] = ka
 		if ka.BucketType == bucketTypeNew {
 			a.nNew++
 		} else {
@@ -466,7 +467,7 @@ func (a *AddrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 	}
 
 	// Ensure in addrLookup
-	a.addrLookup[addrStr] = ka
+	a.addrLookup[ka.ID()] = ka
 
 	return true
 }
@@ -503,7 +504,7 @@ func (a *AddrBook) addToOldBucket(ka *knownAddress, bucketIdx int) bool {
 	}
 
 	// Ensure in addrLookup
-	a.addrLookup[addrStr] = ka
+	a.addrLookup[ka.ID()] = ka
 
 	return true
 }
@@ -521,7 +522,7 @@ func (a *AddrBook) removeFromBucket(ka *knownAddress, bucketType byte, bucketIdx
 		} else {
 			a.nOld--
 		}
-		delete(a.addrLookup, ka.Addr.String())
+		delete(a.addrLookup, ka.ID())
 	}
 }
 
@@ -536,7 +537,7 @@ func (a *AddrBook) removeFromAllBuckets(ka *knownAddress) {
 	} else {
 		a.nOld--
 	}
-	delete(a.addrLookup, ka.Addr.String())
+	delete(a.addrLookup, ka.ID())
 }
 
 func (a *AddrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
@@ -559,7 +560,7 @@ func (a *AddrBook) addAddress(addr, src *NetAddress) error {
 		return fmt.Errorf("Cannot add ourselves with address %v", addr)
 	}
 
-	ka := a.addrLookup[addr.String()]
+	ka := a.addrLookup[addr.ID]
 
 	if ka != nil {
 		// Already old.
@@ -768,6 +769,10 @@ func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
 	}
 }
 
+func (ka *knownAddress) ID() ID {
+	return ka.Addr.ID
+}
+
 func (ka *knownAddress) isOld() bool {
 	return ka.BucketType == bucketTypeOld
 }
@@ -862,4 +867,16 @@ func (ka *knownAddress) isBad() bool {
 	}
 
 	return false
+}
+
+//-----------------------------------------------------------------------------
+
+// doubleSha256 calculates sha256(sha256(b)) and returns the resulting bytes.
+func doubleSha256(b []byte) []byte {
+	hasher := sha256.New()
+	hasher.Write(b) // nolint: errcheck, gas
+	sum := hasher.Sum(nil)
+	hasher.Reset()
+	hasher.Write(sum) // nolint: errcheck, gas
+	return hasher.Sum(nil)
 }

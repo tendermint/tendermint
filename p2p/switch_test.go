@@ -28,7 +28,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerKey string
+	PeerID  ID
 	Bytes   []byte
 	Counter int
 }
@@ -77,7 +77,7 @@ func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
 		//fmt.Printf("Received: %X, %X\n", chID, msgBytes)
-		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.Key(), msgBytes, tr.msgsCounter})
+		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.ID(), msgBytes, tr.msgsCounter})
 		tr.msgsCounter++
 	}
 }
@@ -200,7 +200,7 @@ func TestConnPubKeyFilter(t *testing.T) {
 	c1, c2 := netPipe()
 
 	// set pubkey filter
-	s1.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
+	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
 		if bytes.Equal(pubkey.Bytes(), s2.nodeInfo.PubKey.Bytes()) {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
@@ -232,11 +232,11 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, DefaultPeerConfig(), false)
 	require.Nil(err)
 	err = sw.addPeer(peer)
 	require.Nil(err)
@@ -259,12 +259,11 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
-	peer.makePersistent()
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, DefaultPeerConfig(), true)
 	require.Nil(err)
 	err = sw.addPeer(peer)
 	require.Nil(err)

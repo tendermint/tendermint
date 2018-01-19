@@ -54,7 +54,7 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 }
 
 type ResultStatus struct {
-	NodeInfo          *p2p.NodeInfo `json:"node_info"`
+	NodeInfo          p2p.NodeInfo  `json:"node_info"`
 	PubKey            crypto.PubKey `json:"pub_key"`
 	LatestBlockHash   data.Bytes    `json:"latest_block_hash"`
 	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
@@ -64,7 +64,7 @@ type ResultStatus struct {
 }
 
 func (s *ResultStatus) TxIndexEnabled() bool {
-	if s == nil || s.NodeInfo == nil {
+	if s == nil {
 		return false
 	}
 	for _, s := range s.NodeInfo.Other {
@@ -86,6 +86,10 @@ type ResultDialSeeds struct {
 	Log string `json:"log"`
 }
 
+type ResultDialPeers struct {
+	Log string `json:"log"`
+}
+
 type Peer struct {
 	p2p.NodeInfo     `json:"node_info"`
 	IsOutbound       bool                 `json:"is_outbound"`
@@ -99,7 +103,7 @@ type ResultValidators struct {
 
 type ResultDumpConsensusState struct {
 	RoundState      *cstypes.RoundState                `json:"round_state"`
-	PeerRoundStates map[string]*cstypes.PeerRoundState `json:"peer_round_states"`
+	PeerRoundStates map[p2p.ID]*cstypes.PeerRoundState `json:"peer_round_states"`
 }
 
 type ResultBroadcastTx struct {

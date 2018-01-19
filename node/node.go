@@ -96,7 +96,6 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	privKey          crypto.PrivKeyEd25519   // local node's p2p key
 	sw               *p2p.Switch             // p2p connections
 	addrBook         *p2p.AddrBook           // known peers
 	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
@@ -169,9 +168,6 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
-
-	// Generate node PrivKey
-	privKey := crypto.GenPrivKeyEd25519()
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -255,7 +251,12 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
-		pexReactor := p2p.NewPEXReactor(addrBook)
+		var seeds []string
+		if config.P2P.Seeds != "" {
+			seeds = strings.Split(config.P2P.Seeds, ",")
+		}
+		pexReactor := p2p.NewPEXReactor(addrBook,
+			&p2p.PEXReactorConfig{Seeds: seeds})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -275,7 +276,7 @@ func NewNode(config *cfg.Config,
 			}
 			return nil
 		})
-		sw.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
+		sw.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
 			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
 			if err != nil {
 				return err
@@ -328,7 +329,6 @@ func NewNode(config *cfg.Config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		privKey:          privKey,
 		sw:               sw,
 		addrBook:         addrBook,
 		trustMetricStore: trustMetricStore,
@@ -371,19 +371,26 @@ func (n *Node) OnStart() error {
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
+	// Generate node PrivKey
+	// TODO: pass in like priv_val
+	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
+	if err != nil {
+		return err
+	}
+	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
+
 	// Start the switch
-	n.sw.SetNodeInfo(n.makeNodeInfo())
-	n.sw.SetNodePrivKey(n.privKey)
+	n.sw.SetNodeInfo(n.makeNodeInfo(nodeKey.PubKey()))
+	n.sw.SetNodeKey(nodeKey)
 	err = n.sw.Start()
 	if err != nil {
 		return err
 	}
 
-	// If seeds exist, add them to the address book and dial out
-	if n.config.P2P.Seeds != "" {
-		// dial out
-		seeds := strings.Split(n.config.P2P.Seeds, ",")
-		if err := n.DialSeeds(seeds); err != nil {
+	// Always connect to persistent peers
+	if n.config.P2P.PersistentPeers != "" {
+		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.PersistentPeers, ","), true)
+		if err != nil {
 			return err
 		}
 	}
@@ -534,16 +541,16 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func (n *Node) makeNodeInfo() *p2p.NodeInfo {
+func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
-	nodeInfo := &p2p.NodeInfo{
-		PubKey:  n.privKey.PubKey().Unwrap().(crypto.PubKeyEd25519),
-		Moniker: n.config.Moniker,
+	nodeInfo := p2p.NodeInfo{
+		PubKey:  pubKey,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
+		Moniker: n.config.Moniker,
 		Other: []string{
 			cmn.Fmt("wire_version=%v", wire.Version),
 			cmn.Fmt("p2p_version=%v", p2p.Version),
@@ -571,13 +578,8 @@ func (n *Node) makeNodeInfo() *p2p.NodeInfo {
 //------------------------------------------------------------------------------
 
 // NodeInfo returns the Node's Info from the Switch.
-func (n *Node) NodeInfo() *p2p.NodeInfo {
+func (n *Node) NodeInfo() p2p.NodeInfo {
 	return n.sw.NodeInfo()
-}
-
-// DialSeeds dials the given seeds on the Switch.
-func (n *Node) DialSeeds(seeds []string) error {
-	return n.sw.DialSeeds(n.addrBook, seeds)
 }
 
 //------------------------------------------------------------------------------

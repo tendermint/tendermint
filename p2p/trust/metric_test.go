@@ -68,7 +68,9 @@ func TestTrustMetricStopPause(t *testing.T) {
 	tt.NextTick()
 	tm.Pause()
 
+	// could be 1 or 2 because Pause and NextTick race
 	first := tm.Copy().numIntervals
+
 	// Allow more time to pass and check the intervals are unchanged
 	tt.NextTick()
 	tt.NextTick()

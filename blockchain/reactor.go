@@ -52,7 +52,7 @@ type BlockchainReactor struct {
 	pool       *BlockPool
 	fastSync   bool
 	requestsCh chan BlockRequest
-	timeoutsCh chan string
+	timeoutsCh chan p2p.ID
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -62,7 +62,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 	}
 
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
-	timeoutsCh := make(chan string, defaultChannelCapacity)
+	timeoutsCh := make(chan p2p.ID, defaultChannelCapacity)
 	pool := NewBlockPool(
 		store.Height()+1,
 		requestsCh,
@@ -131,7 +131,7 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 
 // RemovePeer implements Reactor by removing peer from the pool.
 func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	bcR.pool.RemovePeer(peer.Key())
+	bcR.pool.RemovePeer(peer.ID())
 }
 
 // respondToPeer loads a block and sends it to the requesting peer,
@@ -170,7 +170,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 	case *bcBlockResponseMessage:
 		// Got a block.
-		bcR.pool.AddBlock(src.Key(), msg.Block, len(msgBytes))
+		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
 		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
@@ -179,7 +179,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
-		bcR.pool.SetPeerHeight(src.Key(), msg.Height)
+		bcR.pool.SetPeerHeight(src.ID(), msg.Height)
 	default:
 		bcR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}

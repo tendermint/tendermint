@@ -24,13 +24,13 @@ Here are the steps to setting up a testnet manually:
    ``tendermint gen_validator``
 4) Compile a list of public keys for each validator into a
    ``genesis.json`` file.
-5) Run ``tendermint node --p2p.seeds=< seed addresses >`` on each node,
-   where ``< seed addresses >`` is a comma separated list of the IP:PORT
+5) Run ``tendermint node --p2p.persistent_peers=< peer addresses >`` on each node,
+   where ``< peer addresses >`` is a comma separated list of the IP:PORT
    combination for each node. The default port for Tendermint is
    ``46656``. Thus, if the IP addresses of your nodes were
    ``192.168.0.1, 192.168.0.2, 192.168.0.3, 192.168.0.4``, the command
    would look like:
-   ``tendermint node --p2p.seeds=192.168.0.1:46656,192.168.0.2:46656,192.168.0.3:46656,192.168.0.4:46656``.
+   ``tendermint node --p2p.persistent_peers=192.168.0.1:46656,192.168.0.2:46656,192.168.0.3:46656,192.168.0.4:46656``.
 
 After a few seconds, all the nodes should connect to eachother and start
 making blocks! For more information, see the Tendermint Networks section

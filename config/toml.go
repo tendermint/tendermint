@@ -87,6 +87,9 @@ genesis_file = "{{ .BaseConfig.Genesis }}"
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
 priv_validator_file = "{{ .BaseConfig.PrivValidator }}"
 
+# Path to the JSON file containing the private key to use for node authentication in the p2p protocol
+node_key_file = "{{ .BaseConfig.NodeKey}}"
+
 # Mechanism to connect to the ABCI application: socket | grpc
 abci = "{{ .BaseConfig.ABCI }}"
 
@@ -120,6 +123,9 @@ laddr = "{{ .P2P.ListenAddress }}"
 
 # Comma separated list of seed nodes to connect to
 seeds = ""
+
+# Comma separated list of nodes to keep persistent connections to
+persistent_peers = ""
 
 # Path to address book
 addr_book_file = "{{ .P2P.AddrBook }}"

@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"bytes"
 	"io"
 	"testing"
 
@@ -32,10 +31,10 @@ func makeDummyConnPair() (fooConn, barConn dummyConn) {
 
 func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection) {
 	fooConn, barConn := makeDummyConnPair()
-	fooPrvKey := crypto.GenPrivKeyEd25519()
-	fooPubKey := fooPrvKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
-	barPrvKey := crypto.GenPrivKeyEd25519()
-	barPubKey := barPrvKey.PubKey().Unwrap().(crypto.PubKeyEd25519)
+	fooPrvKey := crypto.GenPrivKeyEd25519().Wrap()
+	fooPubKey := fooPrvKey.PubKey()
+	barPrvKey := crypto.GenPrivKeyEd25519().Wrap()
+	barPubKey := barPrvKey.PubKey()
 
 	cmn.Parallel(
 		func() {
@@ -46,7 +45,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 				return
 			}
 			remotePubBytes := fooSecConn.RemotePubKey()
-			if !bytes.Equal(remotePubBytes[:], barPubKey[:]) {
+			if !remotePubBytes.Equals(barPubKey) {
 				tb.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
 					barPubKey, fooSecConn.RemotePubKey())
 			}
@@ -59,7 +58,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 				return
 			}
 			remotePubBytes := barSecConn.RemotePubKey()
-			if !bytes.Equal(remotePubBytes[:], fooPubKey[:]) {
+			if !remotePubBytes.Equals(fooPubKey) {
 				tb.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
 					fooPubKey, barSecConn.RemotePubKey())
 			}
@@ -93,7 +92,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	genNodeRunner := func(nodeConn dummyConn, nodeWrites []string, nodeReads *[]string) func() {
 		return func() {
 			// Node handskae
-			nodePrvKey := crypto.GenPrivKeyEd25519()
+			nodePrvKey := crypto.GenPrivKeyEd25519().Wrap()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)

@@ -121,7 +121,7 @@ func (wal *baseWAL) Save(msg WALMessage) {
 	if wal.light {
 		// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
 		if mi, ok := msg.(msgInfo); ok {
-			if mi.PeerKey != "" {
+			if mi.PeerID != "" {
 				return
 			}
 		}

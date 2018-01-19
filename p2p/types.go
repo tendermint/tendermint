@@ -11,18 +11,35 @@ import (
 
 const maxNodeInfoSize = 10240 // 10Kb
 
+// NodeInfo is the basic node information exchanged
+// between two peers during the Tendermint P2P handshake.
 type NodeInfo struct {
-	PubKey     crypto.PubKeyEd25519 `json:"pub_key"`
-	Moniker    string               `json:"moniker"`
-	Network    string               `json:"network"`
-	RemoteAddr string               `json:"remote_addr"`
-	ListenAddr string               `json:"listen_addr"`
-	Version    string               `json:"version"` // major.minor.revision
-	Other      []string             `json:"other"`   // other application specific data
+	// Authenticate
+	PubKey     crypto.PubKey `json:"pub_key"`     // authenticated pubkey
+	ListenAddr string        `json:"listen_addr"` // accepting incoming
+
+	// Check compatibility
+	Network string `json:"network"` // network/chain ID
+	Version string `json:"version"` // major.minor.revision
+
+	// Sanitize
+	Moniker string   `json:"moniker"` // arbitrary moniker
+	Other   []string `json:"other"`   // other application specific data
+}
+
+// Validate checks the self-reported NodeInfo is safe.
+// It returns an error if the info.PubKey doesn't match the given pubKey.
+// TODO: constraints for Moniker/Other? Or is that for the UI ?
+func (info NodeInfo) Validate(pubKey crypto.PubKey) error {
+	if !info.PubKey.Equals(pubKey) {
+		return fmt.Errorf("info.PubKey (%v) doesn't match peer.PubKey (%v)",
+			info.PubKey, pubKey)
+	}
+	return nil
 }
 
 // CONTRACT: two nodes are compatible if the major/minor versions match and network match
-func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
+func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	iMajor, iMinor, _, iErr := splitVersion(info.Version)
 	oMajor, oMinor, _, oErr := splitVersion(other.Version)
 
@@ -54,12 +71,26 @@ func (info *NodeInfo) CompatibleWith(other *NodeInfo) error {
 	return nil
 }
 
-func (info *NodeInfo) ListenHost() string {
+func (info NodeInfo) ID() ID {
+	return PubKeyToID(info.PubKey)
+}
+
+func (info NodeInfo) NetAddress() *NetAddress {
+	id := PubKeyToID(info.PubKey)
+	addr := info.ListenAddr
+	netAddr, err := NewNetAddressString(IDAddressString(id, addr))
+	if err != nil {
+		panic(err) // everything should be well formed by now
+	}
+	return netAddr
+}
+
+func (info NodeInfo) ListenHost() string {
 	host, _, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
 	return host
 }
 
-func (info *NodeInfo) ListenPort() int {
+func (info NodeInfo) ListenPort() int {
 	_, port, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
 	port_i, err := strconv.Atoi(port)
 	if err != nil {
@@ -69,7 +100,7 @@ func (info *NodeInfo) ListenPort() int {
 }
 
 func (info NodeInfo) String() string {
-	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [remote %v, listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.RemoteAddr, info.ListenAddr, info.Version, info.Other)
+	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {

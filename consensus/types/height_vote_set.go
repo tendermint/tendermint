@@ -4,6 +4,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -35,7 +36,7 @@ type HeightVoteSet struct {
 	mtx               sync.Mutex
 	round             int                  // max tracked round
 	roundVoteSets     map[int]RoundVoteSet // keys: [0...round]
-	peerCatchupRounds map[string][]int     // keys: peer.Key; values: at most 2 rounds
+	peerCatchupRounds map[p2p.ID][]int     // keys: peer.ID; values: at most 2 rounds
 }
 
 func NewHeightVoteSet(chainID string, height int64, valSet *types.ValidatorSet) *HeightVoteSet {
@@ -53,7 +54,7 @@ func (hvs *HeightVoteSet) Reset(height int64, valSet *types.ValidatorSet) {
 	hvs.height = height
 	hvs.valSet = valSet
 	hvs.roundVoteSets = make(map[int]RoundVoteSet)
-	hvs.peerCatchupRounds = make(map[string][]int)
+	hvs.peerCatchupRounds = make(map[p2p.ID][]int)
 
 	hvs.addRound(0)
 	hvs.round = 0
@@ -101,8 +102,8 @@ func (hvs *HeightVoteSet) addRound(round int) {
 }
 
 // Duplicate votes return added=false, err=nil.
-// By convention, peerKey is "" if origin is self.
-func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerKey string) (added bool, err error) {
+// By convention, peerID is "" if origin is self.
+func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(vote.Type) {
@@ -110,10 +111,10 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerKey string) (added bool,
 	}
 	voteSet := hvs.getVoteSet(vote.Round, vote.Type)
 	if voteSet == nil {
-		if rndz := hvs.peerCatchupRounds[peerKey]; len(rndz) < 2 {
+		if rndz := hvs.peerCatchupRounds[peerID]; len(rndz) < 2 {
 			hvs.addRound(vote.Round)
 			voteSet = hvs.getVoteSet(vote.Round, vote.Type)
-			hvs.peerCatchupRounds[peerKey] = append(rndz, vote.Round)
+			hvs.peerCatchupRounds[peerID] = append(rndz, vote.Round)
 		} else {
 			// Peer has sent a vote that does not match our round,
 			// for more than one round.  Bad peer!
@@ -206,7 +207,7 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 // NOTE: if there are too many peers, or too much peer churn,
 // this can cause memory issues.
 // TODO: implement ability to remove peers too
-func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID string, blockID types.BlockID) {
+func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID p2p.ID, blockID types.BlockID) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(type_) {
