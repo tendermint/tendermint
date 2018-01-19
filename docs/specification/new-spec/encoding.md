@@ -6,6 +6,9 @@ Tendermint aims to encode data structures in a manner similar to how the corresp
 Variable length items are length-prefixed.
 While the encoding was inspired by Go, it is easily implemented in other languages as well given its intuitive design.
 
+XXX: This is changing to use real varints and 4-byte-prefixes.
+See https://github.com/tendermint/go-wire/tree/sdk2.
+
 ### Fixed Length Integers
 
 Fixed length integers are encoded in Big-Endian using the specified number of bytes.
@@ -94,13 +97,13 @@ encode([]string{"abc", "efg"})  == [0x01, 0x02, 0x01, 0x03, 0x61, 0x62, 0x63, 0x
 ```
 
 ### BitArray
-BitArray is encoded as an `int` of the number of bits, and with an array of `uint64` to encode 
+BitArray is encoded as an `int` of the number of bits, and with an array of `uint64` to encode
 value of each array element.
 
 ```
 type BitArray struct {
-    Bits  int      
-    Elems []uint64 
+    Bits  int
+    Elems []uint64
 }
 ```
 
@@ -192,8 +195,8 @@ MakeParts(object, partSize)
 
 ```
 type Part struct {
-	Index int                
-	Bytes byte[]         
-	Proof byte[]             
+	Index int
+	Bytes byte[]
+	Proof byte[]
 }
 ```
