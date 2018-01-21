@@ -195,7 +195,8 @@ func (pool *BlockPool) PopRequest() {
 
 // Invalidates the block at pool.height,
 // Remove the peer and redo request from others.
-func (pool *BlockPool) RedoRequest(height int64) {
+// Returns the ID of the removed peer.
+func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
 	pool.mtx.Lock()
 	defer pool.mtx.Unlock()
 
@@ -205,8 +206,8 @@ func (pool *BlockPool) RedoRequest(height int64) {
 		cmn.PanicSanity("Expected block to be non-nil")
 	}
 	// RemovePeer will redo all requesters associated with this peer.
-	// TODO: record this malfeasance
 	pool.removePeer(request.peerID)
+	return request.peerID
 }
 
 // TODO: ensure that blocks come in order for each peer.

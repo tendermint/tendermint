@@ -291,7 +291,7 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 // this can cause memory issues.
 // TODO: implement ability to remove peers too
 // NOTE: VoteSet must not be nil
-func (voteSet *VoteSet) SetPeerMaj23(peerID p2p.ID, blockID BlockID) {
+func (voteSet *VoteSet) SetPeerMaj23(peerID p2p.ID, blockID BlockID) error {
 	if voteSet == nil {
 		cmn.PanicSanity("SetPeerMaj23() on nil VoteSet")
 	}
@@ -303,9 +303,10 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID p2p.ID, blockID BlockID) {
 	// Make sure peer hasn't already told us something.
 	if existing, ok := voteSet.peerMaj23s[peerID]; ok {
 		if existing.Equals(blockID) {
-			return // Nothing to do
+			return nil // Nothing to do
 		} else {
-			return // TODO bad peer!
+			return fmt.Errorf("SetPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
+				peerID, blockID, existing)
 		}
 	}
 	voteSet.peerMaj23s[peerID] = blockID
@@ -314,7 +315,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID p2p.ID, blockID BlockID) {
 	votesByBlock, ok := voteSet.votesByBlock[blockKey]
 	if ok {
 		if votesByBlock.peerMaj23 {
-			return // Nothing to do
+			return nil // Nothing to do
 		} else {
 			votesByBlock.peerMaj23 = true
 			// No need to copy votes, already there.
@@ -324,6 +325,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID p2p.ID, blockID BlockID) {
 		voteSet.votesByBlock[blockKey] = votesByBlock
 		// No need to copy votes, no votes to copy over.
 	}
+	return nil
 }
 
 func (voteSet *VoteSet) BitArray() *cmn.BitArray {

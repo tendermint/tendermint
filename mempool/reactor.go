@@ -101,8 +101,8 @@ type PeerState interface {
 }
 
 // Send new mempool txs to peer.
-// TODO: Handle mempool or reactor shutdown?
-// As is this routine may block forever if no new txs come in.
+// TODO: Handle mempool or reactor shutdown - as is this routine
+// may block forever if no new txs come in.
 func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 	if !memR.config.Broadcast {
 		return

@@ -3,6 +3,7 @@ package blockchain
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 	"time"
@@ -171,7 +172,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
 
-	// TODO: improve logic to satisfy megacheck
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
 		if queued := bcR.respondToPeer(msg, src); !queued {
@@ -287,16 +287,20 @@ FOR_LOOP:
 					chainID, firstID, first.Height, second.LastCommit)
 				if err != nil {
 					bcR.Logger.Error("Error in validation", "err", err)
-					bcR.pool.RedoRequest(first.Height)
+					peerID := bcR.pool.RedoRequest(first.Height)
+					peer := bcR.Switch.Peers().Get(peerID)
+					if peer != nil {
+						bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
+					}
 					break SYNC_LOOP
 				} else {
 					bcR.pool.PopRequest()
 
+					// TODO: batch saves so we dont persist to disk every block
 					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-					// NOTE: we could improve performance if we
-					// didn't make the app commit to disk every block
-					// ... but we would need a way to get the hash without it persisting
+					// TODO: same thing for app - but we would need a way to
+					// get the hash without persisting the state
 					var err error
 					state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 					if err != nil {

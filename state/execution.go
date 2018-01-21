@@ -190,11 +190,10 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	// TODO: determine which validators were byzantine
 	byzantineVals := make([]*abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		byzantineVals[i] = &abci.Evidence{
-			PubKey: ev.Address(), // XXX
+			PubKey: ev.Address(), // XXX/TODO
 			Height: ev.Height(),
 		}
 	}
