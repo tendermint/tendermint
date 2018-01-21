@@ -35,7 +35,7 @@ const (
 //-----------------------------------------------------------------------------
 
 type AddrBook interface {
-	AddAddress(addr *types.NetAddress, src *types.NetAddress)
+	AddAddress(addr *types.NetAddress, src *types.NetAddress) error
 }
 
 //-----------------------------------------------------------------------------

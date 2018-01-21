@@ -22,7 +22,9 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/p2p/trust"
+	p2ptypes "github.com/tendermint/tendermint/p2p/types"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -97,7 +99,7 @@ type Node struct {
 
 	// network
 	sw               *p2p.Switch             // p2p connections
-	addrBook         *p2p.AddrBook           // known peers
+	addrBook         pex.AddrBook            // known peers
 	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
 
 	// services
@@ -238,10 +240,10 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 
 	// Optionally, start the pex reactor
-	var addrBook *p2p.AddrBook
+	var addrBook pex.AddrBook
 	var trustMetricStore *trust.TrustMetricStore
 	if config.P2P.PexReactor {
-		addrBook = p2p.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
+		addrBook = pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
 		// Get the trust metric history data
@@ -256,8 +258,8 @@ func NewNode(config *cfg.Config,
 		if config.P2P.Seeds != "" {
 			seeds = strings.Split(config.P2P.Seeds, ",")
 		}
-		pexReactor := p2p.NewPEXReactor(addrBook,
-			&p2p.PEXReactorConfig{Seeds: seeds})
+		pexReactor := pex.NewPEXReactor(addrBook,
+			&pex.PEXReactorConfig{Seeds: seeds})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -374,7 +376,7 @@ func (n *Node) OnStart() error {
 
 	// Generate node PrivKey
 	// TODO: pass in like priv_val
-	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
+	nodeKey, err := p2ptypes.LoadOrGenNodeKey(n.config.NodeKeyFile())
 	if err != nil {
 		return err
 	}

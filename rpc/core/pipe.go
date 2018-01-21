@@ -32,7 +32,7 @@ type P2P interface {
 	NumPeers() (outbound, inbound, dialig int)
 	NodeInfo() p2p.NodeInfo
 	IsListening() bool
-	DialPeersAsync(*p2p.AddrBook, []string, bool) error
+	DialPeersAsync(p2p.AddrBook, []string, bool) error
 }
 
 //----------------------------------------------
@@ -54,7 +54,7 @@ var (
 	// objects
 	pubKey           crypto.PubKey
 	genDoc           *types.GenesisDoc // cache the genesis structure
-	addrBook         *p2p.AddrBook
+	addrBook         p2p.AddrBook
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
@@ -94,7 +94,7 @@ func SetGenesisDoc(doc *types.GenesisDoc) {
 	genDoc = doc
 }
 
-func SetAddrBook(book *p2p.AddrBook) {
+func SetAddrBook(book p2p.AddrBook) {
 	addrBook = book
 }
 
