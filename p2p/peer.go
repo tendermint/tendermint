@@ -48,7 +48,8 @@ type peer struct {
 	persistent bool
 	config     *PeerConfig
 
-	nodeInfo NodeInfo
+	nodeInfo NodeInfo  // peer's node info
+	channels []byte    // channels the peer knows about
 	Data     *cmn.CMap // User data.
 }
 
@@ -204,6 +205,8 @@ func (p *peer) Send(chID byte, msg interface{}) bool {
 		// see Switch#Broadcast, where we fetch the list of peers and loop over
 		// them - while we're looping, one peer may be removed and stopped.
 		return false
+	} else if !p.hasChannel(chID) {
+		return false
 	}
 	return p.mconn.Send(chID, msg)
 }
@@ -212,6 +215,8 @@ func (p *peer) Send(chID byte, msg interface{}) bool {
 // false if the send queue is full.
 func (p *peer) TrySend(chID byte, msg interface{}) bool {
 	if !p.IsRunning() {
+		return false
+	} else if !p.hasChannel(chID) {
 		return false
 	}
 	return p.mconn.TrySend(chID, msg)
@@ -225,6 +230,17 @@ func (p *peer) Get(key string) interface{} {
 // Set sets the data for the given key.
 func (p *peer) Set(key string, data interface{}) {
 	p.Data.Set(key, data)
+}
+
+// hasChannel returns true if the peer reported
+// knowing about the given chID.
+func (p *peer) hasChannel(chID byte) bool {
+	for _, ch := range p.channels {
+		if ch == chID {
+			return true
+		}
+	}
+	return false
 }
 
 //---------------------------------------------------
@@ -269,8 +285,15 @@ func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) err
 		return errors.Wrap(err, "Error removing deadline")
 	}
 
-	p.nodeInfo = peerNodeInfo
+	p.setNodeInfo(peerNodeInfo)
 	return nil
+}
+
+func (p *peer) setNodeInfo(nodeInfo NodeInfo) {
+	p.nodeInfo = nodeInfo
+	// cache the channels so we dont copy nodeInfo
+	// every time we check hasChannel
+	p.channels = nodeInfo.Channels
 }
 
 // Addr returns peer's remote network address.
