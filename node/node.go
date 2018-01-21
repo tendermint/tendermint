@@ -24,7 +24,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/p2p/trust"
-	p2ptypes "github.com/tendermint/tendermint/p2p/types"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
@@ -376,7 +375,7 @@ func (n *Node) OnStart() error {
 
 	// Generate node PrivKey
 	// TODO: pass in like priv_val
-	nodeKey, err := p2ptypes.LoadOrGenNodeKey(n.config.NodeKeyFile())
+	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
 	if err != nil {
 		return err
 	}

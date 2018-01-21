@@ -1,4 +1,4 @@
-package tmconn
+package conn
 
 import (
 	"net"

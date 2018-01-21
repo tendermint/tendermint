@@ -15,9 +15,8 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
-
-	"github.com/tendermint/tendermint/p2p/types"
 )
 
 const (
@@ -32,25 +31,25 @@ type AddrBook interface {
 	cmn.Service
 
 	// Add our own addresses so we don't later add ourselves
-	AddOurAddress(*types.NetAddress)
+	AddOurAddress(*p2p.NetAddress)
 
 	// Add and remove an address
-	AddAddress(addr *types.NetAddress, src *types.NetAddress) error
-	RemoveAddress(addr *types.NetAddress)
+	AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
+	RemoveAddress(addr *p2p.NetAddress)
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
 
 	// Pick an address to dial
-	PickAddress(newBias int) *types.NetAddress
+	PickAddress(newBias int) *p2p.NetAddress
 
 	// Mark address
-	MarkGood(*types.NetAddress)
-	MarkAttempt(*types.NetAddress)
-	MarkBad(*types.NetAddress)
+	MarkGood(*p2p.NetAddress)
+	MarkAttempt(*p2p.NetAddress)
+	MarkBad(*p2p.NetAddress)
 
 	// Send a selection of addresses to peers
-	GetSelection() []*types.NetAddress
+	GetSelection() []*p2p.NetAddress
 
 	// TODO: remove
 	ListOfKnownAddresses() []*knownAddress
@@ -71,8 +70,8 @@ type addrBook struct {
 	// accessed concurrently
 	mtx        sync.Mutex
 	rand       *rand.Rand
-	ourAddrs   map[string]*types.NetAddress
-	addrLookup map[types.ID]*knownAddress // new & old
+	ourAddrs   map[string]*p2p.NetAddress
+	addrLookup map[p2p.ID]*knownAddress // new & old
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
 	nOld       int
@@ -86,8 +85,8 @@ type addrBook struct {
 func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 	am := &addrBook{
 		rand:              rand.New(rand.NewSource(time.Now().UnixNano())), // TODO: seed from outside
-		ourAddrs:          make(map[string]*types.NetAddress),
-		addrLookup:        make(map[types.ID]*knownAddress),
+		ourAddrs:          make(map[string]*p2p.NetAddress),
+		addrLookup:        make(map[p2p.ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
 	}
@@ -139,7 +138,7 @@ func (a *addrBook) Wait() {
 //-------------------------------------------------------
 
 // AddOurAddress one of our addresses.
-func (a *addrBook) AddOurAddress(addr *types.NetAddress) {
+func (a *addrBook) AddOurAddress(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	a.Logger.Info("Add our address to book", "addr", addr)
@@ -148,14 +147,14 @@ func (a *addrBook) AddOurAddress(addr *types.NetAddress) {
 
 // AddAddress implements AddrBook - adds the given address as received from the given source.
 // NOTE: addr must not be nil
-func (a *addrBook) AddAddress(addr *types.NetAddress, src *types.NetAddress) error {
+func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	return a.addAddress(addr, src)
 }
 
 // RemoveAddress implements AddrBook - removes the address from the book.
-func (a *addrBook) RemoveAddress(addr *types.NetAddress) {
+func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.ID]
@@ -177,7 +176,7 @@ func (a *addrBook) NeedMoreAddrs() bool {
 // and determines how biased we are to pick an address from a new bucket.
 // PickAddress returns nil if the AddrBook is empty or if we try to pick
 // from an empty bucket.
-func (a *addrBook) PickAddress(newBias int) *types.NetAddress {
+func (a *addrBook) PickAddress(newBias int) *p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -223,7 +222,7 @@ func (a *addrBook) PickAddress(newBias int) *types.NetAddress {
 
 // MarkGood implements AddrBook - it marks the peer as good and
 // moves it into an "old" bucket.
-func (a *addrBook) MarkGood(addr *types.NetAddress) {
+func (a *addrBook) MarkGood(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.ID]
@@ -237,7 +236,7 @@ func (a *addrBook) MarkGood(addr *types.NetAddress) {
 }
 
 // MarkAttempt implements AddrBook - it marks that an attempt was made to connect to the address.
-func (a *addrBook) MarkAttempt(addr *types.NetAddress) {
+func (a *addrBook) MarkAttempt(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.ID]
@@ -249,13 +248,13 @@ func (a *addrBook) MarkAttempt(addr *types.NetAddress) {
 
 // MarkBad implements AddrBook. Currently it just ejects the address.
 // TODO: black list for some amount of time
-func (a *addrBook) MarkBad(addr *types.NetAddress) {
+func (a *addrBook) MarkBad(addr *p2p.NetAddress) {
 	a.RemoveAddress(addr)
 }
 
 // GetSelection implements AddrBook.
 // It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
-func (a *addrBook) GetSelection() []*types.NetAddress {
+func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -263,7 +262,7 @@ func (a *addrBook) GetSelection() []*types.NetAddress {
 		return nil
 	}
 
-	allAddr := make([]*types.NetAddress, a.size())
+	allAddr := make([]*p2p.NetAddress, a.size())
 	i := 0
 	for _, ka := range a.addrLookup {
 		allAddr[i] = ka.Addr
@@ -466,7 +465,7 @@ func (a *addrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 
 // adds the address to a "new" bucket. if its already in one,
 // it only adds it probabilistically
-func (a *addrBook) addAddress(addr, src *types.NetAddress) error {
+func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	if a.routabilityStrict && !addr.Routable() {
 		return fmt.Errorf("Cannot add non-routable address %v", addr)
 	}
@@ -573,7 +572,7 @@ func (a *addrBook) moveToOld(ka *knownAddress) {
 
 // doublesha256(  key + sourcegroup +
 //                int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
-func (a *addrBook) calcNewBucket(addr, src *types.NetAddress) int {
+func (a *addrBook) calcNewBucket(addr, src *p2p.NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(a.groupKey(addr))...)
@@ -594,7 +593,7 @@ func (a *addrBook) calcNewBucket(addr, src *types.NetAddress) int {
 
 // doublesha256(  key + group +
 //                int64(doublesha256(key + addr))%buckets_per_group  ) % num_old_buckets
-func (a *addrBook) calcOldBucket(addr *types.NetAddress) int {
+func (a *addrBook) calcOldBucket(addr *p2p.NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(addr.String())...)
@@ -616,7 +615,7 @@ func (a *addrBook) calcOldBucket(addr *types.NetAddress) int {
 // This is the /16 for IPv4, the /32 (/36 for he.net) for IPv6, the string
 // "local" for a local address and the string "unroutable" for an unroutable
 // address.
-func (a *addrBook) groupKey(na *types.NetAddress) string {
+func (a *addrBook) groupKey(na *p2p.NetAddress) string {
 	if a.routabilityStrict && na.Local() {
 		return "local"
 	}

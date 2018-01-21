@@ -11,8 +11,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/p2p/tmconn"
-	"github.com/tendermint/tendermint/p2p/types"
+	"github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -35,7 +34,7 @@ const (
 //-----------------------------------------------------------------------------
 
 type AddrBook interface {
-	AddAddress(addr *types.NetAddress, src *types.NetAddress) error
+	AddAddress(addr *NetAddress, src *NetAddress) error
 }
 
 //-----------------------------------------------------------------------------
@@ -51,12 +50,12 @@ type Switch struct {
 	peerConfig   *PeerConfig
 	listeners    []Listener
 	reactors     map[string]Reactor
-	chDescs      []*tmconn.ChannelDescriptor
+	chDescs      []*conn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *cmn.CMap
-	nodeInfo     types.NodeInfo // our node info
-	nodeKey      *types.NodeKey // our node privkey
+	nodeInfo     NodeInfo // our node info
+	nodeKey      *NodeKey // our node privkey
 
 	filterConnByAddr   func(net.Addr) error
 	filterConnByPubKey func(crypto.PubKey) error
@@ -69,7 +68,7 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		config:       config,
 		peerConfig:   DefaultPeerConfig(),
 		reactors:     make(map[string]Reactor),
-		chDescs:      make([]*tmconn.ChannelDescriptor, 0),
+		chDescs:      make([]*conn.ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
@@ -143,19 +142,19 @@ func (sw *Switch) IsListening() bool {
 
 // SetNodeInfo sets the switch's NodeInfo for checking compatibility and handshaking with other nodes.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeInfo(nodeInfo types.NodeInfo) {
+func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
 // NodeInfo returns the switch's NodeInfo.
 // NOTE: Not goroutine safe.
-func (sw *Switch) NodeInfo() types.NodeInfo {
+func (sw *Switch) NodeInfo() NodeInfo {
 	return sw.nodeInfo
 }
 
 // SetNodeKey sets the switch's private key for authenticated encryption.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeKey(nodeKey *types.NodeKey) {
+func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 	sw.nodeKey = nodeKey
 }
 
@@ -314,13 +313,13 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 // Dialing
 
 // IsDialing returns true if the switch is currently dialing the given ID.
-func (sw *Switch) IsDialing(id types.ID) bool {
+func (sw *Switch) IsDialing(id ID) bool {
 	return sw.dialing.Has(string(id))
 }
 
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
 func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
-	netAddrs, errs := types.NewNetAddressStrings(peers)
+	netAddrs, errs := NewNetAddressStrings(peers)
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
@@ -357,7 +356,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 
 // DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects and authenticates successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
-func (sw *Switch) DialPeerWithAddress(addr *types.NetAddress, persistent bool) (Peer, error) {
+func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, error) {
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
 	return sw.addOutboundPeerWithConfig(addr, sw.peerConfig, persistent)
@@ -443,7 +442,7 @@ func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) er
 
 // dial the peer; make secret connection; authenticate against the dialed ID;
 // add the peer.
-func (sw *Switch) addOutboundPeerWithConfig(addr *types.NetAddress, config *PeerConfig, persistent bool) (Peer, error) {
+func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) (Peer, error) {
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config, persistent)
 	if err != nil {
@@ -457,7 +456,7 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *types.NetAddress, config *Peer
 		peer.Logger.Info("Dialed peer with unknown ID - unable to authenticate", "addr", addr)
 	} else if addr.ID != peer.ID() {
 		peer.CloseConn()
-		return nil, types.ErrSwitchAuthenticationFailure{addr, peer.ID()}
+		return nil, ErrSwitchAuthenticationFailure{addr, peer.ID()}
 	}
 
 	err = sw.addPeer(peer)
@@ -478,12 +477,12 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *types.NetAddress, config *Peer
 func (sw *Switch) addPeer(peer *peer) error {
 	// Avoid self
 	if sw.nodeKey.ID() == peer.ID() {
-		return types.ErrSwitchConnectToSelf
+		return ErrSwitchConnectToSelf
 	}
 
 	// Avoid duplicate
 	if sw.peers.Has(peer.ID()) {
-		return types.ErrSwitchDuplicatePeer
+		return ErrSwitchDuplicatePeer
 
 	}
 

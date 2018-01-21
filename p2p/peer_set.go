@@ -2,14 +2,12 @@ package p2p
 
 import (
 	"sync"
-
-	"github.com/tendermint/tendermint/p2p/types"
 )
 
 // IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
-	Has(key types.ID) bool
-	Get(key types.ID) Peer
+	Has(key ID) bool
+	Get(key ID) Peer
 	List() []Peer
 	Size() int
 }
@@ -20,7 +18,7 @@ type IPeerSet interface {
 // Iteration over the peers is super fast and thread-safe.
 type PeerSet struct {
 	mtx    sync.Mutex
-	lookup map[types.ID]*peerSetItem
+	lookup map[ID]*peerSetItem
 	list   []Peer
 }
 
@@ -32,7 +30,7 @@ type peerSetItem struct {
 // NewPeerSet creates a new peerSet with a list of initial capacity of 256 items.
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
-		lookup: make(map[types.ID]*peerSetItem),
+		lookup: make(map[ID]*peerSetItem),
 		list:   make([]Peer, 0, 256),
 	}
 }
@@ -43,7 +41,7 @@ func (ps *PeerSet) Add(peer Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	if ps.lookup[peer.ID()] != nil {
-		return types.ErrSwitchDuplicatePeer
+		return ErrSwitchDuplicatePeer
 	}
 
 	index := len(ps.list)
@@ -56,7 +54,7 @@ func (ps *PeerSet) Add(peer Peer) error {
 
 // Has returns true iff the PeerSet contains
 // the peer referred to by this peerKey.
-func (ps *PeerSet) Has(peerKey types.ID) bool {
+func (ps *PeerSet) Has(peerKey ID) bool {
 	ps.mtx.Lock()
 	_, ok := ps.lookup[peerKey]
 	ps.mtx.Unlock()
@@ -64,7 +62,7 @@ func (ps *PeerSet) Has(peerKey types.ID) bool {
 }
 
 // Get looks up a peer by the provided peerKey.
-func (ps *PeerSet) Get(peerKey types.ID) Peer {
+func (ps *PeerSet) Get(peerKey ID) Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	item, ok := ps.lookup[peerKey]

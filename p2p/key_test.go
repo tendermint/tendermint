@@ -1,4 +1,4 @@
-package types
+package p2p
 
 import (
 	"bytes"

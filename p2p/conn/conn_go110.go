@@ -1,6 +1,6 @@
 // +build go1.10
 
-package tmconn
+package conn
 
 // Go1.10 has a proper net.Conn implementation that
 // has the SetDeadline method implemented as per

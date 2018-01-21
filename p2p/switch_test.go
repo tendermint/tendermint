@@ -16,8 +16,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/p2p/tmconn"
-	"github.com/tendermint/tendermint/p2p/types"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 var (
@@ -30,7 +29,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerID  types.ID
+	PeerID  ID
 	Bytes   []byte
 	Counter int
 }
@@ -39,7 +38,7 @@ type TestReactor struct {
 	BaseReactor
 
 	mtx          sync.Mutex
-	channels     []*tmconn.ChannelDescriptor
+	channels     []*conn.ChannelDescriptor
 	peersAdded   []Peer
 	peersRemoved []Peer
 	logMessages  bool
@@ -47,7 +46,7 @@ type TestReactor struct {
 	msgsReceived map[byte][]PeerMessage
 }
 
-func NewTestReactor(channels []*tmconn.ChannelDescriptor, logMessages bool) *TestReactor {
+func NewTestReactor(channels []*conn.ChannelDescriptor, logMessages bool) *TestReactor {
 	tr := &TestReactor{
 		channels:     channels,
 		logMessages:  logMessages,
@@ -58,7 +57,7 @@ func NewTestReactor(channels []*tmconn.ChannelDescriptor, logMessages bool) *Tes
 	return tr
 }
 
-func (tr *TestReactor) GetChannels() []*tmconn.ChannelDescriptor {
+func (tr *TestReactor) GetChannels() []*conn.ChannelDescriptor {
 	return tr.channels
 }
 
@@ -102,11 +101,11 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
 	// Make two reactors of two channels each
-	sw.AddReactor("foo", NewTestReactor([]*tmconn.ChannelDescriptor{
+	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x00), Priority: 10},
 		{ID: byte(0x01), Priority: 10},
 	}, true))
-	sw.AddReactor("bar", NewTestReactor([]*tmconn.ChannelDescriptor{
+	sw.AddReactor("bar", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x02), Priority: 10},
 		{ID: byte(0x03), Priority: 10},
 	}, true))
@@ -163,7 +162,7 @@ func TestConnAddrFilter(t *testing.T) {
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := tmconn.NetPipe()
+	c1, c2 := conn.NetPipe()
 
 	s1.SetAddrFilter(func(addr net.Addr) error {
 		if addr.String() == c1.RemoteAddr().String() {
@@ -199,7 +198,7 @@ func TestConnPubKeyFilter(t *testing.T) {
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := tmconn.NetPipe()
+	c1, c2 := conn.NetPipe()
 
 	// set pubkey filter
 	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
@@ -306,11 +305,11 @@ func BenchmarkSwitches(b *testing.B) {
 
 	s1, s2 := MakeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
-		sw.AddReactor("foo", NewTestReactor([]*tmconn.ChannelDescriptor{
+		sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 			{ID: byte(0x00), Priority: 10},
 			{ID: byte(0x01), Priority: 10},
 		}, false))
-		sw.AddReactor("bar", NewTestReactor([]*tmconn.ChannelDescriptor{
+		sw.AddReactor("bar", NewTestReactor([]*conn.ChannelDescriptor{
 			{ID: byte(0x02), Priority: 10},
 			{ID: byte(0x03), Priority: 10},
 		}, false))

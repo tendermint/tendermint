@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tendermint/p2p/types"
+	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )
@@ -169,8 +169,8 @@ func TestAddrBookHandlesDuplicates(t *testing.T) {
 }
 
 type netAddressPair struct {
-	addr *types.NetAddress
-	src  *types.NetAddress
+	addr *p2p.NetAddress
+	src  *p2p.NetAddress
 }
 
 func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
@@ -181,7 +181,7 @@ func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
 	return randAddrs
 }
 
-func randIPv4Address(t *testing.T) *types.NetAddress {
+func randIPv4Address(t *testing.T) *p2p.NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
 			rand.Intn(254)+1,
@@ -190,9 +190,9 @@ func randIPv4Address(t *testing.T) *types.NetAddress {
 			rand.Intn(255),
 		)
 		port := rand.Intn(65535-1) + 1
-		id := types.ID(hex.EncodeToString(cmn.RandBytes(types.IDByteLength)))
-		idAddr := types.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
-		addr, err := types.NewNetAddressString(idAddr)
+		id := p2p.ID(hex.EncodeToString(cmn.RandBytes(p2p.IDByteLength)))
+		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
+		addr, err := p2p.NewNetAddressString(idAddr)
 		assert.Nil(t, err, "error generating rand network address")
 		if addr.Routable() {
 			return addr

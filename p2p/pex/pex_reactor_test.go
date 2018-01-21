@@ -17,8 +17,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/tmconn"
-	"github.com/tendermint/tendermint/p2p/types"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 var (
@@ -101,7 +100,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// fill the address book and add listeners
 	for _, s := range switches {
-		addr, _ := types.NewNetAddressString(s.NodeInfo().ListenAddr)
+		addr, _ := p2p.NewNetAddressString(s.NodeInfo().ListenAddr)
 		book.AddAddress(addr, addr)
 		s.AddListener(p2p.NewDefaultListener("tcp", s.NodeInfo().ListenAddr, true, log.TestingLogger()))
 	}
@@ -171,7 +170,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	r.RequestAddrs(peer)
 
 	size := book.Size()
-	addrs := []*types.NetAddress{peer.NodeInfo().NetAddress()}
+	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(size+1, book.Size())
@@ -246,7 +245,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(r.requestsSent.Has(id))
 	assert.True(sw.Peers().Has(peer.ID()))
 
-	addrs := []*types.NetAddress{peer.NodeInfo().NetAddress()}
+	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 
 	// receive some addrs. should clear the request
@@ -340,7 +339,7 @@ func TestPEXReactorCrawlStatus(t *testing.T) {
 type mockPeer struct {
 	*cmn.BaseService
 	pubKey               crypto.PubKey
-	addr                 *types.NetAddress
+	addr                 *p2p.NetAddress
 	outbound, persistent bool
 }
 
@@ -355,17 +354,17 @@ func newMockPeer() mockPeer {
 	return mp
 }
 
-func (mp mockPeer) ID() types.ID       { return types.PubKeyToID(mp.pubKey) }
+func (mp mockPeer) ID() p2p.ID         { return p2p.PubKeyToID(mp.pubKey) }
 func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
 func (mp mockPeer) IsPersistent() bool { return mp.persistent }
-func (mp mockPeer) NodeInfo() types.NodeInfo {
-	return types.NodeInfo{
+func (mp mockPeer) NodeInfo() p2p.NodeInfo {
+	return p2p.NodeInfo{
 		PubKey:     mp.pubKey,
 		ListenAddr: mp.addr.DialString(),
 	}
 }
-func (mp mockPeer) Status() tmconn.ConnectionStatus { return tmconn.ConnectionStatus{} }
-func (mp mockPeer) Send(byte, interface{}) bool     { return false }
-func (mp mockPeer) TrySend(byte, interface{}) bool  { return false }
-func (mp mockPeer) Set(string, interface{})         {}
-func (mp mockPeer) Get(string) interface{}          { return nil }
+func (mp mockPeer) Status() conn.ConnectionStatus  { return conn.ConnectionStatus{} }
+func (mp mockPeer) Send(byte, interface{}) bool    { return false }
+func (mp mockPeer) TrySend(byte, interface{}) bool { return false }
+func (mp mockPeer) Set(string, interface{})        {}
+func (mp mockPeer) Get(string) interface{}         { return nil }

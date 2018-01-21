@@ -12,18 +12,17 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
-	"github.com/tendermint/tendermint/p2p/tmconn"
-	"github.com/tendermint/tendermint/p2p/types"
+	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
 
-	ID() types.ID             // peer's cryptographic ID
-	IsOutbound() bool         // did we dial the peer
-	IsPersistent() bool       // do we redial this peer when we disconnect
-	NodeInfo() types.NodeInfo // peer's info
+	ID() ID             // peer's cryptographic ID
+	IsOutbound() bool   // did we dial the peer
+	IsPersistent() bool // do we redial this peer when we disconnect
+	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
 
 	Send(byte, interface{}) bool
@@ -49,7 +48,7 @@ type peer struct {
 	persistent bool
 	config     *PeerConfig
 
-	nodeInfo types.NodeInfo
+	nodeInfo NodeInfo
 	Data     *cmn.CMap // User data.
 }
 
@@ -79,7 +78,7 @@ func DefaultPeerConfig() *PeerConfig {
 	}
 }
 
-func newOutboundPeer(addr *types.NetAddress, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
+func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig, persistent bool) (*peer, error) {
 
 	conn, err := dial(addr, config)
@@ -174,8 +173,8 @@ func (p *peer) OnStop() {
 // Implements Peer
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
-func (p *peer) ID() types.ID {
-	return types.PubKeyToID(p.PubKey())
+func (p *peer) ID() ID {
+	return PubKeyToID(p.PubKey())
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.
@@ -189,7 +188,7 @@ func (p *peer) IsPersistent() bool {
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
-func (p *peer) NodeInfo() types.NodeInfo {
+func (p *peer) NodeInfo() NodeInfo {
 	return p.nodeInfo
 }
 
@@ -239,13 +238,13 @@ func (p *peer) CloseConn() {
 // HandshakeTimeout performs the Tendermint P2P handshake between a given node and the peer
 // by exchanging their NodeInfo. It sets the received nodeInfo on the peer.
 // NOTE: blocking
-func (p *peer) HandshakeTimeout(ourNodeInfo types.NodeInfo, timeout time.Duration) error {
+func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) error {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	if err := p.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return errors.Wrap(err, "Error setting deadline")
 	}
 
-	var peerNodeInfo types.NodeInfo
+	var peerNodeInfo NodeInfo
 	var err1 error
 	var err2 error
 	cmn.Parallel(
@@ -255,7 +254,7 @@ func (p *peer) HandshakeTimeout(ourNodeInfo types.NodeInfo, timeout time.Duratio
 		},
 		func() {
 			var n int
-			wire.ReadBinary(&peerNodeInfo, p.conn, types.MaxNodeInfoSize(), &n, &err2)
+			wire.ReadBinary(&peerNodeInfo, p.conn, MaxNodeInfoSize(), &n, &err2)
 			p.Logger.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
@@ -311,7 +310,7 @@ func (p *peer) String() string {
 //------------------------------------------------------------------
 // helper funcs
 
-func dial(addr *types.NetAddress, config *PeerConfig) (net.Conn, error) {
+func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
 	conn, err := addr.DialTimeout(config.DialTimeout * time.Second)
 	if err != nil {
 		return nil, err
