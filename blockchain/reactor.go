@@ -8,11 +8,13 @@ import (
 	"time"
 
 	wire "github.com/tendermint/go-wire"
+
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -47,18 +49,22 @@ type BlockchainReactor struct {
 	// immutable
 	initialState sm.State
 
-	blockExec  *sm.BlockExecutor
-	store      *BlockStore
-	pool       *BlockPool
-	fastSync   bool
-	requestsCh chan BlockRequest
-	timeoutsCh chan p2p.ID
+	blockExec *sm.BlockExecutor
+	store     *BlockStore
+	pool      *BlockPool
+	fastSync  bool
+
+	requestsCh <-chan BlockRequest
+	timeoutsCh <-chan p2p.ID
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore,
+	fastSync bool) *BlockchainReactor {
+
 	if state.LastBlockHeight != store.Height() {
-		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
+		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
+			store.Height()))
 	}
 
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
@@ -122,7 +128,8 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	if !peer.Send(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
+	if !peer.Send(BlockchainChannel,
+		struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
 		// doing nothing, will try later in `poolRoutine`
 	}
 	// peer is added to the pool once we receive the first
@@ -138,7 +145,9 @@ func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // if we have it. Otherwise, we'll respond saying we don't have it.
 // According to the Tendermint spec, if all nodes are honest,
 // no node should be requesting for a block that's non-existent.
-func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage, src p2p.Peer) (queued bool) {
+func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
+	src p2p.Peer) (queued bool) {
+
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		msg := &bcBlockResponseMessage{Block: block}
@@ -173,7 +182,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
+		queued := src.TrySend(BlockchainChannel,
+			struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
 		if !queued {
 			// sorry
 		}
@@ -291,9 +301,10 @@ FOR_LOOP:
 					state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 					if err != nil {
 						// TODO This is bad, are we zombie?
-						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v",
+							first.Height, first.Hash(), err))
 					}
-					blocksSynced += 1
+					blocksSynced++
 
 					// update the consensus params
 					bcR.updateConsensusParams(state.ConsensusParams)
@@ -315,7 +326,8 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bcR.Switch.Broadcast(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
+	bcR.Switch.Broadcast(BlockchainChannel,
+		struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
 	return nil
 }
 

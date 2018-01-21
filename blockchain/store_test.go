@@ -13,9 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/types"
+
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
@@ -104,7 +106,8 @@ var (
 	partSet     = block.MakePartSet(2)
 	part1       = partSet.GetPart(0)
 	part2       = partSet.GetPart(1)
-	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
+	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10,
+		Timestamp: time.Now().UTC()}}}
 )
 
 // TODO: This test should be simplified ...
@@ -124,7 +127,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	// save a block
 	block := makeBlock(bs.Height()+1, state)
 	validPartSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
+	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
+		Timestamp: time.Now().UTC()}}}
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
@@ -143,7 +147,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	// End of setup, test data
 
-	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
+	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10,
+		Timestamp: time.Now().UTC()}}}
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -263,7 +268,8 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 				db.Set(calcBlockCommitKey(commitHeight), []byte("foo-bogus"))
 			}
 			bCommit := bs.LoadBlockCommit(commitHeight)
-			return &quad{block: bBlock, seenCommit: bSeenCommit, commit: bCommit, meta: bBlockMeta}, nil
+			return &quad{block: bBlock, seenCommit: bSeenCommit, commit: bCommit,
+				meta: bBlockMeta}, nil
 		})
 
 		if subStr := tuple.wantPanic; subStr != "" {
@@ -290,10 +296,12 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			continue
 		}
 		if tuple.eraseSeenCommitInDB {
-			assert.Nil(t, qua.seenCommit, "erased the seenCommit in the DB hence we should get back a nil seenCommit")
+			assert.Nil(t, qua.seenCommit,
+				"erased the seenCommit in the DB hence we should get back a nil seenCommit")
 		}
 		if tuple.eraseCommitInDB {
-			assert.Nil(t, qua.commit, "erased the commit in the DB hence we should get back a nil commit")
+			assert.Nil(t, qua.commit,
+				"erased the commit in the DB hence we should get back a nil commit")
 		}
 	}
 }
@@ -331,7 +339,8 @@ func TestLoadBlockPart(t *testing.T) {
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved block should return a proper block")
-	require.Equal(t, gotPart.(*types.Part).Hash(), part1.Hash(), "expecting successful retrieval of previously saved block")
+	require.Equal(t, gotPart.(*types.Part).Hash(), part1.Hash(),
+		"expecting successful retrieval of previously saved block")
 }
 
 func TestLoadBlockMeta(t *testing.T) {
@@ -360,7 +369,8 @@ func TestLoadBlockMeta(t *testing.T) {
 	gotMeta, _, panicErr := doFn(loadMeta)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved blockMeta should return a proper blocMeta ")
-	require.Equal(t, binarySerializeIt(meta), binarySerializeIt(gotMeta), "expecting successful retrieval of previously saved blockMeta")
+	require.Equal(t, binarySerializeIt(meta), binarySerializeIt(gotMeta),
+		"expecting successful retrieval of previously saved blockMeta")
 }
 
 func TestBlockFetchAtHeight(t *testing.T) {
@@ -369,13 +379,15 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	block := makeBlock(bs.Height()+1, state)
 
 	partSet := block.MakePartSet(2)
-	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10, Timestamp: time.Now().UTC()}}}
+	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
+		Timestamp: time.Now().UTC()}}}
 
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
 	blockAtHeight := bs.LoadBlock(bs.Height())
-	require.Equal(t, block.Hash(), blockAtHeight.Hash(), "expecting a successful load of the last saved block")
+	require.Equal(t, block.Hash(), blockAtHeight.Hash(),
+		"expecting a successful load of the last saved block")
 
 	blockAtHeightPlus1 := bs.LoadBlock(bs.Height() + 1)
 	require.Nil(t, blockAtHeightPlus1, "expecting an unsuccessful load of Height()+1")
