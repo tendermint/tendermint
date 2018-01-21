@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
+
+	"github.com/tendermint/tendermint/p2p/addrbook"
 )
 
 const (
@@ -47,7 +49,7 @@ const (
 type PEXReactor struct {
 	BaseReactor
 
-	book              *AddrBook
+	book              *addrbook.AddrBook
 	config            *PEXReactorConfig
 	ensurePeersPeriod time.Duration
 
@@ -67,7 +69,7 @@ type PEXReactorConfig struct {
 }
 
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *AddrBook, config *PEXReactorConfig) *PEXReactor {
+func NewPEXReactor(b *addrbook.AddrBook, config *PEXReactorConfig) *PEXReactor {
 	r := &PEXReactor{
 		book:                 b,
 		config:               config,

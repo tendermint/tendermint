@@ -332,7 +332,6 @@ func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent 
 			}
 			addrBook.AddAddress(netAddr, ourAddr)
 		}
-		addrBook.Save()
 	}
 
 	// permute the list, dial them in random order.
