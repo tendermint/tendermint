@@ -129,7 +129,7 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		// either via DialPeersAsync or r.Receive.
 		// Ask it for more peers if we need.
 		if r.book.NeedMoreAddrs() {
-			r.RequestPEX(p)
+			r.RequestAddrs(p)
 		}
 	} else {
 		// For inbound peers, the peer is its own source,
@@ -159,15 +159,24 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 	switch msg := msg.(type) {
 	case *pexRequestMessage:
-		// We received a request for peers from src.
+		// Check we're not receiving too many requests
 		if err := r.receiveRequest(src); err != nil {
 			r.Switch.StopPeerForError(src, err)
 			return
 		}
-		r.SendAddrs(src, r.book.GetSelection())
+
+		// Seeds disconnect after sending a batch of addrs
+		if r.config.SeedMode {
+			// TODO: should we be more selective ?
+			r.SendAddrs(src, r.book.GetSelection())
+			r.Switch.StopPeerGracefully(src)
+		} else {
+			r.SendAddrs(src, r.book.GetSelection())
+		}
+
 	case *pexAddrsMessage:
-		// We received some peer addresses from src.
-		if err := r.ReceivePEX(msg.Addrs, src); err != nil {
+		// If we asked for addresses, add them to the book
+		if err := r.ReceiveAddrs(msg.Addrs, src); err != nil {
 			r.Switch.StopPeerForError(src, err)
 			return
 		}
@@ -202,9 +211,9 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	return nil
 }
 
-// RequestPEX asks peer for more addresses if we do not already
+// RequestAddrs asks peer for more addresses if we do not already
 // have a request out for this peer.
-func (r *PEXReactor) RequestPEX(p Peer) {
+func (r *PEXReactor) RequestAddrs(p Peer) {
 	id := string(p.ID())
 	if r.requestsSent.Has(id) {
 		return
@@ -213,10 +222,10 @@ func (r *PEXReactor) RequestPEX(p Peer) {
 	p.Send(PexChannel, struct{ PexMessage }{&pexRequestMessage{}})
 }
 
-// ReceivePEX adds the given addrs to the addrbook if theres an open
+// ReceiveAddrs adds the given addrs to the addrbook if theres an open
 // request for this peer and deletes the open request.
 // If there's no open request for the src peer, it returns an error.
-func (r *PEXReactor) ReceivePEX(addrs []*NetAddress, src Peer) error {
+func (r *PEXReactor) ReceiveAddrs(addrs []*NetAddress, src Peer) error {
 	id := string(src.ID())
 
 	if !r.requestsSent.Has(id) {
@@ -323,7 +332,7 @@ func (r *PEXReactor) ensurePeers() {
 		if peersCount > 0 {
 			peer := peers[rand.Int()%peersCount] // nolint: gas
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
-			r.RequestPEX(peer)
+			r.RequestAddrs(peer)
 		}
 	}
 
@@ -421,7 +430,7 @@ func (of oldestFirst) Less(i, j int) bool { return of[i].LastAttempt.Before(of[j
 func (r *PEXReactor) getPeersToCrawl() []crawlPeerInfo {
 	var of oldestFirst
 
-	// TODO: not this. be more selective
+	// TODO: be more selective
 	addrs := r.book.ListOfKnownAddresses()
 	for _, addr := range addrs {
 		if len(addr.ID()) == 0 {
@@ -462,7 +471,7 @@ func (r *PEXReactor) crawlPeers() {
 		if now.Sub(pi.LastAttempt) >= defaultCrawlPeerInterval {
 			peer := r.Switch.Peers().Get(pi.Addr.ID)
 			if peer != nil {
-				r.RequestPEX(peer)
+				r.RequestAddrs(peer)
 			}
 		}
 	}

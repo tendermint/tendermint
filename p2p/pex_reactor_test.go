@@ -154,7 +154,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	peer := createRandomPeer(false)
 
 	// we have to send a request to receive responses
-	r.RequestPEX(peer)
+	r.RequestAddrs(peer)
 
 	size := book.Size()
 	addrs := []*NetAddress{peer.NodeInfo().NetAddress()}
@@ -228,7 +228,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	id := string(peer.ID())
 
 	// request addrs from the peer
-	r.RequestPEX(peer)
+	r.RequestAddrs(peer)
 	assert.True(r.requestsSent.Has(id))
 	assert.True(sw.Peers().Has(peer.ID()))
 
