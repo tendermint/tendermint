@@ -1,7 +1,8 @@
 # Tendermint Specification
 
 This is a markdown specification of the Tendermint blockchain.
-It defines the base data structures used in the blockchain and how they are validated.
+It defines the base data structures, how they are validated,
+and how they are communicated over the network.
 
 XXX: this spec is a work in progress and not yet complete - see github
 [isses](https://github.com/tendermint/tendermint/issues) and
@@ -14,12 +15,25 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ## Contents
 
+### Data Structures
+
 - [Overview](#overview)
 - [Encoding and Digests](encoding.md)
 - [Blockchain](blockchain.md)
 - [State](state.md)
-- [Consensus](consensus.md)
-- [P2P](p2p/node.md)
+
+### P2P and Network Protocols
+
+- [The Base P2P Layer](p2p/README.md): multiplex the protocols ("reactors") on authenticated and encrypted TCP conns
+- [Peer Exchange (PEX)](pex/README.md): gossip known peer addresses so peers can find eachother
+- [Block Sync](block_sync/README.md): gossip blocks so peers can catch up quickly
+- [Consensus](consensus/README.md): gossip votes and block parts so new blocks can be committed
+- [Mempool](mempool/README.md): gossip transactions so they get included in blocks
+- [Evidence](evidence/README.md): TODO
+
+### More
+- [Light Client](light_client/README.md): TODO
+- [Persistence](persistence/README.md): TODO
 
 ## Overview
 
@@ -60,10 +74,3 @@ Also note that information like the transaction results and the validator set ar
 directly included in the block - only their cryptographic digests (Merkle roots) are.
 Hence, verification of a block requires a separate data structure to store this information.
 We call this the `State`. Block verification also requires access to the previous block.
-
-## TODO
-
-- Light Client
-- P2P
-- Reactor protocols (consensus, mempool, blockchain, pex)
-

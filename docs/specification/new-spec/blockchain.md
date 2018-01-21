@@ -10,7 +10,7 @@ The Tendermint blockchains consists of a short list of basic data types:
 ## Block
 
 A block consists of a header, a list of transactions, a list of votes (the commit),
-and a list of evidence if malfeasance (ie. signing conflicting votes).
+and a list of evidence of malfeasance (ie. signing conflicting votes).
 
 ```go
 type Block struct {
@@ -366,10 +366,10 @@ against the given signature and message bytes.
 
 ## Evidence
 
+TODO
 
 ```
-
-
+TODO
 ```
 
 Every piece of evidence contains two conflicting votes from a single validator that
@@ -384,7 +384,35 @@ Once a block is validated, it can be executed against the state.
 The state follows the recursive equation:
 
 ```go
-app = NewABCIApp
 state(1) = InitialState
-state(h+1) <- Execute(state(h), app, block(h))
+state(h+1) <- Execute(state(h), ABCIApp, block(h))
 ```
+
+Where `InitialState` includes the initial consensus parameters and validator set,
+and `ABCIApp` is an ABCI application that can return results and changes to the validator
+set (TODO). Execute is defined as:
+
+```go
+Execute(s State, app ABCIApp, block Block) State {
+    TODO: just spell out ApplyBlock here
+    and remove ABCIResponses struct.
+    abciResponses := app.ApplyBlock(block)
+
+    return State{
+        LastResults: abciResponses.DeliverTxResults,
+        AppHash: abciResponses.AppHash,
+        Validators: UpdateValidators(state.Validators, abciResponses.ValidatorChanges),
+        LastValidators: state.Validators,
+        ConsensusParams: UpdateConsensusParams(state.ConsensusParams, abci.Responses.ConsensusParamChanges),
+    }
+}
+
+type ABCIResponses struct {
+    DeliverTxResults        []Result
+    ValidatorChanges        []Validator
+    ConsensusParamChanges   ConsensusParams
+    AppHash                 []byte
+}
+```
+
+
