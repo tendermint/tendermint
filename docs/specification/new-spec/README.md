@@ -1,14 +1,24 @@
 # Tendermint Specification
 
 This is a markdown specification of the Tendermint blockchain.
-
 It defines the base data structures used in the blockchain and how they are validated.
 
-It contains the following components:
+XXX: this spec is a work in progress and not yet complete - see github
+[isses](https://github.com/tendermint/tendermint/issues) and
+[pull requests](https://github.com/tendermint/tendermint/pulls)
+for more details.
 
+If you find discrepancies between the spec and the code that
+do not have an associated issue or pull request on github,
+please submit them to our [bug bounty](https://tendermint.com/security)!
+
+## Contents
+
+- [Overview](#overview)
 - [Encoding and Digests](encoding.md)
 - [Blockchain](blockchain.md)
 - [State](state.md)
+- [Consensus](consensus.md)
 - [P2P](p2p/node.md)
 
 ## Overview
@@ -56,3 +66,4 @@ We call this the `State`. Block verification also requires access to the previou
 - Light Client
 - P2P
 - Reactor protocols (consensus, mempool, blockchain, pex)
+

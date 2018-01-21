@@ -154,7 +154,7 @@ func TestPEXReactorReceive(t *testing.T) {
 	peer := createRandomPeer(false)
 
 	// we have to send a request to receive responses
-	r.RequestPEX(peer)
+	r.RequestAddrs(peer)
 
 	size := book.Size()
 	addrs := []*NetAddress{peer.NodeInfo().NetAddress()}
@@ -228,7 +228,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	id := string(peer.ID())
 
 	// request addrs from the peer
-	r.RequestPEX(peer)
+	r.RequestAddrs(peer)
 	assert.True(r.requestsSent.Has(id))
 	assert.True(sw.Peers().Has(peer.ID()))
 
@@ -286,10 +286,51 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	assertSomePeersWithTimeout(t, []*Switch{sw}, 10*time.Millisecond, 10*time.Second)
 }
 
+func TestPEXReactorCrawlStatus(t *testing.T) {
+	assert, require := assert.New(t), require.New(t)
+
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+	book := NewAddrBook(dir+"addrbook.json", false)
+	book.SetLogger(log.TestingLogger())
+
+	pexR := NewPEXReactor(book, &PEXReactorConfig{SeedMode: true})
+	// Seed/Crawler mode uses data from the Switch
+	makeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *Switch) *Switch {
+		pexR.SetLogger(log.TestingLogger())
+		sw.SetLogger(log.TestingLogger().With("switch", i))
+		sw.AddReactor("pex", pexR)
+		return sw
+	})
+
+	// Create a peer, add it to the peer set and the addrbook.
+	peer := createRandomPeer(false)
+	pexR.Switch.peers.Add(peer)
+	addr1 := peer.NodeInfo().NetAddress()
+	pexR.book.AddAddress(addr1, addr1)
+
+	// Add a non-connected address to the book.
+	_, addr2 := createRoutableAddr()
+	pexR.book.AddAddress(addr2, addr1)
+
+	// Get some peerInfos to crawl
+	peerInfos := pexR.getPeersToCrawl()
+
+	// Make sure it has the proper number of elements
+	assert.Equal(2, len(peerInfos))
+
+	// TODO: test
+}
+
 func createRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
-		addr = cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
-		netAddr, _ = NewNetAddressString(addr)
+		var err error
+		addr = cmn.Fmt("%X@%v.%v.%v.%v:46656", cmn.RandBytes(20), rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
+		netAddr, err = NewNetAddressString(addr)
+		if err != nil {
+			panic(err)
+		}
 		if netAddr.Routable() {
 			break
 		}
@@ -301,7 +342,7 @@ func createRandomPeer(outbound bool) *peer {
 	addr, netAddr := createRoutableAddr()
 	p := &peer{
 		nodeInfo: NodeInfo{
-			ListenAddr: netAddr.String(),
+			ListenAddr: netAddr.DialString(),
 			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
 		outbound: outbound,

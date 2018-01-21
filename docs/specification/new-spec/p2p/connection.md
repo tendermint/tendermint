@@ -46,7 +46,7 @@ is returned for processing by the corresponding channels `onReceive` function.
 Messages are sent from a single `sendRoutine`, which loops over a select statement that results in the sending
 of a ping, a pong, or a batch of data messages. The batch of data messages may include messages from multiple channels.
 Message bytes are queued for sending in their respective channel, with each channel holding one unsent message at a time.
-Messages are chosen for a batch one a time from the channel with the lowest ratio of recently sent bytes to channel priority.
+Messages are chosen for a batch one at a time from the channel with the lowest ratio of recently sent bytes to channel priority.
 
 ## Sending Messages
 
