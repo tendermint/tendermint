@@ -324,6 +324,30 @@ func (a *AddrBook) GetSelection() []*NetAddress {
 	return allAddr[:numAddresses]
 }
 
+// ListOfKnownAddresses returns the new and old addresses.
+func (a *AddrBook) ListOfKnownAddresses() []*knownAddress {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	addrs := []*knownAddress{}
+	for _, addr := range a.addrLookup {
+		addrs = append(addrs, addr.copy())
+	}
+	return addrs
+}
+
+func (ka *knownAddress) copy() *knownAddress {
+	return &knownAddress{
+		Addr:        ka.Addr,
+		Src:         ka.Src,
+		Attempts:    ka.Attempts,
+		LastAttempt: ka.LastAttempt,
+		LastSuccess: ka.LastSuccess,
+		BucketType:  ka.BucketType,
+		Buckets:     ka.Buckets,
+	}
+}
+
 /* Loading & Saving */
 
 type addrBookJSON struct {
