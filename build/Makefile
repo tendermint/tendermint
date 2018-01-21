@@ -65,6 +65,7 @@ build-tendermint: git-branch gopath-setup
 	go get -d -u github.com/tendermint/tendermint/cmd/tendermint
 	cd $(GOPATH)/src/github.com/tendermint/tendermint && git checkout "$(GIT_BRANCH)" && git pull
 	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_tools get_vendor_deps build
+	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
 build-ethermint: git-branch gopath-setup
