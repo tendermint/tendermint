@@ -11,17 +11,20 @@ import (
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/p2p/tmconn"
+	"github.com/tendermint/tendermint/p2p/types"
 )
 
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
 
-	ID() ID             // peer's cryptographic ID
-	IsOutbound() bool   // did we dial the peer
-	IsPersistent() bool // do we redial this peer when we disconnect
-	NodeInfo() NodeInfo // peer's info
-	Status() ConnectionStatus
+	ID() types.ID             // peer's cryptographic ID
+	IsOutbound() bool         // did we dial the peer
+	IsPersistent() bool       // do we redial this peer when we disconnect
+	NodeInfo() types.NodeInfo // peer's info
+	Status() tmconn.ConnectionStatus
 
 	Send(byte, interface{}) bool
 	TrySend(byte, interface{}) bool
@@ -40,13 +43,13 @@ type peer struct {
 
 	outbound bool
 
-	conn  net.Conn     // source connection
-	mconn *MConnection // multiplex connection
+	conn  net.Conn            // source connection
+	mconn *tmconn.MConnection // multiplex connection
 
 	persistent bool
 	config     *PeerConfig
 
-	nodeInfo NodeInfo
+	nodeInfo types.NodeInfo
 	Data     *cmn.CMap // User data.
 }
 
@@ -58,7 +61,7 @@ type PeerConfig struct {
 	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
 
-	MConfig *MConnConfig `mapstructure:"connection"`
+	MConfig *tmconn.MConnConfig `mapstructure:"connection"`
 
 	Fuzz       bool            `mapstructure:"fuzz"` // fuzz connection (for testing)
 	FuzzConfig *FuzzConnConfig `mapstructure:"fuzz_config"`
@@ -70,13 +73,13 @@ func DefaultPeerConfig() *PeerConfig {
 		AuthEnc:          true,
 		HandshakeTimeout: 20, // * time.Second,
 		DialTimeout:      3,  // * time.Second,
-		MConfig:          DefaultMConnConfig(),
+		MConfig:          tmconn.DefaultMConnConfig(),
 		Fuzz:             false,
 		FuzzConfig:       DefaultFuzzConnConfig(),
 	}
 }
 
-func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
+func newOutboundPeer(addr *types.NetAddress, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig, persistent bool) (*peer, error) {
 
 	conn, err := dial(addr, config)
@@ -96,7 +99,7 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 	return peer, nil
 }
 
-func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
+func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
 
 	// TODO: issue PoW challenge
@@ -104,7 +107,7 @@ func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*Cha
 	return newPeerFromConnAndConfig(conn, false, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
 }
 
-func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
+func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
 	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
 
 	conn := rawConn
@@ -122,7 +125,7 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 		}
 
 		var err error
-		conn, err = MakeSecretConnection(conn, ourNodePrivKey)
+		conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error creating peer")
 		}
@@ -171,8 +174,8 @@ func (p *peer) OnStop() {
 // Implements Peer
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
-func (p *peer) ID() ID {
-	return PubKeyToID(p.PubKey())
+func (p *peer) ID() types.ID {
+	return types.PubKeyToID(p.PubKey())
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.
@@ -186,12 +189,12 @@ func (p *peer) IsPersistent() bool {
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
-func (p *peer) NodeInfo() NodeInfo {
+func (p *peer) NodeInfo() types.NodeInfo {
 	return p.nodeInfo
 }
 
 // Status returns the peer's ConnectionStatus.
-func (p *peer) Status() ConnectionStatus {
+func (p *peer) Status() tmconn.ConnectionStatus {
 	return p.mconn.Status()
 }
 
@@ -236,13 +239,13 @@ func (p *peer) CloseConn() {
 // HandshakeTimeout performs the Tendermint P2P handshake between a given node and the peer
 // by exchanging their NodeInfo. It sets the received nodeInfo on the peer.
 // NOTE: blocking
-func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) error {
+func (p *peer) HandshakeTimeout(ourNodeInfo types.NodeInfo, timeout time.Duration) error {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
 	if err := p.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return errors.Wrap(err, "Error setting deadline")
 	}
 
-	var peerNodeInfo NodeInfo
+	var peerNodeInfo types.NodeInfo
 	var err1 error
 	var err2 error
 	cmn.Parallel(
@@ -252,7 +255,7 @@ func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) err
 		},
 		func() {
 			var n int
-			wire.ReadBinary(&peerNodeInfo, p.conn, maxNodeInfoSize, &n, &err2)
+			wire.ReadBinary(&peerNodeInfo, p.conn, types.MaxNodeInfoSize(), &n, &err2)
 			p.Logger.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
 		})
 	if err1 != nil {
@@ -283,7 +286,7 @@ func (p *peer) PubKey() crypto.PubKey {
 	if !p.nodeInfo.PubKey.Empty() {
 		return p.nodeInfo.PubKey
 	} else if p.config.AuthEnc {
-		return p.conn.(*SecretConnection).RemotePubKey()
+		return p.conn.(*tmconn.SecretConnection).RemotePubKey()
 	}
 	panic("Attempt to get peer's PubKey before calling Handshake")
 }
@@ -308,7 +311,7 @@ func (p *peer) String() string {
 //------------------------------------------------------------------
 // helper funcs
 
-func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
+func dial(addr *types.NetAddress, config *PeerConfig) (net.Conn, error) {
 	conn, err := addr.DialTimeout(config.DialTimeout * time.Second)
 	if err != nil {
 		return nil, err
@@ -316,8 +319,8 @@ func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
 	return conn, nil
 }
 
-func createMConnection(conn net.Conn, p *peer, reactorsByCh map[byte]Reactor, chDescs []*ChannelDescriptor,
-	onPeerError func(Peer, interface{}), config *MConnConfig) *MConnection {
+func createMConnection(conn net.Conn, p *peer, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
+	onPeerError func(Peer, interface{}), config *tmconn.MConnConfig) *tmconn.MConnection {
 
 	onReceive := func(chID byte, msgBytes []byte) {
 		reactor := reactorsByCh[chID]
@@ -331,5 +334,5 @@ func createMConnection(conn net.Conn, p *peer, reactorsByCh map[byte]Reactor, ch
 		onPeerError(p, r)
 	}
 
-	return NewMConnectionWithConfig(conn, chDescs, onReceive, onError, config)
+	return tmconn.NewMConnectionWithConfig(conn, chDescs, onReceive, onError, config)
 }

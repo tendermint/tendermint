@@ -11,6 +11,8 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p/tmconn"
+	"github.com/tendermint/tendermint/p2p/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -30,10 +32,11 @@ const (
 	reconnectBackOffBaseSeconds = 3
 )
 
-var (
-	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
-	ErrSwitchConnectToSelf = errors.New("Connect to self")
-)
+//-----------------------------------------------------------------------------
+
+type AddrBook interface {
+	AddAddress(addr *types.NetAddress, src *types.NetAddress)
+}
 
 //-----------------------------------------------------------------------------
 
@@ -48,12 +51,12 @@ type Switch struct {
 	peerConfig   *PeerConfig
 	listeners    []Listener
 	reactors     map[string]Reactor
-	chDescs      []*ChannelDescriptor
+	chDescs      []*tmconn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *cmn.CMap
-	nodeInfo     NodeInfo // our node info
-	nodeKey      *NodeKey // our node privkey
+	nodeInfo     types.NodeInfo // our node info
+	nodeKey      *types.NodeKey // our node privkey
 
 	filterConnByAddr   func(net.Addr) error
 	filterConnByPubKey func(crypto.PubKey) error
@@ -66,7 +69,7 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		config:       config,
 		peerConfig:   DefaultPeerConfig(),
 		reactors:     make(map[string]Reactor),
-		chDescs:      make([]*ChannelDescriptor, 0),
+		chDescs:      make([]*tmconn.ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
@@ -77,10 +80,10 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw.rng = rand.New(rand.NewSource(cmn.RandInt64()))
 
 	// TODO: collapse the peerConfig into the config ?
-	sw.peerConfig.MConfig.flushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
+	sw.peerConfig.MConfig.FlushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
 	sw.peerConfig.MConfig.SendRate = config.SendRate
 	sw.peerConfig.MConfig.RecvRate = config.RecvRate
-	sw.peerConfig.MConfig.maxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
+	sw.peerConfig.MConfig.MaxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 	return sw
@@ -140,19 +143,19 @@ func (sw *Switch) IsListening() bool {
 
 // SetNodeInfo sets the switch's NodeInfo for checking compatibility and handshaking with other nodes.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
+func (sw *Switch) SetNodeInfo(nodeInfo types.NodeInfo) {
 	sw.nodeInfo = nodeInfo
 }
 
 // NodeInfo returns the switch's NodeInfo.
 // NOTE: Not goroutine safe.
-func (sw *Switch) NodeInfo() NodeInfo {
+func (sw *Switch) NodeInfo() types.NodeInfo {
 	return sw.nodeInfo
 }
 
 // SetNodeKey sets the switch's private key for authenticated encryption.
 // NOTE: Not goroutine safe.
-func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
+func (sw *Switch) SetNodeKey(nodeKey *types.NodeKey) {
 	sw.nodeKey = nodeKey
 }
 
@@ -311,13 +314,13 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 // Dialing
 
 // IsDialing returns true if the switch is currently dialing the given ID.
-func (sw *Switch) IsDialing(id ID) bool {
+func (sw *Switch) IsDialing(id types.ID) bool {
 	return sw.dialing.Has(string(id))
 }
 
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
-func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent bool) error {
-	netAddrs, errs := NewNetAddressStrings(peers)
+func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
+	netAddrs, errs := types.NewNetAddressStrings(peers)
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
@@ -330,6 +333,7 @@ func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent 
 			if netAddr.Same(ourAddr) {
 				continue
 			}
+			// TODO: move this out of here ?
 			addrBook.AddAddress(netAddr, ourAddr)
 		}
 	}
@@ -353,7 +357,7 @@ func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent 
 
 // DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects and authenticates successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
-func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, error) {
+func (sw *Switch) DialPeerWithAddress(addr *types.NetAddress, persistent bool) (Peer, error) {
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
 	return sw.addOutboundPeerWithConfig(addr, sw.peerConfig, persistent)
@@ -439,7 +443,7 @@ func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) er
 
 // dial the peer; make secret connection; authenticate against the dialed ID;
 // add the peer.
-func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) (Peer, error) {
+func (sw *Switch) addOutboundPeerWithConfig(addr *types.NetAddress, config *PeerConfig, persistent bool) (Peer, error) {
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config, persistent)
 	if err != nil {
@@ -453,7 +457,7 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 		peer.Logger.Info("Dialed peer with unknown ID - unable to authenticate", "addr", addr)
 	} else if addr.ID != peer.ID() {
 		peer.CloseConn()
-		return nil, fmt.Errorf("Failed to authenticate peer %v. Connected to peer with ID %s", addr, peer.ID())
+		return nil, types.ErrSwitchAuthenticationFailure{addr, peer.ID()}
 	}
 
 	err = sw.addPeer(peer)
@@ -474,12 +478,12 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 func (sw *Switch) addPeer(peer *peer) error {
 	// Avoid self
 	if sw.nodeKey.ID() == peer.ID() {
-		return ErrSwitchConnectToSelf
+		return types.ErrSwitchConnectToSelf
 	}
 
 	// Avoid duplicate
 	if sw.peers.Has(peer.ID()) {
-		return ErrSwitchDuplicatePeer
+		return types.ErrSwitchDuplicatePeer
 
 	}
 

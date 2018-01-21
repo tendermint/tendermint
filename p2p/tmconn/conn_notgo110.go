@@ -1,6 +1,6 @@
 // +build !go1.10
 
-package p2p
+package tmconn
 
 import (
 	"net"
@@ -24,7 +24,7 @@ func (p *pipe) SetDeadline(t time.Time) error {
 	return nil
 }
 
-func netPipe() (net.Conn, net.Conn) {
+func NetPipe() (net.Conn, net.Conn) {
 	p1, p2 := net.Pipe()
 	return &pipe{p1}, &pipe{p2}
 }

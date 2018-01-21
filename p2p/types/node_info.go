@@ -1,4 +1,4 @@
-package p2p
+package types
 
 import (
 	"fmt"
@@ -10,6 +10,10 @@ import (
 )
 
 const maxNodeInfoSize = 10240 // 10Kb
+
+func MaxNodeInfoSize() int {
+	return maxNodeInfoSize
+}
 
 // NodeInfo is the basic node information exchanged
 // between two peers during the Tendermint P2P handshake.

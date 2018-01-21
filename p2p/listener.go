@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/tendermint/tendermint/p2p/types"
 	"github.com/tendermint/tendermint/p2p/upnp"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -13,8 +14,8 @@ import (
 
 type Listener interface {
 	Connections() <-chan net.Conn
-	InternalAddress() *NetAddress
-	ExternalAddress() *NetAddress
+	InternalAddress() *types.NetAddress
+	ExternalAddress() *types.NetAddress
 	String() string
 	Stop() error
 }
@@ -24,8 +25,8 @@ type DefaultListener struct {
 	cmn.BaseService
 
 	listener    net.Listener
-	intAddr     *NetAddress
-	extAddr     *NetAddress
+	intAddr     *types.NetAddress
+	extAddr     *types.NetAddress
 	connections chan net.Conn
 }
 
@@ -71,14 +72,14 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 	logger.Info("Local listener", "ip", listenerIP, "port", listenerPort)
 
 	// Determine internal address...
-	var intAddr *NetAddress
-	intAddr, err = NewNetAddressString(lAddr)
+	var intAddr *types.NetAddress
+	intAddr, err = types.NewNetAddressString(lAddr)
 	if err != nil {
 		panic(err)
 	}
 
 	// Determine external address...
-	var extAddr *NetAddress
+	var extAddr *types.NetAddress
 	if !skipUPNP {
 		// If the lAddrIP is INADDR_ANY, try UPnP
 		if lAddrIP == "" || lAddrIP == "0.0.0.0" {
@@ -151,11 +152,11 @@ func (l *DefaultListener) Connections() <-chan net.Conn {
 	return l.connections
 }
 
-func (l *DefaultListener) InternalAddress() *NetAddress {
+func (l *DefaultListener) InternalAddress() *types.NetAddress {
 	return l.intAddr
 }
 
-func (l *DefaultListener) ExternalAddress() *NetAddress {
+func (l *DefaultListener) ExternalAddress() *types.NetAddress {
 	return l.extAddr
 }
 
@@ -172,7 +173,7 @@ func (l *DefaultListener) String() string {
 /* external address helpers */
 
 // UPNP external address discovery & port mapping
-func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *NetAddress {
+func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *types.NetAddress {
 	logger.Info("Getting UPNP external address")
 	nat, err := upnp.Discover()
 	if err != nil {
@@ -198,11 +199,11 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 	}
 
 	logger.Info("Got UPNP external address", "address", ext)
-	return NewNetAddressIPPort(ext, uint16(externalPort))
+	return types.NewNetAddressIPPort(ext, uint16(externalPort))
 }
 
 // TODO: use syscalls: see issue #712
-func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *NetAddress {
+func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *types.NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		panic(cmn.Fmt("Could not fetch interface addresses: %v", err))
@@ -217,7 +218,7 @@ func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *
 		if v4 == nil || (!settleForLocal && v4[0] == 127) {
 			continue
 		} // loopback
-		return NewNetAddressIPPort(ipnet.IP, uint16(port))
+		return types.NewNetAddressIPPort(ipnet.IP, uint16(port))
 	}
 
 	// try again, but settle for local

@@ -1,4 +1,4 @@
-package p2p
+package tmconn
 
 import (
 	"net"
@@ -31,7 +31,7 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 func TestMConnectionSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -64,7 +64,7 @@ func TestMConnectionSend(t *testing.T) {
 func TestMConnectionReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -102,7 +102,7 @@ func TestMConnectionReceive(t *testing.T) {
 func TestMConnectionStatus(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -119,7 +119,7 @@ func TestMConnectionStatus(t *testing.T) {
 func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
@@ -152,7 +152,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 }
 
 func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr chan struct{}) (*MConnection, *MConnection) {
-	server, client := netPipe()
+	server, client := NetPipe()
 
 	onReceive := func(chID byte, msgBytes []byte) {}
 	onError := func(r interface{}) {}
@@ -283,7 +283,7 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 func TestMConnectionTrySend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	server, client := netPipe()
+	server, client := NetPipe()
 	defer server.Close()
 	defer client.Close()
 

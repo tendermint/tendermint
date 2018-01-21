@@ -1,12 +1,16 @@
-package addrbook
+package pex
 
-import "time"
+import (
+	"time"
+
+	"github.com/tendermint/tendermint/p2p/types"
+)
 
 // knownAddress tracks information about a known network address
 // that is used to determine how viable an address is.
 type knownAddress struct {
-	Addr        *NetAddress
-	Src         *NetAddress
+	Addr        *types.NetAddress
+	Src         *types.NetAddress
 	Attempts    int32
 	LastAttempt time.Time
 	LastSuccess time.Time
@@ -14,7 +18,7 @@ type knownAddress struct {
 	Buckets     []int
 }
 
-func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
+func newKnownAddress(addr *types.NetAddress, src *types.NetAddress) *knownAddress {
 	return &knownAddress{
 		Addr:        addr,
 		Src:         src,
@@ -25,7 +29,7 @@ func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
 	}
 }
 
-func (ka *knownAddress) ID() ID {
+func (ka *knownAddress) ID() types.ID {
 	return ka.Addr.ID
 }
 

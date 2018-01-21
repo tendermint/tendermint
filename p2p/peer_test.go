@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/p2p/tmconn"
+	"github.com/tendermint/tendermint/p2p/types"
 )
 
 func TestPeerBasic(t *testing.T) {
@@ -80,8 +82,8 @@ func TestPeerSend(t *testing.T) {
 	assert.True(p.Send(0x01, "Asylum"))
 }
 
-func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
-	chDescs := []*ChannelDescriptor{
+func createOutboundPeerAndPerformHandshake(addr *types.NetAddress, config *PeerConfig) (*peer, error) {
+	chDescs := []*tmconn.ChannelDescriptor{
 		{ID: 0x01, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
@@ -90,7 +92,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 	if err != nil {
 		return nil, err
 	}
-	err = p.HandshakeTimeout(NodeInfo{
+	err = p.HandshakeTimeout(types.NodeInfo{
 		PubKey:  pk.PubKey(),
 		Moniker: "host_peer",
 		Network: "testing",
@@ -105,11 +107,11 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 type remotePeer struct {
 	PrivKey crypto.PrivKey
 	Config  *PeerConfig
-	addr    *NetAddress
+	addr    *types.NetAddress
 	quit    chan struct{}
 }
 
-func (p *remotePeer) Addr() *NetAddress {
+func (p *remotePeer) Addr() *types.NetAddress {
 	return p.addr
 }
 
@@ -122,7 +124,7 @@ func (p *remotePeer) Start() {
 	if e != nil {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
-	p.addr = NewNetAddress("", l.Addr())
+	p.addr = types.NewNetAddress("", l.Addr())
 	p.quit = make(chan struct{})
 	go p.accept(l)
 }
@@ -137,11 +139,11 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
-		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p Peer, r interface{}) {}, p.PrivKey, p.Config)
+		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*tmconn.ChannelDescriptor, 0), func(p Peer, r interface{}) {}, p.PrivKey, p.Config)
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
-		err = peer.HandshakeTimeout(NodeInfo{
+		err = peer.HandshakeTimeout(types.NodeInfo{
 			PubKey:     p.PrivKey.PubKey(),
 			Moniker:    "remote_peer",
 			Network:    "testing",

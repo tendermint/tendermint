@@ -1,6 +1,6 @@
 // +build go1.10
 
-package p2p
+package tmconn
 
 // Go1.10 has a proper net.Conn implementation that
 // has the SetDeadline method implemented as per
@@ -10,6 +10,6 @@ package p2p
 
 import "net"
 
-func netPipe() (net.Conn, net.Conn) {
+func NetPipe() (net.Conn, net.Conn) {
 	return net.Pipe()
 }

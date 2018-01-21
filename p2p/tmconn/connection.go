@@ -1,4 +1,4 @@
-package p2p
+package tmconn
 
 import (
 	"bufio"
@@ -97,13 +97,13 @@ type MConnConfig struct {
 	SendRate int64 `mapstructure:"send_rate"`
 	RecvRate int64 `mapstructure:"recv_rate"`
 
-	maxMsgPacketPayloadSize int
+	MaxMsgPacketPayloadSize int
 
-	flushThrottle time.Duration
+	FlushThrottle time.Duration
 }
 
 func (cfg *MConnConfig) maxMsgPacketTotalSize() int {
-	return cfg.maxMsgPacketPayloadSize + maxMsgPacketOverheadSize
+	return cfg.MaxMsgPacketPayloadSize + maxMsgPacketOverheadSize
 }
 
 // DefaultMConnConfig returns the default config.
@@ -111,8 +111,8 @@ func DefaultMConnConfig() *MConnConfig {
 	return &MConnConfig{
 		SendRate:                defaultSendRate,
 		RecvRate:                defaultRecvRate,
-		maxMsgPacketPayloadSize: defaultMaxMsgPacketPayloadSize,
-		flushThrottle:           defaultFlushThrottle,
+		MaxMsgPacketPayloadSize: defaultMaxMsgPacketPayloadSize,
+		FlushThrottle:           defaultFlushThrottle,
 	}
 }
 
@@ -171,7 +171,7 @@ func (c *MConnection) OnStart() error {
 		return err
 	}
 	c.quit = make(chan struct{})
-	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.flushThrottle)
+	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", pingTimeout)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateStats)
 	go c.sendRoutine()
@@ -586,7 +586,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 		desc:                    desc,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
-		maxMsgPacketPayloadSize: conn.config.maxMsgPacketPayloadSize,
+		maxMsgPacketPayloadSize: conn.config.MaxMsgPacketPayloadSize,
 	}
 }
 

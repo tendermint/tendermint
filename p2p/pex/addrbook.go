@@ -2,7 +2,7 @@
 // Originally Copyright (c) 2013-2014 Conformal Systems LLC.
 // https://github.com/conformal/btcd/blob/master/LICENSE
 
-package addrbook
+package pex
 
 import (
 	"crypto/sha256"
@@ -16,6 +16,8 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
+
+	"github.com/tendermint/tendermint/p2p/types"
 )
 
 const (
@@ -29,24 +31,32 @@ const (
 type AddrBook interface {
 	cmn.Service
 
+	// Add our own addresses so we don't later add ourselves
+	AddOurAddress(*types.NetAddress)
+
 	// Add and remove an address
-	AddAddress(addr *NetAddress, src *NetAddress)
-	RemoveAddress(addr *NetAddress)
+	AddAddress(addr *types.NetAddress, src *types.NetAddress) error
+	RemoveAddress(addr *types.NetAddress)
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
 
 	// Pick an address to dial
-	PickAddress(newBias int) *NetAddress
+	PickAddress(newBias int) *types.NetAddress
 
 	// Mark address
-	MarkGood(*NetAddress)
-	MarkAttempt(*Address)
-	MarkBad(*NetAddress)
+	MarkGood(*types.NetAddress)
+	MarkAttempt(*types.NetAddress)
+	MarkBad(*types.NetAddress)
 
 	// Send a selection of addresses to peers
-	GetSelection() []*NetAddress
+	GetSelection() []*types.NetAddress
+
+	// TODO: remove
+	ListOfKnownAddresses() []*knownAddress
 }
+
+var _ AddrBook = (*addrBook)(nil)
 
 // addrBook - concurrency safe peer address manager.
 // Implements AddrBook.
@@ -56,13 +66,13 @@ type addrBook struct {
 	// immutable after creation
 	filePath          string
 	routabilityStrict bool
-	key               string
+	key               string // random prefix for bucket placement
 
 	// accessed concurrently
 	mtx        sync.Mutex
 	rand       *rand.Rand
-	ourAddrs   map[string]*NetAddress
-	addrLookup map[ID]*knownAddress // new & old
+	ourAddrs   map[string]*types.NetAddress
+	addrLookup map[types.ID]*knownAddress // new & old
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
 	nOld       int
@@ -74,10 +84,10 @@ type addrBook struct {
 // NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
-	am := &AddrBook{
-		rand:              rand.New(rand.NewSource(time.Now().UnixNano())),
-		ourAddrs:          make(map[string]*NetAddress),
-		addrLookup:        make(map[ID]*knownAddress),
+	am := &addrBook{
+		rand:              rand.New(rand.NewSource(time.Now().UnixNano())), // TODO: seed from outside
+		ourAddrs:          make(map[string]*types.NetAddress),
+		addrLookup:        make(map[types.ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
 	}
@@ -126,26 +136,26 @@ func (a *addrBook) Wait() {
 	a.wg.Wait()
 }
 
-// AddOurAddress adds another one of our addresses.
-func (a *AddrBook) AddOurAddress(addr *NetAddress) {
+//-------------------------------------------------------
+
+// AddOurAddress one of our addresses.
+func (a *addrBook) AddOurAddress(addr *types.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	a.Logger.Info("Add our address to book", "addr", addr)
 	a.ourAddrs[addr.String()] = addr
 }
 
-//-------------------------------------------------------
-
 // AddAddress implements AddrBook - adds the given address as received from the given source.
 // NOTE: addr must not be nil
-func (a *addrBook) AddAddress(addr *NetAddress, src *NetAddress) error {
+func (a *addrBook) AddAddress(addr *types.NetAddress, src *types.NetAddress) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	return a.addAddress(addr, src)
 }
 
 // RemoveAddress implements AddrBook - removes the address from the book.
-func (a *addrBook) RemoveAddress(addr *NetAddress) {
+func (a *addrBook) RemoveAddress(addr *types.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.ID]
@@ -167,7 +177,7 @@ func (a *addrBook) NeedMoreAddrs() bool {
 // and determines how biased we are to pick an address from a new bucket.
 // PickAddress returns nil if the AddrBook is empty or if we try to pick
 // from an empty bucket.
-func (a *addrBook) PickAddress(newBias int) *NetAddress {
+func (a *addrBook) PickAddress(newBias int) *types.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -213,7 +223,7 @@ func (a *addrBook) PickAddress(newBias int) *NetAddress {
 
 // MarkGood implements AddrBook - it marks the peer as good and
 // moves it into an "old" bucket.
-func (a *addrBook) MarkGood(addr *NetAddress) {
+func (a *addrBook) MarkGood(addr *types.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.ID]
@@ -227,7 +237,7 @@ func (a *addrBook) MarkGood(addr *NetAddress) {
 }
 
 // MarkAttempt implements AddrBook - it marks that an attempt was made to connect to the address.
-func (a *addrBook) MarkAttempt(addr *NetAddress) {
+func (a *addrBook) MarkAttempt(addr *types.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	ka := a.addrLookup[addr.ID]
@@ -239,13 +249,13 @@ func (a *addrBook) MarkAttempt(addr *NetAddress) {
 
 // MarkBad implements AddrBook. Currently it just ejects the address.
 // TODO: black list for some amount of time
-func (a *addrBook) MarkBad(addr *NetAddress) {
+func (a *addrBook) MarkBad(addr *types.NetAddress) {
 	a.RemoveAddress(addr)
 }
 
 // GetSelection implements AddrBook.
 // It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
-func (a *addrBook) GetSelection() []*NetAddress {
+func (a *addrBook) GetSelection() []*types.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -253,7 +263,7 @@ func (a *addrBook) GetSelection() []*NetAddress {
 		return nil
 	}
 
-	allAddr := make([]*NetAddress, a.size())
+	allAddr := make([]*types.NetAddress, a.size())
 	i := 0
 	for _, ka := range a.addrLookup {
 		allAddr[i] = ka.Addr
@@ -279,7 +289,7 @@ func (a *addrBook) GetSelection() []*NetAddress {
 }
 
 // ListOfKnownAddresses returns the new and old addresses.
-func (a *AddrBook) ListOfKnownAddresses() []*knownAddress {
+func (a *addrBook) ListOfKnownAddresses() []*knownAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
@@ -288,17 +298,6 @@ func (a *AddrBook) ListOfKnownAddresses() []*knownAddress {
 		addrs = append(addrs, addr.copy())
 	}
 	return addrs
-}
-
-/* Loading & Saving */
-
-type addrBookJSON struct {
-	Key   string
-	Addrs []*knownAddress
-}
-
-func (a *AddrBook) saveToFile(filePath string) {
-	a.Logger.Info("Saving AddrBook to file", "size", a.Size())
 }
 
 //------------------------------------------------
@@ -334,6 +333,8 @@ out:
 	a.Logger.Info("Address handler done")
 }
 
+//----------------------------------------------------------
+
 func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAddress {
 	switch bucketType {
 	case bucketTypeNew:
@@ -365,17 +366,18 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 
 	// Enforce max addresses.
 	if len(bucket) > newBucketSize {
-		a.Logger.Info("new bucket is full, expiring old ")
+		a.Logger.Info("new bucket is full, expiring new")
 		a.expireNew(bucketIdx)
 	}
 
 	// Add to bucket.
 	bucket[addrStr] = ka
+	// increment nNew if the peer doesnt already exist in a bucket
 	if ka.addBucketRef(bucketIdx) == 1 {
 		a.nNew++
 	}
 
-	// Ensure in addrLookup
+	// Add it to addrLookup
 	a.addrLookup[ka.ID()] = ka
 
 	return true
@@ -449,6 +451,8 @@ func (a *addrBook) removeFromAllBuckets(ka *knownAddress) {
 	delete(a.addrLookup, ka.ID())
 }
 
+//----------------------------------------------------------
+
 func (a *addrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 	bucket := a.getBucket(bucketType, bucketIdx)
 	var oldest *knownAddress
@@ -460,7 +464,9 @@ func (a *addrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 	return oldest
 }
 
-func (a *addrBook) addAddress(addr, src *NetAddress) error {
+// adds the address to a "new" bucket. if its already in one,
+// it only adds it probabilistically
+func (a *addrBook) addAddress(addr, src *types.NetAddress) error {
 	if a.routabilityStrict && !addr.Routable() {
 		return fmt.Errorf("Cannot add non-routable address %v", addr)
 	}
@@ -490,7 +496,10 @@ func (a *addrBook) addAddress(addr, src *NetAddress) error {
 	}
 
 	bucket := a.calcNewBucket(addr, src)
-	a.addToNewBucket(ka, bucket)
+	added := a.addToNewBucket(ka, bucket)
+	if !added {
+		a.Logger.Info("Can't add new address, addr book is full", "address", addr, "total", a.size())
+	}
 
 	a.Logger.Info("Added new address", "address", addr, "total", a.size())
 	return nil
@@ -513,9 +522,9 @@ func (a *addrBook) expireNew(bucketIdx int) {
 	a.removeFromBucket(oldest, bucketTypeNew, bucketIdx)
 }
 
-// Promotes an address from new to old.
-// TODO: Move to old probabilistically.
-// The better a node is, the less likely it should be evicted from an old bucket.
+// Promotes an address from new to old. If the destination bucket is full,
+// demote the oldest one to a "new" bucket.
+// TODO: Demote more probabilistically?
 func (a *addrBook) moveToOld(ka *knownAddress) {
 	// Sanity check
 	if ka.isOld() {
@@ -559,9 +568,12 @@ func (a *addrBook) moveToOld(ka *knownAddress) {
 	}
 }
 
+//---------------------------------------------------------------------
+// calculate bucket placements
+
 // doublesha256(  key + sourcegroup +
 //                int64(doublesha256(key + group + sourcegroup))%bucket_per_group  ) % num_new_buckets
-func (a *addrBook) calcNewBucket(addr, src *NetAddress) int {
+func (a *addrBook) calcNewBucket(addr, src *types.NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(a.groupKey(addr))...)
@@ -582,7 +594,7 @@ func (a *addrBook) calcNewBucket(addr, src *NetAddress) int {
 
 // doublesha256(  key + group +
 //                int64(doublesha256(key + addr))%buckets_per_group  ) % num_old_buckets
-func (a *addrBook) calcOldBucket(addr *NetAddress) int {
+func (a *addrBook) calcOldBucket(addr *types.NetAddress) int {
 	data1 := []byte{}
 	data1 = append(data1, []byte(a.key)...)
 	data1 = append(data1, []byte(addr.String())...)
@@ -604,7 +616,7 @@ func (a *addrBook) calcOldBucket(addr *NetAddress) int {
 // This is the /16 for IPv4, the /32 (/36 for he.net) for IPv6, the string
 // "local" for a local address and the string "unroutable" for an unroutable
 // address.
-func (a *addrBook) groupKey(na *NetAddress) string {
+func (a *addrBook) groupKey(na *types.NetAddress) string {
 	if a.routabilityStrict && na.Local() {
 		return "local"
 	}
@@ -648,137 +660,6 @@ func (a *addrBook) groupKey(na *NetAddress) string {
 
 	return (&net.IPNet{IP: na.IP, Mask: net.CIDRMask(bits, 128)}).String()
 }
-
-//-----------------------------------------------------------------------------
-
-/*
-   knownAddress
-
-   tracks information about a known network address that is used
-   to determine how viable an address is.
-*/
-type knownAddress struct {
-	Addr        *NetAddress
-	Src         *NetAddress
-	Attempts    int32
-	LastAttempt time.Time
-	LastSuccess time.Time
-	BucketType  byte
-	Buckets     []int
-}
-
-func newKnownAddress(addr *NetAddress, src *NetAddress) *knownAddress {
-	return &knownAddress{
-		Addr:        addr,
-		Src:         src,
-		Attempts:    0,
-		LastAttempt: time.Now(),
-		BucketType:  bucketTypeNew,
-		Buckets:     nil,
-	}
-}
-
-func (ka *knownAddress) ID() ID {
-	return ka.Addr.ID
-}
-
-func (ka *knownAddress) isOld() bool {
-	return ka.BucketType == bucketTypeOld
-}
-
-func (ka *knownAddress) isNew() bool {
-	return ka.BucketType == bucketTypeNew
-}
-
-func (ka *knownAddress) markAttempt() {
-	now := time.Now()
-	ka.LastAttempt = now
-	ka.Attempts += 1
-}
-
-func (ka *knownAddress) markGood() {
-	now := time.Now()
-	ka.LastAttempt = now
-	ka.Attempts = 0
-	ka.LastSuccess = now
-}
-
-func (ka *knownAddress) addBucketRef(bucketIdx int) int {
-	for _, bucket := range ka.Buckets {
-		if bucket == bucketIdx {
-			// TODO refactor to return error?
-			// log.Warn(Fmt("Bucket already exists in ka.Buckets: %v", ka))
-			return -1
-		}
-	}
-	ka.Buckets = append(ka.Buckets, bucketIdx)
-	return len(ka.Buckets)
-}
-
-func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
-	buckets := []int{}
-	for _, bucket := range ka.Buckets {
-		if bucket != bucketIdx {
-			buckets = append(buckets, bucket)
-		}
-	}
-	if len(buckets) != len(ka.Buckets)-1 {
-		// TODO refactor to return error?
-		// log.Warn(Fmt("bucketIdx not found in ka.Buckets: %v", ka))
-		return -1
-	}
-	ka.Buckets = buckets
-	return len(ka.Buckets)
-}
-
-/*
-   An address is bad if the address in question is a New address, has not been tried in the last
-   minute, and meets one of the following criteria:
-
-   1) It claims to be from the future
-   2) It hasn't been seen in over a month
-   3) It has failed at least three times and never succeeded
-   4) It has failed ten times in the last week
-
-   All addresses that meet these criteria are assumed to be worthless and not
-   worth keeping hold of.
-
-   XXX: so a good peer needs us to call MarkGood before the conditions above are reached!
-*/
-func (ka *knownAddress) isBad() bool {
-	// Is Old --> good
-	if ka.BucketType == bucketTypeOld {
-		return false
-	}
-
-	// Has been attempted in the last minute --> good
-	if ka.LastAttempt.Before(time.Now().Add(-1 * time.Minute)) {
-		return false
-	}
-
-	// Too old?
-	// XXX: does this mean if we've kept a connection up for this long we'll disconnect?!
-	// and shouldn't it be .Before ?
-	if ka.LastAttempt.After(time.Now().Add(-1 * numMissingDays * time.Hour * 24)) {
-		return true
-	}
-
-	// Never succeeded?
-	if ka.LastSuccess.IsZero() && ka.Attempts >= numRetries {
-		return true
-	}
-
-	// Hasn't succeeded in too long?
-	// XXX: does this mean if we've kept a connection up for this long we'll disconnect?!
-	if ka.LastSuccess.Before(time.Now().Add(-1*minBadDays*time.Hour*24)) &&
-		ka.Attempts >= maxFailures {
-		return true
-	}
-
-	return false
-}
-
-//-----------------------------------------------------------------------------
 
 // doubleSha256 calculates sha256(sha256(b)) and returns the resulting bytes.
 func doubleSha256(b []byte) []byte {

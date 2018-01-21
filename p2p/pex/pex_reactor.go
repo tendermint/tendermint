@@ -1,4 +1,4 @@
-package p2p
+package pex
 
 import (
 	"bytes"
@@ -12,8 +12,12 @@ import (
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 
-	"github.com/tendermint/tendermint/p2p/addrbook"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/tmconn"
+	"github.com/tendermint/tendermint/p2p/types"
 )
+
+type Peer = p2p.Peer
 
 const (
 	// PexChannel is a channel for PEX messages
@@ -47,9 +51,9 @@ const (
 // Only accept pexAddrsMsg from peers we sent a corresponding pexRequestMsg too.
 // Only accept one pexRequestMsg every ~defaultEnsurePeersPeriod.
 type PEXReactor struct {
-	BaseReactor
+	p2p.BaseReactor
 
-	book              *addrbook.AddrBook
+	book              AddrBook
 	config            *PEXReactorConfig
 	ensurePeersPeriod time.Duration
 
@@ -69,7 +73,7 @@ type PEXReactorConfig struct {
 }
 
 // NewPEXReactor creates new PEX reactor.
-func NewPEXReactor(b *addrbook.AddrBook, config *PEXReactorConfig) *PEXReactor {
+func NewPEXReactor(b AddrBook, config *PEXReactorConfig) *PEXReactor {
 	r := &PEXReactor{
 		book:                 b,
 		config:               config,
@@ -77,7 +81,7 @@ func NewPEXReactor(b *addrbook.AddrBook, config *PEXReactorConfig) *PEXReactor {
 		requestsSent:         cmn.NewCMap(),
 		lastReceivedRequests: cmn.NewCMap(),
 	}
-	r.BaseReactor = *NewBaseReactor("PEXReactor", r)
+	r.BaseReactor = *p2p.NewBaseReactor("PEXReactor", r)
 	return r
 }
 
@@ -113,8 +117,8 @@ func (r *PEXReactor) OnStop() {
 }
 
 // GetChannels implements Reactor
-func (r *PEXReactor) GetChannels() []*ChannelDescriptor {
-	return []*ChannelDescriptor{
+func (r *PEXReactor) GetChannels() []*tmconn.ChannelDescriptor {
+	return []*tmconn.ChannelDescriptor{
 		{
 			ID:                PexChannel,
 			Priority:          1,
@@ -227,7 +231,7 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
 // request for this peer and deletes the open request.
 // If there's no open request for the src peer, it returns an error.
-func (r *PEXReactor) ReceiveAddrs(addrs []*NetAddress, src Peer) error {
+func (r *PEXReactor) ReceiveAddrs(addrs []*types.NetAddress, src Peer) error {
 	id := string(src.ID())
 
 	if !r.requestsSent.Has(id) {
@@ -246,7 +250,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*NetAddress, src Peer) error {
 }
 
 // SendAddrs sends addrs to the peer.
-func (r *PEXReactor) SendAddrs(p Peer, netAddrs []*NetAddress) {
+func (r *PEXReactor) SendAddrs(p Peer, netAddrs []*types.NetAddress) {
 	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: netAddrs}})
 }
 
@@ -296,7 +300,7 @@ func (r *PEXReactor) ensurePeers() {
 	// NOTE: range here is [10, 90]. Too high ?
 	newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
 
-	toDial := make(map[ID]*NetAddress)
+	toDial := make(map[types.ID]*types.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
 	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
@@ -319,10 +323,15 @@ func (r *PEXReactor) ensurePeers() {
 
 	// Dial picked addresses
 	for _, item := range toDial {
-		go func(picked *NetAddress) {
+		go func(picked *types.NetAddress) {
 			_, err := r.Switch.DialPeerWithAddress(picked, false)
 			if err != nil {
-				r.book.MarkAttempt(picked)
+				// TODO: detect more "bad peer" scenarios
+				if _, ok := err.(types.ErrSwitchAuthenticationFailure); ok {
+					r.book.MarkBad(picked)
+				} else {
+					r.book.MarkAttempt(picked)
+				}
 			}
 		}(item)
 	}
@@ -351,7 +360,7 @@ func (r *PEXReactor) checkSeeds() error {
 	if lSeeds == 0 {
 		return nil
 	}
-	_, errs := NewNetAddressStrings(r.config.Seeds)
+	_, errs := types.NewNetAddressStrings(r.config.Seeds)
 	for _, err := range errs {
 		if err != nil {
 			return err
@@ -366,9 +375,10 @@ func (r *PEXReactor) dialSeeds() {
 	if lSeeds == 0 {
 		return
 	}
-	seedAddrs, _ := NewNetAddressStrings(r.config.Seeds)
+	seedAddrs, _ := types.NewNetAddressStrings(r.config.Seeds)
 
-	perm := r.Switch.rng.Perm(lSeeds)
+	perm := rand.Perm(lSeeds)
+	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
 		seedAddr := seedAddrs[i]
@@ -410,7 +420,7 @@ func (r *PEXReactor) crawlPeersRoutine() {
 // network crawling performed during seed/crawler mode.
 type crawlPeerInfo struct {
 	// The listening address of a potential peer we learned about
-	Addr *NetAddress
+	Addr *types.NetAddress
 
 	// The last time we attempt to reach this address
 	LastAttempt time.Time
@@ -534,7 +544,7 @@ func (m *pexRequestMessage) String() string {
 A message with announced peer addresses.
 */
 type pexAddrsMessage struct {
-	Addrs []*NetAddress
+	Addrs []*types.NetAddress
 }
 
 func (m *pexAddrsMessage) String() string {

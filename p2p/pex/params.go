@@ -1,4 +1,4 @@
-package addrbook
+package pex
 
 import "time"
 

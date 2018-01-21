@@ -8,13 +8,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/p2p/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Returns an empty dummy peer
 func randPeer() *peer {
 	return &peer{
-		nodeInfo: NodeInfo{
+		nodeInfo: types.NodeInfo{
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
@@ -119,7 +120,7 @@ func TestPeerSetAddDuplicate(t *testing.T) {
 
 	// Our next procedure is to ensure that only one addition
 	// succeeded and that the rest are each ErrSwitchDuplicatePeer.
-	wantErrCount, gotErrCount := n-1, errsTally[ErrSwitchDuplicatePeer]
+	wantErrCount, gotErrCount := n-1, errsTally[types.ErrSwitchDuplicatePeer]
 	assert.Equal(t, wantErrCount, gotErrCount, "invalid ErrSwitchDuplicatePeer count")
 
 	wantNilErrCount, gotNilErrCount := 1, errsTally[nil]

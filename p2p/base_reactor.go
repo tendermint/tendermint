@@ -1,12 +1,15 @@
 package p2p
 
-import cmn "github.com/tendermint/tmlibs/common"
+import (
+	"github.com/tendermint/tendermint/p2p/tmconn"
+	cmn "github.com/tendermint/tmlibs/common"
+)
 
 type Reactor interface {
 	cmn.Service // Start, Stop
 
 	SetSwitch(*Switch)
-	GetChannels() []*ChannelDescriptor
+	GetChannels() []*tmconn.ChannelDescriptor
 	AddPeer(peer Peer)
 	RemovePeer(peer Peer, reason interface{})
 	Receive(chID byte, peer Peer, msgBytes []byte) // CONTRACT: msgBytes are not nil
@@ -29,7 +32,7 @@ func NewBaseReactor(name string, impl Reactor) *BaseReactor {
 func (br *BaseReactor) SetSwitch(sw *Switch) {
 	br.Switch = sw
 }
-func (_ *BaseReactor) GetChannels() []*ChannelDescriptor             { return nil }
+func (_ *BaseReactor) GetChannels() []*tmconn.ChannelDescriptor      { return nil }
 func (_ *BaseReactor) AddPeer(peer Peer)                             {}
 func (_ *BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
 func (_ *BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}
