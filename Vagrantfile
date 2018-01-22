@@ -21,7 +21,6 @@ Vagrant.configure("2") do |config|
 
     # install base requirements
     apt-get update
-    apt-get upgrade -y
     apt-get install -y --no-install-recommends wget curl jq \
         make shellcheck bsdmainutils psmisc
     apt-get install -y docker-ce golang-1.9-go
