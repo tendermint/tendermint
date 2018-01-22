@@ -21,3 +21,7 @@ type Tree interface {
 type Hasher interface {
 	Hash() []byte
 }
+
+type Byteser interface {
+	Bytes() []byte
+}
