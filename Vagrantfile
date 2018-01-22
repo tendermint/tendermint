@@ -26,6 +26,7 @@ Vagrant.configure("2") do |config|
     apt-get install -y docker-ce golang-1.9-go
     apt-get install -y language-pack-en
 
+    # cleanup
     apt-get autoremove -y
 
     # needed for docker
@@ -44,7 +45,7 @@ Vagrant.configure("2") do |config|
     chown vagrant:vagrant /home/vagrant/.bash_profile
 
     # get all deps and tools, ready to install/test
-    source /home/vagrant/.bash_profile
-    cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_tools && make get_vendor_deps
+    su - vagrant  -c 'source /home/vagrant/.bash_profile'
+    su - vagrant -c 'cd /home/vagrant/go/src/github.com/tendermint/tendermint && make get_tools && make get_vendor_deps'
   SHELL
 end
