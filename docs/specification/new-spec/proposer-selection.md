@@ -18,7 +18,7 @@ with the total voting power N, during a sequence of rounds of size N, every proc
 equal to its voting power. 
 
 We now look at a few particular cases to understand better how fairness should be implemented.
-If we have 4 processes with the following voting power distribution (p0,4), (p1, 2), (p2, 3), (p3, 4) at some round r,  
+If we have 4 processes with the following voting power distribution (p0,4), (p1, 2), (p2, 2), (p3, 2) at some round r,  
 we have the following sequence of proposer selections in the following rounds:
 
 `p0, p1, p2, p3, p0, p0, p1, p2, p3, p0, p0, p1, p2, p3, p0, p0, p1, p2, p3, p0, etc`
