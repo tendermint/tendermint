@@ -31,4 +31,5 @@ test:
     - cd "$PROJECT_PATH" && mv test_integrations.log "${CIRCLE_ARTIFACTS}"
     - cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
     - cd "$PROJECT_PATH" && mv coverage.txt "${CIRCLE_ARTIFACTS}"
-    - cd "$PROJECT_PATH" && cp test/logs/messages "${CIRCLE_ARTIFACTS}/docker_logs.txt"
+    - cd "$PROJECT_PATH" && cp test/logs/messages "${CIRCLE_ARTIFACTS}/docker.log"
+    - cd "${CIRCLE_ARTIFACTS}" && tar czf logs.tar.gz *.log
