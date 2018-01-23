@@ -301,7 +301,7 @@ func TestSwitchFullConnectivity(t *testing.T) {
 }
 
 func BenchmarkSwitchBroadcast(b *testing.B) {
-	s1, s2 := makeSwitchPair(b, func(i int, sw *Switch) *Switch {
+	s1, s2 := MakeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
 		sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 			{ID: byte(0x00), Priority: 10},
