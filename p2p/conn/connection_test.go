@@ -313,3 +313,66 @@ func TestMConnectionTrySend(t *testing.T) {
 	server.Read(make([]byte, len(msg)))
 	assert.Equal("Send", <-resultCh) // Order constrained by parallel blocking above
 }
+
+func BenchmarkIterateOverChannelsMap8(b *testing.B)    { benchmarkIterateOverChannelsMap(b, 8) }
+func BenchmarkIterateOverChannelsMap16(b *testing.B)   { benchmarkIterateOverChannelsMap(b, 16) }
+func BenchmarkIterateOverChannelsMap32(b *testing.B)   { benchmarkIterateOverChannelsMap(b, 32) }
+func BenchmarkIterateOverChannelsSlice8(b *testing.B)  { benchmarkIterateOverChannelsSlice(b, 8) }
+func BenchmarkIterateOverChannelsSlice16(b *testing.B) { benchmarkIterateOverChannelsSlice(b, 16) }
+func BenchmarkIterateOverChannelsSlice32(b *testing.B) { benchmarkIterateOverChannelsMap(b, 32) }
+
+func benchmarkIterateOverChannelsMap(b *testing.B, channelsNum int) {
+	server, client := NetPipe()
+	defer server.Close()
+	defer client.Close()
+
+	mconn := createTestMConnection(client)
+
+	chDescs := make([]ChannelDescriptor, channelsNum)
+	for i := 0; i < channelsNum; i++ {
+		chDescs[i] = ChannelDescriptor{ID: byte(i), Priority: i + 1}
+	}
+
+	channelsMap := map[byte]*Channel{}
+	for _, desc := range chDescs {
+		channel := newChannel(mconn, desc)
+		channelsMap[channel.desc.ID] = channel
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for _, ch := range channelsMap {
+			res = ch
+		}
+	}
+}
+
+var res *Channel
+
+func benchmarkIterateOverChannelsSlice(b *testing.B, channelsNum int) {
+	server, client := NetPipe()
+	defer server.Close()
+	defer client.Close()
+
+	mconn := createTestMConnection(client)
+
+	chDescs := make([]ChannelDescriptor, channelsNum)
+	for i := 0; i < channelsNum; i++ {
+		chDescs[i] = ChannelDescriptor{ID: byte(i), Priority: i + 1}
+	}
+
+	channelsSlice := []*Channel{}
+	for _, desc := range chDescs {
+		channel := newChannel(mconn, desc)
+		channelsSlice = append(channelsSlice, channel)
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for _, ch := range channelsSlice {
+			res = ch
+		}
+	}
+}
