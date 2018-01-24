@@ -97,11 +97,12 @@ func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 
 	// for each of our channels, check if they have it
 	found := false
+OUTER_LOOP:
 	for _, ch1 := range info.Channels {
 		for _, ch2 := range other.Channels {
 			if ch1 == ch2 {
 				found = true
-				break // only need one
+				break OUTER_LOOP // only need one
 			}
 		}
 	}
