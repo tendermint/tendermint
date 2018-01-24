@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 var (
@@ -37,7 +38,7 @@ type TestReactor struct {
 	BaseReactor
 
 	mtx          sync.Mutex
-	channels     []*ChannelDescriptor
+	channels     []*conn.ChannelDescriptor
 	peersAdded   []Peer
 	peersRemoved []Peer
 	logMessages  bool
@@ -45,7 +46,7 @@ type TestReactor struct {
 	msgsReceived map[byte][]PeerMessage
 }
 
-func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReactor {
+func NewTestReactor(channels []*conn.ChannelDescriptor, logMessages bool) *TestReactor {
 	tr := &TestReactor{
 		channels:     channels,
 		logMessages:  logMessages,
@@ -56,7 +57,7 @@ func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReacto
 	return tr
 }
 
-func (tr *TestReactor) GetChannels() []*ChannelDescriptor {
+func (tr *TestReactor) GetChannels() []*conn.ChannelDescriptor {
 	return tr.channels
 }
 
@@ -92,7 +93,7 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 
 // convenience method for creating two switches connected to each other.
 // XXX: note this uses net.Pipe and not a proper TCP conn
-func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
+func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
 	switches := MakeConnectedSwitches(config, 2, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
@@ -100,11 +101,11 @@ func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
 	// Make two reactors of two channels each
-	sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
+	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x00), Priority: 10},
 		{ID: byte(0x01), Priority: 10},
 	}, true))
-	sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
+	sw.AddReactor("bar", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x02), Priority: 10},
 		{ID: byte(0x03), Priority: 10},
 	}, true))
@@ -112,7 +113,7 @@ func initSwitchFunc(i int, sw *Switch) *Switch {
 }
 
 func TestSwitches(t *testing.T) {
-	s1, s2 := makeSwitchPair(t, initSwitchFunc)
+	s1, s2 := MakeSwitchPair(t, initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
@@ -156,12 +157,12 @@ func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reacto
 }
 
 func TestConnAddrFilter(t *testing.T) {
-	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := netPipe()
+	c1, c2 := conn.NetPipe()
 
 	s1.SetAddrFilter(func(addr net.Addr) error {
 		if addr.String() == c1.RemoteAddr().String() {
@@ -192,12 +193,12 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 }
 
 func TestConnPubKeyFilter(t *testing.T) {
-	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := netPipe()
+	c1, c2 := conn.NetPipe()
 
 	// set pubkey filter
 	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
@@ -224,7 +225,7 @@ func TestConnPubKeyFilter(t *testing.T) {
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -251,7 +252,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -302,13 +303,13 @@ func TestSwitchFullConnectivity(t *testing.T) {
 func BenchmarkSwitches(b *testing.B) {
 	b.StopTimer()
 
-	s1, s2 := makeSwitchPair(b, func(i int, sw *Switch) *Switch {
+	s1, s2 := MakeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
-		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
+		sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 			{ID: byte(0x00), Priority: 10},
 			{ID: byte(0x01), Priority: 10},
 		}, false))
-		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
+		sw.AddReactor("bar", NewTestReactor([]*conn.ChannelDescriptor{
 			{ID: byte(0x02), Priority: 10},
 			{ID: byte(0x03), Priority: 10},
 		}, false))

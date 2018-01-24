@@ -5,10 +5,45 @@ import (
 	"net"
 
 	crypto "github.com/tendermint/go-crypto"
-	cfg "github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
+
+func AddPeerToSwitch(sw *Switch, peer Peer) {
+	sw.peers.Add(peer)
+}
+
+func CreateRandomPeer(outbound bool) *peer {
+	addr, netAddr := CreateRoutableAddr()
+	p := &peer{
+		nodeInfo: NodeInfo{
+			ListenAddr: netAddr.DialString(),
+			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
+		},
+		outbound: outbound,
+		mconn:    &conn.MConnection{},
+	}
+	p.SetLogger(log.TestingLogger().With("peer", addr))
+	return p
+}
+
+func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
+	for {
+		var err error
+		addr = cmn.Fmt("%X@%v.%v.%v.%v:46656", cmn.RandBytes(20), rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
+		netAddr, err = NewNetAddressString(addr)
+		if err != nil {
+			panic(err)
+		}
+		if netAddr.Routable() {
+			break
+		}
+	}
+	return
+}
 
 //------------------------------------------------------------------
 // Connects switches via arbitrary net.Conn. Used for testing.
@@ -20,7 +55,7 @@ import (
 func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = makeSwitch(cfg, i, "testing", "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, "testing", "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -42,7 +77,7 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 func Connect2Switches(switches []*Switch, i, j int) {
 	switchI := switches[i]
 	switchJ := switches[j]
-	c1, c2 := netPipe()
+	c1, c2 := conn.NetPipe()
 	doneCh := make(chan struct{})
 	go func() {
 		err := switchI.addPeerWithConnection(c1)
@@ -91,7 +126,7 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func makeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
+func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{

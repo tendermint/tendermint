@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
+	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
 func TestPeerBasic(t *testing.T) {
@@ -81,7 +82,7 @@ func TestPeerSend(t *testing.T) {
 }
 
 func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
-	chDescs := []*ChannelDescriptor{
+	chDescs := []*tmconn.ChannelDescriptor{
 		{ID: 0x01, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
@@ -137,7 +138,7 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
-		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*ChannelDescriptor, 0), func(p Peer, r interface{}) {}, p.PrivKey, p.Config)
+		peer, err := newInboundPeer(conn, make(map[byte]Reactor), make([]*tmconn.ChannelDescriptor, 0), func(p Peer, r interface{}) {}, p.PrivKey, p.Config)
 		if err != nil {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}

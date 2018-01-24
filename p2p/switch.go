@@ -11,6 +11,7 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -30,10 +31,12 @@ const (
 	reconnectBackOffBaseSeconds = 3
 )
 
-var (
-	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
-	ErrSwitchConnectToSelf = errors.New("Connect to self")
-)
+//-----------------------------------------------------------------------------
+
+type AddrBook interface {
+	AddAddress(addr *NetAddress, src *NetAddress) error
+	Save()
+}
 
 //-----------------------------------------------------------------------------
 
@@ -48,7 +51,7 @@ type Switch struct {
 	peerConfig   *PeerConfig
 	listeners    []Listener
 	reactors     map[string]Reactor
-	chDescs      []*ChannelDescriptor
+	chDescs      []*conn.ChannelDescriptor
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *cmn.CMap
@@ -66,7 +69,7 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		config:       config,
 		peerConfig:   DefaultPeerConfig(),
 		reactors:     make(map[string]Reactor),
-		chDescs:      make([]*ChannelDescriptor, 0),
+		chDescs:      make([]*conn.ChannelDescriptor, 0),
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
@@ -77,10 +80,10 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw.rng = rand.New(rand.NewSource(cmn.RandInt64()))
 
 	// TODO: collapse the peerConfig into the config ?
-	sw.peerConfig.MConfig.flushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
+	sw.peerConfig.MConfig.FlushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
 	sw.peerConfig.MConfig.SendRate = config.SendRate
 	sw.peerConfig.MConfig.RecvRate = config.RecvRate
-	sw.peerConfig.MConfig.maxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
+	sw.peerConfig.MConfig.MaxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 	return sw
@@ -265,6 +268,8 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 // If no success after all that, it stops trying, and leaves it
 // to the PEX/Addrbook to find the peer again
 func (sw *Switch) reconnectToPeer(peer Peer) {
+	// NOTE this will connect to the self reported address,
+	// not necessarily the original we dialed
 	netAddr := peer.NodeInfo().NetAddress()
 	start := time.Now()
 	sw.Logger.Info("Reconnecting to peer", "peer", peer)
@@ -316,7 +321,7 @@ func (sw *Switch) IsDialing(id ID) bool {
 }
 
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
-func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent bool) error {
+func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
@@ -330,8 +335,11 @@ func (sw *Switch) DialPeersAsync(addrBook *AddrBook, peers []string, persistent 
 			if netAddr.Same(ourAddr) {
 				continue
 			}
+			// TODO: move this out of here ?
 			addrBook.AddAddress(netAddr, ourAddr)
 		}
+		// Persist some peers to disk right away.
+		// NOTE: integration tests depend on this
 		addrBook.Save()
 	}
 
@@ -454,7 +462,7 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 		peer.Logger.Info("Dialed peer with unknown ID - unable to authenticate", "addr", addr)
 	} else if addr.ID != peer.ID() {
 		peer.CloseConn()
-		return nil, fmt.Errorf("Failed to authenticate peer %v. Connected to peer with ID %s", addr, peer.ID())
+		return nil, ErrSwitchAuthenticationFailure{addr, peer.ID()}
 	}
 
 	err = sw.addPeer(peer)

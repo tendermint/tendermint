@@ -4,7 +4,7 @@
 // is known ahead of time, and thus we are technically
 // still vulnerable to MITM. (TODO!)
 // See docs/sts-final.pdf for more info
-package p2p
+package conn
 
 import (
 	"bytes"

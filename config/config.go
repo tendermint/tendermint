@@ -22,11 +22,13 @@ var (
 	defaultGenesisJSONName = "genesis.json"
 	defaultPrivValName     = "priv_validator.json"
 	defaultNodeKeyName     = "node_key.json"
+	defaultAddrBookName    = "addrbook.json"
 
 	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
 	defaultPrivValPath     = filepath.Join(defaultConfigDir, defaultPrivValName)
 	defaultNodeKeyPath     = filepath.Join(defaultConfigDir, defaultNodeKeyName)
+	defaultAddrBookPath    = filepath.Join(defaultConfigDir, defaultAddrBookName)
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -278,7 +280,7 @@ type P2PConfig struct {
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
 		ListenAddress:           "tcp://0.0.0.0:46656",
-		AddrBook:                "addrbook.json",
+		AddrBook:                defaultAddrBookPath,
 		AddrBookStrict:          true,
 		MaxNumPeers:             50,
 		FlushThrottleTimeout:    100,
