@@ -426,7 +426,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) error {
 	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config)
 	if err != nil {
-		peer.CloseConn()
+		conn.Close() // peer is nil
 		return err
 	}
 	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))

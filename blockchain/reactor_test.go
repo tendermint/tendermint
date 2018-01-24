@@ -49,7 +49,7 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 	return bcReactor
 }
 
-func TestNoBlockMessageResponse(t *testing.T) {
+func TestNoBlockResponse(t *testing.T) {
 	maxBlockHeight := int64(20)
 
 	bcr := newBlockchainReactor(log.TestingLogger(), maxBlockHeight)
@@ -73,7 +73,7 @@ func TestNoBlockMessageResponse(t *testing.T) {
 	}
 
 	// receive a request message from peer,
-	// wait to hear response
+	// wait for our response to be received on the peer
 	for _, tt := range tests {
 		reqBlockMsg := &bcBlockRequestMessage{tt.height}
 		reqBlockBytes := wire.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
@@ -96,6 +96,49 @@ func TestNoBlockMessageResponse(t *testing.T) {
 		}
 	}
 }
+
+/*
+// NOTE: This is too hard to test without
+// an easy way to add test peer to switch
+// or without significant refactoring of the module.
+// Alternatively we could actually dial a TCP conn but
+// that seems extreme.
+func TestBadBlockStopsPeer(t *testing.T) {
+	maxBlockHeight := int64(20)
+
+	bcr := newBlockchainReactor(log.TestingLogger(), maxBlockHeight)
+	bcr.Start()
+	defer bcr.Stop()
+
+	// Add some peers in
+	peer := newbcrTestPeer(p2p.ID(cmn.RandStr(12)))
+
+	// XXX: This doesn't add the peer to anything,
+	// so it's hard to check that it's later removed
+	bcr.AddPeer(peer)
+	assert.True(t, bcr.Switch.Peers().Size() > 0)
+
+	// send a bad block from the peer
+	// default blocks already dont have commits, so should fail
+	block := bcr.store.LoadBlock(3)
+	msg := &bcBlockResponseMessage{Block: block}
+	peer.Send(BlockchainChannel, struct{ BlockchainMessage }{msg})
+
+	ticker := time.NewTicker(time.Millisecond * 10)
+	timer := time.NewTimer(time.Second * 2)
+LOOP:
+	for {
+		select {
+		case <-ticker.C:
+			if bcr.Switch.Peers().Size() == 0 {
+				break LOOP
+			}
+		case <-timer.C:
+			t.Fatal("Timed out waiting to disconnect peer")
+		}
+	}
+}
+*/
 
 //----------------------------------------------
 // utility funcs

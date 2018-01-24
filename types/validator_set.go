@@ -21,7 +21,6 @@ import (
 // upon calling .IncrementAccum().
 // NOTE: Not goroutine-safe.
 // NOTE: All get/set to validators should copy the value for safety.
-// TODO: consider validator Accum overflow
 type ValidatorSet struct {
 	// NOTE: persisted via reflect, must be exported.
 	Validators []*Validator `json:"validators"`

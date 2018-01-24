@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 
@@ -207,15 +208,15 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 // NOTE: if there are too many peers, or too much peer churn,
 // this can cause memory issues.
 // TODO: implement ability to remove peers too
-func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID p2p.ID, blockID types.BlockID) {
+func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID p2p.ID, blockID types.BlockID) error {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	if !types.IsVoteTypeValid(type_) {
-		return
+		return fmt.Errorf("SetPeerMaj23: Invalid vote type %v", type_)
 	}
 	voteSet := hvs.getVoteSet(round, type_)
 	if voteSet == nil {
-		return
+		return nil // something we don't know about yet
 	}
-	voteSet.SetPeerMaj23(peerID, blockID)
+	return voteSet.SetPeerMaj23(peerID, blockID)
 }
