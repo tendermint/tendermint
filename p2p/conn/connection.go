@@ -553,7 +553,7 @@ type ConnectionStatus struct {
 	Duration    time.Duration
 	SendMonitor flow.Status
 	RecvMonitor flow.Status
-	Channels    []ChannelStatus
+	Channels    map[byte]ChannelStatus
 }
 
 type ChannelStatus struct {
@@ -569,17 +569,15 @@ func (c *MConnection) Status() ConnectionStatus {
 	status.Duration = time.Since(c.created)
 	status.SendMonitor = c.sendMonitor.Status()
 	status.RecvMonitor = c.recvMonitor.Status()
-	status.Channels = make([]ChannelStatus, len(c.channels))
-	i := 0
+	status.Channels = make(map[byte]ChannelStatus, len(c.channels))
 	for _, channel := range c.channels {
-		status.Channels[i] = ChannelStatus{
+		status.Channels[channel.desc.ID] = ChannelStatus{
 			ID:                channel.desc.ID,
 			SendQueueCapacity: cap(channel.sendQueue),
 			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
 			Priority:          channel.desc.Priority,
 			RecentlySent:      channel.recentlySent,
 		}
-		i++
 	}
 	return status
 }
