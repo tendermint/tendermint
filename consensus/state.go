@@ -86,7 +86,7 @@ type ConsensusState struct {
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
-	// state changes may be triggered by msgs from peers,
+	// state changes may be triggered by: msgs from peers,
 	// msgs from ourself, or by timeouts
 	peerMsgQueue     chan msgInfo
 	internalMsgQueue chan msgInfo
@@ -771,11 +771,12 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 		return
 	}
 
-	if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-		cs.Logger.Debug("This node is a validator")
-	} else {
+	// if not a validator, we're done
+	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 		cs.Logger.Debug("This node is not a validator")
+		return
 	}
+	cs.Logger.Debug("This node is a validator")
 
 	if cs.isProposer() {
 		cs.Logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
