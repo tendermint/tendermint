@@ -13,6 +13,8 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
+const testCh = 0x01
+
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -77,25 +79,26 @@ func TestPeerSend(t *testing.T) {
 
 	defer p.Stop()
 
-	assert.True(p.CanSend(0x01))
-	assert.True(p.Send(0x01, "Asylum"))
+	assert.True(p.CanSend(testCh))
+	assert.True(p.Send(testCh, "Asylum"))
 }
 
 func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
 	chDescs := []*tmconn.ChannelDescriptor{
-		{ID: 0x01, Priority: 1},
+		{ID: testCh, Priority: 1},
 	}
-	reactorsByCh := map[byte]Reactor{0x01: NewTestReactor(chDescs, true)}
+	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
 	pk := crypto.GenPrivKeyEd25519().Wrap()
 	p, err := newOutboundPeer(addr, reactorsByCh, chDescs, func(p Peer, r interface{}) {}, pk, config, false)
 	if err != nil {
 		return nil, err
 	}
 	err = p.HandshakeTimeout(NodeInfo{
-		PubKey:  pk.PubKey(),
-		Moniker: "host_peer",
-		Network: "testing",
-		Version: "123.123.123",
+		PubKey:   pk.PubKey(),
+		Moniker:  "host_peer",
+		Network:  "testing",
+		Version:  "123.123.123",
+		Channels: []byte{testCh},
 	}, 1*time.Second)
 	if err != nil {
 		return nil, err
@@ -148,6 +151,7 @@ func (p *remotePeer) accept(l net.Listener) {
 			Network:    "testing",
 			Version:    "123.123.123",
 			ListenAddr: l.Addr().String(),
+			Channels:   []byte{testCh},
 		}, 1*time.Second)
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
