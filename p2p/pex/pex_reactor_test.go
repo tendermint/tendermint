@@ -111,7 +111,7 @@ func TestPEXReactorRunning(t *testing.T) {
 		require.Nil(t, err)
 	}
 
-	assertSomePeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second)
+	assertPeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second, N-1)
 
 	// stop them
 	for _, s := range switches {
@@ -119,7 +119,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	}
 }
 
-func assertSomePeersWithTimeout(t *testing.T, switches []*p2p.Switch, checkPeriod, timeout time.Duration) {
+func assertPeersWithTimeout(t *testing.T, switches []*p2p.Switch, checkPeriod, timeout time.Duration, nPeers int) {
 	ticker := time.NewTicker(checkPeriod)
 	remaining := timeout
 	for {
@@ -129,7 +129,7 @@ func assertSomePeersWithTimeout(t *testing.T, switches []*p2p.Switch, checkPerio
 			allGood := true
 			for _, s := range switches {
 				outbound, inbound, _ := s.NumPeers()
-				if outbound+inbound == 0 {
+				if outbound+inbound < nPeers {
 					allGood = false
 				}
 			}
@@ -296,7 +296,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	defer sw.Stop()
 
 	// 3. check that peer at least connects to seed
-	assertSomePeersWithTimeout(t, []*p2p.Switch{sw}, 10*time.Millisecond, 10*time.Second)
+	assertPeersWithTimeout(t, []*p2p.Switch{sw}, 10*time.Millisecond, 10*time.Second, 1)
 }
 
 func TestPEXReactorCrawlStatus(t *testing.T) {
