@@ -7,7 +7,10 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 )
 
-const maxNodeInfoSize = 10240 // 10Kb
+const (
+	maxNodeInfoSize = 10240 // 10Kb
+	maxNumChannels  = 16    // plenty of room for upgrades, for now
+)
 
 func MaxNodeInfoSize() int {
 	return maxNodeInfoSize
@@ -21,8 +24,9 @@ type NodeInfo struct {
 	ListenAddr string        `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility
-	Network string `json:"network"` // network/chain ID
-	Version string `json:"version"` // major.minor.revision
+	Network  string `json:"network"`  // network/chain ID
+	Version  string `json:"version"`  // major.minor.revision
+	Channels []byte `json:"channels"` // channels this node knows about
 
 	// Sanitize
 	Moniker string   `json:"moniker"` // arbitrary moniker
@@ -30,18 +34,33 @@ type NodeInfo struct {
 }
 
 // Validate checks the self-reported NodeInfo is safe.
-// It returns an error if the info.PubKey doesn't match the given pubKey.
+// It returns an error if the info.PubKey doesn't match the given pubKey,
+// or if there are too many Channels or any duplicate Channels.
 // TODO: constraints for Moniker/Other? Or is that for the UI ?
 func (info NodeInfo) Validate(pubKey crypto.PubKey) error {
 	if !info.PubKey.Equals(pubKey) {
 		return fmt.Errorf("info.PubKey (%v) doesn't match peer.PubKey (%v)",
 			info.PubKey, pubKey)
 	}
+
+	if len(info.Channels) > maxNumChannels {
+		return fmt.Errorf("info.Channels is too long (%v). Max is %v", len(info.Channels), maxNumChannels)
+	}
+
+	channels := make(map[byte]struct{})
+	for _, ch := range info.Channels {
+		_, ok := channels[ch]
+		if ok {
+			return fmt.Errorf("info.Channels contains duplicate channel id %v", ch)
+		}
+		channels[ch] = struct{}{}
+	}
 	return nil
 }
 
 // CompatibleWith checks if two NodeInfo are compatible with eachother.
-// CONTRACT: two nodes are compatible if the major/minor versions match and network match.
+// CONTRACT: two nodes are compatible if the major/minor versions match and network match
+// and they have at least one channel in common.
 func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	iMajor, iMinor, _, iErr := splitVersion(info.Version)
 	oMajor, oMinor, _, oErr := splitVersion(other.Version)
@@ -71,6 +90,25 @@ func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 		return fmt.Errorf("Peer is on a different network. Got %v, expected %v", other.Network, info.Network)
 	}
 
+	// if we have no channels, we're just testing
+	if len(info.Channels) == 0 {
+		return nil
+	}
+
+	// for each of our channels, check if they have it
+	found := false
+OUTER_LOOP:
+	for _, ch1 := range info.Channels {
+		for _, ch2 := range other.Channels {
+			if ch1 == ch2 {
+				found = true
+				break OUTER_LOOP // only need one
+			}
+		}
+	}
+	if !found {
+		return fmt.Errorf("Peer has no common channels. Our channels: %v ; Peer channels: %v", info.Channels, other.Channels)
+	}
 	return nil
 }
 

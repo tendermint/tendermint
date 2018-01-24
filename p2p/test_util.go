@@ -132,16 +132,20 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	nodeKey := &NodeKey{
 		PrivKey: crypto.GenPrivKeyEd25519().Wrap(),
 	}
-	s := NewSwitch(cfg)
-	s.SetLogger(log.TestingLogger())
-	s = initSwitch(i, s)
-	s.SetNodeInfo(NodeInfo{
+	sw := NewSwitch(cfg)
+	sw.SetLogger(log.TestingLogger())
+	sw = initSwitch(i, sw)
+	ni := NodeInfo{
 		PubKey:     nodeKey.PubKey(),
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
 		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
-	})
-	s.SetNodeKey(nodeKey)
-	return s
+	}
+	for ch, _ := range sw.reactorsByCh {
+		ni.Channels = append(ni.Channels, ch)
+	}
+	sw.SetNodeInfo(ni)
+	sw.SetNodeKey(nodeKey)
+	return sw
 }
