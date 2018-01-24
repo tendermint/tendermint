@@ -86,9 +86,9 @@ func bytes2Int64(buf []byte) int64 {
 }
 */
 
-func TestCLevelDBBackendStr(t *testing.T) {
+func TestCLevelDBBackend(t *testing.T) {
 	name := cmn.Fmt("test_%x", cmn.RandStr(12))
-	db := NewDB(name, LevelDBBackendStr, "")
+	db := NewDB(name, LevelDBBackend, "")
 	defer cleanupDBDir("", name)
 
 	_, ok := db.(*CLevelDB)

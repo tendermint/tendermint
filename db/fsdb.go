@@ -19,7 +19,7 @@ const (
 )
 
 func init() {
-	registerDBCreator(FSDBBackendStr, func(name string, dir string) (DB, error) {
+	registerDBCreator(FSDBBackend, func(name string, dir string) (DB, error) {
 		dbPath := filepath.Join(dir, name+".db")
 		return NewFSDB(dbPath), nil
 	}, false)

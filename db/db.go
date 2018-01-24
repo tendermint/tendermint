@@ -5,19 +5,21 @@ import "fmt"
 //----------------------------------------
 // Main entry
 
+type dbBackendType string
+
 const (
-	LevelDBBackendStr   = "leveldb" // legacy, defaults to goleveldb unless +gcc
-	CLevelDBBackendStr  = "cleveldb"
-	GoLevelDBBackendStr = "goleveldb"
-	MemDBBackendStr     = "memdb"
-	FSDBBackendStr      = "fsdb" // using the filesystem naively
+	LevelDBBackend   dbBackendType = "leveldb" // legacy, defaults to goleveldb unless +gcc
+	CLevelDBBackend  dbBackendType = "cleveldb"
+	GoLevelDBBackend dbBackendType = "goleveldb"
+	MemDBBackend     dbBackendType = "memDB"
+	FSDBBackend      dbBackendType = "fsdb" // using the filesystem naively
 )
 
 type dbCreator func(name string, dir string) (DB, error)
 
-var backends = map[string]dbCreator{}
+var backends = map[dbBackendType]dbCreator{}
 
-func registerDBCreator(backend string, creator dbCreator, force bool) {
+func registerDBCreator(backend dbBackendType, creator dbCreator, force bool) {
 	_, ok := backends[backend]
 	if !force && ok {
 		return
@@ -25,7 +27,7 @@ func registerDBCreator(backend string, creator dbCreator, force bool) {
 	backends[backend] = creator
 }
 
-func NewDB(name string, backend string, dir string) DB {
+func NewDB(name string, backend dbBackendType, dir string) DB {
 	db, err := backends[backend](name, dir)
 	if err != nil {
 		panic(fmt.Sprintf("Error initializing DB: %v", err))

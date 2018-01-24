@@ -17,8 +17,8 @@ func init() {
 	dbCreator := func(name string, dir string) (DB, error) {
 		return NewGoLevelDB(name, dir)
 	}
-	registerDBCreator(LevelDBBackendStr, dbCreator, false)
-	registerDBCreator(GoLevelDBBackendStr, dbCreator, false)
+	registerDBCreator(LevelDBBackend, dbCreator, false)
+	registerDBCreator(GoLevelDBBackend, dbCreator, false)
 }
 
 var _ DB = (*GoLevelDB)(nil)

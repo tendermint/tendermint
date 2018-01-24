@@ -15,7 +15,7 @@ func cleanupDBDir(dir, name string) {
 	os.RemoveAll(filepath.Join(dir, name) + ".db")
 }
 
-func testBackendGetSetDelete(t *testing.T, backend string) {
+func testBackendGetSetDelete(t *testing.T, backend dbBackendType) {
 	// Default
 	dir, dirname := cmn.Tempdir(fmt.Sprintf("test_backend_%s_", backend))
 	defer dir.Close()
@@ -141,9 +141,9 @@ func TestBackendsNilKeys(t *testing.T) {
 	}
 }
 
-func TestGoLevelDBBackendStr(t *testing.T) {
+func TestGoLevelDBBackend(t *testing.T) {
 	name := cmn.Fmt("test_%x", cmn.RandStr(12))
-	db := NewDB(name, GoLevelDBBackendStr, "")
+	db := NewDB(name, GoLevelDBBackend, "")
 	defer cleanupDBDir("", name)
 
 	_, ok := db.(*GoLevelDB)
