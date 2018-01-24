@@ -10,8 +10,8 @@ import (
 /* Loading & Saving */
 
 type addrBookJSON struct {
-	Key   string
-	Addrs []*knownAddress
+	Key   string          `json:"key"`
+	Addrs []*knownAddress `json:"addrs"`
 }
 
 func (a *addrBook) saveToFile(filePath string) {
