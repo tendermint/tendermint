@@ -35,6 +35,7 @@ const (
 
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	Save()
 }
 
 //-----------------------------------------------------------------------------
@@ -337,6 +338,9 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			// TODO: move this out of here ?
 			addrBook.AddAddress(netAddr, ourAddr)
 		}
+		// Persist some peers to disk right away.
+		// NOTE: integration tests depend on this
+		addrBook.Save()
 	}
 
 	// permute the list, dial them in random order.

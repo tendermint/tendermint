@@ -27,6 +27,7 @@ const (
 // AddrBook is an address book used for tracking peers
 // so we can gossip about them to others and select
 // peers to dial.
+// TODO: break this up?
 type AddrBook interface {
 	cmn.Service
 
@@ -53,6 +54,9 @@ type AddrBook interface {
 
 	// TODO: remove
 	ListOfKnownAddresses() []*knownAddress
+
+	// Persist to disk
+	Save()
 }
 
 var _ AddrBook = (*addrBook)(nil)
@@ -313,6 +317,11 @@ func (a *addrBook) size() int {
 }
 
 //----------------------------------------------------------
+
+// Save persists the address book to disk.
+func (a *addrBook) Save() {
+	a.saveToFile(a.filePath) // thread safe
+}
 
 func (a *addrBook) saveRoutine() {
 	defer a.wg.Done()
