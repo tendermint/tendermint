@@ -77,8 +77,7 @@ type MConnection struct {
 	recvMonitor *flow.Monitor
 	send        chan struct{}
 	pong        chan struct{}
-	channels    []*Channel
-	channelsIdx map[byte]*Channel
+	channels    map[byte]*Channel
 	onReceive   receiveCbFunc
 	onError     errorCbFunc
 	errored     uint32
@@ -142,16 +141,11 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	}
 
 	// Create channels
-	var channelsIdx = map[byte]*Channel{}
-	var channels = []*Channel{}
-
+	mconn.channels = map[byte]*Channel{}
 	for _, desc := range chDescs {
 		channel := newChannel(mconn, *desc)
-		channelsIdx[channel.desc.ID] = channel
-		channels = append(channels, channel)
+		mconn.channels[channel.desc.ID] = channel
 	}
-	mconn.channels = channels
-	mconn.channelsIdx = channelsIdx
 
 	mconn.BaseService = *cmn.NewBaseService(nil, "MConnection", mconn)
 
@@ -235,7 +229,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
 
 	// Send message to channel.
-	channel, ok := c.channelsIdx[chID]
+	channel, ok := c.channels[chID]
 	if !ok {
 		c.Logger.Error(cmn.Fmt("Cannot send bytes, unknown channel %X", chID))
 		return false
@@ -264,7 +258,7 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msg", msg)
 
 	// Send message to channel.
-	channel, ok := c.channelsIdx[chID]
+	channel, ok := c.channels[chID]
 	if !ok {
 		c.Logger.Error(cmn.Fmt("Cannot send bytes, unknown channel %X", chID))
 		return false
@@ -289,7 +283,7 @@ func (c *MConnection) CanSend(chID byte) bool {
 		return false
 	}
 
-	channel, ok := c.channelsIdx[chID]
+	channel, ok := c.channels[chID]
 	if !ok {
 		c.Logger.Error(cmn.Fmt("Unknown channel %X", chID))
 		return false
@@ -465,7 +459,7 @@ FOR_LOOP:
 				}
 				break FOR_LOOP
 			}
-			channel, ok := c.channelsIdx[pkt.ChannelID]
+			channel, ok := c.channels[pkt.ChannelID]
 			if !ok || channel == nil {
 				err := fmt.Errorf("Unknown channel %X", pkt.ChannelID)
 				c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
@@ -507,7 +501,7 @@ type ConnectionStatus struct {
 	Duration    time.Duration
 	SendMonitor flow.Status
 	RecvMonitor flow.Status
-	Channels    []ChannelStatus
+	Channels    map[byte]ChannelStatus
 }
 
 type ChannelStatus struct {
@@ -523,9 +517,9 @@ func (c *MConnection) Status() ConnectionStatus {
 	status.Duration = time.Since(c.created)
 	status.SendMonitor = c.sendMonitor.Status()
 	status.RecvMonitor = c.recvMonitor.Status()
-	status.Channels = make([]ChannelStatus, len(c.channels))
-	for i, channel := range c.channels {
-		status.Channels[i] = ChannelStatus{
+	status.Channels = make(map[byte]ChannelStatus, len(c.channels))
+	for _, channel := range c.channels {
+		status.Channels[channel.desc.ID] = ChannelStatus{
 			ID:                channel.desc.ID,
 			SendQueueCapacity: cap(channel.sendQueue),
 			SendQueueSize:     int(channel.sendQueueSize), // TODO use atomic
