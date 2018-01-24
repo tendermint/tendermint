@@ -2,8 +2,6 @@ package p2p
 
 import (
 	"fmt"
-	"net"
-	"strconv"
 	"strings"
 
 	crypto "github.com/tendermint/go-crypto"
@@ -42,7 +40,8 @@ func (info NodeInfo) Validate(pubKey crypto.PubKey) error {
 	return nil
 }
 
-// CONTRACT: two nodes are compatible if the major/minor versions match and network match
+// CompatibleWith checks if two NodeInfo are compatible with eachother.
+// CONTRACT: two nodes are compatible if the major/minor versions match and network match.
 func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	iMajor, iMinor, _, iErr := splitVersion(info.Version)
 	oMajor, oMinor, _, oErr := splitVersion(other.Version)
@@ -79,6 +78,10 @@ func (info NodeInfo) ID() ID {
 	return PubKeyToID(info.PubKey)
 }
 
+// NetAddress returns a NetAddress derived from the NodeInfo -
+// it includes the authenticated peer ID and the self-reported
+// ListenAddr. Note that the ListenAddr is not authenticated and
+// may not match that address actually dialed if its an outbound peer.
 func (info NodeInfo) NetAddress() *NetAddress {
 	id := PubKeyToID(info.PubKey)
 	addr := info.ListenAddr
@@ -87,20 +90,6 @@ func (info NodeInfo) NetAddress() *NetAddress {
 		panic(err) // everything should be well formed by now
 	}
 	return netAddr
-}
-
-func (info NodeInfo) ListenHost() string {
-	host, _, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
-	return host
-}
-
-func (info NodeInfo) ListenPort() int {
-	_, port, _ := net.SplitHostPort(info.ListenAddr) // nolint: errcheck, gas
-	port_i, err := strconv.Atoi(port)
-	if err != nil {
-		return -1
-	}
-	return port_i
 }
 
 func (info NodeInfo) String() string {

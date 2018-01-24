@@ -267,6 +267,8 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 // If no success after all that, it stops trying, and leaves it
 // to the PEX/Addrbook to find the peer again
 func (sw *Switch) reconnectToPeer(peer Peer) {
+	// NOTE this will connect to the self reported address,
+	// not necessarily the original we dialed
 	netAddr := peer.NodeInfo().NetAddress()
 	start := time.Now()
 	sw.Logger.Info("Reconnecting to peer", "peer", peer)

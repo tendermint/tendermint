@@ -269,8 +269,6 @@ func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) err
 		return errors.Wrap(err, "Error removing deadline")
 	}
 
-	// TODO: fix the peerNodeInfo.ListenAddr
-
 	p.nodeInfo = peerNodeInfo
 	return nil
 }
