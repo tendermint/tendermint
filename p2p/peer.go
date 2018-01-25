@@ -168,6 +168,12 @@ func (p *peer) OnStart() error {
 func (p *peer) OnStop() {
 	p.BaseService.OnStop()
 	p.mconn.Stop() // stop everything and close the conn
+	// fixes memory leak https://github.com/cosmos/gaia/issues/108.
+	//   my theory is some object (switch?) still refers a peer even when it's
+	//   stopped, so Go can't garbage collect it. Until we find the exact place,
+	//   we should keep this. See commit message for test case that was used to
+	//   reproduce the leak.
+	p.mconn = nil
 }
 
 //---------------------------------------------------
