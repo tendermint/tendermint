@@ -189,11 +189,11 @@ func (c *MConnection) OnStop() {
 		close(c.quit)
 	}
 	c.conn.Close() // nolint: errcheck
+
 	// We can't close pong safely here because
 	// recvRoutine may write to it after we've stopped.
 	// Though it doesn't need to get closed at all,
 	// we close it @ recvRoutine.
-	// close(c.pong)
 }
 
 func (c *MConnection) String() string {
@@ -450,7 +450,11 @@ FOR_LOOP:
 		case packetTypePing:
 			// TODO: prevent abuse, as they cause flush()'s.
 			c.Logger.Debug("Receive Ping")
-			c.pong <- struct{}{}
+			select {
+			case c.pong <- struct{}{}:
+			case <-c.quit:
+				break FOR_LOOP
+			}
 		case packetTypePong:
 			// do nothing
 			c.Logger.Debug("Receive Pong")
@@ -470,6 +474,7 @@ FOR_LOOP:
 				err := fmt.Errorf("Unknown channel %X", pkt.ChannelID)
 				c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 				c.stopForError(err)
+				break FOR_LOOP
 			}
 
 			msgBytes, err := channel.recvMsgPacket(pkt)
@@ -489,6 +494,7 @@ FOR_LOOP:
 			err := fmt.Errorf("Unknown message type %X", pktType)
 			c.Logger.Error("Connection failed @ recvRoutine", "conn", c, "err", err)
 			c.stopForError(err)
+			break FOR_LOOP
 		}
 
 		// TODO: shouldn't this go in the sendRoutine?
