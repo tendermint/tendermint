@@ -244,7 +244,9 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
-		go sw.reconnectToPeer(peer)
+		go func(addr NetAddress) {
+			sw.reconnectToPeer(addr)
+		}(*peer.NodeInfo().NetAddress())
 	}
 }
 
@@ -267,20 +269,19 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 // with a fixed interval, then with exponential backoff.
 // If no success after all that, it stops trying, and leaves it
 // to the PEX/Addrbook to find the peer again
-func (sw *Switch) reconnectToPeer(peer Peer) {
+func (sw *Switch) reconnectToPeer(peerAddr NetAddress) {
 	// NOTE this will connect to the self reported address,
 	// not necessarily the original we dialed
-	netAddr := peer.NodeInfo().NetAddress()
 	start := time.Now()
-	sw.Logger.Info("Reconnecting to peer", "peer", peer)
+	sw.Logger.Info("Reconnecting to peer", "addr", peerAddr)
 	for i := 0; i < reconnectAttempts; i++ {
 		if !sw.IsRunning() {
 			return
 		}
 
-		peer, err := sw.DialPeerWithAddress(netAddr, true)
+		peer, err := sw.DialPeerWithAddress(&peerAddr, true)
 		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
+			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", peerAddr)
 			// sleep a set amount
 			sw.randomSleep(reconnectInterval)
 			continue
@@ -291,7 +292,7 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 	}
 
 	sw.Logger.Error("Failed to reconnect to peer. Beginning exponential backoff",
-		"peer", peer, "elapsed", time.Since(start))
+		"addr", peerAddr, "elapsed", time.Since(start))
 	for i := 0; i < reconnectBackOffAttempts; i++ {
 		if !sw.IsRunning() {
 			return
@@ -300,16 +301,16 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 		// sleep an exponentially increasing amount
 		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
 		sw.randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
-		peer, err := sw.DialPeerWithAddress(netAddr, true)
+		peer, err := sw.DialPeerWithAddress(&peerAddr, true)
 		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
+			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", peerAddr)
 			continue
 		} else {
 			sw.Logger.Info("Reconnected to peer", "peer", peer)
 			return
 		}
 	}
-	sw.Logger.Error("Failed to reconnect to peer. Giving up", "peer", peer, "elapsed", time.Since(start))
+	sw.Logger.Error("Failed to reconnect to peer. Giving up", "addr", peerAddr, "elapsed", time.Since(start))
 }
 
 //---------------------------------------------------------------------
