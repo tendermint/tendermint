@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sync"
 	"testing"
@@ -35,7 +36,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].SetLogger(css[i].Logger.With("validator", "i", "module", "consensus"))
+		reactors[i].SetLogger(css[i].Logger)
 
 		// eventBus is already started with the cs
 		eventBuses[i] = css[i].eventBus
@@ -410,7 +411,15 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*ConsensusState) {
 			t.Log(cs.GetRoundState())
 			t.Log("")
 		}
+		os.Stdout.Write([]byte("pprof.Lookup('goroutine'):\n"))
 		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		capture()
 		panic("Timed out waiting for all validators to commit a block")
 	}
+}
+
+func capture() {
+	trace := make([]byte, 10240000)
+	count := runtime.Stack(trace, true)
+	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
 }
