@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 
 	cmn "github.com/tendermint/tmlibs/common"
@@ -11,20 +10,27 @@ import (
 	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 )
 
-var chainID = flag.String("chain-id", "mychain", "chain id")
-var privValPath = flag.String("priv", "", "priv val file path")
-
 func main() {
+	var (
+		chainID     = flag.String("chain-id", "mychain", "chain id")
+		privValPath = flag.String("priv", "", "priv val file path")
+		socketAddr  = flag.String("socket.addr", ":46659", "socket bind addr")
+
+		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "priv_val")
+	)
 	flag.Parse()
 
-	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "priv_val")
-	socketAddr := "localhost:46659"
-	fmt.Println(*chainID)
-	fmt.Println(*privValPath)
+	logger.Info("args", "chainID", *chainID, "privPath", *privValPath)
+
 	privVal := priv_val.LoadPrivValidatorJSON(*privValPath)
 
-	pvss := priv_val.NewPrivValidatorSocketServer(logger, socketAddr, *chainID, privVal)
-	pvss.Start()
+	pvss := priv_val.NewPrivValidatorSocketServer(
+		logger,
+		*socketAddr,
+		*chainID,
+		privVal,
+	)
+	// pvss.Start()
 
 	cmn.TrapSignal(func() {
 		pvss.Stop()
