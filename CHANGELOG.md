@@ -29,11 +29,30 @@ BUG FIXES:
 ## 0.16.0 (TBD)
 
 BREAKING CHANGES:
-- [p2p] old `seeds` is now `persistent_peers` (persistent peers to which TM will always connect to)
-- [p2p] now `seeds` only used for getting addresses (if addrbook is empty; not persistent)
+- [config] use $TMHOME/config for all config and json files
+- [p2p] old `--p2p.seeds` is now `--p2p.persistent_peers` (persistent peers to which TM will always connect to)
+- [p2p] now `--p2p.seeds` only used for getting addresses (if addrbook is empty; not persistent)
+- [p2p] NodeInfo: remove RemoteAddr and add Channels
+    - we must have at least one overlapping channel with peer
+    - we only send msgs for channels the peer advertised
 
 FEATURES:
-- [p2p] added new `/dial_persistent_peers` **unsafe** endpoint
+- [p2p] added new `/dial_peers&persistent=_` **unsafe** endpoint
+- [p2p] persistent node key in `$THMHOME/config/node_key.json`
+- [p2p] introduce peer ID and authenticate peers by ID using addresses like `ID@IP:PORT`
+- [p2p] new seed mode in pex reactor crawls the network and serves as a seed. TODO: `--p2p.seed_mode`
+- [config] MempoolConfig.CacheSize
+
+IMPROVEMENT:
+- [p2p] stricter rules in the PEX reactor for better handling of abuse
+- [p2p] various improvements to code structure including subpackages for `pex` and `conn`
+- [docs] new spec!
+
+BUG FIX:
+- [blockchain] StopPeerForError on timeout
+- [consensus] StopPeerForError on a bad Maj23 message
+- [state] flush mempool conn before calling commit
+- [types] fix priv val signing things that only differ by timestamp
 
 ## 0.15.0 (December 29, 2017)
 
