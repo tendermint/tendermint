@@ -33,7 +33,9 @@ func TestByzantine(t *testing.T) {
 	css := randConsensusNet(N, "consensus_byzantine_test", newMockTickerFunc(false), newCounter)
 
 	// give the byzantine validator a normal ticker
-	css[0].SetTimeoutTicker(NewTimeoutTicker())
+	ticker := NewTimeoutTicker()
+	ticker.SetLogger(css[0].Logger)
+	css[0].SetTimeoutTicker(ticker)
 
 	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")

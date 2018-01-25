@@ -35,7 +35,7 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].SetLogger(css[i].Logger.With("validator", "i", "module", "consensus"))
+		reactors[i].SetLogger(css[i].Logger)
 
 		// eventBus is already started with the cs
 		eventBuses[i] = css[i].eventBus

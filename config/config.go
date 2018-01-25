@@ -451,7 +451,7 @@ func TestConsensusConfig() *ConsensusConfig {
 	config.TimeoutCommit = 10
 	config.SkipTimeoutCommit = true
 	config.PeerGossipSleepDuration = 5
-	config.PeerQueryMaj23SleepDuration = 50
+	config.PeerQueryMaj23SleepDuration = 250
 	return config
 }
 
