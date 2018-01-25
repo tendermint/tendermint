@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sync"
 	"testing"
@@ -410,7 +411,15 @@ func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*ConsensusState) {
 			t.Log(cs.GetRoundState())
 			t.Log("")
 		}
+		os.Stdout.Write([]byte("pprof.Lookup('goroutine'):\n"))
 		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		capture()
 		panic("Timed out waiting for all validators to commit a block")
 	}
+}
+
+func capture() {
+	trace := make([]byte, 10240000)
+	count := runtime.Stack(trace, true)
+	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
 }
