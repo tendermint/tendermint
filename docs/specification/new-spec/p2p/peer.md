@@ -62,7 +62,7 @@ ie. `peer.PubKey.Address() == <ID>`.
 
 The connection has now been authenticated. All traffic is encrypted.
 
-Note that only the dialer can authenticate the identity of the peer,
+Note: only the dialer can authenticate the identity of the peer,
 but this is what we care about since when we join the network we wish to
 ensure we have reached the intended peer (and are not being MITMd).
 
@@ -81,7 +81,7 @@ terminated.
 
 The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 
-```
+```golang
 type NodeInfo struct {
   PubKey     crypto.PubKey
   Moniker    string
@@ -111,5 +111,4 @@ Note that each reactor may handle multiple channels.
 
 Once a peer is added, incoming messages for a given reactor are handled through
 that reactor's `Receive` method, and output messages are sent directly by the Reactors
-on each peer. A typical reactor maintains per-peer go-routine/s that handle this.
-
+on each peer. A typical reactor maintains per-peer go-routine(s) that handle this.
