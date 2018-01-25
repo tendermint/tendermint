@@ -36,6 +36,7 @@ Vagrant.configure("2") do |config|
     echo 'export PATH=$PATH:/usr/lib/go-1.9/bin:/home/vagrant/go/bin' >> /home/vagrant/.bash_profile
     echo 'export GOPATH=/home/vagrant/go' >> /home/vagrant/.bash_profile
     echo 'export LC_ALL=en_US.UTF-8' >> /home/vagrant/.bash_profile
+    echo 'cd go/src/github.com/tendermint/tendermint' >> /home/vagrant/.bash_profile
 
     mkdir -p /home/vagrant/go/bin
     mkdir -p /home/vagrant/go/src/github.com/tendermint

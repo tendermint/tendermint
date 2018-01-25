@@ -44,6 +44,9 @@ Run `bash scripts/glide/status.sh` to get a list of vendored dependencies that m
 
 If you are a [Vagrant](https://www.vagrantup.com/) user, all you have to do to get started hacking Tendermint is:
 
+In case you installed Vagrant in 2017, you might need to run
+`vagrant box update` to upgrade to the latest `ubuntu/xenial64`.
+
 ```
 vagrant up
 vagrant ssh
