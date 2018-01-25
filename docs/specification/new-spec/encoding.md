@@ -5,8 +5,7 @@
 Tendermint aims to encode data structures in a manner similar to how the corresponding Go structs
 are laid out in memory.
 Variable length items are length-prefixed.
-While the encoding was inspired by Go, it is easily implemented in other languages as well given its
-intuitive design.
+While the encoding was inspired by Go, it is easily implemented in other languages as well, given its intuitive design.
 
 XXX: This is changing to use real varints and 4-byte-prefixes.
 See https://github.com/tendermint/go-wire/tree/sdk2.
@@ -52,7 +51,7 @@ encode(int(0))      == [0x00]
 
 ### Strings
 
-An encoded string is a length prefix followed by the underlying bytes of the string.
+An encoded string is length-prefixed followed by the underlying bytes of the string.
 The length-prefix is itself encoded as an `int`.
 
 The empty string is encoded as `0x00`. It is not length-prefixed.
@@ -82,7 +81,7 @@ encode([2]string{"abc", "efg"}) == [0x01, 0x03, 0x61, 0x62, 0x63, 0x01, 0x03, 0x
 
 ### Slices (variable length)
 
-An encoded variable-length array is a length prefix followed by the concatenation of the encoding of
+An encoded variable-length array is length-prefixed followed by the concatenation of the encoding of
 its elements.
 The length-prefix is itself encoded as an `int`.
 
@@ -165,7 +164,7 @@ func SimpleMerkleRoot(hashes [][]byte) []byte{
 }
 ```
 
-Note we abuse notion and call `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
+Note: we abuse notion and call `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` by sorting elements of the `struct` according to
 field name and then hashing them.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
@@ -190,7 +189,7 @@ Note how the fields within each level are sorted.
 
 ### MakeParts
 
-TMBIN encode an object and slice it into parts.
+TMBIN encodes an object and slices it into parts.
 
 ```go
 MakeParts(object, partSize)
