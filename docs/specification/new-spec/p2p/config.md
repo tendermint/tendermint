@@ -1,6 +1,7 @@
 # P2P Config
 
 Here we describe configuration options around the Peer Exchange.
+These can be set using flags or via the `$TMHOME/config/config.toml` file.
 
 ## Seed Mode
 
@@ -22,14 +23,12 @@ If we already have enough peers in the address book, we may never need to dial t
 
 Dial these peers and auto-redial them if the connection fails.
 These are intended to be trusted persistent peers that can help
-anchor us in the p2p network.
+anchor us in the p2p network. The auto-redial uses exponential
+backoff and will give up after a day of trying to connect.
 
-Note that the auto-redial uses exponential backoff and will give up
-after a day of trying to connect.
-
-NOTE: If `seeds` and `persistent_peers` intersect,
-the user will be WARNED that seeds may auto-close connections
-and the node may not be able to keep the connection persistent.
+**Note:** If `seeds` and `persistent_peers` intersect,
+the user will be warned that seeds may auto-close connections
+and that the node may not be able to keep the connection persistent.
 
 ## Private Persistent Peers
 

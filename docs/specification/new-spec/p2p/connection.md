@@ -1,32 +1,34 @@
-## P2P Multiplex Connection
-
-...
+# P2P Multiplex Connection
 
 ## MConnection
 
 `MConnection` is a multiplex connection that supports multiple independent streams
 with distinct quality of service guarantees atop a single TCP connection.
-Each stream is known as a `Channel` and each `Channel` has a globally unique byte id.
+Each stream is known as a `Channel` and each `Channel` has a globally unique *byte id*.
 Each `Channel` also has a relative priority that determines the quality of service
-of the `Channel` in comparison to the others.
-The byte id and the relative priorities of each `Channel` are configured upon
+of the `Channel` compared to other `Channel`s.
+The *byte id* and the relative priorities of each `Channel` are configured upon
 initialization of the connection.
 
-The `MConnection` supports three packet types: Ping, Pong, and Msg.
+The `MConnection` supports three packet types:
+
+- Ping
+- Pong
+- Msg
 
 ### Ping and Pong
 
 The ping and pong messages consist of writing a single byte to the connection; 0x1 and 0x2, respectively.
 
-When we haven't received any messages on an `MConnection` in a time `pingTimeout`, we send a ping message.
+When we haven't received any messages on an `MConnection` in time `pingTimeout`, we send a ping message.
 When a ping is received on the `MConnection`, a pong is sent in response only if there are no other messages
-to send and the peer has not sent us too many pings.
+to send and the peer has not sent us too many pings (how many is too many?).
 
-If a pong or message is not received in sufficient time after a ping, disconnect from the peer.
+If a pong or message is not received in sufficient time after a ping, the peer is disconnected from.
 
 ### Msg
 
-Messages in channels are chopped into smaller msgPackets for multiplexing.
+Messages in channels are chopped into smaller `msgPacket`s for multiplexing.
 
 ```
 type msgPacket struct {
@@ -36,14 +38,14 @@ type msgPacket struct {
 }
 ```
 
-The msgPacket is serialized using go-wire, and prefixed with a 0x3.
+The `msgPacket` is serialized using [go-wire](https://github.com/tendermint/go-wire) and prefixed with 0x3.
 The received `Bytes` of a sequential set of packets are appended together
-until a packet with `EOF=1` is received, at which point the complete serialized message
-is returned for processing by the corresponding channels `onReceive` function.
+until a packet with `EOF=1` is received, then the complete serialized message
+is returned for processing by the `onReceive` function of the corresponding channel.
 
 ### Multiplexing
 
-Messages are sent from a single `sendRoutine`, which loops over a select statement that results in the sending
+Messages are sent from a single `sendRoutine`, which loops over a select statement and results in the sending
 of a ping, a pong, or a batch of data messages. The batch of data messages may include messages from multiple channels.
 Message bytes are queued for sending in their respective channel, with each channel holding one unsent message at a time.
 Messages are chosen for a batch one at a time from the channel with the lowest ratio of recently sent bytes to channel priority.
