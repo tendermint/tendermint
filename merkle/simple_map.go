@@ -18,25 +18,25 @@ func NewSimpleMap() *SimpleMap {
 	}
 }
 
-func (sm *SimpleMap) Set(key string, value interface{}) {
+func (sm *SimpleMap) Set(key string, value Hasher) {
 	sm.sorted = false
 
-	// Is value Hashable?
-	var vBytes []byte
-	if hashable, ok := value.(Hashable); ok {
-		vBytes = hashable.Hash()
-	} else {
-		vBytes, _ = wire.MarshalBinary(value)
-	}
+	// Hash the key to blind it... why not?
+	khash := SimpleHashFromBytes([]byte(key))
+
+	// And the value is hashed too, so you can
+	// check for equality with a cached value (say)
+	// and make a determination to fetch or not.
+	vhash := value.Hash()
 
 	sm.kvs = append(sm.kvs, cmn.KVPair{
-		Key:   []byte(key),
-		Value: vBytes,
+		Key:   khash,
+		Value: vhash,
 	})
 }
 
-// Merkle root hash of items sorted by key.
-// NOTE: Behavior is undefined when key is duplicate.
+// Merkle root hash of items sorted by key
+// (UNSTABLE: and by value too if duplicate key).
 func (sm *SimpleMap) Hash() []byte {
 	sm.Sort()
 	return hashKVPairs(sm.kvs)
@@ -51,7 +51,6 @@ func (sm *SimpleMap) Sort() {
 }
 
 // Returns a copy of sorted KVPairs.
-// CONTRACT: The returned slice must not be mutated.
 func (sm *SimpleMap) KVPairs() cmn.KVPairs {
 	sm.Sort()
 	kvs := make(cmn.KVPairs, len(sm.kvs))
@@ -78,9 +77,9 @@ func (kv kvPair) Hash() []byte {
 }
 
 func hashKVPairs(kvs cmn.KVPairs) []byte {
-	kvsH := make([]Hashable, 0, len(kvs))
+	kvsH := make([]Hasher, 0, len(kvs))
 	for _, kvp := range kvs {
 		kvsH = append(kvsH, kvPair(kvp))
 	}
-	return SimpleHashFromHashables(kvsH)
+	return SimpleHashFromHashers(kvsH)
 }

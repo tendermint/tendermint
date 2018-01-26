@@ -1,5 +1,5 @@
 hash: 1990fb145d5c5098b5ee467c59506e81b6c3b973667eeb63d83abd7ef831b919
-updated: 2018-01-14T21:24:21.241420637-08:00
+updated: 2018-01-21T03:46:56.821595635-08:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
@@ -65,7 +65,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 97afa5e7ca8a08a383cb259e06636b5e2cc7897f
 - name: github.com/spf13/viper
-  version: 8ef37cbca71638bf32f3d5e194117d4cb46da163
+  version: 25b30aa063fc18e48662b86996252eabdcf2f0c7
 - name: github.com/syndtr/goleveldb
   version: b89cc31ef7977104127d34c1bd31ebd1a9db2199
   subpackages:
@@ -82,7 +82,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/go-wire
-  version: b93ebdd4f306833936c243561ec30af3455dc764
+  version: 0cce10e82786f2d501827fbe158747dbc4ceeb43
 - name: github.com/tendermint/log15
   version: f91285dece9f4875421b481da3e613d83d44f29b
 - name: golang.org/x/crypto

@@ -10,8 +10,8 @@ type SimpleProof struct {
 }
 
 // proofs[0] is the proof for items[0].
-func SimpleProofsFromHashables(items []Hashable) (rootHash []byte, proofs []*SimpleProof) {
-	trails, rootSPN := trailsFromHashables(items)
+func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleProof) {
+	trails, rootSPN := trailsFromHashers(items)
 	rootHash = rootSPN.Hash
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
@@ -109,7 +109,7 @@ func (spn *SimpleProofNode) FlattenAunts() [][]byte {
 
 // trails[0].Hash is the leaf hash for items[0].
 // trails[i].Parent.Parent....Parent == root for all i.
-func trailsFromHashables(items []Hashable) (trails []*SimpleProofNode, root *SimpleProofNode) {
+func trailsFromHashers(items []Hasher) (trails []*SimpleProofNode, root *SimpleProofNode) {
 	// Recursive impl.
 	switch len(items) {
 	case 0:
@@ -118,8 +118,8 @@ func trailsFromHashables(items []Hashable) (trails []*SimpleProofNode, root *Sim
 		trail := &SimpleProofNode{items[0].Hash(), nil, nil, nil}
 		return []*SimpleProofNode{trail}, trail
 	default:
-		lefts, leftRoot := trailsFromHashables(items[:(len(items)+1)/2])
-		rights, rightRoot := trailsFromHashables(items[(len(items)+1)/2:])
+		lefts, leftRoot := trailsFromHashers(items[:(len(items)+1)/2])
+		rights, rightRoot := trailsFromHashers(items[(len(items)+1)/2:])
 		rootHash := SimpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
 		root := &SimpleProofNode{rootHash, nil, nil, nil}
 		leftRoot.Parent = root

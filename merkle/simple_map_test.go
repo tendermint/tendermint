@@ -7,41 +7,47 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type strHasher string
+
+func (str strHasher) Hash() []byte {
+	return SimpleHashFromBytes([]byte(str))
+}
+
 func TestSimpleMap(t *testing.T) {
 	{
 		db := NewSimpleMap()
-		db.Set("key1", "value1")
-		assert.Equal(t, "d7df3e1d47fe38b51f8d897a88828026807a86b6", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		db.Set("key1", strHasher("value1"))
+		assert.Equal(t, "19618304d1ad2635c4238bce87f72331b22a11a1", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
-		db.Set("key1", "value2")
-		assert.Equal(t, "db415336c9be129ac38259b935a49d8e9c248c88", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		db.Set("key1", strHasher("value2"))
+		assert.Equal(t, "51cb96d3d41e1714def72eb4bacc211de9ddf284", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
-		db.Set("key1", "value1")
-		db.Set("key2", "value2")
-		assert.Equal(t, "fdb900a04c1de42bd3d924fc644e28a4bdce30ce", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		db.Set("key1", strHasher("value1"))
+		db.Set("key2", strHasher("value2"))
+		assert.Equal(t, "58a0a99d5019fdcad4bcf55942e833b2dfab9421", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
-		db.Set("key2", "value2") // NOTE: out of order
-		db.Set("key1", "value1")
-		assert.Equal(t, "fdb900a04c1de42bd3d924fc644e28a4bdce30ce", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		db.Set("key2", strHasher("value2")) // NOTE: out of order
+		db.Set("key1", strHasher("value1"))
+		assert.Equal(t, "58a0a99d5019fdcad4bcf55942e833b2dfab9421", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
-		db.Set("key1", "value1")
-		db.Set("key2", "value2")
-		db.Set("key3", "value3")
-		assert.Equal(t, "488cfdaea108ef8bd406f6163555752392ae1b4a", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		db.Set("key1", strHasher("value1"))
+		db.Set("key2", strHasher("value2"))
+		db.Set("key3", strHasher("value3"))
+		assert.Equal(t, "cb56db3c7993e977f4c2789559ae3e5e468a6e9b", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
-		db.Set("key2", "value2") // NOTE: out of order
-		db.Set("key1", "value1")
-		db.Set("key3", "value3")
-		assert.Equal(t, "488cfdaea108ef8bd406f6163555752392ae1b4a", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		db.Set("key2", strHasher("value2")) // NOTE: out of order
+		db.Set("key1", strHasher("value1"))
+		db.Set("key3", strHasher("value3"))
+		assert.Equal(t, "cb56db3c7993e977f4c2789559ae3e5e468a6e9b", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 }

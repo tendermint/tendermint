@@ -19,14 +19,14 @@ func TestSimpleProof(t *testing.T) {
 
 	total := 100
 
-	items := make([]Hashable, total)
+	items := make([]Hasher, total)
 	for i := 0; i < total; i++ {
 		items[i] = testItem(RandBytes(32))
 	}
 
-	rootHash := SimpleHashFromHashables(items)
+	rootHash := SimpleHashFromHashers(items)
 
-	rootHash2, proofs := SimpleProofsFromHashables(items)
+	rootHash2, proofs := SimpleProofsFromHashers(items)
 
 	if !bytes.Equal(rootHash, rootHash2) {
 		t.Errorf("Unmatched root hashes: %X vs %X", rootHash, rootHash2)

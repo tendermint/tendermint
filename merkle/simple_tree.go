@@ -54,28 +54,25 @@ func SimpleHashFromHashes(hashes [][]byte) []byte {
 	}
 }
 
-// Convenience for SimpleHashFromHashes.
-func SimpleHashFromBinaries(items []interface{}) []byte {
-	hashes := make([][]byte, len(items))
-	for i, item := range items {
-		hashes[i] = SimpleHashFromBinary(item)
+// NOTE: Do not implement this, use SimpleHashFromByteslices instead.
+// type Byteser interface { Bytes() []byte }
+// func SimpleHashFromBytesers(items []Byteser) []byte { ... }
+
+func SimpleHashFromByteslices(bzs [][]byte) []byte {
+	hashes := make([][]byte, len(bzs))
+	for i, bz := range bzs {
+		hashes[i] = SimpleHashFromBytes(bz)
 	}
 	return SimpleHashFromHashes(hashes)
 }
 
-// General Convenience
-func SimpleHashFromBinary(item interface{}) []byte {
+func SimpleHashFromBytes(bz []byte) []byte {
 	hasher := ripemd160.New()
-	bz, err := wire.MarshalBinary(item)
-	if err != nil {
-		panic(err)
-	}
 	hasher.Write(bz)
 	return hasher.Sum(nil)
 }
 
-// Convenience for SimpleHashFromHashes.
-func SimpleHashFromHashables(items []Hashable) []byte {
+func SimpleHashFromHashers(items []Hasher) []byte {
 	hashes := make([][]byte, len(items))
 	for i, item := range items {
 		hash := item.Hash()
@@ -84,8 +81,7 @@ func SimpleHashFromHashables(items []Hashable) []byte {
 	return SimpleHashFromHashes(hashes)
 }
 
-// Convenience for SimpleHashFromHashes.
-func SimpleHashFromMap(m map[string]interface{}) []byte {
+func SimpleHashFromMap(m map[string]Hasher) []byte {
 	sm := NewSimpleMap()
 	for k, v := range m {
 		sm.Set(k, v)
