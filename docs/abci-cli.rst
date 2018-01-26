@@ -35,6 +35,7 @@ Now run ``abci-cli`` to see the list of commands:
 
     Available Commands:
       batch       Run a batch of abci commands against an application
+      begin_block Delineate beginning of a block with a header and a hash
       check_tx    Validate a tx
       commit      Commit the application state and return the Merkle root hash
       console     Start an interactive abci console for multiple commands
@@ -42,10 +43,13 @@ Now run ``abci-cli`` to see the list of commands:
       deliver_tx  Deliver a new tx to the application
       dummy       ABCI demo example
       echo        Have the application echo a message
+      end_block   Delineate ending of a block with a height and receive info about validator set changes
       help        Help about any command
       info        Get some info about the application
       query       Query the application state
       set_option  Set an options on the application
+      test        Run integration tests
+      version     Print ABCI console version
 
     Flags:
           --abci string      socket or grpc (default "socket")
