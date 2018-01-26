@@ -9,7 +9,7 @@ To download pre-built binaries, see the `Download page <https://tendermint.com/d
 From Source
 -----------
 
-You'll need ``go``, maybe ``glide``, and the tendermint source code.
+You'll need ``go``, maybe ``glide``, and the Tendermint source code.
 
 Install Go
 ^^^^^^^^^^

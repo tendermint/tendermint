@@ -32,7 +32,7 @@ Here are the steps to setting up a testnet manually:
    would look like:
    ``tendermint node --p2p.persistent_peers=192.168.0.1:46656,192.168.0.2:46656,192.168.0.3:46656,192.168.0.4:46656``.
 
-After a few seconds, all the nodes should connect to eachother and start
+After a few seconds, all the nodes should connect to each other and start
 making blocks! For more information, see the Tendermint Networks section
 of `the guide to using Tendermint <using-tendermint.html>`__.
 
@@ -48,7 +48,7 @@ Automated Deployment using Kubernetes
 
 The `mintnet-kubernetes tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__
 allows automating the deployment of a Tendermint network on an already
-provisioned kubernetes cluster. For simple provisioning of a kubernetes
+provisioned Kubernetes cluster. For simple provisioning of a Kubernetes
 cluster, check out the `Google Cloud Platform <https://cloud.google.com/>`__.
 
 Automated Deployment using Terraform and Ansible

@@ -40,7 +40,7 @@ dependencies:
 Now you should have the ``abci-cli`` installed; you'll see
 a couple of commands (``counter`` and ``dummy``) that are
 example applications written in Go. See below for an application
-written in Javascript.
+written in JavaScript.
 
 Now, let's run some apps!
 
@@ -49,7 +49,7 @@ Dummy - A First Example
 
 The dummy app is a `Merkle
 tree <https://en.wikipedia.org/wiki/Merkle_tree>`__ that just stores all
-transactions. If the transaction contains an ``=``, eg. ``key=value``,
+transactions. If the transaction contains an ``=``, e.g. ``key=value``,
 then the ``value`` is stored under the ``key`` in the Merkle tree.
 Otherwise, the full transaction bytes are stored as the key and the
 value.

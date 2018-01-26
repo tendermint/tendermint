@@ -112,7 +112,7 @@ Motivation
 Thus far, all blockchains "stacks" (such as `Bitcoin <https://github.com/bitcoin/bitcoin>`__) have had a monolithic design. That is, each blockchain stack is a single program that handles all the concerns of a decentralized ledger; this includes P2P connectivity, the "mempool" broadcasting of transactions, consensus on the most recent block, account balances, Turing-complete contracts, user-level permissions, etc.
 
 Using a monolithic architecture is typically bad practice in computer science.
-It makes it difficult to reuse components of the code, and attempts to do so result in complex maintanence procedures for forks of the codebase.
+It makes it difficult to reuse components of the code, and attempts to do so result in complex maintenance procedures for forks of the codebase.
 This is especially true when the codebase is not modular in design and suffers from "spaghetti code".
 
 Another problem with monolithic design is that it limits you to the language of the blockchain stack (or vice versa).  In the case of Ethereum which supports a Turing-complete bytecode virtual-machine, it limits you to languages that compile down to that bytecode; today, those are Serpent and Solidity.
