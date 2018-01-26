@@ -1,12 +1,12 @@
 # Tendermint Peer Discovery
 
-A Tendermint P2P network has different kinds of nodes with different requirements for connectivity compared to other types of networks.
+A Tendermint P2P network has different kinds of nodes with different requirements for connectivity to one another.
 This document describes what kind of nodes Tendermint should enable and how they should work.
 
 ## Seeds
 
 Seeds are the first point of contact for a new node.
-They return a list of known active peers and disconnect....if?
+They return a list of known active peers and then disconnect.
 
 Seeds should operate full nodes with the PEX reactor in a "crawler" mode
 that continuously explores to validate the availability of peers.

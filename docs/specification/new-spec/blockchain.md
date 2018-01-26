@@ -6,7 +6,7 @@ Here we describe the data structures in the Tendermint blockchain and the rules 
 
 The Tendermint blockchains consists of a short list of basic data types:
 
-- `Block` 
+- `Block`
 - `Header`
 - `Vote`
 - `BlockID`
@@ -232,7 +232,7 @@ The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 
 ### LastBlockID
 
-For the previous block's BlockID:
+LastBlockID is the previous block's BlockID:
 
 ```go
 prevBlockParts := MakeParts(prevBlock, state.LastConsensusParams.BlockGossip.BlockPartSize)
@@ -297,11 +297,9 @@ block.Header.Proposer in state.Validators
 
 Original proposer of the block. Must be a current validator.
 
-**Note:** this field can only be further verified by real-time participants in the consensus.
-This is because the same block can be proposed in multiple rounds for the same height
-and we do not track the initial round that the block was proposed.
+NOTE: we also need to track the round.
 
-### EvidenceHash
+## EvidenceHash
 
 ```go
 block.EvidenceHash == SimpleMerkleRoot(block.Evidence)

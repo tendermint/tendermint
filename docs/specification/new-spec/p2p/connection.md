@@ -22,7 +22,7 @@ The ping and pong messages consist of writing a single byte to the connection; 0
 
 When we haven't received any messages on an `MConnection` in time `pingTimeout`, we send a ping message.
 When a ping is received on the `MConnection`, a pong is sent in response only if there are no other messages
-to send and the peer has not sent us too many pings (how many is too many?).
+to send and the peer has not sent us too many pings (TODO).
 
 If a pong or message is not received in sufficient time after a ping, the peer is disconnected from.
 

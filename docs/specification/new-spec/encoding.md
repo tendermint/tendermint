@@ -189,7 +189,7 @@ Note how the fields within each level are sorted.
 
 ### MakeParts
 
-TMBIN encodes an object and slices it into parts.
+Encode an object using TMBIN and slice it into parts.
 
 ```go
 MakeParts(object, partSize)
