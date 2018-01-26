@@ -406,6 +406,7 @@ func (c *MConnection) sendMsgPacket() bool {
 // recvRoutine reads msgPackets and reconstructs the message using the channels' "recving" buffer.
 // After a whole message has been assembled, it's pushed to onReceive().
 // Blocks depending on how the connection is throttled.
+// Otherwise, it never blocks.
 func (c *MConnection) recvRoutine() {
 	defer c._recover()
 
@@ -449,8 +450,8 @@ FOR_LOOP:
 			c.Logger.Debug("Receive Ping")
 			select {
 			case c.pong <- struct{}{}:
-			case <-c.quit:
-				break FOR_LOOP
+			default:
+				// never block
 			}
 		case packetTypePong:
 			// do nothing
@@ -494,8 +495,9 @@ FOR_LOOP:
 			break FOR_LOOP
 		}
 
-		// TODO: shouldn't this go in the sendRoutine?
-		// Better to send a ping packet when *we* haven't sent anything for a while.
+		// TODO: don't bother with this "only ping when we havent heard from them".
+		// lets just always ping every peer from the sendRoutine every 10s no matter what.
+		// if they dont pong within pongTimeout, disconnect :)
 		c.pingTimer.Reset()
 	}
 
@@ -691,7 +693,13 @@ func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {
+		// TODO: document that these returned msgBytes will change under you after Receive finishes.
+		// TODO: document it in the Reactor interface especially - implementations of a Reactor
+		// can not keep these bytes around after the Receive completes without copying!
+		// In general that's fine, because the first thing we do is unmarshal into a msg type and then
+		// we never use the bytes again
 		msgBytes := ch.recving
+
 		// clear the slice without re-allocating.
 		// http://stackoverflow.com/questions/16971741/how-do-you-clear-a-slice-in-go
 		//   suggests this could be a memory leak, but we might as well keep the memory for the channel until it closes,
