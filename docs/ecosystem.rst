@@ -44,7 +44,7 @@ Immutable AVL+ tree with Merkle proofs, Written in Go, `authored by Tendermint <
 Lotion
 ^^^^^^
 
-A Javascript microframework for building blockchain applications with Tendermint, written in Javascript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>`__ and `lotion-coin <https://github.com/keppel/lotion-coin>`__ apps written using Lotion.
+A JavaScript microframework for building blockchain applications with Tendermint, written in JavaScript, `authored by Judd Keppel of Tendermint <https://github.com/keppel/lotion>`__. See also `lotion-chat <https://github.com/keppel/lotion-chat>`__ and `lotion-coin <https://github.com/keppel/lotion-coin>`__ apps written using Lotion.
 
 MerkleTree
 ^^^^^^^^^^

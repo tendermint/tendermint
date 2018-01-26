@@ -33,7 +33,7 @@ tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__.
 Run
 ---
 
-To run a tendermint node, use
+To run a Tendermint node, use
 
 ::
 
@@ -41,7 +41,7 @@ To run a tendermint node, use
 
 By default, Tendermint will try to connect to an ABCI application on
 `127.0.0.1:46658 <127.0.0.1:46658>`__. If you have the ``dummy`` ABCI
-app installed, run it in another window. If you don't, kill tendermint
+app installed, run it in another window. If you don't, kill Tendermint
 and run an in-process version with
 
 ::
@@ -54,7 +54,7 @@ blocks are produced regularly, even if there are no transactions. See *No Empty 
 Tendermint supports in-process versions of the dummy, counter, and nil
 apps that ship as examples in the `ABCI
 repository <https://github.com/tendermint/abci>`__. It's easy to compile
-your own app in-process with tendermint if it's written in Go. If your
+your own app in-process with Tendermint if it's written in Go. If your
 app is not written in Go, simply run it in another process, and use the
 ``--proxy_app`` flag to specify the address of the socket it is
 listening on, for instance:
@@ -118,8 +118,8 @@ Tendermint uses a ``config.toml`` for configuration. For details, see
 `the config specification <./specification/configuration.html>`__.
 
 Notable options include the socket address of the application
-(``proxy_app``), the listenting address of the tendermint peer
-(``p2p.laddr``), and the listening address of the rpc server
+(``proxy_app``), the listening address of the Tendermint peer
+(``p2p.laddr``), and the listening address of the RPC server
 (``rpc.laddr``).
 
 Some fields from the config file can be overwritten with flags.
@@ -129,8 +129,8 @@ No Empty Blocks
 
 This much requested feature was implemented in version 0.10.3. While the default behaviour of ``tendermint`` is still to create blocks approximately once per second, it is possible to disable empty blocks or set a block creation interval. In the former case, blocks will be created when there are new transactions or when the AppHash changes.
 
-To configure tendermint to not produce empty blocks unless there are txs or the app hash changes, 
-run tendermint with this additional flag:
+To configure Tendermint to not produce empty blocks unless there are txs or the app hash changes, 
+run Tendermint with this additional flag:
 
 ::
 
@@ -160,7 +160,7 @@ Broadcast API
 -------------
 
 Earlier, we used the ``broadcast_tx_commit`` endpoint to send a
-transaction. When a transaction is sent to a tendermint node, it will
+transaction. When a transaction is sent to a Tendermint node, it will
 run via ``CheckTx`` against the application. If it passes ``CheckTx``,
 it will be included in the mempool, broadcast to other peers, and
 eventually included in a block.
@@ -187,7 +187,7 @@ value for ``broadcast_tx_commit`` includes two fields, ``check_tx`` and
 through those ABCI messages.
 
 The benefit of using ``broadcast_tx_commit`` is that the request returns
-after the transaction is committed (ie. included in a block), but that
+after the transaction is committed (i.e. included in a block), but that
 can take on the order of a second. For a quick result, use
 ``broadcast_tx_sync``, but the transaction will not be committed until
 later, and by that point its effect on the state may change.
@@ -248,10 +248,10 @@ Note also that the ``pub_key`` (the public key) in the
 
 The genesis file contains the list of public keys which may participate
 in the consensus, and their corresponding voting power. Greater than 2/3
-of the voting power must be active (ie. the corresponding private keys
+of the voting power must be active (i.e. the corresponding private keys
 must be producing signatures) for the consensus to make progress. In our
 case, the genesis file contains the public key of our
-``priv_validator.json``, so a tendermint node started with the default
+``priv_validator.json``, so a Tendermint node started with the default
 root directory will be able to make new blocks, as we've already seen.
 
 If we want to add more nodes to the network, we have two choices: we can
@@ -388,7 +388,7 @@ connections to peers with the same IP address.
 Upgrading
 ~~~~~~~~~
 
-The tendermint development cycle includes a lot of breaking changes. Upgrading from
+The Tendermint development cycle includes a lot of breaking changes. Upgrading from
 an old version to a new version usually means throwing away the chain data. Try out
 the `tm-migrate <https://github.com/hxzqlh/tm-tools>`__ tool written by @hxqlh if
 you are keen to preserve the state of your chain when upgrading to newer versions.
