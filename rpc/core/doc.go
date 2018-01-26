@@ -11,7 +11,7 @@ Tendermint RPC is built using [our own RPC library](https://github.com/tendermin
 
 ## Configuration
 
-Set the `laddr` config parameter under `[rpc]` table in the `$TMHOME/config.toml` file or the `--rpc.laddr` command-line flag to the desired protocol://host:port setting.  Default: `tcp://0.0.0.0:46657`.
+Set the `laddr` config parameter under `[rpc]` table in the `$TMHOME/config/config.toml` file or the `--rpc.laddr` command-line flag to the desired protocol://host:port setting.  Default: `tcp://0.0.0.0:46657`.
 
 ## Arguments
 
@@ -95,6 +95,7 @@ Endpoints that require arguments:
 /broadcast_tx_sync?tx=_
 /commit?height=_
 /dial_seeds?seeds=_
+/dial_persistent_peers?persistent_peers=_
 /subscribe?event=_
 /tx?hash=_&prove=_
 /unsafe_start_cpu_profiler?filename=_

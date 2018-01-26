@@ -3,16 +3,19 @@ package blockchain
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 	"time"
 
 	wire "github.com/tendermint/go-wire"
+
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -47,22 +50,26 @@ type BlockchainReactor struct {
 	// immutable
 	initialState sm.State
 
-	blockExec  *sm.BlockExecutor
-	store      *BlockStore
-	pool       *BlockPool
-	fastSync   bool
-	requestsCh chan BlockRequest
-	timeoutsCh chan string
+	blockExec *sm.BlockExecutor
+	store     *BlockStore
+	pool      *BlockPool
+	fastSync  bool
+
+	requestsCh <-chan BlockRequest
+	timeoutsCh <-chan p2p.ID
 }
 
 // NewBlockchainReactor returns new reactor instance.
-func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore, fastSync bool) *BlockchainReactor {
+func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *BlockStore,
+	fastSync bool) *BlockchainReactor {
+
 	if state.LastBlockHeight != store.Height() {
-		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight, store.Height()))
+		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
+			store.Height()))
 	}
 
 	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
-	timeoutsCh := make(chan string, defaultChannelCapacity)
+	timeoutsCh := make(chan p2p.ID, defaultChannelCapacity)
 	pool := NewBlockPool(
 		store.Height()+1,
 		requestsCh,
@@ -122,7 +129,8 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	if !peer.Send(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
+	if !peer.Send(BlockchainChannel,
+		struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
 		// doing nothing, will try later in `poolRoutine`
 	}
 	// peer is added to the pool once we receive the first
@@ -131,14 +139,16 @@ func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
 
 // RemovePeer implements Reactor by removing peer from the pool.
 func (bcR *BlockchainReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
-	bcR.pool.RemovePeer(peer.Key())
+	bcR.pool.RemovePeer(peer.ID())
 }
 
 // respondToPeer loads a block and sends it to the requesting peer,
 // if we have it. Otherwise, we'll respond saying we don't have it.
 // According to the Tendermint spec, if all nodes are honest,
 // no node should be requesting for a block that's non-existent.
-func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage, src p2p.Peer) (queued bool) {
+func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
+	src p2p.Peer) (queued bool) {
+
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		msg := &bcBlockResponseMessage{Block: block}
@@ -162,7 +172,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 
 	bcR.Logger.Debug("Receive", "src", src, "chID", chID, "msg", msg)
 
-	// TODO: improve logic to satisfy megacheck
 	switch msg := msg.(type) {
 	case *bcBlockRequestMessage:
 		if queued := bcR.respondToPeer(msg, src); !queued {
@@ -170,16 +179,17 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		}
 	case *bcBlockResponseMessage:
 		// Got a block.
-		bcR.pool.AddBlock(src.Key(), msg.Block, len(msgBytes))
+		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		queued := src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
+		queued := src.TrySend(BlockchainChannel,
+			struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
 		if !queued {
 			// sorry
 		}
 	case *bcStatusResponseMessage:
 		// Got a peer status. Unverified.
-		bcR.pool.SetPeerHeight(src.Key(), msg.Height)
+		bcR.pool.SetPeerHeight(src.ID(), msg.Height)
 	default:
 		bcR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
@@ -277,23 +287,28 @@ FOR_LOOP:
 					chainID, firstID, first.Height, second.LastCommit)
 				if err != nil {
 					bcR.Logger.Error("Error in validation", "err", err)
-					bcR.pool.RedoRequest(first.Height)
+					peerID := bcR.pool.RedoRequest(first.Height)
+					peer := bcR.Switch.Peers().Get(peerID)
+					if peer != nil {
+						bcR.Switch.StopPeerForError(peer, fmt.Errorf("BlockchainReactor validation error: %v", err))
+					}
 					break SYNC_LOOP
 				} else {
 					bcR.pool.PopRequest()
 
+					// TODO: batch saves so we dont persist to disk every block
 					bcR.store.SaveBlock(first, firstParts, second.LastCommit)
 
-					// NOTE: we could improve performance if we
-					// didn't make the app commit to disk every block
-					// ... but we would need a way to get the hash without it persisting
+					// TODO: same thing for app - but we would need a way to
+					// get the hash without persisting the state
 					var err error
 					state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 					if err != nil {
 						// TODO This is bad, are we zombie?
-						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v", first.Height, first.Hash(), err))
+						cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v",
+							first.Height, first.Hash(), err))
 					}
-					blocksSynced += 1
+					blocksSynced++
 
 					// update the consensus params
 					bcR.updateConsensusParams(state.ConsensusParams)
@@ -315,7 +330,8 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bcR.Switch.Broadcast(BlockchainChannel, struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
+	bcR.Switch.Broadcast(BlockchainChannel,
+		struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
 	return nil
 }
 

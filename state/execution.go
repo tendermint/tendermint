@@ -127,6 +127,14 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
+	// while mempool is Locked, flush to ensure all async requests have completed
+	// in the ABCI app before Commit.
+	err := blockExec.mempool.FlushAppConn()
+	if err != nil {
+		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
+		return nil, err
+	}
+
 	// Commit block, get hash back
 	res, err := blockExec.proxyApp.CommitSync()
 	if err != nil {
@@ -190,11 +198,10 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	// TODO: determine which validators were byzantine
 	byzantineVals := make([]*abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		byzantineVals[i] = &abci.Evidence{
-			PubKey: ev.Address(), // XXX
+			PubKey: ev.Address(), // XXX/TODO
 			Height: ev.Height(),
 		}
 	}

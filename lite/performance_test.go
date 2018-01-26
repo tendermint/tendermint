@@ -105,7 +105,7 @@ func BenchmarkCertifyCommitSec100(b *testing.B) {
 func benchmarkCertifyCommit(b *testing.B, keys lite.ValKeys) {
 	chainID := "bench-certify"
 	vals := keys.ToValidators(20, 10)
-	cert := lite.NewStatic(chainID, vals)
+	cert := lite.NewStaticCertifier(chainID, vals)
 	check := keys.GenCommit(chainID, 123, nil, vals, []byte("foo"), []byte("params"), []byte("res"), 0, len(keys))
 	for i := 0; i < b.N; i++ {
 		err := cert.Certify(check)

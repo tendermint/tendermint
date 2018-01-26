@@ -2,13 +2,18 @@
 
 ## State
 
-The state contains information whose cryptographic digest is included in block headers,
-and thus is necessary for validating new blocks.
-For instance, the Merkle root of the results from executing the previous block, or the Merkle root of the current validators.
-While neither the results of transactions now the validators are ever included in the blockchain itself,
-the Merkle roots are, and hence we need a separate data structure to track them.
+The state contains information whose cryptographic digest is included in block headers, and thus is
+necessary for validating new blocks. For instance, the set of validators and the results of
+transactions are never included in blocks, but their Merkle roots are - the state keeps track of them.
 
-```
+Note that the `State` object itself is an implementation detail, since it is never
+included in a block or gossipped over the network, and we never compute
+its hash. However, the types it contains are part of the specification, since
+their Merkle roots are included in blocks.
+
+For details on an implementation of `State` with persistence, see TODO
+
+```go
 type State struct {
     LastResults []Result
     AppHash []byte
@@ -22,7 +27,7 @@ type State struct {
 
 ### Result
 
-```
+```go
 type Result struct {
     Code uint32
     Data []byte
@@ -46,7 +51,7 @@ represented in the tags.
 A validator is an active participant in the consensus with a public key and a voting power.
 Validator's also contain an address which is derived from the PubKey:
 
-```
+```go
 type Validator struct {
     Address     []byte
     PubKey      PubKey
@@ -59,7 +64,7 @@ so that there is a canonical order for computing the SimpleMerkleRoot.
 
 We also define a `TotalVotingPower` function, to return the total voting power:
 
-```
+```go
 func TotalVotingPower(vals []Validators) int64{
     sum := 0
     for v := range vals{
@@ -77,28 +82,3 @@ TODO:
 
 TODO:
 
-## Execution
-
-We define an `Execute` function that takes a state and a block,
-executes the block against the application, and returns an updated state.
-
-```
-Execute(s State, app ABCIApp, block Block) State {
-    abciResponses := app.ApplyBlock(block)
-
-    return State{
-        LastResults: abciResponses.DeliverTxResults,
-        AppHash: abciResponses.AppHash,
-        Validators: UpdateValidators(state.Validators, abciResponses.ValidatorChanges),
-        LastValidators: state.Validators,
-        ConsensusParams: UpdateConsensusParams(state.ConsensusParams, abci.Responses.ConsensusParamChanges),
-    }
-}
-
-type ABCIResponses struct {
-    DeliverTxResults        []Result
-    ValidatorChanges        []Validator
-    ConsensusParamChanges   ConsensusParams
-    AppHash                 []byte
-}
-```

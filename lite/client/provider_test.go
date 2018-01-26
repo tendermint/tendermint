@@ -10,6 +10,7 @@ import (
 	liteErr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestProvider(t *testing.T) {
@@ -17,7 +18,8 @@ func TestProvider(t *testing.T) {
 
 	cfg := rpctest.GetConfig()
 	rpcAddr := cfg.RPC.ListenAddress
-	chainID := cfg.ChainID
+	genDoc, _ := types.GenesisDocFromFile(cfg.GenesisFile())
+	chainID := genDoc.ChainID
 	p := NewHTTPProvider(rpcAddr)
 	require.NotNil(t, p)
 
@@ -35,7 +37,7 @@ func TestProvider(t *testing.T) {
 
 	// let's check this is valid somehow
 	assert.Nil(seed.ValidateBasic(chainID))
-	cert := lite.NewStatic(chainID, seed.Validators)
+	cert := lite.NewStaticCertifier(chainID, seed.Validators)
 
 	// historical queries now work :)
 	lower := sh - 5

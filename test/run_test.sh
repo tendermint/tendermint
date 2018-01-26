@@ -6,9 +6,6 @@ pwd
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 echo "Current branch: $BRANCH"
 
-# run the linter
-make metalinter
-
 # run the go unit tests with coverage
 bash test/test_cover.sh
 

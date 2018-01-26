@@ -18,7 +18,8 @@ XC_ARCH=${XC_ARCH:-"386 amd64 arm"}
 XC_OS=${XC_OS:-"solaris darwin freebsd linux windows"}
 
 # Make sure build tools are available.
-make tools
+# TODO: Tools should be "vendored" too.
+make get_tools
 
 # Get VENDORED dependencies
 make get_vendor_deps

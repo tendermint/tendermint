@@ -205,7 +205,11 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				return
 			}
 			// Peer claims to have a maj23 for some BlockID at H,R,S,
-			votes.SetPeerMaj23(msg.Round, msg.Type, ps.Peer.Key(), msg.BlockID)
+			err := votes.SetPeerMaj23(msg.Round, msg.Type, ps.Peer.ID(), msg.BlockID)
+			if err != nil {
+				conR.Switch.StopPeerForError(src, err)
+				return
+			}
 			// Respond with a VoteSetBitsMessage showing which votes we have.
 			// (and consequently shows which we don't have)
 			var ourVotes *cmn.BitArray
@@ -242,12 +246,12 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		switch msg := msg.(type) {
 		case *ProposalMessage:
 			ps.SetHasProposal(msg.Proposal)
-			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key()}
+			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		case *ProposalPOLMessage:
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
-			conR.conS.peerMsgQueue <- msgInfo{msg, src.Key()}
+			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		default:
 			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 		}
@@ -267,7 +271,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
 
-			cs.peerMsgQueue <- msgInfo{msg, src.Key()}
+			cs.peerMsgQueue <- msgInfo{msg, src.ID()}
 
 		default:
 			// don't punish (leave room for soft upgrades)
@@ -1200,7 +1204,7 @@ func (ps *PeerState) StringIndented(indent string) string {
 %s  Key %v
 %s  PRS %v
 %s}`,
-		indent, ps.Peer.Key(),
+		indent, ps.Peer.ID(),
 		indent, ps.PeerRoundState.StringIndented(indent+"  "),
 		indent)
 }

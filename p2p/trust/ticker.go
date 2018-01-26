@@ -24,7 +24,7 @@ type TestTicker struct {
 
 // NewTestTicker returns our ticker used within test routines
 func NewTestTicker() *TestTicker {
-	c := make(chan time.Time, 1)
+	c := make(chan time.Time)
 	return &TestTicker{
 		C: c,
 	}

@@ -8,9 +8,11 @@ import (
 	"sync"
 
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/types"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 /*

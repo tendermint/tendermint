@@ -55,7 +55,7 @@ x * TestHalt1 - if we see +2/3 precommits after timing out into new round, we sh
 //----------------------------------------------------------------------------------------------------
 // ProposeSuite
 
-func TestProposerSelection0(t *testing.T) {
+func TestStateProposerSelection0(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	height, round := cs1.Height, cs1.Round
 
@@ -89,7 +89,7 @@ func TestProposerSelection0(t *testing.T) {
 }
 
 // Now let's do it all again, but starting from round 2 instead of 0
-func TestProposerSelection2(t *testing.T) {
+func TestStateProposerSelection2(t *testing.T) {
 	cs1, vss := randConsensusState(4) // test needs more work for more than 3 validators
 
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
@@ -118,7 +118,7 @@ func TestProposerSelection2(t *testing.T) {
 }
 
 // a non-validator should timeout into the prevote round
-func TestEnterProposeNoPrivValidator(t *testing.T) {
+func TestStateEnterProposeNoPrivValidator(t *testing.T) {
 	cs, _ := randConsensusState(1)
 	cs.SetPrivValidator(nil)
 	height, round := cs.Height, cs.Round
@@ -143,7 +143,7 @@ func TestEnterProposeNoPrivValidator(t *testing.T) {
 }
 
 // a validator should not timeout of the prevote round (TODO: unless the block is really big!)
-func TestEnterProposeYesPrivValidator(t *testing.T) {
+func TestStateEnterProposeYesPrivValidator(t *testing.T) {
 	cs, _ := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
@@ -179,7 +179,7 @@ func TestEnterProposeYesPrivValidator(t *testing.T) {
 	}
 }
 
-func TestBadProposal(t *testing.T) {
+func TestStateBadProposal(t *testing.T) {
 	cs1, vss := randConsensusState(2)
 	height, round := cs1.Height, cs1.Round
 	vs2 := vss[1]
@@ -204,7 +204,7 @@ func TestBadProposal(t *testing.T) {
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
 	proposal := types.NewProposal(vs2.Height, round, propBlockParts.Header(), -1, types.BlockID{})
-	if err := vs2.SignProposal(config.ChainID, proposal); err != nil {
+	if err := vs2.SignProposal(config.ChainID(), proposal); err != nil {
 		t.Fatal("failed to sign bad proposal", err)
 	}
 
@@ -239,7 +239,7 @@ func TestBadProposal(t *testing.T) {
 // FullRoundSuite
 
 // propose, prevote, and precommit a block
-func TestFullRound1(t *testing.T) {
+func TestStateFullRound1(t *testing.T) {
 	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
@@ -275,7 +275,7 @@ func TestFullRound1(t *testing.T) {
 }
 
 // nil is proposed, so prevote and precommit nil
-func TestFullRoundNil(t *testing.T) {
+func TestStateFullRoundNil(t *testing.T) {
 	cs, vss := randConsensusState(1)
 	height, round := cs.Height, cs.Round
 
@@ -293,7 +293,7 @@ func TestFullRoundNil(t *testing.T) {
 
 // run through propose, prevote, precommit commit with two validators
 // where the first validator has to wait for votes from the second
-func TestFullRound2(t *testing.T) {
+func TestStateFullRound2(t *testing.T) {
 	cs1, vss := randConsensusState(2)
 	vs2 := vss[1]
 	height, round := cs1.Height, cs1.Round
@@ -334,7 +334,7 @@ func TestFullRound2(t *testing.T) {
 
 // two validators, 4 rounds.
 // two vals take turns proposing. val1 locks on first one, precommits nil on everything else
-func TestLockNoPOL(t *testing.T) {
+func TestStateLockNoPOL(t *testing.T) {
 	cs1, vss := randConsensusState(2)
 	vs2 := vss[1]
 	height := cs1.Height
@@ -503,7 +503,7 @@ func TestLockNoPOL(t *testing.T) {
 }
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
-func TestLockPOLRelock(t *testing.T) {
+func TestStateLockPOLRelock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
@@ -618,7 +618,7 @@ func TestLockPOLRelock(t *testing.T) {
 }
 
 // 4 vals, one precommits, other 3 polka at next round, so we unlock and precomit the polka
-func TestLockPOLUnlock(t *testing.T) {
+func TestStateLockPOLUnlock(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
@@ -715,7 +715,7 @@ func TestLockPOLUnlock(t *testing.T) {
 // a polka at round 1 but we miss it
 // then a polka at round 2 that we lock on
 // then we see the polka from round 1 but shouldn't unlock
-func TestLockPOLSafety1(t *testing.T) {
+func TestStateLockPOLSafety1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
@@ -838,7 +838,7 @@ func TestLockPOLSafety1(t *testing.T) {
 
 // What we want:
 // dont see P0, lock on P1 at R1, dont unlock using P0 at R2
-func TestLockPOLSafety2(t *testing.T) {
+func TestStateLockPOLSafety2(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
@@ -900,7 +900,7 @@ func TestLockPOLSafety2(t *testing.T) {
 
 	// in round 2 we see the polkad block from round 0
 	newProp := types.NewProposal(height, 2, propBlockParts0.Header(), 0, propBlockID1)
-	if err := vs3.SignProposal(config.ChainID, newProp); err != nil {
+	if err := vs3.SignProposal(config.ChainID(), newProp); err != nil {
 		t.Fatal(err)
 	}
 	if err := cs1.SetProposalAndBlock(newProp, propBlock0, propBlockParts0, "some peer"); err != nil {
@@ -937,7 +937,7 @@ func TestLockPOLSafety2(t *testing.T) {
 // TODO: Slashing
 
 /*
-func TestSlashingPrevotes(t *testing.T) {
+func TestStateSlashingPrevotes(t *testing.T) {
 	cs1, vss := randConsensusState(2)
 	vs2 := vss[1]
 
@@ -972,7 +972,7 @@ func TestSlashingPrevotes(t *testing.T) {
 	// XXX: Check for existence of Dupeout info
 }
 
-func TestSlashingPrecommits(t *testing.T) {
+func TestStateSlashingPrecommits(t *testing.T) {
 	cs1, vss := randConsensusState(2)
 	vs2 := vss[1]
 
@@ -1017,7 +1017,7 @@ func TestSlashingPrecommits(t *testing.T) {
 
 // 4 vals.
 // we receive a final precommit after going into next round, but others might have gone to commit already!
-func TestHalt1(t *testing.T) {
+func TestStateHalt1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
 
