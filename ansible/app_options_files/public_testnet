@@ -188,6 +188,16 @@
         ]
       },
       {
+        "name": "token-splitter",
+        "address": "2406B52B1DE26F992E5BF334E5F30049C682B5CB",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 10000
+          }
+        ]
+      },
+      {
         "name": "matt",
         "address": "C2104A8191E282AA45D210BA93282B36768EDDA1",
         "coins": [
