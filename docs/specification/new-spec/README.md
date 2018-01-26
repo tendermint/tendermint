@@ -5,7 +5,7 @@ It defines the base data structures, how they are validated,
 and how they are communicated over the network.
 
 XXX: this spec is a work in progress and not yet complete - see github
-[isses](https://github.com/tendermint/tendermint/issues) and
+[issues](https://github.com/tendermint/tendermint/issues) and
 [pull requests](https://github.com/tendermint/tendermint/pulls)
 for more details.
 
@@ -24,8 +24,10 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ### P2P and Network Protocols
 
-- [The Base P2P Layer](p2p/README.md): multiplex the protocols ("reactors") on authenticated and encrypted TCP conns
-- [Peer Exchange (PEX)](pex/README.md): gossip known peer addresses so peers can find eachother
+TODO: update links
+
+- [The Base P2P Layer](p2p/README.md): multiplex the protocols ("reactors") on authenticated and encrypted TCP connections
+- [Peer Exchange (PEX)](pex/README.md): gossip known peer addresses so peers can find each other
 - [Block Sync](block_sync/README.md): gossip blocks so peers can catch up quickly
 - [Consensus](consensus/README.md): gossip votes and block parts so new blocks can be committed
 - [Mempool](mempool/README.md): gossip transactions so they get included in blocks
@@ -39,7 +41,7 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 Tendermint provides Byzantine Fault Tolerant State Machine Replication using
 hash-linked batches of transactions. Such transaction batches are called "blocks".
-Hence Tendermint defines a "blockchain".
+Hence, Tendermint defines a "blockchain".
 
 Each block in Tendermint has a unique index - its Height.
 A block at `Height == H` can only be committed *after* the
@@ -48,7 +50,7 @@ Each block is committed by a known set of weighted Validators.
 Membership and weighting within this set may change over time.
 Tendermint guarantees the safety and liveness of the blockchain
 so long as less than 1/3 of the total weight of the Validator set
-is malicious.
+is malicious or faulty.
 
 A commit in Tendermint is a set of signed messages from more than 2/3 of
 the total weight of the current Validator set. Validators take turns proposing

@@ -1,18 +1,18 @@
 # Tendermint Peer Discovery
 
-A Tendermint P2P network has different kinds of nodes with different requirements for connectivity to others.
+A Tendermint P2P network has different kinds of nodes with different requirements for connectivity compared to other types of networks.
 This document describes what kind of nodes Tendermint should enable and how they should work.
 
 ## Seeds
 
 Seeds are the first point of contact for a new node.
-They return a list of known active peers and disconnect.
+They return a list of known active peers and disconnect....if?
 
-Seeds should operate full nodes, and with the PEX reactor in a "crawler" mode
+Seeds should operate full nodes with the PEX reactor in a "crawler" mode
 that continuously explores to validate the availability of peers.
 
 Seeds should only respond with some top percentile of the best peers it knows about.
-See [reputation] for details on peer quality.
+See [reputation](TODO) for details on peer quality.
 
 ## New Full Node
 
@@ -31,7 +31,7 @@ dials those peers, and runs the Tendermint protocols with those it successfully 
 
 When the peer catches up to height H, it ensures the block hash matches HASH.
 If not, Tendermint will exit, and the user must try again - either they are connected
-to bad peers or their social consensus was invalidated.
+to bad peers or their social consensus is invalid.
 
 ## Restarted Full Node
 
@@ -58,8 +58,8 @@ Validators that know and trust each other can accept incoming connections from o
 Sentry nodes are guardians of a validator node and provide it access to the rest of the network.
 They should be well connected to other full nodes on the network.
 Sentry nodes may be dynamic, but should maintain persistent connections to some evolving random subset of each other.
-They should always expect to have direct incoming connections from the validator node and its backup/s.
-They do not report the validator node's address in the PEX.
-They may be more strict about the quality of peers they keep.
+They should always expect to have direct incoming connections from the validator node and its backup(s).
+They do not report the validator node's address in the PEX and
+they may be more strict about the quality of peers they keep.
 
 Sentry nodes belonging to validators that trust each other may wish to maintain persistent connections via VPN with one another, but only report each other sparingly in the PEX.

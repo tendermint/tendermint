@@ -5,7 +5,13 @@ Here we describe the data structures in the Tendermint blockchain and the rules 
 ## Data Structures
 
 The Tendermint blockchains consists of a short list of basic data types:
-`Block`, `Header`, `Vote`, `BlockID`, `Signature`, and `Evidence`.
+
+- `Block` 
+- `Header`
+- `Vote`
+- `BlockID`
+- `Signature`
+- `Evidence`
 
 ## Block
 
@@ -31,7 +37,7 @@ type Header struct {
     // block metadata
     Version             string  // Version string
     ChainID             string  // ID of the chain
-    Height              int64   // current block height
+    Height              int64   // Current block height
     Time                int64   // UNIX time, in millisconds
 
     // current block
@@ -55,7 +61,7 @@ type Header struct {
 }
 ```
 
-Further details on each of this fields is taken up below.
+Further details on each of these fields is described below.
 
 ## BlockID
 
@@ -97,8 +103,8 @@ type Vote struct {
 ```
 
 There are two types of votes:
-a prevote has `vote.Type == 1` and
-a precommit has `vote.Type == 2`.
+a *prevote* has `vote.Type == 1` and
+a *precommit* has `vote.Type == 2`.
 
 ## Signature
 
@@ -184,7 +190,7 @@ The height is an incrementing integer. The first block has `block.Header.Height 
 The median of the timestamps of the valid votes in the block.LastCommit.
 Corresponds to the number of nanoseconds, with millisecond resolution, since January 1, 1970.
 
-Note the timestamp in a vote must be greater by at least one millisecond than that of the
+Note: the timestamp of a vote must be greater by at least one millisecond than that of the
 block being voted on.
 
 ### NumTxs
@@ -226,6 +232,8 @@ The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 
 ### LastBlockID
 
+For the previous block's BlockID:
+
 ```go
 prevBlockParts := MakeParts(prevBlock, state.LastConsensusParams.BlockGossip.BlockPartSize)
 block.Header.LastBlockID == BlockID {
@@ -237,7 +245,7 @@ block.Header.LastBlockID == BlockID {
 }
 ```
 
-Previous block's BlockID. Note it depends on the ConsensusParams,
+Note: it depends on the ConsensusParams,
 which are held in the `state` and may be updated by the application.
 
 The first block has `block.Header.LastBlockID == BlockID{}`.
@@ -289,9 +297,9 @@ block.Header.Proposer in state.Validators
 
 Original proposer of the block. Must be a current validator.
 
-NOTE: this field can only be further verified by real-time participants in the consensus.
+**Note:** this field can only be further verified by real-time participants in the consensus.
 This is because the same block can be proposed in multiple rounds for the same height
-and we do not track the initial round the block was proposed.
+and we do not track the initial round that the block was proposed.
 
 ### EvidenceHash
 
@@ -361,7 +369,7 @@ func (v Vote) Verify(chainID string, pubKey PubKey) bool {
 }
 ```
 
-where `pubKey.Verify` performs the approprioate digital signature verification of the `pubKey`
+where `pubKey.Verify` performs the appropriate digital signature verification of the `pubKey`
 against the given signature and message bytes.
 
 ## Evidence
@@ -381,14 +389,14 @@ The votes must not be too old.
 
 Once a block is validated, it can be executed against the state.
 
-The state follows the recursive equation:
+The state follows this recursive equation:
 
 ```go
 state(1) = InitialState
 state(h+1) <- Execute(state(h), ABCIApp, block(h))
 ```
 
-Where `InitialState` includes the initial consensus parameters and validator set,
+where `InitialState` includes the initial consensus parameters and validator set,
 and `ABCIApp` is an ABCI application that can return results and changes to the validator
 set (TODO). Execute is defined as:
 

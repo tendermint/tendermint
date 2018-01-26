@@ -1,4 +1,3 @@
-
 ## Blockchain Reactor
 
 * coordinates the pool for syncing

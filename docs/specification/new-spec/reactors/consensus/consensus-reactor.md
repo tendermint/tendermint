@@ -1,9 +1,9 @@
 # Consensus Reactor
 
-Consensus Reactor defines a reactor for the consensus service. It contains ConsensusState service that 
+Consensus Reactor defines a reactor for the consensus service. It contains the ConsensusState service that 
 manages the state of the Tendermint consensus internal state machine. 
-When Consensus Reactor is started, it starts Broadcast Routine and it starts ConsensusState service. 
-Furthermore, for each peer that is added to the Consensus Reactor, it creates (and manage) known peer state 
+When Consensus Reactor is started, it starts Broadcast Routine which starts ConsensusState service. 
+Furthermore, for each peer that is added to the Consensus Reactor, it creates (and manages) the known peer state 
 (that is used extensively in gossip routines) and starts the following three routines for the peer p: 
 Gossip Data Routine, Gossip Votes Routine and QueryMaj23Routine. Finally, Consensus Reactor is responsible 
 for decoding messages received from a peer and for adequate processing of the message depending on its type and content.
@@ -41,7 +41,7 @@ RoundState defines the internal consensus state. It contains height, round, roun
 a proposal and proposal block for the current round, locked round and block (if some block is being locked), set of 
 received votes and last commit and last validators set.  
 
-```
+```golang
 type RoundState struct {
 	Height             int64 
 	Round              int
@@ -60,15 +60,23 @@ type RoundState struct {
 ``` 
 
 Internally, consensus will run as a state machine with the following states:
-RoundStepNewHeight, RoundStepNewRound, RoundStepPropose, RoundStepProposeWait, RoundStepPrevote,       
-RoundStepPrevoteWait, RoundStepPrecommit, RoundStepPrecommitWait and RoundStepCommit.        
+
+- RoundStepNewHeight
+- RoundStepNewRound
+- RoundStepPropose
+- RoundStepProposeWait
+- RoundStepPrevote
+- RoundStepPrevoteWait
+- RoundStepPrecommit
+- RoundStepPrecommitWait
+- RoundStepCommit
 
 ## Peer Round State
 
 Peer round state contains the known state of a peer. It is being updated by the Receive routine of
 Consensus Reactor and by the gossip routines upon sending a message to the peer.
 
-```
+```golang
 type PeerRoundState struct {
 	Height                   int64               // Height peer is at
 	Round                    int                 // Round peer is at, -1 if unknown.
@@ -92,8 +100,8 @@ type PeerRoundState struct {
 The entry point of the Consensus reactor is a receive method. When a message is received from a peer p, 
 normally the peer round state is updated correspondingly, and some messages 
 are passed for further processing, for example to ConsensusState service. We now specify the processing of messages
-in the receive method of Consensus reactor for each message type. In the following message handler, rs denotes 
-RoundState and prs PeerRoundState.
+in the receive method of Consensus reactor for each message type. In the following message handler, `rs` and `prs` denote
+`RoundState` and `PeerRoundState`, respectively.
 
 ### NewRoundStepMessage handler 
 
@@ -196,8 +204,8 @@ handleMessage(msg):
 ## Gossip Data Routine
 
 It is used to send the following messages to the peer: `BlockPartMessage`, `ProposalMessage` and 
-`ProposalPOLMessage` on the DataChannel. The gossip data routine is based on the local RoundState (denoted rs) 
-and the known PeerRoundState (denotes prs). The routine repeats forever the logic shown below:
+`ProposalPOLMessage` on the DataChannel. The gossip data routine is based on the local RoundState (`rs`) 
+and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
 
 ```
 1a) if rs.ProposalBlockPartsHeader == prs.ProposalBlockPartsHeader and the peer does not have all the proposal parts then
@@ -246,8 +254,8 @@ The function executes the following logic:
 ## Gossip Votes Routine
 
 It is used to send the following message: `VoteMessage` on the VoteChannel.
-The gossip votes routine is based on  the local RoundState (denoted rs) 
-and the known PeerRoundState (denotes prs). The routine repeats forever the logic shown below:
+The gossip votes routine is based on  the local RoundState (`rs`)
+and the known PeerRoundState (`prs`). The routine repeats forever the logic shown below:
 
 ```
 1a) if rs.Height == prs.Height then
@@ -291,8 +299,8 @@ and the known PeerRoundState (denotes prs). The routine repeats forever the logi
 ## QueryMaj23Routine
 
 It is used to send the following message: `VoteSetMaj23Message`. `VoteSetMaj23Message` is sent to indicate that a given 
-BlockID has seen +2/3 votes. This routine is based on the local RoundState (denoted rs) and the known PeerRoundState 
-(denotes prs). The routine repeats forever the logic shown below. 
+BlockID has seen +2/3 votes. This routine is based on the local RoundState (`rs`) and the known PeerRoundState
+(`prs`). The routine repeats forever the logic shown below.
 
 ```
 1a) if rs.Height == prs.Height then
@@ -328,28 +336,9 @@ BlockID has seen +2/3 votes. This routine is based on the local RoundState (deno
 
 ## Broadcast routine
 
-The Broadcast routine subscribes to internal event bus to receive new round steps, votes messages and proposal
+The Broadcast routine subscribes to an internal event bus to receive new round steps, votes messages and proposal
 heartbeat messages, and broadcasts messages to peers upon receiving those events.
-It brodcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state event. Note that
-broadcasting these messages does not depend on the PeerRoundState. It is sent on the StateChannel. 
+It broadcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state event. Note that
+broadcasting these messages does not depend on the PeerRoundState; it is sent on the StateChannel. 
 Upon receiving VoteMessage it broadcasts `HasVoteMessage` message to its peers on the StateChannel. 
 `ProposalHeartbeatMessage` is sent the same way on the StateChannel.
-
-
-
- 
-
-
- 
- 
-
-    
-
-
-    
-
-
-
-  
-
-

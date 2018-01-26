@@ -9,7 +9,7 @@ Tendermint full nodes run the Blockchain Reactor as a service to provide blocks
 to new nodes. New nodes run the Blockchain Reactor in "fast_sync" mode,
 where they actively make requests for more blocks until they sync up.
 Once caught up, "fast_sync" mode is disabled and the node switches to
-using the Consensus Reactor. , and turn on the Consensus Reactor.
+using (and turns on) the Consensus Reactor.
 
 ## Message Types
 
