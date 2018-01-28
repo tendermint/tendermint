@@ -306,7 +306,7 @@ func (bA *BitArray) Bytes() []byte {
 // so if necessary, caller must copy or lock o prior to calling Update.
 // If bA is nil, does nothing.
 func (bA *BitArray) Update(o *BitArray) {
-	if bA == nil {
+	if bA == nil || o == nil {
 		return
 	}
 	bA.mtx.Lock()

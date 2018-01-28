@@ -164,3 +164,26 @@ func TestEmptyFull(t *testing.T) {
 		}
 	}
 }
+
+func TestUpdateNeverPanics(t *testing.T) {
+	newRandBitArray := func(n int) *BitArray {
+		ba, _ := randBitArray(n)
+		return ba
+	}
+	pairs := []struct {
+		a, b *BitArray
+	}{
+		{nil, nil},
+		{newRandBitArray(10), newRandBitArray(12)},
+		{newRandBitArray(0), NewBitArray(10)},
+		{nil, NewBitArray(10)},
+		{nil, newRandBitArray(64)},
+		{newRandBitArray(63), newRandBitArray(64)},
+	}
+
+	for _, pair := range pairs {
+		a, b := pair.a, pair.b
+		a.Update(b)
+		b.Update(a)
+	}
+}
