@@ -198,7 +198,7 @@ func benchmarkMemStoreProviderGetByHeight(b *testing.B, fcs []lite.FullCommit, f
 	qHeights = append(qHeights, 19, -100, -10000, 1e7, -17, 31, -1e9)
 
 	searchFn := mp.GetByHeight
-	if algo == binarySearch {
+	if algo == binarySearch { // nolint
 		searchFn = mp.(interface {
 			GetByHeightBinarySearch(h int64) (lite.FullCommit, error)
 		}).GetByHeightBinarySearch
