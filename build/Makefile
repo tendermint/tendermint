@@ -128,7 +128,7 @@ prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
 prepare-gaia =
-prepare-basecoin = cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
+prepare-basecoin = cp $(GOPATH)/bin/basecoin $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
@@ -287,12 +287,11 @@ clean: mostlyclean
 
 distclean: clean
 	rm -rf $(GOPATH)/src/github.com/tendermint/tendermint
-	rm -rf $(GOPATH)/src/github.com/tendermint/basecoin 
+	rm -rf $(GOPATH)/src/github.com/cosmos/cosmos-sdk
 	rm -rf $(GOPATH)/src/github.com/tendermint/ethermint 
 	rm -rf $(GOPATH)/src/github.com/tendermint/trackomatron 
 	rm -rf $(GOPATH)/bin/tendermint
 	rm -rf $(GOPATH)/bin/basecoin
-	rm -rf $(GOPATH)/bin/basecli
 	rm -rf $(GOPATH)/bin/ethermint
 	rm -rf $(GOPATH)/bin/gaia
 	rm -rf $(GOPATH)/bin/tracko
