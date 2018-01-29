@@ -175,10 +175,9 @@ func TestUpdateNeverPanics(t *testing.T) {
 	}{
 		{nil, nil},
 		{newRandBitArray(10), newRandBitArray(12)},
-		{newRandBitArray(0), NewBitArray(10)},
+		{newRandBitArray(23), newRandBitArray(23)},
+		{newRandBitArray(37), nil},
 		{nil, NewBitArray(10)},
-		{nil, newRandBitArray(64)},
-		{newRandBitArray(63), newRandBitArray(64)},
 	}
 
 	for _, pair := range pairs {
