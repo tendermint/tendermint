@@ -93,9 +93,9 @@ build-gaia: git-branch gopath-setup
 
 build-basecoin: git-branch gopath-setup
 	@echo "*** Building basecoin from cosmos-sdk"
-	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
+	go get -d -u github.com/cosmos/cosmos-sdk/examples/basecoin/cmd/basecoind
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
-	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_tools get_vendor_deps install
 	@echo "*** Built basecoin from cosmos-sdk"
 
 ###
