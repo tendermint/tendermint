@@ -2,6 +2,7 @@ package mempool
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -101,24 +102,39 @@ type PeerState interface {
 }
 
 // Send new mempool txs to peer.
-// TODO: Handle mempool or reactor shutdown - as is this routine
-// may block forever if no new txs come in.
 func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 	if !memR.config.Broadcast {
 		return
 	}
 
+	// used to abort waiting until a tx available
+	// otherwise TxsFrontWait/NextWait could block forever if there are
+	// no txs
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		const healthCheckInterval = 5 * time.Second
+		for {
+			if !memR.IsRunning() || !peer.IsRunning() {
+				cancel()
+				return
+			}
+			time.Sleep(healthCheckInterval)
+		}
+	}()
+
 	var next *clist.CElement
 	for {
-		if !memR.IsRunning() || !peer.IsRunning() {
-			return // Quit!
-		}
+		// This happens because the CElement we were looking at got
+		// garbage collected (removed).  That is, .NextWait() returned nil.
+		// Go ahead and start from the beginning.
 		if next == nil {
-			// This happens because the CElement we were looking at got
-			// garbage collected (removed).  That is, .NextWait() returned nil.
-			// Go ahead and start from the beginning.
-			next = memR.Mempool.TxsFrontWait() // Wait until a tx is available
+			// Wait until a tx is available
+			next = waitWithCancel(memR.Mempool.TxsFrontWait, ctx)
+			if ctx.Err() != nil {
+				return
+			}
 		}
+
 		memTx := next.Value.(*mempoolTx)
 		// make sure the peer is up to date
 		height := memTx.Height()
@@ -136,9 +152,20 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
+		next = waitWithCancel(next.NextWait, ctx)
+		if ctx.Err() != nil {
+			return
+		}
+	}
+}
 
-		next = next.NextWait()
-		continue
+func waitWithCancel(f func() *clist.CElement, ctx context.Context) *clist.CElement {
+	el := make(chan *clist.CElement, 1)
+	select {
+	case el <- f():
+		return <-el
+	case <-ctx.Done():
+		return nil
 	}
 }
 

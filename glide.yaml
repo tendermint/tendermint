@@ -61,3 +61,4 @@ testImport:
   subpackages:
   - assert
   - require
+- package: github.com/fortytw2/leaktest

@@ -203,3 +203,5 @@ testImports:
   subpackages:
   - assert
   - require
+- name: github.com/fortytw2/leaktest
+  version: 3b724c3d7b8729a35bf4e577f71653aec6e53513
