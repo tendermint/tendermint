@@ -119,7 +119,7 @@
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000000000
+            "amount": 10000
           },
           {
             "denom": "buckycoin",
@@ -137,7 +137,7 @@
           },
           {
             "denom": "fermion",
-            "amount": 10000
+            "amount": 1000
           }
         ]
       },
@@ -151,17 +151,13 @@
           },
           {
             "denom": "fermion",
-            "amount": 10000
+            "amount": 1000
           }
         ]
       },
       {
         "name": "shadow",
         "address": "B140EFAAE6D5CA1C8E98814C557AF7112E3B9EAE",
-        "pub_key": {
-          "type": "ed25519",
-          "data": "F492282705DF29ACC3BB803D543B7BF98C8080FA28AE85B62B45827EA9DA8167"
-        },
         "coins": [
           {
             "denom": "fermion",
@@ -188,12 +184,64 @@
         ]
       },
       {
-        "name": "token-splitter",
+        "name": "official-faucet",
         "address": "2406B52B1DE26F992E5BF334E5F30049C682B5CB",
         "coins": [
           {
             "denom": "fermion",
-            "amount": 10000
+            "amount": 100000
+          },
+          {
+            "denom": "antoncoin",
+            "amount": 100000
+          },
+          {
+            "denom": "adriancoin",
+            "amount": 100000
+          },
+          {
+            "denom": "buckycoin",
+            "amount": 100000
+          },
+          {
+            "denom": "rigelcoin",
+            "amount": 100000
+          },
+          {
+            "denom": "shadowcoin",
+            "amount": 100000
+          },
+          {
+            "denom": "pengcoin",
+            "amount": 100000
+          },
+          {
+            "denom": "mattcoin",
+            "amount": 100000
+          },
+          {
+            "denom": "freycoin",
+            "amount": 100000
+          },
+          {
+            "denom": "wancloudcoin",
+            "amount": 100000
+          },
+          {
+            "denom": "bianjiecoin",
+            "amount": 100000
+          },
+          {
+            "denom": "alexiscoin",
+            "amount": 100000
+          },
+          {
+            "denom": "zakicoin",
+            "amount": 100000
+          },
+          {
+            "denom": "gregcoin",
+            "amount": 100000
           }
         ]
       },
