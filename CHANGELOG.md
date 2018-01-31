@@ -6,6 +6,13 @@ BREAKING:
 
  - [cli] WriteDemoConfig -> WriteConfigValues
 
+## 0.6.1 (TBD)
+
+IMPROVEMENTS:
+ - [clist] add WaitChan() to CList, NextWaitChan() and PrevWaitChan()
+   to CElement. These can be used instead of blocking *Wait() methods
+   if you need to be able to send quit signal and not block forever
+
 ## 0.6.0 (December 29, 2017)
 
 BREAKING:
