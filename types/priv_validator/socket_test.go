@@ -23,11 +23,11 @@ func TestPrivValidatorSocketServer(t *testing.T) {
 		privVal         = NewTestPrivValidator(signer)
 		pvss            = NewPrivValidatorSocketServer(
 			logger,
-			"127.0.0.1:0",
 			chainID,
+			"127.0.0.1:0",
+			1,
 			privVal,
 			&serverPrivKey,
-			1,
 		)
 	)
 
