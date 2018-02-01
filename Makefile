@@ -106,10 +106,7 @@ test_p2p:
 	bash test/p2p/test.sh tester
 
 need_abci:
-	go get github.com/tendermint/abci || true
-	cd $(GOPATH)/src/github.com/tendermint/abci
-	make get_vendor_deps
-	make install
+	bash scripts/install_abci_apps.sh
 
 test_integrations:
 	make build_docker_test_image
