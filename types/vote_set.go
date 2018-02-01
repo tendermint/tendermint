@@ -172,7 +172,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Ensure that the signer has the right address
 	if !bytes.Equal(valAddr, lookupAddr) {
 		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
-			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)",
+			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\nEnsure the genesis file is correct across all validators.",
 			valAddr, lookupAddr, valIndex)
 	}
 
