@@ -1381,13 +1381,13 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			case types.VoteTypePrevote:
 				prevotes := cs.Votes.Prevotes(vote.Round)
 				cs.Logger.Info("Added to prevote", "vote", vote, "prevotes", prevotes.StringShort())
+				blockID, ok := prevotes.TwoThirdsMajority()
 				// First, unlock if prevotes is a valid POL.
 				// >> lockRound < POLRound <= unlockOrChangeLockRound (see spec)
 				// NOTE: If (lockRound < POLRound) but !(POLRound <= unlockOrChangeLockRound),
 				// we'll still enterNewRound(H,vote.R) and enterPrecommit(H,vote.R) to process it
 				// there.
 				if (cs.LockedBlock != nil) && (cs.LockedRound < vote.Round) && (vote.Round <= cs.Round) {
-					blockID, ok := prevotes.TwoThirdsMajority()
 					if ok && !cs.LockedBlock.HashesTo(blockID.Hash) {
 						cs.Logger.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
 						cs.LockedRound = 0
@@ -1395,18 +1395,19 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 						cs.LockedBlockParts = nil
 						cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 					}
-					if ok && !blockID.IsZero() && !cs.ValidBlock.HashesTo(blockID.Hash) && vote.Round > cs.ValidRound {
-						// update valid value
-						if cs.ProposalBlock.HashesTo(blockID.Hash) {
-							cs.ValidRound = vote.Round
-							cs.ValidBlock = cs.ProposalBlock
-							cs.ValidBlockParts = cs.ProposalBlockParts
-						}
-						//TODO: We might want to update ValidBlock also in case we don't have that block yet,
-						// and obtain the required block using gossiping
-					}
-
 				}
+				// Update ValidBlock
+				if ok && !blockID.IsZero() && !cs.ValidBlock.HashesTo(blockID.Hash) && vote.Round > cs.ValidRound {
+					// update valid value
+					if cs.ProposalBlock.HashesTo(blockID.Hash) {
+						cs.ValidRound = vote.Round
+						cs.ValidBlock = cs.ProposalBlock
+						cs.ValidBlockParts = cs.ProposalBlockParts
+					}
+					//TODO: We might want to update ValidBlock also in case we don't have that block yet,
+					// and obtain the required block using gossiping
+				}
+
 				if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
 					// Round-skip over to PrevoteWait or goto Precommit.
 					cs.enterNewRound(height, vote.Round) // if the vote is ahead of us
