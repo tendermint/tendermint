@@ -135,8 +135,6 @@ test100:
 
 vagrant_test:
 	vagrant up
-	vagrant ssh -c 'make install'
-	vagrant ssh -c 'make test_unit_race'
 	vagrant ssh -c 'make test_integrations'
 
 ### go tests

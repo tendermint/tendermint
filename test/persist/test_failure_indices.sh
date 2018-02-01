@@ -28,11 +28,19 @@ function start_procs(){
     rm -f $RPC_ADDR
     if [[ "$indexToFail" == "" ]]; then
         # run in background, dont fail
+		if [[ "$CIRCLECI" == true ]]; then
+			$TM_CMD &
+		else
             $TM_CMD &> "tendermint_${name}.log" & 
+		fi
         PID_TENDERMINT=$!
     else
         # run in foreground, fail
+		if [[ "$CIRCLECI" == true ]]; then
+			FAIL_TEST_INDEX=$indexToFail $TM_CMD
+		else
             FAIL_TEST_INDEX=$indexToFail $TM_CMD &> "tendermint_${name}.log"
+		fi
         PID_TENDERMINT=$!
     fi
 }
