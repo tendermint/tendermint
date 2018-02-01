@@ -29,8 +29,12 @@ import:
   version: master
   subpackages:
   - data
-- package: github.com/tendermint/tmlibs
+- package: github.com/tendermint/iavl
   version: develop
+  subpackages:
+  - iavl
+- package: github.com/tendermint/tmlibs
+  version: 51684dabf79c2079f32cc25d6bccb748ee098386
   subpackages:
   - autofile
   - cli

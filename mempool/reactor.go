@@ -2,7 +2,6 @@ package mempool
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -107,30 +106,20 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		return
 	}
 
-	// used to abort waiting until a tx available
-	// otherwise TxsFrontWait/NextWait could block forever if there are
-	// no txs
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		const healthCheckInterval = 5 * time.Second
-		for {
-			if !memR.IsRunning() || !peer.IsRunning() {
-				cancel()
-				return
-			}
-			time.Sleep(healthCheckInterval)
-		}
-	}()
-
 	var next *clist.CElement
 	for {
-		// This happens because the CElement we were looking at got
-		// garbage collected (removed).  That is, .NextWait() returned nil.
-		// Go ahead and start from the beginning.
+		// This happens because the CElement we were looking at got garbage
+		// collected (removed). That is, .NextWait() returned nil. Go ahead and
+		// start from the beginning.
 		if next == nil {
-			// Wait until a tx is available
-			next = waitWithCancel(memR.Mempool.TxsFrontWait, ctx)
-			if ctx.Err() != nil {
+			select {
+			case <-memR.Mempool.TxsWaitChan(): // Wait until a tx is available
+				if next = memR.Mempool.TxsFront(); next == nil {
+					continue
+				}
+			case <-peer.QuitChan():
+				return
+			case <-memR.Quit:
 				return
 			}
 		}
@@ -152,20 +141,16 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
-		next = waitWithCancel(next.NextWait, ctx)
-		if ctx.Err() != nil {
+
+		select {
+		case <-next.NextWaitChan():
+			// see the start of the for loop for nil check
+			next = next.Next()
+		case <-peer.QuitChan():
+			return
+		case <-memR.Quit:
 			return
 		}
-	}
-}
-
-func waitWithCancel(f func() *clist.CElement, ctx context.Context) *clist.CElement {
-	el := make(chan *clist.CElement, 1)
-	select {
-	case el <- f():
-		return <-el
-	case <-ctx.Done():
-		return nil
 	}
 }
 

@@ -1,5 +1,5 @@
-hash: 78f23456c3ca7af06fc26e59107de92a7b208776643bda398b0a05348153da1b
-updated: 2018-02-03T03:31:46.976175875-05:00
+hash: 94a3f8a3cf531e0cdde8bc160a2f4bab6f269d99a9a9633404e5badb0481f02c
+updated: 2018-02-05T10:04:25.7693634Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 50de9da05b50eb15658bb350f6ea24368a111ab7
@@ -116,9 +116,12 @@ imports:
   version: b6fc872b42d41158a60307db4da051dd6f179415
   subpackages:
   - data
-  - nowriter/tmlegacy
+- name: github.com/tendermint/iavl
+  version: 1a59ec0c82dc940c25339dd7c834df5cb76a95cb
+  subpackages:
+  - iavl
 - name: github.com/tendermint/tmlibs
-  version: deaaf014d8b8d1095054380a38b1b00e293f725f
+  version: 51684dabf79c2079f32cc25d6bccb748ee098386
   subpackages:
   - autofile
   - cli
@@ -194,6 +197,8 @@ testImports:
   version: 346938d642f2ec3594ed81d874461961cd0faa76
   subpackages:
   - spew
+- name: github.com/fortytw2/leaktest
+  version: 3b724c3d7b8729a35bf4e577f71653aec6e53513
 - name: github.com/pmezard/go-difflib
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
@@ -203,5 +208,3 @@ testImports:
   subpackages:
   - assert
   - require
-- name: github.com/fortytw2/leaktest
-  version: 3b724c3d7b8729a35bf4e577f71653aec6e53513

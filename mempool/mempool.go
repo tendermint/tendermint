@@ -178,10 +178,17 @@ func (mem *Mempool) Flush() {
 	}
 }
 
-// TxsFrontWait returns the first transaction in the ordered list for peer goroutines to call .NextWait() on.
-// It blocks until the mempool is not empty (ie. until the internal `mem.txs` has at least one element)
-func (mem *Mempool) TxsFrontWait() *clist.CElement {
-	return mem.txs.FrontWait()
+// TxsFront returns the first transaction in the ordered list for peer
+// goroutines to call .NextWait() on.
+func (mem *Mempool) TxsFront() *clist.CElement {
+	return mem.txs.Front()
+}
+
+// TxsWaitChan returns a channel to wait on transactions. It will be closed
+// once the mempool is not empty (ie. the internal `mem.txs` has at least one
+// element)
+func (mem *Mempool) TxsWaitChan() <-chan struct{} {
+	return mem.txs.WaitChan()
 }
 
 // CheckTx executes a new transaction against the application to determine its validity
