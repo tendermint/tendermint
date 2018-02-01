@@ -100,30 +100,13 @@ func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
 
 }
 
-type binarySearchHeightGetter interface {
-	GetByHeightBinarySearch(h int64) (lite.FullCommit, error)
-}
-
 // this will make a get height, and if it is good, set the data as well
 func checkGetHeight(t *testing.T, p lite.Provider, ask, expect int64) {
-	// The goal here is to test checkGetHeight using both
-	// provider.GetByHeight
-	// *memStoreProvider.GetHeightBinarySearch
-	fnMap := map[string]func(int64) (lite.FullCommit, error){
-		"getByHeight": p.GetByHeight,
-	}
-	if bshg, ok := p.(binarySearchHeightGetter); ok {
-		fnMap["getByHeightBinary"] = bshg.GetByHeightBinarySearch
-	}
-
-	for algo, fn := range fnMap {
-		fc, err := fn(ask)
-		// t.Logf("%s got=%v want=%d", algo, expect, fc.Height())
-		require.Nil(t, err, "%s: %+v", algo, err)
-		if assert.Equal(t, expect, fc.Height()) {
-			err = p.StoreCommit(fc)
-			require.Nil(t, err, "%s: %+v", algo, err)
-		}
+	fc, err := p.GetByHeight(ask)
+	require.Nil(t, err, "GetByHeight")
+	if assert.Equal(t, expect, fc.Height()) {
+		err = p.StoreCommit(fc)
+		require.Nil(t, err, "StoreCommit")
 	}
 }
 
@@ -163,78 +146,4 @@ func TestCacheGetsBestHeight(t *testing.T) {
 	// now, query the cache for a higher value
 	checkGetHeight(t, p2, 99, 90)
 	checkGetHeight(t, cp, 99, 90)
-}
-
-var blankFullCommit lite.FullCommit
-
-func ensureNonExistentCommitsAtHeight(t *testing.T, prefix string, fn func(int64) (lite.FullCommit, error), data []int64) {
-	for i, qh := range data {
-		fc, err := fn(qh)
-		assert.NotNil(t, err, "#%d: %s: height=%d should return non-nil error", i, prefix, qh)
-		assert.Equal(t, fc, blankFullCommit, "#%d: %s: height=%d\ngot =%+v\nwant=%+v", i, prefix, qh, fc, blankFullCommit)
-	}
-}
-
-func TestMemStoreProviderGetByHeightBinaryAndLinearSameResult(t *testing.T) {
-	p := lite.NewMemStoreProvider()
-
-	// Store a bunch of commits at specific heights
-	// and then ensure that:
-	//  * GetByHeight
-	//  * GetByHeightBinarySearch
-	// both return the exact same result
-
-	// 1. Non-existent height commits
-	nonExistent := []int64{-1000, -1, 0, 1, 10, 11, 17, 31, 67, 1000, 1e9}
-	ensureNonExistentCommitsAtHeight(t, "GetByHeight", p.GetByHeight, nonExistent)
-	ensureNonExistentCommitsAtHeight(t, "GetByHeightBinarySearch", p.(binarySearchHeightGetter).GetByHeightBinarySearch, nonExistent)
-
-	// 2. Save some known height commits
-	knownHeights := []int64{0, 1, 7, 9, 12, 13, 18, 44, 23, 16, 1024, 100, 199, 1e9}
-	createAndStoreCommits(t, p, knownHeights)
-
-	// 3. Now check if those heights are retrieved
-	ensureExistentCommitsAtHeight(t, "GetByHeight", p.GetByHeight, knownHeights)
-	ensureExistentCommitsAtHeight(t, "GetByHeightBinarySearch", p.(binarySearchHeightGetter).GetByHeightBinarySearch, knownHeights)
-
-	// 4. And now for the height probing to ensure that any height
-	// requested returns a fullCommit of height <= requestedHeight.
-	checkGetHeight(t, p, 0, 0)
-	checkGetHeight(t, p, 1, 1)
-	checkGetHeight(t, p, 2, 1)
-	checkGetHeight(t, p, 5, 1)
-	checkGetHeight(t, p, 7, 7)
-	checkGetHeight(t, p, 10, 9)
-	checkGetHeight(t, p, 12, 12)
-	checkGetHeight(t, p, 14, 13)
-	checkGetHeight(t, p, 19, 18)
-	checkGetHeight(t, p, 43, 23)
-	checkGetHeight(t, p, 45, 44)
-	checkGetHeight(t, p, 1025, 1024)
-	checkGetHeight(t, p, 101, 100)
-	checkGetHeight(t, p, 1e3, 199)
-	checkGetHeight(t, p, 1e4, 1024)
-	checkGetHeight(t, p, 1e9, 1e9)
-	checkGetHeight(t, p, 1e9+1, 1e9)
-}
-
-func ensureExistentCommitsAtHeight(t *testing.T, prefix string, fn func(int64) (lite.FullCommit, error), data []int64) {
-	for i, qh := range data {
-		fc, err := fn(qh)
-		assert.Nil(t, err, "#%d: %s: height=%d should not return an error: %v", i, prefix, qh, err)
-		assert.NotEqual(t, fc, blankFullCommit, "#%d: %s: height=%d got a blankCommit", i, prefix, qh)
-	}
-}
-
-func createAndStoreCommits(t *testing.T, p lite.Provider, heights []int64) {
-	chainID := "cache-best-height-binary-and-linear"
-	appHash := []byte("0xdeadbeef")
-	keys := lite.GenValKeys(len(heights) / 2)
-
-	for _, h := range heights {
-		vals := keys.ToValidators(10, int64(len(heights)/2))
-		fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5)
-		err := p.StoreCommit(fc)
-		require.NoError(t, err, "StoreCommit height=%d", h)
-	}
 }

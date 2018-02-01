@@ -60,12 +60,30 @@ func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 
 // GetByHeight returns the FullCommit for height h or an error if the commit is not found.
 func (m *memStoreProvider) GetByHeight(h int64) (FullCommit, error) {
-	m.mtx.Lock()
-	defer m.mtx.Unlock()
+	// By heuristics, GetByHeight with linearsearch is fast enough
+	// for about 50 keys but after that, it needs binary search.
+	// See https://github.com/tendermint/tendermint/pull/1043#issue-285188242
+	m.mtx.RLock()
+	n := len(m.byHeight)
+	m.mtx.RUnlock()
+
+	if n <= 50 {
+		return m.getByHeightLinearSearch(h)
+	}
+	return m.getByHeightBinarySearch(h)
+}
+
+func (m *memStoreProvider) sortByHeightIfNecessaryLocked() {
 	if !m.sorted {
 		sort.Sort(m.byHeight)
 		m.sorted = true
 	}
+}
+
+func (m *memStoreProvider) getByHeightLinearSearch(h int64) (FullCommit, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.sortByHeightIfNecessaryLocked()
 	// search from highest to lowest
 	for i := len(m.byHeight) - 1; i >= 0; i-- {
 		if fc := m.byHeight[i]; fc.Height() <= h {
@@ -75,14 +93,10 @@ func (m *memStoreProvider) GetByHeight(h int64) (FullCommit, error) {
 	return FullCommit{}, liteErr.ErrCommitNotFound()
 }
 
-// GetByHeight returns the FullCommit for height h or an error if the commit is not found.
-func (m *memStoreProvider) GetByHeightBinarySearch(h int64) (FullCommit, error) {
+func (m *memStoreProvider) getByHeightBinarySearch(h int64) (FullCommit, error) {
 	m.mtx.Lock()
 	defer m.mtx.Unlock()
-	if !m.sorted {
-		sort.Sort(m.byHeight)
-		m.sorted = true
-	}
+	m.sortByHeightIfNecessaryLocked()
 	low, high := 0, len(m.byHeight)-1
 	var mid int
 	var hmid int64
@@ -126,12 +140,13 @@ func (m *memStoreProvider) GetByHash(hash []byte) (FullCommit, error) {
 
 // LatestCommit returns the latest FullCommit or an error if no commits exist.
 func (m *memStoreProvider) LatestCommit() (FullCommit, error) {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 
 	l := len(m.byHeight)
 	if l == 0 {
 		return FullCommit{}, liteErr.ErrCommitNotFound()
 	}
+	m.sortByHeightIfNecessaryLocked()
 	return m.byHeight[l-1], nil
 }
