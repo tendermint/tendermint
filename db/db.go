@@ -11,7 +11,7 @@ const (
 	LevelDBBackend   dbBackendType = "leveldb" // legacy, defaults to goleveldb unless +gcc
 	CLevelDBBackend  dbBackendType = "cleveldb"
 	GoLevelDBBackend dbBackendType = "goleveldb"
-	MemDBBackend     dbBackendType = "memDB"
+	MemDBBackend     dbBackendType = "memdb"
 	FSDBBackend      dbBackendType = "fsdb" // using the filesystem naively
 )
 
