@@ -45,7 +45,7 @@ func checkValuePanics(t *testing.T, itr Iterator) {
 	assert.Panics(t, func() { itr.Key() }, "checkValuePanics expected panic but didn't")
 }
 
-func newTempDB(t *testing.T, backend dbBackendType) (db DB) {
+func newTempDB(t *testing.T, backend DbBackendType) (db DB) {
 	dir, dirname := cmn.Tempdir("test_go_iterator")
 	db = NewDB("testdb", backend, dirname)
 	dir.Close()
