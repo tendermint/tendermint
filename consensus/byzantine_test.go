@@ -280,7 +280,7 @@ func NewByzantinePrivValidator(pv types.PrivValidator) *ByzantinePrivValidator {
 	}
 }
 
-func (privVal *ByzantinePrivValidator) GetAddress() crypto.Address {
+func (privVal *ByzantinePrivValidator) GetAddress() types.Address {
 	return privVal.pv.GetAddress()
 }
 

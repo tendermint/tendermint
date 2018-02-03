@@ -22,7 +22,8 @@ import (
 // setupTestCase does setup common to all test cases
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, State) {
 	config := cfg.ResetTestRoot("state_")
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
+	dbType := dbm.DBBackendType(config.DBBackend)
+	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
 
