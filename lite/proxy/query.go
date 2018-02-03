@@ -3,6 +3,8 @@ package proxy
 import (
 	"github.com/pkg/errors"
 
+	cmn "github.com/tendermint/tmlibs/common"
+
 	"github.com/tendermint/tendermint/lite"
 	"github.com/tendermint/tendermint/lite/client"
 	certerr "github.com/tendermint/tendermint/lite/errors"
@@ -78,6 +80,7 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 		return nil, nil, err
 	}
 
+	_ = commit
 	return &ctypes.ResultABCIQuery{Response: resp}, nil, nil
 
 	/* // TODO refactor so iavl stuff is not in tendermint core

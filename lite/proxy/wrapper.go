@@ -1,6 +1,8 @@
 package proxy
 
 import (
+	cmn "github.com/tendermint/tmlibs/common"
+
 	"github.com/tendermint/tendermint/lite"
 	certclient "github.com/tendermint/tendermint/lite/client"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
