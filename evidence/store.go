@@ -99,8 +99,8 @@ func (store *EvidenceStore) PendingEvidence() (evidence []types.Evidence) {
 // ListEvidence lists the evidence for the given prefix key.
 // It is wrapped by PriorityEvidence and PendingEvidence for convenience.
 func (store *EvidenceStore) ListEvidence(prefixKey string) (evidence []types.Evidence) {
-	iter := store.db.IteratorPrefix([]byte(prefixKey))
-	for iter.Next() {
+	iter := dbm.IteratePrefix(store.db, []byte(prefixKey))
+	for ; iter.Valid(); iter.Next() {
 		val := iter.Value()
 
 		var ei EvidenceInfo

@@ -53,7 +53,8 @@ type DBProvider func(*DBContext) (dbm.DB, error)
 // DefaultDBProvider returns a database using the DBBackend and DBDir
 // specified in the ctx.Config.
 func DefaultDBProvider(ctx *DBContext) (dbm.DB, error) {
-	return dbm.NewDB(ctx.ID, ctx.Config.DBBackend, ctx.Config.DBDir()), nil
+	dbType := dbm.DBBackendType(ctx.Config.DBBackend)
+	return dbm.NewDB(ctx.ID, dbType, ctx.Config.DBDir()), nil
 }
 
 // GenesisDocProvider returns a GenesisDoc.
@@ -274,7 +275,7 @@ func NewNode(config *cfg.Config,
 				return err
 			}
 			if resQuery.IsErr() {
-				return resQuery
+				return fmt.Errorf("Error querying abci app: %v", resQuery)
 			}
 			return nil
 		})
@@ -284,7 +285,7 @@ func NewNode(config *cfg.Config,
 				return err
 			}
 			if resQuery.IsErr() {
-				return resQuery
+				return fmt.Errorf("Error querying abci app: %v", resQuery)
 			}
 			return nil
 		})

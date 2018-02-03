@@ -17,11 +17,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
+
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tmlibs/log"
 )
 
 // Client and Server should work over tcp or unix sockets
@@ -47,7 +48,7 @@ type ResultEchoBytes struct {
 }
 
 type ResultEchoDataBytes struct {
-	Value data.Bytes `json:"value"`
+	Value cmn.HexBytes `json:"value"`
 }
 
 // Define some routes
@@ -75,7 +76,7 @@ func EchoBytesResult(v []byte) (*ResultEchoBytes, error) {
 	return &ResultEchoBytes{v}, nil
 }
 
-func EchoDataBytesResult(v data.Bytes) (*ResultEchoDataBytes, error) {
+func EchoDataBytesResult(v cmn.HexBytes) (*ResultEchoDataBytes, error) {
 	return &ResultEchoDataBytes{v}, nil
 }
 
@@ -174,7 +175,7 @@ func echoBytesViaHTTP(cl client.HTTPClient, bytes []byte) ([]byte, error) {
 	return result.Value, nil
 }
 
-func echoDataBytesViaHTTP(cl client.HTTPClient, bytes data.Bytes) (data.Bytes, error) {
+func echoDataBytesViaHTTP(cl client.HTTPClient, bytes cmn.HexBytes) (cmn.HexBytes, error) {
 	params := map[string]interface{}{
 		"arg": bytes,
 	}
@@ -196,7 +197,7 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	require.Nil(t, err)
 	assert.Equal(t, got2, val2)
 
-	val3 := data.Bytes(randBytes(t))
+	val3 := cmn.HexBytes(randBytes(t))
 	got3, err := echoDataBytesViaHTTP(cl, val3)
 	require.Nil(t, err)
 	assert.Equal(t, got3, val3)

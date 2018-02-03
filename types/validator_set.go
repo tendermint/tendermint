@@ -54,7 +54,7 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 	for _, val := range valSet.Validators {
 		// check for overflow both multiplication and sum
 		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
-		validatorsHeap.Push(val, accumComparable{val})
+		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
 	// Decrement the validator with most accum times times
@@ -150,11 +150,11 @@ func (valSet *ValidatorSet) Hash() []byte {
 	if len(valSet.Validators) == 0 {
 		return nil
 	}
-	hashables := make([]merkle.Hashable, len(valSet.Validators))
+	hashers := make([]merkle.Hasher, len(valSet.Validators))
 	for i, val := range valSet.Validators {
-		hashables[i] = val
+		hashers[i] = val
 	}
-	return merkle.SimpleHashFromHashables(hashables)
+	return merkle.SimpleHashFromHashers(hashers)
 }
 
 func (valSet *ValidatorSet) Add(val *Validator) (added bool) {

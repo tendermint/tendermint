@@ -185,7 +185,7 @@ func TestSerialReap(t *testing.T) {
 			t.Errorf("Client error committing: %v", err)
 		}
 		if len(res.Data) != 8 {
-			t.Errorf("Error committing. Hash:%X log:%v", res.Data, res.Log)
+			t.Errorf("Error committing. Hash:%X", res.Data)
 		}
 	}
 

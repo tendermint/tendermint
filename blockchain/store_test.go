@@ -42,7 +42,6 @@ func TestNewBlockStore(t *testing.T) {
 		wantErr string
 	}{
 		{[]byte("artful-doger"), "not unmarshal bytes"},
-		{[]byte(""), "unmarshal bytes"},
 		{[]byte(" "), "unmarshal bytes"},
 	}
 
@@ -76,7 +75,7 @@ func TestBlockStoreGetReader(t *testing.T) {
 	}{
 		0: {key: []byte("Foo"), want: []byte("Bar")},
 		1: {key: []byte("KnoxNonExistent"), want: nil},
-		2: {key: []byte("Foo1"), want: nil},
+		2: {key: []byte("Foo1"), want: []byte{}},
 	}
 
 	for i, tt := range tests {

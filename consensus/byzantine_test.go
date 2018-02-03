@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -281,7 +280,7 @@ func NewByzantinePrivValidator(pv types.PrivValidator) *ByzantinePrivValidator {
 	}
 }
 
-func (privVal *ByzantinePrivValidator) GetAddress() data.Bytes {
+func (privVal *ByzantinePrivValidator) GetAddress() types.Address {
 	return privVal.pv.GetAddress()
 }
 

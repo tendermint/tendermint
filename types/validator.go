@@ -7,7 +7,6 @@ import (
 
 	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -15,9 +14,9 @@ import (
 // NOTE: The Accum is not included in Validator.Hash();
 // make sure to update that method if changes are made here
 type Validator struct {
-	Address     data.Bytes    `json:"address"`
-	PubKey      crypto.PubKey `json:"pub_key"`
-	VotingPower int64         `json:"voting_power"`
+	Address     Address `json:"address"`
+	PubKey      crypto.PubKey  `json:"pub_key"`
+	VotingPower int64          `json:"voting_power"`
 
 	Accum int64 `json:"accum"`
 }
@@ -74,7 +73,7 @@ func (v *Validator) String() string {
 // It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
 	return wire.BinaryRipemd160(struct {
-		Address     data.Bytes
+		Address     Address
 		PubKey      crypto.PubKey
 		VotingPower int64
 	}{

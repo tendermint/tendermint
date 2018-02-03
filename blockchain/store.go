@@ -254,7 +254,7 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 // If no BlockStoreStateJSON was previously persisted, it returns the zero value.
 func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bytes := db.Get(blockStoreKey)
-	if bytes == nil {
+	if len(bytes) == 0 {
 		return BlockStoreStateJSON{
 			Height: 0,
 		}

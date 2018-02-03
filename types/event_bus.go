@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
@@ -98,17 +97,11 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	// validate and fill tags from tx result
 	for _, tag := range event.Result.Tags {
 		// basic validation
-		if tag.Key == "" {
+		if len(tag.Key) == 0 {
 			b.Logger.Info("Got tag with an empty key (skipping)", "tag", tag, "tx", event.Tx)
 			continue
 		}
-
-		switch tag.ValueType {
-		case abci.KVPair_STRING:
-			tags[tag.Key] = tag.ValueString
-		case abci.KVPair_INT:
-			tags[tag.Key] = tag.ValueInt
-		}
+		tags[string(tag.Key)] = tag.Value
 	}
 
 	// add predefined tags

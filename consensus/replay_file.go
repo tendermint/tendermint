@@ -280,12 +280,13 @@ func (pb *playback) replayConsoleLoop() int {
 
 // convenience for replay mode
 func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig) *ConsensusState {
+	dbType := dbm.DBBackendType(config.DBBackend)
 	// Get BlockStore
-	blockStoreDB := dbm.NewDB("blockstore", config.DBBackend, config.DBDir())
+	blockStoreDB := dbm.NewDB("blockstore", dbType, config.DBDir())
 	blockStore := bc.NewBlockStore(blockStoreDB)
 
 	// Get State
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
+	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
 	if err != nil {
 		cmn.Exit(err.Error())
