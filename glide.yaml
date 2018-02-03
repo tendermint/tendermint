@@ -4,6 +4,8 @@ import:
   version: ^1.0.0
   subpackages:
   - proto
+- package: github.com/pkg/errors
+  version: v0.8.0
 - package: github.com/spf13/cobra
   version: v0.0.1
 - package: github.com/tendermint/go-crypto
@@ -26,6 +28,7 @@ import:
   version: v1.7.3
 testImport:
 - package: github.com/stretchr/testify
+  version: v1.2.1
   subpackages:
   - assert
   - require
