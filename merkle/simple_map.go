@@ -1,7 +1,6 @@
 package merkle
 
 import (
-	"github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"golang.org/x/crypto/ripemd160"
 )
@@ -65,11 +64,11 @@ type kvPair cmn.KVPair
 
 func (kv kvPair) Hash() []byte {
 	hasher := ripemd160.New()
-	err := wire.EncodeByteSlice(hasher, kv.Key)
+	err := encodeByteSlice(hasher, kv.Key)
 	if err != nil {
 		panic(err)
 	}
-	err = wire.EncodeByteSlice(hasher, kv.Value)
+	err = encodeByteSlice(hasher, kv.Value)
 	if err != nil {
 		panic(err)
 	}

@@ -26,14 +26,12 @@ package merkle
 
 import (
 	"golang.org/x/crypto/ripemd160"
-
-	"github.com/tendermint/go-wire"
 )
 
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {
 	var hasher = ripemd160.New()
-	err := wire.EncodeByteSlice(hasher, left)
-	err = wire.EncodeByteSlice(hasher, right)
+	err := encodeByteSlice(hasher, left)
+	err = encodeByteSlice(hasher, right)
 	if err != nil {
 		panic(err)
 	}
