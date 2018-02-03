@@ -18,6 +18,6 @@ type Tree interface {
 	IterateRange(start []byte, end []byte, ascending bool, fx func(key []byte, value []byte) (stop bool)) (stopped bool)
 }
 
-type Hashable interface {
+type Hasher interface {
 	Hash() []byte
 }

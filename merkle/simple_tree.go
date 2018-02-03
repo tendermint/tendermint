@@ -28,17 +28,14 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	"github.com/tendermint/go-wire"
-	. "github.com/tendermint/tmlibs/common"
 )
 
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {
-	var n int
-	var err error
 	var hasher = ripemd160.New()
-	wire.WriteByteSlice(left, hasher, &n, &err)
-	wire.WriteByteSlice(right, hasher, &n, &err)
+	err := wire.EncodeByteSlice(hasher, left)
+	err = wire.EncodeByteSlice(hasher, right)
 	if err != nil {
-		PanicCrisis(err)
+		panic(err)
 	}
 	return hasher.Sum(nil)
 }
@@ -57,27 +54,25 @@ func SimpleHashFromHashes(hashes [][]byte) []byte {
 	}
 }
 
-// Convenience for SimpleHashFromHashes.
-func SimpleHashFromBinaries(items []interface{}) []byte {
-	hashes := make([][]byte, len(items))
-	for i, item := range items {
-		hashes[i] = SimpleHashFromBinary(item)
+// NOTE: Do not implement this, use SimpleHashFromByteslices instead.
+// type Byteser interface { Bytes() []byte }
+// func SimpleHashFromBytesers(items []Byteser) []byte { ... }
+
+func SimpleHashFromByteslices(bzs [][]byte) []byte {
+	hashes := make([][]byte, len(bzs))
+	for i, bz := range bzs {
+		hashes[i] = SimpleHashFromBytes(bz)
 	}
 	return SimpleHashFromHashes(hashes)
 }
 
-// General Convenience
-func SimpleHashFromBinary(item interface{}) []byte {
-	hasher, n, err := ripemd160.New(), new(int), new(error)
-	wire.WriteBinary(item, hasher, n, err)
-	if *err != nil {
-		PanicCrisis(err)
-	}
+func SimpleHashFromBytes(bz []byte) []byte {
+	hasher := ripemd160.New()
+	hasher.Write(bz)
 	return hasher.Sum(nil)
 }
 
-// Convenience for SimpleHashFromHashes.
-func SimpleHashFromHashables(items []Hashable) []byte {
+func SimpleHashFromHashers(items []Hasher) []byte {
 	hashes := make([][]byte, len(items))
 	for i, item := range items {
 		hash := item.Hash()
@@ -86,8 +81,7 @@ func SimpleHashFromHashables(items []Hashable) []byte {
 	return SimpleHashFromHashes(hashes)
 }
 
-// Convenience for SimpleHashFromHashes.
-func SimpleHashFromMap(m map[string]interface{}) []byte {
+func SimpleHashFromMap(m map[string]Hasher) []byte {
 	sm := NewSimpleMap()
 	for k, v := range m {
 		sm.Set(k, v)
