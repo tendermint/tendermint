@@ -2,30 +2,70 @@ package dummy
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
-	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 )
+
+var (
+	stateKey        = []byte("stateKey")
+	kvPairPrefixKey = []byte("kvPairKey:")
+)
+
+type State struct {
+	db      dbm.DB
+	Size    int64  `json:"size"`
+	Height  int64  `json:"height"`
+	AppHash []byte `json:"app_hash"`
+}
+
+func loadState(db dbm.DB) State {
+	stateBytes := db.Get(stateKey)
+	var state State
+	if len(stateBytes) != 0 {
+		err := json.Unmarshal(stateBytes, &state)
+		if err != nil {
+			panic(err)
+		}
+	}
+	state.db = db
+	return state
+}
+
+func saveState(state State) {
+	stateBytes, err := json.Marshal(state)
+	if err != nil {
+		panic(err)
+	}
+	state.db.Set(stateKey, stateBytes)
+}
+
+func prefixKey(key []byte) []byte {
+	return append(kvPairPrefixKey, key...)
+}
+
+//---------------------------------------------------
 
 var _ types.Application = (*DummyApplication)(nil)
 
 type DummyApplication struct {
 	types.BaseApplication
 
-	state *iavl.VersionedTree
+	state State
 }
 
 func NewDummyApplication() *DummyApplication {
-	state := iavl.NewVersionedTree(dbm.NewMemDB(), 0)
+	state := loadState(dbm.NewMemDB())
 	return &DummyApplication{state: state}
 }
 
 func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
+	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size)}
 }
 
 // tx is either "key=value" or just arbitrary bytes
@@ -37,7 +77,8 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	} else {
 		key, value = tx, tx
 	}
-	app.state.Set(key, value)
+	app.state.db.Set(prefixKey(key), value)
+	app.state.Size += 1
 
 	tags := []cmn.KVPair{
 		{[]byte("app.creator"), []byte("jae")},
@@ -51,32 +92,21 @@ func (app *DummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 }
 
 func (app *DummyApplication) Commit() types.ResponseCommit {
-	// Save a new version
-	var hash []byte
-	var err error
-
-	if app.state.Size() > 0 {
-		hash, _, err = app.state.SaveVersion()
-		if err != nil {
-			// if this wasn't a dummy app, we'd do something smarter
-			panic(err)
-		}
-	}
-
-	return types.ResponseCommit{Data: hash}
+	// Using a memdb - just return the big endian size of the db
+	appHash := make([]byte, 8)
+	binary.PutVarint(appHash, app.state.Size)
+	app.state.AppHash = appHash
+	app.state.Height += 1
+	saveState(app.state)
+	return types.ResponseCommit{Data: appHash}
 }
 
 func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
-		value, proof, err := app.state.GetWithProof(reqQuery.Data)
-		// if this wasn't a dummy app, we'd do something smarter
-		if err != nil {
-			panic(err)
-		}
+		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Index = -1 // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
-		resQuery.Proof = proof.Bytes()
 		if value != nil {
 			resQuery.Log = "exists"
 		} else {
@@ -84,8 +114,7 @@ func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.
 		}
 		return
 	} else {
-		index, value := app.state.Get(reqQuery.Data)
-		resQuery.Index = int64(index)
+		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Value = value
 		if value != nil {
 			resQuery.Log = "exists"
