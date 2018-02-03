@@ -3,8 +3,6 @@ package proxy
 import (
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-wire/data"
-
 	"github.com/tendermint/tendermint/lite"
 	"github.com/tendermint/tendermint/lite/client"
 	certerr "github.com/tendermint/tendermint/lite/errors"
@@ -34,7 +32,7 @@ type KeyProof interface {
 // If val is empty, proof should be KeyMissingProof
 func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Certifier) (
-	val data.Bytes, height int64, proof KeyProof, err error) {
+	val cmn.HexBytes, height int64, proof KeyProof, err error) {
 
 	if reqHeight < 0 {
 		err = errors.Errorf("Height cannot be negative")

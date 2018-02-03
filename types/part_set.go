@@ -10,7 +10,6 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	"github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -22,7 +21,7 @@ var (
 
 type Part struct {
 	Index int                `json:"index"`
-	Bytes data.Bytes         `json:"bytes"`
+	Bytes cmn.HexBytes       `json:"bytes"`
 	Proof merkle.SimpleProof `json:"proof"`
 
 	// Cache
@@ -58,8 +57,8 @@ func (part *Part) StringIndented(indent string) string {
 //-------------------------------------
 
 type PartSetHeader struct {
-	Total int        `json:"total"`
-	Hash  data.Bytes `json:"hash"`
+	Total int          `json:"total"`
+	Hash  cmn.HexBytes `json:"hash"`
 }
 
 func (psh PartSetHeader) String() string {

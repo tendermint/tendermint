@@ -11,7 +11,6 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -50,13 +49,13 @@ type PrivValidator interface {
 // to prevent double signing. The Signer itself can be mutated to use
 // something besides the default, for instance a hardware signer.
 type PrivValidatorFS struct {
-	Address       Address   `json:"address"`
+	Address       Address          `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
 	LastHeight    int64            `json:"last_height"`
 	LastRound     int              `json:"last_round"`
 	LastStep      int8             `json:"last_step"`
 	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
-	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
+	LastSignBytes cmn.HexBytes     `json:"last_signbytes,omitempty"` // so we dont lose signatures
 
 	// PrivKey should be empty if a Signer other than the default is being used.
 	PrivKey crypto.PrivKey `json:"priv_key"`

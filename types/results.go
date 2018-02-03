@@ -3,7 +3,7 @@ package types
 import (
 	abci "github.com/tendermint/abci/types"
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -12,8 +12,8 @@ import (
 // ABCIResult is the deterministic component of a ResponseDeliverTx.
 // TODO: add Tags
 type ABCIResult struct {
-	Code uint32     `json:"code"`
-	Data data.Bytes `json:"data"`
+	Code uint32       `json:"code"`
+	Data cmn.HexBytes `json:"data"`
 }
 
 // Hash returns the canonical hash of the ABCIResult

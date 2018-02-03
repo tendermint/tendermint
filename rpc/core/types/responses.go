@@ -6,7 +6,6 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire/data"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
@@ -56,8 +55,8 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 type ResultStatus struct {
 	NodeInfo          p2p.NodeInfo  `json:"node_info"`
 	PubKey            crypto.PubKey `json:"pub_key"`
-	LatestBlockHash   data.Bytes    `json:"latest_block_hash"`
-	LatestAppHash     data.Bytes    `json:"latest_app_hash"`
+	LatestBlockHash   cmn.HexBytes  `json:"latest_block_hash"`
+	LatestAppHash     cmn.HexBytes  `json:"latest_app_hash"`
 	LatestBlockHeight int64         `json:"latest_block_height"`
 	LatestBlockTime   time.Time     `json:"latest_block_time"`
 	Syncing           bool          `json:"syncing"`
@@ -107,17 +106,17 @@ type ResultDumpConsensusState struct {
 }
 
 type ResultBroadcastTx struct {
-	Code uint32     `json:"code"`
-	Data data.Bytes `json:"data"`
-	Log  string     `json:"log"`
+	Code uint32       `json:"code"`
+	Data cmn.HexBytes `json:"data"`
+	Log  string       `json:"log"`
 
-	Hash data.Bytes `json:"hash"`
+	Hash cmn.HexBytes `json:"hash"`
 }
 
 type ResultBroadcastTxCommit struct {
 	CheckTx   abci.ResponseCheckTx   `json:"check_tx"`
 	DeliverTx abci.ResponseDeliverTx `json:"deliver_tx"`
-	Hash      data.Bytes             `json:"hash"`
+	Hash      cmn.HexBytes           `json:"hash"`
 	Height    int64                  `json:"height"`
 }
 
