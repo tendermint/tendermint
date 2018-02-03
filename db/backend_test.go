@@ -15,7 +15,7 @@ func cleanupDBDir(dir, name string) {
 	os.RemoveAll(filepath.Join(dir, name) + ".db")
 }
 
-func testBackendGetSetDelete(t *testing.T, backend DbBackendType) {
+func testBackendGetSetDelete(t *testing.T, backend DBBackendType) {
 	// Default
 	dir, dirname := cmn.Tempdir(fmt.Sprintf("test_backend_%s_", backend))
 	defer dir.Close()
