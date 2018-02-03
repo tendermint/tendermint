@@ -29,7 +29,7 @@ func LeftPadString(s string, totalLength int) string {
 
 // IsHex returns true for non-empty hex-string prefixed with "0x"
 func IsHex(s string) bool {
-	if len(s) > 2 && s[:2] == "0x" {
+	if len(s) > 2 && strings.EqualFold(s[:2], "0x") {
 		_, err := hex.DecodeString(s[2:])
 		return err == nil
 	}
