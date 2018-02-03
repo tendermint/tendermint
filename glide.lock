@@ -1,16 +1,16 @@
-hash: e0a7a8b1023ecddcba757af1136c2a8b642909026252d6cde389c0120f283abb
-updated: 2018-01-14T18:26:26.193727554-05:00
+hash: e064ab92feb559882cff91eac455ae0425b5704d83998798ec6d36544c52aa17
+updated: 2018-02-03T00:02:35.741382486-05:00
 imports:
 - name: github.com/btcsuite/btcd
-  version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
+  version: 2e60448ffcc6bf78332d1fe590260095f554dd78
   subpackages:
   - btcec
 - name: github.com/davecgh/go-spew
-  version: 04cdfd42973bb9c8589fd6a731800cf222fde1a9
+  version: 346938d642f2ec3594ed81d874461961cd0faa76
   subpackages:
   - spew
 - name: github.com/go-kit/kit
-  version: e2b298466b32c7cd5579a9b9b07e968fc9d9452c
+  version: 4dc7be5d2d12881735283bcab7352178e190fc71
   subpackages:
   - log
   - log/level
@@ -20,7 +20,7 @@ imports:
 - name: github.com/go-stack/stack
   version: 817915b46b97fd7bb80e8ab6b69f01a53ac3eebf
 - name: github.com/gogo/protobuf
-  version: 342cbe0a04158f6dcb03ca0079991a51a4248c02
+  version: 1adfc126b41513cc696b209667c8656ea7aac67c
   subpackages:
   - gogoproto
   - jsonpb
@@ -29,7 +29,7 @@ imports:
   - sortkeys
   - types
 - name: github.com/golang/protobuf
-  version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
+  version: 1e59b77b52bf8e4b449a57e6f79f21226d571845
   subpackages:
   - proto
   - ptypes
@@ -66,20 +66,18 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/ed25519
-  version: 1f52c6f8b8a5c7908aff4497c186af344b428925
+  version: d8387025d2b9d158cf4efb07e7ebf814bcce2057
   subpackages:
   - edwards25519
   - extra25519
 - name: github.com/tendermint/go-crypto
-  version: 32741be2126500d600cede1e2016bbbe2754cb46
+  version: 4fc3055dbd17aa1203d0abc64b9293f378da22ec
 - name: github.com/tendermint/go-wire
-  version: b93ebdd4f306833936c243561ec30af3455dc764
-  subpackages:
-  - data
+  version: dec83f641903b22f039da3974607859715d0377e
 - name: github.com/tendermint/iavl
-  version: 1dfe265ab4b491418e88e1da6577a8ad594fc989
+  version: bbf92e0e58351b4970ac4d8a8f3255be453a2147
 - name: github.com/tendermint/tmlibs
-  version: f2bc5432c31974bb3f5b1a80a53c38e37d481b8d
+  version: 1d7fc78ea171587e9e63da566d3da1b127bfd14c
   subpackages:
   - common
   - db
@@ -95,7 +93,7 @@ imports:
   - ripemd160
   - salsa20/salsa
 - name: golang.org/x/net
-  version: cd69bc3fc700721b709c3a59e16e24c67b58f6ff
+  version: d866cfc389cec985d6fda2859936a575a55a3ab6
   subpackages:
   - context
   - http2
@@ -112,7 +110,7 @@ imports:
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: f676e0f3ac6395ff1a529ae59a6670878a8371a6
+  version: a8101f21cf983e773d0c1133ebc5424792003214
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
@@ -140,7 +138,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: b91bfb9ebec76498946beb6af7c0230c7cc7ba6c
+  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
   subpackages:
   - assert
   - require
