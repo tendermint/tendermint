@@ -10,7 +10,6 @@ import (
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -40,11 +39,10 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 		panic(err)
 	}
 
-	stateTree := iavl.NewVersionedTree(db, 500)
-	stateTree.Load()
+	state := loadState(db)
 
 	return &PersistentDummyApplication{
-		app:    &DummyApplication{state: stateTree},
+		app:    &DummyApplication{state: state},
 		logger: log.NewNopLogger(),
 	}
 }
@@ -55,8 +53,8 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	res := app.app.Info(req)
-	res.LastBlockHeight = app.app.state.Version64()
-	res.LastBlockAppHash = app.app.state.Hash()
+	res.LastBlockHeight = app.app.state.Height
+	res.LastBlockAppHash = app.app.state.AppHash
 	return res
 }
 
@@ -84,20 +82,7 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.ResponseCheckTx 
 
 // Commit will panic if InitChain was not called
 func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
-
-	// Save a new version for next height
-	var height int64
-	var appHash []byte
-	var err error
-
-	appHash, height, err = app.app.state.SaveVersion()
-	if err != nil {
-		// if this wasn't a dummy app, we'd do something smarter
-		panic(err)
-	}
-
-	app.logger.Info("Commit block", "height", height, "root", appHash)
-	return types.ResponseCommit{Data: appHash}
+	return app.app.Commit()
 }
 
 func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
@@ -131,17 +116,17 @@ func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types
 // update validators
 
 func (app *PersistentDummyApplication) Validators() (validators []types.Validator) {
-	app.app.state.Iterate(func(key, value []byte) bool {
-		if isValidatorTx(key) {
+	itr := app.app.state.db.Iterator(nil, nil)
+	for ; itr.Valid(); itr.Next() {
+		if isValidatorTx(itr.Key()) {
 			validator := new(types.Validator)
-			err := types.ReadMessage(bytes.NewBuffer(value), validator)
+			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), validator)
 			if err != nil {
 				panic(err)
 			}
 			validators = append(validators, *validator)
 		}
-		return false
-	})
+	}
 	return
 }
 
@@ -197,12 +182,12 @@ func (app *PersistentDummyApplication) updateValidator(v types.Validator) types.
 	key := []byte("val:" + string(v.PubKey))
 	if v.Power == 0 {
 		// remove validator
-		if !app.app.state.Has(key) {
+		if !app.app.state.db.Has(key) {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %X", key)}
 		}
-		app.app.state.Remove(key)
+		app.app.state.db.Delete(key)
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
@@ -211,7 +196,7 @@ func (app *PersistentDummyApplication) updateValidator(v types.Validator) types.
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
-		app.app.state.Set(key, value.Bytes())
+		app.app.state.db.Set(key, value.Bytes())
 	}
 
 	// we only update the changes array if we successfully updated the tree

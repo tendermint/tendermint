@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -41,10 +40,6 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	})
 	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadKeyProof(resQuery.Proof)
-	require.Nil(t, err)
-	err = proof.Verify([]byte(key), resQuery.Value, proof.Root())
-	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }
 
 func TestDummyKV(t *testing.T) {
@@ -310,8 +305,4 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadKeyProof(resQuery.Proof)
-	require.Nil(t, err)
-	err = proof.Verify([]byte(key), resQuery.Value, proof.Root())
-	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }
