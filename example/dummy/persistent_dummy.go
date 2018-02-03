@@ -9,7 +9,6 @@ import (
 
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -158,12 +157,12 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%s) is invalid hex", pubkeyS)}
 	}
-	_, err = crypto.PubKeyFromBytes(pubkey)
+	/*_, err = crypto.PubKeyFromBytes(pubkey)
 	if err != nil {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%X) is invalid go-crypto encoded", pubkey)}
-	}
+	}*/
 
 	// decode the power
 	power, err := strconv.ParseInt(powerS, 10, 64)

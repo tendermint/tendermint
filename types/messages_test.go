@@ -72,3 +72,31 @@ func TestWriteReadMessage(t *testing.T) {
 		assert.Equal(t, c, msg)
 	}
 }
+
+func TestWriteReadMessage2(t *testing.T) {
+	phrase := "hello-world"
+	cases := []proto.Message{
+		&ResponseCheckTx{
+			Data:      []byte(phrase),
+			Log:       phrase,
+			GasWanted: 10,
+			Tags: []cmn.KVPair{
+				cmn.KVPair{[]byte("abc"), []byte("def")},
+			},
+			// Fee: cmn.KI64Pair{
+		},
+		// TODO: add the rest
+	}
+
+	for _, c := range cases {
+		buf := new(bytes.Buffer)
+		err := WriteMessage(c, buf)
+		assert.Nil(t, err)
+
+		msg := new(ResponseCheckTx)
+		err = ReadMessage(buf, msg)
+		assert.Nil(t, err)
+
+		assert.Equal(t, c, msg)
+	}
+}
