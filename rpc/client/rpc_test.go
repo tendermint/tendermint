@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/iavl"
 
 	"github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
@@ -204,16 +203,8 @@ func TestAppCalls(t *testing.T) {
 		// and we got a proof that works!
 		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
 		pres := _pres.Response
-		if assert.Nil(err) && assert.True(pres.IsOK()) {
-			proof, err := iavl.ReadKeyExistsProof(pres.Proof)
-			if assert.Nil(err) {
-				key := pres.Key
-				value := pres.Value
-				assert.EqualValues(appHash, proof.RootHash)
-				valid := proof.Verify(key, value, appHash)
-				assert.Nil(valid)
-			}
-		}
+		assert.Nil(err)
+		assert.True(pres.IsOK())
 	}
 }
 

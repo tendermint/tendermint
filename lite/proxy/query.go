@@ -4,7 +4,6 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/tendermint/go-wire/data"
-	"github.com/tendermint/iavl"
 
 	"github.com/tendermint/tendermint/lite"
 	"github.com/tendermint/tendermint/lite/client"
@@ -12,6 +11,20 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
+
+// KeyProof represents a proof of existence or absence of a single key.
+// Copied from iavl repo. TODO
+type KeyProof interface {
+	// Verify verfies the proof is valid. To verify absence,
+	// the value should be nil.
+	Verify(key, value, root []byte) error
+
+	// Root returns the root hash of the proof.
+	Root() []byte
+
+	// Serialize itself
+	Bytes() []byte
+}
 
 // GetWithProof will query the key on the given node, and verify it has
 // a valid proof, as defined by the certifier.
@@ -21,7 +34,7 @@ import (
 // If val is empty, proof should be KeyMissingProof
 func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Certifier) (
-	val data.Bytes, height int64, proof iavl.KeyProof, err error) {
+	val data.Bytes, height int64, proof KeyProof, err error) {
 
 	if reqHeight < 0 {
 		err = errors.Errorf("Height cannot be negative")
@@ -41,7 +54,7 @@ func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions
 func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOptions,
 	node rpcclient.Client, cert lite.Certifier) (
-	*ctypes.ResultABCIQuery, iavl.KeyProof, error) {
+	*ctypes.ResultABCIQuery, KeyProof, error) {
 
 	_resp, err := node.ABCIQueryWithOptions(path, key, opts)
 	if err != nil {
@@ -67,6 +80,10 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 		return nil, nil, err
 	}
 
+	return &ctypes.ResultABCIQuery{Response: resp}, nil, nil
+
+	/* // TODO refactor so iavl stuff is not in tendermint core
+	   // https://github.com/tendermint/tendermint/issues/1183
 	if len(resp.Value) > 0 {
 		// The key was found, construct a proof of existence.
 		eproof, err := iavl.ReadKeyExistsProof(resp.Proof)
@@ -94,6 +111,7 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 		return nil, nil, errors.Wrap(err, "Couldn't verify proof")
 	}
 	return &ctypes.ResultABCIQuery{Response: resp}, aproof, ErrNoData()
+	*/
 }
 
 // GetCertifiedCommit gets the signed header for a given height
