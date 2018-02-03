@@ -1,5 +1,5 @@
 hash: 22e22759d9adc51e3ce0728955143321386891907ce54eb952245d57285d8784
-updated: 2018-02-02T18:08:31.85309+01:00
+updated: 2018-02-02T23:47:17.788237939-05:00
 imports:
 - name: github.com/davecgh/go-spew
   version: 346938d642f2ec3594ed81d874461961cd0faa76
@@ -80,7 +80,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/go-wire
-  version: e723d95ac2838b7ae9919ada25004859236c32ff
+  version: dec83f641903b22f039da3974607859715d0377e
 - name: golang.org/x/crypto
   version: edd5e9b0879d13ee6970a50153d85b8fec9f7686
   subpackages:
