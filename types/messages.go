@@ -28,7 +28,11 @@ func ReadMessage(r io.Reader, msg proto.Message) error {
 }
 
 func readProtoMsg(r io.Reader, msg proto.Message, maxSize int) error {
-	reader := bufio.NewReader(r)
+	// binary.ReadVarint takes an io.ByteReader, eg. a bufio.Reader
+	reader, ok := r.(*bufio.Reader)
+	if !ok {
+		reader = bufio.NewReader(r)
+	}
 	length64, err := binary.ReadVarint(reader)
 	if err != nil {
 		return err
