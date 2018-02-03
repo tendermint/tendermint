@@ -1,14 +1,6 @@
-hash: 68167c37a0b261e0adc172c3d92d943da89ff41112043d59ac60844ef8edd882
-updated: 2018-02-03T02:00:50.200133389-05:00
+hash: 304088ee640b9e5897ece75503d07f800aabba0618bd668bf1144f478809b646
+updated: 2018-02-03T02:38:14.152640307-05:00
 imports:
-- name: github.com/btcsuite/btcd
-  version: 2e60448ffcc6bf78332d1fe590260095f554dd78
-  subpackages:
-  - btcec
-- name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
-  subpackages:
-  - spew
 - name: github.com/go-kit/kit
   version: 4dc7be5d2d12881735283bcab7352178e190fc71
   subpackages:
@@ -65,15 +57,6 @@ imports:
   - leveldb/storage
   - leveldb/table
   - leveldb/util
-- name: github.com/tendermint/ed25519
-  version: d8387025d2b9d158cf4efb07e7ebf814bcce2057
-  subpackages:
-  - edwards25519
-  - extra25519
-- name: github.com/tendermint/go-crypto
-  version: 4fc3055dbd17aa1203d0abc64b9293f378da22ec
-- name: github.com/tendermint/go-wire
-  version: dec83f641903b22f039da3974607859715d0377e
 - name: github.com/tendermint/tmlibs
   version: deaaf014d8b8d1095054380a38b1b00e293f725f
   subpackages:
@@ -81,15 +64,6 @@ imports:
   - db
   - log
   - process
-- name: golang.org/x/crypto
-  version: edd5e9b0879d13ee6970a50153d85b8fec9f7686
-  subpackages:
-  - nacl/secretbox
-  - openpgp/armor
-  - openpgp/errors
-  - poly1305
-  - ripemd160
-  - salsa20/salsa
 - name: golang.org/x/net
   version: d866cfc389cec985d6fda2859936a575a55a3ab6
   subpackages:
@@ -131,6 +105,10 @@ imports:
   - tap
   - transport
 testImports:
+- name: github.com/davecgh/go-spew
+  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  subpackages:
+  - spew
 - name: github.com/pmezard/go-difflib
   version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
