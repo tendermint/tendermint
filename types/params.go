@@ -106,13 +106,13 @@ func (params *ConsensusParams) Validate() error {
 // Hash returns a merkle hash of the parameters to store
 // in the block header
 func (params *ConsensusParams) Hash() []byte {
-	return merkle.SimpleHashFromMap(map[string]interface{}{
-		"block_gossip_part_size_bytes": params.BlockGossip.BlockPartSizeBytes,
-		"block_size_max_bytes":         params.BlockSize.MaxBytes,
-		"block_size_max_gas":           params.BlockSize.MaxGas,
-		"block_size_max_txs":           params.BlockSize.MaxTxs,
-		"tx_size_max_bytes":            params.TxSize.MaxBytes,
-		"tx_size_max_gas":              params.TxSize.MaxGas,
+	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
+		"block_gossip_part_size_bytes": wireHasher(params.BlockGossip.BlockPartSizeBytes),
+		"block_size_max_bytes":         wireHasher(params.BlockSize.MaxBytes),
+		"block_size_max_gas":           wireHasher(params.BlockSize.MaxGas),
+		"block_size_max_txs":           wireHasher(params.BlockSize.MaxTxs),
+		"tx_size_max_bytes":            wireHasher(params.TxSize.MaxBytes),
+		"tx_size_max_gas":              wireHasher(params.TxSize.MaxGas),
 	})
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
+	"golang.org/x/crypto/ripemd160"
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -179,20 +180,20 @@ func (h *Header) Hash() data.Bytes {
 	if len(h.ValidatorsHash) == 0 {
 		return nil
 	}
-	return merkle.SimpleHashFromMap(map[string]interface{}{
-		"ChainID":     h.ChainID,
-		"Height":      h.Height,
-		"Time":        h.Time,
-		"NumTxs":      h.NumTxs,
-		"TotalTxs":    h.TotalTxs,
-		"LastBlockID": h.LastBlockID,
-		"LastCommit":  h.LastCommitHash,
-		"Data":        h.DataHash,
-		"Validators":  h.ValidatorsHash,
-		"App":         h.AppHash,
-		"Consensus":   h.ConsensusHash,
-		"Results":     h.LastResultsHash,
-		"Evidence":    h.EvidenceHash,
+	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
+		"ChainID":     wireHasher(h.ChainID),
+		"Height":      wireHasher(h.Height),
+		"Time":        wireHasher(h.Time),
+		"NumTxs":      wireHasher(h.NumTxs),
+		"TotalTxs":    wireHasher(h.TotalTxs),
+		"LastBlockID": wireHasher(h.LastBlockID),
+		"LastCommit":  wireHasher(h.LastCommitHash),
+		"Data":        wireHasher(h.DataHash),
+		"Validators":  wireHasher(h.ValidatorsHash),
+		"App":         wireHasher(h.AppHash),
+		"Consensus":   wireHasher(h.ConsensusHash),
+		"Results":     wireHasher(h.LastResultsHash),
+		"Evidence":    wireHasher(h.EvidenceHash),
 	})
 }
 
@@ -356,11 +357,11 @@ func (commit *Commit) ValidateBasic() error {
 // Hash returns the hash of the commit
 func (commit *Commit) Hash() data.Bytes {
 	if commit.hash == nil {
-		bs := make([]interface{}, len(commit.Precommits))
+		bs := make([]merkle.Hasher, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {
-			bs[i] = precommit
+			bs[i] = wireHasher(precommit)
 		}
-		commit.hash = merkle.SimpleHashFromBinaries(bs)
+		commit.hash = merkle.SimpleHashFromHashers(bs)
 	}
 	return commit.hash
 }
@@ -509,4 +510,24 @@ func (blockID BlockID) WriteSignBytes(w io.Writer, n *int, err *error) {
 // String returns a human readable string representation of the BlockID
 func (blockID BlockID) String() string {
 	return fmt.Sprintf(`%v:%v`, blockID.Hash, blockID.PartsHeader)
+}
+
+//-------------------------------------------------------
+
+type hasher struct {
+	item interface{}
+}
+
+func (h hasher) Hash() []byte {
+	hasher, n, err := ripemd160.New(), new(int), new(error)
+	wire.WriteBinary(h.item, hasher, n, err)
+	if *err != nil {
+		panic(err)
+	}
+	return hasher.Sum(nil)
+
+}
+
+func wireHasher(item interface{}) merkle.Hasher {
+	return hasher{item}
 }

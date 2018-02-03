@@ -5,7 +5,6 @@ import (
 	"io"
 
 	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/merkle"
 )
 
 // Signable is an interface for all signable things.
@@ -22,9 +21,4 @@ func SignBytes(chainID string, o Signable) []byte {
 		cmn.PanicCrisis(err)
 	}
 	return buf.Bytes()
-}
-
-// HashSignBytes is a convenience method for getting the hash of the bytes of a signable
-func HashSignBytes(chainID string, o Signable) []byte {
-	return merkle.SimpleHashFromBinary(SignBytes(chainID, o))
 }

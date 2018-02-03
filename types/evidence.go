@@ -120,7 +120,7 @@ func (dve *DuplicateVoteEvidence) Index() int {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return merkle.SimpleHashFromBinary(dve)
+	return wireHasher(dve).Hash()
 }
 
 // Verify returns an error if the two votes aren't conflicting.
@@ -165,7 +165,9 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	}
 
 	// just check their hashes
-	return bytes.Equal(merkle.SimpleHashFromBinary(dve), merkle.SimpleHashFromBinary(ev))
+	dveHash := wireHasher(dve).Hash()
+	evHash := wireHasher(ev).Hash()
+	return bytes.Equal(dveHash, evHash)
 }
 
 //-----------------------------------------------------------------

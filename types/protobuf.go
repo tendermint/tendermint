@@ -23,15 +23,15 @@ func (tm2pb) Header(header *Header) *types.Header {
 	}
 }
 
-func (tm2pb) BlockID(blockID BlockID) *types.BlockID {
-	return &types.BlockID{
+func (tm2pb) BlockID(blockID BlockID) types.BlockID {
+	return types.BlockID{
 		Hash:  blockID.Hash,
 		Parts: TM2PB.PartSetHeader(blockID.PartsHeader),
 	}
 }
 
-func (tm2pb) PartSetHeader(partSetHeader PartSetHeader) *types.PartSetHeader {
-	return &types.PartSetHeader{
+func (tm2pb) PartSetHeader(partSetHeader PartSetHeader) types.PartSetHeader {
+	return types.PartSetHeader{
 		Total: int32(partSetHeader.Total), // XXX: overflow
 		Hash:  partSetHeader.Hash,
 	}

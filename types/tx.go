@@ -18,7 +18,7 @@ type Tx []byte
 
 // Hash computes the RIPEMD160 hash of the go-wire encoded transaction.
 func (tx Tx) Hash() []byte {
-	return merkle.SimpleHashFromBinary(tx)
+	return wireHasher(tx).Hash()
 }
 
 // String returns the hex-encoded transaction as a string.
@@ -72,11 +72,11 @@ func (txs Txs) IndexByHash(hash []byte) int {
 // TODO: optimize this!
 func (txs Txs) Proof(i int) TxProof {
 	l := len(txs)
-	hashables := make([]merkle.Hashable, l)
+	hashers := make([]merkle.Hasher, l)
 	for i := 0; i < l; i++ {
-		hashables[i] = txs[i]
+		hashers[i] = txs[i]
 	}
-	root, proofs := merkle.SimpleProofsFromHashables(hashables)
+	root, proofs := merkle.SimpleProofsFromHashers(hashers)
 
 	return TxProof{
 		Index:    i,
