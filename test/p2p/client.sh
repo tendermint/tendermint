@@ -17,4 +17,4 @@ docker run -t --rm \
 	--ip=$(test/p2p/ip.sh "-1") \
 	--name "$NAME" \
 	--entrypoint bash \
-		"$DOCKER_IMAGE" $CMD
+	"$DOCKER_IMAGE" $CMD
