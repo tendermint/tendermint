@@ -29,10 +29,6 @@ import:
   version: master
   subpackages:
   - data
-- package: github.com/tendermint/iavl
-  version: develop
-  subpackages:
-  - iavl
 - package: github.com/tendermint/tmlibs
   version: 51684dabf79c2079f32cc25d6bccb748ee098386
   subpackages:
@@ -46,17 +42,16 @@ import:
   - log
   - merkle
   - pubsub
+  - pubsub/query
 - package: golang.org/x/crypto
   subpackages:
   - nacl/box
   - nacl/secretbox
   - ripemd160
-- package: golang.org/x/net
-  subpackages:
-  - context
 - package: google.golang.org/grpc
   version: v1.7.3
 testImport:
+- package: github.com/fortytw2/leaktest
 - package: github.com/go-kit/kit
   version: ^0.6.0
   subpackages:
@@ -65,4 +60,3 @@ testImport:
   subpackages:
   - assert
   - require
-- package: github.com/fortytw2/leaktest
