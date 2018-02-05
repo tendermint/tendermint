@@ -12,7 +12,7 @@ echo "starting test client container with CMD=$CMD"
 # run the test container on the local network
 docker run -t --rm \
 	# NOTE: the `:Z` at the end is needed for SELinux (on Jenkins) to allow writes to the mounted volume on host
-	-v "$GOPATH/src/github.com/tendermint/tendermint/test/p2p/:/go/src/github.com/tendermint/tendermint/test/p2p":Z \
+	-v "$GOPATH/src/github.com/tendermint/tendermint/test/p2p/:/go/src/github.com/tendermint/tendermint/test/p2p" \
 	--net="$NETWORK_NAME" \
 	--ip=$(test/p2p/ip.sh "-1") \
 	--name "$NAME" \
