@@ -6,8 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fortytw2/leaktest"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/go-kit/kit/log/term"
@@ -114,44 +112,44 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 	waitForTxs(t, txs, reactors)
 }
 
-func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
+// func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
+// 	if testing.Short() {
+// 		t.Skip("skipping test in short mode.")
+// 	}
 
-	config := cfg.TestConfig()
-	const N = 2
-	reactors := makeAndConnectMempoolReactors(config, N)
-	defer func() {
-		for _, r := range reactors {
-			r.Stop()
-		}
-	}()
+// 	config := cfg.TestConfig()
+// 	const N = 2
+// 	reactors := makeAndConnectMempoolReactors(config, N)
+// 	defer func() {
+// 		for _, r := range reactors {
+// 			r.Stop()
+// 		}
+// 	}()
 
-	// stop peer
-	sw := reactors[1].Switch
-	sw.StopPeerForError(sw.Peers().List()[0], errors.New("some reason"))
+// 	// stop peer
+// 	sw := reactors[1].Switch
+// 	sw.StopPeerForError(sw.Peers().List()[0], errors.New("some reason"))
 
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when peer is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
-}
+// 	// check that we are not leaking any go-routines
+// 	// i.e. broadcastTxRoutine finishes when peer is stopped
+// 	leaktest.CheckTimeout(t, 10*time.Second)()
+// }
 
-func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
+// func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
+// 	if testing.Short() {
+// 		t.Skip("skipping test in short mode.")
+// 	}
 
-	config := cfg.TestConfig()
-	const N = 2
-	reactors := makeAndConnectMempoolReactors(config, N)
+// 	config := cfg.TestConfig()
+// 	const N = 2
+// 	reactors := makeAndConnectMempoolReactors(config, N)
 
-	// stop reactors
-	for _, r := range reactors {
-		r.Stop()
-	}
+// 	// stop reactors
+// 	for _, r := range reactors {
+// 		r.Stop()
+// 	}
 
-	// check that we are not leaking any go-routines
-	// i.e. broadcastTxRoutine finishes when reactor is stopped
-	leaktest.CheckTimeout(t, 10*time.Second)()
-}
+// 	// check that we are not leaking any go-routines
+// 	// i.e. broadcastTxRoutine finishes when reactor is stopped
+// 	leaktest.CheckTimeout(t, 10*time.Second)()
+// }
