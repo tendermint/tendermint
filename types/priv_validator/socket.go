@@ -137,7 +137,7 @@ func (pvsc *PrivValidatorSocketClient) SignVote(chainID string, vote *types.Vote
 		return err
 	}
 
-	*vote = *res.(SignVoteMsg).Vote
+	*vote = *res.(*SignVoteMsg).Vote
 
 	return nil
 }
@@ -154,7 +154,7 @@ func (pvsc *PrivValidatorSocketClient) SignProposal(chainID string, proposal *ty
 		return err
 	}
 
-	*proposal = *res.(SignProposalMsg).Proposal
+	*proposal = *res.(*SignProposalMsg).Proposal
 
 	return nil
 }
@@ -171,7 +171,7 @@ func (pvsc *PrivValidatorSocketClient) SignHeartbeat(chainID string, heartbeat *
 		return err
 	}
 
-	*heartbeat = *res.(SignHeartbeatMsg).Heartbeat
+	*heartbeat = *res.(*SignHeartbeatMsg).Heartbeat
 
 	return nil
 }
