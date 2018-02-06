@@ -351,12 +351,7 @@ FOR_LOOP:
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
-			if c.pongTimer != nil {
-				if !c.pongTimer.Stop() {
-					<-c.pongTimer.C
-				}
-				drain(c.pongTimeoutCh)
-			}
+			c.stopPongTimer()
 			break FOR_LOOP
 		case <-c.send:
 			// Send some msgPackets
@@ -482,6 +477,7 @@ FOR_LOOP:
 		switch pktType {
 		case packetTypePing:
 			// TODO: prevent abuse, as they cause flush()'s.
+			// https://github.com/tendermint/tendermint/issues/1190
 			c.Logger.Debug("Receive Ping")
 			select {
 			case c.pong <- struct{}{}:
@@ -490,12 +486,7 @@ FOR_LOOP:
 			}
 		case packetTypePong:
 			c.Logger.Debug("Receive Pong")
-			if c.pongTimer != nil {
-				if !c.pongTimer.Stop() {
-					<-c.pongTimer.C
-				}
-				drain(c.pongTimeoutCh)
-			}
+			c.stopPongTimer()
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
 			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
@@ -540,6 +531,15 @@ FOR_LOOP:
 	close(c.pong)
 	for range c.pong {
 		// Drain
+	}
+}
+
+func (c *MConnection) stopPongTimer() {
+	if c.pongTimer != nil {
+		if !c.pongTimer.Stop() {
+			<-c.pongTimer.C
+		}
+		drain(c.pongTimeoutCh)
 	}
 }
 

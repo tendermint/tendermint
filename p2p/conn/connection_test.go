@@ -145,7 +145,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	}()
 	<-serverGotPing
 
-	pongTimerExpired := mconn.config.PongTimeout + 10*time.Millisecond
+	pongTimerExpired := mconn.config.PongTimeout + 20*time.Millisecond
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected error, but got %v", msgBytes)
@@ -174,7 +174,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	require.Nil(t, err)
 	defer mconn.Stop()
 
-	// sending 3 pongs in a row
+	// sending 3 pongs in a row (abuse)
 	_, err = server.Write([]byte{packetTypePong})
 	require.Nil(t, err)
 	_, err = server.Write([]byte{packetTypePong})
@@ -184,8 +184,9 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 
 	serverGotPing := make(chan struct{})
 	go func() {
-		// read ping
-		server.Read(make([]byte, 1))
+		// read ping (one byte)
+		_, err = server.Read(make([]byte, 1))
+		require.Nil(t, err)
 		serverGotPing <- struct{}{}
 		// respond with pong
 		_, err = server.Write([]byte{packetTypePong})
@@ -193,7 +194,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	}()
 	<-serverGotPing
 
-	pongTimerExpired := mconn.config.PongTimeout + 10*time.Millisecond
+	pongTimerExpired := mconn.config.PongTimeout + 20*time.Millisecond
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected no data, but got %v", msgBytes)
@@ -202,6 +203,41 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	case <-time.After(pongTimerExpired):
 		assert.True(t, mconn.IsRunning())
 	}
+}
+
+func TestMConnectionMultiplePings(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	receivedCh := make(chan []byte)
+	errorsCh := make(chan interface{})
+	onReceive := func(chID byte, msgBytes []byte) {
+		receivedCh <- msgBytes
+	}
+	onError := func(r interface{}) {
+		errorsCh <- r
+	}
+	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	err := mconn.Start()
+	require.Nil(t, err)
+	defer mconn.Stop()
+
+	// sending 3 pings in a row (abuse)
+	_, err = server.Write([]byte{packetTypePing})
+	require.Nil(t, err)
+	_, err = server.Read(make([]byte, 1))
+	require.Nil(t, err)
+	_, err = server.Write([]byte{packetTypePing})
+	require.Nil(t, err)
+	_, err = server.Read(make([]byte, 1))
+	require.Nil(t, err)
+	_, err = server.Write([]byte{packetTypePing})
+	require.Nil(t, err)
+	_, err = server.Read(make([]byte, 1))
+	require.Nil(t, err)
+
+	assert.True(t, mconn.IsRunning())
 }
 
 func TestMConnectionPingPongs(t *testing.T) {
@@ -241,7 +277,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 	}()
 	<-serverGotPing
 
-	pongTimerExpired := (mconn.config.PongTimeout + 10*time.Millisecond) * 2
+	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 2
 	select {
 	case msgBytes := <-receivedCh:
 		t.Fatalf("Expected no data, but got %v", msgBytes)
