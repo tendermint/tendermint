@@ -76,22 +76,14 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
-	var privVal types.PrivValidator
-	privVal = priv_val.LoadOrGenPrivValidatorJSON(config.PrivValidatorFile())
-	if config.PrivValidatorAddr != "" {
-		pvsc := priv_val.NewPrivValidatorSocketClient(logger.With("module", "priv_val"),
-			config.PrivValidatorAddr)
-		pvsc.Start()
-		privVal = pvsc
-	}
-	fmt.Println("PRIV", config.PrivValidatorAddr)
-
-	return NewNode(config,
-		privVal,
+	return NewNode(
+		config,
+		priv_val.LoadOrGenPrivValidatorJSON(config.PrivValidatorFile()),
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
-		logger)
+		logger,
+	)
 }
 
 //------------------------------------------------------------------------------
@@ -183,6 +175,16 @@ func NewNode(config *cfg.Config,
 
 	// Generate node PrivKey
 	privKey := crypto.GenPrivKeyEd25519()
+
+	if config.PrivValidatorAddr != "" {
+		pvsc := priv_val.NewPrivValidatorSocketClient(
+			logger.With("module", "priv_val"),
+			config.PrivValidatorAddr,
+			&privKey,
+		)
+		pvsc.Start()
+		privValidator = pvsc
+	}
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
