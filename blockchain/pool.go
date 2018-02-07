@@ -35,7 +35,10 @@ const (
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
 	// enough. If a peer is not sending us data at at least that rate, we
 	// consider them to have timedout and we disconnect.
-	minRecvRate = 10240 // 10 KB/s
+	//
+	// Assuming a DSL connection (not a good choice) 128 Kbps (upload) ~ 15 KB/s,
+	// sending data across atlantic ~ 7.5 KB/s.
+	minRecvRate = 7680
 )
 
 var peerTimeoutSeconds = time.Duration(15) // not const so we can override with tests
