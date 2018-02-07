@@ -13,6 +13,7 @@ import (
 func main() {
 	var (
 		chainID     = flag.String("chain-id", "mychain", "chain id")
+		numClients  = flag.Int("clients", 1, "number of concurrently connected clients")
 		privValPath = flag.String("priv", "", "priv val file path")
 		socketAddr  = flag.String("socket.addr", ":46659", "socket bind addr")
 
@@ -20,17 +21,19 @@ func main() {
 	)
 	flag.Parse()
 
-	logger.Info("args", "chainID", *chainID, "privPath", *privValPath)
+	logger.Info("Reading args privValidatorSocketServer", "chainID", *chainID, "privPath", *privValPath)
 
 	privVal := priv_val.LoadPrivValidatorJSON(*privValPath)
 
 	pvss := priv_val.NewPrivValidatorSocketServer(
 		logger,
-		*socketAddr,
 		*chainID,
+		*socketAddr,
+		*numClients,
 		privVal,
+		nil,
 	)
-	// pvss.Start()
+	pvss.Start()
 
 	cmn.TrapSignal(func() {
 		pvss.Stop()

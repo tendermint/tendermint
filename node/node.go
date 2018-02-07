@@ -79,13 +79,13 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	var privVal types.PrivValidator
 	privVal = types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
-	/*
-		if config.PrivValidatorAddr != "" {
-			pvsc := priv_val.NewPrivValidatorSocketClient(logger.With("module", "priv_val"),
-				config.PrivValidatorAddr)
-			pvsc.Start()
-			privVal = pvsc
-		}
+	/* TODO
+	if config.PrivValidatorAddr != "" {
+		pvsc := priv_val.NewPrivValidatorSocketClient(logger.With("module", "priv_val"),
+			config.PrivValidatorAddr)
+		pvsc.Start()
+		privVal = pvsc
+	}
 	*/
 	fmt.Println("PRIV", config.PrivValidatorAddr)
 
@@ -94,7 +94,8 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
-		logger)
+		logger,
+	)
 }
 
 //------------------------------------------------------------------------------
@@ -182,6 +183,21 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
+
+	/* TODO
+	// Generate node PrivKey
+	privKey := crypto.GenPrivKeyEd25519()
+
+	if config.PrivValidatorAddr != "" {
+		pvsc := priv_val.NewPrivValidatorSocketClient(
+			logger.With("module", "priv_val"),
+			config.PrivValidatorAddr,
+			&privKey,
+		)
+		pvsc.Start()
+		privValidator = pvsc
+	}
+	*/
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
