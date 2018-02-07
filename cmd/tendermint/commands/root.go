@@ -14,7 +14,7 @@ import (
 
 var (
 	config = cfg.DefaultConfig()
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 )
 
 func init() {
@@ -57,6 +57,7 @@ var RootCmd = &cobra.Command{
 		if viper.GetBool(cli.TraceFlag) {
 			logger = log.NewTracingLogger(logger)
 		}
+		logger = logger.With("module", "main")
 		return nil
 	},
 }
