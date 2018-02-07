@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -30,7 +31,11 @@ const (
 	maxTotalRequesters        = 1000
 	maxPendingRequests        = maxTotalRequesters
 	maxPendingRequestsPerPeer = 50
-	minRecvRate               = 10240 // 10Kb/s
+
+	// Minimum recv rate to ensure we're receiving blocks from a peer fast
+	// enough. If a peer is not sending us data at at least that rate, we
+	// consider them to have timedout and we disconnect.
+	minRecvRate = 10240 // 10 KB/s
 )
 
 var peerTimeoutSeconds = time.Duration(15) // not const so we can override with tests
@@ -88,7 +93,6 @@ func (pool *BlockPool) OnStop() {}
 
 // Run spawns requesters as needed.
 func (pool *BlockPool) makeRequestersRoutine() {
-
 	for {
 		if !pool.IsRunning() {
 			break
@@ -122,7 +126,10 @@ func (pool *BlockPool) removeTimedoutPeers() {
 			// XXX remove curRate != 0
 			if curRate != 0 && curRate < minRecvRate {
 				pool.sendTimeout(peer.id)
-				pool.Logger.Error("SendTimeout", "peer", peer.id, "reason", "curRate too low")
+				pool.Logger.Error("SendTimeout", "peer", peer.id,
+					"reason", "peer is not sending us data fast enough",
+					"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
+					"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
 				peer.didTimeout = true
 			}
 		}
