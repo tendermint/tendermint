@@ -8,32 +8,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// PrivValidator aliases types.PrivValidator
-type PrivValidator = types.PrivValidator
-
-// PrivKey implements Signer
-type PrivKey crypto.PrivKey
-
-// Sign - Implements Signer
-func (pk PrivKey) Sign(msg []byte) (crypto.Signature, error) {
-	return crypto.PrivKey(pk).Sign(msg), nil
-}
-
-// MarshalJSON
-func (pk PrivKey) MarshalJSON() ([]byte, error) {
-	return crypto.PrivKey(pk).MarshalJSON()
-}
-
-// UnmarshalJSON
-func (pk *PrivKey) UnmarshalJSON(b []byte) error {
-	cpk := new(crypto.PrivKey)
-	if err := cpk.UnmarshalJSON(b); err != nil {
-		return err
-	}
-	*pk = (PrivKey)(*cpk)
-	return nil
-}
-
 //-----------------------------------------------------------------
 
 var _ types.PrivValidator = (*PrivValidatorUnencrypted)(nil)
@@ -84,43 +58,4 @@ func (upv *PrivValidatorUnencrypted) SignHeartbeat(chainID string, heartbeat *ty
 	var err error
 	heartbeat.Signature, err = upv.PrivKey.Sign(types.SignBytes(chainID, heartbeat))
 	return err
-}
-
-//-----------------------------------------------------------------
-
-var _ types.PrivValidator = (*SocketPrivValidator)(nil)
-
-// SocketPrivValidator implements PrivValidator.
-// It uses a socket to request signatures.
-type SocketPrivValidator struct {
-	ID            types.ValidatorID
-	SocketAddress string
-}
-
-// NewSocketPrivValidator returns an instance of SocketPrivValidator.
-func NewSocketPrivValidator(addr string) *SocketPrivValidator {
-	// conn :=
-	return &SocketPrivValidator{
-		SocketAddress: addr,
-	}
-}
-
-func (us *SocketPrivValidator) Address() data.Bytes {
-	return nil
-}
-
-func (us *SocketPrivValidator) PubKey() crypto.PubKey {
-	return crypto.PubKey{}
-}
-
-func (us *SocketPrivValidator) SignVote(chainID string, vote *types.Vote) error {
-	return nil
-}
-
-func (us *SocketPrivValidator) SignProposal(chainID string, proposal *types.Proposal) error {
-	return nil
-}
-
-func (us *SocketPrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
-	return nil
 }

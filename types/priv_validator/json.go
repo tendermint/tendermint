@@ -12,6 +12,36 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
+// PrivValidator aliases types.PrivValidator
+type PrivValidator = types.PrivValidator
+
+//-----------------------------------------------------
+
+// PrivKey implements Signer
+type PrivKey crypto.PrivKey
+
+// Sign - Implements Signer
+func (pk PrivKey) Sign(msg []byte) (crypto.Signature, error) {
+	return crypto.PrivKey(pk).Sign(msg), nil
+}
+
+// MarshalJSON
+func (pk PrivKey) MarshalJSON() ([]byte, error) {
+	return crypto.PrivKey(pk).MarshalJSON()
+}
+
+// UnmarshalJSON
+func (pk *PrivKey) UnmarshalJSON(b []byte) error {
+	cpk := new(crypto.PrivKey)
+	if err := cpk.UnmarshalJSON(b); err != nil {
+		return err
+	}
+	*pk = (PrivKey)(*cpk)
+	return nil
+}
+
+//-----------------------------------------------------
+
 var _ types.PrivValidator = (*PrivValidatorJSON)(nil)
 
 // PrivValidatorJSON wraps PrivValidatorUnencrypted
