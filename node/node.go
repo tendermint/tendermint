@@ -259,7 +259,7 @@ func NewNode(config *cfg.Config,
 			seeds = strings.Split(config.P2P.Seeds, ",")
 		}
 		pexReactor := pex.NewPEXReactor(addrBook,
-			&pex.PEXReactorConfig{Seeds: seeds})
+			&pex.PEXReactorConfig{Seeds: seeds, SeedMode: config.P2P.SeedMode})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}

@@ -257,9 +257,6 @@ type P2PConfig struct {
 	// Set true for strict address routability rules
 	AddrBookStrict bool `mapstructure:"addr_book_strict"`
 
-	// Set true to enable the peer-exchange reactor
-	PexReactor bool `mapstructure:"pex"`
-
 	// Maximum number of peers to connect to
 	MaxNumPeers int `mapstructure:"max_num_peers"`
 
@@ -274,6 +271,15 @@ type P2PConfig struct {
 
 	// Rate at which packets can be received, in bytes/second
 	RecvRate int64 `mapstructure:"recv_rate"`
+
+	// Set true to enable the peer-exchange reactor
+	PexReactor bool `mapstructure:"pex"`
+
+	// Seed mode, in which node constantly crawls the network and looks for
+	// peers. If another node asks it for addresses, it responds and disconnects.
+	//
+	// Does not work if the peer-exchange reactor is disabled.
+	SeedMode bool `mapstructure:"seed_mode"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -288,6 +294,7 @@ func DefaultP2PConfig() *P2PConfig {
 		SendRate:                512000, // 500 kB/s
 		RecvRate:                512000, // 500 kB/s
 		PexReactor:              true,
+		SeedMode:                false,
 	}
 }
 

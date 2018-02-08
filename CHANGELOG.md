@@ -40,8 +40,9 @@ FEATURES:
 - [p2p] added new `/dial_peers&persistent=_` **unsafe** endpoint
 - [p2p] persistent node key in `$THMHOME/config/node_key.json`
 - [p2p] introduce peer ID and authenticate peers by ID using addresses like `ID@IP:PORT`
-- [p2p] new seed mode in pex reactor crawls the network and serves as a seed. TODO: `--p2p.seed_mode`
+- [p2p] new seed mode in pex reactor crawls the network and serves as a seed.
 - [config] MempoolConfig.CacheSize
+- [config] P2P.SeedMode (`--p2p.seed_mode`)
 
 IMPROVEMENT:
 - [p2p] stricter rules in the PEX reactor for better handling of abuse

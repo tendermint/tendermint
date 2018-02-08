@@ -150,6 +150,15 @@ send_rate = {{ .P2P.SendRate }}
 # Rate at which packets can be received, in bytes/second
 recv_rate = {{ .P2P.RecvRate }}
 
+# Set true to enable the peer-exchange reactor
+pex = {{ .P2P.PexReactor }}
+
+# Seed mode, in which node constantly crawls the network and looks for
+# peers. If another node asks it for addresses, it responds and disconnects.
+#
+# Does not work if the peer-exchange reactor is disabled.
+seed_mode = {{ .P2P.SeedMode }}
+
 ##### mempool configuration options #####
 [mempool]
 
