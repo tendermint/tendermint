@@ -112,6 +112,15 @@ like the file below, however, double check by inspecting the
     # Rate at which packets can be received, in bytes/second
     recv_rate = 512000
 
+    # Set true to enable the peer-exchange reactor
+    pex = true
+
+    # Seed mode, in which node constantly crawls the network and looks for
+    # peers. If another node asks it for addresses, it responds and disconnects.
+    #
+    # Does not work if the peer-exchange reactor is disabled.
+    seed_mode = false
+
     ##### mempool configuration options #####
     [mempool]
 
