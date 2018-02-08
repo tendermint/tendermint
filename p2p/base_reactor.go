@@ -23,7 +23,10 @@ type Reactor interface {
 
 	// Receive is called when msgBytes is received from peer.
 	//
-	// CONTRACT: msgBytes are not nil
+	// NOTE reactor can not keep msgBytes around after Receive completes without
+	// copying.
+	//
+	// CONTRACT: msgBytes are not nil.
 	Receive(chID byte, peer Peer, msgBytes []byte)
 }
 

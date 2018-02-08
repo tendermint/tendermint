@@ -679,7 +679,8 @@ func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
 	wire.WriteBinary(packet, w, n, err)
 }
 
-// Handles incoming msgPackets. Returns a msg bytes if msg is complete.
+// Handles incoming msgPackets. It returns a message bytes if message is
+// complete. NOTE message bytes may change on next call to recvMsgPacket.
 // Not goroutine-safe
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	ch.Logger.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
@@ -688,11 +689,6 @@ func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {
-		// TODO: document that these returned msgBytes will change under you after Receive finishes.
-		// TODO: document it in the Reactor interface especially - implementations of a Reactor
-		// can not keep these bytes around after the Receive completes without copying!
-		// In general that's fine, because the first thing we do is unmarshal into a msg type and then
-		// we never use the bytes again
 		msgBytes := ch.recving
 
 		// clear the slice without re-allocating.
