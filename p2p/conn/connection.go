@@ -494,11 +494,6 @@ FOR_LOOP:
 			c.stopForError(err)
 			break FOR_LOOP
 		}
-
-		// TODO: don't bother with this "only ping when we havent heard from them".
-		// lets just always ping every peer from the sendRoutine every 10s no matter what.
-		// if they dont pong within pongTimeout, disconnect :)
-		c.pingTimer.Reset()
 	}
 
 	// Cleanup
