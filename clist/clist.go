@@ -36,12 +36,14 @@ waiting on NextWait() (since it's just a read operation).
 
 */
 type CElement struct {
-	mtx     sync.RWMutex
-	prev    *CElement
-	prevWg  *sync.WaitGroup
-	next    *CElement
-	nextWg  *sync.WaitGroup
-	removed bool
+	mtx        sync.RWMutex
+	prev       *CElement
+	prevWg     *sync.WaitGroup
+	prevWaitCh chan struct{}
+	next       *CElement
+	nextWg     *sync.WaitGroup
+	nextWaitCh chan struct{}
+	removed    bool
 
 	Value interface{} // immutable
 }
@@ -82,6 +84,24 @@ func (e *CElement) PrevWait() *CElement {
 
 		prevWg.Wait()
 	}
+}
+
+// PrevWaitChan can be used to wait until Prev becomes not nil. Once it does,
+// channel will be closed.
+func (e *CElement) PrevWaitChan() <-chan struct{} {
+	e.mtx.RLock()
+	defer e.mtx.RUnlock()
+
+	return e.prevWaitCh
+}
+
+// NextWaitChan can be used to wait until Next becomes not nil. Once it does,
+// channel will be closed.
+func (e *CElement) NextWaitChan() <-chan struct{} {
+	e.mtx.RLock()
+	defer e.mtx.RUnlock()
+
+	return e.nextWaitCh
 }
 
 // Nonblocking, may return nil if at the end.
@@ -142,9 +162,11 @@ func (e *CElement) SetNext(newNext *CElement) {
 		// events, new Add calls must happen after all previous Wait calls have
 		// returned.
 		e.nextWg = waitGroup1() // WaitGroups are difficult to re-use.
+		e.nextWaitCh = make(chan struct{})
 	}
 	if oldNext == nil && newNext != nil {
 		e.nextWg.Done()
+		close(e.nextWaitCh)
 	}
 }
 
@@ -158,9 +180,11 @@ func (e *CElement) SetPrev(newPrev *CElement) {
 	e.prev = newPrev
 	if oldPrev != nil && newPrev == nil {
 		e.prevWg = waitGroup1() // WaitGroups are difficult to re-use.
+		e.prevWaitCh = make(chan struct{})
 	}
 	if oldPrev == nil && newPrev != nil {
 		e.prevWg.Done()
+		close(e.prevWaitCh)
 	}
 }
 
@@ -173,9 +197,11 @@ func (e *CElement) SetRemoved() {
 	// This wakes up anyone waiting in either direction.
 	if e.prev == nil {
 		e.prevWg.Done()
+		close(e.prevWaitCh)
 	}
 	if e.next == nil {
 		e.nextWg.Done()
+		close(e.nextWaitCh)
 	}
 }
 
@@ -185,11 +211,12 @@ func (e *CElement) SetRemoved() {
 // The zero value for CList is an empty list ready to use.
 // Operations are goroutine-safe.
 type CList struct {
-	mtx  sync.RWMutex
-	wg   *sync.WaitGroup
-	head *CElement // first element
-	tail *CElement // last element
-	len  int       // list length
+	mtx    sync.RWMutex
+	wg     *sync.WaitGroup
+	waitCh chan struct{}
+	head   *CElement // first element
+	tail   *CElement // last element
+	len    int       // list length
 }
 
 func (l *CList) Init() *CList {
@@ -197,6 +224,7 @@ func (l *CList) Init() *CList {
 	defer l.mtx.Unlock()
 
 	l.wg = waitGroup1()
+	l.waitCh = make(chan struct{})
 	l.head = nil
 	l.tail = nil
 	l.len = 0
@@ -258,23 +286,35 @@ func (l *CList) BackWait() *CElement {
 	}
 }
 
+// WaitChan can be used to wait until Front or Back becomes not nil. Once it
+// does, channel will be closed.
+func (l *CList) WaitChan() <-chan struct{} {
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
+
+	return l.waitCh
+}
+
 func (l *CList) PushBack(v interface{}) *CElement {
 	l.mtx.Lock()
 	defer l.mtx.Unlock()
 
 	// Construct a new element
 	e := &CElement{
-		prev:    nil,
-		prevWg:  waitGroup1(),
-		next:    nil,
-		nextWg:  waitGroup1(),
-		removed: false,
-		Value:   v,
+		prev:       nil,
+		prevWg:     waitGroup1(),
+		prevWaitCh: make(chan struct{}),
+		next:       nil,
+		nextWg:     waitGroup1(),
+		nextWaitCh: make(chan struct{}),
+		removed:    false,
+		Value:      v,
 	}
 
 	// Release waiters on FrontWait/BackWait maybe
 	if l.len == 0 {
 		l.wg.Done()
+		close(l.waitCh)
 	}
 	l.len += 1
 
@@ -313,6 +353,7 @@ func (l *CList) Remove(e *CElement) interface{} {
 	// If we're removing the only item, make CList FrontWait/BackWait wait.
 	if l.len == 1 {
 		l.wg = waitGroup1() // WaitGroups are difficult to re-use.
+		l.waitCh = make(chan struct{})
 	}
 
 	// Update l.len
