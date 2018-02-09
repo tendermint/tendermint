@@ -1,5 +1,5 @@
-hash: 0b9520b856bdc25eab90c39bbd32c4bf2139dff8a63774c81ae5ab812a60f914
-updated: 2018-02-09T09:39:56.355310643Z
+hash: 41f411204b59e893053e59cda43466b3a6634c5fc88698d1f3131ecd5f239de7
+updated: 2018-02-09T09:56:16.586709479Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 50de9da05b50eb15658bb350f6ea24368a111ab7
@@ -29,7 +29,7 @@ imports:
   - sortkeys
   - types
 - name: github.com/golang/protobuf
-  version: bbd03ef6da3a115852eaf24c8a1c46aeb39aa175
+  version: 925541529c1fa6821df4e44ce2723319eb2be768
   subpackages:
   - proto
   - ptypes
