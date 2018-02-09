@@ -8,9 +8,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
-	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestPrivValidatorSocketServer(t *testing.T) {
@@ -50,7 +51,7 @@ func TestPrivValidatorSocketServer(t *testing.T) {
 
 	assert.True(pvsc.IsRunning())
 
-	assert.Equal(pvsc.Address(), data.Bytes(pvss.privVal.PubKey().Address()))
+	assert.Equal(pvsc.Address(), cmn.HexBytes(pvss.privVal.PubKey().Address()))
 	assert.Equal(pvsc.PubKey(), pvss.privVal.PubKey())
 
 	err = pvsc.SignProposal(chainID, &types.Proposal{
@@ -103,7 +104,7 @@ func TestPrivValidatorSocketServerWithoutSecret(t *testing.T) {
 
 	assert.True(pvsc.IsRunning())
 
-	assert.Equal(pvsc.Address(), data.Bytes(pvss.privVal.PubKey().Address()))
+	assert.Equal(pvsc.Address(), cmn.HexBytes(pvss.privVal.PubKey().Address()))
 	assert.Equal(pvsc.PubKey(), pvss.privVal.PubKey())
 
 	err = pvsc.SignProposal(chainID, &types.Proposal{

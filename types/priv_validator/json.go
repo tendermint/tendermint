@@ -13,7 +13,7 @@ import (
 )
 
 // PrivValidator aliases types.PrivValidator
-type PrivValidator = types.PrivValidator
+type PrivValidator = types.PrivValidator2
 
 //-----------------------------------------------------
 
@@ -42,7 +42,7 @@ func (pk *PrivKey) UnmarshalJSON(b []byte) error {
 
 //-----------------------------------------------------
 
-var _ types.PrivValidator = (*PrivValidatorJSON)(nil)
+var _ types.PrivValidator2 = (*PrivValidatorJSON)(nil)
 
 // PrivValidatorJSON wraps PrivValidatorUnencrypted
 // and persists it to disk after every SignVote and SignProposal.

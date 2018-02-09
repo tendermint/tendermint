@@ -9,18 +9,17 @@ import (
 	"github.com/pkg/errors"
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 	"golang.org/x/net/netutil"
 
-	"github.com/tendermint/tendermint/p2p"
+	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------
 
-var _ types.PrivValidator = (*PrivValidatorSocketClient)(nil)
+var _ types.PrivValidator2 = (*PrivValidatorSocketClient)(nil)
 
 // PrivValidatorSocketClient implements PrivValidator.
 // It uses a socket to request signatures.
@@ -81,7 +80,7 @@ RETRY_LOOP:
 		}
 
 		if pvsc.privKey != nil {
-			conn, err = p2p.MakeSecretConnection(conn, *pvsc.privKey)
+			conn, err = p2pconn.MakeSecretConnection(conn, pvsc.privKey.Wrap())
 			if err != nil {
 				pvsc.Logger.Error(
 					"OnStart",
@@ -106,7 +105,7 @@ func (pvsc *PrivValidatorSocketClient) OnStop() {
 }
 
 // Address is an alias for PubKey().Address().
-func (pvsc *PrivValidatorSocketClient) Address() data.Bytes {
+func (pvsc *PrivValidatorSocketClient) Address() cmn.HexBytes {
 	return pvsc.PubKey().Address()
 }
 
@@ -262,7 +261,7 @@ func (pvss *PrivValidatorSocketServer) acceptConnections() {
 		}
 
 		if pvss.privKey != nil {
-			conn, err = p2p.MakeSecretConnection(conn, *pvss.privKey)
+			conn, err = p2pconn.MakeSecretConnection(conn, pvss.privKey.Wrap())
 			if err != nil {
 				pvss.Logger.Error(
 					"acceptConnections",

@@ -8,8 +8,8 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // TODO: type ?
@@ -40,7 +40,7 @@ type LastSignedInfo struct {
 	Round     int              `json:"round"`
 	Step      int8             `json:"step"`
 	Signature crypto.Signature `json:"signature,omitempty"` // so we dont lose signatures
-	SignBytes data.Bytes       `json:"signbytes,omitempty"` // so we dont lose signatures
+	SignBytes cmn.HexBytes     `json:"signbytes,omitempty"` // so we dont lose signatures
 }
 
 func NewLastSignedInfo() *LastSignedInfo {

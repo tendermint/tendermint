@@ -9,8 +9,8 @@ import (
 
 // canonical json is go-wire's json for structs with fields in alphabetical order
 
-// timeFormat is used for generating the sigs
-const timeFormat = wire.RFC3339Millis
+// TimeFormat is used for generating the sigs
+const TimeFormat = wire.RFC3339Millis
 
 type CanonicalJSONBlockID struct {
 	Hash        cmn.HexBytes               `json:"hash,omitempty"`
@@ -117,5 +117,5 @@ func CanonicalTime(t time.Time) string {
 	// note that sending time over go-wire resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
-	return t.UTC().Format(timeFormat)
+	return t.UTC().Format(TimeFormat)
 }
