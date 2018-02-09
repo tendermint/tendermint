@@ -22,8 +22,11 @@ func createTestMConnection(conn net.Conn) *MConnection {
 }
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
+	cfg := DefaultMConnConfig()
+	cfg.PingInterval = 90 * time.Millisecond
+	cfg.PongTimeout = 45 * time.Millisecond
 	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
-	c := NewMConnection(conn, chDescs, onReceive, onError)
+	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
 	return c
 }
@@ -114,6 +117,176 @@ func TestMConnectionStatus(t *testing.T) {
 	status := mconn.Status()
 	assert.NotNil(status)
 	assert.Zero(status.Channels[0].SendQueueSize)
+}
+
+func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	receivedCh := make(chan []byte)
+	errorsCh := make(chan interface{})
+	onReceive := func(chID byte, msgBytes []byte) {
+		receivedCh <- msgBytes
+	}
+	onError := func(r interface{}) {
+		errorsCh <- r
+	}
+	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	err := mconn.Start()
+	require.Nil(t, err)
+	defer mconn.Stop()
+
+	serverGotPing := make(chan struct{})
+	go func() {
+		// read ping
+		server.Read(make([]byte, 1))
+		serverGotPing <- struct{}{}
+	}()
+	<-serverGotPing
+
+	pongTimerExpired := mconn.config.PongTimeout + 20*time.Millisecond
+	select {
+	case msgBytes := <-receivedCh:
+		t.Fatalf("Expected error, but got %v", msgBytes)
+	case err := <-errorsCh:
+		assert.NotNil(t, err)
+	case <-time.After(pongTimerExpired):
+		t.Fatalf("Expected to receive error after %v", pongTimerExpired)
+	}
+}
+
+func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	receivedCh := make(chan []byte)
+	errorsCh := make(chan interface{})
+	onReceive := func(chID byte, msgBytes []byte) {
+		receivedCh <- msgBytes
+	}
+	onError := func(r interface{}) {
+		errorsCh <- r
+	}
+	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	err := mconn.Start()
+	require.Nil(t, err)
+	defer mconn.Stop()
+
+	// sending 3 pongs in a row (abuse)
+	_, err = server.Write([]byte{packetTypePong})
+	require.Nil(t, err)
+	_, err = server.Write([]byte{packetTypePong})
+	require.Nil(t, err)
+	_, err = server.Write([]byte{packetTypePong})
+	require.Nil(t, err)
+
+	serverGotPing := make(chan struct{})
+	go func() {
+		// read ping (one byte)
+		_, err = server.Read(make([]byte, 1))
+		require.Nil(t, err)
+		serverGotPing <- struct{}{}
+		// respond with pong
+		_, err = server.Write([]byte{packetTypePong})
+		require.Nil(t, err)
+	}()
+	<-serverGotPing
+
+	pongTimerExpired := mconn.config.PongTimeout + 20*time.Millisecond
+	select {
+	case msgBytes := <-receivedCh:
+		t.Fatalf("Expected no data, but got %v", msgBytes)
+	case err := <-errorsCh:
+		t.Fatalf("Expected no error, but got %v", err)
+	case <-time.After(pongTimerExpired):
+		assert.True(t, mconn.IsRunning())
+	}
+}
+
+func TestMConnectionMultiplePings(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	receivedCh := make(chan []byte)
+	errorsCh := make(chan interface{})
+	onReceive := func(chID byte, msgBytes []byte) {
+		receivedCh <- msgBytes
+	}
+	onError := func(r interface{}) {
+		errorsCh <- r
+	}
+	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	err := mconn.Start()
+	require.Nil(t, err)
+	defer mconn.Stop()
+
+	// sending 3 pings in a row (abuse)
+	// see https://github.com/tendermint/tendermint/issues/1190
+	_, err = server.Write([]byte{packetTypePing})
+	require.Nil(t, err)
+	_, err = server.Read(make([]byte, 1))
+	require.Nil(t, err)
+	_, err = server.Write([]byte{packetTypePing})
+	require.Nil(t, err)
+	_, err = server.Read(make([]byte, 1))
+	require.Nil(t, err)
+	_, err = server.Write([]byte{packetTypePing})
+	require.Nil(t, err)
+	_, err = server.Read(make([]byte, 1))
+	require.Nil(t, err)
+
+	assert.True(t, mconn.IsRunning())
+}
+
+func TestMConnectionPingPongs(t *testing.T) {
+	server, client := net.Pipe()
+	defer server.Close()
+	defer client.Close()
+
+	receivedCh := make(chan []byte)
+	errorsCh := make(chan interface{})
+	onReceive := func(chID byte, msgBytes []byte) {
+		receivedCh <- msgBytes
+	}
+	onError := func(r interface{}) {
+		errorsCh <- r
+	}
+	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
+	err := mconn.Start()
+	require.Nil(t, err)
+	defer mconn.Stop()
+
+	serverGotPing := make(chan struct{})
+	go func() {
+		// read ping
+		server.Read(make([]byte, 1))
+		serverGotPing <- struct{}{}
+		// respond with pong
+		_, err = server.Write([]byte{packetTypePong})
+		require.Nil(t, err)
+
+		time.Sleep(mconn.config.PingInterval)
+
+		// read ping
+		server.Read(make([]byte, 1))
+		// respond with pong
+		_, err = server.Write([]byte{packetTypePong})
+		require.Nil(t, err)
+	}()
+	<-serverGotPing
+
+	pongTimerExpired := (mconn.config.PongTimeout + 20*time.Millisecond) * 2
+	select {
+	case msgBytes := <-receivedCh:
+		t.Fatalf("Expected no data, but got %v", msgBytes)
+	case err := <-errorsCh:
+		t.Fatalf("Expected no error, but got %v", err)
+	case <-time.After(2 * pongTimerExpired):
+		assert.True(t, mconn.IsRunning())
+	}
 }
 
 func TestMConnectionStopsAndReturnsError(t *testing.T) {
@@ -303,13 +476,7 @@ func TestMConnectionTrySend(t *testing.T) {
 		mconn.TrySend(0x01, msg)
 		resultCh <- "TrySend"
 	}()
-	go func() {
-		mconn.Send(0x01, msg)
-		resultCh <- "Send"
-	}()
 	assert.False(mconn.CanSend(0x01))
 	assert.False(mconn.TrySend(0x01, msg))
 	assert.Equal("TrySend", <-resultCh)
-	server.Read(make([]byte, len(msg)))
-	assert.Equal("Send", <-resultCh) // Order constrained by parallel blocking above
 }

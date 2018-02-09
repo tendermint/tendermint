@@ -300,9 +300,7 @@ func TestSwitchFullConnectivity(t *testing.T) {
 	}
 }
 
-func BenchmarkSwitches(b *testing.B) {
-	b.StopTimer()
-
+func BenchmarkSwitchBroadcast(b *testing.B) {
 	s1, s2 := MakeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
 		sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
@@ -320,7 +318,8 @@ func BenchmarkSwitches(b *testing.B) {
 
 	// Allow time for goroutines to boot up
 	time.Sleep(1 * time.Second)
-	b.StartTimer()
+
+	b.ResetTimer()
 
 	numSuccess, numFailure := 0, 0
 
@@ -338,7 +337,4 @@ func BenchmarkSwitches(b *testing.B) {
 	}
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
-
-	// Allow everything to flush before stopping switches & closing connections.
-	b.StopTimer()
 }

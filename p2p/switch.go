@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/rand"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -200,9 +201,29 @@ func (sw *Switch) OnStop() {
 //---------------------------------------------------------------------
 // Peers
 
-// Peers returns the set of peers that are connected to the switch.
-func (sw *Switch) Peers() IPeerSet {
-	return sw.peers
+// Broadcast runs a go routine for each attempted send, which will block trying
+// to send for defaultSendTimeoutSeconds. Returns a channel which receives
+// success values for each attempted send (false if times out). Channel will be
+// closed once msg send to all peers.
+//
+// NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
+func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
+	successChan := make(chan bool, len(sw.peers.List()))
+	sw.Logger.Debug("Broadcast", "channel", chID, "msg", msg)
+	var wg sync.WaitGroup
+	for _, peer := range sw.peers.List() {
+		wg.Add(1)
+		go func(peer Peer) {
+			defer wg.Done()
+			success := peer.Send(chID, msg)
+			successChan <- success
+		}(peer)
+	}
+	go func() {
+		wg.Wait()
+		close(successChan)
+	}()
+	return successChan
 }
 
 // NumPeers returns the count of outbound/inbound and outbound-dialing peers.
@@ -219,21 +240,9 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-// Broadcast runs a go routine for each attempted send, which will block
-// trying to send for defaultSendTimeoutSeconds. Returns a channel
-// which receives success values for each attempted send (false if times out).
-// NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
-// TODO: Something more intelligent.
-func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
-	successChan := make(chan bool, len(sw.peers.List()))
-	sw.Logger.Debug("Broadcast", "channel", chID, "msg", msg)
-	for _, peer := range sw.peers.List() {
-		go func(peer Peer) {
-			success := peer.Send(chID, msg)
-			successChan <- success
-		}(peer)
-	}
-	return successChan
+// Peers returns the set of peers that are connected to the switch.
+func (sw *Switch) Peers() IPeerSet {
+	return sw.peers
 }
 
 // StopPeerForError disconnects from a peer due to external error.
