@@ -153,7 +153,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 		sendMonitor: flow.New(0, 0),
 		recvMonitor: flow.New(0, 0),
 		send:        make(chan struct{}, 1),
-		pong:        make(chan struct{}),
+		pong:        make(chan struct{}, 1),
 		onReceive:   onReceive,
 		onError:     onError,
 		config:      config,
@@ -191,7 +191,7 @@ func (c *MConnection) OnStart() error {
 	c.quit = make(chan struct{})
 	c.flushTimer = cmn.NewThrottleTimer("flush", c.config.FlushThrottle)
 	c.pingTimer = cmn.NewRepeatTimer("ping", c.config.PingInterval)
-	c.pongTimeoutCh = make(chan bool)
+	c.pongTimeoutCh = make(chan bool, 1)
 	c.chStatsTimer = cmn.NewRepeatTimer("chStats", updateStats)
 	go c.sendRoutine()
 	go c.recvRoutine()
@@ -492,8 +492,8 @@ FOR_LOOP:
 			c.Logger.Debug("Receive Pong")
 			select {
 			case c.pongTimeoutCh <- false:
-			case <-c.quit:
-				break FOR_LOOP
+			default:
+				// never block
 			}
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)

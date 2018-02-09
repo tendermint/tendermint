@@ -22,10 +22,10 @@ func createTestMConnection(conn net.Conn) *MConnection {
 }
 
 func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msgBytes []byte), onError func(r interface{})) *MConnection {
-	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	cfg := DefaultMConnConfig()
 	cfg.PingInterval = 90 * time.Millisecond
 	cfg.PongTimeout = 45 * time.Millisecond
+	chDescs := []*ChannelDescriptor{&ChannelDescriptor{ID: 0x01, Priority: 1, SendQueueCapacity: 1}}
 	c := NewMConnectionWithConfig(conn, chDescs, onReceive, onError, cfg)
 	c.SetLogger(log.TestingLogger())
 	return c
@@ -224,6 +224,7 @@ func TestMConnectionMultiplePings(t *testing.T) {
 	defer mconn.Stop()
 
 	// sending 3 pings in a row (abuse)
+	// see https://github.com/tendermint/tendermint/issues/1190
 	_, err = server.Write([]byte{packetTypePing})
 	require.Nil(t, err)
 	_, err = server.Read(make([]byte, 1))
