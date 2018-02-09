@@ -101,8 +101,6 @@ type PeerState interface {
 }
 
 // Send new mempool txs to peer.
-// TODO: Handle mempool or reactor shutdown - as is this routine
-// may block forever if no new txs come in.
 func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 	if !memR.config.Broadcast {
 		return
@@ -110,15 +108,22 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 
 	var next *clist.CElement
 	for {
-		if !memR.IsRunning() || !peer.IsRunning() {
-			return // Quit!
-		}
+		// This happens because the CElement we were looking at got garbage
+		// collected (removed). That is, .NextWait() returned nil. Go ahead and
+		// start from the beginning.
 		if next == nil {
-			// This happens because the CElement we were looking at got
-			// garbage collected (removed).  That is, .NextWait() returned nil.
-			// Go ahead and start from the beginning.
-			next = memR.Mempool.TxsFrontWait() // Wait until a tx is available
+			select {
+			case <-memR.Mempool.TxsWaitChan(): // Wait until a tx is available
+				if next = memR.Mempool.TxsFront(); next == nil {
+					continue
+				}
+			case <-peer.QuitChan():
+				return
+			case <-memR.Quit:
+				return
+			}
 		}
+
 		memTx := next.Value.(*mempoolTx)
 		// make sure the peer is up to date
 		height := memTx.Height()
@@ -137,8 +142,15 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 			continue
 		}
 
-		next = next.NextWait()
-		continue
+		select {
+		case <-next.NextWaitChan():
+			// see the start of the for loop for nil check
+			next = next.Next()
+		case <-peer.QuitChan():
+			return
+		case <-memR.Quit:
+			return
+		}
 	}
 }
 

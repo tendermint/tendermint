@@ -157,7 +157,7 @@ func makeBlock(height int64, state sm.State) *types.Block {
 
 // The Test peer
 type bcrTestPeer struct {
-	cmn.Service
+	*cmn.BaseService
 	id p2p.ID
 	ch chan interface{}
 }
@@ -165,11 +165,12 @@ type bcrTestPeer struct {
 var _ p2p.Peer = (*bcrTestPeer)(nil)
 
 func newbcrTestPeer(id p2p.ID) *bcrTestPeer {
-	return &bcrTestPeer{
-		Service: cmn.NewBaseService(nil, "bcrTestPeer", nil),
-		id:      id,
-		ch:      make(chan interface{}, 2),
+	bcr := &bcrTestPeer{
+		id: id,
+		ch: make(chan interface{}, 2),
 	}
+	bcr.BaseService = cmn.NewBaseService(nil, "bcrTestPeer", bcr)
+	return bcr
 }
 
 func (tp *bcrTestPeer) lastValue() interface{} { return <-tp.ch }
@@ -195,3 +196,4 @@ func (tp *bcrTestPeer) IsOutbound() bool                      { return false }
 func (tp *bcrTestPeer) IsPersistent() bool                    { return true }
 func (tp *bcrTestPeer) Get(s string) interface{}              { return s }
 func (tp *bcrTestPeer) Set(string, interface{})               {}
+func (tp *bcrTestPeer) QuitChan() <-chan struct{}             { return tp.Quit }

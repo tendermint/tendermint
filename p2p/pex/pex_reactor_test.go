@@ -368,3 +368,4 @@ func (mp mockPeer) Send(byte, interface{}) bool    { return false }
 func (mp mockPeer) TrySend(byte, interface{}) bool { return false }
 func (mp mockPeer) Set(string, interface{})        {}
 func (mp mockPeer) Get(string) interface{}         { return nil }
+func (mp mockPeer) QuitChan() <-chan struct{}      { return mp.Quit }
