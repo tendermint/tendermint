@@ -1,10 +1,12 @@
 package common
 
 import (
+	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -101,4 +103,35 @@ func TestRepeatTimer(t *testing.T) {
 
 	// Another stop panics.
 	assert.Panics(t, func() { rt.Stop() })
+}
+
+func TestRepeatTimerReset(t *testing.T) {
+	// check that we are not leaking any go-routines
+	defer leaktest.Check(t)()
+
+	timer := NewRepeatTimer("test", 20*time.Millisecond)
+	defer timer.Stop()
+
+	// test we don't receive tick before duration ms.
+	select {
+	case <-timer.Chan():
+		t.Fatal("did not expect to receive tick")
+	default:
+	}
+
+	timer.Reset()
+
+	// test we receive tick after Reset is called
+	select {
+	case <-timer.Chan():
+		// all good
+	case <-time.After(40 * time.Millisecond):
+		t.Fatal("expected to receive tick after reset")
+	}
+
+	// just random calls
+	for i := 0; i < 100; i++ {
+		time.Sleep(time.Duration(rand.Intn(40)) * time.Millisecond)
+		timer.Reset()
+	}
 }

@@ -155,7 +155,11 @@ func (t *RepeatTimer) fireRoutine(ch <-chan time.Time, quit <-chan struct{}) {
 	for {
 		select {
 		case t_ := <-ch:
-			t.ch <- t_
+			select {
+			case t.ch <- t_:
+			case <-quit:
+				return
+			}
 		case <-quit: // NOTE: `t.quit` races.
 			return
 		}
@@ -210,7 +214,6 @@ func (t *RepeatTimer) stop() {
 	t.ticker.Stop()
 	t.ticker = nil
 	/*
-		XXX
 		From https://golang.org/pkg/time/#Ticker:
 		"Stop the ticker to release associated resources"
 		"After Stop, no more ticks will be sent"
