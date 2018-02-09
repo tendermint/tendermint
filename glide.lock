@@ -1,5 +1,5 @@
-hash: 8aeec731d864d5d3008b4403c3229800148c9b472969ef6e5181a8c93ac1f4c8
-updated: 2018-02-05T18:46:05.226387951Z
+hash: 0b9520b856bdc25eab90c39bbd32c4bf2139dff8a63774c81ae5ab812a60f914
+updated: 2018-02-09T09:39:56.355310643Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 50de9da05b50eb15658bb350f6ea24368a111ab7
@@ -117,7 +117,7 @@ imports:
   subpackages:
   - data
 - name: github.com/tendermint/tmlibs
-  version: 51684dabf79c2079f32cc25d6bccb748ee098386
+  version: 52ce4c20f8bc9b6da5fc1274bcce27c0b9dd738a
   subpackages:
   - autofile
   - cli

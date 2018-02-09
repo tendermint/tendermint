@@ -30,7 +30,7 @@ import:
   subpackages:
   - data
 - package: github.com/tendermint/tmlibs
-  version: 51684dabf79c2079f32cc25d6bccb748ee098386
+  version: develop
   subpackages:
   - autofile
   - cli
