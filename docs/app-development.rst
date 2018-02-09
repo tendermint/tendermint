@@ -409,11 +409,10 @@ to update the validator set. To add a new validator or update an existing one,
 simply include them in the list returned in the EndBlock response. To remove
 one, include it in the list with a ``power`` equal to ``0``. Tendermint core
 will take care of updating the validator set. Note the change in voting power
-must be strictly less than 1/3 per block. Otherwise it will be impossible for a
-light client to prove the transition externally. See the `light client docs
+must be strictly less than 1/3 per block if you want a light client to be able
+to prove the transition externally. See the `light client docs
 <https://godoc.org/github.com/tendermint/tendermint/lite#hdr-How_We_Track_Validators>`__
-for details on how it tracks validators. Tendermint core will fail with an
-error if the change in voting power is more or equal than 1/3.
+for details on how it tracks validators.
 
 .. container:: toggle
 

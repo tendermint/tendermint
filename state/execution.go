@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
@@ -238,18 +237,10 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	return abciResponses, nil
 }
 
+// If more or equal than 1/3 of total voting power changed in one block, then
+// a light client could never prove the transition externally. See
+// ./lite/doc.go for details on how a light client tracks validators.
 func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
-	// If more or equal than 1/3 of total voting power changed in one block, then
-	// a light client could never prove the transition externally. See
-	// ./lite/doc.go for details on how a light client tracks validators.
-	vp23, err := changeInVotingPowerMoreOrEqualToOneThird(currentSet, updates)
-	if err != nil {
-		return err
-	}
-	if vp23 {
-		return errors.New("the change in voting power must be strictly less than 1/3")
-	}
-
 	for _, v := range updates {
 		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
 		if err != nil {
@@ -286,42 +277,6 @@ func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) 
 		}
 	}
 	return nil
-}
-
-func changeInVotingPowerMoreOrEqualToOneThird(currentSet *types.ValidatorSet, updates []abci.Validator) (bool, error) {
-	threshold := currentSet.TotalVotingPower() * 1 / 3
-	acc := int64(0)
-
-	for _, v := range updates {
-		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
-		if err != nil {
-			return false, err
-		}
-
-		address := pubkey.Address()
-		power := int64(v.Power)
-		// mind the overflow from int64
-		if power < 0 {
-			return false, fmt.Errorf("Power (%d) overflows int64", v.Power)
-		}
-
-		_, val := currentSet.GetByAddress(address)
-		if val == nil {
-			acc += power
-		} else {
-			np := val.VotingPower - power
-			if np < 0 {
-				np = -np
-			}
-			acc += np
-		}
-
-		if acc >= threshold {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // updateState returns a new State updated according to the header and responses.
