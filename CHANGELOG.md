@@ -5,6 +5,8 @@
 BREAKING:
 
  - [cli] WriteDemoConfig -> WriteConfigValues
+ - [common] added Quit method to Service interface, which returns a channel
+   which is closed once a service is stopped
 
 ## 0.6.1 (TBD)
 
