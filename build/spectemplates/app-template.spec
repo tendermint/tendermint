@@ -36,7 +36,7 @@ cd %{name}-%{version}-%{release}
 
 %post
 sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}
-sudo -Hu %{name} %{name} init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
+sudo -Hu %{name} %{name} node init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
 
 #Temporary until https://github.com/tendermint/basecoin/issues/123
 rm -f %{_sysconfdir}/%{name}/key.json

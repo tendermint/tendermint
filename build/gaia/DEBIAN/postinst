@@ -20,14 +20,8 @@ set -e
 case "$1" in
     configure)
     chown gaia.gaia /etc/gaia
-    sudo -Hu gaia gaia init --home /etc/gaia 2B24DEE2364762300168DF19B6C18BCE2D399EA2
-    #The above command generates a genesis.json file that contains validators. This is wrong, the validator part should be empty. https://github.com/tendermint/basecoin/issues/124
-    sudo -Hu gaia tendermint init --home /etc/gaia/tendermint
-    #The above command might need some kind of additional option in the future. https://github.com/tendermint/tendermint/issues/542
-
-    chmod 755 /etc/gaia/tendermint
-    chown gaia.gaia /etc/gaia/tendermint
-
+    sudo -Hu gaia gaia node init --home /etc/gaia 2B24DEE2364762300168DF19B6C18BCE2D399EA2
+    sudo -Hu gaia tendermint init --home /etc/gaia
     systemctl daemon-reload
     ;;
 
