@@ -19,7 +19,7 @@ import:
 - package: github.com/spf13/viper
   version: v1.0.0
 - package: github.com/tendermint/abci
-  version: develop
+  version: 5913ae8960c7ae5d748c37aa060bd35c99ff8a05
   subpackages:
   - client
   - example/dummy
@@ -31,7 +31,7 @@ import:
   subpackages:
   - data
 - package: github.com/tendermint/tmlibs
-  version: develop
+  version: a57340ffb53aefb0fca1fc610d18fcbcc61b126f
   subpackages:
   - autofile
   - cli

@@ -380,7 +380,7 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
 					conR.broadcastProposalHeartbeatMessage(edph)
 				}
-			case <-conR.Quit:
+			case <-conR.Quit():
 				conR.eventBus.UnsubscribeAll(ctx, subscriber)
 				return
 			}

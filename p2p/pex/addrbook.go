@@ -332,7 +332,7 @@ out:
 		select {
 		case <-saveFileTicker.C:
 			a.saveToFile(a.filePath)
-		case <-a.Quit:
+		case <-a.Quit():
 			break out
 		}
 	}

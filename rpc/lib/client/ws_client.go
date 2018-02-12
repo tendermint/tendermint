@@ -335,7 +335,7 @@ func (c *WSClient) reconnectRoutine() {
 					c.startReadWriteRoutines()
 				}
 			}
-		case <-c.Quit:
+		case <-c.Quit():
 			return
 		}
 	}
@@ -394,7 +394,7 @@ func (c *WSClient) writeRoutine() {
 			c.Logger.Debug("sent ping")
 		case <-c.readRoutineQuit:
 			return
-		case <-c.Quit:
+		case <-c.Quit():
 			if err := c.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")); err != nil {
 				c.Logger.Error("failed to write message", "err", err)
 			}
@@ -455,7 +455,7 @@ func (c *WSClient) readRoutine() {
 		// c.wg.Wait() in c.Stop(). Note we rely on Quit being closed so that it sends unlimited Quit signals to stop
 		// both readRoutine and writeRoutine
 		select {
-		case <-c.Quit:
+		case <-c.Quit():
 		case c.ResponsesCh <- response:
 		}
 	}

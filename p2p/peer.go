@@ -18,7 +18,6 @@ import (
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
-	QuitChan() <-chan struct{}
 
 	ID() ID             // peer's cryptographic ID
 	IsOutbound() bool   // did we dial the peer
@@ -330,11 +329,6 @@ func (p *peer) String() string {
 	}
 
 	return fmt.Sprintf("Peer{%v %v in}", p.mconn, p.ID())
-}
-
-// QuitChan returns a channel, which will be closed once peer is stopped.
-func (p *peer) QuitChan() <-chan struct{} {
-	return p.Quit
 }
 
 //------------------------------------------------------------------

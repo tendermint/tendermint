@@ -338,7 +338,7 @@ func (w *WSEvents) eventListener() {
 				ch <- result.Data
 			}
 			w.mtx.RUnlock()
-		case <-w.Quit:
+		case <-w.Quit():
 			return
 		}
 	}

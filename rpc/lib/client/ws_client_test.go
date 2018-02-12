@@ -132,7 +132,7 @@ func TestWSClientReconnectFailure(t *testing.T) {
 		for {
 			select {
 			case <-c.ResponsesCh:
-			case <-c.Quit:
+			case <-c.Quit():
 				return
 			}
 		}
@@ -217,7 +217,7 @@ func callWgDoneOnResult(t *testing.T, c *WSClient, wg *sync.WaitGroup) {
 			if resp.Result != nil {
 				wg.Done()
 			}
-		case <-c.Quit:
+		case <-c.Quit():
 			return
 		}
 	}

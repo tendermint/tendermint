@@ -117,9 +117,9 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 				if next = memR.Mempool.TxsFront(); next == nil {
 					continue
 				}
-			case <-peer.QuitChan():
+			case <-peer.Quit():
 				return
-			case <-memR.Quit:
+			case <-memR.Quit():
 				return
 			}
 		}
@@ -146,9 +146,9 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		case <-next.NextWaitChan():
 			// see the start of the for loop for nil check
 			next = next.Next()
-		case <-peer.QuitChan():
+		case <-peer.Quit():
 			return
-		case <-memR.Quit:
+		case <-memR.Quit():
 			return
 		}
 	}

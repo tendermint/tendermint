@@ -322,7 +322,7 @@ FOR_LOOP:
 				}
 			}
 			continue FOR_LOOP
-		case <-bcR.Quit:
+		case <-bcR.Quit():
 			break FOR_LOOP
 		}
 	}
