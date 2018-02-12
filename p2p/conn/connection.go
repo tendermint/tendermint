@@ -201,12 +201,12 @@ func (c *MConnection) OnStart() error {
 // OnStop implements BaseService
 func (c *MConnection) OnStop() {
 	c.BaseService.OnStop()
-	if c.quit != nil {
-		close(c.quit)
-	}
 	c.flushTimer.Stop()
 	c.pingTimer.Stop()
 	c.chStatsTimer.Stop()
+	if c.quit != nil {
+		close(c.quit)
+	}
 	c.conn.Close() // nolint: errcheck
 
 	// We can't close pong safely here because
@@ -339,7 +339,10 @@ FOR_LOOP:
 			c.sendMonitor.Update(int(n))
 			c.Logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
 			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
-				c.pongTimeoutCh <- true
+				select {
+				case c.pongTimeoutCh <- true:
+				default:
+				}
 			})
 			c.flush()
 		case timeout := <-c.pongTimeoutCh:
@@ -548,7 +551,6 @@ func (c *MConnection) stopPongTimer() {
 		if !c.pongTimer.Stop() {
 			<-c.pongTimer.C
 		}
-		drain(c.pongTimeoutCh)
 		c.pongTimer = nil
 	}
 }
@@ -779,14 +781,4 @@ type msgPacket struct {
 
 func (p msgPacket) String() string {
 	return fmt.Sprintf("MsgPacket{%X:%X T:%X}", p.ChannelID, p.Bytes, p.EOF)
-}
-
-func drain(ch <-chan bool) {
-	for {
-		select {
-		case <-ch:
-		default:
-			return
-		}
-	}
 }
