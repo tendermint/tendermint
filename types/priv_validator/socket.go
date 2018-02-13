@@ -17,6 +17,16 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const (
+	dialRetryIntervalSeconds = 1
+	dialRetryMax             = 10
+)
+
+// Socket errors.
+var (
+	ErrDialRetryMax = errors.New("Error max client retries")
+)
+
 //-----------------------------------------------------------------
 
 var _ types.PrivValidator2 = (*PrivValidatorSocketClient)(nil)
@@ -32,10 +42,6 @@ type PrivValidatorSocketClient struct {
 	ID            types.ValidatorID
 	SocketAddress string
 }
-
-const (
-	dialRetryIntervalSeconds = 1
-)
 
 // NewPrivValidatorSocketClient returns an instance of
 // PrivValidatorSocketClient.
@@ -60,39 +66,14 @@ func (pvsc *PrivValidatorSocketClient) OnStart() error {
 		return err
 	}
 
-	var (
-		err  error
-		conn net.Conn
-	)
-
-RETRY_LOOP:
-	for {
-		conn, err = cmn.Connect(pvsc.SocketAddress)
-		if err != nil {
-			pvsc.Logger.Error(
-				"OnStart",
-				"addr", pvsc.SocketAddress,
-				"err", errors.Wrap(err, "connection failed"),
-			)
-
-			time.Sleep(time.Second * dialRetryIntervalSeconds)
-			continue RETRY_LOOP
-		}
-
-		if pvsc.privKey != nil {
-			conn, err = p2pconn.MakeSecretConnection(conn, pvsc.privKey.Wrap())
-			if err != nil {
-				pvsc.Logger.Error(
-					"OnStart",
-					"err", errors.Wrap(err, "encrypting connection failed"),
-				)
-				continue RETRY_LOOP
-			}
-		}
-
-		pvsc.conn = conn
-		return nil
+	conn, err := pvsc.connect()
+	if err != nil {
+		return err
 	}
+
+	pvsc.conn = conn
+
+	return nil
 }
 
 // OnStop implements cmn.Service.
@@ -173,6 +154,46 @@ func (pvsc *PrivValidatorSocketClient) SignHeartbeat(chainID string, heartbeat *
 	*heartbeat = *res.(*SignHeartbeatMsg).Heartbeat
 
 	return nil
+}
+
+func (pvsc *PrivValidatorSocketClient) connect() (net.Conn, error) {
+	retries := dialRetryMax
+
+RETRY_LOOP:
+	for retries > 0 {
+		if retries != dialRetryMax {
+			time.Sleep(time.Second * dialRetryIntervalSeconds)
+		}
+
+		retries--
+
+		conn, err := cmn.Connect(pvsc.SocketAddress)
+		if err != nil {
+			pvsc.Logger.Error(
+				"OnStart",
+				"addr", pvsc.SocketAddress,
+				"err", errors.Wrap(err, "connection failed"),
+			)
+
+			continue RETRY_LOOP
+		}
+
+		if pvsc.privKey != nil {
+			conn, err = p2pconn.MakeSecretConnection(conn, pvsc.privKey.Wrap())
+			if err != nil {
+				pvsc.Logger.Error(
+					"OnStart",
+					"err", errors.Wrap(err, "encrypting connection failed"),
+				)
+
+				continue RETRY_LOOP
+			}
+		}
+
+		return conn, nil
+	}
+
+	return nil, ErrDialRetryMax
 }
 
 //---------------------------------------------------------
