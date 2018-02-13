@@ -76,7 +76,12 @@ func (pvj *PrivValidatorJSON) SignProposal(chainID string, proposal *types.Propo
 
 // String returns a string representation of the PrivValidatorJSON.
 func (pvj *PrivValidatorJSON) String() string {
-	return fmt.Sprintf("PrivValidator{%v %v}", pvj.Address(), pvj.PrivValidatorUnencrypted.String())
+	addr, err := pvj.Address()
+	if err != nil {
+		panic(err)
+	}
+
+	return fmt.Sprintf("PrivValidator{%v %v}", addr, pvj.PrivValidatorUnencrypted.String())
 }
 
 func (pvj *PrivValidatorJSON) Save() {
@@ -170,7 +175,17 @@ func (pvs PrivValidatorsByAddress) Len() int {
 }
 
 func (pvs PrivValidatorsByAddress) Less(i, j int) bool {
-	return bytes.Compare(pvs[i].Address(), pvs[j].Address()) == -1
+	iaddr, err := pvs[j].Address()
+	if err != nil {
+		panic(err)
+	}
+
+	jaddr, err := pvs[i].Address()
+	if err != nil {
+		panic(err)
+	}
+
+	return bytes.Compare(iaddr, jaddr) == -1
 }
 
 func (pvs PrivValidatorsByAddress) Swap(i, j int) {

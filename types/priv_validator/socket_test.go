@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/types"
@@ -51,8 +50,21 @@ func TestPrivValidatorSocketServer(t *testing.T) {
 
 	assert.True(pvsc.IsRunning())
 
-	assert.Equal(pvsc.Address(), cmn.HexBytes(pvss.privVal.PubKey().Address()))
-	assert.Equal(pvsc.PubKey(), pvss.privVal.PubKey())
+	cAddr, err := pvsc.Address()
+	require.Nil(err)
+
+	sAddr, err := pvss.privVal.Address()
+	require.Nil(err)
+
+	assert.Equal(cAddr, sAddr)
+
+	cKey, err := pvsc.PubKey()
+	require.Nil(err)
+
+	sKey, err := pvss.privVal.PubKey()
+	require.Nil(err)
+
+	assert.Equal(cKey, sKey)
 
 	err = pvsc.SignProposal(chainID, &types.Proposal{
 		Timestamp: time.Now(),
@@ -104,8 +116,21 @@ func TestPrivValidatorSocketServerWithoutSecret(t *testing.T) {
 
 	assert.True(pvsc.IsRunning())
 
-	assert.Equal(pvsc.Address(), cmn.HexBytes(pvss.privVal.PubKey().Address()))
-	assert.Equal(pvsc.PubKey(), pvss.privVal.PubKey())
+	cAddr, err := pvsc.Address()
+	require.Nil(err)
+
+	sAddr, err := pvss.privVal.Address()
+	require.Nil(err)
+
+	assert.Equal(cAddr, sAddr)
+
+	cKey, err := pvsc.PubKey()
+	require.Nil(err)
+
+	sKey, err := pvss.privVal.PubKey()
+	require.Nil(err)
+
+	assert.Equal(cKey, sKey)
 
 	err = pvsc.SignProposal(chainID, &types.Proposal{
 		Timestamp: time.Now(),

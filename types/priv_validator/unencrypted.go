@@ -35,15 +35,20 @@ func NewPrivValidatorUnencrypted(priv crypto.PrivKey) *PrivValidatorUnencrypted 
 
 // String returns a string representation of the PrivValidatorUnencrypted
 func (upv *PrivValidatorUnencrypted) String() string {
-	return fmt.Sprintf("PrivValidator{%v %v}", upv.Address(), upv.LastSignedInfo.String())
+	addr, err := upv.Address()
+	if err != nil {
+		panic(err)
+	}
+
+	return fmt.Sprintf("PrivValidator{%v %v}", addr, upv.LastSignedInfo.String())
 }
 
-func (upv *PrivValidatorUnencrypted) Address() cmn.HexBytes {
-	return upv.PrivKey.PubKey().Address()
+func (upv *PrivValidatorUnencrypted) Address() (cmn.HexBytes, error) {
+	return upv.PrivKey.PubKey().Address(), nil
 }
 
-func (upv *PrivValidatorUnencrypted) PubKey() crypto.PubKey {
-	return upv.PrivKey.PubKey()
+func (upv *PrivValidatorUnencrypted) PubKey() (crypto.PubKey, error) {
+	return upv.PrivKey.PubKey(), nil
 }
 
 func (upv *PrivValidatorUnencrypted) SignVote(chainID string, vote *types.Vote) error {

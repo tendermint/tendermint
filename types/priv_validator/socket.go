@@ -86,23 +86,28 @@ func (pvsc *PrivValidatorSocketClient) OnStop() {
 }
 
 // Address is an alias for PubKey().Address().
-func (pvsc *PrivValidatorSocketClient) Address() cmn.HexBytes {
-	return pvsc.PubKey().Address()
+func (pvsc *PrivValidatorSocketClient) Address() (cmn.HexBytes, error) {
+	p, err := pvsc.PubKey()
+	if err != nil {
+		return nil, err
+	}
+
+	return p.Address(), nil
 }
 
 // PubKey implements PrivValidator.
-func (pvsc *PrivValidatorSocketClient) PubKey() crypto.PubKey {
+func (pvsc *PrivValidatorSocketClient) PubKey() (crypto.PubKey, error) {
 	err := writeMsg(pvsc.conn, &PubKeyMsg{})
 	if err != nil {
-		panic(err)
+		return crypto.PubKey{}, err
 	}
 
 	res, err := readMsg(pvsc.conn)
 	if err != nil {
-		panic(err)
+		return crypto.PubKey{}, err
 	}
 
-	return res.(*PubKeyMsg).PubKey
+	return res.(*PubKeyMsg).PubKey, nil
 }
 
 // SignVote implements PrivValidator.
@@ -316,7 +321,10 @@ func (pvss *PrivValidatorSocketServer) handleConnection(conn net.Conn) {
 
 		switch r := req.(type) {
 		case *PubKeyMsg:
-			res = &PubKeyMsg{pvss.privVal.PubKey()}
+			var p crypto.PubKey
+
+			p, err = pvss.privVal.PubKey()
+			res = &PubKeyMsg{p}
 		case *SignVoteMsg:
 			err = pvss.privVal.SignVote(pvss.chainID, r.Vote)
 			res = &SignVoteMsg{r.Vote}

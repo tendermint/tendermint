@@ -46,8 +46,8 @@ type ValidatorID struct {
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes, proposals, and heartbeats, and never double signs.
 type PrivValidator2 interface {
-	Address() Address // redundant since .PubKey().Address()
-	PubKey() crypto.PubKey
+	Address() (Address, error) // redundant since .PubKey().Address()
+	PubKey() (crypto.PubKey, error)
 
 	SignVote(chainID string, vote *Vote) error
 	SignProposal(chainID string, proposal *Proposal) error
