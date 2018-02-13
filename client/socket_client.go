@@ -135,7 +135,7 @@ func (cli *socketClient) sendRequestsRoutine(conn net.Conn) {
 			default:
 				// Probably will fill the buffer, or retry later.
 			}
-		case <-cli.BaseService.Quit:
+		case <-cli.Quit():
 			return
 		case reqres := <-cli.reqQueue:
 			cli.willSendReq(reqres)
