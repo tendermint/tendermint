@@ -534,10 +534,10 @@ OUTER_LOOP:
 		// Send request and wait.
 		bpr.pool.sendRequest(bpr.height, peer.id)
 		select {
-		case <-bpr.pool.Quit:
+		case <-bpr.pool.Quit():
 			bpr.Stop()
 			return
-		case <-bpr.Quit:
+		case <-bpr.Quit():
 			return
 		case <-bpr.redoCh:
 			bpr.reset()
@@ -545,10 +545,10 @@ OUTER_LOOP:
 		case <-bpr.gotBlockCh:
 			// We got the block, now see if it's good.
 			select {
-			case <-bpr.pool.Quit:
+			case <-bpr.pool.Quit():
 				bpr.Stop()
 				return
-			case <-bpr.Quit:
+			case <-bpr.Quit():
 				return
 			case <-bpr.redoCh:
 				bpr.reset()

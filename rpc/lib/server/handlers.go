@@ -484,7 +484,7 @@ func (wsc *wsConnection) GetEventSubscriber() types.EventSubscriber {
 // It implements WSRPCConnection. It is Goroutine-safe.
 func (wsc *wsConnection) WriteRPCResponse(resp types.RPCResponse) {
 	select {
-	case <-wsc.Quit:
+	case <-wsc.Quit():
 		return
 	case wsc.writeChan <- resp:
 	}
@@ -494,7 +494,7 @@ func (wsc *wsConnection) WriteRPCResponse(resp types.RPCResponse) {
 // It implements WSRPCConnection. It is Goroutine-safe
 func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	select {
-	case <-wsc.Quit:
+	case <-wsc.Quit():
 		return false
 	case wsc.writeChan <- resp:
 		return true
@@ -525,7 +525,7 @@ func (wsc *wsConnection) readRoutine() {
 
 	for {
 		select {
-		case <-wsc.Quit:
+		case <-wsc.Quit():
 			return
 		default:
 			// reset deadline for every type of message (control or data)
@@ -643,7 +643,7 @@ func (wsc *wsConnection) writeRoutine() {
 					return
 				}
 			}
-		case <-wsc.Quit:
+		case <-wsc.Quit():
 			return
 		}
 	}

@@ -41,7 +41,7 @@ func TestNodeStartStop(t *testing.T) {
 	}()
 
 	select {
-	case <-n.Quit:
+	case <-n.Quit():
 	case <-time.After(5 * time.Second):
 		t.Fatal("timed out waiting for shutdown")
 	}

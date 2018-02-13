@@ -1,5 +1,5 @@
-hash: 41f411204b59e893053e59cda43466b3a6634c5fc88698d1f3131ecd5f239de7
-updated: 2018-02-09T09:56:16.586709479Z
+hash: 0a994be202cfc9c8a820c5a68321bbbf5592f48790b9bd408b5f95cd344c3be5
+updated: 2018-02-12T08:29:16.126185849Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 50de9da05b50eb15658bb350f6ea24368a111ab7
@@ -97,7 +97,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 5a4f56056e23cdfd5f3733db056968e016468508
+  version: 5913ae8960c7ae5d748c37aa060bd35c99ff8a05
   subpackages:
   - client
   - example/code
@@ -117,7 +117,7 @@ imports:
   subpackages:
   - data
 - name: github.com/tendermint/tmlibs
-  version: 52ce4c20f8bc9b6da5fc1274bcce27c0b9dd738a
+  version: a57340ffb53aefb0fca1fc610d18fcbcc61b126f
   subpackages:
   - autofile
   - cli

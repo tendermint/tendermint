@@ -118,7 +118,7 @@ func (tm *TrustMetric) OnStart() error {
 }
 
 // OnStop implements Service
-// Nothing to do since the goroutine shuts down by itself via BaseService.Quit
+// Nothing to do since the goroutine shuts down by itself via BaseService.Quit()
 func (tm *TrustMetric) OnStop() {}
 
 // Returns a snapshot of the trust metric history data
@@ -298,7 +298,7 @@ loop:
 		select {
 		case <-tick:
 			tm.NextTimeInterval()
-		case <-tm.Quit:
+		case <-tm.Quit():
 			// Stop all further tracking for this metric
 			break loop
 		}
