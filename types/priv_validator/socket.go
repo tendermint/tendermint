@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	connDeadlineSeconds      = 3
 	dialRetryIntervalSeconds = 1
 	dialRetryMax             = 10
 )
@@ -25,6 +26,10 @@ const (
 // Socket errors.
 var (
 	ErrDialRetryMax = errors.New("Error max client retries")
+)
+
+var (
+	connDeadline = time.Second * connDeadlineSeconds
 )
 
 //-----------------------------------------------------------------
@@ -175,7 +180,7 @@ RETRY_LOOP:
 		conn, err := cmn.Connect(pvsc.SocketAddress)
 		if err != nil {
 			pvsc.Logger.Error(
-				"OnStart",
+				"pvsc connect",
 				"addr", pvsc.SocketAddress,
 				"err", errors.Wrap(err, "connection failed"),
 			)
@@ -183,11 +188,19 @@ RETRY_LOOP:
 			continue RETRY_LOOP
 		}
 
+		if err := conn.SetDeadline(time.Now().Add(connDeadline)); err != nil {
+			pvsc.Logger.Error(
+				"pvsc connect",
+				"err", errors.Wrap(err, "setting connection timeout failed"),
+			)
+			continue
+		}
+
 		if pvsc.privKey != nil {
 			conn, err = p2pconn.MakeSecretConnection(conn, pvsc.privKey.Wrap())
 			if err != nil {
 				pvsc.Logger.Error(
-					"OnStart",
+					"pvsc connect",
 					"err", errors.Wrap(err, "encrypting connection failed"),
 				)
 
@@ -278,7 +291,7 @@ func (pvss *PrivValidatorSocketServer) acceptConnections() {
 			continue
 		}
 
-		if err := conn.SetDeadline(time.Now().Add(time.Second)); err != nil {
+		if err := conn.SetDeadline(time.Now().Add(connDeadline)); err != nil {
 			pvss.Logger.Error(
 				"acceptConnetions",
 				"err", errors.Wrap(err, "setting connection timeout failed"),
