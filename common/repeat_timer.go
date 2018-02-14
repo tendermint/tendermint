@@ -20,14 +20,16 @@ type Ticker interface {
 }
 
 //----------------------------------------
-// defaultTickerMaker
+// defaultTicker
+
+var _ Ticker = (*defaultTicker)(nil)
+
+type defaultTicker time.Ticker
 
 func defaultTickerMaker(dur time.Duration) Ticker {
 	ticker := time.NewTicker(dur)
 	return (*defaultTicker)(ticker)
 }
-
-type defaultTicker time.Ticker
 
 // Implements Ticker
 func (t *defaultTicker) Chan() <-chan time.Time {
@@ -151,12 +153,13 @@ func NewRepeatTimerWithTickerMaker(name string, dur time.Duration, tm TickerMake
 	return t
 }
 
+// receive ticks on ch, send out on t.ch
 func (t *RepeatTimer) fireRoutine(ch <-chan time.Time, quit <-chan struct{}) {
 	for {
 		select {
-		case t_ := <-ch:
+		case tick := <-ch:
 			select {
-			case t.ch <- t_:
+			case t.ch <- tick:
 			case <-quit:
 				return
 			}
