@@ -13,23 +13,29 @@ import (
 func main() {
 	var (
 		chainID     = flag.String("chain-id", "mychain", "chain id")
-		numClients  = flag.Int("clients", 1, "number of concurrently connected clients")
+		listenAddr  = flag.String("laddr", ":46659", "Validator listen address (0.0.0.0:0 means any interface, any port")
+		maxClients  = flag.Int("clients", 3, "number of concurrently connected clients")
 		privValPath = flag.String("priv", "", "priv val file path")
-		socketAddr  = flag.String("socket.addr", ":46659", "socket bind addr")
 
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "priv_val")
 	)
 	flag.Parse()
 
-	logger.Info("Reading args privValidatorSocketServer", "chainID", *chainID, "privPath", *privValPath)
+	logger.Info(
+		"Starting private validator",
+		"chainID", *chainID,
+		"listenAddr", *listenAddr,
+		"maxClients", *maxClients,
+		"privPath", *privValPath,
+	)
 
 	privVal := priv_val.LoadPrivValidatorJSON(*privValPath)
 
 	pvss := priv_val.NewPrivValidatorSocketServer(
 		logger,
 		*chainID,
-		*socketAddr,
-		*numClients,
+		*listenAddr,
+		*maxClients,
 		privVal,
 		nil,
 	)
