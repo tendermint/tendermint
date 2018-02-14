@@ -15,7 +15,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String("moniker", config.Moniker, "Node Name")
 
 	// priv val flags
-	cmd.Flags().String("priv_validator_addr", config.PrivValidatorAddr, "Socket address for PrivValidator")
+	cmd.Flags().String("priv_validator_addr", config.PrivValidatorAddr, "Socket address for private validator")
 
 	// node flags
 	cmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
