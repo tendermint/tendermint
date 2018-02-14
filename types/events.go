@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 
-	"github.com/tendermint/go-wire/data"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
@@ -87,13 +86,22 @@ const (
 	EventDataTypeProposalHeartbeat = byte(0x20)
 )
 
-var tmEventDataMapper = data.NewMapper(TMEventData{}).
-	RegisterImplementation(EventDataNewBlock{}, EventDataNameNewBlock, EventDataTypeNewBlock).
-	RegisterImplementation(EventDataNewBlockHeader{}, EventDataNameNewBlockHeader, EventDataTypeNewBlockHeader).
-	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
-	RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
-	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote).
-	RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat)
+type bridge interface {
+	ToJSON(interface{}) ([]byte, error)
+	FromJSON([]byte) (interface{}, error)
+}
+
+var tmEventDataMapper bridge
+
+// TODO
+/*= data.NewMapper(TMEventData{}).
+RegisterImplementation(EventDataNewBlock{}, EventDataNameNewBlock, EventDataTypeNewBlock).
+RegisterImplementation(EventDataNewBlockHeader{}, EventDataNameNewBlockHeader, EventDataTypeNewBlockHeader).
+RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
+RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
+RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote).
+RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat)
+*/
 
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic
