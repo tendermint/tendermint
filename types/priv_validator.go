@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"sync"
 	"time"
 
@@ -130,7 +129,7 @@ func LoadPrivValidatorFS(filePath string) *PrivValidatorFS {
 // or else generates a new one and saves it to the filePath.
 func LoadOrGenPrivValidatorFS(filePath string) *PrivValidatorFS {
 	var privVal *PrivValidatorFS
-	if _, err := os.Stat(filePath); err == nil {
+	if cmn.FileExists(filePath) {
 		privVal = LoadPrivValidatorFS(filePath)
 	} else {
 		privVal = GenPrivValidatorFS(filePath)
