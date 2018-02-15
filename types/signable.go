@@ -1,9 +1,5 @@
 package types
 
-import (
-	"github.com/tendermint/tmlibs/merkle"
-)
-
 // Signable is an interface for all signable things.
 // It typically removes signatures before serializing.
 // SignBytes returns the bytes to be signed
@@ -16,5 +12,5 @@ type Signable interface {
 
 // HashSignBytes is a convenience method for getting the hash of the bytes of a signable
 func HashSignBytes(chainID string, o Signable) []byte {
-	return merkle.SimpleHashFromBinary(o.SignBytes(chainID))
+	return tmHash(o.SignBytes(chainID))
 }

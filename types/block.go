@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 	"golang.org/x/crypto/ripemd160"
@@ -515,9 +515,13 @@ type hasher struct {
 }
 
 func (h hasher) Hash() []byte {
-	hasher, n, err := ripemd160.New(), new(int), new(error)
-	wire.WriteBinary(h.item, hasher, n, err)
-	if *err != nil {
+	hasher := ripemd160.New()
+	bz, err := wire.MarshalBinary(h.item)
+	if err != nil {
+		panic(err)
+	}
+	_, err = hasher.Write(bz)
+	if err != nil {
 		panic(err)
 	}
 	return hasher.Sum(nil)

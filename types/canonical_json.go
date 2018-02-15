@@ -3,11 +3,11 @@ package types
 import (
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// canonical json is go-wire's json for structs with fields in alphabetical order
+// canonical json is wire's json for structs with fields in alphabetical order
 
 // timeFormat is used for generating the sigs
 const timeFormat = wire.RFC3339Millis
@@ -114,7 +114,7 @@ func CanonicalHeartbeat(heartbeat *Heartbeat) CanonicalJSONHeartbeat {
 }
 
 func CanonicalTime(t time.Time) string {
-	// note that sending time over go-wire resets it to
+	// note that sending time over wire resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
 	return t.UTC().Format(timeFormat)
