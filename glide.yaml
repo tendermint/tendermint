@@ -9,7 +9,7 @@ import:
 - package: github.com/spf13/cobra
   version: v0.0.1
 - package: github.com/tendermint/tmlibs
-  version: a57340ffb53aefb0fca1fc610d18fcbcc61b126f
+  version: develop
   subpackages:
   - common
   - db
