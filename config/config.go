@@ -281,6 +281,9 @@ type P2PConfig struct {
 	//
 	// Does not work if the peer-exchange reactor is disabled.
 	SeedMode bool `mapstructure:"seed_mode"`
+
+	// Authenticated encryption
+	AuthEnc bool `mapstructure:"auth_enc"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -296,6 +299,7 @@ func DefaultP2PConfig() *P2PConfig {
 		RecvRate:                512000, // 500 kB/s
 		PexReactor:              true,
 		SeedMode:                false,
+		AuthEnc:                 true,
 	}
 }
 

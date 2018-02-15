@@ -42,6 +42,8 @@ type peer struct {
 
 	outbound bool
 
+	id    ID
+	addr  NetAddress          // only present in outbound peers
 	conn  net.Conn            // source connection
 	mconn *tmconn.MConnection // multiplex connection
 
@@ -95,6 +97,7 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 		return nil, err
 	}
 	peer.persistent = persistent
+	peer.addr = *addr
 
 	return peer, nil
 }
@@ -175,7 +178,11 @@ func (p *peer) OnStop() {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return PubKeyToID(p.PubKey())
+	if p.id != "" {
+		return p.id
+	}
+	p.id = PubKeyToID(p.PubKey())
+	return p.id
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.

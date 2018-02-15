@@ -35,7 +35,7 @@ func TestPeerBasic(t *testing.T) {
 	assert.False(p.IsPersistent())
 	p.persistent = true
 	assert.True(p.IsPersistent())
-	assert.Equal(rp.Addr().String(), p.Addr().String())
+	assert.Equal(rp.Addr().DialString(), p.Addr().String())
 	assert.Equal(rp.PubKey(), p.PubKey())
 }
 
@@ -126,7 +126,7 @@ func (p *remotePeer) Start() {
 	if e != nil {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
-	p.addr = NewNetAddress("", l.Addr())
+	p.addr = NewNetAddress(PubKeyToID(p.PrivKey.PubKey()), l.Addr())
 	p.quit = make(chan struct{})
 	go p.accept(l)
 }

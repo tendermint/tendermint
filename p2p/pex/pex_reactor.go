@@ -325,6 +325,7 @@ func (r *PEXReactor) ensurePeers() {
 		go func(picked *p2p.NetAddress) {
 			_, err := r.Switch.DialPeerWithAddress(picked, false)
 			if err != nil {
+				r.Logger.Error("Dialing failed", "err", err)
 				// TODO: detect more "bad peer" scenarios
 				if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
 					r.book.MarkBad(picked)

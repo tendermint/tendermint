@@ -200,7 +200,6 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	c1, c2 := conn.NetPipe()
 
-	// set pubkey filter
 	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
 		if bytes.Equal(pubkey.Bytes(), s2.nodeInfo.PubKey.Bytes()) {
 			return fmt.Errorf("Error: pipe is blacklisted")
@@ -208,7 +207,13 @@ func TestConnPubKeyFilter(t *testing.T) {
 		return nil
 	})
 
-	// connect to good peer
+	s2.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
+		if bytes.Equal(pubkey.Bytes(), s1.nodeInfo.PubKey.Bytes()) {
+			return fmt.Errorf("Error: pipe is blacklisted")
+		}
+		return nil
+	})
+
 	go func() {
 		err := s1.addPeerWithConnection(c1)
 		assert.NotNil(t, err, "expected error")

@@ -11,7 +11,7 @@ var (
 )
 
 type ErrSwitchAuthenticationFailure struct {
-	Dialed *NetAddress
+	Dialed NetAddress
 	Got    ID
 }
 
