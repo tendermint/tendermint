@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
