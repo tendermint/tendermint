@@ -74,6 +74,7 @@ InitChain
 -  **Arguments**:
 
    -  ``Validators ([]Validator)``: Initial genesis validators
+   -  ``AppStateBytes ([]byte)``: Serialized initial application state
 
 -  **Usage**: Called once upon genesis
 

@@ -29,5 +29,8 @@ func RandVals(cnt int) []types.Validator {
 // which allows tests to pass and is fine as long as you
 // don't make any tx that modify the validator state
 func InitDummy(app *PersistentDummyApplication) {
-	app.InitChain(types.RequestInitChain{RandVals(1)})
+	app.InitChain(types.RequestInitChain{
+		Validators:    RandVals(1),
+		AppStateBytes: []byte("[]"),
+	})
 }
