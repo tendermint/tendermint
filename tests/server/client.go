@@ -18,7 +18,10 @@ func InitChain(client abcicli.Client) error {
 		power := cmn.RandInt()
 		vals[i] = types.Validator{pubkey, int64(power)}
 	}
-	_, err := client.InitChainSync(types.RequestInitChain{Validators: vals})
+	_, err := client.InitChainSync(types.RequestInitChain{
+		Validators:    vals,
+		AppStateBytes: []byte("{}"),
+	})
 	if err != nil {
 		fmt.Printf("Failed test: InitChain - %v\n", err)
 		return err

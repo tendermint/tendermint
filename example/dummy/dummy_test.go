@@ -114,7 +114,9 @@ func TestValUpdates(t *testing.T) {
 	nInit := 5
 	vals := RandVals(total)
 	// iniitalize with the first nInit
-	dummy.InitChain(types.RequestInitChain{vals[:nInit]})
+	dummy.InitChain(types.RequestInitChain{
+		Validators: vals[:nInit],
+	})
 
 	vals1, vals2 := vals[:nInit], dummy.Validators()
 	valsEqual(t, vals1, vals2)
