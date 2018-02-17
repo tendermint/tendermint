@@ -1,5 +1,5 @@
-hash: 1d098f2b05c1895e810b75c282fceda06975a0eaf89bed621157bc2e6e1956cc
-updated: 2018-02-12T08:19:16.965601799Z
+hash: 304088ee640b9e5897ece75503d07f800aabba0618bd668bf1144f478809b646
+updated: 2018-02-15T12:26:50.462786+01:00
 imports:
 - name: github.com/go-kit/kit
   version: 4dc7be5d2d12881735283bcab7352178e190fc71
@@ -10,7 +10,7 @@ imports:
 - name: github.com/go-logfmt/logfmt
   version: 390ab7935ee28ec6b286364bba9b4dd6410cb3d5
 - name: github.com/go-stack/stack
-  version: 100eb0c0a9c5b306ca2fb4f165df21d80ada4b82
+  version: 259ab82a6cad3992b4e21ff5cac294ccb06474bc
 - name: github.com/gogo/protobuf
   version: 1adfc126b41513cc696b209667c8656ea7aac67c
   subpackages:
@@ -21,7 +21,7 @@ imports:
   - sortkeys
   - types
 - name: github.com/golang/protobuf
-  version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
+  version: 925541529c1fa6821df4e44ce2723319eb2be768
   subpackages:
   - proto
   - ptypes
@@ -41,9 +41,9 @@ imports:
 - name: github.com/spf13/cobra
   version: 7b2c5ac9fc04fc5efafb60700713d4fa609b777b
 - name: github.com/spf13/pflag
-  version: 80fe0fb4eba54167e2ccae1c6c950e72abf61b73
+  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/syndtr/goleveldb
-  version: 8c81ea47d4c41a385645e133e15510fc6a2a74b4
+  version: 34011bf325bce385408353a30b101fe5e923eb6e
   subpackages:
   - leveldb
   - leveldb/cache
@@ -58,14 +58,14 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/tmlibs
-  version: a57340ffb53aefb0fca1fc610d18fcbcc61b126f
+  version: a0f652dc2e131be86fc8d9e4e2beec9831a8a6ec
   subpackages:
   - common
   - db
   - log
   - process
 - name: golang.org/x/net
-  version: cd69bc3fc700721b709c3a59e16e24c67b58f6ff
+  version: 2fb46b16b8dda405028c50f7c7f0f9dd1fa6bfb1
   subpackages:
   - context
   - http2
@@ -75,14 +75,14 @@ imports:
   - lex/httplex
   - trace
 - name: golang.org/x/text
-  version: 470f45bf29f4147d6fbd7dfd0a02a848e49f5bf4
+  version: e19ae1496984b1c655b8044a65c0300a3c878dd3
   subpackages:
   - secure/bidirule
   - transform
   - unicode/bidi
   - unicode/norm
 - name: google.golang.org/genproto
-  version: f676e0f3ac6395ff1a529ae59a6670878a8371a6
+  version: 4eb30f4778eed4c258ba66527a0d4f9ec8a36c45
   subpackages:
   - googleapis/rpc/status
 - name: google.golang.org/grpc
@@ -106,11 +106,11 @@ imports:
   - transport
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
-  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
