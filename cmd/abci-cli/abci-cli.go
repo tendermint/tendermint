@@ -682,10 +682,10 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	// Create the application - in memory or persisted to disk
 	var app types.Application
 	if flagPersist == "" {
-		app = kvstore.NewDummyApplication()
+		app = kvstore.NewKVStoreApplication()
 	} else {
-		app = kvstore.NewPersistentDummyApplication(flagPersist)
-		app.(*kvstore.PersistentDummyApplication).SetLogger(logger.With("module", "kvstore"))
+		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
+		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
 	}
 
 	// Start the listener
