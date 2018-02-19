@@ -1,17 +1,17 @@
-# Dummy
+# KVStore
 
-There are two app's here: the DummyApplication and the PersistentDummyApplication.
+There are two app's here: the KVStoreApplication and the PersistentKVStoreApplication.
 
-## DummyApplication
+## KVStoreApplication
 
-The DummyApplication is a simple merkle key-value store. 
+The KVStoreApplication is a simple merkle key-value store. 
 Transactions of the form `key=value` are stored as key-value pairs in the tree.
 Transactions without an `=` sign set the value to the key.
 The app has no replay protection (other than what the mempool provides).
 
-## PersistentDummyApplication
+## PersistentKVStoreApplication
 
-The PersistentDummyApplication wraps the DummyApplication
+The PersistentKVStoreApplication wraps the KVStoreApplication
 and provides two additional features:
 
 1) persistence of state across app restarts (using Tendermint's ABCI-Handshake mechanism)
