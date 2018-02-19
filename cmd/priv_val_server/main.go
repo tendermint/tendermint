@@ -14,7 +14,7 @@ func main() {
 	var (
 		chainID     = flag.String("chain-id", "mychain", "chain id")
 		listenAddr  = flag.String("laddr", ":46659", "Validator listen address (0.0.0.0:0 means any interface, any port")
-		maxClients  = flag.Int("clients", 3, "number of concurrently connected clients")
+		maxConn     = flag.Int("clients", 3, "maximum of concurrent connections")
 		privValPath = flag.String("priv", "", "priv val file path")
 
 		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "priv_val")
@@ -25,7 +25,7 @@ func main() {
 		"Starting private validator",
 		"chainID", *chainID,
 		"listenAddr", *listenAddr,
-		"maxClients", *maxClients,
+		"maxConn", *maxConn,
 		"privPath", *privValPath,
 	)
 
@@ -35,7 +35,7 @@ func main() {
 		logger,
 		*chainID,
 		*listenAddr,
-		*maxClients,
+		*maxConn,
 		privVal,
 		nil,
 	)

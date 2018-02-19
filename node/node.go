@@ -34,6 +34,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -77,20 +78,8 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
-	var privVal types.PrivValidator
-	privVal = types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile())
-	/* TODO
-	if config.PrivValidatorAddr != "" {
-		pvsc := priv_val.NewPrivValidatorSocketClient(logger.With("module", "priv_val"),
-			config.PrivValidatorAddr)
-		pvsc.Start()
-		privVal = pvsc
-	}
-	*/
-	fmt.Println("PRIV", config.PrivValidatorAddr)
-
 	return NewNode(config,
-		privVal,
+		types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile()),
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -184,20 +173,21 @@ func NewNode(config *cfg.Config,
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
 
-	/* TODO
-	// Generate node PrivKey
-	privKey := crypto.GenPrivKeyEd25519()
-
 	if config.PrivValidatorAddr != "" {
-		pvsc := priv_val.NewPrivValidatorSocketClient(
-			logger.With("module", "priv_val"),
-			config.PrivValidatorAddr,
-			&privKey,
+		var (
+			privKey = crypto.GenPrivKeyEd25519()
+			pvss    = priv_val.NewPrivValidatorSocketServer(
+				logger.With("module", "priv_val"),
+				config.ChainID(),
+				config.PrivValidatorAddr,
+				config.PrivValidatorMaxConn,
+				priv_val.LoadPrivValidatorJSON(config.PrivValidatorFile()),
+				&privKey,
+			)
 		)
-		pvsc.Start()
-		privValidator = pvsc
+
+		pvss.Start()
 	}
-	*/
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
