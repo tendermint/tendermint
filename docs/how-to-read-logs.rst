@@ -5,7 +5,7 @@ Walk through example
 --------------------
 
 We first create three connections (mempool, consensus and query) to the
-application (locally running dummy in this case).
+application (running ``kvstore`` locally in this case).
 
 ::
 
