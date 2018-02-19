@@ -11,6 +11,10 @@ BREAKING CHANGES:
 - [types] Updates to CheckTx/DeliverTx around tags and fees
 - [types] Remove code and log from Commit
 
+IMPROVEMENTS:
+
+- [all] remove go-wire and go-crypto dependencies :)
+
 ## 0.9.0 (December 28, 2017)
 
 BREAKING CHANGES:
