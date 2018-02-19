@@ -7,7 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/wire"
 
 	"github.com/tendermint/tendermint/lite"
 	liteErr "github.com/tendermint/tendermint/lite/errors"
