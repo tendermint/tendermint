@@ -25,7 +25,7 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.16.0 (TBD)
+## 0.16.0 (February 20th, 2017)
 
 BREAKING CHANGES:
 - [config] use $TMHOME/config for all config and json files
