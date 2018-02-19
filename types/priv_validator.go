@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -10,6 +9,7 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -198,7 +198,7 @@ func LoadPrivValidatorFSWithSigner(filePath string, signerFunc func(PrivValidato
 		cmn.Exit(err.Error())
 	}
 	privVal := &PrivValidatorFS{}
-	err = json.Unmarshal(privValJSONBytes, &privVal)
+	err = wire.UnmarshalJSON(privValJSONBytes, &privVal)
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
@@ -219,7 +219,7 @@ func (privVal *PrivValidatorFS) save() {
 	if privVal.filePath == "" {
 		cmn.PanicSanity("Cannot save PrivValidator: filePath not set")
 	}
-	jsonBytes, err := json.Marshal(privVal)
+	jsonBytes, err := wire.MarshalJSON(privVal)
 	if err != nil {
 		// `@; BOOM!!!
 		cmn.PanicCrisis(err)
@@ -422,10 +422,10 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote CanonicalJSONOnceVote
-	if err := json.Unmarshal(lastSignBytes, &lastVote); err != nil {
+	if err := wire.UnmarshalJSON(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := json.Unmarshal(newSignBytes, &newVote); err != nil {
+	if err := wire.UnmarshalJSON(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
@@ -438,8 +438,8 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 	now := CanonicalTime(time.Now())
 	lastVote.Vote.Timestamp = now
 	newVote.Vote.Timestamp = now
-	lastVoteBytes, _ := json.Marshal(lastVote)
-	newVoteBytes, _ := json.Marshal(newVote)
+	lastVoteBytes, _ := wire.MarshalJSON(lastVote)
+	newVoteBytes, _ := wire.MarshalJSON(newVote)
 
 	return lastTime, bytes.Equal(newVoteBytes, lastVoteBytes)
 }
@@ -448,10 +448,10 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal CanonicalJSONOnceProposal
-	if err := json.Unmarshal(lastSignBytes, &lastProposal); err != nil {
+	if err := wire.UnmarshalJSON(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := json.Unmarshal(newSignBytes, &newProposal); err != nil {
+	if err := wire.UnmarshalJSON(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 
@@ -464,8 +464,8 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (ti
 	now := CanonicalTime(time.Now())
 	lastProposal.Proposal.Timestamp = now
 	newProposal.Proposal.Timestamp = now
-	lastProposalBytes, _ := json.Marshal(lastProposal)
-	newProposalBytes, _ := json.Marshal(newProposal)
+	lastProposalBytes, _ := wire.MarshalJSON(lastProposal)
+	newProposalBytes, _ := wire.MarshalJSON(newProposal)
 
 	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }

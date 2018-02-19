@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -33,7 +34,7 @@ type GenesisDoc struct {
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
-	genDocBytes, err := json.Marshal(genDoc)
+	genDocBytes, err := wire.MarshalJSON(genDoc)
 	if err != nil {
 		return err
 	}
@@ -89,7 +90,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 // GenesisDocFromJSON unmarshalls JSON data into a GenesisDoc.
 func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 	genDoc := GenesisDoc{}
-	err := json.Unmarshal(jsonBlob, &genDoc)
+	err := wire.UnmarshalJSON(jsonBlob, &genDoc)
 	if err != nil {
 		return nil, err
 	}
