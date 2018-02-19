@@ -122,7 +122,7 @@ like the file below, however, double check by inspecting the
     seed_mode = false
 
     # Authenticated encryption
-    auth_enc = {{ .P2P.AuthEnc }}
+    auth_enc = true
 
     ##### mempool configuration options #####
     [mempool]
