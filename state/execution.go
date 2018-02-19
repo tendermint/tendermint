@@ -142,7 +142,10 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 	}
 	// ResponseCommit has no error code - just data
 
-	blockExec.logger.Info("Committed state", "height", block.Height, "txs", block.NumTxs, "appHash", res.Data)
+	blockExec.logger.Info("Committed state",
+		"height", block.Height,
+		"txs", block.NumTxs,
+		"appHash", fmt.Sprintf("%X", res.Data))
 
 	// Update mempool.
 	if err := blockExec.mempool.Update(block.Height, block.Txs); err != nil {
