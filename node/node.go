@@ -34,6 +34,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -82,7 +83,8 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
-		logger)
+		logger,
+	)
 }
 
 //------------------------------------------------------------------------------
@@ -170,6 +172,22 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
+
+	if config.PrivValidatorAddr != "" {
+		var (
+			privKey = crypto.GenPrivKeyEd25519()
+			pvss    = priv_val.NewPrivValidatorSocketServer(
+				logger.With("module", "priv_val"),
+				config.ChainID(),
+				config.PrivValidatorAddr,
+				config.PrivValidatorMaxConn,
+				priv_val.LoadPrivValidatorJSON(config.PrivValidatorFile()),
+				&privKey,
+			)
+		)
+
+		pvss.Start()
+	}
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.

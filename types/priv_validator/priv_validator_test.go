@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestGenLoadValidator(t *testing.T) {
-	assert := assert.New(t)
+	assert, require := assert.New(t), require.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	privVal := GenPrivValidatorJSON(tempFilePath)
@@ -25,24 +25,33 @@ func TestGenLoadValidator(t *testing.T) {
 	height := int64(100)
 	privVal.LastSignedInfo.Height = height
 	privVal.Save()
-	addr := privVal.Address()
+	addr, err := privVal.Address()
+	require.Nil(err)
 
 	privVal = LoadPrivValidatorJSON(tempFilePath)
-	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
+	pAddr, err := privVal.Address()
+	require.Nil(err)
+
+	assert.Equal(addr, pAddr, "expected privval addr to be the same")
 	assert.Equal(height, privVal.LastSignedInfo.Height, "expected privval.LastHeight to have been saved")
 }
 
 func TestLoadOrGenValidator(t *testing.T) {
-	assert := assert.New(t)
+	assert, require := assert.New(t), require.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	if err := os.Remove(tempFilePath); err != nil {
 		t.Error(err)
 	}
 	privVal := LoadOrGenPrivValidatorJSON(tempFilePath)
-	addr := privVal.Address()
+	addr, err := privVal.Address()
+	require.Nil(err)
+
 	privVal = LoadOrGenPrivValidatorJSON(tempFilePath)
-	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
+	pAddr, err := privVal.Address()
+	require.Nil(err)
+
+	assert.Equal(addr, pAddr, "expected privval addr to be the same")
 }
 
 func TestUnmarshalValidator(t *testing.T) {
@@ -87,8 +96,14 @@ func TestUnmarshalValidator(t *testing.T) {
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
-	assert.EqualValues(addrBytes, val.Address())
-	assert.EqualValues(pubKey, val.PubKey())
+	vAddr, err := val.Address()
+	require.Nil(err)
+
+	pKey, err := val.PubKey()
+	require.Nil(err)
+
+	assert.EqualValues(addrBytes, vAddr)
+	assert.EqualValues(pubKey, pKey)
 	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
@@ -98,7 +113,7 @@ func TestUnmarshalValidator(t *testing.T) {
 }
 
 func TestSignVote(t *testing.T) {
-	assert := assert.New(t)
+	assert, require := assert.New(t), require.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	privVal := GenPrivValidatorJSON(tempFilePath)
@@ -109,8 +124,11 @@ func TestSignVote(t *testing.T) {
 	voteType := types.VoteTypePrevote
 
 	// sign a vote for first time
-	vote := newVote(privVal.Address(), 0, height, round, voteType, block1)
-	err := privVal.SignVote("mychainid", vote)
+	addr, err := privVal.Address()
+	require.Nil(err)
+
+	vote := newVote(addr, 0, height, round, voteType, block1)
+	err = privVal.SignVote("mychainid", vote)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
@@ -119,10 +137,10 @@ func TestSignVote(t *testing.T) {
 
 	// now try some bad votes
 	cases := []*types.Vote{
-		newVote(privVal.Address(), 0, height, round-1, voteType, block1),   // round regression
-		newVote(privVal.Address(), 0, height-1, round, voteType, block1),   // height regression
-		newVote(privVal.Address(), 0, height-2, round+4, voteType, block1), // height regression and different round
-		newVote(privVal.Address(), 0, height, round, voteType, block2),     // different block
+		newVote(addr, 0, height, round-1, voteType, block1),   // round regression
+		newVote(addr, 0, height-1, round, voteType, block1),   // height regression
+		newVote(addr, 0, height-2, round+4, voteType, block1), // height regression and different round
+		newVote(addr, 0, height, round, voteType, block2),     // different block
 	}
 
 	for _, c := range cases {
@@ -179,6 +197,8 @@ func TestSignProposal(t *testing.T) {
 }
 
 func TestDifferByTimestamp(t *testing.T) {
+	require := require.New(t)
+
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	privVal := GenPrivValidatorJSON(tempFilePath)
 
@@ -208,10 +228,13 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	// test vote
 	{
+		addr, err := privVal.Address()
+		require.Nil(err)
+
 		voteType := types.VoteTypePrevote
 		blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
-		vote := newVote(privVal.Address(), 0, height, round, voteType, blockID)
-		err := privVal.SignVote("mychainid", vote)
+		vote := newVote(addr, 0, height, round, voteType, blockID)
+		err = privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
 
 		signBytes := types.SignBytes(chainID, vote)
@@ -230,7 +253,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
+func newVote(addr cmn.HexBytes, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
