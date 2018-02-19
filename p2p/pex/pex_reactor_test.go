@@ -285,7 +285,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	sw := p2p.MakeSwitch(config, 1, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
 		sw.SetLogger(log.TestingLogger())
 
-		r := NewPEXReactor(book, &PEXReactorConfig{Seeds: []string{seed.NodeInfo().NetAddress()}})
+		r := NewPEXReactor(book, &PEXReactorConfig{Seeds: []string{seed.NodeInfo().NetAddress().String()}})
 		r.SetLogger(log.TestingLogger())
 		r.SetEnsurePeersPeriod(250 * time.Millisecond)
 		sw.AddReactor("pex", r)
