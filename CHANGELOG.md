@@ -5,7 +5,6 @@
 BREAKING CHANGES:
 - Better support for injecting randomness
 - Upgrade consensus for more real-time use of evidence
-- the files usually found in `~/.tendermint` (`config.toml`, `genesis.json`, and `priv_validator.json`) are now in `~/.tendermint/config`. The `$TMHOME/data/` directory remains unchanged.
 
 FEATURES:
 - Peer reputation management
@@ -35,25 +34,30 @@ BREAKING CHANGES:
 - [p2p] NodeInfo: remove RemoteAddr and add Channels
     - we must have at least one overlapping channel with peer
     - we only send msgs for channels the peer advertised
+- [p2p/conn] pong timeout
+- [lite] comment out IAVL related code
 
 FEATURES:
 - [p2p] added new `/dial_peers&persistent=_` **unsafe** endpoint
 - [p2p] persistent node key in `$THMHOME/config/node_key.json`
 - [p2p] introduce peer ID and authenticate peers by ID using addresses like `ID@IP:PORT`
-- [p2p] new seed mode in pex reactor crawls the network and serves as a seed.
+- [p2p/pex] new seed mode crawls the network and serves as a seed.
 - [config] MempoolConfig.CacheSize
 - [config] P2P.SeedMode (`--p2p.seed_mode`)
 
 IMPROVEMENT:
-- [p2p] stricter rules in the PEX reactor for better handling of abuse
+- [p2p/pex] stricter rules in the PEX reactor for better handling of abuse
 - [p2p] various improvements to code structure including subpackages for `pex` and `conn`
 - [docs] new spec!
+- [all] speed up the tests!
 
 BUG FIX:
 - [blockchain] StopPeerForError on timeout
 - [consensus] StopPeerForError on a bad Maj23 message
 - [state] flush mempool conn before calling commit
 - [types] fix priv val signing things that only differ by timestamp
+- [mempool] fix memory leak causing zombie peers
+- [p2p/conn] fix potential deadlock
 
 ## 0.15.0 (December 29, 2017)
 
