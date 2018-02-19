@@ -43,7 +43,7 @@ type peer struct {
 	outbound bool
 
 	id    ID
-	addr  NetAddress          // only present in outbound peers
+	addr  *NetAddress         // only present in outbound peers
 	conn  net.Conn            // source connection
 	mconn *tmconn.MConnection // multiplex connection
 
@@ -97,7 +97,7 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 		return nil, err
 	}
 	peer.persistent = persistent
-	peer.addr = *addr
+	peer.addr = addr
 
 	return peer, nil
 }

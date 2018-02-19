@@ -12,14 +12,14 @@ import (
 var ShowNodeIDCmd = &cobra.Command{
 	Use:   "show_node_id",
 	Short: "Show this node's ID",
-	Run:   showNodeID,
+	RunE:  showNodeID,
 }
 
-func showNodeID(cmd *cobra.Command, args []string) {
+func showNodeID(cmd *cobra.Command, args []string) error {
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
-		logger.Error("Failed to load (or generate) node key", "err", err)
-		return
+		return err
 	}
 	fmt.Println(nodeKey.ID())
+	return nil
 }

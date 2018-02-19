@@ -30,7 +30,7 @@ BUG FIXES:
 
 IMPROVEMENTS:
 - [config] exposed `auth_enc` flag to enable/disable encryption
-- [p2p] when `auth_enc` is true, all dialed peers must have a node ID (matching its pubkey)
+- [p2p] when `auth_enc` is true, all dialed peers must have a node ID in their address
 
 ## 0.16.0 (TBD)
 
