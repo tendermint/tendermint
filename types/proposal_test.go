@@ -63,7 +63,7 @@ func TestProposalVerifySignature(t *testing.T) {
 	newProp := new(Proposal)
 	bs, err := wire.MarshalBinary(prop)
 	require.NoError(t, err)
-	err = wire.UnmarshalBinary(bs, &newProp)
+	err = wire.UnmarshalBinary(bs, newProp)
 	require.NoError(t, err)
 
 	// verify the transmitted proposal

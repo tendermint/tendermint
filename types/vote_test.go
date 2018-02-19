@@ -91,7 +91,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	precommit := new(Vote)
 	bs, err := wire.MarshalBinary(vote)
 	require.NoError(t, err)
-	err = wire.UnmarshalBinary(bs, &precommit)
+	err = wire.UnmarshalBinary(bs, precommit)
 	require.NoError(t, err)
 
 	// verify the transmitted vote
