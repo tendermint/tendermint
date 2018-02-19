@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 
 	"github.com/tendermint/tendermint/types"
 )
