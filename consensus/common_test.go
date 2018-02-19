@@ -26,7 +26,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/abci/example/counter"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 
 	"github.com/go-kit/kit/log/term"
 )

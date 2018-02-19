@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	"github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"

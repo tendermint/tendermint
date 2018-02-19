@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	"github.com/tendermint/abci/types"
 )
 
