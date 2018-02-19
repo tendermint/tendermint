@@ -336,7 +336,7 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, results, 0)
 
-		// we query using a tag (see dummy application)
+		// we query using a tag (see kvstore application)
 		results, err = c.TxSearch("app.creator='jae'", false)
 		require.Nil(t, err, "%+v", err)
 		if len(results) == 0 {

@@ -8,12 +8,12 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-type dummyConn struct {
+type kvstoreConn struct {
 	*io.PipeReader
 	*io.PipeWriter
 }
 
-func (drw dummyConn) Close() (err error) {
+func (drw kvstoreConn) Close() (err error) {
 	err2 := drw.PipeWriter.CloseWithError(io.EOF)
 	err1 := drw.PipeReader.Close()
 	if err2 != nil {
@@ -23,14 +23,14 @@ func (drw dummyConn) Close() (err error) {
 }
 
 // Each returned ReadWriteCloser is akin to a net.Connection
-func makeDummyConnPair() (fooConn, barConn dummyConn) {
+func makeKVStoreConnPair() (fooConn, barConn kvstoreConn) {
 	barReader, fooWriter := io.Pipe()
 	fooReader, barWriter := io.Pipe()
-	return dummyConn{fooReader, fooWriter}, dummyConn{barReader, barWriter}
+	return kvstoreConn{fooReader, fooWriter}, kvstoreConn{barReader, barWriter}
 }
 
 func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection) {
-	fooConn, barConn := makeDummyConnPair()
+	fooConn, barConn := makeKVStoreConnPair()
 	fooPrvKey := crypto.GenPrivKeyEd25519().Wrap()
 	fooPubKey := fooPrvKey.PubKey()
 	barPrvKey := crypto.GenPrivKeyEd25519().Wrap()
@@ -78,7 +78,7 @@ func TestSecretConnectionHandshake(t *testing.T) {
 }
 
 func TestSecretConnectionReadWrite(t *testing.T) {
-	fooConn, barConn := makeDummyConnPair()
+	fooConn, barConn := makeKVStoreConnPair()
 	fooWrites, barWrites := []string{}, []string{}
 	fooReads, barReads := []string{}, []string{}
 
@@ -89,7 +89,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	}
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
-	genNodeRunner := func(nodeConn dummyConn, nodeWrites []string, nodeReads *[]string) func() {
+	genNodeRunner := func(nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) func() {
 		return func() {
 			// Node handskae
 			nodePrvKey := crypto.GenPrivKeyEd25519().Wrap()

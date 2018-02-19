@@ -12,8 +12,8 @@ import (
 var node *nm.Node
 
 func TestMain(m *testing.M) {
-	// start a tendermint node (and dummy) in the background to test against
-	app := dummy.NewDummyApplication()
+	// start a tendermint node (and kvstore) in the background to test against
+	app := kvstore.NewKVStoreApplication()
 	node = rpctest.StartTendermint(app)
 	code := m.Run()
 

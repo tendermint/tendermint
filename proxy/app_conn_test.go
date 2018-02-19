@@ -49,7 +49,7 @@ func TestEcho(t *testing.T) {
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
-	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
+	s := server.NewSocketServer(sockPath, kvstore.NewKVStoreApplication())
 	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())
@@ -83,7 +83,7 @@ func BenchmarkEcho(b *testing.B) {
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
-	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
+	s := server.NewSocketServer(sockPath, kvstore.NewKVStoreApplication())
 	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if err := s.Start(); err != nil {
 		b.Fatalf("Error starting socket server: %v", err.Error())
@@ -122,7 +122,7 @@ func TestInfo(t *testing.T) {
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
-	s := server.NewSocketServer(sockPath, dummy.NewDummyApplication())
+	s := server.NewSocketServer(sockPath, kvstore.NewKVStoreApplication())
 	s.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if err := s.Start(); err != nil {
 		t.Fatalf("Error starting socket server: %v", err.Error())

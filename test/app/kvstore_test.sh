@@ -7,7 +7,7 @@ function toHex() {
 }
 
 #####################
-# dummy with curl
+# kvstore with curl
 #####################
 TESTNAME=$1
 

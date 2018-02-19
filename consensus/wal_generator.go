@@ -25,13 +25,13 @@ import (
 
 // WALWithNBlocks generates a consensus WAL. It does this by spining up a
 // stripped down version of node (proxy app, event bus, consensus state) with a
-// persistent dummy application and special consensus wal instance
+// persistent kvstore application and special consensus wal instance
 // (byteBufferWAL) and waits until numBlocks are created. Then it returns a WAL
 // content.
 func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	config := getConfig()
 
-	app := dummy.NewPersistentDummyApplication(filepath.Join(config.DBDir(), "wal_generator"))
+	app := kvstore.NewPersistentKVStoreApplication(filepath.Join(config.DBDir(), "wal_generator"))
 
 	logger := log.TestingLogger().With("wal_generator", "wal_generator")
 	logger.Info("generating WAL (last height msg excluded)", "numBlocks", numBlocks)

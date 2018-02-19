@@ -9,17 +9,17 @@ tendermint init
 RPC_ADDR="$(pwd)/rpc.sock"
 
 TM_CMD="tendermint node --log_level=debug --rpc.laddr=unix://$RPC_ADDR" # &> tendermint_${name}.log"
-DUMMY_CMD="abci-cli dummy --persist $TMHOME/dummy" # &> dummy_${name}.log"
+DUMMY_CMD="abci-cli kvstore --persist $TMHOME/kvstore" # &> kvstore_${name}.log"
 
 
 function start_procs(){
     name=$1
     indexToFail=$2
-    echo "Starting persistent dummy and tendermint"
+    echo "Starting persistent kvstore and tendermint"
     if [[ "$CIRCLECI" == true ]]; then
         $DUMMY_CMD &
     else
-        $DUMMY_CMD &> "dummy_${name}.log" &
+        $DUMMY_CMD &> "kvstore_${name}.log" &
     fi
     PID_DUMMY=$!
 

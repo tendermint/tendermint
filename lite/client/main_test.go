@@ -14,7 +14,7 @@ var node *nm.Node
 
 func TestMain(m *testing.M) {
 	// start a tendermint node (and merkleeyes) in the background to test against
-	app := dummy.NewDummyApplication()
+	app := kvstore.NewKVStoreApplication()
 	node = rpctest.StartTendermint(app)
 	code := m.Run()
 

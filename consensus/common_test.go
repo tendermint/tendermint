@@ -50,7 +50,7 @@ func ResetConfig(name string) *cfg.Config {
 }
 
 //-------------------------------------------------------------------------------
-// validator stub (a dummy consensus peer we control)
+// validator stub (a kvstore consensus peer we control)
 
 type validatorStub struct {
 	Index  int // Validator index. NOTE: we don't assume validator set changes.
@@ -488,7 +488,7 @@ func newCounter() abci.Application {
 	return counter.NewCounterApplication(true)
 }
 
-func newPersistentDummy() abci.Application {
-	dir, _ := ioutil.TempDir("/tmp", "persistent-dummy")
-	return dummy.NewPersistentDummyApplication(dir)
+func newPersistentKVStore() abci.Application {
+	dir, _ := ioutil.TempDir("/tmp", "persistent-kvstore")
+	return kvstore.NewPersistentKVStoreApplication(dir)
 }

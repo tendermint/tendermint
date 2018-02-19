@@ -25,7 +25,7 @@ var (
 )
 
 func TestApplyBlock(t *testing.T) {
-	cc := proxy.NewLocalClientCreator(dummy.NewDummyApplication())
+	cc := proxy.NewLocalClientCreator(kvstore.NewKVStoreApplication())
 	proxyApp := proxy.NewAppConns(cc, nil)
 	err := proxyApp.Start()
 	require.Nil(t, err)
@@ -165,7 +165,7 @@ type testApp struct {
 	ByzantineValidators []abci.Evidence
 }
 
-func NewDummyApplication() *testApp {
+func NewKVStoreApplication() *testApp {
 	return &testApp{}
 }
 

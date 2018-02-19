@@ -55,7 +55,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 	logger := log.TestingLogger()
 	state, _ := sm.LoadStateFromDBOrGenesisFile(stateDB, consensusReplayConfig.GenesisFile())
 	privValidator := loadPrivValidator(consensusReplayConfig)
-	cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, dummy.NewDummyApplication(), blockDB)
+	cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewKVStoreApplication(), blockDB)
 	cs.SetLogger(logger)
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
@@ -141,7 +141,7 @@ LOOP:
 		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
 		privValidator := loadPrivValidator(consensusReplayConfig)
 		blockDB := dbm.NewMemDB()
-		cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, dummy.NewDummyApplication(), blockDB)
+		cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewKVStoreApplication(), blockDB)
 		cs.SetLogger(logger)
 
 		// start sending transactions
@@ -351,8 +351,8 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	latestAppHash := state.AppHash
 
 	// make a new client creator
-	dummyApp := dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "2"))
-	clientCreator2 := proxy.NewLocalClientCreator(dummyApp)
+	kvstoreApp := kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "2"))
+	clientCreator2 := proxy.NewLocalClientCreator(kvstoreApp)
 	if nBlocks > 0 {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
@@ -432,7 +432,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 		}
 
 		if mode == 2 {
-			// update the dummy height and apphash
+			// update the kvstore height and apphash
 			// as if we ran commit but not
 			state = applyBlock(stateDB, state, chain[nBlocks-1], proxyApp)
 		}
@@ -442,7 +442,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 
 func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, chain []*types.Block, mode uint) sm.State {
 	// run the whole chain against this client to build up the tendermint state
-	clientCreator := proxy.NewLocalClientCreator(dummy.NewPersistentDummyApplication(path.Join(config.DBDir(), "1")))
+	clientCreator := proxy.NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "1")))
 	proxyApp := proxy.NewAppConns(clientCreator, nil) // sm.NewHandshaker(config, state, store, ReplayLastBlock))
 	if err := proxyApp.Start(); err != nil {
 		panic(err)
