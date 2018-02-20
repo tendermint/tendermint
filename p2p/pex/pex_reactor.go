@@ -1,7 +1,6 @@
 package pex
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -9,11 +8,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
+	"github.com/tendermint/tendermint/wire"
 )
 
 type Peer = p2p.Peer
@@ -505,28 +504,22 @@ func (r *PEXReactor) attemptDisconnects() {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeRequest = byte(0x01)
-	msgTypeAddrs   = byte(0x02)
-)
-
 // PexMessage is a primary type for PEX messages. Underneath, it could contain
 // either pexRequestMessage, or pexAddrsMessage messages.
 type PexMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ PexMessage }{},
-	wire.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
-	wire.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
-)
+func init() {
+	wire.RegisterInterface((*PexMessage)(nil), nil)
+	wire.RegisterConcrete(&pexRequestMessage{}, "com.tendermint.p2p.pex.RequestMessage", nil)
+	wire.RegisterConcrete(&pexAddrsMessage{}, "com.tendermint.p2p.pex.AddrsMessage", nil)
+}
 
 // DecodeMessage implements interface registered above.
-func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
-	return
+func DecodeMessage(bz []byte) (byte, PexMessage, error) {
+	msgType := bz[0]
+	var msg PexMessage
+	err := wire.UnmarshalBinary(bz, &msg)
+	return msgType, msg, err
 }
 
 /*
