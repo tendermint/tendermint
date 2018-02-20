@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"time"
 
@@ -267,6 +266,7 @@ func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) err
 	var peerNodeInfo NodeInfo
 	var err1 error
 	var err2 error
+	var n int
 	cmn.Parallel(
 		func() {
 			var bz []byte
@@ -276,10 +276,10 @@ func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) err
 			}
 		},
 		func() {
-			var bz []byte
-			_, err2 = io.ReadFull(p.conn, bz)
+			bz := make([]byte, maxNodeInfoSize)
+			n, err2 = p.conn.Read(bz)
 			if err2 == nil {
-				err2 = wire.UnmarshalBinary(bz, &peerNodeInfo) // maxNodeInfoSize
+				err2 = wire.UnmarshalBinary(bz[:n], &peerNodeInfo) // maxNodeInfoSize
 			}
 		},
 	)
