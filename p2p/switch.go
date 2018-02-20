@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	crypto "github.com/tendermint/go-crypto"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -59,8 +58,8 @@ type Switch struct {
 	nodeInfo     NodeInfo // our node info
 	nodeKey      *NodeKey // our node privkey
 
-	filterConnByAddr   func(net.Addr) error
-	filterConnByPubKey func(crypto.PubKey) error
+	filterConnByAddr func(net.Addr) error
+	filterConnByID   func(ID) error
 
 	rng *rand.Rand // seed for randomizing dial times and orders
 }
@@ -288,14 +287,13 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 			return
 		}
 
-		peer, err := sw.DialPeerWithAddress(netAddr, true)
+		err := sw.DialPeerWithAddress(netAddr, true)
 		if err != nil {
 			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
 			// sleep a set amount
 			sw.randomSleep(reconnectInterval)
 			continue
 		} else {
-			sw.Logger.Info("Reconnected to peer", "peer", peer)
 			return
 		}
 	}
@@ -310,14 +308,11 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 		// sleep an exponentially increasing amount
 		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
 		sw.randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
-		peer, err := sw.DialPeerWithAddress(netAddr, true)
-		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
-			continue
-		} else {
-			sw.Logger.Info("Reconnected to peer", "peer", peer)
-			return
+		err := sw.DialPeerWithAddress(netAddr, true)
+		if err == nil {
+			return // success
 		}
+		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
 	}
 	sw.Logger.Error("Failed to reconnect to peer. Giving up", "peer", peer, "elapsed", time.Since(start))
 }
@@ -359,11 +354,9 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 		go func(i int) {
 			sw.randomSleep(0)
 			j := perm[i]
-			peer, err := sw.DialPeerWithAddress(netAddrs[j], persistent)
+			err := sw.DialPeerWithAddress(netAddrs[j], persistent)
 			if err != nil {
 				sw.Logger.Error("Error dialing peer", "err", err)
-			} else {
-				sw.Logger.Info("Connected to peer", "peer", peer)
 			}
 		}(i)
 	}
@@ -372,7 +365,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 
 // DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects and authenticates successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
-func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) (Peer, error) {
+func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
 	return sw.addOutboundPeerWithConfig(addr, sw.peerConfig, persistent)
@@ -395,10 +388,10 @@ func (sw *Switch) FilterConnByAddr(addr net.Addr) error {
 	return nil
 }
 
-// FilterConnByPubKey returns an error if connecting to the given public key is forbidden.
-func (sw *Switch) FilterConnByPubKey(pubkey crypto.PubKey) error {
-	if sw.filterConnByPubKey != nil {
-		return sw.filterConnByPubKey(pubkey)
+// FilterConnByID returns an error if connecting to the given peer ID is forbidden.
+func (sw *Switch) FilterConnByID(id ID) error {
+	if sw.filterConnByID != nil {
+		return sw.filterConnByID(id)
 	}
 	return nil
 
@@ -409,9 +402,9 @@ func (sw *Switch) SetAddrFilter(f func(net.Addr) error) {
 	sw.filterConnByAddr = f
 }
 
-// SetPubKeyFilter sets the function for filtering connections by public key.
-func (sw *Switch) SetPubKeyFilter(f func(crypto.PubKey) error) {
-	sw.filterConnByPubKey = f
+// SetIDFilter sets the function for filtering connections by peer ID.
+func (sw *Switch) SetIDFilter(f func(ID) error) {
+	sw.filterConnByID = f
 }
 
 //------------------------------------------------------------------------------------
@@ -442,14 +435,13 @@ func (sw *Switch) listenerRoutine(l Listener) {
 }
 
 func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) error {
-	peer, err := newInboundPeer(conn, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config)
+	peerConn, err := newInboundPeerConn(conn, config, sw.nodeKey.PrivKey)
 	if err != nil {
 		conn.Close() // peer is nil
 		return err
 	}
-	peer.SetLogger(sw.Logger.With("peer", conn.RemoteAddr()))
-	if err = sw.addPeer(peer); err != nil {
-		peer.CloseConn()
+	if err = sw.addPeer(peerConn); err != nil {
+		peerConn.CloseConn()
 		return err
 	}
 
@@ -458,23 +450,20 @@ func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) er
 
 // dial the peer; make secret connection; authenticate against the dialed ID;
 // add the peer.
-func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) (Peer, error) {
+func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) error {
 	sw.Logger.Info("Dialing peer", "address", addr)
-	peer, err := newOutboundPeer(addr, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, config, persistent)
+	peerConn, err := newOutboundPeerConn(addr, config, persistent, sw.nodeKey.PrivKey)
 	if err != nil {
 		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
-		return nil, err
+		return err
 	}
-	peer.SetLogger(sw.Logger.With("peer", addr))
 
-	err = sw.addPeer(peer)
-	if err != nil {
+	if err := sw.addPeer(peerConn); err != nil {
 		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
-		peer.CloseConn()
-		return nil, err
+		peerConn.CloseConn()
+		return err
 	}
-	sw.Logger.Info("Dialed and added peer", "address", addr, "peer", peer)
-	return peer, nil
+	return nil
 }
 
 // addPeer performs the Tendermint P2P handshake with a peer
@@ -482,47 +471,48 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 // it starts the peer and adds it to the switch.
 // NOTE: This performs a blocking handshake before the peer is added.
 // NOTE: If error is returned, caller is responsible for calling peer.CloseConn()
-func (sw *Switch) addPeer(peer *peer) error {
-	// Filter peer against white list
-	if err := sw.FilterConnByAddr(peer.Addr()); err != nil {
-		return err
-	}
-
-	// Exchange NodeInfo with the peer
-	if err := peer.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.peerConfig.HandshakeTimeout*time.Second)); err != nil {
-		return err
-	}
+func (sw *Switch) addPeer(pc peerConn) error {
+	addr := pc.conn.RemoteAddr()
+	id := pc.id
 
 	// Avoid self
-	if sw.nodeKey.ID() == peer.ID() {
+	if sw.nodeKey.ID() == id {
 		return ErrSwitchConnectToSelf
 	}
 
 	// Avoid duplicate
-	if sw.peers.Has(peer.ID()) {
+	if sw.peers.Has(id) {
 		return ErrSwitchDuplicatePeer
 	}
 
 	// Filter peer against white list
-	if err := sw.FilterConnByPubKey(peer.PubKey()); err != nil {
+	if err := sw.FilterConnByAddr(addr); err != nil {
+		return err
+	}
+	if err := sw.FilterConnByID(id); err != nil {
 		return err
 	}
 
-	// if AuthEnc is true, dialed peers must have a node ID in the address and it
-	// must match an ID, derived from the node's pubkey from the handshake
-	if sw.peerConfig.AuthEnc && peer.IsOutbound() && peer.addr.ID != peer.ID() {
-		return ErrSwitchAuthenticationFailure{peer.addr, peer.ID()}
+	// Exchange NodeInfo on the conn
+	peerNodeInfo, err := pc.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.peerConfig.HandshakeTimeout*time.Second))
+	if err != nil {
+		return err
 	}
 
-	// Validate the peers nodeInfo against the pubkey
-	if err := peer.NodeInfo().Validate(peer.PubKey()); err != nil {
+	// Validate the peers nodeInfo against the ID from the SecretConnection
+	if err := peerNodeInfo.Validate(id); err != nil {
 		return err
 	}
 
 	// Check version, chain id
-	if err := sw.nodeInfo.CompatibleWith(peer.NodeInfo()); err != nil {
+	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
 		return err
 	}
+
+	peer := newPeer(pc, peerNodeInfo, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
+	peer.SetLogger(sw.Logger.With("peer", addr))
+
+	peer.Logger.Info("Successful handshake with peer", "peerNodeInfo", peerNodeInfo)
 
 	// All good. Start peer
 	if sw.IsRunning() {
