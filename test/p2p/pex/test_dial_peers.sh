@@ -21,14 +21,17 @@ set -e
 
 # start the testnet on a local network
 # NOTE we re-use the same network for all tests
-PERSISTENT_PEERS=""
-bash test/p2p/local_testnet_start.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP $PERSISTENT_PEERS
+bash test/p2p/local_testnet_start.sh $DOCKER_IMAGE $NETWORK_NAME $N $PROXY_APP ""
 
-
+PERSISTENT_PEERS="\"$(test/p2p/ip_plus_id.sh 1 $DOCKER_IMAGE):46656\""
+for i in $(seq 2 $N); do
+	PERSISTENT_PEERS="$PERSISTENT_PEERS,\"$(test/p2p/ip_plus_id.sh $i $DOCKER_IMAGE):46656\""
+done
+echo "$PERSISTENT_PEERS"
 
 # dial peers from one node
 CLIENT_NAME="dial_peers"
-bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $CLIENT_NAME "test/p2p/pex/dial_peers.sh $N"
+bash test/p2p/client.sh $DOCKER_IMAGE $NETWORK_NAME $CLIENT_NAME "test/p2p/pex/dial_peers.sh $N $PERSISTENT_PEERS"
 
 # test basic connectivity and consensus
 # start client container and check the num peers and height for all nodes

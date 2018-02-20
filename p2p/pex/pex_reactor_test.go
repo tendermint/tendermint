@@ -100,7 +100,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// fill the address book and add listeners
 	for _, s := range switches {
-		addr, _ := p2p.NewNetAddressString(s.NodeInfo().ListenAddr)
+		addr := s.NodeInfo().NetAddress()
 		book.AddAddress(addr, addr)
 		s.AddListener(p2p.NewDefaultListener("tcp", s.NodeInfo().ListenAddr, true, log.TestingLogger()))
 	}
@@ -285,7 +285,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	sw := p2p.MakeSwitch(config, 1, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
 		sw.SetLogger(log.TestingLogger())
 
-		r := NewPEXReactor(book, &PEXReactorConfig{Seeds: []string{seed.NodeInfo().ListenAddr}})
+		r := NewPEXReactor(book, &PEXReactorConfig{Seeds: []string{seed.NodeInfo().NetAddress().String()}})
 		r.SetLogger(log.TestingLogger())
 		r.SetEnsurePeersPeriod(250 * time.Millisecond)
 		sw.AddReactor("pex", r)

@@ -13,7 +13,7 @@ set +e
 bash test/p2p/local_testnet_stop.sh "$NETWORK_NAME" "$N"
 set -e
 
-PERSISTENT_PEERS=$(bash test/p2p/persistent_peers.sh $N)
+PERSISTENT_PEERS=$(bash test/p2p/persistent_peers.sh $N $DOCKER_IMAGE)
 
 # start the testnet on a local network
 # NOTE we re-use the same network for all tests

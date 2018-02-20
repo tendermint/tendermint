@@ -159,6 +159,9 @@ pex = {{ .P2P.PexReactor }}
 # Does not work if the peer-exchange reactor is disabled.
 seed_mode = {{ .P2P.SeedMode }}
 
+# Authenticated encryption
+auth_enc = {{ .P2P.AuthEnc }}
+
 ##### mempool configuration options #####
 [mempool]
 
