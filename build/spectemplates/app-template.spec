@@ -10,7 +10,6 @@ Summary: @PACKAGE_SUMMARY@
 License: Apache 2.0
 URL: @PACKAGE_URL@
 Packager: Greg Szabo
-Requires: tendermint >= 0.11.0
 @PACKAGE_ADDITIONAL_HEADER@
 
 %description
