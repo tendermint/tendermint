@@ -6,13 +6,13 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const (
