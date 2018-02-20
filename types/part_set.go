@@ -217,10 +217,13 @@ func (ps *PartSet) IsComplete() bool {
 	return ps.count == ps.total
 }
 
-// XXX/TODO!
+// Bytes joins them all together, replaces Reader
 func (ps *PartSet) Bytes() []byte {
-	return ps.parts[0].Bytes // XXX: append them all together ?
-
+	chunks := make([][]byte, len(ps.parts))
+	for i, part := range ps.parts {
+		chunks[i] = part.Bytes
+	}
+	return bytes.Join(chunks, []byte{})
 }
 
 func (ps *PartSet) GetReader() io.Reader {

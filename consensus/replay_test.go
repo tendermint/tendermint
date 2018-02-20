@@ -18,7 +18,6 @@ import (
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -27,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -519,8 +519,8 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case EndHeightMessage:
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
-				var n int
-				block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+				block := new(types.Block)
+				err := wire.UnmarshalBinary(thisBlockParts.Bytes(), block)
 				if err != nil {
 					panic(err)
 				}
@@ -552,8 +552,8 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		}
 	}
 	// grab the last block too
-	var n int
-	block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+	block := new(types.Block)
+	err = wire.UnmarshalBinary(thisBlockParts.Bytes(), block)
 	if err != nil {
 		panic(err)
 	}
