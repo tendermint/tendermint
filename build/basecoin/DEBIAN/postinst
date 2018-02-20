@@ -21,7 +21,6 @@ case "$1" in
     configure)
     chown basecoin.basecoin /etc/basecoin
     sudo -Hu basecoin basecoin node init --home /etc/basecoin 2B24DEE2364762300168DF19B6C18BCE2D399EA2
-    sudo -Hu basecoin tendermint init --home /etc/basecoin
     systemctl daemon-reload
     ;;
 

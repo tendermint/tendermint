@@ -35,12 +35,12 @@ endif
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint trackomatron gaia
-build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia
+binaries = tendermint basecoin ethermint gaia
+build-binaries = build-tendermint build-basecoin build-ethermint build-gaia
+package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-gaia
+install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-gaia
+package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-gaia
+install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-gaia
 
 all: $(binaries)
 build: $(build-binaries)
@@ -75,14 +75,6 @@ build-ethermint: git-branch gopath-setup
 	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps build
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/build/ethermint $(GOPATH)/bin
 	@echo "*** Built ethermint"
-
-build-trackomatron: git-branch gopath-setup
-	@echo "*** Building trackomatron"
-	go get -d -u github.com/tendermint/trackomatron/cmd/tracko
-	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
-	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
-	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed for proper packaging" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
-	@echo "*** Built trackomatron"
 
 build-gaia: git-branch gopath-setup
 	@echo "*** Building gaia"
@@ -126,7 +118,6 @@ prepare-tendermint =
 prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
-prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
 prepare-gaia =
 prepare-basecoin = cp $(GOPATH)/bin/basecoin $(build_folder)/usr/bin
 
@@ -289,13 +280,10 @@ distclean: clean
 	rm -rf $(GOPATH)/src/github.com/tendermint/tendermint
 	rm -rf $(GOPATH)/src/github.com/cosmos/cosmos-sdk
 	rm -rf $(GOPATH)/src/github.com/tendermint/ethermint 
-	rm -rf $(GOPATH)/src/github.com/tendermint/trackomatron 
 	rm -rf $(GOPATH)/bin/tendermint
 	rm -rf $(GOPATH)/bin/basecoin
 	rm -rf $(GOPATH)/bin/ethermint
 	rm -rf $(GOPATH)/bin/gaia
-	rm -rf $(GOPATH)/bin/tracko
-	rm -rf $(GOPATH)/bin/trackocli
 
 .PHONY : clean
 

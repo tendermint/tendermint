@@ -1,16 +1,7 @@
 [Unit]
 Description=Ethermint
-#propagates activation, deactivation and activation fails.
 Requires=network-online.target
-#propagates activation, deactivation, activation fails and stops
-BindTo=ethermint-server.service
-#propagates stop and restart (one-way)
-PartOf=ethermint-server.service
-#order
-After=network-online.target ethermint-server.service
-#propagates reload
-PropagatesReloadTo=ethermint-server.service
-ReloadPropagatedFrom=ethermint-server.service
+After=network-online.target
 
 [Service]
 Restart=on-failure
@@ -22,6 +13,5 @@ ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target ethermint-server.service
-Also=ethermint-server.service
+WantedBy=multi-user.target
 

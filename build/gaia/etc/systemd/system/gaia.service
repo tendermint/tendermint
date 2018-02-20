@@ -1,27 +1,17 @@
 [Unit]
 Description=Gaia
-#propagates activation, deactivation and activation fails.
 Requires=network-online.target
-#propagates activation, deactivation, activation fails and stops
-BindTo=gaia-server.service
-#propagates stop and restart (one-way)
-PartOf=gaia-server.service
-#order
-After=network-online.target gaia-server.service
-#propagates reload
-PropagatesReloadTo=gaia-server.service
-ReloadPropagatedFrom=gaia-server.service
+After=network-online.target
 
 [Service]
 Restart=on-failure
 User=gaia
 Group=gaia
 PermissionsStartOnly=true
-ExecStart=/usr/bin/gaia node start --without-tendermint --home=/etc/gaia
+ExecStart=/usr/bin/gaia node start --home=/etc/gaia
 ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
 [Install]
-WantedBy=multi-user.target gaia-server.service
-Also=gaia-server.service
+WantedBy=multi-user.target
 

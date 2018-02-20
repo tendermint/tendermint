@@ -19,7 +19,6 @@ set -e
 case "$1" in
     remove|upgrade|deconfigure)
     systemctl stop ethermint 2> /dev/null || :
-    systemctl stop ethermint-service 2> /dev/null || :
     ;;
 
     failed-upgrade)

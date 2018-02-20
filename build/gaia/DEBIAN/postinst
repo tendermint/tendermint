@@ -21,7 +21,6 @@ case "$1" in
     configure)
     chown gaia.gaia /etc/gaia
     sudo -Hu gaia gaia node init --home /etc/gaia 2B24DEE2364762300168DF19B6C18BCE2D399EA2
-    sudo -Hu gaia tendermint init --home /etc/gaia
     systemctl daemon-reload
     ;;
 
