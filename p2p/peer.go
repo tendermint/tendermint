@@ -313,8 +313,7 @@ func (p *peer) Addr() net.Addr {
 
 // PubKey returns peer's public key.
 func (p *peer) PubKey() crypto.PubKey {
-	bz := p.nodeInfo.PubKey.Bytes()
-	if len(bz) > 0 {
+	if p.nodeInfo.PubKey != nil {
 		return p.nodeInfo.PubKey
 	} else if p.config.AuthEnc {
 		return p.conn.(*tmconn.SecretConnection).RemotePubKey()
