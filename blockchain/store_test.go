@@ -12,12 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	wire "github.com/tendermint/go-wire"
-
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
@@ -306,11 +305,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func binarySerializeIt(v interface{}) []byte {
-	var n int
-	var err error
-	buf := new(bytes.Buffer)
-	wire.WriteBinary(v, buf, &n, &err)
-	return buf.Bytes()
+	bz, err := wire.MarshalBinary(v)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 func TestLoadBlockPart(t *testing.T) {
