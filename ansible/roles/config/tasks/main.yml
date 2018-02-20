@@ -3,7 +3,7 @@
 - name: gather tendermint public keys
   when: (validators == true or validators == 'true') and genesis_file is not defined
   tags: reconfig-toml,reconfig-genesis
-  command: "/usr/bin/tendermint show_validator --home /etc/{{service}}/config --log_level error"
+  command: "/usr/bin/tendermint show_validator --home /etc/{{service}} --log_level error"
   register: pubkeys
   changed_when: false
 
