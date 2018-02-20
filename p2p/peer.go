@@ -35,14 +35,17 @@ type Peer interface {
 //----------------------------------------------------------
 
 // peerConn contains the raw connection and its config.
-// If config.AuthEnc, the connection is encrypted and the peerConn.id is known.
 type peerConn struct {
 	outbound   bool
 	persistent bool
 	config     *PeerConfig
 	conn       net.Conn // source connection
+}
 
-	id ID // non-empty if config.AuthEnc
+// ID only exists for SecretConnection.
+// NOTE: Will panic if conn is not *SecretConnection.
+func (pc peerConn) ID() ID {
+	return PubKeyToID(pc.conn.(*tmconn.SecretConnection).RemotePubKey())
 }
 
 // peer implements Peer.
@@ -75,9 +78,7 @@ func newPeer(pc peerConn, nodeInfo NodeInfo,
 		channels: nodeInfo.Channels,
 		Data:     cmn.NewCMap(),
 	}
-
 	p.mconn = createMConnection(pc.conn, p, reactorsByCh, chDescs, onPeerError, pc.config.MConfig)
-
 	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
 	return p
 }
@@ -118,15 +119,18 @@ func newOutboundPeerConn(addr *NetAddress, config *PeerConfig, persistent bool, 
 
 	pc, err = newPeerConn(conn, config, true, persistent, ourNodePrivKey)
 	if err != nil {
-		if err := conn.Close(); err != nil {
-			return pc, err
+		if err2 := conn.Close(); err != nil {
+			return pc, errors.Wrap(err, err2.Error())
 		}
 		return pc, err
 	}
 
-	// ensure dialed ID
-	if config.AuthEnc && addr.ID != pc.id {
-		return pc, ErrSwitchAuthenticationFailure{addr, pc.id}
+	// ensure dialed ID matches connection ID
+	if config.AuthEnc && addr.ID != pc.ID() {
+		if err2 := conn.Close(); err != nil {
+			return pc, errors.Wrap(err, err2.Error())
+		}
+		return pc, ErrSwitchAuthenticationFailure{addr, pc.ID()}
 	}
 	return pc, nil
 }
@@ -140,10 +144,9 @@ func newInboundPeerConn(conn net.Conn, config *PeerConfig, ourNodePrivKey crypto
 
 func newPeerConn(rawConn net.Conn,
 	config *PeerConfig, outbound, persistent bool,
-	ourNodePrivKey crypto.PrivKey) (peerConn, error) {
+	ourNodePrivKey crypto.PrivKey) (pc peerConn, err error) {
 
 	conn := rawConn
-	var pc peerConn
 
 	// Fuzz connection
 	if config.Fuzz {
@@ -151,32 +154,26 @@ func newPeerConn(rawConn net.Conn,
 		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, config.FuzzConfig)
 	}
 
-	var id ID
-	// Encrypt connection
 	if config.AuthEnc {
+		// Set deadline for secret handshake
 		if err := conn.SetDeadline(time.Now().Add(config.HandshakeTimeout * time.Second)); err != nil {
 			return pc, errors.Wrap(err, "Error setting deadline while encrypting connection")
 		}
 
-		var err error
+		// Encrypt connection
 		conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
 		if err != nil {
 			return pc, errors.Wrap(err, "Error creating peer")
 		}
-		pubkey := conn.(*tmconn.SecretConnection).RemotePubKey()
-		id = PubKeyToID(pubkey)
 	}
 
 	// Only the information we already have
-	pc = peerConn{
+	return peerConn{
 		config:     config,
 		outbound:   outbound,
 		persistent: persistent,
 		conn:       conn,
-		id:         id,
-	}
-
-	return pc, nil
+	}, nil
 }
 
 //---------------------------------------------------
@@ -208,7 +205,7 @@ func (p *peer) OnStop() {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return p.peerConn.id
+	return p.nodeInfo.ID()
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.

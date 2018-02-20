@@ -34,16 +34,10 @@ type NodeInfo struct {
 }
 
 // Validate checks the self-reported NodeInfo is safe.
-// It returns an error if the info.PubKey doesn't match the given ID,
-// or if there are too many Channels or any duplicate Channels.
+// It returns an error if there
+// are too many Channels or any duplicate Channels.
 // TODO: constraints for Moniker/Other? Or is that for the UI ?
-func (info NodeInfo) Validate(id ID) error {
-	infoID := PubKeyToID(info.PubKey)
-	if infoID != id {
-		return fmt.Errorf("PubKeyToID(info.PubKey) (%v) doesn't match peer.ID() (%v)",
-			infoID, id)
-	}
-
+func (info NodeInfo) Validate() error {
 	if len(info.Channels) > maxNumChannels {
 		return fmt.Errorf("info.Channels is too long (%v). Max is %v", len(info.Channels), maxNumChannels)
 	}

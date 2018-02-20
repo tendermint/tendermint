@@ -15,9 +15,6 @@ import (
 func randPeer() *peer {
 	pubKey := crypto.GenPrivKeyEd25519().Wrap().PubKey()
 	return &peer{
-		peerConn: peerConn{
-			id: PubKeyToID(pubKey),
-		},
 		nodeInfo: NodeInfo{
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 			PubKey:     pubKey,

@@ -472,26 +472,15 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 // NOTE: This performs a blocking handshake before the peer is added.
 // NOTE: If error is returned, caller is responsible for calling peer.CloseConn()
 func (sw *Switch) addPeer(pc peerConn) error {
+
 	addr := pc.conn.RemoteAddr()
-	id := pc.id
-
-	// Avoid self
-	if sw.nodeKey.ID() == id {
-		return ErrSwitchConnectToSelf
-	}
-
-	// Avoid duplicate
-	if sw.peers.Has(id) {
-		return ErrSwitchDuplicatePeer
-	}
-
-	// Filter peer against white list
 	if err := sw.FilterConnByAddr(addr); err != nil {
 		return err
 	}
-	if err := sw.FilterConnByID(id); err != nil {
-		return err
-	}
+
+	// NOTE: if AuthEnc==false, we don't have a peerID until after the handshake.
+	// If AuthEnc==true then we already know the ID and could do the checks first before the handshake,
+	// but it's simple to just deal with both cases the same after the handshake.
 
 	// Exchange NodeInfo on the conn
 	peerNodeInfo, err := pc.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.peerConfig.HandshakeTimeout*time.Second))
@@ -499,8 +488,35 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	// Validate the peers nodeInfo against the ID from the SecretConnection
-	if err := peerNodeInfo.Validate(id); err != nil {
+	peerID := peerNodeInfo.ID()
+
+	// ensure connection key matches self reported key
+	if pc.config.AuthEnc {
+		connID := pc.ID()
+
+		if peerID != connID {
+			return fmt.Errorf("nodeInfo.ID() (%v) doesn't match conn.ID() (%v)",
+				peerID, connID)
+		}
+	}
+
+	// Validate the peers nodeInfo
+	if err := peerNodeInfo.Validate(); err != nil {
+		return err
+	}
+
+	// Avoid self
+	if sw.nodeKey.ID() == peerID {
+		return ErrSwitchConnectToSelf
+	}
+
+	// Avoid duplicate
+	if sw.peers.Has(peerID) {
+		return ErrSwitchDuplicatePeer
+	}
+
+	// Filter peer against ID white list
+	if err := sw.FilterConnByID(peerID); err != nil {
 		return err
 	}
 
