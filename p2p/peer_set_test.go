@@ -7,15 +7,16 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Returns an empty dummy peer
 func randPeer() *peer {
 	return &peer{
-		nodeInfo: &NodeInfo{
-			RemoteAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+		nodeInfo: NodeInfo{
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
 	}
 }
@@ -39,7 +40,7 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 		peerSet.Remove(peerAtFront)
 		wantSize := n - i - 1
 		for j := 0; j < 2; j++ {
-			assert.Equal(t, false, peerSet.Has(peerAtFront.Key()), "#%d Run #%d: failed to remove peer", i, j)
+			assert.Equal(t, false, peerSet.Has(peerAtFront.ID()), "#%d Run #%d: failed to remove peer", i, j)
 			assert.Equal(t, wantSize, peerSet.Size(), "#%d Run #%d: failed to remove peer and decrement size", i, j)
 			// Test the route of removing the now non-existent element
 			peerSet.Remove(peerAtFront)
@@ -58,7 +59,7 @@ func TestPeerSetAddRemoveOne(t *testing.T) {
 	for i := n - 1; i >= 0; i-- {
 		peerAtEnd := peerList[i]
 		peerSet.Remove(peerAtEnd)
-		assert.Equal(t, false, peerSet.Has(peerAtEnd.Key()), "#%d: failed to remove item at end", i)
+		assert.Equal(t, false, peerSet.Has(peerAtEnd.ID()), "#%d: failed to remove item at end", i)
 		assert.Equal(t, i, peerSet.Size(), "#%d: differing sizes after peerSet.Remove(atEndPeer)", i)
 	}
 }
@@ -82,7 +83,7 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 
 	for i, peer := range peers {
 		peerSet.Remove(peer)
-		if peerSet.Has(peer.Key()) {
+		if peerSet.Has(peer.ID()) {
 			t.Errorf("Failed to remove peer")
 		}
 		if peerSet.Size() != len(peers)-i-1 {
@@ -129,7 +130,7 @@ func TestPeerSetGet(t *testing.T) {
 	t.Parallel()
 	peerSet := NewPeerSet()
 	peer := randPeer()
-	assert.Nil(t, peerSet.Get(peer.Key()), "expecting a nil lookup, before .Add")
+	assert.Nil(t, peerSet.Get(peer.ID()), "expecting a nil lookup, before .Add")
 
 	if err := peerSet.Add(peer); err != nil {
 		t.Fatalf("Failed to add new peer: %v", err)
@@ -142,7 +143,7 @@ func TestPeerSetGet(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			got, want := peerSet.Get(peer.Key()), peer
+			got, want := peerSet.Get(peer.ID()), peer
 			assert.Equal(t, got, want, "#%d: got=%v want=%v", i, got, want)
 		}(i)
 	}

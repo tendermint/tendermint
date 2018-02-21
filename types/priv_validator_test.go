@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -173,7 +172,59 @@ func TestSignProposal(t *testing.T) {
 	assert.Equal(sig, proposal.Signature)
 }
 
-func newVote(addr data.Bytes, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
+func TestDifferByTimestamp(t *testing.T) {
+	_, tempFilePath := cmn.Tempfile("priv_validator_")
+	privVal := GenPrivValidatorFS(tempFilePath)
+
+	block1 := PartSetHeader{5, []byte{1, 2, 3}}
+	height, round := int64(10), 1
+	chainID := "mychainid"
+
+	// test proposal
+	{
+		proposal := newProposal(height, round, block1)
+		err := privVal.SignProposal(chainID, proposal)
+		assert.NoError(t, err, "expected no error signing proposal")
+		signBytes := SignBytes(chainID, proposal)
+		sig := proposal.Signature
+		timeStamp := clipToMS(proposal.Timestamp)
+
+		// manipulate the timestamp. should get changed back
+		proposal.Timestamp = proposal.Timestamp.Add(time.Millisecond)
+		proposal.Signature = crypto.Signature{}
+		err = privVal.SignProposal("mychainid", proposal)
+		assert.NoError(t, err, "expected no error on signing same proposal")
+
+		assert.Equal(t, timeStamp, proposal.Timestamp)
+		assert.Equal(t, signBytes, SignBytes(chainID, proposal))
+		assert.Equal(t, sig, proposal.Signature)
+	}
+
+	// test vote
+	{
+		voteType := VoteTypePrevote
+		blockID := BlockID{[]byte{1, 2, 3}, PartSetHeader{}}
+		vote := newVote(privVal.Address, 0, height, round, voteType, blockID)
+		err := privVal.SignVote("mychainid", vote)
+		assert.NoError(t, err, "expected no error signing vote")
+
+		signBytes := SignBytes(chainID, vote)
+		sig := vote.Signature
+		timeStamp := clipToMS(vote.Timestamp)
+
+		// manipulate the timestamp. should get changed back
+		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
+		vote.Signature = crypto.Signature{}
+		err = privVal.SignVote("mychainid", vote)
+		assert.NoError(t, err, "expected no error on signing same vote")
+
+		assert.Equal(t, timeStamp, vote.Timestamp)
+		assert.Equal(t, signBytes, SignBytes(chainID, vote))
+		assert.Equal(t, sig, vote.Signature)
+	}
+}
+
+func newVote(addr Address, idx int, height int64, round int, typ byte, blockID BlockID) *Vote {
 	return &Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,
@@ -190,5 +241,13 @@ func newProposal(height int64, round int, partsHeader PartSetHeader) *Proposal {
 		Height:           height,
 		Round:            round,
 		BlockPartsHeader: partsHeader,
+		Timestamp:        time.Now().UTC(),
 	}
+}
+
+func clipToMS(t time.Time) time.Time {
+	nano := t.UnixNano()
+	million := int64(1000000)
+	nano = (nano / million) * million
+	return time.Unix(0, nano).UTC()
 }

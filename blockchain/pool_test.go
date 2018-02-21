@@ -5,9 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -15,14 +17,14 @@ func init() {
 }
 
 type testPeer struct {
-	id     string
+	id     p2p.ID
 	height int64
 }
 
-func makePeers(numPeers int, minHeight, maxHeight int64) map[string]testPeer {
-	peers := make(map[string]testPeer, numPeers)
+func makePeers(numPeers int, minHeight, maxHeight int64) map[p2p.ID]testPeer {
+	peers := make(map[p2p.ID]testPeer, numPeers)
 	for i := 0; i < numPeers; i++ {
-		peerID := cmn.RandStr(12)
+		peerID := p2p.ID(cmn.RandStr(12))
 		height := minHeight + rand.Int63n(maxHeight-minHeight)
 		peers[peerID] = testPeer{peerID, height}
 	}
@@ -32,7 +34,7 @@ func makePeers(numPeers int, minHeight, maxHeight int64) map[string]testPeer {
 func TestBasic(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
-	timeoutsCh := make(chan string, 100)
+	timeoutsCh := make(chan p2p.ID, 100)
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.SetLogger(log.TestingLogger())
@@ -89,7 +91,7 @@ func TestBasic(t *testing.T) {
 func TestTimeout(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
-	timeoutsCh := make(chan string, 100)
+	timeoutsCh := make(chan p2p.ID, 100)
 	requestsCh := make(chan BlockRequest, 100)
 	pool := NewBlockPool(start, requestsCh, timeoutsCh)
 	pool.SetLogger(log.TestingLogger())
@@ -127,7 +129,7 @@ func TestTimeout(t *testing.T) {
 
 	// Pull from channels
 	counter := 0
-	timedOut := map[string]struct{}{}
+	timedOut := map[p2p.ID]struct{}{}
 	for {
 		select {
 		case peerID := <-timeoutsCh:

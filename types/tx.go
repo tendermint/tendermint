@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -18,7 +18,7 @@ type Tx []byte
 
 // Hash computes the RIPEMD160 hash of the go-wire encoded transaction.
 func (tx Tx) Hash() []byte {
-	return merkle.SimpleHashFromBinary(tx)
+	return wireHasher(tx).Hash()
 }
 
 // String returns the hex-encoded transaction as a string.
@@ -72,11 +72,11 @@ func (txs Txs) IndexByHash(hash []byte) int {
 // TODO: optimize this!
 func (txs Txs) Proof(i int) TxProof {
 	l := len(txs)
-	hashables := make([]merkle.Hashable, l)
+	hashers := make([]merkle.Hasher, l)
 	for i := 0; i < l; i++ {
-		hashables[i] = txs[i]
+		hashers[i] = txs[i]
 	}
-	root, proofs := merkle.SimpleProofsFromHashables(hashables)
+	root, proofs := merkle.SimpleProofsFromHashers(hashers)
 
 	return TxProof{
 		Index:    i,
@@ -90,7 +90,7 @@ func (txs Txs) Proof(i int) TxProof {
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
 	Index, Total int
-	RootHash     data.Bytes
+	RootHash     cmn.HexBytes
 	Data         Tx
 	Proof        merkle.SimpleProof
 }

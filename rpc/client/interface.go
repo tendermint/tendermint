@@ -20,7 +20,6 @@ implementation.
 package client
 
 import (
-	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -32,8 +31,9 @@ import (
 type ABCIClient interface {
 	// reading from abci app
 	ABCIInfo() (*ctypes.ResultABCIInfo, error)
-	ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error)
-	ABCIQueryWithOptions(path string, data data.Bytes, opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
+	ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error)
+	ABCIQueryWithOptions(path string, data cmn.HexBytes,
+		opts ABCIQueryOptions) (*ctypes.ResultABCIQuery, error)
 
 	// writing to abci app
 	BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error)

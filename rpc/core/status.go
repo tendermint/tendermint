@@ -3,9 +3,9 @@ package core
 import (
 	"time"
 
-	data "github.com/tendermint/go-wire/data"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Get Tendermint status including node info, pubkey, latest block
@@ -59,8 +59,8 @@ func Status() (*ctypes.ResultStatus, error) {
 	latestHeight := blockStore.Height()
 	var (
 		latestBlockMeta     *types.BlockMeta
-		latestBlockHash     data.Bytes
-		latestAppHash       data.Bytes
+		latestBlockHash     cmn.HexBytes
+		latestAppHash       cmn.HexBytes
 		latestBlockTimeNano int64
 	)
 	if latestHeight != 0 {

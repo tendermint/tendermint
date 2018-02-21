@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 var (
@@ -28,7 +29,7 @@ func init() {
 }
 
 type PeerMessage struct {
-	PeerKey string
+	PeerID  ID
 	Bytes   []byte
 	Counter int
 }
@@ -37,7 +38,7 @@ type TestReactor struct {
 	BaseReactor
 
 	mtx          sync.Mutex
-	channels     []*ChannelDescriptor
+	channels     []*conn.ChannelDescriptor
 	peersAdded   []Peer
 	peersRemoved []Peer
 	logMessages  bool
@@ -45,7 +46,7 @@ type TestReactor struct {
 	msgsReceived map[byte][]PeerMessage
 }
 
-func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReactor {
+func NewTestReactor(channels []*conn.ChannelDescriptor, logMessages bool) *TestReactor {
 	tr := &TestReactor{
 		channels:     channels,
 		logMessages:  logMessages,
@@ -56,7 +57,7 @@ func NewTestReactor(channels []*ChannelDescriptor, logMessages bool) *TestReacto
 	return tr
 }
 
-func (tr *TestReactor) GetChannels() []*ChannelDescriptor {
+func (tr *TestReactor) GetChannels() []*conn.ChannelDescriptor {
 	return tr.channels
 }
 
@@ -77,7 +78,7 @@ func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 		tr.mtx.Lock()
 		defer tr.mtx.Unlock()
 		//fmt.Printf("Received: %X, %X\n", chID, msgBytes)
-		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.Key(), msgBytes, tr.msgsCounter})
+		tr.msgsReceived[chID] = append(tr.msgsReceived[chID], PeerMessage{peer.ID(), msgBytes, tr.msgsCounter})
 		tr.msgsCounter++
 	}
 }
@@ -92,7 +93,7 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 
 // convenience method for creating two switches connected to each other.
 // XXX: note this uses net.Pipe and not a proper TCP conn
-func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
+func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
 	switches := MakeConnectedSwitches(config, 2, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
@@ -100,11 +101,11 @@ func makeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
 	// Make two reactors of two channels each
-	sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
+	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x00), Priority: 10},
 		{ID: byte(0x01), Priority: 10},
 	}, true))
-	sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
+	sw.AddReactor("bar", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x02), Priority: 10},
 		{ID: byte(0x03), Priority: 10},
 	}, true))
@@ -112,7 +113,7 @@ func initSwitchFunc(i int, sw *Switch) *Switch {
 }
 
 func TestSwitches(t *testing.T) {
-	s1, s2 := makeSwitchPair(t, initSwitchFunc)
+	s1, s2 := MakeSwitchPair(t, initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
@@ -156,12 +157,12 @@ func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reacto
 }
 
 func TestConnAddrFilter(t *testing.T) {
-	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := netPipe()
+	c1, c2 := conn.NetPipe()
 
 	s1.SetAddrFilter(func(addr net.Addr) error {
 		if addr.String() == c1.RemoteAddr().String() {
@@ -192,15 +193,15 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 }
 
 func TestConnPubKeyFilter(t *testing.T) {
-	s1 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := netPipe()
+	c1, c2 := conn.NetPipe()
 
 	// set pubkey filter
-	s1.SetPubKeyFilter(func(pubkey crypto.PubKeyEd25519) error {
+	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
 		if bytes.Equal(pubkey.Bytes(), s2.nodeInfo.PubKey.Bytes()) {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
@@ -224,7 +225,7 @@ func TestConnPubKeyFilter(t *testing.T) {
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -232,11 +233,11 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, DefaultPeerConfig(), false)
 	require.Nil(err)
 	err = sw.addPeer(peer)
 	require.Nil(err)
@@ -251,7 +252,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := makeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -259,12 +260,11 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodePrivKey, DefaultPeerConfig())
-	peer.makePersistent()
+	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, DefaultPeerConfig(), true)
 	require.Nil(err)
 	err = sw.addPeer(peer)
 	require.Nil(err)
@@ -300,16 +300,14 @@ func TestSwitchFullConnectivity(t *testing.T) {
 	}
 }
 
-func BenchmarkSwitches(b *testing.B) {
-	b.StopTimer()
-
-	s1, s2 := makeSwitchPair(b, func(i int, sw *Switch) *Switch {
+func BenchmarkSwitchBroadcast(b *testing.B) {
+	s1, s2 := MakeSwitchPair(b, func(i int, sw *Switch) *Switch {
 		// Make bar reactors of bar channels each
-		sw.AddReactor("foo", NewTestReactor([]*ChannelDescriptor{
+		sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 			{ID: byte(0x00), Priority: 10},
 			{ID: byte(0x01), Priority: 10},
 		}, false))
-		sw.AddReactor("bar", NewTestReactor([]*ChannelDescriptor{
+		sw.AddReactor("bar", NewTestReactor([]*conn.ChannelDescriptor{
 			{ID: byte(0x02), Priority: 10},
 			{ID: byte(0x03), Priority: 10},
 		}, false))
@@ -320,7 +318,8 @@ func BenchmarkSwitches(b *testing.B) {
 
 	// Allow time for goroutines to boot up
 	time.Sleep(1 * time.Second)
-	b.StartTimer()
+
+	b.ResetTimer()
 
 	numSuccess, numFailure := 0, 0
 
@@ -338,7 +337,4 @@ func BenchmarkSwitches(b *testing.B) {
 	}
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
-
-	// Allow everything to flush before stopping switches & closing connections.
-	b.StopTimer()
 }

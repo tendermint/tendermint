@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"math"
 	"sort"
 	"strings"
 
@@ -20,7 +21,6 @@ import (
 // upon calling .IncrementAccum().
 // NOTE: Not goroutine-safe.
 // NOTE: All get/set to validators should copy the value for safety.
-// TODO: consider validator Accum overflow
 type ValidatorSet struct {
 	// NOTE: persisted via reflect, must be exported.
 	Validators []*Validator `json:"validators"`
@@ -48,13 +48,13 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 }
 
 // incrementAccum and update the proposer
-// TODO: mind the overflow when times and votingPower shares too large.
 func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range valSet.Validators {
-		val.Accum += val.VotingPower * int64(times) // TODO: mind overflow
-		validatorsHeap.Push(val, accumComparable{val})
+		// check for overflow both multiplication and sum
+		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
+		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
 	// Decrement the validator with most accum times times
@@ -63,7 +63,9 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 		if i == times-1 {
 			valSet.Proposer = mostest
 		}
-		mostest.Accum -= int64(valSet.TotalVotingPower())
+
+		// mind underflow
+		mostest.Accum = safeSubClip(mostest.Accum, valSet.TotalVotingPower())
 		validatorsHeap.Update(mostest, accumComparable{mostest})
 	}
 }
@@ -117,7 +119,8 @@ func (valSet *ValidatorSet) Size() int {
 func (valSet *ValidatorSet) TotalVotingPower() int64 {
 	if valSet.totalVotingPower == 0 {
 		for _, val := range valSet.Validators {
-			valSet.totalVotingPower += val.VotingPower
+			// mind overflow
+			valSet.totalVotingPower = safeAddClip(valSet.totalVotingPower, val.VotingPower)
 		}
 	}
 	return valSet.totalVotingPower
@@ -147,11 +150,11 @@ func (valSet *ValidatorSet) Hash() []byte {
 	if len(valSet.Validators) == 0 {
 		return nil
 	}
-	hashables := make([]merkle.Hashable, len(valSet.Validators))
+	hashers := make([]merkle.Hasher, len(valSet.Validators))
 	for i, val := range valSet.Validators {
-		hashables[i] = val
+		hashers[i] = val
 	}
-	return merkle.SimpleHashFromHashables(hashables)
+	return merkle.SimpleHashFromHashers(hashers)
 }
 
 func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
@@ -424,4 +427,78 @@ func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*P
 	valSet := NewValidatorSet(vals)
 	sort.Sort(PrivValidatorsByAddress(privValidators))
 	return valSet, privValidators
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Safe multiplication and addition/subtraction
+
+func safeMul(a, b int64) (int64, bool) {
+	if a == 0 || b == 0 {
+		return 0, false
+	}
+	if a == 1 {
+		return b, false
+	}
+	if b == 1 {
+		return a, false
+	}
+	if a == math.MinInt64 || b == math.MinInt64 {
+		return -1, true
+	}
+	c := a * b
+	return c, c/b != a
+}
+
+func safeAdd(a, b int64) (int64, bool) {
+	if b > 0 && a > math.MaxInt64-b {
+		return -1, true
+	} else if b < 0 && a < math.MinInt64-b {
+		return -1, true
+	}
+	return a + b, false
+}
+
+func safeSub(a, b int64) (int64, bool) {
+	if b > 0 && a < math.MinInt64+b {
+		return -1, true
+	} else if b < 0 && a > math.MaxInt64+b {
+		return -1, true
+	}
+	return a - b, false
+}
+
+func safeMulClip(a, b int64) int64 {
+	c, overflow := safeMul(a, b)
+	if overflow {
+		if (a < 0 || b < 0) && !(a < 0 && b < 0) {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
+}
+
+func safeAddClip(a, b int64) int64 {
+	c, overflow := safeAdd(a, b)
+	if overflow {
+		if b < 0 {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
+}
+
+func safeSubClip(a, b int64) int64 {
+	c, overflow := safeSub(a, b)
+	if overflow {
+		if b > 0 {
+			return math.MinInt64
+		} else {
+			return math.MaxInt64
+		}
+	}
+	return c
 }

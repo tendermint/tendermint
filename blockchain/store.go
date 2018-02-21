@@ -8,9 +8,11 @@ import (
 	"sync"
 
 	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/types"
+
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
+
+	"github.com/tendermint/tendermint/types"
 )
 
 /*
@@ -252,7 +254,7 @@ func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
 // If no BlockStoreStateJSON was previously persisted, it returns the zero value.
 func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 	bytes := db.Get(blockStoreKey)
-	if bytes == nil {
+	if len(bytes) == 0 {
 		return BlockStoreStateJSON{
 			Height: 0,
 		}

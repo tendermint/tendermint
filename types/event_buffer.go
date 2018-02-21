@@ -41,6 +41,10 @@ func (b *TxEventBuffer) Flush() error {
 			return err
 		}
 	}
-	b.events = make([]EventDataTx, 0, b.capacity)
+
+	// Clear out the elements and set the length to 0
+	// but maintain the underlying slice's capacity.
+	// See Issue https://github.com/tendermint/tendermint/issues/1189
+	b.events = b.events[:0]
 	return nil
 }

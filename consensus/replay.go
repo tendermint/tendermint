@@ -61,21 +61,21 @@ func (cs *ConsensusState) readReplayMessage(msg *TimedWALMessage, newStepCh chan
 			}
 		}
 	case msgInfo:
-		peerKey := m.PeerKey
-		if peerKey == "" {
-			peerKey = "local"
+		peerID := m.PeerID
+		if peerID == "" {
+			peerID = "local"
 		}
 		switch msg := m.Msg.(type) {
 		case *ProposalMessage:
 			p := msg.Proposal
 			cs.Logger.Info("Replay: Proposal", "height", p.Height, "round", p.Round, "header",
-				p.BlockPartsHeader, "pol", p.POLRound, "peer", peerKey)
+				p.BlockPartsHeader, "pol", p.POLRound, "peer", peerID)
 		case *BlockPartMessage:
-			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerKey)
+			cs.Logger.Info("Replay: BlockPart", "height", msg.Height, "round", msg.Round, "peer", peerID)
 		case *VoteMessage:
 			v := msg.Vote
 			cs.Logger.Info("Replay: Vote", "height", v.Height, "round", v.Round, "type", v.Type,
-				"blockID", v.BlockID, "peer", peerKey)
+				"blockID", v.BlockID, "peer", peerID)
 		}
 
 		cs.handleMsg(m)
@@ -249,7 +249,9 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(state.Validators)
-		if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
+		// TODO: get the genesis bytes (https://github.com/tendermint/tendermint/issues/1224)
+		var genesisBytes []byte
+		if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators, genesisBytes}); err != nil {
 			return nil, err
 		}
 	}
@@ -423,5 +425,5 @@ func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlo
 }
 
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{Code: abci.CodeTypeOK, Data: mock.appHash}
+	return abci.ResponseCommit{Data: mock.appHash}
 }

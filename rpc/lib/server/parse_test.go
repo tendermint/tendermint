@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/go-wire/data"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func TestParseJSONMap(t *testing.T) {
@@ -31,7 +31,7 @@ func TestParseJSONMap(t *testing.T) {
 	// preloading map with values doesn't help
 	tmp := 0
 	p2 := map[string]interface{}{
-		"value":  &data.Bytes{},
+		"value":  &cmn.HexBytes{},
 		"height": &tmp,
 	}
 	err = json.Unmarshal(input, &p2)
@@ -54,7 +54,7 @@ func TestParseJSONMap(t *testing.T) {
 		Height interface{} `json:"height"`
 	}{
 		Height: &tmp,
-		Value:  &data.Bytes{},
+		Value:  &cmn.HexBytes{},
 	}
 	err = json.Unmarshal(input, &p3)
 	if assert.Nil(err) {
@@ -62,7 +62,7 @@ func TestParseJSONMap(t *testing.T) {
 		if assert.True(ok, "%#v", p3.Height) {
 			assert.Equal(22, *h)
 		}
-		v, ok := p3.Value.(*data.Bytes)
+		v, ok := p3.Value.(*cmn.HexBytes)
 		if assert.True(ok, "%#v", p3.Value) {
 			assert.EqualValues([]byte{0x12, 0x34}, *v)
 		}
@@ -70,8 +70,8 @@ func TestParseJSONMap(t *testing.T) {
 
 	// simplest solution, but hard-coded
 	p4 := struct {
-		Value  data.Bytes `json:"value"`
-		Height int        `json:"height"`
+		Value  cmn.HexBytes `json:"value"`
+		Height int          `json:"height"`
 	}{}
 	err = json.Unmarshal(input, &p4)
 	if assert.Nil(err) {
@@ -90,10 +90,10 @@ func TestParseJSONMap(t *testing.T) {
 			assert.Equal(22, h)
 		}
 
-		var v data.Bytes
+		var v cmn.HexBytes
 		err = json.Unmarshal(*p5["value"], &v)
 		if assert.Nil(err) {
-			assert.Equal(data.Bytes{0x12, 0x34}, v)
+			assert.Equal(cmn.HexBytes{0x12, 0x34}, v)
 		}
 	}
 }
@@ -119,10 +119,10 @@ func TestParseJSONArray(t *testing.T) {
 
 	// preloading map with values helps here (unlike map - p2 above)
 	tmp := 0
-	p2 := []interface{}{&data.Bytes{}, &tmp}
+	p2 := []interface{}{&cmn.HexBytes{}, &tmp}
 	err = json.Unmarshal(input, &p2)
 	if assert.Nil(err) {
-		v, ok := p2[0].(*data.Bytes)
+		v, ok := p2[0].(*cmn.HexBytes)
 		if assert.True(ok, "%#v", p2[0]) {
 			assert.EqualValues([]byte{0x12, 0x34}, *v)
 		}

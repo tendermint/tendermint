@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/go-kit/kit/log/term"
@@ -91,18 +93,65 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 	wg.Done()
 }
 
-var (
+const (
 	NUM_TXS = 1000
 	TIMEOUT = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
 func TestReactorBroadcastTxMessage(t *testing.T) {
 	config := cfg.TestConfig()
-	N := 4
+	const N = 4
 	reactors := makeAndConnectMempoolReactors(config, N)
+	defer func() {
+		for _, r := range reactors {
+			r.Stop()
+		}
+	}()
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
 	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS)
 	waitForTxs(t, txs, reactors)
+}
+
+func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	config := cfg.TestConfig()
+	const N = 2
+	reactors := makeAndConnectMempoolReactors(config, N)
+	defer func() {
+		for _, r := range reactors {
+			r.Stop()
+		}
+	}()
+
+	// stop peer
+	sw := reactors[1].Switch
+	sw.StopPeerForError(sw.Peers().List()[0], errors.New("some reason"))
+
+	// check that we are not leaking any go-routines
+	// i.e. broadcastTxRoutine finishes when peer is stopped
+	leaktest.CheckTimeout(t, 10*time.Second)()
+}
+
+func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
+	config := cfg.TestConfig()
+	const N = 2
+	reactors := makeAndConnectMempoolReactors(config, N)
+
+	// stop reactors
+	for _, r := range reactors {
+		r.Stop()
+	}
+
+	// check that we are not leaking any go-routines
+	// i.e. broadcastTxRoutine finishes when reactor is stopped
+	leaktest.CheckTimeout(t, 10*time.Second)()
 }

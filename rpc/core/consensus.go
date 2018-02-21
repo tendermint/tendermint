@@ -3,6 +3,7 @@ package core
 import (
 	cm "github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	p2p "github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -82,11 +83,11 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 // }
 // ```
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
-	peerRoundStates := make(map[string]*cstypes.PeerRoundState)
+	peerRoundStates := make(map[p2p.ID]*cstypes.PeerRoundState)
 	for _, peer := range p2pSwitch.Peers().List() {
 		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)
 		peerRoundState := peerState.GetRoundState()
-		peerRoundStates[peer.Key()] = peerRoundState
+		peerRoundStates[peer.ID()] = peerRoundState
 	}
 	return &ctypes.ResultDumpConsensusState{consensusState.GetRoundState(), peerRoundStates}, nil
 }

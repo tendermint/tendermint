@@ -2,17 +2,23 @@
 
 Here we describe the data structures in the Tendermint blockchain and the rules for validating them.
 
-# Data Structures
+## Data Structures
 
 The Tendermint blockchains consists of a short list of basic data types:
-`Block`, `Header`, `Vote`, `BlockID`, `Signature`, and `Evidence`.
+
+- `Block`
+- `Header`
+- `Vote`
+- `BlockID`
+- `Signature`
+- `Evidence`
 
 ## Block
 
 A block consists of a header, a list of transactions, a list of votes (the commit),
-and a list of evidence if malfeasance (ie. signing conflicting votes).
+and a list of evidence of malfeasance (ie. signing conflicting votes).
 
-```
+```go
 type Block struct {
     Header      Header
     Txs         [][]byte
@@ -26,12 +32,12 @@ type Block struct {
 A block header contains metadata about the block and about the consensus, as well as commitments to
 the data in the current block, the previous block, and the results returned by the application:
 
-```
+```go
 type Header struct {
     // block metadata
     Version             string  // Version string
     ChainID             string  // ID of the chain
-    Height              int64   // current block height
+    Height              int64   // Current block height
     Time                int64   // UNIX time, in millisconds
 
     // current block
@@ -55,7 +61,7 @@ type Header struct {
 }
 ```
 
-Further details on each of this fields is taken up below.
+Further details on each of these fields is described below.
 
 ## BlockID
 
@@ -66,7 +72,7 @@ the block during consensus, is the Merkle root of the complete serialized block
 cut into parts. The `BlockID` includes these two hashes, as well as the number of
 parts.
 
-```
+```go
 type BlockID struct {
     Hash []byte
     Parts PartsHeader
@@ -83,7 +89,7 @@ type PartsHeader struct {
 A vote is a signed message from a validator for a particular block.
 The vote includes information about the validator signing it.
 
-```
+```go
 type Vote struct {
     Timestamp   int64
     Address     []byte
@@ -96,10 +102,9 @@ type Vote struct {
 }
 ```
 
-
 There are two types of votes:
-a prevote has `vote.Type == 1` and
-a precommit has `vote.Type == 2`.
+a *prevote* has `vote.Type == 1` and
+a *precommit* has `vote.Type == 2`.
 
 ## Signature
 
@@ -111,7 +116,7 @@ Currently, Tendermint supports Ed25519 and Secp256k1.
 
 An ED25519 signature has `Type == 0x1`. It looks like:
 
-```
+```go
 // Implements Signature
 type Ed25519Signature struct {
     Type        int8        = 0x1
@@ -125,7 +130,7 @@ where `Signature` is the 64 byte signature.
 
 A `Secp256k1` signature has `Type == 0x2`. It looks like:
 
-```
+```go
 // Implements Signature
 type Secp256k1Signature struct {
     Type        int8        = 0x2
@@ -135,7 +140,7 @@ type Secp256k1Signature struct {
 
 where `Signature` is the DER encoded signature, ie:
 
-```
+```hex
 0x30 <length of whole message> <0x02> <length of R> <R> 0x2 <length of S> <S>.
 ```
 
@@ -143,7 +148,7 @@ where `Signature` is the DER encoded signature, ie:
 
 TODO
 
-# Validation
+## Validation
 
 Here we describe the validation rules for every element in a block.
 Blocks which do not satisfy these rules are considered invalid.
@@ -159,7 +164,7 @@ and other results from the application.
 Elements of an object are accessed as expected,
 ie. `block.Header`. See [here](state.md) for the definition of `state`.
 
-## Header
+### Header
 
 A Header is valid if its corresponding fields are valid.
 
@@ -173,7 +178,7 @@ Arbitrary constant string.
 
 ### Height
 
-```
+```go
 block.Header.Height > 0
 block.Header.Height == prevBlock.Header.Height + 1
 ```
@@ -185,12 +190,12 @@ The height is an incrementing integer. The first block has `block.Header.Height 
 The median of the timestamps of the valid votes in the block.LastCommit.
 Corresponds to the number of nanoseconds, with millisecond resolution, since January 1, 1970.
 
-Note the timestamp in a vote must be greater by at least one millisecond than that of the
+Note: the timestamp of a vote must be greater by at least one millisecond than that of the
 block being voted on.
 
 ### NumTxs
 
-```
+```go
 block.Header.NumTxs == len(block.Txs)
 ```
 
@@ -198,7 +203,7 @@ Number of transactions included in the block.
 
 ### TxHash
 
-```
+```go
 block.Header.TxHash == SimpleMerkleRoot(block.Txs)
 ```
 
@@ -206,7 +211,7 @@ Simple Merkle root of the transactions in the block.
 
 ### LastCommitHash
 
-```
+```go
 block.Header.LastCommitHash == SimpleMerkleRoot(block.LastCommit)
 ```
 
@@ -217,7 +222,7 @@ The first block has `block.Header.LastCommitHash == []byte{}`
 
 ### TotalTxs
 
-```
+```go
 block.Header.TotalTxs == prevBlock.Header.TotalTxs + block.Header.NumTxs
 ```
 
@@ -227,7 +232,9 @@ The first block has `block.Header.TotalTxs = block.Header.NumberTxs`.
 
 ### LastBlockID
 
-```
+LastBlockID is the previous block's BlockID:
+
+```go
 prevBlockParts := MakeParts(prevBlock, state.LastConsensusParams.BlockGossip.BlockPartSize)
 block.Header.LastBlockID == BlockID {
     Hash: SimpleMerkleRoot(prevBlock.Header),
@@ -238,14 +245,14 @@ block.Header.LastBlockID == BlockID {
 }
 ```
 
-Previous block's BlockID. Note it depends on the ConsensusParams,
+Note: it depends on the ConsensusParams,
 which are held in the `state` and may be updated by the application.
 
 The first block has `block.Header.LastBlockID == BlockID{}`.
 
 ### ResultsHash
 
-```
+```go
 block.ResultsHash == SimpleMerkleRoot(state.LastResults)
 ```
 
@@ -255,7 +262,7 @@ The first block has `block.Header.ResultsHash == []byte{}`.
 
 ### AppHash
 
-```
+```go
 block.AppHash == state.AppHash
 ```
 
@@ -265,7 +272,7 @@ The first block has `block.Header.AppHash == []byte{}`.
 
 ### ValidatorsHash
 
-```
+```go
 block.ValidatorsHash == SimpleMerkleRoot(state.Validators)
 ```
 
@@ -275,7 +282,7 @@ May be updated by the application.
 
 ### ConsensusParamsHash
 
-```
+```go
 block.ConsensusParamsHash == SimpleMerkleRoot(state.ConsensusParams)
 ```
 
@@ -284,19 +291,17 @@ May be updated by the application.
 
 ### Proposer
 
-```
+```go
 block.Header.Proposer in state.Validators
 ```
 
 Original proposer of the block. Must be a current validator.
 
-NOTE: this field can only be further verified by real-time participants in the consensus.
-This is because the same block can be proposed in multiple rounds for the same height
-and we do not track the initial round the block was proposed.
+NOTE: we also need to track the round.
 
-### EvidenceHash
+## EvidenceHash
 
-```
+```go
 block.EvidenceHash == SimpleMerkleRoot(block.Evidence)
 ```
 
@@ -310,7 +315,7 @@ Arbitrary length array of arbitrary length byte-arrays.
 
 The first height is an exception - it requires the LastCommit to be empty:
 
-```
+```go
 if block.Header.Height == 1 {
     len(b.LastCommit) == 0
 }
@@ -318,7 +323,7 @@ if block.Header.Height == 1 {
 
 Otherwise, we require:
 
-```
+```go
 len(block.LastCommit) == len(state.LastValidators)
 talliedVotingPower := 0
 for i, vote := range block.LastCommit{
@@ -356,21 +361,21 @@ For signing, votes are encoded in JSON, and the ChainID is included, in the form
 We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the CanonicalSignBytes
 using the given ChainID:
 
-```
+```go
 func (v Vote) Verify(chainID string, pubKey PubKey) bool {
     return pubKey.Verify(v.Signature, CanonicalSignBytes(chainID, v))
 }
 ```
 
-where `pubKey.Verify` performs the approprioate digital signature verification of the `pubKey`
+where `pubKey.Verify` performs the appropriate digital signature verification of the `pubKey`
 against the given signature and message bytes.
 
 ## Evidence
 
+TODO
 
 ```
-
-
+TODO
 ```
 
 Every piece of evidence contains two conflicting votes from a single validator that
@@ -382,10 +387,38 @@ The votes must not be too old.
 
 Once a block is validated, it can be executed against the state.
 
-The state follows the recursive equation:
+The state follows this recursive equation:
 
-```
-app = NewABCIApp
+```go
 state(1) = InitialState
-state(h+1) <- Execute(state(h), app, block(h))
+state(h+1) <- Execute(state(h), ABCIApp, block(h))
 ```
+
+where `InitialState` includes the initial consensus parameters and validator set,
+and `ABCIApp` is an ABCI application that can return results and changes to the validator
+set (TODO). Execute is defined as:
+
+```go
+Execute(s State, app ABCIApp, block Block) State {
+    TODO: just spell out ApplyBlock here
+    and remove ABCIResponses struct.
+    abciResponses := app.ApplyBlock(block)
+
+    return State{
+        LastResults: abciResponses.DeliverTxResults,
+        AppHash: abciResponses.AppHash,
+        Validators: UpdateValidators(state.Validators, abciResponses.ValidatorChanges),
+        LastValidators: state.Validators,
+        ConsensusParams: UpdateConsensusParams(state.ConsensusParams, abci.Responses.ConsensusParamChanges),
+    }
+}
+
+type ABCIResponses struct {
+    DeliverTxResults        []Result
+    ValidatorChanges        []Validator
+    ConsensusParamChanges   ConsensusParams
+    AppHash                 []byte
+}
+```
+
+

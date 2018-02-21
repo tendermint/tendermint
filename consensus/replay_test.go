@@ -81,13 +81,13 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 }
 
 func sendTxs(cs *ConsensusState, ctx context.Context) {
-	i := 0
-	for {
+	for i := 0; i < 256; i++ {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			cs.mempool.CheckTx([]byte{byte(i)}, nil)
+			tx := []byte{byte(i)}
+			cs.mempool.CheckTx(tx, nil)
 			i++
 		}
 	}
@@ -413,7 +413,9 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	defer proxyApp.Stop()
 
 	validators := types.TM2PB.Validators(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
+	// TODO: get the genesis bytes (https://github.com/tendermint/tendermint/issues/1224)
+	var genesisBytes []byte
+	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators, genesisBytes}); err != nil {
 		panic(err)
 	}
 
@@ -448,7 +450,9 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 	defer proxyApp.Stop()
 
 	validators := types.TM2PB.Validators(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators}); err != nil {
+	// TODO: get the genesis bytes (https://github.com/tendermint/tendermint/issues/1224)
+	var genesisBytes []byte
+	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators, genesisBytes}); err != nil {
 		panic(err)
 	}
 

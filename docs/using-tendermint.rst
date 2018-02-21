@@ -24,7 +24,8 @@ Initialize the root directory by running:
     tendermint init
 
 This will create a new private key (``priv_validator.json``), and a
-genesis file (``genesis.json``) containing the associated public key.
+genesis file (``genesis.json``) containing the associated public key,
+in ``$TMHOME/config``.
 This is all that's necessary to run a local testnet with one validator.
 
 For more elaborate initialization, see our `testnet deployment
@@ -33,7 +34,7 @@ tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__.
 Run
 ---
 
-To run a tendermint node, use
+To run a Tendermint node, use
 
 ::
 
@@ -41,7 +42,7 @@ To run a tendermint node, use
 
 By default, Tendermint will try to connect to an ABCI application on
 `127.0.0.1:46658 <127.0.0.1:46658>`__. If you have the ``dummy`` ABCI
-app installed, run it in another window. If you don't, kill tendermint
+app installed, run it in another window. If you don't, kill Tendermint
 and run an in-process version with
 
 ::
@@ -54,7 +55,7 @@ blocks are produced regularly, even if there are no transactions. See *No Empty 
 Tendermint supports in-process versions of the dummy, counter, and nil
 apps that ship as examples in the `ABCI
 repository <https://github.com/tendermint/abci>`__. It's easy to compile
-your own app in-process with tendermint if it's written in Go. If your
+your own app in-process with Tendermint if it's written in Go. If your
 app is not written in Go, simply run it in another process, and use the
 ``--proxy_app`` flag to specify the address of the socket it is
 listening on, for instance:
@@ -67,7 +68,7 @@ Transactions
 ------------
 
 To send a transaction, use ``curl`` to make requests to the Tendermint
-RPC server:
+RPC server, for example:
 
 ::
 
@@ -91,6 +92,57 @@ and the ``latest_app_hash`` in particular:
 Visit http://localhost:46657 in your browser to see the list of other
 endpoints. Some take no arguments (like ``/status``), while others
 specify the argument name and use ``_`` as a placeholder.
+
+Formatting
+~~~~~~~~~~
+
+The following nuances when sending/formatting transactions should
+be taken into account:
+
+With ``GET``:
+
+To send a UTF8 string byte array, quote the value of the tx pramater:
+
+::
+
+    curl 'http://localhost:46657/broadcast_tx_commit?tx="hello"'
+
+which sends a 5 byte transaction: "h e l l o" [68 65 6c 6c 6f].
+
+Note the URL must be wrapped with single quoes, else bash will ignore the double quotes.
+To avoid the single quotes, escape the double quotes:
+
+::
+
+    curl http://localhost:46657/broadcast_tx_commit?tx=\"hello\"
+
+
+
+Using a special character:
+
+::
+
+    curl 'http://localhost:46657/broadcast_tx_commit?tx="€5"'
+
+sends a 4 byte transaction: "€5" (UTF8) [e2 82 ac 35].
+
+To send as raw hex, omit quotes AND prefix the hex string with ``0x``:
+
+::
+
+    curl http://localhost:46657/broadcast_tx_commit?tx=0x01020304
+
+which sends a 4 byte transaction: [01 02 03 04].
+
+With ``POST`` (using ``json``), the raw hex must be ``base64`` encoded:
+
+::
+
+    curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:46657
+
+which sends the same 4 byte transaction: [01 02 03 04].
+
+Note that raw hex cannot be used in ``POST`` transactions.
 
 Reset
 -----
@@ -118,8 +170,8 @@ Tendermint uses a ``config.toml`` for configuration. For details, see
 `the config specification <./specification/configuration.html>`__.
 
 Notable options include the socket address of the application
-(``proxy_app``), the listenting address of the tendermint peer
-(``p2p.laddr``), and the listening address of the rpc server
+(``proxy_app``), the listening address of the Tendermint peer
+(``p2p.laddr``), and the listening address of the RPC server
 (``rpc.laddr``).
 
 Some fields from the config file can be overwritten with flags.
@@ -127,10 +179,14 @@ Some fields from the config file can be overwritten with flags.
 No Empty Blocks
 ---------------
 
-This much requested feature was implemented in version 0.10.3. While the default behaviour of ``tendermint`` is still to create blocks approximately once per second, it is possible to disable empty blocks or set a block creation interval. In the former case, blocks will be created when there are new transactions or when the AppHash changes.
+This much requested feature was implemented in version 0.10.3. While the
+default behaviour of ``tendermint`` is still to create blocks approximately
+once per second, it is possible to disable empty blocks or set a block creation
+interval. In the former case, blocks will be created when there are new
+transactions or when the AppHash changes.
 
-To configure tendermint to not produce empty blocks unless there are txs or the app hash changes, 
-run tendermint with this additional flag:
+To configure Tendermint to not produce empty blocks unless there are 
+transactions or the app hash changes, run Tendermint with this additional flag:
 
 ::
 
@@ -153,14 +209,13 @@ The block interval setting allows for a delay (in seconds) between the creation 
     create_empty_blocks_interval = 5
 
 With this setting, empty blocks will be produced every 5s if no block has been produced otherwise,
-regardless of the value of `create_empty_blocks`.
-
+regardless of the value of ``create_empty_blocks``.
 
 Broadcast API
 -------------
 
 Earlier, we used the ``broadcast_tx_commit`` endpoint to send a
-transaction. When a transaction is sent to a tendermint node, it will
+transaction. When a transaction is sent to a Tendermint node, it will
 run via ``CheckTx`` against the application. If it passes ``CheckTx``,
 it will be included in the mempool, broadcast to other peers, and
 eventually included in a block.
@@ -187,16 +242,19 @@ value for ``broadcast_tx_commit`` includes two fields, ``check_tx`` and
 through those ABCI messages.
 
 The benefit of using ``broadcast_tx_commit`` is that the request returns
-after the transaction is committed (ie. included in a block), but that
+after the transaction is committed (i.e. included in a block), but that
 can take on the order of a second. For a quick result, use
 ``broadcast_tx_sync``, but the transaction will not be committed until
 later, and by that point its effect on the state may change.
+
+Note: see the Transactions => Formatting section for details about
+transaction formating.
 
 Tendermint Networks
 -------------------
 
 When ``tendermint init`` is run, both a ``genesis.json`` and
-``priv_validator.json`` are created in ``~/.tendermint``. The
+``priv_validator.json`` are created in ``~/.tendermint/config``. The
 ``genesis.json`` might look like:
 
 ::
@@ -246,13 +304,17 @@ conflicting messages.
 Note also that the ``pub_key`` (the public key) in the
 ``priv_validator.json`` is also present in the ``genesis.json``.
 
-The genesis file contains the list of public keys which may participate
-in the consensus, and their corresponding voting power. Greater than 2/3
-of the voting power must be active (ie. the corresponding private keys
-must be producing signatures) for the consensus to make progress. In our
-case, the genesis file contains the public key of our
-``priv_validator.json``, so a tendermint node started with the default
-root directory will be able to make new blocks, as we've already seen.
+The genesis file contains the list of public keys which may participate in the
+consensus, and their corresponding voting power. Greater than 2/3 of the voting
+power must be active (i.e. the corresponding private keys must be producing
+signatures) for the consensus to make progress. In our case, the genesis file
+contains the public key of our ``priv_validator.json``, so a Tendermint node
+started with the default root directory will be able to make progress. Voting
+power uses an `int64` but must be positive, thus the range is: 0 through
+9223372036854775807. Because of how the current proposer selection algorithm works,
+we do not recommend having voting powers greater than 10^12 (ie. 1 trillion)
+(see `Proposals section of Byzantine Consensus Algorithm
+<./specification/byzantine-consensus-algorithm.html#proposals>`__ for details).
 
 If we want to add more nodes to the network, we have two choices: we can
 add a new validator node, who will also participate in the consensus by
@@ -263,8 +325,10 @@ with the consensus protocol.
 Peers
 ~~~~~
 
-To connect to peers on start-up, specify them in the ``config.toml`` or
-on the command line.
+To connect to peers on start-up, specify them in the ``$TMHOME/config/config.toml`` or
+on the command line. Use `seeds` to specify seed nodes from which you can get many other
+peer addresses, and ``persistent_peers`` to specify peers that your node will maintain
+persistent connections with.
 
 For instance,
 
@@ -273,26 +337,35 @@ For instance,
     tendermint node --p2p.seeds "1.2.3.4:46656,5.6.7.8:46656"
 
 Alternatively, you can use the ``/dial_seeds`` endpoint of the RPC to
-specify peers for a running node to connect to:
+specify seeds for a running node to connect to:
 
 ::
 
-    curl --data-urlencode "seeds=[\"1.2.3.4:46656\",\"5.6.7.8:46656\"]" localhost:46657/dial_seeds
+    curl 'localhost:46657/dial_seeds?seeds=\["1.2.3.4:46656","5.6.7.8:46656"\]'
 
-Additionally, the peer-exchange protocol can be enabled using the
-``--pex`` flag, though this feature is `still under
-development <https://github.com/tendermint/tendermint/issues/598>`__. If
-``--pex`` is enabled, peers will gossip about known peers and form a
-more resilient network.
+Note, if the peer-exchange protocol (PEX) is enabled (default), you should not
+normally need seeds after the first start. Peers will be gossipping about known
+peers and forming a network, storing peer addresses in the addrbook.
+
+If you want Tendermint to connect to specific set of addresses and maintain a
+persistent connection with each, you can use the ``--p2p.persistent_peers``
+flag or the corresponding setting in the ``config.toml`` or the
+``/dial_peers`` RPC endpoint to do it without stopping Tendermint
+core instance.
+
+::
+
+    tendermint node --p2p.persistent_peers "10.11.12.13:46656,10.11.12.14:46656"
+    curl 'localhost:46657/dial_peers?persistent=true&peers=\["1.2.3.4:46656","5.6.7.8:46656"\]'
 
 Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Adding a non-validator is simple. Just copy the original
-``genesis.json`` to ``~/.tendermint`` on the new machine and start the
-node, specifying seeds as necessary. If no seeds are specified, the node
-won't make any blocks, because it's not a validator, and it won't hear
-about any blocks, because it's not connected to the other peer.
+``genesis.json`` to ``~/.tendermint/config`` on the new machine and start the
+node, specifying seeds or persistent peers as necessary. If no seeds or persistent
+peers are specified, the node won't make any blocks, because it's not a validator,
+and it won't hear about any blocks, because it's not connected to the other peer.
 
 Adding a Validator
 ~~~~~~~~~~~~~~~~~~
@@ -358,12 +431,12 @@ then the new ``genesis.json`` will be:
         ]
     }
 
-Update the ``genesis.json`` in ``~/.tendermint``. Copy the genesis file
-and the new ``priv_validator.json`` to the ``~/.tendermint`` on a new
+Update the ``genesis.json`` in ``~/.tendermint/config``. Copy the genesis file
+and the new ``priv_validator.json`` to the ``~/.tendermint/config`` on a new
 machine.
 
 Now run ``tendermint node`` on both machines, and use either
-``--p2p.seeds`` or the ``/dial_seeds`` to get them to peer up. They
+``--p2p.persistent_peers`` or the ``/dial_peers`` to get them to peer up. They
 should start making blocks, and will only continue to do so as long as
 both of them are online.
 
@@ -388,7 +461,7 @@ connections to peers with the same IP address.
 Upgrading
 ~~~~~~~~~
 
-The tendermint development cycle includes a lot of breaking changes. Upgrading from
+The Tendermint development cycle includes a lot of breaking changes. Upgrading from
 an old version to a new version usually means throwing away the chain data. Try out
 the `tm-migrate <https://github.com/hxzqlh/tm-tools>`__ tool written by @hxqlh if
 you are keen to preserve the state of your chain when upgrading to newer versions.

@@ -2,11 +2,11 @@ package mock
 
 import (
 	abci "github.com/tendermint/abci/types"
-	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // ABCIApp will send all abci related request to the named app,
@@ -26,11 +26,11 @@ func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{a.App.Info(abci.RequestInfo{version.Version})}, nil
 }
 
-func (a ABCIApp) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return a.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (a ABCIApp) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	q := a.App.Query(abci.RequestQuery{data, path, opts.Height, opts.Trusted})
 	return &ctypes.ResultABCIQuery{q}, nil
 }
@@ -81,11 +81,11 @@ func (m ABCIMock) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{res.(abci.ResponseInfo)}, nil
 }
 
-func (m ABCIMock) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+func (m ABCIMock) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return m.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (m ABCIMock) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (m ABCIMock) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	res, err := m.Query.GetResponse(QueryArgs{path, data, opts.Height, opts.Trusted})
 	if err != nil {
 		return nil, err
@@ -134,7 +134,7 @@ func NewABCIRecorder(client client.ABCIClient) *ABCIRecorder {
 
 type QueryArgs struct {
 	Path    string
-	Data    data.Bytes
+	Data    cmn.HexBytes
 	Height  int64
 	Trusted bool
 }
@@ -153,11 +153,11 @@ func (r *ABCIRecorder) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
 	return res, err
 }
 
-func (r *ABCIRecorder) ABCIQuery(path string, data data.Bytes) (*ctypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return r.ABCIQueryWithOptions(path, data, client.DefaultABCIQueryOptions)
 }
 
-func (r *ABCIRecorder) ABCIQueryWithOptions(path string, data data.Bytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
+func (r *ABCIRecorder) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	res, err := r.Client.ABCIQueryWithOptions(path, data, opts)
 	r.addCall(Call{
 		Name:     "abci_query",

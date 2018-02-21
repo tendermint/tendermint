@@ -40,7 +40,7 @@ dependencies:
 Now you should have the ``abci-cli`` installed; you'll see
 a couple of commands (``counter`` and ``dummy``) that are
 example applications written in Go. See below for an application
-written in Javascript.
+written in JavaScript.
 
 Now, let's run some apps!
 
@@ -49,7 +49,7 @@ Dummy - A First Example
 
 The dummy app is a `Merkle
 tree <https://en.wikipedia.org/wiki/Merkle_tree>`__ that just stores all
-transactions. If the transaction contains an ``=``, eg. ``key=value``,
+transactions. If the transaction contains an ``=``, e.g. ``key=value``,
 then the ``value`` is stored under the ``key`` in the Merkle tree.
 Otherwise, the full transaction bytes are stored as the key and the
 value.
@@ -147,7 +147,7 @@ The result should look like:
 
 Note the ``value`` in the result (``61626364``); this is the
 hex-encoding of the ASCII of ``abcd``. You can verify this in
-a python shell by running ``"61626364".decode('hex')``. Stay
+a python 2 shell by running ``"61626364".decode('hex')`` or in python 3 shell by running ``import codecs; codecs.decode("61626364", 'hex').decode('ascii')``. Stay
 tuned for a future release that `makes this output more human-readable <https://github.com/tendermint/abci/issues/32>`__.
 
 Now let's try setting a different key and value:

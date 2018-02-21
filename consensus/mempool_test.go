@@ -19,7 +19,7 @@ func init() {
 	config = ResetConfig("consensus_mempool_test")
 }
 
-func TestNoProgressUntilTxsAvailable(t *testing.T) {
+func TestMempoolNoProgressUntilTxsAvailable(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
@@ -37,7 +37,7 @@ func TestNoProgressUntilTxsAvailable(t *testing.T) {
 	ensureNoNewStep(newBlockCh)
 }
 
-func TestProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
+func TestMempoolProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocksInterval = int(ensureTimeout.Seconds())
 	state, privVals := randGenesisState(1, false, 10)
@@ -52,7 +52,7 @@ func TestProgressAfterCreateEmptyBlocksInterval(t *testing.T) {
 	ensureNewStep(newBlockCh)   // until the CreateEmptyBlocksInterval has passed
 }
 
-func TestProgressInHigherRound(t *testing.T) {
+func TestMempoolProgressInHigherRound(t *testing.T) {
 	config := ResetConfig("consensus_mempool_txs_available_test")
 	config.Consensus.CreateEmptyBlocks = false
 	state, privVals := randGenesisState(1, false, 10)
@@ -94,7 +94,7 @@ func deliverTxsRange(cs *ConsensusState, start, end int) {
 	}
 }
 
-func TestTxConcurrentWithCommit(t *testing.T) {
+func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	cs := newConsensusState(state, privVals[0], NewCounterApplication())
 	height, round := cs.Height, cs.Round
@@ -116,7 +116,7 @@ func TestTxConcurrentWithCommit(t *testing.T) {
 	}
 }
 
-func TestRmBadTx(t *testing.T) {
+func TestMempoolRmBadTx(t *testing.T) {
 	state, privVals := randGenesisState(1, false, 10)
 	app := NewCounterApplication()
 	cs := newConsensusState(state, privVals[0], app)
@@ -129,7 +129,7 @@ func TestRmBadTx(t *testing.T) {
 	assert.False(t, resDeliver.IsErr(), cmn.Fmt("expected no error. got %v", resDeliver))
 
 	resCommit := app.Commit()
-	assert.False(t, resCommit.IsErr(), cmn.Fmt("expected no error. got %v", resCommit))
+	assert.True(t, len(resCommit.Data) > 0)
 
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})
@@ -223,10 +223,10 @@ func txAsUint64(tx []byte) uint64 {
 func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
-		return abci.ResponseCommit{Code: code.CodeTypeOK}
+		return abci.ResponseCommit{}
 	} else {
 		hash := make([]byte, 8)
 		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return abci.ResponseCommit{Code: code.CodeTypeOK, Data: hash}
+		return abci.ResponseCommit{Data: hash}
 	}
 }

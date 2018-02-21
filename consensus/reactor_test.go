@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/pprof"
 	"sync"
 	"testing"
@@ -31,31 +32,24 @@ func startConsensusNet(t *testing.T, css []*ConsensusState, N int) ([]*Consensus
 	reactors := make([]*ConsensusReactor, N)
 	eventChans := make([]chan interface{}, N)
 	eventBuses := make([]*types.EventBus, N)
-	logger := consensusLogger()
 	for i := 0; i < N; i++ {
-		/*thisLogger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
+		/*logger, err := tmflags.ParseLogLevel("consensus:info,*:error", logger, "info")
 		if err != nil {	t.Fatal(err)}*/
-		thisLogger := logger
-
 		reactors[i] = NewConsensusReactor(css[i], true) // so we dont start the consensus states
-		reactors[i].conS.SetLogger(thisLogger.With("validator", i))
-		reactors[i].SetLogger(thisLogger.With("validator", i))
+		reactors[i].SetLogger(css[i].Logger)
 
-		eventBuses[i] = types.NewEventBus()
-		eventBuses[i].SetLogger(thisLogger.With("module", "events", "validator", i))
-		err := eventBuses[i].Start()
-		require.NoError(t, err)
-
+		// eventBus is already started with the cs
+		eventBuses[i] = css[i].eventBus
 		reactors[i].SetEventBus(eventBuses[i])
 
 		eventChans[i] = make(chan interface{}, 1)
-		err = eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
+		err := eventBuses[i].Subscribe(context.Background(), testSubscriber, types.EventQueryNewBlock, eventChans[i])
 		require.NoError(t, err)
 	}
 	// make connected switches and start all reactors
 	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("CONSENSUS", reactors[i])
-		s.SetLogger(reactors[i].Logger.With("module", "p2p", "validator", i))
+		s.SetLogger(reactors[i].conS.Logger.With("module", "p2p"))
 		return s
 	}, p2p.Connect2Switches)
 
@@ -84,15 +78,14 @@ func stopConsensusNet(logger log.Logger, reactors []*ConsensusReactor, eventBuse
 }
 
 // Ensure a testnet makes blocks
-func TestReactor(t *testing.T) {
+func TestReactorBasic(t *testing.T) {
 	N := 4
 	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 }
 
@@ -113,9 +106,8 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 		require.NoError(t, err)
 	}
 	// wait till everyone sends a proposal heartbeat
-	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N, func(j int) {
 		<-heartbeatChans[j]
-		wg.Done()
 	}, css)
 
 	// send a tx
@@ -124,9 +116,8 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 	}
 
 	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 }
 
@@ -147,9 +138,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	}
 
 	// wait till everyone makes block 1
-	timeoutWaitGroup(t, nVals, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, nVals, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 
 	//---------------------------------------------------------------------------
@@ -210,9 +200,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	}
 
 	// wait till everyone makes block 1
-	timeoutWaitGroup(t, nPeers, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, nPeers, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 
 	//---------------------------------------------------------------------------
@@ -300,16 +289,13 @@ func TestReactorWithTimeoutCommit(t *testing.T) {
 	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
 
 	// wait till everyone makes the first new block
-	timeoutWaitGroup(t, N-1, func(wg *sync.WaitGroup, j int) {
+	timeoutWaitGroup(t, N-1, func(j int) {
 		<-eventChans[j]
-		wg.Done()
 	}, css)
 }
 
 func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
-	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
-		defer wg.Done()
-
+	timeoutWaitGroup(t, n, func(j int) {
 		css[j].Logger.Debug("waitForAndValidateBlock")
 		newBlockI, ok := <-eventChans[j]
 		if !ok {
@@ -327,8 +313,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 }
 
 func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState, txs ...[]byte) {
-	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
-		defer wg.Done()
+	timeoutWaitGroup(t, n, func(j int) {
 		ntxs := 0
 	BLOCK_TX_LOOP:
 		for {
@@ -359,8 +344,7 @@ func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]st
 }
 
 func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals map[string]struct{}, eventChans []chan interface{}, css []*ConsensusState) {
-	timeoutWaitGroup(t, n, func(wg *sync.WaitGroup, j int) {
-		defer wg.Done()
+	timeoutWaitGroup(t, n, func(j int) {
 
 		var newBlock *types.Block
 	LOOP:
@@ -398,11 +382,14 @@ func validateBlock(block *types.Block, activeVals map[string]struct{}) error {
 	return nil
 }
 
-func timeoutWaitGroup(t *testing.T, n int, f func(*sync.WaitGroup, int), css []*ConsensusState) {
+func timeoutWaitGroup(t *testing.T, n int, f func(int), css []*ConsensusState) {
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
-		go f(wg, i)
+		go func(j int) {
+			f(j)
+			wg.Done()
+		}(i)
 	}
 
 	done := make(chan struct{})
@@ -424,7 +411,15 @@ func timeoutWaitGroup(t *testing.T, n int, f func(*sync.WaitGroup, int), css []*
 			t.Log(cs.GetRoundState())
 			t.Log("")
 		}
+		os.Stdout.Write([]byte("pprof.Lookup('goroutine'):\n"))
 		pprof.Lookup("goroutine").WriteTo(os.Stdout, 1)
+		capture()
 		panic("Timed out waiting for all validators to commit a block")
 	}
+}
+
+func capture() {
+	trace := make([]byte, 10240000)
+	count := runtime.Stack(trace, true)
+	fmt.Printf("Stack of %d bytes: %s\n", count, trace)
 }

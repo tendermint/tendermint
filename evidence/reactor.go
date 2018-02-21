@@ -126,7 +126,7 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 			// broadcast all pending evidence
 			msg := &EvidenceListMessage{evR.evpool.PendingEvidence()}
 			evR.Switch.Broadcast(EvidenceChannel, struct{ EvidenceMessage }{msg})
-		case <-evR.Quit:
+		case <-evR.Quit():
 			return
 		}
 	}

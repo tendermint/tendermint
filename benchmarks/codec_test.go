@@ -16,11 +16,10 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	status := &ctypes.ResultStatus{
-		NodeInfo: &p2p.NodeInfo{
-			PubKey:     pubKey.Unwrap().(crypto.PubKeyEd25519),
+		NodeInfo: p2p.NodeInfo{
+			PubKey:     pubKey,
 			Moniker:    "SOMENAME",
 			Network:    "SOMENAME",
-			RemoteAddr: "SOMEADDR",
 			ListenAddr: "SOMEADDR",
 			Version:    "SOMEVER",
 			Other:      []string{"SOMESTRING", "OTHERSTRING"},
@@ -42,12 +41,11 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
-	nodeInfo := &p2p.NodeInfo{
+	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeInfo := p2p.NodeInfo{
 		PubKey:     pubKey,
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
-		RemoteAddr: "SOMEADDR",
 		ListenAddr: "SOMEADDR",
 		Version:    "SOMEVER",
 		Other:      []string{"SOMESTRING", "OTHERSTRING"},
@@ -63,12 +61,11 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
-	nodeInfo := &p2p.NodeInfo{
+	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeInfo := p2p.NodeInfo{
 		PubKey:     pubKey,
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
-		RemoteAddr: "SOMEADDR",
 		ListenAddr: "SOMEADDR",
 		Version:    "SOMEVER",
 		Other:      []string{"SOMESTRING", "OTHERSTRING"},
@@ -87,11 +84,10 @@ func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
 	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
 	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
-	nodeInfo := &proto.NodeInfo{
+	nodeInfo := proto.NodeInfo{
 		PubKey:     pubKey2,
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
-		RemoteAddr: "SOMEADDR",
 		ListenAddr: "SOMEADDR",
 		Version:    "SOMEVER",
 		Other:      []string{"SOMESTRING", "OTHERSTRING"},

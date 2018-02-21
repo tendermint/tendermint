@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -58,7 +59,7 @@ type VoteSet struct {
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
 	maj23         *BlockID               // First 2/3 majority seen
 	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
-	peerMaj23s    map[string]BlockID     // Maj23 for each peer
+	peerMaj23s    map[p2p.ID]BlockID     // Maj23 for each peer
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -77,7 +78,7 @@ func NewVoteSet(chainID string, height int64, round int, type_ byte, valSet *Val
 		sum:           0,
 		maj23:         nil,
 		votesByBlock:  make(map[string]*blockVotes, valSet.Size()),
-		peerMaj23s:    make(map[string]BlockID),
+		peerMaj23s:    make(map[p2p.ID]BlockID),
 	}
 }
 
@@ -171,7 +172,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	// Ensure that the signer has the right address
 	if !bytes.Equal(valAddr, lookupAddr) {
 		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
-			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)",
+			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\nEnsure the genesis file is correct across all validators.",
 			valAddr, lookupAddr, valIndex)
 	}
 
@@ -290,7 +291,7 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 // this can cause memory issues.
 // TODO: implement ability to remove peers too
 // NOTE: VoteSet must not be nil
-func (voteSet *VoteSet) SetPeerMaj23(peerID string, blockID BlockID) {
+func (voteSet *VoteSet) SetPeerMaj23(peerID p2p.ID, blockID BlockID) error {
 	if voteSet == nil {
 		cmn.PanicSanity("SetPeerMaj23() on nil VoteSet")
 	}
@@ -302,9 +303,10 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID string, blockID BlockID) {
 	// Make sure peer hasn't already told us something.
 	if existing, ok := voteSet.peerMaj23s[peerID]; ok {
 		if existing.Equals(blockID) {
-			return // Nothing to do
+			return nil // Nothing to do
 		} else {
-			return // TODO bad peer!
+			return fmt.Errorf("SetPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
+				peerID, blockID, existing)
 		}
 	}
 	voteSet.peerMaj23s[peerID] = blockID
@@ -313,7 +315,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID string, blockID BlockID) {
 	votesByBlock, ok := voteSet.votesByBlock[blockKey]
 	if ok {
 		if votesByBlock.peerMaj23 {
-			return // Nothing to do
+			return nil // Nothing to do
 		} else {
 			votesByBlock.peerMaj23 = true
 			// No need to copy votes, already there.
@@ -323,6 +325,7 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID string, blockID BlockID) {
 		voteSet.votesByBlock[blockKey] = votesByBlock
 		// No need to copy votes, no votes to copy over.
 	}
+	return nil
 }
 
 func (voteSet *VoteSet) BitArray() *cmn.BitArray {

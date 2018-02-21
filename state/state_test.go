@@ -22,7 +22,8 @@ import (
 // setupTestCase does setup common to all test cases
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, State) {
 	config := cfg.ResetTestRoot("state_")
-	stateDB := dbm.NewDB("state", config.DBBackend, config.DBDir())
+	dbType := dbm.DBBackendType(config.DBBackend)
+	stateDB := dbm.NewDB("state", dbType, config.DBDir())
 	state, err := LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	assert.NoError(t, err, "expected no error on LoadStateFromDBOrGenesisFile")
 
@@ -77,9 +78,9 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// build mock responses
 	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []*abci.KVPair{}}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []*abci.KVPair{}}
-	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{
+	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []cmn.KVPair{}}
+	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []cmn.KVPair{}}
+	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
 		{
 			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
 			Power:  10,
@@ -122,9 +123,9 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			[]*abci.ResponseDeliverTx{
 				{Code: 383},
 				{Data: []byte("Gotcha!"),
-					Tags: []*abci.KVPair{
-						abci.KVPairInt("a", 1),
-						abci.KVPairString("build", "stuff"),
+					Tags: []cmn.KVPair{
+						cmn.KVPair{[]byte("a"), []byte{1}},
+						cmn.KVPair{[]byte("build"), []byte("stuff")},
 					}},
 			},
 			types.ABCIResults{
@@ -374,73 +375,6 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 	}
 }
 
-func TestLessThanOneThirdOfVotingPowerPerBlockEnforced(t *testing.T) {
-	testCases := []struct {
-		initialValSetSize int
-		shouldErr         bool
-		valUpdatesFn      func(vals *types.ValidatorSet) []*abci.Validator
-	}{
-		///////////// 1 val (vp: 10) => less than 3 is ok ////////////////////////
-		// adding 1 validator => 10
-		0: {1, false, func(vals *types.ValidatorSet) []*abci.Validator {
-			return []*abci.Validator{
-				{PubKey: pk(), Power: 2},
-			}
-		}},
-		1: {1, true, func(vals *types.ValidatorSet) []*abci.Validator {
-			return []*abci.Validator{
-				{PubKey: pk(), Power: 3},
-			}
-		}},
-		2: {1, true, func(vals *types.ValidatorSet) []*abci.Validator {
-			return []*abci.Validator{
-				{PubKey: pk(), Power: 100},
-			}
-		}},
-
-		///////////// 3 val (vp: 30) => less than 10 is ok ////////////////////////
-		// adding and removing validator => 20
-		3: {3, true, func(vals *types.ValidatorSet) []*abci.Validator {
-			_, firstVal := vals.GetByIndex(0)
-			return []*abci.Validator{
-				{PubKey: firstVal.PubKey.Bytes(), Power: 0},
-				{PubKey: pk(), Power: 10},
-			}
-		}},
-		// adding 1 validator => 10
-		4: {3, true, func(vals *types.ValidatorSet) []*abci.Validator {
-			return []*abci.Validator{
-				{PubKey: pk(), Power: 10},
-			}
-		}},
-		// adding 2 validators => 8
-		5: {3, false, func(vals *types.ValidatorSet) []*abci.Validator {
-			return []*abci.Validator{
-				{PubKey: pk(), Power: 4},
-				{PubKey: pk(), Power: 4},
-			}
-		}},
-	}
-
-	for i, tc := range testCases {
-		tearDown, stateDB, state := setupTestCase(t)
-		state.Validators = genValSet(tc.initialValSetSize)
-		SaveState(stateDB, state)
-		height := state.LastBlockHeight + 1
-		block := makeBlock(state, height)
-		abciResponses := &ABCIResponses{
-			EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: tc.valUpdatesFn(state.Validators)},
-		}
-		state, err := updateState(state, types.BlockID{block.Hash(), types.PartSetHeader{}}, block.Header, abciResponses)
-		if tc.shouldErr {
-			assert.Error(t, err, "#%d", i)
-		} else {
-			assert.NoError(t, err, "#%d", i)
-		}
-		tearDown(t)
-	}
-}
-
 func pk() []byte {
 	return crypto.GenPrivKeyEd25519().PubKey().Bytes()
 }
@@ -450,20 +384,20 @@ func TestApplyUpdates(t *testing.T) {
 
 	cases := [...]struct {
 		init     types.ConsensusParams
-		updates  *abci.ConsensusParams
+		updates  abci.ConsensusParams
 		expected types.ConsensusParams
 	}{
-		0: {initParams, nil, initParams},
-		1: {initParams, &abci.ConsensusParams{}, initParams},
+		0: {initParams, abci.ConsensusParams{}, initParams},
+		1: {initParams, abci.ConsensusParams{}, initParams},
 		2: {initParams,
-			&abci.ConsensusParams{
+			abci.ConsensusParams{
 				TxSize: &abci.TxSize{
 					MaxBytes: 123,
 				},
 			},
 			makeParams(1, 2, 3, 123, 5, 6)},
 		3: {initParams,
-			&abci.ConsensusParams{
+			abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
 					MaxTxs: 44,
 					MaxGas: 55,
@@ -471,7 +405,7 @@ func TestApplyUpdates(t *testing.T) {
 			},
 			makeParams(1, 44, 55, 4, 5, 6)},
 		4: {initParams,
-			&abci.ConsensusParams{
+			abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
 					MaxTxs: 789,
 				},
@@ -486,7 +420,7 @@ func TestApplyUpdates(t *testing.T) {
 	}
 
 	for i, tc := range cases {
-		res := tc.init.Update(tc.updates)
+		res := tc.init.Update(&(tc.updates))
 		assert.Equal(t, tc.expected, res, "case %d", i)
 	}
 }
@@ -496,14 +430,14 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{}},
 	}
 
 	// if the pubkey is new, remove the old and add the new
 	_, val := state.Validators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []*abci.Validator{
+			ValidatorUpdates: []abci.Validator{
 				{val.PubKey.Bytes(), 0},
 				{pubkey.Bytes(), 10},
 			},
@@ -518,14 +452,14 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []*abci.Validator{}},
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{}},
 	}
 
 	// if the pubkey is new, remove the old and add the new
 	_, val := state.Validators.GetByIndex(0)
 	if val.VotingPower != power {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []*abci.Validator{
+			ValidatorUpdates: []abci.Validator{
 				{val.PubKey.Bytes(), power},
 			},
 		}

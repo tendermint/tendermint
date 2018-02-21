@@ -127,7 +127,7 @@ func (t *timeoutTicker) timeoutRoutine() {
 			// We can eliminate it by merging the timeoutRoutine into receiveRoutine
 			//  and managing the timeouts ourselves with a millisecond ticker
 			go func(toi timeoutInfo) { t.tockChan <- toi }(ti)
-		case <-t.Quit:
+		case <-t.Quit():
 			return
 		}
 	}

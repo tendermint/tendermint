@@ -11,11 +11,11 @@ import (
 
 	"github.com/tendermint/abci/example/dummy"
 	abci "github.com/tendermint/abci/types"
-	data "github.com/tendermint/go-wire/data"
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/client/mock"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func TestABCIMock(t *testing.T) {
@@ -37,8 +37,8 @@ func TestABCIMock(t *testing.T) {
 		BroadcastCommit: mock.Call{
 			Args: goodTx,
 			Response: &ctypes.ResultBroadcastTxCommit{
-				CheckTx:   abci.ResponseCheckTx{Data: data.Bytes("stand")},
-				DeliverTx: abci.ResponseDeliverTx{Data: data.Bytes("deliver")},
+				CheckTx:   abci.ResponseCheckTx{Data: cmn.HexBytes("stand")},
+				DeliverTx: abci.ResponseDeliverTx{Data: cmn.HexBytes("deliver")},
 			},
 			Error: errors.New("bad tx"),
 		},
@@ -98,7 +98,7 @@ func TestABCIRecorder(t *testing.T) {
 	_, err := r.ABCIInfo()
 	assert.Nil(err, "expected no err on info")
 
-	_, err = r.ABCIQueryWithOptions("path", data.Bytes("data"), client.ABCIQueryOptions{Trusted: false})
+	_, err = r.ABCIQueryWithOptions("path", cmn.HexBytes("data"), client.ABCIQueryOptions{Trusted: false})
 	assert.NotNil(err, "expected error on query")
 	require.Equal(2, len(r.Calls))
 
@@ -174,7 +174,7 @@ func TestABCIApp(t *testing.T) {
 	assert.True(res.DeliverTx.IsOK())
 
 	// check the key
-	_qres, err := m.ABCIQueryWithOptions("/key", data.Bytes(key), client.ABCIQueryOptions{Trusted: true})
+	_qres, err := m.ABCIQueryWithOptions("/key", cmn.HexBytes(key), client.ABCIQueryOptions{Trusted: true})
 	qres := _qres.Response
 	require.Nil(err)
 	assert.EqualValues(value, qres.Value)

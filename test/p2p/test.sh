@@ -13,11 +13,11 @@ set +e
 bash test/p2p/local_testnet_stop.sh "$NETWORK_NAME" "$N"
 set -e
 
-SEEDS=$(bash test/p2p/seeds.sh $N)
+PERSISTENT_PEERS=$(bash test/p2p/persistent_peers.sh $N)
 
 # start the testnet on a local network
 # NOTE we re-use the same network for all tests
-bash test/p2p/local_testnet_start.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$N" "$PROXY_APP" "$SEEDS"
+bash test/p2p/local_testnet_start.sh "$DOCKER_IMAGE" "$NETWORK_NAME" "$N" "$PROXY_APP" "$PERSISTENT_PEERS"
 
 # test basic connectivity and consensus
 # start client container and check the num peers and height for all nodes

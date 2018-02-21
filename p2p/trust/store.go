@@ -200,7 +200,7 @@ loop:
 		select {
 		case <-t.C:
 			tms.SaveToDB()
-		case <-tms.Quit:
+		case <-tms.Quit():
 			break loop
 		}
 	}

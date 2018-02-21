@@ -3,7 +3,6 @@ package mempool
 import (
 	"bytes"
 	"container/list"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -49,7 +48,7 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 
 */
 
-const cacheSize = 100000
+var ErrTxInCache = errors.New("Tx already exists in cache")
 
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
@@ -92,9 +91,8 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		recheckCursor: nil,
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
-		cache:         newTxCache(cacheSize),
+		cache:         newTxCache(config.CacheSize),
 	}
-	mempool.initWAL()
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
 }
@@ -131,7 +129,7 @@ func (mem *Mempool) CloseWAL() bool {
 	return true
 }
 
-func (mem *Mempool) initWAL() {
+func (mem *Mempool) InitWAL() {
 	walDir := mem.config.WalDir()
 	if walDir != "" {
 		err := cmn.EnsureDir(walDir, 0700)
@@ -161,6 +159,12 @@ func (mem *Mempool) Size() int {
 	return mem.txs.Len()
 }
 
+// Flushes the mempool connection to ensure async resCb calls are done e.g.
+// from CheckTx.
+func (mem *Mempool) FlushAppConn() error {
+	return mem.proxyAppConn.FlushSync()
+}
+
 // Flush removes all transactions from the mempool and cache
 func (mem *Mempool) Flush() {
 	mem.proxyMtx.Lock()
@@ -174,10 +178,17 @@ func (mem *Mempool) Flush() {
 	}
 }
 
-// TxsFrontWait returns the first transaction in the ordered list for peer goroutines to call .NextWait() on.
-// It blocks until the mempool is not empty (ie. until the internal `mem.txs` has at least one element)
-func (mem *Mempool) TxsFrontWait() *clist.CElement {
-	return mem.txs.FrontWait()
+// TxsFront returns the first transaction in the ordered list for peer
+// goroutines to call .NextWait() on.
+func (mem *Mempool) TxsFront() *clist.CElement {
+	return mem.txs.Front()
+}
+
+// TxsWaitChan returns a channel to wait on transactions. It will be closed
+// once the mempool is not empty (ie. the internal `mem.txs` has at least one
+// element)
+func (mem *Mempool) TxsWaitChan() <-chan struct{} {
+	return mem.txs.WaitChan()
 }
 
 // CheckTx executes a new transaction against the application to determine its validity
@@ -192,7 +203,7 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	// CACHE
 	if mem.cache.Exists(tx) {
-		return fmt.Errorf("Tx already exists in cache")
+		return ErrTxInCache
 	}
 	mem.cache.Push(tx)
 	// END CACHE
@@ -349,9 +360,6 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 // NOTE: this should be called *after* block is committed by consensus.
 // NOTE: unsafe; Lock/Unlock must be managed by caller
 func (mem *Mempool) Update(height int64, txs types.Txs) error {
-	if err := mem.proxyAppConn.FlushSync(); err != nil { // To flush async resCb calls e.g. from CheckTx
-		return err
-	}
 	// First, create a lookup map of txns in new txs.
 	txsMap := make(map[string]struct{})
 	for _, tx := range txs {
@@ -449,7 +457,7 @@ func newTxCache(cacheSize int) *txCache {
 // Reset resets the txCache to empty.
 func (cache *txCache) Reset() {
 	cache.mtx.Lock()
-	cache.map_ = make(map[string]struct{}, cacheSize)
+	cache.map_ = make(map[string]struct{}, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }

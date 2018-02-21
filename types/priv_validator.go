@@ -11,16 +11,15 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
-	data "github.com/tendermint/go-wire/data"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // TODO: type ?
 const (
-	stepNone      = 0 // Used to distinguish the initial state
-	stepPropose   = 1
-	stepPrevote   = 2
-	stepPrecommit = 3
+	stepNone      int8 = 0 // Used to distinguish the initial state
+	stepPropose   int8 = 1
+	stepPrevote   int8 = 2
+	stepPrecommit int8 = 3
 )
 
 func voteToStep(vote *Vote) int8 {
@@ -38,7 +37,7 @@ func voteToStep(vote *Vote) int8 {
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes, proposals, and heartbeats, and never double signs.
 type PrivValidator interface {
-	GetAddress() data.Bytes // redundant since .PubKey().Address()
+	GetAddress() Address // redundant since .PubKey().Address()
 	GetPubKey() crypto.PubKey
 
 	SignVote(chainID string, vote *Vote) error
@@ -50,13 +49,13 @@ type PrivValidator interface {
 // to prevent double signing. The Signer itself can be mutated to use
 // something besides the default, for instance a hardware signer.
 type PrivValidatorFS struct {
-	Address       data.Bytes       `json:"address"`
+	Address       Address          `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
 	LastHeight    int64            `json:"last_height"`
 	LastRound     int              `json:"last_round"`
 	LastStep      int8             `json:"last_step"`
 	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
-	LastSignBytes data.Bytes       `json:"last_signbytes,omitempty"` // so we dont lose signatures
+	LastSignBytes cmn.HexBytes     `json:"last_signbytes,omitempty"` // so we dont lose signatures
 
 	// PrivKey should be empty if a Signer other than the default is being used.
 	PrivKey crypto.PrivKey `json:"priv_key"`
@@ -96,7 +95,7 @@ func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
 
 // GetAddress returns the address of the validator.
 // Implements PrivValidator.
-func (pv *PrivValidatorFS) GetAddress() data.Bytes {
+func (pv *PrivValidatorFS) GetAddress() Address {
 	return pv.Address
 }
 
@@ -199,12 +198,9 @@ func (privVal *PrivValidatorFS) Reset() {
 func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
-	signature, err := privVal.signBytesHRS(vote.Height, vote.Round, voteToStep(vote),
-		SignBytes(chainID, vote), checkVotesOnlyDifferByTimestamp)
-	if err != nil {
+	if err := privVal.signVote(chainID, vote); err != nil {
 		return errors.New(cmn.Fmt("Error signing vote: %v", err))
 	}
-	vote.Signature = signature
 	return nil
 }
 
@@ -213,12 +209,9 @@ func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
 func (privVal *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal) error {
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
-	signature, err := privVal.signBytesHRS(proposal.Height, proposal.Round, stepPropose,
-		SignBytes(chainID, proposal), checkProposalsOnlyDifferByTimestamp)
-	if err != nil {
+	if err := privVal.signProposal(chainID, proposal); err != nil {
 		return fmt.Errorf("Error signing proposal: %v", err)
 	}
-	proposal.Signature = signature
 	return nil
 }
 
@@ -250,36 +243,82 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 	return false, nil
 }
 
-// signBytesHRS signs the given signBytes if the height/round/step (HRS) are
-// greater than the latest state. If the HRS are equal and the only thing changed is the timestamp,
-// it returns the privValidator.LastSignature. Else it returns an error.
-func (privVal *PrivValidatorFS) signBytesHRS(height int64, round int, step int8,
-	signBytes []byte, checkFn checkOnlyDifferByTimestamp) (crypto.Signature, error) {
-	sig := crypto.Signature{}
+// signVote checks if the vote is good to sign and sets the vote signature.
+// It may need to set the timestamp as well if the vote is otherwise the same as
+// a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
+func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
+	height, round, step := vote.Height, vote.Round, voteToStep(vote)
+	signBytes := SignBytes(chainID, vote)
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
 	if err != nil {
-		return sig, err
+		return err
 	}
 
 	// We might crash before writing to the wal,
-	// causing us to try to re-sign for the same HRS
+	// causing us to try to re-sign for the same HRS.
+	// If signbytes are the same, use the last signature.
+	// If they only differ by timestamp, use last timestamp and signature
+	// Otherwise, return error
 	if sameHRS {
-		// if they're the same or only differ by timestamp,
-		// return the LastSignature. Otherwise, error
-		if bytes.Equal(signBytes, privVal.LastSignBytes) ||
-			checkFn(privVal.LastSignBytes, signBytes) {
-			return privVal.LastSignature, nil
+		if bytes.Equal(signBytes, privVal.LastSignBytes) {
+			vote.Signature = privVal.LastSignature
+		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(privVal.LastSignBytes, signBytes); ok {
+			vote.Timestamp = timestamp
+			vote.Signature = privVal.LastSignature
+		} else {
+			err = fmt.Errorf("Conflicting data")
 		}
-		return sig, fmt.Errorf("Conflicting data")
+		return err
 	}
 
-	sig, err = privVal.Sign(signBytes)
+	// It passed the checks. Sign the vote
+	sig, err := privVal.Sign(signBytes)
 	if err != nil {
-		return sig, err
+		return err
 	}
 	privVal.saveSigned(height, round, step, signBytes, sig)
-	return sig, nil
+	vote.Signature = sig
+	return nil
+}
+
+// signProposal checks if the proposal is good to sign and sets the proposal signature.
+// It may need to set the timestamp as well if the proposal is otherwise the same as
+// a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
+func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal) error {
+	height, round, step := proposal.Height, proposal.Round, stepPropose
+	signBytes := SignBytes(chainID, proposal)
+
+	sameHRS, err := privVal.checkHRS(height, round, step)
+	if err != nil {
+		return err
+	}
+
+	// We might crash before writing to the wal,
+	// causing us to try to re-sign for the same HRS.
+	// If signbytes are the same, use the last signature.
+	// If they only differ by timestamp, use last timestamp and signature
+	// Otherwise, return error
+	if sameHRS {
+		if bytes.Equal(signBytes, privVal.LastSignBytes) {
+			proposal.Signature = privVal.LastSignature
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(privVal.LastSignBytes, signBytes); ok {
+			proposal.Timestamp = timestamp
+			proposal.Signature = privVal.LastSignature
+		} else {
+			err = fmt.Errorf("Conflicting data")
+		}
+		return err
+	}
+
+	// It passed the checks. Sign the proposal
+	sig, err := privVal.Sign(signBytes)
+	if err != nil {
+		return err
+	}
+	privVal.saveSigned(height, round, step, signBytes, sig)
+	proposal.Signature = sig
+	return nil
 }
 
 // Persist height/round/step and signature
@@ -329,16 +368,20 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 
 //-------------------------------------
 
-type checkOnlyDifferByTimestamp func([]byte, []byte) bool
-
-// returns true if the only difference in the votes is their timestamp
-func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
+// returns the timestamp from the lastSignBytes.
+// returns true if the only difference in the votes is their timestamp.
+func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote CanonicalJSONOnceVote
 	if err := json.Unmarshal(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
 	if err := json.Unmarshal(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
+	}
+
+	lastTime, err := time.Parse(timeFormat, lastVote.Vote.Timestamp)
+	if err != nil {
+		panic(err)
 	}
 
 	// set the times to the same value and check equality
@@ -348,17 +391,23 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
 	lastVoteBytes, _ := json.Marshal(lastVote)
 	newVoteBytes, _ := json.Marshal(newVote)
 
-	return bytes.Equal(newVoteBytes, lastVoteBytes)
+	return lastTime, bytes.Equal(newVoteBytes, lastVoteBytes)
 }
 
+// returns the timestamp from the lastSignBytes.
 // returns true if the only difference in the proposals is their timestamp
-func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) bool {
+func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal CanonicalJSONOnceProposal
 	if err := json.Unmarshal(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
 	if err := json.Unmarshal(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
+	}
+
+	lastTime, err := time.Parse(timeFormat, lastProposal.Proposal.Timestamp)
+	if err != nil {
+		panic(err)
 	}
 
 	// set the times to the same value and check equality
@@ -368,5 +417,5 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) boo
 	lastProposalBytes, _ := json.Marshal(lastProposal)
 	newProposalBytes, _ := json.Marshal(newProposal)
 
-	return bytes.Equal(newProposalBytes, lastProposalBytes)
+	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }

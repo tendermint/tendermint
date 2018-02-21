@@ -17,6 +17,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -46,8 +47,8 @@ var (
 
 // msgs from the reactor which may update the state
 type msgInfo struct {
-	Msg     ConsensusMessage `json:"msg"`
-	PeerKey string           `json:"peer_key"`
+	Msg    ConsensusMessage `json:"msg"`
+	PeerID p2p.ID           `json:"peer_key"`
 }
 
 // internally generated messages which may update the state
@@ -85,7 +86,7 @@ type ConsensusState struct {
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
-	// state changes may be triggered by msgs from peers,
+	// state changes may be triggered by: msgs from peers,
 	// msgs from ourself, or by timeouts
 	peerMsgQueue     chan msgInfo
 	internalMsgQueue chan msgInfo
@@ -303,17 +304,17 @@ func (cs *ConsensusState) OpenWAL(walFile string) (WAL, error) {
 
 //------------------------------------------------------------
 // Public interface for passing messages into the consensus state, possibly causing a state transition.
-// If peerKey == "", the msg is considered internal.
+// If peerID == "", the msg is considered internal.
 // Messages are added to the appropriate queue (peer or internal).
 // If the queue is full, the function may block.
 // TODO: should these return anything or let callers just use events?
 
 // AddVote inputs a vote.
-func (cs *ConsensusState) AddVote(vote *types.Vote, peerKey string) (added bool, err error) {
-	if peerKey == "" {
+func (cs *ConsensusState) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
+	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&VoteMessage{vote}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerKey}
+		cs.peerMsgQueue <- msgInfo{&VoteMessage{vote}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -321,12 +322,12 @@ func (cs *ConsensusState) AddVote(vote *types.Vote, peerKey string) (added bool,
 }
 
 // SetProposal inputs a proposal.
-func (cs *ConsensusState) SetProposal(proposal *types.Proposal, peerKey string) error {
+func (cs *ConsensusState) SetProposal(proposal *types.Proposal, peerID p2p.ID) error {
 
-	if peerKey == "" {
+	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&ProposalMessage{proposal}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerKey}
+		cs.peerMsgQueue <- msgInfo{&ProposalMessage{proposal}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -334,12 +335,12 @@ func (cs *ConsensusState) SetProposal(proposal *types.Proposal, peerKey string) 
 }
 
 // AddProposalBlockPart inputs a part of the proposal block.
-func (cs *ConsensusState) AddProposalBlockPart(height int64, round int, part *types.Part, peerKey string) error {
+func (cs *ConsensusState) AddProposalBlockPart(height int64, round int, part *types.Part, peerID p2p.ID) error {
 
-	if peerKey == "" {
+	if peerID == "" {
 		cs.internalMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, ""}
 	} else {
-		cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerKey}
+		cs.peerMsgQueue <- msgInfo{&BlockPartMessage{height, round, part}, peerID}
 	}
 
 	// TODO: wait for event?!
@@ -347,13 +348,13 @@ func (cs *ConsensusState) AddProposalBlockPart(height int64, round int, part *ty
 }
 
 // SetProposalAndBlock inputs the proposal and all block parts.
-func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *types.Block, parts *types.PartSet, peerKey string) error {
-	if err := cs.SetProposal(proposal, peerKey); err != nil {
+func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *types.Block, parts *types.PartSet, peerID p2p.ID) error {
+	if err := cs.SetProposal(proposal, peerID); err != nil {
 		return err
 	}
 	for i := 0; i < parts.Total(); i++ {
 		part := parts.GetPart(i)
-		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerKey); err != nil {
+		if err := cs.AddProposalBlockPart(proposal.Height, proposal.Round, part, peerID); err != nil {
 			return err
 		}
 	}
@@ -540,7 +541,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// if the timeout is relevant to the rs
 			// go to the next step
 			cs.handleTimeout(ti, rs)
-		case <-cs.Quit:
+		case <-cs.Quit():
 
 			// NOTE: the internalMsgQueue may have signed messages from our
 			// priv_val that haven't hit the WAL, but its ok because
@@ -561,7 +562,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 	defer cs.mtx.Unlock()
 
 	var err error
-	msg, peerKey := mi.Msg, mi.PeerKey
+	msg, peerID := mi.Msg, mi.PeerID
 	switch msg := msg.(type) {
 	case *ProposalMessage:
 		// will not cause transition.
@@ -569,14 +570,14 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		_, err = cs.addProposalBlockPart(msg.Height, msg.Part, peerKey != "")
+		_, err = cs.addProposalBlockPart(msg.Height, msg.Part, peerID != "")
 		if err != nil && msg.Round != cs.Round {
 			err = nil
 		}
 	case *VoteMessage:
 		// attempt to add the vote and dupeout the validator if its a duplicate signature
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
-		err := cs.tryAddVote(msg.Vote, peerKey)
+		err := cs.tryAddVote(msg.Vote, peerID)
 		if err == ErrAddingVote {
 			// TODO: punish peer
 		}
@@ -591,7 +592,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		cs.Logger.Error("Unknown msg type", reflect.TypeOf(msg))
 	}
 	if err != nil {
-		cs.Logger.Error("Error with msg", "type", reflect.TypeOf(msg), "peer", peerKey, "err", err, "msg", msg)
+		cs.Logger.Error("Error with msg", "type", reflect.TypeOf(msg), "peer", peerID, "err", err, "msg", msg)
 	}
 }
 
@@ -770,17 +771,18 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 		return
 	}
 
-	if !cs.isProposer() {
-		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
-		if cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-			cs.Logger.Debug("This node is a validator")
-		} else {
-			cs.Logger.Debug("This node is not a validator")
-		}
-	} else {
+	// if not a validator, we're done
+	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
+		cs.Logger.Debug("This node is not a validator")
+		return
+	}
+	cs.Logger.Debug("This node is a validator")
+
+	if cs.isProposer() {
 		cs.Logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
-		cs.Logger.Debug("This node is a validator")
 		cs.decideProposal(height, round)
+	} else {
+		cs.Logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 	}
 }
 
@@ -1308,8 +1310,8 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 }
 
 // Attempt to add the vote. if its a duplicate signature, dupeout the validator
-func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
-	_, err := cs.addVote(vote, peerKey)
+func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerID p2p.ID) error {
+	_, err := cs.addVote(vote, peerID)
 	if err != nil {
 		// If the vote height is off, we'll just ignore it,
 		// But if it's a conflicting sig, add it to the cs.evpool.
@@ -1335,7 +1337,7 @@ func (cs *ConsensusState) tryAddVote(vote *types.Vote, peerKey string) error {
 
 //-----------------------------------------------------------------------------
 
-func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool, err error) {
+func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, err error) {
 	cs.Logger.Debug("addVote", "voteHeight", vote.Height, "voteType", vote.Type, "valIndex", vote.ValidatorIndex, "csHeight", cs.Height)
 
 	// A precommit for the previous height?
@@ -1365,7 +1367,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerKey string) (added bool,
 	// A prevote/precommit for this height?
 	if vote.Height == cs.Height {
 		height := cs.Height
-		added, err = cs.Votes.AddVote(vote, peerKey)
+		added, err = cs.Votes.AddVote(vote, peerID)
 		if added {
 			cs.eventBus.PublishEventVote(types.EventDataVote{vote})
 

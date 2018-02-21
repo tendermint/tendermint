@@ -5,6 +5,7 @@
 package p2p
 
 import (
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"net"
@@ -12,15 +13,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // NetAddress defines information about a peer on the network
-// including its IP address, and port.
+// including its ID, IP address, and port.
 type NetAddress struct {
+	ID   ID
 	IP   net.IP
 	Port uint16
 	str  string
+}
+
+// IDAddressString returns id@hostPort.
+func IDAddressString(id ID, hostPort string) string {
+	return fmt.Sprintf("%s@%s", id, hostPort)
 }
 
 // NewNetAddress returns a new NetAddress using the provided TCP
@@ -28,25 +36,46 @@ type NetAddress struct {
 // using 0.0.0.0:0. When normal run, other net.Addr (except TCP) will
 // panic.
 // TODO: socks proxies?
-func NewNetAddress(addr net.Addr) *NetAddress {
+func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
 		if flag.Lookup("test.v") == nil { // normal run
 			cmn.PanicSanity(cmn.Fmt("Only TCPAddrs are supported. Got: %v", addr))
 		} else { // in testing
-			return NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
+			netAddr := NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
+			netAddr.ID = id
+			return netAddr
 		}
 	}
 	ip := tcpAddr.IP
 	port := uint16(tcpAddr.Port)
-	return NewNetAddressIPPort(ip, port)
+	netAddr := NewNetAddressIPPort(ip, port)
+	netAddr.ID = id
+	return netAddr
 }
 
 // NewNetAddressString returns a new NetAddress using the provided
-// address in the form of "IP:Port". Also resolves the host if host
-// is not an IP.
+// address in the form of "ID@IP:Port", where the ID is optional.
+// Also resolves the host if host is not an IP.
 func NewNetAddressString(addr string) (*NetAddress, error) {
-	host, portStr, err := net.SplitHostPort(removeProtocolIfDefined(addr))
+	addr = removeProtocolIfDefined(addr)
+
+	var id ID
+	spl := strings.Split(addr, "@")
+	if len(spl) == 2 {
+		idStr := spl[0]
+		idBytes, err := hex.DecodeString(idStr)
+		if err != nil {
+			return nil, errors.Wrap(err, fmt.Sprintf("Address (%s) contains invalid ID", addr))
+		}
+		if len(idBytes) != IDByteLength {
+			return nil, fmt.Errorf("Address (%s) contains ID of invalid length (%d). Should be %d hex-encoded bytes",
+				addr, len(idBytes), IDByteLength)
+		}
+		id, addr = ID(idStr), spl[1]
+	}
+
+	host, portStr, err := net.SplitHostPort(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +97,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	}
 
 	na := NewNetAddressIPPort(ip, uint16(port))
+	na.ID = id
 	return na, nil
 }
 
@@ -93,46 +123,54 @@ func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
 	na := &NetAddress{
 		IP:   ip,
 		Port: port,
-		str: net.JoinHostPort(
-			ip.String(),
-			strconv.FormatUint(uint64(port), 10),
-		),
 	}
 	return na
 }
 
-// Equals reports whether na and other are the same addresses.
+// Equals reports whether na and other are the same addresses,
+// including their ID, IP, and Port.
 func (na *NetAddress) Equals(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
 		return na.String() == o.String()
 	}
-
 	return false
 }
 
-func (na *NetAddress) Less(other interface{}) bool {
+// Same returns true is na has the same non-empty ID or DialString as other.
+func (na *NetAddress) Same(other interface{}) bool {
 	if o, ok := other.(*NetAddress); ok {
-		return na.String() < o.String()
+		if na.DialString() == o.DialString() {
+			return true
+		}
+		if na.ID != "" && na.ID == o.ID {
+			return true
+		}
 	}
-
-	cmn.PanicSanity("Cannot compare unequal types")
 	return false
 }
 
-// String representation.
+// String representation: <ID>@<IP>:<PORT>
 func (na *NetAddress) String() string {
 	if na.str == "" {
-		na.str = net.JoinHostPort(
-			na.IP.String(),
-			strconv.FormatUint(uint64(na.Port), 10),
-		)
+		addrStr := na.DialString()
+		if na.ID != "" {
+			addrStr = IDAddressString(na.ID, addrStr)
+		}
+		na.str = addrStr
 	}
 	return na.str
 }
 
+func (na *NetAddress) DialString() string {
+	return net.JoinHostPort(
+		na.IP.String(),
+		strconv.FormatUint(uint64(na.Port), 10),
+	)
+}
+
 // Dial calls net.Dial on the address.
 func (na *NetAddress) Dial() (net.Conn, error) {
-	conn, err := net.Dial("tcp", na.String())
+	conn, err := net.Dial("tcp", na.DialString())
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +179,7 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 
 // DialTimeout calls net.DialTimeout on the address.
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
-	conn, err := net.DialTimeout("tcp", na.String(), timeout)
+	conn, err := net.DialTimeout("tcp", na.DialString(), timeout)
 	if err != nil {
 		return nil, err
 	}

@@ -36,8 +36,8 @@ const (
 )
 
 // genesis, chain_id, priv_val
-var config *cfg.Config // NOTE: must be reset for each _test.go file
-var ensureTimeout = time.Second * 2
+var config *cfg.Config              // NOTE: must be reset for each _test.go file
+var ensureTimeout = time.Second * 1 // must be in seconds because CreateEmptyBlocksInterval is
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := cmn.EnsureDir(dir, mode); err != nil {
@@ -78,7 +78,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 		Type:             voteType,
 		BlockID:          types.BlockID{hash, header},
 	}
-	err := vs.PrivValidator.SignVote(config.ChainID, vote)
+	err := vs.PrivValidator.SignVote(config.ChainID(), vote)
 	return vote, err
 }
 
@@ -129,7 +129,7 @@ func decideProposal(cs1 *ConsensusState, vs *validatorStub, height int64, round 
 	// Make proposal
 	polRound, polBlockID := cs1.Votes.POLInfo()
 	proposal = types.NewProposal(height, round, blockParts.Header(), polRound, polBlockID)
-	if err := vs.SignProposal(config.ChainID, proposal); err != nil {
+	if err := vs.SignProposal(cs1.state.ChainID, proposal); err != nil {
 		panic(err)
 	}
 	return
@@ -267,7 +267,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	stateDB := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
 	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
-	cs.SetLogger(log.TestingLogger())
+	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
 
 	eventBus := types.NewEventBus()
@@ -285,14 +285,6 @@ func loadPrivValidator(config *cfg.Config) *types.PrivValidatorFS {
 	return privValidator
 }
 
-func fixedConsensusStateDummy(config *cfg.Config, logger log.Logger) *ConsensusState {
-	state, _ := sm.MakeGenesisStateFromFile(config.GenesisFile())
-	privValidator := loadPrivValidator(config)
-	cs := newConsensusState(state, privValidator, dummy.NewDummyApplication())
-	cs.SetLogger(logger)
-	return cs
-}
-
 func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	// Get State
 	state, privVals := randGenesisState(nValidators, false, 10)
@@ -300,7 +292,6 @@ func randConsensusState(nValidators int) (*ConsensusState, []*validatorStub) {
 	vss := make([]*validatorStub, nValidators)
 
 	cs := newConsensusState(state, privVals[0], counter.NewCounterApplication(true))
-	cs.SetLogger(log.TestingLogger())
 
 	for i := 0; i < nValidators; i++ {
 		vss[i] = NewValidatorStub(privVals[i], i)
@@ -346,7 +337,7 @@ func consensusLogger() log.Logger {
 			}
 		}
 		return term.FgBgColor{}
-	})
+	}).With("module", "consensus")
 }
 
 func randConsensusNet(nValidators int, testName string, tickerFunc func() TimeoutTicker, appFunc func() abci.Application, configOpts ...func(*cfg.Config)) []*ConsensusState {
@@ -366,8 +357,8 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
-		css[i].SetLogger(logger.With("validator", i))
 		css[i].SetTimeoutTicker(tickerFunc())
+		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
 	return css
 }
@@ -395,8 +386,8 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
-		css[i].SetLogger(logger.With("validator", i))
 		css[i].SetTimeoutTicker(tickerFunc())
+		css[i].SetLogger(logger.With("validator", i, "module", "consensus"))
 	}
 	return css
 }
@@ -426,9 +417,10 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 		privValidators[i] = privVal
 	}
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
+
 	return &types.GenesisDoc{
 		GenesisTime: time.Now(),
-		ChainID:     config.ChainID,
+		ChainID:     config.ChainID(),
 		Validators:  validators,
 	}, privValidators
 }

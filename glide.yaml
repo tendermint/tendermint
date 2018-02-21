@@ -2,10 +2,11 @@ package: github.com/tendermint/tendermint
 import:
 - package: github.com/ebuchman/fail-test
 - package: github.com/gogo/protobuf
-  version: v0.5
+  version: ^1.0.0
   subpackages:
   - proto
 - package: github.com/golang/protobuf
+  version: ^1.0.0
   subpackages:
   - proto
 - package: github.com/gorilla/websocket
@@ -18,23 +19,19 @@ import:
 - package: github.com/spf13/viper
   version: v1.0.0
 - package: github.com/tendermint/abci
-  version: v0.9.0
+  version: 0.10.0
   subpackages:
   - client
   - example/dummy
   - types
 - package: github.com/tendermint/go-crypto
-  version: ~0.4.1
+  version: 0.4.1
 - package: github.com/tendermint/go-wire
-  version: ~0.7.2
+  version: 0.7.2
   subpackages:
   - data
-- package: github.com/tendermint/iavl
-  version: ~0.2.0
-  subpackages:
-  - iavl
 - package: github.com/tendermint/tmlibs
-  version: v0.6.0
+  version: 0.7.0
   subpackages:
   - autofile
   - cli
@@ -46,18 +43,18 @@ import:
   - log
   - merkle
   - pubsub
+  - pubsub/query
 - package: golang.org/x/crypto
   subpackages:
   - nacl/box
   - nacl/secretbox
   - ripemd160
-- package: golang.org/x/net
-  subpackages:
-  - context
 - package: google.golang.org/grpc
   version: v1.7.3
 testImport:
+- package: github.com/fortytw2/leaktest
 - package: github.com/go-kit/kit
+  version: ^0.6.0
   subpackages:
   - log/term
 - package: github.com/stretchr/testify

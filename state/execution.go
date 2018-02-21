@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
@@ -127,21 +126,26 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
+	// while mempool is Locked, flush to ensure all async requests have completed
+	// in the ABCI app before Commit.
+	err := blockExec.mempool.FlushAppConn()
+	if err != nil {
+		blockExec.logger.Error("Client error during mempool.FlushAppConn", "err", err)
+		return nil, err
+	}
+
 	// Commit block, get hash back
 	res, err := blockExec.proxyApp.CommitSync()
 	if err != nil {
 		blockExec.logger.Error("Client error during proxyAppConn.CommitSync", "err", err)
 		return nil, err
 	}
-	if res.IsErr() {
-		blockExec.logger.Error("Error in proxyAppConn.CommitSync", "err", res)
-		return nil, res
-	}
-	if res.Log != "" {
-		blockExec.logger.Debug("Commit.Log: " + res.Log)
-	}
+	// ResponseCommit has no error code - just data
 
-	blockExec.logger.Info("Committed state", "height", block.Height, "txs", block.NumTxs, "appHash", res.Data)
+	blockExec.logger.Info("Committed state",
+		"height", block.Height,
+		"txs", block.NumTxs,
+		"appHash", fmt.Sprintf("%X", res.Data))
 
 	// Update mempool.
 	if err := blockExec.mempool.Update(block.Height, block.Txs); err != nil {
@@ -191,9 +195,9 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 
 	// TODO: determine which validators were byzantine
-	byzantineVals := make([]*abci.Evidence, len(block.Evidence.Evidence))
+	byzantineVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
-		byzantineVals[i] = &abci.Evidence{
+		byzantineVals[i] = abci.Evidence{
 			PubKey: ev.Address(), // XXX
 			Height: ev.Height(),
 		}
@@ -236,18 +240,10 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	return abciResponses, nil
 }
 
-func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator) error {
-	// If more or equal than 1/3 of total voting power changed in one block, then
-	// a light client could never prove the transition externally. See
-	// ./lite/doc.go for details on how a light client tracks validators.
-	vp23, err := changeInVotingPowerMoreOrEqualToOneThird(currentSet, updates)
-	if err != nil {
-		return err
-	}
-	if vp23 {
-		return errors.New("the change in voting power must be strictly less than 1/3")
-	}
-
+// If more or equal than 1/3 of total voting power changed in one block, then
+// a light client could never prove the transition externally. See
+// ./lite/doc.go for details on how a light client tracks validators.
+func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
 	for _, v := range updates {
 		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
 		if err != nil {
@@ -284,42 +280,6 @@ func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator)
 		}
 	}
 	return nil
-}
-
-func changeInVotingPowerMoreOrEqualToOneThird(currentSet *types.ValidatorSet, updates []*abci.Validator) (bool, error) {
-	threshold := currentSet.TotalVotingPower() * 1 / 3
-	acc := int64(0)
-
-	for _, v := range updates {
-		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
-		if err != nil {
-			return false, err
-		}
-
-		address := pubkey.Address()
-		power := int64(v.Power)
-		// mind the overflow from int64
-		if power < 0 {
-			return false, fmt.Errorf("Power (%d) overflows int64", v.Power)
-		}
-
-		_, val := currentSet.GetByAddress(address)
-		if val == nil {
-			acc += power
-		} else {
-			np := val.VotingPower - power
-			if np < 0 {
-				np = -np
-			}
-			acc += np
-		}
-
-		if acc >= threshold {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 // updateState returns a new State updated according to the header and responses.
@@ -417,12 +377,6 @@ func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block
 		logger.Error("Client error during proxyAppConn.CommitSync", "err", res)
 		return nil, err
 	}
-	if res.IsErr() {
-		logger.Error("Error in proxyAppConn.CommitSync", "err", res)
-		return nil, res
-	}
-	if res.Log != "" {
-		logger.Info("Commit.Log: " + res.Log)
-	}
+	// ResponseCommit has no error or log, just data
 	return res.Data, nil
 }

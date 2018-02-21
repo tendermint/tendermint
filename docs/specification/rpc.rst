@@ -18,7 +18,7 @@ Configuration
 ~~~~~~~~~~~~~
 
 Set the ``laddr`` config parameter under ``[rpc]`` table in the
-$TMHOME/config.toml file or the ``--rpc.laddr`` command-line flag to the
+$TMHOME/config/config.toml file or the ``--rpc.laddr`` command-line flag to the
 desired protocol://host:port setting. Default: ``tcp://0.0.0.0:46657``.
 
 Arguments
@@ -112,6 +112,7 @@ An HTTP Get request to the root RPC endpoint (e.g.
     http://localhost:46657/broadcast_tx_sync?tx=_
     http://localhost:46657/commit?height=_
     http://localhost:46657/dial_seeds?seeds=_
+    http://localhost:46657/dial_peers?peers=_&persistent=_
     http://localhost:46657/subscribe?event=_
     http://localhost:46657/tx?hash=_&prove=_
     http://localhost:46657/unsafe_start_cpu_profiler?filename=_

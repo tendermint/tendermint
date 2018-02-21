@@ -14,11 +14,15 @@ import (
 
 var (
 	config = cfg.DefaultConfig()
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "main")
+	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 )
 
 func init() {
-	RootCmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
+	registerFlagsRootCmd(RootCmd)
+}
+
+func registerFlagsRootCmd(cmd *cobra.Command) {
+	cmd.PersistentFlags().String("log_level", config.LogLevel, "Log level")
 }
 
 // ParseConfig retrieves the default environment configuration,
@@ -53,6 +57,7 @@ var RootCmd = &cobra.Command{
 		if viper.GetBool(cli.TraceFlag) {
 			logger = log.NewTracingLogger(logger)
 		}
+		logger = logger.With("module", "main")
 		return nil
 	},
 }

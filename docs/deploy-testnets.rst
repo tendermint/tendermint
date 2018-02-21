@@ -13,7 +13,7 @@ It's relatively easy to setup a Tendermint cluster manually. The only
 requirements for a particular Tendermint node are a private key for the
 validator, stored as ``priv_validator.json``, and a list of the public
 keys of all validators, stored as ``genesis.json``. These files should
-be stored in ``~/.tendermint``, or wherever the ``$TMHOME`` variable
+be stored in ``~/.tendermint/config``, or wherever the ``$TMHOME`` variable
 might be set to.
 
 Here are the steps to setting up a testnet manually:
@@ -24,15 +24,15 @@ Here are the steps to setting up a testnet manually:
    ``tendermint gen_validator``
 4) Compile a list of public keys for each validator into a
    ``genesis.json`` file.
-5) Run ``tendermint node --p2p.seeds=< seed addresses >`` on each node,
-   where ``< seed addresses >`` is a comma separated list of the IP:PORT
+5) Run ``tendermint node --p2p.persistent_peers=< peer addresses >`` on each node,
+   where ``< peer addresses >`` is a comma separated list of the IP:PORT
    combination for each node. The default port for Tendermint is
    ``46656``. Thus, if the IP addresses of your nodes were
    ``192.168.0.1, 192.168.0.2, 192.168.0.3, 192.168.0.4``, the command
    would look like:
-   ``tendermint node --p2p.seeds=192.168.0.1:46656,192.168.0.2:46656,192.168.0.3:46656,192.168.0.4:46656``.
+   ``tendermint node --p2p.persistent_peers=192.168.0.1:46656,192.168.0.2:46656,192.168.0.3:46656,192.168.0.4:46656``.
 
-After a few seconds, all the nodes should connect to eachother and start
+After a few seconds, all the nodes should connect to each other and start
 making blocks! For more information, see the Tendermint Networks section
 of `the guide to using Tendermint <using-tendermint.html>`__.
 
@@ -48,7 +48,7 @@ Automated Deployment using Kubernetes
 
 The `mintnet-kubernetes tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__
 allows automating the deployment of a Tendermint network on an already
-provisioned kubernetes cluster. For simple provisioning of a kubernetes
+provisioned Kubernetes cluster. For simple provisioning of a Kubernetes
 cluster, check out the `Google Cloud Platform <https://cloud.google.com/>`__.
 
 Automated Deployment using Terraform and Ansible
