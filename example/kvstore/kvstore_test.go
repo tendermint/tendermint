@@ -1,4 +1,4 @@
-package dummy
+package kvstore
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/abci/types"
 )
 
-func testDummy(t *testing.T, app types.Application, tx []byte, key, value string) {
+func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
 	ar := app.DeliverTx(tx)
 	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
@@ -42,44 +42,44 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	require.Equal(t, value, string(resQuery.Value))
 }
 
-func TestDummyKV(t *testing.T) {
-	dummy := NewDummyApplication()
+func TestKVStoreKV(t *testing.T) {
+	kvstore := NewKVStoreApplication()
 	key := "abc"
 	value := key
 	tx := []byte(key)
-	testDummy(t, dummy, tx, key, value)
+	testKVStore(t, kvstore, tx, key, value)
 
 	value = "def"
 	tx = []byte(key + "=" + value)
-	testDummy(t, dummy, tx, key, value)
+	testKVStore(t, kvstore, tx, key, value)
 }
 
-func TestPersistentDummyKV(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
+func TestPersistentKVStoreKV(t *testing.T) {
+	dir, err := ioutil.TempDir("/tmp", "abci-kvstore-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
-	dummy := NewPersistentDummyApplication(dir)
+	kvstore := NewPersistentKVStoreApplication(dir)
 	key := "abc"
 	value := key
 	tx := []byte(key)
-	testDummy(t, dummy, tx, key, value)
+	testKVStore(t, kvstore, tx, key, value)
 
 	value = "def"
 	tx = []byte(key + "=" + value)
-	testDummy(t, dummy, tx, key, value)
+	testKVStore(t, kvstore, tx, key, value)
 }
 
-func TestPersistentDummyInfo(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
+func TestPersistentKVStoreInfo(t *testing.T) {
+	dir, err := ioutil.TempDir("/tmp", "abci-kvstore-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
-	dummy := NewPersistentDummyApplication(dir)
-	InitDummy(dummy)
+	kvstore := NewPersistentKVStoreApplication(dir)
+	InitKVStore(kvstore)
 	height := int64(0)
 
-	resInfo := dummy.Info(types.RequestInfo{})
+	resInfo := kvstore.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -90,11 +90,11 @@ func TestPersistentDummyInfo(t *testing.T) {
 	header := types.Header{
 		Height: int64(height),
 	}
-	dummy.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
-	dummy.EndBlock(types.RequestEndBlock{header.Height})
-	dummy.Commit()
+	kvstore.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
+	kvstore.EndBlock(types.RequestEndBlock{header.Height})
+	kvstore.Commit()
 
-	resInfo = dummy.Info(types.RequestInfo{})
+	resInfo = kvstore.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -103,22 +103,22 @@ func TestPersistentDummyInfo(t *testing.T) {
 
 // add a validator, remove a validator, update a validator
 func TestValUpdates(t *testing.T) {
-	dir, err := ioutil.TempDir("/tmp", "abci-dummy-test") // TODO
+	dir, err := ioutil.TempDir("/tmp", "abci-kvstore-test") // TODO
 	if err != nil {
 		t.Fatal(err)
 	}
-	dummy := NewPersistentDummyApplication(dir)
+	kvstore := NewPersistentKVStoreApplication(dir)
 
 	// init with some validators
 	total := 10
 	nInit := 5
 	vals := RandVals(total)
 	// iniitalize with the first nInit
-	dummy.InitChain(types.RequestInitChain{
+	kvstore.InitChain(types.RequestInitChain{
 		Validators: vals[:nInit],
 	})
 
-	vals1, vals2 := vals[:nInit], dummy.Validators()
+	vals1, vals2 := vals[:nInit], kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
 	var v1, v2, v3 types.Validator
@@ -129,9 +129,9 @@ func TestValUpdates(t *testing.T) {
 	tx1 := MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 := MakeValSetChangeTx(v2.PubKey, v2.Power)
 
-	makeApplyBlock(t, dummy, 1, diff, tx1, tx2)
+	makeApplyBlock(t, kvstore, 1, diff, tx1, tx2)
 
-	vals1, vals2 = vals[:nInit+2], dummy.Validators()
+	vals1, vals2 = vals[:nInit+2], kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
 	// remove some validators
@@ -144,10 +144,10 @@ func TestValUpdates(t *testing.T) {
 	tx2 = MakeValSetChangeTx(v2.PubKey, v2.Power)
 	tx3 := MakeValSetChangeTx(v3.PubKey, v3.Power)
 
-	makeApplyBlock(t, dummy, 2, diff, tx1, tx2, tx3)
+	makeApplyBlock(t, kvstore, 2, diff, tx1, tx2, tx3)
 
 	vals1 = append(vals[:nInit-2], vals[nInit+1])
-	vals2 = dummy.Validators()
+	vals2 = kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
 	// update some validators
@@ -160,15 +160,15 @@ func TestValUpdates(t *testing.T) {
 	diff = []types.Validator{v1}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 
-	makeApplyBlock(t, dummy, 3, diff, tx1)
+	makeApplyBlock(t, kvstore, 3, diff, tx1)
 
 	vals1 = append([]types.Validator{v1}, vals1[1:]...)
-	vals2 = dummy.Validators()
+	vals2 = kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
 }
 
-func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff []types.Validator, txs ...[]byte) {
+func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff []types.Validator, txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
@@ -176,14 +176,14 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 		Height: height,
 	}
 
-	dummy.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
+	kvstore.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
 	for _, tx := range txs {
-		if r := dummy.DeliverTx(tx); r.IsErr() {
+		if r := kvstore.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)
 		}
 	}
-	resEndBlock := dummy.EndBlock(types.RequestEndBlock{header.Height})
-	dummy.Commit()
+	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{header.Height})
+	kvstore.Commit()
 
 	valsEqual(t, diff, resEndBlock.ValidatorUpdates)
 
@@ -250,8 +250,8 @@ func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, c
 
 func TestClientServer(t *testing.T) {
 	// set up socket app
-	dummy := NewDummyApplication()
-	client, server, err := makeSocketClientServer(dummy, "dummy-socket")
+	kvstore := NewKVStoreApplication()
+	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
 	require.Nil(t, err)
 	defer server.Stop()
 	defer client.Stop()
@@ -259,8 +259,8 @@ func TestClientServer(t *testing.T) {
 	runClientTests(t, client)
 
 	// set up grpc app
-	dummy = NewDummyApplication()
-	gclient, gserver, err := makeGRPCClientServer(dummy, "dummy-grpc")
+	kvstore = NewKVStoreApplication()
+	gclient, gserver, err := makeGRPCClientServer(kvstore, "kvstore-grpc")
 	require.Nil(t, err)
 	defer gserver.Stop()
 	defer gclient.Stop()

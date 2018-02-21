@@ -87,7 +87,7 @@ See [the documentation](http://tendermint.readthedocs.io/en/master/) for more de
 ### Examples
 
 Check out the variety of example applications in the [example directory](example/).
-It also contains the code refered to by the `counter` and `dummy` apps; these apps come
+It also contains the code refered to by the `counter` and `kvstore` apps; these apps come
 built into the `abci-cli` binary.
 
 #### Counter
@@ -122,21 +122,21 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 
 and can be found in [this file](cmd/abci-cli/abci-cli.go).
 
-#### Dummy
+#### kvstore
 
-The `abci-cli dummy` application, which illustrates a simple key-value Merkle tree
+The `abci-cli kvstore` application, which illustrates a simple key-value Merkle tree
 
 ```golang
-func cmdDummy(cmd *cobra.Command, args []string) error {
+func cmdKVStore(cmd *cobra.Command, args []string) error {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Create the application - in memory or persisted to disk
 	var app types.Application
 	if flagPersist == "" {
-		app = dummy.NewDummyApplication()
+		app = kvstore.NewKVStoreApplication()
 	} else {
-		app = dummy.NewPersistentDummyApplication(flagPersist)
-		app.(*dummy.PersistentDummyApplication).SetLogger(logger.With("module", "dummy"))
+		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
+		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
 	}
 
 	// Start the listener
@@ -157,4 +157,3 @@ func cmdDummy(cmd *cobra.Command, args []string) error {
 	return nil
 }
 ```
-

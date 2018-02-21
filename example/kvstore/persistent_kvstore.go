@@ -1,4 +1,4 @@
-package dummy
+package kvstore
 
 import (
 	"bytes"
@@ -20,10 +20,10 @@ const (
 
 //-----------------------------------------
 
-var _ types.Application = (*PersistentDummyApplication)(nil)
+var _ types.Application = (*PersistentKVStoreApplication)(nil)
 
-type PersistentDummyApplication struct {
-	app *DummyApplication
+type PersistentKVStoreApplication struct {
+	app *KVStoreApplication
 
 	// validator set
 	ValUpdates []types.Validator
@@ -31,8 +31,8 @@ type PersistentDummyApplication struct {
 	logger log.Logger
 }
 
-func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
-	name := "dummy"
+func NewPersistentKVStoreApplication(dbDir string) *PersistentKVStoreApplication {
+	name := "kvstore"
 	db, err := dbm.NewGoLevelDB(name, dbDir)
 	if err != nil {
 		panic(err)
@@ -40,29 +40,29 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 
 	state := loadState(db)
 
-	return &PersistentDummyApplication{
-		app:    &DummyApplication{state: state},
+	return &PersistentKVStoreApplication{
+		app:    &KVStoreApplication{state: state},
 		logger: log.NewNopLogger(),
 	}
 }
 
-func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
+func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
 
-func (app *PersistentDummyApplication) Info(req types.RequestInfo) types.ResponseInfo {
+func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	res := app.app.Info(req)
 	res.LastBlockHeight = app.app.state.Height
 	res.LastBlockAppHash = app.app.state.AppHash
 	return res
 }
 
-func (app *PersistentDummyApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
+func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
 	return app.app.SetOption(req)
 }
 
 // tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
-func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
 	if isValidatorTx(tx) {
@@ -75,21 +75,21 @@ func (app *PersistentDummyApplication) DeliverTx(tx []byte) types.ResponseDelive
 	return app.app.DeliverTx(tx)
 }
 
-func (app *PersistentDummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *PersistentKVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	return app.app.CheckTx(tx)
 }
 
 // Commit will panic if InitChain was not called
-func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
+func (app *PersistentKVStoreApplication) Commit() types.ResponseCommit {
 	return app.app.Commit()
 }
 
-func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	return app.app.Query(reqQuery)
 }
 
 // Save the validators in the merkle tree
-func (app *PersistentDummyApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
 	for _, v := range req.Validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
@@ -100,21 +100,21 @@ func (app *PersistentDummyApplication) InitChain(req types.RequestInitChain) typ
 }
 
 // Track the block hash and header information
-func (app *PersistentDummyApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
 	app.ValUpdates = make([]types.Validator, 0)
 	return types.ResponseBeginBlock{}
 }
 
 // Update the validator set
-func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
+func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
 	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
 //---------------------------------------------
 // update validators
 
-func (app *PersistentDummyApplication) Validators() (validators []types.Validator) {
+func (app *PersistentKVStoreApplication) Validators() (validators []types.Validator) {
 	itr := app.app.state.db.Iterator(nil, nil)
 	for ; itr.Valid(); itr.Next() {
 		if isValidatorTx(itr.Key()) {
@@ -138,7 +138,7 @@ func isValidatorTx(tx []byte) bool {
 }
 
 // format is "val:pubkey1/power1,addr2/power2,addr3/power3"tx
-func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
 	//get the pubkey and power
@@ -177,7 +177,7 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 }
 
 // add, update, or remove a validator
-func (app *PersistentDummyApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey))
 	if v.Power == 0 {
 		// remove validator

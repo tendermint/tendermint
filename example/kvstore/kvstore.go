@@ -1,4 +1,4 @@
-package dummy
+package kvstore
 
 import (
 	"bytes"
@@ -51,25 +51,25 @@ func prefixKey(key []byte) []byte {
 
 //---------------------------------------------------
 
-var _ types.Application = (*DummyApplication)(nil)
+var _ types.Application = (*KVStoreApplication)(nil)
 
-type DummyApplication struct {
+type KVStoreApplication struct {
 	types.BaseApplication
 
 	state State
 }
 
-func NewDummyApplication() *DummyApplication {
+func NewKVStoreApplication() *KVStoreApplication {
 	state := loadState(dbm.NewMemDB())
-	return &DummyApplication{state: state}
+	return &KVStoreApplication{state: state}
 }
 
-func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
 	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size)}
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	var key, value []byte
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) == 2 {
@@ -87,11 +87,11 @@ func (app *DummyApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }
 
-func (app *DummyApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
-func (app *DummyApplication) Commit() types.ResponseCommit {
+func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, app.state.Size)
@@ -101,7 +101,7 @@ func (app *DummyApplication) Commit() types.ResponseCommit {
 	return types.ResponseCommit{Data: appHash}
 }
 
-func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Index = -1 // TODO make Proof return index

@@ -16,14 +16,14 @@ import (
 
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/code"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/abci/server"
 	"github.com/tendermint/abci/types"
 )
 
-func TestDummy(t *testing.T) {
-	fmt.Println("### Testing Dummy")
-	testStream(t, dummy.NewDummyApplication())
+func TestKVStore(t *testing.T) {
+	fmt.Println("### Testing KVStore")
+	testStream(t, kvstore.NewKVStoreApplication())
 }
 
 func TestBaseApp(t *testing.T) {
