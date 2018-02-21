@@ -1,5 +1,5 @@
-hash: fbd3ee164cf60dd2dc997260d8f23c231fa46a312439468e5cc9e46fc54af31a
-updated: 2018-02-21T01:17:38.336542963-05:00
+hash: c5ef68389692436ff522a5ae45f844d89c112cc74c47c613e40c753a2566ac4b
+updated: 2018-02-21T09:30:27.717689522-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: c7588cbf7690cd9f047a28efa2dcd8f2435a4e5e
@@ -117,7 +117,7 @@ imports:
 - name: github.com/tendermint/go-crypto
   version: 4fc3055dbd17aa1203d0abc64b9293f378da22ec
 - name: github.com/tendermint/go-wire
-  version: 5d7845f24b843c914cf571dad2ca13c91cf70f0d
+  version: ec39b4702143d04a7ce9cda94a11025ba199f46b
   subpackages:
   - data
 - name: github.com/tendermint/tmlibs

@@ -107,6 +107,10 @@ func (tp TxProof) Validate(dataHash []byte) error {
 		return errors.New("Proof matches different data hash")
 	}
 
+	if tp.Index < 0 || tp.Index >= tp.Total {
+		return fmt.Errorf("Invalid index (%d) with total (%d)", tp.Index, tp.Total)
+	}
+
 	valid := tp.Proof.Verify(tp.Index, tp.Total, tp.LeafHash(), tp.RootHash)
 	if !valid {
 		return errors.New("Proof is not internally consistent")

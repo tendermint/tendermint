@@ -27,7 +27,7 @@ import:
 - package: github.com/tendermint/go-crypto
   version: develop
 - package: github.com/tendermint/go-wire
-  version: develop
+  version: fix/max-buffer-size
   subpackages:
   - data
 - package: github.com/tendermint/tmlibs
