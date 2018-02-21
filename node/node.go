@@ -35,6 +35,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/version"
+	tmwire "github.com/tendermint/tendermint/wire"
 
 	_ "net/http/pprof"
 )
@@ -607,8 +608,8 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	if len(bytes) == 0 {
 		return nil, errors.New("Genesis doc not found")
 	} else {
-		var genDoc *types.GenesisDoc
-		err := json.Unmarshal(bytes, &genDoc)
+		genDoc := new(types.GenesisDoc)
+		err := tmwire.UnmarshalJSON(bytes, &genDoc)
 		if err != nil {
 			cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
 		}
