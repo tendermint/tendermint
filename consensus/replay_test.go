@@ -362,7 +362,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	}
 
 	// now start the app using the handshake - it should sync
-	handshaker := NewHandshaker(stateDB, state, store)
+	handshaker := NewHandshaker(stateDB, state, store, nil)
 	proxyApp := proxy.NewAppConns(clientCreator2, handshaker)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
