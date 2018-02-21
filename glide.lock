@@ -1,5 +1,5 @@
-hash: 41f411204b59e893053e59cda43466b3a6634c5fc88698d1f3131ecd5f239de7
-updated: 2018-02-12T19:09:05.878324979-05:00
+hash: 322a0d4b9be08c59bf65df0e17e3be8d60762eaf9516f0c4126b50f9fd676f26
+updated: 2018-02-21T03:31:35.382568482Z
 imports:
 - name: github.com/btcsuite/btcd
   version: 50de9da05b50eb15658bb350f6ea24368a111ab7
@@ -78,11 +78,11 @@ imports:
 - name: github.com/spf13/jwalterweatherman
   version: 7c0cea34c8ece3fbeb2b27ab9b59511d360fb394
 - name: github.com/spf13/pflag
-  version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
+  version: e57e3eeb33f795204c1ca35f56c44f83227c6e66
 - name: github.com/spf13/viper
   version: 25b30aa063fc18e48662b86996252eabdcf2f0c7
 - name: github.com/syndtr/goleveldb
-  version: 211f780988068502fe874c44dae530528ebd840f
+  version: 34011bf325bce385408353a30b101fe5e923eb6e
   subpackages:
   - leveldb
   - leveldb/cache
@@ -97,7 +97,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: bf70f5e273bd7dd6e22e64186cd1ccc4e3a03df1
+  version: 68592f4d8ee34e97db94b7a7976b1309efdb7eb9
   subpackages:
   - client
   - example/code
@@ -117,7 +117,7 @@ imports:
   subpackages:
   - data
 - name: github.com/tendermint/tmlibs
-  version: c858b3ba78316fdd9096a11409a7e7a493e7d974
+  version: 1b9b5652a199ab0be2e781393fb275b66377309d
   subpackages:
   - autofile
   - cli
@@ -200,7 +200,7 @@ testImports:
   subpackages:
   - difflib
 - name: github.com/stretchr/testify
-  version: a726187e3128d0a0ec37f73ca7c4d3e508e6c2e5
+  version: 12b6f73e6084dad08a7c6e575284b177ecafbc71
   subpackages:
   - assert
   - require
