@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.7.0 (TBD)
+## 0.7.0 (February 20, 2018)
 
 BREAKING:
 
