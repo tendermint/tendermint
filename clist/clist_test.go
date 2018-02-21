@@ -218,3 +218,76 @@ func TestScanRightDeleteRandom(t *testing.T) {
 		t.Fatal("Failed to remove all elements from CList")
 	}
 }
+
+func TestWaitChan(t *testing.T) {
+	l := New()
+	ch := l.WaitChan()
+
+	// 1) add one element to an empty list
+	go l.PushBack(1)
+	<-ch
+
+	// 2) and remove it
+	el := l.Front()
+	v := l.Remove(el)
+	if v != 1 {
+		t.Fatal("where is 1 coming from?")
+	}
+
+	// 3) test iterating forward and waiting for Next (NextWaitChan and Next)
+	el = l.PushBack(0)
+
+	done := make(chan struct{})
+	pushed := 0
+	go func() {
+		for i := 1; i < 100; i++ {
+			l.PushBack(i)
+			pushed++
+			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+		}
+		close(done)
+	}()
+
+	next := el
+	seen := 0
+FOR_LOOP:
+	for {
+		select {
+		case <-next.NextWaitChan():
+			next = next.Next()
+			seen++
+			if next == nil {
+				continue
+			}
+		case <-done:
+			break FOR_LOOP
+		case <-time.After(10 * time.Second):
+			t.Fatal("max execution time")
+		}
+	}
+
+	if pushed != seen {
+		t.Fatalf("number of pushed items (%d) not equal to number of seen items (%d)", pushed, seen)
+	}
+
+	// 4) test iterating backwards (PrevWaitChan and Prev)
+	prev := next
+	seen = 0
+FOR_LOOP2:
+	for {
+		select {
+		case <-prev.PrevWaitChan():
+			prev = prev.Prev()
+			seen++
+			if prev == nil {
+				t.Fatal("expected PrevWaitChan to block forever on nil when reached first elem")
+			}
+		case <-time.After(5 * time.Second):
+			break FOR_LOOP2
+		}
+	}
+
+	if pushed != seen {
+		t.Fatalf("number of pushed items (%d) not equal to number of seen items (%d)", pushed, seen)
+	}
+}

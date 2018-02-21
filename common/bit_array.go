@@ -99,8 +99,14 @@ func (bA *BitArray) copyBits(bits int) *BitArray {
 
 // Returns a BitArray of larger bits size.
 func (bA *BitArray) Or(o *BitArray) *BitArray {
-	if bA == nil {
-		o.Copy()
+	if bA == nil && o == nil {
+		return nil
+	}
+	if bA == nil && o != nil {
+		return o.Copy()
+	}
+	if o == nil {
+		return bA.Copy()
 	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
@@ -113,7 +119,7 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 
 // Returns a BitArray of smaller bit size.
 func (bA *BitArray) And(o *BitArray) *BitArray {
-	if bA == nil {
+	if bA == nil || o == nil {
 		return nil
 	}
 	bA.mtx.Lock()
@@ -143,7 +149,8 @@ func (bA *BitArray) Not() *BitArray {
 }
 
 func (bA *BitArray) Sub(o *BitArray) *BitArray {
-	if bA == nil {
+	if bA == nil || o == nil {
+		// TODO: Decide if we should do 1's complement here?
 		return nil
 	}
 	bA.mtx.Lock()
@@ -306,7 +313,7 @@ func (bA *BitArray) Bytes() []byte {
 // so if necessary, caller must copy or lock o prior to calling Update.
 // If bA is nil, does nothing.
 func (bA *BitArray) Update(o *BitArray) {
-	if bA == nil {
+	if bA == nil || o == nil {
 		return
 	}
 	bA.mtx.Lock()

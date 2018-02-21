@@ -36,10 +36,6 @@ Flowrate is a fork of https://github.com/mxk/go-flowrate that added a `SetREMA` 
 
 Log is a log package structured around key-value pairs that allows logging level to be set differently for different keys.
 
-## logger
-
-Logger is DEPRECATED. It's a simple wrapper around `log15`.
-
 ## merkle
 
 Merkle provides a simple static merkle tree and corresponding proofs.

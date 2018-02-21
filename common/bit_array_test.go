@@ -3,6 +3,8 @@ package common
 import (
 	"bytes"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func randBitArray(bits int) (*BitArray, []byte) {
@@ -26,6 +28,11 @@ func TestAnd(t *testing.T) {
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.And(bA2)
 
+	var bNil *BitArray
+	require.Equal(t, bNil.And(bA1), (*BitArray)(nil))
+	require.Equal(t, bA1.And(nil), (*BitArray)(nil))
+	require.Equal(t, bNil.And(nil), (*BitArray)(nil))
+
 	if bA3.Bits != 31 {
 		t.Error("Expected min bits", bA3.Bits)
 	}
@@ -46,6 +53,11 @@ func TestOr(t *testing.T) {
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.Or(bA2)
 
+	bNil := (*BitArray)(nil)
+	require.Equal(t, bNil.Or(bA1), bA1)
+	require.Equal(t, bA1.Or(nil), bA1)
+	require.Equal(t, bNil.Or(nil), (*BitArray)(nil))
+
 	if bA3.Bits != 51 {
 		t.Error("Expected max bits")
 	}
@@ -65,6 +77,11 @@ func TestSub1(t *testing.T) {
 	bA1, _ := randBitArray(31)
 	bA2, _ := randBitArray(51)
 	bA3 := bA1.Sub(bA2)
+
+	bNil := (*BitArray)(nil)
+	require.Equal(t, bNil.Sub(bA1), (*BitArray)(nil))
+	require.Equal(t, bA1.Sub(nil), (*BitArray)(nil))
+	require.Equal(t, bNil.Sub(nil), (*BitArray)(nil))
 
 	if bA3.Bits != bA1.Bits {
 		t.Error("Expected bA1 bits")
@@ -88,6 +105,11 @@ func TestSub2(t *testing.T) {
 	bA1, _ := randBitArray(51)
 	bA2, _ := randBitArray(31)
 	bA3 := bA1.Sub(bA2)
+
+	bNil := (*BitArray)(nil)
+	require.Equal(t, bNil.Sub(bA1), (*BitArray)(nil))
+	require.Equal(t, bA1.Sub(nil), (*BitArray)(nil))
+	require.Equal(t, bNil.Sub(nil), (*BitArray)(nil))
 
 	if bA3.Bits != bA1.Bits {
 		t.Error("Expected bA1 bits")
@@ -162,5 +184,27 @@ func TestEmptyFull(t *testing.T) {
 		if !bA.IsFull() {
 			t.Fatal("Expected bit array to be full")
 		}
+	}
+}
+
+func TestUpdateNeverPanics(t *testing.T) {
+	newRandBitArray := func(n int) *BitArray {
+		ba, _ := randBitArray(n)
+		return ba
+	}
+	pairs := []struct {
+		a, b *BitArray
+	}{
+		{nil, nil},
+		{newRandBitArray(10), newRandBitArray(12)},
+		{newRandBitArray(23), newRandBitArray(23)},
+		{newRandBitArray(37), nil},
+		{nil, NewBitArray(10)},
+	}
+
+	for _, pair := range pairs {
+		a, b := pair.a, pair.b
+		a.Update(b)
+		b.Update(a)
 	}
 }

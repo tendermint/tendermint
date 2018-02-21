@@ -20,14 +20,16 @@ type Ticker interface {
 }
 
 //----------------------------------------
-// defaultTickerMaker
+// defaultTicker
+
+var _ Ticker = (*defaultTicker)(nil)
+
+type defaultTicker time.Ticker
 
 func defaultTickerMaker(dur time.Duration) Ticker {
 	ticker := time.NewTicker(dur)
 	return (*defaultTicker)(ticker)
 }
-
-type defaultTicker time.Ticker
 
 // Implements Ticker
 func (t *defaultTicker) Chan() <-chan time.Time {
@@ -80,13 +82,11 @@ func (t *logicalTicker) fireRoutine(interval time.Duration) {
 	}
 	// Init `lasttime` end
 
-	timeleft := interval
 	for {
 		select {
 		case newtime := <-source:
 			elapsed := newtime.Sub(lasttime)
-			timeleft -= elapsed
-			if timeleft <= 0 {
+			if interval <= elapsed {
 				// Block for determinism until the ticker is stopped.
 				select {
 				case t.ch <- newtime:
@@ -97,7 +97,7 @@ func (t *logicalTicker) fireRoutine(interval time.Duration) {
 				// Don't try to "catch up" by sending more.
 				// "Ticker adjusts the intervals or drops ticks to make up for
 				// slow receivers" - https://golang.org/pkg/time/#Ticker
-				timeleft = interval
+				lasttime = newtime
 			}
 		case <-t.quit:
 			return // done
@@ -153,11 +153,16 @@ func NewRepeatTimerWithTickerMaker(name string, dur time.Duration, tm TickerMake
 	return t
 }
 
+// receive ticks on ch, send out on t.ch
 func (t *RepeatTimer) fireRoutine(ch <-chan time.Time, quit <-chan struct{}) {
 	for {
 		select {
-		case t_ := <-ch:
-			t.ch <- t_
+		case tick := <-ch:
+			select {
+			case t.ch <- tick:
+			case <-quit:
+				return
+			}
 		case <-quit: // NOTE: `t.quit` races.
 			return
 		}
@@ -212,7 +217,6 @@ func (t *RepeatTimer) stop() {
 	t.ticker.Stop()
 	t.ticker = nil
 	/*
-		XXX
 		From https://golang.org/pkg/time/#Ticker:
 		"Stop the ticker to release associated resources"
 		"After Stop, no more ticks will be sent"

@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.7.0 (TBD)
+
+BREAKING:
+
+ - [db] Major API upgrade. See `db/types.go`.
+ - [common] added `Quit() <-chan struct{}` to Service interface.
+   The returned channel is closed when service is stopped.
+ - [common] Remove HTTP functions
+ - [common] Heap.Push takes an `int`, new Heap.PushComparable takes the comparable.
+ - [logger] Removed. Use `log`
+ - [merkle] Major API updade - uses cmn.KVPairs.
+ - [cli] WriteDemoConfig -> WriteConfigValues
+ - [all] Remove go-wire dependency!
+
+FEATURES:
+
+ - [db] New FSDB that uses the filesystem directly
+ - [common] HexBytes
+ - [common] KVPair and KI64Pair (protobuf based key-value pair objects)
+
+IMPROVEMENTS:
+
+ - [clist] add WaitChan() to CList, NextWaitChan() and PrevWaitChan()
+   to CElement. These can be used instead of blocking `*Wait()` methods
+   if you need to be able to send quit signal and not block forever
+ - [common] IsHex handles 0x-prefix
+
+BUG FIXES:
+
+ - [common] BitArray check for nil arguments
+ - [common] Fix memory leak in RepeatTimer
+
 ## 0.6.0 (December 29, 2017)
 
 BREAKING:

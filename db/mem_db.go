@@ -3,15 +3,16 @@ package db
 import (
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 )
 
 func init() {
-	registerDBCreator(MemDBBackendStr, func(name string, dir string) (DB, error) {
+	registerDBCreator(MemDBBackend, func(name string, dir string) (DB, error) {
 		return NewMemDB(), nil
 	}, false)
 }
+
+var _ DB = (*MemDB)(nil)
 
 type MemDB struct {
 	mtx sync.Mutex
@@ -19,40 +20,79 @@ type MemDB struct {
 }
 
 func NewMemDB() *MemDB {
-	database := &MemDB{db: make(map[string][]byte)}
+	database := &MemDB{
+		db: make(map[string][]byte),
+	}
 	return database
 }
 
+// Implements DB.
 func (db *MemDB) Get(key []byte) []byte {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+	key = nonNilBytes(key)
+
 	return db.db[string(key)]
 }
 
+// Implements DB.
+func (db *MemDB) Has(key []byte) bool {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+	key = nonNilBytes(key)
+
+	_, ok := db.db[string(key)]
+	return ok
+}
+
+// Implements DB.
 func (db *MemDB) Set(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	db.db[string(key)] = value
+
+	db.SetNoLock(key, value)
 }
 
+// Implements DB.
 func (db *MemDB) SetSync(key []byte, value []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
+	db.SetNoLock(key, value)
+}
+
+// Implements atomicSetDeleter.
+func (db *MemDB) SetNoLock(key []byte, value []byte) {
+	key = nonNilBytes(key)
+	value = nonNilBytes(value)
+
 	db.db[string(key)] = value
 }
 
+// Implements DB.
 func (db *MemDB) Delete(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
-	delete(db.db, string(key))
+
+	db.DeleteNoLock(key)
 }
 
+// Implements DB.
 func (db *MemDB) DeleteSync(key []byte) {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
+	db.DeleteNoLock(key)
+}
+
+// Implements atomicSetDeleter.
+func (db *MemDB) DeleteNoLock(key []byte) {
+	key = nonNilBytes(key)
+
 	delete(db.db, string(key))
 }
 
+// Implements DB.
 func (db *MemDB) Close() {
 	// Close is a noop since for an in-memory
 	// database, we don't have a destination
@@ -61,120 +101,143 @@ func (db *MemDB) Close() {
 	// See the discussion in https://github.com/tendermint/tmlibs/pull/56
 }
 
+// Implements DB.
 func (db *MemDB) Print() {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
+
 	for key, value := range db.db {
 		fmt.Printf("[%X]:\t[%X]\n", []byte(key), value)
 	}
 }
 
+// Implements DB.
 func (db *MemDB) Stats() map[string]string {
-	stats := make(map[string]string)
-	stats["database.type"] = "memDB"
-	return stats
-}
-
-type memDBIterator struct {
-	last int
-	keys []string
-	db   *MemDB
-}
-
-func newMemDBIterator() *memDBIterator {
-	return &memDBIterator{}
-}
-
-func (it *memDBIterator) Next() bool {
-	if it.last >= len(it.keys)-1 {
-		return false
-	}
-	it.last++
-	return true
-}
-
-func (it *memDBIterator) Key() []byte {
-	return []byte(it.keys[it.last])
-}
-
-func (it *memDBIterator) Value() []byte {
-	return it.db.Get(it.Key())
-}
-
-func (it *memDBIterator) Release() {
-	it.db = nil
-	it.keys = nil
-}
-
-func (it *memDBIterator) Error() error {
-	return nil
-}
-
-func (db *MemDB) Iterator() Iterator {
-	return db.IteratorPrefix([]byte{})
-}
-
-func (db *MemDB) IteratorPrefix(prefix []byte) Iterator {
-	it := newMemDBIterator()
-	it.db = db
-	it.last = -1
-
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	// unfortunately we need a copy of all of the keys
-	for key, _ := range db.db {
-		if strings.HasPrefix(key, string(prefix)) {
-			it.keys = append(it.keys, key)
-		}
-	}
-	// and we need to sort them
-	sort.Strings(it.keys)
-	return it
+	stats := make(map[string]string)
+	stats["database.type"] = "memDB"
+	stats["database.size"] = fmt.Sprintf("%d", len(db.db))
+	return stats
 }
 
+//----------------------------------------
+// Batch
+
+// Implements DB.
 func (db *MemDB) NewBatch() Batch {
-	return &memDBBatch{db, nil}
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	return &memBatch{db, nil}
 }
 
-//--------------------------------------------------------------------------------
-
-type memDBBatch struct {
-	db  *MemDB
-	ops []operation
+func (db *MemDB) Mutex() *sync.Mutex {
+	return &(db.mtx)
 }
 
-type opType int
+//----------------------------------------
+// Iterator
 
-const (
-	opTypeSet    = 1
-	opTypeDelete = 2
-)
+// Implements DB.
+func (db *MemDB) Iterator(start, end []byte) Iterator {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
 
-type operation struct {
-	opType
-	key   []byte
-	value []byte
+	keys := db.getSortedKeys(start, end, false)
+	return newMemDBIterator(db, keys, start, end)
 }
 
-func (mBatch *memDBBatch) Set(key, value []byte) {
-	mBatch.ops = append(mBatch.ops, operation{opTypeSet, key, value})
+// Implements DB.
+func (db *MemDB) ReverseIterator(start, end []byte) Iterator {
+	db.mtx.Lock()
+	defer db.mtx.Unlock()
+
+	keys := db.getSortedKeys(end, start, true)
+	return newMemDBIterator(db, keys, start, end)
 }
 
-func (mBatch *memDBBatch) Delete(key []byte) {
-	mBatch.ops = append(mBatch.ops, operation{opTypeDelete, key, nil})
+// We need a copy of all of the keys.
+// Not the best, but probably not a bottleneck depending.
+type memDBIterator struct {
+	db    DB
+	cur   int
+	keys  []string
+	start []byte
+	end   []byte
 }
 
-func (mBatch *memDBBatch) Write() {
-	mBatch.db.mtx.Lock()
-	defer mBatch.db.mtx.Unlock()
+var _ Iterator = (*memDBIterator)(nil)
 
-	for _, op := range mBatch.ops {
-		if op.opType == opTypeSet {
-			mBatch.db.db[string(op.key)] = op.value
-		} else if op.opType == opTypeDelete {
-			delete(mBatch.db.db, string(op.key))
+// Keys is expected to be in reverse order for reverse iterators.
+func newMemDBIterator(db DB, keys []string, start, end []byte) *memDBIterator {
+	return &memDBIterator{
+		db:    db,
+		cur:   0,
+		keys:  keys,
+		start: start,
+		end:   end,
+	}
+}
+
+// Implements Iterator.
+func (itr *memDBIterator) Domain() ([]byte, []byte) {
+	return itr.start, itr.end
+}
+
+// Implements Iterator.
+func (itr *memDBIterator) Valid() bool {
+	return 0 <= itr.cur && itr.cur < len(itr.keys)
+}
+
+// Implements Iterator.
+func (itr *memDBIterator) Next() {
+	itr.assertIsValid()
+	itr.cur++
+}
+
+// Implements Iterator.
+func (itr *memDBIterator) Key() []byte {
+	itr.assertIsValid()
+	return []byte(itr.keys[itr.cur])
+}
+
+// Implements Iterator.
+func (itr *memDBIterator) Value() []byte {
+	itr.assertIsValid()
+	key := []byte(itr.keys[itr.cur])
+	return itr.db.Get(key)
+}
+
+// Implements Iterator.
+func (itr *memDBIterator) Close() {
+	itr.keys = nil
+	itr.db = nil
+}
+
+func (itr *memDBIterator) assertIsValid() {
+	if !itr.Valid() {
+		panic("memDBIterator is invalid")
+	}
+}
+
+//----------------------------------------
+// Misc.
+
+func (db *MemDB) getSortedKeys(start, end []byte, reverse bool) []string {
+	keys := []string{}
+	for key, _ := range db.db {
+		if IsKeyInDomain([]byte(key), start, end, false) {
+			keys = append(keys, key)
 		}
 	}
-
+	sort.Strings(keys)
+	if reverse {
+		nkeys := len(keys)
+		for i := 0; i < nkeys/2; i++ {
+			keys[i] = keys[nkeys-i-1]
+		}
+	}
+	return keys
 }

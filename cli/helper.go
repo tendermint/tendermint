@@ -9,21 +9,15 @@ import (
 	"path/filepath"
 )
 
-// WriteDemoConfig writes a toml file with the given values.
-// It returns the RootDir the config.toml file is stored in,
-// or an error if writing was impossible
-func WriteDemoConfig(vals map[string]string) (string, error) {
-	cdir, err := ioutil.TempDir("", "test-cli")
-	if err != nil {
-		return "", err
-	}
+// WriteConfigVals writes a toml file with the given values.
+// It returns an error if writing was impossible.
+func WriteConfigVals(dir string, vals map[string]string) error {
 	data := ""
 	for k, v := range vals {
 		data = data + fmt.Sprintf("%s = \"%s\"\n", k, v)
 	}
-	cfile := filepath.Join(cdir, "config.toml")
-	err = ioutil.WriteFile(cfile, []byte(data), 0666)
-	return cdir, err
+	cfile := filepath.Join(dir, "config.toml")
+	return ioutil.WriteFile(cfile, []byte(data), 0666)
 }
 
 // RunWithArgs executes the given command with the specified command line args

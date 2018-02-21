@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	. "github.com/tendermint/tmlibs/common"
+	"github.com/stretchr/testify/assert"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func BenchmarkRandomReadsWrites2(b *testing.B) {
@@ -18,7 +19,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < int(numItems); i++ {
 		internal[int64(i)] = int64(0)
 	}
-	db, err := NewCLevelDB(Fmt("test_%x", RandStr(12)), "")
+	db, err := NewCLevelDB(cmn.Fmt("test_%x", cmn.RandStr(12)), "")
 	if err != nil {
 		b.Fatal(err.Error())
 		return
@@ -30,7 +31,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		// Write something
 		{
-			idx := (int64(RandInt()) % numItems)
+			idx := (int64(cmn.RandInt()) % numItems)
 			internal[idx] += 1
 			val := internal[idx]
 			idxBytes := int642Bytes(int64(idx))
@@ -43,7 +44,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 		}
 		// Read something
 		{
-			idx := (int64(RandInt()) % numItems)
+			idx := (int64(cmn.RandInt()) % numItems)
 			val := internal[idx]
 			idxBytes := int642Bytes(int64(idx))
 			valBytes := db.Get(idxBytes)
@@ -84,3 +85,12 @@ func bytes2Int64(buf []byte) int64 {
 	return int64(binary.BigEndian.Uint64(buf))
 }
 */
+
+func TestCLevelDBBackend(t *testing.T) {
+	name := cmn.Fmt("test_%x", cmn.RandStr(12))
+	db := NewDB(name, LevelDBBackend, "")
+	defer cleanupDBDir("", name)
+
+	_, ok := db.(*CLevelDB)
+	assert.True(t, ok)
+}

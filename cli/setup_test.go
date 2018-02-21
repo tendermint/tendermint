@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 	"testing"
@@ -54,11 +55,20 @@ func TestSetupEnv(t *testing.T) {
 	}
 }
 
+func tempDir() string {
+	cdir, err := ioutil.TempDir("", "test-cli")
+	if err != nil {
+		panic(err)
+	}
+	return cdir
+}
+
 func TestSetupConfig(t *testing.T) {
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1 := "fubble"
-	conf1, err := WriteDemoConfig(map[string]string{"boo": cval1})
+	conf1 := tempDir()
+	err := WriteConfigVals(conf1, map[string]string{"boo": cval1})
 	require.Nil(t, err)
 
 	cases := []struct {
@@ -116,10 +126,12 @@ func TestSetupUnmarshal(t *testing.T) {
 	// we pre-create two config files we can refer to in the rest of
 	// the test cases.
 	cval1, cval2 := "someone", "else"
-	conf1, err := WriteDemoConfig(map[string]string{"name": cval1})
+	conf1 := tempDir()
+	err := WriteConfigVals(conf1, map[string]string{"name": cval1})
 	require.Nil(t, err)
 	// even with some ignored fields, should be no problem
-	conf2, err := WriteDemoConfig(map[string]string{"name": cval2, "foo": "bar"})
+	conf2 := tempDir()
+	err = WriteConfigVals(conf2, map[string]string{"name": cval2, "foo": "bar"})
 	require.Nil(t, err)
 
 	// unused is not declared on a flag and remains from base

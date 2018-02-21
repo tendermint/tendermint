@@ -1,5 +1,10 @@
 package merkle
 
+import (
+	"encoding/binary"
+	"io"
+)
+
 type Tree interface {
 	Size() (size int)
 	Height() (height int8)
@@ -18,6 +23,25 @@ type Tree interface {
 	IterateRange(start []byte, end []byte, ascending bool, fx func(key []byte, value []byte) (stop bool)) (stopped bool)
 }
 
-type Hashable interface {
+type Hasher interface {
 	Hash() []byte
+}
+
+//-----------------------------------------------------------------------
+// NOTE: these are duplicated from go-wire so we dont need go-wire as a dep
+
+func encodeByteSlice(w io.Writer, bz []byte) (err error) {
+	err = encodeVarint(w, int64(len(bz)))
+	if err != nil {
+		return
+	}
+	_, err = w.Write(bz)
+	return
+}
+
+func encodeVarint(w io.Writer, i int64) (err error) {
+	var buf [10]byte
+	n := binary.PutVarint(buf[:], i)
+	_, err = w.Write(buf[0:n])
+	return
 }

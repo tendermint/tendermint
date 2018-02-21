@@ -3,14 +3,12 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	data "github.com/tendermint/go-wire/data"
-	"github.com/tendermint/go-wire/data/base58"
 )
 
 const (
@@ -42,7 +40,7 @@ func PrepareBaseCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor 
 func PrepareMainCmd(cmd *cobra.Command, envPrefix, defaultHome string) Executor {
 	cmd.PersistentFlags().StringP(EncodingFlag, "e", "hex", "Binary encoding (hex|b64|btc)")
 	cmd.PersistentFlags().StringP(OutputFlag, "o", "text", "Output format (text|json)")
-	cmd.PersistentPreRunE = concatCobraCmdFuncs(setEncoding, validateOutput, cmd.PersistentPreRunE)
+	cmd.PersistentPreRunE = concatCobraCmdFuncs(validateOutput, cmd.PersistentPreRunE)
 	return PrepareBaseCmd(cmd, envPrefix, defaultHome)
 }
 
@@ -132,8 +130,9 @@ func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 
 	homeDir := viper.GetString(HomeFlag)
 	viper.Set(HomeFlag, homeDir)
-	viper.SetConfigName("config") // name of config file (without extension)
-	viper.AddConfigPath(homeDir)  // search root directory
+	viper.SetConfigName("config")                         // name of config file (without extension)
+	viper.AddConfigPath(homeDir)                          // search root directory
+	viper.AddConfigPath(filepath.Join(homeDir, "config")) // search root directory /config
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
@@ -143,23 +142,6 @@ func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 		// we ignore not found error, only parse error
 		// stderr, so if we redirect output to json file, this doesn't appear
 		fmt.Fprintf(os.Stderr, "%#v", err)
-	}
-	return nil
-}
-
-// setEncoding reads the encoding flag
-func setEncoding(cmd *cobra.Command, args []string) error {
-	// validate and set encoding
-	enc := viper.GetString("encoding")
-	switch enc {
-	case "hex":
-		data.Encoder = data.HexEncoder
-	case "b64":
-		data.Encoder = data.B64Encoder
-	case "btc":
-		data.Encoder = base58.BTCEncoder
-	default:
-		return errors.Errorf("Unsupported encoding: %s", enc)
 	}
 	return nil
 }

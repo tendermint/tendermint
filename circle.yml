@@ -15,7 +15,7 @@ dependencies:
 
 test:
   override:
-    - cd $PROJECT_PATH && make get_vendor_deps && bash ./test.sh
+    - cd $PROJECT_PATH && make get_tools && make get_vendor_deps && bash ./test.sh
   post:
     - cd "$PROJECT_PATH" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
     - cd "$PROJECT_PATH" && mv coverage.txt "${CIRCLE_ARTIFACTS}"
