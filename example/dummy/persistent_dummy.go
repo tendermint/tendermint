@@ -9,8 +9,6 @@ import (
 
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -28,7 +26,7 @@ type PersistentDummyApplication struct {
 	app *DummyApplication
 
 	// validator set
-	ValUpdates []*types.Validator
+	ValUpdates []types.Validator
 
 	logger log.Logger
 }
@@ -40,11 +38,10 @@ func NewPersistentDummyApplication(dbDir string) *PersistentDummyApplication {
 		panic(err)
 	}
 
-	stateTree := iavl.NewVersionedTree(500, db)
-	stateTree.Load()
+	state := loadState(db)
 
 	return &PersistentDummyApplication{
-		app:    &DummyApplication{state: stateTree},
+		app:    &DummyApplication{state: state},
 		logger: log.NewNopLogger(),
 	}
 }
@@ -55,9 +52,8 @@ func (app *PersistentDummyApplication) SetLogger(l log.Logger) {
 
 func (app *PersistentDummyApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	res := app.app.Info(req)
-	var latestVersion uint64 = app.app.state.LatestVersion() // TODO: change to int64
-	res.LastBlockHeight = int64(latestVersion)
-	res.LastBlockAppHash = app.app.state.Hash()
+	res.LastBlockHeight = app.app.state.Height
+	res.LastBlockAppHash = app.app.state.AppHash
 	return res
 }
 
@@ -85,20 +81,7 @@ func (app *PersistentDummyApplication) CheckTx(tx []byte) types.ResponseCheckTx 
 
 // Commit will panic if InitChain was not called
 func (app *PersistentDummyApplication) Commit() types.ResponseCommit {
-
-	// Save a new version for next height
-	height := app.app.state.LatestVersion() + 1
-	var appHash []byte
-	var err error
-
-	appHash, err = app.app.state.SaveVersion(height)
-	if err != nil {
-		// if this wasn't a dummy app, we'd do something smarter
-		panic(err)
-	}
-
-	app.logger.Info("Commit block", "height", height, "root", appHash)
-	return types.ResponseCommit{Code: code.CodeTypeOK, Data: appHash}
+	return app.app.Commit()
 }
 
 func (app *PersistentDummyApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
@@ -119,7 +102,7 @@ func (app *PersistentDummyApplication) InitChain(req types.RequestInitChain) typ
 // Track the block hash and header information
 func (app *PersistentDummyApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
-	app.ValUpdates = make([]*types.Validator, 0)
+	app.ValUpdates = make([]types.Validator, 0)
 	return types.ResponseBeginBlock{}
 }
 
@@ -131,18 +114,18 @@ func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types
 //---------------------------------------------
 // update validators
 
-func (app *PersistentDummyApplication) Validators() (validators []*types.Validator) {
-	app.app.state.Iterate(func(key, value []byte) bool {
-		if isValidatorTx(key) {
+func (app *PersistentDummyApplication) Validators() (validators []types.Validator) {
+	itr := app.app.state.db.Iterator(nil, nil)
+	for ; itr.Valid(); itr.Next() {
+		if isValidatorTx(itr.Key()) {
 			validator := new(types.Validator)
-			err := types.ReadMessage(bytes.NewBuffer(value), validator)
+			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), validator)
 			if err != nil {
 				panic(err)
 			}
-			validators = append(validators, validator)
+			validators = append(validators, *validator)
 		}
-		return false
-	})
+	}
 	return
 }
 
@@ -174,12 +157,12 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%s) is invalid hex", pubkeyS)}
 	}
-	_, err = crypto.PubKeyFromBytes(pubkey)
+	/*_, err = crypto.PubKeyFromBytes(pubkey)
 	if err != nil {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%X) is invalid go-crypto encoded", pubkey)}
-	}
+	}*/
 
 	// decode the power
 	power, err := strconv.ParseInt(powerS, 10, 64)
@@ -190,29 +173,29 @@ func (app *PersistentDummyApplication) execValidatorTx(tx []byte) types.Response
 	}
 
 	// update
-	return app.updateValidator(&types.Validator{pubkey, power})
+	return app.updateValidator(types.Validator{pubkey, power})
 }
 
 // add, update, or remove a validator
-func (app *PersistentDummyApplication) updateValidator(v *types.Validator) types.ResponseDeliverTx {
+func (app *PersistentDummyApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey))
 	if v.Power == 0 {
 		// remove validator
-		if !app.app.state.Has(key) {
+		if !app.app.state.db.Has(key) {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %X", key)}
 		}
-		app.app.state.Remove(key)
+		app.app.state.db.Delete(key)
 	} else {
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
-		if err := types.WriteMessage(v, value); err != nil {
+		if err := types.WriteMessage(&v, value); err != nil {
 			return types.ResponseDeliverTx{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
-		app.app.state.Set(key, value.Bytes())
+		app.app.state.db.Set(key, value.Bytes())
 	}
 
 	// we only update the changes array if we successfully updated the tree

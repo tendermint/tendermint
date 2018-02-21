@@ -4,8 +4,11 @@ package types;
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "github.com/tendermint/tmlibs/common/types.proto";
 
 // This file is copied from http://github.com/tendermint/abci
+// NOTE: When using custom types, mind the warnings.
+// https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
 
 //----------------------------------------
 // Request types
@@ -37,16 +40,18 @@ message RequestInfo {
   string version = 1;
 }
 
+// nondeterministic
 message RequestSetOption {
   string key = 1;
   string value = 2;
 }
 
 message RequestInitChain {
-  repeated Validator validators = 1;
+  repeated Validator validators = 1 [(gogoproto.nullable)=false];
+  bytes app_state_bytes = 2;
 }
 
-message RequestQuery{
+message RequestQuery {
   bytes data = 1;
   string path = 2;
   int64 height = 3;
@@ -55,9 +60,9 @@ message RequestQuery{
 
 message RequestBeginBlock {
   bytes hash = 1;
-  Header header = 2;
+  Header header = 2 [(gogoproto.nullable)=false];
   repeated int32 absent_validators = 3;
-  repeated Evidence byzantine_validators = 4;
+  repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
 }
 
 message RequestCheckTx {
@@ -68,7 +73,7 @@ message RequestDeliverTx {
   bytes tx = 1;
 }
 
-message RequestEndBlock{
+message RequestEndBlock {
   int64 height = 1;
 }
 
@@ -95,6 +100,7 @@ message Response {
   }
 }
 
+// nondeterministic
 message ResponseException {
   string error = 1;
 }
@@ -113,9 +119,12 @@ message ResponseInfo {
   bytes last_block_app_hash = 4;
 }
 
+// nondeterministic
 message ResponseSetOption {
   uint32 code = 1;
-  string log  = 2;
+  // bytes data = 2;
+  string log = 3;
+  string info = 4;
 }
 
 message ResponseInitChain {
@@ -123,12 +132,14 @@ message ResponseInitChain {
 
 message ResponseQuery {
   uint32 code = 1;
-  int64 index = 2;
-  bytes key = 3 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  bytes value = 4 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  bytes proof = 5 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  int64 height = 6;
-  string log = 7;
+  // bytes data = 2; // use "value" instead.
+  string log = 3; // nondeterministic
+  string info = 4; // nondeterministic
+  int64 index = 5;
+  bytes key = 6;
+  bytes value = 7;
+  bytes proof = 8;
+  int64 height = 9;
 }
 
 message ResponseBeginBlock {
@@ -136,28 +147,34 @@ message ResponseBeginBlock {
 
 message ResponseCheckTx {
   uint32 code = 1;
-  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  string log = 3;
-  int64 gas = 4;
-  int64 fee = 5;
+  bytes data = 2;
+  string log = 3; // nondeterministic
+  string info = 4; // nondeterministic
+  int64 gas_wanted  = 5;
+  // int64 gas_used = 6;
+  repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  common.KI64Pair fee = 8 [(gogoproto.nullable)=false];
 }
 
 message ResponseDeliverTx {
   uint32 code = 1;
-  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  string log = 3;
-  repeated KVPair tags = 4;
+  bytes data = 2;
+  string log = 3; // nondeterministic
+  string info = 4; // nondeterministic
+  int64 gas_wanted = 5;
+  int64 gas_used = 6;
+  repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  // common.KI64Pair fee = 8;
 }
 
 message ResponseEndBlock {
-  repeated Validator validator_updates = 1;
+  repeated Validator validator_updates = 1 [(gogoproto.nullable)=false];
   ConsensusParams consensus_param_updates = 2;
 }
 
 message ResponseCommit {
-  uint32 code = 1;
-  bytes data = 2 [(gogoproto.customtype) = "github.com/tendermint/go-wire/data.Bytes", (gogoproto.nullable) = false];
-  string log = 3;
+  // reserve 1
+  bytes data = 2;
 }
 
 //----------------------------------------
@@ -179,7 +196,7 @@ message BlockSize {
 }
 
 // TxSize contain limits on the tx size.
-message TxSize{
+message TxSize {
   int32 max_bytes = 1;
   int64 max_gas = 2;
 }
@@ -195,11 +212,11 @@ message BlockGossip {
 // Blockchain Types
 
 message Header {
-  string chain_id = 1 [(gogoproto.customname) = "ChainID"];
+  string chain_id = 1 [(gogoproto.customname)="ChainID"];
   int64 height = 2;
   int64 time = 3;
   int32 num_txs = 4;
-  BlockID last_block_id = 5 [(gogoproto.customname) = "LastBlockID"];
+  BlockID last_block_id = 5 [(gogoproto.customname)="LastBlockID", (gogoproto.nullable)=false];
   bytes last_commit_hash = 6;
   bytes data_hash = 7;
   bytes validators_hash = 8;
@@ -208,7 +225,7 @@ message Header {
 
 message BlockID {
   bytes hash = 1;
-  PartSetHeader parts = 2;
+  PartSetHeader parts = 2 [(gogoproto.nullable)=false];
 }
 
 message PartSetHeader {
@@ -224,20 +241,6 @@ message Validator {
 message Evidence {
   bytes pub_key = 1;
   int64 height = 2;
-}
-
-//----------------------------------------
-// Abstract types
-
-message KVPair {
-  string key = 1;
-  enum Type {
-    STRING = 0;
-    INT = 1;
-  }
-  Type value_type = 2;
-  string value_string = 3;
-  int64 value_int = 4;
 }
 
 //----------------------------------------

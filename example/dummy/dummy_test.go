@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/iavl"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -41,10 +40,6 @@ func testDummy(t *testing.T, app types.Application, tx []byte, key, value string
 	})
 	require.EqualValues(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
-	require.Nil(t, err)
-	err = proof.Verify([]byte(key), resQuery.Value, proof.RootHash)
-	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }
 
 func TestDummyKV(t *testing.T) {
@@ -92,7 +87,7 @@ func TestPersistentDummyInfo(t *testing.T) {
 	// make and apply block
 	height = int64(1)
 	hash := []byte("foo")
-	header := &types.Header{
+	header := types.Header{
 		Height: int64(height),
 	}
 	dummy.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
@@ -119,16 +114,18 @@ func TestValUpdates(t *testing.T) {
 	nInit := 5
 	vals := RandVals(total)
 	// iniitalize with the first nInit
-	dummy.InitChain(types.RequestInitChain{vals[:nInit]})
+	dummy.InitChain(types.RequestInitChain{
+		Validators: vals[:nInit],
+	})
 
 	vals1, vals2 := vals[:nInit], dummy.Validators()
 	valsEqual(t, vals1, vals2)
 
-	var v1, v2, v3 *types.Validator
+	var v1, v2, v3 types.Validator
 
 	// add some validators
 	v1, v2 = vals[nInit], vals[nInit+1]
-	diff := []*types.Validator{v1, v2}
+	diff := []types.Validator{v1, v2}
 	tx1 := MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 := MakeValSetChangeTx(v2.PubKey, v2.Power)
 
@@ -142,7 +139,7 @@ func TestValUpdates(t *testing.T) {
 	v1.Power = 0
 	v2.Power = 0
 	v3.Power = 0
-	diff = []*types.Validator{v1, v2, v3}
+	diff = []types.Validator{v1, v2, v3}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 = MakeValSetChangeTx(v2.PubKey, v2.Power)
 	tx3 := MakeValSetChangeTx(v3.PubKey, v3.Power)
@@ -160,22 +157,22 @@ func TestValUpdates(t *testing.T) {
 	} else {
 		v1.Power = 5
 	}
-	diff = []*types.Validator{v1}
+	diff = []types.Validator{v1}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 
 	makeApplyBlock(t, dummy, 3, diff, tx1)
 
-	vals1 = append([]*types.Validator{v1}, vals1[1:]...)
+	vals1 = append([]types.Validator{v1}, vals1[1:]...)
 	vals2 = dummy.Validators()
 	valsEqual(t, vals1, vals2)
 
 }
 
-func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff []*types.Validator, txs ...[]byte) {
+func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff []types.Validator, txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
-	header := &types.Header{
+	header := types.Header{
 		Height: height,
 	}
 
@@ -193,7 +190,7 @@ func makeApplyBlock(t *testing.T, dummy types.Application, heightInt int, diff [
 }
 
 // order doesn't matter
-func valsEqual(t *testing.T, vals1, vals2 []*types.Validator) {
+func valsEqual(t *testing.T, vals1, vals2 []types.Validator) {
 	if len(vals1) != len(vals2) {
 		t.Fatalf("vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
 	}
@@ -310,8 +307,4 @@ func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) 
 	require.Nil(t, err)
 	require.Equal(t, code.CodeTypeOK, resQuery.Code)
 	require.Equal(t, value, string(resQuery.Value))
-	proof, err := iavl.ReadKeyExistsProof(resQuery.Proof)
-	require.Nil(t, err)
-	err = proof.Verify([]byte(key), resQuery.Value, proof.RootHash)
-	require.Nil(t, err, "%+v", err) // NOTE: we have no way to verify the RootHash
 }

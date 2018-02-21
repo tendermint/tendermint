@@ -1,21 +1,15 @@
 package: github.com/tendermint/abci
 import:
 - package: github.com/gogo/protobuf
-  version: v0.5
+  version: ^1.0.0
   subpackages:
   - proto
+- package: github.com/pkg/errors
+  version: v0.8.0
 - package: github.com/spf13/cobra
   version: v0.0.1
-- package: github.com/tendermint/go-crypto
-  version: develop
-- package: github.com/tendermint/go-wire
-  version: develop
-  subpackages:
-  - data
-- package: github.com/tendermint/iavl
-  version: develop
 - package: github.com/tendermint/tmlibs
-  version: develop
+  version: v0.7.0
   subpackages:
   - common
   - db
@@ -28,6 +22,7 @@ import:
   version: v1.7.3
 testImport:
 - package: github.com/stretchr/testify
+  version: v1.2.1
   subpackages:
   - assert
   - require

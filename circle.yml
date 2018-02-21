@@ -15,7 +15,7 @@ checkout:
 
 test:
   override:
-    - cd $REPO && make get_vendor_deps && make test_integrations
+    - cd $REPO && make get_tools check get_vendor_deps install test_integrations
   post:
     - cd "$REPO" && bash <(curl -s https://codecov.io/bash) -f coverage.txt
     - cd "$REPO" && mv coverage.txt "${CIRCLE_ARTIFACTS}"
