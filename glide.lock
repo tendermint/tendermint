@@ -1,5 +1,5 @@
-hash: 304088ee640b9e5897ece75503d07f800aabba0618bd668bf1144f478809b646
-updated: 2018-02-15T12:26:50.462786+01:00
+hash: cff2757779ef879f0c625c42af37fb3e486afd93ab9a91175c2458a719faac66
+updated: 2018-02-20T22:02:37.638875125-05:00
 imports:
 - name: github.com/go-kit/kit
   version: 4dc7be5d2d12881735283bcab7352178e190fc71
@@ -43,7 +43,7 @@ imports:
 - name: github.com/spf13/pflag
   version: 4c012f6dcd9546820e378d0bdda4d8fc772cdfea
 - name: github.com/syndtr/goleveldb
-  version: 34011bf325bce385408353a30b101fe5e923eb6e
+  version: 211f780988068502fe874c44dae530528ebd840f
   subpackages:
   - leveldb
   - leveldb/cache
@@ -58,7 +58,7 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/tmlibs
-  version: a0f652dc2e131be86fc8d9e4e2beec9831a8a6ec
+  version: 1b9b5652a199ab0be2e781393fb275b66377309d
   subpackages:
   - common
   - db
@@ -106,7 +106,7 @@ imports:
   - transport
 testImports:
 - name: github.com/davecgh/go-spew
-  version: ecdeabc65495df2dec95d7c4a4c3e021903035e5
+  version: 346938d642f2ec3594ed81d874461961cd0faa76
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib

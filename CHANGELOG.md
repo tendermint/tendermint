@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 (TBD)
+## 0.10.0 (February 20, 2018)
 
 BREAKING CHANGES:
 
@@ -10,6 +10,10 @@ BREAKING CHANGES:
 - [types] Replace KVPair with common.KVPair
 - [types] Updates to CheckTx/DeliverTx around tags and fees
 - [types] Remove code and log from Commit
+
+FEATURES:
+
+- [types] RequestInitChain.AppStateBytes for app's genesis state
 
 IMPROVEMENTS:
 
