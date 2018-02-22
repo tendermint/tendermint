@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	connDeadlineSeconds      = 3
-	dialRetryIntervalSeconds = 1
-	dialRetryMax             = 10
+	defaultConnDeadlineSeconds      = 3
+	defaultDialRetryIntervalSeconds = 1
+	defaultDialRetryMax             = 10
 )
 
 // Socket errors.
@@ -29,70 +29,89 @@ var (
 )
 
 var (
-	connDeadline = time.Second * connDeadlineSeconds
+	connDeadline = time.Second * defaultConnDeadlineSeconds
 )
 
-//-----------------------------------------------------------------
+// SocketClientOption sets an optional parameter on the SocketClient.
+type SocketClientOption func(*socketClient)
 
-var _ types.PrivValidator2 = (*PrivValidatorSocketClient)(nil)
+// SocketClientTimeout sets the timeout for connecting to the external socket
+// address.
+func SocketClientTimeout(timeout time.Duration) SocketClientOption {
+	return func(sc *socketClient) { sc.connectTimeout = timeout }
+}
 
-// PrivValidatorSocketClient implements PrivValidator.
-// It uses a socket to request signatures.
-type PrivValidatorSocketClient struct {
+// socketClient implements PrivValidator, it uses a socket to request signatures
+// from an external process.
+type socketClient struct {
 	cmn.BaseService
 
 	conn    net.Conn
 	privKey *crypto.PrivKeyEd25519
 
-	ID            types.ValidatorID
-	SocketAddress string
+	addr           string
+	connectTimeout time.Duration
 }
 
-// NewPrivValidatorSocketClient returns an instance of
-// PrivValidatorSocketClient.
-func NewPrivValidatorSocketClient(
+// Check that socketClient implements PrivValidator2.
+var _ types.PrivValidator2 = (*socketClient)(nil)
+
+// NewsocketClient returns an instance of socketClient.
+func NewSocketClient(
 	logger log.Logger,
 	socketAddr string,
 	privKey *crypto.PrivKeyEd25519,
-) *PrivValidatorSocketClient {
-	pvsc := &PrivValidatorSocketClient{
-		SocketAddress: socketAddr,
-		privKey:       privKey,
+) *socketClient {
+	sc := &socketClient{
+		addr:           socketAddr,
+		connectTimeout: time.Second * defaultConnDeadlineSeconds,
+		privKey:        privKey,
 	}
 
-	pvsc.BaseService = *cmn.NewBaseService(logger, "privValidatorSocketClient", pvsc)
+	sc.BaseService = *cmn.NewBaseService(logger, "privValidatorsocketClient", sc)
 
-	return pvsc
+	return sc
 }
 
 // OnStart implements cmn.Service.
-func (pvsc *PrivValidatorSocketClient) OnStart() error {
-	if err := pvsc.BaseService.OnStart(); err != nil {
+func (sc *socketClient) OnStart() error {
+	if err := sc.BaseService.OnStart(); err != nil {
 		return err
 	}
 
-	conn, err := pvsc.connect()
+	conn, err := sc.connect()
 	if err != nil {
 		return err
 	}
 
-	pvsc.conn = conn
+	sc.conn = conn
 
 	return nil
 }
 
 // OnStop implements cmn.Service.
-func (pvsc *PrivValidatorSocketClient) OnStop() {
-	pvsc.BaseService.OnStop()
+func (sc *socketClient) OnStop() {
+	sc.BaseService.OnStop()
 
-	if pvsc.conn != nil {
-		pvsc.conn.Close()
+	if sc.conn != nil {
+		sc.conn.Close()
 	}
 }
 
+// GetAddress implements PrivValidator.
+// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
+func (sc *socketClient) GetAddress() types.Address {
+	addr, err := sc.Address()
+	if err != nil {
+		panic(err)
+	}
+
+	return addr
+}
+
 // Address is an alias for PubKey().Address().
-func (pvsc *PrivValidatorSocketClient) Address() (cmn.HexBytes, error) {
-	p, err := pvsc.PubKey()
+func (sc *socketClient) Address() (cmn.HexBytes, error) {
+	p, err := sc.PubKey()
 	if err != nil {
 		return nil, err
 	}
@@ -100,14 +119,25 @@ func (pvsc *PrivValidatorSocketClient) Address() (cmn.HexBytes, error) {
 	return p.Address(), nil
 }
 
-// PubKey implements PrivValidator.
-func (pvsc *PrivValidatorSocketClient) PubKey() (crypto.PubKey, error) {
-	err := writeMsg(pvsc.conn, &PubKeyMsg{})
+// GetPubKey implements PrivValidator.
+// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
+func (sc *socketClient) GetPubKey() crypto.PubKey {
+	pubKey, err := sc.PubKey()
+	if err != nil {
+		panic(err)
+	}
+
+	return pubKey
+}
+
+// PubKey implements PrivValidator2.
+func (sc *socketClient) PubKey() (crypto.PubKey, error) {
+	err := writeMsg(sc.conn, &PubKeyMsg{})
 	if err != nil {
 		return crypto.PubKey{}, err
 	}
 
-	res, err := readMsg(pvsc.conn)
+	res, err := readMsg(sc.conn)
 	if err != nil {
 		return crypto.PubKey{}, err
 	}
@@ -115,14 +145,14 @@ func (pvsc *PrivValidatorSocketClient) PubKey() (crypto.PubKey, error) {
 	return res.(*PubKeyMsg).PubKey, nil
 }
 
-// SignVote implements PrivValidator.
-func (pvsc *PrivValidatorSocketClient) SignVote(chainID string, vote *types.Vote) error {
-	err := writeMsg(pvsc.conn, &SignVoteMsg{Vote: vote})
+// SignVote implements PrivValidator2.
+func (sc *socketClient) SignVote(chainID string, vote *types.Vote) error {
+	err := writeMsg(sc.conn, &SignVoteMsg{Vote: vote})
 	if err != nil {
 		return err
 	}
 
-	res, err := readMsg(pvsc.conn)
+	res, err := readMsg(sc.conn)
 	if err != nil {
 		return err
 	}
@@ -132,14 +162,14 @@ func (pvsc *PrivValidatorSocketClient) SignVote(chainID string, vote *types.Vote
 	return nil
 }
 
-// SignProposal implements PrivValidator.
-func (pvsc *PrivValidatorSocketClient) SignProposal(chainID string, proposal *types.Proposal) error {
-	err := writeMsg(pvsc.conn, &SignProposalMsg{Proposal: proposal})
+// SignProposal implements PrivValidator2.
+func (sc *socketClient) SignProposal(chainID string, proposal *types.Proposal) error {
+	err := writeMsg(sc.conn, &SignProposalMsg{Proposal: proposal})
 	if err != nil {
 		return err
 	}
 
-	res, err := readMsg(pvsc.conn)
+	res, err := readMsg(sc.conn)
 	if err != nil {
 		return err
 	}
@@ -149,14 +179,14 @@ func (pvsc *PrivValidatorSocketClient) SignProposal(chainID string, proposal *ty
 	return nil
 }
 
-// SignHeartbeat implements PrivValidator.
-func (pvsc *PrivValidatorSocketClient) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
-	err := writeMsg(pvsc.conn, &SignHeartbeatMsg{Heartbeat: heartbeat})
+// SignHeartbeat implements PrivValidator2.
+func (sc *socketClient) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
+	err := writeMsg(sc.conn, &SignHeartbeatMsg{Heartbeat: heartbeat})
 	if err != nil {
 		return err
 	}
 
-	res, err := readMsg(pvsc.conn)
+	res, err := readMsg(sc.conn)
 	if err != nil {
 		return err
 	}
@@ -166,22 +196,22 @@ func (pvsc *PrivValidatorSocketClient) SignHeartbeat(chainID string, heartbeat *
 	return nil
 }
 
-func (pvsc *PrivValidatorSocketClient) connect() (net.Conn, error) {
-	retries := dialRetryMax
+func (sc *socketClient) connect() (net.Conn, error) {
+	retries := defaultDialRetryMax
 
 RETRY_LOOP:
 	for retries > 0 {
-		if retries != dialRetryMax {
-			time.Sleep(time.Second * dialRetryIntervalSeconds)
+		if retries != defaultDialRetryMax {
+			time.Sleep(sc.connectTimeout)
 		}
 
 		retries--
 
-		conn, err := cmn.Connect(pvsc.SocketAddress)
+		conn, err := cmn.Connect(sc.addr)
 		if err != nil {
-			pvsc.Logger.Error(
-				"pvsc connect",
-				"addr", pvsc.SocketAddress,
+			sc.Logger.Error(
+				"sc connect",
+				"addr", sc.addr,
 				"err", errors.Wrap(err, "connection failed"),
 			)
 
@@ -189,18 +219,18 @@ RETRY_LOOP:
 		}
 
 		if err := conn.SetDeadline(time.Now().Add(connDeadline)); err != nil {
-			pvsc.Logger.Error(
-				"pvsc connect",
+			sc.Logger.Error(
+				"sc connect",
 				"err", errors.Wrap(err, "setting connection timeout failed"),
 			)
 			continue
 		}
 
-		if pvsc.privKey != nil {
-			conn, err = p2pconn.MakeSecretConnection(conn, pvsc.privKey.Wrap())
+		if sc.privKey != nil {
+			conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey.Wrap())
 			if err != nil {
-				pvsc.Logger.Error(
-					"pvsc connect",
+				sc.Logger.Error(
+					"sc connect",
 					"err", errors.Wrap(err, "encrypting connection failed"),
 				)
 
