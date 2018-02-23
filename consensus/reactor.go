@@ -366,17 +366,17 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 			select {
 			case data, ok := <-stepsCh:
 				if ok { // a receive from a closed channel returns the zero value immediately
-					edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
+					edrs := data.(types.EventDataRoundState)
 					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
 				}
 			case data, ok := <-votesCh:
 				if ok {
-					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
+					edv := data.(types.EventDataVote)
 					conR.broadcastHasVoteMessage(edv.Vote)
 				}
 			case data, ok := <-heartbeatsCh:
 				if ok {
-					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
+					edph := data.(types.EventDataProposalHeartbeat)
 					conR.broadcastProposalHeartbeatMessage(edph)
 				}
 			case <-conR.Quit():

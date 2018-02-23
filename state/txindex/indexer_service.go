@@ -34,7 +34,7 @@ func (is *IndexerService) OnStart() error {
 	go func() {
 		for event := range ch {
 			// TODO: may be not perfomant to write one event at a time
-			txResult := event.(types.TMEventData).Unwrap().(types.EventDataTx).TxResult
+			txResult := event.(types.EventDataTx).TxResult
 			is.idr.Index(&txResult)
 		}
 	}()

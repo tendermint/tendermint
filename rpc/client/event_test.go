@@ -36,7 +36,7 @@ func TestHeaderEvents(t *testing.T) {
 		evtTyp := types.EventNewBlockHeader
 		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 		require.Nil(err, "%d: %+v", i, err)
-		_, ok := evt.Unwrap().(types.EventDataNewBlockHeader)
+		_, ok := evt.(types.EventDataNewBlockHeader)
 		require.True(ok, "%d: %#v", i, evt)
 		// TODO: more checks...
 	}
@@ -59,7 +59,7 @@ func TestBlockEvents(t *testing.T) {
 			evtTyp := types.EventNewBlock
 			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 			require.Nil(err, "%d: %+v", j, err)
-			blockEvent, ok := evt.Unwrap().(types.EventDataNewBlock)
+			blockEvent, ok := evt.(types.EventDataNewBlock)
 			require.True(ok, "%d: %#v", j, evt)
 
 			block := blockEvent.Block
@@ -97,7 +97,7 @@ func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
 		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 		require.Nil(err, "%d: %+v", i, err)
 		// and make sure it has the proper info
-		txe, ok := evt.Unwrap().(types.EventDataTx)
+		txe, ok := evt.(types.EventDataTx)
 		require.True(ok, "%d: %#v", i, evt)
 		// make sure this is the proper tx
 		require.EqualValues(tx, txe.Tx)
@@ -129,7 +129,7 @@ func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
 		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
 		require.Nil(err, "%d: %+v", i, err)
 		// and make sure it has the proper info
-		txe, ok := evt.Unwrap().(types.EventDataTx)
+		txe, ok := evt.(types.EventDataTx)
 		require.True(ok, "%d: %#v", i, evt)
 		// make sure this is the proper tx
 		require.EqualValues(tx, txe.Tx)

@@ -73,7 +73,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 			eventType = randEvent()
 		}
 
-		eventBus.Publish(eventType, TMEventData{"Gamora"})
+		eventBus.Publish(eventType, TMEventData("Gamora"))
 	}
 }
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/wire"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -39,7 +38,6 @@ type WALMessage interface{}
 
 func init() {
 	wire.RegisterInterface((*WALMessage)(nil), nil)
-	wire.RegisterConcrete(types.EventDataRoundState{}, "com.tendermint.consensus.wal.event_data_round_state", nil)
 	wire.RegisterConcrete(msgInfo{}, "com.tendermint.consensus.wal.msg_info", nil)
 	wire.RegisterConcrete(timeoutInfo{}, "com.tendermint.consensus.wal.timeout_info", nil)
 	wire.RegisterConcrete(EndHeightMessage{}, "com.tendermint.consensus.wal.end_height", nil)
