@@ -9,7 +9,6 @@ import (
 
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -71,10 +70,6 @@ func (psh PartSetHeader) IsZero() bool {
 
 func (psh PartSetHeader) Equals(other PartSetHeader) bool {
 	return psh.Total == other.Total && bytes.Equal(psh.Hash, other.Hash)
-}
-
-func (psh PartSetHeader) WriteSignBytes(w io.Writer, n *int, err *error) {
-	wire.WriteJSON(CanonicalPartSetHeader(psh), w, n, err)
 }
 
 //-------------------------------------
@@ -220,6 +215,15 @@ func (ps *PartSet) GetPart(index int) *Part {
 
 func (ps *PartSet) IsComplete() bool {
 	return ps.count == ps.total
+}
+
+// Bytes joins them all together, replaces Reader
+func (ps *PartSet) Bytes() []byte {
+	chunks := make([][]byte, len(ps.parts))
+	for i, part := range ps.parts {
+		chunks[i] = part.Bytes
+	}
+	return bytes.Join(chunks, []byte{})
 }
 
 func (ps *PartSet) GetReader() io.Reader {

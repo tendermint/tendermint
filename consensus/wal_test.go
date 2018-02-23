@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/consensus/types"
 	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/stretchr/testify/assert"
@@ -72,10 +72,8 @@ var initOnce sync.Once
 
 func registerInterfacesOnce() {
 	initOnce.Do(func() {
-		var _ = wire.RegisterInterface(
-			struct{ WALMessage }{},
-			wire.ConcreteType{[]byte{}, 0x10},
-		)
+		wire.RegisterInterface((*WALMessage)(nil), nil)
+		wire.RegisterConcrete([]byte{}, "com.tendermint.consensus.WalBytes", nil)
 	})
 }
 

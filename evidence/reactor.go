@@ -1,16 +1,15 @@
 package evidence
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const (
@@ -142,18 +141,17 @@ const (
 // EvidenceMessage is a message sent or received by the EvidenceReactor.
 type EvidenceMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ EvidenceMessage }{},
-	wire.ConcreteType{&EvidenceListMessage{}, msgTypeEvidence},
-)
+func init() {
+	wire.RegisterInterface((*EvidenceMessage)(nil), nil)
+	wire.RegisterConcrete(&EvidenceListMessage{}, "com.tendermint.evidence.list_message", nil)
+}
 
 // DecodeMessage decodes a byte-array into a EvidenceMessage.
 func DecodeMessage(bz []byte) (msgType byte, msg EvidenceMessage, err error) {
 	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ EvidenceMessage }{}, r, maxEvidenceMessageSize, n, &err).(struct{ EvidenceMessage }).EvidenceMessage
-	return
+	evMsg := struct{ EvidenceMessage }{} // maxEvidenceMessageSize
+	err = wire.UnmarshalBinary(bz, evMsg)
+	return msgType, evMsg.EvidenceMessage, err
 }
 
 //-------------------------------------

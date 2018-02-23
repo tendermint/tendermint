@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 	"golang.org/x/crypto/ripemd160"
@@ -96,7 +95,11 @@ func (b *Block) Hash() cmn.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 func (b *Block) MakePartSet(partSize int) *PartSet {
-	return NewPartSetFromData(wire.BinaryBytes(b), partSize)
+	bz, err := wire.MarshalBinary(b)
+	if err != nil {
+		panic(err)
+	}
+	return NewPartSetFromData(bz, partSize)
 }
 
 // HashesTo is a convenience function that checks if a block hashes to the given argument.
@@ -493,17 +496,11 @@ func (blockID BlockID) Equals(other BlockID) bool {
 
 // Key returns a machine-readable string representation of the BlockID
 func (blockID BlockID) Key() string {
-	return string(blockID.Hash) + string(wire.BinaryBytes(blockID.PartsHeader))
-}
-
-// WriteSignBytes writes the canonical bytes of the BlockID to the given writer for digital signing
-func (blockID BlockID) WriteSignBytes(w io.Writer, n *int, err *error) {
-	if blockID.IsZero() {
-		wire.WriteTo([]byte("null"), w, n, err)
-	} else {
-		wire.WriteJSON(CanonicalBlockID(blockID), w, n, err)
+	bz, err := wire.MarshalBinary(blockID.PartsHeader)
+	if err != nil {
+		panic(err)
 	}
-
+	return string(blockID.Hash) + string(bz)
 }
 
 // String returns a human readable string representation of the BlockID
@@ -518,13 +515,22 @@ type hasher struct {
 }
 
 func (h hasher) Hash() []byte {
-	hasher, n, err := ripemd160.New(), new(int), new(error)
-	wire.WriteBinary(h.item, hasher, n, err)
-	if *err != nil {
+	hasher := ripemd160.New()
+	bz, err := wire.MarshalBinary(h.item)
+	if err != nil {
+		panic(err)
+	}
+	_, err = hasher.Write(bz)
+	if err != nil {
 		panic(err)
 	}
 	return hasher.Sum(nil)
 
+}
+
+func tmHash(item interface{}) []byte {
+	h := hasher{item}
+	return h.Hash()
 }
 
 func wireHasher(item interface{}) merkle.Hasher {

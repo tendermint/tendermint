@@ -2,7 +2,6 @@ package types
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -108,7 +108,7 @@ func (pv *PrivValidatorFS) GetPubKey() crypto.PubKey {
 // GenPrivValidatorFS generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
 func GenPrivValidatorFS(filePath string) *PrivValidatorFS {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	return &PrivValidatorFS{
 		Address:  privKey.PubKey().Address(),
 		PubKey:   privKey.PubKey(),
@@ -149,7 +149,7 @@ func LoadPrivValidatorFSWithSigner(filePath string, signerFunc func(PrivValidato
 		cmn.Exit(err.Error())
 	}
 	privVal := &PrivValidatorFS{}
-	err = json.Unmarshal(privValJSONBytes, &privVal)
+	err = wire.UnmarshalJSON(privValJSONBytes, &privVal)
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
@@ -170,7 +170,7 @@ func (privVal *PrivValidatorFS) save() {
 	if privVal.filePath == "" {
 		cmn.PanicSanity("Cannot save PrivValidator: filePath not set")
 	}
-	jsonBytes, err := json.Marshal(privVal)
+	jsonBytes, err := wire.MarshalJSON(privVal)
 	if err != nil {
 		// `@; BOOM!!!
 		cmn.PanicCrisis(err)
@@ -185,10 +185,11 @@ func (privVal *PrivValidatorFS) save() {
 // Reset resets all fields in the PrivValidatorFS.
 // NOTE: Unsafe!
 func (privVal *PrivValidatorFS) Reset() {
+	var sig crypto.Signature
 	privVal.LastHeight = 0
 	privVal.LastRound = 0
 	privVal.LastStep = 0
-	privVal.LastSignature = crypto.Signature{}
+	privVal.LastSignature = sig
 	privVal.LastSignBytes = nil
 	privVal.Save()
 }
@@ -231,7 +232,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 				return false, errors.New("Step regression")
 			} else if privVal.LastStep == step {
 				if privVal.LastSignBytes != nil {
-					if privVal.LastSignature.Empty() {
+					if privVal.LastSignature == nil {
 						panic("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -248,7 +249,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
 func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
-	signBytes := SignBytes(chainID, vote)
+	signBytes := vote.SignBytes(chainID)
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
 	if err != nil {
@@ -287,7 +288,7 @@ func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
 func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
-	signBytes := SignBytes(chainID, proposal)
+	signBytes := proposal.SignBytes(chainID)
 
 	sameHRS, err := privVal.checkHRS(height, round, step)
 	if err != nil {
@@ -339,7 +340,7 @@ func (privVal *PrivValidatorFS) SignHeartbeat(chainID string, heartbeat *Heartbe
 	privVal.mtx.Lock()
 	defer privVal.mtx.Unlock()
 	var err error
-	heartbeat.Signature, err = privVal.Sign(SignBytes(chainID, heartbeat))
+	heartbeat.Signature, err = privVal.Sign(heartbeat.SignBytes(chainID))
 	return err
 }
 
@@ -372,10 +373,10 @@ func (pvs PrivValidatorsByAddress) Swap(i, j int) {
 // returns true if the only difference in the votes is their timestamp.
 func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastVote, newVote CanonicalJSONOnceVote
-	if err := json.Unmarshal(lastSignBytes, &lastVote); err != nil {
+	if err := wire.UnmarshalJSON(lastSignBytes, &lastVote); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into vote: %v", err))
 	}
-	if err := json.Unmarshal(newSignBytes, &newVote); err != nil {
+	if err := wire.UnmarshalJSON(newSignBytes, &newVote); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into vote: %v", err))
 	}
 
@@ -388,8 +389,8 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 	now := CanonicalTime(time.Now())
 	lastVote.Vote.Timestamp = now
 	newVote.Vote.Timestamp = now
-	lastVoteBytes, _ := json.Marshal(lastVote)
-	newVoteBytes, _ := json.Marshal(newVote)
+	lastVoteBytes, _ := wire.MarshalJSON(lastVote)
+	newVoteBytes, _ := wire.MarshalJSON(newVote)
 
 	return lastTime, bytes.Equal(newVoteBytes, lastVoteBytes)
 }
@@ -398,10 +399,10 @@ func checkVotesOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.T
 // returns true if the only difference in the proposals is their timestamp
 func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (time.Time, bool) {
 	var lastProposal, newProposal CanonicalJSONOnceProposal
-	if err := json.Unmarshal(lastSignBytes, &lastProposal); err != nil {
+	if err := wire.UnmarshalJSON(lastSignBytes, &lastProposal); err != nil {
 		panic(fmt.Sprintf("LastSignBytes cannot be unmarshalled into proposal: %v", err))
 	}
-	if err := json.Unmarshal(newSignBytes, &newProposal); err != nil {
+	if err := wire.UnmarshalJSON(newSignBytes, &newProposal); err != nil {
 		panic(fmt.Sprintf("signBytes cannot be unmarshalled into proposal: %v", err))
 	}
 
@@ -414,8 +415,8 @@ func checkProposalsOnlyDifferByTimestamp(lastSignBytes, newSignBytes []byte) (ti
 	now := CanonicalTime(time.Now())
 	lastProposal.Proposal.Timestamp = now
 	newProposal.Proposal.Timestamp = now
-	lastProposalBytes, _ := json.Marshal(lastProposal)
-	newProposalBytes, _ := json.Marshal(newProposal)
+	lastProposalBytes, _ := wire.MarshalJSON(lastProposal)
+	newProposalBytes, _ := wire.MarshalJSON(newProposal)
 
 	return lastTime, bytes.Equal(newProposalBytes, lastProposalBytes)
 }

@@ -16,7 +16,7 @@ func randPeer() *peer {
 	return &peer{
 		nodeInfo: NodeInfo{
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
-			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
+			PubKey:     crypto.GenPrivKeyEd25519().PubKey(),
 		},
 	}
 }

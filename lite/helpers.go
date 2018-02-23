@@ -23,7 +23,7 @@ type ValKeys []crypto.PrivKey
 func GenValKeys(n int) ValKeys {
 	res := make(ValKeys, n)
 	for i := range res {
-		res[i] = crypto.GenPrivKeyEd25519().Wrap()
+		res[i] = crypto.GenPrivKeyEd25519()
 	}
 	return res
 }
@@ -32,7 +32,7 @@ func GenValKeys(n int) ValKeys {
 func (v ValKeys) Change(i int) ValKeys {
 	res := make(ValKeys, len(v))
 	copy(res, v)
-	res[i] = crypto.GenPrivKeyEd25519().Wrap()
+	res[i] = crypto.GenPrivKeyEd25519()
 	return res
 }
 
@@ -46,7 +46,7 @@ func (v ValKeys) Extend(n int) ValKeys {
 func GenSecpValKeys(n int) ValKeys {
 	res := make(ValKeys, n)
 	for i := range res {
-		res[i] = crypto.GenPrivKeySecp256k1().Wrap()
+		res[i] = crypto.GenPrivKeySecp256k1()
 	}
 	return res
 }
@@ -102,7 +102,7 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 		BlockID:          types.BlockID{Hash: header.Hash()},
 	}
 	// Sign it
-	signBytes := types.SignBytes(header.ChainID, vote)
+	signBytes := vote.SignBytes(header.ChainID)
 	vote.Signature = key.Sign(signBytes)
 	return vote
 }

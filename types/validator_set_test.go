@@ -9,14 +9,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey).Wrap()
+	return crypto.PubKeyEd25519(pubKey)
 }
 
 func randValidator_() *Validator {
@@ -291,19 +291,17 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 }
 
 func (valSet *ValidatorSet) toBytes() []byte {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(valSet, buf, n, err)
-	if *err != nil {
-		cmn.PanicCrisis(*err)
+	bz, err := wire.MarshalBinary(valSet)
+	if err != nil {
+		panic(err)
 	}
-	return buf.Bytes()
+	return bz
 }
 
 func (valSet *ValidatorSet) fromBytes(b []byte) {
-	r, n, err := bytes.NewReader(b), new(int), new(error)
-	wire.ReadBinary(valSet, r, 0, n, err)
-	if *err != nil {
+	err := wire.UnmarshalBinary(b, valSet)
+	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.PanicCrisis(*err)
+		panic(err)
 	}
 }

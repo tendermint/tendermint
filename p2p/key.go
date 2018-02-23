@@ -25,7 +25,7 @@ const IDByteLength = 20
 // NodeKey is the persistent peer key.
 // It contains the nodes private key for authentication.
 type NodeKey struct {
-	PrivKey crypto.PrivKey `json:"priv_key"` // our priv key
+	PrivKey crypto.PrivKeyEd25519 `json:"priv_key"` // our priv key
 }
 
 // ID returns the peer's canonical ID - the hash of its public key.
@@ -72,7 +72,7 @@ func loadNodeKey(filePath string) (*NodeKey, error) {
 }
 
 func genNodeKey(filePath string) (*NodeKey, error) {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}

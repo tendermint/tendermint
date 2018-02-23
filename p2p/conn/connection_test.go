@@ -7,7 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	wire "github.com/tendermint/go-wire"
+
+	"github.com/tendermint/tendermint/wire"
 	"github.com/tendermint/tmlibs/log"
 )
 

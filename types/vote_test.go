@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 )
 
 func examplePrevote() *Vote {
@@ -42,7 +42,7 @@ func exampleVote(t byte) *Vote {
 
 func TestVoteSignable(t *testing.T) {
 	vote := examplePrecommit()
-	signBytes := SignBytes("test_chain_id", vote)
+	signBytes := vote.SignBytes("test_chain_id")
 	signStr := string(signBytes)
 
 	expected := `{"chain_id":"test_chain_id","vote":{"block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":1000000}},"height":12345,"round":2,"timestamp":"2017-12-25T03:00:01.234Z","type":2}}`
@@ -58,8 +58,8 @@ func TestVoteString(t *testing.T) {
 		in   string
 		out  string
 	}{
-		{"Precommit", examplePrecommit().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
-		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
+		{"Precommit", examplePrecommit().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 <nil> @ 2017-12-25T03:00:01.234Z}`},
+		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 <nil> @ 2017-12-25T03:00:01.234Z}`},
 	}
 
 	for _, tt := range tc {
@@ -77,24 +77,25 @@ func TestVoteVerifySignature(t *testing.T) {
 	pubKey := privVal.GetPubKey()
 
 	vote := examplePrecommit()
-	signBytes := SignBytes("test_chain_id", vote)
+	signBytes := vote.SignBytes("test_chain_id")
 
 	// sign it
 	signature, err := privVal.Signer.Sign(signBytes)
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubKey.VerifyBytes(SignBytes("test_chain_id", vote), signature)
+	valid := pubKey.VerifyBytes(vote.SignBytes("test_chain_id"), signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
 	precommit := new(Vote)
-	bs := wire.BinaryBytes(vote)
-	err = wire.ReadBinaryBytes(bs, &precommit)
+	bs, err := wire.MarshalBinary(vote)
+	require.NoError(t, err)
+	err = wire.UnmarshalBinary(bs, precommit)
 	require.NoError(t, err)
 
 	// verify the transmitted vote
-	newSignBytes := SignBytes("test_chain_id", precommit)
+	newSignBytes := precommit.SignBytes("test_chain_id")
 	require.Equal(t, string(signBytes), string(newSignBytes))
 	valid = pubKey.VerifyBytes(newSignBytes, signature)
 	require.True(t, valid)

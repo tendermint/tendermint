@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/pubsub/query"
@@ -67,10 +67,8 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 		return nil, nil
 	}
 
-	r := bytes.NewReader(rawBytes)
-	var n int
-	var err error
-	txResult := wire.ReadBinary(&types.TxResult{}, r, 0, &n, &err).(*types.TxResult)
+	txResult := new(types.TxResult)
+	err := wire.UnmarshalBinary(rawBytes, txResult)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading TxResult: %v", err)
 	}
@@ -93,7 +91,10 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		}
 
 		// index tx by hash
-		rawBytes := wire.BinaryBytes(result)
+		rawBytes, err := wire.MarshalBinary(result)
+		if err != nil {
+			return err
+		}
 		storeBatch.Set(hash, rawBytes)
 	}
 
@@ -115,7 +116,10 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	}
 
 	// index tx by hash
-	rawBytes := wire.BinaryBytes(result)
+	rawBytes, err := wire.MarshalBinary(result)
+	if err != nil {
+		return err
+	}
 	b.Set(hash, rawBytes)
 
 	b.Write()

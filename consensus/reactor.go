@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"reflect"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -18,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 )
 
 const (
@@ -367,17 +366,17 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 			select {
 			case data, ok := <-stepsCh:
 				if ok { // a receive from a closed channel returns the zero value immediately
-					edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
+					edrs := data.(types.EventDataRoundState)
 					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
 				}
 			case data, ok := <-votesCh:
 				if ok {
-					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
+					edv := data.(types.EventDataVote)
 					conR.broadcastHasVoteMessage(edv.Vote)
 				}
 			case data, ok := <-heartbeatsCh:
 				if ok {
-					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
+					edph := data.(types.EventDataProposalHeartbeat)
 					conR.broadcastProposalHeartbeatMessage(edph)
 				}
 			case <-conR.Quit():
@@ -1229,29 +1228,27 @@ const (
 // ConsensusMessage is a message that can be sent and received on the ConsensusReactor
 type ConsensusMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ ConsensusMessage }{},
-	wire.ConcreteType{&NewRoundStepMessage{}, msgTypeNewRoundStep},
-	wire.ConcreteType{&CommitStepMessage{}, msgTypeCommitStep},
-	wire.ConcreteType{&ProposalMessage{}, msgTypeProposal},
-	wire.ConcreteType{&ProposalPOLMessage{}, msgTypeProposalPOL},
-	wire.ConcreteType{&BlockPartMessage{}, msgTypeBlockPart},
-	wire.ConcreteType{&VoteMessage{}, msgTypeVote},
-	wire.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
-	wire.ConcreteType{&VoteSetMaj23Message{}, msgTypeVoteSetMaj23},
-	wire.ConcreteType{&VoteSetBitsMessage{}, msgTypeVoteSetBits},
-	wire.ConcreteType{&ProposalHeartbeatMessage{}, msgTypeProposalHeartbeat},
-)
+func init() {
+	wire.RegisterInterface((*ConsensusMessage)(nil), nil)
+	wire.RegisterConcrete(&NewRoundStepMessage{}, "com.tendermint.consensus.round_step", nil)
+	wire.RegisterConcrete(&CommitStepMessage{}, "com.tendermint.consensus.commit_step", nil)
+	wire.RegisterConcrete(&ProposalMessage{}, "com.tendermint.consensus.proposal", nil)
+	wire.RegisterConcrete(&ProposalPOLMessage{}, "com.tendermint.consensus.pol", nil)
+	wire.RegisterConcrete(&BlockPartMessage{}, "com.tendermint.consensus.block_part", nil)
+	wire.RegisterConcrete(&VoteMessage{}, "com.tendermint.consensus.vote", nil)
+	wire.RegisterConcrete(&HasVoteMessage{}, "com.tendermint.consensus.has_vote", nil)
+	wire.RegisterConcrete(&VoteSetMaj23Message{}, "com.tendermint.consensus.vote_set_maj23", nil)
+	wire.RegisterConcrete(&VoteSetBitsMessage{}, "com.tendermint.consensus.vote_set_bits", nil)
+	wire.RegisterConcrete(&ProposalHeartbeatMessage{}, "com.tendermint.consensus.heartbeat", nil)
+}
 
 // DecodeMessage decodes the given bytes into a ConsensusMessage.
 // TODO: check for unnecessary extra bytes at the end.
 func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msgI := wire.ReadBinary(struct{ ConsensusMessage }{}, r, maxConsensusMessageSize, n, &err)
-	msg = msgI.(struct{ ConsensusMessage }).ConsensusMessage
-	return
+	conMsg := struct{ ConsensusMessage }{}
+	err = wire.UnmarshalBinary(bz, conMsg) // maxConsensusMessageSize
+	return msgType, conMsg.ConsensusMessage, err
 }
 
 //-------------------------------------

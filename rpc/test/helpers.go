@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/tendermint/tmlibs/log"
 
@@ -32,6 +33,8 @@ func waitForRPC() {
 		if err == nil {
 			return
 		}
+		fmt.Println("waiting for rpc...")
+		time.Sleep(time.Duration(100) * time.Millisecond)
 	}
 }
 
@@ -42,6 +45,8 @@ func waitForGRPC() {
 		if err == nil {
 			return
 		}
+		fmt.Println("waiting for grpc...")
+		time.Sleep(time.Duration(100) * time.Millisecond)
 	}
 }
 
@@ -100,8 +105,6 @@ func StartTendermint(app abci.Application) *nm.Node {
 	// wait for rpc
 	waitForRPC()
 	waitForGRPC()
-
-	fmt.Println("Tendermint running!")
 
 	return node
 }

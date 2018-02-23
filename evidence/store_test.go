@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/wire"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
@@ -109,14 +109,7 @@ func TestStorePriority(t *testing.T) {
 	}
 }
 
-//-------------------------------------------
-const (
-	evidenceTypeMockGood = byte(0x01)
-	evidenceTypeMockBad  = byte(0x02)
-)
-
-var _ = wire.RegisterInterface(
-	struct{ types.Evidence }{},
-	wire.ConcreteType{types.MockGoodEvidence{}, evidenceTypeMockGood},
-	wire.ConcreteType{types.MockBadEvidence{}, evidenceTypeMockBad},
-)
+func init() {
+	wire.RegisterConcrete(types.MockGoodEvidence{}, "com.tendermint.evidence.MockGood", nil)
+	wire.RegisterConcrete(types.MockBadEvidence{}, "com.tendermint.evidence.MockBad", nil)
+}

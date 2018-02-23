@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -80,7 +80,7 @@ func DefaultPeerConfig() *PeerConfig {
 }
 
 func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig, persistent bool) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig, persistent bool) (*peer, error) {
 
 	conn, err := dial(addr, config)
 	if err != nil {
@@ -100,7 +100,7 @@ func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []
 }
 
 func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
 
 	// TODO: issue PoW challenge
 
@@ -108,7 +108,7 @@ func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*tmc
 }
 
 func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
+	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKeyEd25519, config *PeerConfig) (*peer, error) {
 
 	conn := rawConn
 
@@ -266,16 +266,23 @@ func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) err
 	var peerNodeInfo NodeInfo
 	var err1 error
 	var err2 error
+	var n int
 	cmn.Parallel(
 		func() {
-			var n int
-			wire.WriteBinary(&ourNodeInfo, p.conn, &n, &err1)
+			var bz []byte
+			bz, err1 = wire.MarshalBinary(ourNodeInfo)
+			if err1 == nil {
+				_, err1 = p.conn.Write(bz)
+			}
 		},
 		func() {
-			var n int
-			wire.ReadBinary(&peerNodeInfo, p.conn, MaxNodeInfoSize(), &n, &err2)
-			p.Logger.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
-		})
+			bz := make([]byte, maxNodeInfoSize)
+			n, err2 = p.conn.Read(bz)
+			if err2 == nil {
+				err2 = wire.UnmarshalBinary(bz[:n], &peerNodeInfo) // maxNodeInfoSize
+			}
+		},
+	)
 	if err1 != nil {
 		return errors.Wrap(err1, "Error during handshake/write")
 	}
@@ -306,7 +313,7 @@ func (p *peer) Addr() net.Addr {
 
 // PubKey returns peer's public key.
 func (p *peer) PubKey() crypto.PubKey {
-	if !p.nodeInfo.PubKey.Empty() {
+	if p.nodeInfo.PubKey != nil {
 		return p.nodeInfo.PubKey
 	} else if p.config.AuthEnc {
 		return p.conn.(*tmconn.SecretConnection).RemotePubKey()

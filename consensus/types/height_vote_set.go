@@ -218,5 +218,5 @@ func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID p2p.ID, blo
 	if voteSet == nil {
 		return nil // something we don't know about yet
 	}
-	return voteSet.SetPeerMaj23(peerID, blockID)
+	return voteSet.SetPeerMaj23(types.P2PID(peerID), blockID)
 }

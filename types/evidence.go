@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -80,13 +80,13 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 //-------------------------------------------
 
 const (
-	evidenceTypeDuplicateVote = byte(0x01)
+	wireTypeEvidenceDuplicateVote = "com.tendermint.types.evidence.duplicate_vote"
 )
 
-var _ = wire.RegisterInterface(
-	struct{ Evidence }{},
-	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
-)
+func init() {
+	wire.RegisterInterface((*Evidence)(nil), nil)
+	wire.RegisterConcrete(&DuplicateVoteEvidence{}, wireTypeEvidenceDuplicateVote, nil)
+}
 
 //-------------------------------------------
 
@@ -148,10 +148,10 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 	}
 
 	// Signatures must be valid
-	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteA), dve.VoteA.Signature) {
+	if !dve.PubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
 	}
-	if !dve.PubKey.VerifyBytes(SignBytes(chainID, dve.VoteB), dve.VoteB.Signature) {
+	if !dve.PubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
 	}
 
