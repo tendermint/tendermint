@@ -67,6 +67,7 @@ func TestNetInfo(t *testing.T) {
 }
 
 func TestDumpConsensusState(t *testing.T) {
+	t.Skip("Skipping DumpConsensusState until go-wire json supports maps")
 	for i, c := range GetClients() {
 		// FIXME: fix server so it doesn't panic on invalid input
 		nc, ok := c.(client.NetworkClient)
