@@ -1,5 +1,6 @@
 GOTOOLS = \
 	github.com/golang/dep/cmd/dep \
+	github.com/tendermint/glide \
 	# gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
