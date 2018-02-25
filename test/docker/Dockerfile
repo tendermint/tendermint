@@ -18,6 +18,7 @@ ADD Gopkg.toml Gopkg.toml
 ADD Gopkg.lock Gopkg.lock
 ADD Makefile Makefile
 RUN make get_tools
+RUN make get_vendor_deps
 
 # Install the apps
 ADD scripts scripts
@@ -25,7 +26,6 @@ RUN bash scripts/install_abci_apps.sh
 
 # Now copy in the code
 COPY . $REPO
-RUN make get_vendor_deps
 
 
 RUN go install ./cmd/tendermint
