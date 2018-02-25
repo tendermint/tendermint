@@ -1,5 +1,5 @@
 GOTOOLS = \
-	github.com/tendermint/glide \
+	github.com/golang/dep/cmd/dep \
 	# gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
@@ -48,8 +48,8 @@ update_tools:
 
 get_vendor_deps:
 	@rm -rf vendor/
-	@echo "--> Running glide install"
-	@glide install
+	@echo "--> Running dep"
+	@dep ensure
 
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
