@@ -14,8 +14,8 @@ WORKDIR $REPO
 
 # Install the vendored dependencies before copying code
 # docker caching prevents reinstall on code change!
-ADD glide.yaml glide.yaml
-ADD glide.lock glide.lock
+ADD Gopkg.yaml Gopkg.yaml
+ADD Gopkg.lock Gopkg.lock
 ADD Makefile Makefile
 RUN make get_tools
 RUN make get_vendor_deps
