@@ -14,7 +14,7 @@ WORKDIR $REPO
 
 # Install the vendored dependencies before copying code
 # docker caching prevents reinstall on code change!
-ADD Gopkg.yaml Gopkg.yaml
+ADD Gopkg.toml Gopkg.toml
 ADD Gopkg.lock Gopkg.lock
 ADD Makefile Makefile
 RUN make get_tools
