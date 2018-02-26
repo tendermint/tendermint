@@ -199,7 +199,7 @@ func (pool *BlockPool) PopRequest() {
 		delete(pool.requesters, pool.height)
 		pool.height++
 	} else {
-		cmn.PanicSanity(cmn.Fmt("Expected requester to pop, got nothing at height %v", pool.height))
+		panic(fmt.Sprintf("Expected requester to pop, got nothing at height %v", pool.height))
 	}
 }
 
@@ -213,8 +213,9 @@ func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
 	request := pool.requesters[height]
 
 	if request.block == nil {
-		cmn.PanicSanity("Expected block to be non-nil")
+		panic("Expected block to be non-nil")
 	}
+
 	// RemovePeer will redo all requesters associated with this peer.
 	pool.removePeer(request.peerID)
 	return request.peerID
