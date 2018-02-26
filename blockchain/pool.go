@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sync"
@@ -41,7 +42,7 @@ const (
 	minRecvRate = 7680
 )
 
-var peerTimeoutSeconds = time.Duration(15) // not const so we can override with tests
+var peerTimeout = 15 * time.Second // not const so we can override with tests
 
 /*
 	Peers self report their heights when we join the block pool.
@@ -68,10 +69,10 @@ type BlockPool struct {
 	maxPeerHeight int64
 
 	requestsCh chan<- BlockRequest
-	timeoutsCh chan<- p2p.ID
+	errorsCh   chan<- peerError
 }
 
-func NewBlockPool(start int64, requestsCh chan<- BlockRequest, timeoutsCh chan<- p2p.ID) *BlockPool {
+func NewBlockPool(start int64, requestsCh chan<- BlockRequest, errorsCh chan<- peerError) *BlockPool {
 	bp := &BlockPool{
 		peers: make(map[p2p.ID]*bpPeer),
 
@@ -80,7 +81,7 @@ func NewBlockPool(start int64, requestsCh chan<- BlockRequest, timeoutsCh chan<-
 		numPending: 0,
 
 		requestsCh: requestsCh,
-		timeoutsCh: timeoutsCh,
+		errorsCh:   errorsCh,
 	}
 	bp.BaseService = *cmn.NewBaseService(nil, "BlockPool", bp)
 	return bp
@@ -128,9 +129,10 @@ func (pool *BlockPool) removeTimedoutPeers() {
 			curRate := peer.recvMonitor.Status().CurRate
 			// curRate can be 0 on start
 			if curRate != 0 && curRate < minRecvRate {
-				pool.sendTimeout(peer.id)
+				err := errors.New("peer is not sending us data fast enough")
+				pool.sendError(err, peer.id)
 				pool.Logger.Error("SendTimeout", "peer", peer.id,
-					"reason", "peer is not sending us data fast enough",
+					"reason", err,
 					"curRate", fmt.Sprintf("%d KB/s", curRate/1024),
 					"minRate", fmt.Sprintf("%d KB/s", minRecvRate/1024))
 				peer.didTimeout = true
@@ -340,11 +342,11 @@ func (pool *BlockPool) sendRequest(height int64, peerID p2p.ID) {
 	pool.requestsCh <- BlockRequest{height, peerID}
 }
 
-func (pool *BlockPool) sendTimeout(peerID p2p.ID) {
+func (pool *BlockPool) sendError(err error, peerID p2p.ID) {
 	if !pool.IsRunning() {
 		return
 	}
-	pool.timeoutsCh <- peerID
+	pool.errorsCh <- peerError{err, peerID}
 }
 
 // unused by tendermint; left for debugging purposes
@@ -403,9 +405,9 @@ func (peer *bpPeer) resetMonitor() {
 
 func (peer *bpPeer) resetTimeout() {
 	if peer.timeout == nil {
-		peer.timeout = time.AfterFunc(time.Second*peerTimeoutSeconds, peer.onTimeout)
+		peer.timeout = time.AfterFunc(peerTimeout, peer.onTimeout)
 	} else {
-		peer.timeout.Reset(time.Second * peerTimeoutSeconds)
+		peer.timeout.Reset(peerTimeout)
 	}
 }
 
@@ -431,8 +433,9 @@ func (peer *bpPeer) onTimeout() {
 	peer.pool.mtx.Lock()
 	defer peer.pool.mtx.Unlock()
 
-	peer.pool.sendTimeout(peer.id)
-	peer.logger.Error("SendTimeout", "reason", "onTimeout")
+	err := errors.New("peer did not send us anything")
+	peer.pool.sendError(err, peer.id)
+	peer.logger.Error("SendTimeout", "reason", err, "timeout", peerTimeout)
 	peer.didTimeout = true
 }
 

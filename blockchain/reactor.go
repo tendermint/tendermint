@@ -22,8 +22,7 @@ const (
 	// BlockchainChannel is a channel for blocks and status updates (`BlockStore` height)
 	BlockchainChannel = byte(0x40)
 
-	defaultChannelCapacity = 1000
-	trySyncIntervalMS      = 50
+	trySyncIntervalMS = 50
 	// stop syncing when last block's time is
 	// within this much of the system time.
 	// stopSyncingDurationMinutes = 10
@@ -38,6 +37,15 @@ type consensusReactor interface {
 	// for when we switch from blockchain reactor and fast sync to
 	// the consensus machine
 	SwitchToConsensus(sm.State, int)
+}
+
+type peerError struct {
+	err    error
+	peerID p2p.ID
+}
+
+func (e peerError) Error() string {
+	return fmt.Sprintf("error with peer %v: %s", e.peerID, e.err.Error())
 }
 
 // BlockchainReactor handles long-term catchup syncing.
@@ -56,7 +64,7 @@ type BlockchainReactor struct {
 	fastSync  bool
 
 	requestsCh <-chan BlockRequest
-	timeoutsCh <-chan p2p.ID
+	errorsCh   <-chan peerError
 }
 
 // NewBlockchainReactor returns new reactor instance.
@@ -68,12 +76,12 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 			store.Height()))
 	}
 
-	requestsCh := make(chan BlockRequest, defaultChannelCapacity)
-	timeoutsCh := make(chan p2p.ID, defaultChannelCapacity)
+	requestsCh := make(chan BlockRequest)
+	errorsCh := make(chan peerError)
 	pool := NewBlockPool(
 		store.Height()+1,
 		requestsCh,
-		timeoutsCh,
+		errorsCh,
 	)
 	bcR := &BlockchainReactor{
 		params:       state.ConsensusParams,
@@ -83,7 +91,7 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 		pool:         pool,
 		fastSync:     fastSync,
 		requestsCh:   requestsCh,
-		timeoutsCh:   timeoutsCh,
+		errorsCh:     errorsCh,
 	}
 	bcR.BaseReactor = *p2p.NewBaseReactor("BlockchainReactor", bcR)
 	return bcR
@@ -230,7 +238,7 @@ func (bcR *BlockchainReactor) poolRoutine() {
 FOR_LOOP:
 	for {
 		select {
-		case request := <-bcR.requestsCh: // chan BlockRequest
+		case request := <-bcR.requestsCh:
 			peer := bcR.Switch.Peers().Get(request.PeerID)
 			if peer == nil {
 				continue FOR_LOOP // Peer has since been disconnected.
@@ -242,11 +250,10 @@ FOR_LOOP:
 				// The pool handles timeouts, just let it go.
 				continue FOR_LOOP
 			}
-		case peerID := <-bcR.timeoutsCh: // chan string
-			// Peer timed out.
-			peer := bcR.Switch.Peers().Get(peerID)
+		case err := <-bcR.errorsCh:
+			peer := bcR.Switch.Peers().Get(err.peerID)
 			if peer != nil {
-				bcR.Switch.StopPeerForError(peer, errors.New("BlockchainReactor Timeout"))
+				bcR.Switch.StopPeerForError(peer, err)
 			}
 		case <-statusUpdateTicker.C:
 			// ask for status updates
