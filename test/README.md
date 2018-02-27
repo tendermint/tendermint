@@ -23,8 +23,3 @@ and run the following tests in docker containers:
 If on a `release-x.x.x` branch, we also run
 
 - `go test` for all our dependency libs (test/test_libs.sh)
-- network_testing - benchmark a mintnet based cloud deploy using netmon
-
-
-
-
