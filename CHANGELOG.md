@@ -604,3 +604,4 @@ The Ethereum Virtual Machine and various other transaction features were removed
 driving an application running in another process.
 The ABCI interface and implementation were iterated on and improved over the course of 2016,
 until versioned history kicked in with v0.7.0.
+
