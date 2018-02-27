@@ -2,7 +2,9 @@
 set -u
 
 function getVendoredVersion() {
+	cd "$GOPATH/src/github.com/tendermint/tendermint" || exit
 	dep status | grep "$1" | awk '{print $4}'
+	cd - || exit
 }
 
 
