@@ -14,8 +14,8 @@ WORKDIR $REPO
 
 # Install the vendored dependencies before copying code
 # docker caching prevents reinstall on code change!
-ADD glide.yaml glide.yaml
-ADD glide.lock glide.lock
+ADD Gopkg.toml Gopkg.toml
+ADD Gopkg.lock Gopkg.lock
 ADD Makefile Makefile
 RUN make get_tools
 RUN make get_vendor_deps
@@ -26,6 +26,7 @@ RUN bash scripts/install_abci_apps.sh
 
 # Now copy in the code
 COPY . $REPO
+
 
 RUN go install ./cmd/tendermint
 

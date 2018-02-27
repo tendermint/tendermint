@@ -1,4 +1,5 @@
 GOTOOLS = \
+	github.com/golang/dep/cmd/dep \
 	github.com/tendermint/glide \
 	# gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
@@ -7,7 +8,7 @@ BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`g
 
 all: check build test install
 
-check: check_tools get_vendor_deps
+check: check_tools ensure_deps
 
 
 ########################################
@@ -46,10 +47,18 @@ update_tools:
 	@echo "--> Updating tools"
 	@go get -u $(GOTOOLS)
 
+#Run this from CI
 get_vendor_deps:
 	@rm -rf vendor/
-	@echo "--> Running glide install"
-	@glide install
+	@echo "--> Running dep"
+	@dep ensure -vendor-only
+
+
+#Run this locally.
+ensure_deps:
+	@rm -rf vendor/
+	@echo "--> Running dep"
+	@dep ensure 
 
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
