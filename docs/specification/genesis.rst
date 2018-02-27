@@ -5,12 +5,6 @@ The genesis.json file in ``$TMHOME/config`` defines the initial TendermintCore
 state upon genesis of the blockchain (`see
 definition <https://github.com/tendermint/tendermint/blob/master/types/genesis.go>`__).
 
-NOTE: This does not (yet) specify the application state (e.g. initial
-distribution of tokens). Currently we leave it up to the application to
-load the initial application genesis state. In the future, we may
-include genesis SetOption messages that get passed from TendermintCore
-to the app upon genesis.
-
 Fields
 ~~~~~~
 
@@ -26,6 +20,7 @@ Fields
 -  ``app_hash``: The expected application hash (as returned by the
    ``Commit`` ABCI message) upon genesis. If the app's hash does not
    match, a warning message is printed.
+-  ``app_state``: The application state (e.g. initial distribution of tokens).
 
 Sample genesis.json
 ~~~~~~~~~~~~~~~~~~~
@@ -69,5 +64,8 @@ Sample genesis.json
           "name": "mach4"
         }
       ],
-      "app_hash": "15005165891224E721CB664D15CB972240F5703F"
+      "app_hash": "15005165891224E721CB664D15CB972240F5703F",
+      "app_state": {
+        {"account": "Bob", "coins": 5000}
+      }
     }
