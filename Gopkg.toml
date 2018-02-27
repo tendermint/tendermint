@@ -71,7 +71,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/abci"
-  version = "0.10.0"
+  revision = "345a5a5a34aa31ad00626266f59e4ae7652ee274"
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"

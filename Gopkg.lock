@@ -229,12 +229,11 @@
     "client",
     "example/code",
     "example/counter",
-    "example/dummy",
+    "example/kvstore",
     "server",
     "types"
   ]
-  revision = "68592f4d8ee34e97db94b7a7976b1309efdb7eb9"
-  version = "v0.10.0"
+  revision = "345a5a5a34aa31ad00626266f59e4ae7652ee274"
 
 [[projects]]
   branch = "master"
@@ -370,6 +369,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fab03bd603ce6dc3139527674dcc4a5625e5ff81c6caafee4975b338daef696f"
+  inputs-digest = "402db24a8ce0cac835f1d0d3c40d4066d57660acac43b647066d94913bfc3efc"
   solver-name = "gps-cdcl"
   solver-version = 1
