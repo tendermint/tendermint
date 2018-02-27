@@ -1,10 +1,10 @@
 GOTOOLS = \
-	github.com/Masterminds/glide \
+	github.com/golang/dep/cmd/dep \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/gogo/protobuf/gogoproto
 	# github.com/alecthomas/gometalinter.v2 \
 
-GOTOOLS_CHECK = glide gometalinter.v2 protoc protoc-gen-gogo
+GOTOOLS_CHECK = dep gometalinter.v2 protoc protoc-gen-gogo
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
 all: check get_vendor_deps protoc build test install metalinter
@@ -59,15 +59,15 @@ update_tools:
 
 get_vendor_deps:
 	@rm -rf vendor/
-	@echo "--> Running glide install"
-	@glide install
+	@echo "--> Running dep ensure"
+	@dep ensure
 
 
 ########################################
 ### Testing
 
 test:
-	go test -tags gcc `glide novendor`
+	go test -tags gcc $(shell go list ./... | grep -v vendor)
 
 test100:
 	@for i in {1..100}; do make test; done
