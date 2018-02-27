@@ -88,7 +88,7 @@ build-basecoin: git-branch gopath-setup
 	go get -d -u github.com/cosmos/cosmos-sdk/examples/basecoin/cmd/basecoind
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
 	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_tools get_vendor_deps build
-	cp $(GOPATH)/src/github.com/cosmos/cosmos-sdk/build/basecoin $(GOPATH)/bin
+	cp $(GOPATH)/src/github.com/cosmos/cosmos-sdk/build/basecoind $(GOPATH)/bin/basecoin
 	@echo "*** Built basecoin from cosmos-sdk"
 
 ###
