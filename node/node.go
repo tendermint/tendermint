@@ -279,8 +279,8 @@ func NewNode(config *cfg.Config,
 			}
 			return nil
 		})
-		sw.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
+		sw.SetIDFilter(func(id p2p.ID) error {
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%s", id)})
 			if err != nil {
 				return err
 			}

@@ -323,8 +323,9 @@ func (r *PEXReactor) ensurePeers() {
 	// Dial picked addresses
 	for _, item := range toDial {
 		go func(picked *p2p.NetAddress) {
-			_, err := r.Switch.DialPeerWithAddress(picked, false)
+			err := r.Switch.DialPeerWithAddress(picked, false)
 			if err != nil {
+				r.Logger.Error("Dialing failed", "err", err)
 				// TODO: detect more "bad peer" scenarios
 				if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
 					r.book.MarkBad(picked)
@@ -381,13 +382,11 @@ func (r *PEXReactor) dialSeeds() {
 	for _, i := range perm {
 		// dial a random seed
 		seedAddr := seedAddrs[i]
-		peer, err := r.Switch.DialPeerWithAddress(seedAddr, false)
-		if err != nil {
-			r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
-		} else {
-			r.Switch.Logger.Info("Connected to seed", "peer", peer)
+		err := r.Switch.DialPeerWithAddress(seedAddr, false)
+		if err == nil {
 			return
 		}
+		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
 	}
 	r.Switch.Logger.Error("Couldn't connect to any seeds")
 }
@@ -470,7 +469,7 @@ func (r *PEXReactor) crawlPeers() {
 			continue
 		}
 		// Otherwise, attempt to connect with the known address
-		_, err := r.Switch.DialPeerWithAddress(pi.Addr, false)
+		err := r.Switch.DialPeerWithAddress(pi.Addr, false)
 		if err != nil {
 			r.book.MarkAttempt(pi.Addr)
 			continue

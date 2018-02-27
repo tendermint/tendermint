@@ -13,10 +13,11 @@ import (
 
 // Returns an empty dummy peer
 func randPeer() *peer {
+	pubKey := crypto.GenPrivKeyEd25519().Wrap().PubKey()
 	return &peer{
 		nodeInfo: NodeInfo{
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
-			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
+			PubKey:     pubKey,
 		},
 	}
 }

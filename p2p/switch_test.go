@@ -192,7 +192,7 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 	}
 }
 
-func TestConnPubKeyFilter(t *testing.T) {
+func TestConnIDFilter(t *testing.T) {
 	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
@@ -200,15 +200,20 @@ func TestConnPubKeyFilter(t *testing.T) {
 
 	c1, c2 := conn.NetPipe()
 
-	// set pubkey filter
-	s1.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
-		if bytes.Equal(pubkey.Bytes(), s2.nodeInfo.PubKey.Bytes()) {
+	s1.SetIDFilter(func(id ID) error {
+		if id == PubKeyToID(s2.nodeInfo.PubKey) {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
-	// connect to good peer
+	s2.SetIDFilter(func(id ID) error {
+		if id == PubKeyToID(s1.nodeInfo.PubKey) {
+			return fmt.Errorf("Error: pipe is blacklisted")
+		}
+		return nil
+	})
+
 	go func() {
 		err := s1.addPeerWithConnection(c1)
 		assert.NotNil(t, err, "expected error")
@@ -237,13 +242,15 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, DefaultPeerConfig(), false)
+	pc, err := newOutboundPeerConn(rp.Addr(), DefaultPeerConfig(), false, sw.nodeKey.PrivKey)
 	require.Nil(err)
-	err = sw.addPeer(peer)
+	err = sw.addPeer(pc)
 	require.Nil(err)
 
+	peer := sw.Peers().Get(rp.ID())
+
 	// simulate failure by closing connection
-	peer.CloseConn()
+	pc.CloseConn()
 
 	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
 	assert.False(peer.IsRunning())
@@ -264,13 +271,16 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	peer, err := newOutboundPeer(rp.Addr(), sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey, DefaultPeerConfig(), true)
+	pc, err := newOutboundPeerConn(rp.Addr(), DefaultPeerConfig(), true, sw.nodeKey.PrivKey)
+	//	sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey,
 	require.Nil(err)
-	err = sw.addPeer(peer)
+	err = sw.addPeer(pc)
 	require.Nil(err)
 
+	peer := sw.Peers().Get(rp.ID())
+
 	// simulate failure by closing connection
-	peer.CloseConn()
+	pc.CloseConn()
 
 	// TODO: remove sleep, detect the disconnection, wait for reconnect
 	npeers := sw.Peers().Size()

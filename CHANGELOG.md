@@ -25,6 +25,12 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.16.1 (TBD)
+
+IMPROVEMENTS:
+- [config] exposed `auth_enc` flag to enable/disable encryption
+- [p2p] when `auth_enc` is true, all dialed peers must have a node ID in their address
+
 ## 0.16.0 (February 20th, 2017)
 
 BREAKING CHANGES:
