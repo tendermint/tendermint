@@ -119,7 +119,7 @@ func newOutboundPeerConn(addr *NetAddress, config *PeerConfig, persistent bool, 
 
 	pc, err = newPeerConn(conn, config, true, persistent, ourNodePrivKey)
 	if err != nil {
-		if err2 := conn.Close(); err != nil {
+		if err2 := conn.Close(); err2 != nil {
 			return pc, errors.Wrap(err, err2.Error())
 		}
 		return pc, err
@@ -127,7 +127,7 @@ func newOutboundPeerConn(addr *NetAddress, config *PeerConfig, persistent bool, 
 
 	// ensure dialed ID matches connection ID
 	if config.AuthEnc && addr.ID != pc.ID() {
-		if err2 := conn.Close(); err != nil {
+		if err2 := conn.Close(); err2 != nil {
 			return pc, errors.Wrap(err, err2.Error())
 		}
 		return pc, ErrSwitchAuthenticationFailure{addr, pc.ID()}
