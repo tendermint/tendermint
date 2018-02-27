@@ -7,14 +7,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/rpc/grpc"
 	"github.com/tendermint/tendermint/rpc/test"
 )
 
 func TestMain(m *testing.M) {
 	// start a tendermint node in the background to test against
-	app := dummy.NewDummyApplication()
+	app := kvstore.NewKVStoreApplication()
 	node := rpctest.StartTendermint(app)
 	code := m.Run()
 

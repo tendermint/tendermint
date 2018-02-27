@@ -11,7 +11,7 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// Returns an empty dummy peer
+// Returns an empty kvstore peer
 func randPeer() *peer {
 	pubKey := crypto.GenPrivKeyEd25519().Wrap().PubKey()
 	return &peer{

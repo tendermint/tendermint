@@ -158,7 +158,7 @@ func DefaultBaseConfig() BaseConfig {
 func TestBaseConfig() BaseConfig {
 	conf := DefaultBaseConfig()
 	conf.chainID = "tendermint_test"
-	conf.ProxyApp = "dummy"
+	conf.ProxyApp = "kvstore"
 	conf.FastSync = false
 	conf.DBBackend = "memdb"
 	return conf

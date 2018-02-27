@@ -4,7 +4,7 @@ set -eu
 DOCKER_IMAGE=$1
 NETWORK_NAME=local_testnet
 N=4
-PROXY_APP=persistent_dummy
+PROXY_APP=persistent_kvstore
 
 cd "$GOPATH/src/github.com/tendermint/tendermint"
 

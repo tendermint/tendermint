@@ -142,10 +142,10 @@ It is unlikely that you will need to implement a client. For details of
 our client, see
 `here <https://github.com/tendermint/abci/tree/master/client>`__.
 
-Most of the examples below are from `dummy application
-<https://github.com/tendermint/abci/blob/master/example/dummy/dummy.go>`__,
-which is a part of the abci repo. `persistent_dummy application
-<https://github.com/tendermint/abci/blob/master/example/dummy/persistent_dummy.go>`__
+Most of the examples below are from `kvstore application
+<https://github.com/tendermint/abci/blob/master/example/kvstore/kvstore.go>`__,
+which is a part of the abci repo. `persistent_kvstore application
+<https://github.com/tendermint/abci/blob/master/example/kvstore/persistent_kvstore.go>`__
 is used to show ``BeginBlock``, ``EndBlock`` and ``InitChain``
 example implementations.
 
@@ -202,7 +202,7 @@ mempool state.
 
     .. code-block:: go
 
-        func (app *DummyApplication) CheckTx(tx []byte) types.Result {
+        func (app *KVStoreApplication) CheckTx(tx []byte) types.Result {
           return types.OK
         }
 
@@ -263,7 +263,7 @@ merkle root of the data returned by the DeliverTx requests, or both.
     .. code-block:: go
 
         // tx is either "key=value" or just arbitrary bytes
-        func (app *DummyApplication) DeliverTx(tx []byte) types.Result {
+        func (app *KVStoreApplication) DeliverTx(tx []byte) types.Result {
           parts := strings.Split(string(tx), "=")
           if len(parts) == 2 {
             app.state.Set([]byte(parts[0]), []byte(parts[1]))
@@ -327,7 +327,7 @@ job of the `Handshake <#handshake>`__.
 
     .. code-block:: go
 
-        func (app *DummyApplication) Commit() types.Result {
+        func (app *KVStoreApplication) Commit() types.Result {
           hash := app.state.Hash()
           return types.NewResultOK(hash, "")
         }
@@ -369,7 +369,7 @@ pick up from when it restarts. See information on the Handshake, below.
     .. code-block:: go
 
         // Track the block hash and header information
-        func (app *PersistentDummyApplication) BeginBlock(params types.RequestBeginBlock) {
+        func (app *PersistentKVStoreApplication) BeginBlock(params types.RequestBeginBlock) {
           // update latest block info
           app.blockHeader = params.Header
 
@@ -423,7 +423,7 @@ for details on how it tracks validators.
     .. code-block:: go
 
         // Update the validator set
-        func (app *PersistentDummyApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
+        func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
           return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
         }
 
@@ -477,7 +477,7 @@ Note: these query formats are subject to change!
 
     .. code-block:: go
 
-        func (app *DummyApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+        func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
           if reqQuery.Prove {
             value, proof, exists := app.state.Proof(reqQuery.Data)
             resQuery.Index = -1 // TODO make Proof return index
@@ -561,7 +561,7 @@ all blocks.
 
     .. code-block:: go
 
-        func (app *DummyApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+        func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
           return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
         }
 
@@ -595,7 +595,7 @@ consensus params.
     .. code-block:: go
 
         // Save the validators in the merkle tree
-        func (app *PersistentDummyApplication) InitChain(params types.RequestInitChain) {
+        func (app *PersistentKVStoreApplication) InitChain(params types.RequestInitChain) {
           for _, v := range params.Validators {
             r := app.updateValidator(v)
             if r.IsErr() {

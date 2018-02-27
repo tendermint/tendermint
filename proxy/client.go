@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 
 	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	"github.com/tendermint/abci/types"
 )
 
@@ -64,10 +64,10 @@ func (r *remoteClientCreator) NewABCIClient() (abcicli.Client, error) {
 
 func DefaultClientCreator(addr, transport, dbDir string) ClientCreator {
 	switch addr {
-	case "dummy":
-		return NewLocalClientCreator(dummy.NewDummyApplication())
-	case "persistent_dummy":
-		return NewLocalClientCreator(dummy.NewPersistentDummyApplication(dbDir))
+	case "kvstore":
+		return NewLocalClientCreator(kvstore.NewKVStoreApplication())
+	case "persistent_kvstore":
+		return NewLocalClientCreator(kvstore.NewPersistentKVStoreApplication(dbDir))
 	case "nilapp":
 		return NewLocalClientCreator(types.NewBaseApplication())
 	default:

@@ -1,5 +1,5 @@
-hash: 322a0d4b9be08c59bf65df0e17e3be8d60762eaf9516f0c4126b50f9fd676f26
-updated: 2018-02-21T03:31:35.382568482Z
+hash: d9b29e999de7d8a58f068ad5c2af77a030d55418873489ffab9a142df6c31eed
+updated: 2018-02-21T00:18:03.549434011-05:00
 imports:
 - name: github.com/btcsuite/btcd
   version: 50de9da05b50eb15658bb350f6ea24368a111ab7
@@ -97,12 +97,12 @@ imports:
   - leveldb/table
   - leveldb/util
 - name: github.com/tendermint/abci
-  version: 68592f4d8ee34e97db94b7a7976b1309efdb7eb9
+  version: 6d47f4afe2b68b20802aa4d049fd6b8c0f54f1a5
   subpackages:
   - client
   - example/code
   - example/counter
-  - example/dummy
+  - example/kvstore
   - server
   - types
 - name: github.com/tendermint/ed25519

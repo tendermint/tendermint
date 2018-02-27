@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 
 	"github.com/tendermint/tendermint/lite"
 	certclient "github.com/tendermint/tendermint/lite/client"
@@ -23,7 +23,7 @@ var node *nm.Node
 // TODO fix tests!!
 
 func TestMain(m *testing.M) {
-	app := dummy.NewDummyApplication()
+	app := kvstore.NewKVStoreApplication()
 
 	node = rpctest.StartTendermint(app)
 
@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func dummyTx(k, v []byte) []byte {
+func kvstoreTx(k, v []byte) []byte {
 	return []byte(fmt.Sprintf("%s=%s", k, v))
 }
 
@@ -47,7 +47,7 @@ func _TestAppProofs(t *testing.T) {
 	k := []byte("my-key")
 	v := []byte("my-value")
 
-	tx := dummyTx(k, v)
+	tx := kvstoreTx(k, v)
 	br, err := cl.BroadcastTxCommit(tx)
 	require.NoError(err, "%+v", err)
 	require.EqualValues(0, br.CheckTx.Code, "%#v", br.CheckTx)
@@ -107,7 +107,7 @@ func _TestTxProofs(t *testing.T) {
 	cl := client.NewLocal(node)
 	client.WaitForHeight(cl, 1, nil)
 
-	tx := dummyTx([]byte("key-a"), []byte("value-a"))
+	tx := kvstoreTx([]byte("key-a"), []byte("value-a"))
 	br, err := cl.BroadcastTxCommit(tx)
 	require.NoError(err, "%+v", err)
 	require.EqualValues(0, br.CheckTx.Code, "%#v", br.CheckTx)

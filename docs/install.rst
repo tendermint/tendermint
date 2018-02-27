@@ -107,4 +107,4 @@ To start a one-node blockchain with a simple in-process application:
 ::
 
     tendermint init
-    tendermint node --proxy_app=dummy
+    tendermint node --proxy_app=kvstore

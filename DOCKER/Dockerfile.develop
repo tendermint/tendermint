@@ -32,4 +32,4 @@ EXPOSE 46657
 
 ENTRYPOINT ["tendermint"]
 
-CMD ["node", "--moniker=`hostname`", "--proxy_app=dummy"]
+CMD ["node", "--moniker=`hostname`", "--proxy_app=kvstore"]

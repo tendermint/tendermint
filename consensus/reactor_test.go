@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -127,7 +127,7 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 func TestReactorVotingPowerChange(t *testing.T) {
 	nVals := 4
 	logger := log.TestingLogger()
-	css := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentDummy)
+	css := randConsensusNet(nVals, "consensus_voting_power_changes_test", newMockTickerFunc(true), newPersistentKVStore)
 	reactors, eventChans, eventBuses := startConsensusNet(t, css, nVals)
 	defer stopConsensusNet(logger, reactors, eventBuses)
 
@@ -146,7 +146,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	logger.Debug("---------------------------- Testing changing the voting power of one validator a few times")
 
 	val1PubKey := css[0].privValidator.GetPubKey()
-	updateValidatorTx := dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 25)
+	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKey.Bytes(), 25)
 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
@@ -158,7 +158,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
-	updateValidatorTx = dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 2)
+	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKey.Bytes(), 2)
 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
@@ -170,7 +170,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
-	updateValidatorTx = dummy.MakeValSetChangeTx(val1PubKey.Bytes(), 26)
+	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKey.Bytes(), 26)
 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
@@ -186,7 +186,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 func TestReactorValidatorSetChanges(t *testing.T) {
 	nPeers := 7
 	nVals := 4
-	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentDummy)
+	css := randConsensusNetWithPeers(nVals, nPeers, "consensus_val_set_changes_test", newMockTickerFunc(true), newPersistentKVStore)
 
 	logger := log.TestingLogger()
 
@@ -208,7 +208,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing adding one validator")
 
 	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
-	newValidatorTx1 := dummy.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), testMinPower)
+	newValidatorTx1 := kvstore.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), testMinPower)
 
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
@@ -234,7 +234,7 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing changing the voting power of one validator")
 
 	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
-	updateValidatorTx1 := dummy.MakeValSetChangeTx(updateValidatorPubKey1.Bytes(), 25)
+	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updateValidatorPubKey1.Bytes(), 25)
 	previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
@@ -250,10 +250,10 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing adding two validators at once")
 
 	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
-	newValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), testMinPower)
+	newValidatorTx2 := kvstore.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), testMinPower)
 
 	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
-	newValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), testMinPower)
+	newValidatorTx3 := kvstore.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), testMinPower)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
@@ -265,8 +265,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing removing two validators at once")
 
-	removeValidatorTx2 := dummy.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), 0)
-	removeValidatorTx3 := dummy.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), 0)
+	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), 0)
+	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), 0)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
