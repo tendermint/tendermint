@@ -16,15 +16,15 @@ Next, install the ``abci-cli`` tool and example applications:
 
     go get -u github.com/tendermint/abci/cmd/abci-cli
 
-If this fails, you may need to use ``glide`` to get vendored
+If this fails, you may need to use `dep <https://github.com/golang/dep>`__ to get vendored
 dependencies:
 
 ::
 
-    go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
-    glide install
-    go install ./cmd/abci-cli
+    make get_tools
+    make get_vendor_deps
+    make install
 
 Now run ``abci-cli`` to see the list of commands:
 

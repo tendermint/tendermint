@@ -27,15 +27,15 @@ Then run
 
     go get -u github.com/tendermint/abci/cmd/abci-cli
 
-If there is an error, install and run the ``glide`` tool to pin the
+If there is an error, install and run the `dep <https://github.com/golang/dep>`__ tool to pin the
 dependencies:
 
 ::
 
-    go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
-    glide install
-    go install ./cmd/abci-cli
+    make get_tools
+    make get_vendor_deps
+    make install
 
 Now you should have the ``abci-cli`` installed; you'll see
 a couple of commands (``counter`` and ``kvstore``) that are

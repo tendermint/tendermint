@@ -1,27 +1,25 @@
 #! /bin/bash
 set -u
 
-function parseGlide() {
-	cat $1 | grep -A1 $2 | grep -v $2 | awk '{print $2}'
+function getVendoredVersion() {
+	dep status | grep "$1" | awk '{print $4}'
 }
 
 
 # fetch and checkout vendored dep
 
-glide=$1
-lib=$2
+lib=$1
 
 echo "----------------------------------"
 echo "Getting $lib ..."
-go get -t github.com/tendermint/$lib/...
+go get -t "github.com/tendermint/$lib/..."
 
-VENDORED=$(parseGlide $glide $lib) 
-cd $GOPATH/src/github.com/tendermint/$lib
+VENDORED=$(getVendoredVersion "$lib")
+cd "$GOPATH/src/github.com/tendermint/$lib" || exit
 MASTER=$(git rev-parse origin/master)
 
 if [[ "$VENDORED" != "$MASTER" ]]; then
 	echo "... VENDORED != MASTER ($VENDORED != $MASTER)"
 	echo "... Checking out commit $VENDORED"
-	git checkout $VENDORED &> /dev/null
+	git checkout "$VENDORED" &> /dev/null
 fi
-
