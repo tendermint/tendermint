@@ -13,9 +13,9 @@ RUN apt-get update && apt-get install -y \
     psmisc \
  && rm -rf /var/lib/apt/lists/*
 
-COPY glide.yaml /go/src/github.com/tendermint/abci/
-COPY glide.lock /go/src/github.com/tendermint/abci/
+COPY Gopkg.toml /go/src/github.com/tendermint/abci/
+COPY Gopkg.lock /go/src/github.com/tendermint/abci/
+COPY . /go/src/github.com/tendermint/abci
 
 RUN make get_vendor_deps
 
-COPY . /go/src/github.com/tendermint/abci
