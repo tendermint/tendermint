@@ -173,20 +173,22 @@ func NewNode(config *cfg.Config,
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
 
+	// Connect to external signing process, if an address is provided.
 	if config.PrivValidatorAddr != "" {
 		var (
 			privKey = crypto.GenPrivKeyEd25519()
-			pvss    = priv_val.NewPrivValidatorSocketServer(
+			pvsc    = priv_val.NewSocketClient(
 				logger.With("module", "priv_val"),
-				config.ChainID(),
 				config.PrivValidatorAddr,
-				config.PrivValidatorMaxConn,
-				priv_val.LoadPrivValidatorJSON(config.PrivValidatorFile()),
 				&privKey,
 			)
 		)
 
-		pvss.Start()
+		if err := pvsc.Start(); err != nil {
+			return nil, fmt.Errorf("Error starting private validator client: %v", err)
+		}
+
+		privValidator = pvsc
 	}
 
 	// Decide whether to fast-sync or not

@@ -21,10 +21,9 @@ var (
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
 
-	defaultPrivValName    = "priv_validator.json"
-	defaultPrivValMaxConn = 3
-	defaultNodeKeyName    = "node_key.json"
-	defaultAddrBookName   = "addrbook.json"
+	defaultPrivValName  = "priv_validator.json"
+	defaultNodeKeyName  = "node_key.json"
+	defaultAddrBookName = "addrbook.json"
 
 	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
@@ -108,9 +107,6 @@ type BaseConfig struct {
 	// TCP or UNIX socket address of the PrivValidator server
 	PrivValidatorAddr string `mapstructure:"priv_validator_addr"`
 
-	// Limit of concurrent connections to the PrivValidator.
-	PrivValidatorMaxConn int `mapstructure:"priv_validator_max_conn"`
-
 	// TCP or UNIX socket address of the ABCI application,
 	// or the name of an ABCI application compiled in with the Tendermint binary
 	ProxyApp string `mapstructure:"proxy_app"`
@@ -147,19 +143,18 @@ func (c BaseConfig) ChainID() string {
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
-		Genesis:              defaultGenesisJSONPath,
-		PrivValidator:        defaultPrivValPath,
-		PrivValidatorMaxConn: defaultPrivValMaxConn,
-		NodeKey:              defaultNodeKeyPath,
-		Moniker:              defaultMoniker,
-		ProxyApp:             "tcp://127.0.0.1:46658",
-		ABCI:                 "socket",
-		LogLevel:             DefaultPackageLogLevels(),
-		ProfListenAddress:    "",
-		FastSync:             true,
-		FilterPeers:          false,
-		DBBackend:            "leveldb",
-		DBPath:               "data",
+		Genesis:           defaultGenesisJSONPath,
+		PrivValidator:     defaultPrivValPath,
+		NodeKey:           defaultNodeKeyPath,
+		Moniker:           defaultMoniker,
+		ProxyApp:          "tcp://127.0.0.1:46658",
+		ABCI:              "socket",
+		LogLevel:          DefaultPackageLogLevels(),
+		ProfListenAddress: "",
+		FastSync:          true,
+		FilterPeers:       false,
+		DBBackend:         "leveldb",
+		DBPath:            "data",
 	}
 }
 
