@@ -65,6 +65,11 @@ draw_deps:
 	go get github.com/RobotsAndPencils/goviz
 	@goviz -i github.com/tendermint/tendermint/cmd/tendermint -d 3 | dot -Tpng -o dependency-graph.png
 
+get_deps_bin_size:
+	@# Copy of build recipe with additional flags to perform binary size analysis
+	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/ 2>&1))
+	@find $(WORK) -type f -name "*.a" | xargs -I{} du -hxs "{}" | sort -rh | sed -e s:${WORK}/::g > deps_bin_size.log
+	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
 
 ########################################
 ### Testing
@@ -136,4 +141,4 @@ metalinter_all:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test test_race test_integrations test_release test100 vagrant_test fmt metalinter metalinter_all
+.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps get_deps_bin_size test test_race test_integrations test_release test100 vagrant_test fmt metalinter metalinter_all
