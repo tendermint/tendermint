@@ -1,10 +1,15 @@
 #! /bin/bash
+
+set +u
+if [[ "$DEP" == "" ]]; then
+		DEP=$GOPATH/src/github.com/tendermint/tendermint/Gopkg.lock
+fi
+set -u
+
 set -u
 
 function getVendoredVersion() {
-	cd "$GOPATH/src/github.com/tendermint/tendermint" || exit
-	dep status | grep "$1" | awk '{print $4}'
-	cd - || exit
+	grep -A100 "$LIB" "$DEP" | grep revision | head -n1 | grep -o '"[^"]\+"' | cut -d '"' -f 2
 }
 
 

@@ -1,8 +1,13 @@
 #! /bin/bash
-set -euo pipefail
 
-cd "$GOPATH/github.com/tendermint/tendermint" || exit
+set +u
+if [[ "$DEP" == "" ]]; then
+		DEP=$GOPATH/src/github.com/tendermint/tendermint/Gopkg.lock
+fi
+set -u
+
+set -euo pipefail
 
 LIB=$1
 
-dep status | grep "$LIB" | awk '{print $4}'
+grep -A100 "$LIB" "$DEP" | grep revision | head -n1 | grep -o '"[^"]\+"' | cut -d '"' -f 2
