@@ -173,13 +173,16 @@ func NewNode(config *cfg.Config,
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
 
-	// Connect to external signing process, if an address is provided.
-	if config.PrivValidatorAddr != "" {
+	// If an address is provided, listen on the socket for a
+	// connection from an external signing process.
+	if config.PrivValidatorListenAddr != "" {
 		var (
+			// TODO: persist this key so external signer
+			// can actually authenticate us
 			privKey = crypto.GenPrivKeyEd25519()
 			pvsc    = priv_val.NewSocketClient(
 				logger.With("module", "priv_val"),
-				config.PrivValidatorAddr,
+				config.PrivValidatorListenAddr,
 				&privKey,
 			)
 		)
@@ -395,7 +398,7 @@ func (n *Node) OnStart() error {
 	n.sw.AddListener(l)
 
 	// Generate node PrivKey
-	// TODO: pass in like priv_val
+	// TODO: pass in like privValidator
 	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
 	if err != nil {
 		return err

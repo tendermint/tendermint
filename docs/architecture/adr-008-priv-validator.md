@@ -29,8 +29,12 @@ Tendermint node's should support only two in-process PrivValidator implementatio
 - PrivValidatorSocket uses a socket to send signing requests to another process - user is responsible for starting that process themselves.
 
 The PrivValidatorSocket address can be provided via flags at the command line -
-doing so will cause Tendermint to ignore any "priv_validator.json" file and to attempt
-to connect over the socket.
+doing so will cause Tendermint to ignore any "priv_validator.json" file and to listen
+on the given address for incoming connections from an external priv_validator process.
+
+The external priv_validator process will dial the address to connect to Tendermint,
+and then Tendermint will send requests on the ensuing connection to sign votes and proposals.
+Thus the external process initiates the connection, but the Tendermint process makes all requests.
 
 In addition, Tendermint will provide implementations that can be run in that external process.
 These include:
@@ -103,7 +107,7 @@ It wraps the PrivValidatorUnencrypted and persists it to disk after every signat
 
 ## Status
 
-Proposed.
+Accepted.
 
 ## Consequences
 
