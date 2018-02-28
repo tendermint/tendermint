@@ -43,9 +43,9 @@ software.
 
 Since some dependencies are not under our control, a third party may break our
 build, in which case we can fall back on `dep ensure` (or `make
-get_vendor_deps`). Even for dependencies under our control, dep helps us keeps
-multiple repos in sync as they evolve. Anything with an executable, such as
-apps, tools, and the core, should use dep.
+get_vendor_deps`). Even for dependencies under our control, dep helps us to
+keep multiple repos in sync as they evolve. Anything with an executable, such
+as apps, tools, and the core, should use dep.
 
 Run `dep status` to get a list of vendored dependencies that may not be
 up-to-date.
@@ -66,7 +66,7 @@ make test
 
 ## Testing
 
-All repos should be hooked up to circle.
+All repos should be hooked up to [CircleCI](https://circleci.com/).
 
 If they have `.go` files in the root directory, they will be automatically
 tested by circle using `go test -v -race ./...`. If not, they will need a
