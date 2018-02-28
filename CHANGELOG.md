@@ -25,6 +25,11 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.17.0 (TBD)
+
+BREAKING:
+- [genesis] rename `app_options` to `app_state`
+
 ## 0.16.1 (TBD)
 
 IMPROVEMENTS:
