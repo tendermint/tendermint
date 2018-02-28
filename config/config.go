@@ -20,9 +20,10 @@ var (
 
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
-	defaultPrivValName     = "priv_validator.json"
-	defaultNodeKeyName     = "node_key.json"
-	defaultAddrBookName    = "addrbook.json"
+
+	defaultPrivValName  = "priv_validator.json"
+	defaultNodeKeyName  = "node_key.json"
+	defaultAddrBookName = "addrbook.json"
 
 	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
@@ -102,6 +103,9 @@ type BaseConfig struct {
 
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
+
+	// TCP or UNIX socket address of the PrivValidator server
+	PrivValidatorAddr string `mapstructure:"priv_validator_addr"`
 
 	// TCP or UNIX socket address of the ABCI application,
 	// or the name of an ABCI application compiled in with the Tendermint binary

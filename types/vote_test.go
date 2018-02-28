@@ -18,7 +18,7 @@ func examplePrecommit() *Vote {
 }
 
 func exampleVote(t byte) *Vote {
-	var stamp, err = time.Parse(timeFormat, "2017-12-25T03:00:01.234Z")
+	var stamp, err = time.Parse(TimeFormat, "2017-12-25T03:00:01.234Z")
 	if err != nil {
 		panic(err)
 	}
