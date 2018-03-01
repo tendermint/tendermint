@@ -30,11 +30,12 @@ BUG FIXES:
 BREAKING:
 - [genesis] rename `app_options` to `app_state`
 
-## 0.16.1 (TBD)
-
 IMPROVEMENTS:
 - [config] exposed `auth_enc` flag to enable/disable encryption
 - [p2p] when `auth_enc` is true, all dialed peers must have a node ID in their address
+- [all] renamed `dummy` (`persistent_dummy`) to `kvstore`
+  (`persistent_kvstore`) (name "dummy" is deprecated and will not work in
+  release after this one)
 
 ## 0.16.0 (February 20th, 2017)
 
