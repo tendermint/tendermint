@@ -102,7 +102,7 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 		BlockID:          types.BlockID{Hash: header.Hash()},
 	}
 	// Sign it
-	signBytes := types.SignBytes(header.ChainID, vote)
+	signBytes := vote.SignBytes(header.ChainID)
 	vote.Signature = key.Sign(signBytes)
 	return vote
 }

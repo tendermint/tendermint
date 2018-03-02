@@ -112,7 +112,7 @@ func (info *LastSignedInfo) Reset() {
 // Else it returns an error.
 func (lsi *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *types.Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
-	signBytes := types.SignBytes(chainID, vote)
+	signBytes := vote.SignBytes(chainID)
 
 	sameHRS, err := lsi.Verify(height, round, step)
 	if err != nil {
@@ -151,7 +151,7 @@ func (lsi *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *t
 // Else it returns an error.
 func (lsi *LastSignedInfo) SignProposal(signer types.Signer, chainID string, proposal *types.Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
-	signBytes := types.SignBytes(chainID, proposal)
+	signBytes := proposal.SignBytes(chainID)
 
 	sameHRS, err := lsi.Verify(height, round, step)
 	if err != nil {
