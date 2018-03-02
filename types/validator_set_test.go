@@ -6,8 +6,10 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -308,4 +310,62 @@ func TestSafeSubClip(t *testing.T) {
 	assert.EqualValues(t, 0, safeSubClip(math.MinInt64, math.MinInt64))
 	assert.EqualValues(t, math.MinInt64, safeSubClip(math.MinInt64, math.MaxInt64))
 	assert.EqualValues(t, math.MaxInt64, safeSubClip(math.MaxInt64, -10))
+}
+
+//-------------------------------------------------------------------
+
+func TestValidatorSetVerifyCommit(t *testing.T) {
+	privKey := crypto.GenPrivKeyEd25519()
+	pubKey := privKey.PubKey()
+	v1 := NewValidator(pubKey, 1000)
+	vset := NewValidatorSet([]*Validator{v1})
+
+	chainID := "mychainID"
+	blockID := BlockID{Hash: []byte("hello")}
+	height := int64(5)
+	vote := &Vote{
+		ValidatorAddress: v1.Address,
+		ValidatorIndex:   0,
+		Height:           height,
+		Round:            0,
+		Timestamp:        time.Now().UTC(),
+		Type:             VoteTypePrecommit,
+		BlockID:          blockID,
+	}
+	vote.Signature = privKey.Sign(vote.SignBytes(chainID))
+	commit := &Commit{
+		BlockID:    blockID,
+		Precommits: []*Vote{vote},
+	}
+
+	badChainID := "notmychainID"
+	badBlockID := BlockID{Hash: []byte("goodbye")}
+	badHeight := height + 1
+	badCommit := &Commit{
+		BlockID:    blockID,
+		Precommits: []*Vote{nil},
+	}
+
+	// test some error cases
+	// TODO: test more cases!
+	cases := []struct {
+		chainID string
+		blockID BlockID
+		height  int64
+		commit  *Commit
+	}{
+		{badChainID, blockID, height, commit},
+		{chainID, badBlockID, height, commit},
+		{chainID, blockID, badHeight, commit},
+		{chainID, blockID, height, badCommit},
+	}
+
+	for i, c := range cases {
+		err := vset.VerifyCommit(c.chainID, c.blockID, c.height, c.commit)
+		assert.NotNil(t, err, i)
+	}
+
+	// test a good one
+	err := vset.VerifyCommit(chainID, blockID, height, commit)
+	assert.Nil(t, err)
 }

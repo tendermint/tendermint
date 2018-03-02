@@ -252,7 +252,8 @@ type Commit struct {
 	bitArray       *cmn.BitArray
 }
 
-// FirstPrecommit returns the first non-nil precommit in the commit
+// FirstPrecommit returns the first non-nil precommit in the commit.
+// If all precommits are nil, it returns an empty precommit with height 0.
 func (commit *Commit) FirstPrecommit() *Vote {
 	if len(commit.Precommits) == 0 {
 		return nil
@@ -266,7 +267,9 @@ func (commit *Commit) FirstPrecommit() *Vote {
 			return precommit
 		}
 	}
-	return nil
+	return &Vote{
+		Type: VoteTypePrecommit,
+	}
 }
 
 // Height returns the height of the commit
