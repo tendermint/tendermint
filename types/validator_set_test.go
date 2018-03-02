@@ -16,7 +16,7 @@ import (
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey)
+	return crypto.PubKeyEd25519(pubKey).Wrap()
 }
 
 func randValidator_() *Validator {
@@ -299,7 +299,7 @@ func (valSet *ValidatorSet) toBytes() []byte {
 }
 
 func (valSet *ValidatorSet) fromBytes(b []byte) {
-	err := wire.UnmarshalBinary(b, valSet)
+	err := wire.UnmarshalBinary(b, &valSet)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(err)
