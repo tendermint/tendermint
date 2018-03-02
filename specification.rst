@@ -40,6 +40,10 @@ Flush
 Info
 ^^^^
 
+-  **Arguments**:
+
+   -  ``Version (string)``: The Tendermint version
+
 -  **Returns**:
 
    -  ``Data (string)``: Some arbitrary information
@@ -48,8 +52,10 @@ Info
       called Commit
    -  ``LastBlockAppHash ([]byte)``: Latest result of Commit
 
--  **Usage**: Return information about the application state. Used to
-   sync the app with Tendermint on crash/restart.
+-  **Usage**:
+
+   - Return information about the application state.
+   - Used to sync the app with Tendermint on crash/restart.
 
 SetOption
 ^^^^^^^^^
@@ -62,11 +68,14 @@ SetOption
 -  **Returns**:
 
    -  ``Code (uint32)``: Response code
-   -  ``Log (string)``: Debug or error message
+   -  ``Log (string)``: The output of the application's logger. May be non-deterministic.
+   -  ``Info (string)``: Additional information. May be non-deterministic.
 
--  **Usage**: Set application options. E.g. Key="mode", Value="mempool"
-   for a mempool connection, or Key="mode", Value="consensus" for a
-   consensus connection. Other options are application specific.
+-  **Usage**:
+
+   - Set non-consensus critical application specific options.
+   - e.g. Key="min-fee", Value="100fermion" could set the minimum fee required for CheckTx
+     (but not DeliverTx - that would be consensus critical).
 
 InitChain
 ^^^^^^^^^
@@ -76,7 +85,9 @@ InitChain
    -  ``Validators ([]Validator)``: Initial genesis validators
    -  ``AppStateBytes ([]byte)``: Serialized initial application state
 
--  **Usage**: Called once upon genesis
+-  **Usage**:
+
+   - Called once upon genesis
 
 Query
 ^^^^^
@@ -100,15 +111,22 @@ Query
 
 -  **Returns**:
 
-   -  ``Code (uint32)``: Response code
-   -  ``Key ([]byte)``: The key of the matching data
-   -  ``Value ([]byte)``: The value of the matching data
-   -  ``Proof ([]byte)``: Proof for the data, if requested
+   -  ``Code (uint32)``: Response code.
+   -  ``Log (string)``: The output of the application's logger. May be non-deterministic.
+   -  ``Info (string)``: Additional information. May be non-deterministic.
+   -  ``Index (int64)``: The index of the key in the tree.
+   -  ``Key ([]byte)``: The key of the matching data.
+   -  ``Value ([]byte)``: The value of the matching data.
+   -  ``Proof ([]byte)``: Proof for the data, if requested.
    -  ``Height (int64)``: The block height from which data was derived.
       Note that this is the height of the block containing the
       application's Merkle root hash, which represents the state as it
       was after committing the block at Height-1
-   -  ``Log (string)``: Debug or error message
+
+-  **Usage**:
+
+   - Query for data from the application at current or past height.
+   - Optionally return Merkle proof.
 
 BeginBlock
 ^^^^^^^^^^
@@ -123,25 +141,29 @@ BeginBlock
    -  ``ByzantineValidators ([]Evidence)``: List of evidence of
       validators that acted maliciously
 
--  **Usage**: Signals the beginning of a new block. Called prior to any
-   DeliverTxs. The header is expected to at least contain the Height.
-   The ``AbsentValidators`` and ``ByzantineValidators`` can be used to
-   determine rewards and punishments for the validators.
+-  **Usage**:
+
+   - Signals the beginning of a new block. Called prior to any DeliverTxs.
+   - The header is expected to at least contain the Height.
+   - The ``AbsentValidators`` and ``ByzantineValidators`` can be used to
+     determine rewards and punishments for the validators.
 
 CheckTx
 ^^^^^^^
 
 -  **Arguments**:
 
-   -  ``Data ([]byte)``: The request transaction bytes
+   -  ``Tx ([]byte)``: The request transaction bytes
 
 -  **Returns**:
 
    -  ``Code (uint32)``: Response code
-   -  ``Data ([]byte)``: Result bytes, if any
-   -  ``Log (string)``: Debug or error message
-   -  ``Gas (int64)``: Amount of gas consumed by transaction
-   -  ``Fee (int64)``: Fee paid by transaction
+   -  ``Data ([]byte)``: Result bytes, if any.
+   -  ``Log (string)``: The output of the application's logger. May be non-deterministic.
+   -  ``Info (string)``: Additional information. May be non-deterministic.
+   -  ``GasWanted (int64)``: Amount of gas consumed by transaction.
+   -  ``Tags ([]cmn.KVPair)``: Key-Value tags for filtering and indexing transactions (eg. by account).
+   -  ``Fee ([]cmn.KI64Pair)``: Fee paid for the transaction.
 
 -  **Usage**: Validate a mempool transaction, prior to broadcasting or
    proposing. This message should not mutate the main state, but
@@ -157,42 +179,49 @@ CheckTx
 
    Transactions are first run through CheckTx before broadcast to peers
    in the mempool layer. You can make CheckTx semi-stateful and clear
-   the state upon ``Commit`` or ``BeginBlock``, to allow for dependent
-   sequences of transactions in the same block.
+   the state upon ``Commit``, to allow for dependent sequences of transactions
+   in the same block.
 
 DeliverTx
 ^^^^^^^^^
 
 -  **Arguments**:
 
-   -  ``Data ([]byte)``: The request transaction bytes
+   -  ``Tx ([]byte)``: The request transaction bytes.
 
 -  **Returns**:
 
-   -  ``Code (uint32)``: Response code
-   -  ``Data ([]byte)``: Result bytes, if any
-   -  ``Log (string)``: Debug or error message
-   -  ``Tags ([]*KVPair)``: Optional tags for indexing
+   -  ``Code (uint32)``: Response code.
+   -  ``Data ([]byte)``: Result bytes, if any.
+   -  ``Log (string)``: The output of the application's logger. May be non-deterministic.
+   -  ``Info (string)``: Additional information. May be non-deterministic.
+   -  ``GasWanted (int64)``: Amount of gas predicted to be consumed by transaction.
+   -  ``GasUsed (int64)``: Amount of gas consumed by transaction.
+   -  ``Tags ([]cmn.KVPair)``: Key-Value tags for filtering and indexing transactions (eg. by account).
 
--  **Usage**: Append and run a transaction. If the transaction is valid,
-   returns CodeType.OK
+-  **Usage**:
+   - Deliver a transaction to be executed in full by the application. If the transaction is valid,
+     returns CodeType.OK.
 
 EndBlock
 ^^^^^^^^
 
 -  **Arguments**:
 
-   -  ``Height (int64)``: The block height that ended
+   -  ``Height (int64)``: Height of the block just executed.
 
 -  **Returns**:
 
    -  ``ValidatorUpdates ([]Validator)``: Changes to validator set (set
-      voting power to 0 to remove)
+      voting power to 0 to remove).
    -  ``ConsensusParamUpdates (ConsensusParams)``: Changes to
-      consensus-critical time/size parameters
+      consensus-critical time, size, and other parameters.
 
--  **Usage**: Signals the end of a block. Called prior to each Commit
-   after all transactions. Validator set is updated with the result.
+-  **Usage**:
+
+   - Signals the end of a block.
+   - Called prior to each Commit, after all transactions.
+   - Validator set and consensus params are updated with the result.
 
 Commit
 ^^^^^^
@@ -200,6 +229,8 @@ Commit
 -  **Returns**:
 
    -  ``Data ([]byte)``: The Merkle root hash
-   -  ``Log (string)``: Debug or error message
 
--  **Usage**: Return a Merkle root hash of the application state.
+-  **Usage**:
+
+   - Persist the application state.
+   - Return a Merkle root hash of the application state.
