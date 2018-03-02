@@ -36,6 +36,14 @@ func UnmarshalJSON(jsonBz []byte, ptr interface{}) error {
 	return wire.UnmarshalJSON(jsonBz, ptr)
 }
 
+type ConcreteType = wire.ConcreteType
+
+func RegisterInterface(o interface{}, ctypes ...ConcreteType) *wire.TypeInfo {
+	return wire.RegisterInterface(o, ctypes...)
+}
+
+const RFC3339Millis = wire.RFC3339Millis
+
 /*
 
 func RegisterInterface(ptr interface{}, opts *wire.InterfaceOptions) {

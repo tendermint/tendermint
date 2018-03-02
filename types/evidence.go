@@ -80,13 +80,13 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 //-------------------------------------------
 
 const (
-	wireTypeEvidenceDuplicateVote = "com.tendermint.types.evidence.duplicate_vote"
+	evidenceTypeDuplicateVote = byte(0x01)
 )
 
-func init() {
-	wire.RegisterInterface((*Evidence)(nil), nil)
-	wire.RegisterConcrete(&DuplicateVoteEvidence{}, wireTypeEvidenceDuplicateVote, nil)
-}
+var _ = wire.RegisterInterface(
+	struct{ Evidence }{},
+	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
+)
 
 //-------------------------------------------
 
