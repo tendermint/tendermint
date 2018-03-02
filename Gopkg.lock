@@ -224,6 +224,7 @@
   revision = "34011bf325bce385408353a30b101fe5e923eb6e"
 
 [[projects]]
+  branch = "develop"
   name = "github.com/tendermint/abci"
   packages = [
     "client",
@@ -233,7 +234,7 @@
     "server",
     "types"
   ]
-  revision = "345a5a5a34aa31ad00626266f59e4ae7652ee274"
+  revision = "9e0e00bef42aebf6b402f66bf0f3dc607de8a6f3"
 
 [[projects]]
   branch = "master"
@@ -248,17 +249,17 @@
 [[projects]]
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "dd20358a264c772b4a83e477b0cfce4c88a7001d"
-  version = "v0.4.1"
+  revision = "c3e19f3ea26f5c3357e0bcbb799b0761ef923755"
+  version = "v0.5.0"
 
 [[projects]]
-  branch = "bucky/new-go-wire-api"
   name = "github.com/tendermint/go-wire"
   packages = [
     ".",
     "data"
   ]
-  revision = "67ee274c5f9da166622f3b6e6747003b563e3742"
+  revision = "fa721242b042ecd4c6ed1a934ee740db4f74e45c"
+  version = "v0.7.3"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -371,6 +372,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fcb51d5eb1d869d66946fe28612ac59f75897d71faecc67c965453dc7bf81523"
+  inputs-digest = "36505c5f341e1e80d7d55589a17727bbd9e89403624b4e02c9e8a21b1ed39d0f"
   solver-name = "gps-cdcl"
   solver-version = 1
