@@ -119,39 +119,6 @@ func TestPEXReactorRunning(t *testing.T) {
 	}
 }
 
-func assertPeersWithTimeout(t *testing.T, switches []*p2p.Switch, checkPeriod, timeout time.Duration, nPeers int) {
-	ticker := time.NewTicker(checkPeriod)
-	remaining := timeout
-	for {
-		select {
-		case <-ticker.C:
-			// check peers are connected
-			allGood := true
-			for _, s := range switches {
-				outbound, inbound, _ := s.NumPeers()
-				if outbound+inbound < nPeers {
-					allGood = false
-				}
-			}
-			remaining -= checkPeriod
-			if remaining < 0 {
-				remaining = 0
-			}
-			if allGood {
-				return
-			}
-		case <-time.After(remaining):
-			numPeersStr := ""
-			for i, s := range switches {
-				outbound, inbound, _ := s.NumPeers()
-				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
-			}
-			t.Errorf("expected all switches to be connected to at least one peer (switches: %s)", numPeersStr)
-			return
-		}
-	}
-}
-
 func TestPEXReactorReceive(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
@@ -259,6 +226,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 }
 
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
+
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	require.Nil(t, err)
 	defer os.RemoveAll(dir) // nolint: errcheck
@@ -267,36 +235,56 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	book.SetLogger(log.TestingLogger())
 
 	// 1. create seed
-	seed := p2p.MakeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
-		sw.SetLogger(log.TestingLogger())
+	seed := p2p.MakeSwitch(
+		config,
+		0,
+		"127.0.0.1",
+		"123.123.123",
+		func(i int, sw *p2p.Switch) *p2p.Switch {
+			sw.SetLogger(log.TestingLogger())
 
-		r := NewPEXReactor(book, &PEXReactorConfig{})
-		r.SetLogger(log.TestingLogger())
-		r.SetEnsurePeersPeriod(250 * time.Millisecond)
-		sw.AddReactor("pex", r)
-		return sw
-	})
-	seed.AddListener(p2p.NewDefaultListener("tcp", seed.NodeInfo().ListenAddr, true, log.TestingLogger()))
-	err = seed.Start()
-	require.Nil(t, err)
+			r := NewPEXReactor(book, &PEXReactorConfig{})
+			r.SetLogger(log.TestingLogger())
+			sw.AddReactor("pex", r)
+			return sw
+		},
+	)
+	seed.AddListener(
+		p2p.NewDefaultListener(
+			"tcp",
+			seed.NodeInfo().ListenAddr,
+			true,
+			log.TestingLogger(),
+		),
+	)
+	require.Nil(t, seed.Start())
 	defer seed.Stop()
 
-	// 2. create usual peer
-	sw := p2p.MakeSwitch(config, 1, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
-		sw.SetLogger(log.TestingLogger())
+	// 2. create usual peer with only seed configured.
+	peer := p2p.MakeSwitch(
+		config,
+		1,
+		"127.0.0.1",
+		"123.123.123",
+		func(i int, sw *p2p.Switch) *p2p.Switch {
+			sw.SetLogger(log.TestingLogger())
 
-		r := NewPEXReactor(book, &PEXReactorConfig{Seeds: []string{seed.NodeInfo().NetAddress().String()}})
-		r.SetLogger(log.TestingLogger())
-		r.SetEnsurePeersPeriod(250 * time.Millisecond)
-		sw.AddReactor("pex", r)
-		return sw
-	})
-	err = sw.Start()
-	require.Nil(t, err)
-	defer sw.Stop()
+			r := NewPEXReactor(
+				book,
+				&PEXReactorConfig{
+					Seeds: []string{seed.NodeInfo().NetAddress().String()},
+				},
+			)
+			r.SetLogger(log.TestingLogger())
+			sw.AddReactor("pex", r)
+			return sw
+		},
+	)
+	require.Nil(t, peer.Start())
+	defer peer.Stop()
 
-	// 3. check that peer at least connects to seed
-	assertPeersWithTimeout(t, []*p2p.Switch{sw}, 10*time.Millisecond, 10*time.Second, 1)
+	// 3. check that the peer connects to seed immediately
+	assertPeersWithTimeout(t, []*p2p.Switch{peer}, 10*time.Millisecond, 1*time.Second, 1)
 }
 
 func TestPEXReactorCrawlStatus(t *testing.T) {
@@ -368,3 +356,47 @@ func (mp mockPeer) Send(byte, interface{}) bool    { return false }
 func (mp mockPeer) TrySend(byte, interface{}) bool { return false }
 func (mp mockPeer) Set(string, interface{})        {}
 func (mp mockPeer) Get(string) interface{}         { return nil }
+
+func assertPeersWithTimeout(
+	t *testing.T,
+	switches []*p2p.Switch,
+	checkPeriod, timeout time.Duration,
+	nPeers int,
+) {
+	var (
+		ticker    = time.NewTicker(checkPeriod)
+		remaining = timeout
+	)
+
+	for {
+		select {
+		case <-ticker.C:
+			// check peers are connected
+			allGood := true
+			for _, s := range switches {
+				outbound, inbound, _ := s.NumPeers()
+				if outbound+inbound < nPeers {
+					allGood = false
+				}
+			}
+			remaining -= checkPeriod
+			if remaining < 0 {
+				remaining = 0
+			}
+			if allGood {
+				return
+			}
+		case <-time.After(remaining):
+			numPeersStr := ""
+			for i, s := range switches {
+				outbound, inbound, _ := s.NumPeers()
+				numPeersStr += fmt.Sprintf("%d => {outbound: %d, inbound: %d}, ", i, outbound, inbound)
+			}
+			t.Errorf(
+				"expected all switches to be connected to at least one peer (switches: %s)",
+				numPeersStr,
+			)
+			return
+		}
+	}
+}

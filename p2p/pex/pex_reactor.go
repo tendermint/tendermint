@@ -260,9 +260,17 @@ func (r *PEXReactor) SetEnsurePeersPeriod(d time.Duration) {
 
 // Ensures that sufficient peers are connected. (continuous)
 func (r *PEXReactor) ensurePeersRoutine() {
-	// Randomize when routine starts
-	ensurePeersPeriodMs := r.ensurePeersPeriod.Nanoseconds() / 1e6
-	time.Sleep(time.Duration(rand.Int63n(ensurePeersPeriodMs)) * time.Millisecond)
+	var (
+		seed   = rand.New(rand.NewSource(time.Now().UnixNano()))
+		jitter = seed.Int63n(r.ensurePeersPeriod.Nanoseconds())
+	)
+
+	// Randomize first round of communication to avoid thundering herd.
+	// If no potential peers are present directly start connecting so we guarantee
+	// swift setup with the help of configured seeds.
+	if r.hasPotentialPeers() {
+		time.Sleep(time.Duration(jitter))
+	}
 
 	// fire once immediately.
 	// ensures we dial the seeds right away if the book is empty
@@ -287,9 +295,18 @@ func (r *PEXReactor) ensurePeersRoutine() {
 // the node operator. It should not be used to compute what addresses are
 // already connected or not.
 func (r *PEXReactor) ensurePeers() {
-	numOutPeers, numInPeers, numDialing := r.Switch.NumPeers()
-	numToDial := defaultMinNumOutboundPeers - (numOutPeers + numDialing)
-	r.Logger.Info("Ensure peers", "numOutPeers", numOutPeers, "numDialing", numDialing, "numToDial", numToDial)
+	var (
+		out, in, dial = r.Switch.NumPeers()
+		numToDial     = defaultMinNumOutboundPeers - (out + dial)
+	)
+	r.Logger.Info(
+		"Ensure peers",
+		"numOutPeers", out,
+		"numInPeers", in,
+		"numDialing", dial,
+		"numToDial", numToDial,
+	)
+
 	if numToDial <= 0 {
 		return
 	}
@@ -297,11 +314,12 @@ func (r *PEXReactor) ensurePeers() {
 	// bias to prefer more vetted peers when we have fewer connections.
 	// not perfect, but somewhate ensures that we prioritize connecting to more-vetted
 	// NOTE: range here is [10, 90]. Too high ?
-	newBias := cmn.MinInt(numOutPeers, 8)*10 + 10
+	newBias := cmn.MinInt(out, 8)*10 + 10
 
 	toDial := make(map[p2p.ID]*p2p.NetAddress)
 	// Try maxAttempts times to pick numToDial addresses to dial
 	maxAttempts := numToDial * 3
+
 	for i := 0; i < maxAttempts && len(toDial) < numToDial; i++ {
 		try := r.book.PickAddress(newBias)
 		if try == nil {
@@ -348,7 +366,7 @@ func (r *PEXReactor) ensurePeers() {
 	}
 
 	// If we are not connected to nor dialing anybody, fallback to dialing a seed.
-	if numOutPeers+numInPeers+numDialing+len(toDial) == 0 {
+	if out+in+dial+len(toDial) == 0 {
 		r.Logger.Info("No addresses to dial nor connected peers. Falling back to seeds")
 		r.dialSeeds()
 	}
@@ -412,6 +430,14 @@ func (r *PEXReactor) crawlPeersRoutine() {
 			return
 		}
 	}
+}
+
+// hasPotentialPeers indicates if there is a potential peer to connect to, by
+// consulting the Switch as well as the AddrBook.
+func (r *PEXReactor) hasPotentialPeers() bool {
+	out, in, dial := r.Switch.NumPeers()
+
+	return out+in+dial > 0 && len(r.book.ListOfKnownAddresses()) > 0
 }
 
 // crawlPeerInfo handles temporary data needed for the
