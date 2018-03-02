@@ -79,7 +79,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-wire"
-  version = "0.7.2"
+  branch = "bucky/new-go-wire-api"
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"

@@ -252,13 +252,13 @@
   version = "v0.4.1"
 
 [[projects]]
+  branch = "bucky/new-go-wire-api"
   name = "github.com/tendermint/go-wire"
   packages = [
     ".",
     "data"
   ]
-  revision = "b6fc872b42d41158a60307db4da051dd6f179415"
-  version = "v0.7.2"
+  revision = "67ee274c5f9da166622f3b6e6747003b563e3742"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -371,6 +371,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a65ef86e3db67769c1fa4ae1f67af8d5b95474f4b95ec799d8572e19b44b206a"
+  inputs-digest = "fcb51d5eb1d869d66946fe28612ac59f75897d71faecc67c965453dc7bf81523"
   solver-name = "gps-cdcl"
   solver-version = 1
