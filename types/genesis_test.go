@@ -1,12 +1,12 @@
 package types
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/tendermint/wire"
 )
 
 func TestGenesis(t *testing.T) {
@@ -42,7 +42,7 @@ func TestGenesis(t *testing.T) {
 		ChainID:    "abc",
 		Validators: []GenesisValidator{{crypto.GenPrivKeyEd25519().PubKey(), 10, "myval"}},
 	}
-	genDocBytes, err = wire.MarshalJSON(baseGenDoc)
+	genDocBytes, err = json.Marshal(baseGenDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
 
 	// test base gendoc and check consensus params were filled
@@ -51,14 +51,14 @@ func TestGenesis(t *testing.T) {
 	assert.NotNil(t, genDoc.ConsensusParams, "expected consensus params to be filled in")
 
 	// create json with consensus params filled
-	genDocBytes, err = wire.MarshalJSON(genDoc)
+	genDocBytes, err = json.Marshal(genDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.NoError(t, err, "expected no error for valid genDoc json")
 
 	// test with invalid consensus params
 	genDoc.ConsensusParams.BlockSize.MaxBytes = 0
-	genDocBytes, err = wire.MarshalJSON(genDoc)
+	genDocBytes, err = json.Marshal(genDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
