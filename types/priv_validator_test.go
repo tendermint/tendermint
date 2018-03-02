@@ -1,15 +1,19 @@
 package types
 
 import (
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-/* TODO WIRE make json work ...
 func TestGenLoadValidator(t *testing.T) {
 	assert := assert.New(t)
 
@@ -73,7 +77,7 @@ func TestUnmarshalValidator(t *testing.T) {
 }`, addrStr, pubStr, privStr)
 
 	val := PrivValidatorFS{}
-	err = wire.UnmarshalJSON([]byte(serialized), &val)
+	err = json.Unmarshal([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
@@ -82,11 +86,10 @@ func TestUnmarshalValidator(t *testing.T) {
 	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
-	out, err := wire.MarshalJSON(val)
+	out, err := json.Marshal(val)
 	require.Nil(err, "%+v", err)
 	assert.JSONEq(serialized, string(out))
 }
-*/
 
 func TestSignVote(t *testing.T) {
 	assert := assert.New(t)

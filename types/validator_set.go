@@ -252,7 +252,6 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
 		_, val := valSet.GetByIndex(idx)
-		fmt.Println("IDX", idx, val)
 		// Validate signature
 		precommitSignBytes := precommit.SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {

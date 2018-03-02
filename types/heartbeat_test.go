@@ -32,7 +32,6 @@ func TestHeartbeatString(t *testing.T) {
 	require.Equal(t, hb.String(), "Heartbeat{1:000000000000 11/02 (0) {/FF41E371B9BF.../}}")
 }
 
-/* TODO WIRE make json work
 func TestHeartbeatWriteSignBytes(t *testing.T) {
 
 	hb := &Heartbeat{ValidatorIndex: 1, Height: 10, Round: 1}
@@ -49,4 +48,3 @@ func TestHeartbeatWriteSignBytes(t *testing.T) {
 		require.Equal(t, string(bz), "null")
 	})
 }
-*/
