@@ -477,6 +477,9 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	cs.LockedRound = 0
 	cs.LockedBlock = nil
 	cs.LockedBlockParts = nil
+	cs.ValidRound = 0
+	cs.ValidBlock = nil
+	cs.ValidBlockParts = nil
 	cs.Votes = cstypes.NewHeightVoteSet(state.ChainID, height, validators)
 	cs.CommitRound = -1
 	cs.LastCommit = lastPrecommits
@@ -798,6 +801,9 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 	if cs.LockedBlock != nil {
 		// If we're locked onto a block, just choose that.
 		block, blockParts = cs.LockedBlock, cs.LockedBlockParts
+	} else if cs.ValidBlock != nil {
+		// If there is valid block, choose that.
+		block, blockParts = cs.ValidBlock, cs.ValidBlockParts
 	} else {
 		// Create a new proposal block from state/txs from the mempool.
 		block, blockParts = cs.createProposalBlock()
@@ -1375,13 +1381,13 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			case types.VoteTypePrevote:
 				prevotes := cs.Votes.Prevotes(vote.Round)
 				cs.Logger.Info("Added to prevote", "vote", vote, "prevotes", prevotes.StringShort())
+				blockID, ok := prevotes.TwoThirdsMajority()
 				// First, unlock if prevotes is a valid POL.
 				// >> lockRound < POLRound <= unlockOrChangeLockRound (see spec)
 				// NOTE: If (lockRound < POLRound) but !(POLRound <= unlockOrChangeLockRound),
 				// we'll still enterNewRound(H,vote.R) and enterPrecommit(H,vote.R) to process it
 				// there.
 				if (cs.LockedBlock != nil) && (cs.LockedRound < vote.Round) && (vote.Round <= cs.Round) {
-					blockID, ok := prevotes.TwoThirdsMajority()
 					if ok && !cs.LockedBlock.HashesTo(blockID.Hash) {
 						cs.Logger.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
 						cs.LockedRound = 0
@@ -1390,6 +1396,18 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 						cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 					}
 				}
+				// Update ValidBlock
+				if ok && !blockID.IsZero() && !cs.ValidBlock.HashesTo(blockID.Hash) && vote.Round > cs.ValidRound {
+					// update valid value
+					if cs.ProposalBlock.HashesTo(blockID.Hash) {
+						cs.ValidRound = vote.Round
+						cs.ValidBlock = cs.ProposalBlock
+						cs.ValidBlockParts = cs.ProposalBlockParts
+					}
+					//TODO: We might want to update ValidBlock also in case we don't have that block yet,
+					// and obtain the required block using gossiping
+				}
+
 				if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
 					// Round-skip over to PrevoteWait or goto Precommit.
 					cs.enterNewRound(height, vote.Round) // if the vote is ahead of us
