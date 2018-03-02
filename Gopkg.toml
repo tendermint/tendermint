@@ -71,15 +71,15 @@
 
 [[constraint]]
   name = "github.com/tendermint/abci"
-  revision = "345a5a5a34aa31ad00626266f59e4ae7652ee274"
+  branch = "develop"
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
-  version = "0.4.1"
+  version = "0.5.0"
 
 [[constraint]]
   name = "github.com/tendermint/go-wire"
-  version = "0.7.2"
+  version = "0.7.3"
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"

@@ -211,7 +211,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		proposal := newProposal(height, round, block1)
 		err := privVal.SignProposal(chainID, proposal)
 		assert.NoError(t, err, "expected no error signing proposal")
-		signBytes := types.SignBytes(chainID, proposal)
+		signBytes := proposal.SignBytes(chainID)
 		sig := proposal.Signature
 		timeStamp := clipToMS(proposal.Timestamp)
 
@@ -222,7 +222,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
 		assert.Equal(t, timeStamp, proposal.Timestamp)
-		assert.Equal(t, signBytes, types.SignBytes(chainID, proposal))
+		assert.Equal(t, signBytes, proposal.SignBytes(chainID))
 		assert.Equal(t, sig, proposal.Signature)
 	}
 
@@ -237,7 +237,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		err = privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
 
-		signBytes := types.SignBytes(chainID, vote)
+		signBytes := vote.SignBytes(chainID)
 		sig := vote.Signature
 		timeStamp := clipToMS(vote.Timestamp)
 
@@ -248,7 +248,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		assert.NoError(t, err, "expected no error on signing same vote")
 
 		assert.Equal(t, timeStamp, vote.Timestamp)
-		assert.Equal(t, signBytes, types.SignBytes(chainID, vote))
+		assert.Equal(t, signBytes, vote.SignBytes(chainID))
 		assert.Equal(t, sig, vote.Signature)
 	}
 }

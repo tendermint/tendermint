@@ -61,6 +61,6 @@ func (upv *PrivValidatorUnencrypted) SignProposal(chainID string, proposal *type
 
 func (upv *PrivValidatorUnencrypted) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
 	var err error
-	heartbeat.Signature, err = upv.PrivKey.Sign(types.SignBytes(chainID, heartbeat))
+	heartbeat.Signature, err = upv.PrivKey.Sign(heartbeat.SignBytes(chainID))
 	return err
 }

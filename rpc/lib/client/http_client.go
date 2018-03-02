@@ -187,7 +187,6 @@ func argsToJson(args map[string]interface{}) error {
 			continue
 		}
 
-		// Pass everything else to go-wire
 		data, err := json.Marshal(v)
 		if err != nil {
 			return err
