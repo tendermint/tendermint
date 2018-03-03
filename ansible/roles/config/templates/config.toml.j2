@@ -83,14 +83,12 @@ unsafe = false
 laddr = "tcp://0.0.0.0:46656"
 
 # Comma separated list of seed nodes to connect to
-{% if validators == true or validators == 'true' %}
-{% set comma = joiner(",") %}seeds = "{% for host in ((groups[testnet_name]|default([]))+(groups['tag_Environment_'~(testnet_name|regex_replace('-','_'))]|default([])))|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["nodeid"]}}@{{hostvars[host]["inventory_hostname"]}}:46656{% endfor %}"
-{% else %}
 seeds = "{{ seeds | default() }}"
-{% endif %}
 
 # Comma separated list of nodes to keep persistent connections to
-persistent_peers = ""
+{% set comma = joiner(",") %}persistent_peers = "{% for host in ((groups[testnet_name]|default([]))+(groups['tag_Environment_'~(testnet_name|regex_replace('-','_'))]|default([])))|difference(inventory_hostname) %}{{ comma() }}{{hostvars[host]["nodeid"]}}@{{hostvars[host]["inventory_hostname"]}}:46656{% endfor %}"
+{% else %}
+persistent_peers = "{{ persistent_peers | default() }}"
 
 # Path to address book
 addr_book_file = "config/addrbook.json"
