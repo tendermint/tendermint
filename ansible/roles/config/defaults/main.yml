@@ -2,7 +2,6 @@
 #genesis_file: "<undefined>"
 app_options_file: "app_options_files/public_testnet"
 seeds: ""
-persistent_peers: ""
 testnet_name: testnet1
 validators: true
 
