@@ -1,10 +1,10 @@
 [Unit]
-Description=Basecoin
+Description=Basecoind
 Requires=network-online.target
 After=network-online.target
 
 [Service]
-Environment="BCHOME=/etc/basecoin"
+Environment="BCHOME=/etc/basecoind"
 Restart=on-failure
 User=basecoin
 Group=basecoin

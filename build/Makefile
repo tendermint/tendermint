@@ -35,12 +35,12 @@ endif
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint gaia
-build-binaries = build-tendermint build-basecoin build-ethermint build-gaia
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-gaia
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-gaia
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-gaia
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-gaia
+binaries = tendermint basecoind ethermint gaia
+build-binaries = build-tendermint build-basecoind build-ethermint build-gaia
+package-rpm = package-rpm-tendermint package-rpm-basecoind package-rpm-ethermint package-rpm-gaia
+install-rpm = install-rpm-tendermint install-rpm-basecoind install-rpm-ethermint install-rpm-gaia
+package-deb = package-deb-tendermint package-deb-basecoind package-deb-ethermint package-deb-gaia
+install-deb = install-deb-tendermint install-deb-basecoind install-deb-ethermint install-deb-gaia
 
 all: $(binaries)
 build: $(build-binaries)
@@ -83,13 +83,13 @@ build-gaia: git-branch gopath-setup
 	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
 
-build-basecoin: git-branch gopath-setup
-	@echo "*** Building basecoin from cosmos-sdk"
+build-basecoind: git-branch gopath-setup
+	@echo "*** Building basecoind from cosmos-sdk"
 	go get -d -u github.com/cosmos/cosmos-sdk/examples/basecoin/cmd/basecoind
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
 	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_tools get_vendor_deps build
-	cp $(GOPATH)/src/github.com/cosmos/cosmos-sdk/build/basecoind $(GOPATH)/bin/basecoin
-	@echo "*** Built basecoin from cosmos-sdk"
+	cp $(GOPATH)/src/github.com/cosmos/cosmos-sdk/build/basecoind $(GOPATH)/bin/basecoind
+	@echo "*** Built basecoind from cosmos-sdk"
 
 ###
 # Prepare package files
@@ -119,7 +119,7 @@ prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
 prepare-gaia =
-prepare-basecoin = cp $(GOPATH)/bin/basecoin $(build_folder)/usr/bin
+prepare-basecoind = cp $(GOPATH)/bin/basecoind $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
@@ -199,7 +199,7 @@ install-rpm-%: version-%
 	cp ./RPM-GPG-KEY-Tendermint tmp/s3/7/os/x86_64/
 	cp ./tendermint.repo tmp/s3/7/os/x86_64/
 	rm -f tmp/s3/7/os/x86_64/repodata/*.bz2 tmp/s3/7/os/x86_64/repodata/*.gz tmp/s3/7/os/x86_64/repodata/repomd.xml.asc
-	createrepo tmp/s3/7/os/x86_64/Packages -u https://tendermint-packages.interblock.io/$(DEVOPS_PATH)centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
+	createrepo tmp/s3/7/os/x86_64/Packages -u https://tendermint-packages.interblock.io/$(DEVOPS_PATH)centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoind --content ethermint
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --detach-sign -a tmp/s3/7/os/x86_64/repodata/repomd.xml
 	aws s3 sync tmp/s3/ s3://tendermint-packages/$(DEVOPS_PATH)centos/ --delete --acl public-read
 	@echo "*** Uploaded $* to AWS $(DEVOPS_PATH)CentOS repository"
@@ -281,7 +281,7 @@ distclean: clean
 	rm -rf $(GOPATH)/src/github.com/cosmos/cosmos-sdk
 	rm -rf $(GOPATH)/src/github.com/tendermint/ethermint 
 	rm -rf $(GOPATH)/bin/tendermint
-	rm -rf $(GOPATH)/bin/basecoin
+	rm -rf $(GOPATH)/bin/basecoind
 	rm -rf $(GOPATH)/bin/ethermint
 	rm -rf $(GOPATH)/bin/gaia
 

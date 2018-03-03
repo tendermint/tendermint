@@ -18,7 +18,7 @@ set -e
 
 case "$1" in
     remove|upgrade|deconfigure)
-    systemctl stop basecoin 2> /dev/null || :
+    systemctl stop basecoind 2> /dev/null || :
     ;;
 
     failed-upgrade)

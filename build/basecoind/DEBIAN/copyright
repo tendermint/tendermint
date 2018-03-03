@@ -1,6 +1,6 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: basecoin
-Source: https://github.com/tendermint/basecoin
+Upstream-Name: basecoind
+Source: https://github.com/cosmos/cosmos-sdk
 
 Files: *
 Copyright: 2017 All In Bits, Inc.
