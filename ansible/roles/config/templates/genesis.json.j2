@@ -19,7 +19,11 @@
 {% endif %}
   ],
   "app_hash":"",
+{% if service == 'basecoind' %}
+  "app_state": {
+{% else %}
   "app_options": {
+{% endif %}
 {% if app_options_file is defined %}
 {% include app_options_file %}
 {% endif %}
