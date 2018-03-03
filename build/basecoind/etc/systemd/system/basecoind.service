@@ -6,8 +6,8 @@ After=network-online.target
 [Service]
 Environment="BCHOME=/etc/basecoind"
 Restart=on-failure
-User=basecoin
-Group=basecoin
+User=basecoind
+Group=basecoind
 PermissionsStartOnly=true
 ExecStart=/usr/bin/basecoind start
 ExecReload=/bin/kill -HUP $MAINPID
