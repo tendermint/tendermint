@@ -7,6 +7,13 @@
   register: pubkeys
   changed_when: false
 
+- name: gather tendermint peer IDs
+  when: genesis_file is not defined
+  tags: reconfig-toml
+  command: "/usr/bin/tendermint show_node_id --home /etc/{{service}} --log_level error"
+  register: nodeids
+  changed_when: false
+
 - name: resetting permissions from root after gathering public keys
   tags: reconfig-toml,reconfig-genesis
   file: "path=/etc/{{service}} owner={{service}} group={{service}} recurse=yes"
@@ -15,6 +22,12 @@
   when: (validators == true or validators == 'true') and genesis_file is not defined
   tags: reconfig-toml,reconfig-genesis
   set_fact: "pubkey='{{pubkeys.stdout}}'"
+  connection: local
+
+- name: register node ids as host facts
+  when: genesis_file is not defined
+  tags: reconfig-toml
+  set_fact: "nodeid='{{nodeids.stdout}}'"
   connection: local
 
 - name: copy generated genesis.json - genesis_time will be updated
