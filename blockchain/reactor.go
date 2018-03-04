@@ -72,18 +72,20 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 	fastSync bool) *BlockchainReactor {
 
 	if state.LastBlockHeight != store.Height() {
-		cmn.PanicSanity(cmn.Fmt("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
+		panic(fmt.Sprintf("state (%v) and store (%v) height mismatch", state.LastBlockHeight,
 			store.Height()))
 	}
 
 	const cap = 1000 // must be bigger than peers count
 	requestsCh := make(chan BlockRequest, cap)
 	errorsCh := make(chan peerError, cap) // so we don't block in #Receive#pool.AddBlock
+
 	pool := NewBlockPool(
 		store.Height()+1,
 		requestsCh,
 		errorsCh,
 	)
+
 	bcR := &BlockchainReactor{
 		params:       state.ConsensusParams,
 		initialState: state,
