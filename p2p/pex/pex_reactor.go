@@ -167,7 +167,8 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		r.Logger.Error("Error decoding message", "err", err)
+		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		r.Switch.StopPeerForError(src, err)
 		return
 	}
 	r.Logger.Debug("Received message", "src", src, "chId", chID, "msg", msg)

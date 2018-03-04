@@ -84,7 +84,8 @@ func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
-		evR.Logger.Error("Error decoding message", "err", err)
+		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		evR.Switch.StopPeerForError(src, err)
 		return
 	}
 	evR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)

@@ -175,7 +175,8 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	_, msg, err := DecodeMessage(msgBytes, bcR.maxMsgSize())
 	if err != nil {
-		bcR.Logger.Error("Error decoding message", "err", err)
+		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
+		bcR.Switch.StopPeerForError(src, err)
 		return
 	}
 
