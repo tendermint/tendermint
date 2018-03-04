@@ -96,7 +96,8 @@ func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 			err := evR.evpool.AddEvidence(ev)
 			if err != nil {
 				evR.Logger.Info("Evidence is not valid", "evidence", msg.Evidence, "err", err)
-				// TODO: punish peer
+				// punish peer
+				evR.Switch.StopPeerForError(src, err)
 			}
 		}
 	default:
