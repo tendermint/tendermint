@@ -34,8 +34,8 @@ func makePeers(numPeers int, minHeight, maxHeight int64) map[p2p.ID]testPeer {
 func TestBasic(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
-	errorsCh := make(chan peerError)
-	requestsCh := make(chan BlockRequest)
+	errorsCh := make(chan peerError, 1000)
+	requestsCh := make(chan BlockRequest, 1000)
 	pool := NewBlockPool(start, requestsCh, errorsCh)
 	pool.SetLogger(log.TestingLogger())
 
@@ -91,8 +91,8 @@ func TestBasic(t *testing.T) {
 func TestTimeout(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
-	errorsCh := make(chan peerError)
-	requestsCh := make(chan BlockRequest)
+	errorsCh := make(chan peerError, 1000)
+	requestsCh := make(chan BlockRequest, 1000)
 	pool := NewBlockPool(start, requestsCh, errorsCh)
 	pool.SetLogger(log.TestingLogger())
 	err := pool.Start()

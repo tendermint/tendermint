@@ -76,8 +76,9 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 			store.Height()))
 	}
 
-	requestsCh := make(chan BlockRequest)
-	errorsCh := make(chan peerError)
+	const cap = 1000 // must be bigger than peers count
+	requestsCh := make(chan BlockRequest, cap)
+	errorsCh := make(chan peerError, cap) // so we don't block in #Receive#pool.AddBlock
 	pool := NewBlockPool(
 		store.Height()+1,
 		requestsCh,
