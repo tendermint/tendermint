@@ -34,7 +34,7 @@ func voteToStep(vote *Vote) int8 {
 }
 
 //--------------------------------------------------------------
-// PrivValidator is being upgraded! See types/priv_validator
+// PrivValidator is being upgraded! See types/priv_validator/
 
 // ValidatorID contains the identity of the validator.
 type ValidatorID struct {
@@ -82,6 +82,7 @@ func (ds *DefaultTestSigner) Sign(msg []byte) (crypto.Signature, error) {
 }
 
 //--------------------------------------------------------------
+// TODO: Deprecate!
 
 // PrivValidator defines the functionality of a local Tendermint validator
 // that signs votes, proposals, and heartbeats, and never double signs.
