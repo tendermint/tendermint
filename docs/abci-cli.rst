@@ -57,7 +57,7 @@ Now run ``abci-cli`` to see the list of commands:
 
 
 KVStore - First Example
----------------------
+-----------------------
 
 The ``abci-cli`` tool lets us send ABCI messages to our application, to
 help build and debug them.

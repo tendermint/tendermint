@@ -10,6 +10,7 @@ Here you'll find details of the Tendermint specification. See `the spec repo <ht
    specification/block-structure.rst
    specification/byzantine-consensus-algorithm.rst
    specification/configuration.rst
+   specification/corruption.rst
    specification/fast-sync.rst
    specification/genesis.rst
    specification/light-client-protocol.rst
