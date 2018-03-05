@@ -31,7 +31,7 @@ Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majo
 It receives messages from peers, internal validators and from Timeout Ticker 
 and invokes the corresponding handlers, potentially updating the RoundState. 
 The details of the protocol (together with formal proofs of correctness) implemented by the Receive Routine are 
-discussed in separate document (see [spec](https://github.com/tendermint/spec)). For understanding of this document
+discussed in separate document. For understanding of this document
 it is sufficient to understand that the Receive Routine manages and updates RoundState data structure that is 
 then extensively used by the gossip routines to determine what information should be sent to peer processes.
 

@@ -71,4 +71,4 @@ Tendermint 201
 * Readers might also be interested in the `Cosmos Whitepaper <https://cosmos.network/whitepaper>`__ which describes Tendermint, ABCI, and how to build a scalable, heterogeneous, cryptocurrency network.
 * For example applications and related software built by the Tendermint team and other, see the `software ecosystem <https://tendermint.com/ecosystem>`__.
 
-Join the `Cosmos and Tendermint Rocket Chat <https://cosmos.rocket.chat>`__ to ask questions and discuss projects.
+Join the `community <https://cosmos.network/community>`__ to ask questions and discuss projects.
