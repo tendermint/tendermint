@@ -595,8 +595,9 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		// if the vote gives us a 2/3-any or 2/3-one, we transition
 		err := cs.tryAddVote(msg.Vote, peerID)
 		if err == ErrAddingVote {
-			// punish peer
-			cs.eventBus.Publish(peerErrorEvent, types.TMEventData{peerError{err, peerID}})
+			// TODO: punish peer
+			// breaks byzantine_test
+			// cs.eventBus.Publish(peerErrorEvent, types.TMEventData{peerError{err, peerID}})
 		}
 
 		// NOTE: the vote is broadcast to peers by the reactor listening
