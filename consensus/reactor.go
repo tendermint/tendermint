@@ -256,6 +256,9 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
+			if numBlocks := ps.RecordBlockPart(msg); numBlocks > 10000 {
+				conR.Switch.MarkPeerAsGood(src)
+			}
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		default:
 			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
@@ -275,6 +278,9 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.EnsureVoteBitArrays(height, valSize)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
+			if blocks := ps.RecordVote(msg.Vote); blocks > 10000 {
+				conR.Switch.MarkPeerAsGood(src)
+			}
 
 			cs.peerMsgQueue <- msgInfo{msg, src.ID()}
 
@@ -869,6 +875,17 @@ type PeerState struct {
 
 	mtx sync.Mutex
 	cstypes.PeerRoundState
+
+	stats *peerStateStats
+}
+
+// peerStateStats holds internal statistics for a peer.
+type peerStateStats struct {
+	lastVoteHeight int64
+	votes          int
+
+	lastBlockPartHeight int64
+	blockParts          int
 }
 
 // NewPeerState returns a new PeerState for the given Peer
@@ -882,6 +899,7 @@ func NewPeerState(peer p2p.Peer) *PeerState {
 			LastCommitRound:    -1,
 			CatchupCommitRound: -1,
 		},
+		stats: &peerStateStats{},
 	}
 }
 
@@ -1091,6 +1109,37 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 			ps.LastCommit = cmn.NewBitArray(numValidators)
 		}
 	}
+}
+
+// RecordVote updates internal statistics for this peer by recording the vote.
+// It returns the total number of votes (1 per block). This essentially means
+// the number of blocks for which peer has been sending us block parts.
+func (ps *PeerState) RecordVote(vote *types.Vote) int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.stats.lastVoteHeight == vote.Height {
+		return ps.stats.votes
+	}
+	ps.stats.lastVoteHeight = vote.Height
+	ps.stats.votes += 1
+	return ps.stats.votes
+}
+
+// RecordVote updates internal statistics for this peer by recording the block part.
+// It returns the total number of block parts (1 per block). This essentially means
+// the number of blocks for which peer has been sending us block parts.
+func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	if ps.stats.lastBlockPartHeight == bp.Height {
+		return ps.stats.blockParts
+	}
+
+	ps.stats.lastBlockPartHeight = bp.Height
+	ps.stats.blockParts += 1
+	return ps.stats.blockParts
 }
 
 // SetHasVote sets the given vote as known by the peer

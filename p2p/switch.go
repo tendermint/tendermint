@@ -35,6 +35,7 @@ const (
 
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	MarkGood(*NetAddress)
 	Save()
 }
 
@@ -57,6 +58,7 @@ type Switch struct {
 	dialing      *cmn.CMap
 	nodeInfo     NodeInfo // our node info
 	nodeKey      *NodeKey // our node privkey
+	addrBook     AddrBook
 
 	filterConnByAddr func(net.Addr) error
 	filterConnByID   func(ID) error
@@ -315,6 +317,19 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
 	}
 	sw.Logger.Error("Failed to reconnect to peer. Giving up", "peer", peer, "elapsed", time.Since(start))
+}
+
+// SetAddrBook allows to set address book on Switch.
+func (sw *Switch) SetAddrBook(addrBook AddrBook) {
+	sw.addrBook = addrBook
+}
+
+// MarkPeerAsGood marks the given peer as good when it did something useful
+// like contributed to consensus.
+func (sw *Switch) MarkPeerAsGood(peer Peer) {
+	if sw.addrBook != nil {
+		sw.addrBook.MarkGood(peer.NodeInfo().NetAddress())
+	}
 }
 
 //---------------------------------------------------------------------
