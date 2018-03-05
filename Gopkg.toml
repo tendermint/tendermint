@@ -42,8 +42,8 @@
   version = "1.2.1"
 
 [[constraint]]
+  branch = "develop"
   name = "github.com/tendermint/tmlibs"
-  version = "0.7.0"
 
 [[constraint]]
   name = "google.golang.org/grpc"

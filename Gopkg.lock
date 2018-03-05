@@ -130,14 +130,14 @@
   revision = "211f780988068502fe874c44dae530528ebd840f"
 
 [[projects]]
+  branch = "develop"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "common",
     "db",
     "log"
   ]
-  revision = "1b9b5652a199ab0be2e781393fb275b66377309d"
-  version = "v0.7.0"
+  revision = "26f2ab65f82cfc6873c312e8030104c47c05f10e"
 
 [[projects]]
   name = "golang.org/x/net"
@@ -204,6 +204,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "213a7c191e5da390f0cc1268b8a8810a3957d91269c616ab57ae0220c7939a9a"
+  inputs-digest = "dfad1992e9c7f0df42ab62cadb7e984f5a945904400d844ae374b76d4b07f83e"
   solver-name = "gps-cdcl"
   solver-version = 1
