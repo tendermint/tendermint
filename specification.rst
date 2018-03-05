@@ -200,6 +200,7 @@ DeliverTx
    -  ``Tags ([]cmn.KVPair)``: Key-Value tags for filtering and indexing transactions (eg. by account).
 
 -  **Usage**:
+
    - Deliver a transaction to be executed in full by the application. If the transaction is valid,
      returns CodeType.OK.
 
