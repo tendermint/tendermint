@@ -65,6 +65,7 @@ Tendermint 201
    :maxdepth: 2
 
    specification.rst
+   determinism.rst
 
 * For a deeper dive, see `this thesis <https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769>`__.
 * There is also the `original whitepaper <https://tendermint.com/static/docs/tendermint.pdf>`__, though it is now quite outdated.
