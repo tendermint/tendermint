@@ -10,6 +10,7 @@ RUN apt-get update && \
 
 # Setup tendermint repo
 ENV REPO $GOPATH/src/github.com/tendermint/tendermint
+ENV GOBIN $GOPATH/bin
 WORKDIR $REPO
 
 # Install the vendored dependencies before copying code

@@ -18,9 +18,8 @@ import (
 )
 
 const (
-	defaultConnDeadlineSeconds      = 3
-	defaultDialRetryIntervalSeconds = 1
-	defaultDialRetryMax             = 10
+	defaultConnDeadlineSeconds = 3
+	defaultDialRetryMax        = 10
 )
 
 // Socket errors.
@@ -56,7 +55,7 @@ type socketClient struct {
 // Check that socketClient implements PrivValidator2.
 var _ types.PrivValidator2 = (*socketClient)(nil)
 
-// NewsocketClient returns an instance of socketClient.
+// NewSocketClient returns an instance of socketClient.
 func NewSocketClient(
 	logger log.Logger,
 	socketAddr string,
@@ -448,7 +447,7 @@ func readMsg(r io.Reader) (PrivValidatorSocketMsg, error) {
 
 	w, ok := read.(struct{ PrivValidatorSocketMsg })
 	if !ok {
-		return nil, errors.New("unknwon type")
+		return nil, errors.New("unknown type")
 	}
 
 	return w.PrivValidatorSocketMsg, nil

@@ -1,5 +1,7 @@
 #! /bin/bash
-set -e
+set -ex
+
+export PATH="$GOBIN:$PATH"
 
 # Get the parent directory of where this script is.
 SOURCE="${BASH_SOURCE[0]}"
@@ -18,6 +20,7 @@ for lib in "${LIBS[@]}"; do
 
 	echo "Testing $lib ..."
 	cd "$GOPATH/src/github.com/tendermint/$lib"
+	make get_tools
 	make get_vendor_deps
 	make test
 	if [[ "$?" != 0 ]]; then

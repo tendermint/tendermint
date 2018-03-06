@@ -1,5 +1,7 @@
 #! /bin/bash
 
+set -ex
+
 set +u
 if [[ "$DEP" == "" ]]; then
 	DEP=$GOPATH/src/github.com/tendermint/tendermint/Gopkg.lock
