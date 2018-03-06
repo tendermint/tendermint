@@ -46,9 +46,9 @@ func TestByzantine(t *testing.T) {
 	eventChans := make([]chan interface{}, N)
 	reactors := make([]p2p.Reactor, N)
 	for i := 0; i < N; i++ {
+		// make first val byzantine
 		if i == 0 {
 			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator)
-			// make byzantine
 			css[i].decideProposal = func(j int) func(int64, int) {
 				return func(height int64, round int) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
@@ -74,9 +74,11 @@ func TestByzantine(t *testing.T) {
 		var conRI p2p.Reactor // nolint: gotype, gosimple
 		conRI = conR
 
+		// make first val byzantine
 		if i == 0 {
 			conRI = NewByzantineReactor(conR)
 		}
+
 		reactors[i] = conRI
 	}
 
@@ -115,19 +117,19 @@ func TestByzantine(t *testing.T) {
 	// and the other block to peers[1] and peers[2].
 	// note peers and switches order don't match.
 	peers := switches[0].Peers().List()
+
+	// partition A
 	ind0 := getSwitchIndex(switches, peers[0])
+
+	// partition B
 	ind1 := getSwitchIndex(switches, peers[1])
 	ind2 := getSwitchIndex(switches, peers[2])
-
-	// connect the 2 peers in the larger partition
 	p2p.Connect2Switches(switches, ind1, ind2)
 
-	// wait for someone in the big partition to make a block
+	// wait for someone in the big partition (B) to make a block
 	<-eventChans[ind2]
 
 	t.Log("A block has been committed. Healing partition")
-
-	// connect the partitions
 	p2p.Connect2Switches(switches, ind0, ind1)
 	p2p.Connect2Switches(switches, ind0, ind2)
 
