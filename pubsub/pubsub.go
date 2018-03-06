@@ -209,6 +209,11 @@ func (s *Server) OnStart() error {
 	return nil
 }
 
+// OnReset implements Service.OnReset
+func (s *Server) OnReset() error {
+	return nil
+}
+
 func (s *Server) loop(state state) {
 loop:
 	for cmd := range s.cmds {
