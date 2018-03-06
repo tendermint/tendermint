@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/types"
@@ -25,12 +24,12 @@ func (pk PrivKey) Sign(msg []byte) (crypto.Signature, error) {
 	return crypto.PrivKey(pk).Sign(msg), nil
 }
 
-// MarshalJSON
+// MarshalJSON satisfies json.Marshaler.
 func (pk PrivKey) MarshalJSON() ([]byte, error) {
 	return crypto.PrivKey(pk).MarshalJSON()
 }
 
-// UnmarshalJSON
+// UnmarshalJSON satisfies json.Unmarshaler.
 func (pk *PrivKey) UnmarshalJSON(b []byte) error {
 	cpk := new(crypto.PrivKey)
 	if err := cpk.UnmarshalJSON(b); err != nil {
@@ -84,23 +83,24 @@ func (pvj *PrivValidatorJSON) String() string {
 	return fmt.Sprintf("PrivValidator{%v %v}", addr, pvj.PrivValidatorUnencrypted.String())
 }
 
+// Save persists the PrivValidatorJSON to disk.
 func (pvj *PrivValidatorJSON) Save() {
 	pvj.save()
 }
 
 func (pvj *PrivValidatorJSON) save() {
 	if pvj.filePath == "" {
-		cmn.PanicSanity("Cannot save PrivValidator: filePath not set")
+		panic("Cannot save PrivValidator: filePath not set")
 	}
 	jsonBytes, err := json.Marshal(pvj)
 	if err != nil {
 		// ; BOOM!!!
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 	err = cmn.WriteFileAtomic(pvj.filePath, jsonBytes, 0600)
 	if err != nil {
 		// ; BOOM!!!
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 }
 
@@ -144,7 +144,7 @@ func LoadPrivValidatorJSON(filePath string) *PrivValidatorJSON {
 // or else generates a new one and saves it to the filePath.
 func LoadOrGenPrivValidatorJSON(filePath string) *PrivValidatorJSON {
 	var pvj *PrivValidatorJSON
-	if _, err := os.Stat(filePath); err == nil {
+	if cmn.FileExists(filePath) {
 		pvj = LoadPrivValidatorJSON(filePath)
 	} else {
 		pvj = GenPrivValidatorJSON(filePath)
@@ -168,6 +168,8 @@ func NewTestPrivValidator(signer types.TestSigner) *PrivValidatorJSON {
 
 //------------------------------------------------------
 
+// PrivValidatorsByAddress is a list of PrivValidatorJSON ordered by their
+// addresses.
 type PrivValidatorsByAddress []*PrivValidatorJSON
 
 func (pvs PrivValidatorsByAddress) Len() int {
