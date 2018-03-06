@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/types"
@@ -144,7 +143,7 @@ func LoadPrivValidatorJSON(filePath string) *PrivValidatorJSON {
 // or else generates a new one and saves it to the filePath.
 func LoadOrGenPrivValidatorJSON(filePath string) *PrivValidatorJSON {
 	var pvj *PrivValidatorJSON
-	if _, err := os.Stat(filePath); err == nil {
+	if cmn.FileExists(filePath) {
 		pvj = LoadPrivValidatorJSON(filePath)
 	} else {
 		pvj = GenPrivValidatorJSON(filePath)
