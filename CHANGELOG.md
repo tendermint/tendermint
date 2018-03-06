@@ -37,6 +37,9 @@ IMPROVEMENTS:
   (`persistent_kvstore`) (name "dummy" is deprecated and will not work in
   release after this one)
 
+FEATURES:
+- [config] added the `--p2p.private_peers` flag and `PrivatePeers` config variable (see config for description)
+
 ## 0.16.0 (February 20th, 2017)
 
 BREAKING CHANGES:

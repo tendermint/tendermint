@@ -88,8 +88,8 @@ func (Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(seeds)
 }
 
-func (Local) DialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
-	return core.UnsafeDialPeers(peers, persistent)
+func (Local) DialPeers(peers []string, persistent bool, private bool) (*ctypes.ResultDialPeers, error) {
+	return core.UnsafeDialPeers(peers, persistent, private)
 }
 
 func (Local) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {

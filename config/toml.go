@@ -162,6 +162,9 @@ seed_mode = {{ .P2P.SeedMode }}
 # Authenticated encryption
 auth_enc = {{ .P2P.AuthEnc }}
 
+# Comma separated list of nodes to keep private (will not be gossiped to other peers) connections to
+private_peers = {{ .P2P.PrivatePeers }}
+
 ##### mempool configuration options #####
 [mempool]
 

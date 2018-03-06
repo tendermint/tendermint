@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/pkg/errors"
+	p2p "github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -66,13 +67,17 @@ func UnsafeDialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return &ctypes.ResultDialSeeds{"Dialing seeds in progress. See /net_info for details"}, nil
 }
 
-func UnsafeDialPeers(peers []string, persistent bool) (*ctypes.ResultDialPeers, error) {
+func UnsafeDialPeers(peers []string, persistent bool, private bool) (*ctypes.ResultDialPeers, error) {
 	if len(peers) == 0 {
 		return &ctypes.ResultDialPeers{}, errors.New("No peers provided")
 	}
 	// starts go routines to dial each peer after random delays
 	logger.Info("DialPeers", "addrBook", addrBook, "peers", peers, "persistent", persistent)
-	err := p2pSwitch.DialPeersAsync(addrBook, peers, persistent)
+	var ab p2p.AddrBook
+	if !private {
+		ab = addrBook
+	}
+	err := p2pSwitch.DialPeersAsync(ab, peers, persistent)
 	if err != nil {
 		return &ctypes.ResultDialPeers{}, err
 	}

@@ -250,8 +250,7 @@ type P2PConfig struct {
 	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
 
-	// Comma separated list of persistent peers to connect to
-	// We always connect to these
+	// Comma separated list of nodes to keep persistent connections to
 	PersistentPeers string `mapstructure:"persistent_peers"`
 
 	// Skip UPNP port forwarding
@@ -289,6 +288,9 @@ type P2PConfig struct {
 
 	// Authenticated encryption
 	AuthEnc bool `mapstructure:"auth_enc"`
+
+	// Comma separated list of nodes to keep private (will not be gossiped to other peers) connections to
+	PrivatePeers string `mapstructure:"private_peers"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer

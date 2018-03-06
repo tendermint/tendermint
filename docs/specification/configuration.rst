@@ -124,6 +124,9 @@ like the file below, however, double check by inspecting the
     # Authenticated encryption
     auth_enc = true
 
+    # Comma separated list of nodes to keep private (will not be gossiped to other peers) connections to
+    private_peers = ""
+
     ##### mempool configuration options #####
     [mempool]
 

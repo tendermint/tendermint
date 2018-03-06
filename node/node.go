@@ -421,6 +421,14 @@ func (n *Node) OnStart() error {
 		}
 	}
 
+	// Always connect to private peers, but do not add them to addrbook
+	if n.config.P2P.PrivatePeers != "" {
+		err = n.sw.DialPeersAsync(nil, strings.Split(n.config.P2P.PrivatePeers, ","), true)
+		if err != nil {
+			return err
+		}
+	}
+
 	// start tx indexer
 	return n.indexerService.Start()
 }
