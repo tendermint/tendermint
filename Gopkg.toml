@@ -79,11 +79,11 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-wire"
-  version = "0.7.3"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  version = "0.7.0"
+  branch = "develop"
 
 [[constraint]]
   name = "google.golang.org/grpc"
