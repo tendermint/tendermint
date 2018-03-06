@@ -441,8 +441,13 @@ func (n *Node) OnStop() {
 	}
 
 	n.eventBus.Stop()
-
 	n.indexerService.Stop()
+
+	if pvsc, ok := n.privValidator.(*priv_val.SocketClient); ok {
+		if err := pvsc.Stop(); err != nil {
+			n.Logger.Error("Error stopping priv validator socket client", "err", err)
+		}
+	}
 }
 
 // RunForever waits for an interrupt signal and stops the node.

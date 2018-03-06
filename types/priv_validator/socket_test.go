@@ -128,7 +128,7 @@ func TestSocketClientConnectRetryMax(t *testing.T) {
 	assert.EqualError(sc.Start(), ErrDialRetryMax.Error())
 }
 
-func testSetupSocketPair(t *testing.T, chainID string) (*socketClient, *PrivValidatorSocketServer) {
+func testSetupSocketPair(t *testing.T, chainID string) (*SocketClient, *PrivValidatorSocketServer) {
 	var (
 		assert, require = assert.New(t), require.New(t)
 		logger          = log.TestingLogger()
