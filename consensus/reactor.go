@@ -1113,7 +1113,7 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 
 // RecordVote updates internal statistics for this peer by recording the vote.
 // It returns the total number of votes (1 per block). This essentially means
-// the number of blocks for which peer has been sending us block parts.
+// the number of blocks for which peer has been sending us votes.
 func (ps *PeerState) RecordVote(vote *types.Vote) int {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
