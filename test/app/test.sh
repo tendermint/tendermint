@@ -1,5 +1,5 @@
 #! /bin/bash
-set -e
+set -ex
 
 #- kvstore over socket, curl
 #- counter over socket, curl
@@ -8,6 +8,7 @@ set -e
 
 # TODO: install everything
 
+export PATH="$GOBIN:$PATH"
 export TMHOME=$HOME/.tendermint_app
 
 function kvstore_over_socket(){

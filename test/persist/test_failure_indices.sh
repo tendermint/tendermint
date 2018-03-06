@@ -1,5 +1,6 @@
 #! /bin/bash
 
+export PATH="$GOBIN:$PATH"
 export TMHOME=$HOME/.tendermint_persist
 
 rm -rf "$TMHOME"

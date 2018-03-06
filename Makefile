@@ -1,6 +1,6 @@
 GOTOOLS = \
 	github.com/golang/dep/cmd/dep \
-	# gopkg.in/alecthomas/gometalinter.v2
+	gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
@@ -40,7 +40,7 @@ check_tools:
 get_tools:
 	@echo "--> Installing tools"
 	go get -u -v $(GOTOOLS)
-	# @gometalinter.v2 --install
+	@gometalinter.v2 --install
 
 update_tools:
 	@echo "--> Updating tools"
@@ -79,7 +79,7 @@ test:
 
 test_race:
 	@echo "--> Running go test --race"
-	@go test -v -race $(PACKAGES)
+	@go test -race $(PACKAGES)
 
 test_integrations:
 	@bash ./test/test.sh
@@ -105,7 +105,7 @@ fmt:
 
 metalinter:
 	@echo "--> Running linter"
-	gometalinter.v2 --vendor --deadline=600s --disable-all  \
+	@gometalinter.v2 --vendor --deadline=600s --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \
