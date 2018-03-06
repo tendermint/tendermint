@@ -24,12 +24,12 @@ func (pk PrivKey) Sign(msg []byte) (crypto.Signature, error) {
 	return crypto.PrivKey(pk).Sign(msg), nil
 }
 
-// MarshalJSON
+// MarshalJSON satisfies json.Marshaler.
 func (pk PrivKey) MarshalJSON() ([]byte, error) {
 	return crypto.PrivKey(pk).MarshalJSON()
 }
 
-// UnmarshalJSON
+// UnmarshalJSON satisfies json.Unmarshaler.
 func (pk *PrivKey) UnmarshalJSON(b []byte) error {
 	cpk := new(crypto.PrivKey)
 	if err := cpk.UnmarshalJSON(b); err != nil {
@@ -83,6 +83,7 @@ func (pvj *PrivValidatorJSON) String() string {
 	return fmt.Sprintf("PrivValidator{%v %v}", addr, pvj.PrivValidatorUnencrypted.String())
 }
 
+// Save persists the PrivValidatorJSON to disk.
 func (pvj *PrivValidatorJSON) Save() {
 	pvj.save()
 }
@@ -167,6 +168,8 @@ func NewTestPrivValidator(signer types.TestSigner) *PrivValidatorJSON {
 
 //------------------------------------------------------
 
+// PrivValidatorsByAddress is a list of PrivValidatorJSON ordered by their
+// addresses.
 type PrivValidatorsByAddress []*PrivValidatorJSON
 
 func (pvs PrivValidatorsByAddress) Len() int {
