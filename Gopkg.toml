@@ -83,7 +83,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  version = "0.7.0"
+  revision = "066fe82a927aef6f7f6431af78f0d5156cb2cdb1"
 
 [[constraint]]
   name = "google.golang.org/grpc"
