@@ -90,17 +90,17 @@ func (pvj *PrivValidatorJSON) Save() {
 
 func (pvj *PrivValidatorJSON) save() {
 	if pvj.filePath == "" {
-		cmn.PanicSanity("Cannot save PrivValidator: filePath not set")
+		panic("Cannot save PrivValidator: filePath not set")
 	}
 	jsonBytes, err := json.Marshal(pvj)
 	if err != nil {
 		// ; BOOM!!!
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 	err = cmn.WriteFileAtomic(pvj.filePath, jsonBytes, 0600)
 	if err != nil {
 		// ; BOOM!!!
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 }
 
