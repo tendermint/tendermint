@@ -289,8 +289,8 @@ type P2PConfig struct {
 	// Authenticated encryption
 	AuthEnc bool `mapstructure:"auth_enc"`
 
-	// Comma separated list of nodes to keep private (will not be gossiped to other peers) connections to
-	PrivatePeers string `mapstructure:"private_peers"`
+	// Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
+	PrivatePeerIDs string `mapstructure:"private_peer_ids"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
