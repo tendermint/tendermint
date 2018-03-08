@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -59,6 +60,8 @@ type PEXReactor struct {
 	// maps to prevent abuse
 	requestsSent         *cmn.CMap // ID->struct{}: unanswered send requests
 	lastReceivedRequests *cmn.CMap // ID->time.Time: last time peer requested from us
+
+	attemptsToDial sync.Map // dial addr -> number of attempts to dial (for exponential backoff)
 }
 
 // PEXReactorConfig holds reactor specific configuration data.
@@ -338,9 +341,22 @@ func (r *PEXReactor) ensurePeers() {
 		toDial[try.ID] = try
 	}
 
+	// 1s == (1e9 ns) == (1 Billion ns)
+	billionNs := float64(time.Second.Nanoseconds())
+
 	// Dial picked addresses
-	for _, item := range toDial {
+	for _, addr := range toDial {
 		go func(picked *p2p.NetAddress) {
+			// exponential backoff if it's not our first attempt to dial picked address
+			var attempt int
+			if lAttempt, notFirstAttempt := r.attemptsToDial.Load(picked.DialString()); notFirstAttempt {
+				attempt = lAttempt.(int)
+				jitterSeconds := time.Duration(rand.Float64() * billionNs)
+				backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
+				r.Logger.Debug(fmt.Sprintf("Dialing %v", picked), "attempt", attempt, "backoff_duration", backoffDuration)
+				time.Sleep(backoffDuration)
+			}
+
 			err := r.Switch.DialPeerWithAddress(picked, false)
 			if err != nil {
 				r.Logger.Error("Dialing failed", "err", err)
@@ -350,8 +366,13 @@ func (r *PEXReactor) ensurePeers() {
 				} else {
 					r.book.MarkAttempt(picked)
 				}
+				// record attempt
+				r.attemptsToDial.Store(picked.DialString(), attempt+1)
+			} else {
+				// cleanup any history
+				r.attemptsToDial.Delete(picked.DialString())
 			}
-		}(item)
+		}(addr)
 	}
 
 	// If we need more addresses, pick a random peer and ask for more.
