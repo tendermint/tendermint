@@ -341,38 +341,9 @@ func (r *PEXReactor) ensurePeers() {
 		toDial[try.ID] = try
 	}
 
-	// 1s == (1e9 ns) == (1 Billion ns)
-	billionNs := float64(time.Second.Nanoseconds())
-
 	// Dial picked addresses
 	for _, addr := range toDial {
-		go func(picked *p2p.NetAddress) {
-			// exponential backoff if it's not our first attempt to dial picked address
-			var attempt int
-			if lAttempt, notFirstAttempt := r.attemptsToDial.Load(picked.DialString()); notFirstAttempt {
-				attempt = lAttempt.(int)
-				jitterSeconds := time.Duration(rand.Float64() * billionNs)
-				backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
-				r.Logger.Debug(fmt.Sprintf("Dialing %v", picked), "attempt", attempt, "backoff_duration", backoffDuration)
-				time.Sleep(backoffDuration)
-			}
-
-			err := r.Switch.DialPeerWithAddress(picked, false)
-			if err != nil {
-				r.Logger.Error("Dialing failed", "err", err)
-				// TODO: detect more "bad peer" scenarios
-				if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
-					r.book.MarkBad(picked)
-				} else {
-					r.book.MarkAttempt(picked)
-				}
-				// record attempt
-				r.attemptsToDial.Store(picked.DialString(), attempt+1)
-			} else {
-				// cleanup any history
-				r.attemptsToDial.Delete(picked.DialString())
-			}
-		}(addr)
+		go r.dialPeer(addr)
 	}
 
 	// If we need more addresses, pick a random peer and ask for more.
@@ -390,6 +361,37 @@ func (r *PEXReactor) ensurePeers() {
 	if out+in+dial+len(toDial) == 0 {
 		r.Logger.Info("No addresses to dial nor connected peers. Falling back to seeds")
 		r.dialSeeds()
+	}
+}
+
+func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
+	// 1s == (1e9 ns) == (1 Billion ns)
+	billionNs := float64(time.Second.Nanoseconds())
+
+	// exponential backoff if it's not our first attempt to dial given address
+	var attempts int
+	if lAttempts, attempted := r.attemptsToDial.Load(addr.DialString()); attempted {
+		attempts = lAttempts.(int)
+		jitterSeconds := time.Duration(rand.Float64() * billionNs)
+		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
+		r.Logger.Debug(fmt.Sprintf("Dialing %v", addr), "attempts", attempts, "backoff_duration", backoffDuration)
+		time.Sleep(backoffDuration)
+	}
+
+	err := r.Switch.DialPeerWithAddress(addr, false)
+	if err != nil {
+		r.Logger.Error("Dialing failed", "err", err)
+		// TODO: detect more "bad peer" scenarios
+		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
+			r.book.MarkBad(addr)
+		} else {
+			r.book.MarkAttempt(addr)
+		}
+		// record attempt
+		r.attemptsToDial.Store(addr.DialString(), attempts+1)
+	} else {
+		// cleanup any history
+		r.attemptsToDial.Delete(addr.DialString())
 	}
 }
 
