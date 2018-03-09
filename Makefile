@@ -5,7 +5,7 @@ PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
-all: check build test_integrations install
+all: check build test install
 
 check: check_tools ensure_deps
 
@@ -81,7 +81,7 @@ build_docker_test_image:
 test_cover:
 	# run the go unit tests with coverage
 	bash test/test_cover.sh
-	
+
 test_apps:
 	# run the app tests using bash
 	# requires `abci-cli` and `tendermint` binaries installed
@@ -186,4 +186,6 @@ metalinter_all:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_depsbuild_test_docker_image test_cover test_apps test_persistence test_p2p test test_race test_libs test_integrations test_release test100 vagrant_test fmt
+.PHONY: check build build_race dist install check_tools get_tools update_tools
+	get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test
+	test_race test_libs test_integrations test_release test100 vagrant_test fmt

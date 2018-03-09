@@ -37,5 +37,8 @@ in a case of bug.
 
 **How to reproduce it** (as minimally and precisely as possible):
 
+**Logs (you can paste a part showing an error or attach the whole file)**:
+
+**`/dump_consensus_state` output for consensus bugs**
 
 **Anything else do we need to know**:
