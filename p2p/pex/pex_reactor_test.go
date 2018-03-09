@@ -13,12 +13,11 @@ import (
 
 	crypto "github.com/tendermint/go-crypto"
 	wire "github.com/tendermint/go-wire"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
-
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 var (
@@ -267,6 +266,26 @@ func TestPEXReactorCrawlStatus(t *testing.T) {
 	assert.Equal(t, 2, len(peerInfos))
 
 	// TODO: test
+}
+
+func TestPEXReactorDialPeer(t *testing.T) {
+	pexR, book := createReactor(&PEXReactorConfig{})
+	defer teardownReactor(book)
+
+	_ = createSwitchAndAddReactors(pexR)
+
+	peer := newMockPeer()
+	addr := peer.NodeInfo().NetAddress()
+
+	assert.Equal(t, 0, pexR.AttemptsToDial(addr))
+
+	// 1st unsuccessful attempt
+	pexR.dialPeer(addr)
+
+	// 2nd unsuccessful attempt
+	pexR.dialPeer(addr)
+
+	assert.Equal(t, 2, pexR.AttemptsToDial(addr))
 }
 
 type mockPeer struct {

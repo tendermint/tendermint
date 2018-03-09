@@ -432,6 +432,17 @@ func (r *PEXReactor) dialSeeds() {
 	r.Switch.Logger.Error("Couldn't connect to any seeds")
 }
 
+// AttemptsToDial returns the number of attempts to dial specific address. It
+// returns 0 if never attempted or successfully connected.
+func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
+	attempts, attempted := r.attemptsToDial.Load(addr.DialString())
+	if attempted {
+		return attempts.(int)
+	} else {
+		return 0
+	}
+}
+
 //----------------------------------------------------------
 
 // Explores the network searching for more peers. (continuous)
