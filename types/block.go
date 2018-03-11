@@ -179,7 +179,7 @@ type Header struct {
 // Hash returns the hash of the header.
 // Returns nil if ValidatorHash is missing.
 func (h *Header) Hash() cmn.HexBytes {
-	if len(h.ValidatorsHash) == 0 {
+	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
 	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
@@ -413,6 +413,9 @@ type Data struct {
 
 // Hash returns the hash of the data
 func (data *Data) Hash() cmn.HexBytes {
+	if data == nil {
+		return (Txs{}).Hash()
+	}
 	if data.hash == nil {
 		data.hash = data.Txs.Hash() // NOTE: leaves of merkle tree are TxIDs
 	}
