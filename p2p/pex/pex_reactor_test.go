@@ -282,10 +282,13 @@ func TestPEXReactorDialPeer(t *testing.T) {
 	// 1st unsuccessful attempt
 	pexR.dialPeer(addr)
 
+	assert.Equal(t, 1, pexR.AttemptsToDial(addr))
+
 	// 2nd unsuccessful attempt
 	pexR.dialPeer(addr)
 
-	assert.Equal(t, 2, pexR.AttemptsToDial(addr))
+	// must be skipped because it is too early
+	assert.Equal(t, 1, pexR.AttemptsToDial(addr))
 }
 
 type mockPeer struct {
