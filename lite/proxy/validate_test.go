@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	deabBeefTxs           = types.Txs{[]byte("DE"), []byte("AD"), []byte("BE"), []byte("EF")}
-	deadBeefRipEmd160Hash = deabBeefTxs.Hash()
+	deadBeefTxs           = types.Txs{[]byte("DE"), []byte("AD"), []byte("BE"), []byte("EF")}
+	deadBeefRipEmd160Hash = deadBeefTxs.Hash()
 )
 
 func TestValidateBlock(t *testing.T) {
@@ -91,7 +91,7 @@ func TestValidateBlock(t *testing.T) {
 		{
 			block: &types.Block{
 				Header: &types.Header{Height: 11, DataHash: deadBeefRipEmd160Hash},
-				Data:   &types.Data{Txs: deabBeefTxs},
+				Data:   &types.Data{Txs: deadBeefTxs},
 			},
 			commit: lite.Commit{
 				Header: &types.Header{Height: 11},
@@ -101,20 +101,18 @@ func TestValidateBlock(t *testing.T) {
 		// End Header.Data hash mismatch test
 	}
 
-	assert := assert.New(t)
-
 	for i, tt := range tests {
 		err := proxy.ValidateBlock(tt.block, tt.commit)
 		if tt.wantErr != "" {
 			if err == nil {
-				assert.FailNowf("Unexpectedly passed", "#%d", i)
+				assert.FailNowf(t, "Unexpectedly passed", "#%d", i)
 			} else {
-				assert.Contains(err.Error(), tt.wantErr, "#%d should contain the substring\n\n", i)
+				assert.Contains(t, err.Error(), tt.wantErr, "#%d should contain the substring\n\n", i)
 			}
 			continue
 		}
 
-		assert.Nil(err, "#%d: expecting a nil error", i)
+		assert.Nil(t, err, "#%d: expecting a nil error", i)
 	}
 }
 
@@ -238,19 +236,17 @@ func TestValidateBlockMeta(t *testing.T) {
 		// End Headers don't match test
 	}
 
-	assert := assert.New(t)
-
 	for i, tt := range tests {
 		err := proxy.ValidateBlockMeta(tt.meta, tt.commit)
 		if tt.wantErr != "" {
 			if err == nil {
-				assert.FailNowf("Unexpectedly passed", "#%d: wanted error %q", i, tt.wantErr)
+				assert.FailNowf(t, "Unexpectedly passed", "#%d: wanted error %q", i, tt.wantErr)
 			} else {
-				assert.Contains(err.Error(), tt.wantErr, "#%d should contain the substring\n\n", i)
+				assert.Contains(t, err.Error(), tt.wantErr, "#%d should contain the substring\n\n", i)
 			}
 			continue
 		}
 
-		assert.Nil(err, "#%d: expecting a nil error", i)
+		assert.Nil(t, err, "#%d: expecting a nil error", i)
 	}
 }
