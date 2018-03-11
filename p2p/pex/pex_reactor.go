@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"reflect"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -38,6 +39,8 @@ const (
 	defaultSeedDisconnectWaitPeriod = 2 * time.Minute  // disconnect after this
 	defaultCrawlPeerInterval        = 2 * time.Minute  // dont redial for this. TODO: back-off
 	defaultCrawlPeersPeriod         = 30 * time.Second // check some peers every this
+
+	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h)
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
@@ -59,6 +62,8 @@ type PEXReactor struct {
 	// maps to prevent abuse
 	requestsSent         *cmn.CMap // ID->struct{}: unanswered send requests
 	lastReceivedRequests *cmn.CMap // ID->time.Time: last time peer requested from us
+
+	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
 }
 
 // PEXReactorConfig holds reactor specific configuration data.
@@ -69,6 +74,11 @@ type PEXReactorConfig struct {
 	// Seeds is a list of addresses reactor may use
 	// if it can't connect to peers in the addrbook.
 	Seeds []string
+}
+
+type _attemptsToDial struct {
+	number     int
+	lastDialed time.Time
 }
 
 // NewPEXReactor creates new PEX reactor.
@@ -339,19 +349,8 @@ func (r *PEXReactor) ensurePeers() {
 	}
 
 	// Dial picked addresses
-	for _, item := range toDial {
-		go func(picked *p2p.NetAddress) {
-			err := r.Switch.DialPeerWithAddress(picked, false)
-			if err != nil {
-				r.Logger.Error("Dialing failed", "err", err)
-				// TODO: detect more "bad peer" scenarios
-				if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
-					r.book.MarkBad(picked)
-				} else {
-					r.book.MarkAttempt(picked)
-				}
-			}
-		}(item)
+	for _, addr := range toDial {
+		go r.dialPeer(addr)
 	}
 
 	// If we need more addresses, pick a random peer and ask for more.
@@ -369,6 +368,48 @@ func (r *PEXReactor) ensurePeers() {
 	if out+in+dial+len(toDial) == 0 {
 		r.Logger.Info("No addresses to dial nor connected peers. Falling back to seeds")
 		r.dialSeeds()
+	}
+}
+
+func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
+	var attempts int
+	var lastDialed time.Time
+	if lAttempts, attempted := r.attemptsToDial.Load(addr.DialString()); attempted {
+		attempts = lAttempts.(_attemptsToDial).number
+		lastDialed = lAttempts.(_attemptsToDial).lastDialed
+	}
+
+	if attempts > maxAttemptsToDial {
+		r.Logger.Error("Reached max attempts to dial", "addr", addr, "attempts", attempts)
+		r.book.MarkBad(addr)
+		return
+	}
+
+	// exponential backoff if it's not our first attempt to dial given address
+	if attempts > 0 {
+		jitterSeconds := time.Duration(rand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
+		sinceLastDialed := time.Since(lastDialed)
+		if sinceLastDialed < backoffDuration {
+			r.Logger.Debug("Too early to dial", "addr", addr, "backoff_duration", backoffDuration, "last_dialed", lastDialed, "time_since", sinceLastDialed)
+			return
+		}
+	}
+
+	err := r.Switch.DialPeerWithAddress(addr, false)
+	if err != nil {
+		r.Logger.Error("Dialing failed", "addr", addr, "err", err, "attempts", attempts)
+		// TODO: detect more "bad peer" scenarios
+		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
+			r.book.MarkBad(addr)
+		} else {
+			r.book.MarkAttempt(addr)
+		}
+		// record attempt
+		r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
+	} else {
+		// cleanup any history
+		r.attemptsToDial.Delete(addr.DialString())
 	}
 }
 
@@ -407,6 +448,17 @@ func (r *PEXReactor) dialSeeds() {
 		r.Switch.Logger.Error("Error dialing seed", "err", err, "seed", seedAddr)
 	}
 	r.Switch.Logger.Error("Couldn't connect to any seeds")
+}
+
+// AttemptsToDial returns the number of attempts to dial specific address. It
+// returns 0 if never attempted or successfully connected.
+func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
+	lAttempts, attempted := r.attemptsToDial.Load(addr.DialString())
+	if attempted {
+		return lAttempts.(_attemptsToDial).number
+	} else {
+		return 0
+	}
 }
 
 //----------------------------------------------------------
