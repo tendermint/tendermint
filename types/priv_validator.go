@@ -98,6 +98,7 @@ type PrivValidator interface {
 // PrivValidatorFS implements PrivValidator using data persisted to disk
 // to prevent double signing. The Signer itself can be mutated to use
 // something besides the default, for instance a hardware signer.
+// NOTE: the directory containing the privVal.filePath must already exist.
 type PrivValidatorFS struct {
 	Address       Address          `json:"address"`
 	PubKey        crypto.PubKey    `json:"pub_key"`
@@ -217,18 +218,17 @@ func (privVal *PrivValidatorFS) Save() {
 }
 
 func (privVal *PrivValidatorFS) save() {
-	if privVal.filePath == "" {
-		cmn.PanicSanity("Cannot save PrivValidator: filePath not set")
+	outFile := privVal.filePath
+	if outFile == "" {
+		panic("Cannot save PrivValidator: filePath not set")
 	}
 	jsonBytes, err := json.Marshal(privVal)
 	if err != nil {
-		// `@; BOOM!!!
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
-	err = cmn.WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
+	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
-		// `@; BOOM!!!
-		cmn.PanicCrisis(err)
+		panic(err)
 	}
 }
 

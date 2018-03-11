@@ -75,15 +75,16 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 
 // Initialize per-machine core directory
 func initMachCoreDirectory(base, mach string) error {
+	// Create priv_validator.json file if not present
+	defaultConfig := cfg.DefaultBaseConfig()
 	dir := filepath.Join(base, mach)
-	err := cmn.EnsureDir(dir, 0777)
+	privValPath := filepath.Join(dir, defaultConfig.PrivValidator)
+	dir = filepath.Dir(privValPath)
+	err := cmn.EnsureDir(dir, 0700)
 	if err != nil {
 		return err
 	}
-
-	// Create priv_validator.json file if not present
-	defaultConfig := cfg.DefaultBaseConfig()
-	ensurePrivValidator(filepath.Join(dir, defaultConfig.PrivValidator))
+	ensurePrivValidator(privValPath)
 	return nil
 
 }
