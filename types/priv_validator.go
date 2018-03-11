@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -225,7 +227,13 @@ func (privVal *PrivValidatorFS) save() {
 		// `@; BOOM!!!
 		cmn.PanicCrisis(err)
 	}
-	err = cmn.WriteFileAtomic(privVal.filePath, jsonBytes, 0600)
+	outFile := privVal.filePath
+	dir := filepath.Dir(outFile)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		cmn.PanicCrisis(err)
+	}
+	// We need to mkdirAll the path
+	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		// `@; BOOM!!!
 		cmn.PanicCrisis(err)
