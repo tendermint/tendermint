@@ -228,11 +228,12 @@ func (privVal *PrivValidatorFS) save() {
 		cmn.PanicCrisis(err)
 	}
 	outFile := privVal.filePath
+	// We need to ensure that the parent directory exists.
+	// See Issue https://github.com/tendermint/tendermint/issues/1290
 	dir := filepath.Dir(outFile)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0700); err != nil {
 		cmn.PanicCrisis(err)
 	}
-	// We need to mkdirAll the path
 	err = cmn.WriteFileAtomic(outFile, jsonBytes, 0600)
 	if err != nil {
 		// `@; BOOM!!!
