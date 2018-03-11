@@ -40,7 +40,7 @@ const (
 	defaultCrawlPeerInterval        = 2 * time.Minute  // dont redial for this. TODO: back-off
 	defaultCrawlPeersPeriod         = 30 * time.Second // check some peers every this
 
-	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h sleep)
+	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h)
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
@@ -389,7 +389,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 	if attempts > 0 {
 		jitterSeconds := time.Duration(rand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
-		sinceLastDialed := time.Now().Sub(lastDialed)
+		sinceLastDialed := time.Since(lastDialed)
 		if sinceLastDialed < backoffDuration {
 			r.Logger.Debug("Too early to dial", "addr", addr, "backoff_duration", backoffDuration, "last_dialed", lastDialed, "time_since", sinceLastDialed)
 			return
