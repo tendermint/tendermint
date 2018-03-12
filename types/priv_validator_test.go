@@ -263,7 +263,7 @@ func TestPrivValidatorFSSaveDoesNotCrash(t *testing.T) {
 
 	defer os.RemoveAll(saveDir)
 
-	pPath := filepath.Join(saveDir, "out-file", "tf.json")
+	pPath := filepath.Join(saveDir, "new", "pennyroyal", "tea", "tf.json")
 	pv := &PrivValidatorFS{filePath: pPath}
 	pv.Save()
 }
