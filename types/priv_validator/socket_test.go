@@ -4,10 +4,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/types"
@@ -16,13 +18,13 @@ import (
 func TestSocketClientAddress(t *testing.T) {
 	var (
 		assert, require = assert.New(t), require.New(t)
-		chainID         = "test-chain-secret"
-		sc, pvss        = testSetupSocketPair(t, chainID)
+		chainID         = cmn.RandStr(12)
+		sc, rs          = testSetupSocketPair(t, chainID)
 	)
 	defer sc.Stop()
-	defer pvss.Stop()
+	defer rs.Stop()
 
-	serverAddr, err := pvss.privVal.Address()
+	serverAddr, err := rs.privVal.Address()
 	require.NoError(err)
 
 	clientAddr, err := sc.Address()
@@ -38,16 +40,16 @@ func TestSocketClientAddress(t *testing.T) {
 func TestSocketClientPubKey(t *testing.T) {
 	var (
 		assert, require = assert.New(t), require.New(t)
-		chainID         = "test-chain-secret"
-		sc, pvss        = testSetupSocketPair(t, chainID)
+		chainID         = cmn.RandStr(12)
+		sc, rs          = testSetupSocketPair(t, chainID)
 	)
 	defer sc.Stop()
-	defer pvss.Stop()
+	defer rs.Stop()
 
 	clientKey, err := sc.PubKey()
 	require.NoError(err)
 
-	privKey, err := pvss.privVal.PubKey()
+	privKey, err := rs.privVal.PubKey()
 	require.NoError(err)
 
 	assert.Equal(privKey, clientKey)
@@ -59,17 +61,17 @@ func TestSocketClientPubKey(t *testing.T) {
 func TestSocketClientProposal(t *testing.T) {
 	var (
 		assert, require = assert.New(t), require.New(t)
-		chainID         = "test-chain-secret"
-		sc, pvss        = testSetupSocketPair(t, chainID)
+		chainID         = cmn.RandStr(12)
+		sc, rs          = testSetupSocketPair(t, chainID)
 
 		ts             = time.Now()
 		privProposal   = &types.Proposal{Timestamp: ts}
 		clientProposal = &types.Proposal{Timestamp: ts}
 	)
 	defer sc.Stop()
-	defer pvss.Stop()
+	defer rs.Stop()
 
-	require.NoError(pvss.privVal.SignProposal(chainID, privProposal))
+	require.NoError(rs.privVal.SignProposal(chainID, privProposal))
 	require.NoError(sc.SignProposal(chainID, clientProposal))
 	assert.Equal(privProposal.Signature, clientProposal.Signature)
 }
@@ -77,8 +79,8 @@ func TestSocketClientProposal(t *testing.T) {
 func TestSocketClientVote(t *testing.T) {
 	var (
 		assert, require = assert.New(t), require.New(t)
-		chainID         = "test-chain-secret"
-		sc, pvss        = testSetupSocketPair(t, chainID)
+		chainID         = cmn.RandStr(12)
+		sc, rs          = testSetupSocketPair(t, chainID)
 
 		ts    = time.Now()
 		vType = types.VoteTypePrecommit
@@ -86,9 +88,9 @@ func TestSocketClientVote(t *testing.T) {
 		have  = &types.Vote{Timestamp: ts, Type: vType}
 	)
 	defer sc.Stop()
-	defer pvss.Stop()
+	defer rs.Stop()
 
-	require.NoError(pvss.privVal.SignVote(chainID, want))
+	require.NoError(rs.privVal.SignVote(chainID, want))
 	require.NoError(sc.SignVote(chainID, have))
 	assert.Equal(want.Signature, have.Signature)
 }
@@ -96,69 +98,129 @@ func TestSocketClientVote(t *testing.T) {
 func TestSocketClientHeartbeat(t *testing.T) {
 	var (
 		assert, require = assert.New(t), require.New(t)
-		chainID         = "test-chain-secret"
-		sc, pvss        = testSetupSocketPair(t, chainID)
+		chainID         = cmn.RandStr(12)
+		sc, rs          = testSetupSocketPair(t, chainID)
 
 		want = &types.Heartbeat{}
 		have = &types.Heartbeat{}
 	)
 	defer sc.Stop()
-	defer pvss.Stop()
+	defer rs.Stop()
 
-	require.NoError(pvss.privVal.SignHeartbeat(chainID, want))
+	require.NoError(rs.privVal.SignHeartbeat(chainID, want))
 	require.NoError(sc.SignHeartbeat(chainID, have))
 	assert.Equal(want.Signature, have.Signature)
 }
 
-func TestSocketClientConnectRetryMax(t *testing.T) {
+func TestSocketClientDeadline(t *testing.T) {
 	var (
-		assert, _     = assert.New(t), require.New(t)
-		logger        = log.TestingLogger()
-		clientPrivKey = crypto.GenPrivKeyEd25519()
-		sc            = NewSocketClient(
-			logger,
+		assert, require = assert.New(t), require.New(t)
+		readyc          = make(chan struct{})
+		sc              = NewSocketClient(
+			log.TestingLogger(),
 			"127.0.0.1:0",
-			&clientPrivKey,
+			nil,
 		)
 	)
 	defer sc.Stop()
 
-	SocketClientTimeout(time.Millisecond)(sc)
+	SocketClientConnDeadline(time.Millisecond)(sc)
 
-	assert.EqualError(sc.Start(), ErrDialRetryMax.Error())
+	require.NoError(sc.listen())
+
+	go func(sc *SocketClient) {
+		require.NoError(sc.Start())
+		assert.True(sc.IsRunning())
+
+		readyc <- struct{}{}
+	}(sc)
+
+	_, err := cmn.Connect(sc.listener.Addr().String())
+	require.NoError(err)
+
+	<-readyc
+
+	_, err = sc.PubKey()
+	assert.Equal(errors.Cause(err), ErrConnTimeout)
 }
 
-func testSetupSocketPair(t *testing.T, chainID string) (*SocketClient, *PrivValidatorSocketServer) {
+func TestSocketClientWait(t *testing.T) {
+	var (
+		assert, _ = assert.New(t), require.New(t)
+		logger    = log.TestingLogger()
+		privKey   = crypto.GenPrivKeyEd25519()
+		sc        = NewSocketClient(
+			logger,
+			"127.0.0.1:0",
+			&privKey,
+		)
+	)
+	defer sc.Stop()
+
+	SocketClientConnWait(time.Millisecond)(sc)
+
+	assert.EqualError(sc.Start(), ErrConnWaitTimeout.Error())
+}
+
+func TestRemoteSignerRetry(t *testing.T) {
+	var (
+		assert, _ = assert.New(t), require.New(t)
+		privKey   = crypto.GenPrivKeyEd25519()
+		rs        = NewRemoteSigner(
+			log.TestingLogger(),
+			cmn.RandStr(12),
+			"127.0.0.1:0",
+			NewTestPrivValidator(types.GenSigner()),
+			&privKey,
+		)
+	)
+	defer rs.Stop()
+
+	RemoteSignerConnDeadline(time.Millisecond)(rs)
+	RemoteSignerConnRetries(2)(rs)
+
+	assert.EqualError(rs.Start(), ErrDialRetryMax.Error())
+}
+
+func testSetupSocketPair(
+	t *testing.T,
+	chainID string,
+) (*SocketClient, *RemoteSigner) {
 	var (
 		assert, require = assert.New(t), require.New(t)
 		logger          = log.TestingLogger()
 		signer          = types.GenSigner()
 		clientPrivKey   = crypto.GenPrivKeyEd25519()
-		serverPrivKey   = crypto.GenPrivKeyEd25519()
+		remotePrivKey   = crypto.GenPrivKeyEd25519()
 		privVal         = NewTestPrivValidator(signer)
-		pvss            = NewPrivValidatorSocketServer(
+		readyc          = make(chan struct{})
+		sc              = NewSocketClient(
 			logger,
-			chainID,
 			"127.0.0.1:0",
-			1,
-			privVal,
-			&serverPrivKey,
+			&clientPrivKey,
 		)
 	)
 
-	err := pvss.Start()
-	require.NoError(err)
-	assert.True(pvss.IsRunning())
+	require.NoError(sc.listen())
 
-	sc := NewSocketClient(
+	go func(sc *SocketClient) {
+		require.NoError(sc.Start())
+		assert.True(sc.IsRunning())
+
+		readyc <- struct{}{}
+	}(sc)
+
+	rs := NewRemoteSigner(
 		logger,
-		pvss.listener.Addr().String(),
-		&clientPrivKey,
+		chainID,
+		sc.listener.Addr().String(),
+		privVal,
+		&remotePrivKey,
 	)
+	require.NoError(rs.Start())
+	assert.True(rs.IsRunning())
 
-	err = sc.Start()
-	require.NoError(err)
-	assert.True(sc.IsRunning())
+	<-readyc
 
-	return sc, pvss
+	return sc, rs
 }

@@ -12,36 +12,41 @@ import (
 
 func main() {
 	var (
+		addr        = flag.String("addr", ":46659", "Address of client to connect to")
 		chainID     = flag.String("chain-id", "mychain", "chain id")
-		listenAddr  = flag.String("laddr", ":46659", "Validator listen address (0.0.0.0:0 means any interface, any port")
-		maxConn     = flag.Int("clients", 3, "maximum of concurrent connections")
 		privValPath = flag.String("priv", "", "priv val file path")
 
-		logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout)).With("module", "priv_val")
+		logger = log.NewTMLogger(
+			log.NewSyncWriter(os.Stdout),
+		).With("module", "priv_val")
 	)
 	flag.Parse()
 
 	logger.Info(
 		"Starting private validator",
+		"addr", *addr,
 		"chainID", *chainID,
-		"listenAddr", *listenAddr,
-		"maxConn", *maxConn,
 		"privPath", *privValPath,
 	)
 
 	privVal := priv_val.LoadPrivValidatorJSON(*privValPath)
 
-	pvss := priv_val.NewPrivValidatorSocketServer(
+	rs := priv_val.NewRemoteSigner(
 		logger,
 		*chainID,
-		*listenAddr,
-		*maxConn,
+		*addr,
 		privVal,
 		nil,
 	)
-	pvss.Start()
+	err := rs.Start()
+	if err != nil {
+		panic(err)
+	}
 
 	cmn.TrapSignal(func() {
-		pvss.Stop()
+		err := rs.Stop()
+		if err != nil {
+			panic(err)
+		}
 	})
 }
