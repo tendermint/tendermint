@@ -264,6 +264,11 @@ func TestPrivValidatorFSSaveDoesNotCrash(t *testing.T) {
 	defer os.RemoveAll(saveDir)
 
 	pPath := filepath.Join(saveDir, "new", "pennyroyal", "tea", "tf.json")
-	pv := &PrivValidatorFS{filePath: pPath}
+	pv := GenPrivValidatorFS(pPath)
 	pv.Save()
+
+	// Verify that the file exists and has the right content
+	parsed := LoadPrivValidatorFS(pPath)
+	require.NotNil(t, parsed, "the parsed PrivValidator should not be nil")
+	require.Equal(t, parsed, pv)
 }
