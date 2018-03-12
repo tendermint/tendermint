@@ -51,7 +51,7 @@ increments by 2 every time it is used
 - generate a common challenge to sign:
     - SHA256 of the sorted (lowest first) and concatenated ephemeral pub keys
 - sign the common challenge with our persistent private key
-- send the go-wire encoded persistent pubkey and signature to the peer
+- send the go-amino encoded persistent pubkey and signature to the peer
 - wait to receive the persistent public key and signature from the peer
 - verify the signature on the challenge using the peer's persistent public key
 

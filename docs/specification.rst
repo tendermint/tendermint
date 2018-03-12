@@ -18,4 +18,4 @@ Here you'll find details of the Tendermint specification. Tendermint's types are
    specification/rpc.rst
    specification/secure-p2p.rst
    specification/validators.rst
-   specification/wire-protocol.rst
+   specification/amino-protocol.rst

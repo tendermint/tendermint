@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -298,11 +298,11 @@ func (pc *peerConn) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration
 	cmn.Parallel(
 		func() {
 			var n int
-			wire.WriteBinary(&ourNodeInfo, pc.conn, &n, &err1)
+			amino.WriteBinary(&ourNodeInfo, pc.conn, &n, &err1)
 		},
 		func() {
 			var n int
-			wire.ReadBinary(&peerNodeInfo, pc.conn, MaxNodeInfoSize(), &n, &err2)
+			amino.ReadBinary(&peerNodeInfo, pc.conn, MaxNodeInfoSize(), &n, &err2)
 		})
 	if err1 != nil {
 		return peerNodeInfo, errors.Wrap(err1, "Error during handshake/write")

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -145,8 +145,8 @@ func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reacto
 		case <-ticker.C:
 			msgs := reactor.getMsgs(channel)
 			if len(msgs) > 0 {
-				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+				if !bytes.Equal(msgs[0].Bytes, amino.BinaryBytes(msg)) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", amino.BinaryBytes(msg), msgs[0].Bytes)
 				}
 				return
 			}

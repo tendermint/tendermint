@@ -8,7 +8,7 @@ Variable length items are length-prefixed.
 While the encoding was inspired by Go, it is easily implemented in other languages as well, given its intuitive design.
 
 XXX: This is changing to use real varints and 4-byte-prefixes.
-See https://github.com/tendermint/go-wire/tree/sdk2.
+See https://github.com/tendermint/go-amino/tree/sdk2.
 
 ### Fixed Length Integers
 

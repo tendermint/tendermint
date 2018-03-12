@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -309,7 +309,7 @@ func binarySerializeIt(v interface{}) []byte {
 	var n int
 	var err error
 	buf := new(bytes.Buffer)
-	wire.WriteBinary(v, buf, &n, &err)
+	amino.WriteBinary(v, buf, &n, &err)
 	return buf.Bytes()
 }
 

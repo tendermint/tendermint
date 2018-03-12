@@ -25,7 +25,7 @@ func main() {
 			if !ok {
 				break
 			}
-			//fmt.Println("Received response", string(wire.JSONBytes(res)))
+			//fmt.Println("Received response", string(amino.JSONBytes(res)))
 		}
 	}()
 

@@ -11,7 +11,7 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -1303,7 +1303,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 		// Added and completed!
 		var n int
 		var err error
-		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
+		cs.ProposalBlock = amino.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
 			cs.state.ConsensusParams.BlockSize.MaxBytes, &n, &err).(*types.Block)
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())

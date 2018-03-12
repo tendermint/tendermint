@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 )
 
 var testProposal *Proposal
@@ -60,9 +60,9 @@ func TestProposalVerifySignature(t *testing.T) {
 
 	// serialize, deserialize and verify again....
 	newProp := new(Proposal)
-	bs, err := wire.MarshalBinary(prop)
+	bs, err := amino.MarshalBinary(prop)
 	require.NoError(t, err)
-	err = wire.UnmarshalBinary(bs, &newProp)
+	err = amino.UnmarshalBinary(bs, &newProp)
 	require.NoError(t, err)
 
 	// verify the transmitted proposal

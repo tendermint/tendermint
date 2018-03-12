@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
 	"github.com/tendermint/tmlibs/log"
@@ -58,7 +58,7 @@ There are two methods for sending messages:
 
 `Send(chID, msg)` is a blocking call that waits until `msg` is successfully queued
 for the channel with the given id byte `chID`, or until the request times out.
-The message `msg` is serialized using the `tendermint/wire` submodule's
+The message `msg` is serialized using the `tendermint/amino` submodule's
 `WriteBinary()` reflection routine.
 
 `TrySend(chID, msg)` is a nonblocking call that returns false if the channel's
@@ -251,7 +251,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", wire.BinaryBytes(msg))
+	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", amino.BinaryBytes(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -260,7 +260,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	success := channel.sendBytes(wire.BinaryBytes(msg))
+	success := channel.sendBytes(amino.BinaryBytes(msg))
 	if success {
 		// Wake up sendRoutine if necessary
 		select {
@@ -289,7 +289,7 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	ok = channel.trySendBytes(wire.BinaryBytes(msg))
+	ok = channel.trySendBytes(amino.BinaryBytes(msg))
 	if ok {
 		// Wake up sendRoutine if necessary
 		select {
@@ -335,7 +335,7 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Chan():
 			c.Logger.Debug("Send Ping")
-			wire.WriteByte(packetTypePing, c.bufWriter, &n, &err)
+			amino.WriteByte(packetTypePing, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.Logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
 			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
@@ -354,7 +354,7 @@ FOR_LOOP:
 			}
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			wire.WriteByte(packetTypePong, c.bufWriter, &n, &err)
+			amino.WriteByte(packetTypePong, c.bufWriter, &n, &err)
 			c.sendMonitor.Update(int(n))
 			c.flush()
 		case <-c.quit:
@@ -470,7 +470,7 @@ FOR_LOOP:
 		// Read packet type
 		var n int
 		var err error
-		pktType := wire.ReadByte(c.bufReader, &n, &err)
+		pktType := amino.ReadByte(c.bufReader, &n, &err)
 		c.recvMonitor.Update(int(n))
 		if err != nil {
 			if c.IsRunning() {
@@ -500,7 +500,7 @@ FOR_LOOP:
 			}
 		case packetTypeMsg:
 			pkt, n, err := msgPacket{}, int(0), error(nil)
-			wire.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
+			amino.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -727,8 +727,8 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 }
 
 func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
-	wire.WriteByte(packetTypeMsg, w, n, err)
-	wire.WriteBinary(packet, w, n, err)
+	amino.WriteByte(packetTypeMsg, w, n, err)
+	amino.WriteBinary(packet, w, n, err)
 }
 
 // Handles incoming msgPackets. It returns a message bytes if message is
@@ -737,7 +737,7 @@ func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
 func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
 	ch.Logger.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if ch.desc.RecvMessageCapacity < len(ch.recving)+len(packet.Bytes) {
-		return nil, wire.ErrBinaryReadOverflow
+		return nil, amino.ErrBinaryReadOverflow
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {

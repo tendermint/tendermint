@@ -2,7 +2,7 @@ package types
 
 import (
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -40,9 +40,9 @@ func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
 	}
 }
 
-// Bytes serializes the ABCIResponse using wire
+// Bytes serializes the ABCIResponse using amino
 func (a ABCIResults) Bytes() []byte {
-	bz, err := wire.MarshalBinary(a)
+	bz, err := amino.MarshalBinary(a)
 	if err != nil {
 		panic(err)
 	}

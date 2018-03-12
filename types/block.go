@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 	"golang.org/x/crypto/ripemd160"
@@ -95,7 +95,7 @@ func (b *Block) Hash() cmn.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 func (b *Block) MakePartSet(partSize int) *PartSet {
-	bz, err := wire.MarshalBinary(b)
+	bz, err := amino.MarshalBinary(b)
 	if err != nil {
 		panic(err)
 	}
@@ -183,19 +183,19 @@ func (h *Header) Hash() cmn.HexBytes {
 		return nil
 	}
 	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
-		"ChainID":     wireHasher(h.ChainID),
-		"Height":      wireHasher(h.Height),
-		"Time":        wireHasher(h.Time),
-		"NumTxs":      wireHasher(h.NumTxs),
-		"TotalTxs":    wireHasher(h.TotalTxs),
-		"LastBlockID": wireHasher(h.LastBlockID),
-		"LastCommit":  wireHasher(h.LastCommitHash),
-		"Data":        wireHasher(h.DataHash),
-		"Validators":  wireHasher(h.ValidatorsHash),
-		"App":         wireHasher(h.AppHash),
-		"Consensus":   wireHasher(h.ConsensusHash),
-		"Results":     wireHasher(h.LastResultsHash),
-		"Evidence":    wireHasher(h.EvidenceHash),
+		"ChainID":     aminoHasher(h.ChainID),
+		"Height":      aminoHasher(h.Height),
+		"Time":        aminoHasher(h.Time),
+		"NumTxs":      aminoHasher(h.NumTxs),
+		"TotalTxs":    aminoHasher(h.TotalTxs),
+		"LastBlockID": aminoHasher(h.LastBlockID),
+		"LastCommit":  aminoHasher(h.LastCommitHash),
+		"Data":        aminoHasher(h.DataHash),
+		"Validators":  aminoHasher(h.ValidatorsHash),
+		"App":         aminoHasher(h.AppHash),
+		"Consensus":   aminoHasher(h.ConsensusHash),
+		"Results":     aminoHasher(h.LastResultsHash),
+		"Evidence":    aminoHasher(h.EvidenceHash),
 	})
 }
 
@@ -364,7 +364,7 @@ func (commit *Commit) Hash() cmn.HexBytes {
 	if commit.hash == nil {
 		bs := make([]merkle.Hasher, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {
-			bs[i] = wireHasher(precommit)
+			bs[i] = aminoHasher(precommit)
 		}
 		commit.hash = merkle.SimpleHashFromHashers(bs)
 	}
@@ -499,7 +499,7 @@ func (blockID BlockID) Equals(other BlockID) bool {
 
 // Key returns a machine-readable string representation of the BlockID
 func (blockID BlockID) Key() string {
-	bz, err := wire.MarshalBinary(blockID.PartsHeader)
+	bz, err := amino.MarshalBinary(blockID.PartsHeader)
 	if err != nil {
 		panic(err)
 	}
@@ -519,7 +519,7 @@ type hasher struct {
 
 func (h hasher) Hash() []byte {
 	hasher := ripemd160.New()
-	bz, err := wire.MarshalBinary(h.item)
+	bz, err := amino.MarshalBinary(h.item)
 	if err != nil {
 		panic(err)
 	}
@@ -536,6 +536,6 @@ func tmHash(item interface{}) []byte {
 	return h.Hash()
 }
 
-func wireHasher(item interface{}) merkle.Hasher {
+func aminoHasher(item interface{}) merkle.Hasher {
 	return hasher{item}
 }

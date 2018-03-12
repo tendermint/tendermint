@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/tendermint/go-wire/data"
+	amino "github.com/tendermint/go-amino"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
@@ -87,7 +87,7 @@ const (
 	EventDataTypeProposalHeartbeat = byte(0x20)
 )
 
-var tmEventDataMapper = data.NewMapper(TMEventData{}).
+var tmEventDataMapper = amino.NewMapper(TMEventData{}).
 	RegisterImplementation(EventDataNewBlock{}, EventDataNameNewBlock, EventDataTypeNewBlock).
 	RegisterImplementation(EventDataNewBlockHeader{}, EventDataNameNewBlockHeader, EventDataTypeNewBlockHeader).
 	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).

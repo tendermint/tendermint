@@ -107,12 +107,12 @@ func (params *ConsensusParams) Validate() error {
 // in the block header
 func (params *ConsensusParams) Hash() []byte {
 	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
-		"block_gossip_part_size_bytes": wireHasher(params.BlockGossip.BlockPartSizeBytes),
-		"block_size_max_bytes":         wireHasher(params.BlockSize.MaxBytes),
-		"block_size_max_gas":           wireHasher(params.BlockSize.MaxGas),
-		"block_size_max_txs":           wireHasher(params.BlockSize.MaxTxs),
-		"tx_size_max_bytes":            wireHasher(params.TxSize.MaxBytes),
-		"tx_size_max_gas":              wireHasher(params.TxSize.MaxGas),
+		"block_gossip_part_size_bytes": aminoHasher(params.BlockGossip.BlockPartSizeBytes),
+		"block_size_max_bytes":         aminoHasher(params.BlockSize.MaxBytes),
+		"block_size_max_gas":           aminoHasher(params.BlockSize.MaxGas),
+		"block_size_max_txs":           aminoHasher(params.BlockSize.MaxTxs),
+		"tx_size_max_bytes":            aminoHasher(params.TxSize.MaxBytes),
+		"tx_size_max_gas":              aminoHasher(params.TxSize.MaxGas),
 	})
 }
 

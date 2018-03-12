@@ -11,7 +11,7 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -598,7 +598,7 @@ func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
 		},
 		Moniker: n.config.Moniker,
 		Other: []string{
-			cmn.Fmt("wire_version=%v", wire.Version),
+			cmn.Fmt("amino_version=%v", amino.Version),
 			cmn.Fmt("p2p_version=%v", p2p.Version),
 			cmn.Fmt("consensus_version=%v", cs.Version),
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),

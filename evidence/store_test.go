@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
 )
@@ -115,8 +115,8 @@ const (
 	evidenceTypeMockBad  = byte(0x02)
 )
 
-var _ = wire.RegisterInterface(
+var _ = amino.RegisterInterface(
 	struct{ types.Evidence }{},
-	wire.ConcreteType{types.MockGoodEvidence{}, evidenceTypeMockGood},
-	wire.ConcreteType{types.MockBadEvidence{}, evidenceTypeMockBad},
+	amino.ConcreteType{types.MockGoodEvidence{}, evidenceTypeMockGood},
+	amino.ConcreteType{types.MockBadEvidence{}, evidenceTypeMockBad},
 )

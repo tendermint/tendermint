@@ -51,7 +51,7 @@ All resources involving the use of, building application on, or developing for, 
 ### Sub-projects
 
 * [ABCI](http://github.com/tendermint/abci), the Application Blockchain Interface
-* [Go-Wire](http://github.com/tendermint/go-wire), a deterministic serialization library
+* [Go-Amino](http://github.com/tendermint/go-amino), a deterministic serialization library
 * [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library
 * [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries used internally
 * [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation

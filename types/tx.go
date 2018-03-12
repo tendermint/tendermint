@@ -11,14 +11,14 @@ import (
 )
 
 // Tx is an arbitrary byte array.
-// NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
+// NOTE: Tx has no types at this level, so when amino encoded it's just length-prefixed.
 // Alternatively, it may make sense to add types here and let
 // []byte be type 0x1 so we can have versioned txs if need be in the future.
 type Tx []byte
 
-// Hash computes the RIPEMD160 hash of the wire encoded transaction.
+// Hash computes the RIPEMD160 hash of the amino encoded transaction.
 func (tx Tx) Hash() []byte {
-	return wireHasher(tx).Hash()
+	return aminoHasher(tx).Hash()
 }
 
 // String returns the hex-encoded transaction as a string.

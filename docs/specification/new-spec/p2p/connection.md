@@ -38,7 +38,7 @@ type msgPacket struct {
 }
 ```
 
-The `msgPacket` is serialized using [go-wire](https://github.com/tendermint/go-wire) and prefixed with 0x3.
+The `msgPacket` is serialized using [go-amino](https://github.com/tendermint/go-amino) and prefixed with 0x3.
 The received `Bytes` of a sequential set of packets are appended together
 until a packet with `EOF=1` is received, then the complete serialized message
 is returned for processing by the `onReceive` function of the corresponding channel.
@@ -60,7 +60,7 @@ func (m MConnection) TrySend(chID byte, msg interface{}) bool {}
 
 `Send(chID, msg)` is a blocking call that waits until `msg` is successfully queued
 for the channel with the given id byte `chID`.  The message `msg` is serialized
-using the `tendermint/wire` submodule's `WriteBinary()` reflection routine.
+using the `tendermint/amino` submodule's `WriteBinary()` reflection routine.
 
 `TrySend(chID, msg)` is a nonblocking call that queues the message msg in the channel
 with the given id byte chID if the queue is not full; otherwise it returns false immediately.

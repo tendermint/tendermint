@@ -3,7 +3,7 @@ package blockchain
 import (
 	"testing"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -76,7 +76,7 @@ func TestNoBlockResponse(t *testing.T) {
 	// wait for our response to be received on the peer
 	for _, tt := range tests {
 		reqBlockMsg := &bcBlockRequestMessage{tt.height}
-		reqBlockBytes := wire.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
+		reqBlockBytes := amino.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
 		bcr.Receive(chID, peer, reqBlockBytes)
 		value := peer.lastValue()
 		msg := value.(struct{ BlockchainMessage }).BlockchainMessage

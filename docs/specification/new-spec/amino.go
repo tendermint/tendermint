@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 )
 
 func main() {
@@ -62,7 +62,7 @@ func main() {
 }
 
 func encode(i interface{}) {
-	Println(wire.BinaryBytes(i))
+	Println(amino.BinaryBytes(i))
 
 }
 

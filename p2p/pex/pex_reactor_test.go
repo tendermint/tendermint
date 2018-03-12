@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -114,11 +114,11 @@ func TestPEXReactorReceive(t *testing.T) {
 
 	size := book.Size()
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
-	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	msg := amino.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
 
-	msg = wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	msg = amino.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
 	r.Receive(PexChannel, peer, msg)
 }
 
@@ -133,7 +133,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
-	msg := wire.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	msg := amino.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
 
 	// first time creates the entry
 	r.Receive(PexChannel, peer, msg)
@@ -169,7 +169,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
-	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	msg := amino.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
 
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, msg)

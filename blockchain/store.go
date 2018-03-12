@@ -7,7 +7,7 @@ import (
 	"io"
 	"sync"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -56,7 +56,7 @@ func (bs *BlockStore) Height() int64 {
 
 // GetReader returns the value associated with the given key wrapped in an io.Reader.
 // If no value is found, it returns nil.
-// It's mainly for use with wire.ReadBinary.
+// It's mainly for use with amino.ReadBinary.
 func (bs *BlockStore) GetReader(key []byte) io.Reader {
 	bytez := bs.db.Get(key)
 	if bytez == nil {
@@ -74,7 +74,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	if r == nil {
 		return nil
 	}
-	blockMeta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
+	blockMeta := amino.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block meta: %v", err))
 	}
@@ -83,7 +83,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
-	block := wire.ReadBinary(&types.Block{}, bytes.NewReader(bytez), 0, &n, &err).(*types.Block)
+	block := amino.ReadBinary(&types.Block{}, bytes.NewReader(bytez), 0, &n, &err).(*types.Block)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block: %v", err))
 	}
@@ -100,7 +100,7 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 	if r == nil {
 		return nil
 	}
-	part := wire.ReadBinary(&types.Part{}, r, 0, &n, &err).(*types.Part)
+	part := amino.ReadBinary(&types.Part{}, r, 0, &n, &err).(*types.Part)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block part: %v", err))
 	}
@@ -116,7 +116,7 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 	if r == nil {
 		return nil
 	}
-	blockMeta := wire.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
+	blockMeta := amino.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block meta: %v", err))
 	}
@@ -134,7 +134,7 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 	if r == nil {
 		return nil
 	}
-	commit := wire.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
+	commit := amino.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading commit: %v", err))
 	}
@@ -151,7 +151,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	if r == nil {
 		return nil
 	}
-	commit := wire.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
+	commit := amino.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading commit: %v", err))
 	}
@@ -178,7 +178,7 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
-	metaBytes := wire.BinaryBytes(blockMeta)
+	metaBytes := amino.BinaryBytes(blockMeta)
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 
 	// Save block parts
@@ -187,12 +187,12 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block commit (duplicate and separate from the Block)
-	blockCommitBytes := wire.BinaryBytes(block.LastCommit)
+	blockCommitBytes := amino.BinaryBytes(block.LastCommit)
 	bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes)
 
 	// Save seen commit (seen +2/3 precommits for block)
 	// NOTE: we can delete this at a later height
-	seenCommitBytes := wire.BinaryBytes(seenCommit)
+	seenCommitBytes := amino.BinaryBytes(seenCommit)
 	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 
 	// Save new BlockStoreStateJSON descriptor
@@ -211,7 +211,7 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	if height != bs.Height()+1 {
 		cmn.PanicSanity(cmn.Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
 	}
-	partBytes := wire.BinaryBytes(part)
+	partBytes := amino.BinaryBytes(part)
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -360,13 +360,13 @@ const (
 // BlockchainMessage is a generic message for this reactor.
 type BlockchainMessage interface{}
 
-var _ = wire.RegisterInterface(
+var _ = amino.RegisterInterface(
 	struct{ BlockchainMessage }{},
-	wire.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
-	wire.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
-	wire.ConcreteType{&bcNoBlockResponseMessage{}, msgTypeNoBlockResponse},
-	wire.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
-	wire.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
+	amino.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
+	amino.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
+	amino.ConcreteType{&bcNoBlockResponseMessage{}, msgTypeNoBlockResponse},
+	amino.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
+	amino.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
 )
 
 // DecodeMessage decodes BlockchainMessage.
@@ -375,7 +375,7 @@ func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage,
 	msgType = bz[0]
 	n := int(0)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
+	msg = amino.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
 	if err != nil && n != len(bz) {
 		err = errors.New("DecodeMessage() had bytes left over")
 	}

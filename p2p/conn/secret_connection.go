@@ -21,7 +21,7 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -274,7 +274,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 
 	cmn.Parallel(
 		func() {
-			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
+			msgBytes := amino.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
 			_, err1 = sc.Write(msgBytes)
 		},
 		func() {
@@ -284,7 +284,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 				return
 			}
 			n := int(0) // not used.
-			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
+			recvMsg = amino.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
 		})
 
 	if err1 != nil {

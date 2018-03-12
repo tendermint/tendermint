@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/consensus/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -72,9 +72,9 @@ var initOnce sync.Once
 
 func registerInterfacesOnce() {
 	initOnce.Do(func() {
-		var _ = wire.RegisterInterface(
+		var _ = amino.RegisterInterface(
 			struct{ WALMessage }{},
-			wire.ConcreteType{[]byte{}, 0x10},
+			amino.ConcreteType{[]byte{}, 0x10},
 		)
 	})
 }

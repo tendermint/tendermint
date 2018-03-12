@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -1292,18 +1292,18 @@ const (
 // ConsensusMessage is a message that can be sent and received on the ConsensusReactor
 type ConsensusMessage interface{}
 
-var _ = wire.RegisterInterface(
+var _ = amino.RegisterInterface(
 	struct{ ConsensusMessage }{},
-	wire.ConcreteType{&NewRoundStepMessage{}, msgTypeNewRoundStep},
-	wire.ConcreteType{&CommitStepMessage{}, msgTypeCommitStep},
-	wire.ConcreteType{&ProposalMessage{}, msgTypeProposal},
-	wire.ConcreteType{&ProposalPOLMessage{}, msgTypeProposalPOL},
-	wire.ConcreteType{&BlockPartMessage{}, msgTypeBlockPart},
-	wire.ConcreteType{&VoteMessage{}, msgTypeVote},
-	wire.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
-	wire.ConcreteType{&VoteSetMaj23Message{}, msgTypeVoteSetMaj23},
-	wire.ConcreteType{&VoteSetBitsMessage{}, msgTypeVoteSetBits},
-	wire.ConcreteType{&ProposalHeartbeatMessage{}, msgTypeProposalHeartbeat},
+	amino.ConcreteType{&NewRoundStepMessage{}, msgTypeNewRoundStep},
+	amino.ConcreteType{&CommitStepMessage{}, msgTypeCommitStep},
+	amino.ConcreteType{&ProposalMessage{}, msgTypeProposal},
+	amino.ConcreteType{&ProposalPOLMessage{}, msgTypeProposalPOL},
+	amino.ConcreteType{&BlockPartMessage{}, msgTypeBlockPart},
+	amino.ConcreteType{&VoteMessage{}, msgTypeVote},
+	amino.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
+	amino.ConcreteType{&VoteSetMaj23Message{}, msgTypeVoteSetMaj23},
+	amino.ConcreteType{&VoteSetBitsMessage{}, msgTypeVoteSetBits},
+	amino.ConcreteType{&ProposalHeartbeatMessage{}, msgTypeProposalHeartbeat},
 )
 
 // DecodeMessage decodes the given bytes into a ConsensusMessage.
@@ -1312,7 +1312,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
 	msgType = bz[0]
 	n := new(int)
 	r := bytes.NewReader(bz)
-	msgI := wire.ReadBinary(struct{ ConsensusMessage }{}, r, maxConsensusMessageSize, n, &err)
+	msgI := amino.ReadBinary(struct{ ConsensusMessage }{}, r, maxConsensusMessageSize, n, &err)
 	msg = msgI.(struct{ ConsensusMessage }).ConsensusMessage
 	return
 }

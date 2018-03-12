@@ -7,7 +7,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
@@ -165,9 +165,9 @@ const (
 // MempoolMessage is a message sent or received by the MempoolReactor.
 type MempoolMessage interface{}
 
-var _ = wire.RegisterInterface(
+var _ = amino.RegisterInterface(
 	struct{ MempoolMessage }{},
-	wire.ConcreteType{&TxMessage{}, msgTypeTx},
+	amino.ConcreteType{&TxMessage{}, msgTypeTx},
 )
 
 // DecodeMessage decodes a byte-array into a MempoolMessage.
@@ -175,7 +175,7 @@ func DecodeMessage(bz []byte) (msgType byte, msg MempoolMessage, err error) {
 	msgType = bz[0]
 	n := new(int)
 	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ MempoolMessage }{}, r, maxMempoolMessageSize, n, &err).(struct{ MempoolMessage }).MempoolMessage
+	msg = amino.ReadBinary(struct{ MempoolMessage }{}, r, maxMempoolMessageSize, n, &err).(struct{ MempoolMessage }).MempoolMessage
 	return
 }
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 )
 
 func examplePrevote() *Vote {
@@ -89,9 +89,9 @@ func TestVoteVerifySignature(t *testing.T) {
 
 	// serialize, deserialize and verify again....
 	precommit := new(Vote)
-	bs, err := wire.MarshalBinary(vote)
+	bs, err := amino.MarshalBinary(vote)
 	require.NoError(t, err)
-	err = wire.UnmarshalBinary(bs, &precommit)
+	err = amino.UnmarshalBinary(bs, &precommit)
 	require.NoError(t, err)
 
 	// verify the transmitted vote

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -83,9 +83,9 @@ const (
 	evidenceTypeDuplicateVote = byte(0x01)
 )
 
-var _ = wire.RegisterInterface(
+var _ = amino.RegisterInterface(
 	struct{ Evidence }{},
-	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
+	amino.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
 )
 
 //-------------------------------------------
@@ -120,7 +120,7 @@ func (dve *DuplicateVoteEvidence) Index() int {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return wireHasher(dve).Hash()
+	return aminoHasher(dve).Hash()
 }
 
 // Verify returns an error if the two votes aren't conflicting.
@@ -165,8 +165,8 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	}
 
 	// just check their hashes
-	dveHash := wireHasher(dve).Hash()
-	evHash := wireHasher(ev).Hash()
+	dveHash := aminoHasher(dve).Hash()
+	evHash := aminoHasher(ev).Hash()
 	return bytes.Equal(dveHash, evHash)
 }
 

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
@@ -33,7 +33,7 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(status)
+		jsonBytes := amino.JSONBytes(status)
 		counter += len(jsonBytes)
 	}
 
@@ -54,7 +54,7 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(nodeInfo)
+		jsonBytes := amino.JSONBytes(nodeInfo)
 		counter += len(jsonBytes)
 	}
 }
@@ -74,7 +74,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.BinaryBytes(nodeInfo)
+		jsonBytes := amino.BinaryBytes(nodeInfo)
 		counter += len(jsonBytes)
 	}
 
@@ -101,7 +101,7 @@ func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 			b.Fatal(err)
 			return
 		}
-		//jsonBytes := wire.JSONBytes(nodeInfo)
+		//jsonBytes := amino.JSONBytes(nodeInfo)
 		counter += len(bytes)
 	}
 

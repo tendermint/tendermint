@@ -3,14 +3,14 @@ package types
 import (
 	"time"
 
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// canonical json is wire's json for structs with fields in alphabetical order
+// canonical json is amino's json for structs with fields in alphabetical order
 
 // TimeFormat is used for generating the sigs
-const TimeFormat = wire.RFC3339Millis
+const TimeFormat = amino.RFC3339Millis
 
 type CanonicalJSONBlockID struct {
 	Hash        cmn.HexBytes               `json:"hash,omitempty"`
@@ -114,7 +114,7 @@ func CanonicalHeartbeat(heartbeat *Heartbeat) CanonicalJSONHeartbeat {
 }
 
 func CanonicalTime(t time.Time) string {
-	// note that sending time over wire resets it to
+	// note that sending time over amino resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
 	return t.UTC().Format(TimeFormat)

@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 
 	"github.com/tendermint/tendermint/lite"
 	liteErr "github.com/tendermint/tendermint/lite/errors"
@@ -19,7 +19,7 @@ const (
 	MaxFullCommitSize = 1024 * 1024
 )
 
-// SaveFullCommit exports the seed in binary / go-wire style
+// SaveFullCommit exports the seed in binary / go-amino style
 func SaveFullCommit(fc lite.FullCommit, path string) error {
 	f, err := os.Create(path)
 	if err != nil {
@@ -28,7 +28,7 @@ func SaveFullCommit(fc lite.FullCommit, path string) error {
 	defer f.Close()
 
 	var n int
-	wire.WriteBinary(fc, f, &n, &err)
+	amino.WriteBinary(fc, f, &n, &err)
 	return errors.WithStack(err)
 }
 
@@ -57,7 +57,7 @@ func LoadFullCommit(path string) (lite.FullCommit, error) {
 	defer f.Close()
 
 	var n int
-	wire.ReadBinaryPtr(&fc, f, MaxFullCommitSize, &n, &err)
+	amino.ReadBinaryPtr(&fc, f, MaxFullCommitSize, &n, &err)
 	return fc, errors.WithStack(err)
 }
 

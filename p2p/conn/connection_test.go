@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -377,8 +377,8 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	// send badly encoded msgPacket
 	var n int
 	var err error
-	wire.WriteByte(packetTypeMsg, client, &n, &err)
-	wire.WriteByteSlice([]byte(msg), client, &n, &err)
+	amino.WriteByte(packetTypeMsg, client, &n, &err)
+	amino.WriteByteSlice([]byte(msg), client, &n, &err)
 	assert.True(expectSend(chOnErr), "badly encoded msgPacket")
 }
 
@@ -449,7 +449,7 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	// send msg with unknown msg type
 	var n int
 	var err error
-	wire.WriteByte(0x04, mconnClient.conn, &n, &err)
+	amino.WriteByte(0x04, mconnClient.conn, &n, &err)
 	assert.True(expectSend(chOnErr), "unknown msg type")
 }
 
