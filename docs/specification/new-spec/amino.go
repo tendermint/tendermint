@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"time"
-
-	amino "github.com/tendermint/go-amino"
 )
 
 func main() {
@@ -62,7 +60,7 @@ func main() {
 }
 
 func encode(i interface{}) {
-	Println(amino.BinaryBytes(i))
+	Println(cdc.BinaryBytes(i))
 
 }
 

@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"

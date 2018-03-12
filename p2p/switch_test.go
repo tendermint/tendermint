@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"

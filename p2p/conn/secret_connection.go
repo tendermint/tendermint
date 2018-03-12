@@ -21,7 +21,7 @@ import (
 	"golang.org/x/crypto/ripemd160"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-amino"
+	"github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 

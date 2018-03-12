@@ -13,7 +13,7 @@ var cdc *amino.Codec
 
 func init() {
 	cdc = amino.NewCodec()
-	crypto.RegisterWire(cdc)
+	crypto.RegisterAmino(cdc)
 }
 
 func MarshalBinary(o interface{}) ([]byte, error) {

@@ -3,7 +3,7 @@ package evidence
 import (
 	"fmt"
 
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
 )

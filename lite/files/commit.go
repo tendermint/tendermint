@@ -6,7 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 
 	"github.com/tendermint/tendermint/lite"
 	liteErr "github.com/tendermint/tendermint/lite/errors"

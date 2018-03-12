@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/abci/types"
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"

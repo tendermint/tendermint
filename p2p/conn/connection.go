@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	flow "github.com/tendermint/tmlibs/flowrate"
 	"github.com/tendermint/tmlibs/log"
@@ -251,7 +251,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", amino.BinaryBytes(msg))
+	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg) //, "bytes", amino.MarshalBinary(msg))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -260,7 +260,11 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	success := channel.sendBytes(amino.BinaryBytes(msg))
+	bz, err := amino.MarshalBinary(msg)
+	if err != nil {
+		panic(err)
+	}
+	success := channel.sendBytes(bz)
 	if success {
 		// Wake up sendRoutine if necessary
 		select {
@@ -289,7 +293,11 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	ok = channel.trySendBytes(amino.BinaryBytes(msg))
+	bz, err := amino.MarshalBinary(msg)
+	if err != nil {
+		panic(err)
+	}
+	ok = channel.trySendBytes(bz)
 	if ok {
 		// Wake up sendRoutine if necessary
 		select {
@@ -335,8 +343,8 @@ FOR_LOOP:
 			}
 		case <-c.pingTimer.Chan():
 			c.Logger.Debug("Send Ping")
-			amino.WriteByte(packetTypePing, c.bufWriter, &n, &err)
-			c.sendMonitor.Update(int(n))
+			err = c.bufWriter.WriteByte(packetTypePing)
+			c.sendMonitor.Update(1)
 			c.Logger.Debug("Starting pong timer", "dur", c.config.PongTimeout)
 			c.pongTimer = time.AfterFunc(c.config.PongTimeout, func() {
 				select {
@@ -354,8 +362,8 @@ FOR_LOOP:
 			}
 		case <-c.pong:
 			c.Logger.Debug("Send Pong")
-			amino.WriteByte(packetTypePong, c.bufWriter, &n, &err)
-			c.sendMonitor.Update(int(n))
+			err = c.bufWriter.WriteByte(packetTypePong)
+			c.sendMonitor.Update(1)
 			c.flush()
 		case <-c.quit:
 			break FOR_LOOP
@@ -468,10 +476,9 @@ FOR_LOOP:
 		*/
 
 		// Read packet type
-		var n int
 		var err error
-		pktType := amino.ReadByte(c.bufReader, &n, &err)
-		c.recvMonitor.Update(int(n))
+		pktType, err := c.bufReader.ReadByte()
+		c.recvMonitor.Update(1)
 		if err != nil {
 			if c.IsRunning() {
 				c.Logger.Error("Connection failed @ recvRoutine (reading byte)", "conn", c, "err", err)
@@ -499,8 +506,10 @@ FOR_LOOP:
 				// never block
 			}
 		case packetTypeMsg:
-			pkt, n, err := msgPacket{}, int(0), error(nil)
-			amino.ReadBinaryPtr(&pkt, c.bufReader, c.config.maxMsgPacketTotalSize(), &n, &err)
+			pkt := &msgPacket{}
+			err := amino.UnmarshalBinary(c.bufReader, pkt)
+			// Q: how we're supposed to guess length of pkt?
+			n := len(pkt.Bytes) + 2 // + go-amino overhead
 			c.recvMonitor.Update(int(n))
 			if err != nil {
 				if c.IsRunning() {
@@ -719,16 +728,15 @@ func (ch *Channel) nextMsgPacket() msgPacket {
 func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 	packet := ch.nextMsgPacket()
 	ch.Logger.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
-	writeMsgPacketTo(packet, w, &n, &err)
+	var bz []byte
+	bz, err = amino.MarshalBinary(packet)
 	if err == nil {
-		ch.recentlySent += int64(n)
+		n, err = w.Write(bz)
+		if err == nil {
+			ch.recentlySent += int64(n)
+		}
 	}
 	return
-}
-
-func writeMsgPacketTo(packet msgPacket, w io.Writer, n *int, err *error) {
-	amino.WriteByte(packetTypeMsg, w, n, err)
-	amino.WriteBinary(packet, w, n, err)
 }
 
 // Handles incoming msgPackets. It returns a message bytes if message is

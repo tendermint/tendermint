@@ -1,13 +1,14 @@
 package conn
 
 import (
+	"io"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -418,14 +419,14 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	client := mconnClient.conn
 
 	// send msg thats just right
-	var n int
 	var err error
 	packet := msgPacket{
 		ChannelID: 0x01,
 		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-5),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
+	_, err = writeMsgPacketTo(packet, client)
+	assert.NoError(err)
 	assert.True(expectSend(chOnRcv), "msg just right")
 
 	// send msg thats too long
@@ -434,8 +435,21 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-4),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
+	_, err = writeMsgPacketTo(packet, client)
+	assert.NoError(err)
 	assert.True(expectSend(chOnErr), "msg too long")
+}
+
+func writeMsgPacketTo(packet msgPacket, w io.Writer) (n int, err error) {
+	n, err = w.Write([]byte{packetTypeMsg})
+	if err == nil {
+		var bz []byte
+		bz, err = amino.MarshalBinary(packet)
+		if err == nil {
+			n, err = w.Write(bz)
+		}
+	}
+	return
 }
 
 func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {

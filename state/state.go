@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 
 	"github.com/tendermint/tendermint/types"
 )

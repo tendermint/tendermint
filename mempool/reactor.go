@@ -7,7 +7,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	amino "github.com/tendermint/go-amino"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
