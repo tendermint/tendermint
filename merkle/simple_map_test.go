@@ -17,37 +17,37 @@ func TestSimpleMap(t *testing.T) {
 	{
 		db := NewSimpleMap()
 		db.Set("key1", strHasher("value1"))
-		assert.Equal(t, "19618304d1ad2635c4238bce87f72331b22a11a1", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "acdb4f121bc6f25041eb263ab463f1cd79236a32", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
 		db.Set("key1", strHasher("value2"))
-		assert.Equal(t, "51cb96d3d41e1714def72eb4bacc211de9ddf284", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "b8cbf5adee8c524e14f531da9b49adbbbd66fffa", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
 		db.Set("key1", strHasher("value1"))
 		db.Set("key2", strHasher("value2"))
-		assert.Equal(t, "58a0a99d5019fdcad4bcf55942e833b2dfab9421", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "1708aabc85bbe00242d3db8c299516aa54e48c38", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
 		db.Set("key2", strHasher("value2")) // NOTE: out of order
 		db.Set("key1", strHasher("value1"))
-		assert.Equal(t, "58a0a99d5019fdcad4bcf55942e833b2dfab9421", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "1708aabc85bbe00242d3db8c299516aa54e48c38", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
 		db.Set("key1", strHasher("value1"))
 		db.Set("key2", strHasher("value2"))
 		db.Set("key3", strHasher("value3"))
-		assert.Equal(t, "cb56db3c7993e977f4c2789559ae3e5e468a6e9b", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "e728afe72ce351eed6aca65c5f78da19b9a6e214", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 	{
 		db := NewSimpleMap()
 		db.Set("key2", strHasher("value2")) // NOTE: out of order
 		db.Set("key1", strHasher("value1"))
 		db.Set("key3", strHasher("value3"))
-		assert.Equal(t, "cb56db3c7993e977f4c2789559ae3e5e468a6e9b", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
+		assert.Equal(t, "e728afe72ce351eed6aca65c5f78da19b9a6e214", fmt.Sprintf("%x", db.Hash()), "Hash didn't match")
 	}
 }

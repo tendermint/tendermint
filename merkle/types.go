@@ -28,10 +28,10 @@ type Hasher interface {
 }
 
 //-----------------------------------------------------------------------
-// NOTE: these are duplicated from go-wire so we dont need go-wire as a dep
+// NOTE: these are duplicated from go-amino so we dont need go-amino as a dep
 
 func encodeByteSlice(w io.Writer, bz []byte) (err error) {
-	err = encodeVarint(w, int64(len(bz)))
+	err = encodeUvarint(w, uint64(len(bz)))
 	if err != nil {
 		return
 	}
@@ -39,9 +39,9 @@ func encodeByteSlice(w io.Writer, bz []byte) (err error) {
 	return
 }
 
-func encodeVarint(w io.Writer, i int64) (err error) {
+func encodeUvarint(w io.Writer, i uint64) (err error) {
 	var buf [10]byte
-	n := binary.PutVarint(buf[:], i)
+	n := binary.PutUvarint(buf[:], i)
 	_, err = w.Write(buf[0:n])
 	return
 }
