@@ -119,3 +119,6 @@ metalinter_all:
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
 .PHONY: check protoc build check_tools get_tools get_protoc update_tools get_vendor_deps test fmt metalinter metalinter_all
+
+grpc_dbserver:
+	protoc -I proto/ proto/defs.proto --go_out=plugins=grpc:proto
