@@ -2,9 +2,9 @@ package amino
 
 import (
 	amino "github.com/tendermint/go-amino"
+	crypto "github.com/tendermint/go-crypto"
 )
 
-/*
 // Expose access to a global amino codec
 // TODO: maybe introduce some Context object
 // containing logger, config, codec that can
@@ -15,36 +15,22 @@ func init() {
 	cdc = amino.NewCodec()
 	crypto.RegisterWire(cdc)
 }
-*/
-
-// Just a flow through to go-amino.
-// To be used later for the global codec
 
 func MarshalBinary(o interface{}) ([]byte, error) {
-	return amino.MarshalBinary(o)
+	return cdc.MarshalBinary(o)
 }
 
 func UnmarshalBinary(bz []byte, ptr interface{}) error {
-	return amino.UnmarshalBinary(bz, ptr)
+	return cdc.UnmarshalBinary(bz, ptr)
 }
 
 func MarshalJSON(o interface{}) ([]byte, error) {
-	return amino.MarshalJSON(o)
+	return cdc.MarshalJSON(o)
 }
 
 func UnmarshalJSON(jsonBz []byte, ptr interface{}) error {
-	return amino.UnmarshalJSON(jsonBz, ptr)
+	return cdc.UnmarshalJSON(jsonBz, ptr)
 }
-
-type ConcreteType = amino.ConcreteType
-
-func RegisterInterface(o interface{}, ctypes ...ConcreteType) *amino.TypeInfo {
-	return amino.RegisterInterface(o, ctypes...)
-}
-
-const RFC3339Millis = amino.RFC3339Millis
-
-/*
 
 func RegisterInterface(ptr interface{}, opts *amino.InterfaceOptions) {
 	cdc.RegisterInterface(ptr, opts)
@@ -57,4 +43,3 @@ func RegisterConcrete(o interface{}, name string, opts *amino.ConcreteOptions) {
 //-------------------------------
 
 const RFC3339Millis = amino.RFC3339Millis
-*/
