@@ -198,7 +198,7 @@ func newValidator(address []byte, power int64) *Validator {
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey).Wrap()
+	return crypto.PubKeyEd25519(pubKey)
 }
 
 func randValidator_() *Validator {

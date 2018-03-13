@@ -1,6 +1,8 @@
 package amino
 
 import (
+	"io"
+
 	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
 )
@@ -20,8 +22,20 @@ func MarshalBinary(o interface{}) ([]byte, error) {
 	return cdc.MarshalBinary(o)
 }
 
+func MarshalBinaryBare(o interface{}) ([]byte, error) {
+	return cdc.MarshalBinaryBare(o)
+}
+
 func UnmarshalBinary(bz []byte, ptr interface{}) error {
 	return cdc.UnmarshalBinary(bz, ptr)
+}
+
+func UnmarshalBinaryReader(r io.Reader, ptr interface{}, maxSize int64) error {
+	return cdc.UnmarshalBinaryReader(r, ptr, maxSize)
+}
+
+func UnmarshalBinaryBare(bz []byte, ptr interface{}) error {
+	return cdc.UnmarshalBinaryBare(bz, ptr)
 }
 
 func MarshalJSON(o interface{}) ([]byte, error) {

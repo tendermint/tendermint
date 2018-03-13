@@ -31,9 +31,9 @@ func makeKVStoreConnPair() (fooConn, barConn kvstoreConn) {
 
 func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection) {
 	fooConn, barConn := makeKVStoreConnPair()
-	fooPrvKey := crypto.GenPrivKeyEd25519().Wrap()
+	fooPrvKey := crypto.GenPrivKeyEd25519()
 	fooPubKey := fooPrvKey.PubKey()
-	barPrvKey := crypto.GenPrivKeyEd25519().Wrap()
+	barPrvKey := crypto.GenPrivKeyEd25519()
 	barPubKey := barPrvKey.PubKey()
 
 	cmn.Parallel(
@@ -92,7 +92,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	genNodeRunner := func(nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) func() {
 		return func() {
 			// Node handskae
-			nodePrvKey := crypto.GenPrivKeyEd25519().Wrap()
+			nodePrvKey := crypto.GenPrivKeyEd25519()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -79,14 +79,10 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 
 //-------------------------------------------
 
-const (
-	evidenceTypeDuplicateVote = byte(0x01)
-)
-
-var _ = amino.RegisterInterface(
-	struct{ Evidence }{},
-	amino.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
-)
+func init() {
+	amino.RegisterInterface((*Evidence)(nil), nil)
+	amino.RegisterConcrete(DuplicateVoteEvidence{}, "com.tendermint.evidence.duplicate_vote", nil)
+}
 
 //-------------------------------------------
 

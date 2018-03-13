@@ -56,7 +56,8 @@ func (bs *BlockStore) Height() int64 {
 
 // GetReader returns the value associated with the given key wrapped in an io.Reader.
 // If no value is found, it returns nil.
-// It's mainly for use with amino.ReadBinary.
+// It's mainly for use with amino.UnmarshalBinaryReader.
+// TODO: remove
 func (bs *BlockStore) GetReader(key []byte) io.Reader {
 	bytez := bs.db.Get(key)
 	if bytez == nil {
@@ -68,13 +69,12 @@ func (bs *BlockStore) GetReader(key []byte) io.Reader {
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {
-	var n int
-	var err error
-	r := bs.GetReader(calcBlockMetaKey(height))
-	if r == nil {
+	bz := bs.db.Get(calcBlockMetaKey(height))
+	if len(bz) == 0 {
 		return nil
 	}
-	blockMeta := amino.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
+	var blockMeta *types.BlockMeta
+	err := amino.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block meta: %v", err))
 	}
@@ -83,7 +83,8 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		part := bs.LoadBlockPart(height, i)
 		bytez = append(bytez, part.Bytes...)
 	}
-	block := amino.ReadBinary(&types.Block{}, bytes.NewReader(bytez), 0, &n, &err).(*types.Block)
+	var block *types.Block
+	err = amino.UnmarshalBinaryBare(bytez, block)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block: %v", err))
 	}
@@ -94,13 +95,12 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
-	var n int
-	var err error
-	r := bs.GetReader(calcBlockPartKey(height, index))
-	if r == nil {
+	bz := bs.db.Get(calcBlockPartKey(height, index))
+	if len(bz) == 0 {
 		return nil
 	}
-	part := amino.ReadBinary(&types.Part{}, r, 0, &n, &err).(*types.Part)
+	var part *types.Part
+	err := amino.UnmarshalBinaryBare(bz, part)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block part: %v", err))
 	}
@@ -110,13 +110,12 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 // LoadBlockMeta returns the BlockMeta for the given height.
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
-	var n int
-	var err error
-	r := bs.GetReader(calcBlockMetaKey(height))
-	if r == nil {
+	bz := bs.db.Get(calcBlockMetaKey(height))
+	if len(bz) == 0 {
 		return nil
 	}
-	blockMeta := amino.ReadBinary(&types.BlockMeta{}, r, 0, &n, &err).(*types.BlockMeta)
+	var blockMeta *types.BlockMeta
+	err := amino.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading block meta: %v", err))
 	}
@@ -128,13 +127,12 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // and it comes from the block.LastCommit for `height+1`.
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
-	var n int
-	var err error
-	r := bs.GetReader(calcBlockCommitKey(height))
-	if r == nil {
+	bz := bs.db.Get(calcBlockCommitKey(height))
+	if len(bz) == 0 {
 		return nil
 	}
-	commit := amino.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
+	var commit *types.Commit
+	err := amino.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading commit: %v", err))
 	}
@@ -145,13 +143,12 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // This is useful when we've seen a commit, but there has not yet been
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
-	var n int
-	var err error
-	r := bs.GetReader(calcSeenCommitKey(height))
-	if r == nil {
+	bz := bs.db.Get(calcSeenCommitKey(height))
+	if len(bz) == 0 {
 		return nil
 	}
-	commit := amino.ReadBinary(&types.Commit{}, r, 0, &n, &err).(*types.Commit)
+	var commit *types.Commit
+	err := amino.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
 		panic(fmt.Sprintf("Error reading commit: %v", err))
 	}
@@ -178,7 +175,10 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save block meta
 	blockMeta := types.NewBlockMeta(block, blockParts)
-	metaBytes := amino.BinaryBytes(blockMeta)
+	metaBytes, err := amino.MarshalBinaryBare(blockMeta)
+	if err != nil {
+		panic(fmt.Sprintf("BlockStore failed to marshal block meta: %v", err))
+	}
 	bs.db.Set(calcBlockMetaKey(height), metaBytes)
 
 	// Save block parts
@@ -187,12 +187,18 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 	}
 
 	// Save block commit (duplicate and separate from the Block)
-	blockCommitBytes := amino.BinaryBytes(block.LastCommit)
+	blockCommitBytes, err := amino.MarshalBinaryBare(block.LastCommit)
+	if err != nil {
+		panic(fmt.Sprintf("BlockStore failed to marshal block commit: %v", err))
+	}
 	bs.db.Set(calcBlockCommitKey(height-1), blockCommitBytes)
 
 	// Save seen commit (seen +2/3 precommits for block)
 	// NOTE: we can delete this at a later height
-	seenCommitBytes := amino.BinaryBytes(seenCommit)
+	seenCommitBytes, err := amino.MarshalBinaryBare(seenCommit)
+	if err != nil {
+		panic(fmt.Sprintf("BlockStore failed to marshal seen commit: %v", err))
+	}
 	bs.db.Set(calcSeenCommitKey(height), seenCommitBytes)
 
 	// Save new BlockStoreStateJSON descriptor
@@ -211,7 +217,10 @@ func (bs *BlockStore) saveBlockPart(height int64, index int, part *types.Part) {
 	if height != bs.Height()+1 {
 		cmn.PanicSanity(cmn.Fmt("BlockStore can only save contiguous blocks. Wanted %v, got %v", bs.Height()+1, height))
 	}
-	partBytes := amino.BinaryBytes(part)
+	partBytes, err := amino.MarshalBinaryBare(part)
+	if err != nil {
+		panic(fmt.Sprintf("BlockStore failed to marshal block part: %v", err))
+	}
 	bs.db.Set(calcBlockPartKey(height, index), partBytes)
 }
 

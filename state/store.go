@@ -69,7 +69,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 		return state
 	}
 
-	err := amino.UnmarshalBinary(buf, &state)
+	err := amino.UnmarshalBinaryBare(buf, &state)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:

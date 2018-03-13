@@ -27,8 +27,10 @@ func SaveFullCommit(fc lite.FullCommit, path string) error {
 	}
 	defer f.Close()
 
-	var n int
-	amino.WriteBinary(fc, f, &n, &err)
+	bz, err := amino.MarshalBinary(fc)
+	if err == nil {
+		_, err = f.Write(bz)
+	}
 	return errors.WithStack(err)
 }
 
@@ -56,8 +58,7 @@ func LoadFullCommit(path string) (lite.FullCommit, error) {
 	}
 	defer f.Close()
 
-	var n int
-	amino.ReadBinaryPtr(&fc, f, MaxFullCommitSize, &n, &err)
+	err = amino.UnmarshalBinaryReader(f, &fc, MaxFullCommitSize)
 	return fc, errors.WithStack(err)
 }
 

@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"reflect"
@@ -178,7 +177,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		return
 	}
 
-	_, msg, err := DecodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		conR.Switch.StopPeerForError(src, err)
@@ -375,17 +374,17 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 			select {
 			case data, ok := <-stepsCh:
 				if ok { // a receive from a closed channel returns the zero value immediately
-					edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
+					edrs := data.(types.TMEventData).(types.EventDataRoundState)
 					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
 				}
 			case data, ok := <-votesCh:
 				if ok {
-					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
+					edv := data.(types.TMEventData).(types.EventDataVote)
 					conR.broadcastHasVoteMessage(edv.Vote)
 				}
 			case data, ok := <-heartbeatsCh:
 				if ok {
-					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
+					edph := data.(types.TMEventData).(types.EventDataProposalHeartbeat)
 					conR.broadcastProposalHeartbeatMessage(edph)
 				}
 			case <-conR.Quit():
@@ -1275,45 +1274,27 @@ func (ps *PeerState) StringIndented(indent string) string {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeNewRoundStep = byte(0x01)
-	msgTypeCommitStep   = byte(0x02)
-	msgTypeProposal     = byte(0x11)
-	msgTypeProposalPOL  = byte(0x12)
-	msgTypeBlockPart    = byte(0x13) // both block & POL
-	msgTypeVote         = byte(0x14)
-	msgTypeHasVote      = byte(0x15)
-	msgTypeVoteSetMaj23 = byte(0x16)
-	msgTypeVoteSetBits  = byte(0x17)
-
-	msgTypeProposalHeartbeat = byte(0x20)
-)
-
 // ConsensusMessage is a message that can be sent and received on the ConsensusReactor
 type ConsensusMessage interface{}
 
-var _ = amino.RegisterInterface(
-	struct{ ConsensusMessage }{},
-	amino.ConcreteType{&NewRoundStepMessage{}, msgTypeNewRoundStep},
-	amino.ConcreteType{&CommitStepMessage{}, msgTypeCommitStep},
-	amino.ConcreteType{&ProposalMessage{}, msgTypeProposal},
-	amino.ConcreteType{&ProposalPOLMessage{}, msgTypeProposalPOL},
-	amino.ConcreteType{&BlockPartMessage{}, msgTypeBlockPart},
-	amino.ConcreteType{&VoteMessage{}, msgTypeVote},
-	amino.ConcreteType{&HasVoteMessage{}, msgTypeHasVote},
-	amino.ConcreteType{&VoteSetMaj23Message{}, msgTypeVoteSetMaj23},
-	amino.ConcreteType{&VoteSetBitsMessage{}, msgTypeVoteSetBits},
-	amino.ConcreteType{&ProposalHeartbeatMessage{}, msgTypeProposalHeartbeat},
-)
+func init() {
+	amino.RegisterInterface((*ConsensusMessage)(nil), nil)
+	amino.RegisterConcrete(NewRoundStepMessage{}, "com.tendermint.consensus_reactor.new_round_step_msg", nil)
+	amino.RegisterConcrete(CommitStepMessage{}, "com.tendermint.consensus_reactor.commit_step_msg", nil)
+	amino.RegisterConcrete(ProposalMessage{}, "com.tendermint.consensus_reactor.proposal_msg", nil)
+	amino.RegisterConcrete(ProposalPOLMessage{}, "com.tendermint.consensus_reactor.proposal_pol_msg", nil)
+	amino.RegisterConcrete(BlockPartMessage{}, "com.tendermint.consensus_reactor.block_part_msg", nil) // both block & POL
+	amino.RegisterConcrete(VoteMessage{}, "com.tendermint.consensus_reactor.vote_msg", nil)
+	amino.RegisterConcrete(HasVoteMessage{}, "com.tendermint.consensus_reactor.has_vote_msg", nil)
+	amino.RegisterConcrete(VoteSetMaj23Message{}, "com.tendermint.consensus_reactor.vote_set_maj23_msg", nil)
+	amino.RegisterConcrete(VoteSetBitsMessage{}, "com.tendermint.consensus_reactor.vote_set_bits_msg", nil)
+	amino.RegisterConcrete(ProposalHeartbeatMessage{}, "com.tendermint.consensus_reactor.proposal_heartbeat_msg", nil)
+}
 
 // DecodeMessage decodes the given bytes into a ConsensusMessage.
 // TODO: check for unnecessary extra bytes at the end.
-func DecodeMessage(bz []byte) (msgType byte, msg ConsensusMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msgI := amino.ReadBinary(struct{ ConsensusMessage }{}, r, maxConsensusMessageSize, n, &err)
-	msg = msgI.(struct{ ConsensusMessage }).ConsensusMessage
+func DecodeMessage(bz []byte) (msg ConsensusMessage, err error) {
+	err = amino.UnmarshalBinary(bz, &msg)
 	return
 }
 

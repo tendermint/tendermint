@@ -487,23 +487,16 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 
 //---------------------------------------------------------
 
-const (
-	msgTypePubKey        = byte(0x01)
-	msgTypeSignVote      = byte(0x10)
-	msgTypeSignProposal  = byte(0x11)
-	msgTypeSignHeartbeat = byte(0x12)
-)
-
 // PrivValMsg is sent between RemoteSigner and SocketClient.
 type PrivValMsg interface{}
 
-var _ = amino.RegisterInterface(
-	struct{ PrivValMsg }{},
-	amino.ConcreteType{&PubKeyMsg{}, msgTypePubKey},
-	amino.ConcreteType{&SignVoteMsg{}, msgTypeSignVote},
-	amino.ConcreteType{&SignProposalMsg{}, msgTypeSignProposal},
-	amino.ConcreteType{&SignHeartbeatMsg{}, msgTypeSignHeartbeat},
-)
+func init() {
+	amino.RegisterInterface((*PrivValMsg)(nil), nil)
+	amino.RegisterConcrete(PubKeyMsg{}, "com.tendermint.priv_validator.socket.pub_key_msg", nil)
+	amino.RegisterConcrete(SignVoteMsg{}, "com.tendermint.priv_validator.socket.sign_vote_msg", nil)
+	amino.RegisterConcrete(SignProposalMsg{}, "com.tendermint.priv_validator.socket.sign_proposal_msg", nil)
+	amino.RegisterConcrete(SignHeartbeatMsg{}, "com.tendermint.priv_validator.socket.sign_heartbeat_msg", nil)
+}
 
 // PubKeyMsg is a PrivValidatorSocket message containing the public key.
 type PubKeyMsg struct {

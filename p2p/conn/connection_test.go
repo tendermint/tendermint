@@ -365,7 +365,7 @@ func expectSend(ch chan struct{}) bool {
 }
 
 func TestMConnectionReadErrorBadEncoding(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	require := require.New(t)
 
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
@@ -376,11 +376,14 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	msg := "Ant-Man"
 
 	// send badly encoded msgPacket
-	var n int
-	var err error
-	amino.WriteByte(packetTypeMsg, client, &n, &err)
-	amino.WriteByteSlice([]byte(msg), client, &n, &err)
-	assert.True(expectSend(chOnErr), "badly encoded msgPacket")
+	_, err := client.Write([]byte{packetTypeMsg})
+	require.NoError(err)
+	bz, err := amino.MarshalBinaryBare([]byte(msg))
+	require.NoError(err)
+	_, err = client.Write(bz)
+	require.NoError(err)
+
+	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
 }
 
 func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
@@ -461,9 +464,9 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	defer mconnServer.Stop()
 
 	// send msg with unknown msg type
-	var n int
-	var err error
-	amino.WriteByte(0x04, mconnClient.conn, &n, &err)
+	n, err := mconnClient.conn.Write([]byte{0x04})
+	require.NoError(err)
+
 	assert.True(expectSend(chOnErr), "unknown msg type")
 }
 

@@ -3,52 +3,55 @@ package main
 import (
 	"fmt"
 	"time"
+
+	amino "github.com/tendermint/go-amino"
 )
 
 func main() {
+	cdc := amino.NewCodec()
 
-	encode(uint8(6))
-	encode(uint32(6))
-	encode(int8(-6))
-	encode(int32(-6))
+	encode(cdc, uint8(6))
+	encode(cdc, uint32(6))
+	encode(cdc, int8(-6))
+	encode(cdc, int32(-6))
 	Break()
-	encode(uint(6))
-	encode(uint(70000))
-	encode(int(0))
-	encode(int(-6))
-	encode(int(-70000))
+	encode(cdc, uint(6))
+	encode(cdc, uint(70000))
+	encode(cdc, int(0))
+	encode(cdc, int(-6))
+	encode(cdc, int(-70000))
 	Break()
-	encode("")
-	encode("a")
-	encode("hello")
-	encode("¥")
+	encode(cdc, "")
+	encode(cdc, "a")
+	encode(cdc, "hello")
+	encode(cdc, "¥")
 	Break()
-	encode([4]int8{1, 2, 3, 4})
-	encode([4]int16{1, 2, 3, 4})
-	encode([4]int{1, 2, 3, 4})
-	encode([2]string{"abc", "efg"})
+	encode(cdc, [4]int8{1, 2, 3, 4})
+	encode(cdc, [4]int16{1, 2, 3, 4})
+	encode(cdc, [4]int{1, 2, 3, 4})
+	encode(cdc, [2]string{"abc", "efg"})
 	Break()
-	encode([]int8{})
-	encode([]int8{1, 2, 3, 4})
-	encode([]int16{1, 2, 3, 4})
-	encode([]int{1, 2, 3, 4})
-	encode([]string{"abc", "efg"})
+	encode(cdc, []int8{})
+	encode(cdc, []int8{1, 2, 3, 4})
+	encode(cdc, []int16{1, 2, 3, 4})
+	encode(cdc, []int{1, 2, 3, 4})
+	encode(cdc, []string{"abc", "efg"})
 	Break()
 
 	timeFmt := "Mon Jan 2 15:04:05 -0700 MST 2006"
 	t1, _ := time.Parse(timeFmt, timeFmt)
 	n := (t1.UnixNano() / 1000000.) * 1000000
-	encode(n)
-	encode(t1)
+	encode(cdc, n)
+	encode(cdc, t1)
 
 	t2, _ := time.Parse(timeFmt, "Thu Jan 1 00:00:00 -0000 UTC 1970")
-	encode(t2)
+	encode(cdc, t2)
 
 	t2, _ = time.Parse(timeFmt, "Thu Jan 1 00:00:01 -0000 UTC 1970")
 	fmt.Println("N", t2.UnixNano())
-	encode(t2)
+	encode(cdc, t2)
 	Break()
-	encode(struct {
+	encode(cdc, struct {
 		A int
 		B string
 		C time.Time
@@ -59,9 +62,12 @@ func main() {
 	})
 }
 
-func encode(i interface{}) {
-	Println(cdc.BinaryBytes(i))
-
+func encode(cdc *amino.Codec, i interface{}) {
+	bz, err := cdc.MarshalBinary(i)
+	if err != nil {
+		panic(err)
+	}
+	Println(bz)
 }
 
 func Println(b []byte) {

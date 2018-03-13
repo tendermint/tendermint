@@ -145,8 +145,12 @@ func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reacto
 		case <-ticker.C:
 			msgs := reactor.getMsgs(channel)
 			if len(msgs) > 0 {
-				if !bytes.Equal(msgs[0].Bytes, amino.BinaryBytes(msg)) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", amino.BinaryBytes(msg), msgs[0].Bytes)
+				bz, err := amino.MarshalBinaryBare(msg)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !bytes.Equal(msgs[0].Bytes, bz) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", bz, msgs[0].Bytes)
 				}
 				return
 			}
@@ -238,7 +242,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -268,7 +272,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 

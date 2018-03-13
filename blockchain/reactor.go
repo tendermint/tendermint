@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"reflect"
@@ -175,7 +174,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 
 // Receive implements Reactor by handling 4 types of messages (look below).
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes, bcR.maxMsgSize())
+	msg, err := DecodeMessage(msgBytes, bcR.maxMsgSize())
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		bcR.Switch.StopPeerForError(src, err)
@@ -349,36 +348,22 @@ func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeBlockRequest    = byte(0x10)
-	msgTypeBlockResponse   = byte(0x11)
-	msgTypeNoBlockResponse = byte(0x12)
-	msgTypeStatusResponse  = byte(0x20)
-	msgTypeStatusRequest   = byte(0x21)
-)
-
 // BlockchainMessage is a generic message for this reactor.
 type BlockchainMessage interface{}
 
-var _ = amino.RegisterInterface(
-	struct{ BlockchainMessage }{},
-	amino.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
-	amino.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
-	amino.ConcreteType{&bcNoBlockResponseMessage{}, msgTypeNoBlockResponse},
-	amino.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
-	amino.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
-)
+func init() {
+	amino.RegisterInterface((*BlockchainMessage)(nil), nil)
+	amino.RegisterConcrete(bcBlockRequestMessage{}, "com.tendermint.blockchain_reactor.block_request_msg", nil)
+	amino.RegisterConcrete(bcBlockResponseMessage{}, "com.tendermint.blockchain_reactor.block_response_msg", nil)
+	amino.RegisterConcrete(bcNoBlockResponseMessage{}, "com.tendermint.blockchain_reactor.no_block_response_msg", nil)
+	amino.RegisterConcrete(bcStatusResponseMessage{}, "com.tendermint.blockchain_reactor.status_response_msg", nil)
+	amino.RegisterConcrete(bcStatusRequestMessage{}, "com.tendermint.blockchain_reactor.block_request_msg", nil)
+}
 
 // DecodeMessage decodes BlockchainMessage.
 // TODO: ensure that bz is completely read.
-func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage, err error) {
-	msgType = bz[0]
-	n := int(0)
-	r := bytes.NewReader(bz)
-	msg = amino.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
-	if err != nil && n != len(bz) {
-		err = errors.New("DecodeMessage() had bytes left over")
-	}
+func DecodeMessage(bz []byte, maxSize int) (msg BlockchainMessage, err error) {
+	err = amino.UnmarshalBinary(bz, &msg)
 	return
 }
 

@@ -115,8 +115,8 @@ const (
 	evidenceTypeMockBad  = byte(0x02)
 )
 
-var _ = amino.RegisterInterface(
-	struct{ types.Evidence }{},
-	amino.ConcreteType{types.MockGoodEvidence{}, evidenceTypeMockGood},
-	amino.ConcreteType{types.MockBadEvidence{}, evidenceTypeMockBad},
-)
+func init() {
+	amino.RegisterInterface((*types.Evidence)(nil), nil)
+	amino.RegisterConcrete(types.MockGoodEvidence{}, "com.tendermint.evidence.mock_good", nil)
+	amino.RegisterConcrete(types.MockBadEvidence{}, "com.tendermint.evidence.mock_bad", nil)
+}

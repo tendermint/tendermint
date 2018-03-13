@@ -13,7 +13,7 @@ import (
 
 // Returns an empty kvstore peer
 func randPeer() *peer {
-	pubKey := crypto.GenPrivKeyEd25519().Wrap().PubKey()
+	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	return &peer{
 		nodeInfo: NodeInfo{
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),

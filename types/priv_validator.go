@@ -61,7 +61,7 @@ type TestSigner interface {
 
 func GenSigner() TestSigner {
 	return &DefaultTestSigner{
-		crypto.GenPrivKeyEd25519().Wrap(),
+		crypto.GenPrivKeyEd25519(),
 	}
 }
 
@@ -159,7 +159,7 @@ func (pv *PrivValidatorFS) GetPubKey() crypto.PubKey {
 // GenPrivValidatorFS generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
 func GenPrivValidatorFS(filePath string) *PrivValidatorFS {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	return &PrivValidatorFS{
 		Address:  privKey.PubKey().Address(),
 		PubKey:   privKey.PubKey(),
@@ -282,7 +282,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 				return false, errors.New("Step regression")
 			} else if privVal.LastStep == step {
 				if privVal.LastSignBytes != nil {
-					if privVal.LastSignature.Empty() {
+					if privVal.LastSignature == nil {
 						panic("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil

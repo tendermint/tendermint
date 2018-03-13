@@ -306,11 +306,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func binarySerializeIt(v interface{}) []byte {
-	var n int
-	var err error
-	buf := new(bytes.Buffer)
-	amino.WriteBinary(v, buf, &n, &err)
-	return buf.Bytes()
+	bz, err := amino.MarshalBinaryBare(v)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 func TestLoadBlockPart(t *testing.T) {

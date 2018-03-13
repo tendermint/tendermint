@@ -330,7 +330,6 @@ func (c *MConnection) sendRoutine() {
 
 FOR_LOOP:
 	for {
-		var n int
 		var err error
 		select {
 		case <-c.flushTimer.Ch:
@@ -507,7 +506,7 @@ FOR_LOOP:
 			}
 		case packetTypeMsg:
 			pkt := &msgPacket{}
-			err := amino.UnmarshalBinary(c.bufReader, pkt)
+			err := amino.UnmarshalBinaryReader(c.bufReader, pkt, int64(c.config.MaxMsgPacketPayloadSize+2)) // 2 bytes: ChannelID and EOF
 			// Q: how we're supposed to guess length of pkt?
 			n := len(pkt.Bytes) + 2 // + go-amino overhead
 			c.recvMonitor.Update(int(n))
@@ -742,10 +741,10 @@ func (ch *Channel) writeMsgPacketTo(w io.Writer) (n int, err error) {
 // Handles incoming msgPackets. It returns a message bytes if message is
 // complete. NOTE message bytes may change on next call to recvMsgPacket.
 // Not goroutine-safe
-func (ch *Channel) recvMsgPacket(packet msgPacket) ([]byte, error) {
+func (ch *Channel) recvMsgPacket(packet *msgPacket) ([]byte, error) {
 	ch.Logger.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
 	if ch.desc.RecvMessageCapacity < len(ch.recving)+len(packet.Bytes) {
-		return nil, amino.ErrBinaryReadOverflow
+		return nil, errors.New("binary read overflow")
 	}
 	ch.recving = append(ch.recving, packet.Bytes...)
 	if packet.EOF == byte(0x01) {

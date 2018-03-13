@@ -19,7 +19,10 @@ import (
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
 	blockStore := NewBlockStore(dbm.NewMemDB())
-	state, _ := sm.LoadStateFromDBOrGenesisFile(dbm.NewMemDB(), config.GenesisFile())
+	state, err := sm.LoadStateFromDBOrGenesisFile(dbm.NewMemDB(), config.GenesisFile())
+	if err != nil {
+		panic(err)
+	}
 	return state, blockStore
 }
 
@@ -76,7 +79,10 @@ func TestNoBlockResponse(t *testing.T) {
 	// wait for our response to be received on the peer
 	for _, tt := range tests {
 		reqBlockMsg := &bcBlockRequestMessage{tt.height}
-		reqBlockBytes := amino.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
+		reqBlockBytes, err := amino.MarshalBinary(struct{ BlockchainMessage }{reqBlockMsg})
+		if err != nil {
+			t.Fatal(err)
+		}
 		bcr.Receive(chID, peer, reqBlockBytes)
 		value := peer.lastValue()
 		msg := value.(struct{ BlockchainMessage }).BlockchainMessage

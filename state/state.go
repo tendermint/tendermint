@@ -86,7 +86,7 @@ func (s State) Equals(s2 State) bool {
 
 // Bytes serializes the State using go-amino.
 func (s State) Bytes() []byte {
-	bz, err := amino.MarshalBinary(s)
+	bz, err := amino.MarshalBinaryBare(s)
 	if err != nil {
 		panic(err)
 	}

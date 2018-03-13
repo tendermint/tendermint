@@ -114,11 +114,13 @@ func TestPEXReactorReceive(t *testing.T) {
 
 	size := book.Size()
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
-	msg := amino.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	msg, err := amino.MarshalBinary(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	require.NoError(t, err)
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
 
-	msg = amino.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	msg, err = amino.MarshalBinary(struct{ PexMessage }{&pexRequestMessage{}})
+	require.NoError(t, err)
 	r.Receive(PexChannel, peer, msg)
 }
 
@@ -133,7 +135,8 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
-	msg := amino.BinaryBytes(struct{ PexMessage }{&pexRequestMessage{}})
+	msg, err := amino.MarshalBinary(struct{ PexMessage }{&pexRequestMessage{}})
+	require.NoError(t, err)
 
 	// first time creates the entry
 	r.Receive(PexChannel, peer, msg)
@@ -169,7 +172,8 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
-	msg := amino.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	msg, err := amino.MarshalBinary(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
+	require.NoError(t, err)
 
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, msg)
@@ -321,7 +325,7 @@ func newMockPeer() mockPeer {
 	_, netAddr := p2p.CreateRoutableAddr()
 	mp := mockPeer{
 		addr:   netAddr,
-		pubKey: crypto.GenPrivKeyEd25519().Wrap().PubKey(),
+		pubKey: crypto.GenPrivKeyEd25519().PubKey(),
 	}
 	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
 	mp.Start()

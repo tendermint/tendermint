@@ -72,10 +72,8 @@ var initOnce sync.Once
 
 func registerInterfacesOnce() {
 	initOnce.Do(func() {
-		var _ = amino.RegisterInterface(
-			struct{ WALMessage }{},
-			amino.ConcreteType{[]byte{}, 0x10},
-		)
+		amino.RegisterInterface((*WALMessage)(nil), nil)
+		amino.RegisterConcrete([]byte{}, "com.tendermint.wal.test_msg", nil)
 	})
 }
 

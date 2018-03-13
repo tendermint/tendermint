@@ -297,12 +297,15 @@ func (pc *peerConn) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration
 	var err2 error
 	cmn.Parallel(
 		func() {
-			var n int
-			amino.WriteBinary(&ourNodeInfo, pc.conn, &n, &err1)
+			var bz []byte
+			bz, err1 = amino.MarshalBinary(ourNodeInfo)
+			if err1 != nil {
+				return
+			}
+			_, err1 = pc.conn.Write(bz)
 		},
 		func() {
-			var n int
-			amino.ReadBinary(&peerNodeInfo, pc.conn, MaxNodeInfoSize(), &n, &err2)
+			err2 = amino.UnmarshalBinaryReader(pc.conn, &peerNodeInfo, int64(MaxNodeInfoSize()))
 		})
 	if err1 != nil {
 		return peerNodeInfo, errors.Wrap(err1, "Error during handshake/write")

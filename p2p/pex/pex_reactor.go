@@ -1,7 +1,6 @@
 package pex
 
 import (
-	"bytes"
 	"fmt"
 	"math/rand"
 	"reflect"
@@ -171,7 +170,7 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		r.Switch.StopPeerForError(src, err)
@@ -599,27 +598,19 @@ func isAddrPrivate(addr *p2p.NetAddress, privatePeerIDs []string) bool {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeRequest = byte(0x01)
-	msgTypeAddrs   = byte(0x02)
-)
-
 // PexMessage is a primary type for PEX messages. Underneath, it could contain
 // either pexRequestMessage, or pexAddrsMessage messages.
 type PexMessage interface{}
 
-var _ = amino.RegisterInterface(
-	struct{ PexMessage }{},
-	amino.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
-	amino.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
-)
+func init() {
+	amino.RegisterInterface((*PexMessage)(nil), nil)
+	amino.RegisterConcrete(pexRequestMessage{}, "com.tendermint.pex_reactor.request_msg", nil)
+	amino.RegisterConcrete(pexAddrsMessage{}, "com.tendermint.pex_reactor.addrs_msg", nil)
+}
 
 // DecodeMessage implements interface registered above.
-func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = amino.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
+func DecodeMessage(bz []byte) (msg PexMessage, err error) {
+	err = amino.UnmarshalBinary(bz, &msg)
 	return
 }
 

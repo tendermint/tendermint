@@ -20,7 +20,7 @@ func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -47,7 +47,7 @@ func TestPeerWithoutAuthEnc(t *testing.T) {
 	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: config}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
 	rp.Start()
 	defer rp.Stop()
 
@@ -68,7 +68,7 @@ func TestPeerSend(t *testing.T) {
 	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: config}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
 	rp.Start()
 	defer rp.Stop()
 
@@ -89,7 +89,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 		{ID: testCh, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
-	pk := crypto.GenPrivKeyEd25519().Wrap()
+	pk := crypto.GenPrivKeyEd25519()
 	pc, err := newOutboundPeerConn(addr, config, false, pk)
 	if err != nil {
 		return nil, err
