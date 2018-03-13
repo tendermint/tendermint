@@ -93,6 +93,7 @@ type ResultDialPeers struct {
 
 type Peer struct {
 	p2p.NodeInfo     `json:"node_info"`
+	p2p.ID           `json:"node_id"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 }
