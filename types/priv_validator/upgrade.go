@@ -10,14 +10,14 @@ import (
 )
 
 type PrivValidatorV1 struct {
-	Address       cmn.HexBytes     `json:"address"`
-	PubKey        crypto.PubKey    `json:"pub_key"`
-	LastHeight    int64            `json:"last_height"`
-	LastRound     int              `json:"last_round"`
-	LastStep      int8             `json:"last_step"`
-	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
-	LastSignBytes cmn.HexBytes     `json:"last_signbytes,omitempty"` // so we dont lose signatures
-	PrivKey       crypto.PrivKey   `json:"priv_key"`
+	Address       cmn.HexBytes            `json:"address"`
+	PubKey        crypto.PubKeyEd25519    `json:"pub_key"`
+	LastHeight    int64                   `json:"last_height"`
+	LastRound     int                     `json:"last_round"`
+	LastStep      int8                    `json:"last_step"`
+	LastSignature crypto.SignatureEd25519 `json:"last_signature,omitempty"` // so we dont lose signatures
+	LastSignBytes cmn.HexBytes            `json:"last_signbytes,omitempty"` // so we dont lose signatures
+	PrivKey       crypto.PrivKeyEd25519   `json:"priv_key"`
 }
 
 func UpgradePrivValidator(filePath string) (*PrivValidatorJSON, error) {

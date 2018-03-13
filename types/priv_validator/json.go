@@ -17,26 +17,15 @@ type PrivValidator = types.PrivValidator2
 //-----------------------------------------------------
 
 // PrivKey implements Signer
-type PrivKey crypto.PrivKey
+type PrivKey crypto.PrivKeyEd25519
 
 // Sign - Implements Signer
-func (pk PrivKey) Sign(msg []byte) (crypto.Signature, error) {
-	return crypto.PrivKey(pk).Sign(msg), nil
+func (pk PrivKey) Sign(msg []byte) (crypto.SignatureEd25519, error) {
+	return crypto.PrivKeyEd25519(pk).Sign(msg).(crypto.SignatureEd25519), nil
 }
 
-// MarshalJSON satisfies json.Marshaler.
-func (pk PrivKey) MarshalJSON() ([]byte, error) {
-	return crypto.PrivKey(pk).MarshalJSON()
-}
-
-// UnmarshalJSON satisfies json.Unmarshaler.
-func (pk *PrivKey) UnmarshalJSON(b []byte) error {
-	cpk := new(crypto.PrivKey)
-	if err := cpk.UnmarshalJSON(b); err != nil {
-		return err
-	}
-	*pk = (PrivKey)(*cpk)
-	return nil
+func (pk PrivKey) PubKey() crypto.PubKeyEd25519 {
+	return crypto.PrivKeyEd25519(pk).PubKey().(crypto.PubKeyEd25519)
 }
 
 //-----------------------------------------------------
@@ -116,7 +105,7 @@ func (pvj *PrivValidatorJSON) Reset() {
 // GenPrivValidatorJSON generates a new validator with randomly generated private key
 // and the given filePath. It does not persist to file.
 func GenPrivValidatorJSON(filePath string) *PrivValidatorJSON {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	return &PrivValidatorJSON{
 		PrivValidatorUnencrypted: NewPrivValidatorUnencrypted(privKey),
 		filePath:                 filePath,
