@@ -65,10 +65,11 @@ Tendermint 201
    :maxdepth: 2
 
    specification.rst
+   determinism.rst
 
 * For a deeper dive, see `this thesis <https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769>`__.
 * There is also the `original whitepaper <https://tendermint.com/static/docs/tendermint.pdf>`__, though it is now quite outdated.
 * Readers might also be interested in the `Cosmos Whitepaper <https://cosmos.network/whitepaper>`__ which describes Tendermint, ABCI, and how to build a scalable, heterogeneous, cryptocurrency network.
 * For example applications and related software built by the Tendermint team and other, see the `software ecosystem <https://tendermint.com/ecosystem>`__.
 
-Join the `Cosmos and Tendermint Rocket Chat <https://cosmos.rocket.chat>`__ to ask questions and discuss projects.
+Join the `community <https://cosmos.network/community>`__ to ask questions and discuss projects.

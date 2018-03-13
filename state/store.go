@@ -1,7 +1,6 @@
 package state
 
 import (
-	"bytes"
 	"fmt"
 
 	abci "github.com/tendermint/abci/types"
@@ -70,12 +69,11 @@ func loadState(db dbm.DB, key []byte) (state State) {
 		return state
 	}
 
-	r, n, err := bytes.NewReader(buf), new(int), new(error)
-	wire.ReadBinaryPtr(&state, r, 0, n, err)
-	if *err != nil {
+	err := wire.UnmarshalBinary(buf, &state)
+	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:
-                %v\n`, *err))
+                %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 
@@ -113,7 +111,11 @@ func NewABCIResponses(block *types.Block) *ABCIResponses {
 
 // Bytes serializes the ABCIResponse using go-wire
 func (a *ABCIResponses) Bytes() []byte {
-	return wire.BinaryBytes(*a)
+	bz, err := wire.MarshalBinary(*a)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 func (a *ABCIResponses) ResultsHash() []byte {
@@ -131,12 +133,11 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 	}
 
 	abciResponses := new(ABCIResponses)
-	r, n, err := bytes.NewReader(buf), new(int), new(error)
-	wire.ReadBinaryPtr(abciResponses, r, 0, n, err)
-	if *err != nil {
+	err := wire.UnmarshalBinary(buf, abciResponses)
+	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadABCIResponses: Data has been corrupted or its spec has
-                changed: %v\n`, *err))
+                changed: %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 
@@ -160,7 +161,11 @@ type ValidatorsInfo struct {
 
 // Bytes serializes the ValidatorsInfo using go-wire
 func (valInfo *ValidatorsInfo) Bytes() []byte {
-	return wire.BinaryBytes(*valInfo)
+	bz, err := wire.MarshalBinary(*valInfo)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // LoadValidators loads the ValidatorSet for a given height.
@@ -189,12 +194,11 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	}
 
 	v := new(ValidatorsInfo)
-	r, n, err := bytes.NewReader(buf), new(int), new(error)
-	wire.ReadBinaryPtr(v, r, 0, n, err)
-	if *err != nil {
+	err := wire.UnmarshalBinary(buf, v)
+	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadValidators: Data has been corrupted or its spec has changed:
-                %v\n`, *err))
+                %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 
@@ -225,7 +229,11 @@ type ConsensusParamsInfo struct {
 
 // Bytes serializes the ConsensusParamsInfo using go-wire
 func (params ConsensusParamsInfo) Bytes() []byte {
-	return wire.BinaryBytes(params)
+	bz, err := wire.MarshalBinary(params)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 // LoadConsensusParams loads the ConsensusParams for a given height.
@@ -255,12 +263,11 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
 	}
 
 	paramsInfo := new(ConsensusParamsInfo)
-	r, n, err := bytes.NewReader(buf), new(int), new(error)
-	wire.ReadBinaryPtr(paramsInfo, r, 0, n, err)
-	if *err != nil {
+	err := wire.UnmarshalBinary(buf, paramsInfo)
+	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadConsensusParams: Data has been corrupted or its spec has changed:
-                %v\n`, *err))
+                %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
 

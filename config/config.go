@@ -20,9 +20,10 @@ var (
 
 	defaultConfigFileName  = "config.toml"
 	defaultGenesisJSONName = "genesis.json"
-	defaultPrivValName     = "priv_validator.json"
-	defaultNodeKeyName     = "node_key.json"
-	defaultAddrBookName    = "addrbook.json"
+
+	defaultPrivValName  = "priv_validator.json"
+	defaultNodeKeyName  = "node_key.json"
+	defaultAddrBookName = "addrbook.json"
 
 	defaultConfigFilePath  = filepath.Join(defaultConfigDir, defaultConfigFileName)
 	defaultGenesisJSONPath = filepath.Join(defaultConfigDir, defaultGenesisJSONName)
@@ -103,6 +104,10 @@ type BaseConfig struct {
 	// A custom human readable name for this node
 	Moniker string `mapstructure:"moniker"`
 
+	// TCP or UNIX socket address for Tendermint to listen on for
+	// connections from an external PrivValidator process
+	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
+
 	// TCP or UNIX socket address of the ABCI application,
 	// or the name of an ABCI application compiled in with the Tendermint binary
 	ProxyApp string `mapstructure:"proxy_app"`
@@ -158,7 +163,7 @@ func DefaultBaseConfig() BaseConfig {
 func TestBaseConfig() BaseConfig {
 	conf := DefaultBaseConfig()
 	conf.chainID = "tendermint_test"
-	conf.ProxyApp = "dummy"
+	conf.ProxyApp = "kvstore"
 	conf.FastSync = false
 	conf.DBBackend = "memdb"
 	return conf
@@ -281,6 +286,9 @@ type P2PConfig struct {
 	//
 	// Does not work if the peer-exchange reactor is disabled.
 	SeedMode bool `mapstructure:"seed_mode"`
+
+	// Authenticated encryption
+	AuthEnc bool `mapstructure:"auth_enc"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -296,6 +304,7 @@ func DefaultP2PConfig() *P2PConfig {
 		RecvRate:                512000, // 500 kB/s
 		PexReactor:              true,
 		SeedMode:                false,
+		AuthEnc:                 true,
 	}
 }
 

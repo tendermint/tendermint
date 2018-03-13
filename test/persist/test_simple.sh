@@ -8,8 +8,8 @@ tendermint init
 
 function start_procs(){
     name=$1
-    echo "Starting persistent dummy and tendermint"
-    abci-cli dummy --persist $TMHOME/dummy &> "dummy_${name}.log" &
+    echo "Starting persistent kvstore and tendermint"
+    abci-cli kvstore --persist $TMHOME/kvstore &> "kvstore_${name}.log" &
     PID_DUMMY=$!
     tendermint node &> tendermint_${name}.log &
     PID_TENDERMINT=$!

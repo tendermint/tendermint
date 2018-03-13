@@ -27,38 +27,38 @@ Then run
 
     go get -u github.com/tendermint/abci/cmd/abci-cli
 
-If there is an error, install and run the ``glide`` tool to pin the
+If there is an error, install and run the `dep <https://github.com/golang/dep>`__ tool to pin the
 dependencies:
 
 ::
 
-    go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
-    glide install
-    go install ./cmd/abci-cli
+    make get_tools
+    make get_vendor_deps
+    make install
 
 Now you should have the ``abci-cli`` installed; you'll see
-a couple of commands (``counter`` and ``dummy``) that are
+a couple of commands (``counter`` and ``kvstore``) that are
 example applications written in Go. See below for an application
 written in JavaScript.
 
 Now, let's run some apps!
 
-Dummy - A First Example
------------------------
+KVStore - A First Example
+-------------------------
 
-The dummy app is a `Merkle
+The kvstore app is a `Merkle
 tree <https://en.wikipedia.org/wiki/Merkle_tree>`__ that just stores all
 transactions. If the transaction contains an ``=``, e.g. ``key=value``,
 then the ``value`` is stored under the ``key`` in the Merkle tree.
 Otherwise, the full transaction bytes are stored as the key and the
 value.
 
-Let's start a dummy application.
+Let's start a kvstore application.
 
 ::
 
-    abci-cli dummy
+    abci-cli kvstore
 
 In another terminal, we can start Tendermint. If you have never run
 Tendermint before, use:
@@ -85,7 +85,7 @@ The ``-s`` just silences ``curl``. For nicer output, pipe the result
 into a tool like `jq <https://stedolan.github.io/jq/>`__ or
 `jsonpp <https://github.com/jmhodges/jsonpp>`__.
 
-Now let's send some transactions to the dummy.
+Now let's send some transactions to the kvstore.
 
 ::
 
@@ -192,7 +192,7 @@ In this instance of the counter app, with ``serial=on``, ``CheckTx``
 only allows transactions whose integer is greater than the last
 committed one.
 
-Let's kill the previous instance of ``tendermint`` and the ``dummy``
+Let's kill the previous instance of ``tendermint`` and the ``kvstore``
 application, and start the counter app. We can enable ``serial=on`` with
 a flag:
 
@@ -313,7 +313,7 @@ Neat, eh?
 Basecoin - A More Interesting Example
 -------------------------------------
 
-We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the ``dummy`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
+We saved the best for last; the `Cosmos SDK <https://github.com/cosmos/cosmos-sdk>`__ is a general purpose framework for building cryptocurrencies. Unlike the ``kvstore`` and ``counter``, which are strictly for example purposes. The reference implementation of Cosmos SDK is ``basecoin``, which demonstrates how to use the building blocks of the Cosmos SDK.
 
 The default ``basecoin`` application is a multi-asset cryptocurrency
 that supports inter-blockchain communication (IBC). For more details on how

@@ -11,7 +11,7 @@ next block should be; a validator might vote with a `VoteMessage` for a differen
 round, enough number of processes vote for the same block, then this block is committed and later
 added to the blockchain. `ProposalMessage` and `VoteMessage` are signed by the private key of the
 validator. The internals of the protocol and how it ensures safety and liveness properties are
-explained [here](https://github.com/tendermint/spec).
+explained in a forthcoming document.
 
 For efficiency reasons, validators in Tendermint consensus protocol do not agree directly on the
 block as the block size is big, i.e., they don't embed the block inside `Proposal` and

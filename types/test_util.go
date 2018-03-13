@@ -29,7 +29,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 }
 
 func signAddVote(privVal *PrivValidatorFS, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	vote.Signature, err = privVal.Signer.Sign(SignBytes(voteSet.ChainID(), vote))
+	vote.Signature, err = privVal.Signer.Sign(vote.SignBytes(voteSet.ChainID()))
 	if err != nil {
 		return false, err
 	}

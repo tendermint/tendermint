@@ -34,23 +34,53 @@ type Peer interface {
 
 //----------------------------------------------------------
 
+// peerConn contains the raw connection and its config.
+type peerConn struct {
+	outbound   bool
+	persistent bool
+	config     *PeerConfig
+	conn       net.Conn // source connection
+}
+
+// ID only exists for SecretConnection.
+// NOTE: Will panic if conn is not *SecretConnection.
+func (pc peerConn) ID() ID {
+	return PubKeyToID(pc.conn.(*tmconn.SecretConnection).RemotePubKey())
+}
+
 // peer implements Peer.
 //
 // Before using a peer, you will need to perform a handshake on connection.
 type peer struct {
 	cmn.BaseService
 
-	outbound bool
+	// raw peerConn and the multiplex connection
+	peerConn
+	mconn *tmconn.MConnection
 
-	conn  net.Conn            // source connection
-	mconn *tmconn.MConnection // multiplex connection
+	// peer's node info and the channel it knows about
+	// channels = nodeInfo.Channels
+	// cached to avoid copying nodeInfo in hasChannel
+	nodeInfo NodeInfo
+	channels []byte
 
-	persistent bool
-	config     *PeerConfig
+	// User data
+	Data *cmn.CMap
+}
 
-	nodeInfo NodeInfo  // peer's node info
-	channels []byte    // channels the peer knows about
-	Data     *cmn.CMap // User data.
+func newPeer(pc peerConn, nodeInfo NodeInfo,
+	reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
+	onPeerError func(Peer, interface{})) *peer {
+
+	p := &peer{
+		peerConn: pc,
+		nodeInfo: nodeInfo,
+		channels: nodeInfo.Channels,
+		Data:     cmn.NewCMap(),
+	}
+	p.mconn = createMConnection(pc.conn, p, reactorsByCh, chDescs, onPeerError, pc.config.MConfig)
+	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
+	return p
 }
 
 // PeerConfig is a Peer configuration.
@@ -79,36 +109,42 @@ func DefaultPeerConfig() *PeerConfig {
 	}
 }
 
-func newOutboundPeer(addr *NetAddress, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig, persistent bool) (*peer, error) {
+func newOutboundPeerConn(addr *NetAddress, config *PeerConfig, persistent bool, ourNodePrivKey crypto.PrivKey) (peerConn, error) {
+	var pc peerConn
 
 	conn, err := dial(addr, config)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error creating peer")
+		return pc, errors.Wrap(err, "Error creating peer")
 	}
 
-	peer, err := newPeerFromConnAndConfig(conn, true, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
+	pc, err = newPeerConn(conn, config, true, persistent, ourNodePrivKey)
 	if err != nil {
-		if err := conn.Close(); err != nil {
-			return nil, err
+		if err2 := conn.Close(); err2 != nil {
+			return pc, errors.Wrap(err, err2.Error())
 		}
-		return nil, err
+		return pc, err
 	}
-	peer.persistent = persistent
 
-	return peer, nil
+	// ensure dialed ID matches connection ID
+	if config.AuthEnc && addr.ID != pc.ID() {
+		if err2 := conn.Close(); err2 != nil {
+			return pc, errors.Wrap(err, err2.Error())
+		}
+		return pc, ErrSwitchAuthenticationFailure{addr, pc.ID()}
+	}
+	return pc, nil
 }
 
-func newInboundPeer(conn net.Conn, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
+func newInboundPeerConn(conn net.Conn, config *PeerConfig, ourNodePrivKey crypto.PrivKey) (peerConn, error) {
 
 	// TODO: issue PoW challenge
 
-	return newPeerFromConnAndConfig(conn, false, reactorsByCh, chDescs, onPeerError, ourNodePrivKey, config)
+	return newPeerConn(conn, config, false, false, ourNodePrivKey)
 }
 
-func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[byte]Reactor, chDescs []*tmconn.ChannelDescriptor,
-	onPeerError func(Peer, interface{}), ourNodePrivKey crypto.PrivKey, config *PeerConfig) (*peer, error) {
+func newPeerConn(rawConn net.Conn,
+	config *PeerConfig, outbound, persistent bool,
+	ourNodePrivKey crypto.PrivKey) (pc peerConn, err error) {
 
 	conn := rawConn
 
@@ -118,32 +154,26 @@ func newPeerFromConnAndConfig(rawConn net.Conn, outbound bool, reactorsByCh map[
 		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, config.FuzzConfig)
 	}
 
-	// Encrypt connection
 	if config.AuthEnc {
+		// Set deadline for secret handshake
 		if err := conn.SetDeadline(time.Now().Add(config.HandshakeTimeout * time.Second)); err != nil {
-			return nil, errors.Wrap(err, "Error setting deadline while encrypting connection")
+			return pc, errors.Wrap(err, "Error setting deadline while encrypting connection")
 		}
 
-		var err error
+		// Encrypt connection
 		conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
 		if err != nil {
-			return nil, errors.Wrap(err, "Error creating peer")
+			return pc, errors.Wrap(err, "Error creating peer")
 		}
 	}
 
-	// NodeInfo is set after Handshake
-	p := &peer{
-		outbound: outbound,
-		conn:     conn,
-		config:   config,
-		Data:     cmn.NewCMap(),
-	}
-
-	p.mconn = createMConnection(conn, p, reactorsByCh, chDescs, onPeerError, config.MConfig)
-
-	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
-
-	return p, nil
+	// Only the information we already have
+	return peerConn{
+		config:     config,
+		outbound:   outbound,
+		persistent: persistent,
+		conn:       conn,
+	}, nil
 }
 
 //---------------------------------------------------
@@ -175,17 +205,17 @@ func (p *peer) OnStop() {
 
 // ID returns the peer's ID - the hex encoded hash of its pubkey.
 func (p *peer) ID() ID {
-	return PubKeyToID(p.PubKey())
+	return p.nodeInfo.ID()
 }
 
 // IsOutbound returns true if the connection is outbound, false otherwise.
 func (p *peer) IsOutbound() bool {
-	return p.outbound
+	return p.peerConn.outbound
 }
 
 // IsPersistent returns true if the peer is persitent, false otherwise.
 func (p *peer) IsPersistent() bool {
-	return p.persistent
+	return p.peerConn.persistent
 }
 
 // NodeInfo returns a copy of the peer's NodeInfo.
@@ -250,68 +280,48 @@ func (p *peer) hasChannel(chID byte) bool {
 // methods used by the Switch
 
 // CloseConn should be called by the Switch if the peer was created but never started.
-func (p *peer) CloseConn() {
-	p.conn.Close() // nolint: errcheck
+func (pc *peerConn) CloseConn() {
+	pc.conn.Close() // nolint: errcheck
 }
 
 // HandshakeTimeout performs the Tendermint P2P handshake between a given node and the peer
 // by exchanging their NodeInfo. It sets the received nodeInfo on the peer.
 // NOTE: blocking
-func (p *peer) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) error {
+func (pc *peerConn) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration) (peerNodeInfo NodeInfo, err error) {
 	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	if err := p.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return errors.Wrap(err, "Error setting deadline")
+	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
+		return peerNodeInfo, errors.Wrap(err, "Error setting deadline")
 	}
 
-	var peerNodeInfo NodeInfo
 	var err1 error
 	var err2 error
 	cmn.Parallel(
 		func() {
 			var n int
-			wire.WriteBinary(&ourNodeInfo, p.conn, &n, &err1)
+			wire.WriteBinary(&ourNodeInfo, pc.conn, &n, &err1)
 		},
 		func() {
 			var n int
-			wire.ReadBinary(&peerNodeInfo, p.conn, MaxNodeInfoSize(), &n, &err2)
-			p.Logger.Info("Peer handshake", "peerNodeInfo", peerNodeInfo)
+			wire.ReadBinary(&peerNodeInfo, pc.conn, MaxNodeInfoSize(), &n, &err2)
 		})
 	if err1 != nil {
-		return errors.Wrap(err1, "Error during handshake/write")
+		return peerNodeInfo, errors.Wrap(err1, "Error during handshake/write")
 	}
 	if err2 != nil {
-		return errors.Wrap(err2, "Error during handshake/read")
+		return peerNodeInfo, errors.Wrap(err2, "Error during handshake/read")
 	}
 
 	// Remove deadline
-	if err := p.conn.SetDeadline(time.Time{}); err != nil {
-		return errors.Wrap(err, "Error removing deadline")
+	if err := pc.conn.SetDeadline(time.Time{}); err != nil {
+		return peerNodeInfo, errors.Wrap(err, "Error removing deadline")
 	}
 
-	p.setNodeInfo(peerNodeInfo)
-	return nil
-}
-
-func (p *peer) setNodeInfo(nodeInfo NodeInfo) {
-	p.nodeInfo = nodeInfo
-	// cache the channels so we dont copy nodeInfo
-	// every time we check hasChannel
-	p.channels = nodeInfo.Channels
+	return peerNodeInfo, nil
 }
 
 // Addr returns peer's remote network address.
 func (p *peer) Addr() net.Addr {
-	return p.conn.RemoteAddr()
-}
-
-// PubKey returns peer's public key.
-func (p *peer) PubKey() crypto.PubKey {
-	if !p.nodeInfo.PubKey.Empty() {
-		return p.nodeInfo.PubKey
-	} else if p.config.AuthEnc {
-		return p.conn.(*tmconn.SecretConnection).RemotePubKey()
-	}
-	panic("Attempt to get peer's PubKey before calling Handshake")
+	return p.peerConn.conn.RemoteAddr()
 }
 
 // CanSend returns true if the send queue is not full, false otherwise.

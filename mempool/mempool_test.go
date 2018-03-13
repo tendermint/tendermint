@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/example/counter"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -73,7 +73,7 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 }
 
 func TestTxsAvailable(t *testing.T) {
-	app := dummy.NewDummyApplication()
+	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	mempool := newMempoolWithApp(cc)
 	mempool.EnableTxsAvailable()
@@ -238,7 +238,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	// 3. Create the mempool
 	wcfg := cfg.DefaultMempoolConfig()
 	wcfg.RootDir = rootDir
-	app := dummy.NewDummyApplication()
+	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
 	mempool := NewMempool(wcfg, appConnMem, 10)

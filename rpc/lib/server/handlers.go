@@ -746,13 +746,13 @@ func writeListOfEndpoints(w http.ResponseWriter, r *http.Request, funcMap map[st
 	buf.WriteString("<br>Available endpoints:<br>")
 
 	for _, name := range noArgNames {
-		link := fmt.Sprintf("http://%s/%s", r.Host, name)
+		link := fmt.Sprintf("//%s/%s", r.Host, name)
 		buf.WriteString(fmt.Sprintf("<a href=\"%s\">%s</a></br>", link, link))
 	}
 
 	buf.WriteString("<br>Endpoints that require arguments:<br>")
 	for _, name := range argNames {
-		link := fmt.Sprintf("http://%s/%s?", r.Host, name)
+		link := fmt.Sprintf("//%s/%s?", r.Host, name)
 		funcData := funcMap[name]
 		for i, argName := range funcData.argNames {
 			link += argName + "=_"

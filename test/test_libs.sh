@@ -1,28 +1,26 @@
 #! /bin/bash
-set -e
+set -ex
 
-# set glide.lock path
-if [[ "$GLIDE" == "" ]]; then
-	GLIDE=$GOPATH/src/github.com/tendermint/tendermint/glide.lock
-fi
+export PATH="$GOBIN:$PATH"
 
-# get vendored commit for given lib
+# Get the parent directory of where this script is.
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ] ; do SOURCE="$(readlink "$SOURCE")"; done
+DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 
 ####################
 # libs we depend on
 ####################
 
 # All libs should define `make test` and `make get_vendor_deps`
-LIBS_TEST=(tmlibs go-wire go-crypto abci)
-
-DIR=$(pwd)
-for lib in "${LIBS_MAKE_TEST[@]}"; do
-
+LIBS=(tmlibs go-wire go-crypto abci)
+for lib in "${LIBS[@]}"; do
 	# checkout vendored version of lib
-	bash scripts/glide/checkout.sh "$GLIDE" "$lib"
+	bash scripts/dep_utils/checkout.sh "$lib"
 
 	echo "Testing $lib ..."
 	cd "$GOPATH/src/github.com/tendermint/$lib"
+	make get_tools
 	make get_vendor_deps
 	make test
 	if [[ "$?" != 0 ]]; then

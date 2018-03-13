@@ -14,11 +14,14 @@ func AddNodeFlags(cmd *cobra.Command) {
 	// bind flags
 	cmd.Flags().String("moniker", config.Moniker, "Node Name")
 
+	// priv val flags
+	cmd.Flags().String("priv_validator_laddr", config.PrivValidatorListenAddr, "Socket address to listen on for connections from external priv_validator process")
+
 	// node flags
 	cmd.Flags().Bool("fast_sync", config.FastSync, "Fast blockchain syncing")
 
 	// abci flags
-	cmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'dummy' for local testing.")
+	cmd.Flags().String("proxy_app", config.ProxyApp, "Proxy app address, or 'nilapp' or 'kvstore' for local testing.")
 	cmd.Flags().String("abci", config.ABCI, "Specify abci transport (socket | grpc)")
 
 	// rpc flags
