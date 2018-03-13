@@ -52,6 +52,11 @@ func (b *EventBus) OnStop() {
 	b.pubsub.OnStop()
 }
 
+// OnReset restarts the pub/sub server
+func (b *EventBus) OnReset() error {
+	return b.pubsub.OnReset()
+}
+
 func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
 	return b.pubsub.Subscribe(ctx, subscriber, query, out)
 }
