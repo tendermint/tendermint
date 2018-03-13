@@ -257,10 +257,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
-		if netAddr == nil {
-			continue
-		}
-		if !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
+		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
 			r.book.AddAddress(netAddr, srcAddr)
 		}
 	}

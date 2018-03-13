@@ -269,21 +269,21 @@ func TestPEXReactorCrawlStatus(t *testing.T) {
 }
 
 func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
+	peer := p2p.CreateRandomPeer(false)
+
 	pexR, book := createReactor(&PEXReactorConfig{PrivatePeerIDs: []string{string(peer.NodeInfo().ID())}})
 	defer teardownReactor(book)
 
-	peer := p2p.CreateRandomPeer(false)
-
 	// we have to send a request to receive responses
-	r.RequestAddrs(peer)
+	pexR.RequestAddrs(peer)
 
 	size := book.Size()
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
 	msg := wire.BinaryBytes(struct{ PexMessage }{&pexAddrsMessage{Addrs: addrs}})
-	r.Receive(PexChannel, peer, msg)
+	pexR.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size, book.Size())
 
-	r.AddPeer(peer)
+	pexR.AddPeer(peer)
 	assert.Equal(t, size, book.Size())
 }
 
@@ -395,7 +395,7 @@ func createReactor(config *PEXReactorConfig) (r *PEXReactor, book *addrBook) {
 	book = NewAddrBook(filepath.Join(dir, "addrbook.json"), true)
 	book.SetLogger(log.TestingLogger())
 
-	r = NewPEXReactor(book, &PEXReactorConfig{})
+	r = NewPEXReactor(book, config)
 	r.SetLogger(log.TestingLogger())
 	return
 }
