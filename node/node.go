@@ -422,38 +422,9 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	if n.config.P2P.PersistentPeers != "" {
-		// are any of the persistent peers private?
-		persistentPeers := []string{}
-		persistentAndPrivatePeers := []string{}
-		var privatePeerIDs []string
-		if n.config.P2P.PrivatePeerIDs != "" {
-			privatePeerIDs = strings.Split(n.config.P2P.PrivatePeerIDs, ",")
-		}
-	PP_LOOP:
-		for _, peer := range strings.Split(n.config.P2P.PersistentPeers, ",") {
-			spl := strings.Split(peer, "@")
-			if len(spl) == 2 {
-				for _, ppID := range privatePeerIDs {
-					if spl[0] == ppID {
-						persistentAndPrivatePeers = append(persistentAndPrivatePeers, peer)
-						continue PP_LOOP
-					}
-				}
-			}
-			persistentPeers = append(persistentPeers, peer)
-		}
-
-		err = n.sw.DialPeersAsync(n.addrBook, persistentPeers, true)
+		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.PersistentPeers, ","), true)
 		if err != nil {
 			return err
-		}
-
-		// if any of the persistent peers are private, do not add them to addrbook
-		if len(persistentAndPrivatePeers) > 0 {
-			err = n.sw.DialPeersAsync(nil, persistentAndPrivatePeers, true)
-			if err != nil {
-				return err
-			}
 		}
 	}
 

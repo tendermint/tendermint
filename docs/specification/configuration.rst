@@ -89,6 +89,7 @@ like the file below, however, double check by inspecting the
     seeds = ""
 
     # Comma separated list of nodes to keep persistent connections to
+    # Do not add private peers to this list if you don't want them advertised
     persistent_peers = ""
 
     # Path to address book
