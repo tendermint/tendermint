@@ -11,7 +11,6 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/tendermint/amino"
-	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -39,7 +38,7 @@ type WALMessage interface{}
 
 func init() {
 	amino.RegisterInterface((*WALMessage)(nil), nil)
-	amino.RegisterConcrete(types.EventDataRoundState{}, "com.tendermint.wal.event_data_round_state_msg", nil)
+	// amino.RegisterConcrete(types.EventDataRoundState{}, "com.tendermint.wal.event_data_round_state_msg", nil)
 	amino.RegisterConcrete(msgInfo{}, "com.tendermint.wal.msg_info_msg", nil)
 	amino.RegisterConcrete(timeoutInfo{}, "com.tendermint.wal.timeout_msg", nil)
 	amino.RegisterConcrete(EndHeightMessage{}, "com.tendermint.wal.end_height_msg", nil)

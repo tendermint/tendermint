@@ -356,8 +356,8 @@ func init() {
 	amino.RegisterConcrete(bcBlockRequestMessage{}, "com.tendermint.blockchain_reactor.block_request_msg", nil)
 	amino.RegisterConcrete(bcBlockResponseMessage{}, "com.tendermint.blockchain_reactor.block_response_msg", nil)
 	amino.RegisterConcrete(bcNoBlockResponseMessage{}, "com.tendermint.blockchain_reactor.no_block_response_msg", nil)
+	amino.RegisterConcrete(bcStatusRequestMessage{}, "com.tendermint.blockchain_reactor.status_request_msg", nil)
 	amino.RegisterConcrete(bcStatusResponseMessage{}, "com.tendermint.blockchain_reactor.status_response_msg", nil)
-	amino.RegisterConcrete(bcStatusRequestMessage{}, "com.tendermint.blockchain_reactor.block_request_msg", nil)
 }
 
 // DecodeMessage decodes BlockchainMessage.
