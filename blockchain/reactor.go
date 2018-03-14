@@ -139,8 +139,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	if !peer.Send(BlockchainChannel,
-		struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
+	if !peer.Send(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()}) {
 		// doing nothing, will try later in `poolRoutine`
 	}
 	// peer is added to the pool once we receive the first
@@ -162,14 +161,12 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
 		msg := &bcBlockResponseMessage{Block: block}
-		return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
+		return src.TrySend(BlockchainChannel, msg)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{
-		&bcNoBlockResponseMessage{Height: msg.Height},
-	})
+	return src.TrySend(BlockchainChannel, &bcNoBlockResponseMessage{Height: msg.Height})
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
@@ -193,8 +190,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		queued := src.TrySend(BlockchainChannel,
-			struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
+		queued := src.TrySend(BlockchainChannel, &bcStatusResponseMessage{bcR.store.Height()})
 		if !queued {
 			// sorry
 		}
@@ -247,7 +243,7 @@ FOR_LOOP:
 				continue FOR_LOOP // Peer has since been disconnected.
 			}
 			msg := &bcBlockRequestMessage{request.Height}
-			queued := peer.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
+			queued := peer.TrySend(BlockchainChannel, msg)
 			if !queued {
 				// We couldn't make the request, send-queue full.
 				// The pool handles timeouts, just let it go.
@@ -340,8 +336,7 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bcR.Switch.Broadcast(BlockchainChannel,
-		struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
+	bcR.Switch.Broadcast(BlockchainChannel, &bcStatusRequestMessage{bcR.store.Height()})
 	return nil
 }
 
