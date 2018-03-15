@@ -26,6 +26,11 @@ func NewMemDB() *MemDB {
 	return database
 }
 
+// Implements atomicSetDeleter.
+func (db *MemDB) Mutex() *sync.Mutex {
+	return &(db.mtx)
+}
+
 // Implements DB.
 func (db *MemDB) Get(key []byte) []byte {
 	db.mtx.Lock()
@@ -63,6 +68,11 @@ func (db *MemDB) SetSync(key []byte, value []byte) {
 
 // Implements atomicSetDeleter.
 func (db *MemDB) SetNoLock(key []byte, value []byte) {
+	db.SetNoLockSync(key, value)
+}
+
+// Implements atomicSetDeleter.
+func (db *MemDB) SetNoLockSync(key []byte, value []byte) {
 	key = nonNilBytes(key)
 	value = nonNilBytes(value)
 
@@ -87,6 +97,11 @@ func (db *MemDB) DeleteSync(key []byte) {
 
 // Implements atomicSetDeleter.
 func (db *MemDB) DeleteNoLock(key []byte) {
+	db.DeleteNoLockSync(key)
+}
+
+// Implements atomicSetDeleter.
+func (db *MemDB) DeleteNoLockSync(key []byte) {
 	key = nonNilBytes(key)
 
 	delete(db.db, string(key))
@@ -122,19 +137,12 @@ func (db *MemDB) Stats() map[string]string {
 	return stats
 }
 
-//----------------------------------------
-// Batch
-
 // Implements DB.
 func (db *MemDB) NewBatch() Batch {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
 	return &memBatch{db, nil}
-}
-
-func (db *MemDB) Mutex() *sync.Mutex {
-	return &(db.mtx)
 }
 
 //----------------------------------------

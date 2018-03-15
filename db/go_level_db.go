@@ -110,10 +110,10 @@ func (db *GoLevelDB) Print() {
 	str, _ := db.db.GetProperty("leveldb.stats")
 	fmt.Printf("%v\n", str)
 
-	iter := db.db.NewIterator(nil, nil)
-	for iter.Next() {
-		key := iter.Key()
-		value := iter.Value()
+	itr := db.db.NewIterator(nil, nil)
+	for itr.Next() {
+		key := itr.Key()
+		value := itr.Value()
 		fmt.Printf("[%X]:\t[%X]\n", key, value)
 	}
 }
@@ -167,7 +167,15 @@ func (mBatch *goLevelDBBatch) Delete(key []byte) {
 
 // Implements Batch.
 func (mBatch *goLevelDBBatch) Write() {
-	err := mBatch.db.db.Write(mBatch.batch, nil)
+	err := mBatch.db.db.Write(mBatch.batch, &opt.WriteOptions{Sync: false})
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Implements Batch.
+func (mBatch *goLevelDBBatch) WriteSync() {
+	err := mBatch.db.db.Write(mBatch.batch, &opt.WriteOptions{Sync: true})
 	if err != nil {
 		panic(err)
 	}

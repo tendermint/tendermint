@@ -121,7 +121,15 @@ func TestWriter(t *testing.T) {
 	w.SetBlocking(true)
 	if n, err := w.Write(b[20:]); n != 80 || err != nil {
 		t.Fatalf("w.Write(b[20:]) expected 80 (<nil>); got %v (%v)", n, err)
-	} else if rt := time.Since(start); rt < _400ms {
+	} else if rt := time.Since(start); rt < _300ms {
+		// Explanation for `rt < _300ms` (as opposed to `< _400ms`)
+		//
+		//                 |<-- start        |        |
+		// epochs: -----0ms|---100ms|---200ms|---300ms|---400ms
+		// sends:        20|20      |20      |20      |20#
+		//
+		// NOTE: The '#' symbol can thus happen before 400ms is up.
+		// Thus, we can only panic if rt < _300ms.
 		t.Fatalf("w.Write(b[20:]) returned ahead of time (%v)", rt)
 	}
 

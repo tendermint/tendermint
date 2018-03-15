@@ -5,7 +5,9 @@ import "sync"
 type atomicSetDeleter interface {
 	Mutex() *sync.Mutex
 	SetNoLock(key, value []byte)
+	SetNoLockSync(key, value []byte)
 	DeleteNoLock(key []byte)
+	DeleteNoLockSync(key []byte)
 }
 
 type memBatch struct {
@@ -35,16 +37,34 @@ func (mBatch *memBatch) Delete(key []byte) {
 }
 
 func (mBatch *memBatch) Write() {
+	mBatch.write(false)
+}
+
+func (mBatch *memBatch) WriteSync() {
+	mBatch.write(true)
+}
+
+func (mBatch *memBatch) write(doSync bool) {
 	mtx := mBatch.db.Mutex()
 	mtx.Lock()
 	defer mtx.Unlock()
 
-	for _, op := range mBatch.ops {
+	for i, op := range mBatch.ops {
+		if doSync && i == (len(mBatch.ops)-1) {
+			switch op.opType {
+			case opTypeSet:
+				mBatch.db.SetNoLockSync(op.key, op.value)
+			case opTypeDelete:
+				mBatch.db.DeleteNoLockSync(op.key)
+			}
+			break // we're done.
+		}
 		switch op.opType {
 		case opTypeSet:
 			mBatch.db.SetNoLock(op.key, op.value)
 		case opTypeDelete:
 			mBatch.db.DeleteNoLock(op.key)
 		}
+
 	}
 }
