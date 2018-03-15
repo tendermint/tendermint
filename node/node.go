@@ -287,6 +287,8 @@ func NewNode(config *cfg.Config,
 		sw.AddReactor("PEX", pexReactor)
 	}
 
+	sw.SetAddrBook(addrBook)
+
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
 	// XXX: Query format subject to change

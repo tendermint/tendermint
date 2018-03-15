@@ -1,6 +1,7 @@
 package types
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -14,6 +15,10 @@ type RoundVoteSet struct {
 	Prevotes   *types.VoteSet
 	Precommits *types.VoteSet
 }
+
+var (
+	GotVoteFromUnwantedRoundError = errors.New("Peer has sent a vote that does not match our round for more than one round")
+)
 
 /*
 Keeps track of all VoteSets from round 0 to round 'round'.
@@ -117,10 +122,8 @@ func (hvs *HeightVoteSet) AddVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			voteSet = hvs.getVoteSet(vote.Round, vote.Type)
 			hvs.peerCatchupRounds[peerID] = append(rndz, vote.Round)
 		} else {
-			// Peer has sent a vote that does not match our round,
-			// for more than one round.  Bad peer!
-			// TODO punish peer.
-			// log.Warn("Deal with peer giving votes from unwanted rounds")
+			// punish peer
+			err = GotVoteFromUnwantedRoundError
 			return
 		}
 	}
