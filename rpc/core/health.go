@@ -1,84 +1,50 @@
 package core
 
 import (
-"time"
+	"time"
 
-ctypes "github.com/tendermint/tendermint/rpc/core/types"
-"github.com/tendermint/tendermint/types"
-cmn "github.com/tendermint/tmlibs/common"
+	"errors"
+	"fmt"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// Get Tendermint status including node info, pubkey, latest block
-// hash, app hash, block height and time.
+// Get node health. Returns HTTP `code 200` if creating blocks,
+// `code 500` in other case.
 //
 // ```shell
-// curl 'localhost:46657/status'
+// curl 'localhost:46657/health'
 // ```
 //
 // ```go
 // client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
-// result, err := client.Status()
+// result, err := client.Health()
 // ```
 //
 // > The above command returns JSON structured like this:
 //
 // ```json
 // {
-// 	"result": {
-// 		"syncing": false,
-// 		"latest_block_time": "2017-12-07T18:19:47.617Z",
-// 		"latest_block_height": 6,
-// 		"latest_app_hash": "",
-// 		"latest_block_hash": "A63D0C3307DEDCCFCC82ED411AE9108B70B29E02",
-// 		"pub_key": {
-// 			"data": "8C9A68070CBE33F9C445862BA1E9D96A75CEB68C0CF6ADD3652D07DCAC5D0380",
-// 			"type": "ed25519"
-// 		},
-// 		"node_info": {
-// 			"other": [
-// 				"wire_version=0.7.2",
-// 				"p2p_version=0.5.0",
-// 				"consensus_version=v1/0.2.2",
-// 				"rpc_version=0.7.0/3",
-// 				"tx_index=on",
-// 				"rpc_addr=tcp://0.0.0.0:46657"
-// 			],
-// 			"version": "0.13.0-14ccc8b",
-// 			"listen_addr": "10.0.2.15:46656",
-// 			"remote_addr": "",
-// 			"network": "test-chain-qhVCa2",
-// 			"moniker": "vagrant-ubuntu-trusty-64",
-// 			"pub_key": "844981FE99ABB19F7816F2D5E94E8A74276AB1153760A7799E925C75401856C6"
-// 		}
-// 	},
+// 	"error": "",
+// 	"result": {},
 // 	"id": "",
 // 	"jsonrpc": "2.0"
 // }
 // ```
-func Health() (*ctypes.ResultStatus, error) {
+func Health() (*ctypes.ResultHealth, error) {
+	var latestBlockMeta *types.BlockMeta
 	latestHeight := blockStore.Height()
-	var (
-		latestBlockMeta     *types.BlockMeta
-		latestBlockHash     cmn.HexBytes
-		latestAppHash       cmn.HexBytes
-		latestBlockTimeNano int64
-	)
 	if latestHeight != 0 {
 		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
-		latestBlockHash = latestBlockMeta.BlockID.Hash
-		latestAppHash = latestBlockMeta.Header.AppHash
-		latestBlockTimeNano = latestBlockMeta.Header.Time.UnixNano()
 	}
 
-	latestBlockTime := time.Unix(0, latestBlockTimeNano)
+	latestBlockTimeout := cfg.Consensus.Commit(latestBlockMeta.Header.Time).UnixNano()
+	currentTime := time.Now().UnixNano()
+	blockDelayTime := time.Duration(latestBlockTimeout-currentTime) * time.Nanosecond
+	if blockDelayTime > 0 {
+		return nil, errors.New(fmt.Sprintf("Unhealthy. Block delayed for %d sec.", blockDelayTime/time.Second))
+	}
 
-	return &ctypes.ResultStatus{
-		NodeInfo:          p2pSwitch.NodeInfo(),
-		PubKey:            pubKey,
-		LatestBlockHash:   latestBlockHash,
-		LatestAppHash:     latestAppHash,
-		LatestBlockHeight: latestHeight,
-		LatestBlockTime:   latestBlockTime,
-		Syncing:           consensusReactor.FastSync()}, nil
+	return &ctypes.ResultHealth{}, nil
 }
-
