@@ -7,7 +7,6 @@ import (
 	"fmt"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Get node health. Returns HTTP `code 200` if creating blocks,
