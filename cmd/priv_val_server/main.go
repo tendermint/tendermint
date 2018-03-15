@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 
+	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -36,7 +37,7 @@ func main() {
 		*chainID,
 		*addr,
 		privVal,
-		nil,
+		crypto.GenPrivKeyEd25519(),
 	)
 	err := rs.Start()
 	if err != nil {

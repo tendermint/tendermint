@@ -90,10 +90,6 @@
   name = "google.golang.org/grpc"
   version = "1.7.3"
 
-[[constraint]]
-  branch = "master"
-  name = "golang.org/x/net"
-
 [prune]
   go-tests = true
   unused-packages = true
