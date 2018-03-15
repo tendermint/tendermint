@@ -259,6 +259,7 @@
     "data"
   ]
   revision = "fa721242b042ecd4c6ed1a934ee740db4f74e45c"
+  source = "github.com/tendermint/go-amino"
   version = "v0.7.3"
 
 [[projects]]
@@ -372,6 +373,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "36505c5f341e1e80d7d55589a17727bbd9e89403624b4e02c9e8a21b1ed39d0f"
+  inputs-digest = "fe167dd9055ba9a4016e7bdad88da263372bca7ebdcebf5c81c609f396e605a3"
   solver-name = "gps-cdcl"
   solver-version = 1
