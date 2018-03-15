@@ -9,8 +9,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Get node health. Returns HTTP `code 200` if creating blocks,
-// `code 500` in other case.
+// Get node health. Checks whether new blocks are created.
 //
 // ```shell
 // curl 'localhost:46657/health'
@@ -41,7 +40,10 @@ func Health() (*ctypes.ResultHealth, error) {
 	latestBlockTimeout := cfg.Consensus.Commit(latestBlockMeta.Header.Time).UnixNano()
 	currentTime := time.Now().UnixNano()
 	blockDelayTime := time.Duration(latestBlockTimeout-currentTime) * time.Nanosecond
-	if blockDelayTime > 0 {
+
+	// use single commit timeout as threshold for block creation
+	threshold := time.Duration(cfg.Consensus.TimeoutCommit) * time.Millisecond
+	if blockDelayTime > threshold {
 		return nil, errors.New(fmt.Sprintf("Unhealthy. Block delayed for %d sec.", blockDelayTime/time.Second))
 	}
 
