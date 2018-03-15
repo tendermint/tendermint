@@ -4,7 +4,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -252,4 +254,21 @@ func clipToMS(t time.Time) time.Time {
 	million := int64(1000000)
 	nano = (nano / million) * million
 	return time.Unix(0, nano).UTC()
+}
+
+// See Issue https://github.com/tendermint/tendermint/issues/1290
+func TestPrivValidatorFSSaveDoesNotCrash(t *testing.T) {
+	saveDir, err := ioutil.TempDir("", "priv-validator")
+	require.Nil(t, err, "should have created the tempdir")
+
+	defer os.RemoveAll(saveDir)
+
+	pPath := filepath.Join(saveDir, "new", "pennyroyal", "tea", "tf.json")
+	pv := GenPrivValidatorFS(pPath)
+	pv.Save()
+
+	// Verify that the file exists and has the right content
+	parsed := LoadPrivValidatorFS(pPath)
+	require.NotNil(t, parsed, "the parsed PrivValidator should not be nil")
+	require.Equal(t, parsed, pv)
 }
