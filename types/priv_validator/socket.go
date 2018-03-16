@@ -11,37 +11,51 @@ import (
 	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
-	"golang.org/x/net/netutil"
 
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
 )
 
 const (
-	defaultConnDeadlineSeconds = 3
-	defaultConnWaitSeconds     = 60
-	defaultDialRetries         = 10
-	defaultSignersMax          = 1
+	defaultAcceptDeadlineSeconds = 3
+	defaultConnDeadlineSeconds   = 3
+	defaultConnHeartBeatSeconds  = 30
+	defaultConnWaitSeconds       = 60
+	defaultDialRetries           = 10
 )
 
 // Socket errors.
 var (
-	ErrDialRetryMax    = errors.New("Error max client retries")
-	ErrConnWaitTimeout = errors.New("Error waiting for external connection")
-	ErrConnTimeout     = errors.New("Error connection timed out")
+	ErrDialRetryMax    = errors.New("dialed maximum retries")
+	ErrConnWaitTimeout = errors.New("waited for remote signer for too long")
+	ErrConnTimeout     = errors.New("remote signer timed out")
 )
 
 var (
-	connDeadline = time.Second * defaultConnDeadlineSeconds
+	acceptDeadline = time.Second + defaultAcceptDeadlineSeconds
+	connDeadline   = time.Second * defaultConnDeadlineSeconds
+	connHeartbeat  = time.Second * defaultConnHeartBeatSeconds
 )
 
 // SocketClientOption sets an optional parameter on the SocketClient.
 type SocketClientOption func(*SocketClient)
 
+// SocketClientAcceptDeadline sets the deadline for the SocketClient listener.
+// A zero time value disables the deadline.
+func SocketClientAcceptDeadline(deadline time.Duration) SocketClientOption {
+	return func(sc *SocketClient) { sc.acceptDeadline = deadline }
+}
+
 // SocketClientConnDeadline sets the read and write deadline for connections
 // from external signing processes.
 func SocketClientConnDeadline(deadline time.Duration) SocketClientOption {
 	return func(sc *SocketClient) { sc.connDeadline = deadline }
+}
+
+// SocketClientHeartbeat sets the period on which to check the liveness of the
+// connected Signer connections.
+func SocketClientHeartbeat(period time.Duration) SocketClientOption {
+	return func(sc *SocketClient) { sc.connHeartbeat = period }
 }
 
 // SocketClientConnWait sets the timeout duration before connection of external
@@ -56,9 +70,11 @@ type SocketClient struct {
 	cmn.BaseService
 
 	addr            string
+	acceptDeadline  time.Duration
 	connDeadline    time.Duration
+	connHeartbeat   time.Duration
 	connWaitTimeout time.Duration
-	privKey         *crypto.PrivKeyEd25519
+	privKey         crypto.PrivKeyEd25519
 
 	conn     net.Conn
 	listener net.Listener
@@ -71,11 +87,13 @@ var _ types.PrivValidator2 = (*SocketClient)(nil)
 func NewSocketClient(
 	logger log.Logger,
 	socketAddr string,
-	privKey *crypto.PrivKeyEd25519,
+	privKey crypto.PrivKeyEd25519,
 ) *SocketClient {
 	sc := &SocketClient{
 		addr:            socketAddr,
-		connDeadline:    time.Second * defaultConnDeadlineSeconds,
+		acceptDeadline:  acceptDeadline,
+		connDeadline:    connDeadline,
+		connHeartbeat:   connHeartbeat,
 		connWaitTimeout: time.Second * defaultConnWaitSeconds,
 		privKey:         privKey,
 	}
@@ -83,57 +101,6 @@ func NewSocketClient(
 	sc.BaseService = *cmn.NewBaseService(logger, "SocketClient", sc)
 
 	return sc
-}
-
-// OnStart implements cmn.Service.
-func (sc *SocketClient) OnStart() error {
-	if sc.listener == nil {
-		if err := sc.listen(); err != nil {
-			sc.Logger.Error(
-				"OnStart",
-				"err", errors.Wrap(err, "failed to listen"),
-			)
-
-			return err
-		}
-	}
-
-	conn, err := sc.waitConnection()
-	if err != nil {
-		sc.Logger.Error(
-			"OnStart",
-			"err", errors.Wrap(err, "failed to accept connection"),
-		)
-
-		return err
-	}
-
-	sc.conn = conn
-
-	return nil
-}
-
-// OnStop implements cmn.Service.
-func (sc *SocketClient) OnStop() {
-	sc.BaseService.OnStop()
-
-	if sc.conn != nil {
-		if err := sc.conn.Close(); err != nil {
-			sc.Logger.Error(
-				"OnStop",
-				"err", errors.Wrap(err, "failed to close connection"),
-			)
-		}
-	}
-
-	if sc.listener != nil {
-		if err := sc.listener.Close(); err != nil {
-			sc.Logger.Error(
-				"OnStop",
-				"err", errors.Wrap(err, "failed to close listener"),
-			)
-		}
-	}
 }
 
 // GetAddress implements PrivValidator.
@@ -240,6 +207,53 @@ func (sc *SocketClient) SignHeartbeat(
 	return nil
 }
 
+// OnStart implements cmn.Service.
+func (sc *SocketClient) OnStart() error {
+	if err := sc.listen(); err != nil {
+		sc.Logger.Error(
+			"OnStart",
+			"err", errors.Wrap(err, "failed to listen"),
+		)
+
+		return err
+	}
+
+	conn, err := sc.waitConnection()
+	if err != nil {
+		sc.Logger.Error(
+			"OnStart",
+			"err", errors.Wrap(err, "failed to accept connection"),
+		)
+
+		return err
+	}
+
+	sc.conn = conn
+
+	return nil
+}
+
+// OnStop implements cmn.Service.
+func (sc *SocketClient) OnStop() {
+	if sc.conn != nil {
+		if err := sc.conn.Close(); err != nil {
+			sc.Logger.Error(
+				"OnStop",
+				"err", errors.Wrap(err, "failed to close connection"),
+			)
+		}
+	}
+
+	if sc.listener != nil {
+		if err := sc.listener.Close(); err != nil {
+			sc.Logger.Error(
+				"OnStop",
+				"err", errors.Wrap(err, "failed to close listener"),
+			)
+		}
+	}
+}
+
 func (sc *SocketClient) acceptConnection() (net.Conn, error) {
 	conn, err := sc.listener.Accept()
 	if err != nil {
@@ -250,15 +264,9 @@ func (sc *SocketClient) acceptConnection() (net.Conn, error) {
 
 	}
 
-	if err := conn.SetDeadline(time.Now().Add(sc.connDeadline)); err != nil {
+	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey.Wrap())
+	if err != nil {
 		return nil, err
-	}
-
-	if sc.privKey != nil {
-		conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey.Wrap())
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	return conn, nil
@@ -270,7 +278,12 @@ func (sc *SocketClient) listen() error {
 		return err
 	}
 
-	sc.listener = netutil.LimitListener(ln, defaultSignersMax)
+	sc.listener = newTCPTimeoutListener(
+		ln,
+		sc.acceptDeadline,
+		sc.connDeadline,
+		sc.connHeartbeat,
+	)
 
 	return nil
 }
@@ -297,6 +310,9 @@ func (sc *SocketClient) waitConnection() (net.Conn, error) {
 	case conn := <-connc:
 		return conn, nil
 	case err := <-errc:
+		if _, ok := err.(timeoutError); ok {
+			return nil, errors.Wrap(ErrConnWaitTimeout, err.Error())
+		}
 		return nil, err
 	case <-time.After(sc.connWaitTimeout):
 		return nil, ErrConnWaitTimeout
@@ -319,8 +335,7 @@ func RemoteSignerConnRetries(retries int) RemoteSignerOption {
 	return func(ss *RemoteSigner) { ss.connRetries = retries }
 }
 
-// RemoteSigner implements PrivValidator.
-// It responds to requests over a socket
+// RemoteSigner implements PrivValidator by dialing to a socket.
 type RemoteSigner struct {
 	cmn.BaseService
 
@@ -328,19 +343,18 @@ type RemoteSigner struct {
 	chainID      string
 	connDeadline time.Duration
 	connRetries  int
-	privKey      *crypto.PrivKeyEd25519
+	privKey      crypto.PrivKeyEd25519
 	privVal      PrivValidator
 
 	conn net.Conn
 }
 
-// NewRemoteSigner returns an instance of
-// RemoteSigner.
+// NewRemoteSigner returns an instance of RemoteSigner.
 func NewRemoteSigner(
 	logger log.Logger,
 	chainID, socketAddr string,
 	privVal PrivValidator,
-	privKey *crypto.PrivKeyEd25519,
+	privKey crypto.PrivKeyEd25519,
 ) *RemoteSigner {
 	rs := &RemoteSigner{
 		addr:         socketAddr,
@@ -382,16 +396,11 @@ func (rs *RemoteSigner) OnStop() {
 }
 
 func (rs *RemoteSigner) connect() (net.Conn, error) {
-	retries := defaultDialRetries
-
-RETRY_LOOP:
-	for retries > 0 {
+	for retries := rs.connRetries; retries > 0; retries-- {
 		// Don't sleep if it is the first retry.
-		if retries != defaultDialRetries {
+		if retries != rs.connRetries {
 			time.Sleep(rs.connDeadline)
 		}
-
-		retries--
 
 		conn, err := cmn.Connect(rs.addr)
 		if err != nil {
@@ -401,7 +410,7 @@ RETRY_LOOP:
 				"err", errors.Wrap(err, "connection failed"),
 			)
 
-			continue RETRY_LOOP
+			continue
 		}
 
 		if err := conn.SetDeadline(time.Now().Add(connDeadline)); err != nil {
@@ -412,16 +421,14 @@ RETRY_LOOP:
 			continue
 		}
 
-		if rs.privKey != nil {
-			conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey.Wrap())
-			if err != nil {
-				rs.Logger.Error(
-					"sc connect",
-					"err", errors.Wrap(err, "encrypting connection failed"),
-				)
+		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey.Wrap())
+		if err != nil {
+			rs.Logger.Error(
+				"connect",
+				"err", errors.Wrap(err, "encrypting connection failed"),
+			)
 
-				continue RETRY_LOOP
-			}
+			continue
 		}
 
 		return conn, nil
@@ -444,7 +451,7 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			return
 		}
 
-		var res PrivValidatorSocketMsg
+		var res PrivValMsg
 
 		switch r := req.(type) {
 		case *PubKeyMsg:
@@ -487,12 +494,11 @@ const (
 	msgTypeSignHeartbeat = byte(0x12)
 )
 
-// PrivValidatorSocketMsg is a message sent between PrivValidatorSocket client
-// and server.
-type PrivValidatorSocketMsg interface{}
+// PrivValMsg is sent between RemoteSigner and SocketClient.
+type PrivValMsg interface{}
 
 var _ = wire.RegisterInterface(
-	struct{ PrivValidatorSocketMsg }{},
+	struct{ PrivValMsg }{},
 	wire.ConcreteType{&PubKeyMsg{}, msgTypePubKey},
 	wire.ConcreteType{&SignVoteMsg{}, msgTypeSignVote},
 	wire.ConcreteType{&SignProposalMsg{}, msgTypeSignProposal},
@@ -519,27 +525,27 @@ type SignHeartbeatMsg struct {
 	Heartbeat *types.Heartbeat
 }
 
-func readMsg(r io.Reader) (PrivValidatorSocketMsg, error) {
+func readMsg(r io.Reader) (PrivValMsg, error) {
 	var (
 		n   int
 		err error
 	)
 
-	read := wire.ReadBinary(struct{ PrivValidatorSocketMsg }{}, r, 0, &n, &err)
+	read := wire.ReadBinary(struct{ PrivValMsg }{}, r, 0, &n, &err)
 	if err != nil {
-		if opErr, ok := err.(*net.OpError); ok {
-			return nil, errors.Wrapf(ErrConnTimeout, opErr.Addr.String())
+		if _, ok := err.(timeoutError); ok {
+			return nil, errors.Wrap(ErrConnTimeout, err.Error())
 		}
 
 		return nil, err
 	}
 
-	w, ok := read.(struct{ PrivValidatorSocketMsg })
+	w, ok := read.(struct{ PrivValMsg })
 	if !ok {
 		return nil, errors.New("unknown type")
 	}
 
-	return w.PrivValidatorSocketMsg, nil
+	return w.PrivValMsg, nil
 }
 
 func writeMsg(w io.Writer, msg interface{}) error {
@@ -549,9 +555,9 @@ func writeMsg(w io.Writer, msg interface{}) error {
 	)
 
 	// TODO(xla): This extra wrap should be gone with the sdk-2 update.
-	wire.WriteBinary(struct{ PrivValidatorSocketMsg }{msg}, w, &n, &err)
-	if opErr, ok := err.(*net.OpError); ok {
-		return errors.Wrapf(ErrConnTimeout, opErr.Addr.String())
+	wire.WriteBinary(struct{ PrivValMsg }{msg}, w, &n, &err)
+	if _, ok := err.(timeoutError); ok {
+		return errors.Wrap(ErrConnTimeout, err.Error())
 	}
 
 	return err

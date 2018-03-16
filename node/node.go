@@ -183,7 +183,7 @@ func NewNode(config *cfg.Config,
 			pvsc    = priv_val.NewSocketClient(
 				logger.With("module", "priv_val"),
 				config.PrivValidatorListenAddr,
-				&privKey,
+				privKey,
 			)
 		)
 
