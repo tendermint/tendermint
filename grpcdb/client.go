@@ -6,9 +6,19 @@ import (
 	protodb "github.com/tendermint/tmlibs/proto"
 )
 
-func NewClient(serverAddr string, secure bool) (protodb.DBClient, error) {
+// Security defines how the client will talk to the gRPC server.
+type Security uint
+
+const (
+	Insecure Security = iota
+	Secure
+)
+
+// NewClient creates a gRPC client connected to the bound gRPC server at serverAddr.
+// Use kind to set the level of security to either Secure or Insecure.
+func NewClient(serverAddr string, kind Security) (protodb.DBClient, error) {
 	var opts []grpc.DialOption
-	if !secure {
+	if kind == Insecure {
 		opts = append(opts, grpc.WithInsecure())
 	}
 	cc, err := grpc.Dial(serverAddr, opts...)

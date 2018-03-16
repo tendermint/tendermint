@@ -12,12 +12,12 @@ import (
 func Example() {
 	addr := ":8998"
 	go func() {
-		if err := grpcdb.BindRemoteDBServer(addr); err != nil {
-			log.Fatalf("BindRemoteDBServer: %v", err)
+		if err := grpcdb.BindServer(addr); err != nil {
+			log.Fatalf("BindServer: %v", err)
 		}
 	}()
 
-	client, err := grpcdb.NewClient(addr, false)
+	client, err := grpcdb.NewClient(addr, grpcdb.Insecure)
 	if err != nil {
 		log.Fatalf("Failed to create grpcDB client: %v", err)
 	}

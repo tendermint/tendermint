@@ -1,8 +1,8 @@
 package grpcdb
 
 import (
-"log"
 	"context"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -13,7 +13,10 @@ import (
 	protodb "github.com/tendermint/tmlibs/proto"
 )
 
-func BindRemoteDBServer(addr string, opts ...grpc.ServerOption) error {
+// BindServer is a blocking function that sets up a gRPC based
+// server at the address supplied, with the gRPC options passed in.
+// Normally in usage, invoke it in a goroutine like you would for http.ListenAndServe.
+func BindServer(addr string, opts ...grpc.ServerOption) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -30,11 +33,24 @@ type server struct {
 
 var _ protodb.DBServer = (*server)(nil)
 
+// Init initializes the server's database. Only one type of database
+// can be initialized per server.
+//
+// Dir is the directory on the file system in which the DB will be stored(if backed by disk) (TODO: remove)
+//
+// Name is representative filesystem entry's basepath
+//
+// Type can be either one of:
+//  * cleveldb (if built with gcc enabled)
+//  * fsdb
+//  * memdB
+//  * leveldb
+// See https://godoc.org/github.com/tendermint/tmlibs/db#DBBackendType
 func (s *server) Init(ctx context.Context, in *protodb.Init) (*protodb.Entity, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-log.Printf("in: %+v\n", in)
+	log.Printf("in: %+v\n", in)
 	s.db = db.NewDB(in.Name, db.DBBackendType(in.Type), in.Dir)
 	return &protodb.Entity{TimeAt: time.Now().Unix()}, nil
 }
@@ -45,6 +61,7 @@ func (s *server) Delete(ctx context.Context, in *protodb.Entity) (*protodb.Nothi
 }
 
 var nothing = new(protodb.Nothing)
+
 func (s *server) DeleteSync(ctx context.Context, in *protodb.Entity) (*protodb.Nothing, error) {
 	s.db.DeleteSync(in.Key)
 	return nothing, nil
