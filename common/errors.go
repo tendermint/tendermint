@@ -16,7 +16,11 @@ type Error interface {
 }
 
 func NewError(msg string) Error {
-	return newError(msg)
+	return newError(msg, nil)
+}
+
+func NewErrorWithCause(cause error, msg string) Error {
+	return newError(msg, cause)
 }
 
 type traceItem struct {
@@ -35,10 +39,10 @@ type cmnError struct {
 	traces []traceItem
 }
 
-func newError(msg string) *cmnError {
+func newError(msg string, cause error) *cmnError {
 	return &cmnError{
 		msg:    msg,
-		cause:  nil,
+		cause:  cause,
 		traces: nil,
 	}
 }
