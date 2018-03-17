@@ -2,8 +2,96 @@ package common
 
 import (
 	"fmt"
+	"runtime"
 )
 
+//----------------------------------------
+// Error & cmnError
+
+type Error interface {
+	Error() string
+	Trace(msg string) Error
+	TraceCause(cause error, msg string) Error
+	Cause() error
+}
+
+func NewError(msg string) Error {
+	return newError(msg)
+}
+
+type traceItem struct {
+	msg      string
+	filename string
+	lineno   int
+}
+
+func (ti traceItem) String() string {
+	return fmt.Sprintf("%v:%v %v", ti.filename, ti.lineno, ti.msg)
+}
+
+type cmnError struct {
+	msg    string
+	cause  error
+	traces []traceItem
+}
+
+func newError(msg string) *cmnError {
+	return &cmnError{
+		msg:    msg,
+		cause:  nil,
+		traces: nil,
+	}
+}
+
+func (err *cmnError) Error() string {
+	return fmt.Sprintf("Error{%s,%v,%v}", err.msg, err.cause, len(err.traces))
+}
+
+// Add tracing information with msg.
+func (err *cmnError) Trace(msg string) Error {
+	return err.doTrace(msg, 2)
+}
+
+// Add tracing information with cause and msg.
+// If a cause was already set before, it is overwritten.
+func (err *cmnError) TraceCause(cause error, msg string) Error {
+	err.cause = cause
+	return err.doTrace(msg, 2)
+}
+
+func (err *cmnError) doTrace(msg string, n int) Error {
+	_, fn, line, ok := runtime.Caller(n)
+	if !ok {
+		if fn == "" {
+			fn = "<unknown>"
+		}
+		if line <= 0 {
+			line = -1
+		}
+	}
+	// Include file & line number & msg.
+	// Do not include the whole stack trace.
+	err.traces = append(err.traces, traceItem{
+		filename: fn,
+		lineno:   line,
+		msg:      msg,
+	})
+	return err
+}
+
+// Return last known cause.
+// NOTE: The meaning of "cause" is left for the caller to define.
+// There exists to canonical definition of "cause".
+// Instead of blaming, try to handle-or-organize it.
+func (err *cmnError) Cause() error {
+	return err.cause
+}
+
+//----------------------------------------
+// StackError
+
+// NOTE: Used by Tendermint p2p upon recovery.
+// Err could be "Reason", since it isn't an error type.
 type StackError struct {
 	Err   interface{}
 	Stack []byte
@@ -17,8 +105,9 @@ func (se StackError) Error() string {
 	return se.String()
 }
 
-//--------------------------------------------------------------------------------------------------
-// panic wrappers
+//----------------------------------------
+// Panic wrappers
+// XXX DEPRECATED
 
 // A panic resulting from a sanity check means there is a programmer error
 // and some guarantee is not satisfied.
