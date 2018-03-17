@@ -10,16 +10,19 @@ import (
 
 type Error interface {
 	Error() string
-	Trace(msg string) Error
-	TraceCause(cause error, msg string) Error
+	Trace(format string, a ...interface{}) Error
+	TraceCause(cause error, format string, a ...interface{}) Error
 	Cause() error
 }
 
-func NewError(msg string) Error {
+func NewError(format string, a ...interface{}) Error {
+	msg := Fmt(format, a...)
 	return newError(msg, nil)
+
 }
 
-func NewErrorWithCause(cause error, msg string) Error {
+func NewErrorWithCause(cause error, format string, a ...interface{}) Error {
+	msg := Fmt(format, a...)
 	return newError(msg, cause)
 }
 
@@ -39,6 +42,7 @@ type cmnError struct {
 	traces []traceItem
 }
 
+// NOTE: Do not expose, it's not very friendly.
 func newError(msg string, cause error) *cmnError {
 	return &cmnError{
 		msg:    msg,
@@ -52,13 +56,15 @@ func (err *cmnError) Error() string {
 }
 
 // Add tracing information with msg.
-func (err *cmnError) Trace(msg string) Error {
+func (err *cmnError) Trace(format string, a ...interface{}) Error {
+	msg := Fmt(format, a...)
 	return err.doTrace(msg, 2)
 }
 
 // Add tracing information with cause and msg.
 // If a cause was already set before, it is overwritten.
-func (err *cmnError) TraceCause(cause error, msg string) Error {
+func (err *cmnError) TraceCause(cause error, format string, a ...interface{}) Error {
+	msg := Fmt(format, a...)
 	err.cause = cause
 	return err.doTrace(msg, 2)
 }

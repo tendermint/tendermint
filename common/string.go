@@ -6,8 +6,14 @@ import (
 	"strings"
 )
 
-// Fmt shorthand, XXX DEPRECATED
-var Fmt = fmt.Sprintf
+// Like fmt.Sprintf, but skips formatting if args are empty.
+var Fmt = func(format string, a ...interface{}) string {
+	if len(a) == 0 {
+		return format
+	} else {
+		return fmt.Sprintf(format, a...)
+	}
+}
 
 // RightPadString adds spaces to the right of a string to make it length totalLength
 func RightPadString(s string, totalLength int) string {
