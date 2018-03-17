@@ -13,17 +13,27 @@ type Error interface {
 	Trace(format string, a ...interface{}) Error
 	TraceCause(cause error, format string, a ...interface{}) Error
 	Cause() error
+	Type() interface{}
+	WithType(t interface{}) Error
 }
 
+// New Error with no cause where the type is the format string of the message..
 func NewError(format string, a ...interface{}) Error {
 	msg := Fmt(format, a...)
-	return newError(msg, nil)
+	return newError(msg, nil, format)
 
 }
 
+// New Error with cause where the type is the cause, with message..
 func NewErrorWithCause(cause error, format string, a ...interface{}) Error {
 	msg := Fmt(format, a...)
-	return newError(msg, cause)
+	return newError(msg, cause, cause)
+}
+
+// New Error with specified type and message.
+func NewErrorWithType(type_ interface{}, format string, a ...interface{}) Error {
+	msg := Fmt(format, a...)
+	return newError(msg, nil, type_)
 }
 
 type traceItem struct {
@@ -39,20 +49,22 @@ func (ti traceItem) String() string {
 type cmnError struct {
 	msg    string
 	cause  error
+	type_  interface{}
 	traces []traceItem
 }
 
 // NOTE: Do not expose, it's not very friendly.
-func newError(msg string, cause error) *cmnError {
+func newError(msg string, cause error, type_ interface{}) *cmnError {
 	return &cmnError{
 		msg:    msg,
 		cause:  cause,
+		type_:  type_,
 		traces: nil,
 	}
 }
 
 func (err *cmnError) Error() string {
-	return fmt.Sprintf("Error{%s,%v,%v}", err.msg, err.cause, len(err.traces))
+	return fmt.Sprintf("Error{%v:%s,%v,%v}", err.type_, err.msg, err.cause, len(err.traces))
 }
 
 // Add tracing information with msg.
@@ -67,6 +79,18 @@ func (err *cmnError) TraceCause(cause error, format string, a ...interface{}) Er
 	msg := Fmt(format, a...)
 	err.cause = cause
 	return err.doTrace(msg, 2)
+}
+
+// Return the "type" of this message, primarily for switching
+// to handle this error.
+func (err *cmnError) Type() interface{} {
+	return err.type_
+}
+
+// Overwrites the error's type.
+func (err *cmnError) WithType(type_ interface{}) Error {
+	err.type_ = type_
+	return err
 }
 
 func (err *cmnError) doTrace(msg string, n int) Error {
