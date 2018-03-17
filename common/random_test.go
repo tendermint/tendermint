@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	mrand "math/rand"
 	"sync"
 	"testing"
@@ -33,37 +32,38 @@ func TestRandIntn(t *testing.T) {
 	}
 }
 
-// It is essential that these tests run and never repeat their outputs
-// lest we've been pwned and the behavior of our randomness is controlled.
-// See Issues:
-//  * https://github.com/tendermint/tmlibs/issues/99
-//  * https://github.com/tendermint/tendermint/issues/973
-func TestUniqueRng(t *testing.T) {
-	buf := new(bytes.Buffer)
-	outputs := make(map[string][]int)
+// Test to make sure that we never call math.rand().
+// We do this by ensuring that outputs are deterministic.
+func TestDeterminism(t *testing.T) {
+	var firstOutput string
+
+	// Set math/rand's seed for the sake of debugging this test.
+	// (It isn't strictly necessary).
+	mrand.Seed(1)
+
 	for i := 0; i < 100; i++ {
-		testThemAll(buf)
-		output := buf.String()
-		buf.Reset()
-		runs, seen := outputs[output]
-		if seen {
-			t.Errorf("Run #%d's output was already seen in previous runs: %v", i, runs)
+		output := testThemAll()
+		if i == 0 {
+			firstOutput = output
+		} else {
+			if firstOutput != output {
+				t.Errorf("Run #%d's output was different from first run.\nfirst: %v\nlast: %v",
+					i, firstOutput, output)
+			}
 		}
-		outputs[output] = append(outputs[output], i)
 	}
 }
 
-func testThemAll(out io.Writer) {
-	// Reset the internal PRNG
-	reset()
+func testThemAll() string {
 
-	// Set math/rand's Seed so that any direct invocations
-	// of math/rand will reveal themselves.
-	mrand.Seed(1)
+	// Such determinism.
+	grand.reset(1)
+
+	// Use it.
+	out := new(bytes.Buffer)
 	perm := RandPerm(10)
 	blob, _ := json.Marshal(perm)
 	fmt.Fprintf(out, "perm: %s\n", blob)
-
 	fmt.Fprintf(out, "randInt: %d\n", RandInt())
 	fmt.Fprintf(out, "randUint: %d\n", RandUint())
 	fmt.Fprintf(out, "randIntn: %d\n", RandIntn(97))
@@ -76,6 +76,7 @@ func testThemAll(out io.Writer) {
 	fmt.Fprintf(out, "randUint16Exp: %d\n", RandUint16Exp())
 	fmt.Fprintf(out, "randUint32Exp: %d\n", RandUint32Exp())
 	fmt.Fprintf(out, "randUint64Exp: %d\n", RandUint64Exp())
+	return out.String()
 }
 
 func TestRngConcurrencySafety(t *testing.T) {
