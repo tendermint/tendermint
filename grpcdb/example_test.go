@@ -12,7 +12,7 @@ import (
 func Example() {
 	addr := ":8998"
 	go func() {
-		if err := grpcdb.BindServer(addr); err != nil {
+		if err := grpcdb.ListenAndServe(addr); err != nil {
 			log.Fatalf("BindServer: %v", err)
 		}
 	}()

@@ -2,7 +2,6 @@ package grpcdb
 
 import (
 	"context"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -13,17 +12,22 @@ import (
 	protodb "github.com/tendermint/tmlibs/proto"
 )
 
-// BindServer is a blocking function that sets up a gRPC based
+// ListenAndServe is a blocking function that sets up a gRPC based
 // server at the address supplied, with the gRPC options passed in.
 // Normally in usage, invoke it in a goroutine like you would for http.ListenAndServe.
-func BindServer(addr string, opts ...grpc.ServerOption) error {
+func ListenAndServe(addr string, opts ...grpc.ServerOption) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
+	srv := NewServer(opts...)
+	return srv.Serve(ln)
+}
+
+func NewServer(opts ...grpc.ServerOption) *grpc.Server {
 	srv := grpc.NewServer(opts...)
 	protodb.RegisterDBServer(srv, new(server))
-	return srv.Serve(ln)
+	return srv
 }
 
 type server struct {
@@ -50,7 +54,6 @@ func (s *server) Init(ctx context.Context, in *protodb.Init) (*protodb.Entity, e
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	log.Printf("in: %+v\n", in)
 	s.db = db.NewDB(in.Name, db.DBBackendType(in.Type), in.Dir)
 	return &protodb.Entity{TimeAt: time.Now().Unix()}, nil
 }
