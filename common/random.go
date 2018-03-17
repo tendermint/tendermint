@@ -22,11 +22,11 @@ type Rand struct {
 var grand *Rand
 
 func init() {
-	grand = New()
+	grand = NewRand()
 	grand.init()
 }
 
-func New() *Rand {
+func NewRand() *Rand {
 	rand := &Rand{}
 	rand.init()
 	return rand
