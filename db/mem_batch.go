@@ -45,9 +45,10 @@ func (mBatch *memBatch) WriteSync() {
 }
 
 func (mBatch *memBatch) write(doSync bool) {
-	mtx := mBatch.db.Mutex()
-	mtx.Lock()
-	defer mtx.Unlock()
+	if mtx := mBatch.db.Mutex(); mtx != nil {
+		mtx.Lock()
+		defer mtx.Unlock()
+	}
 
 	for i, op := range mBatch.ops {
 		if doSync && i == (len(mBatch.ops)-1) {

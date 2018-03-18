@@ -107,11 +107,11 @@ func (mdb *mockDB) SetNoLockSync([]byte, []byte) {
 	mdb.calls["SetNoLockSync"] += 1
 }
 
-func (mdb *mockDB) Delete([]byte, []byte) {
+func (mdb *mockDB) Delete([]byte) {
 	mdb.calls["Delete"] += 1
 }
 
-func (mdb *mockDB) DeleteSync([]byte, []byte) {
+func (mdb *mockDB) DeleteSync([]byte) {
 	mdb.calls["DeleteSync"] += 1
 }
 
@@ -144,7 +144,7 @@ func (mdb *mockDB) NewBatch() Batch {
 
 func (mdb *mockDB) Print() {
 	mdb.calls["Print"] += 1
-	fmt.Sprintf("mockDB{%v}", mdb.Stats())
+	fmt.Printf("mockDB{%v}", mdb.Stats())
 }
 
 func (mdb *mockDB) Stats() map[string]string {

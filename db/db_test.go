@@ -111,7 +111,8 @@ func TestDBIteratorNonemptyBeginAfter(t *testing.T) {
 
 func TestDBBatchWrite1(t *testing.T) {
 	mdb := newMockDB()
-	batch := mdb.NewBatch()
+	ddb := NewDebugDB(t.Name(), mdb)
+	batch := ddb.NewBatch()
 
 	batch.Set(bz("1"), bz("1"))
 	batch.Set(bz("2"), bz("2"))
@@ -131,7 +132,8 @@ func TestDBBatchWrite1(t *testing.T) {
 
 func TestDBBatchWrite2(t *testing.T) {
 	mdb := newMockDB()
-	batch := mdb.NewBatch()
+	ddb := NewDebugDB(t.Name(), mdb)
+	batch := ddb.NewBatch()
 
 	batch.Set(bz("1"), bz("1"))
 	batch.Set(bz("2"), bz("2"))
@@ -151,7 +153,8 @@ func TestDBBatchWrite2(t *testing.T) {
 
 func TestDBBatchWriteSync1(t *testing.T) {
 	mdb := newMockDB()
-	batch := mdb.NewBatch()
+	ddb := NewDebugDB(t.Name(), mdb)
+	batch := ddb.NewBatch()
 
 	batch.Set(bz("1"), bz("1"))
 	batch.Set(bz("2"), bz("2"))
@@ -171,7 +174,8 @@ func TestDBBatchWriteSync1(t *testing.T) {
 
 func TestDBBatchWriteSync2(t *testing.T) {
 	mdb := newMockDB()
-	batch := mdb.NewBatch()
+	ddb := NewDebugDB(t.Name(), mdb)
+	batch := ddb.NewBatch()
 
 	batch.Set(bz("1"), bz("1"))
 	batch.Set(bz("2"), bz("2"))

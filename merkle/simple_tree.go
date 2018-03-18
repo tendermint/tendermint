@@ -31,6 +31,9 @@ import (
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {
 	var hasher = ripemd160.New()
 	err := encodeByteSlice(hasher, left)
+	if err != nil {
+		panic(err)
+	}
 	err = encodeByteSlice(hasher, right)
 	if err != nil {
 		panic(err)
