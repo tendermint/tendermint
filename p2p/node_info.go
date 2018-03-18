@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -24,9 +25,9 @@ type NodeInfo struct {
 	ListenAddr string        `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility
-	Network  string `json:"network"`  // network/chain ID
-	Version  string `json:"version"`  // major.minor.revision
-	Channels []byte `json:"channels"` // channels this node knows about
+	Network  string          `json:"network"`  // network/chain ID
+	Version  string          `json:"version"`  // major.minor.revision
+	Channels common.HexBytes `json:"channels"` // channels this node knows about
 
 	// Sanitize
 	Moniker string   `json:"moniker"` // arbitrary moniker
