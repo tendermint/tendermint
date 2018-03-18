@@ -165,7 +165,7 @@ MAIN_LOOP:
 
 // It is not safe for cryptographic usage.
 func (r *Rand) Uint16() uint16 {
-	return uint16(r.rand.Uint32() & (1<<16 - 1))
+	return uint16(r.Uint32() & (1<<16 - 1))
 }
 
 // It is not safe for cryptographic usage.
@@ -178,7 +178,7 @@ func (r *Rand) Uint32() uint32 {
 
 // It is not safe for cryptographic usage.
 func (r *Rand) Uint64() uint64 {
-	return uint64(r.rand.Uint32())<<32 + uint64(r.rand.Uint32())
+	return uint64(r.Uint32())<<32 + uint64(r.Uint32())
 }
 
 // It is not safe for cryptographic usage.
@@ -191,17 +191,17 @@ func (r *Rand) Uint() uint {
 
 // It is not safe for cryptographic usage.
 func (r *Rand) Int16() int16 {
-	return int16(r.rand.Uint32() & (1<<16 - 1))
+	return int16(r.Uint32() & (1<<16 - 1))
 }
 
 // It is not safe for cryptographic usage.
 func (r *Rand) Int32() int32 {
-	return int32(r.rand.Uint32())
+	return int32(r.Uint32())
 }
 
 // It is not safe for cryptographic usage.
 func (r *Rand) Int64() int64 {
-	return int64(r.rand.Uint64())
+	return int64(r.Uint64())
 }
 
 // It is not safe for cryptographic usage.
@@ -231,36 +231,36 @@ func (r *Rand) Int63() int64 {
 // Distributed pseudo-exponentially to test for various cases
 // It is not safe for cryptographic usage.
 func (r *Rand) Uint16Exp() uint16 {
-	bits := r.rand.Uint32() % 16
+	bits := r.Uint32() % 16
 	if bits == 0 {
 		return 0
 	}
 	n := uint16(1 << (bits - 1))
-	n += uint16(r.rand.Int31()) & ((1 << (bits - 1)) - 1)
+	n += uint16(r.Int31()) & ((1 << (bits - 1)) - 1)
 	return n
 }
 
 // Distributed pseudo-exponentially to test for various cases
 // It is not safe for cryptographic usage.
 func (r *Rand) Uint32Exp() uint32 {
-	bits := r.rand.Uint32() % 32
+	bits := r.Uint32() % 32
 	if bits == 0 {
 		return 0
 	}
 	n := uint32(1 << (bits - 1))
-	n += uint32(r.rand.Int31()) & ((1 << (bits - 1)) - 1)
+	n += uint32(r.Int31()) & ((1 << (bits - 1)) - 1)
 	return n
 }
 
 // Distributed pseudo-exponentially to test for various cases
 // It is not safe for cryptographic usage.
 func (r *Rand) Uint64Exp() uint64 {
-	bits := r.rand.Uint32() % 64
+	bits := r.Uint32() % 64
 	if bits == 0 {
 		return 0
 	}
 	n := uint64(1 << (bits - 1))
-	n += uint64(r.rand.Int63()) & ((1 << (bits - 1)) - 1)
+	n += uint64(r.Int63()) & ((1 << (bits - 1)) - 1)
 	return n
 }
 
@@ -284,7 +284,7 @@ func (r *Rand) Bytes(n int) []byte {
 	// use random bytes generated from the internal PRNG
 	bs := make([]byte, n)
 	for i := 0; i < len(bs); i++ {
-		bs[i] = byte(r.rand.Int() & 0xFF)
+		bs[i] = byte(r.Int() & 0xFF)
 	}
 	return bs
 }
