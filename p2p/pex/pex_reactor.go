@@ -74,6 +74,10 @@ type PEXReactorConfig struct {
 	// Seeds is a list of addresses reactor may use
 	// if it can't connect to peers in the addrbook.
 	Seeds []string
+
+	// PrivatePeerIDs is a list of peer IDs, which must not be gossiped to other
+	// peers.
+	PrivatePeerIDs []string
 }
 
 type _attemptsToDial struct {
@@ -152,7 +156,9 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		// Let the ensurePeersRoutine handle asking for more
 		// peers when we need - we don't trust inbound peers as much.
 		addr := p.NodeInfo().NetAddress()
-		r.book.AddAddress(addr, addr)
+		if !isAddrPrivate(addr, r.config.PrivatePeerIDs) {
+			r.book.AddAddress(addr, addr)
+		}
 	}
 }
 
@@ -252,7 +258,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
-		if netAddr != nil {
+		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
 			r.book.AddAddress(netAddr, srcAddr)
 		}
 	}
@@ -578,6 +584,16 @@ func (r *PEXReactor) attemptDisconnects() {
 		}
 		r.Switch.StopPeerGracefully(peer)
 	}
+}
+
+// isAddrPrivate returns true if addr is private.
+func isAddrPrivate(addr *p2p.NetAddress, privatePeerIDs []string) bool {
+	for _, id := range privatePeerIDs {
+		if string(addr.ID) == id {
+			return true
+		}
+	}
+	return false
 }
 
 //-----------------------------------------------------------------------------

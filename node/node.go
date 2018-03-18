@@ -281,8 +281,15 @@ func NewNode(config *cfg.Config,
 		if config.P2P.Seeds != "" {
 			seeds = strings.Split(config.P2P.Seeds, ",")
 		}
+		var privatePeerIDs []string
+		if config.P2P.PrivatePeerIDs != "" {
+			privatePeerIDs = strings.Split(config.P2P.PrivatePeerIDs, ",")
+		}
 		pexReactor := pex.NewPEXReactor(addrBook,
-			&pex.PEXReactorConfig{Seeds: seeds, SeedMode: config.P2P.SeedMode})
+			&pex.PEXReactorConfig{
+				Seeds:          seeds,
+				SeedMode:       config.P2P.SeedMode,
+				PrivatePeerIDs: privatePeerIDs})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
