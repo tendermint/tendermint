@@ -54,7 +54,7 @@ then run:
 ::
 
     tendermint init
-    tendermint node --app_proxy=dummy
+    tendermint node --proxy_app=dummy
 
     tm-bench localhost:46657
 
