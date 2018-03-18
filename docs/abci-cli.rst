@@ -149,7 +149,7 @@ The server may be generic for a particular language, and we provide a
 `reference implementation in
 Golang <https://github.com/tendermint/abci/tree/master/server>`__. See
 the `list of other ABCI
-implementations <./ecosystem.html>`__ for servers in
+implementations <./ecosystem.rst>`__ for servers in
 other languages.
 
 The handler is specific to the application, and may be arbitrary, so
