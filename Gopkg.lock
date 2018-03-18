@@ -137,7 +137,7 @@
     "db",
     "log"
   ]
-  revision = "26f2ab65f82cfc6873c312e8030104c47c05f10e"
+  revision = "9b9a9e7f8c73f6d0ae8672438a271f32060eebcb"
 
 [[projects]]
   name = "golang.org/x/net"
@@ -204,6 +204,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dfad1992e9c7f0df42ab62cadb7e984f5a945904400d844ae374b76d4b07f83e"
+  inputs-digest = "b334fca7ad79cda7d2248f0f67cc342dd3faa6125d44ba3a6936edb7140d1ef4"
   solver-name = "gps-cdcl"
   solver-version = 1

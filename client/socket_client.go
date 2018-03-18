@@ -3,13 +3,13 @@ package abcicli
 import (
 	"bufio"
 	"container/list"
+	"errors"
 	"fmt"
 	"net"
 	"reflect"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -111,7 +111,7 @@ func (cli *socketClient) StopForError(err error) {
 func (cli *socketClient) Error() error {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
-	return errors.Wrap(cli.err, "socket client error")
+	return cli.err
 }
 
 // Set listener for all responses
