@@ -329,11 +329,11 @@ collateral on all other forks. Clients should verify the signatures on
 the reorg-proposal, verify any evidence, and make a judgement or prompt
 the end-user for a decision. For example, a phone wallet app may prompt
 the user with a security warning, while a refrigerator may accept any
-reorg-proposal signed by +½ of the original validators.
+reorg-proposal signed by +1/2 of the original validators.
 
 No non-synchronous Byzantine fault-tolerant algorithm can come to
-consensus when ⅓+ of validators are dishonest, yet a fork assumes that
-⅓+ of validators have already been dishonest by double-signing or
+consensus when 1/3+ of validators are dishonest, yet a fork assumes that
+1/3+ of validators have already been dishonest by double-signing or
 lock-changing without justification. So, signing the reorg-proposal is a
 coordination problem that cannot be solved by any non-synchronous
 protocol (i.e. automatically, and without making assumptions about the
