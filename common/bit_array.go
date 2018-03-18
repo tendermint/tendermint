@@ -15,7 +15,7 @@ type BitArray struct {
 
 // There is no BitArray whose Size is 0.  Use nil instead.
 func NewBitArray(bits int) *BitArray {
-	if bits == 0 {
+	if bits <= 0 {
 		return nil
 	}
 	return &BitArray{
