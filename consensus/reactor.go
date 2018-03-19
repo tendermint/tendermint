@@ -1079,10 +1079,7 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 // It returns the total number of votes (1 per block). This essentially means
 // the number of blocks for which peer has been sending us votes.
 func (ps *PeerState) RecordVote(vote *types.Vote) int {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-
-	if ps.stats.lastVoteHeight == vote.Height {
+	if ps.stats.lastVoteHeight >= vote.Height {
 		return ps.stats.votes
 	}
 	ps.stats.lastVoteHeight = vote.Height
@@ -1094,10 +1091,7 @@ func (ps *PeerState) RecordVote(vote *types.Vote) int {
 // It returns the total number of block parts (1 per block). This essentially means
 // the number of blocks for which peer has been sending us block parts.
 func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-
-	if ps.stats.lastBlockPartHeight == bp.Height {
+	if ps.stats.lastBlockPartHeight >= bp.Height {
 		return ps.stats.blockParts
 	}
 
