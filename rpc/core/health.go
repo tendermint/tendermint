@@ -31,21 +31,5 @@ import (
 // }
 // ```
 func Health() (*ctypes.ResultHealth, error) {
-	var latestBlockMeta *types.BlockMeta
-	latestHeight := blockStore.Height()
-	if latestHeight != 0 {
-		latestBlockMeta = blockStore.LoadBlockMeta(latestHeight)
-	}
-
-	latestBlockTimeout := cfg.Consensus.Commit(latestBlockMeta.Header.Time).UnixNano()
-	currentTime := time.Now().UnixNano()
-	blockDelayTime := time.Duration(latestBlockTimeout-currentTime) * time.Nanosecond
-
-	// use single commit timeout as threshold for block creation
-	threshold := time.Duration(cfg.Consensus.TimeoutCommit) * time.Millisecond
-	if blockDelayTime > threshold {
-		return nil, errors.New(fmt.Sprintf("Unhealthy. Block delayed for %d sec.", blockDelayTime/time.Second))
-	}
-
 	return &ctypes.ResultHealth{}, nil
 }
