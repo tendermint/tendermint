@@ -4,7 +4,8 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-// Get node health. Checks whether new blocks are created.
+// Get node health. Returns empty result (200 OK) on success, no response - in
+// case of an error.
 //
 // ```shell
 // curl 'localhost:46657/health'
