@@ -27,6 +27,8 @@ const (
 	VoteSetBitsChannel = byte(0x23)
 
 	maxConsensusMessageSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
+
+	blocksToContributeToBecomeGoodPeer = 10000
 )
 
 //-----------------------------------------------------------------------------
@@ -251,7 +253,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
-			if numBlocks := ps.RecordBlockPart(msg); numBlocks > 10000 {
+			if numBlocks := ps.RecordBlockPart(msg); numBlocks%blocksToContributeToBecomeGoodPeer == 0 {
 				conR.Switch.MarkPeerAsGood(src)
 			}
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
@@ -273,7 +275,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.EnsureVoteBitArrays(height, valSize)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
-			if blocks := ps.RecordVote(msg.Vote); blocks > 10000 {
+			if blocks := ps.RecordVote(msg.Vote); blocks%blocksToContributeToBecomeGoodPeer == 0 {
 				conR.Switch.MarkPeerAsGood(src)
 			}
 
@@ -850,6 +852,10 @@ type peerStateStats struct {
 	blockParts          int
 }
 
+func (pss peerStateStats) String() string {
+	return fmt.Sprintf("peerStateStats{votes: %d, blockParts: %d}", pss.votes, pss.blockParts)
+}
+
 // NewPeerState returns a new PeerState for the given Peer
 func NewPeerState(peer p2p.Peer) *PeerState {
 	return &PeerState{
@@ -1077,10 +1083,7 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 // It returns the total number of votes (1 per block). This essentially means
 // the number of blocks for which peer has been sending us votes.
 func (ps *PeerState) RecordVote(vote *types.Vote) int {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-
-	if ps.stats.lastVoteHeight == vote.Height {
+	if ps.stats.lastVoteHeight >= vote.Height {
 		return ps.stats.votes
 	}
 	ps.stats.lastVoteHeight = vote.Height
@@ -1088,19 +1091,28 @@ func (ps *PeerState) RecordVote(vote *types.Vote) int {
 	return ps.stats.votes
 }
 
+// VotesSent returns the number of blocks for which peer has been sending us
+// votes.
+func (ps *PeerState) VotesSent() int {
+	return ps.stats.votes
+}
+
 // RecordVote updates internal statistics for this peer by recording the block part.
 // It returns the total number of block parts (1 per block). This essentially means
 // the number of blocks for which peer has been sending us block parts.
 func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
-	ps.mtx.Lock()
-	defer ps.mtx.Unlock()
-
-	if ps.stats.lastBlockPartHeight == bp.Height {
+	if ps.stats.lastBlockPartHeight >= bp.Height {
 		return ps.stats.blockParts
 	}
 
 	ps.stats.lastBlockPartHeight = bp.Height
 	ps.stats.blockParts += 1
+	return ps.stats.blockParts
+}
+
+// BlockPartsSent returns the number of blocks for which peer has been sending
+// us block parts.
+func (ps *PeerState) BlockPartsSent() int {
 	return ps.stats.blockParts
 }
 
@@ -1250,11 +1262,13 @@ func (ps *PeerState) StringIndented(indent string) string {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return fmt.Sprintf(`PeerState{
-%s  Key %v
-%s  PRS %v
+%s  Key   %v
+%s  PRS   %v
+%s  Stats %v
 %s}`,
 		indent, ps.Peer.ID(),
 		indent, ps.PeerRoundState.StringIndented(indent+"  "),
+		indent, ps.stats,
 		indent)
 }
 
