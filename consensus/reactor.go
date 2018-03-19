@@ -27,6 +27,8 @@ const (
 	VoteSetBitsChannel = byte(0x23)
 
 	maxConsensusMessageSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
+
+	blocksToContributeToBecomeGoodPeer = 10000
 )
 
 //-----------------------------------------------------------------------------
@@ -251,7 +253,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
-			if numBlocks := ps.RecordBlockPart(msg); numBlocks > 10000 {
+			if numBlocks := ps.RecordBlockPart(msg); numBlocks > blocksToContributeToBecomeGoodPeer {
 				conR.Switch.MarkPeerAsGood(src)
 			}
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
@@ -273,7 +275,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.EnsureVoteBitArrays(height, valSize)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
-			if blocks := ps.RecordVote(msg.Vote); blocks > 10000 {
+			if blocks := ps.RecordVote(msg.Vote); blocks > blocksToContributeToBecomeGoodPeer {
 				conR.Switch.MarkPeerAsGood(src)
 			}
 
