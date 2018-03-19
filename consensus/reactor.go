@@ -852,6 +852,10 @@ type peerStateStats struct {
 	blockParts          int
 }
 
+func (pss peerStateStats) String() string {
+	return fmt.Sprintf("peerStateStats{votes: %d, blockParts: %d}", pss.votes, pss.blockParts)
+}
+
 // NewPeerState returns a new PeerState for the given Peer
 func NewPeerState(peer p2p.Peer) *PeerState {
 	return &PeerState{
@@ -1087,6 +1091,12 @@ func (ps *PeerState) RecordVote(vote *types.Vote) int {
 	return ps.stats.votes
 }
 
+// VotesSent returns the number of blocks for which peer has been sending us
+// votes.
+func (ps *PeerState) VotesSent() int {
+	return ps.stats.votes
+}
+
 // RecordVote updates internal statistics for this peer by recording the block part.
 // It returns the total number of block parts (1 per block). This essentially means
 // the number of blocks for which peer has been sending us block parts.
@@ -1097,6 +1107,12 @@ func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
 
 	ps.stats.lastBlockPartHeight = bp.Height
 	ps.stats.blockParts += 1
+	return ps.stats.blockParts
+}
+
+// BlockPartsSent returns the number of blocks for which peer has been sending
+// us block parts.
+func (ps *PeerState) BlockPartsSent() int {
 	return ps.stats.blockParts
 }
 
@@ -1246,11 +1262,13 @@ func (ps *PeerState) StringIndented(indent string) string {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return fmt.Sprintf(`PeerState{
-%s  Key %v
-%s  PRS %v
+%s  Key   %v
+%s  PRS   %v
+%s  Stats %v
 %s}`,
 		indent, ps.Peer.ID(),
 		indent, ps.PeerRoundState.StringIndented(indent+"  "),
+		indent, ps.stats,
 		indent)
 }
 
