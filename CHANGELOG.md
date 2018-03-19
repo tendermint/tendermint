@@ -39,6 +39,7 @@ IMPROVEMENTS:
 
 FEATURES:
 - [config] added the `--p2p.private_peer_ids` flag and `PrivatePeerIDs` config variable (see config for description)
+- [rpc] added `/health` endpoint, which returns empty result for now
 
 ## 0.16.0 (February 20th, 2017)
 
