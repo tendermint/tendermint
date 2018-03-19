@@ -84,6 +84,10 @@ func (Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return core.DumpConsensusState()
 }
 
+func (Local) Health() (*ctypes.ResultHealth, error) {
+	return core.Health()
+}
+
 func (Local) DialSeeds(seeds []string) (*ctypes.ResultDialSeeds, error) {
 	return core.UnsafeDialSeeds(seeds)
 }
