@@ -1,12 +1,7 @@
 package core
 
 import (
-	"time"
-
-	"errors"
-	"fmt"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // Get node health. Checks whether new blocks are created.

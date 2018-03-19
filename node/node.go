@@ -454,7 +454,6 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetConsensusReactor(n.consensusReactor)
 	rpccore.SetEventBus(n.eventBus)
 	rpccore.SetLogger(n.Logger.With("module", "rpc"))
-	rpccore.SetConfig(n.config)
 }
 
 func (n *Node) startRPC() ([]net.Listener, error) {

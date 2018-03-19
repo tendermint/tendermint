@@ -3,11 +3,10 @@ package core
 import (
 	"time"
 
-	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/consensus"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	p2p "github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/state/txindex"
@@ -61,7 +60,6 @@ var (
 	eventBus         *types.EventBus // thread safe
 
 	logger log.Logger
-	cfg    *config.Config
 )
 
 func SetStateDB(db dbm.DB) {
@@ -114,10 +112,6 @@ func SetConsensusReactor(conR *consensus.ConsensusReactor) {
 
 func SetLogger(l log.Logger) {
 	logger = l
-}
-
-func SetConfig(c *config.Config) {
-	cfg = c
 }
 
 func SetEventBus(b *types.EventBus) {
