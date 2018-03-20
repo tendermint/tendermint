@@ -83,6 +83,7 @@ type Client interface {
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
+	Health() (*ctypes.ResultHealth, error)
 }
 
 // EventsClient is reactive, you can subscribe to any message, given the proper

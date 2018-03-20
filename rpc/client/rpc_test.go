@@ -78,6 +78,15 @@ func TestDumpConsensusState(t *testing.T) {
 	}
 }
 
+func TestHealth(t *testing.T) {
+	for i, c := range GetClients() {
+		nc, ok := c.(client.NetworkClient)
+		require.True(t, ok, "%d", i)
+		_, err := nc.Health()
+		require.Nil(t, err, "%d: %+v", i, err)
+	}
+}
+
 func TestGenesisAndValidators(t *testing.T) {
 	for i, c := range GetClients() {
 
