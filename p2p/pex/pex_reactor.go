@@ -23,6 +23,9 @@ const (
 	// PexChannel is a channel for PEX messages
 	PexChannel = byte(0x00)
 
+	// TODO: make smaller. Should match the maxGetSelection
+	// this is basically the amplification factor since a request
+	// msg is like 1 byte ... it can cause us to send msgs of this size!
 	maxPexMessageSize = 1048576 // 1MB
 
 	// ensure we have enough peers
@@ -57,13 +60,19 @@ type PEXReactor struct {
 
 	book              AddrBook
 	config            *PEXReactorConfig
-	ensurePeersPeriod time.Duration
+	ensurePeersPeriod time.Duration // TODO: should go in the config
 
 	// maps to prevent abuse
 	requestsSent         *cmn.CMap // ID->struct{}: unanswered send requests
 	lastReceivedRequests *cmn.CMap // ID->time.Time: last time peer requested from us
 
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
+}
+
+func (pexR *PEXReactor) minReceiveRequestInterval() time.Duration {
+	// NOTE: must be less than ensurePeersPeriod, otherwise we'll request
+	// peers too quickly from others and they'll think we're bad!
+	return pexR.ensurePeersPeriod / 3
 }
 
 // PEXReactorConfig holds reactor specific configuration data.
@@ -109,6 +118,9 @@ func (r *PEXReactor) OnStart() error {
 	}
 
 	// return err if user provided a bad seed address
+	// NOTE: only if its an invalid address.
+	// If we simply fail to resovle a DNS name,
+	// we shouldn't exit here ...
 	if err := r.checkSeeds(); err != nil {
 		return err
 	}
@@ -188,6 +200,10 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 		}
 
 		// Seeds disconnect after sending a batch of addrs
+		// NOTE: this is a prime candidate for amplification attacks
+		// so it's important we
+		// 1) restrict how frequently peers can request
+		// 2) limit the output size
 		if r.config.SeedMode {
 			// TODO: should we be more selective ?
 			r.SendAddrs(src, r.book.GetSelection())
@@ -207,6 +223,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 	}
 }
 
+// enforces a minimum amount of time between requests
 func (r *PEXReactor) receiveRequest(src Peer) error {
 	id := string(src.ID())
 	v := r.lastReceivedRequests.Get(id)
@@ -226,8 +243,14 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 	}
 
 	now := time.Now()
-	if now.Sub(lastReceived) < r.ensurePeersPeriod/3 {
-		return fmt.Errorf("Peer (%v) is sending too many PEX requests. Disconnecting", src.ID())
+	minInterval := r.minReceiveRequestInterval()
+	if now.Sub(lastReceived) < minInterval {
+		return fmt.Errorf("Peer (%v) send next PEX request too soon. lastReceived: %v, now: %v, minInterval: %v. Disconnecting",
+			src.ID(),
+			lastReceived,
+			now,
+			minInterval,
+		)
 	}
 	r.lastReceivedRequests.Set(id, now)
 	return nil
@@ -258,7 +281,11 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
+		// TODO: make sure correct nodes never send nil and return error
+		//   if a netAddr == nil
 		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
+			// TODO: Should we moe the list of private peers into the AddrBook so AddAddress
+			// can do the check for us, and we don't have to worry about checking before calling ?
 			r.book.AddAddress(netAddr, srcAddr)
 		}
 	}
@@ -351,6 +378,9 @@ func (r *PEXReactor) ensurePeers() {
 		if connected := r.Switch.Peers().Has(try.ID); connected {
 			continue
 		}
+		// TODO: consider moving some checks from toDial into here
+		// so we don't even consider dialing peers that we want to wait
+		// before dialling again, or have dialled too many times already
 		r.Logger.Info("Will dial address", "addr", try)
 		toDial[try.ID] = try
 	}
@@ -378,13 +408,17 @@ func (r *PEXReactor) ensurePeers() {
 	}
 }
 
-func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
-	var attempts int
-	var lastDialed time.Time
-	if lAttempts, attempted := r.attemptsToDial.Load(addr.DialString()); attempted {
-		attempts = lAttempts.(_attemptsToDial).number
-		lastDialed = lAttempts.(_attemptsToDial).lastDialed
+func (r *PEXReactor) dialAttemptsInfo(addr *p2p.NetAddress) (attempts int, lastDialed time.Time) {
+	_attempts, ok := r.attemptsToDial.Load(addr.DialString())
+	if !ok {
+		return
 	}
+	atd := _attempts.(_attemptsToDial)
+	return atd.number, atd.lastDialed
+}
+
+func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
+	attempts, lastDialed := r.dialAttemptsInfo(addr)
 
 	if attempts > maxAttemptsToDial {
 		r.Logger.Error("Reached max attempts to dial", "addr", addr, "attempts", attempts)
@@ -426,6 +460,9 @@ func (r *PEXReactor) checkSeeds() error {
 	if lSeeds == 0 {
 		return nil
 	}
+	// TODO: don't exit the program if we simply cant resolve a DNS name.
+	// But if names or addresses are incorrectly speficied (ie. invalid),
+	// then we should return an err that causes an exit
 	_, errs := p2p.NewNetAddressStrings(r.config.Seeds)
 	for _, err := range errs {
 		if err != nil {
