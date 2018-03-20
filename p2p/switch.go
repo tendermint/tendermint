@@ -351,6 +351,7 @@ func (sw *Switch) IsDialing(id ID) bool {
 }
 
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
+// TODO: remove addrBook arg since it's now set on the switch
 func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
 	// only log errors, dial correct addresses
@@ -360,7 +361,10 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 
 	ourAddr := sw.nodeInfo.NetAddress()
 
-	// TODO: move this out of here ?
+	// TODO: this code feels like it's in the wrong place.
+	// The integration tests depend on the addrBook being saved
+	// right away but maybe we can change that. Recall that
+	// the addrBook is only written to disk every 2min
 	if addrBook != nil {
 		// add peers to `addrBook`
 		for _, netAddr := range netAddrs {
