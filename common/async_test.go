@@ -2,6 +2,7 @@ package common
 
 import (
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -29,22 +30,27 @@ func TestParallel(t *testing.T) {
 	assert.Equal(t, int(*counter), len(tasks), "Each task should have incremented the counter already")
 	var failedTasks int
 	for i := 0; i < len(tasks); i++ {
-		select {
-		case taskResult := <-trs.chz[i]:
-			if taskResult.Error != nil {
-				assert.Fail(t, "Task should not have errored but got %v", taskResult.Error)
-				failedTasks += 1
-			} else if !assert.Equal(t, -1*i, taskResult.Value.(int)) {
-				failedTasks += 1
-			} else {
-				// Good!
-			}
-		default:
+		taskResult, ok := trs.LatestResult(i)
+		if !ok {
+			assert.Fail(t, "Task #%v did not complete.", i)
 			failedTasks += 1
+		} else if taskResult.Error != nil {
+			assert.Fail(t, "Task should not have errored but got %v", taskResult.Error)
+			failedTasks += 1
+		} else if taskResult.Panic != nil {
+			assert.Fail(t, "Task should not have panic'd but got %v", taskResult.Panic)
+			failedTasks += 1
+		} else if !assert.Equal(t, -1*i, taskResult.Value.(int)) {
+			assert.Fail(t, "Task should have returned %v but got %v", -1*i, taskResult.Value.(int))
+			failedTasks += 1
+		} else {
+			// Good!
 		}
 	}
 	assert.Equal(t, failedTasks, 0, "No task should have failed")
-
+	assert.Nil(t, trs.FirstError(), "There should be no errors")
+	assert.Nil(t, trs.FirstPanic(), "There should be no panics")
+	assert.Equal(t, 0, trs.FirstValue(), "First value should be 0")
 }
 
 func TestParallelAbort(t *testing.T) {
@@ -90,9 +96,9 @@ func TestParallelAbort(t *testing.T) {
 	flow4 <- <-flow3
 
 	// Verify task #0, #1, #2.
-	waitFor(t, taskResultSet.chz[0], "Task #0", 0, nil, nil)
-	waitFor(t, taskResultSet.chz[1], "Task #1", 1, errors.New("some error"), nil)
-	waitFor(t, taskResultSet.chz[2], "Task #2", 2, nil, nil)
+	checkResult(t, taskResultSet, 0, 0, nil, nil)
+	checkResult(t, taskResultSet, 1, 1, errors.New("some error"), nil)
+	checkResult(t, taskResultSet, 2, 2, nil, nil)
 }
 
 func TestParallelRecover(t *testing.T) {
@@ -115,22 +121,19 @@ func TestParallelRecover(t *testing.T) {
 	assert.False(t, ok, "ok should be false since we panic'd in task #2.")
 
 	// Verify task #0, #1, #2.
-	waitFor(t, taskResultSet.chz[0], "Task #0", 0, nil, nil)
-	waitFor(t, taskResultSet.chz[1], "Task #1", 1, errors.New("some error"), nil)
-	waitFor(t, taskResultSet.chz[2], "Task #2", nil, nil, 2)
+	checkResult(t, taskResultSet, 0, 0, nil, nil)
+	checkResult(t, taskResultSet, 1, 1, errors.New("some error"), nil)
+	checkResult(t, taskResultSet, 2, nil, nil, 2)
 }
 
 // Wait for result
-func waitFor(t *testing.T, taskResultCh TaskResultCh, taskName string, val interface{}, err error, pnk interface{}) {
-	select {
-	case taskResult, ok := <-taskResultCh:
-		assert.True(t, ok, "TaskResultCh unexpectedly closed for %v", taskName)
-		assert.Equal(t, val, taskResult.Value, taskName)
-		assert.Equal(t, err, taskResult.Error, taskName)
-		assert.Equal(t, pnk, taskResult.Panic, taskName)
-	default:
-		assert.Fail(t, "Failed to receive result for %v", taskName)
-	}
+func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int, val interface{}, err error, pnk interface{}) {
+	taskResult, ok := taskResultSet.LatestResult(index)
+	taskName := fmt.Sprintf("Task #%v", index)
+	assert.True(t, ok, "TaskResultCh unexpectedly closed for %v", taskName)
+	assert.Equal(t, val, taskResult.Value, taskName)
+	assert.Equal(t, err, taskResult.Error, taskName)
+	assert.Equal(t, pnk, taskResult.Panic, taskName)
 }
 
 // Wait for timeout (no result)

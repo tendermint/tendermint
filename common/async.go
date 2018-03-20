@@ -41,7 +41,7 @@ func (trs *TaskResultSet) Channels() []TaskResultCh {
 	return trs.chz
 }
 
-func (trs *TaskResultSet) LastResult(index int) (TaskResult, bool) {
+func (trs *TaskResultSet) LatestResult(index int) (TaskResult, bool) {
 	if len(trs.results) <= index {
 		return TaskResult{}, false
 	}
@@ -50,7 +50,7 @@ func (trs *TaskResultSet) LastResult(index int) (TaskResult, bool) {
 }
 
 // NOTE: Not concurrency safe.
-func (trs *TaskResultSet) Reap() {
+func (trs *TaskResultSet) Reap() *TaskResultSet {
 	if trs.results == nil {
 		trs.results = make([]taskResultOK, len(trs.chz))
 	}
@@ -67,6 +67,7 @@ func (trs *TaskResultSet) Reap() {
 			// Do nothing.
 		}
 	}
+	return trs
 }
 
 // Returns the firstmost (by task index) error as
@@ -155,5 +156,5 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 	// We must do this check here (after DONE_LOOP).
 	ok = ok && (atomic.LoadInt32(numPanics) == 0)
 
-	return newTaskResultSet(taskResultChz), ok
+	return newTaskResultSet(taskResultChz).Reap(), ok
 }
