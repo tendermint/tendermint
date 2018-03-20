@@ -1,5 +1,9 @@
 package common
 
+import (
+	"sync/atomic"
+)
+
 // val: the value returned after task execution.
 // err: the error returned during task completion.
 // abort: tells Parallel to return, whether or not all tasks have completed.
@@ -14,12 +18,15 @@ type TaskResult struct {
 type TaskResultCh <-chan TaskResult
 
 // Run tasks in parallel, with ability to abort early.
+// Returns ok=false iff any of the tasks returned abort=true.
 // NOTE: Do not implement quit features here.  Instead, provide convenient
 // concurrent quit-like primitives, passed implicitly via Task closures. (e.g.
 // it's not Parallel's concern how you quit/abort your tasks).
-func Parallel(tasks ...Task) []TaskResultCh {
+func Parallel(tasks ...Task) (chz []TaskResultCh, ok bool) {
 	var taskResultChz = make([]TaskResultCh, len(tasks)) // To return.
 	var taskDoneCh = make(chan bool, len(tasks))         // A "wait group" channel, early abort if any true received.
+	var numPanics = new(int32)                           // Keep track of panics to set ok=false later.
+	ok = true                                            // We will set it to false iff any tasks panic'd or returned abort.
 
 	// Start all tasks in parallel in separate goroutines.
 	// When the task is complete, it will appear in the
@@ -31,6 +38,7 @@ func Parallel(tasks ...Task) []TaskResultCh {
 			// Recovery
 			defer func() {
 				if pnk := recover(); pnk != nil {
+					atomic.AddInt32(numPanics, 1)
 					taskResultCh <- TaskResult{nil, nil, pnk}
 					taskDoneCh <- false
 				}
@@ -46,15 +54,21 @@ func Parallel(tasks ...Task) []TaskResultCh {
 	}
 
 	// Wait until all tasks are done, or until abort.
+	// DONE_LOOP:
 	for i := 0; i < len(tasks); i++ {
 		abort := <-taskDoneCh
 		if abort {
+			ok = false
 			break
 		}
 	}
 
+	// Ok is also false if there were any panics.
+	// We must do this check here (after DONE_LOOP).
+	ok = ok && (atomic.LoadInt32(numPanics) == 0)
+
 	// Caller can use this however they want.
 	// TODO: implement convenience functions to
 	// make sense of this structure safely.
-	return taskResultChz
+	return taskResultChz, ok
 }

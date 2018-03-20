@@ -22,7 +22,8 @@ func TestParallel(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultChz = Parallel(tasks...)
+	var taskResultChz, ok = Parallel(tasks...)
+	assert.True(t, ok)
 
 	// Verify.
 	assert.Equal(t, int(*counter), len(tasks), "Each task should have incremented the counter already")
@@ -78,7 +79,8 @@ func TestParallelAbort(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultChz = Parallel(tasks...)
+	var taskResultChz, ok = Parallel(tasks...)
+	assert.False(t, ok, "ok should be false since we aborted task #2.")
 
 	// Verify task #3.
 	// Initially taskResultCh[3] sends nothing since flow4 didn't send.
@@ -109,7 +111,8 @@ func TestParallelRecover(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultChz = Parallel(tasks...)
+	var taskResultChz, ok = Parallel(tasks...)
+	assert.False(t, ok, "ok should be false since we panic'd in task #2.")
 
 	// Verify task #0, #1, #2.
 	waitFor(t, taskResultChz[0], "Task #0", 0, nil, nil)
