@@ -22,7 +22,7 @@ func TestParallel(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultChz, ok = Parallel(tasks...)
+	var trs, ok = Parallel(tasks...)
 	assert.True(t, ok)
 
 	// Verify.
@@ -30,7 +30,7 @@ func TestParallel(t *testing.T) {
 	var failedTasks int
 	for i := 0; i < len(tasks); i++ {
 		select {
-		case taskResult := <-taskResultChz[i]:
+		case taskResult := <-trs.chz[i]:
 			if taskResult.Error != nil {
 				assert.Fail(t, "Task should not have errored but got %v", taskResult.Error)
 				failedTasks += 1
@@ -79,20 +79,20 @@ func TestParallelAbort(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultChz, ok = Parallel(tasks...)
+	var taskResultSet, ok = Parallel(tasks...)
 	assert.False(t, ok, "ok should be false since we aborted task #2.")
 
 	// Verify task #3.
-	// Initially taskResultCh[3] sends nothing since flow4 didn't send.
-	waitTimeout(t, taskResultChz[3], "Task #3")
+	// Initially taskResultSet.chz[3] sends nothing since flow4 didn't send.
+	waitTimeout(t, taskResultSet.chz[3], "Task #3")
 
 	// Now let the last task (#3) complete after abort.
 	flow4 <- <-flow3
 
 	// Verify task #0, #1, #2.
-	waitFor(t, taskResultChz[0], "Task #0", 0, nil, nil)
-	waitFor(t, taskResultChz[1], "Task #1", 1, errors.New("some error"), nil)
-	waitFor(t, taskResultChz[2], "Task #2", 2, nil, nil)
+	waitFor(t, taskResultSet.chz[0], "Task #0", 0, nil, nil)
+	waitFor(t, taskResultSet.chz[1], "Task #1", 1, errors.New("some error"), nil)
+	waitFor(t, taskResultSet.chz[2], "Task #2", 2, nil, nil)
 }
 
 func TestParallelRecover(t *testing.T) {
@@ -111,13 +111,13 @@ func TestParallelRecover(t *testing.T) {
 	}
 
 	// Run in parallel.
-	var taskResultChz, ok = Parallel(tasks...)
+	var taskResultSet, ok = Parallel(tasks...)
 	assert.False(t, ok, "ok should be false since we panic'd in task #2.")
 
 	// Verify task #0, #1, #2.
-	waitFor(t, taskResultChz[0], "Task #0", 0, nil, nil)
-	waitFor(t, taskResultChz[1], "Task #1", 1, errors.New("some error"), nil)
-	waitFor(t, taskResultChz[2], "Task #2", nil, nil, 2)
+	waitFor(t, taskResultSet.chz[0], "Task #0", 0, nil, nil)
+	waitFor(t, taskResultSet.chz[1], "Task #1", 1, errors.New("some error"), nil)
+	waitFor(t, taskResultSet.chz[2], "Task #2", nil, nil, 2)
 }
 
 // Wait for result
