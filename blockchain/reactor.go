@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 	"sync"

@@ -264,7 +264,7 @@ func (sc *SocketClient) acceptConnection() (net.Conn, error) {
 
 	}
 
-	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey.Wrap())
+	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey)
 	if err != nil {
 		return nil, err
 	}
