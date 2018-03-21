@@ -20,8 +20,8 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -269,12 +269,16 @@ type authSigMessage struct {
 }
 
 func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature crypto.Signature) (*authSigMessage, error) {
-	var recvMsg authSigMessage
+	recvMsg := &authSigMessage{}
 	var err1, err2 error
 
 	cmn.Parallel(
 		func() {
-			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
+			var msgBytes []byte
+			msgBytes, err1 = amino.MarshalBinaryBare(authSigMessage{pubKey, signature})
+			if err1 != nil {
+				return
+			}
 			_, err1 = sc.Write(msgBytes)
 		},
 		func() {
@@ -283,8 +287,10 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 			if err2 != nil {
 				return
 			}
-			n := int(0) // not used.
-			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
+			err2 = amino.UnmarshalBinaryBare(readBuffer, recvMsg)
+			if err2 != nil {
+				return
+			}
 		})
 
 	if err1 != nil {
@@ -294,7 +300,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 		return nil, err2
 	}
 
-	return &recvMsg, nil
+	return recvMsg, nil
 }
 
 //--------------------------------------------------------------------------------

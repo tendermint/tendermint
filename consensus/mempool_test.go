@@ -108,7 +108,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 		ticker := time.NewTicker(time.Second * 30)
 		select {
 		case b := <-newBlockCh:
-			evt := b.(types.TMEventData).Unwrap().(types.EventDataNewBlock)
+			evt := b.(types.TMEventData).(types.EventDataNewBlock)
 			nTxs += int(evt.Block.Header.NumTxs)
 		case <-ticker.C:
 			panic("Timed out waiting to commit blocks with transactions")

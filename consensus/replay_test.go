@@ -18,7 +18,7 @@ import (
 	"github.com/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -520,7 +520,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
 				var n int
-				block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+				block := amino.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
 				if err != nil {
 					panic(err)
 				}
@@ -553,7 +553,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	}
 	// grab the last block too
 	var n int
-	block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+	block := amino.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
 	if err != nil {
 		panic(err)
 	}

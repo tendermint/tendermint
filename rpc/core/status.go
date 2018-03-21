@@ -36,7 +36,7 @@ import (
 // 		},
 // 		"node_info": {
 // 			"other": [
-// 				"wire_version=0.7.2",
+// 				"amino_version=0.7.2",
 // 				"p2p_version=0.5.0",
 // 				"consensus_version=v1/0.2.2",
 // 				"rpc_version=0.7.0/3",

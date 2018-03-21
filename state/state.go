@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -84,9 +84,9 @@ func (s State) Equals(s2 State) bool {
 	return bytes.Equal(s.Bytes(), s2.Bytes())
 }
 
-// Bytes serializes the State using go-wire.
+// Bytes serializes the State using go-amino.
 func (s State) Bytes() []byte {
-	bz, err := wire.MarshalBinary(s)
+	bz, err := amino.MarshalBinaryBare(s)
 	if err != nil {
 		panic(err)
 	}

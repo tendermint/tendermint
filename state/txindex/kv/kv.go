@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/pubsub/query"
@@ -68,7 +68,7 @@ func (txi *TxIndex) Get(hash []byte) (*types.TxResult, error) {
 	}
 
 	txResult := new(types.TxResult)
-	err := wire.UnmarshalBinary(rawBytes, &txResult)
+	err := amino.UnmarshalBinary(rawBytes, &txResult)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading TxResult: %v", err)
 	}
@@ -91,7 +91,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		}
 
 		// index tx by hash
-		rawBytes, err := wire.MarshalBinary(result)
+		rawBytes, err := amino.MarshalBinary(result)
 		if err != nil {
 			return err
 		}
@@ -116,7 +116,7 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	}
 
 	// index tx by hash
-	rawBytes, err := wire.MarshalBinary(result)
+	rawBytes, err := amino.MarshalBinary(result)
 	if err != nil {
 		return err
 	}

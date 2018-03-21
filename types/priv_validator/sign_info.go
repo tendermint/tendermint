@@ -36,11 +36,11 @@ func voteToStep(vote *types.Vote) int8 {
 // LastSignedInfo contains information about the latest
 // data signed by a validator to help prevent double signing.
 type LastSignedInfo struct {
-	Height    int64            `json:"height"`
-	Round     int              `json:"round"`
-	Step      int8             `json:"step"`
-	Signature crypto.Signature `json:"signature,omitempty"` // so we dont lose signatures
-	SignBytes cmn.HexBytes     `json:"signbytes,omitempty"` // so we dont lose signatures
+	Height    int64                   `json:"height"`
+	Round     int                     `json:"round"`
+	Step      int8                    `json:"step"`
+	Signature crypto.SignatureEd25519 `json:"signature,omitempty"` // so we dont lose signatures
+	SignBytes cmn.HexBytes            `json:"signbytes,omitempty"` // so we dont lose signatures
 }
 
 func NewLastSignedInfo() *LastSignedInfo {
@@ -72,7 +72,7 @@ func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, err
 				return false, errors.New("Step regression")
 			} else if info.Step == step {
 				if info.SignBytes != nil {
-					if info.Signature.Empty() {
+					if info.Signature.IsZero() {
 						panic("info: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -86,7 +86,7 @@ func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, err
 
 // Set height/round/step and signature on the info
 func (info *LastSignedInfo) Set(height int64, round int, step int8,
-	signBytes []byte, sig crypto.Signature) {
+	signBytes []byte, sig crypto.SignatureEd25519) {
 
 	info.Height = height
 	info.Round = round
@@ -101,7 +101,7 @@ func (info *LastSignedInfo) Reset() {
 	info.Height = 0
 	info.Round = 0
 	info.Step = 0
-	info.Signature = crypto.Signature{}
+	info.Signature = crypto.SignatureEd25519{}
 	info.SignBytes = nil
 }
 

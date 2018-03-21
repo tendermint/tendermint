@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	ctest "github.com/tendermint/tmlibs/test"
 )
@@ -69,9 +69,9 @@ func TestValidTxProof(t *testing.T) {
 
 			// read-write must also work
 			var p2 TxProof
-			bin, err := wire.MarshalBinary(proof)
+			bin, err := amino.MarshalBinary(proof)
 			assert.Nil(err)
-			err = wire.UnmarshalBinary(bin, &p2)
+			err = amino.UnmarshalBinary(bin, &p2)
 			if assert.Nil(err, "%d: %d: %+v", h, i, err) {
 				assert.Nil(p2.Validate(root), "%d: %d", h, i)
 			}
@@ -97,7 +97,7 @@ func testTxProofUnchangable(t *testing.T) {
 
 	// make sure it is valid to start with
 	assert.Nil(proof.Validate(root))
-	bin, err := wire.MarshalBinary(proof)
+	bin, err := amino.MarshalBinary(proof)
 	assert.Nil(err)
 
 	// try mutating the data and make sure nothing breaks
@@ -112,7 +112,7 @@ func testTxProofUnchangable(t *testing.T) {
 // this make sure the proof doesn't deserialize into something valid
 func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 	var proof TxProof
-	err := wire.UnmarshalBinary(bad, &proof)
+	err := amino.UnmarshalBinary(bad, &proof)
 	if err == nil {
 		err = proof.Validate(root)
 		if err == nil {

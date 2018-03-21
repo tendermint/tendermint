@@ -72,7 +72,7 @@ func loadNodeKey(filePath string) (*NodeKey, error) {
 }
 
 func genNodeKey(filePath string) (*NodeKey, error) {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/tendermint/amino"
 )
 
 var (
@@ -51,7 +51,7 @@ func (p *Proposal) String() string {
 
 // SignBytes returns the Proposal bytes for signing
 func (p *Proposal) SignBytes(chainID string) []byte {
-	bz, err := wire.MarshalJSON(CanonicalJSONOnceProposal{
+	bz, err := amino.MarshalJSON(CanonicalJSONOnceProposal{
 		ChainID:  chainID,
 		Proposal: CanonicalProposal(p),
 	})

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -73,7 +73,7 @@ type Vote struct {
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
-	bz, err := wire.MarshalJSON(CanonicalJSONOnceVote{
+	bz, err := amino.MarshalJSON(CanonicalJSONOnceVote{
 		chainID,
 		CanonicalVote(vote),
 	})

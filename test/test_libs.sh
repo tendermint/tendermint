@@ -13,7 +13,7 @@ DIR="$( cd -P "$( dirname "$SOURCE" )/.." && pwd )"
 ####################
 
 # All libs should define `make test` and `make get_vendor_deps`
-LIBS=(tmlibs go-wire go-crypto abci)
+LIBS=(tmlibs go-amino go-crypto abci)
 for lib in "${LIBS[@]}"; do
 	# checkout vendored version of lib
 	bash scripts/dep_utils/checkout.sh "$lib"

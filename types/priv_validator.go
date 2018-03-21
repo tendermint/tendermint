@@ -55,30 +55,30 @@ type PrivValidator2 interface {
 
 type TestSigner interface {
 	Address() cmn.HexBytes
-	PubKey() crypto.PubKey
-	Sign([]byte) (crypto.Signature, error)
+	PubKey() crypto.PubKeyEd25519
+	Sign([]byte) (crypto.SignatureEd25519, error)
 }
 
 func GenSigner() TestSigner {
 	return &DefaultTestSigner{
-		crypto.GenPrivKeyEd25519().Wrap(),
+		PrivKey: crypto.GenPrivKeyEd25519(),
 	}
 }
 
 type DefaultTestSigner struct {
-	crypto.PrivKey
+	PrivKey crypto.PrivKeyEd25519
 }
 
 func (ds *DefaultTestSigner) Address() cmn.HexBytes {
 	return ds.PubKey().Address()
 }
 
-func (ds *DefaultTestSigner) PubKey() crypto.PubKey {
-	return ds.PrivKey.PubKey()
+func (ds *DefaultTestSigner) PubKey() crypto.PubKeyEd25519 {
+	return ds.PrivKey.PubKey().(crypto.PubKeyEd25519)
 }
 
-func (ds *DefaultTestSigner) Sign(msg []byte) (crypto.Signature, error) {
-	return ds.PrivKey.Sign(msg), nil
+func (ds *DefaultTestSigner) Sign(msg []byte) (crypto.SignatureEd25519, error) {
+	return ds.PrivKey.Sign(msg).(crypto.SignatureEd25519), nil
 }
 
 //--------------------------------------------------------------
@@ -100,16 +100,16 @@ type PrivValidator interface {
 // something besides the default, for instance a hardware signer.
 // NOTE: the directory containing the privVal.filePath must already exist.
 type PrivValidatorFS struct {
-	Address       Address          `json:"address"`
-	PubKey        crypto.PubKey    `json:"pub_key"`
-	LastHeight    int64            `json:"last_height"`
-	LastRound     int              `json:"last_round"`
-	LastStep      int8             `json:"last_step"`
-	LastSignature crypto.Signature `json:"last_signature,omitempty"` // so we dont lose signatures
-	LastSignBytes cmn.HexBytes     `json:"last_signbytes,omitempty"` // so we dont lose signatures
+	Address       Address                 `json:"address"`
+	PubKey        crypto.PubKey           `json:"pub_key"`
+	LastHeight    int64                   `json:"last_height"`
+	LastRound     int                     `json:"last_round"`
+	LastStep      int8                    `json:"last_step"`
+	LastSignature crypto.SignatureEd25519 `json:"last_signature,omitempty"` // so we dont lose signatures
+	LastSignBytes cmn.HexBytes            `json:"last_signbytes,omitempty"` // so we dont lose signatures
 
 	// PrivKey should be empty if a Signer other than the default is being used.
-	PrivKey crypto.PrivKey `json:"priv_key"`
+	PrivKey crypto.PrivKeyEd25519 `json:"priv_key"`
 	Signer  `json:"-"`
 
 	// For persistence.
@@ -123,25 +123,25 @@ type PrivValidatorFS struct {
 // eg. to avoid double signing.
 // Currently, the only callers are SignVote, SignProposal, and SignHeartbeat.
 type Signer interface {
-	Sign(msg []byte) (crypto.Signature, error)
+	Sign(msg []byte) (crypto.SignatureEd25519, error)
 }
 
 // DefaultSigner implements Signer.
 // It uses a standard, unencrypted crypto.PrivKey.
 type DefaultSigner struct {
-	PrivKey crypto.PrivKey `json:"priv_key"`
+	PrivKey crypto.PrivKeyEd25519 `json:"priv_key"`
 }
 
 // NewDefaultSigner returns an instance of DefaultSigner.
-func NewDefaultSigner(priv crypto.PrivKey) *DefaultSigner {
+func NewDefaultSigner(priv crypto.PrivKeyEd25519) *DefaultSigner {
 	return &DefaultSigner{
 		PrivKey: priv,
 	}
 }
 
 // Sign implements Signer. It signs the byte slice with a private key.
-func (ds *DefaultSigner) Sign(msg []byte) (crypto.Signature, error) {
-	return ds.PrivKey.Sign(msg), nil
+func (ds *DefaultSigner) Sign(msg []byte) (crypto.SignatureEd25519, error) {
+	return ds.PrivKey.Sign(msg).(crypto.SignatureEd25519), nil
 }
 
 // GetAddress returns the address of the validator.
@@ -159,7 +159,7 @@ func (pv *PrivValidatorFS) GetPubKey() crypto.PubKey {
 // GenPrivValidatorFS generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
 func GenPrivValidatorFS(filePath string) *PrivValidatorFS {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	return &PrivValidatorFS{
 		Address:  privKey.PubKey().Address(),
 		PubKey:   privKey.PubKey(),
@@ -235,7 +235,7 @@ func (privVal *PrivValidatorFS) save() {
 // Reset resets all fields in the PrivValidatorFS.
 // NOTE: Unsafe!
 func (privVal *PrivValidatorFS) Reset() {
-	var sig crypto.Signature
+	var sig crypto.SignatureEd25519
 	privVal.LastHeight = 0
 	privVal.LastRound = 0
 	privVal.LastStep = 0
@@ -282,7 +282,7 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 				return false, errors.New("Step regression")
 			} else if privVal.LastStep == step {
 				if privVal.LastSignBytes != nil {
-					if privVal.LastSignature.Empty() {
+					if len(privVal.LastSignature) == 0 {
 						panic("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -374,7 +374,7 @@ func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal)
 
 // Persist height/round/step and signature
 func (privVal *PrivValidatorFS) saveSigned(height int64, round int, step int8,
-	signBytes []byte, sig crypto.Signature) {
+	signBytes []byte, sig crypto.SignatureEd25519) {
 
 	privVal.LastHeight = height
 	privVal.LastRound = round

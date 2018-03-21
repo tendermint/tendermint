@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/tendermint/wire"
+	crypto "github.com/tendermint/go-crypto"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -79,14 +79,10 @@ func (evl EvidenceList) Has(evidence Evidence) bool {
 
 //-------------------------------------------
 
-const (
-	evidenceTypeDuplicateVote = byte(0x01)
-)
-
-var _ = wire.RegisterInterface(
-	struct{ Evidence }{},
-	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
-)
+func init() {
+	amino.RegisterInterface((*Evidence)(nil), nil)
+	amino.RegisterConcrete(DuplicateVoteEvidence{}, "com.tendermint.evidence.duplicate_vote", nil)
+}
 
 //-------------------------------------------
 
@@ -120,7 +116,7 @@ func (dve *DuplicateVoteEvidence) Index() int {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return wireHasher(dve).Hash()
+	return aminoHasher(dve).Hash()
 }
 
 // Verify returns an error if the two votes aren't conflicting.
@@ -165,8 +161,8 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	}
 
 	// just check their hashes
-	dveHash := wireHasher(dve).Hash()
-	evHash := wireHasher(ev).Hash()
+	dveHash := aminoHasher(dve).Hash()
+	evHash := aminoHasher(ev).Hash()
 	return bytes.Equal(dveHash, evHash)
 }
 

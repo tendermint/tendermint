@@ -234,7 +234,7 @@
     "server",
     "types"
   ]
-  revision = "9e0e00bef42aebf6b402f66bf0f3dc607de8a6f3"
+  revision = "d5361de3001184de7cd3a0ccbae12eccde3d724e"
 
 [[projects]]
   branch = "master"
@@ -247,22 +247,25 @@
   revision = "d8387025d2b9d158cf4efb07e7ebf814bcce2057"
 
 [[projects]]
+  branch = "develop"
+  name = "github.com/tendermint/go-amino"
+  packages = ["."]
+  revision = "3b9e2b978447707c255922bc3f87a53d55c400c9"
+
+[[projects]]
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "c3e19f3ea26f5c3357e0bcbb799b0761ef923755"
-  version = "v0.5.0"
+  revision = "73407e7cff462bf4ffcc44d55a9dd4570dd57fed"
 
 [[projects]]
   name = "github.com/tendermint/go-wire"
-  packages = [
-    ".",
-    "data"
-  ]
+  packages = ["."]
   revision = "fa721242b042ecd4c6ed1a934ee740db4f74e45c"
   source = "github.com/tendermint/go-amino"
   version = "v0.7.3"
 
 [[projects]]
+  branch = "develop"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "autofile",
@@ -278,8 +281,7 @@
     "pubsub/query",
     "test"
   ]
-  revision = "1b9b5652a199ab0be2e781393fb275b66377309d"
-  version = "v0.7.0"
+  revision = "b1cc688a61c53e39b92ceb5df370e3c94b19da4c"
 
 [[projects]]
   name = "golang.org/x/crypto"
@@ -372,6 +374,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ed9db0be72a900f4812675f683db20eff9d64ef4511dc00ad29a810da65909c2"
+  inputs-digest = "2b31c911b69d891c9aa419e5981173c9515e1410a6028c6db91f1e589fe20edd"
   solver-name = "gps-cdcl"
   solver-version = 1

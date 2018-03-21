@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/tendermint/wire"
+	amino "github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -198,7 +198,7 @@ func newValidator(address []byte, power int64) *Validator {
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey).Wrap()
+	return crypto.PubKeyEd25519(pubKey)
 }
 
 func randValidator_() *Validator {
@@ -216,7 +216,7 @@ func randValidatorSet(numValidators int) *ValidatorSet {
 }
 
 func (valSet *ValidatorSet) toBytes() []byte {
-	bz, err := wire.MarshalBinary(valSet)
+	bz, err := amino.MarshalBinary(valSet)
 	if err != nil {
 		panic(err)
 	}
@@ -224,7 +224,7 @@ func (valSet *ValidatorSet) toBytes() []byte {
 }
 
 func (valSet *ValidatorSet) fromBytes(b []byte) {
-	err := wire.UnmarshalBinary(b, &valSet)
+	err := amino.UnmarshalBinary(b, &valSet)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		panic(err)

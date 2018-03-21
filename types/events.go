@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/tendermint/go-wire/data"
+	"github.com/tendermint/tendermint/amino"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
@@ -45,36 +45,8 @@ var (
 )
 
 // implements events.EventData
-type TMEventDataInner interface {
+type TMEventData interface {
 	// empty interface
-}
-
-type TMEventData struct {
-	TMEventDataInner `json:"unwrap"`
-}
-
-func (tmr TMEventData) MarshalJSON() ([]byte, error) {
-	return tmEventDataMapper.ToJSON(tmr.TMEventDataInner)
-}
-
-func (tmr *TMEventData) UnmarshalJSON(data []byte) (err error) {
-	parsed, err := tmEventDataMapper.FromJSON(data)
-	if err == nil && parsed != nil {
-		tmr.TMEventDataInner = parsed.(TMEventDataInner)
-	}
-	return
-}
-
-func (tmr TMEventData) Unwrap() TMEventDataInner {
-	tmrI := tmr.TMEventDataInner
-	for wrap, ok := tmrI.(TMEventData); ok; wrap, ok = tmrI.(TMEventData) {
-		tmrI = wrap.TMEventDataInner
-	}
-	return tmrI
-}
-
-func (tmr TMEventData) Empty() bool {
-	return tmr.TMEventDataInner == nil
 }
 
 const (
@@ -87,13 +59,21 @@ const (
 	EventDataTypeProposalHeartbeat = byte(0x20)
 )
 
-var tmEventDataMapper = data.NewMapper(TMEventData{}).
-	RegisterImplementation(EventDataNewBlock{}, EventDataNameNewBlock, EventDataTypeNewBlock).
-	RegisterImplementation(EventDataNewBlockHeader{}, EventDataNameNewBlockHeader, EventDataTypeNewBlockHeader).
-	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
-	RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
-	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote).
-	RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat)
+func init() {
+	amino.RegisterInterface((*TMEventData)(nil), nil)
+	amino.RegisterConcrete(EventDataNewBlock{},
+		"com.tendermint.events.new_block", nil)
+	amino.RegisterConcrete(EventDataNewBlockHeader{},
+		"com.tendermint.events.new_block_header", nil)
+	amino.RegisterConcrete(EventDataTx{},
+		"com.tendermint.events.tx", nil)
+	amino.RegisterConcrete(EventDataRoundState{},
+		"com.tendermint.events.round_state", nil)
+	amino.RegisterConcrete(EventDataVote{},
+		"com.tendermint.events.vote", nil)
+	amino.RegisterConcrete(EventDataProposalHeartbeat{},
+		"com.tendermint.events.proposal_heartbeat", nil)
+}
 
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic

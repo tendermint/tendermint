@@ -1,7 +1,7 @@
-Wire Protocol
+Amino Protocol
 =============
 
-The `Tendermint wire protocol <https://github.com/tendermint/go-wire>`__
+The `Tendermint amino protocol <https://github.com/tendermint/go-amino>`__
 encodes data in `c-style binary <#binary>`__ and `JSON <#json>`__ form.
 
 Supported types

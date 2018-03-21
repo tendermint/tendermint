@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -139,12 +139,12 @@ func (sc *SocketClient) GetPubKey() crypto.PubKey {
 func (sc *SocketClient) PubKey() (crypto.PubKey, error) {
 	err := writeMsg(sc.conn, &PubKeyMsg{})
 	if err != nil {
-		return crypto.PubKey{}, err
+		return crypto.PubKeyEd25519{}, err
 	}
 
 	res, err := readMsg(sc.conn)
 	if err != nil {
-		return crypto.PubKey{}, err
+		return crypto.PubKeyEd25519{}, err
 	}
 
 	return res.(*PubKeyMsg).PubKey, nil
@@ -264,7 +264,7 @@ func (sc *SocketClient) acceptConnection() (net.Conn, error) {
 
 	}
 
-	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey.Wrap())
+	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey)
 	if err != nil {
 		return nil, err
 	}
@@ -421,7 +421,7 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 			continue
 		}
 
-		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey.Wrap())
+		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey)
 		if err != nil {
 			rs.Logger.Error(
 				"connect",
@@ -487,23 +487,16 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 
 //---------------------------------------------------------
 
-const (
-	msgTypePubKey        = byte(0x01)
-	msgTypeSignVote      = byte(0x10)
-	msgTypeSignProposal  = byte(0x11)
-	msgTypeSignHeartbeat = byte(0x12)
-)
-
 // PrivValMsg is sent between RemoteSigner and SocketClient.
 type PrivValMsg interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ PrivValMsg }{},
-	wire.ConcreteType{&PubKeyMsg{}, msgTypePubKey},
-	wire.ConcreteType{&SignVoteMsg{}, msgTypeSignVote},
-	wire.ConcreteType{&SignProposalMsg{}, msgTypeSignProposal},
-	wire.ConcreteType{&SignHeartbeatMsg{}, msgTypeSignHeartbeat},
-)
+func init() {
+	amino.RegisterInterface((*PrivValMsg)(nil), nil)
+	amino.RegisterConcrete(PubKeyMsg{}, "com.tendermint.priv_validator.socket.pub_key_msg", nil)
+	amino.RegisterConcrete(SignVoteMsg{}, "com.tendermint.priv_validator.socket.sign_vote_msg", nil)
+	amino.RegisterConcrete(SignProposalMsg{}, "com.tendermint.priv_validator.socket.sign_proposal_msg", nil)
+	amino.RegisterConcrete(SignHeartbeatMsg{}, "com.tendermint.priv_validator.socket.sign_heartbeat_msg", nil)
+}
 
 // PubKeyMsg is a PrivValidatorSocket message containing the public key.
 type PubKeyMsg struct {
@@ -526,12 +519,9 @@ type SignHeartbeatMsg struct {
 }
 
 func readMsg(r io.Reader) (PrivValMsg, error) {
-	var (
-		n   int
-		err error
-	)
-
-	read := wire.ReadBinary(struct{ PrivValMsg }{}, r, 0, &n, &err)
+	var read PrivValMsg
+	// TODO: set limit
+	err := amino.UnmarshalBinaryReader(r, &read, 0)
 	if err != nil {
 		if _, ok := err.(timeoutError); ok {
 			return nil, errors.Wrap(ErrConnTimeout, err.Error())
@@ -549,13 +539,12 @@ func readMsg(r io.Reader) (PrivValMsg, error) {
 }
 
 func writeMsg(w io.Writer, msg interface{}) error {
-	var (
-		err error
-		n   int
-	)
-
 	// TODO(xla): This extra wrap should be gone with the sdk-2 update.
-	wire.WriteBinary(struct{ PrivValMsg }{msg}, w, &n, &err)
+	bz, err := amino.MarshalBinary(struct{ PrivValMsg }{msg})
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal private validator socket msg")
+	}
+	_, err = w.Write(bz)
 	if _, ok := err.(timeoutError); ok {
 		return errors.Wrap(ErrConnTimeout, err.Error())
 	}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -69,7 +69,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 		return state
 	}
 
-	err := wire.UnmarshalBinary(buf, &state)
+	err := amino.UnmarshalBinaryBare(buf, &state)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:
@@ -109,9 +109,9 @@ func NewABCIResponses(block *types.Block) *ABCIResponses {
 	}
 }
 
-// Bytes serializes the ABCIResponse using go-wire
+// Bytes serializes the ABCIResponse using go-amino
 func (a *ABCIResponses) Bytes() []byte {
-	bz, err := wire.MarshalBinary(*a)
+	bz, err := amino.MarshalBinary(*a)
 	if err != nil {
 		panic(err)
 	}
@@ -133,7 +133,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 	}
 
 	abciResponses := new(ABCIResponses)
-	err := wire.UnmarshalBinary(buf, abciResponses)
+	err := amino.UnmarshalBinary(buf, abciResponses)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadABCIResponses: Data has been corrupted or its spec has
@@ -159,9 +159,9 @@ type ValidatorsInfo struct {
 	LastHeightChanged int64
 }
 
-// Bytes serializes the ValidatorsInfo using go-wire
+// Bytes serializes the ValidatorsInfo using go-amino
 func (valInfo *ValidatorsInfo) Bytes() []byte {
-	bz, err := wire.MarshalBinary(*valInfo)
+	bz, err := amino.MarshalBinary(*valInfo)
 	if err != nil {
 		panic(err)
 	}
@@ -194,7 +194,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	}
 
 	v := new(ValidatorsInfo)
-	err := wire.UnmarshalBinary(buf, v)
+	err := amino.UnmarshalBinary(buf, v)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadValidators: Data has been corrupted or its spec has changed:
@@ -227,9 +227,9 @@ type ConsensusParamsInfo struct {
 	LastHeightChanged int64
 }
 
-// Bytes serializes the ConsensusParamsInfo using go-wire
+// Bytes serializes the ConsensusParamsInfo using go-amino
 func (params ConsensusParamsInfo) Bytes() []byte {
-	bz, err := wire.MarshalBinary(params)
+	bz, err := amino.MarshalBinary(params)
 	if err != nil {
 		panic(err)
 	}
@@ -263,7 +263,7 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
 	}
 
 	paramsInfo := new(ConsensusParamsInfo)
-	err := wire.UnmarshalBinary(buf, paramsInfo)
+	err := amino.UnmarshalBinary(buf, paramsInfo)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadConsensusParams: Data has been corrupted or its spec has changed:

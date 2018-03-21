@@ -22,7 +22,7 @@ type PrivValidatorUnencrypted struct {
 }
 
 // NewPrivValidatorUnencrypted returns an instance of PrivValidatorUnencrypted.
-func NewPrivValidatorUnencrypted(priv crypto.PrivKey) *PrivValidatorUnencrypted {
+func NewPrivValidatorUnencrypted(priv crypto.PrivKeyEd25519) *PrivValidatorUnencrypted {
 	return &PrivValidatorUnencrypted{
 		ID: types.ValidatorID{
 			Address: priv.PubKey().Address(),

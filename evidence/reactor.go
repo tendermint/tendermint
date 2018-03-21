@@ -1,12 +1,11 @@
 package evidence
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -82,7 +81,7 @@ func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
 func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		evR.Switch.StopPeerForError(src, err)
@@ -137,24 +136,17 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeEvidence = byte(0x01)
-)
-
 // EvidenceMessage is a message sent or received by the EvidenceReactor.
 type EvidenceMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ EvidenceMessage }{},
-	wire.ConcreteType{&EvidenceListMessage{}, msgTypeEvidence},
-)
+func init() {
+	amino.RegisterInterface((*EvidenceMessage)(nil), nil)
+	amino.RegisterConcrete(EvidenceListMessage{}, "com.tendermint.evidence_reactor.evidence_list_msg", nil)
+}
 
 // DecodeMessage decodes a byte-array into a EvidenceMessage.
-func DecodeMessage(bz []byte) (msgType byte, msg EvidenceMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ EvidenceMessage }{}, r, maxEvidenceMessageSize, n, &err).(struct{ EvidenceMessage }).EvidenceMessage
+func DecodeMessage(bz []byte) (msg EvidenceMessage, err error) {
+	err = amino.UnmarshalBinary(bz, &msg)
 	return
 }
 

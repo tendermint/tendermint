@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
@@ -11,8 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/tendermint/types"
+	amino "github.com/tendermint/tendermint/amino"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -38,13 +36,13 @@ type EndHeightMessage struct {
 
 type WALMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ WALMessage }{},
-	wire.ConcreteType{types.EventDataRoundState{}, 0x01},
-	wire.ConcreteType{msgInfo{}, 0x02},
-	wire.ConcreteType{timeoutInfo{}, 0x03},
-	wire.ConcreteType{EndHeightMessage{}, 0x04},
-)
+func init() {
+	amino.RegisterInterface((*WALMessage)(nil), nil)
+	// amino.RegisterConcrete(types.EventDataRoundState{}, "com.tendermint.wal.event_data_round_state_msg", nil)
+	amino.RegisterConcrete(msgInfo{}, "com.tendermint.wal.msg_info_msg", nil)
+	amino.RegisterConcrete(timeoutInfo{}, "com.tendermint.wal.timeout_msg", nil)
+	amino.RegisterConcrete(EndHeightMessage{}, "com.tendermint.wal.end_height_msg", nil)
+}
 
 //--------------------------------------------------------
 // Simple write-ahead logger
@@ -193,7 +191,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 
 // A WALEncoder writes custom-encoded WAL messages to an output stream.
 //
-// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value (go-wire encoded)
+// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value (go-amino encoded)
 type WALEncoder struct {
 	wr io.Writer
 }
@@ -205,7 +203,10 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 
 // Encode writes the custom encoding of v to the stream.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
-	data := wire.BinaryBytes(v)
+	data, err := amino.MarshalBinaryBare(v)
+	if err != nil {
+		return err
+	}
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
@@ -216,7 +217,7 @@ func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
 	binary.BigEndian.PutUint32(msg[4:8], length)
 	copy(msg[8:], data)
 
-	_, err := enc.wr.Write(msg)
+	_, err = enc.wr.Write(msg)
 
 	return err
 }
@@ -298,9 +299,8 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)}
 	}
 
-	var nn int
 	var res *TimedWALMessage // nolint: gosimple
-	res = wire.ReadBinary(&TimedWALMessage{}, bytes.NewBuffer(data), int(length), &nn, &err).(*TimedWALMessage)
+	err = amino.UnmarshalBinaryBare(data, res)
 	if err != nil {
 		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
 	}

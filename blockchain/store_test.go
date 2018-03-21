@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -306,11 +306,11 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 }
 
 func binarySerializeIt(v interface{}) []byte {
-	var n int
-	var err error
-	buf := new(bytes.Buffer)
-	wire.WriteBinary(v, buf, &n, &err)
-	return buf.Bytes()
+	bz, err := amino.MarshalBinaryBare(v)
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 func TestLoadBlockPart(t *testing.T) {

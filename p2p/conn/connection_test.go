@@ -1,13 +1,14 @@
 package conn
 
 import (
+	"io"
 	"net"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	wire "github.com/tendermint/go-wire"
+	amino "github.com/tendermint/tendermint/amino"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -364,7 +365,7 @@ func expectSend(ch chan struct{}) bool {
 }
 
 func TestMConnectionReadErrorBadEncoding(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	require := require.New(t)
 
 	chOnErr := make(chan struct{})
 	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
@@ -375,11 +376,14 @@ func TestMConnectionReadErrorBadEncoding(t *testing.T) {
 	msg := "Ant-Man"
 
 	// send badly encoded msgPacket
-	var n int
-	var err error
-	wire.WriteByte(packetTypeMsg, client, &n, &err)
-	wire.WriteByteSlice([]byte(msg), client, &n, &err)
-	assert.True(expectSend(chOnErr), "badly encoded msgPacket")
+	_, err := client.Write([]byte{packetTypeMsg})
+	require.NoError(err)
+	bz, err := amino.MarshalBinaryBare([]byte(msg))
+	require.NoError(err)
+	_, err = client.Write(bz)
+	require.NoError(err)
+
+	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
 }
 
 func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
@@ -418,14 +422,14 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	client := mconnClient.conn
 
 	// send msg thats just right
-	var n int
 	var err error
 	packet := msgPacket{
 		ChannelID: 0x01,
 		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-5),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
+	_, err = writeMsgPacketTo(packet, client)
+	assert.NoError(err)
 	assert.True(expectSend(chOnRcv), "msg just right")
 
 	// send msg thats too long
@@ -434,8 +438,21 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-4),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
+	_, err = writeMsgPacketTo(packet, client)
+	assert.NoError(err)
 	assert.True(expectSend(chOnErr), "msg too long")
+}
+
+func writeMsgPacketTo(packet msgPacket, w io.Writer) (n int, err error) {
+	n, err = w.Write([]byte{packetTypeMsg})
+	if err == nil {
+		var bz []byte
+		bz, err = amino.MarshalBinary(packet)
+		if err == nil {
+			n, err = w.Write(bz)
+		}
+	}
+	return
 }
 
 func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
@@ -447,9 +464,9 @@ func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
 	defer mconnServer.Stop()
 
 	// send msg with unknown msg type
-	var n int
-	var err error
-	wire.WriteByte(0x04, mconnClient.conn, &n, &err)
+	n, err := mconnClient.conn.Write([]byte{0x04})
+	require.NoError(err)
+
 	assert.True(expectSend(chOnErr), "unknown msg type")
 }
 

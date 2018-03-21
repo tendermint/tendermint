@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/tendermint/amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -25,7 +25,7 @@ type Heartbeat struct {
 // SignBytes returns the Heartbeat bytes for signing.
 // It panics if the Heartbeat is nil.
 func (heartbeat *Heartbeat) SignBytes(chainID string) []byte {
-	bz, err := wire.MarshalJSON(CanonicalJSONOnceHeartbeat{
+	bz, err := amino.MarshalJSON(CanonicalJSONOnceHeartbeat{
 		chainID,
 		CanonicalHeartbeat(heartbeat),
 	})

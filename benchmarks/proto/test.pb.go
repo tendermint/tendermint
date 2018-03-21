@@ -699,7 +699,7 @@ func (m *ResultStatus) Unmarshal(data []byte) error {
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
-		var wire uint64
+		var amino uint64
 		for shift := uint(0); ; shift += 7 {
 			if shift >= 64 {
 				return ErrIntOverflowTest
@@ -709,23 +709,23 @@ func (m *ResultStatus) Unmarshal(data []byte) error {
 			}
 			b := data[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			amino |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
 				break
 			}
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: ResultStatus: wiretype end group for non-group")
+		fieldNum := int32(amino >> 3)
+		aminoType := int(amino & 0x7)
+		if aminoType == 4 {
+			return fmt.Errorf("proto: ResultStatus: aminotype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: ResultStatus: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: ResultStatus: illegal tag %d (amino type %d)", fieldNum, amino)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field NodeInfo", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field NodeInfo", aminoType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -757,8 +757,8 @@ func (m *ResultStatus) Unmarshal(data []byte) error {
 			}
 			iNdEx = postIndex
 		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PubKey", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field PubKey", aminoType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -791,8 +791,8 @@ func (m *ResultStatus) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000001)
 		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LatestBlockHash", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field LatestBlockHash", aminoType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -820,8 +820,8 @@ func (m *ResultStatus) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000002)
 		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LatestBlockHeight", wireType)
+			if aminoType != 0 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field LatestBlockHeight", aminoType)
 			}
 			m.LatestBlockHeight = 0
 			for shift := uint(0); ; shift += 7 {
@@ -840,8 +840,8 @@ func (m *ResultStatus) Unmarshal(data []byte) error {
 			}
 			hasFields[0] |= uint64(0x00000004)
 		case 5:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field LatestBlocktime", wireType)
+			if aminoType != 0 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field LatestBlocktime", aminoType)
 			}
 			m.LatestBlocktime = 0
 			for shift := uint(0); ; shift += 7 {
@@ -898,7 +898,7 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
-		var wire uint64
+		var amino uint64
 		for shift := uint(0); ; shift += 7 {
 			if shift >= 64 {
 				return ErrIntOverflowTest
@@ -908,23 +908,23 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 			}
 			b := data[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			amino |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
 				break
 			}
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: NodeInfo: wiretype end group for non-group")
+		fieldNum := int32(amino >> 3)
+		aminoType := int(amino & 0x7)
+		if aminoType == 4 {
+			return fmt.Errorf("proto: NodeInfo: aminotype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: NodeInfo: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: NodeInfo: illegal tag %d (amino type %d)", fieldNum, amino)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PubKey", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field PubKey", aminoType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -957,8 +957,8 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000001)
 		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Moniker", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field Moniker", aminoType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -987,8 +987,8 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000002)
 		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Network", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field Network", aminoType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1017,8 +1017,8 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000004)
 		case 4:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field RemoteAddr", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field RemoteAddr", aminoType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1047,8 +1047,8 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000008)
 		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ListenAddr", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field ListenAddr", aminoType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1077,8 +1077,8 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000010)
 		case 6:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field Version", aminoType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1107,8 +1107,8 @@ func (m *NodeInfo) Unmarshal(data []byte) error {
 			iNdEx = postIndex
 			hasFields[0] |= uint64(0x00000020)
 		case 7:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Other", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field Other", aminoType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -1179,7 +1179,7 @@ func (m *PubKey) Unmarshal(data []byte) error {
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
-		var wire uint64
+		var amino uint64
 		for shift := uint(0); ; shift += 7 {
 			if shift >= 64 {
 				return ErrIntOverflowTest
@@ -1189,23 +1189,23 @@ func (m *PubKey) Unmarshal(data []byte) error {
 			}
 			b := data[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			amino |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
 				break
 			}
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: PubKey: wiretype end group for non-group")
+		fieldNum := int32(amino >> 3)
+		aminoType := int(amino & 0x7)
+		if aminoType == 4 {
+			return fmt.Errorf("proto: PubKey: aminotype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: PubKey: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PubKey: illegal tag %d (amino type %d)", fieldNum, amino)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Ed25519", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field Ed25519", aminoType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1263,7 +1263,7 @@ func (m *PubKeyEd25519) Unmarshal(data []byte) error {
 	iNdEx := 0
 	for iNdEx < l {
 		preIndex := iNdEx
-		var wire uint64
+		var amino uint64
 		for shift := uint(0); ; shift += 7 {
 			if shift >= 64 {
 				return ErrIntOverflowTest
@@ -1273,23 +1273,23 @@ func (m *PubKeyEd25519) Unmarshal(data []byte) error {
 			}
 			b := data[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			amino |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
 				break
 			}
 		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: PubKeyEd25519: wiretype end group for non-group")
+		fieldNum := int32(amino >> 3)
+		aminoType := int(amino & 0x7)
+		if aminoType == 4 {
+			return fmt.Errorf("proto: PubKeyEd25519: aminotype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: PubKeyEd25519: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: PubKeyEd25519: illegal tag %d (amino type %d)", fieldNum, amino)
 		}
 		switch fieldNum {
 		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Bytes", wireType)
+			if aminoType != 2 {
+				return fmt.Errorf("proto: wrong aminoType = %d for field Bytes", aminoType)
 			}
 			var byteLen int
 			for shift := uint(0); ; shift += 7 {
@@ -1344,7 +1344,7 @@ func skipTest(data []byte) (n int, err error) {
 	l := len(data)
 	iNdEx := 0
 	for iNdEx < l {
-		var wire uint64
+		var amino uint64
 		for shift := uint(0); ; shift += 7 {
 			if shift >= 64 {
 				return 0, ErrIntOverflowTest
@@ -1354,13 +1354,13 @@ func skipTest(data []byte) (n int, err error) {
 			}
 			b := data[iNdEx]
 			iNdEx++
-			wire |= (uint64(b) & 0x7F) << shift
+			amino |= (uint64(b) & 0x7F) << shift
 			if b < 0x80 {
 				break
 			}
 		}
-		wireType := int(wire & 0x7)
-		switch wireType {
+		aminoType := int(amino & 0x7)
+		switch aminoType {
 		case 0:
 			for shift := uint(0); ; shift += 7 {
 				if shift >= 64 {
@@ -1434,7 +1434,7 @@ func skipTest(data []byte) (n int, err error) {
 			iNdEx += 4
 			return iNdEx, nil
 		default:
-			return 0, fmt.Errorf("proto: illegal wireType %d", wireType)
+			return 0, fmt.Errorf("proto: illegal aminoType %d", aminoType)
 		}
 	}
 	panic("unreachable")

@@ -83,7 +83,7 @@ func _TestAppProofs(t *testing.T) {
 	// I am hacking this in to make it pass, but please investigate further.
 	rootHash = proof.Root()
 
-	//err = wire.ReadBinaryBytes(bs, &data)
+	//err = amino.ReadBinaryBytes(bs, &data)
 	//require.NoError(err, "%+v", err)
 	assert.EqualValues(v, bs)
 	err = proof.Verify(k, bs, rootHash)

@@ -75,16 +75,15 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
-  version = "0.5.0"
+  revision = "73407e7cff462bf4ffcc44d55a9dd4570dd57fed"
 
 [[constraint]]
-  name = "github.com/tendermint/go-wire"
-  source = "github.com/tendermint/go-amino"
-  version = "0.7.3"
+  branch = "develop"
+  name = "github.com/tendermint/go-amino"
 
 [[constraint]]
+  branch = "develop"
   name = "github.com/tendermint/tmlibs"
-  version = "0.7.0"
 
 [[constraint]]
   name = "google.golang.org/grpc"

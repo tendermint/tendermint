@@ -61,7 +61,7 @@ import (
 //
 // go func() {
 //   for e := range txs {
-//     fmt.Println("got ", e.(types.TMEventData).Unwrap().(types.EventDataTx))
+//     fmt.Println("got ", e.(types.TMEventData).(types.EventDataTx))
 //	 }
 // }()
 // ```
