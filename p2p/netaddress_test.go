@@ -3,6 +3,7 @@ package p2p
 import (
 	"net"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -31,11 +32,11 @@ func TestNewNetAddressString(t *testing.T) {
 		{"127.0.0.1:8080", "127.0.0.1:8080", true},
 		{"tcp://127.0.0.1:8080", "127.0.0.1:8080", true},
 		{"udp://127.0.0.1:8080", "127.0.0.1:8080", true},
-		{"udp//127.0.0.1:8080", "", false},
+		// {"udp//127.0.0.1:8080", "", false},
 		// {"127.0.0:8080", false},
 		{"notahost", "", false},
 		{"127.0.0.1:notapath", "", false},
-		{"notahost:8080", "", false},
+		// {"notahost:8080", "", false},
 		{"8082", "", false},
 		{"127.0.0:8080000", "", false},
 
@@ -128,4 +129,26 @@ func TestNetAddressReachabilityTo(t *testing.T) {
 
 		assert.Equal(t.reachability, addr.ReachabilityTo(other))
 	}
+}
+
+func TestDial(t *testing.T) {
+	addr, err := NewNetAddressString("notresolvable:8800")
+
+	assert.NoError(t, err)
+
+	conn, err := addr.Dial()
+
+	assert.Nil(t, conn)
+	assert.Error(t, err, IPNotSetError)
+}
+
+func TestDialTimeout(t *testing.T) {
+	addr, err := NewNetAddressString("notresolvable:8800")
+
+	assert.NoError(t, err)
+
+	conn, err := addr.DialTimeout(1 * time.Second)
+
+	assert.Nil(t, conn)
+	assert.Error(t, err, IPNotSetError)
 }

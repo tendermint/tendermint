@@ -14,7 +14,12 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
 	cmn "github.com/tendermint/tmlibs/common"
+)
+
+var (
+	IPNotSetError = errors.New("IP not set. If you are using domain names, check that host is resolvable (host -t a <host>)")
 )
 
 // NetAddress defines information about a peer on the network
@@ -81,12 +86,9 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 	}
 
 	ip := net.ParseIP(host)
-	if ip == nil {
-		if len(host) > 0 {
-			ips, err := net.LookupIP(host)
-			if err != nil {
-				return nil, err
-			}
+
+	if ip == nil && len(host) > 0 {
+		if ips, err := net.LookupIP(host); err == nil {
 			ip = ips[0]
 		}
 	}
@@ -96,9 +98,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		return nil, err
 	}
 
-	na := NewNetAddressIPPort(ip, uint16(port))
-	na.ID = id
-	return na, nil
+	return &NetAddress{ID: id, IP: ip, Port: uint16(port)}, nil
 }
 
 // NewNetAddressStrings returns an array of NetAddress'es build using
@@ -168,8 +168,12 @@ func (na *NetAddress) DialString() string {
 	)
 }
 
-// Dial calls net.Dial on the address.
+// Dial calls net.Dial on the address. If no IP is set, it returns
+// IPNotSetError.
 func (na *NetAddress) Dial() (net.Conn, error) {
+	if na.IP == nil {
+		return nil, IPNotSetError
+	}
 	conn, err := net.Dial("tcp", na.DialString())
 	if err != nil {
 		return nil, err
@@ -177,8 +181,12 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 	return conn, nil
 }
 
-// DialTimeout calls net.DialTimeout on the address.
+// DialTimeout calls net.DialTimeout on the address. If no IP is set, it
+// returns IPNotSetError.
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
+	if na.IP == nil {
+		return nil, IPNotSetError
+	}
 	conn, err := net.DialTimeout("tcp", na.DialString(), timeout)
 	if err != nil {
 		return nil, err
