@@ -58,7 +58,7 @@ type Switch struct {
 	dialing        *cmn.CMap
 	nodeInfo       NodeInfo // our node info
 	nodeKey        *NodeKey // our node privkey
-	nodePublicAddr *NetAddress
+	nodePublicAddr string
 	addrBook       AddrBook
 
 	filterConnByAddr func(net.Addr) error
@@ -149,7 +149,7 @@ func (sw *Switch) IsListening() bool {
 // NOTE: Not goroutine safe.
 func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
 	sw.nodeInfo = nodeInfo
-	sw.nodePublicAddr = nodeInfo.NetAddress()
+	sw.nodePublicAddr = nodeInfo.ListenAddr
 }
 
 // NodeInfo returns the switch's NodeInfo.
@@ -384,7 +384,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 	// do not dial ourselves
-	if addr.Same(sw.nodePublicAddr) {
+	if addr.DialString() == sw.nodePublicAddr {
 		return ErrSwitchConnectToSelf
 	}
 
@@ -531,7 +531,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	if sw.nodeKey.ID() == peerID {
 		// overwrite current addr to avoid dialing ourselves again
 		// it means original nodePublicAddr was different from public one
-		sw.nodePublicAddr = peerNodeInfo.NetAddress()
+		sw.nodePublicAddr = peerNodeInfo.ListenAddr
 
 		return ErrSwitchConnectToSelf
 	}
