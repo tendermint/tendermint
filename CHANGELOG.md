@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.7.1 (TBD)
+
+BREAKING:
+
+ - [merkle] PutVarint->PutUvarint in encodeByteSlice
+ - [db] batch.WriteSync()
+
+FEATURES:
+
+ - [db] NewPrefixDB for a DB with all keys prefixed
+
+IMPROVEMENTS:
+
+ - glide -> dep
+
+BUG FIXES:
+
+
+
 ## 0.7.0 (February 20, 2018)
 
 BREAKING:
