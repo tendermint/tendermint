@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -32,41 +32,37 @@ func createMConnectionWithCallbacks(conn net.Conn, onReceive func(chID byte, msg
 }
 
 func TestMConnectionSend(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 	defer mconn.Stop()
 
 	msg := "Ant-Man"
-	assert.True(mconn.Send(0x01, msg))
+	assert.True(t, mconn.Send(0x01, msg))
 	// Note: subsequent Send/TrySend calls could pass because we are reading from
 	// the send queue in a separate goroutine.
 	_, err = server.Read(make([]byte, len(msg)))
 	if err != nil {
 		t.Error(err)
 	}
-	assert.True(mconn.CanSend(0x01))
+	assert.True(t, mconn.CanSend(0x01))
 
 	msg = "Spider-Man"
-	assert.True(mconn.TrySend(0x01, msg))
+	assert.True(t, mconn.TrySend(0x01, msg))
 	_, err = server.Read(make([]byte, len(msg)))
 	if err != nil {
 		t.Error(err)
 	}
 
-	assert.False(mconn.CanSend(0x05), "CanSend should return false because channel is unknown")
-	assert.False(mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
+	assert.False(t, mconn.CanSend(0x05), "CanSend should return false because channel is unknown")
+	assert.False(t, mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
 }
 
 func TestMConnectionReceive(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
@@ -81,20 +77,20 @@ func TestMConnectionReceive(t *testing.T) {
 	}
 	mconn1 := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn1.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 	defer mconn1.Stop()
 
 	mconn2 := createTestMConnection(server)
 	err = mconn2.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 	defer mconn2.Stop()
 
 	msg := "Cyclops"
-	assert.True(mconn2.Send(0x01, msg))
+	assert.True(t, mconn2.Send(0x01, msg))
 
 	select {
 	case receivedBytes := <-receivedCh:
-		assert.Equal([]byte(msg), receivedBytes[2:]) // first 3 bytes are internal
+		assert.Equal(t, []byte(msg), receivedBytes[2:]) // first 3 bytes are internal
 	case err := <-errorsCh:
 		t.Fatalf("Expected %s, got %+v", msg, err)
 	case <-time.After(500 * time.Millisecond):
@@ -103,20 +99,18 @@ func TestMConnectionReceive(t *testing.T) {
 }
 
 func TestMConnectionStatus(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 	defer mconn.Stop()
 
 	status := mconn.Status()
-	assert.NotNil(status)
-	assert.Zero(status.Channels[0].SendQueueSize)
+	assert.NotNil(t, status)
+	assert.Zero(t, status.Channels[0].SendQueueSize)
 }
 
 func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
@@ -140,7 +134,9 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping
-		server.Read(make([]byte, 1))
+		var pkt PacketPing
+		_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+		assert.Nil(t, err)
 		serverGotPing <- struct{}{}
 	}()
 	<-serverGotPing
@@ -175,21 +171,22 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	defer mconn.Stop()
 
 	// sending 3 pongs in a row (abuse)
-	_, err = server.Write([]byte{packetTypePong})
+	_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
 	require.Nil(t, err)
-	_, err = server.Write([]byte{packetTypePong})
+	_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
 	require.Nil(t, err)
-	_, err = server.Write([]byte{packetTypePong})
+	_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
 	require.Nil(t, err)
 
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping (one byte)
-		_, err = server.Read(make([]byte, 1))
+		var packet, err = Packet(nil), error(nil)
+		_, err = cdc.UnmarshalBinaryReader(server, &packet, 1024)
 		require.Nil(t, err)
 		serverGotPing <- struct{}{}
 		// respond with pong
-		_, err = server.Write([]byte{packetTypePong})
+		_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
 		require.Nil(t, err)
 	}()
 	<-serverGotPing
@@ -225,17 +222,18 @@ func TestMConnectionMultiplePings(t *testing.T) {
 
 	// sending 3 pings in a row (abuse)
 	// see https://github.com/tendermint/tendermint/issues/1190
-	_, err = server.Write([]byte{packetTypePing})
+	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
 	require.Nil(t, err)
-	_, err = server.Read(make([]byte, 1))
+	var pkt PacketPong
+	_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
 	require.Nil(t, err)
-	_, err = server.Write([]byte{packetTypePing})
+	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
 	require.Nil(t, err)
-	_, err = server.Read(make([]byte, 1))
+	_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
 	require.Nil(t, err)
-	_, err = server.Write([]byte{packetTypePing})
+	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
 	require.Nil(t, err)
-	_, err = server.Read(make([]byte, 1))
+	_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
 	require.Nil(t, err)
 
 	assert.True(t, mconn.IsRunning())
@@ -262,18 +260,21 @@ func TestMConnectionPingPongs(t *testing.T) {
 	serverGotPing := make(chan struct{})
 	go func() {
 		// read ping
-		server.Read(make([]byte, 1))
+		var pkt PacketPing
+		_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+		require.Nil(t, err)
 		serverGotPing <- struct{}{}
 		// respond with pong
-		_, err = server.Write([]byte{packetTypePong})
+		_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
 		require.Nil(t, err)
 
 		time.Sleep(mconn.config.PingInterval)
 
 		// read ping
-		server.Read(make([]byte, 1))
+		_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+		require.Nil(t, err)
 		// respond with pong
-		_, err = server.Write([]byte{packetTypePong})
+		_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
 		require.Nil(t, err)
 	}()
 	<-serverGotPing
@@ -290,8 +291,6 @@ func TestMConnectionPingPongs(t *testing.T) {
 }
 
 func TestMConnectionStopsAndReturnsError(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	server, client := NetPipe()
 	defer server.Close() // nolint: errcheck
 	defer client.Close() // nolint: errcheck
@@ -306,7 +305,7 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	}
 	mconn := createMConnectionWithCallbacks(client, onReceive, onError)
 	err := mconn.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 	defer mconn.Stop()
 
 	if err := client.Close(); err != nil {
@@ -317,14 +316,14 @@ func TestMConnectionStopsAndReturnsError(t *testing.T) {
 	case receivedBytes := <-receivedCh:
 		t.Fatalf("Expected error, got %v", receivedBytes)
 	case err := <-errorsCh:
-		assert.NotNil(err)
-		assert.False(mconn.IsRunning())
+		assert.NotNil(t, err)
+		assert.False(t, mconn.IsRunning())
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("Did not receive error in 500ms")
 	}
 }
 
-func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr chan struct{}) (*MConnection, *MConnection) {
+func newClientAndServerConnsForReadErrors(t *testing.T, chOnErr chan struct{}) (*MConnection, *MConnection) {
 	server, client := NetPipe()
 
 	onReceive := func(chID byte, msgBytes []byte) {}
@@ -338,7 +337,7 @@ func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr c
 	mconnClient := NewMConnection(client, chDescs, onReceive, onError)
 	mconnClient.SetLogger(log.TestingLogger().With("module", "client"))
 	err := mconnClient.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 
 	// create server conn with 1 channel
 	// it fires on chOnErr when there's an error
@@ -349,7 +348,7 @@ func newClientAndServerConnsForReadErrors(require *require.Assertions, chOnErr c
 	mconnServer := createMConnectionWithCallbacks(server, onReceive, onError)
 	mconnServer.SetLogger(serverLogger)
 	err = mconnServer.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 	return mconnClient, mconnServer
 }
 
@@ -364,50 +363,45 @@ func expectSend(ch chan struct{}) bool {
 }
 
 func TestMConnectionReadErrorBadEncoding(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	chOnErr := make(chan struct{})
-	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
 	defer mconnClient.Stop()
 	defer mconnServer.Stop()
 
 	client := mconnClient.conn
-	msg := "Ant-Man"
 
 	// send badly encoded msgPacket
-	var n int
-	var err error
-	wire.WriteByte(packetTypeMsg, client, &n, &err)
-	wire.WriteByteSlice([]byte(msg), client, &n, &err)
-	assert.True(expectSend(chOnErr), "badly encoded msgPacket")
+	bz := cdc.MustMarshalBinary(PacketMsg{})
+	bz[4] += 0x01 // Invalid prefix bytes.
+
+	// Write it.
+	_, err := client.Write(bz)
+	assert.Nil(t, err)
+	assert.True(t, expectSend(chOnErr), "badly encoded msgPacket")
 }
 
 func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	chOnErr := make(chan struct{})
-	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
 	defer mconnClient.Stop()
 	defer mconnServer.Stop()
 
 	msg := "Ant-Man"
 
 	// fail to send msg on channel unknown by client
-	assert.False(mconnClient.Send(0x03, msg))
+	assert.False(t, mconnClient.Send(0x03, msg))
 
 	// send msg on channel unknown by the server.
 	// should cause an error
-	assert.True(mconnClient.Send(0x02, msg))
-	assert.True(expectSend(chOnErr), "unknown channel")
+	assert.True(t, mconnClient.Send(0x02, msg))
+	assert.True(t, expectSend(chOnErr), "unknown channel")
 }
 
 func TestMConnectionReadErrorLongMessage(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	chOnErr := make(chan struct{})
 	chOnRcv := make(chan struct{})
 
-	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
 	defer mconnClient.Stop()
 	defer mconnServer.Stop()
 
@@ -418,65 +412,64 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	client := mconnClient.conn
 
 	// send msg thats just right
-	var n int
 	var err error
-	packet := msgPacket{
+	var packet = PacketMsg{
 		ChannelID: 0x01,
-		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-5),
+		Bytes:     make([]byte, mconnClient.config.maxPacketMsgTotalSize()-12),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
-	assert.True(expectSend(chOnRcv), "msg just right")
+	_, err = cdc.MarshalBinaryWriter(client, packet)
+	assert.Nil(t, err)
+	assert.True(t, expectSend(chOnRcv), "msg just right")
 
 	// send msg thats too long
-	packet = msgPacket{
+	packet = PacketMsg{
 		ChannelID: 0x01,
-		Bytes:     make([]byte, mconnClient.config.maxMsgPacketTotalSize()-4),
+		Bytes:     make([]byte, mconnClient.config.maxPacketMsgTotalSize()-11),
 		EOF:       1,
 	}
-	writeMsgPacketTo(packet, client, &n, &err)
-	assert.True(expectSend(chOnErr), "msg too long")
+	_, err = cdc.MarshalBinaryWriter(client, packet)
+	assert.Nil(t, err)
+	assert.True(t, expectSend(chOnErr), "msg too long")
 }
 
 func TestMConnectionReadErrorUnknownMsgType(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	chOnErr := make(chan struct{})
-	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(require, chOnErr)
+	mconnClient, mconnServer := newClientAndServerConnsForReadErrors(t, chOnErr)
 	defer mconnClient.Stop()
 	defer mconnServer.Stop()
 
 	// send msg with unknown msg type
-	var n int
-	var err error
-	wire.WriteByte(0x04, mconnClient.conn, &n, &err)
-	assert.True(expectSend(chOnErr), "unknown msg type")
+	err := error(nil)
+	err = amino.EncodeUvarint(mconnClient.conn, 4)
+	assert.Nil(t, err)
+	_, err = mconnClient.conn.Write([]byte{0xFF, 0xFF, 0xFF, 0xFF})
+	assert.Nil(t, err)
+	assert.True(t, expectSend(chOnErr), "unknown msg type")
 }
 
 func TestMConnectionTrySend(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	server, client := NetPipe()
 	defer server.Close()
 	defer client.Close()
 
 	mconn := createTestMConnection(client)
 	err := mconn.Start()
-	require.Nil(err)
+	require.Nil(t, err)
 	defer mconn.Stop()
 
 	msg := "Semicolon-Woman"
 	resultCh := make(chan string, 2)
-	assert.True(mconn.TrySend(0x01, msg))
+	assert.True(t, mconn.TrySend(0x01, msg))
 	server.Read(make([]byte, len(msg)))
-	assert.True(mconn.CanSend(0x01))
-	assert.True(mconn.TrySend(0x01, msg))
-	assert.False(mconn.CanSend(0x01))
+	assert.True(t, mconn.CanSend(0x01))
+	assert.True(t, mconn.TrySend(0x01, msg))
+	assert.False(t, mconn.CanSend(0x01))
 	go func() {
 		mconn.TrySend(0x01, msg)
 		resultCh <- "TrySend"
 	}()
-	assert.False(mconn.CanSend(0x01))
-	assert.False(mconn.TrySend(0x01, msg))
-	assert.Equal("TrySend", <-resultCh)
+	assert.False(t, mconn.CanSend(0x01))
+	assert.False(t, mconn.TrySend(0x01, msg))
+	assert.Equal(t, "TrySend", <-resultCh)
 }
