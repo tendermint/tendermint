@@ -91,7 +91,6 @@ func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*
 	// Share (in secret) each other's pubkey & challenge signature
 	authSigMsg, err := shareAuthSignature(sc, locPubKey, locSignature)
 	if err != nil {
-		fmt.Println(">>>", err)
 		return nil, err
 	}
 	remPubKey, remSignature := authSigMsg.Key, authSigMsg.Sig

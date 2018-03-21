@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	defaultMaxPacketMsgPayloadSize = 1024
-	maxPacketMsgOverheadSize       = 10 // It's actually lower but good enough
+	packetMsgMaxPayloadSizeDefault = 1024
+	packetMsgMaxOverheadSize       = 10 // It's actually lower but good enough
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
@@ -105,7 +105,7 @@ type MConnConfig struct {
 	RecvRate int64 `mapstructure:"recv_rate"`
 
 	// Maximum payload size
-	MaxPacketMsgPayloadSize int `mapstructure:"max_msg_packet_payload_size"`
+	PacketMsgMaxPayloadSize int `mapstructure:"packet_msg_max_payload_size"`
 
 	// Interval to flush writes (throttled)
 	FlushThrottle time.Duration `mapstructure:"flush_throttle"`
@@ -118,7 +118,7 @@ type MConnConfig struct {
 }
 
 func (cfg *MConnConfig) maxPacketMsgTotalSize() int {
-	return cfg.MaxPacketMsgPayloadSize + maxPacketMsgOverheadSize
+	return cfg.PacketMsgMaxPayloadSize + packetMsgMaxOverheadSize
 }
 
 // DefaultMConnConfig returns the default config.
@@ -126,7 +126,7 @@ func DefaultMConnConfig() *MConnConfig {
 	return &MConnConfig{
 		SendRate:                defaultSendRate,
 		RecvRate:                defaultRecvRate,
-		MaxPacketMsgPayloadSize: defaultMaxPacketMsgPayloadSize,
+		PacketMsgMaxPayloadSize: packetMsgMaxPayloadSizeDefault,
 		FlushThrottle:           defaultFlushThrottle,
 		PingInterval:            defaultPingInterval,
 		PongTimeout:             defaultPongTimeout,
@@ -639,7 +639,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 		desc:                    desc,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
-		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgPayloadSize,
+		maxPacketMsgPayloadSize: conn.config.PacketMsgMaxPayloadSize,
 	}
 }
 
