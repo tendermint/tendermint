@@ -34,6 +34,7 @@ IMPROVEMENTS:
 - [p2p] seeds respond with a bias towards good peers
 - [rpc] `/tx` and `/tx_search` responses now include the transaction hash
 - [rpc] include validator power in `/status`
+- [p2p] do not try to connect to ourselves (ok, maybe only once)
 
 BUG FIXES:
 - [rpc] fix subscribing using an abci.ResponseDeliverTx tag
