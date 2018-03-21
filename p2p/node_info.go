@@ -2,7 +2,6 @@ package p2p
 
 import (
 	"fmt"
-	"net"
 	"strings"
 
 	crypto "github.com/tendermint/go-crypto"
@@ -111,12 +110,6 @@ OUTER_LOOP:
 // ID returns node's ID.
 func (info NodeInfo) ID() ID {
 	return PubKeyToID(info.PubKey)
-}
-
-// IP returns node listen addr's IP.
-func (info NodeInfo) IP() net.IP {
-	hostPort := strings.SplitN(info.ListenAddr, ":", 2)
-	return net.ParseIP(hostPort[0])
 }
 
 // NetAddress returns a NetAddress derived from the NodeInfo -
