@@ -175,6 +175,37 @@ func TestConnAddrFilter(t *testing.T) {
 	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
+func TestSwitchFiltersOutItself(t *testing.T) {
+	s1 := MakeSwitch(config, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
+
+	// addr should be rejected immediately because of the same IP & port
+	addr := s1.NodeInfo().NetAddress()
+	err := s1.DialPeerWithAddress(addr, false)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrSwitchConnectToSelf, err)
+	}
+
+	// simulate s1 having a public IP by creating a remote peer with the same ID
+	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: DefaultPeerConfig()}
+	rp.Start()
+
+	// addr should be rejected in addPeer based on the same ID
+	err = s1.DialPeerWithAddress(rp.Addr(), false)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrSwitchConnectToSelf, err)
+	}
+
+	// addr should be rejected immediately because during previous step we changed node's public IP
+	err = s1.DialPeerWithAddress(rp.Addr(), false)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrSwitchConnectToSelf, err)
+	}
+
+	rp.Stop()
+
+	assertNoPeersAfterTimeout(t, s1, 100*time.Millisecond)
+}
+
 func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
 	time.Sleep(timeout)
 	if sw.Peers().Size() != 0 {
