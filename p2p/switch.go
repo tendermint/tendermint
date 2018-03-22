@@ -35,6 +35,8 @@ const (
 
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	AddOurAddress(*NetAddress)
+	OurAddress(*NetAddress) bool
 	MarkGood(*NetAddress)
 	Save()
 }
@@ -48,18 +50,17 @@ type AddrBook interface {
 type Switch struct {
 	cmn.BaseService
 
-	config         *cfg.P2PConfig
-	peerConfig     *PeerConfig
-	listeners      []Listener
-	reactors       map[string]Reactor
-	chDescs        []*conn.ChannelDescriptor
-	reactorsByCh   map[byte]Reactor
-	peers          *PeerSet
-	dialing        *cmn.CMap
-	nodeInfo       NodeInfo // our node info
-	nodeKey        *NodeKey // our node privkey
-	nodePublicAddr string
-	addrBook       AddrBook
+	config       *cfg.P2PConfig
+	peerConfig   *PeerConfig
+	listeners    []Listener
+	reactors     map[string]Reactor
+	chDescs      []*conn.ChannelDescriptor
+	reactorsByCh map[byte]Reactor
+	peers        *PeerSet
+	dialing      *cmn.CMap
+	nodeInfo     NodeInfo // our node info
+	nodeKey      *NodeKey // our node privkey
+	addrBook     AddrBook
 
 	filterConnByAddr func(net.Addr) error
 	filterConnByID   func(ID) error
@@ -149,7 +150,6 @@ func (sw *Switch) IsListening() bool {
 // NOTE: Not goroutine safe.
 func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
 	sw.nodeInfo = nodeInfo
-	sw.nodePublicAddr = nodeInfo.ListenAddr
 }
 
 // NodeInfo returns the switch's NodeInfo.
@@ -384,7 +384,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 	// do not dial ourselves
-	if addr.DialString() == sw.nodePublicAddr {
+	if sw.addrBook.OurAddress(addr) {
 		return ErrSwitchConnectToSelf
 	}
 
@@ -529,9 +529,9 @@ func (sw *Switch) addPeer(pc peerConn) error {
 
 	// Avoid self
 	if sw.nodeKey.ID() == peerID {
-		// overwrite current addr to avoid dialing ourselves again
-		// it means original nodePublicAddr was different from public one
-		sw.nodePublicAddr = peerNodeInfo.ListenAddr
+		// add given address to the address book to avoid dialing ourselves again
+		// this is our public address
+		sw.addrBook.AddOurAddress(peerNodeInfo.NetAddress())
 
 		return ErrSwitchConnectToSelf
 	}

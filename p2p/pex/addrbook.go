@@ -34,6 +34,9 @@ type AddrBook interface {
 	// Add our own addresses so we don't later add ourselves
 	AddOurAddress(*p2p.NetAddress)
 
+	// Check if it is our address
+	OurAddress(*p2p.NetAddress) bool
+
 	// Add and remove an address
 	AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
 	RemoveAddress(addr *p2p.NetAddress)
@@ -78,7 +81,7 @@ type addrBook struct {
 	// accessed concurrently
 	mtx        sync.Mutex
 	rand       *rand.Rand
-	ourAddrs   map[string]*p2p.NetAddress
+	ourAddrs   map[string]struct{}
 	addrLookup map[p2p.ID]*knownAddress // new & old
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
@@ -93,7 +96,7 @@ type addrBook struct {
 func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 	am := &addrBook{
 		rand:              rand.New(rand.NewSource(time.Now().UnixNano())), // TODO: seed from outside
-		ourAddrs:          make(map[string]*p2p.NetAddress),
+		ourAddrs:          make(map[string]struct{}),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
@@ -154,7 +157,15 @@ func (a *addrBook) AddOurAddress(addr *p2p.NetAddress) {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	a.Logger.Info("Add our address to book", "addr", addr)
-	a.ourAddrs[addr.String()] = addr
+	a.ourAddrs[addr.String()] = struct{}{}
+}
+
+// OurAddress returns true if it is our address.
+func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
+	a.mtx.Lock()
+	_, ok := a.ourAddrs[addr.String()]
+	a.mtx.Unlock()
+	return ok
 }
 
 // AddAddress implements AddrBook - adds the given address as received from the given source.

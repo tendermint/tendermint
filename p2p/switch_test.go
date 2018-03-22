@@ -90,6 +90,8 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 }
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
+	sw.SetAddrBook(&addrBookMock{ourAddrs: make(map[string]struct{})})
+
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x00), Priority: 10},
@@ -99,6 +101,7 @@ func initSwitchFunc(i int, sw *Switch) *Switch {
 		{ID: byte(0x02), Priority: 10},
 		{ID: byte(0x03), Priority: 10},
 	}, true))
+
 	return sw
 }
 
@@ -177,9 +180,12 @@ func TestConnAddrFilter(t *testing.T) {
 
 func TestSwitchFiltersOutItself(t *testing.T) {
 	s1 := MakeSwitch(config, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
+	addr := s1.NodeInfo().NetAddress()
+
+	// add ourselves like we do in node.go#427
+	s1.addrBook.AddOurAddress(addr)
 
 	// addr should be rejected immediately because of the same IP & port
-	addr := s1.NodeInfo().NetAddress()
 	err := s1.DialPeerWithAddress(addr, false)
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrSwitchConnectToSelf, err)
@@ -371,3 +377,18 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
 }
+
+type addrBookMock struct {
+	ourAddrs map[string]struct{}
+}
+
+var _ AddrBook = (*addrBookMock)(nil)
+
+func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error { return nil }
+func (book *addrBookMock) AddOurAddress(addr *NetAddress)                     { book.ourAddrs[addr.String()] = struct{}{} }
+func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
+	_, ok := book.ourAddrs[addr.String()]
+	return ok
+}
+func (book *addrBookMock) MarkGood(*NetAddress) {}
+func (book *addrBookMock) Save()                {}
