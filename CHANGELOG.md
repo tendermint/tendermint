@@ -1,15 +1,20 @@
 # Changelog
 
-## 0.7.1 (TBD)
+## 0.8.0 (March 22, 2018)
 
 BREAKING:
 
- - [merkle] PutVarint->PutUvarint in encodeByteSlice
+ - [merkle] `PutVarint->PutUvarint` in encodeByteSlice
  - [db] batch.WriteSync()
+ - [common] Refactored and fixed `Parallel` function
+ - [common] Refactored `Rand` functionality
+ - [common] Remove unused `Right/LeftPadString` functions
 
 FEATURES:
 
  - [db] NewPrefixDB for a DB with all keys prefixed
+ - [db] NewDebugDB prints everything during operation
+ - [common] Error interface (so we don't use pkg/errors)
 
 IMPROVEMENTS:
 
@@ -17,7 +22,8 @@ IMPROVEMENTS:
 
 BUG FIXES:
 
-
+ - [common] Fix panic in NewBitArray for negative bits
+ - [common] Fix and simplify WriteFileAtomic so it cleans up properly
 
 ## 0.7.0 (February 20, 2018)
 
