@@ -8,8 +8,51 @@ ABCI requests/responses are defined as simple Protobuf messages in `this
 schema
 file <https://github.com/tendermint/abci/blob/master/types/types.proto>`__.
 TendermintCore sends the requests, and the ABCI application sends the
-responses. Here, we describe the requests and responses as function
-arguments and return values, and make some notes about usage:
+responses. Here, we provide an overview of the messages types and how they
+are used by Tendermint. Then we describe each request-response pair as a
+function with arguments and return values, and add some notes on usage.
+
+Some messages (``Echo, Info, InitChain, BeginBlock, EndBlock, Commit``), don't
+return errors because an error would indicate a critical failure in the
+application and there's nothing Tendermint can do.  The problem should be
+addressed and both Tendermint and the application restarted.  All other
+messages (``SetOption, Query, CheckTx, DeliverTx``) return an
+application-specific response ``Code uint32``, where only ``0`` is reserved for
+``OK``.
+
+Some messages (``SetOption, Query, CheckTx, DeliverTx``) return
+non-deterministic data in the form of ``Info`` and ``Log``. The ``Log`` is
+intended for the literal output from the application's logger, while the
+``Info`` is any additional info that should be returned.
+
+The first time a new blockchain is started, Tendermint calls ``InitChain``.
+From then on, the Block Execution Sequence that causes the committed state to
+be updated is as follows:
+
+``BeginBlock, [DeliverTx], EndBlock, Commit``
+
+where one ``DeliverTx`` is called for each transaction in the block.
+Cryptographic commitments to the results of DeliverTx, EndBlock, and
+Commit are included in the header of the next block.
+
+Tendermint opens three connections to the application to handle the different message
+types:
+
+- ``Consensus Connection - InitChain, BeginBlock, DeliverTx, EndBlock, Commit``
+
+- ``Mempool Connection - CheckTx``
+
+- ``Info Connection - Info, SetOption, Query``
+
+The ``Flush`` message is used on every connection, and the ``Echo`` message
+is only used for debugging.
+
+Note that messages may be sent concurrently across all connections -
+a typical application will thus maintain a distinct state for each
+connection. They may be referred to as the ``DeliverTx state``, the
+``CheckTx state``, and the ``Commit state`` respectively.
+
+See below for more details on the message types and how they are used.
 
 Echo
 ^^^^
@@ -55,7 +98,11 @@ Info
 -  **Usage**:
 
    - Return information about the application state.
-   - Used to sync the app with Tendermint on crash/restart.
+   - Used to sync Tendermint with the application during a handshake that
+     happens on startup.
+   - Tendermint expects ``LastBlockAppHash`` and ``LastBlockHeight`` to be
+     updated during ``Commit``, ensuring that ``Commit`` is never called twice
+     for the same block height.
 
 SetOption
 ^^^^^^^^^
@@ -87,7 +134,7 @@ InitChain
 
 -  **Usage**:
 
-   - Called once upon genesis
+   - Called once upon genesis.
 
 Query
 ^^^^^
@@ -161,26 +208,26 @@ CheckTx
    -  ``Data ([]byte)``: Result bytes, if any.
    -  ``Log (string)``: The output of the application's logger. May be non-deterministic.
    -  ``Info (string)``: Additional information. May be non-deterministic.
-   -  ``GasWanted (int64)``: Amount of gas consumed by transaction.
+   -  ``GasWanted (int64)``: Amount of gas request for transaction.
+   -  ``GasUsed (int64)``: Amount of gas consumed by transaction.
    -  ``Tags ([]cmn.KVPair)``: Key-Value tags for filtering and indexing transactions (eg. by account).
-   -  ``Fee ([]cmn.KI64Pair)``: Fee paid for the transaction.
+   -  ``Fee (cmn.KI64Pair)``: Fee paid for the transaction.
 
 -  **Usage**: Validate a mempool transaction, prior to broadcasting or
-   proposing. This message should not mutate the main state, but
-   application developers may want to keep a separate CheckTx state that
-   gets reset upon Commit.
+   proposing. CheckTx should perform stateful but light-weight checks
+   of the validity of the transaction (like checking signatures and account balances),
+   but need not execute in full (like running a smart contract).
 
-   CheckTx can happen interspersed with DeliverTx, but they happen on
-   different ABCI connections - CheckTx from the mempool connection, and
-   DeliverTx from the consensus connection. During Commit, the mempool
-   is locked, so you can reset the mempool state to the latest state
-   after running all those DeliverTxs, and then the mempool will re-run
-   whatever txs it has against that latest mempool state.
+   Tendermint runs CheckTx and DeliverTx concurrently with eachother,
+   though on distinct ABCI connections - the mempool connection and the consensus
+   connection, respectively.
 
-   Transactions are first run through CheckTx before broadcast to peers
-   in the mempool layer. You can make CheckTx semi-stateful and clear
-   the state upon ``Commit``, to allow for dependent sequences of transactions
-   in the same block.
+   The application should maintain a separate state to support CheckTx.
+   This state can be reset to the latest committed state during ``Commit``,
+   where Tendermint ensures the mempool is locked and not sending new ``CheckTx``.
+   After ``Commit``, the mempool will rerun CheckTx on all remaining
+   transactions, throwing out any that are no longer valid.
+
 
 DeliverTx
 ^^^^^^^^^
@@ -195,9 +242,10 @@ DeliverTx
    -  ``Data ([]byte)``: Result bytes, if any.
    -  ``Log (string)``: The output of the application's logger. May be non-deterministic.
    -  ``Info (string)``: Additional information. May be non-deterministic.
-   -  ``GasWanted (int64)``: Amount of gas predicted to be consumed by transaction.
+   -  ``GasWanted (int64)``: Amount of gas requested for transaction.
    -  ``GasUsed (int64)``: Amount of gas consumed by transaction.
    -  ``Tags ([]cmn.KVPair)``: Key-Value tags for filtering and indexing transactions (eg. by account).
+   -  ``Fee (cmn.KI64Pair)``: Fee paid for the transaction.
 
 -  **Usage**:
 
@@ -223,6 +271,7 @@ EndBlock
    - Signals the end of a block.
    - Called prior to each Commit, after all transactions.
    - Validator set and consensus params are updated with the result.
+   - Validator pubkeys are expected to be go-wire encoded.
 
 Commit
 ^^^^^^
