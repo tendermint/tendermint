@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.7.1 (March 22, 2018)
+
+IMPROVEMENTS:
+
+ - glide -> dep
+
+BUG FIXES:
+
+ - [common] Fix panic in NewBitArray for negative bits
+ - [common] Fix and simplify WriteFileAtomic so it cleans up properly
+
 ## 0.7.0 (February 20, 2018)
 
 BREAKING:
