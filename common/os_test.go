@@ -2,29 +2,51 @@ package common
 
 import (
 	"bytes"
-	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
 )
 
 func TestWriteFileAtomic(t *testing.T) {
-	data := []byte("Becatron")
-	fname := fmt.Sprintf("/tmp/write-file-atomic-test-%v.txt", time.Now().UnixNano())
-	err := WriteFileAtomic(fname, data, 0664)
+	var (
+		seed             = rand.New(rand.NewSource(time.Now().UnixNano()))
+		data             = []byte(RandStr(seed.Intn(2048)))
+		old              = RandBytes(seed.Intn(2048))
+		perm os.FileMode = 0600
+	)
+
+	f, err := ioutil.TempFile("/tmp", "write-atomic-test-")
 	if err != nil {
 		t.Fatal(err)
 	}
-	rData, err := ioutil.ReadFile(fname)
+	defer os.Remove(f.Name())
+
+	if err := ioutil.WriteFile(f.Name(), old, 0664); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := WriteFileAtomic(f.Name(), data, perm); err != nil {
+		t.Fatal(err)
+	}
+
+	rData, err := ioutil.ReadFile(f.Name())
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	if !bytes.Equal(data, rData) {
 		t.Fatalf("data mismatch: %v != %v", data, rData)
 	}
-	if err := os.Remove(fname); err != nil {
+
+	stat, err := os.Stat(f.Name())
+	if err != nil {
 		t.Fatal(err)
+	}
+
+	if have, want := stat.Mode().Perm(), perm; have != want {
+		t.Errorf("have %v, want %v", have, want)
 	}
 }
 

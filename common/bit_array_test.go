@@ -208,3 +208,10 @@ func TestUpdateNeverPanics(t *testing.T) {
 		b.Update(a)
 	}
 }
+
+func TestNewBitArrayNeverCrashesOnNegatives(t *testing.T) {
+	bitList := []int{-127, -128, -1<<31}
+	for _, bits := range bitList {
+		_ = NewBitArray(bits)
+	}
+}
