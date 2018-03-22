@@ -38,7 +38,7 @@
   version = "1.2.1"
 
 [[constraint]]
-  branch = "release/v0.8.0"
+  branch = "release/v0.7.1"
   name = "github.com/tendermint/tmlibs"
 
 [[constraint]]
