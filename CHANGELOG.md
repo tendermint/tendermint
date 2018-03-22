@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.1 (March 22, 2018)
+
+FEATURES:
+
+- [types] ResponseCheckTx and ResponseDeliverTx are now the same.
+
+IMPROVEMENTS:
+
+- glide -> Godep
+- remove pkg/errors
+
 ## 0.10.0 (February 20, 2018)
 
 BREAKING CHANGES:
