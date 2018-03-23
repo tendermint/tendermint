@@ -229,6 +229,7 @@
   revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
 
 [[projects]]
+  branch = "release/v0.10.2"
   name = "github.com/tendermint/abci"
   packages = [
     "client",
@@ -238,8 +239,7 @@
     "server",
     "types"
   ]
-  revision = "f3f9f792a569e80286b14f25f6a507d8bca6319f"
-  version = "v0.10.1"
+  revision = "5310e85bbbb4d89641731cbc83e49d5cc50baf08"
 
 [[projects]]
   branch = "master"
@@ -381,6 +381,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3e53ce46fe488767647c414e724b7815f71b25013cd52028abd58b02f736e7bb"
+  inputs-digest = "4357422364b30c09987968b41d0b955313a6917c30d61851a465af6b7e647197"
   solver-name = "gps-cdcl"
   solver-version = 1
