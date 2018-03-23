@@ -5,11 +5,13 @@
 FEATURES:
 
 - [types] ResponseCheckTx and ResponseDeliverTx are now the same.
+- [example] `dummy` is duplicated as `kvstore`.
 
 IMPROVEMENTS:
 
 - glide -> Godep
 - remove pkg/errors
+- improve specification.rst
 
 ## 0.10.0 (February 20, 2018)
 
