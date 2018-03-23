@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.2 (March 23, 2018)
+
+Hot fix to remove `omitempty` from `fee` and to actually run `make
+protoc`
+
 ## 0.10.1 (March 22, 2018)
 
 FEATURES:
