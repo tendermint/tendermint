@@ -6,14 +6,14 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	abciclient "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	abciserver "github.com/tendermint/abci/server"
 )
 
 func TestClientServerNoAddrPrefix(t *testing.T) {
 	addr := "localhost:46658"
 	transport := "socket"
-	app := dummy.NewDummyApplication()
+	app := kvstore.NewKVStoreApplication()
 
 	server, err := abciserver.NewServer(addr, transport, app)
 	assert.NoError(t, err, "expected no error on NewServer")

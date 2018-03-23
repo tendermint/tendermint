@@ -1,10 +1,10 @@
 GOTOOLS = \
 	github.com/mitchellh/gox \
-	github.com/Masterminds/glide \
+	github.com/golang/dep/cmd/dep \
 	gopkg.in/alecthomas/gometalinter.v2 \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/gogo/protobuf/gogoproto
-GOTOOLS_CHECK = gox glide gometalinter.v2 protoc protoc-gen-gogo
+GOTOOLS_CHECK = gox dep gometalinter.v2 protoc protoc-gen-gogo
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
@@ -65,8 +65,8 @@ update_tools:
 
 get_vendor_deps:
 	@rm -rf vendor/
-	@echo "--> Running glide install"
-	@glide install
+	@echo "--> Running dep ensure"
+	@dep ensure
 
 
 ########################################

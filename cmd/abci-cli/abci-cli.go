@@ -17,7 +17,7 @@ import (
 	abcicli "github.com/tendermint/abci/client"
 	"github.com/tendermint/abci/example/code"
 	"github.com/tendermint/abci/example/counter"
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	"github.com/tendermint/abci/server"
 	servertest "github.com/tendermint/abci/tests/server"
 	"github.com/tendermint/abci/types"
@@ -47,7 +47,7 @@ var (
 	flagAddrC  string
 	flagSerial bool
 
-	// dummy
+	// kvstore
 	flagAddrD   string
 	flagPersist string
 )
@@ -59,7 +59,7 @@ var RootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 
 		switch cmd.Use {
-		case "counter", "dummy": // for the examples apps, don't pre-run
+		case "counter", "kvstore", "dummy": // for the examples apps, don't pre-run
 			return nil
 		case "version": // skip running for version command
 			return nil
@@ -133,6 +133,12 @@ func addDummyFlags() {
 	dummyCmd.PersistentFlags().StringVarP(&flagAddrD, "addr", "", "tcp://0.0.0.0:46658", "listen address")
 	dummyCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
+
+func addKVStoreFlags() {
+	kvstoreCmd.PersistentFlags().StringVarP(&flagAddrD, "addr", "", "tcp://0.0.0.0:46658", "listen address")
+	kvstoreCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
+}
+
 func addCommands() {
 	RootCmd.AddCommand(batchCmd)
 	RootCmd.AddCommand(consoleCmd)
@@ -150,8 +156,12 @@ func addCommands() {
 	// examples
 	addCounterFlags()
 	RootCmd.AddCommand(counterCmd)
+	// deprecated, left for backwards compatibility
 	addDummyFlags()
 	RootCmd.AddCommand(dummyCmd)
+	// replaces dummy, see issue #196
+	addKVStoreFlags()
+	RootCmd.AddCommand(kvstoreCmd)
 }
 
 var batchCmd = &cobra.Command{
@@ -285,13 +295,25 @@ var counterCmd = &cobra.Command{
 	},
 }
 
+// deprecated, left for backwards compatibility
 var dummyCmd = &cobra.Command{
-	Use:   "dummy",
+	Use:        "dummy",
+	Deprecated: "use: [abci-cli kvstore] instead",
+	Short:      "ABCI demo example",
+	Long:       "ABCI demo example",
+	Args:       cobra.ExactArgs(0),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdKVStore(cmd, args)
+	},
+}
+
+var kvstoreCmd = &cobra.Command{
+	Use:   "kvstore",
 	Short: "ABCI demo example",
 	Long:  "ABCI demo example",
 	Args:  cobra.ExactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmdDummy(cmd, args)
+		return cmdKVStore(cmd, args)
 	},
 }
 
@@ -654,16 +676,16 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func cmdDummy(cmd *cobra.Command, args []string) error {
+func cmdKVStore(cmd *cobra.Command, args []string) error {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Create the application - in memory or persisted to disk
 	var app types.Application
 	if flagPersist == "" {
-		app = dummy.NewDummyApplication()
+		app = kvstore.NewKVStoreApplication()
 	} else {
-		app = dummy.NewPersistentDummyApplication(flagPersist)
-		app.(*dummy.PersistentDummyApplication).SetLogger(logger.With("module", "dummy"))
+		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
+		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
 	}
 
 	// Start the listener
