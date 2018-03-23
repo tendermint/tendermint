@@ -409,11 +409,15 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 		// TODO: detect more "bad peer" scenarios
 		if _, ok := err.(p2p.ErrSwitchAuthenticationFailure); ok {
 			r.book.MarkBad(addr)
+			r.attemptsToDial.Delete(addr.DialString())
 		} else {
 			r.book.MarkAttempt(addr)
+			// FIXME: if the addr is going to be removed from the addrbook (hard to
+			// tell at this point), we need to Delete it from attemptsToDial, not
+			// record another attempt.
+			// record attempt
+			r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 		}
-		// record attempt
-		r.attemptsToDial.Store(addr.DialString(), _attemptsToDial{attempts + 1, time.Now()})
 	} else {
 		// cleanup any history
 		r.attemptsToDial.Delete(addr.DialString())
