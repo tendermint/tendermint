@@ -30,15 +30,17 @@ const (
 	defaultMinNumOutboundPeers = 10
 
 	// Seed/Crawler constants
-	// TODO:
-	// We want seeds to only advertise good peers.
-	// Peers are marked by external mechanisms.
-	// We need a config value that can be set to be
-	// on the order of how long it would take before a good
-	// peer is marked good.
-	defaultSeedDisconnectWaitPeriod = 2 * time.Minute  // disconnect after this
-	defaultCrawlPeerInterval        = 2 * time.Minute  // dont redial for this. TODO: back-off
-	defaultCrawlPeersPeriod         = 30 * time.Second // check some peers every this
+
+	// We want seeds to only advertise good peers. Therefore they should wait at
+	// least as long as we expect it to take for a peer to become good before
+	// disconnecting.
+	// see consensus/reactor.go: blocksToContributeToBecomeGoodPeer
+	// 10000 blocks assuming 1s blocks ~ 2.7 hours.
+	defaultSeedDisconnectWaitPeriod = 3 * time.Hour
+
+	defaultCrawlPeerInterval = 2 * time.Minute // don't redial for this. TODO: back-off. what for?
+
+	defaultCrawlPeersPeriod = 30 * time.Second // check some peers every this
 
 	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h)
 )
@@ -578,8 +580,7 @@ func (r *PEXReactor) crawlPeers() {
 // attemptDisconnects checks if we've been with each peer long enough to disconnect
 func (r *PEXReactor) attemptDisconnects() {
 	for _, peer := range r.Switch.Peers().List() {
-		status := peer.Status()
-		if status.Duration < defaultSeedDisconnectWaitPeriod {
+		if peer.Status().Duration < defaultSeedDisconnectWaitPeriod {
 			continue
 		}
 		if peer.IsPersistent() {
