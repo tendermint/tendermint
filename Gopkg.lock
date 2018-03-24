@@ -137,8 +137,8 @@
     "db",
     "log"
   ]
-  revision = "24da7009c3d8c019b40ba4287495749e3160caca"
-  version = "v0.7.1"
+  revision = "87c0473730a7fd6f97e9f8be3cfeeaa21102fa41"
+  version = "v0.8.0-dev"
 
 [[projects]]
   branch = "master"
@@ -208,6 +208,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e0c31538af2916be2aed38bae72f9040d93aa9a4b86a1839df7a83545a2442f1"
+  inputs-digest = "4ce1a684eeb6af9d2aa29531afb2685ac109ac5b14f71a6ef9cbfa88f8d69010"
   solver-name = "gps-cdcl"
   solver-version = 1
