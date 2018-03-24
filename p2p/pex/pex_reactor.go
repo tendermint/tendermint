@@ -564,16 +564,9 @@ func (r *PEXReactor) crawlPeers() {
 			r.book.MarkAttempt(pi.Addr)
 			continue
 		}
-	}
-	// Crawl the connected peers asking for more addresses
-	for _, pi := range peerInfos {
-		// We will wait a minimum period of time before crawling peers again
-		if now.Sub(pi.LastAttempt) >= defaultCrawlPeerInterval {
-			peer := r.Switch.Peers().Get(pi.Addr.ID)
-			if peer != nil {
-				r.RequestAddrs(peer)
-			}
-		}
+		// Ask for more addresses
+		peer := r.Switch.Peers().Get(pi.Addr.ID)
+		r.RequestAddrs(peer)
 	}
 }
 
