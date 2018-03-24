@@ -157,6 +157,13 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 		t.Errorf("selection could not be bigger than the book")
 	}
 
+	selection = book.GetSelectionWithBias(30)
+	t.Logf("selection: %v", selection)
+
+	if len(selection) > book.Size() {
+		t.Errorf("selection with bias could not be bigger than the book")
+	}
+
 	assert.Equal(t, book.Size(), 100, "expecting book size to be 100")
 }
 
@@ -228,4 +235,106 @@ func TestAddrBookRemoveAddress(t *testing.T) {
 	nonExistingAddr := randIPv4Address(t)
 	book.RemoveAddress(nonExistingAddr)
 	assert.Equal(t, 0, book.Size())
+}
+
+func TestAddrBookGetSelection(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	// 1) empty book
+	assert.Empty(t, book.GetSelection())
+
+	// 2) add one address
+	addr := randIPv4Address(t)
+	book.AddAddress(addr, addr)
+
+	assert.Equal(t, 1, len(book.GetSelection()))
+	assert.Equal(t, addr, book.GetSelection()[0])
+
+	// 3) add a bunch of addresses
+	randAddrs := randNetAddressPairs(t, 100)
+	for _, addrSrc := range randAddrs {
+		book.AddAddress(addrSrc.addr, addrSrc.src)
+	}
+
+	// check there is no duplicates
+	addrs := make(map[string]*p2p.NetAddress)
+	selection := book.GetSelection()
+	for _, addr := range selection {
+		if dup, ok := addrs[addr.String()]; ok {
+			t.Fatalf("selection %v contains duplicates %v", selection, dup)
+		}
+		addrs[addr.String()] = addr
+	}
+
+	if len(selection) > book.Size() {
+		t.Errorf("selection %v could not be bigger than the book", selection)
+	}
+}
+
+func TestAddrBookGetSelectionWithBias(t *testing.T) {
+	const biasTowardsNewAddrs = 30
+
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	// 1) empty book
+	selection := book.GetSelectionWithBias(biasTowardsNewAddrs)
+	assert.Empty(t, selection)
+
+	// 2) add one address
+	addr := randIPv4Address(t)
+	book.AddAddress(addr, addr)
+
+	selection = book.GetSelectionWithBias(biasTowardsNewAddrs)
+	assert.Equal(t, 1, len(selection))
+	assert.Equal(t, addr, selection[0])
+
+	// 3) add a bunch of addresses
+	randAddrs := randNetAddressPairs(t, 100)
+	for _, addrSrc := range randAddrs {
+		book.AddAddress(addrSrc.addr, addrSrc.src)
+	}
+
+	// check there is no duplicates
+	addrs := make(map[string]*p2p.NetAddress)
+	selection = book.GetSelectionWithBias(biasTowardsNewAddrs)
+	for _, addr := range selection {
+		if dup, ok := addrs[addr.String()]; ok {
+			t.Fatalf("selection %v contains duplicates %v", selection, dup)
+		}
+		addrs[addr.String()] = addr
+	}
+
+	if len(selection) > book.Size() {
+		t.Fatalf("selection %v could not be bigger than the book", selection)
+	}
+
+	// 4) mark 80% of the addresses as good
+	randAddrsLen := len(randAddrs)
+	for i, addrSrc := range randAddrs {
+		if int((float64(i)/float64(randAddrsLen))*100) >= 20 {
+			book.MarkGood(addrSrc.addr)
+		}
+	}
+
+	selection = book.GetSelectionWithBias(biasTowardsNewAddrs)
+
+	// check that ~70% of addresses returned are good
+	good := 0
+	for _, addr := range selection {
+		if book.IsGood(addr) {
+			good++
+		}
+	}
+	got, expected := int((float64(good)/float64(len(selection)))*100), (100 - biasTowardsNewAddrs)
+	if got >= expected {
+		t.Fatalf("expected more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
+	}
 }

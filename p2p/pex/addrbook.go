@@ -42,15 +42,19 @@ type AddrBook interface {
 	NeedMoreAddrs() bool
 
 	// Pick an address to dial
-	PickAddress(newBias int) *p2p.NetAddress
+	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
 
 	// Mark address
 	MarkGood(*p2p.NetAddress)
 	MarkAttempt(*p2p.NetAddress)
 	MarkBad(*p2p.NetAddress)
 
+	IsGood(*p2p.NetAddress) bool
+
 	// Send a selection of addresses to peers
 	GetSelection() []*p2p.NetAddress
+	// Send a selection of addresses with bias
+	GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress
 
 	// TODO: remove
 	ListOfKnownAddresses() []*knownAddress
@@ -173,6 +177,14 @@ func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 	a.removeFromAllBuckets(ka)
 }
 
+// IsGood returns true if peer was ever marked as good and haven't
+// done anything wrong since then.
+func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	return a.addrLookup[addr.ID].isOld()
+}
+
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
 func (a *addrBook) NeedMoreAddrs() bool {
 	return a.Size() < needAddressThreshold
@@ -180,27 +192,27 @@ func (a *addrBook) NeedMoreAddrs() bool {
 
 // PickAddress implements AddrBook. It picks an address to connect to.
 // The address is picked randomly from an old or new bucket according
-// to the newBias argument, which must be between [0, 100] (or else is truncated to that range)
+// to the biasTowardsNewAddrs argument, which must be between [0, 100] (or else is truncated to that range)
 // and determines how biased we are to pick an address from a new bucket.
 // PickAddress returns nil if the AddrBook is empty or if we try to pick
 // from an empty bucket.
-func (a *addrBook) PickAddress(newBias int) *p2p.NetAddress {
+func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
 	if a.size() == 0 {
 		return nil
 	}
-	if newBias > 100 {
-		newBias = 100
+	if biasTowardsNewAddrs > 100 {
+		biasTowardsNewAddrs = 100
 	}
-	if newBias < 0 {
-		newBias = 0
+	if biasTowardsNewAddrs < 0 {
+		biasTowardsNewAddrs = 0
 	}
 
 	// Bias between new and old addresses.
-	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(newBias))
-	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(newBias)
+	oldCorrelation := math.Sqrt(float64(a.nOld)) * (100.0 - float64(biasTowardsNewAddrs))
+	newCorrelation := math.Sqrt(float64(a.nNew)) * float64(biasTowardsNewAddrs)
 
 	// pick a random peer from a random bucket
 	var bucket map[string]*knownAddress
@@ -293,6 +305,100 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 
 	// slice off the limit we are willing to share.
 	return allAddr[:numAddresses]
+}
+
+// GetSelectionWithBias implements AddrBook.
+// It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
+//
+// Each address is picked randomly from an old or new bucket according to the
+// biasTowardsNewAddrs argument, which must be between [0, 100] (or else is truncated to
+// that range) and determines how biased we are to pick an address from a new
+// bucket.
+func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddress {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	if a.size() == 0 {
+		return nil
+	}
+
+	if biasTowardsNewAddrs > 100 {
+		biasTowardsNewAddrs = 100
+	}
+	if biasTowardsNewAddrs < 0 {
+		biasTowardsNewAddrs = 0
+	}
+
+	numAddresses := cmn.MaxInt(
+		cmn.MinInt(minGetSelection, a.size()),
+		a.size()*getSelectionPercent/100)
+	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
+
+	selection := make([]*p2p.NetAddress, numAddresses)
+
+	oldBucketToAddrsMap := make(map[int]map[string]struct{})
+	var oldIndex int
+	newBucketToAddrsMap := make(map[int]map[string]struct{})
+	var newIndex int
+
+	selectionIndex := 0
+ADDRS_LOOP:
+	for selectionIndex < numAddresses {
+		pickFromOldBucket := int((float64(selectionIndex)/float64(numAddresses))*100) >= biasTowardsNewAddrs
+		pickFromOldBucket = (pickFromOldBucket && a.nOld > 0) || a.nNew == 0
+		bucket := make(map[string]*knownAddress)
+
+		// loop until we pick a random non-empty bucket
+		for len(bucket) == 0 {
+			if pickFromOldBucket {
+				oldIndex = a.rand.Intn(len(a.bucketsOld))
+				bucket = a.bucketsOld[oldIndex]
+			} else {
+				newIndex = a.rand.Intn(len(a.bucketsNew))
+				bucket = a.bucketsNew[newIndex]
+			}
+		}
+
+		// pick a random index
+		randIndex := a.rand.Intn(len(bucket))
+
+		// loop over the map to return that index
+		var selectedAddr *p2p.NetAddress
+		for _, ka := range bucket {
+			if randIndex == 0 {
+				selectedAddr = ka.Addr
+				break
+			}
+			randIndex--
+		}
+
+		// if we have selected the address before, restart the loop
+		// otherwise, record it and continue
+		if pickFromOldBucket {
+			if addrsMap, ok := oldBucketToAddrsMap[oldIndex]; ok {
+				if _, ok = addrsMap[selectedAddr.String()]; ok {
+					continue ADDRS_LOOP
+				}
+			} else {
+				oldBucketToAddrsMap[oldIndex] = make(map[string]struct{})
+			}
+			oldBucketToAddrsMap[oldIndex][selectedAddr.String()] = struct{}{}
+		} else {
+			if addrsMap, ok := newBucketToAddrsMap[newIndex]; ok {
+				if _, ok = addrsMap[selectedAddr.String()]; ok {
+					continue ADDRS_LOOP
+				}
+			} else {
+				newBucketToAddrsMap[newIndex] = make(map[string]struct{})
+			}
+			newBucketToAddrsMap[newIndex][selectedAddr.String()] = struct{}{}
+		}
+
+		selection[selectionIndex] = selectedAddr
+		selectionIndex++
+	}
+
+	return selection
 }
 
 // ListOfKnownAddresses returns the new and old addresses.
