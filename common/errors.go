@@ -6,137 +6,227 @@ import (
 )
 
 //----------------------------------------
+// Convenience methods
+
+// ErrorWrap will just call .TraceFrom(), or create a new *cmnError.
+func ErrorWrap(cause interface{}, format string, args ...interface{}) Error {
+	msg := Fmt(format, args...)
+	if causeCmnError, ok := cause.(*cmnError); ok {
+		return causeCmnError.TraceFrom(1, msg)
+	} else {
+		// NOTE: cause may be nil.
+		// NOTE: do not use causeCmnError here, not the same as nil.
+		return newError(msg, cause, cause).Stacktrace()
+	}
+}
+
+//----------------------------------------
 // Error & cmnError
 
+/*
+Usage:
+
+```go
+	// Error construction
+	var someT = errors.New("Some err type")
+	var err1 error = NewErrorWithT(someT, "my message")
+	...
+	// Wrapping
+	var err2 error  = ErrorWrap(err1, "another message")
+	if (err1 != err2) { panic("should be the same")
+	...
+	// Error handling
+	switch err2.T() {
+		case someT: ...
+	    default: ...
+	}
+```
+
+*/
 type Error interface {
 	Error() string
-	Trace(format string, a ...interface{}) Error
-	TraceCause(cause error, format string, a ...interface{}) Error
-	Cause() error
-	Type() interface{}
-	WithType(t interface{}) Error
+	Message() string
+	Stacktrace() Error
+	Trace(format string, args ...interface{}) Error
+	TraceFrom(offset int, format string, args ...interface{}) Error
+	Cause() interface{}
+	WithT(t interface{}) Error
+	T() interface{}
+	Format(s fmt.State, verb rune)
 }
 
 // New Error with no cause where the type is the format string of the message..
-func NewError(format string, a ...interface{}) Error {
-	msg := Fmt(format, a...)
+func NewError(format string, args ...interface{}) Error {
+	msg := Fmt(format, args...)
 	return newError(msg, nil, format)
 
 }
 
-// New Error with cause where the type is the cause, with message..
-func NewErrorWithCause(cause error, format string, a ...interface{}) Error {
-	msg := Fmt(format, a...)
-	return newError(msg, cause, cause)
-}
-
 // New Error with specified type and message.
-func NewErrorWithType(type_ interface{}, format string, a ...interface{}) Error {
-	msg := Fmt(format, a...)
-	return newError(msg, nil, type_)
+func NewErrorWithT(t interface{}, format string, args ...interface{}) Error {
+	msg := Fmt(format, args...)
+	return newError(msg, nil, t)
 }
 
-type traceItem struct {
-	msg      string
-	filename string
-	lineno   int
-}
+// NOTE: The name of a function "NewErrorWithCause()" implies that you are
+// creating a new Error, yet, if the cause is an Error, creating a new Error to
+// hold a ref to the old Error is probably *not* what you want to do.
+// So, use ErrorWrap(cause, format, a...) instead, which returns the same error
+// if cause is an Error.
+// IF you must set an Error as the cause of an Error,
+// then you can use the WithCauser interface to do so manually.
+// e.g. (error).(tmlibs.WithCauser).WithCause(causeError)
 
-func (ti traceItem) String() string {
-	return fmt.Sprintf("%v:%v %v", ti.filename, ti.lineno, ti.msg)
+type WithCauser interface {
+	WithCause(cause interface{}) Error
 }
 
 type cmnError struct {
-	msg    string
-	cause  error
-	type_  interface{}
-	traces []traceItem
+	msg        string         // first msg which also appears in msg
+	cause      interface{}    // underlying cause (or panic object)
+	t          interface{}    // for switching on error
+	msgtraces  []msgtraceItem // all messages traced
+	stacktrace []uintptr      // first stack trace
 }
 
-// NOTE: Do not expose, it's not very friendly.
-func newError(msg string, cause error, type_ interface{}) *cmnError {
+var _ WithCauser = &cmnError{}
+var _ Error = &cmnError{}
+
+// NOTE: do not expose.
+func newError(msg string, cause interface{}, t interface{}) *cmnError {
 	return &cmnError{
-		msg:    msg,
-		cause:  cause,
-		type_:  type_,
-		traces: nil,
+		msg:        msg,
+		cause:      cause,
+		t:          t,
+		msgtraces:  nil,
+		stacktrace: nil,
 	}
+}
+
+func (err *cmnError) Message() string {
+	return err.msg
 }
 
 func (err *cmnError) Error() string {
-	return fmt.Sprintf("Error{%v:%s,%v,%v}", err.type_, err.msg, err.cause, len(err.traces))
+	return fmt.Sprintf("%v", err)
+}
+
+// Captures a stacktrace if one was not already captured.
+func (err *cmnError) Stacktrace() Error {
+	if err.stacktrace == nil {
+		var offset = 3
+		var depth = 32
+		err.stacktrace = captureStacktrace(offset, depth)
+	}
+	return err
 }
 
 // Add tracing information with msg.
-func (err *cmnError) Trace(format string, a ...interface{}) Error {
-	msg := Fmt(format, a...)
-	return err.doTrace(msg, 2)
+func (err *cmnError) Trace(format string, args ...interface{}) Error {
+	msg := Fmt(format, args...)
+	return err.doTrace(msg, 0)
 }
 
-// Add tracing information with cause and msg.
-// If a cause was already set before, it is overwritten.
-func (err *cmnError) TraceCause(cause error, format string, a ...interface{}) Error {
-	msg := Fmt(format, a...)
-	err.cause = cause
-	return err.doTrace(msg, 2)
-}
-
-// Return the "type" of this message, primarily for switching
-// to handle this error.
-func (err *cmnError) Type() interface{} {
-	return err.type_
-}
-
-// Overwrites the error's type.
-func (err *cmnError) WithType(type_ interface{}) Error {
-	err.type_ = type_
-	return err
-}
-
-func (err *cmnError) doTrace(msg string, n int) Error {
-	_, fn, line, ok := runtime.Caller(n)
-	if !ok {
-		if fn == "" {
-			fn = "<unknown>"
-		}
-		if line <= 0 {
-			line = -1
-		}
-	}
-	// Include file & line number & msg.
-	// Do not include the whole stack trace.
-	err.traces = append(err.traces, traceItem{
-		filename: fn,
-		lineno:   line,
-		msg:      msg,
-	})
-	return err
+// Same as Trace, but traces the line `offset` calls out.
+// If n == 0, the behavior is identical to Trace().
+func (err *cmnError) TraceFrom(offset int, format string, args ...interface{}) Error {
+	msg := Fmt(format, args...)
+	return err.doTrace(msg, offset)
 }
 
 // Return last known cause.
 // NOTE: The meaning of "cause" is left for the caller to define.
-// There exists to canonical definition of "cause".
-// Instead of blaming, try to handle-or-organize it.
-func (err *cmnError) Cause() error {
+// There exists no "canonical" definition of "cause".
+// Instead of blaming, try to handle it, or organize it.
+func (err *cmnError) Cause() interface{} {
 	return err.cause
 }
 
+// Overwrites the Error's cause.
+func (err *cmnError) WithCause(cause interface{}) Error {
+	err.cause = cause
+	return err
+}
+
+// Overwrites the Error's type.
+func (err *cmnError) WithT(t interface{}) Error {
+	err.t = t
+	return err
+}
+
+// Return the "type" of this message, primarily for switching
+// to handle this Error.
+func (err *cmnError) T() interface{} {
+	return err.t
+}
+
+func (err *cmnError) doTrace(msg string, n int) Error {
+	pc, _, _, _ := runtime.Caller(n + 2) // +1 for doTrace().  +1 for the caller.
+	// Include file & line number & msg.
+	// Do not include the whole stack trace.
+	err.msgtraces = append(err.msgtraces, msgtraceItem{
+		pc:  pc,
+		msg: msg,
+	})
+	return err
+}
+
+func (err *cmnError) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'p':
+		s.Write([]byte(fmt.Sprintf("%p", &err)))
+	default:
+		if s.Flag('#') {
+			s.Write([]byte("--= Error =--\n"))
+			// Write msg.
+			s.Write([]byte(fmt.Sprintf("Message: %#s\n", err.msg)))
+			// Write cause.
+			s.Write([]byte(fmt.Sprintf("Cause: %#v\n", err.cause)))
+			// Write type.
+			s.Write([]byte(fmt.Sprintf("T: %#v\n", err.t)))
+			// Write msg trace items.
+			s.Write([]byte(fmt.Sprintf("Msg Traces:\n")))
+			for i, msgtrace := range err.msgtraces {
+				s.Write([]byte(fmt.Sprintf(" %4d  %s\n", i, msgtrace.String())))
+			}
+			// Write stack trace.
+			if err.stacktrace != nil {
+				s.Write([]byte(fmt.Sprintf("Stack Trace:\n")))
+				for i, pc := range err.stacktrace {
+					fnc := runtime.FuncForPC(pc)
+					file, line := fnc.FileLine(pc)
+					s.Write([]byte(fmt.Sprintf(" %4d  %s:%d\n", i, file, line)))
+				}
+			}
+			s.Write([]byte("--= /Error =--\n"))
+		} else {
+			// Write msg.
+			s.Write([]byte(fmt.Sprintf("Error{`%v`}", err.msg))) // TODO tick-esc?
+		}
+	}
+}
+
 //----------------------------------------
-// StackError
+// stacktrace & msgtraceItem
 
-// NOTE: Used by Tendermint p2p upon recovery.
-// Err could be "Reason", since it isn't an error type.
-type StackError struct {
-	Err   interface{}
-	Stack []byte
+func captureStacktrace(offset int, depth int) []uintptr {
+	var pcs = make([]uintptr, depth)
+	n := runtime.Callers(offset, pcs)
+	return pcs[0:n]
 }
 
-func (se StackError) String() string {
-	return fmt.Sprintf("Error: %v\nStack: %s", se.Err, se.Stack)
+type msgtraceItem struct {
+	pc  uintptr
+	msg string
 }
 
-func (se StackError) Error() string {
-	return se.String()
+func (mti msgtraceItem) String() string {
+	fnc := runtime.FuncForPC(mti.pc)
+	file, line := fnc.FileLine(mti.pc)
+	return fmt.Sprintf("%s:%d - %s",
+		file, line,
+		mti.msg,
+	)
 }
 
 //----------------------------------------
