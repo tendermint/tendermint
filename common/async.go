@@ -15,7 +15,6 @@ type Task func(i int) (val interface{}, err error, abort bool)
 type TaskResult struct {
 	Value interface{}
 	Error error
-	Panic interface{}
 }
 
 type TaskResultCh <-chan TaskResult
@@ -92,17 +91,6 @@ func (trs *TaskResultSet) FirstError() error {
 	return nil
 }
 
-// Returns the firstmost (by task index) panic as
-// discovered by all previous Reap() calls.
-func (trs *TaskResultSet) FirstPanic() interface{} {
-	for _, result := range trs.results {
-		if result.Panic != nil {
-			return result.Panic
-		}
-	}
-	return nil
-}
-
 //----------------------------------------
 // Parallel
 
@@ -128,7 +116,7 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 			defer func() {
 				if pnk := recover(); pnk != nil {
 					atomic.AddInt32(numPanics, 1)
-					taskResultCh <- TaskResult{nil, nil, pnk}
+					taskResultCh <- TaskResult{nil, ErrorWrap(pnk, "Panic in task")}
 					taskDoneCh <- false
 				}
 			}()
@@ -136,7 +124,7 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 			var val, err, abort = task(i)
 			// Send val/err to taskResultCh.
 			// NOTE: Below this line, nothing must panic/
-			taskResultCh <- TaskResult{val, err, nil}
+			taskResultCh <- TaskResult{val, err}
 			// Decrement waitgroup.
 			taskDoneCh <- abort
 		}(i, task, taskResultCh)

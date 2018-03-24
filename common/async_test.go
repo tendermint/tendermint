@@ -37,9 +37,6 @@ func TestParallel(t *testing.T) {
 		} else if taskResult.Error != nil {
 			assert.Fail(t, "Task should not have errored but got %v", taskResult.Error)
 			failedTasks += 1
-		} else if taskResult.Panic != nil {
-			assert.Fail(t, "Task should not have panic'd but got %v", taskResult.Panic)
-			failedTasks += 1
 		} else if !assert.Equal(t, -1*i, taskResult.Value.(int)) {
 			assert.Fail(t, "Task should have returned %v but got %v", -1*i, taskResult.Value.(int))
 			failedTasks += 1
@@ -49,7 +46,6 @@ func TestParallel(t *testing.T) {
 	}
 	assert.Equal(t, failedTasks, 0, "No task should have failed")
 	assert.Nil(t, trs.FirstError(), "There should be no errors")
-	assert.Nil(t, trs.FirstPanic(), "There should be no panics")
 	assert.Equal(t, 0, trs.FirstValue(), "First value should be 0")
 }
 
@@ -132,8 +128,13 @@ func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int, val inte
 	taskName := fmt.Sprintf("Task #%v", index)
 	assert.True(t, ok, "TaskResultCh unexpectedly closed for %v", taskName)
 	assert.Equal(t, val, taskResult.Value, taskName)
-	assert.Equal(t, err, taskResult.Error, taskName)
-	assert.Equal(t, pnk, taskResult.Panic, taskName)
+	if err != nil {
+		assert.Equal(t, err, taskResult.Error, taskName)
+	} else if pnk != nil {
+		assert.Equal(t, pnk, taskResult.Error.(Error).Cause(), taskName)
+	} else {
+		assert.Nil(t, taskResult.Error, taskName)
+	}
 }
 
 // Wait for timeout (no result)
