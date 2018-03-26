@@ -175,8 +175,8 @@ func (c BaseConfig) PrivValidatorFile() string {
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
-func (b BaseConfig) NodeKeyFile() string {
-	return rootify(b.NodeKey, b.RootDir)
+func (c BaseConfig) NodeKeyFile() string {
+	return rootify(c.NodeKey, c.RootDir)
 }
 
 // DBDir returns the full path to the database directory
