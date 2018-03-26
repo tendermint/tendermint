@@ -170,8 +170,8 @@ func (c BaseConfig) GenesisFile() string {
 }
 
 // PrivValidatorFile returns the full path to the priv_validator.json file
-func (b BaseConfig) PrivValidatorFile() string {
-	return rootify(b.PrivValidator, b.RootDir)
+func (c BaseConfig) PrivValidatorFile() string {
+	return rootify(c.PrivValidator, c.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
