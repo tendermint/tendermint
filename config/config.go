@@ -449,18 +449,18 @@ func DefaultConsensusConfig() *ConsensusConfig {
 
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
-	config := DefaultConsensusConfig()
-	config.TimeoutPropose = 100
-	config.TimeoutProposeDelta = 1
-	config.TimeoutPrevote = 10
-	config.TimeoutPrevoteDelta = 1
-	config.TimeoutPrecommit = 10
-	config.TimeoutPrecommitDelta = 1
-	config.TimeoutCommit = 10
-	config.SkipTimeoutCommit = true
-	config.PeerGossipSleepDuration = 5
-	config.PeerQueryMaj23SleepDuration = 250
-	return config
+	cfg := DefaultConsensusConfig()
+	cfg.TimeoutPropose = 100
+	cfg.TimeoutProposeDelta = 1
+	cfg.TimeoutPrevote = 10
+	cfg.TimeoutPrevoteDelta = 1
+	cfg.TimeoutPrecommit = 10
+	cfg.TimeoutPrecommitDelta = 1
+	cfg.TimeoutCommit = 10
+	cfg.SkipTimeoutCommit = true
+	cfg.PeerGossipSleepDuration = 5
+	cfg.PeerQueryMaj23SleepDuration = 250
+	return cfg
 }
 
 // WalFile returns the full path to the write-ahead log file
