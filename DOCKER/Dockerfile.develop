@@ -18,9 +18,9 @@ RUN mkdir -p /go/src/github.com/tendermint/tendermint && \
     cd /go/src/github.com/tendermint/tendermint && \
     git clone https://github.com/tendermint/tendermint . && \
     git checkout develop && \
+    make get_tools && \
     make get_vendor_deps && \
     make install && \
-    glide cc && \
     cd - && \
     rm -rf /go/src/github.com/tendermint/tendermint && \
     apk del go build-base git
@@ -32,4 +32,4 @@ EXPOSE 46657
 
 ENTRYPOINT ["tendermint"]
 
-CMD ["node", "--moniker=`hostname`", "--proxy_app=dummy"]
+CMD ["node", "--moniker=`hostname`", "--proxy_app=kvstore"]

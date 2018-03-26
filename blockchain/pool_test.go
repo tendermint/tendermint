@@ -13,7 +13,7 @@ import (
 )
 
 func init() {
-	peerTimeoutSeconds = time.Duration(2)
+	peerTimeout = 2 * time.Second
 }
 
 type testPeer struct {
@@ -34,9 +34,9 @@ func makePeers(numPeers int, minHeight, maxHeight int64) map[p2p.ID]testPeer {
 func TestBasic(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
-	timeoutsCh := make(chan p2p.ID, 100)
-	requestsCh := make(chan BlockRequest, 100)
-	pool := NewBlockPool(start, requestsCh, timeoutsCh)
+	errorsCh := make(chan peerError, 1000)
+	requestsCh := make(chan BlockRequest, 1000)
+	pool := NewBlockPool(start, requestsCh, errorsCh)
 	pool.SetLogger(log.TestingLogger())
 
 	err := pool.Start()
@@ -71,8 +71,8 @@ func TestBasic(t *testing.T) {
 	// Pull from channels
 	for {
 		select {
-		case peerID := <-timeoutsCh:
-			t.Errorf("timeout: %v", peerID)
+		case err := <-errorsCh:
+			t.Error(err)
 		case request := <-requestsCh:
 			t.Logf("Pulled new BlockRequest %v", request)
 			if request.Height == 300 {
@@ -91,9 +91,9 @@ func TestBasic(t *testing.T) {
 func TestTimeout(t *testing.T) {
 	start := int64(42)
 	peers := makePeers(10, start+1, 1000)
-	timeoutsCh := make(chan p2p.ID, 100)
-	requestsCh := make(chan BlockRequest, 100)
-	pool := NewBlockPool(start, requestsCh, timeoutsCh)
+	errorsCh := make(chan peerError, 1000)
+	requestsCh := make(chan BlockRequest, 1000)
+	pool := NewBlockPool(start, requestsCh, errorsCh)
 	pool.SetLogger(log.TestingLogger())
 	err := pool.Start()
 	if err != nil {
@@ -132,9 +132,10 @@ func TestTimeout(t *testing.T) {
 	timedOut := map[p2p.ID]struct{}{}
 	for {
 		select {
-		case peerID := <-timeoutsCh:
-			t.Logf("Peer %v timeouted", peerID)
-			if _, ok := timedOut[peerID]; !ok {
+		case err := <-errorsCh:
+			t.Log(err)
+			// consider error to be always timeout here
+			if _, ok := timedOut[err.peerID]; !ok {
 				counter++
 				if counter == len(peers) {
 					return // Done!

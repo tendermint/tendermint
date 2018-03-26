@@ -152,6 +152,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 			txs := cs.mempool.Reap(1)
 			if len(txs) == 0 {
 				emptyMempoolCh <- struct{}{}
+				return
 			}
 			time.Sleep(10 * time.Millisecond)
 		}

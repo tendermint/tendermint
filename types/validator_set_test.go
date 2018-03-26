@@ -6,32 +6,14 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
-
-func randPubKey() crypto.PubKey {
-	var pubKey [32]byte
-	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey).Wrap()
-}
-
-func randValidator_() *Validator {
-	val := NewValidator(randPubKey(), cmn.RandInt64())
-	val.Accum = cmn.RandInt64()
-	return val
-}
-
-func randValidatorSet(numValidators int) *ValidatorSet {
-	validators := make([]*Validator, numValidators)
-	for i := 0; i < numValidators; i++ {
-		validators[i] = randValidator_()
-	}
-	return NewValidatorSet(validators)
-}
 
 func TestCopy(t *testing.T) {
 	vset := randValidatorSet(10)
@@ -47,6 +29,26 @@ func TestCopy(t *testing.T) {
 		t.Fatalf("ValidatorSet copy had wrong hash. Orig: %X, Copy: %X", vsetHash, vsetCopyHash)
 	}
 }
+
+func BenchmarkValidatorSetCopy(b *testing.B) {
+	b.StopTimer()
+	vset := NewValidatorSet([]*Validator{})
+	for i := 0; i < 1000; i++ {
+		privKey := crypto.GenPrivKeyEd25519()
+		pubKey := privKey.PubKey()
+		val := NewValidator(pubKey, 0)
+		if !vset.Add(val) {
+			panic("Failed to add validator")
+		}
+	}
+	b.StartTimer()
+
+	for i := 0; i < b.N; i++ {
+		vset.Copy()
+	}
+}
+
+//-------------------------------------------------------------------
 
 func TestProposerSelection1(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
@@ -64,10 +66,6 @@ func TestProposerSelection1(t *testing.T) {
 	if expected != strings.Join(proposers, " ") {
 		t.Errorf("Expected sequence of proposers was\n%v\nbut got \n%v", expected, strings.Join(proposers, " "))
 	}
-}
-
-func newValidator(address []byte, power int64) *Validator {
-	return &Validator{Address: address, VotingPower: power}
 }
 
 func TestProposerSelection2(t *testing.T) {
@@ -193,6 +191,48 @@ func TestProposerSelection3(t *testing.T) {
 	}
 }
 
+func newValidator(address []byte, power int64) *Validator {
+	return &Validator{Address: address, VotingPower: power}
+}
+
+func randPubKey() crypto.PubKey {
+	var pubKey [32]byte
+	copy(pubKey[:], cmn.RandBytes(32))
+	return crypto.PubKeyEd25519(pubKey).Wrap()
+}
+
+func randValidator_() *Validator {
+	val := NewValidator(randPubKey(), cmn.RandInt64())
+	val.Accum = cmn.RandInt64()
+	return val
+}
+
+func randValidatorSet(numValidators int) *ValidatorSet {
+	validators := make([]*Validator, numValidators)
+	for i := 0; i < numValidators; i++ {
+		validators[i] = randValidator_()
+	}
+	return NewValidatorSet(validators)
+}
+
+func (valSet *ValidatorSet) toBytes() []byte {
+	bz, err := wire.MarshalBinary(valSet)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
+func (valSet *ValidatorSet) fromBytes(b []byte) {
+	err := wire.UnmarshalBinary(b, &valSet)
+	if err != nil {
+		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
+		panic(err)
+	}
+}
+
+//-------------------------------------------------------------------
+
 func TestValidatorSetTotalVotingPowerOverflows(t *testing.T) {
 	vset := NewValidatorSet([]*Validator{
 		{Address: []byte("a"), VotingPower: math.MaxInt64, Accum: 0},
@@ -272,38 +312,60 @@ func TestSafeSubClip(t *testing.T) {
 	assert.EqualValues(t, math.MaxInt64, safeSubClip(math.MaxInt64, -10))
 }
 
-func BenchmarkValidatorSetCopy(b *testing.B) {
-	b.StopTimer()
-	vset := NewValidatorSet([]*Validator{})
-	for i := 0; i < 1000; i++ {
-		privKey := crypto.GenPrivKeyEd25519()
-		pubKey := privKey.PubKey()
-		val := NewValidator(pubKey, 0)
-		if !vset.Add(val) {
-			panic("Failed to add validator")
-		}
-	}
-	b.StartTimer()
+//-------------------------------------------------------------------
 
-	for i := 0; i < b.N; i++ {
-		vset.Copy()
-	}
-}
+func TestValidatorSetVerifyCommit(t *testing.T) {
+	privKey := crypto.GenPrivKeyEd25519()
+	pubKey := privKey.PubKey()
+	v1 := NewValidator(pubKey, 1000)
+	vset := NewValidatorSet([]*Validator{v1})
 
-func (valSet *ValidatorSet) toBytes() []byte {
-	buf, n, err := new(bytes.Buffer), new(int), new(error)
-	wire.WriteBinary(valSet, buf, n, err)
-	if *err != nil {
-		cmn.PanicCrisis(*err)
+	chainID := "mychainID"
+	blockID := BlockID{Hash: []byte("hello")}
+	height := int64(5)
+	vote := &Vote{
+		ValidatorAddress: v1.Address,
+		ValidatorIndex:   0,
+		Height:           height,
+		Round:            0,
+		Timestamp:        time.Now().UTC(),
+		Type:             VoteTypePrecommit,
+		BlockID:          blockID,
 	}
-	return buf.Bytes()
-}
+	vote.Signature = privKey.Sign(vote.SignBytes(chainID))
+	commit := &Commit{
+		BlockID:    blockID,
+		Precommits: []*Vote{vote},
+	}
 
-func (valSet *ValidatorSet) fromBytes(b []byte) {
-	r, n, err := bytes.NewReader(b), new(int), new(error)
-	wire.ReadBinary(valSet, r, 0, n, err)
-	if *err != nil {
-		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.PanicCrisis(*err)
+	badChainID := "notmychainID"
+	badBlockID := BlockID{Hash: []byte("goodbye")}
+	badHeight := height + 1
+	badCommit := &Commit{
+		BlockID:    blockID,
+		Precommits: []*Vote{nil},
 	}
+
+	// test some error cases
+	// TODO: test more cases!
+	cases := []struct {
+		chainID string
+		blockID BlockID
+		height  int64
+		commit  *Commit
+	}{
+		{badChainID, blockID, height, commit},
+		{chainID, badBlockID, height, commit},
+		{chainID, blockID, badHeight, commit},
+		{chainID, blockID, height, badCommit},
+	}
+
+	for i, c := range cases {
+		err := vset.VerifyCommit(c.chainID, c.blockID, c.height, c.commit)
+		assert.NotNil(t, err, i)
+	}
+
+	// test a good one
+	err := vset.VerifyCommit(chainID, blockID, height, commit)
+	assert.Nil(t, err)
 }

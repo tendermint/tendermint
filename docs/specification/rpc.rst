@@ -97,6 +97,7 @@ An HTTP Get request to the root RPC endpoint (e.g.
     http://localhost:46657/genesis
     http://localhost:46657/net_info
     http://localhost:46657/num_unconfirmed_txs
+    http://localhost:46657/health
     http://localhost:46657/status
     http://localhost:46657/unconfirmed_txs
     http://localhost:46657/unsafe_flush_mempool

@@ -34,6 +34,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -82,7 +83,8 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
-		logger)
+		logger,
+	)
 }
 
 //------------------------------------------------------------------------------
@@ -160,7 +162,7 @@ func NewNode(config *cfg.Config,
 	// and sync tendermint and the app by performing a handshake
 	// and replaying any necessary blocks
 	consensusLogger := logger.With("module", "consensus")
-	handshaker := cs.NewHandshaker(stateDB, state, blockStore)
+	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc.AppState)
 	handshaker.SetLogger(consensusLogger)
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
@@ -170,6 +172,27 @@ func NewNode(config *cfg.Config,
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
+
+	// If an address is provided, listen on the socket for a
+	// connection from an external signing process.
+	if config.PrivValidatorListenAddr != "" {
+		var (
+			// TODO: persist this key so external signer
+			// can actually authenticate us
+			privKey = crypto.GenPrivKeyEd25519()
+			pvsc    = priv_val.NewSocketClient(
+				logger.With("module", "priv_val"),
+				config.PrivValidatorListenAddr,
+				privKey,
+			)
+		)
+
+		if err := pvsc.Start(); err != nil {
+			return nil, fmt.Errorf("Error starting private validator client: %v", err)
+		}
+
+		privValidator = pvsc
+	}
 
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
@@ -258,11 +281,20 @@ func NewNode(config *cfg.Config,
 		if config.P2P.Seeds != "" {
 			seeds = strings.Split(config.P2P.Seeds, ",")
 		}
+		var privatePeerIDs []string
+		if config.P2P.PrivatePeerIDs != "" {
+			privatePeerIDs = strings.Split(config.P2P.PrivatePeerIDs, ",")
+		}
 		pexReactor := pex.NewPEXReactor(addrBook,
-			&pex.PEXReactorConfig{Seeds: seeds, SeedMode: config.P2P.SeedMode})
+			&pex.PEXReactorConfig{
+				Seeds:          seeds,
+				SeedMode:       config.P2P.SeedMode,
+				PrivatePeerIDs: privatePeerIDs})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
+
+	sw.SetAddrBook(addrBook)
 
 	// Filter peers by addr or pubkey with an ABCI query.
 	// If the query return code is OK, add peer.
@@ -279,8 +311,8 @@ func NewNode(config *cfg.Config,
 			}
 			return nil
 		})
-		sw.SetPubKeyFilter(func(pubkey crypto.PubKey) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%X", pubkey.Bytes())})
+		sw.SetIDFilter(func(id p2p.ID) error {
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%s", id)})
 			if err != nil {
 				return err
 			}
@@ -375,7 +407,7 @@ func (n *Node) OnStart() error {
 	n.sw.AddListener(l)
 
 	// Generate node PrivKey
-	// TODO: pass in like priv_val
+	// TODO: pass in like privValidator
 	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
 	if err != nil {
 		return err
@@ -418,8 +450,13 @@ func (n *Node) OnStop() {
 	}
 
 	n.eventBus.Stop()
-
 	n.indexerService.Stop()
+
+	if pvsc, ok := n.privValidator.(*priv_val.SocketClient); ok {
+		if err := pvsc.Stop(); err != nil {
+			n.Logger.Error("Error stopping priv validator socket client", "err", err)
+		}
+	}
 }
 
 // RunForever waits for an interrupt signal and stops the node.

@@ -21,3 +21,6 @@ docs/tools
 
 scripts/wal2json/wal2json
 scripts/cutWALUntil/cutWALUntil
+
+.idea/
+*.iml

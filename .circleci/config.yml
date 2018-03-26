@@ -1,0 +1,222 @@
+version: 2
+
+defaults: &defaults
+  working_directory: /go/src/github.com/tendermint/tendermint
+  docker:
+    - image: circleci/golang:1.10.0
+  environment:
+    GOBIN: /tmp/workspace/bin
+
+jobs:
+  setup_dependencies:
+    <<: *defaults
+    steps:
+      - run: mkdir -p /tmp/workspace/bin
+      - run: mkdir -p /tmp/workspace/profiles
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-pkg-cache
+      - run:
+          name: tools
+          command: |
+            export PATH="$GOBIN:$PATH"
+            make get_tools
+      - run:
+          name: dependencies
+          command: |
+            export PATH="$GOBIN:$PATH"
+            make get_vendor_deps
+      - run:
+          name: binaries
+          command: |
+            export PATH="$GOBIN:$PATH"
+            make install
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - bin
+            - profiles
+      - save_cache:
+          key: v1-pkg-cache
+          paths:
+            - /go/pkg
+      - save_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          paths:
+            - /go/src/github.com/tendermint/tendermint
+
+  setup_abci:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Checkout abci
+          command: |
+            commit=$(bash scripts/dep_utils/parse.sh abci)
+            go get -v -u -d github.com/tendermint/abci/...
+            cd /go/src/github.com/tendermint/abci
+            git checkout "$commit"
+      - run:
+          working_directory: /go/src/github.com/tendermint/abci
+          name: Install abci
+          command: |
+            set -ex
+            export PATH="$GOBIN:$PATH"
+            make get_tools
+            make get_vendor_deps
+            make install
+      - run: ls -lah /tmp/workspace/bin
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - "bin/abci*"
+
+  lint:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: metalinter
+          command: |
+            set -ex
+            export PATH="$GOBIN:$PATH"
+            make metalinter
+
+  test_apps:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
+      - run:
+          name: Run tests
+          command: bash test/app/test.sh
+
+  test_cover:
+    <<: *defaults
+    parallelism: 4
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            for pkg in $(go list github.com/tendermint/tendermint/... | grep -v /vendor/ | circleci tests split --split-by=timings); do
+              id=$(basename "$pkg")
+
+              go test -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg"
+            done
+      - persist_to_workspace:
+          root: /tmp/workspace
+          paths:
+            - "profiles/*"
+
+  test_libs:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: bash test/test_libs.sh
+
+  test_persistence:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: bash test/persist/test_failure_indices.sh
+
+  test_p2p:
+    environment:
+      GOBIN: /home/circleci/.go_workspace/bin
+      GOPATH: /home/circleci/.go_workspace
+    machine:
+      image: circleci/classic:latest
+    steps:
+      - checkout
+      - run: mkdir -p $GOPATH/src/github.com/tendermint
+      - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
+      - run: bash test/circleci/p2p.sh
+
+  upload_coverage:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: gather
+          command: |
+            set -ex
+
+            echo "mode: atomic" > coverage.txt
+            for prof in $(ls /tmp/workspace/profiles/); do
+              tail -n +2 /tmp/workspace/profiles/"$prof" >> coverage.txt
+            done
+      - run:
+          name: upload
+          command: bash <(curl -s https://codecov.io/bash) -f coverage.txt
+
+workflows:
+  version: 2
+  test-suite:
+    jobs:
+      - setup_dependencies
+      - setup_abci:
+          requires:
+            - setup_dependencies
+      - lint:
+          requires:
+            - setup_dependencies
+      - test_apps:
+          requires:
+            - setup_abci
+      - test_cover:
+          requires:
+            - setup_dependencies
+      - test_libs:
+          filters:
+            branches:
+              only:
+                - develop
+                - master
+          requires:
+            - setup_dependencies
+      - test_persistence:
+          requires:
+            - setup_abci
+      - test_p2p
+      - upload_coverage:
+          requires:
+            - test_cover

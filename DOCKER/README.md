@@ -34,13 +34,13 @@ To get started developing applications, see the [application developers guide](h
 
 # How to use this image
 
-## Start one instance of the Tendermint core with the `dummy` app
+## Start one instance of the Tendermint core with the `kvstore` app
 
 A very simple example of a built-in app and Tendermint core in one container.
 
 ```
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
-docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app=dummy
+docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app=kvstore
 ```
 
 ## mintnet-kubernetes

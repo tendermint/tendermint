@@ -24,7 +24,7 @@ func initFiles(cmd *cobra.Command, args []string) {
 	} else {
 		privValidator = types.GenPrivValidatorFS(privValFile)
 		privValidator.Save()
-		logger.Info("Genetated private validator", "path", privValFile)
+		logger.Info("Generated private validator", "path", privValFile)
 	}
 
 	// genesis file
@@ -43,6 +43,6 @@ func initFiles(cmd *cobra.Command, args []string) {
 		if err := genDoc.SaveAs(genFile); err != nil {
 			panic(err)
 		}
-		logger.Info("Genetated genesis file", "path", genFile)
+		logger.Info("Generated genesis file", "path", genFile)
 	}
 }
