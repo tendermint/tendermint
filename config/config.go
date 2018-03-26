@@ -224,11 +224,11 @@ func DefaultRPCConfig() *RPCConfig {
 
 // TestRPCConfig returns a configuration for testing the RPC server
 func TestRPCConfig() *RPCConfig {
-	conf := DefaultRPCConfig()
-	conf.ListenAddress = "tcp://0.0.0.0:36657"
-	conf.GRPCListenAddress = "tcp://0.0.0.0:36658"
-	conf.Unsafe = true
-	return conf
+	cfg := DefaultRPCConfig()
+	cfg.ListenAddress = "tcp://0.0.0.0:36657"
+	cfg.GRPCListenAddress = "tcp://0.0.0.0:36658"
+	cfg.Unsafe = true
+	return cfg
 }
 
 //-----------------------------------------------------------------------------
