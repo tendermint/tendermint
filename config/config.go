@@ -301,11 +301,11 @@ func DefaultP2PConfig() *P2PConfig {
 
 // TestP2PConfig returns a configuration for testing the peer-to-peer layer
 func TestP2PConfig() *P2PConfig {
-	conf := DefaultP2PConfig()
-	conf.ListenAddress = "tcp://0.0.0.0:36656"
-	conf.SkipUPNP = true
-	conf.FlushThrottleTimeout = 10
-	return conf
+	cfg := DefaultP2PConfig()
+	cfg.ListenAddress = "tcp://0.0.0.0:36656"
+	cfg.SkipUPNP = true
+	cfg.FlushThrottleTimeout = 10
+	return cfg
 }
 
 // AddrBookFile returns the full path to the address book
