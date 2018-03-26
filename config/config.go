@@ -385,6 +385,44 @@ type ConsensusConfig struct {
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
 }
 
+// DefaultConsensusConfig returns a default configuration for the consensus service
+func DefaultConsensusConfig() *ConsensusConfig {
+	return &ConsensusConfig{
+		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
+		WalLight:                    false,
+		TimeoutPropose:              3000,
+		TimeoutProposeDelta:         500,
+		TimeoutPrevote:              1000,
+		TimeoutPrevoteDelta:         500,
+		TimeoutPrecommit:            1000,
+		TimeoutPrecommitDelta:       500,
+		TimeoutCommit:               1000,
+		SkipTimeoutCommit:           false,
+		MaxBlockSizeTxs:             10000,
+		MaxBlockSizeBytes:           1, // TODO
+		CreateEmptyBlocks:           true,
+		CreateEmptyBlocksInterval:   0,
+		PeerGossipSleepDuration:     100,
+		PeerQueryMaj23SleepDuration: 2000,
+	}
+}
+
+// TestConsensusConfig returns a configuration for testing the consensus service
+func TestConsensusConfig() *ConsensusConfig {
+	cfg := DefaultConsensusConfig()
+	cfg.TimeoutPropose = 100
+	cfg.TimeoutProposeDelta = 1
+	cfg.TimeoutPrevote = 10
+	cfg.TimeoutPrevoteDelta = 1
+	cfg.TimeoutPrecommit = 10
+	cfg.TimeoutPrecommitDelta = 1
+	cfg.TimeoutCommit = 10
+	cfg.SkipTimeoutCommit = true
+	cfg.PeerGossipSleepDuration = 5
+	cfg.PeerQueryMaj23SleepDuration = 250
+	return cfg
+}
+
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
 func (c *ConsensusConfig) WaitForTxs() bool {
 	return !c.CreateEmptyBlocks || c.CreateEmptyBlocksInterval > 0
@@ -423,44 +461,6 @@ func (c *ConsensusConfig) PeerGossipSleep() time.Duration {
 // PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
 func (c *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
 	return time.Duration(c.PeerQueryMaj23SleepDuration) * time.Millisecond
-}
-
-// DefaultConsensusConfig returns a default configuration for the consensus service
-func DefaultConsensusConfig() *ConsensusConfig {
-	return &ConsensusConfig{
-		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
-		WalLight:                    false,
-		TimeoutPropose:              3000,
-		TimeoutProposeDelta:         500,
-		TimeoutPrevote:              1000,
-		TimeoutPrevoteDelta:         500,
-		TimeoutPrecommit:            1000,
-		TimeoutPrecommitDelta:       500,
-		TimeoutCommit:               1000,
-		SkipTimeoutCommit:           false,
-		MaxBlockSizeTxs:             10000,
-		MaxBlockSizeBytes:           1, // TODO
-		CreateEmptyBlocks:           true,
-		CreateEmptyBlocksInterval:   0,
-		PeerGossipSleepDuration:     100,
-		PeerQueryMaj23SleepDuration: 2000,
-	}
-}
-
-// TestConsensusConfig returns a configuration for testing the consensus service
-func TestConsensusConfig() *ConsensusConfig {
-	cfg := DefaultConsensusConfig()
-	cfg.TimeoutPropose = 100
-	cfg.TimeoutProposeDelta = 1
-	cfg.TimeoutPrevote = 10
-	cfg.TimeoutPrevoteDelta = 1
-	cfg.TimeoutPrecommit = 10
-	cfg.TimeoutPrecommitDelta = 1
-	cfg.TimeoutCommit = 10
-	cfg.SkipTimeoutCommit = true
-	cfg.PeerGossipSleepDuration = 5
-	cfg.PeerQueryMaj23SleepDuration = 250
-	return cfg
 }
 
 // WalFile returns the full path to the write-ahead log file
