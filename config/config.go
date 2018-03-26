@@ -165,23 +165,23 @@ func TestBaseConfig() BaseConfig {
 }
 
 // GenesisFile returns the full path to the genesis.json file
-func (b BaseConfig) GenesisFile() string {
-	return rootify(b.Genesis, b.RootDir)
+func (c BaseConfig) GenesisFile() string {
+	return rootify(c.Genesis, c.RootDir)
 }
 
 // PrivValidatorFile returns the full path to the priv_validator.json file
-func (b BaseConfig) PrivValidatorFile() string {
-	return rootify(b.PrivValidator, b.RootDir)
+func (c BaseConfig) PrivValidatorFile() string {
+	return rootify(c.PrivValidator, c.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
-func (b BaseConfig) NodeKeyFile() string {
-	return rootify(b.NodeKey, b.RootDir)
+func (c BaseConfig) NodeKeyFile() string {
+	return rootify(c.NodeKey, c.RootDir)
 }
 
 // DBDir returns the full path to the database directory
-func (b BaseConfig) DBDir() string {
-	return rootify(b.DBPath, b.RootDir)
+func (c BaseConfig) DBDir() string {
+	return rootify(c.DBPath, c.RootDir)
 }
 
 // DefaultLogLevel returns a default log level of "error"
