@@ -339,9 +339,9 @@ func DefaultMempoolConfig() *MempoolConfig {
 
 // TestMempoolConfig returns a configuration for testing the Tendermint mempool
 func TestMempoolConfig() *MempoolConfig {
-	config := DefaultMempoolConfig()
-	config.CacheSize = 1000
-	return config
+	cfg := DefaultMempoolConfig()
+	cfg.CacheSize = 1000
+	return cfg
 }
 
 // WalDir returns the full path to the mempool's write-ahead log
