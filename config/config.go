@@ -270,7 +270,7 @@ type P2PConfig struct {
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
 
 	// Maximum size of a message packet payload, in bytes
-	MaxMsgPacketPayloadSize int `mapstructure:"max_msg_packet_payload_size"`
+	MaxPacketMsgPayloadSize int `mapstructure:"max_packet_msg_payload_size"`
 
 	// Rate at which packets can be sent, in bytes/second
 	SendRate int64 `mapstructure:"send_rate"`
@@ -299,7 +299,7 @@ func DefaultP2PConfig() *P2PConfig {
 		AddrBookStrict:          true,
 		MaxNumPeers:             50,
 		FlushThrottleTimeout:    100,
-		MaxMsgPacketPayloadSize: 1024,   // 1 kB
+		MaxPacketMsgPayloadSize: 1024,   // 1 kB
 		SendRate:                512000, // 500 kB/s
 		RecvRate:                512000, // 500 kB/s
 		PexReactor:              true,

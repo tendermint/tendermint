@@ -8,7 +8,6 @@ import (
 	"math"
 	"net"
 	"reflect"
-	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -19,8 +18,8 @@ import (
 )
 
 const (
-	packetMsgMaxPayloadSizeDefault = 1024
-	packetMsgMaxOverheadSize       = 10 // It's actually lower but good enough
+	maxPacketMsgPayloadSizeDefault = 1024
+	maxPacketMsgOverheadSize       = 14
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
@@ -57,15 +56,15 @@ The byte id and the relative priorities of each `Channel` are configured upon
 initialization of the connection.
 
 There are two methods for sending messages:
-	func (m MConnection) Send(chID byte, msg interface{}) bool {}
-	func (m MConnection) TrySend(chID byte, msg interface{}) bool {}
+	func (m MConnection) Send(chID byte, msgBytes []byte) bool {}
+	func (m MConnection) TrySend(chID byte, msgBytes []byte}) bool {}
 
-`Send(chID, msg)` is a blocking call that waits until `msg` is successfully queued
-for the channel with the given id byte `chID`, or until the request times out.
-The message `msg` is serialized using Go-Amino.
+`Send(chID, msgBytes)` is a blocking call that waits until `msg` is
+successfully queued for the channel with the given id byte `chID`, or until the
+request times out.  The message `msg` is serialized using Go-Amino.
 
-`TrySend(chID, msg)` is a nonblocking call that returns false if the channel's
-queue is full.
+`TrySend(chID, msgBytes)` is a nonblocking call that returns false if the
+channel's queue is full.
 
 Inbound message bytes are handled with an onReceive callback function.
 */
@@ -105,7 +104,7 @@ type MConnConfig struct {
 	RecvRate int64 `mapstructure:"recv_rate"`
 
 	// Maximum payload size
-	PacketMsgMaxPayloadSize int `mapstructure:"packet_msg_max_payload_size"`
+	MaxPacketMsgPayloadSize int `mapstructure:"max_packet_msg_payload_size"`
 
 	// Interval to flush writes (throttled)
 	FlushThrottle time.Duration `mapstructure:"flush_throttle"`
@@ -118,7 +117,7 @@ type MConnConfig struct {
 }
 
 func (cfg *MConnConfig) maxPacketMsgTotalSize() int {
-	return cfg.PacketMsgMaxPayloadSize + packetMsgMaxOverheadSize
+	return cfg.MaxPacketMsgPayloadSize + maxPacketMsgOverheadSize
 }
 
 // DefaultMConnConfig returns the default config.
@@ -126,7 +125,7 @@ func DefaultMConnConfig() *MConnConfig {
 	return &MConnConfig{
 		SendRate:                defaultSendRate,
 		RecvRate:                defaultRecvRate,
-		PacketMsgMaxPayloadSize: packetMsgMaxPayloadSizeDefault,
+		MaxPacketMsgPayloadSize: maxPacketMsgPayloadSizeDefault,
 		FlushThrottle:           defaultFlushThrottle,
 		PingInterval:            defaultPingInterval,
 		PongTimeout:             defaultPongTimeout,
@@ -233,8 +232,7 @@ func (c *MConnection) flush() {
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		stack := debug.Stack()
-		err := cmn.StackError{r, stack}
+		err := cmn.ErrorWrap(r, "recovered panic in MConnection")
 		c.stopForError(err)
 	}
 }
@@ -249,12 +247,12 @@ func (c *MConnection) stopForError(r interface{}) {
 }
 
 // Queues a message to be sent to channel.
-func (c *MConnection) Send(chID byte, msg interface{}) bool {
+func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 	if !c.IsRunning() {
 		return false
 	}
 
-	c.Logger.Debug("Send", "channel", chID, "conn", c, "msg", msg)
+	c.Logger.Debug("Send", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -263,7 +261,7 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	success := channel.sendBytes(cdc.MustMarshalBinary(msg))
+	success := channel.sendBytes(msgBytes)
 	if success {
 		// Wake up sendRoutine if necessary
 		select {
@@ -271,19 +269,19 @@ func (c *MConnection) Send(chID byte, msg interface{}) bool {
 		default:
 		}
 	} else {
-		c.Logger.Error("Send failed", "channel", chID, "conn", c, "msg", msg)
+		c.Logger.Error("Send failed", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	}
 	return success
 }
 
 // Queues a message to be sent to channel.
 // Nonblocking, returns true if successful.
-func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
+func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
 	if !c.IsRunning() {
 		return false
 	}
 
-	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msg", msg)
+	c.Logger.Debug("TrySend", "channel", chID, "conn", c, "msgBytes", fmt.Sprintf("%X", msgBytes))
 
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
@@ -292,7 +290,7 @@ func (c *MConnection) TrySend(chID byte, msg interface{}) bool {
 		return false
 	}
 
-	ok = channel.trySendBytes(cdc.MustMarshalBinary(msg))
+	ok = channel.trySendBytes(msgBytes)
 	if ok {
 		// Wake up sendRoutine if necessary
 		select {
@@ -462,18 +460,17 @@ FOR_LOOP:
 		// Block until .recvMonitor says we can read.
 		c.recvMonitor.Limit(c.config.maxPacketMsgTotalSize(), atomic.LoadInt64(&c.config.RecvRate), true)
 
+		// Peek into bufConnReader for debugging
 		/*
-			// Peek into bufConnReader for debugging
 			if numBytes := c.bufConnReader.Buffered(); numBytes > 0 {
-				log.Info("Peek connection buffer", "numBytes", numBytes, "bytes", log15.Lazy{func() []byte {
-					bytes, err := c.bufConnReader.Peek(cmn.MinInt(numBytes, 100))
-					if err == nil {
-						return bytes
-					} else {
-						log.Warn("Error peeking connection buffer", "err", err)
-						return nil
-					}
-				}})
+				bz, err := c.bufConnReader.Peek(cmn.MinInt(numBytes, 100))
+				if err == nil {
+					// return
+				} else {
+					c.Logger.Debug("Error peeking connection buffer", "err", err)
+					// return nil
+				}
+				c.Logger.Info("Peek connection buffer", "numBytes", numBytes, "bz", bz)
 			}
 		*/
 
@@ -639,7 +636,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 		desc:                    desc,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
-		maxPacketMsgPayloadSize: conn.config.PacketMsgMaxPayloadSize,
+		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgPayloadSize,
 	}
 }
 
@@ -719,7 +716,6 @@ func (ch *Channel) nextPacketMsg() PacketMsg {
 // Not goroutine-safe
 func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
 	var packet = ch.nextPacketMsg()
-	ch.Logger.Debug("Write Msg Packet", "conn", ch.conn, "packet", packet)
 	n, err = cdc.MarshalBinaryWriter(w, packet)
 	ch.recentlySent += n
 	return
@@ -729,7 +725,7 @@ func (ch *Channel) writePacketMsgTo(w io.Writer) (n int64, err error) {
 // complete. NOTE message bytes may change on next call to recvPacketMsg.
 // Not goroutine-safe
 func (ch *Channel) recvPacketMsg(packet PacketMsg) ([]byte, error) {
-	ch.Logger.Debug("Read Msg Packet", "conn", ch.conn, "packet", packet)
+	ch.Logger.Debug("Read PacketMsg", "conn", ch.conn, "packet", packet)
 	var recvCap, recvReceived = ch.desc.RecvMessageCapacity, len(ch.recving) + len(packet.Bytes)
 	if recvCap < recvReceived {
 		return nil, fmt.Errorf("Received message exceeds available capacity: %v < %v", recvCap, recvReceived)

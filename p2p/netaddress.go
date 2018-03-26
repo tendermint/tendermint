@@ -13,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -66,7 +65,7 @@ func NewNetAddressString(addr string) (*NetAddress, error) {
 		idStr := spl[0]
 		idBytes, err := hex.DecodeString(idStr)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("Address (%s) contains invalid ID", addr))
+			return nil, cmn.ErrorWrap(err, fmt.Sprintf("Address (%s) contains invalid ID", addr))
 		}
 		if len(idBytes) != IDByteLength {
 			return nil, fmt.Errorf("Address (%s) contains ID of invalid length (%d). Should be %d hex-encoded bytes",

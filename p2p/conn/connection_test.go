@@ -1,6 +1,7 @@
 package conn
 
 import (
+	"bytes"
 	"net"
 	"testing"
 	"time"
@@ -41,7 +42,7 @@ func TestMConnectionSend(t *testing.T) {
 	require.Nil(t, err)
 	defer mconn.Stop()
 
-	msg := "Ant-Man"
+	msg := []byte("Ant-Man")
 	assert.True(t, mconn.Send(0x01, msg))
 	// Note: subsequent Send/TrySend calls could pass because we are reading from
 	// the send queue in a separate goroutine.
@@ -51,7 +52,7 @@ func TestMConnectionSend(t *testing.T) {
 	}
 	assert.True(t, mconn.CanSend(0x01))
 
-	msg = "Spider-Man"
+	msg = []byte("Spider-Man")
 	assert.True(t, mconn.TrySend(0x01, msg))
 	_, err = server.Read(make([]byte, len(msg)))
 	if err != nil {
@@ -59,7 +60,7 @@ func TestMConnectionSend(t *testing.T) {
 	}
 
 	assert.False(t, mconn.CanSend(0x05), "CanSend should return false because channel is unknown")
-	assert.False(t, mconn.Send(0x05, "Absorbing Man"), "Send should return false because channel is unknown")
+	assert.False(t, mconn.Send(0x05, []byte("Absorbing Man")), "Send should return false because channel is unknown")
 }
 
 func TestMConnectionReceive(t *testing.T) {
@@ -85,12 +86,12 @@ func TestMConnectionReceive(t *testing.T) {
 	require.Nil(t, err)
 	defer mconn2.Stop()
 
-	msg := "Cyclops"
+	msg := []byte("Cyclops")
 	assert.True(t, mconn2.Send(0x01, msg))
 
 	select {
 	case receivedBytes := <-receivedCh:
-		assert.Equal(t, []byte(msg), receivedBytes[2:]) // first 3 bytes are internal
+		assert.Equal(t, []byte(msg), receivedBytes)
 	case err := <-errorsCh:
 		t.Fatalf("Expected %s, got %+v", msg, err)
 	case <-time.After(500 * time.Millisecond):
@@ -386,7 +387,7 @@ func TestMConnectionReadErrorUnknownChannel(t *testing.T) {
 	defer mconnClient.Stop()
 	defer mconnServer.Stop()
 
-	msg := "Ant-Man"
+	msg := []byte("Ant-Man")
 
 	// fail to send msg on channel unknown by client
 	assert.False(t, mconnClient.Send(0x03, msg))
@@ -413,23 +414,40 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 
 	// send msg thats just right
 	var err error
+	var buf = new(bytes.Buffer)
+	// - Uvarint length of MustMarshalBinary(packet) = 1 or 2 bytes
+	//   (as long as it's less than 16,384 bytes)
+	// - Prefix bytes = 4 bytes
+	// - ChannelID field key + byte = 2 bytes
+	// - EOF field key + byte = 2 bytes
+	// - Bytes field key = 1 bytes
+	// - Uvarint length of MustMarshalBinary(bytes) = 1 or 2 bytes
+	// - Struct terminator = 1 byte
+	// = up to 14 bytes overhead for the packet.
 	var packet = PacketMsg{
 		ChannelID: 0x01,
-		Bytes:     make([]byte, mconnClient.config.maxPacketMsgTotalSize()-12),
 		EOF:       1,
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
 	}
-	_, err = cdc.MarshalBinaryWriter(client, packet)
+	_, err = cdc.MarshalBinaryWriter(buf, packet)
+	assert.Nil(t, err)
+	_, err = client.Write(buf.Bytes())
 	assert.Nil(t, err)
 	assert.True(t, expectSend(chOnRcv), "msg just right")
+	assert.False(t, expectSend(chOnErr), "msg just right")
 
 	// send msg thats too long
+	buf = new(bytes.Buffer)
 	packet = PacketMsg{
 		ChannelID: 0x01,
-		Bytes:     make([]byte, mconnClient.config.maxPacketMsgTotalSize()-11),
 		EOF:       1,
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+1),
 	}
-	_, err = cdc.MarshalBinaryWriter(client, packet)
+	_, err = cdc.MarshalBinaryWriter(buf, packet)
 	assert.Nil(t, err)
+	_, err = client.Write(buf.Bytes())
+	assert.NotNil(t, err)
+	assert.False(t, expectSend(chOnRcv), "msg too long")
 	assert.True(t, expectSend(chOnErr), "msg too long")
 }
 
@@ -458,7 +476,7 @@ func TestMConnectionTrySend(t *testing.T) {
 	require.Nil(t, err)
 	defer mconn.Stop()
 
-	msg := "Semicolon-Woman"
+	msg := []byte("Semicolon-Woman")
 	resultCh := make(chan string, 2)
 	assert.True(t, mconn.TrySend(0x01, msg))
 	server.Read(make([]byte, len(msg)))

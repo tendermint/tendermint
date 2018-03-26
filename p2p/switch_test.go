@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -125,9 +124,9 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Lets send some messages
-	ch0Msg := "channel zero"
-	ch1Msg := "channel foo"
-	ch2Msg := "channel bar"
+	ch0Msg := []byte("channel zero")
+	ch1Msg := []byte("channel foo")
+	ch2Msg := []byte("channel bar")
 
 	s1.Broadcast(byte(0x00), ch0Msg)
 	s1.Broadcast(byte(0x01), ch1Msg)
@@ -138,15 +137,15 @@ func TestSwitches(t *testing.T) {
 	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 }
 
-func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
+func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
 	ticker := time.NewTicker(checkPeriod)
 	for {
 		select {
 		case <-ticker.C:
 			msgs := reactor.getMsgs(channel)
 			if len(msgs) > 0 {
-				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+				if !bytes.Equal(msgs[0].Bytes, msgBytes) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", msgBytes, msgs[0].Bytes)
 				}
 				return
 			}
@@ -238,7 +237,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -268,7 +267,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -338,7 +337,7 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	// Send random message from foo channel to another
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
-		successChan := s1.Broadcast(chID, "test data")
+		successChan := s1.Broadcast(chID, []byte("test data"))
 		for s := range successChan {
 			if s {
 				numSuccess++

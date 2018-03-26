@@ -229,7 +229,6 @@
   revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/abci"
   packages = [
     "client",
@@ -239,7 +238,8 @@
     "server",
     "types"
   ]
-  revision = "4e0218467649fecf17ebc5e8161f1c888fc8ff22"
+  revision = "c62aed95f2ce399ec815b0cafe478af002cdc4e6"
+  version = "v0.10.3-dev"
 
 [[projects]]
   branch = "master"
@@ -252,16 +252,16 @@
   revision = "d8387025d2b9d158cf4efb07e7ebf814bcce2057"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "b1f32ee20e73716d8bfe695365c0a812b2bd8ef9"
+  revision = "f55c3351f30e5987500020631f00e87a035ed415"
+  version = "0.9.3"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "a3800da0a15c8272cbd3c155e024bff28fe9692c"
+  revision = "a04f2ae5c6ba037014531241ed973116290b029e"
+  version = "v0.6.0"
 
 [[projects]]
   name = "github.com/tendermint/go-wire"
@@ -273,7 +273,6 @@
   version = "v0.7.3"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "autofile",
@@ -289,7 +288,8 @@
     "pubsub/query",
     "test"
   ]
-  revision = "4e5c655944c9a636eaed549e6ad8fd8011fb4d42"
+  revision = "e9cf47606cfcbdc28a7c16671b4a70b459e9d4cc"
+  version = "v0.8.0-dev"
 
 [[projects]]
   branch = "master"
@@ -304,7 +304,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "c3a3ad6d03f7a915c0f7e194b7152974bb73d287"
+  revision = "88942b9c40a4c9d203b82b3731787b672d6e809b"
 
 [[projects]]
   branch = "master"
@@ -324,7 +324,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "7ceb54c8418b8f9cdf0177b511d5cbb06e9fae39"
+  revision = "91ee8cde435411ca3f1cd365e8f20131aed4d0a1"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -351,20 +351,16 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "f8c8703595236ae70fdf8789ecb656ea0bcdcf46"
+  revision = "ab0870e398d5dd054b868c0db1481ab029b9a9f2"
 
 [[projects]]
   name = "google.golang.org/grpc"
   packages = [
     ".",
     "balancer",
-    "balancer/base",
-    "balancer/roundrobin",
     "codes",
     "connectivity",
     "credentials",
-    "encoding",
-    "encoding/proto",
     "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
@@ -373,15 +369,13 @@
     "naming",
     "peer",
     "resolver",
-    "resolver/dns",
-    "resolver/passthrough",
     "stats",
     "status",
     "tap",
     "transport"
   ]
-  revision = "8e4536a86ab602859c20df5ebfd0bd4228d08655"
-  version = "v1.10.0"
+  revision = "5b3c4e850e90a4cf6a20ebd46c8b32a0a3afcb9e"
+  version = "v1.7.5"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
@@ -392,6 +386,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6da81f319b092e227b5d2c9de3b10296e9bb7287c02adb38fe547147e9e5e447"
+  inputs-digest = "9aace7a292e5402f97327860531e13b77f036c19843b698566ee958773404f48"
   solver-name = "gps-cdcl"
   solver-version = 1

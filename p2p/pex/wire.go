@@ -1,13 +1,11 @@
-package conn
+package pex
 
 import (
 	"github.com/tendermint/go-amino"
-	"github.com/tendermint/go-crypto"
 )
 
 var cdc *amino.Codec = amino.NewCodec()
 
 func init() {
-	crypto.RegisterAmino(cdc)
-	RegisterPacket(cdc)
+	RegisterPexMessage(cdc)
 }

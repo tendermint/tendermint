@@ -12,7 +12,6 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"time"
@@ -145,8 +144,8 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	if 0 < len(sc.recvBuffer) {
-		n_ := copy(data, sc.recvBuffer)
-		sc.recvBuffer = sc.recvBuffer[n_:]
+		n = copy(data, sc.recvBuffer)
+		sc.recvBuffer = sc.recvBuffer[n:]
 		return
 	}
 
@@ -193,7 +192,7 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	var err error
 	ephPub, ephPriv, err = box.GenerateKey(crand.Reader)
 	if err != nil {
-		cmn.PanicCrisis("Could not generate ephemeral keypairs")
+		panic("Could not generate ephemeral keypairs")
 	}
 	return
 }
@@ -224,9 +223,6 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 	// If error:
 	if trs.FirstError() != nil {
 		err = trs.FirstError()
-		return
-	} else if trs.FirstPanic() != nil {
-		err = fmt.Errorf("Panic: %v", trs.FirstPanic())
 		return
 	}
 
@@ -308,9 +304,6 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 	// If error:
 	if trs.FirstError() != nil {
 		err = trs.FirstError()
-		return
-	} else if trs.FirstPanic() != nil {
-		err = fmt.Errorf("Panic: %v", trs.FirstPanic())
 		return
 	}
 

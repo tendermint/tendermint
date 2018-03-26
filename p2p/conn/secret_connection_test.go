@@ -73,7 +73,6 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 			return nil, nil, false
 		},
 	)
-	require.Nil(tb, trs.FirstPanic())
 	require.Nil(tb, trs.FirstError())
 	require.True(tb, ok, "Unexpected task abortion")
 
@@ -158,9 +157,6 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 			// If error:
 			if trs.FirstError() != nil {
 				return nil, trs.FirstError(), true
-			} else if trs.FirstPanic() != nil {
-				err = fmt.Errorf("Panic in task: %v", trs.FirstPanic())
-				return nil, err, true
 			}
 
 			// Otherwise:
@@ -173,7 +169,6 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 		genNodeRunner("foo", fooConn, fooWrites, &fooReads),
 		genNodeRunner("bar", barConn, barWrites, &barReads),
 	)
-	require.Nil(t, trs.FirstPanic())
 	require.Nil(t, trs.FirstError())
 	require.True(t, ok, "unexpected task abortion")
 

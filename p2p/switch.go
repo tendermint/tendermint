@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -85,7 +83,7 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw.peerConfig.MConfig.FlushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
 	sw.peerConfig.MConfig.SendRate = config.SendRate
 	sw.peerConfig.MConfig.RecvRate = config.RecvRate
-	sw.peerConfig.MConfig.MaxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
+	sw.peerConfig.MConfig.MaxPacketMsgPayloadSize = config.MaxPacketMsgPayloadSize
 	sw.peerConfig.AuthEnc = config.AuthEnc
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
@@ -171,7 +169,7 @@ func (sw *Switch) OnStart() error {
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return errors.Wrapf(err, "failed to start %v", reactor)
+			return cmn.ErrorWrap(err, "failed to start %v", reactor)
 		}
 	}
 	// Start listeners
@@ -206,18 +204,18 @@ func (sw *Switch) OnStop() {
 // Broadcast runs a go routine for each attempted send, which will block trying
 // to send for defaultSendTimeoutSeconds. Returns a channel which receives
 // success values for each attempted send (false if times out). Channel will be
-// closed once msg send to all peers.
+// closed once msg bytes are sent to all peers (or time out).
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
-func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
+func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
-	sw.Logger.Debug("Broadcast", "channel", chID, "msg", msg)
+	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	var wg sync.WaitGroup
 	for _, peer := range sw.peers.List() {
 		wg.Add(1)
 		go func(peer Peer) {
 			defer wg.Done()
-			success := peer.Send(chID, msg)
+			success := peer.Send(chID, msgBytes)
 			successChan <- success
 		}(peer)
 	}

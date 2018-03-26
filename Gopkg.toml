@@ -26,12 +26,12 @@
 
 
 [[constraint]]
-  branch = "master"
   name = "github.com/ebuchman/fail-test"
+  branch = "master"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/fortytw2/leaktest"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/go-kit/kit"
@@ -54,8 +54,8 @@
   version = "0.8.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/rcrowley/go-metrics"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
@@ -71,19 +71,19 @@
 
 [[constraint]]
   name = "github.com/tendermint/abci"
-  branch = "develop"
+  version = "0.10.3-dev"
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
-  branch = "develop"
+  version = "0.6.0"
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"
-  branch = "develop"
+  version = "0.9.3"
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  branch = "develop"
+  version = "0.8.0-dev"
 
 [[constraint]]
   name = "google.golang.org/grpc"
