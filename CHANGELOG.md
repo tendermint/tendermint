@@ -28,20 +28,28 @@ BUG FIXES:
 ## 0.17.0 (TBD)
 
 BREAKING:
-- [genesis] rename `app_options` to `app_state`
+- [genesis] removed `app_options`
+
+## 0.16.1 (March 26th, 2018)
 
 IMPROVEMENTS:
+- [all] renamed `dummy` (`persistent_dummy`) to `kvstore` (`persistent_kvstore`) (name "dummy" is deprecated and will not work in the next breaking release)
 - [config] exposed `auth_enc` flag to enable/disable encryption
+- [docs] note on determinism (docs/determinism.rst)
+- [genesis] `app_options` field is deprecated. please rename it to `app_state` in your genesis file(s). `app_options` will not work in the next breaking release
+- [p2p] dial seeds directly without potential peers
+- [p2p] exponential backoff for addrs in the address book
+- [p2p] mark peer as good if it contributed enough votes or block parts
+- [p2p] stop peer if it sends incorrect data, msg to unknown channel, msg we did not expect
 - [p2p] when `auth_enc` is true, all dialed peers must have a node ID in their address
-- [all] renamed `dummy` (`persistent_dummy`) to `kvstore`
-  (`persistent_kvstore`) (name "dummy" is deprecated and will not work in
-  release after this one)
+- [spec] various improvements
+- switched from glide to dep internally for package management
 
 FEATURES:
 - [config] added the `--p2p.private_peer_ids` flag and `PrivatePeerIDs` config variable (see config for description)
 - [rpc] added `/health` endpoint, which returns empty result for now
 
-## 0.16.0 (February 20th, 2017)
+## 0.16.0 (February 20th, 2018)
 
 BREAKING CHANGES:
 - [config] use $TMHOME/config for all config and json files
