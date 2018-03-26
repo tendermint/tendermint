@@ -132,8 +132,8 @@ type BaseConfig struct {
 	DBPath string `mapstructure:"db_dir"`
 }
 
-func (c BaseConfig) ChainID() string {
-	return c.chainID
+func (b BaseConfig) ChainID() string {
+	return b.chainID
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
