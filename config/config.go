@@ -180,8 +180,8 @@ func (c BaseConfig) NodeKeyFile() string {
 }
 
 // DBDir returns the full path to the database directory
-func (b BaseConfig) DBDir() string {
-	return rootify(b.DBPath, b.RootDir)
+func (c BaseConfig) DBDir() string {
+	return rootify(c.DBPath, c.RootDir)
 }
 
 // DefaultLogLevel returns a default log level of "error"
