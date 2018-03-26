@@ -165,8 +165,8 @@ func TestBaseConfig() BaseConfig {
 }
 
 // GenesisFile returns the full path to the genesis.json file
-func (b BaseConfig) GenesisFile() string {
-	return rootify(b.Genesis, b.RootDir)
+func (c BaseConfig) GenesisFile() string {
+	return rootify(c.Genesis, c.RootDir)
 }
 
 // PrivValidatorFile returns the full path to the priv_validator.json file
