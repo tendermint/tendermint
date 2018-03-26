@@ -132,10 +132,6 @@ type BaseConfig struct {
 	DBPath string `mapstructure:"db_dir"`
 }
 
-func (b BaseConfig) ChainID() string {
-	return b.chainID
-}
-
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
@@ -156,12 +152,16 @@ func DefaultBaseConfig() BaseConfig {
 
 // TestBaseConfig returns a base configuration for testing a Tendermint node
 func TestBaseConfig() BaseConfig {
-	conf := DefaultBaseConfig()
-	conf.chainID = "tendermint_test"
-	conf.ProxyApp = "dummy"
-	conf.FastSync = false
-	conf.DBBackend = "memdb"
-	return conf
+	cfg := DefaultBaseConfig()
+	cfg.chainID = "tendermint_test"
+	cfg.ProxyApp = "dummy"
+	cfg.FastSync = false
+	cfg.DBBackend = "memdb"
+	return cfg
+}
+
+func (b BaseConfig) ChainID() string {
+	return b.chainID
 }
 
 // GenesisFile returns the full path to the genesis.json file
@@ -386,43 +386,43 @@ type ConsensusConfig struct {
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
-func (cfg *ConsensusConfig) WaitForTxs() bool {
-	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
+func (c *ConsensusConfig) WaitForTxs() bool {
+	return !c.CreateEmptyBlocks || c.CreateEmptyBlocksInterval > 0
 }
 
 // EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
-func (cfg *ConsensusConfig) EmptyBlocksInterval() time.Duration {
-	return time.Duration(cfg.CreateEmptyBlocksInterval) * time.Second
+func (c *ConsensusConfig) EmptyBlocksInterval() time.Duration {
+	return time.Duration(c.CreateEmptyBlocksInterval) * time.Second
 }
 
 // Propose returns the amount of time to wait for a proposal
-func (cfg *ConsensusConfig) Propose(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPropose+cfg.TimeoutProposeDelta*round) * time.Millisecond
+func (c *ConsensusConfig) Propose(round int) time.Duration {
+	return time.Duration(c.TimeoutPropose+c.TimeoutProposeDelta*round) * time.Millisecond
 }
 
 // Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
-func (cfg *ConsensusConfig) Prevote(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPrevote+cfg.TimeoutPrevoteDelta*round) * time.Millisecond
+func (c *ConsensusConfig) Prevote(round int) time.Duration {
+	return time.Duration(c.TimeoutPrevote+c.TimeoutPrevoteDelta*round) * time.Millisecond
 }
 
 // Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
-func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPrecommit+cfg.TimeoutPrecommitDelta*round) * time.Millisecond
+func (c *ConsensusConfig) Precommit(round int) time.Duration {
+	return time.Duration(c.TimeoutPrecommit+c.TimeoutPrecommitDelta*round) * time.Millisecond
 }
 
 // Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
-func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
-	return t.Add(time.Duration(cfg.TimeoutCommit) * time.Millisecond)
+func (c *ConsensusConfig) Commit(t time.Time) time.Time {
+	return t.Add(time.Duration(c.TimeoutCommit) * time.Millisecond)
 }
 
 // PeerGossipSleep returns the amount of time to sleep if there is nothing to send from the ConsensusReactor
-func (cfg *ConsensusConfig) PeerGossipSleep() time.Duration {
-	return time.Duration(cfg.PeerGossipSleepDuration) * time.Millisecond
+func (c *ConsensusConfig) PeerGossipSleep() time.Duration {
+	return time.Duration(c.PeerGossipSleepDuration) * time.Millisecond
 }
 
 // PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
-func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
-	return time.Duration(cfg.PeerQueryMaj23SleepDuration) * time.Millisecond
+func (c *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
+	return time.Duration(c.PeerQueryMaj23SleepDuration) * time.Millisecond
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
