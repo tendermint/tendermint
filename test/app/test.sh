@@ -1,47 +1,48 @@
 #! /bin/bash
-set -e
+set -ex
 
-#- dummy over socket, curl
+#- kvstore over socket, curl
 #- counter over socket, curl
 #- counter over grpc, curl
 #- counter over grpc, grpc
 
 # TODO: install everything
 
+export PATH="$GOBIN:$PATH"
 export TMHOME=$HOME/.tendermint_app
 
-function dummy_over_socket(){
+function kvstore_over_socket(){
     rm -rf $TMHOME
     tendermint init
-    echo "Starting dummy_over_socket"
-    abci-cli dummy > /dev/null &
-    pid_dummy=$!
+    echo "Starting kvstore_over_socket"
+    abci-cli kvstore > /dev/null &
+    pid_kvstore=$!
     tendermint node > tendermint.log &
     pid_tendermint=$!
     sleep 5
 
     echo "running test"
-    bash dummy_test.sh "Dummy over Socket"
+    bash kvstore_test.sh "KVStore over Socket"
 
-    kill -9 $pid_dummy $pid_tendermint
+    kill -9 $pid_kvstore $pid_tendermint
 }
 
 # start tendermint first
-function dummy_over_socket_reorder(){
+function kvstore_over_socket_reorder(){
     rm -rf $TMHOME
     tendermint init
-    echo "Starting dummy_over_socket_reorder (ie. start tendermint first)"
+    echo "Starting kvstore_over_socket_reorder (ie. start tendermint first)"
     tendermint node > tendermint.log &
     pid_tendermint=$!
     sleep 2
-    abci-cli dummy > /dev/null &
-    pid_dummy=$!
+    abci-cli kvstore > /dev/null &
+    pid_kvstore=$!
     sleep 5
 
     echo "running test"
-    bash dummy_test.sh "Dummy over Socket"
+    bash kvstore_test.sh "KVStore over Socket"
 
-    kill -9 $pid_dummy $pid_tendermint
+    kill -9 $pid_kvstore $pid_tendermint
 }
 
 
@@ -98,11 +99,11 @@ function counter_over_grpc_grpc() {
 cd $GOPATH/src/github.com/tendermint/tendermint/test/app
 
 case "$1" in 
-    "dummy_over_socket")
-    dummy_over_socket
+    "kvstore_over_socket")
+    kvstore_over_socket
     ;;
-"dummy_over_socket_reorder")
-    dummy_over_socket_reorder
+"kvstore_over_socket_reorder")
+    kvstore_over_socket_reorder
     ;;
     "counter_over_socket")
     counter_over_socket
@@ -115,9 +116,9 @@ case "$1" in
     ;;
 *)
     echo "Running all"
-    dummy_over_socket
+    kvstore_over_socket
     echo ""
-    dummy_over_socket_reorder
+    kvstore_over_socket_reorder
     echo ""
     counter_over_socket
     echo ""

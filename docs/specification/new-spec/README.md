@@ -4,11 +4,6 @@ This is a markdown specification of the Tendermint blockchain.
 It defines the base data structures, how they are validated,
 and how they are communicated over the network.
 
-XXX: this spec is a work in progress and not yet complete - see github
-[issues](https://github.com/tendermint/tendermint/issues) and
-[pull requests](https://github.com/tendermint/tendermint/pulls)
-for more details.
-
 If you find discrepancies between the spec and the code that
 do not have an associated issue or pull request on github,
 please submit them to our [bug bounty](https://tendermint.com/security)!
@@ -24,18 +19,16 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ### P2P and Network Protocols
 
-TODO: update links
-
-- [The Base P2P Layer](p2p/README.md): multiplex the protocols ("reactors") on authenticated and encrypted TCP connections
-- [Peer Exchange (PEX)](pex/README.md): gossip known peer addresses so peers can find each other
-- [Block Sync](block_sync/README.md): gossip blocks so peers can catch up quickly
-- [Consensus](consensus/README.md): gossip votes and block parts so new blocks can be committed
-- [Mempool](mempool/README.md): gossip transactions so they get included in blocks
-- [Evidence](evidence/README.md): TODO
+- [The Base P2P Layer](p2p): multiplex the protocols ("reactors") on authenticated and encrypted TCP connections
+- [Peer Exchange (PEX)](reactors/pex): gossip known peer addresses so peers can find each other
+- [Block Sync](reactors/block_sync): gossip blocks so peers can catch up quickly
+- [Consensus](reactors/consensus): gossip votes and block parts so new blocks can be committed
+- [Mempool](reactors/mempool): gossip transactions so they get included in blocks
+- Evidence: TODO
 
 ### More
-- [Light Client](light_client/README.md): TODO
-- [Persistence](persistence/README.md): TODO
+- Light Client: TODO
+- Persistence: TODO
 
 ## Overview
 

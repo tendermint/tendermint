@@ -34,15 +34,26 @@ Please don't make Pull Requests to `master`.
 
 ## Dependencies
 
-We use [glide](https://github.com/masterminds/glide) to manage dependencies.
-That said, the master branch of every Tendermint repository should just build with `go get`, which means they should be kept up-to-date with their dependencies so we can get away with telling people they can just `go get` our software.
-Since some dependencies are not under our control, a third party may break our build, in which case we can fall back on `glide install`. Even for dependencies under our control, glide helps us keeps multiple repos in sync as they evolve. Anything with an executable, such as apps, tools, and the core, should use glide.
+We use [dep](https://github.com/golang/dep) to manage dependencies.
 
-Run `bash scripts/glide/status.sh` to get a list of vendored dependencies that may not be up-to-date.
+That said, the master branch of every Tendermint repository should just build
+with `go get`, which means they should be kept up-to-date with their
+dependencies so we can get away with telling people they can just `go get` our
+software.
+
+Since some dependencies are not under our control, a third party may break our
+build, in which case we can fall back on `dep ensure` (or `make
+get_vendor_deps`). Even for dependencies under our control, dep helps us to
+keep multiple repos in sync as they evolve. Anything with an executable, such
+as apps, tools, and the core, should use dep.
+
+Run `dep status` to get a list of vendored dependencies that may not be
+up-to-date.
 
 ## Vagrant
 
-If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started hacking Tendermint with the commands below.
+If you are a [Vagrant](https://www.vagrantup.com/) user, you can get started
+hacking Tendermint with the commands below.
 
 NOTE: In case you installed Vagrant in 2017, you might need to run
 `vagrant box update` to upgrade to the latest `ubuntu/xenial64`.
@@ -53,11 +64,14 @@ vagrant ssh
 make test
 ```
 
-
 ## Testing
 
-All repos should be hooked up to circle.
-If they have `.go` files in the root directory, they will be automatically tested by circle using `go test -v -race ./...`. If not, they will need a `circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and includes its continuous integration status using a badge in the `README.md`.
+All repos should be hooked up to [CircleCI](https://circleci.com/).
+
+If they have `.go` files in the root directory, they will be automatically
+tested by circle using `go test -v -race ./...`. If not, they will need a
+`circle.yml`. Ideally, every repo has a `Makefile` that defines `make test` and
+includes its continuous integration status using a badge in the `README.md`.
 
 ## Branching Model and Release
 

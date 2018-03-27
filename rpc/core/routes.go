@@ -12,6 +12,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"unsubscribe_all": rpc.NewWSRPCFunc(UnsubscribeAll, ""),
 
 	// info API
+	"health":               rpc.NewRPCFunc(Health, ""),
 	"status":               rpc.NewRPCFunc(Status, ""),
 	"net_info":             rpc.NewRPCFunc(NetInfo, ""),
 	"blockchain":           rpc.NewRPCFunc(BlockchainInfo, "minHeight,maxHeight"),

@@ -12,7 +12,7 @@ and want to get started right away, continue. Otherwise, [review the documentati
 On a fresh Ubuntu 16.04 machine can be done with [this script](https://git.io/vNLfY), like so:
 
 ```
-curl -L https://git.io/vNLfY | bash
+curl -L https://git.io/vxWlX | bash
 source ~/.profile
 ```
 
@@ -71,7 +71,7 @@ Configuring a cluster is covered further below.
 Start tendermint with a simple in-process application:
 
 ```
-tendermint node --proxy_app=dummy
+tendermint node --proxy_app=kvstore
 ```
 
 and blocks will start to stream in:
@@ -89,7 +89,7 @@ curl -s localhost:46657/status
 
 ### Sending Transactions
 
-With the dummy app running, we can send transactions:
+With the kvstore app running, we can send transactions:
 
 ```
 curl -s 'localhost:46657/broadcast_tx_commit?tx="abcd"'
@@ -131,10 +131,10 @@ This will install `go` and other dependencies, get the Tendermint source code, t
 Next, `cd` into `docs/examples`. Each command below should be run from each node, in sequence:
 
 ```
-tendermint node --home ./node1 --proxy_app=dummy --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
-tendermint node --home ./node2 --proxy_app=dummy --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
-tendermint node --home ./node3 --proxy_app=dummy --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
-tendermint node --home ./node4 --proxy_app=dummy --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
+tendermint node --home ./node1 --proxy_app=kvstore --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
+tendermint node --home ./node2 --proxy_app=kvstore --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
+tendermint node --home ./node3 --proxy_app=kvstore --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
+tendermint node --home ./node4 --proxy_app=kvstore --p2p.seeds IP1:46656,IP2:46656,IP3:46656,IP4:46656
 ```
 
 Note that after the third node is started, blocks will start to stream in because >2/3 of validators (defined in the `genesis.json`) have come online. Seeds can also be specified in the `config.toml`. See [this PR](https://github.com/tendermint/tendermint/pull/792) for more information about configuration options.

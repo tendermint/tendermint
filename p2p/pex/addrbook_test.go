@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -26,17 +27,24 @@ func createTempFileName(prefix string) string {
 	return fname
 }
 
+func deleteTempFile(fname string) {
+	err := os.Remove(fname)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func TestAddrBookPickAddress(t *testing.T) {
-	assert := assert.New(t)
 	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
 
 	// 0 addresses
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
-	assert.Zero(book.Size())
+	assert.Zero(t, book.Size())
 
 	addr := book.PickAddress(50)
-	assert.Nil(addr, "expected no address")
+	assert.Nil(t, addr, "expected no address")
 
 	randAddrs := randNetAddressPairs(t, 1)
 	addrSrc := randAddrs[0]
@@ -44,26 +52,27 @@ func TestAddrBookPickAddress(t *testing.T) {
 
 	// pick an address when we only have new address
 	addr = book.PickAddress(0)
-	assert.NotNil(addr, "expected an address")
+	assert.NotNil(t, addr, "expected an address")
 	addr = book.PickAddress(50)
-	assert.NotNil(addr, "expected an address")
+	assert.NotNil(t, addr, "expected an address")
 	addr = book.PickAddress(100)
-	assert.NotNil(addr, "expected an address")
+	assert.NotNil(t, addr, "expected an address")
 
 	// pick an address when we only have old address
 	book.MarkGood(addrSrc.addr)
 	addr = book.PickAddress(0)
-	assert.NotNil(addr, "expected an address")
+	assert.NotNil(t, addr, "expected an address")
 	addr = book.PickAddress(50)
-	assert.NotNil(addr, "expected an address")
+	assert.NotNil(t, addr, "expected an address")
 
 	// in this case, nNew==0 but we biased 100% to new, so we return nil
 	addr = book.PickAddress(100)
-	assert.Nil(addr, "did not expected an address")
+	assert.Nil(t, addr, "did not expected an address")
 }
 
 func TestAddrBookSaveLoad(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
 
 	// 0 addresses
 	book := NewAddrBook(fname, true)
@@ -95,6 +104,7 @@ func TestAddrBookSaveLoad(t *testing.T) {
 
 func TestAddrBookLookup(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
 
 	randAddrs := randNetAddressPairs(t, 100)
 
@@ -115,8 +125,8 @@ func TestAddrBookLookup(t *testing.T) {
 }
 
 func TestAddrBookPromoteToOld(t *testing.T) {
-	assert := assert.New(t)
 	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
 
 	randAddrs := randNetAddressPairs(t, 100)
 
@@ -147,11 +157,12 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 		t.Errorf("selection could not be bigger than the book")
 	}
 
-	assert.Equal(book.Size(), 100, "expecting book size to be 100")
+	assert.Equal(t, book.Size(), 100, "expecting book size to be 100")
 }
 
 func TestAddrBookHandlesDuplicates(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
 
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
@@ -202,6 +213,8 @@ func randIPv4Address(t *testing.T) *p2p.NetAddress {
 
 func TestAddrBookRemoveAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 

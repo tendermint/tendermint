@@ -287,14 +287,19 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 
 	// Get State
 	stateDB := dbm.NewDB("state", dbType, config.DBDir())
-	state, err := sm.MakeGenesisStateFromFile(config.GenesisFile())
+	gdoc, err := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	if err != nil {
+		cmn.Exit(err.Error())
+	}
+	state, err := sm.MakeGenesisState(gdoc)
 	if err != nil {
 		cmn.Exit(err.Error())
 	}
 
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
-	proxyApp := proxy.NewAppConns(clientCreator, NewHandshaker(stateDB, state, blockStore))
+	proxyApp := proxy.NewAppConns(clientCreator,
+		NewHandshaker(stateDB, state, blockStore, gdoc.AppState()))
 	err = proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))

@@ -41,18 +41,18 @@ To run a Tendermint node, use
     tendermint node
 
 By default, Tendermint will try to connect to an ABCI application on
-`127.0.0.1:46658 <127.0.0.1:46658>`__. If you have the ``dummy`` ABCI
+`127.0.0.1:46658 <127.0.0.1:46658>`__. If you have the ``kvstore`` ABCI
 app installed, run it in another window. If you don't, kill Tendermint
-and run an in-process version with
+and run an in-process version of the ``kvstore`` app:
 
 ::
 
-    tendermint node --proxy_app=dummy
+    tendermint node --proxy_app=kvstore
 
 After a few seconds you should see blocks start streaming in. Note that
 blocks are produced regularly, even if there are no transactions. See *No Empty Blocks*, below, to modify this setting.
 
-Tendermint supports in-process versions of the dummy, counter, and nil
+Tendermint supports in-process versions of the ``counter``, ``kvstore`` and ``nil``
 apps that ship as examples in the `ABCI
 repository <https://github.com/tendermint/abci>`__. It's easy to compile
 your own app in-process with Tendermint if it's written in Go. If your

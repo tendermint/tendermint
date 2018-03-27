@@ -77,7 +77,7 @@ func (v ValKeys) signHeader(header *types.Header, first, last int) *types.Commit
 	vset := v.ToValidators(1, 0)
 
 	// fill in the votes we want
-	for i := first; i < last; i++ {
+	for i := first; i < last && i < len(v); i++ {
 		vote := makeVote(header, vset, v[i])
 		votes[vote.ValidatorIndex] = vote
 	}
@@ -102,7 +102,7 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 		BlockID:          types.BlockID{Hash: header.Hash()},
 	}
 	// Sign it
-	signBytes := types.SignBytes(header.ChainID, vote)
+	signBytes := vote.SignBytes(header.ChainID)
 	vote.Signature = key.Sign(signBytes)
 	return vote
 }

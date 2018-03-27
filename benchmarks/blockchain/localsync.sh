@@ -14,7 +14,7 @@ if [ ! -d $DATA ]; then
   echo "starting node"
   tendermint node \
     --home $DATA \
-    --proxy_app dummy \
+    --proxy_app kvstore \
     --p2p.laddr tcp://127.0.0.1:56656 \
     --rpc.laddr tcp://127.0.0.1:56657 \
     --log_level error &
@@ -35,7 +35,7 @@ cp -R $DATA $HOME1
 echo "starting validator node"
 tendermint node \
   --home $HOME1 \
-  --proxy_app dummy \
+  --proxy_app kvstore \
   --p2p.laddr tcp://127.0.0.1:56656 \
   --rpc.laddr tcp://127.0.0.1:56657 \
   --log_level error &
@@ -48,7 +48,7 @@ cp $HOME1/genesis.json $HOME2
 printf "starting downloader node"
 tendermint node \
   --home $HOME2 \
-  --proxy_app dummy \
+  --proxy_app kvstore \
   --p2p.laddr tcp://127.0.0.1:56666 \
   --rpc.laddr tcp://127.0.0.1:56667 \
   --p2p.persistent_peers 127.0.0.1:56656 \

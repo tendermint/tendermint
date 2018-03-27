@@ -38,7 +38,7 @@ for i in $(seq 1 4); do
 	  --name local_testnet_$i \
 	  --entrypoint tendermint \
 	  -e TMHOME=/go/src/github.com/tendermint/tendermint/test/p2p/data/mach$i/core \
-	  tendermint_tester node --p2p.persistent_peers 172.57.0.101:46656,172.57.0.102:46656,172.57.0.103:46656,172.57.0.104:46656 --proxy_app=dummy
+	  tendermint_tester node --p2p.persistent_peers 172.57.0.101:46656,172.57.0.102:46656,172.57.0.103:46656,172.57.0.104:46656 --proxy_app=kvstore
 done
 ```
 

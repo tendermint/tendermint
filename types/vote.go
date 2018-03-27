@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"time"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -73,11 +72,15 @@ type Vote struct {
 	Signature        crypto.Signature `json:"signature"`
 }
 
-func (vote *Vote) WriteSignBytes(chainID string, w io.Writer, n *int, err *error) {
-	wire.WriteJSON(CanonicalJSONOnceVote{
+func (vote *Vote) SignBytes(chainID string) []byte {
+	bz, err := wire.MarshalJSON(CanonicalJSONOnceVote{
 		chainID,
 		CanonicalVote(vote),
-	}, w, n, err)
+	})
+	if err != nil {
+		panic(err)
+	}
+	return bz
 }
 
 func (vote *Vote) Copy() *Vote {
@@ -111,7 +114,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 		return ErrVoteInvalidValidatorAddress
 	}
 
-	if !pubKey.VerifyBytes(SignBytes(chainID, vote), vote.Signature) {
+	if !pubKey.VerifyBytes(vote.SignBytes(chainID), vote.Signature) {
 		return ErrVoteInvalidSignature
 	}
 	return nil

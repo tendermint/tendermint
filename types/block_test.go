@@ -3,7 +3,9 @@ package types
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -72,4 +74,16 @@ func makeBlockID(hash string, partSetSize int, partSetHash string) BlockID {
 		},
 	}
 
+}
+
+var nilBytes []byte
+
+func TestNilHeaderHashDoesntCrash(t *testing.T) {
+	assert.Equal(t, []byte((*Header)(nil).Hash()), nilBytes)
+	assert.Equal(t, []byte((new(Header)).Hash()), nilBytes)
+}
+
+func TestNilDataHashDoesntCrash(t *testing.T) {
+	assert.Equal(t, []byte((*Data)(nil).Hash()), nilBytes)
+	assert.Equal(t, []byte(new(Data).Hash()), nilBytes)
 }
