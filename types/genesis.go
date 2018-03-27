@@ -33,7 +33,7 @@ type GenesisDoc struct {
 }
 
 // AppState returns raw application state.
-// TODO: replace with AppState field during next breaking release (0.17)
+// TODO: replace with AppState field during next breaking release (0.18)
 func (genDoc *GenesisDoc) AppState() json.RawMessage {
 	if len(genDoc.AppOptions) > 0 {
 		return genDoc.AppOptions
