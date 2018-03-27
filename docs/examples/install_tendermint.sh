@@ -26,7 +26,7 @@ go get $REPO
 cd $GOPATH/src/$REPO
 
 ## build
-git checkout v0.16.1
+git checkout v0.17.0
 make get_tools
 make get_vendor_deps
 make install
