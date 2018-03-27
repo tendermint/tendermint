@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -201,6 +202,11 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		}
 		i++
 	}
+
+	// sort by height by default
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Height < results[j].Height
+	})
 
 	return results, nil
 }
