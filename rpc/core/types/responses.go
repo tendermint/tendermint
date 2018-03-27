@@ -123,6 +123,7 @@ type ResultBroadcastTxCommit struct {
 }
 
 type ResultTx struct {
+	Hash     cmn.HexBytes           `json:"hash"`
 	Height   int64                  `json:"height"`
 	Index    uint32                 `json:"index"`
 	TxResult abci.ResponseDeliverTx `json:"tx_result"`
