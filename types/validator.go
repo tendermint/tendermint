@@ -3,10 +3,8 @@ package types
 import (
 	"bytes"
 	"fmt"
-	"io"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -14,9 +12,9 @@ import (
 // NOTE: The Accum is not included in Validator.Hash();
 // make sure to update that method if changes are made here
 type Validator struct {
-	Address     Address `json:"address"`
-	PubKey      crypto.PubKey  `json:"pub_key"`
-	VotingPower int64          `json:"voting_power"`
+	Address     Address       `json:"address"`
+	PubKey      crypto.PubKey `json:"pub_key"`
+	VotingPower int64         `json:"voting_power"`
 
 	Accum int64 `json:"accum"`
 }
@@ -47,9 +45,10 @@ func (v *Validator) CompareAccum(other *Validator) *Validator {
 	} else if v.Accum < other.Accum {
 		return other
 	} else {
-		if bytes.Compare(v.Address, other.Address) < 0 {
+		result := bytes.Compare(v.Address, other.Address)
+		if result < 0 {
 			return v
-		} else if bytes.Compare(v.Address, other.Address) > 0 {
+		} else if result > 0 {
 			return other
 		} else {
 			cmn.PanicSanity("Cannot compare identical validators")
@@ -72,7 +71,7 @@ func (v *Validator) String() string {
 // Hash computes the unique ID of a validator with a given voting power.
 // It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
-	return wire.BinaryRipemd160(struct {
+	return tmHash(struct {
 		Address     Address
 		PubKey      crypto.PubKey
 		VotingPower int64
@@ -81,25 +80,6 @@ func (v *Validator) Hash() []byte {
 		v.PubKey,
 		v.VotingPower,
 	})
-}
-
-//-------------------------------------
-
-var ValidatorCodec = validatorCodec{}
-
-type validatorCodec struct{}
-
-func (vc validatorCodec) Encode(o interface{}, w io.Writer, n *int, err *error) {
-	wire.WriteBinary(o.(*Validator), w, n, err)
-}
-
-func (vc validatorCodec) Decode(r io.Reader, n *int, err *error) interface{} {
-	return wire.ReadBinary(&Validator{}, r, 0, n, err)
-}
-
-func (vc validatorCodec) Compare(o1 interface{}, o2 interface{}) int {
-	cmn.PanicSanity("ValidatorCodec.Compare not implemented")
-	return 0
 }
 
 //--------------------------------------------------------------------------------

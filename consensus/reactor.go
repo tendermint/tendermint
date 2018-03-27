@@ -27,6 +27,8 @@ const (
 	VoteSetBitsChannel = byte(0x23)
 
 	maxConsensusMessageSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
+
+	blocksToContributeToBecomeGoodPeer = 10000
 )
 
 //-----------------------------------------------------------------------------
@@ -179,7 +181,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	_, msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
-		// TODO punish peer?
+		conR.Switch.StopPeerForError(src, err)
 		return
 	}
 	conR.Logger.Debug("Receive", "src", src, "chId", chID, "msg", msg)
@@ -251,6 +253,9 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.ApplyProposalPOLMessage(msg)
 		case *BlockPartMessage:
 			ps.SetHasProposalBlockPart(msg.Height, msg.Round, msg.Part.Index)
+			if numBlocks := ps.RecordBlockPart(msg); numBlocks%blocksToContributeToBecomeGoodPeer == 0 {
+				conR.Switch.MarkPeerAsGood(src)
+			}
 			conR.conS.peerMsgQueue <- msgInfo{msg, src.ID()}
 		default:
 			conR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
@@ -270,6 +275,9 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 			ps.EnsureVoteBitArrays(height, valSize)
 			ps.EnsureVoteBitArrays(height-1, lastCommitSize)
 			ps.SetHasVote(msg.Vote)
+			if blocks := ps.RecordVote(msg.Vote); blocks%blocksToContributeToBecomeGoodPeer == 0 {
+				conR.Switch.MarkPeerAsGood(src)
+			}
 
 			cs.peerMsgQueue <- msgInfo{msg, src.ID()}
 
@@ -831,6 +839,21 @@ type PeerState struct {
 
 	mtx sync.Mutex
 	cstypes.PeerRoundState
+
+	stats *peerStateStats
+}
+
+// peerStateStats holds internal statistics for a peer.
+type peerStateStats struct {
+	lastVoteHeight int64
+	votes          int
+
+	lastBlockPartHeight int64
+	blockParts          int
+}
+
+func (pss peerStateStats) String() string {
+	return fmt.Sprintf("peerStateStats{votes: %d, blockParts: %d}", pss.votes, pss.blockParts)
 }
 
 // NewPeerState returns a new PeerState for the given Peer
@@ -844,6 +867,7 @@ func NewPeerState(peer p2p.Peer) *PeerState {
 			LastCommitRound:    -1,
 			CatchupCommitRound: -1,
 		},
+		stats: &peerStateStats{},
 	}
 }
 
@@ -1055,6 +1079,43 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 	}
 }
 
+// RecordVote updates internal statistics for this peer by recording the vote.
+// It returns the total number of votes (1 per block). This essentially means
+// the number of blocks for which peer has been sending us votes.
+func (ps *PeerState) RecordVote(vote *types.Vote) int {
+	if ps.stats.lastVoteHeight >= vote.Height {
+		return ps.stats.votes
+	}
+	ps.stats.lastVoteHeight = vote.Height
+	ps.stats.votes += 1
+	return ps.stats.votes
+}
+
+// VotesSent returns the number of blocks for which peer has been sending us
+// votes.
+func (ps *PeerState) VotesSent() int {
+	return ps.stats.votes
+}
+
+// RecordVote updates internal statistics for this peer by recording the block part.
+// It returns the total number of block parts (1 per block). This essentially means
+// the number of blocks for which peer has been sending us block parts.
+func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
+	if ps.stats.lastBlockPartHeight >= bp.Height {
+		return ps.stats.blockParts
+	}
+
+	ps.stats.lastBlockPartHeight = bp.Height
+	ps.stats.blockParts += 1
+	return ps.stats.blockParts
+}
+
+// BlockPartsSent returns the number of blocks for which peer has been sending
+// us block parts.
+func (ps *PeerState) BlockPartsSent() int {
+	return ps.stats.blockParts
+}
+
 // SetHasVote sets the given vote as known by the peer
 func (ps *PeerState) SetHasVote(vote *types.Vote) {
 	ps.mtx.Lock()
@@ -1201,11 +1262,13 @@ func (ps *PeerState) StringIndented(indent string) string {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return fmt.Sprintf(`PeerState{
-%s  Key %v
-%s  PRS %v
+%s  Key   %v
+%s  PRS   %v
+%s  Stats %v
 %s}`,
 		indent, ps.Peer.ID(),
 		indent, ps.PeerRoundState.StringIndented(indent+"  "),
+		indent, ps.stats,
 		indent)
 }
 

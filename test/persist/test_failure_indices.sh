@@ -1,5 +1,6 @@
 #! /bin/bash
 
+export PATH="$GOBIN:$PATH"
 export TMHOME=$HOME/.tendermint_persist
 
 rm -rf "$TMHOME"
@@ -9,37 +10,37 @@ tendermint init
 RPC_ADDR="$(pwd)/rpc.sock"
 
 TM_CMD="tendermint node --log_level=debug --rpc.laddr=unix://$RPC_ADDR" # &> tendermint_${name}.log"
-DUMMY_CMD="abci-cli dummy --persist $TMHOME/dummy" # &> dummy_${name}.log"
+DUMMY_CMD="abci-cli kvstore --persist $TMHOME/kvstore" # &> kvstore_${name}.log"
 
 
 function start_procs(){
     name=$1
     indexToFail=$2
-    echo "Starting persistent dummy and tendermint"
+    echo "Starting persistent kvstore and tendermint"
     if [[ "$CIRCLECI" == true ]]; then
         $DUMMY_CMD &
     else
-        $DUMMY_CMD &> "dummy_${name}.log" &
+        $DUMMY_CMD &> "kvstore_${name}.log" &
     fi
     PID_DUMMY=$!
 
     # before starting tendermint, remove the rpc socket
-    rm $RPC_ADDR
+    rm -f $RPC_ADDR
     if [[ "$indexToFail" == "" ]]; then
         # run in background, dont fail
-        if [[ "$CIRCLECI" == true ]]; then
-            $TM_CMD &
-        else
+		if [[ "$CIRCLECI" == true ]]; then
+			$TM_CMD &
+		else
             $TM_CMD &> "tendermint_${name}.log" & 
-        fi
+		fi
         PID_TENDERMINT=$!
     else
         # run in foreground, fail
-        if [[ "$CIRCLECI" == true ]]; then
-            FAIL_TEST_INDEX=$indexToFail $TM_CMD
-        else 
+		if [[ "$CIRCLECI" == true ]]; then
+			FAIL_TEST_INDEX=$indexToFail $TM_CMD
+		else
             FAIL_TEST_INDEX=$indexToFail $TM_CMD &> "tendermint_${name}.log"
-        fi
+		fi
         PID_TENDERMINT=$!
     fi
 }

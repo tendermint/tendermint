@@ -139,6 +139,10 @@ func (a *addrBook) Wait() {
 	a.wg.Wait()
 }
 
+func (a *addrBook) FilePath() string {
+	return a.filePath
+}
+
 //-------------------------------------------------------
 
 // AddOurAddress one of our addresses.

@@ -16,15 +16,15 @@ Next, install the ``abci-cli`` tool and example applications:
 
     go get -u github.com/tendermint/abci/cmd/abci-cli
 
-If this fails, you may need to use ``glide`` to get vendored
+If this fails, you may need to use `dep <https://github.com/golang/dep>`__ to get vendored
 dependencies:
 
 ::
 
-    go get github.com/Masterminds/glide
     cd $GOPATH/src/github.com/tendermint/abci
-    glide install
-    go install ./cmd/abci-cli
+    make get_tools
+    make get_vendor_deps
+    make install
 
 Now run ``abci-cli`` to see the list of commands:
 
@@ -40,7 +40,7 @@ Now run ``abci-cli`` to see the list of commands:
       console     Start an interactive abci console for multiple commands
       counter     ABCI demo example
       deliver_tx  Deliver a new tx to the application
-      dummy       ABCI demo example
+      kvstore       ABCI demo example
       echo        Have the application echo a message
       help        Help about any command
       info        Get some info about the application
@@ -56,8 +56,8 @@ Now run ``abci-cli`` to see the list of commands:
     Use "abci-cli [command] --help" for more information about a command.
 
 
-Dummy - First Example
----------------------
+KVStore - First Example
+-----------------------
 
 The ``abci-cli`` tool lets us send ABCI messages to our application, to
 help build and debug them.
@@ -66,8 +66,8 @@ The most important messages are ``deliver_tx``, ``check_tx``, and
 ``commit``, but there are others for convenience, configuration, and
 information purposes.
 
-We'll start a dummy application, which was installed at the same time as
-``abci-cli`` above. The dummy just stores transactions in a merkle tree.
+We'll start a kvstore application, which was installed at the same time as
+``abci-cli`` above. The kvstore just stores transactions in a merkle tree.
 
 Its code can be found `here <https://github.com/tendermint/abci/blob/master/cmd/abci-cli/abci-cli.go>`__ and looks like:
 
@@ -75,20 +75,20 @@ Its code can be found `here <https://github.com/tendermint/abci/blob/master/cmd/
 
     .. container:: header
 
-        **Show/Hide Dummy Example**
+        **Show/Hide KVStore Example**
 
     .. code-block:: go
 
-        func cmdDummy(cmd *cobra.Command, args []string) error {
+        func cmdKVStore(cmd *cobra.Command, args []string) error {
         	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
         
         	// Create the application - in memory or persisted to disk
         	var app types.Application
         	if flagPersist == "" {
-        		app = dummy.NewDummyApplication()
+        		app = kvstore.NewKVStoreApplication()
         	} else {
-        		app = dummy.NewPersistentDummyApplication(flagPersist)
-        		app.(*dummy.PersistentDummyApplication).SetLogger(logger.With("module", "dummy"))
+        		app = kvstore.NewPersistentKVStoreApplication(flagPersist)
+        		app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
         	}
         
         	// Start the listener
@@ -113,7 +113,7 @@ Start by running:
 
 ::
 
-    abci-cli dummy
+    abci-cli kvstore
 
 And in another terminal, run
 
@@ -229,7 +229,7 @@ Counter - Another Example
 Now that we've got the hang of it, let's try another application, the
 "counter" app.
 
-Like the dummy app, its code can be found `here <https://github.com/tendermint/abci/blob/master/cmd/abci-cli/abci-cli.go>`__ and looks like:
+Like the kvstore app, its code can be found `here <https://github.com/tendermint/abci/blob/master/cmd/abci-cli/abci-cli.go>`__ and looks like:
 
 .. container:: toggle
 
@@ -288,7 +288,7 @@ other peers.
 In this instance of the counter app, ``check_tx`` only allows
 transactions whose integer is greater than the last committed one.
 
-Let's kill the console and the dummy application, and start the counter
+Let's kill the console and the kvstore application, and start the counter
 app:
 
 ::
@@ -328,7 +328,7 @@ In another window, start the ``abci-cli console``:
     -> data.hex: 0x7B22686173686573223A302C22747873223A327D
 
 This is a very simple application, but between ``counter`` and
-``dummy``, its easy to see how you can build out arbitrary application
+``kvstore``, its easy to see how you can build out arbitrary application
 states on top of the ABCI. `Hyperledger's
 Burrow <https://github.com/hyperledger/burrow>`__ also runs atop ABCI,
 bringing with it Ethereum-like accounts, the Ethereum virtual-machine,

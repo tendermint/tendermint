@@ -155,3 +155,5 @@ type ResultEvent struct {
 	Query string            `json:"query"`
 	Data  types.TMEventData `json:"data"`
 }
+
+type ResultHealth struct{}

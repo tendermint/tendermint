@@ -78,6 +78,15 @@ func TestDumpConsensusState(t *testing.T) {
 	}
 }
 
+func TestHealth(t *testing.T) {
+	for i, c := range GetClients() {
+		nc, ok := c.(client.NetworkClient)
+		require.True(t, ok, "%d", i)
+		_, err := nc.Health()
+		require.Nil(t, err, "%d: %+v", i, err)
+	}
+}
+
 func TestGenesisAndValidators(t *testing.T) {
 	for i, c := range GetClients() {
 
@@ -336,7 +345,7 @@ func TestTxSearch(t *testing.T) {
 		require.Nil(t, err, "%+v", err)
 		require.Len(t, results, 0)
 
-		// we query using a tag (see dummy application)
+		// we query using a tag (see kvstore application)
 		results, err = c.TxSearch("app.creator='jae'", false)
 		require.Nil(t, err, "%+v", err)
 		if len(results) == 0 {

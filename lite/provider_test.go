@@ -103,10 +103,10 @@ func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
 // this will make a get height, and if it is good, set the data as well
 func checkGetHeight(t *testing.T, p lite.Provider, ask, expect int64) {
 	fc, err := p.GetByHeight(ask)
-	require.Nil(t, err, "%+v", err)
+	require.Nil(t, err, "GetByHeight")
 	if assert.Equal(t, expect, fc.Height()) {
 		err = p.StoreCommit(fc)
-		require.Nil(t, err, "%+v", err)
+		require.Nil(t, err, "StoreCommit")
 	}
 }
 

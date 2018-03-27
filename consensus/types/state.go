@@ -70,6 +70,9 @@ type RoundState struct {
 	LockedRound        int
 	LockedBlock        *types.Block
 	LockedBlockParts   *types.PartSet
+	ValidRound         int
+	ValidBlock         *types.Block
+	ValidBlockParts    *types.PartSet
 	Votes              *HeightVoteSet
 	CommitRound        int            //
 	LastCommit         *types.VoteSet // Last precommits at Height-1
@@ -106,6 +109,8 @@ func (rs *RoundState) StringIndented(indent string) string {
 %s  ProposalBlock: %v %v
 %s  LockedRound:   %v
 %s  LockedBlock:   %v %v
+%s  ValidRound:   %v
+%s  ValidBlock:   %v %v
 %s  Votes:         %v
 %s  LastCommit:    %v
 %s  LastValidators:%v
@@ -118,6 +123,8 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort(),
 		indent, rs.LockedRound,
 		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
+		indent, rs.ValidRound,
+		indent, rs.ValidBlockParts.StringShort(), rs.ValidBlock.StringShort(),
 		indent, rs.Votes.StringIndented(indent+"    "),
 		indent, rs.LastCommit.StringShort(),
 		indent, rs.LastValidators.StringIndented(indent+"    "),

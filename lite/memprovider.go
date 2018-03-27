@@ -14,6 +14,8 @@ type memStoreProvider struct {
 	// btree would be more efficient for larger sets
 	byHeight fullCommits
 	byHash   map[string]FullCommit
+
+	sorted bool
 }
 
 // fullCommits just exists to allow easy sorting
@@ -52,20 +54,73 @@ func (m *memStoreProvider) StoreCommit(fc FullCommit) error {
 	defer m.mtx.Unlock()
 	m.byHash[key] = fc
 	m.byHeight = append(m.byHeight, fc)
-	sort.Sort(m.byHeight)
+	m.sorted = false
 	return nil
 }
 
 // GetByHeight returns the FullCommit for height h or an error if the commit is not found.
 func (m *memStoreProvider) GetByHeight(h int64) (FullCommit, error) {
+	// By heuristics, GetByHeight with linearsearch is fast enough
+	// for about 50 keys but after that, it needs binary search.
+	// See https://github.com/tendermint/tendermint/pull/1043#issue-285188242
 	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	n := len(m.byHeight)
+	m.mtx.RUnlock()
 
+	if n <= 50 {
+		return m.getByHeightLinearSearch(h)
+	}
+	return m.getByHeightBinarySearch(h)
+}
+
+func (m *memStoreProvider) sortByHeightIfNecessaryLocked() {
+	if !m.sorted {
+		sort.Sort(m.byHeight)
+		m.sorted = true
+	}
+}
+
+func (m *memStoreProvider) getByHeightLinearSearch(h int64) (FullCommit, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.sortByHeightIfNecessaryLocked()
 	// search from highest to lowest
 	for i := len(m.byHeight) - 1; i >= 0; i-- {
-		fc := m.byHeight[i]
-		if fc.Height() <= h {
+		if fc := m.byHeight[i]; fc.Height() <= h {
 			return fc, nil
+		}
+	}
+	return FullCommit{}, liteErr.ErrCommitNotFound()
+}
+
+func (m *memStoreProvider) getByHeightBinarySearch(h int64) (FullCommit, error) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+	m.sortByHeightIfNecessaryLocked()
+	low, high := 0, len(m.byHeight)-1
+	var mid int
+	var hmid int64
+	var midFC FullCommit
+	// Our goal is to either find:
+	//   * item ByHeight with the query
+	//   * greatest height with a height <= query
+	for low <= high {
+		mid = int(uint(low+high) >> 1) // Avoid an overflow
+		midFC = m.byHeight[mid]
+		hmid = midFC.Height()
+		switch {
+		case hmid == h:
+			return midFC, nil
+		case hmid < h:
+			low = mid + 1
+		case hmid > h:
+			high = mid - 1
+		}
+	}
+
+	if high >= 0 {
+		if highFC := m.byHeight[high]; highFC.Height() < h {
+			return highFC, nil
 		}
 	}
 	return FullCommit{}, liteErr.ErrCommitNotFound()
@@ -85,12 +140,13 @@ func (m *memStoreProvider) GetByHash(hash []byte) (FullCommit, error) {
 
 // LatestCommit returns the latest FullCommit or an error if no commits exist.
 func (m *memStoreProvider) LatestCommit() (FullCommit, error) {
-	m.mtx.RLock()
-	defer m.mtx.RUnlock()
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
 
 	l := len(m.byHeight)
 	if l == 0 {
 		return FullCommit{}, liteErr.ErrCommitNotFound()
 	}
+	m.sortByHeightIfNecessaryLocked()
 	return m.byHeight[l-1], nil
 }

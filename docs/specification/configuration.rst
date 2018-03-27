@@ -89,6 +89,7 @@ like the file below, however, double check by inspecting the
     seeds = ""
 
     # Comma separated list of nodes to keep persistent connections to
+    # Do not add private peers to this list if you don't want them advertised
     persistent_peers = ""
 
     # Path to address book
@@ -120,6 +121,12 @@ like the file below, however, double check by inspecting the
     #
     # Does not work if the peer-exchange reactor is disabled.
     seed_mode = false
+
+    # Authenticated encryption
+    auth_enc = true
+
+    # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
+    private_peer_ids = ""
 
     ##### mempool configuration options #####
     [mempool]

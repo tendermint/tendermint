@@ -122,6 +122,15 @@ func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return result, nil
 }
 
+func (c *HTTP) Health() (*ctypes.ResultHealth, error) {
+	result := new(ctypes.ResultHealth)
+	_, err := c.rpc.Call("health", map[string]interface{}{}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "Health")
+	}
+	return result, nil
+}
+
 func (c *HTTP) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	result := new(ctypes.ResultBlockchainInfo)
 	_, err := c.rpc.Call("blockchain",

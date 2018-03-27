@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/pkg/errors"
+
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 

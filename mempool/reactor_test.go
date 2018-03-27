@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 
-	"github.com/tendermint/abci/example/dummy"
+	"github.com/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -39,7 +39,7 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 	reactors := make([]*MempoolReactor, N)
 	logger := mempoolLogger()
 	for i := 0; i < N; i++ {
-		app := dummy.NewDummyApplication()
+		app := kvstore.NewKVStoreApplication()
 		cc := proxy.NewLocalClientCreator(app)
 		mempool := newMempoolWithApp(cc)
 

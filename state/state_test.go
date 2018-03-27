@@ -78,8 +78,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// build mock responses
 	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []cmn.KVPair{}}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []cmn.KVPair{}}
+	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
+	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
 		{
 			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
