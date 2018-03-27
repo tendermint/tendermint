@@ -7,7 +7,6 @@ import (
 	"io"
 	"math"
 	"net"
-	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -230,8 +229,7 @@ func (c *MConnection) flush() {
 // Catch panics, usually caused by remote disconnects.
 func (c *MConnection) _recover() {
 	if r := recover(); r != nil {
-		stack := debug.Stack()
-		err := cmn.StackError{r, stack}
+		err := cmn.ErrorWrap(r, "recovered from panic")
 		c.stopForError(err)
 	}
 }
