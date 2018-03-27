@@ -27,13 +27,15 @@ BUG FIXES:
 
 ## 0.17.2 (TBD)
 
+BUG FIXES:
+- [rpc] fix subscribing using an abci.ResponseDeliverTx tag
+
 IMPROVEMENTS:
 - [rpc] `/tx` and `/tx_search` responses now include the transaction hash
 
 ## 0.17.1 (March 27th, 2018)
 
 BUG FIXES:
-
 - [types] Actually support `app_state` in genesis as `AppStateJSON`
 
 ## 0.17.0 (March 27th, 2018)
