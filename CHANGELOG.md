@@ -49,6 +49,9 @@ FEATURES:
 - [config] added the `--p2p.private_peer_ids` flag and `PrivatePeerIDs` config variable (see config for description)
 - [rpc] added `/health` endpoint, which returns empty result for now
 
+BUG FIXES:
+- [consensus] fix liveness bug by introducing ValidBlock mechanism
+
 ## 0.16.0 (February 20th, 2018)
 
 BREAKING CHANGES:
