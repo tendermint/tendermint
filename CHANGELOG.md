@@ -25,6 +25,12 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.17.1 (March 27th, 2018)
+
+BUG FIXES:
+
+- [types] Actually support `app_state` in genesis as `AppStateJSON`
+
 ## 0.17.0 (March 27th, 2018)
 
 BREAKING:
@@ -32,7 +38,6 @@ BREAKING:
 
 IMPROVEMENTS:
 - [all] renamed `dummy` (`persistent_dummy`) to `kvstore` (`persistent_kvstore`) (name "dummy" is deprecated and will not work in the next breaking release)
-- [config] exposed `auth_enc` flag to enable/disable encryption
 - [docs] note on determinism (docs/determinism.rst)
 - [genesis] `app_options` field is deprecated. please rename it to `app_state` in your genesis file(s). `app_options` will not work in the next breaking release
 - [p2p] dial seeds directly without potential peers
@@ -43,11 +48,15 @@ IMPROVEMENTS:
 - [spec] various improvements
 - switched from glide to dep internally for package management
 - [wire] prep work for upgrading to new go-wire (which is now called go-amino)
-- [types/priv_validator] new format and socket client, allowing for remote signing
 
 FEATURES:
+- [config] exposed `auth_enc` flag to enable/disable encryption
 - [config] added the `--p2p.private_peer_ids` flag and `PrivatePeerIDs` config variable (see config for description)
 - [rpc] added `/health` endpoint, which returns empty result for now
+- [types/priv_validator] new format and socket client, allowing for remote signing
+
+BUG FIXES:
+- [consensus] fix liveness bug by introducing ValidBlock mechanism
 
 ## 0.16.0 (February 20th, 2018)
 

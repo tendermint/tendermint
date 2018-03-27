@@ -28,7 +28,7 @@ type GenesisDoc struct {
 	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
 	Validators      []GenesisValidator `json:"validators"`
 	AppHash         cmn.HexBytes       `json:"app_hash"`
-	_AppState       json.RawMessage    `json:"app_state,omitempty"`
+	AppStateJSON    json.RawMessage    `json:"app_state,omitempty"`
 	AppOptions      json.RawMessage    `json:"app_options,omitempty"` // DEPRECATED
 }
 
@@ -38,7 +38,7 @@ func (genDoc *GenesisDoc) AppState() json.RawMessage {
 	if len(genDoc.AppOptions) > 0 {
 		return genDoc.AppOptions
 	} else {
-		return genDoc._AppState
+		return genDoc.AppStateJSON
 	}
 }
 
