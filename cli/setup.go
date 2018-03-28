@@ -139,9 +139,8 @@ func bindFlagsLoadViper(cmd *cobra.Command, args []string) error {
 		// stderr, so if we redirect output to json file, this doesn't appear
 		// fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
 	} else if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-		// we ignore not found error, only parse error
-		// stderr, so if we redirect output to json file, this doesn't appear
-		fmt.Fprintf(os.Stderr, "%#v", err)
+		// ignore not found error, return other errors
+		return err
 	}
 	return nil
 }
