@@ -1087,7 +1087,7 @@ func (ps *PeerState) RecordVote(vote *types.Vote) int {
 		return ps.stats.votes
 	}
 	ps.stats.lastVoteHeight = vote.Height
-	ps.stats.votes += 1
+	ps.stats.votes++
 	return ps.stats.votes
 }
 
@@ -1106,7 +1106,7 @@ func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
 	}
 
 	ps.stats.lastBlockPartHeight = bp.Height
-	ps.stats.blockParts += 1
+	ps.stats.blockParts++
 	return ps.stats.blockParts
 }
 

@@ -200,7 +200,7 @@ func (app *CounterApplication) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 			Code: code.CodeTypeBadNonce,
 			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
 	}
-	app.txCount += 1
+	app.txCount++
 	return abci.ResponseDeliverTx{Code: code.CodeTypeOK}
 }
 
@@ -211,7 +211,7 @@ func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
 			Code: code.CodeTypeBadNonce,
 			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
 	}
-	app.mempoolTxCount += 1
+	app.mempoolTxCount++
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 

@@ -251,7 +251,7 @@ func (psr *PartSetReader) Read(p []byte) (n int, err error) {
 		return n1 + n2, err
 	}
 
-	psr.i += 1
+	psr.i++
 	if psr.i >= len(psr.parts) {
 		return 0, io.EOF
 	}

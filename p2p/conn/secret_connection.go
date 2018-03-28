@@ -328,7 +328,7 @@ func incr2Nonce(nonce *[24]byte) {
 // increment nonce big-endian by 1 with wraparound.
 func incrNonce(nonce *[24]byte) {
 	for i := 23; 0 <= i; i-- {
-		nonce[i] += 1
+		nonce[i]++
 		if nonce[i] != 0 {
 			return
 		}

@@ -494,7 +494,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 func (cs *ConsensusState) newStep() {
 	rs := cs.RoundStateEvent()
 	cs.wal.Save(rs)
-	cs.nSteps += 1
+	cs.nSteps++
 	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
 	if cs.eventBus != nil {
 		cs.eventBus.PublishEventNewRoundStep(rs)
@@ -741,7 +741,7 @@ func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 		}
 		cs.privValidator.SignHeartbeat(chainID, heartbeat)
 		cs.eventBus.PublishEventProposalHeartbeat(types.EventDataProposalHeartbeat{heartbeat})
-		counter += 1
+		counter++
 		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 	}
 }

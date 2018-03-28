@@ -29,7 +29,7 @@ func TestValidateBlock(t *testing.T) {
 
 	// tamper with NumTxs
 	block = MakeBlock(h, txs, commit)
-	block.NumTxs += 1
+	block.NumTxs++
 	err = block.ValidateBasic()
 	require.Error(t, err)
 

@@ -87,9 +87,9 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 		}
 
 		if nextN > 0 {
-			nextN -= 1
+			nextN--
 		}
-		pb.count += 1
+		pb.count++
 	}
 	return nil
 }
@@ -153,7 +153,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 		if err := pb.cs.readReplayMessage(msg, newStepCh); err != nil {
 			return err
 		}
-		pb.count += 1
+		pb.count++
 	}
 	return nil
 }

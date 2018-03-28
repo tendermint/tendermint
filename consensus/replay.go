@@ -352,7 +352,7 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 	var err error
 	finalBlock := storeBlockHeight
 	if mutateState {
-		finalBlock -= 1
+		finalBlock--
 	}
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
@@ -362,7 +362,7 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 			return nil, err
 		}
 
-		h.nBlocks += 1
+		h.nBlocks++
 	}
 
 	if mutateState {
@@ -390,7 +390,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 		return sm.State{}, err
 	}
 
-	h.nBlocks += 1
+	h.nBlocks++
 
 	return state, nil
 }
@@ -429,7 +429,7 @@ type mockProxyApp struct {
 
 func (mock *mockProxyApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
 	r := mock.abciResponses.DeliverTx[mock.txCount]
-	mock.txCount += 1
+	mock.txCount++
 	return *r
 }
 

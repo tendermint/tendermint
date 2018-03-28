@@ -167,7 +167,7 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 		if err := batch.Add(txResult); err != nil {
 			b.Fatal(err)
 		}
-		txResult.Index += 1
+		txResult.Index++
 	}
 
 	b.ResetTimer()
