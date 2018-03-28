@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 (TBD)
+
+BUG FIXES:
+
+ - [pubsub] fix unsubscribing
+
 ## 0.8.0 (March 22, 2018)
 
 BREAKING:

@@ -101,9 +101,9 @@ func TestUnsubscribe(t *testing.T) {
 
 	ctx := context.Background()
 	ch := make(chan interface{})
-	err := s.Subscribe(ctx, clientID, query.Empty{}, ch)
+	err := s.Subscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"), ch)
 	require.NoError(t, err)
-	err = s.Unsubscribe(ctx, clientID, query.Empty{})
+	err = s.Unsubscribe(ctx, clientID, query.MustParse("tm.events.type='NewBlock'"))
 	require.NoError(t, err)
 
 	err = s.Publish(ctx, "Nick Fury")
