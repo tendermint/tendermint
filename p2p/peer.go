@@ -293,22 +293,20 @@ func (pc *peerConn) HandshakeTimeout(ourNodeInfo NodeInfo, timeout time.Duration
 		return peerNodeInfo, errors.Wrap(err, "Error setting deadline")
 	}
 
-	var err1 error
-	var err2 error
-	cmn.Parallel(
-		func() {
+	var trs, _ = cmn.Parallel(
+		func(_ int) (val interface{}, err error, abort bool) {
 			var n int
-			wire.WriteBinary(&ourNodeInfo, pc.conn, &n, &err1)
+			wire.WriteBinary(&ourNodeInfo, pc.conn, &n, &err)
+			return
 		},
-		func() {
+		func(_ int) (val interface{}, err error, abort bool) {
 			var n int
-			wire.ReadBinary(&peerNodeInfo, pc.conn, MaxNodeInfoSize(), &n, &err2)
-		})
-	if err1 != nil {
-		return peerNodeInfo, errors.Wrap(err1, "Error during handshake/write")
-	}
-	if err2 != nil {
-		return peerNodeInfo, errors.Wrap(err2, "Error during handshake/read")
+			wire.ReadBinary(&peerNodeInfo, pc.conn, MaxNodeInfoSize(), &n, &err)
+			return
+		},
+	)
+	if err := trs.FirstError(); err != nil {
+		return peerNodeInfo, errors.Wrap(err, "Error during handshake")
 	}
 
 	// Remove deadline
