@@ -101,7 +101,7 @@ func (n *Node) Start() error {
 	}
 
 	n.em.RegisterLatencyCallback(latencyCallback(n))
-	err := n.em.Subscribe(tmtypes.EventStringNewBlockHeader(), newBlockCallback(n))
+	err := n.em.Subscribe(tmtypes.EventQueryNewBlockHeader.String(), newBlockCallback(n))
 	if err != nil {
 		return err
 	}
@@ -254,5 +254,5 @@ func UnmarshalEvent(b json.RawMessage) (string, events.EventData, error) {
 	if err := json.Unmarshal(b, event); err != nil {
 		return "", nil, err
 	}
-	return event.Name, event.Data, nil
+	return event.Query, event.Data, nil
 }

@@ -115,7 +115,7 @@ func (em *EventMeter) String() string {
 
 // Start boots up event meter.
 func (em *EventMeter) Start() error {
-	if _, err := em.wsc.Start(); err != nil {
+	if err := em.wsc.Start(); err != nil {
 		return err
 	}
 
@@ -219,7 +219,7 @@ func (em *EventMeter) receiveRoutine() {
 				em.logger.Error("expected some event, got error", "err", resp.Error.Error())
 				continue
 			}
-			eventType, data, err := em.unmarshalEvent(*resp.Result)
+			eventType, data, err := em.unmarshalEvent(resp.Result)
 			if err != nil {
 				em.logger.Error("failed to unmarshal event", "err", err)
 				continue
@@ -231,7 +231,7 @@ func (em *EventMeter) receiveRoutine() {
 			if em.wsc.IsActive() {
 				em.callLatencyCallback(em.wsc.PingPongLatencyTimer.Mean())
 			}
-		case <-em.wsc.Quit:
+		case <-em.wsc.Quit():
 			return
 		case <-em.quit:
 			return
@@ -251,7 +251,7 @@ func (em *EventMeter) disconnectRoutine() {
 				em.subscribe()
 				em.subscribed = true
 			}
-		case <-em.wsc.Quit:
+		case <-em.wsc.Quit():
 			return
 		case <-em.quit:
 			return
