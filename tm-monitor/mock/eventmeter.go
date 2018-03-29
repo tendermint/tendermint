@@ -21,11 +21,11 @@ func (e *EventMeter) RegisterLatencyCallback(cb em.LatencyCallbackFunc) { e.late
 func (e *EventMeter) RegisterDisconnectCallback(cb em.DisconnectCallbackFunc) {
 	e.disconnectCallback = cb
 }
-func (e *EventMeter) Subscribe(eventID string, cb em.EventCallbackFunc) error {
+func (e *EventMeter) Subscribe(query string, cb em.EventCallbackFunc) error {
 	e.eventCallback = cb
 	return nil
 }
-func (e *EventMeter) Unsubscribe(eventID string) error {
+func (e *EventMeter) Unsubscribe(query string) error {
 	e.eventCallback = nil
 	return nil
 }
