@@ -41,3 +41,20 @@ func StringInSlice(a string, list []string) bool {
 	}
 	return false
 }
+
+// SplitAndTrim slices s into all subslices separated by sep and returns a
+// slice of the string s with all leading and trailing Unicode code points
+// contained in cutset removed. If sep is empty, SplitAndTrim splits after each
+// UTF-8 sequence. First part is equivalent to strings.SplitN with a count of
+// -1.
+func SplitAndTrim(s, sep, cutset string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	spl := strings.Split(s, sep)
+	for i := 0; i < len(spl); i++ {
+		spl[i] = strings.Trim(spl[i], cutset)
+	}
+	return spl
+}
