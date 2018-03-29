@@ -112,7 +112,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 		}
 	}
 	if found {
-		return fmt.Errorf("WAL should not contain #ENDHEIGHT %d.", csHeight)
+		return fmt.Errorf("WAL should not contain #ENDHEIGHT %d", csHeight)
 	}
 
 	// Search for last height marker
@@ -125,7 +125,7 @@ func (cs *ConsensusState) catchupReplay(csHeight int64) error {
 		return err
 	}
 	if !found {
-		return fmt.Errorf("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d.", csHeight, csHeight-1)
+		return fmt.Errorf("Cannot replay height %d. WAL does not contain #ENDHEIGHT for %d", csHeight, csHeight-1)
 	}
 	defer gr.Close() // nolint: errcheck
 
