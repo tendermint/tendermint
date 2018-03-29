@@ -25,6 +25,11 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.17.2 (TBD)
+
+IMPROVEMENTS:
+- [rpc] `/tx` and `/tx_search` responses now include the transaction hash
+
 ## 0.17.1 (March 27th, 2018)
 
 BUG FIXES:

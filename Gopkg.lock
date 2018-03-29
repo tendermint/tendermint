@@ -268,6 +268,7 @@
   version = "v0.7.3"
 
 [[projects]]
+  branch = "develop"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "autofile",
@@ -283,8 +284,7 @@
     "pubsub/query",
     "test"
   ]
-  revision = "24da7009c3d8c019b40ba4287495749e3160caca"
-  version = "v0.7.1"
+  revision = "0f2811441f4cf44b414df16ceae3c0931c74662e"
 
 [[projects]]
   branch = "master"
@@ -381,6 +381,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4dca5dbd2d280d093d7c8fc423606ab86d6ad1b241b076a7716c2093b5a09231"
+  inputs-digest = "88f227f33e785669706f12e131610a86fd3c00f5dfd6f22c62d46e0688049726"
   solver-name = "gps-cdcl"
   solver-version = 1

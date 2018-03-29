@@ -1,9 +1,12 @@
 package conn
 
 import (
+	"fmt"
 	"io"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -36,33 +39,41 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 	barPrvKey := crypto.GenPrivKeyEd25519().Wrap()
 	barPubKey := barPrvKey.PubKey()
 
-	cmn.Parallel(
-		func() {
-			var err error
+	var trs, ok = cmn.Parallel(
+		func(_ int) (val interface{}, err error, abort bool) {
 			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
 			if err != nil {
 				tb.Errorf("Failed to establish SecretConnection for foo: %v", err)
-				return
+				return nil, err, true
 			}
 			remotePubBytes := fooSecConn.RemotePubKey()
 			if !remotePubBytes.Equals(barPubKey) {
-				tb.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
+				err = fmt.Errorf("Unexpected fooSecConn.RemotePubKey.  Expected %v, got %v",
 					barPubKey, fooSecConn.RemotePubKey())
+				tb.Error(err)
+				return nil, err, false
 			}
+			return nil, nil, false
 		},
-		func() {
-			var err error
+		func(_ int) (val interface{}, err error, abort bool) {
 			barSecConn, err = MakeSecretConnection(barConn, barPrvKey)
 			if barSecConn == nil {
 				tb.Errorf("Failed to establish SecretConnection for bar: %v", err)
-				return
+				return nil, err, true
 			}
 			remotePubBytes := barSecConn.RemotePubKey()
 			if !remotePubBytes.Equals(fooPubKey) {
-				tb.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
+				err = fmt.Errorf("Unexpected barSecConn.RemotePubKey.  Expected %v, got %v",
 					fooPubKey, barSecConn.RemotePubKey())
+				tb.Error(err)
+				return nil, nil, false
 			}
-		})
+			return nil, nil, false
+		},
+	)
+
+	require.Nil(tb, trs.FirstError())
+	require.True(tb, ok, "Unexpected task abortion")
 
 	return
 }
@@ -89,59 +100,76 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	}
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
-	genNodeRunner := func(nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) func() {
-		return func() {
+	genNodeRunner := func(nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) cmn.Task {
+		return func(_ int) (interface{}, error, bool) {
 			// Node handskae
 			nodePrvKey := crypto.GenPrivKeyEd25519().Wrap()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)
-				return
+				return nil, err, true
 			}
-			// In parallel, handle reads and writes
-			cmn.Parallel(
-				func() {
+			// In parallel, handle some reads and writes.
+			var trs, ok = cmn.Parallel(
+				func(_ int) (interface{}, error, bool) {
 					// Node writes
 					for _, nodeWrite := range nodeWrites {
 						n, err := nodeSecretConn.Write([]byte(nodeWrite))
 						if err != nil {
 							t.Errorf("Failed to write to nodeSecretConn: %v", err)
-							return
+							return nil, err, true
 						}
 						if n != len(nodeWrite) {
-							t.Errorf("Failed to write all bytes. Expected %v, wrote %v", len(nodeWrite), n)
-							return
+							err = fmt.Errorf("Failed to write all bytes. Expected %v, wrote %v", len(nodeWrite), n)
+							t.Error(err)
+							return nil, err, true
 						}
 					}
 					if err := nodeConn.PipeWriter.Close(); err != nil {
 						t.Error(err)
+						return nil, err, true
 					}
+					return nil, nil, false
 				},
-				func() {
+				func(_ int) (interface{}, error, bool) {
 					// Node reads
 					readBuffer := make([]byte, dataMaxSize)
 					for {
 						n, err := nodeSecretConn.Read(readBuffer)
 						if err == io.EOF {
-							return
+							return nil, nil, false
 						} else if err != nil {
 							t.Errorf("Failed to read from nodeSecretConn: %v", err)
-							return
+							return nil, err, true
 						}
 						*nodeReads = append(*nodeReads, string(readBuffer[:n]))
 					}
 					if err := nodeConn.PipeReader.Close(); err != nil {
 						t.Error(err)
+						return nil, err, true
 					}
-				})
+					return nil, nil, false
+				},
+			)
+			assert.True(t, ok, "Unexpected task abortion")
+
+			// If error:
+			if trs.FirstError() != nil {
+				return nil, trs.FirstError(), true
+			}
+
+			// Otherwise:
+			return nil, nil, false
 		}
 	}
 
 	// Run foo & bar in parallel
-	cmn.Parallel(
+	var trs, ok = cmn.Parallel(
 		genNodeRunner(fooConn, fooWrites, &fooReads),
 		genNodeRunner(barConn, barWrites, &barReads),
 	)
+	require.Nil(t, trs.FirstError())
+	require.True(t, ok, "unexpected task abortion")
 
 	// A helper to ensure that the writes and reads match.
 	// Additionally, small writes (<= dataMaxSize) must be atomically read.

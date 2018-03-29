@@ -253,13 +253,11 @@ func TestBroadcastTxCommit(t *testing.T) {
 }
 
 func TestTx(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
 	// first we broadcast a tx
 	c := getHTTPClient()
 	_, _, tx := MakeTxKV()
 	bres, err := c.BroadcastTxCommit(tx)
-	require.Nil(err, "%+v", err)
+	require.Nil(t, err, "%+v", err)
 
 	txHeight := bres.Height
 	txHash := bres.Hash
@@ -289,18 +287,19 @@ func TestTx(t *testing.T) {
 			ptx, err := c.Tx(tc.hash, tc.prove)
 
 			if !tc.valid {
-				require.NotNil(err)
+				require.NotNil(t, err)
 			} else {
-				require.Nil(err, "%+v", err)
-				assert.EqualValues(txHeight, ptx.Height)
-				assert.EqualValues(tx, ptx.Tx)
-				assert.Zero(ptx.Index)
-				assert.True(ptx.TxResult.IsOK())
+				require.Nil(t, err, "%+v", err)
+				assert.EqualValues(t, txHeight, ptx.Height)
+				assert.EqualValues(t, tx, ptx.Tx)
+				assert.Zero(t, ptx.Index)
+				assert.True(t, ptx.TxResult.IsOK())
+				assert.EqualValues(t, txHash, ptx.Hash)
 
 				// time to verify the proof
 				proof := ptx.Proof
-				if tc.prove && assert.EqualValues(tx, proof.Data) {
-					assert.True(proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+				if tc.prove && assert.EqualValues(t, tx, proof.Data) {
+					assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
 				}
 			}
 		}
@@ -333,6 +332,7 @@ func TestTxSearch(t *testing.T) {
 		assert.EqualValues(t, tx, ptx.Tx)
 		assert.Zero(t, ptx.Index)
 		assert.True(t, ptx.TxResult.IsOK())
+		assert.EqualValues(t, txHash, ptx.Hash)
 
 		// time to verify the proof
 		proof := ptx.Proof

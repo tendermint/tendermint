@@ -137,10 +137,6 @@ type BaseConfig struct {
 	DBPath string `mapstructure:"db_dir"`
 }
 
-func (c BaseConfig) ChainID() string {
-	return c.chainID
-}
-
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
@@ -161,12 +157,16 @@ func DefaultBaseConfig() BaseConfig {
 
 // TestBaseConfig returns a base configuration for testing a Tendermint node
 func TestBaseConfig() BaseConfig {
-	conf := DefaultBaseConfig()
-	conf.chainID = "tendermint_test"
-	conf.ProxyApp = "kvstore"
-	conf.FastSync = false
-	conf.DBBackend = "memdb"
-	return conf
+	cfg := DefaultBaseConfig()
+	cfg.chainID = "tendermint_test"
+	cfg.ProxyApp = "kvstore"
+	cfg.FastSync = false
+	cfg.DBBackend = "memdb"
+	return cfg
+}
+
+func (b BaseConfig) ChainID() string {
+	return b.chainID
 }
 
 // GenesisFile returns the full path to the genesis.json file
@@ -229,11 +229,11 @@ func DefaultRPCConfig() *RPCConfig {
 
 // TestRPCConfig returns a configuration for testing the RPC server
 func TestRPCConfig() *RPCConfig {
-	conf := DefaultRPCConfig()
-	conf.ListenAddress = "tcp://0.0.0.0:36657"
-	conf.GRPCListenAddress = "tcp://0.0.0.0:36658"
-	conf.Unsafe = true
-	return conf
+	cfg := DefaultRPCConfig()
+	cfg.ListenAddress = "tcp://0.0.0.0:36657"
+	cfg.GRPCListenAddress = "tcp://0.0.0.0:36658"
+	cfg.Unsafe = true
+	return cfg
 }
 
 //-----------------------------------------------------------------------------
@@ -313,11 +313,11 @@ func DefaultP2PConfig() *P2PConfig {
 
 // TestP2PConfig returns a configuration for testing the peer-to-peer layer
 func TestP2PConfig() *P2PConfig {
-	conf := DefaultP2PConfig()
-	conf.ListenAddress = "tcp://0.0.0.0:36656"
-	conf.SkipUPNP = true
-	conf.FlushThrottleTimeout = 10
-	return conf
+	cfg := DefaultP2PConfig()
+	cfg.ListenAddress = "tcp://0.0.0.0:36656"
+	cfg.SkipUPNP = true
+	cfg.FlushThrottleTimeout = 10
+	return cfg
 }
 
 // AddrBookFile returns the full path to the address book
@@ -351,9 +351,9 @@ func DefaultMempoolConfig() *MempoolConfig {
 
 // TestMempoolConfig returns a configuration for testing the Tendermint mempool
 func TestMempoolConfig() *MempoolConfig {
-	config := DefaultMempoolConfig()
-	config.CacheSize = 1000
-	return config
+	cfg := DefaultMempoolConfig()
+	cfg.CacheSize = 1000
+	return cfg
 }
 
 // WalDir returns the full path to the mempool's write-ahead log
@@ -397,46 +397,6 @@ type ConsensusConfig struct {
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
 }
 
-// WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
-func (cfg *ConsensusConfig) WaitForTxs() bool {
-	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
-}
-
-// EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
-func (cfg *ConsensusConfig) EmptyBlocksInterval() time.Duration {
-	return time.Duration(cfg.CreateEmptyBlocksInterval) * time.Second
-}
-
-// Propose returns the amount of time to wait for a proposal
-func (cfg *ConsensusConfig) Propose(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPropose+cfg.TimeoutProposeDelta*round) * time.Millisecond
-}
-
-// Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
-func (cfg *ConsensusConfig) Prevote(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPrevote+cfg.TimeoutPrevoteDelta*round) * time.Millisecond
-}
-
-// Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
-func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
-	return time.Duration(cfg.TimeoutPrecommit+cfg.TimeoutPrecommitDelta*round) * time.Millisecond
-}
-
-// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
-func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
-	return t.Add(time.Duration(cfg.TimeoutCommit) * time.Millisecond)
-}
-
-// PeerGossipSleep returns the amount of time to sleep if there is nothing to send from the ConsensusReactor
-func (cfg *ConsensusConfig) PeerGossipSleep() time.Duration {
-	return time.Duration(cfg.PeerGossipSleepDuration) * time.Millisecond
-}
-
-// PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
-func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
-	return time.Duration(cfg.PeerQueryMaj23SleepDuration) * time.Millisecond
-}
-
 // DefaultConsensusConfig returns a default configuration for the consensus service
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
@@ -461,18 +421,58 @@ func DefaultConsensusConfig() *ConsensusConfig {
 
 // TestConsensusConfig returns a configuration for testing the consensus service
 func TestConsensusConfig() *ConsensusConfig {
-	config := DefaultConsensusConfig()
-	config.TimeoutPropose = 100
-	config.TimeoutProposeDelta = 1
-	config.TimeoutPrevote = 10
-	config.TimeoutPrevoteDelta = 1
-	config.TimeoutPrecommit = 10
-	config.TimeoutPrecommitDelta = 1
-	config.TimeoutCommit = 10
-	config.SkipTimeoutCommit = true
-	config.PeerGossipSleepDuration = 5
-	config.PeerQueryMaj23SleepDuration = 250
-	return config
+	cfg := DefaultConsensusConfig()
+	cfg.TimeoutPropose = 100
+	cfg.TimeoutProposeDelta = 1
+	cfg.TimeoutPrevote = 10
+	cfg.TimeoutPrevoteDelta = 1
+	cfg.TimeoutPrecommit = 10
+	cfg.TimeoutPrecommitDelta = 1
+	cfg.TimeoutCommit = 10
+	cfg.SkipTimeoutCommit = true
+	cfg.PeerGossipSleepDuration = 5
+	cfg.PeerQueryMaj23SleepDuration = 250
+	return cfg
+}
+
+// WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
+func (c *ConsensusConfig) WaitForTxs() bool {
+	return !c.CreateEmptyBlocks || c.CreateEmptyBlocksInterval > 0
+}
+
+// EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
+func (c *ConsensusConfig) EmptyBlocksInterval() time.Duration {
+	return time.Duration(c.CreateEmptyBlocksInterval) * time.Second
+}
+
+// Propose returns the amount of time to wait for a proposal
+func (c *ConsensusConfig) Propose(round int) time.Duration {
+	return time.Duration(c.TimeoutPropose+c.TimeoutProposeDelta*round) * time.Millisecond
+}
+
+// Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
+func (c *ConsensusConfig) Prevote(round int) time.Duration {
+	return time.Duration(c.TimeoutPrevote+c.TimeoutPrevoteDelta*round) * time.Millisecond
+}
+
+// Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
+func (c *ConsensusConfig) Precommit(round int) time.Duration {
+	return time.Duration(c.TimeoutPrecommit+c.TimeoutPrecommitDelta*round) * time.Millisecond
+}
+
+// Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
+func (c *ConsensusConfig) Commit(t time.Time) time.Time {
+	return t.Add(time.Duration(c.TimeoutCommit) * time.Millisecond)
+}
+
+// PeerGossipSleep returns the amount of time to sleep if there is nothing to send from the ConsensusReactor
+func (c *ConsensusConfig) PeerGossipSleep() time.Duration {
+	return time.Duration(c.PeerGossipSleepDuration) * time.Millisecond
+}
+
+// PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
+func (c *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
+	return time.Duration(c.PeerQueryMaj23SleepDuration) * time.Millisecond
 }
 
 // WalFile returns the full path to the write-ahead log file
