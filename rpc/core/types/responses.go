@@ -54,14 +54,19 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 	}
 }
 
+type ValidatorStatus struct {
+	VotingPower int64 `json:"voting_power"`
+}
+
 type ResultStatus struct {
-	NodeInfo          p2p.NodeInfo  `json:"node_info"`
-	PubKey            crypto.PubKey `json:"pub_key"`
-	LatestBlockHash   cmn.HexBytes  `json:"latest_block_hash"`
-	LatestAppHash     cmn.HexBytes  `json:"latest_app_hash"`
-	LatestBlockHeight int64         `json:"latest_block_height"`
-	LatestBlockTime   time.Time     `json:"latest_block_time"`
-	Syncing           bool          `json:"syncing"`
+	NodeInfo          p2p.NodeInfo    `json:"node_info"`
+	PubKey            crypto.PubKey   `json:"pub_key"`
+	LatestBlockHash   cmn.HexBytes    `json:"latest_block_hash"`
+	LatestAppHash     cmn.HexBytes    `json:"latest_app_hash"`
+	LatestBlockHeight int64           `json:"latest_block_height"`
+	LatestBlockTime   time.Time       `json:"latest_block_time"`
+	Syncing           bool            `json:"syncing"`
+	ValidatorStatus   ValidatorStatus `json:"validator_status,omitempty"`
 }
 
 func (s *ResultStatus) TxIndexEnabled() bool {
