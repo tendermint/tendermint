@@ -170,23 +170,23 @@ func TestBaseConfig() BaseConfig {
 }
 
 // GenesisFile returns the full path to the genesis.json file
-func (b BaseConfig) GenesisFile() string {
-	return rootify(b.Genesis, b.RootDir)
+func (c BaseConfig) GenesisFile() string {
+	return rootify(c.Genesis, c.RootDir)
 }
 
 // PrivValidatorFile returns the full path to the priv_validator.json file
-func (b BaseConfig) PrivValidatorFile() string {
-	return rootify(b.PrivValidator, b.RootDir)
+func (c BaseConfig) PrivValidatorFile() string {
+	return rootify(c.PrivValidator, c.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
-func (b BaseConfig) NodeKeyFile() string {
-	return rootify(b.NodeKey, b.RootDir)
+func (c BaseConfig) NodeKeyFile() string {
+	return rootify(c.NodeKey, c.RootDir)
 }
 
 // DBDir returns the full path to the database directory
-func (b BaseConfig) DBDir() string {
-	return rootify(b.DBPath, b.RootDir)
+func (c BaseConfig) DBDir() string {
+	return rootify(c.DBPath, c.RootDir)
 }
 
 // DefaultLogLevel returns a default log level of "error"
@@ -476,16 +476,16 @@ func TestConsensusConfig() *ConsensusConfig {
 }
 
 // WalFile returns the full path to the write-ahead log file
-func (c *ConsensusConfig) WalFile() string {
-	if c.walFile != "" {
-		return c.walFile
+func (cfg *ConsensusConfig) WalFile() string {
+	if cfg.walFile != "" {
+		return cfg.walFile
 	}
-	return rootify(c.WalPath, c.RootDir)
+	return rootify(cfg.WalPath, cfg.RootDir)
 }
 
 // SetWalFile sets the path to the write-ahead log file
-func (c *ConsensusConfig) SetWalFile(walFile string) {
-	c.walFile = walFile
+func (cfg *ConsensusConfig) SetWalFile(walFile string) {
+	cfg.walFile = walFile
 }
 
 //-----------------------------------------------------------------------------

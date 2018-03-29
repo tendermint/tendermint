@@ -110,11 +110,11 @@ func (info *LastSignedInfo) Reset() {
 // If the HRS are equal and the only thing changed is the timestamp, it sets the vote.Timestamp to the previous
 // value and the Signature to the LastSignedInfo.Signature.
 // Else it returns an error.
-func (lsi *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *types.Vote) error {
+func (info *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *types.Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 	signBytes := vote.SignBytes(chainID)
 
-	sameHRS, err := lsi.Verify(height, round, step)
+	sameHRS, err := info.Verify(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -125,11 +125,11 @@ func (lsi *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *t
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signBytes, lsi.SignBytes) {
-			vote.Signature = lsi.Signature
-		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(lsi.SignBytes, signBytes); ok {
+		if bytes.Equal(signBytes, info.SignBytes) {
+			vote.Signature = info.Signature
+		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(info.SignBytes, signBytes); ok {
 			vote.Timestamp = timestamp
-			vote.Signature = lsi.Signature
+			vote.Signature = info.Signature
 		} else {
 			err = fmt.Errorf("Conflicting data")
 		}
@@ -139,7 +139,7 @@ func (lsi *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *t
 	if err != nil {
 		return err
 	}
-	lsi.Set(height, round, step, signBytes, sig)
+	info.Set(height, round, step, signBytes, sig)
 	vote.Signature = sig
 	return nil
 }
@@ -149,11 +149,11 @@ func (lsi *LastSignedInfo) SignVote(signer types.Signer, chainID string, vote *t
 // If the HRS are equal and the only thing changed is the timestamp, it sets the timestamp to the previous
 // value and the Signature to the LastSignedInfo.Signature.
 // Else it returns an error.
-func (lsi *LastSignedInfo) SignProposal(signer types.Signer, chainID string, proposal *types.Proposal) error {
+func (info *LastSignedInfo) SignProposal(signer types.Signer, chainID string, proposal *types.Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 	signBytes := proposal.SignBytes(chainID)
 
-	sameHRS, err := lsi.Verify(height, round, step)
+	sameHRS, err := info.Verify(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -164,11 +164,11 @@ func (lsi *LastSignedInfo) SignProposal(signer types.Signer, chainID string, pro
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signBytes, lsi.SignBytes) {
-			proposal.Signature = lsi.Signature
-		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(lsi.SignBytes, signBytes); ok {
+		if bytes.Equal(signBytes, info.SignBytes) {
+			proposal.Signature = info.Signature
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(info.SignBytes, signBytes); ok {
 			proposal.Timestamp = timestamp
-			proposal.Signature = lsi.Signature
+			proposal.Signature = info.Signature
 		} else {
 			err = fmt.Errorf("Conflicting data")
 		}
@@ -178,7 +178,7 @@ func (lsi *LastSignedInfo) SignProposal(signer types.Signer, chainID string, pro
 	if err != nil {
 		return err
 	}
-	lsi.Set(height, round, step, signBytes, sig)
+	info.Set(height, round, step, signBytes, sig)
 	proposal.Signature = sig
 	return nil
 }
