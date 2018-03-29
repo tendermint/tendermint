@@ -89,7 +89,7 @@ func (valSet *ValidatorSet) HasAddress(address []byte) bool {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	return idx != len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address)
+	return idx < len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address)
 }
 
 // GetByAddress returns an index of the validator with address and validator
@@ -174,7 +174,7 @@ func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(val.Address, valSet.Validators[i].Address) <= 0
 	})
-	if idx == len(valSet.Validators) {
+	if idx >= len(valSet.Validators) {
 		valSet.Validators = append(valSet.Validators, val)
 		// Invalidate cache
 		valSet.Proposer = nil
@@ -215,7 +215,7 @@ func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	if idx == len(valSet.Validators) || !bytes.Equal(valSet.Validators[idx].Address, address) {
+	if idx >= len(valSet.Validators) || !bytes.Equal(valSet.Validators[idx].Address, address) {
 		return nil, false
 	}
 	removedVal := valSet.Validators[idx]
