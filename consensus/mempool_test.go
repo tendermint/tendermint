@@ -225,9 +225,8 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 	app.mempoolTxCount = app.txCount
 	if app.txCount == 0 {
 		return abci.ResponseCommit{}
-	} else {
-		hash := make([]byte, 8)
-		binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-		return abci.ResponseCommit{Data: hash}
 	}
+	hash := make([]byte, 8)
+	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
+	return abci.ResponseCommit{Data: hash}
 }

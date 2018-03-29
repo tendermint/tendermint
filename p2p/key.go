@@ -53,9 +53,8 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 			return nil, err
 		}
 		return nodeKey, nil
-	} else {
-		return genNodeKey(filePath)
 	}
+	return genNodeKey(filePath)
 }
 
 func loadNodeKey(filePath string) (*NodeKey, error) {

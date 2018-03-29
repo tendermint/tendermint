@@ -136,9 +136,8 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		_, err := sc.conn.Write(sealedFrame)
 		if err != nil {
 			return n, err
-		} else {
-			n += len(chunk)
 		}
+		n += len(chunk)
 	}
 	return
 }

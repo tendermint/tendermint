@@ -94,33 +94,29 @@ func (voteSet *VoteSet) ChainID() string {
 func (voteSet *VoteSet) Height() int64 {
 	if voteSet == nil {
 		return 0
-	} else {
-		return voteSet.height
 	}
+	return voteSet.height
 }
 
 func (voteSet *VoteSet) Round() int {
 	if voteSet == nil {
 		return -1
-	} else {
-		return voteSet.round
 	}
+	return voteSet.round
 }
 
 func (voteSet *VoteSet) Type() byte {
 	if voteSet == nil {
 		return 0x00
-	} else {
-		return voteSet.type_
 	}
+	return voteSet.type_
 }
 
 func (voteSet *VoteSet) Size() int {
 	if voteSet == nil {
 		return 0
-	} else {
-		return voteSet.valSet.Size()
 	}
+	return voteSet.valSet.Size()
 }
 
 // Returns added=true if vote is valid and new.
@@ -185,9 +181,8 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	if existing, ok := voteSet.getVote(valIndex, blockKey); ok {
 		if existing.Signature.Equals(vote.Signature) {
 			return false, nil // duplicate
-		} else {
-			return false, errors.Wrapf(ErrVoteNonDeterministicSignature, "Existing vote: %v; New vote: %v", existing, vote)
 		}
+		return false, errors.Wrapf(ErrVoteNonDeterministicSignature, "Existing vote: %v; New vote: %v", existing, vote)
 	}
 
 	// Check signature.
@@ -199,13 +194,11 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
 	if conflicting != nil {
 		return added, NewConflictingVoteError(val, conflicting, vote)
-	} else {
-		if !added {
-			cmn.PanicSanity("Expected to add non-conflicting vote")
-		}
-		return added, nil
 	}
-
+	if !added {
+		cmn.PanicSanity("Expected to add non-conflicting vote")
+	}
+	return added, nil
 }
 
 // Returns (vote, true) if vote exists for valIndex and blockKey
@@ -257,13 +250,12 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 			// ... and there's a conflicting vote.
 			// We're not even tracking this blockKey, so just forget it.
 			return false, conflicting
-		} else {
-			// ... and there's no conflicting vote.
-			// Start tracking this blockKey
-			votesByBlock = newBlockVotes(false, voteSet.valSet.Size())
-			voteSet.votesByBlock[blockKey] = votesByBlock
-			// We'll add the vote in a bit.
 		}
+		// ... and there's no conflicting vote.
+		// Start tracking this blockKey
+		votesByBlock = newBlockVotes(false, voteSet.valSet.Size())
+		voteSet.votesByBlock[blockKey] = votesByBlock
+		// We'll add the vote in a bit.
 	}
 
 	// Before adding to votesByBlock, see if we'll exceed quorum
@@ -309,10 +301,9 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 	if existing, ok := voteSet.peerMaj23s[peerID]; ok {
 		if existing.Equals(blockID) {
 			return nil // Nothing to do
-		} else {
-			return fmt.Errorf("SetPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
-				peerID, blockID, existing)
 		}
+		return fmt.Errorf("SetPeerMaj23: Received conflicting blockID from peer %v. Got %v, expected %v",
+			peerID, blockID, existing)
 	}
 	voteSet.peerMaj23s[peerID] = blockID
 
@@ -321,10 +312,9 @@ func (voteSet *VoteSet) SetPeerMaj23(peerID P2PID, blockID BlockID) error {
 	if ok {
 		if votesByBlock.peerMaj23 {
 			return nil // Nothing to do
-		} else {
-			votesByBlock.peerMaj23 = true
-			// No need to copy votes, already there.
 		}
+		votesByBlock.peerMaj23 = true
+		// No need to copy votes, already there.
 	} else {
 		votesByBlock = newBlockVotes(true, voteSet.valSet.Size())
 		voteSet.votesByBlock[blockKey] = votesByBlock
@@ -422,9 +412,8 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 	defer voteSet.mtx.Unlock()
 	if voteSet.maj23 != nil {
 		return *voteSet.maj23, true
-	} else {
-		return BlockID{}, false
 	}
+	return BlockID{}, false
 }
 
 func (voteSet *VoteSet) String() string {

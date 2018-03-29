@@ -141,9 +141,8 @@ func (b *Block) StringIndented(indent string) string {
 func (b *Block) StringShort() string {
 	if b == nil {
 		return "nil-Block"
-	} else {
-		return fmt.Sprintf("Block#%v", b.Hash())
 	}
+	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
 //-----------------------------------------------------------------------------

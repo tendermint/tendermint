@@ -602,11 +602,10 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstype
 			logger.Debug("Sending block part for catchup failed")
 		}
 		return
-	} else {
-		//logger.Info("No parts to send in catch-up, sleeping")
-		time.Sleep(conR.conS.config.PeerGossipSleep())
-		return
 	}
+	//logger.Info("No parts to send in catch-up, sleeping")
+	time.Sleep(conR.conS.config.PeerGossipSleep())
+	return
 }
 
 func (conR *ConsensusReactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {

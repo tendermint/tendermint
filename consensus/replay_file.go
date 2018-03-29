@@ -197,13 +197,12 @@ func (pb *playback) replayConsoleLoop() int {
 
 			if len(tokens) == 1 {
 				return 0
+			}
+			i, err := strconv.Atoi(tokens[1])
+			if err != nil {
+				fmt.Println("next takes an integer argument")
 			} else {
-				i, err := strconv.Atoi(tokens[1])
-				if err != nil {
-					fmt.Println("next takes an integer argument")
-				} else {
-					return i
-				}
+				return i
 			}
 
 		case "back":
