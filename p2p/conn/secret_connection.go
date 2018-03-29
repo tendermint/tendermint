@@ -113,7 +113,7 @@ func (sc *SecretConnection) RemotePubKey() crypto.PubKey {
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 	for 0 < len(data) {
-		var frame []byte = make([]byte, totalFrameSize)
+		var frame = make([]byte, totalFrameSize)
 		var chunk []byte
 		if dataMaxSize < len(data) {
 			chunk = data[:dataMaxSize]
