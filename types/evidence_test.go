@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 type voteData struct {
@@ -13,25 +12,25 @@ type voteData struct {
 	valid bool
 }
 
-func makeVote(val *PrivValidatorFS, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
+func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
 	v := &Vote{
-		ValidatorAddress: val.PubKey.Address(),
+		ValidatorAddress: val.GetAddress(),
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
 		Type:             byte(step),
 		BlockID:          blockID,
 	}
-	sig := val.PrivKey.Sign(v.SignBytes(chainID))
-	v.Signature = sig
+	err := val.SignVote(chainID, v)
+	if err != nil {
+		panic(err)
+	}
 	return v
-
 }
 
 func TestEvidence(t *testing.T) {
-	_, tmpFilePath := cmn.Tempfile("priv_validator_")
-	val := GenPrivValidatorFS(tmpFilePath)
-	val2 := GenPrivValidatorFS(tmpFilePath)
+	val := NewMockPV()
+	val2 := NewMockPV()
 	blockID := makeBlockID("blockhash", 1000, "partshash")
 	blockID2 := makeBlockID("blockhash2", 1000, "partshash")
 	blockID3 := makeBlockID("blockhash", 10000, "partshash")
@@ -41,7 +40,10 @@ func TestEvidence(t *testing.T) {
 
 	vote1 := makeVote(val, chainID, 0, 10, 2, 1, blockID)
 	badVote := makeVote(val, chainID, 0, 10, 2, 1, blockID)
-	badVote.Signature = val2.PrivKey.Sign(badVote.SignBytes(chainID))
+	err := val2.SignVote(chainID, badVote)
+	if err != nil {
+		panic(err)
+	}
 
 	cases := []voteData{
 		{vote1, makeVote(val, chainID, 0, 10, 2, 1, blockID2), true}, // different block ids
@@ -59,7 +61,7 @@ func TestEvidence(t *testing.T) {
 
 	for _, c := range cases {
 		ev := &DuplicateVoteEvidence{
-			PubKey: val.PubKey,
+			PubKey: val.GetPubKey(),
 			VoteA:  c.vote1,
 			VoteB:  c.vote2,
 		}

@@ -5,9 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/pkg/errors"
-
-	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -33,7 +31,7 @@ type GenesisDoc struct {
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
-	genDocBytes, err := json.Marshal(genDoc)
+	genDocBytes, err := cdc.MarshalJSON(genDoc)
 	if err != nil {
 		return err
 	}
@@ -55,7 +53,7 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 func (genDoc *GenesisDoc) ValidateAndComplete() error {
 
 	if genDoc.ChainID == "" {
-		return errors.Errorf("Genesis doc must include non-empty chain_id")
+		return cmn.NewError("Genesis doc must include non-empty chain_id")
 	}
 
 	if genDoc.ConsensusParams == nil {
@@ -67,12 +65,12 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	}
 
 	if len(genDoc.Validators) == 0 {
-		return errors.Errorf("The genesis file must have at least one validator")
+		return cmn.NewError("The genesis file must have at least one validator")
 	}
 
 	for _, v := range genDoc.Validators {
 		if v.Power == 0 {
-			return errors.Errorf("The genesis file cannot contain validators with no voting power: %v", v)
+			return cmn.NewError("The genesis file cannot contain validators with no voting power: %v", v)
 		}
 	}
 
@@ -89,7 +87,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 // GenesisDocFromJSON unmarshalls JSON data into a GenesisDoc.
 func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 	genDoc := GenesisDoc{}
-	err := json.Unmarshal(jsonBlob, &genDoc)
+	err := cdc.UnmarshalJSON(jsonBlob, &genDoc)
 	if err != nil {
 		return nil, err
 	}
@@ -105,11 +103,11 @@ func GenesisDocFromJSON(jsonBlob []byte) (*GenesisDoc, error) {
 func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	jsonBlob, err := ioutil.ReadFile(genDocFile)
 	if err != nil {
-		return nil, errors.Wrap(err, "Couldn't read GenesisDoc file")
+		return nil, cmn.ErrorWrap(err, "Couldn't read GenesisDoc file")
 	}
 	genDoc, err := GenesisDocFromJSON(jsonBlob)
 	if err != nil {
-		return nil, errors.Wrap(err, cmn.Fmt("Error reading GenesisDoc at %v", genDocFile))
+		return nil, cmn.ErrorWrap(err, cmn.Fmt("Error reading GenesisDoc at %v", genDocFile))
 	}
 	return genDoc, nil
 }

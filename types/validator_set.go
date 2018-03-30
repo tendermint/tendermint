@@ -7,7 +7,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -289,10 +288,10 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 	blockID BlockID, height int64, commit *Commit) error {
 
 	if newSet.Size() != len(commit.Precommits) {
-		return errors.Errorf("Invalid commit -- wrong set size: %v vs %v", newSet.Size(), len(commit.Precommits))
+		return cmn.NewError("Invalid commit -- wrong set size: %v vs %v", newSet.Size(), len(commit.Precommits))
 	}
 	if height != commit.Height() {
-		return errors.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
+		return cmn.NewError("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
 	}
 
 	oldVotingPower := int64(0)
@@ -307,13 +306,13 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 		}
 		if precommit.Height != height {
 			// return certerr.ErrHeightMismatch(height, precommit.Height)
-			return errors.Errorf("Blocks don't match - %d vs %d", round, precommit.Round)
+			return cmn.NewError("Blocks don't match - %d vs %d", round, precommit.Round)
 		}
 		if precommit.Round != round {
-			return errors.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+			return cmn.NewError("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
 		}
 		if precommit.Type != VoteTypePrecommit {
-			return errors.Errorf("Invalid commit -- not precommit @ index %v", idx)
+			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
 		}
 		if !blockID.Equals(precommit.BlockID) {
 			continue // Not an error, but doesn't count
@@ -329,7 +328,7 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 		// Validate signature old school
 		precommitSignBytes := precommit.SignBytes(chainID)
 		if !ov.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return errors.Errorf("Invalid commit -- invalid signature: %v", precommit)
+			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		oldVotingPower += ov.VotingPower
@@ -343,10 +342,10 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 	}
 
 	if oldVotingPower <= valSet.TotalVotingPower()*2/3 {
-		return errors.Errorf("Invalid commit -- insufficient old voting power: got %v, needed %v",
+		return cmn.NewError("Invalid commit -- insufficient old voting power: got %v, needed %v",
 			oldVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 	} else if newVotingPower <= newSet.TotalVotingPower()*2/3 {
-		return errors.Errorf("Invalid commit -- insufficient cur voting power: got %v, needed %v",
+		return cmn.NewError("Invalid commit -- insufficient cur voting power: got %v, needed %v",
 			newVotingPower, (newSet.TotalVotingPower()*2/3 + 1))
 	}
 	return nil
@@ -416,9 +415,9 @@ func (ac accumComparable) Less(o interface{}) bool {
 // RandValidatorSet returns a randomized validator set, useful for testing.
 // NOTE: PrivValidator are in order.
 // UNSTABLE
-func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []*PrivValidatorFS) {
+func RandValidatorSet(numValidators int, votingPower int64) (*ValidatorSet, []PrivValidator) {
 	vals := make([]*Validator, numValidators)
-	privValidators := make([]*PrivValidatorFS, numValidators)
+	privValidators := make([]PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
 		val, privValidator := RandValidator(false, votingPower)
 		vals[i] = val

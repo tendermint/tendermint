@@ -1,8 +1,7 @@
-package types
+package privval
 
 import (
-	"encoding/hex"
-	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"testing"
@@ -10,113 +9,89 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	crypto "github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-
+	"github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 func TestGenLoadValidator(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorJSON(tempFilePath)
+	privVal := GenFilePV(tempFilePath)
 
 	height := int64(100)
-	privVal.LastSignedInfo.Height = height
+	privVal.LastHeight = height
 	privVal.Save()
-	addr, err := privVal.Address()
-	require.Nil(err)
+	addr := privVal.GetAddress()
 
-	privVal = LoadPrivValidatorJSON(tempFilePath)
-	pAddr, err := privVal.Address()
-	require.Nil(err)
-
-	assert.Equal(addr, pAddr, "expected privval addr to be the same")
-	assert.Equal(height, privVal.LastSignedInfo.Height, "expected privval.LastHeight to have been saved")
+	privVal = LoadFilePV(tempFilePath)
+	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
+	assert.Equal(height, privVal.LastHeight, "expected privval.LastHeight to have been saved")
 }
 
 func TestLoadOrGenValidator(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
 	if err := os.Remove(tempFilePath); err != nil {
 		t.Error(err)
 	}
-	privVal := LoadOrGenPrivValidatorJSON(tempFilePath)
-	addr, err := privVal.Address()
-	require.Nil(err)
-
-	privVal = LoadOrGenPrivValidatorJSON(tempFilePath)
-	pAddr, err := privVal.Address()
-	require.Nil(err)
-
-	assert.Equal(addr, pAddr, "expected privval addr to be the same")
+	privVal := LoadOrGenFilePV(tempFilePath)
+	addr := privVal.GetAddress()
+	privVal = LoadOrGenFilePV(tempFilePath)
+	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
 }
 
 func TestUnmarshalValidator(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// create some fixed values
-	addrStr := "D028C9981F7A87F3093672BF0D5B0E2A1B3ED456"
-	pubStr := "3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
-	privStr := "27F82582AEFAE7AB151CFB01C48BB6C1A0DA78F9BDDA979A9F70A84D074EB07D3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
-	addrBytes, _ := hex.DecodeString(addrStr)
-	pubBytes, _ := hex.DecodeString(pubStr)
-	privBytes, _ := hex.DecodeString(privStr)
-
-	// prepend type byte
-	pubKey, err := crypto.PubKeyFromBytes(append([]byte{1}, pubBytes...))
-	require.Nil(err, "%+v", err)
-	privKey, err := crypto.PrivKeyFromBytes(append([]byte{1}, privBytes...))
-	require.Nil(err, "%+v", err)
+	privKey := crypto.GenPrivKeyEd25519()
+	pubKey := privKey.PubKey()
+	addr := pubKey.Address()
+	pubArray := [32]byte(pubKey.(crypto.PubKeyEd25519))
+	pubBytes := pubArray[:]
+	privArray := [64]byte(privKey)
+	privBytes := privArray[:]
+	pubB64 := base64.StdEncoding.EncodeToString(pubBytes)
+	privB64 := base64.StdEncoding.EncodeToString(privBytes)
 
 	serialized := fmt.Sprintf(`{
-	"id": {
-  	  "address": "%s",
-  	  "pub_key": {
-        "type": "ed25519",
-      	"data": "%s"
-	  }
-	},
-    "priv_key": {
-      "type": "ed25519",
-      "data": "%s"
-    },
-    "last_signed_info": {
-      "height": 0,
-      "round": 0,
-      "step": 0,
-      "signature": null
-	}
-}`, addrStr, pubStr, privStr)
+  "address": "%s",
+  "pub_key": {
+    "type": "AC26791624DE60",
+    "value": "%s"
+  },
+  "last_height": 0,
+  "last_round": 0,
+  "last_step": 0,
+  "priv_key": {
+    "type": "954568A3288910",
+    "value": "%s"
+  }
+}`, addr, pubB64, privB64)
 
-	val := PrivValidatorJSON{}
-	err = json.Unmarshal([]byte(serialized), &val)
+	val := FilePV{}
+	err := cdc.UnmarshalJSON([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
-	vAddr, err := val.Address()
-	require.Nil(err)
-
-	pKey, err := val.PubKey()
-	require.Nil(err)
-
-	assert.EqualValues(addrBytes, vAddr)
-	assert.EqualValues(pubKey, pKey)
+	assert.EqualValues(addr, val.GetAddress())
+	assert.EqualValues(pubKey, val.GetPubKey())
 	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
-	out, err := json.Marshal(val)
+	out, err := cdc.MarshalJSON(val)
 	require.Nil(err, "%+v", err)
 	assert.JSONEq(serialized, string(out))
 }
 
 func TestSignVote(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
+	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorJSON(tempFilePath)
+	privVal := GenFilePV(tempFilePath)
 
 	block1 := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
 	block2 := types.BlockID{[]byte{3, 2, 1}, types.PartSetHeader{}}
@@ -124,11 +99,8 @@ func TestSignVote(t *testing.T) {
 	voteType := types.VoteTypePrevote
 
 	// sign a vote for first time
-	addr, err := privVal.Address()
-	require.Nil(err)
-
-	vote := newVote(addr, 0, height, round, voteType, block1)
-	err = privVal.SignVote("mychainid", vote)
+	vote := newVote(privVal.Address, 0, height, round, voteType, block1)
+	err := privVal.SignVote("mychainid", vote)
 	assert.NoError(err, "expected no error signing vote")
 
 	// try to sign the same vote again; should be fine
@@ -137,10 +109,10 @@ func TestSignVote(t *testing.T) {
 
 	// now try some bad votes
 	cases := []*types.Vote{
-		newVote(addr, 0, height, round-1, voteType, block1),   // round regression
-		newVote(addr, 0, height-1, round, voteType, block1),   // height regression
-		newVote(addr, 0, height-2, round+4, voteType, block1), // height regression and different round
-		newVote(addr, 0, height, round, voteType, block2),     // different block
+		newVote(privVal.Address, 0, height, round-1, voteType, block1),   // round regression
+		newVote(privVal.Address, 0, height-1, round, voteType, block1),   // height regression
+		newVote(privVal.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
+		newVote(privVal.Address, 0, height, round, voteType, block2),     // different block
 	}
 
 	for _, c := range cases {
@@ -160,7 +132,7 @@ func TestSignProposal(t *testing.T) {
 	assert := assert.New(t)
 
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorJSON(tempFilePath)
+	privVal := GenFilePV(tempFilePath)
 
 	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
 	block2 := types.PartSetHeader{10, []byte{3, 2, 1}}
@@ -197,10 +169,8 @@ func TestSignProposal(t *testing.T) {
 }
 
 func TestDifferByTimestamp(t *testing.T) {
-	require := require.New(t)
-
 	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorJSON(tempFilePath)
+	privVal := GenFilePV(tempFilePath)
 
 	block1 := types.PartSetHeader{5, []byte{1, 2, 3}}
 	height, round := int64(10), 1
@@ -217,7 +187,8 @@ func TestDifferByTimestamp(t *testing.T) {
 
 		// manipulate the timestamp. should get changed back
 		proposal.Timestamp = proposal.Timestamp.Add(time.Millisecond)
-		proposal.Signature = crypto.Signature{}
+		var emptySig crypto.Signature
+		proposal.Signature = emptySig
 		err = privVal.SignProposal("mychainid", proposal)
 		assert.NoError(t, err, "expected no error on signing same proposal")
 
@@ -228,13 +199,10 @@ func TestDifferByTimestamp(t *testing.T) {
 
 	// test vote
 	{
-		addr, err := privVal.Address()
-		require.Nil(err)
-
 		voteType := types.VoteTypePrevote
 		blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
-		vote := newVote(addr, 0, height, round, voteType, blockID)
-		err = privVal.SignVote("mychainid", vote)
+		vote := newVote(privVal.Address, 0, height, round, voteType, blockID)
+		err := privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
 
 		signBytes := vote.SignBytes(chainID)
@@ -243,7 +211,8 @@ func TestDifferByTimestamp(t *testing.T) {
 
 		// manipulate the timestamp. should get changed back
 		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
-		vote.Signature = crypto.Signature{}
+		var emptySig crypto.Signature
+		vote.Signature = emptySig
 		err = privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error on signing same vote")
 
@@ -253,7 +222,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	}
 }
 
-func newVote(addr cmn.HexBytes, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
+func newVote(addr types.Address, idx int, height int64, round int, typ byte, blockID types.BlockID) *types.Vote {
 	return &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   idx,

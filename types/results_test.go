@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestABCIResults(t *testing.T) {
@@ -14,13 +15,15 @@ func TestABCIResults(t *testing.T) {
 	e := ABCIResult{Code: 14, Data: []byte("foo")}
 	f := ABCIResult{Code: 14, Data: []byte("bar")}
 
-	// nil and []byte{} should produce same hash
-	assert.Equal(t, a.Hash(), b.Hash())
+	// Nil and []byte{} should not produce the same hash.
+	require.Equal(t, a.Hash(), a.Hash())
+	require.Equal(t, b.Hash(), b.Hash())
+	require.NotEqual(t, a.Hash(), b.Hash())
 
-	// a and b should be the same, don't go in results
+	// a and b should be the same, don't go in results.
 	results := ABCIResults{a, c, d, e, f}
 
-	// make sure each result hashes properly
+	// Make sure each result hashes properly.
 	var last []byte
 	for i, res := range results {
 		h := res.Hash()
@@ -28,8 +31,7 @@ func TestABCIResults(t *testing.T) {
 		last = h
 	}
 
-	// make sure that we can get a root hash from results
-	// and verify proofs
+	// Make sure that we can get a root hash from results and verify proofs.
 	root := results.Hash()
 	assert.NotEmpty(t, root)
 

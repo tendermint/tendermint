@@ -18,7 +18,7 @@ type Tx []byte
 
 // Hash computes the RIPEMD160 hash of the wire encoded transaction.
 func (tx Tx) Hash() []byte {
-	return wireHasher(tx).Hash()
+	return aminoHasher(tx).Hash()
 }
 
 // String returns the hex-encoded transaction as a string.
@@ -66,9 +66,7 @@ func (txs Txs) IndexByHash(hash []byte) int {
 }
 
 // Proof returns a simple merkle proof for this node.
-//
 // Panics if i < 0 or i >= len(txs)
-//
 // TODO: optimize this!
 func (txs Txs) Proof(i int) TxProof {
 	l := len(txs)
@@ -95,7 +93,7 @@ type TxProof struct {
 	Proof        merkle.SimpleProof
 }
 
-// LeadHash returns the hash of the transaction this proof refers to.
+// LeadHash returns the hash of the this proof refers to.
 func (tp TxProof) LeafHash() []byte {
 	return tp.Data.Hash()
 }
@@ -106,7 +104,12 @@ func (tp TxProof) Validate(dataHash []byte) error {
 	if !bytes.Equal(dataHash, tp.RootHash) {
 		return errors.New("Proof matches different data hash")
 	}
-
+	if tp.Index < 0 {
+		return errors.New("Proof index cannot be negative")
+	}
+	if tp.Total <= 0 {
+		return errors.New("Proof total must be positive")
+	}
 	valid := tp.Proof.Verify(tp.Index, tp.Total, tp.LeafHash(), tp.RootHash)
 	if !valid {
 		return errors.New("Proof is not internally consistent")
