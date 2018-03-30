@@ -165,28 +165,28 @@ func TestBaseConfig() BaseConfig {
 	return cfg
 }
 
-func (b BaseConfig) ChainID() string {
-	return b.chainID
+func (cfg BaseConfig) ChainID() string {
+	return cfg.chainID
 }
 
 // GenesisFile returns the full path to the genesis.json file
-func (c BaseConfig) GenesisFile() string {
-	return rootify(c.Genesis, c.RootDir)
+func (cfg BaseConfig) GenesisFile() string {
+	return rootify(cfg.Genesis, cfg.RootDir)
 }
 
 // PrivValidatorFile returns the full path to the priv_validator.json file
-func (c BaseConfig) PrivValidatorFile() string {
-	return rootify(c.PrivValidator, c.RootDir)
+func (cfg BaseConfig) PrivValidatorFile() string {
+	return rootify(cfg.PrivValidator, cfg.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
-func (c BaseConfig) NodeKeyFile() string {
-	return rootify(c.NodeKey, c.RootDir)
+func (cfg BaseConfig) NodeKeyFile() string {
+	return rootify(cfg.NodeKey, cfg.RootDir)
 }
 
 // DBDir returns the full path to the database directory
-func (c BaseConfig) DBDir() string {
-	return rootify(c.DBPath, c.RootDir)
+func (cfg BaseConfig) DBDir() string {
+	return rootify(cfg.DBPath, cfg.RootDir)
 }
 
 // DefaultLogLevel returns a default log level of "error"
@@ -321,8 +321,8 @@ func TestP2PConfig() *P2PConfig {
 }
 
 // AddrBookFile returns the full path to the address book
-func (p *P2PConfig) AddrBookFile() string {
-	return rootify(p.AddrBook, p.RootDir)
+func (cfg *P2PConfig) AddrBookFile() string {
+	return rootify(cfg.AddrBook, cfg.RootDir)
 }
 
 //-----------------------------------------------------------------------------
@@ -357,8 +357,8 @@ func TestMempoolConfig() *MempoolConfig {
 }
 
 // WalDir returns the full path to the mempool's write-ahead log
-func (m *MempoolConfig) WalDir() string {
-	return rootify(m.WalPath, m.RootDir)
+func (cfg *MempoolConfig) WalDir() string {
+	return rootify(cfg.WalPath, cfg.RootDir)
 }
 
 //-----------------------------------------------------------------------------
@@ -436,43 +436,43 @@ func TestConsensusConfig() *ConsensusConfig {
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
-func (c *ConsensusConfig) WaitForTxs() bool {
-	return !c.CreateEmptyBlocks || c.CreateEmptyBlocksInterval > 0
+func (cfg *ConsensusConfig) WaitForTxs() bool {
+	return !cfg.CreateEmptyBlocks || cfg.CreateEmptyBlocksInterval > 0
 }
 
 // EmptyBlocks returns the amount of time to wait before proposing an empty block or starting the propose timer if there are no txs available
-func (c *ConsensusConfig) EmptyBlocksInterval() time.Duration {
-	return time.Duration(c.CreateEmptyBlocksInterval) * time.Second
+func (cfg *ConsensusConfig) EmptyBlocksInterval() time.Duration {
+	return time.Duration(cfg.CreateEmptyBlocksInterval) * time.Second
 }
 
 // Propose returns the amount of time to wait for a proposal
-func (c *ConsensusConfig) Propose(round int) time.Duration {
-	return time.Duration(c.TimeoutPropose+c.TimeoutProposeDelta*round) * time.Millisecond
+func (cfg *ConsensusConfig) Propose(round int) time.Duration {
+	return time.Duration(cfg.TimeoutPropose+cfg.TimeoutProposeDelta*round) * time.Millisecond
 }
 
 // Prevote returns the amount of time to wait for straggler votes after receiving any +2/3 prevotes
-func (c *ConsensusConfig) Prevote(round int) time.Duration {
-	return time.Duration(c.TimeoutPrevote+c.TimeoutPrevoteDelta*round) * time.Millisecond
+func (cfg *ConsensusConfig) Prevote(round int) time.Duration {
+	return time.Duration(cfg.TimeoutPrevote+cfg.TimeoutPrevoteDelta*round) * time.Millisecond
 }
 
 // Precommit returns the amount of time to wait for straggler votes after receiving any +2/3 precommits
-func (c *ConsensusConfig) Precommit(round int) time.Duration {
-	return time.Duration(c.TimeoutPrecommit+c.TimeoutPrecommitDelta*round) * time.Millisecond
+func (cfg *ConsensusConfig) Precommit(round int) time.Duration {
+	return time.Duration(cfg.TimeoutPrecommit+cfg.TimeoutPrecommitDelta*round) * time.Millisecond
 }
 
 // Commit returns the amount of time to wait for straggler votes after receiving +2/3 precommits for a single block (ie. a commit).
-func (c *ConsensusConfig) Commit(t time.Time) time.Time {
-	return t.Add(time.Duration(c.TimeoutCommit) * time.Millisecond)
+func (cfg *ConsensusConfig) Commit(t time.Time) time.Time {
+	return t.Add(time.Duration(cfg.TimeoutCommit) * time.Millisecond)
 }
 
 // PeerGossipSleep returns the amount of time to sleep if there is nothing to send from the ConsensusReactor
-func (c *ConsensusConfig) PeerGossipSleep() time.Duration {
-	return time.Duration(c.PeerGossipSleepDuration) * time.Millisecond
+func (cfg *ConsensusConfig) PeerGossipSleep() time.Duration {
+	return time.Duration(cfg.PeerGossipSleepDuration) * time.Millisecond
 }
 
 // PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
-func (c *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
-	return time.Duration(c.PeerQueryMaj23SleepDuration) * time.Millisecond
+func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
+	return time.Duration(cfg.PeerQueryMaj23SleepDuration) * time.Millisecond
 }
 
 // WalFile returns the full path to the write-ahead log file
