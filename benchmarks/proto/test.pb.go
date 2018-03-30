@@ -416,16 +416,16 @@ func (m *ResultStatus) MarshalTo(data []byte) (int, error) {
 	}
 	if m.PubKey == nil {
 		return 0, github_com_gogo_protobuf_proto.NewRequiredNotSetError("pubKey")
+	} else {
+		data[i] = 0x12
+		i++
+		i = encodeVarintTest(data, i, uint64(m.PubKey.Size()))
+		n2, err := m.PubKey.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n2
 	}
-	data[i] = 0x12
-	i++
-	i = encodeVarintTest(data, i, uint64(m.PubKey.Size()))
-	n2, err := m.PubKey.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n2
-
 	if m.LatestBlockHash != nil {
 		data[i] = 0x1a
 		i++
@@ -458,15 +458,16 @@ func (m *NodeInfo) MarshalTo(data []byte) (int, error) {
 	_ = l
 	if m.PubKey == nil {
 		return 0, github_com_gogo_protobuf_proto.NewRequiredNotSetError("pubKey")
+	} else {
+		data[i] = 0xa
+		i++
+		i = encodeVarintTest(data, i, uint64(m.PubKey.Size()))
+		n3, err := m.PubKey.MarshalTo(data[i:])
+		if err != nil {
+			return 0, err
+		}
+		i += n3
 	}
-	data[i] = 0xa
-	i++
-	i = encodeVarintTest(data, i, uint64(m.PubKey.Size()))
-	n3, err := m.PubKey.MarshalTo(data[i:])
-	if err != nil {
-		return 0, err
-	}
-	i += n3
 	data[i] = 0x12
 	i++
 	i = encodeVarintTest(data, i, uint64(len(m.Moniker)))
