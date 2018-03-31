@@ -1,21 +1,19 @@
-FROM alpine:3.7
+FROM ubuntu:16.04
 MAINTAINER Greg Szabo <greg@tendermint.com>
 
-#Default home for tendermint
+#Default home for tendermint. The node command will look for $TMHOME/config/genesis.json at initialization.
 ENV TMHOME /tendermint
-RUN apk --no-cache update && \
-    apk --no-cache upgrade && \
-    apk add --no-cache bash curl jq openssl && \
-    mkdir -p $TMHOME && \
-    addgroup tmuser && \
-    adduser -S -G tmuser tmuser && \
-    chown -R tmuser:tmuser $TMHOME
+RUN apt-get -y update && \
+    apt-get -y upgrade && \
+    apt-get -y install curl jq && \
+    adduser --system --home "$TMHOME" --group tmuser
 
+USER tmuser
 VOLUME [ $TMHOME ]
+WORKDIR $TMHOME
 EXPOSE 46656 46657
 ENTRYPOINT ["/usr/bin/tendermint"]
 CMD ["node", "--moniker=`hostname`"]
-WORKDIR $TMHOME
 STOPSIGNAL SIGTERM
 
 ARG BINARY=tendermint
