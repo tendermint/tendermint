@@ -14,13 +14,13 @@ check: check_tools ensure_deps
 ### Build
 
 build:
-	go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
+	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
 
 install:
-	go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
 ########################################
 ### Distribution
