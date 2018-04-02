@@ -25,7 +25,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger)
 	}
 	proto, addr = parts[0], parts[1]
 
-	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s socket %v", proto, addr))
+	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listenAddr))
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
 		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
@@ -49,7 +49,7 @@ func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, ke
 	}
 	proto, addr = parts[0], parts[1]
 
-	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s socket %v", proto, addr))
+	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)", listenAddr, certFile, keyFile))
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
 		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
