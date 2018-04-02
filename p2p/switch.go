@@ -56,6 +56,7 @@ type Switch struct {
 	reactorsByCh map[byte]Reactor
 	peers        *PeerSet
 	dialing      *cmn.CMap
+	reconnecting *cmn.CMap
 	nodeInfo     NodeInfo // our node info
 	nodeKey      *NodeKey // our node privkey
 	addrBook     AddrBook
@@ -75,6 +76,7 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		reactorsByCh: make(map[byte]Reactor),
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
+		reconnecting: cmn.NewCMap(),
 	}
 
 	// Ensure we have a completely undeterministic PRNG. cmd.RandInt64() draws
@@ -255,7 +257,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
-		go sw.reconnectToPeer(peer)
+		go sw.reconnectToPeer(peer.NodeInfo().NetAddress())
 	}
 }
 
@@ -274,24 +276,28 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	}
 }
 
-// reconnectToPeer tries to reconnect to the peer, first repeatedly
+// reconnectToPeer tries to reconnect to the addr, first repeatedly
 // with a fixed interval, then with exponential backoff.
 // If no success after all that, it stops trying, and leaves it
-// to the PEX/Addrbook to find the peer again
-func (sw *Switch) reconnectToPeer(peer Peer) {
-	// NOTE this will connect to the self reported address,
-	// not necessarily the original we dialed
-	netAddr := peer.NodeInfo().NetAddress()
+// to the PEX/Addrbook to find the peer with the addr again
+func (sw *Switch) reconnectToPeer(addr *NetAddress) {
+	if sw.reconnecting.Has(string(addr.ID)) {
+		return
+	}
+
+	sw.reconnecting.Set(string(addr.ID), addr)
+	defer sw.reconnecting.Delete(string(addr.ID))
+
 	start := time.Now()
-	sw.Logger.Info("Reconnecting to peer", "peer", peer)
+	sw.Logger.Info("Reconnecting to peer", "addr", addr)
 	for i := 0; i < reconnectAttempts; i++ {
 		if !sw.IsRunning() {
 			return
 		}
 
-		err := sw.DialPeerWithAddress(netAddr, true)
+		err := sw.DialPeerWithAddress(addr, true)
 		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
+			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
 			// sleep a set amount
 			sw.randomSleep(reconnectInterval)
 			continue
@@ -301,7 +307,7 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 	}
 
 	sw.Logger.Error("Failed to reconnect to peer. Beginning exponential backoff",
-		"peer", peer, "elapsed", time.Since(start))
+		"addr", addr, "elapsed", time.Since(start))
 	for i := 0; i < reconnectBackOffAttempts; i++ {
 		if !sw.IsRunning() {
 			return
@@ -310,13 +316,13 @@ func (sw *Switch) reconnectToPeer(peer Peer) {
 		// sleep an exponentially increasing amount
 		sleepIntervalSeconds := math.Pow(reconnectBackOffBaseSeconds, float64(i))
 		sw.randomSleep(time.Duration(sleepIntervalSeconds) * time.Second)
-		err := sw.DialPeerWithAddress(netAddr, true)
+		err := sw.DialPeerWithAddress(addr, true)
 		if err == nil {
 			return // success
 		}
-		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "peer", peer)
+		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
 	}
-	sw.Logger.Error("Failed to reconnect to peer. Giving up", "peer", peer, "elapsed", time.Since(start))
+	sw.Logger.Error("Failed to reconnect to peer. Giving up", "addr", addr, "elapsed", time.Since(start))
 }
 
 // SetAddrBook allows to set address book on Switch.
@@ -470,6 +476,7 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 	peerConn, err := newOutboundPeerConn(addr, config, persistent, sw.nodeKey.PrivKey)
 	if err != nil {
 		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
+		go sw.reconnectToPeer(addr)
 		return err
 	}
 

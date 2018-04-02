@@ -7,6 +7,7 @@ BREAKING CHANGES:
 - Remove or unexport methods from FuzzedConnection: Active, Mode, ProbDropRW, ProbDropConn, ProbSleep, MaxDelayMilliseconds, Fuzz
 - switch.AddPeerWithConnection is unexported and replaced by switch.AddPeer
 - switch.DialPeerWithAddress takes a bool, setting the peer as persistent or not
+- PeerConfig requires a Dial function
 
 FEATURES:
 

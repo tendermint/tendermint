@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -22,6 +23,11 @@ import (
 var (
 	config *cfg.P2PConfig
 )
+
+// badDial returns an error for testing dial errors
+func badDial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
+	return nil, errors.New("dial err")
+}
 
 func init() {
 	config = cfg.DefaultP2PConfig()
@@ -295,6 +301,29 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	}
 	assert.NotZero(npeers)
 	assert.False(peer.IsRunning())
+
+	// simulate another remote peer
+	rp = &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp.Start()
+	defer rp.Stop()
+
+	// simulate first time dial failure
+	peerConfig := DefaultPeerConfig()
+	peerConfig.Dial = badDial
+	err = sw.addOutboundPeerWithConfig(rp.Addr(), peerConfig, true)
+	require.NotNil(err)
+
+	// DialPeerWithAddres - sw.peerConfig resets the dialer
+
+	// TODO: same as above
+	for i := 0; i < 20; i++ {
+		time.Sleep(250 * time.Millisecond)
+		npeers = sw.Peers().Size()
+		if npeers > 1 {
+			break
+		}
+	}
+	assert.EqualValues(2, npeers)
 }
 
 func TestSwitchFullConnectivity(t *testing.T) {

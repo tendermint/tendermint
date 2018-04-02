@@ -24,6 +24,7 @@ IMPROVEMENTS:
 BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
+- Fix reconnect to persistent peer when first dial fails
 
 ## 0.17.1 (March 27th, 2018)
 

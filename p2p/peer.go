@@ -87,6 +87,8 @@ func newPeer(pc peerConn, nodeInfo NodeInfo,
 type PeerConfig struct {
 	AuthEnc bool `mapstructure:"auth_enc"` // authenticated encryption
 
+	Dial func(addr *NetAddress, config *PeerConfig) (net.Conn, error)
+
 	// times are in seconds
 	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
@@ -101,6 +103,7 @@ type PeerConfig struct {
 func DefaultPeerConfig() *PeerConfig {
 	return &PeerConfig{
 		AuthEnc:          true,
+		Dial:             dial,
 		HandshakeTimeout: 20, // * time.Second,
 		DialTimeout:      3,  // * time.Second,
 		MConfig:          tmconn.DefaultMConnConfig(),
@@ -112,7 +115,7 @@ func DefaultPeerConfig() *PeerConfig {
 func newOutboundPeerConn(addr *NetAddress, config *PeerConfig, persistent bool, ourNodePrivKey crypto.PrivKey) (peerConn, error) {
 	var pc peerConn
 
-	conn, err := dial(addr, config)
+	conn, err := config.Dial(addr, config)
 	if err != nil {
 		return pc, errors.Wrap(err, "Error creating peer")
 	}
