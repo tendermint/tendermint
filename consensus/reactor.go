@@ -602,11 +602,9 @@ func (conR *ConsensusReactor) gossipDataForCatchup(logger log.Logger, rs *cstype
 			logger.Debug("Sending block part for catchup failed")
 		}
 		return
-	} else {
-		//logger.Info("No parts to send in catch-up, sleeping")
-		time.Sleep(conR.conS.config.PeerGossipSleep())
-		return
 	}
+	//logger.Info("No parts to send in catch-up, sleeping")
+	time.Sleep(conR.conS.config.PeerGossipSleep())
 }
 
 func (conR *ConsensusReactor) gossipVotesRoutine(peer p2p.Peer, ps *PeerState) {
@@ -1087,7 +1085,7 @@ func (ps *PeerState) RecordVote(vote *types.Vote) int {
 		return ps.stats.votes
 	}
 	ps.stats.lastVoteHeight = vote.Height
-	ps.stats.votes += 1
+	ps.stats.votes++
 	return ps.stats.votes
 }
 
@@ -1106,7 +1104,7 @@ func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
 	}
 
 	ps.stats.lastBlockPartHeight = bp.Height
-	ps.stats.blockParts += 1
+	ps.stats.blockParts++
 	return ps.stats.blockParts
 }
 

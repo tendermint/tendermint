@@ -294,7 +294,7 @@ func (na *NetAddress) RFC6145() bool { return rfc6145.Contains(na.IP) }
 func removeProtocolIfDefined(addr string) string {
 	if strings.Contains(addr, "://") {
 		return strings.Split(addr, "://")[1]
-	} else {
-		return addr
 	}
+	return addr
+
 }

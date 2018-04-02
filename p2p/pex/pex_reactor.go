@@ -467,9 +467,8 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 	lAttempts, attempted := r.attemptsToDial.Load(addr.DialString())
 	if attempted {
 		return lAttempts.(_attemptsToDial).number
-	} else {
-		return 0
 	}
+	return 0
 }
 
 //----------------------------------------------------------

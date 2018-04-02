@@ -96,9 +96,8 @@ func (valSet *ValidatorSet) GetByAddress(address []byte) (index int, val *Valida
 	})
 	if idx != len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address) {
 		return idx, valSet.Validators[idx].Copy()
-	} else {
-		return 0, nil
 	}
+	return 0, nil
 }
 
 // GetByIndex returns the validator by index.
@@ -187,13 +186,12 @@ func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
 	index, sameVal := valSet.GetByAddress(val.Address)
 	if sameVal == nil {
 		return false
-	} else {
-		valSet.Validators[index] = val.Copy()
-		// Invalidate cache
-		valSet.Proposer = nil
-		valSet.totalVotingPower = 0
-		return true
 	}
+	valSet.Validators[index] = val.Copy()
+	// Invalidate cache
+	valSet.Proposer = nil
+	valSet.totalVotingPower = 0
+	return true
 }
 
 func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool) {
@@ -202,18 +200,17 @@ func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool
 	})
 	if idx == len(valSet.Validators) || !bytes.Equal(valSet.Validators[idx].Address, address) {
 		return nil, false
-	} else {
-		removedVal := valSet.Validators[idx]
-		newValidators := valSet.Validators[:idx]
-		if idx+1 < len(valSet.Validators) {
-			newValidators = append(newValidators, valSet.Validators[idx+1:]...)
-		}
-		valSet.Validators = newValidators
-		// Invalidate cache
-		valSet.Proposer = nil
-		valSet.totalVotingPower = 0
-		return removedVal, true
 	}
+	removedVal := valSet.Validators[idx]
+	newValidators := valSet.Validators[:idx]
+	if idx+1 < len(valSet.Validators) {
+		newValidators = append(newValidators, valSet.Validators[idx+1:]...)
+	}
+	valSet.Validators = newValidators
+	// Invalidate cache
+	valSet.Proposer = nil
+	valSet.totalVotingPower = 0
+	return removedVal, true
 }
 
 func (valSet *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
@@ -266,10 +263,9 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 
 	if talliedVotingPower > valSet.TotalVotingPower()*2/3 {
 		return nil
-	} else {
-		return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
-			talliedVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 	}
+	return fmt.Errorf("Invalid commit -- insufficient voting power: got %v, needed %v",
+		talliedVotingPower, (valSet.TotalVotingPower()*2/3 + 1))
 }
 
 // VerifyCommitAny will check to see if the set would
@@ -472,9 +468,8 @@ func safeMulClip(a, b int64) int64 {
 	if overflow {
 		if (a < 0 || b < 0) && !(a < 0 && b < 0) {
 			return math.MinInt64
-		} else {
-			return math.MaxInt64
 		}
+		return math.MaxInt64
 	}
 	return c
 }
@@ -484,9 +479,8 @@ func safeAddClip(a, b int64) int64 {
 	if overflow {
 		if b < 0 {
 			return math.MinInt64
-		} else {
-			return math.MaxInt64
 		}
+		return math.MaxInt64
 	}
 	return c
 }
@@ -496,9 +490,8 @@ func safeSubClip(a, b int64) int64 {
 	if overflow {
 		if b > 0 {
 			return math.MinInt64
-		} else {
-			return math.MaxInt64
 		}
+		return math.MaxInt64
 	}
 	return c
 }

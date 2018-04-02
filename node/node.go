@@ -643,14 +643,13 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	bytes := db.Get(genesisDocKey)
 	if len(bytes) == 0 {
 		return nil, errors.New("Genesis doc not found")
-	} else {
-		var genDoc *types.GenesisDoc
-		err := json.Unmarshal(bytes, &genDoc)
-		if err != nil {
-			cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
-		}
-		return genDoc, nil
 	}
+	var genDoc *types.GenesisDoc
+	err := json.Unmarshal(bytes, &genDoc)
+	if err != nil {
+		cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+	}
+	return genDoc, nil
 }
 
 // panics if failed to marshal the given genesis document

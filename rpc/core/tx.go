@@ -73,7 +73,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("Transaction indexing is disabled.")
+		return nil, fmt.Errorf("Transaction indexing is disabled")
 	}
 
 	r, err := txIndexer.Get(hash)
@@ -169,7 +169,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("Transaction indexing is disabled.")
+		return nil, fmt.Errorf("Transaction indexing is disabled")
 	}
 
 	q, err := tmquery.New(query)

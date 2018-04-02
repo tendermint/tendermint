@@ -494,7 +494,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 func (cs *ConsensusState) newStep() {
 	rs := cs.RoundStateEvent()
 	cs.wal.Save(rs)
-	cs.nSteps += 1
+	cs.nSteps++
 	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
 	if cs.eventBus != nil {
 		cs.eventBus.PublishEventNewRoundStep(rs)
@@ -741,7 +741,7 @@ func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 		}
 		cs.privValidator.SignHeartbeat(chainID, heartbeat)
 		cs.eventBus.PublishEventProposalHeartbeat(types.EventDataProposalHeartbeat{heartbeat})
-		counter += 1
+		counter++
 		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 	}
 }
@@ -852,10 +852,10 @@ func (cs *ConsensusState) isProposalComplete() bool {
 	// make sure we have the prevotes from it too
 	if cs.Proposal.POLRound < 0 {
 		return true
-	} else {
-		// if this is false the proposer is lying or we haven't received the POL yet
-		return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
 	}
+	// if this is false the proposer is lying or we haven't received the POL yet
+	return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
+
 }
 
 // Create the next block to propose and return it.
@@ -1498,12 +1498,11 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
 		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
 		return vote
-	} else {
-		//if !cs.replayMode {
-		cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
-		//}
-		return nil
 	}
+	//if !cs.replayMode {
+	cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
+	//}
+	return nil
 }
 
 //---------------------------------------------------------

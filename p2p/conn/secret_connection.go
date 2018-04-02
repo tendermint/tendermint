@@ -113,7 +113,7 @@ func (sc *SecretConnection) RemotePubKey() crypto.PubKey {
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 	for 0 < len(data) {
-		var frame []byte = make([]byte, totalFrameSize)
+		var frame = make([]byte, totalFrameSize)
 		var chunk []byte
 		if dataMaxSize < len(data) {
 			chunk = data[:dataMaxSize]
@@ -136,9 +136,8 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		_, err := sc.conn.Write(sealedFrame)
 		if err != nil {
 			return n, err
-		} else {
-			n += len(chunk)
 		}
+		n += len(chunk)
 	}
 	return
 }
@@ -347,7 +346,7 @@ func incr2Nonce(nonce *[24]byte) {
 // increment nonce big-endian by 1 with wraparound.
 func incrNonce(nonce *[24]byte) {
 	for i := 23; 0 <= i; i-- {
-		nonce[i] += 1
+		nonce[i]++
 		if nonce[i] != 0 {
 			return
 		}
