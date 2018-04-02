@@ -48,7 +48,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger)
 	return listener, nil
 }
 
-func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, cert_path string, key_path string, logger log.Logger) (listener net.Listener, err error) {
+func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, keyFile string, logger log.Logger) (listener net.Listener, err error) {
 	// listenAddr should be fully formed including tcp:// or unix:// prefix
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
@@ -73,8 +73,8 @@ func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, cert_path st
 		res := http.ServeTLS(
 			listener,
 			RecoverAndLogHandler(handler, logger),
-			cert_path,
-			key_path,
+			certFile,
+			keyFile,
 		)
 		logger.Error("RPC HTTPS server stopped", "result", res)
 	}()
