@@ -1,12 +1,6 @@
 # Changelog
 
-## 0.8.1 (TBD)
-
-BUG FIXES:
-
- - [pubsub] fix unsubscribing
-
-## 0.8.0 (March 22, 2018)
+## 0.8.0 (TBD)
 
 BREAKING:
 
@@ -15,12 +9,20 @@ BREAKING:
  - [common] Refactored and fixed `Parallel` function
  - [common] Refactored `Rand` functionality
  - [common] Remove unused `Right/LeftPadString` functions
+ - [common] Remove StackError, introduce Error interface (to replace use of pkg/errors)
 
 FEATURES:
 
  - [db] NewPrefixDB for a DB with all keys prefixed
  - [db] NewDebugDB prints everything during operation
- - [common] Error interface (so we don't use pkg/errors)
+ - [common] SplitAndTrim func
+
+BUG FIXES:
+
+ - [pubsub] Fix unsubscribing
+ - [cli] Return config errors
+
+## 0.7.1 (March 22, 2018)
 
 IMPROVEMENTS:
 
