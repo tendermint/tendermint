@@ -48,6 +48,39 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger)
 	return listener, nil
 }
 
+func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, cert_path string, key_path string, logger log.Logger) (listener net.Listener, err error) {
+	// listenAddr should be fully formed including tcp:// or unix:// prefix
+	var proto, addr string
+	parts := strings.SplitN(listenAddr, "://", 2)
+	if len(parts) != 2 {
+		logger.Error("WARNING (tendermint/rpc/lib): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
+		// we used to allow addrs without tcp/unix prefix by checking for a colon
+		// TODO: Deprecate
+		proto = types.SocketType(listenAddr)
+		addr = listenAddr
+		// return nil, errors.Errorf("Invalid listener address %s", lisenAddr)
+	} else {
+		proto, addr = parts[0], parts[1]
+	}
+
+	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s socket %v", proto, addr))
+	listener, err = net.Listen(proto, addr)
+	if err != nil {
+		return nil, errors.Errorf("Failed to listen to %v: %v", listenAddr, err)
+	}
+
+	go func() {
+		res := http.ServeTLS(
+			listener,
+			RecoverAndLogHandler(handler, logger),
+			cert_path,
+			key_path,
+		)
+		logger.Error("RPC HTTPS server stopped", "result", res)
+	}()
+	return listener, nil
+}
+
 func WriteRPCResponseHTTPError(w http.ResponseWriter, httpCode int, res types.RPCResponse) {
 	jsonBytes, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
