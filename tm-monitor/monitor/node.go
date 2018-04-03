@@ -214,8 +214,9 @@ func (n *Node) checkIsValidator() {
 	_, validators, err := n.validators()
 	if err == nil {
 		for _, v := range validators {
-			key, err := n.getPubKey()
-			if err == nil && v.PubKey == key {
+			key, err1 := n.getPubKey()
+			// TODO: use bytes.Equal
+			if err1 == nil && v.PubKey == key {
 				n.IsValidator = true
 			}
 		}
