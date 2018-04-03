@@ -19,18 +19,14 @@ const (
 )
 
 func TestNodeStartStop(t *testing.T) {
-	assert := assert.New(t)
-
 	n, _ := startValidatorNode(t)
 	defer n.Stop()
 
-	assert.Equal(true, n.Online)
-	assert.Equal(true, n.IsValidator)
+	assert.Equal(t, true, n.Online)
+	assert.Equal(t, true, n.IsValidator)
 }
 
 func TestNodeNewBlockReceived(t *testing.T) {
-	assert := assert.New(t)
-
 	blockCh := make(chan tmtypes.Header, 100)
 	n, emMock := startValidatorNode(t)
 	defer n.Stop()
@@ -39,13 +35,11 @@ func TestNodeNewBlockReceived(t *testing.T) {
 	blockHeader := &tmtypes.Header{Height: 5}
 	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.TMEventData{tmtypes.EventDataNewBlockHeader{blockHeader}})
 
-	assert.Equal(uint64(5), n.Height)
-	assert.Equal(*blockHeader, <-blockCh)
+	assert.Equal(t, uint64(5), n.Height)
+	assert.Equal(t, *blockHeader, <-blockCh)
 }
 
 func TestNodeNewBlockLatencyReceived(t *testing.T) {
-	assert := assert.New(t)
-
 	blockLatencyCh := make(chan float64, 100)
 	n, emMock := startValidatorNode(t)
 	defer n.Stop()
@@ -53,13 +47,11 @@ func TestNodeNewBlockLatencyReceived(t *testing.T) {
 
 	emMock.Call("latencyCallback", 1000000.0)
 
-	assert.Equal(1.0, n.BlockLatency)
-	assert.Equal(1000000.0, <-blockLatencyCh)
+	assert.Equal(t, 1.0, n.BlockLatency)
+	assert.Equal(t, 1000000.0, <-blockLatencyCh)
 }
 
 func TestNodeConnectionLost(t *testing.T) {
-	assert := assert.New(t)
-
 	disconnectCh := make(chan bool, 100)
 	n, emMock := startValidatorNode(t)
 	defer n.Stop()
@@ -67,20 +59,18 @@ func TestNodeConnectionLost(t *testing.T) {
 
 	emMock.Call("disconnectCallback")
 
-	assert.Equal(true, <-disconnectCh)
-	assert.Equal(false, n.Online)
+	assert.Equal(t, true, <-disconnectCh)
+	assert.Equal(t, false, n.Online)
 }
 
 func TestNumValidators(t *testing.T) {
-	assert := assert.New(t)
-
 	n, _ := startValidatorNode(t)
 	defer n.Stop()
 
 	height, num, err := n.NumValidators()
-	assert.Nil(err)
-	assert.Equal(uint64(blockHeight), height)
-	assert.Equal(1, num)
+	assert.Nil(t, err)
+	assert.Equal(t, uint64(blockHeight), height)
+	assert.Equal(t, 1, num)
 }
 
 func startValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter) {
