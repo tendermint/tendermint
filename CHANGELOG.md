@@ -16,11 +16,13 @@ FEATURES:
  - [db] NewPrefixDB for a DB with all keys prefixed
  - [db] NewDebugDB prints everything during operation
  - [common] SplitAndTrim func
+ - [common] RandFloat64() and rand.Float64()
 
 BUG FIXES:
 
  - [pubsub] Fix unsubscribing
  - [cli] Return config errors
+ - [common] Fix WriteFileAtomic Windows bug
 
 ## 0.7.1 (March 22, 2018)
 
