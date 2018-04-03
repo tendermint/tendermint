@@ -371,24 +371,30 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 	}
 
 	go func() {
+		var data interface{}
+		var ok bool
 		for {
 			select {
-			case data, ok := <-stepsCh:
+			case data, ok = <-stepsCh:
 				if ok { // a receive from a closed channel returns the zero value immediately
 					edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
 					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
 				}
-			case data, ok := <-votesCh:
+			case data, ok = <-votesCh:
 				if ok {
 					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
 					conR.broadcastHasVoteMessage(edv.Vote)
 				}
-			case data, ok := <-heartbeatsCh:
+			case data, ok = <-heartbeatsCh:
 				if ok {
 					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
 					conR.broadcastProposalHeartbeatMessage(edph)
 				}
 			case <-conR.Quit():
+				conR.eventBus.UnsubscribeAll(ctx, subscriber)
+				return
+			}
+			if !ok {
 				conR.eventBus.UnsubscribeAll(ctx, subscriber)
 				return
 			}
