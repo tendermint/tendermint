@@ -93,8 +93,16 @@ func RandInt31() int32 {
 	return grand.Int31()
 }
 
+func RandInt31n(n int32) int32 {
+	return grand.Int31n(n)
+}
+
 func RandInt63() int64 {
 	return grand.Int63()
+}
+
+func RandInt63n(n int64) int64 {
+	return grand.Int63n(n)
 }
 
 func RandUint16Exp() uint16 {
@@ -225,11 +233,27 @@ func (r *Rand) Int31() int32 {
 }
 
 // It is not safe for cryptographic usage.
+func (r *Rand) Int31n(n int32) int32 {
+	r.Lock()
+	i31n := r.rand.Int31n(n)
+	r.Unlock()
+	return i31n
+}
+
+// It is not safe for cryptographic usage.
 func (r *Rand) Int63() int64 {
 	r.Lock()
 	i63 := r.rand.Int63()
 	r.Unlock()
 	return i63
+}
+
+// It is not safe for cryptographic usage.
+func (r *Rand) Int63n(n int64) int64 {
+	r.Lock()
+	i63n := r.rand.Int63n(n)
+	r.Unlock()
+	return i63n
 }
 
 // Distributed pseudo-exponentially to test for various cases
