@@ -1,5 +1,5 @@
 #!/bin/sh
-# prerm script for ethermint
+# prerm script for basecoin
 #
 
 set -e
@@ -18,7 +18,7 @@ set -e
 
 case "$1" in
     remove|upgrade|deconfigure)
-    systemctl stop ethermint 2> /dev/null || :
+    systemctl stop basecoind 2> /dev/null || :
     ;;
 
     failed-upgrade)

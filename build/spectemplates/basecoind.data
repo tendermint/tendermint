@@ -1,0 +1,5 @@
+PACKAGE_SUMMARY="basecoind is a Proof-of-Stake cryptocurrency and framework"
+PACKAGE_URL="https://cosmos.network/"
+PACKAGE_ADDITIONAL_HEADER="Provides: basecoind"
+PACKAGE_DESCRIPTION="Basecoind is an ABCI application designed to be used with the Tendermint consensus engine to form a Proof-of-Stake cryptocurrency. It also provides a general purpose framework for extending the feature-set of the cryptocurrency by implementing plugins."
+

@@ -9,8 +9,8 @@ Using Ansible
 The playbooks in `our ansible directory <https://github.com/tendermint/tools/tree/master/ansible>`__ 
 run ansible `roles <http://www.ansible.com/>`__ which:
 
--  install and configure basecoin or ethermint
--  start/stop basecoin or ethermint and reset their configuration
+-  install and configure basecoind or ethermint
+-  start/stop basecoind or ethermint and reset their configuration
 
 Prerequisites
 -------------
@@ -200,7 +200,7 @@ DigitalOcean
 
     DO_API_TOKEN="<The API token received from DigitalOcean>"
     TF_VAR_TESTNET_NAME="testnet-servers"
-    ansible-playbook -i inventory/digital_ocean.py install.yml -e service=basecoin
+    ansible-playbook -i inventory/digital_ocean.py install.yml -e service=basecoind
 
 Amazon AWS
 ~~~~~~~~~~
@@ -210,12 +210,12 @@ Amazon AWS
     AWS_ACCESS_KEY_ID='<The API access key ID received from Amazon>'
     AWS_SECRET_ACCESS_KEY='<The API secret access key received from Amazon>'
     TF_VAR_TESTNET_NAME="testnet-servers"
-    ansible-playbook -i inventory/ec2.py install.yml -e service=basecoin
+    ansible-playbook -i inventory/ec2.py install.yml -e service=basecoind
 
 Installing custom versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-By default ansible installs the tendermint, basecoin or ethermint binary
+By default ansible installs the tendermint, basecoind or ethermint binary
 versions from the latest release in the repository. If you build your
 own version of the binaries, you can tell ansible to install that
 instead.
@@ -223,11 +223,11 @@ instead.
 ::
 
     GOPATH="<your go path>"
-    go get -u github.com/tendermint/basecoin/cmd/basecoin
+    go get -u github.com/tendermint/basecoin/cmd/basecoind
 
     DO_API_TOKEN="<The API token received from DigitalOcean>"
     TF_VAR_TESTNET_NAME="testnet-servers"
-    ansible-playbook -i inventory/digital_ocean.py install.yml -e service=basecoin -e release_install=false
+    ansible-playbook -i inventory/digital_ocean.py install.yml -e service=basecoind -e release_install=false
 
 Alternatively you can change the variable settings in
 ``group_vars/all``.
@@ -237,15 +237,15 @@ Other commands and roles
 
 There are few extra playbooks to make life easier managing your servers.
 
--  install.yml - Install basecoin or ethermint applications. (Tendermint
+-  install.yml - Install basecoind or ethermint applications. (Tendermint
    gets installed automatically.) Use the ``service`` parameter to
-   define which application to install. Defaults to ``basecoin``.
+   define which application to install. Defaults to ``basecoind``.
 -  reset.yml - Stop the application, reset the configuration and data,
    then start the application again. You need to pass
-   ``-e service=<servicename>``, like ``-e service=basecoin``. It will
+   ``-e service=<servicename>``, like ``-e service=basecoind``. It will
    restart the underlying tendermint application too.
 -  restart.yml - Restart a service on all nodes. You need to pass
-   ``-e service=<servicename>``, like ``-e service=basecoin``. It will
+   ``-e service=<servicename>``, like ``-e service=basecoind``. It will
    restart the underlying tendermint application too.
 -  stop.yml - Stop the application. You need to pass
    ``-e service=<servicename>``.

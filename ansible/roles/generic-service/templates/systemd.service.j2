@@ -4,7 +4,7 @@ Requires=network-online.target
 After=network-online.target
 
 [Service]
-Environment="TMHOME=/etc/{{service}}/tendermint"
+Environment="TMHOME=/etc/{{service}}"
 Restart=on-failure
 User={{service}}
 Group={{service}}

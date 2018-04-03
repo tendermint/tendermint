@@ -9,8 +9,8 @@
 ## install
 ##
 
-## service variable defines which service is going to be managed. It can be set to basecoin or ethermint.
-service: basecoin
+## service variable defines which service is going to be managed. It can be set to basecoind or ethermint.
+service: basecoind
 
 ## release_install indicates if the install role should look for a privately built binary after installing the service package. If set to false, the privately built binary in the GOPATH is going to override the binary on the target systems.
 #release_install: true

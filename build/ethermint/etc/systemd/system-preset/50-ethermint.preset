@@ -1,3 +1,2 @@
 disable ethermint.service
-disable ethermint-server.service
 

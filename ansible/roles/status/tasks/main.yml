@@ -1,10 +1,20 @@
 ---
 
-- name: start service
+- name: application service status
   command: "service {{service}} status"
   changed_when: false
   register: status
 
 - name: Result
   debug: var=status.stdout_lines
+
+#- name: tendermint service status
+#  when: service != 'tendermint'
+#  command: "service {{service}}-server status"
+#  changed_when: false
+#  register: tendermintstatus
+
+#- name: Result
+#  when: service != 'tendermint'
+#  debug: var=tendermintstatus.stdout_lines
 

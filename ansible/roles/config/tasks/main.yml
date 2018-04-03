@@ -1,10 +1,17 @@
 ---
 
 - name: gather tendermint public keys
-  when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
+  when: (validators == true or validators == 'true') and genesis_file is not defined
   tags: reconfig-toml,reconfig-genesis
   command: "/usr/bin/tendermint show_validator --home /etc/{{service}} --log_level error"
   register: pubkeys
+  changed_when: false
+
+- name: gather tendermint peer IDs
+  when: genesis_file is not defined
+  tags: reconfig-toml
+  command: "/usr/bin/tendermint show_node_id --home /etc/{{service}} --log_level error"
+  register: nodeids
   changed_when: false
 
 - name: resetting permissions from root after gathering public keys
@@ -12,9 +19,15 @@
   file: "path=/etc/{{service}} owner={{service}} group={{service}} recurse=yes"
 
 - name: register tendermint public keys as host facts
-  when: (validators == true or validators == 'true') and tendermint_genesis_file is not defined
+  when: (validators == true or validators == 'true') and genesis_file is not defined
   tags: reconfig-toml,reconfig-genesis
   set_fact: "pubkey='{{pubkeys.stdout}}'"
+  connection: local
+
+- name: register node ids as host facts
+  when: genesis_file is not defined
+  tags: reconfig-toml
+  set_fact: "nodeid='{{nodeids.stdout}}'"
   connection: local
 
 - name: copy generated genesis.json - genesis_time will be updated
@@ -22,20 +35,21 @@
   tags: reconfig-genesis
   template:
     src: genesis.json.j2
-    dest: "/etc/{{service}}/genesis.json"
+    dest: "/etc/{{service}}/config/genesis.json"
     owner: "{{service}}"
     group: "{{service}}"
 
 - name: copy pre-created genesis.json
   when: genesis_file is defined
-  copy: "src={{genesis_file}} dest=/etc/{{service}}/genesis.json owner={{service}} group={{service}}"
+  tags: reconfig-genesis
+  copy: "src={{genesis_file}} dest=/etc/{{service}}/config/genesis.json owner={{service}} group={{service}}"
 
 - name: copy tendermint config.toml
   tags: reconfig-toml
   when: validators == true or validators == 'true'
   template:
     src: config.toml.j2
-    dest: "/etc/{{service}}/config.toml"
+    dest: "/etc/{{service}}/config/config.toml"
     owner: "{{service}}"
     group: "{{service}}"
 
@@ -44,14 +58,14 @@
   tags: reconfig-toml,reconfig-genesis
   get_url: "url={{item['src']}} dest={{item['dst']}} force=yes"
   with_items:
-    - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/{{service}}/genesis.json" , dst: "/etc/{{service}}/genesis.json" }
-    - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/config.toml" , dst: "/etc/{{service}}/config.toml" }
+    - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/{{service}}/genesis.json" , dst: "/etc/{{service}}/config/genesis.json" }
+    - { src: "https://raw.githubusercontent.com/tendermint/testnets/master/{{validator_network}}/config.toml" , dst: "/etc/{{service}}/config/config.toml" }
 
 - name: Set validator network files permissions for non-validators
   when: validators == false or validators == 'false'
   tags: reconfig-toml,reconfig-genesis
   file: "path={{item}} owner={{service}} group={{service}}"
   with_items:
-    - "/etc/{{service}}/genesis.json"
-    - "/etc/{{service}}/config.toml"
+    - "/etc/{{service}}/config/genesis.json"
+    - "/etc/{{service}}/config/config.toml"
 

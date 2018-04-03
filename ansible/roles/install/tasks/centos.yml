@@ -46,6 +46,8 @@
   - python-virtualenv
   - unzip
   - tar
+#For show_validator command:
+  - tendermint
 
 - name: Install toml 
   when: ansible_os_family == "RedHat"

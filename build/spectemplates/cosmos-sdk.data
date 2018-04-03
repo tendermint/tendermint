@@ -1,5 +1,0 @@
-PACKAGE_SUMMARY="cosmos-sdk is a Proof-of-Stake framework"
-PACKAGE_URL="https://cosmos.network/"
-PACKAGE_ADDITIONAL_HEADER="Provides: basecoin basecli"
-PACKAGE_DESCRIPTION="Cosmos-SDK is a general purpose framework for the Tendermint consensus engine to form a Proof-of-Stake cryptocurrency."
-

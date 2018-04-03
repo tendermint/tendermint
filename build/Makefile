@@ -1,12 +1,13 @@
 ##
-# Extra checks, because we do not use autoconf. Set extra_check to false if it is bothering you.
+# Extra checks, because we do not use autoconf.
 ##
 
-extra_check = true
-go_min_version = 1.8.3
+requirements_check = true
+gpg_check = false
+go_min_version = 1.9.4
 gpg_key = 2122CBE9
 
-ifeq ($(extra_check),true)
+ifeq ($(requirements_check),true)
 ifndef GOPATH
 $(error GOPATH not set)
 else
@@ -17,6 +18,7 @@ ifneq ($(go_min_version),$(go_version_check))
 $(error go version go_min_version or above is required)
 endif
 endif
+ifeq ($(gpg_check),true)
 gpg_check := $(shell gpg -K | grep '/$(gpg_key) ' | sed 's,^.*/\($(gpg_key)\) .*$$,\1,')
 ifneq ($(gpg_check),$(gpg_key))
 $(error GPG key $(gpg_key) not found.)
@@ -27,17 +29,18 @@ ifndef GPG_PASSPHRASE
 $(error GPG_PASSPHRASE not set)
 endif
 endif
+endif
 
 ###
 # Here comes the real deal
 ###
 
-binaries = tendermint basecoin ethermint trackomatron gaia
-build-binaries = build-tendermint build-basecoin build-ethermint build-trackomatron build-gaia
-package-rpm = package-rpm-tendermint package-rpm-basecoin package-rpm-ethermint package-rpm-trackomatron package-rpm-gaia
-install-rpm = install-rpm-tendermint install-rpm-basecoin install-rpm-ethermint install-rpm-trackomatron install-rpm-gaia
-package-deb = package-deb-tendermint package-deb-basecoin package-deb-ethermint package-deb-trackomatron package-deb-gaia
-install-deb = install-deb-tendermint install-deb-basecoin install-deb-ethermint install-deb-trackomatron install-deb-gaia
+binaries = tendermint basecoind ethermint gaia
+build-binaries = build-tendermint build-basecoind build-ethermint build-gaia
+package-rpm = package-rpm-tendermint package-rpm-basecoind package-rpm-ethermint package-rpm-gaia
+install-rpm = install-rpm-tendermint install-rpm-basecoind install-rpm-ethermint install-rpm-gaia
+package-deb = package-deb-tendermint package-deb-basecoind package-deb-ethermint package-deb-gaia
+install-deb = install-deb-tendermint install-deb-basecoind install-deb-ethermint install-deb-gaia
 
 all: $(binaries)
 build: $(build-binaries)
@@ -52,59 +55,53 @@ $(binaries): %: build-% package-rpm-% package-deb-%
 git-branch:
 	$(eval GIT_BRANCH=$(shell echo $${GIT_BRANCH:-master}))
 
-build-tendermint: git-branch
+gopath-setup:
+	test -d $(GOPATH) || mkdir -p $(GOPATH)
+	test -d $(GOPATH)/bin || mkdir -p $(GOPATH)/bin
+	test -d $(GOPATH)/src || mkdir -p $(GOPATH)/src
+
+build-tendermint: git-branch gopath-setup
 	@echo "*** Building tendermint"
 	go get -d -u github.com/tendermint/tendermint/cmd/tendermint
 	cd $(GOPATH)/src/github.com/tendermint/tendermint && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_vendor_deps build
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/tendermint get_tools get_vendor_deps build
 	cp $(GOPATH)/src/github.com/tendermint/tendermint/build/tendermint $(GOPATH)/bin
 	@echo "*** Built tendermint"
 
-#build-basecoin: git-branch
-#	@echo "*** Building basecoin-old"
-#	go get -d -u github.com/tendermint/basecoin/cmd/basecoin
-#	cd $(GOPATH)/src/github.com/tendermint/basecoin && git checkout "$(GIT_BRANCH)" && git pull
-#	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/basecoin get_vendor_deps install
-#	@echo "*** Built basecoin"
-
-build-ethermint: git-branch
+build-ethermint: git-branch gopath-setup
 	@echo "*** Building ethermint"
 	go get -d -u github.com/tendermint/ethermint/cmd/ethermint
 	cd $(GOPATH)/src/github.com/tendermint/ethermint && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps build
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/tendermint/ethermint get_vendor_deps build
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/build/ethermint $(GOPATH)/bin
 	@echo "*** Built ethermint"
 
-build-trackomatron: git-branch
-	@echo "*** Building trackomatron"
-	go get -d -u github.com/tendermint/trackomatron/cmd/tracko
-	cd $(GOPATH)/src/github.com/tendermint/trackomatron && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/tendermint/trackomatron get_vendor_deps install
-	@echo "Workaround: trackomatron package has tracko as the binary - trackomatron needed for proper packaging" && rm -rf $(GOPATH)/bin/trackomatron && ln -s $(GOPATH)/bin/tracko $(GOPATH)/bin/trackomatron
-	@echo "*** Built trackomatron"
-
-build-gaia: git-branch
+build-gaia: git-branch gopath-setup
 	@echo "*** Building gaia"
 	go get -d -u go github.com/cosmos/gaia || echo "Workaround for go downloads."
 	cd $(GOPATH)/src/github.com/cosmos/gaia && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/gaia get_vendor_deps install
 	@echo "*** Built gaia"
 
-build-basecoin: git-branch
-	@echo "*** Building basecoin from cosmos-sdk"
-	go get -d -u go github.com/cosmos/cosmos-sdk || echo "Workaround for go downloads."
+build-basecoind: git-branch gopath-setup
+	@echo "*** Building basecoind from cosmos-sdk"
+	go get -d -u github.com/cosmos/cosmos-sdk/examples/basecoin/cmd/basecoind
 	cd $(GOPATH)/src/github.com/cosmos/cosmos-sdk && git checkout "$(GIT_BRANCH)" && git pull
-	$(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_vendor_deps install
-	@echo "*** Built basecoin from cosmos-sdk"
+	export PATH=$(GOPATH)/bin:$(PATH) && $(MAKE) -C $(GOPATH)/src/github.com/cosmos/cosmos-sdk get_tools get_vendor_deps build
+	cp $(GOPATH)/src/github.com/cosmos/cosmos-sdk/build/basecoind $(GOPATH)/bin/basecoind
+	@echo "*** Built basecoind from cosmos-sdk"
 
 ###
 # Prepare package files
 ###
 
 # set app_version
-version-%: $(GOPATH)/bin/%
-	if [ -z "$(BUILD_NUMBER)" ]; then echo "BUILD_NUMBER not set" ; false ; fi
-	$(eval $*_version=$(shell $< version | head -1 | cut -d- -f1 | sed 's/^\(ethermint:\s*\|\)\(v\|\)//' ))
+version-%:
+	@echo "Checking if binary exists"
+	test -f $(GOPATH)/bin/$*
+	@echo "BUILD_NUMBER is $(BUILD_NUMBER)"
+	test -n "$(BUILD_NUMBER)"
+	$(eval $*_version=$(shell $(GOPATH)/bin/$* version | head -1 | cut -d- -f1 | sed 's/^\(ethermint:\s*\|\)\(v\|\)//' | tr -d '\t ' ))
 
 # set build_folder
 folder-%: version-%
@@ -121,9 +118,8 @@ prepare-tendermint =
 prepare-ethermint = mkdir -p $(build_folder)/etc/ethermint && \
 	cp $(GOPATH)/src/github.com/tendermint/ethermint/setup/genesis.json $(build_folder)/etc/ethermint/genesis.json && \
 	cp -r $(GOPATH)/src/github.com/tendermint/ethermint/setup/keystore $(build_folder)/etc/ethermint
-prepare-trackomatron = rm -f $(build_folder)/usr/bin/trackomatron && cp $(GOPATH)/bin/tracko $(GOPATH)/bin/trackocli $(build_folder)/usr/bin
-prepare-gaia = cp $(GOPATH)/bin/gaiacli $(build_folder)/usr/bin
-prepare-basecoin = cp $(GOPATH)/bin/basecli $(GOPATH)/bin/basecoin $(GOPATH)/bin/baseserver $(GOPATH)/bin/counter $(GOPATH)/bin/countercli $(GOPATH)/bin/eyes $(GOPATH)/bin/eyescli $(build_folder)/usr/bin
+prepare-gaia =
+prepare-basecoind = cp $(GOPATH)/bin/basecoind $(build_folder)/usr/bin
 
 ###
 # Package the binary for CentOS/RedHat (RPM) and Debian/Ubuntu (DEB)
@@ -203,7 +199,7 @@ install-rpm-%: version-%
 	cp ./RPM-GPG-KEY-Tendermint tmp/s3/7/os/x86_64/
 	cp ./tendermint.repo tmp/s3/7/os/x86_64/
 	rm -f tmp/s3/7/os/x86_64/repodata/*.bz2 tmp/s3/7/os/x86_64/repodata/*.gz tmp/s3/7/os/x86_64/repodata/repomd.xml.asc
-	createrepo tmp/s3/7/os/x86_64/Packages -u https://tendermint-packages.interblock.io/$(DEVOPS_PATH)centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoin --content ethermint
+	createrepo tmp/s3/7/os/x86_64/Packages -u https://tendermint-packages.interblock.io/$(DEVOPS_PATH)centos/7/os/x86_64/Packages -o tmp/s3/7/os/x86_64 --update -S --repo Tendermint --content tendermint --content basecoind --content ethermint
 	gpg --batch --passphrase "$(GPG_PASSPHRASE)" --detach-sign -a tmp/s3/7/os/x86_64/repodata/repomd.xml
 	aws s3 sync tmp/s3/ s3://tendermint-packages/$(DEVOPS_PATH)centos/ --delete --acl public-read
 	@echo "*** Uploaded $* to AWS $(DEVOPS_PATH)CentOS repository"
@@ -282,17 +278,12 @@ clean: mostlyclean
 
 distclean: clean
 	rm -rf $(GOPATH)/src/github.com/tendermint/tendermint
-	rm -rf $(GOPATH)/src/github.com/tendermint/basecoin 
+	rm -rf $(GOPATH)/src/github.com/cosmos/cosmos-sdk
 	rm -rf $(GOPATH)/src/github.com/tendermint/ethermint 
-	rm -rf $(GOPATH)/src/github.com/tendermint/trackomatron 
 	rm -rf $(GOPATH)/bin/tendermint
-	rm -rf $(GOPATH)/bin/basecoin
-	rm -rf $(GOPATH)/bin/basecli
+	rm -rf $(GOPATH)/bin/basecoind
 	rm -rf $(GOPATH)/bin/ethermint
 	rm -rf $(GOPATH)/bin/gaia
-	rm -rf $(GOPATH)/bin/gaiacli
-	rm -rf $(GOPATH)/bin/tracko
-	rm -rf $(GOPATH)/bin/trackocli
 
 .PHONY : clean
 

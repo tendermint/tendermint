@@ -1,6 +1,6 @@
 ---
 
 - name: Get config.toml from node
-  fetch: "dest={{ destination | default('.') }}/config.toml flat=yes src=/etc/{{service}}/config.toml"
+  fetch: "dest={{ destination | default('.') }}/config.toml flat=yes src=/etc/{{service}}/config/config.toml"
   run_once: yes
 

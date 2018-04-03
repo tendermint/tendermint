@@ -3,7 +3,6 @@ Section: net
 Priority: optional
 Maintainer: Greg Szabo <greg@philosobear.com>
 Build-Depends: debhelper (>=9)
-Depends: tendermint (>=0.11.0)
 Standards-Version: 3.9.6
 Homepage: https://cosmos.network
 Package: gaia

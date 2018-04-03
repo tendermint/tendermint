@@ -19,7 +19,6 @@ set -e
 case "$1" in
     remove|upgrade|deconfigure)
     systemctl stop gaia 2> /dev/null || :
-    systemctl stop gaia-service 2> /dev/null || :
     ;;
 
     failed-upgrade)

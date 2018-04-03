@@ -2,12 +2,9 @@
   when: "service == 'ethermint'"
   become_user: ethermint
 
-- shell: "export BCHOME=/etc/basecoin ; basecoin unsafe_reset_all"
-  when: "service == 'basecoin'"
-  become_user: basecoin
-
-- shell: "export TMHOME=/etc/{{service}} ; tendermint unsafe_reset_all"
+- command: "{{service}} node unsafe_reset_all --home=/etc/{{service}}"
   become_user: "{{service}}"
 
-- file: "path=/etc/{{service}}/data state=absent"
+- file: "path=/etc/{{service}}/config/addrbook.json state=absent"
+
 

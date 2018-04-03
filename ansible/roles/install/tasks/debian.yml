@@ -29,3 +29,6 @@
   - python-toml
   - unzip
   - tar
+#For show_validator command:
+  - tendermint
+

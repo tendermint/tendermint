@@ -12,14 +12,18 @@
         "data": "{{hostvars[host]["pubkey"]["data"]}}",
         "type": "{{hostvars[host]["pubkey"]["type"]}}"
       },
-      "power":10,
+      "power":1000,
       "name":"{{hostvars[host]["inventory_hostname"]}}"
     }
 {% endfor %}
 {% endif %}
   ],
   "app_hash":"",
+{% if service == 'basecoind' %}
+  "app_state": {
+{% else %}
   "app_options": {
+{% endif %}
 {% if app_options_file is defined %}
 {% include app_options_file %}
 {% endif %}

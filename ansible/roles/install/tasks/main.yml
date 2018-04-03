@@ -5,13 +5,22 @@
   file: path=/etc/localtime state=link src=/usr/share/zoneinfo/{{timezone}} force=yes
 
 - name: Disable journald rate-limiting
-  lineinfile: "path=/etc/systemd/journald.conf regexp={{item.regexp}} line='{{item.line}}'"
+  lineinfile: "dest=/etc/systemd/journald.conf regexp={{item.regexp}} line='{{item.line}}'"
   with_items:
   - { regexp: "^#RateLimitInterval", line: "RateLimitInterval=0s" }
   - { regexp: "^#RateLimitBurst", line: "RateLimitBurst=0" }
 
+- name: Create journal directory for permanent logs
+  file: path=/var/log/journal state=directory
+
+- name: Set journal folder with systemd-tmpfiles
+  command: "systemd-tmpfiles --create --prefix /var/log/journal"
+
 - name: Restart journald
   service: name=systemd-journald state=restarted
+
+- name: Ability to get the core dump on SIGABRT
+  shell: "ulimit -c unlimited"
 
 #TODO include is deprecated in Ansible 2.4.0 and will be removed in 2.8.0
 #Replace it with include_tasks

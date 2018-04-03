@@ -10,7 +10,6 @@ Summary: @PACKAGE_SUMMARY@
 License: Apache 2.0
 URL: @PACKAGE_URL@
 Packager: Greg Szabo
-Requires: tendermint >= 0.11.0
 @PACKAGE_ADDITIONAL_HEADER@
 
 %description
@@ -35,18 +34,11 @@ cd %{name}-%{version}-%{release}
 %{__cp} -a * %{buildroot}
 
 %post
-sudo -Hu %{name} tendermint init --home %{_sysconfdir}/%{name}
-sudo -Hu %{name} %{name} init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
-
-#Temporary until https://github.com/tendermint/basecoin/issues/123
-rm -f %{_sysconfdir}/%{name}/key.json
-rm -f %{_sysconfdir}/%{name}/key2.json
-
+sudo -Hu %{name} %{name} node init --home %{_sysconfdir}/%{name} 2B24DEE2364762300168DF19B6C18BCE2D399EA2
 systemctl daemon-reload
 
 %preun
 systemctl stop %{name} 2> /dev/null || :
-systemctl stop %{name}-service 2> /dev/null || :
 
 %postun
 systemctl daemon-reload

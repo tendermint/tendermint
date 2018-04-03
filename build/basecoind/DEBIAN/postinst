@@ -1,5 +1,5 @@
 #!/bin/sh
-# postinst script for gaia
+# postinst script for basecoind
 #
 
 set -e
@@ -19,8 +19,8 @@ set -e
 
 case "$1" in
     configure)
-    chown gaia.gaia /etc/gaia
-    sudo -Hu gaia gaia node init --home /etc/gaia 2B24DEE2364762300168DF19B6C18BCE2D399EA2
+    chown basecoind.basecoind /etc/basecoind
+    sudo -Hu basecoind basecoind node init --home /etc/basecoind 2B24DEE2364762300168DF19B6C18BCE2D399EA2
     systemctl daemon-reload
     ;;
 
