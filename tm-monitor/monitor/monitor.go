@@ -193,7 +193,7 @@ func (m *Monitor) recalculateNetworkUptimeLoop() {
 func (m *Monitor) updateNumValidatorLoop() {
 	rand.Seed(time.Now().Unix())
 
-	var height uint64
+	var height int64
 	var num int
 	var err error
 
