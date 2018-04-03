@@ -4,8 +4,11 @@ RUN mkdir -p /go/src/github.com/tendermint/tools/tm-monitor
 WORKDIR /go/src/github.com/tendermint/tools/tm-monitor
 
 COPY Makefile /go/src/github.com/tendermint/tools/tm-monitor/
-COPY glide.yaml /go/src/github.com/tendermint/tools/tm-monitor/
-COPY glide.lock /go/src/github.com/tendermint/tools/tm-monitor/
+
+RUN make get_tools
+
+COPY Gopkg.toml /go/src/github.com/tendermint/tools/tm-monitor/
+COPY Gopkg.lock /go/src/github.com/tendermint/tools/tm-monitor/
 
 RUN make get_vendor_deps
 
