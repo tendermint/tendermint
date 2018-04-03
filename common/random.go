@@ -113,6 +113,10 @@ func RandFloat32() float32 {
 	return grand.Float32()
 }
 
+func RandFloat64() float64 {
+	return grand.Float64()
+}
+
 func RandTime() time.Time {
 	return grand.Time()
 }
@@ -270,6 +274,14 @@ func (r *Rand) Float32() float32 {
 	f32 := r.rand.Float32()
 	r.Unlock()
 	return f32
+}
+
+// It is not safe for cryptographic usage.
+func (r *Rand) Float64() float64 {
+	r.Lock()
+	f64 := r.rand.Float64()
+	r.Unlock()
+	return f64
 }
 
 // It is not safe for cryptographic usage.
