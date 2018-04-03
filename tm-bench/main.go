@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tools/tm-monitor/monitor"
 )
 
-var version = "0.2.1"
+var version = "0.3.0"
 
 var logger = log.NewNopLogger()
 
