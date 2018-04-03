@@ -9,7 +9,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -73,7 +72,7 @@ type addrBook struct {
 
 	// accessed concurrently
 	mtx        sync.Mutex
-	rand       *rand.Rand
+	rand       *cmn.Rand
 	ourAddrs   map[string]*p2p.NetAddress
 	addrLookup map[p2p.ID]*knownAddress // new & old
 	bucketsOld []map[string]*knownAddress
@@ -88,7 +87,7 @@ type addrBook struct {
 // Use Start to begin processing asynchronous address updates.
 func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 	am := &addrBook{
-		rand:              rand.New(rand.NewSource(time.Now().UnixNano())), // TODO: seed from outside
+		rand:              cmn.NewRand(),
 		ourAddrs:          make(map[string]*p2p.NetAddress),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
 		filePath:          filePath,
@@ -287,7 +286,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	// XXX: What's the point of this if we already loop randomly through addrLookup ?
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
-		j := rand.Intn(len(allAddr)-i) + i
+		j := cmn.RandIntn(len(allAddr)-i) + i
 		allAddr[i], allAddr[j] = allAddr[j], allAddr[i]
 	}
 
