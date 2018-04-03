@@ -172,7 +172,6 @@
   version = "v0.17.1"
 
 [[projects]]
-  branch = "master"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "common",
@@ -185,6 +184,7 @@
     "pubsub/query"
   ]
   revision = "24da7009c3d8c019b40ba4287495749e3160caca"
+  version = "v0.7.1"
 
 [[projects]]
   branch = "master"
@@ -193,7 +193,7 @@
     "tm-monitor/eventmeter",
     "tm-monitor/monitor"
   ]
-  revision = "62965e68f13de80f196bea194ed4a3dbfcf4048b"
+  revision = "a66b20aff45868e53b64b54a9f6feccd6e3ca3ba"
 
 [[projects]]
   branch = "master"
