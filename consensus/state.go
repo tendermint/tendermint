@@ -1301,10 +1301,10 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		var n int
-		var err error
-		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
-			cs.state.ConsensusParams.BlockSize.MaxBytes, &n, &err).(*types.Block)
+		err = cdc.UnmarshalBinaryBare(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, cs.state.ConsensusParams.BlockSize.MaxBytes)
+		if err != nil {
+			return true, err
+		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
@@ -1314,7 +1314,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}
-		return true, err
+		return true, nil
 	}
 	return added, nil
 }

@@ -3,7 +3,6 @@ package blockchain
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"runtime/debug"
 	"strings"
 	"testing"
@@ -11,9 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	wire "github.com/tendermint/go-wire"
-
 	"github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
@@ -59,38 +55,6 @@ func TestNewBlockStore(t *testing.T) {
 	db.Set(blockStoreKey, nil)
 	bs = NewBlockStore(db)
 	assert.Equal(t, bs.Height(), int64(0), "expecting nil bytes to be unmarshaled alright")
-}
-
-func TestBlockStoreGetReader(t *testing.T) {
-	db := db.NewMemDB()
-	// Initial setup
-	db.Set([]byte("Foo"), []byte("Bar"))
-	db.Set([]byte("Foo1"), nil)
-
-	bs := NewBlockStore(db)
-
-	tests := [...]struct {
-		key  []byte
-		want []byte
-	}{
-		0: {key: []byte("Foo"), want: []byte("Bar")},
-		1: {key: []byte("KnoxNonExistent"), want: nil},
-		2: {key: []byte("Foo1"), want: []byte{}},
-	}
-
-	for i, tt := range tests {
-		r := bs.GetReader(tt.key)
-		if r == nil {
-			assert.Nil(t, tt.want, "#%d: expected a non-nil reader", i)
-			continue
-		}
-		slurp, err := ioutil.ReadAll(r)
-		if err != nil {
-			t.Errorf("#%d: unexpected Read err: %v", i, err)
-		} else {
-			assert.Equal(t, slurp, tt.want, "#%d: mismatch", i)
-		}
-	}
 }
 
 func freshBlockStore() (*BlockStore, db.DB) {
@@ -305,14 +269,6 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	}
 }
 
-func binarySerializeIt(v interface{}) []byte {
-	var n int
-	var err error
-	buf := new(bytes.Buffer)
-	wire.WriteBinary(v, buf, &n, &err)
-	return buf.Bytes()
-}
-
 func TestLoadBlockPart(t *testing.T) {
 	bs, db := freshBlockStore()
 	height, index := int64(10), 1
@@ -334,7 +290,7 @@ func TestLoadBlockPart(t *testing.T) {
 	require.Contains(t, panicErr.Error(), "Error reading block part")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
-	db.Set(calcBlockPartKey(height, index), binarySerializeIt(part1))
+	db.Set(calcBlockPartKey(height, index), cdc.MustMarshalBinaryBare(part1))
 	gotPart, _, panicErr := doFn(loadPart)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved block should return a proper block")
@@ -364,11 +320,11 @@ func TestLoadBlockMeta(t *testing.T) {
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{}
-	db.Set(calcBlockMetaKey(height), binarySerializeIt(meta))
+	db.Set(calcBlockMetaKey(height), cdc.MustMarshalBinaryBare(meta))
 	gotMeta, _, panicErr := doFn(loadMeta)
 	require.Nil(t, panicErr, "an existent and proper block should not panic")
 	require.Nil(t, res, "a properly saved blockMeta should return a proper blocMeta ")
-	require.Equal(t, binarySerializeIt(meta), binarySerializeIt(gotMeta),
+	require.Equal(t, cdc.MustMarshalBinaryBare(meta), cdc.MustMarshalBinaryBare(gotMeta),
 		"expecting successful retrieval of previously saved blockMeta")
 }
 

@@ -15,10 +15,10 @@ func TestABCIResults(t *testing.T) {
 	e := ABCIResult{Code: 14, Data: []byte("foo")}
 	f := ABCIResult{Code: 14, Data: []byte("bar")}
 
-	// Nil and []byte{} should not produce the same hash.
+	// Nil and []byte{} should produce the same hash.
 	require.Equal(t, a.Hash(), a.Hash())
 	require.Equal(t, b.Hash(), b.Hash())
-	require.NotEqual(t, a.Hash(), b.Hash())
+	require.Equal(t, a.Hash(), b.Hash())
 
 	// a and b should be the same, don't go in results.
 	results := ABCIResults{a, c, d, e, f}
