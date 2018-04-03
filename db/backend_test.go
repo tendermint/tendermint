@@ -47,7 +47,7 @@ func testBackendGetSetDelete(t *testing.T, backend DBBackendType) {
 }
 
 func TestBackendsGetSetDelete(t *testing.T) {
-	for dbType, _ := range backends {
+	for dbType := range backends {
 		testBackendGetSetDelete(t, dbType)
 	}
 }

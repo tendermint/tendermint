@@ -13,11 +13,10 @@ func ErrorWrap(cause interface{}, format string, args ...interface{}) Error {
 	msg := Fmt(format, args...)
 	if causeCmnError, ok := cause.(*cmnError); ok {
 		return causeCmnError.TraceFrom(1, msg)
-	} else {
-		// NOTE: cause may be nil.
-		// NOTE: do not use causeCmnError here, not the same as nil.
-		return newError(msg, cause, cause).Stacktrace()
 	}
+	// NOTE: cause may be nil.
+	// NOTE: do not use causeCmnError here, not the same as nil.
+	return newError(msg, cause, cause).Stacktrace()
 }
 
 //----------------------------------------

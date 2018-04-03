@@ -38,9 +38,8 @@ const (
 func treat(s string, color string) string {
 	if len(s) > 2 && s[:2] == "\x1b[" {
 		return s
-	} else {
-		return color + s + ANSIReset
 	}
+	return color + s + ANSIReset
 }
 
 func treatAll(color string, args ...interface{}) string {

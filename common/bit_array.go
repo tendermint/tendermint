@@ -168,9 +168,8 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 			}
 		}
 		return c
-	} else {
-		return bA.and(o.Not()) // Note degenerate case where o == nil
 	}
+	return bA.and(o.Not()) // Note degenerate case where o == nil
 }
 
 func (bA *BitArray) IsEmpty() bool {

@@ -6,7 +6,7 @@ package events
 import (
 	"sync"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Generic event data can be typed and registered with tendermint/go-amino
@@ -27,7 +27,7 @@ type Fireable interface {
 }
 
 type EventSwitch interface {
-	Service
+	cmn.Service
 	Fireable
 
 	AddListenerForEvent(listenerID, event string, cb EventCallback)
@@ -36,7 +36,7 @@ type EventSwitch interface {
 }
 
 type eventSwitch struct {
-	BaseService
+	cmn.BaseService
 
 	mtx        sync.RWMutex
 	eventCells map[string]*eventCell
@@ -45,7 +45,7 @@ type eventSwitch struct {
 
 func NewEventSwitch() EventSwitch {
 	evsw := &eventSwitch{}
-	evsw.BaseService = *NewBaseService(nil, "EventSwitch", evsw)
+	evsw.BaseService = *cmn.NewBaseService(nil, "EventSwitch", evsw)
 	return evsw
 }
 

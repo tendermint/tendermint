@@ -129,7 +129,6 @@ func bz(s string) []byte {
 func nonNilBytes(bz []byte) []byte {
 	if bz == nil {
 		return []byte{}
-	} else {
-		return bz
 	}
+	return bz
 }

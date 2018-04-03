@@ -316,7 +316,7 @@ func (l *CList) PushBack(v interface{}) *CElement {
 		l.wg.Done()
 		close(l.waitCh)
 	}
-	l.len += 1
+	l.len++
 
 	// Modify the tail
 	if l.tail == nil {
@@ -357,7 +357,7 @@ func (l *CList) Remove(e *CElement) interface{} {
 	}
 
 	// Update l.len
-	l.len -= 1
+	l.len--
 
 	// Connect next/prev and set head/tail
 	if prev == nil {

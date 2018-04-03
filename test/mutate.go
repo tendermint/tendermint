@@ -1,7 +1,7 @@
 package test
 
 import (
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Contract: !bytes.Equal(input, output) && len(input) >= len(output)
@@ -17,11 +17,11 @@ func MutateByteSlice(bytez []byte) []byte {
 	bytez = mBytez
 
 	// Try a random mutation
-	switch RandInt() % 2 {
+	switch cmn.RandInt() % 2 {
 	case 0: // Mutate a single byte
-		bytez[RandInt()%len(bytez)] += byte(RandInt()%255 + 1)
+		bytez[cmn.RandInt()%len(bytez)] += byte(cmn.RandInt()%255 + 1)
 	case 1: // Remove an arbitrary byte
-		pos := RandInt() % len(bytez)
+		pos := cmn.RandInt() % len(bytez)
 		bytez = append(bytez[:pos], bytez[pos+1:]...)
 	}
 	return bytez

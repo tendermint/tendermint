@@ -122,7 +122,7 @@ func _TestGCRandom(t *testing.T) {
 		v.Int = i
 		l.PushBack(v)
 		runtime.SetFinalizer(v, func(v *value) {
-			gcCount += 1
+			gcCount++
 		})
 	}
 
@@ -177,10 +177,10 @@ func TestScanRightDeleteRandom(t *testing.T) {
 				}
 				if el == nil {
 					el = l.FrontWait()
-					restartCounter += 1
+					restartCounter++
 				}
 				el = el.Next()
-				counter += 1
+				counter++
 			}
 			fmt.Printf("Scanner %v restartCounter: %v counter: %v\n", scannerID, restartCounter, counter)
 		}(i)

@@ -183,11 +183,10 @@ func Prompt(prompt string, defaultValue string) (string, error) {
 	line, err := reader.ReadString('\n')
 	if err != nil {
 		return defaultValue, err
-	} else {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			return defaultValue, nil
-		}
-		return line, nil
 	}
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return defaultValue, nil
+	}
+	return line, nil
 }

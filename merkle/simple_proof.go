@@ -67,13 +67,12 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 				return nil
 			}
 			return SimpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
-		} else {
-			rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
-			if rightHash == nil {
-				return nil
-			}
-			return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
 		}
+		rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+		if rightHash == nil {
+			return nil
+		}
+		return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
 	}
 }
 

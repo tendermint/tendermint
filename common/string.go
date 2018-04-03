@@ -10,9 +10,8 @@ import (
 var Fmt = func(format string, a ...interface{}) string {
 	if len(a) == 0 {
 		return format
-	} else {
-		return fmt.Sprintf(format, a...)
 	}
+	return fmt.Sprintf(format, a...)
 }
 
 // IsHex returns true for non-empty hex-string prefixed with "0x"

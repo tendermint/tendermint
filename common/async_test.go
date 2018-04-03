@@ -33,13 +33,13 @@ func TestParallel(t *testing.T) {
 		taskResult, ok := trs.LatestResult(i)
 		if !ok {
 			assert.Fail(t, "Task #%v did not complete.", i)
-			failedTasks += 1
+			failedTasks++
 		} else if taskResult.Error != nil {
 			assert.Fail(t, "Task should not have errored but got %v", taskResult.Error)
-			failedTasks += 1
+			failedTasks++
 		} else if !assert.Equal(t, -1*i, taskResult.Value.(int)) {
 			assert.Fail(t, "Task should have returned %v but got %v", -1*i, taskResult.Value.(int))
-			failedTasks += 1
+			failedTasks++
 		} else {
 			// Good!
 		}

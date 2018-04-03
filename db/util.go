@@ -21,14 +21,13 @@ func cpIncr(bz []byte) (ret []byte) {
 	ret = cp(bz)
 	for i := len(bz) - 1; i >= 0; i-- {
 		if ret[i] < byte(0xFF) {
-			ret[i] += 1
+			ret[i]++
 			return
-		} else {
-			ret[i] = byte(0x00)
-			if i == 0 {
-				// Overflow
-				return nil
-			}
+		}
+		ret[i] = byte(0x00)
+		if i == 0 {
+			// Overflow
+			return nil
 		}
 	}
 	return nil
@@ -44,13 +43,12 @@ func IsKeyInDomain(key, start, end []byte, isReverse bool) bool {
 			return false
 		}
 		return true
-	} else {
-		if start != nil && bytes.Compare(start, key) < 0 {
-			return false
-		}
-		if end != nil && bytes.Compare(key, end) <= 0 {
-			return false
-		}
-		return true
 	}
+	if start != nil && bytes.Compare(start, key) < 0 {
+		return false
+	}
+	if end != nil && bytes.Compare(key, end) <= 0 {
+		return false
+	}
+	return true
 }
