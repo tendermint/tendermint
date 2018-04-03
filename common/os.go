@@ -148,6 +148,7 @@ func WriteFileAtomic(filename string, data []byte, perm os.FileMode) error {
 	} else if n < len(data) {
 		return io.ErrShortWrite
 	}
+	f.Close()
 
 	return os.Rename(f.Name(), filename)
 }
