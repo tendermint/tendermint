@@ -3,6 +3,7 @@ package monitor
 import (
 	"fmt"
 	"math/rand"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -18,7 +19,9 @@ const nodeLivenessTimeout = 5 * time.Second
 //
 // Common statistics is stored in Network struct.
 type Monitor struct {
-	Nodes   []*Node
+	mtx   sync.Mutex
+	Nodes []*Node
+
 	Network *Network
 
 	monitorQuit chan struct{}            // monitor exitting
@@ -75,7 +78,9 @@ func (m *Monitor) SetLogger(l log.Logger) {
 // Monitor begins to monitor the node `n`. The node will be started and added
 // to the monitor.
 func (m *Monitor) Monitor(n *Node) error {
+	m.mtx.Lock()
 	m.Nodes = append(m.Nodes, n)
+	m.mtx.Unlock()
 
 	blockCh := make(chan tmtypes.Header, 10)
 	n.SendBlocksTo(blockCh)
@@ -105,13 +110,19 @@ func (m *Monitor) Unmonitor(n *Node) {
 	close(m.nodeQuit[n.Name])
 	delete(m.nodeQuit, n.Name)
 	i, _ := m.NodeByName(n.Name)
+
+	m.mtx.Lock()
 	m.Nodes[i] = m.Nodes[len(m.Nodes)-1]
 	m.Nodes = m.Nodes[:len(m.Nodes)-1]
+	m.mtx.Unlock()
 }
 
 // NodeByName returns the node and its index if such node exists within the
 // monitor. Otherwise, -1 and nil are returned.
 func (m *Monitor) NodeByName(name string) (index int, node *Node) {
+	m.mtx.Lock()
+	defer m.mtx.Unlock()
+
 	for i, n := range m.Nodes {
 		if name == n.Name {
 			return i, n
@@ -187,18 +198,23 @@ func (m *Monitor) updateNumValidatorLoop() {
 	var err error
 
 	for {
-		if 0 == len(m.Nodes) {
+		m.mtx.Lock()
+		nodesCount := len(m.Nodes)
+		m.mtx.Unlock()
+		if 0 == nodesCount {
 			time.Sleep(m.numValidatorsUpdateInterval)
 			continue
 		}
 
-		randomNodeIndex := rand.Intn(len(m.Nodes))
+		randomNodeIndex := rand.Intn(nodesCount)
 
 		select {
 		case <-m.monitorQuit:
 			return
 		case <-time.After(m.numValidatorsUpdateInterval):
 			i := 0
+
+			m.mtx.Lock()
 			for _, n := range m.Nodes {
 				if i == randomNodeIndex {
 					height, num, err = n.NumValidators()
@@ -209,10 +225,9 @@ func (m *Monitor) updateNumValidatorLoop() {
 				}
 				i++
 			}
+			m.mtx.Unlock()
 
-			if m.Network.Height <= height {
-				m.Network.NumValidators = num
-			}
+			m.Network.UpdateNumValidatorsForHeight(num, height)
 		}
 	}
 }
