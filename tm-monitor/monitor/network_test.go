@@ -13,7 +13,7 @@ func TestNetworkNewBlock(t *testing.T) {
 	n := monitor.NewNetwork()
 
 	n.NewBlock(tmtypes.Header{Height: 5, NumTxs: 100})
-	assert.Equal(t, uint64(5), n.Height)
+	assert.Equal(t, int64(5), n.Height)
 	assert.Equal(t, 0.0, n.AvgBlockTime)
 	assert.Equal(t, 0.0, n.AvgTxThroughput)
 }

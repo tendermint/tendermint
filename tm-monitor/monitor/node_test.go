@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	blockHeight = 1
+	blockHeight = int64(1)
 )
 
 func TestNodeStartStop(t *testing.T) {
@@ -35,7 +35,7 @@ func TestNodeNewBlockReceived(t *testing.T) {
 	blockHeader := &tmtypes.Header{Height: 5}
 	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.TMEventData{tmtypes.EventDataNewBlockHeader{blockHeader}})
 
-	assert.Equal(t, uint64(5), n.Height)
+	assert.Equal(t, int64(5), n.Height)
 	assert.Equal(t, *blockHeader, <-blockCh)
 }
 
@@ -69,7 +69,7 @@ func TestNumValidators(t *testing.T) {
 
 	height, num, err := n.NumValidators()
 	assert.Nil(t, err)
-	assert.Equal(t, uint64(blockHeight), height)
+	assert.Equal(t, blockHeight, height)
 	assert.Equal(t, 1, num)
 }
 

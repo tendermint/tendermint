@@ -25,7 +25,7 @@ type Node struct {
 
 	Name         string  `json:"name"`
 	Online       bool    `json:"online"`
-	Height       uint64  `json:"height"`
+	Height       int64   `json:"height"`
 	BlockLatency float64 `json:"block_latency" wire:"unsafe"` // ms, interval between block commits
 
 	// em holds the ws connection. Each eventMeter callback is called in a separate go-routine.
@@ -128,7 +128,7 @@ func newBlockCallback(n *Node) em.EventCallbackFunc {
 	return func(metric *em.EventMetric, data interface{}) {
 		block := data.(tmtypes.TMEventData).Unwrap().(tmtypes.EventDataNewBlockHeader).Header
 
-		n.Height = uint64(block.Height)
+		n.Height = block.Height
 		n.logger.Info("new block", "height", block.Height, "numTxs", block.NumTxs)
 
 		if n.blockCh != nil {
@@ -183,7 +183,7 @@ func (n *Node) RestartEventMeterBackoff() error {
 	}
 }
 
-func (n *Node) NumValidators() (height uint64, num int, err error) {
+func (n *Node) NumValidators() (height int64, num int, err error) {
 	height, vals, err := n.validators()
 	if err != nil {
 		return 0, 0, err
@@ -191,12 +191,12 @@ func (n *Node) NumValidators() (height uint64, num int, err error) {
 	return height, len(vals), nil
 }
 
-func (n *Node) validators() (height uint64, validators []*tmtypes.Validator, err error) {
+func (n *Node) validators() (height int64, validators []*tmtypes.Validator, err error) {
 	vals := new(ctypes.ResultValidators)
 	if _, err = n.rpcClient.Call("validators", nil, vals); err != nil {
 		return 0, make([]*tmtypes.Validator, 0), err
 	}
-	return uint64(vals.BlockHeight), vals.Validators, nil
+	return vals.BlockHeight, vals.Validators, nil
 }
 
 func (n *Node) checkIsValidatorLoop() {

@@ -7,9 +7,6 @@ COPY Makefile /go/src/github.com/tendermint/tools/tm-monitor/
 
 RUN make get_tools
 
-COPY Gopkg.toml /go/src/github.com/tendermint/tools/tm-monitor/
-COPY Gopkg.lock /go/src/github.com/tendermint/tools/tm-monitor/
+COPY . /go/src/github.com/tendermint/tools/tm-monitor
 
 RUN make get_vendor_deps
-
-COPY . /go/src/github.com/tendermint/tools/tm-monitor
