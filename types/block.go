@@ -518,13 +518,15 @@ type hasher struct {
 
 func (h hasher) Hash() []byte {
 	hasher := ripemd160.New()
-	bz, err := cdc.MarshalBinaryBare(h.item)
-	if err != nil {
-		panic(err)
-	}
-	_, err = hasher.Write(bz)
-	if err != nil {
-		panic(err)
+	if h.item != nil && !cmn.IsTypedNil(h.item) {
+		bz, err := cdc.MarshalBinaryBare(h.item)
+		if err != nil {
+			panic(err)
+		}
+		_, err = hasher.Write(bz)
+		if err != nil {
+			panic(err)
+		}
 	}
 	return hasher.Sum(nil)
 
