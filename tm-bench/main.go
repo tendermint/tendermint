@@ -84,11 +84,12 @@ Examples:
 		BlockLatency:       metrics.NewHistogram(metrics.NewUniformSample(1000)),
 	}
 
-	lastBlockHeight := -1
+	lastBlockHeight := int64(-1)
 
 	durationTimer := time.After(time.Duration(duration) * time.Second)
 	ticker := time.NewTicker(1 * time.Second)
-	var blocks, txs int
+	var blocks int
+	var txs int64
 	for {
 		select {
 		case b := <-blockCh:
@@ -101,7 +102,7 @@ Examples:
 			stats.BlockLatency.Update(int64(l))
 		case <-ticker.C:
 			stats.BlockTimeSample.Update(int64(blocks))
-			stats.TxThroughputSample.Update(int64(txs))
+			stats.TxThroughputSample.Update(txs)
 			blocks = 0
 			txs = 0
 		case <-durationTimer:
