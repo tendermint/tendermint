@@ -93,6 +93,10 @@ func RandInt31() int32 {
 	return grand.Int31()
 }
 
+func RandInt31n(n int32) int32 {
+	return grand.Int31n(n)
+}
+
 func RandInt63() int64 {
 	return grand.Int63()
 }
@@ -222,6 +226,14 @@ func (r *Rand) Int31() int32 {
 	i31 := r.rand.Int31()
 	r.Unlock()
 	return i31
+}
+
+// It is not safe for cryptographic usage.
+func (r *Rand) Int31n(n int32) int32 {
+	r.Lock()
+	i31n := r.rand.Int31n(n)
+	r.Unlock()
+	return i31n
 }
 
 // It is not safe for cryptographic usage.
