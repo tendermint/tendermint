@@ -164,6 +164,15 @@ func (n *Network) updateHealth() {
 	}
 }
 
+func (n *Network) UpdateNumValidatorsForHeight(num int, height uint64) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+
+	if n.Height <= height {
+		n.NumValidators = num
+	}
+}
+
 func (n *Network) GetHealthString() string {
 	switch n.Health {
 	case FullHealth:
@@ -179,6 +188,8 @@ func (n *Network) GetHealthString() string {
 
 // Uptime returns network's uptime in percentages.
 func (n *Network) Uptime() float64 {
+	n.mu.Lock()
+	defer n.mu.Unlock()
 	return n.UptimeData.Uptime
 }
 
