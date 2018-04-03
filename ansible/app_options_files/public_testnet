@@ -372,8 +372,35 @@
             "amount": 1000
           }
         ]
+      },
+      {
+        "name": "mattbell",
+        "address": "0644CF5459E6A9C43B3EC02D9DEB6DE1620BBE9A",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 100
+          },
+          {
+            "denom": "tokenmatt",
+            "amount": 1000
+          }
+        ]
+      },
+      {
+        "name": "fabo",
+        "address": "527E2333EF0B6E5FFB6E62FFA68B3707E08F2286",
+        "coins": [
+          {
+            "denom": "fermion",
+            "amount": 100
+          },
+          {
+            "denom": "tokenfabo",
+            "amount": 1000
+          }
+        ]
       }
-
     ],
     "plugin_options": [
       "coin/issuer", {"app": "sigs", "addr": "B01C264BFE9CBD45458256E613A6F07061A3A6B6"}
