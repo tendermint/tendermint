@@ -12,14 +12,15 @@ import (
 )
 
 var (
-	deadBeefTxs = types.Txs{[]byte("DE"), []byte("AD"), []byte("BE"), []byte("EF")}
-
-	deadBeefRipEmd160Hash = deadBeefTxs.Hash()
+	deadBeefTxs  = types.Txs{[]byte("DE"), []byte("AD"), []byte("BE"), []byte("EF")}
+	deadBeefHash = deadBeefTxs.Hash()
+	testTime1    = time.Date(2018, 1, 1, 1, 1, 1, 1, time.UTC)
+	testTime2    = time.Date(2017, 1, 2, 1, 1, 1, 1, time.UTC)
 )
 
-var hdrHeight11Tendermint = &types.Header{
+var hdrHeight11 = &types.Header{
 	Height:         11,
-	Time:           time.Date(2018, 1, 1, 1, 1, 1, 1, time.UTC),
+	Time:           testTime1,
 	ValidatorsHash: []byte("Tendermint"),
 }
 
@@ -54,14 +55,14 @@ func TestValidateBlock(t *testing.T) {
 
 		// Start Header.Hash mismatch test
 		{
-			block:   &types.Block{Header: hdrHeight11Tendermint},
+			block:   &types.Block{Header: hdrHeight11},
 			commit:  lite.Commit{Header: &types.Header{Height: 11}},
 			wantErr: "Headers don't match",
 		},
 
 		{
-			block:  &types.Block{Header: hdrHeight11Tendermint},
-			commit: lite.Commit{Header: hdrHeight11Tendermint},
+			block:  &types.Block{Header: hdrHeight11},
+			commit: lite.Commit{Header: hdrHeight11},
 		},
 		// End Header.Hash mismatch test
 
@@ -79,7 +80,7 @@ func TestValidateBlock(t *testing.T) {
 		},
 		{
 			block: &types.Block{
-				Header: &types.Header{Height: 11, DataHash: deadBeefRipEmd160Hash},
+				Header: &types.Header{Height: 11, DataHash: deadBeefHash},
 				Data:   &types.Data{Txs: deadBeefTxs},
 			},
 			commit: lite.Commit{
@@ -136,33 +137,27 @@ func TestValidateBlockMeta(t *testing.T) {
 
 		// Start Headers don't match test
 		{
-			meta:    &types.BlockMeta{Header: hdrHeight11Tendermint},
+			meta:    &types.BlockMeta{Header: hdrHeight11},
 			commit:  lite.Commit{Header: &types.Header{Height: 11}},
 			wantErr: "Headers don't match",
 		},
 
 		{
-			meta:   &types.BlockMeta{Header: hdrHeight11Tendermint},
-			commit: lite.Commit{Header: hdrHeight11Tendermint},
+			meta:   &types.BlockMeta{Header: hdrHeight11},
+			commit: lite.Commit{Header: hdrHeight11},
 		},
 
 		{
 			meta: &types.BlockMeta{
 				Header: &types.Header{
-					Height: 11,
-					// TODO: (@odeke-em) inquire why ValidatorsHash has to be non-blank
-					// for the Header to be hashed. Perhaps this is a security hole because
-					// an aggressor could perhaps pass in headers that don't have
-					// ValidatorsHash set and we won't be able to validate blocks.
+					Height:         11,
 					ValidatorsHash: []byte("lite-test"),
-					// TODO: (@odeke-em) file an issue with Tendermint to get them to update
-					// to the latest go-wire, then no more need for this value fill to avoid
-					// the time zero value of less than 1970.
-					Time: time.Date(2018, 1, 1, 1, 1, 1, 1, time.UTC),
+					// TODO: should be able to use empty time after Amino upgrade
+					Time: testTime1,
 				},
 			},
 			commit: lite.Commit{
-				Header: &types.Header{Height: 11, DataHash: deadBeefRipEmd160Hash},
+				Header: &types.Header{Height: 11, DataHash: deadBeefHash},
 			},
 			wantErr: "Headers don't match",
 		},
@@ -170,16 +165,16 @@ func TestValidateBlockMeta(t *testing.T) {
 		{
 			meta: &types.BlockMeta{
 				Header: &types.Header{
-					Height: 11, DataHash: deadBeefRipEmd160Hash,
+					Height: 11, DataHash: deadBeefHash,
 					ValidatorsHash: []byte("Tendermint"),
-					Time:           time.Date(2017, 1, 2, 1, 1, 1, 1, time.UTC),
+					Time:           testTime1,
 				},
 			},
 			commit: lite.Commit{
 				Header: &types.Header{
-					Height: 11, DataHash: deadBeefRipEmd160Hash,
+					Height: 11, DataHash: deadBeefHash,
 					ValidatorsHash: []byte("Tendermint"),
-					Time:           time.Date(2018, 1, 2, 1, 1, 1, 1, time.UTC),
+					Time:           testTime2,
 				},
 				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("DEADBEEF")}},
 			},
@@ -189,16 +184,16 @@ func TestValidateBlockMeta(t *testing.T) {
 		{
 			meta: &types.BlockMeta{
 				Header: &types.Header{
-					Height: 11, DataHash: deadBeefRipEmd160Hash,
+					Height: 11, DataHash: deadBeefHash,
 					ValidatorsHash: []byte("Tendermint"),
-					Time:           time.Date(2017, 1, 2, 1, 1, 1, 1, time.UTC),
+					Time:           testTime2,
 				},
 			},
 			commit: lite.Commit{
 				Header: &types.Header{
-					Height: 11, DataHash: deadBeefRipEmd160Hash,
+					Height: 11, DataHash: deadBeefHash,
 					ValidatorsHash: []byte("Tendermint-x"),
-					Time:           time.Date(2017, 1, 2, 1, 1, 1, 1, time.UTC),
+					Time:           testTime2,
 				},
 				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("DEADBEEF")}},
 			},

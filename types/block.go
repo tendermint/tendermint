@@ -177,7 +177,9 @@ type Header struct {
 }
 
 // Hash returns the hash of the header.
-// Returns nil if ValidatorHash is missing.
+// Returns nil if ValidatorHash is missing,
+// since a Header is not valid unless there is
+// a ValidaotrsHash (corresponding to the validator set).
 func (h *Header) Hash() cmn.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
