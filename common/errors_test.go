@@ -28,7 +28,7 @@ func TestErrorPanic(t *testing.T) {
 	assert.Equal(t, pnk{"something"}, err.Cause())
 	assert.Equal(t, pnk{"something"}, err.T())
 	assert.Equal(t, "This is the message in ErrorWrap(r, message).", err.Message())
-	assert.Equal(t, "Error{`This is the message in ErrorWrap(r, message).`}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "Error{`This is the message in ErrorWrap(r, message).` (cause: {something})}", fmt.Sprintf("%v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Message: This is the message in ErrorWrap(r, message).")
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Stack Trace:\n    0")
 }
@@ -40,7 +40,7 @@ func TestErrorWrapSomething(t *testing.T) {
 	assert.Equal(t, "something", err.Cause())
 	assert.Equal(t, "something", err.T())
 	assert.Equal(t, "formatter01", err.Message())
-	assert.Equal(t, "Error{`formatter01`}", fmt.Sprintf("%v", err))
+	assert.Equal(t, "Error{`formatter01` (cause: something)}", fmt.Sprintf("%v", err))
 	assert.Regexp(t, `Message: formatter01\n`, fmt.Sprintf("%#v", err))
 	assert.Contains(t, fmt.Sprintf("%#v", err), "Stack Trace:\n    0")
 }

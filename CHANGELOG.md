@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1 (develop branch)
+
+FEATURES:
+
+ - [common] Error.Error() includes cause
+
 ## 0.8.0 (develop branch)
 
 BREAKING:

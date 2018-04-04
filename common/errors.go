@@ -200,7 +200,11 @@ func (err *cmnError) Format(s fmt.State, verb rune) {
 			s.Write([]byte("--= /Error =--\n"))
 		} else {
 			// Write msg.
-			s.Write([]byte(fmt.Sprintf("Error{`%v`}", err.msg))) // TODO tick-esc?
+			if err.cause != nil {
+				s.Write([]byte(fmt.Sprintf("Error{`%s` (cause: %v)}", err.msg, err.cause))) // TODO tick-esc?
+			} else {
+				s.Write([]byte(fmt.Sprintf("Error{`%s`}", err.msg))) // TODO tick-esc?
+			}
 		}
 	}
 }
