@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"

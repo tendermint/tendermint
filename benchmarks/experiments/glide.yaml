@@ -1,0 +1,12 @@
+package: github.com/tendermint/tendermint/benchmarks/experiments
+import:
+- package: github.com/tendermint/tendermint
+  version: v0.16.0
+  subpackages:
+  - rpc/client
+  - rpc/lib/types
+  - types
+- package: github.com/tendermint/tmlibs
+  version: v0.7.0
+  subpackages:
+  - log

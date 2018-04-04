@@ -1,8 +1,6 @@
 package mempool
 
-import (
-	"github.com/tendermint/go-amino"
-)
+import amino "github.com/tendermint/go-amino"
 
 var cdc = amino.NewCodec()
 

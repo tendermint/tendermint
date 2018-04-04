@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/go-amino"
 
+	amino "github.com/tendermint/go-amino"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 

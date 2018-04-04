@@ -3,7 +3,7 @@ package proxy
 import (
 	"net/http"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/log"
 
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
