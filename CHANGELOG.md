@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.0 (TBD)
+## 0.8.0 (develop branch)
 
 BREAKING:
 
@@ -16,7 +16,8 @@ FEATURES:
  - [db] NewPrefixDB for a DB with all keys prefixed
  - [db] NewDebugDB prints everything during operation
  - [common] SplitAndTrim func
- - [common] RandFloat64() and rand.Float64()
+ - [common] rand.Float64(), rand.Int63n(n), rand.Int31n(n) and global equivalents
+ - [common] HexBytes Format()
 
 BUG FIXES:
 
