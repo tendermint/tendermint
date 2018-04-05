@@ -5,6 +5,7 @@
 FEATURES:
 
  - [common] Error.Error() includes cause
+ - [common] IsEmpty() for 0 length
 
 ## 0.8.0 (develop branch)
 

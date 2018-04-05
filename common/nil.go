@@ -16,3 +16,14 @@ func IsTypedNil(o interface{}) bool {
 		return false
 	}
 }
+
+// Returns true if it has zero length.
+func IsEmpty(o interface{}) bool {
+	rv := reflect.ValueOf(o)
+	switch rv.Kind() {
+	case reflect.Array, reflect.Chan, reflect.Map, reflect.Slice, reflect.String:
+		return rv.Len() == 0
+	default:
+		return false
+	}
+}
