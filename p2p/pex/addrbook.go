@@ -33,13 +33,15 @@ type AddrBook interface {
 
 	// Add our own addresses so we don't later add ourselves
 	AddOurAddress(*p2p.NetAddress)
-
 	// Check if it is our address
 	OurAddress(*p2p.NetAddress) bool
 
 	// Add and remove an address
 	AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
-	RemoveAddress(addr *p2p.NetAddress)
+	RemoveAddress(*p2p.NetAddress)
+
+	// Check if the address is in the book
+	HasAddress(*p2p.NetAddress) bool
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
@@ -194,6 +196,14 @@ func (a *addrBook) IsGood(addr *p2p.NetAddress) bool {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 	return a.addrLookup[addr.ID].isOld()
+}
+
+// HasAddress returns true if the address is in the book.
+func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	ka := a.addrLookup[addr.ID]
+	return ka != nil
 }
 
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.

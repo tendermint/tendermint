@@ -90,7 +90,9 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 }
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
-	sw.SetAddrBook(&addrBookMock{ourAddrs: make(map[string]struct{})})
+	sw.SetAddrBook(&addrBookMock{
+		addrs:    make(map[string]struct{}, 0),
+		ourAddrs: make(map[string]struct{}, 0)})
 
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
@@ -180,32 +182,24 @@ func TestConnAddrFilter(t *testing.T) {
 
 func TestSwitchFiltersOutItself(t *testing.T) {
 	s1 := MakeSwitch(config, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
-	addr := s1.NodeInfo().NetAddress()
+	// addr := s1.NodeInfo().NetAddress()
 
-	// add ourselves like we do in node.go#427
-	s1.addrBook.AddOurAddress(addr)
-
-	// addr should be rejected immediately because of the same IP & port
-	err := s1.DialPeerWithAddress(addr, false)
-	if assert.Error(t, err) {
-		assert.Equal(t, ErrSwitchConnectToSelf, err)
-	}
+	// // add ourselves like we do in node.go#427
+	// s1.addrBook.AddOurAddress(addr)
 
 	// simulate s1 having a public IP by creating a remote peer with the same ID
 	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: DefaultPeerConfig()}
 	rp.Start()
 
 	// addr should be rejected in addPeer based on the same ID
-	err = s1.DialPeerWithAddress(rp.Addr(), false)
+	err := s1.DialPeerWithAddress(rp.Addr(), false)
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrSwitchConnectToSelf, err)
 	}
 
-	// addr should be rejected immediately because during previous step we changed node's public IP
-	err = s1.DialPeerWithAddress(rp.Addr(), false)
-	if assert.Error(t, err) {
-		assert.Equal(t, ErrSwitchConnectToSelf, err)
-	}
+	assert.True(t, s1.addrBook.OurAddress(rp.Addr()))
+
+	assert.False(t, s1.addrBook.HasAddress(rp.Addr()))
 
 	rp.Stop()
 
@@ -379,16 +373,27 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 }
 
 type addrBookMock struct {
+	addrs    map[string]struct{}
 	ourAddrs map[string]struct{}
 }
 
 var _ AddrBook = (*addrBookMock)(nil)
 
-func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error { return nil }
-func (book *addrBookMock) AddOurAddress(addr *NetAddress)                     { book.ourAddrs[addr.String()] = struct{}{} }
+func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
+	book.addrs[addr.String()] = struct{}{}
+	return nil
+}
+func (book *addrBookMock) AddOurAddress(addr *NetAddress) { book.ourAddrs[addr.String()] = struct{}{} }
 func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
 	_, ok := book.ourAddrs[addr.String()]
 	return ok
 }
 func (book *addrBookMock) MarkGood(*NetAddress) {}
-func (book *addrBookMock) Save()                {}
+func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
+	_, ok := book.addrs[addr.String()]
+	return ok
+}
+func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
+	delete(book.addrs, addr.String())
+}
+func (book *addrBookMock) Save() {}

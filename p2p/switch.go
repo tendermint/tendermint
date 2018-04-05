@@ -40,6 +40,8 @@ type AddrBook interface {
 	AddOurAddress(*NetAddress)
 	OurAddress(*NetAddress) bool
 	MarkGood(*NetAddress)
+	RemoveAddress(*NetAddress)
+	HasAddress(*NetAddress) bool
 	Save()
 }
 
@@ -351,17 +353,20 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
+	if len(errs) > 0 {
+		return errors.New("Errors in peer addresses (see errors above)")
+	}
 
+	ourAddr := sw.nodeInfo.NetAddress()
+
+	// TODO: move this out of here ?
 	if addrBook != nil {
 		// add peers to `addrBook`
-		ourAddr := sw.nodeInfo.NetAddress()
 		for _, netAddr := range netAddrs {
 			// do not add our address or ID
-			if netAddr.Same(ourAddr) {
-				continue
+			if !netAddr.Same(ourAddr) {
+				addrBook.AddAddress(netAddr, ourAddr)
 			}
-			// TODO: move this out of here ?
-			addrBook.AddAddress(netAddr, ourAddr)
 		}
 		// Persist some peers to disk right away.
 		// NOTE: integration tests depend on this
@@ -372,8 +377,14 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	perm := sw.rng.Perm(len(netAddrs))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
-			sw.randomSleep(0)
 			j := perm[i]
+
+			// do not dial ourselves
+			if netAddrs[j].Same(ourAddr) {
+				return
+			}
+
+			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(netAddrs[j], persistent)
 			if err != nil {
 				sw.Logger.Error("Error dialing peer", "err", err)
@@ -386,11 +397,6 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 // DialPeerWithAddress dials the given peer and runs sw.addPeer if it connects and authenticates successfully.
 // If `persistent == true`, the switch will always try to reconnect to this peer if the connection ever fails.
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
-	// do not dial ourselves
-	if sw.addrBook.OurAddress(addr) {
-		return ErrSwitchConnectToSelf
-	}
-
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
 	return sw.addOutboundPeerWithConfig(addr, sw.peerConfig, persistent)
@@ -532,9 +538,14 @@ func (sw *Switch) addPeer(pc peerConn) error {
 
 	// Avoid self
 	if sw.nodeKey.ID() == peerID {
-		// add given address to the address book to avoid dialing ourselves again
-		// this is our public address
-		sw.addrBook.AddOurAddress(peerNodeInfo.NetAddress())
+		addr := peerNodeInfo.NetAddress()
+
+		// remove the given address from the address book if we're added it earlier
+		sw.addrBook.RemoveAddress(addr)
+
+		// add the given address to the address book to avoid dialing ourselves
+		// again this is our public address
+		sw.addrBook.AddOurAddress(addr)
 
 		return ErrSwitchConnectToSelf
 	}
