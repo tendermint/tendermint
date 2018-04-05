@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/tendermint/go-amino"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
@@ -19,6 +20,7 @@ import (
 // HTTPClient is a common interface for JSONRPCClient and URIClient.
 type HTTPClient interface {
 	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
+	Codec() *amino.Codec
 }
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
@@ -66,6 +68,7 @@ func makeHTTPClient(remoteAddr string) (string, *http.Client) {
 type JSONRPCClient struct {
 	address string
 	client  *http.Client
+	cdc     *amino.Codec
 }
 
 // NewJSONRPCClient returns a JSONRPCClient pointed at the given address.
@@ -74,11 +77,12 @@ func NewJSONRPCClient(remote string) *JSONRPCClient {
 	return &JSONRPCClient{
 		address: address,
 		client:  client,
+		cdc:     amino.NewCodec(),
 	}
 }
 
 func (c *JSONRPCClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	request, err := types.MapToRequest("jsonrpc-client", method, params)
+	request, err := types.MapToRequest(c.cdc, "jsonrpc-client", method, params)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +104,11 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 		return nil, err
 	}
 	// 	log.Info(Fmt("RPC response: %v", string(responseBytes)))
-	return unmarshalResponseBytes(responseBytes, result)
+	return unmarshalResponseBytes(c.cdc, responseBytes, result)
+}
+
+func (c *JSONRPCClient) Codec() *amino.Codec {
+	return c.cdc
 }
 
 //-------------------------------------------------------------
@@ -109,6 +117,7 @@ func (c *JSONRPCClient) Call(method string, params map[string]interface{}, resul
 type URIClient struct {
 	address string
 	client  *http.Client
+	cdc     *amino.Codec
 }
 
 func NewURIClient(remote string) *URIClient {
@@ -116,11 +125,12 @@ func NewURIClient(remote string) *URIClient {
 	return &URIClient{
 		address: address,
 		client:  client,
+		cdc:     amino.NewCodec(),
 	}
 }
 
 func (c *URIClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
-	values, err := argsToURLValues(params)
+	values, err := argsToURLValues(c.cdc, params)
 	if err != nil {
 		return nil, err
 	}
@@ -135,15 +145,18 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 	if err != nil {
 		return nil, err
 	}
-	return unmarshalResponseBytes(responseBytes, result)
+	return unmarshalResponseBytes(c.cdc, responseBytes, result)
+}
+
+func (c *URIClient) Codec() *amino.Codec {
+	return c.cdc
 }
 
 //------------------------------------------------
 
-func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface{}, error) {
-	// read response
-	// if rpc/core/types is imported, the result will unmarshal
-	// into the correct type
+func unmarshalResponseBytes(cdc *amino.Codec, responseBytes []byte, result interface{}) (interface{}, error) {
+	// Read response.  If rpc/core/types is imported, the result will unmarshal
+	// into the correct type.
 	// log.Notice("response", "response", string(responseBytes))
 	var err error
 	response := &types.RPCResponse{}
@@ -154,20 +167,20 @@ func unmarshalResponseBytes(responseBytes []byte, result interface{}) (interface
 	if response.Error != nil {
 		return nil, errors.Errorf("Response error: %v", response.Error)
 	}
-	// unmarshal the RawMessage into the result
-	err = json.Unmarshal(response.Result, result)
+	// Unmarshal the RawMessage into the result.
+	err = cdc.UnmarshalJSON(response.Result, result)
 	if err != nil {
 		return nil, errors.Errorf("Error unmarshalling rpc response result: %v", err)
 	}
 	return result, nil
 }
 
-func argsToURLValues(args map[string]interface{}) (url.Values, error) {
+func argsToURLValues(cdc *amino.Codec, args map[string]interface{}) (url.Values, error) {
 	values := make(url.Values)
 	if len(args) == 0 {
 		return values, nil
 	}
-	err := argsToJson(args)
+	err := argsToJSON(cdc, args)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +190,7 @@ func argsToURLValues(args map[string]interface{}) (url.Values, error) {
 	return values, nil
 }
 
-func argsToJson(args map[string]interface{}) error {
+func argsToJSON(cdc *amino.Codec, args map[string]interface{}) error {
 	for k, v := range args {
 		rt := reflect.TypeOf(v)
 		isByteSlice := rt.Kind() == reflect.Slice && rt.Elem().Kind() == reflect.Uint8
@@ -187,7 +200,7 @@ func argsToJson(args map[string]interface{}) error {
 			continue
 		}
 
-		data, err := json.Marshal(v)
+		data, err := cdc.MarshalJSON(v)
 		if err != nil {
 			return err
 		}
