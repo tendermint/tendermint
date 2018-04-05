@@ -49,30 +49,30 @@ func NewLastSignedInfo() *LastSignedInfo {
 	}
 }
 
-func (info *LastSignedInfo) String() string {
-	return fmt.Sprintf("LH:%v, LR:%v, LS:%v", info.Height, info.Round, info.Step)
+func (lsi *LastSignedInfo) String() string {
+	return fmt.Sprintf("LH:%v, LR:%v, LS:%v", lsi.Height, lsi.Round, lsi.Step)
 }
 
 // Verify returns an error if there is a height/round/step regression
 // or if the HRS matches but there are no LastSignBytes.
 // It returns true if HRS matches exactly and the LastSignature exists.
 // It panics if the HRS matches, the LastSignBytes are not empty, but the LastSignature is empty.
-func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, error) {
-	if info.Height > height {
+func (lsi LastSignedInfo) Verify(height int64, round int, step int8) (bool, error) {
+	if lsi.Height > height {
 		return false, errors.New("Height regression")
 	}
 
-	if info.Height == height {
-		if info.Round > round {
+	if lsi.Height == height {
+		if lsi.Round > round {
 			return false, errors.New("Round regression")
 		}
 
-		if info.Round == round {
-			if info.Step > step {
+		if lsi.Round == round {
+			if lsi.Step > step {
 				return false, errors.New("Step regression")
-			} else if info.Step == step {
-				if info.SignBytes != nil {
-					if info.Signature.Empty() {
+			} else if lsi.Step == step {
+				if lsi.SignBytes != nil {
+					if lsi.Signature.Empty() {
 						panic("info: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -85,24 +85,24 @@ func (info LastSignedInfo) Verify(height int64, round int, step int8) (bool, err
 }
 
 // Set height/round/step and signature on the info
-func (info *LastSignedInfo) Set(height int64, round int, step int8,
+func (lsi *LastSignedInfo) Set(height int64, round int, step int8,
 	signBytes []byte, sig crypto.Signature) {
 
-	info.Height = height
-	info.Round = round
-	info.Step = step
-	info.Signature = sig
-	info.SignBytes = signBytes
+	lsi.Height = height
+	lsi.Round = round
+	lsi.Step = step
+	lsi.Signature = sig
+	lsi.SignBytes = signBytes
 }
 
 // Reset resets all the values.
 // XXX: Unsafe.
-func (info *LastSignedInfo) Reset() {
-	info.Height = 0
-	info.Round = 0
-	info.Step = 0
-	info.Signature = crypto.Signature{}
-	info.SignBytes = nil
+func (lsi *LastSignedInfo) Reset() {
+	lsi.Height = 0
+	lsi.Round = 0
+	lsi.Step = 0
+	lsi.Signature = crypto.Signature{}
+	lsi.SignBytes = nil
 }
 
 // SignVote checks the height/round/step (HRS) are greater than the latest state of the LastSignedInfo.

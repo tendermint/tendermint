@@ -42,8 +42,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool("consensus.create_empty_blocks", config.Consensus.CreateEmptyBlocks, "Set this to false to only produce blocks when there are txs or when the AppHash changes")
 }
 
-// NewRunNodeCmd returns the command that allows the CLI to start a
-// node. It can be used with a custom PrivValidator and in-process ABCI application.
+// NewRunNodeCmd returns the command that allows the CLI to start a node.
+// It can be used with a custom PrivValidator and in-process ABCI application.
 func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "node",
@@ -57,9 +57,8 @@ func NewRunNodeCmd(nodeProvider nm.NodeProvider) *cobra.Command {
 
 			if err := n.Start(); err != nil {
 				return fmt.Errorf("Failed to start node: %v", err)
-			} else {
-				logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 			}
+			logger.Info("Started node", "nodeInfo", n.Switch().NodeInfo())
 
 			// Trap signal, run forever.
 			n.RunForever()

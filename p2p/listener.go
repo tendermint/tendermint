@@ -72,7 +72,7 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 
 	// Determine internal address...
 	var intAddr *NetAddress
-	intAddr, err = NewNetAddressString(lAddr)
+	intAddr, err = NewNetAddressStringWithOptionalID(lAddr)
 	if err != nil {
 		panic(err)
 	}

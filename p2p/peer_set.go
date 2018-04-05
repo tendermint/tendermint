@@ -68,9 +68,8 @@ func (ps *PeerSet) Get(peerKey ID) Peer {
 	item, ok := ps.lookup[peerKey]
 	if ok {
 		return item.peer
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // Remove discards peer by its Key, if the peer was previously memoized.

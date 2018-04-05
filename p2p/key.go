@@ -53,9 +53,8 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 			return nil, err
 		}
 		return nodeKey, nil
-	} else {
-		return genNodeKey(filePath)
 	}
+	return genNodeKey(filePath)
 }
 
 func loadNodeKey(filePath string) (*NodeKey, error) {
@@ -66,7 +65,7 @@ func loadNodeKey(filePath string) (*NodeKey, error) {
 	nodeKey := new(NodeKey)
 	err = json.Unmarshal(jsonBytes, nodeKey)
 	if err != nil {
-		return nil, fmt.Errorf("Error reading NodeKey from %v: %v\n", filePath, err)
+		return nil, fmt.Errorf("Error reading NodeKey from %v: %v", filePath, err)
 	}
 	return nodeKey, nil
 }

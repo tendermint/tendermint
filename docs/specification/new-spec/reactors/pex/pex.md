@@ -62,7 +62,7 @@ a trust metric (see below), but it's best to start with something simple.
 ## Select Peers to Dial
 
 When we need more peers, we pick them randomly from the addrbook with some
-configurable bias for unvetted peers. The bias should be lower when we have fewer peers,
+configurable bias for unvetted peers. The bias should be lower when we have fewer peers
 and can increase as we obtain more, ensuring that our first peers are more trustworthy,
 but always giving us the chance to discover new good peers.
 
@@ -81,6 +81,12 @@ PEX: if we fail to conenct to the peer after 16 tries (with exponential backoff)
 -----------------
 .......
 
+We track the last time we dialed a peer and the number of unsuccessful attempts
+we've made. If too many attempts are made, we mark the peer as bad.
+
+Connection attempts are made with exponential backoff (plus jitter). Because
+the selection process happens every `ensurePeersPeriod`, we might not end up
+dialing a peer for much longer than the backoff duration.
 
 ## Select Peers to Exchange
 

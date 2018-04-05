@@ -552,7 +552,9 @@ func (sw *Switch) addPeer(pc peerConn) error {
 
 	// All good. Start peer
 	if sw.IsRunning() {
-		sw.startInitPeer(peer)
+		if err = sw.startInitPeer(peer); err != nil {
+			return err
+		}
 	}
 
 	// Add the peer to .peers.
@@ -566,14 +568,17 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	return nil
 }
 
-func (sw *Switch) startInitPeer(peer *peer) {
+func (sw *Switch) startInitPeer(peer *peer) error {
 	err := peer.Start() // spawn send/recv routines
 	if err != nil {
 		// Should never happen
 		sw.Logger.Error("Error starting peer", "peer", peer, "err", err)
+		return err
 	}
 
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)
 	}
+
+	return nil
 }

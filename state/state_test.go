@@ -78,8 +78,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// build mock responses
 	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []cmn.KVPair{}}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []cmn.KVPair{}}
+	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
+	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
 		{
 			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
@@ -222,7 +222,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		// use the next pubkey
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
-			power += 1
+			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
 		state, err = updateState(state, blockID, header, responses)
@@ -240,7 +240,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		// use the next pubkey (note our counter starts at 0 this time)
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
 			changeIndex++
-			power += 1
+			power++
 		}
 		testCases[i-1] = power
 	}

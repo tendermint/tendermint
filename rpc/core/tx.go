@@ -44,7 +44,8 @@ import (
 // 			"code": 0
 // 		},
 // 		"index": 0,
-// 		"height": 52
+// 		"height": 52,
+//		"hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
 // 	},
 // 	"id": "",
 // 	"jsonrpc": "2.0"
@@ -67,11 +68,12 @@ import (
 // - `tx_result`: the `abci.Result` object
 // - `index`: `int` - index of the transaction
 // - `height`: `int` - height of the block where this transaction was in
+// - `hash`: `[]byte` - hash of the transaction
 func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("Transaction indexing is disabled.")
+		return nil, fmt.Errorf("Transaction indexing is disabled")
 	}
 
 	r, err := txIndexer.Get(hash)
@@ -93,6 +95,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}
 
 	return &ctypes.ResultTx{
+		Hash:     hash,
 		Height:   height,
 		Index:    uint32(index),
 		TxResult: r.Result,
@@ -137,7 +140,8 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 //       "tx": "mvZHHa7HhZ4aRT0xMDA=",
 //       "tx_result": {},
 //       "index": 31,
-//       "height": 12
+//       "height": 12,
+//       "hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
 //     }
 //   ],
 //   "id": "",
@@ -161,10 +165,11 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 // - `tx_result`: the `abci.Result` object
 // - `index`: `int` - index of the transaction
 // - `height`: `int` - height of the block where this transaction was in
+// - `hash`: `[]byte` - hash of the transaction
 func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
-		return nil, fmt.Errorf("Transaction indexing is disabled.")
+		return nil, fmt.Errorf("Transaction indexing is disabled")
 	}
 
 	q, err := tmquery.New(query)
@@ -191,6 +196,7 @@ func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 		}
 
 		apiResults[i] = &ctypes.ResultTx{
+			Hash:     r.Tx.Hash(),
 			Height:   height,
 			Index:    index,
 			TxResult: r.Result,

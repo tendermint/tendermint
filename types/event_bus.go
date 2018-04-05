@@ -101,7 +101,7 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 			b.Logger.Info("Got tag with an empty key (skipping)", "tag", tag, "tx", event.Tx)
 			continue
 		}
-		tags[string(tag.Key)] = tag.Value
+		tags[string(tag.Key)] = string(tag.Value)
 	}
 
 	// add predefined tags
