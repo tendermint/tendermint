@@ -17,9 +17,11 @@ func TestStatus(t *testing.T) {
 	m := &mock.StatusMock{
 		Call: mock.Call{
 			Response: &ctypes.ResultStatus{
-				LatestBlockHash:   cmn.HexBytes("block"),
-				LatestAppHash:     cmn.HexBytes("app"),
-				LatestBlockHeight: 10,
+				SyncInfo: ctypes.SyncInfo{
+					LatestBlockHash:   cmn.HexBytes("block"),
+					LatestAppHash:     cmn.HexBytes("app"),
+					LatestBlockHeight: 10,
+				},
 			}},
 	}
 
@@ -29,8 +31,8 @@ func TestStatus(t *testing.T) {
 	// make sure response works proper
 	status, err := r.Status()
 	require.Nil(err, "%+v", err)
-	assert.EqualValues("block", status.LatestBlockHash)
-	assert.EqualValues(10, status.LatestBlockHeight)
+	assert.EqualValues("block", status.SyncInfo.LatestBlockHeight)
+	assert.EqualValues(10, status.SyncInfo.LatestBlockHeight)
 
 	// make sure recorder works properly
 	require.Equal(1, len(r.Calls))
@@ -41,6 +43,6 @@ func TestStatus(t *testing.T) {
 	require.NotNil(rs.Response)
 	st, ok := rs.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.EqualValues("block", st.LatestBlockHash)
-	assert.EqualValues(10, st.LatestBlockHeight)
+	assert.EqualValues("block", st.SyncInfo.LatestBlockHeight)
+	assert.EqualValues(10, st.SyncInfo.LatestBlockHeight)
 }
