@@ -136,7 +136,7 @@ func TestAppCalls(t *testing.T) {
 		s, err := c.Status()
 		require.Nil(err, "%d: %+v", i, err)
 		// sh is start height or status height
-		sh := s.LatestBlockHeight
+		sh := s.SyncInfo.LatestBlockHeight
 
 		// look for the future
 		h := sh + 2
