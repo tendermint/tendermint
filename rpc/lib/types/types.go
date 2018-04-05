@@ -155,6 +155,7 @@ type WSRPCConnection interface {
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
 	GetEventSubscriber() EventSubscriber
+	Codec() *amino.Codec
 }
 
 // EventSubscriber mirros tendermint/tendermint/types.EventBusSubscriber

@@ -357,7 +357,7 @@ const (
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
 )
 
-// a single websocket connection contains listener id, underlying ws
+// A single websocket connection contains listener id, underlying ws
 // connection, and the event switch for subscribing to events.
 //
 // In case of an error, the connection is stopped.
@@ -506,6 +506,12 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	default:
 		return false
 	}
+}
+
+// Codec returns an amino codec used to decode parameters and encode results.
+// It implements WSRPCConnection.
+func (wsc *wsConnection) Codec() *amino.Codec {
+	return wsc.cdc
 }
 
 // Read from the socket and subscribe to or unsubscribe from events
