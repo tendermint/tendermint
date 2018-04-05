@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
@@ -33,7 +32,10 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(status)
+		jsonBytes, err := cdc.MarshalJSON(status)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 
@@ -54,7 +56,10 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(nodeInfo)
+		jsonBytes, err := cdc.MarshalJSON(nodeInfo)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 }
@@ -74,7 +79,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.BinaryBytes(nodeInfo)
+		jsonBytes := cdc.MustMarshalBinaryBare(nodeInfo)
 		counter += len(jsonBytes)
 	}
 
@@ -82,7 +87,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
 	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
 	nodeInfo := proto.NodeInfo{
 		PubKey:     pubKey2,

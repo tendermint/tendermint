@@ -265,10 +265,7 @@
 
 [[projects]]
   name = "github.com/tendermint/go-wire"
-  packages = [
-    ".",
-    "data"
-  ]
+  packages = ["."]
   revision = "fa721242b042ecd4c6ed1a934ee740db4f74e45c"
   version = "v0.7.3"
 
@@ -386,6 +383,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8cd32c0a5faec4d8cbca3d9ea5d97b0e4e90bfc2a9f0e6b71a4846cb6030be94"
+  inputs-digest = "0dacd2eb1550ca01e0c64f77b721eda1a381dde1d246a56bfe5a2746b78b7bad"
   solver-name = "gps-cdcl"
   solver-version = 1

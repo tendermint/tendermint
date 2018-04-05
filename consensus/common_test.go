@@ -223,7 +223,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	voteCh := make(chan interface{})
 	go func() {
 		for v := range voteCh0 {
-			vote := v.(types.TMEventData).Unwrap().(types.EventDataVote)
+			vote := v.(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
 				voteCh <- v

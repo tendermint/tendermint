@@ -189,7 +189,7 @@ func BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	timer := time.NewTimer(60 * 2 * time.Second)
 	select {
 	case deliverTxResMsg := <-deliverTxResCh:
-		deliverTxRes := deliverTxResMsg.(types.TMEventData).Unwrap().(types.EventDataTx)
+		deliverTxRes := deliverTxResMsg.(types.EventDataTx)
 		// The tx was included in a block.
 		deliverTxR := deliverTxRes.Result
 		logger.Info("DeliverTx passed ", "tx", cmn.HexBytes(tx), "response", deliverTxR)

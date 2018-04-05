@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	abci "github.com/tendermint/abci/types"
+	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -34,7 +34,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
-	priv_val "github.com/tendermint/tendermint/types/priv_validator"
+	privval "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -79,7 +79,7 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	return NewNode(config,
-		types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile()),
+		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -180,8 +180,8 @@ func NewNode(config *cfg.Config,
 			// TODO: persist this key so external signer
 			// can actually authenticate us
 			privKey = crypto.GenPrivKeyEd25519()
-			pvsc    = priv_val.NewSocketClient(
-				logger.With("module", "priv_val"),
+			pvsc    = privval.NewSocketPV(
+				logger.With("module", "privval"),
 				config.PrivValidatorListenAddr,
 				privKey,
 			)
@@ -445,7 +445,7 @@ func (n *Node) OnStop() {
 	n.eventBus.Stop()
 	n.indexerService.Stop()
 
-	if pvsc, ok := n.privValidator.(*priv_val.SocketClient); ok {
+	if pvsc, ok := n.privValidator.(*privval.SocketPV); ok {
 		if err := pvsc.Stop(); err != nil {
 			n.Logger.Error("Error stopping priv validator socket client", "err", err)
 		}
@@ -591,7 +591,7 @@ func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
 		},
 		Moniker: n.config.Moniker,
 		Other: []string{
-			cmn.Fmt("wire_version=%v", wire.Version),
+			cmn.Fmt("amino_version=%v", amino.Version),
 			cmn.Fmt("p2p_version=%v", p2p.Version),
 			cmn.Fmt("consensus_version=%v", cs.Version),
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),

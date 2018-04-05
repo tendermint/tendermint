@@ -72,6 +72,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
+	fmt.Println(">>privval", privValidator)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}

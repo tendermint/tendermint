@@ -778,7 +778,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	// if not a validator, we're done
 	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-		cs.Logger.Debug("This node is not a validator")
+		cs.Logger.Debug("This node is not a validator 2", cs.privValidator.GetAddress(), cs.Validators)
 		return
 	}
 	cs.Logger.Debug("This node is a validator")

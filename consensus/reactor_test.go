@@ -301,7 +301,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 		if !ok {
 			return
 		}
-		newBlock := newBlockI.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block
+		newBlock := newBlockI.(types.EventDataNewBlock).Block
 		css[j].Logger.Debug("waitForAndValidateBlock: Got block", "height", newBlock.Height)
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
@@ -322,7 +322,7 @@ func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]st
 			if !ok {
 				return
 			}
-			newBlock := newBlockI.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block
+			newBlock := newBlockI.(types.EventDataNewBlock).Block
 			css[j].Logger.Debug("waitForAndValidateBlockWithTx: Got block", "height", newBlock.Height)
 			err := validateBlock(newBlock, activeVals)
 			assert.Nil(t, err)
@@ -354,7 +354,7 @@ func waitForBlockWithUpdatedValsAndValidateIt(t *testing.T, n int, updatedVals m
 			if !ok {
 				return
 			}
-			newBlock = newBlockI.(types.TMEventData).Unwrap().(types.EventDataNewBlock).Block
+			newBlock = newBlockI.(types.EventDataNewBlock).Block
 			if newBlock.LastCommit.Size() == len(updatedVals) {
 				css[j].Logger.Debug("waitForBlockWithUpdatedValsAndValidateIt: Got block", "height", newBlock.Height)
 				break LOOP
