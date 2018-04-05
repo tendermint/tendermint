@@ -113,7 +113,6 @@ func (wal *baseWAL) OnStop() {
 
 // called in newStep and for each pass in receiveRoutine
 func (wal *baseWAL) Save(msg WALMessage) {
-	fmt.Println("!!", 1)
 	if wal == nil {
 		return
 	}

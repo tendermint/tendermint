@@ -35,7 +35,7 @@ func TestWALEncoderDecoder(t *testing.T) {
 		decoded, err := dec.Decode()
 		require.NoError(t, err)
 
-		assert.Equal(t, msg.Time.Truncate(time.Millisecond), decoded.Time)
+		assert.True(t, msg.Time.Equal(decoded.Time))
 		assert.Equal(t, msg.Msg, decoded.Msg)
 	}
 }

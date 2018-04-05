@@ -409,8 +409,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	validatePrevote(t, cs1, 1, vss[0], rs.LockedBlock.Hash())
 
 	// add a conflicting prevote from the other validator
-	fmt.Println(">>", rs.ProposalBlock)
-	signAddVotes(cs1, types.VoteTypePrevote, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrevote, hash, rs.LockedBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	// now we're going to enter prevote again, but with invalid args
@@ -425,7 +424,7 @@ func TestStateLockNoPOL(t *testing.T) {
 
 	// add conflicting precommit from vs2
 	// NOTE: in practice we should never get to a point where there are precommits for different blocks at the same round
-	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
+	signAddVotes(cs1, types.VoteTypePrecommit, hash, rs.LockedBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 
 	// (note we're entering precommit for a second time this round, but with invalid args
