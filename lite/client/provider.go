@@ -93,7 +93,7 @@ func (p *provider) GetLatestCommit() (*ctypes.ResultCommit, error) {
 	if err != nil {
 		return nil, err
 	}
-	return p.node.Commit(&status.LatestBlockHeight)
+	return p.node.Commit(&status.SyncInfo.LatestBlockHeight)
 }
 
 // CommitFromResult ...
