@@ -25,13 +25,18 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.17.2 (TBD)
+## 0.18.0 (TBD)
+
+BREAKING:
+- [p2p] require all addresses come with an ID no matter what
+
+IMPROVEMENTS:
+- [p2p] seeds respond with a bias towards good peers
+- [rpc] `/tx` and `/tx_search` responses now include the transaction hash
+- [rpc] include validator power in `/status`
 
 BUG FIXES:
 - [rpc] fix subscribing using an abci.ResponseDeliverTx tag
-
-IMPROVEMENTS:
-- [rpc] `/tx` and `/tx_search` responses now include the transaction hash
 
 ## 0.17.1 (March 27th, 2018)
 

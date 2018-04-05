@@ -1,9 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"time"
 
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -48,7 +50,10 @@ import (
 // 			"remote_addr": "",
 // 			"network": "test-chain-qhVCa2",
 // 			"moniker": "vagrant-ubuntu-trusty-64",
-// 			"pub_key": "844981FE99ABB19F7816F2D5E94E8A74276AB1153760A7799E925C75401856C6"
+// 			"pub_key": "844981FE99ABB19F7816F2D5E94E8A74276AB1153760A7799E925C75401856C6",
+//			"validator_status": {
+//				"voting_power": 10
+//			}
 // 		}
 // 	},
 // 	"id": "",
@@ -72,12 +77,50 @@ func Status() (*ctypes.ResultStatus, error) {
 
 	latestBlockTime := time.Unix(0, latestBlockTimeNano)
 
-	return &ctypes.ResultStatus{
+	result := &ctypes.ResultStatus{
 		NodeInfo:          p2pSwitch.NodeInfo(),
 		PubKey:            pubKey,
 		LatestBlockHash:   latestBlockHash,
 		LatestAppHash:     latestAppHash,
 		LatestBlockHeight: latestHeight,
 		LatestBlockTime:   latestBlockTime,
-		Syncing:           consensusReactor.FastSync()}, nil
+		Syncing:           consensusReactor.FastSync(),
+	}
+
+	// add ValidatorStatus if node is a validator
+	if val := validatorAtHeight(latestHeight); val != nil {
+		result.ValidatorStatus = ctypes.ValidatorStatus{
+			VotingPower: val.VotingPower,
+		}
+	}
+
+	return result, nil
+}
+
+func validatorAtHeight(h int64) *types.Validator {
+	lastBlockHeight, vals := consensusState.GetValidators()
+
+	privValAddress := pubKey.Address()
+
+	// if we're still at height h, search in the current validator set
+	if lastBlockHeight == h {
+		for _, val := range vals {
+			if bytes.Equal(val.Address, privValAddress) {
+				return val
+			}
+		}
+	}
+
+	// if we've moved to the next height, retrieve the validator set from DB
+	if lastBlockHeight > h {
+		vals, err := sm.LoadValidators(stateDB, h)
+		if err != nil {
+			// should not happen
+			return nil
+		}
+		_, val := vals.GetByAddress(privValAddress)
+		return val
+	}
+
+	return nil
 }

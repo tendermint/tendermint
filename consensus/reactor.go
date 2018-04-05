@@ -371,24 +371,30 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 	}
 
 	go func() {
+		var data interface{}
+		var ok bool
 		for {
 			select {
-			case data, ok := <-stepsCh:
+			case data, ok = <-stepsCh:
 				if ok { // a receive from a closed channel returns the zero value immediately
 					edrs := data.(types.TMEventData).Unwrap().(types.EventDataRoundState)
 					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
 				}
-			case data, ok := <-votesCh:
+			case data, ok = <-votesCh:
 				if ok {
 					edv := data.(types.TMEventData).Unwrap().(types.EventDataVote)
 					conR.broadcastHasVoteMessage(edv.Vote)
 				}
-			case data, ok := <-heartbeatsCh:
+			case data, ok = <-heartbeatsCh:
 				if ok {
 					edph := data.(types.TMEventData).Unwrap().(types.EventDataProposalHeartbeat)
 					conR.broadcastProposalHeartbeatMessage(edph)
 				}
 			case <-conR.Quit():
+				conR.eventBus.UnsubscribeAll(ctx, subscriber)
+				return
+			}
+			if !ok {
 				conR.eventBus.UnsubscribeAll(ctx, subscriber)
 				return
 			}
@@ -1081,6 +1087,9 @@ func (ps *PeerState) ensureVoteBitArrays(height int64, numValidators int) {
 // It returns the total number of votes (1 per block). This essentially means
 // the number of blocks for which peer has been sending us votes.
 func (ps *PeerState) RecordVote(vote *types.Vote) int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
 	if ps.stats.lastVoteHeight >= vote.Height {
 		return ps.stats.votes
 	}
@@ -1092,13 +1101,20 @@ func (ps *PeerState) RecordVote(vote *types.Vote) int {
 // VotesSent returns the number of blocks for which peer has been sending us
 // votes.
 func (ps *PeerState) VotesSent() int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
 	return ps.stats.votes
 }
 
-// RecordVote updates internal statistics for this peer by recording the block part.
-// It returns the total number of block parts (1 per block). This essentially means
-// the number of blocks for which peer has been sending us block parts.
+// RecordBlockPart updates internal statistics for this peer by recording the
+// block part. It returns the total number of block parts (1 per block). This
+// essentially means the number of blocks for which peer has been sending us
+// block parts.
 func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
 	if ps.stats.lastBlockPartHeight >= bp.Height {
 		return ps.stats.blockParts
 	}
@@ -1111,6 +1127,9 @@ func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
 // BlockPartsSent returns the number of blocks for which peer has been sending
 // us block parts.
 func (ps *PeerState) BlockPartsSent() int {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
 	return ps.stats.blockParts
 }
 

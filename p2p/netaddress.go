@@ -49,33 +49,45 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 	}
 	ip := tcpAddr.IP
 	port := uint16(tcpAddr.Port)
-	netAddr := NewNetAddressIPPort(ip, port)
-	netAddr.ID = id
-	return netAddr
+	na := NewNetAddressIPPort(ip, port)
+	na.ID = id
+	return na
 }
 
-// NewNetAddressString returns a new NetAddress using the provided
-// address in the form of "ID@IP:Port", where the ID is optional.
+// NewNetAddressString returns a new NetAddress using the provided address in
+// the form of "ID@IP:Port".
 // Also resolves the host if host is not an IP.
 func NewNetAddressString(addr string) (*NetAddress, error) {
-	addr = removeProtocolIfDefined(addr)
+	spl := strings.Split(addr, "@")
+	if len(spl) < 2 {
+		return nil, fmt.Errorf("Address (%s) does not contain ID", addr)
+	}
+	return NewNetAddressStringWithOptionalID(addr)
+}
+
+// NewNetAddressStringWithOptionalID returns a new NetAddress using the
+// provided address in the form of "ID@IP:Port", where the ID is optional.
+// Also resolves the host if host is not an IP.
+func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
+	addrWithoutProtocol := removeProtocolIfDefined(addr)
 
 	var id ID
-	spl := strings.Split(addr, "@")
+	spl := strings.Split(addrWithoutProtocol, "@")
 	if len(spl) == 2 {
 		idStr := spl[0]
 		idBytes, err := hex.DecodeString(idStr)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("Address (%s) contains invalid ID", addr))
+			return nil, errors.Wrapf(err, "Address (%s) contains invalid ID", addrWithoutProtocol)
 		}
 		if len(idBytes) != IDByteLength {
 			return nil, fmt.Errorf("Address (%s) contains ID of invalid length (%d). Should be %d hex-encoded bytes",
-				addr, len(idBytes), IDByteLength)
+				addrWithoutProtocol, len(idBytes), IDByteLength)
 		}
-		id, addr = ID(idStr), spl[1]
+
+		id, addrWithoutProtocol = ID(idStr), spl[1]
 	}
 
-	host, portStr, err := net.SplitHostPort(addr)
+	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +132,10 @@ func NewNetAddressStrings(addrs []string) ([]*NetAddress, []error) {
 // NewNetAddressIPPort returns a new NetAddress using the provided IP
 // and port number.
 func NewNetAddressIPPort(ip net.IP, port uint16) *NetAddress {
-	na := &NetAddress{
+	return &NetAddress{
 		IP:   ip,
 		Port: port,
 	}
-	return na
 }
 
 // Equals reports whether na and other are the same addresses,

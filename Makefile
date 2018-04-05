@@ -119,11 +119,6 @@ test_integrations:
 	make test_persistence
 	make test_p2p
 
-test_libs:
-	# checkout every github.com/tendermint dir and run its tests
-	# NOTE: on release-* or master branches only (set by Jenkins)
-	docker run --name run_libs -t tester bash test/test_libs.sh
-
 test_release:
 	@go test -tags release $(PACKAGES)
 
@@ -186,4 +181,4 @@ metalinter_all:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_libs test_integrations test_release test100 vagrant_test fmt
+.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt
