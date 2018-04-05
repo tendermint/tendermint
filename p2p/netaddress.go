@@ -23,6 +23,7 @@ type NetAddress struct {
 	ID   ID
 	IP   net.IP
 	Port uint16
+	Name string // optional DNS name
 	str  string
 }
 

@@ -48,6 +48,8 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 			ConnectionStatus: peer.Status(),
 		})
 	}
+	// TODO: should we include "num_peers" field for convenience ?
+	// Let's also include the PersistentPeers and Seeds in here.
 	return &ctypes.ResultNetInfo{
 		Listening: listening,
 		Listeners: listeners,
