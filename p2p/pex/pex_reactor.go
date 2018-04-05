@@ -119,14 +119,13 @@ func (r *PEXReactor) OnStart() error {
 	if err := r.BaseReactor.OnStart(); err != nil {
 		return err
 	}
-	err := r.book.Start()
 	if err != nil && err != cmn.ErrAlreadyStarted {
 		return err
 	}
 
 	// return err if user provided a bad seed address
 	// NOTE: only if its an invalid address.
-	// If we simply fail to resovle a DNS name,
+	// If we simply fail to resolve a DNS name,
 	// we shouldn't exit here ...
 	if err := r.checkSeeds(); err != nil {
 		return err
@@ -288,10 +287,10 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
 		// TODO: make sure correct nodes never send nil and return error
+		// TODO(melekes): punish for incorrect data
 		//   if a netAddr == nil
 		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
-			// TODO: Should we moe the list of private peers into the AddrBook so AddAddress
-			// can do the check for us, and we don't have to worry about checking before calling ?
+			// TODO(xla): Move the list to Addressbook and call it something like `blacklist_ids`.
 			r.book.AddAddress(netAddr, srcAddr)
 		}
 	}
