@@ -3,7 +3,7 @@ package merkle
 import (
 	"bytes"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 	. "github.com/tendermint/tmlibs/test"
 
 	"testing"
@@ -21,7 +21,7 @@ func TestSimpleProof(t *testing.T) {
 
 	items := make([]Hasher, total)
 	for i := 0; i < total; i++ {
-		items[i] = testItem(RandBytes(32))
+		items[i] = testItem(cmn.RandBytes(32))
 	}
 
 	rootHash := SimpleHashFromHashers(items)
@@ -53,7 +53,7 @@ func TestSimpleProof(t *testing.T) {
 
 		// Trail too long should make it fail
 		origAunts := proof.Aunts
-		proof.Aunts = append(proof.Aunts, RandBytes(32))
+		proof.Aunts = append(proof.Aunts, cmn.RandBytes(32))
 		{
 			ok = proof.Verify(i, total, itemHash, rootHash)
 			if ok {

@@ -60,9 +60,9 @@ func (sm *SimpleMap) KVPairs() cmn.KVPairs {
 //----------------------------------------
 
 // A local extension to KVPair that can be hashed.
-type kvPair cmn.KVPair
+type KVPair cmn.KVPair
 
-func (kv kvPair) Hash() []byte {
+func (kv KVPair) Hash() []byte {
 	hasher := ripemd160.New()
 	err := encodeByteSlice(hasher, kv.Key)
 	if err != nil {
@@ -78,7 +78,7 @@ func (kv kvPair) Hash() []byte {
 func hashKVPairs(kvs cmn.KVPairs) []byte {
 	kvsH := make([]Hasher, 0, len(kvs))
 	for _, kvp := range kvs {
-		kvsH = append(kvsH, kvPair(kvp))
+		kvsH = append(kvsH, KVPair(kvp))
 	}
 	return SimpleHashFromHashers(kvsH)
 }

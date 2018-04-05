@@ -31,7 +31,7 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs []*Simple
 	kvs := sm.kvs
 	kvsH := make([]Hasher, 0, len(kvs))
 	for _, kvp := range kvs {
-		kvsH = append(kvsH, kvPair(kvp))
+		kvsH = append(kvsH, KVPair(kvp))
 	}
 	return SimpleProofsFromHashers(kvsH)
 }
