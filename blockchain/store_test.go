@@ -153,14 +153,14 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			parts:             validPartSet,
 			seenCommit:        seenCommit1,
 			corruptCommitInDB: true, // Corrupt the DB's commit entry
-			wantPanic:         "rror reading commit",
+			wantPanic:         "Error reading block commit",
 		},
 
 		{
 			block:            newBlock(&header1, commitAtH10),
 			parts:            validPartSet,
 			seenCommit:       seenCommit1,
-			wantPanic:        "rror reading block",
+			wantPanic:        "Error reading block",
 			corruptBlockInDB: true, // Corrupt the DB's block entry
 		},
 
@@ -179,7 +179,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			seenCommit: seenCommit1,
 
 			corruptSeenCommitInDB: true,
-			wantPanic:             "rror reading commit",
+			wantPanic:             "Error reading block commit",
 		},
 
 		{
@@ -341,6 +341,9 @@ func TestBlockFetchAtHeight(t *testing.T) {
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
 	blockAtHeight := bs.LoadBlock(bs.Height())
+	bz1 := cdc.MustMarshalBinaryBare(block)
+	bz2 := cdc.MustMarshalBinaryBare(blockAtHeight)
+	require.Equal(t, bz1, bz2)
 	require.Equal(t, block.Hash(), blockAtHeight.Hash(),
 		"expecting a successful load of the last saved block")
 

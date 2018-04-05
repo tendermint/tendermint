@@ -254,8 +254,8 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "f55c3351f30e5987500020631f00e87a035ed415"
-  version = "0.9.3"
+  revision = "26718ab6738f938d4b33d593543cee7681f2a6a6"
+  version = "0.9.5"
 
 [[projects]]
   name = "github.com/tendermint/go-crypto"
@@ -288,8 +288,8 @@
     "pubsub/query",
     "test"
   ]
-  revision = "e9cf47606cfcbdc28a7c16671b4a70b459e9d4cc"
-  version = "v0.8.0-dev"
+  revision = "2e24b64fc121dcdf1cabceab8dc2f7257675483c"
+  version = "0.8.1"
 
 [[projects]]
   branch = "master"
@@ -386,6 +386,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9aace7a292e5402f97327860531e13b77f036c19843b698566ee958773404f48"
+  inputs-digest = "8cd32c0a5faec4d8cbca3d9ea5d97b0e4e90bfc2a9f0e6b71a4846cb6030be94"
   solver-name = "gps-cdcl"
   solver-version = 1

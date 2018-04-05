@@ -16,8 +16,12 @@ import (
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	blockStore := NewBlockStore(dbm.NewMemDB())
-	state, err := sm.LoadStateFromDBOrGenesisFile(dbm.NewMemDB(), config.GenesisFile())
+	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
+	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
+	blockDB := dbm.NewMemDB()
+	stateDB := dbm.NewMemDB()
+	blockStore := NewBlockStore(blockDB)
+	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
 	}

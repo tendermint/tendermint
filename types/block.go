@@ -94,7 +94,7 @@ func (b *Block) Hash() cmn.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 func (b *Block) MakePartSet(partSize int) *PartSet {
-	bz, err := cdc.MarshalBinary(b)
+	bz, err := cdc.MarshalBinaryBare(b)
 	if err != nil {
 		panic(err)
 	}
@@ -498,7 +498,7 @@ func (blockID BlockID) Equals(other BlockID) bool {
 
 // Key returns a machine-readable string representation of the BlockID
 func (blockID BlockID) Key() string {
-	bz, err := cdc.MarshalBinary(blockID.PartsHeader)
+	bz, err := cdc.MarshalBinaryBare(blockID.PartsHeader)
 	if err != nil {
 		panic(err)
 	}
@@ -518,7 +518,7 @@ type hasher struct {
 
 func (h hasher) Hash() []byte {
 	hasher := ripemd160.New()
-	if h.item != nil && !cmn.IsTypedNil(h.item) {
+	if h.item != nil && !cmn.IsTypedNil(h.item) && !cmn.IsEmpty(h.item) {
 		bz, err := cdc.MarshalBinaryBare(h.item)
 		if err != nil {
 			panic(err)

@@ -53,14 +53,17 @@ func (bs *BlockStore) Height() int64 {
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {
-	var blockMeta *types.BlockMeta
+	var blockMeta = new(types.BlockMeta)
 	bz := bs.db.Get(calcBlockMetaKey(height))
+	if len(bz) == 0 {
+		return nil
+	}
 	err := cdc.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "Error reading block meta"))
 	}
 
-	var block *types.Block
+	var block = new(types.Block)
 	buf := []byte{}
 	for i := 0; i < blockMeta.BlockID.PartsHeader.Total; i++ {
 		part := bs.LoadBlockPart(height, i)
@@ -68,6 +71,8 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 	}
 	err = cdc.UnmarshalBinaryBare(buf, block)
 	if err != nil {
+		// NOTE: The existence of meta should imply the existence of the
+		// block. So, make sure meta is only saved after blocks are saved.
 		panic(cmn.ErrorWrap(err, "Error reading block"))
 	}
 	return block
@@ -77,8 +82,11 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 // from the block at the given height.
 // If no part is found for the given height and index, it returns nil.
 func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
-	var part *types.Part
+	var part = new(types.Part)
 	bz := bs.db.Get(calcBlockPartKey(height, index))
+	if len(bz) == 0 {
+		return nil
+	}
 	err := cdc.UnmarshalBinaryBare(bz, part)
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "Error reading block part"))
@@ -89,8 +97,11 @@ func (bs *BlockStore) LoadBlockPart(height int64, index int) *types.Part {
 // LoadBlockMeta returns the BlockMeta for the given height.
 // If no block is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
-	var blockMeta *types.BlockMeta
+	var blockMeta = new(types.BlockMeta)
 	bz := bs.db.Get(calcBlockMetaKey(height))
+	if len(bz) == 0 {
+		return nil
+	}
 	err := cdc.UnmarshalBinaryBare(bz, blockMeta)
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "Error reading block meta"))
@@ -103,8 +114,11 @@ func (bs *BlockStore) LoadBlockMeta(height int64) *types.BlockMeta {
 // and it comes from the block.LastCommit for `height+1`.
 // If no commit is found for the given height, it returns nil.
 func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
-	var commit *types.Commit
+	var commit = new(types.Commit)
 	bz := bs.db.Get(calcBlockCommitKey(height))
+	if len(bz) == 0 {
+		return nil
+	}
 	err := cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "Error reading block commit"))
@@ -116,8 +130,11 @@ func (bs *BlockStore) LoadBlockCommit(height int64) *types.Commit {
 // This is useful when we've seen a commit, but there has not yet been
 // a new block at `height + 1` that includes this commit in its block.LastCommit.
 func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
-	var commit *types.Commit
+	var commit = new(types.Commit)
 	bz := bs.db.Get(calcSeenCommitKey(height))
+	if len(bz) == 0 {
+		return nil
+	}
 	err := cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
 		panic(cmn.ErrorWrap(err, "Error reading block commit"))
@@ -150,7 +167,8 @@ func (bs *BlockStore) SaveBlock(block *types.Block, blockParts *types.PartSet, s
 
 	// Save block parts
 	for i := 0; i < blockParts.Total(); i++ {
-		bs.saveBlockPart(height, i, blockParts.GetPart(i))
+		part := blockParts.GetPart(i)
+		bs.saveBlockPart(height, i, part)
 	}
 
 	// Save block commit (duplicate and separate from the Block)
