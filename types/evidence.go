@@ -38,9 +38,9 @@ type Evidence interface {
 	String() string
 }
 
-func RegisterEvidence(cdc *amino.Codec) {
+func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterInterface((*Evidence)(nil), nil)
-	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/Evidence", nil)
+	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
 }
 
 //-------------------------------------------

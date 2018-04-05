@@ -1,13 +1,11 @@
 package evidence
 
 import (
-	"bytes"
 	"fmt"
+	"github.com/tendermint/go-amino"
+	"github.com/tendermint/tmlibs/log"
 	"reflect"
 	"time"
-
-	wire "github.com/tendermint/go-wire"
-	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -68,7 +66,7 @@ func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
 	// the rest will be sent by the broadcastRoutine
 	evidences := evR.evpool.PriorityEvidence()
 	msg := &EvidenceListMessage{evidences}
-	success := peer.Send(EvidenceChannel, struct{ EvidenceMessage }{msg})
+	success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
 	if !success {
 		// TODO: remove peer ?
 	}
@@ -82,7 +80,7 @@ func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
 func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		evR.Switch.StopPeerForError(src, err)
@@ -119,7 +117,7 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 		case evidence := <-evR.evpool.EvidenceChan():
 			// broadcast some new evidence
 			msg := &EvidenceListMessage{[]types.Evidence{evidence}}
-			evR.Switch.Broadcast(EvidenceChannel, struct{ EvidenceMessage }{msg})
+			evR.Switch.Broadcast(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
 
 			// TODO: Broadcast runs asynchronously, so this should wait on the successChan
 			// in another routine before marking to be proper.
@@ -127,7 +125,7 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 		case <-ticker.C:
 			// broadcast all pending evidence
 			msg := &EvidenceListMessage{evR.evpool.PendingEvidence()}
-			evR.Switch.Broadcast(EvidenceChannel, struct{ EvidenceMessage }{msg})
+			evR.Switch.Broadcast(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
 		case <-evR.Quit():
 			return
 		}
@@ -137,24 +135,18 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeEvidence = byte(0x01)
-)
-
 // EvidenceMessage is a message sent or received by the EvidenceReactor.
 type EvidenceMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ EvidenceMessage }{},
-	wire.ConcreteType{&EvidenceListMessage{}, msgTypeEvidence},
-)
+func RegisterEvidenceMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*EvidenceMessage)(nil), nil)
+	cdc.RegisterConcrete(&EvidenceListMessage{},
+		"tendermint/evidence/EvidenceListMessagE", nil)
+}
 
 // DecodeMessage decodes a byte-array into a EvidenceMessage.
-func DecodeMessage(bz []byte) (msgType byte, msg EvidenceMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ EvidenceMessage }{}, r, maxEvidenceMessageSize, n, &err).(struct{ EvidenceMessage }).EvidenceMessage
+func DecodeMessage(bz []byte) (msg EvidenceMessage, err error) {
+	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
 

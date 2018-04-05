@@ -238,7 +238,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	defer peer.Stop()
 
 	// 3. check that the peer connects to seed immediately
-	assertPeersWithTimeout(t, []*p2p.Switch{peer}, 10*time.Millisecond, 1*time.Second, 1)
+	assertPeersWithTimeout(t, []*p2p.Switch{peer}, 10*time.Millisecond, 3*time.Second, 1)
 }
 
 func TestPEXReactorCrawlStatus(t *testing.T) {
