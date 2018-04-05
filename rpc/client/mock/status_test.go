@@ -31,7 +31,7 @@ func TestStatus(t *testing.T) {
 	// make sure response works proper
 	status, err := r.Status()
 	require.Nil(err, "%+v", err)
-	assert.EqualValues("block", status.SyncInfo.LatestBlockHeight)
+	assert.EqualValues("block", status.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, status.SyncInfo.LatestBlockHeight)
 
 	// make sure recorder works properly
@@ -43,6 +43,6 @@ func TestStatus(t *testing.T) {
 	require.NotNil(rs.Response)
 	st, ok := rs.Response.(*ctypes.ResultStatus)
 	require.True(ok)
-	assert.EqualValues("block", st.SyncInfo.LatestBlockHeight)
+	assert.EqualValues("block", st.SyncInfo.LatestBlockHash)
 	assert.EqualValues(10, st.SyncInfo.LatestBlockHeight)
 }
