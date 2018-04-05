@@ -32,6 +32,7 @@ BREAKING:
 
 IMPROVEMENTS:
 - [p2p] seeds respond with a bias towards good peers
+- [config] trim whitespace from elements of lists (like `persistent_peers`)
 - [rpc] `/tx` and `/tx_search` responses now include the transaction hash
 - [rpc] include validator power in `/status`
 

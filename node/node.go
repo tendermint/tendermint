@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
@@ -277,19 +276,11 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
-		var seeds []string
-		if config.P2P.Seeds != "" {
-			seeds = strings.Split(config.P2P.Seeds, ",")
-		}
-		var privatePeerIDs []string
-		if config.P2P.PrivatePeerIDs != "" {
-			privatePeerIDs = strings.Split(config.P2P.PrivatePeerIDs, ",")
-		}
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:          seeds,
+				Seeds:          cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
 				SeedMode:       config.P2P.SeedMode,
-				PrivatePeerIDs: privatePeerIDs})
+				PrivatePeerIDs: cmn.SplitAndTrim(config.P2P.PrivatePeerIDs, ",", " ")})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -339,7 +330,7 @@ func NewNode(config *cfg.Config,
 			return nil, err
 		}
 		if config.TxIndex.IndexTags != "" {
-			txIndexer = kv.NewTxIndex(store, kv.IndexTags(strings.Split(config.TxIndex.IndexTags, ",")))
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(cmn.SplitAndTrim(config.TxIndex.IndexTags, ",", " ")))
 		} else if config.TxIndex.IndexAllTags {
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
 		} else {
@@ -424,7 +415,7 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.PersistentPeers, ","), true)
+		err = n.sw.DialPeersAsync(n.addrBook, cmn.SplitAndTrim(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
@@ -495,7 +486,7 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := strings.Split(n.config.RPC.ListenAddress, ",")
+	listenAddrs := cmn.SplitAndTrim(n.config.RPC.ListenAddress, ",", " ")
 
 	if n.config.RPC.Unsafe {
 		rpccore.AddUnsafeRoutes()
