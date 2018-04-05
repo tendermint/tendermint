@@ -85,8 +85,8 @@
 [[override]]
 # [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  # version = "~0.7.1"
-  branch = "develop"
+  version = "~0.8.1"
+  # branch = "develop"
 
 [[constraint]]
   name = "google.golang.org/grpc"
