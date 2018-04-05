@@ -33,6 +33,8 @@ const (
 
 //-----------------------------------------------------------------------------
 
+// An AddrBook represents an address book from the pex package, which is used
+// to store peer addresses.
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
 	AddOurAddress(*NetAddress)
@@ -43,7 +45,7 @@ type AddrBook interface {
 
 //-----------------------------------------------------------------------------
 
-// `Switch` handles peer connections and exposes an API to receive incoming messages
+// Switch handles peer connections and exposes an API to receive incoming messages
 // on `Reactors`.  Each `Reactor` is responsible for handling incoming messages of one
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
@@ -68,6 +70,7 @@ type Switch struct {
 	rng *rand.Rand // seed for randomizing dial times and orders
 }
 
+// NewSwitch creates a new Switch with the given config.
 func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw := &Switch{
 		config:       config,
