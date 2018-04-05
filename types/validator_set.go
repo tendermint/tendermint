@@ -83,26 +83,30 @@ func (valSet *ValidatorSet) Copy() *ValidatorSet {
 	}
 }
 
+// HasAddress returns true if address given is in the validator set, false -
+// otherwise.
 func (valSet *ValidatorSet) HasAddress(address []byte) bool {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	return idx != len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address)
+	return idx < len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address)
 }
 
+// GetByAddress returns an index of the validator with address and validator
+// itself if found. Otherwise, -1 and nil are returned.
 func (valSet *ValidatorSet) GetByAddress(address []byte) (index int, val *Validator) {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	if idx != len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address) {
+	if idx < len(valSet.Validators) && bytes.Equal(valSet.Validators[idx].Address, address) {
 		return idx, valSet.Validators[idx].Copy()
 	}
-	return 0, nil
+	return -1, nil
 }
 
-// GetByIndex returns the validator by index.
-// It returns nil values if index < 0 or
-// index >= len(ValidatorSet.Validators)
+// GetByIndex returns the validator's address and validator itself by index.
+// It returns nil values if index is less than 0 or greater or equal to
+// len(ValidatorSet.Validators).
 func (valSet *ValidatorSet) GetByIndex(index int) (address []byte, val *Validator) {
 	if index < 0 || index >= len(valSet.Validators) {
 		return nil, nil
@@ -111,10 +115,12 @@ func (valSet *ValidatorSet) GetByIndex(index int) (address []byte, val *Validato
 	return val.Address, val.Copy()
 }
 
+// Size returns the length of the validator set.
 func (valSet *ValidatorSet) Size() int {
 	return len(valSet.Validators)
 }
 
+// TotalVotingPower returns the sum of the voting powers of all validators.
 func (valSet *ValidatorSet) TotalVotingPower() int64 {
 	if valSet.totalVotingPower == 0 {
 		for _, val := range valSet.Validators {
@@ -125,6 +131,8 @@ func (valSet *ValidatorSet) TotalVotingPower() int64 {
 	return valSet.totalVotingPower
 }
 
+// GetProposer returns the current proposer. If the validator set is empty, nil
+// is returned.
 func (valSet *ValidatorSet) GetProposer() (proposer *Validator) {
 	if len(valSet.Validators) == 0 {
 		return nil
@@ -145,6 +153,8 @@ func (valSet *ValidatorSet) findProposer() *Validator {
 	return proposer
 }
 
+// Hash returns the Merkle root hash build using validators (as leaves) in the
+// set.
 func (valSet *ValidatorSet) Hash() []byte {
 	if len(valSet.Validators) == 0 {
 		return nil
@@ -156,12 +166,14 @@ func (valSet *ValidatorSet) Hash() []byte {
 	return merkle.SimpleHashFromHashers(hashers)
 }
 
+// Add adds val to the validator set and returns true. It returns false if val
+// is already in the set.
 func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	val = val.Copy()
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(val.Address, valSet.Validators[i].Address) <= 0
 	})
-	if idx == len(valSet.Validators) {
+	if idx >= len(valSet.Validators) {
 		valSet.Validators = append(valSet.Validators, val)
 		// Invalidate cache
 		valSet.Proposer = nil
@@ -182,6 +194,8 @@ func (valSet *ValidatorSet) Add(val *Validator) (added bool) {
 	}
 }
 
+// Update updates val and returns true. It returns false if val is not present
+// in the set.
 func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
 	index, sameVal := valSet.GetByAddress(val.Address)
 	if sameVal == nil {
@@ -194,11 +208,13 @@ func (valSet *ValidatorSet) Update(val *Validator) (updated bool) {
 	return true
 }
 
+// Remove deletes the validator with address. It returns the validator removed
+// and true. If returns nil and false if validator is not present in the set.
 func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool) {
 	idx := sort.Search(len(valSet.Validators), func(i int) bool {
 		return bytes.Compare(address, valSet.Validators[i].Address) <= 0
 	})
-	if idx == len(valSet.Validators) || !bytes.Equal(valSet.Validators[idx].Address, address) {
+	if idx >= len(valSet.Validators) || !bytes.Equal(valSet.Validators[idx].Address, address) {
 		return nil, false
 	}
 	removedVal := valSet.Validators[idx]
@@ -213,6 +229,7 @@ func (valSet *ValidatorSet) Remove(address []byte) (val *Validator, removed bool
 	return removedVal, true
 }
 
+// Iterate will run the given function over the set.
 func (valSet *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	for i, val := range valSet.Validators {
 		stop := fn(i, val.Copy())
