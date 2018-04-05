@@ -409,6 +409,7 @@ func TestStateLockNoPOL(t *testing.T) {
 	validatePrevote(t, cs1, 1, vss[0], rs.LockedBlock.Hash())
 
 	// add a conflicting prevote from the other validator
+	fmt.Println(">>", rs.ProposalBlock)
 	signAddVotes(cs1, types.VoteTypePrevote, hash, rs.ProposalBlock.MakePartSet(partSize).Header(), vs2)
 	<-voteCh
 

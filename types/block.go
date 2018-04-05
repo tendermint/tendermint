@@ -94,7 +94,9 @@ func (b *Block) Hash() cmn.HexBytes {
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
 func (b *Block) MakePartSet(partSize int) *PartSet {
-	bz, err := cdc.MarshalBinaryBare(b)
+	// We prefix the byte length, so that unmarshaling
+	// can easily happen via a reader.
+	bz, err := cdc.MarshalBinary(b)
 	if err != nil {
 		panic(err)
 	}

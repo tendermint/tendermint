@@ -4,16 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	fail "github.com/ebuchman/fail-test"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 	"reflect"
 	"runtime/debug"
 	"sync"
 	"time"
-
-	fail "github.com/ebuchman/fail-test"
-
-	wire "github.com/tendermint/go-wire"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -1301,7 +1298,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		err = cdc.UnmarshalBinaryBare(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, cs.state.ConsensusParams.BlockSize.MaxBytes)
+		_, err = cdc.UnmarshalBinaryReader(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, int64(cs.state.ConsensusParams.BlockSize.MaxBytes))
 		if err != nil {
 			return true, err
 		}

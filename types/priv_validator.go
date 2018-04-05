@@ -87,3 +87,10 @@ func (pv *MockPV) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
 func (pv *MockPV) String() string {
 	return fmt.Sprintf("MockPV{%v}", pv.GetAddress())
 }
+
+// XXX: Implement.
+func (pv *MockPV) DisableChecks() {
+	// Currently this does nothing,
+	// as MockPV has no safety checks at all.
+	return
+}

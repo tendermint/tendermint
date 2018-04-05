@@ -3,11 +3,10 @@ package consensus
 import (
 	"bytes"
 	"crypto/rand"
-	"sync"
+	// "sync"
 	"testing"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/consensus/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -68,6 +67,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	assert.Equal(t, rs.Height, h+1, cmn.Fmt("wrong height"))
 }
 
+/*
 var initOnce sync.Once
 
 func registerInterfacesOnce() {
@@ -78,6 +78,7 @@ func registerInterfacesOnce() {
 		)
 	})
 }
+*/
 
 func nBytes(n int) []byte {
 	buf := make([]byte, n)
@@ -86,7 +87,7 @@ func nBytes(n int) []byte {
 }
 
 func benchmarkWalDecode(b *testing.B, n int) {
-	registerInterfacesOnce()
+	// registerInterfacesOnce()
 
 	buf := new(bytes.Buffer)
 	enc := NewWALEncoder(buf)
