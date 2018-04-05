@@ -24,6 +24,13 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.19.0 (TBD)
+
+BREAKING:
+
+- [rpc]: Changed the output format for the `/status` endpoint
+
+
 ## 0.18.0 (April 6th, 2018)
 
 BREAKING:
