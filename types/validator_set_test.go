@@ -127,7 +127,7 @@ func TestProposerSelection2(t *testing.T) {
 	for i := 0; i < 120*N; i++ {
 		prop := vals.GetProposer()
 		ii := prop.Address[19]
-		propCount[ii] += 1
+		propCount[ii]++
 		vals.IncrementAccum(1)
 	}
 

@@ -37,9 +37,8 @@ type GenesisDoc struct {
 func (genDoc *GenesisDoc) AppState() json.RawMessage {
 	if len(genDoc.AppOptions) > 0 {
 		return genDoc.AppOptions
-	} else {
-		return genDoc.AppStateJSON
 	}
+	return genDoc.AppStateJSON
 }
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.

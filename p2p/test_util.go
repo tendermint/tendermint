@@ -23,8 +23,8 @@ func CreateRandomPeer(outbound bool) *peer {
 			outbound: outbound,
 		},
 		nodeInfo: NodeInfo{
+			NodeID:     netAddr.ID,
 			ListenAddr: netAddr.DialString(),
-			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
 		mconn: &conn.MConnection{},
 	}
@@ -137,13 +137,13 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	sw.SetLogger(log.TestingLogger())
 	sw = initSwitch(i, sw)
 	ni := NodeInfo{
-		PubKey:     nodeKey.PubKey(),
+		NodeID:     nodeKey.ID(),
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
 		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
 	}
-	for ch, _ := range sw.reactorsByCh {
+	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
 	}
 	sw.SetNodeInfo(ni)

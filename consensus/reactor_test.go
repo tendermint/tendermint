@@ -441,7 +441,7 @@ func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]st
 			// but they should be in order.
 			for _, tx := range newBlock.Data.Txs {
 				assert.EqualValues(t, txs[ntxs], tx)
-				ntxs += 1
+				ntxs++
 			}
 
 			if ntxs == len(txs) {

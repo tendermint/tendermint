@@ -211,18 +211,18 @@ func LoadPrivValidatorFSWithSigner(filePath string, signerFunc func(PrivValidato
 }
 
 // Save persists the PrivValidatorFS to disk.
-func (privVal *PrivValidatorFS) Save() {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-	privVal.save()
+func (pv *PrivValidatorFS) Save() {
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
+	pv.save()
 }
 
-func (privVal *PrivValidatorFS) save() {
-	outFile := privVal.filePath
+func (pv *PrivValidatorFS) save() {
+	outFile := pv.filePath
 	if outFile == "" {
 		panic("Cannot save PrivValidator: filePath not set")
 	}
-	jsonBytes, err := json.Marshal(privVal)
+	jsonBytes, err := json.Marshal(pv)
 	if err != nil {
 		panic(err)
 	}
@@ -234,22 +234,22 @@ func (privVal *PrivValidatorFS) save() {
 
 // Reset resets all fields in the PrivValidatorFS.
 // NOTE: Unsafe!
-func (privVal *PrivValidatorFS) Reset() {
+func (pv *PrivValidatorFS) Reset() {
 	var sig crypto.Signature
-	privVal.LastHeight = 0
-	privVal.LastRound = 0
-	privVal.LastStep = 0
-	privVal.LastSignature = sig
-	privVal.LastSignBytes = nil
-	privVal.Save()
+	pv.LastHeight = 0
+	pv.LastRound = 0
+	pv.LastStep = 0
+	pv.LastSignature = sig
+	pv.LastSignBytes = nil
+	pv.Save()
 }
 
 // SignVote signs a canonical representation of the vote, along with the
 // chainID. Implements PrivValidator.
-func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-	if err := privVal.signVote(chainID, vote); err != nil {
+func (pv *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
+	if err := pv.signVote(chainID, vote); err != nil {
 		return errors.New(cmn.Fmt("Error signing vote: %v", err))
 	}
 	return nil
@@ -257,32 +257,32 @@ func (privVal *PrivValidatorFS) SignVote(chainID string, vote *Vote) error {
 
 // SignProposal signs a canonical representation of the proposal, along with
 // the chainID. Implements PrivValidator.
-func (privVal *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal) error {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
-	if err := privVal.signProposal(chainID, proposal); err != nil {
+func (pv *PrivValidatorFS) SignProposal(chainID string, proposal *Proposal) error {
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
+	if err := pv.signProposal(chainID, proposal); err != nil {
 		return fmt.Errorf("Error signing proposal: %v", err)
 	}
 	return nil
 }
 
 // returns error if HRS regression or no LastSignBytes. returns true if HRS is unchanged
-func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bool, error) {
-	if privVal.LastHeight > height {
+func (pv *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bool, error) {
+	if pv.LastHeight > height {
 		return false, errors.New("Height regression")
 	}
 
-	if privVal.LastHeight == height {
-		if privVal.LastRound > round {
+	if pv.LastHeight == height {
+		if pv.LastRound > round {
 			return false, errors.New("Round regression")
 		}
 
-		if privVal.LastRound == round {
-			if privVal.LastStep > step {
+		if pv.LastRound == round {
+			if pv.LastStep > step {
 				return false, errors.New("Step regression")
-			} else if privVal.LastStep == step {
-				if privVal.LastSignBytes != nil {
-					if privVal.LastSignature.Empty() {
+			} else if pv.LastStep == step {
+				if pv.LastSignBytes != nil {
+					if pv.LastSignature.Empty() {
 						panic("privVal: LastSignature is nil but LastSignBytes is not!")
 					}
 					return true, nil
@@ -297,11 +297,11 @@ func (privVal *PrivValidatorFS) checkHRS(height int64, round int, step int8) (bo
 // signVote checks if the vote is good to sign and sets the vote signature.
 // It may need to set the timestamp as well if the vote is otherwise the same as
 // a previously signed vote (ie. we crashed after signing but before the vote hit the WAL).
-func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
+func (pv *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 	height, round, step := vote.Height, vote.Round, voteToStep(vote)
 	signBytes := vote.SignBytes(chainID)
 
-	sameHRS, err := privVal.checkHRS(height, round, step)
+	sameHRS, err := pv.checkHRS(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -312,11 +312,11 @@ func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signBytes, privVal.LastSignBytes) {
-			vote.Signature = privVal.LastSignature
-		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(privVal.LastSignBytes, signBytes); ok {
+		if bytes.Equal(signBytes, pv.LastSignBytes) {
+			vote.Signature = pv.LastSignature
+		} else if timestamp, ok := checkVotesOnlyDifferByTimestamp(pv.LastSignBytes, signBytes); ok {
 			vote.Timestamp = timestamp
-			vote.Signature = privVal.LastSignature
+			vote.Signature = pv.LastSignature
 		} else {
 			err = fmt.Errorf("Conflicting data")
 		}
@@ -324,11 +324,11 @@ func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 	}
 
 	// It passed the checks. Sign the vote
-	sig, err := privVal.Sign(signBytes)
+	sig, err := pv.Sign(signBytes)
 	if err != nil {
 		return err
 	}
-	privVal.saveSigned(height, round, step, signBytes, sig)
+	pv.saveSigned(height, round, step, signBytes, sig)
 	vote.Signature = sig
 	return nil
 }
@@ -336,11 +336,11 @@ func (privVal *PrivValidatorFS) signVote(chainID string, vote *Vote) error {
 // signProposal checks if the proposal is good to sign and sets the proposal signature.
 // It may need to set the timestamp as well if the proposal is otherwise the same as
 // a previously signed proposal ie. we crashed after signing but before the proposal hit the WAL).
-func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal) error {
+func (pv *PrivValidatorFS) signProposal(chainID string, proposal *Proposal) error {
 	height, round, step := proposal.Height, proposal.Round, stepPropose
 	signBytes := proposal.SignBytes(chainID)
 
-	sameHRS, err := privVal.checkHRS(height, round, step)
+	sameHRS, err := pv.checkHRS(height, round, step)
 	if err != nil {
 		return err
 	}
@@ -351,11 +351,11 @@ func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal)
 	// If they only differ by timestamp, use last timestamp and signature
 	// Otherwise, return error
 	if sameHRS {
-		if bytes.Equal(signBytes, privVal.LastSignBytes) {
-			proposal.Signature = privVal.LastSignature
-		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(privVal.LastSignBytes, signBytes); ok {
+		if bytes.Equal(signBytes, pv.LastSignBytes) {
+			proposal.Signature = pv.LastSignature
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(pv.LastSignBytes, signBytes); ok {
 			proposal.Timestamp = timestamp
-			proposal.Signature = privVal.LastSignature
+			proposal.Signature = pv.LastSignature
 		} else {
 			err = fmt.Errorf("Conflicting data")
 		}
@@ -363,40 +363,40 @@ func (privVal *PrivValidatorFS) signProposal(chainID string, proposal *Proposal)
 	}
 
 	// It passed the checks. Sign the proposal
-	sig, err := privVal.Sign(signBytes)
+	sig, err := pv.Sign(signBytes)
 	if err != nil {
 		return err
 	}
-	privVal.saveSigned(height, round, step, signBytes, sig)
+	pv.saveSigned(height, round, step, signBytes, sig)
 	proposal.Signature = sig
 	return nil
 }
 
 // Persist height/round/step and signature
-func (privVal *PrivValidatorFS) saveSigned(height int64, round int, step int8,
+func (pv *PrivValidatorFS) saveSigned(height int64, round int, step int8,
 	signBytes []byte, sig crypto.Signature) {
 
-	privVal.LastHeight = height
-	privVal.LastRound = round
-	privVal.LastStep = step
-	privVal.LastSignature = sig
-	privVal.LastSignBytes = signBytes
-	privVal.save()
+	pv.LastHeight = height
+	pv.LastRound = round
+	pv.LastStep = step
+	pv.LastSignature = sig
+	pv.LastSignBytes = signBytes
+	pv.save()
 }
 
 // SignHeartbeat signs a canonical representation of the heartbeat, along with the chainID.
 // Implements PrivValidator.
-func (privVal *PrivValidatorFS) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
-	privVal.mtx.Lock()
-	defer privVal.mtx.Unlock()
+func (pv *PrivValidatorFS) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
 	var err error
-	heartbeat.Signature, err = privVal.Sign(heartbeat.SignBytes(chainID))
+	heartbeat.Signature, err = pv.Sign(heartbeat.SignBytes(chainID))
 	return err
 }
 
 // String returns a string representation of the PrivValidatorFS.
-func (privVal *PrivValidatorFS) String() string {
-	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", privVal.GetAddress(), privVal.LastHeight, privVal.LastRound, privVal.LastStep)
+func (pv *PrivValidatorFS) String() string {
+	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", pv.GetAddress(), pv.LastHeight, pv.LastRound, pv.LastStep)
 }
 
 //-------------------------------------

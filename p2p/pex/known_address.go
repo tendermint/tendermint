@@ -56,7 +56,7 @@ func (ka *knownAddress) isNew() bool {
 func (ka *knownAddress) markAttempt() {
 	now := time.Now()
 	ka.LastAttempt = now
-	ka.Attempts += 1
+	ka.Attempts++
 }
 
 func (ka *knownAddress) markGood() {

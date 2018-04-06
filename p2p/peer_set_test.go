@@ -13,11 +13,11 @@ import (
 
 // Returns an empty kvstore peer
 func randPeer() *peer {
-	pubKey := crypto.GenPrivKeyEd25519().Wrap().PubKey()
+	nodeKey := p2p.NodeKey{PrivKey:crypto.GenPrivKeyEd25519().Wrap()}
 	return &peer{
 		nodeInfo: NodeInfo{
+			NodeID: nodeKey.ID()
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
-			PubKey:     pubKey,
 		},
 	}
 }
@@ -115,7 +115,7 @@ func TestPeerSetAddDuplicate(t *testing.T) {
 	errsTally := make(map[error]int)
 	for i := 0; i < n; i++ {
 		err := <-errsChan
-		errsTally[err] += 1
+		errsTally[err]++
 	}
 
 	// Our next procedure is to ensure that only one addition

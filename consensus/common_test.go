@@ -101,13 +101,13 @@ func signVotes(voteType byte, hash []byte, header types.PartSetHeader, vss ...*v
 
 func incrementHeight(vss ...*validatorStub) {
 	for _, vs := range vss {
-		vs.Height += 1
+		vs.Height++
 	}
 }
 
 func incrementRound(vss ...*validatorStub) {
 	for _, vs := range vss {
-		vs.Round += 1
+		vs.Round++
 	}
 }
 
@@ -394,7 +394,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 	for i, s := range switches {
-		if bytes.Equal(peer.NodeInfo().PubKey.Address(), s.NodeInfo().PubKey.Address()) {
+		if bytes.Equal(peer.NodeInfo().ID(), s.NodeInfo().ID()) {
 			return i
 		}
 	}

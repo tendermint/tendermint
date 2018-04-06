@@ -3,8 +3,6 @@ package p2p
 import (
 	"fmt"
 	"strings"
-
-	crypto "github.com/tendermint/go-crypto"
 )
 
 const (
@@ -20,8 +18,8 @@ func MaxNodeInfoSize() int {
 // between two peers during the Tendermint P2P handshake.
 type NodeInfo struct {
 	// Authenticate
-	PubKey     crypto.PubKey `json:"pub_key"`     // authenticated pubkey
-	ListenAddr string        `json:"listen_addr"` // accepting incoming
+	NodeID     ID     `json:"node_id"`     // authenticated pubkey
+	ListenAddr string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility
 	Network  string `json:"network"`  // network/chain ID
@@ -107,8 +105,9 @@ OUTER_LOOP:
 	return nil
 }
 
+// ID returns node's ID.
 func (info NodeInfo) ID() ID {
-	return PubKeyToID(info.PubKey)
+	return info.NodeID
 }
 
 // NetAddress returns a NetAddress derived from the NodeInfo -
@@ -116,7 +115,7 @@ func (info NodeInfo) ID() ID {
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
 func (info NodeInfo) NetAddress() *NetAddress {
-	id := PubKeyToID(info.PubKey)
+	id := info.NodeID
 	addr := info.ListenAddr
 	netAddr, err := NewNetAddressString(IDAddressString(id, addr))
 	if err != nil {
@@ -126,7 +125,7 @@ func (info NodeInfo) NetAddress() *NetAddress {
 }
 
 func (info NodeInfo) String() string {
-	return fmt.Sprintf("NodeInfo{pk: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.PubKey, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
+	return fmt.Sprintf("NodeInfo{node_id: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.NodeID, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {

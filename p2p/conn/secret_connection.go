@@ -20,8 +20,8 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -113,7 +113,7 @@ func (sc *SecretConnection) RemotePubKey() crypto.PubKey {
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 	for 0 < len(data) {
-		var frame []byte = make([]byte, totalFrameSize)
+		var frame = make([]byte, totalFrameSize)
 		var chunk []byte
 		if dataMaxSize < len(data) {
 			chunk = data[:dataMaxSize]
@@ -136,9 +136,8 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		_, err := sc.conn.Write(sealedFrame)
 		if err != nil {
 			return n, err
-		} else {
-			n += len(chunk)
 		}
+		n += len(chunk)
 	}
 	return
 }
@@ -200,26 +199,36 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 }
 
 func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
-	var err1, err2 error
-
-	cmn.Parallel(
-		func() {
-			_, err1 = conn.Write(locEphPub[:])
+	// Send our pubkey and receive theirs in tandem.
+	var trs, _ = cmn.Parallel(
+		func(_ int) (val interface{}, err error, abort bool) {
+			var _, err1 = conn.Write(locEphPub[:])
+			if err1 != nil {
+				return nil, err1, true // abort
+			} else {
+				return nil, nil, false
+			}
 		},
-		func() {
-			remEphPub = new([32]byte)
-			_, err2 = io.ReadFull(conn, remEphPub[:])
+		func(_ int) (val interface{}, err error, abort bool) {
+			var _remEphPub [32]byte
+			var _, err2 = io.ReadFull(conn, _remEphPub[:])
+			if err2 != nil {
+				return nil, err2, true // abort
+			} else {
+				return _remEphPub, nil, false
+			}
 		},
 	)
 
-	if err1 != nil {
-		return nil, err1
-	}
-	if err2 != nil {
-		return nil, err2
+	// If error:
+	if trs.FirstError() != nil {
+		err = trs.FirstError()
+		return
 	}
 
-	return remEphPub, nil
+	// Otherwise:
+	var _remEphPub = trs.FirstValue().([32]byte)
+	return &_remEphPub, nil
 }
 
 func computeSharedSecret(remPubKey, locPrivKey *[32]byte) (shrSecret *[32]byte) {
@@ -268,33 +277,42 @@ type authSigMessage struct {
 	Sig crypto.Signature
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature crypto.Signature) (*authSigMessage, error) {
-	var recvMsg authSigMessage
-	var err1, err2 error
-
-	cmn.Parallel(
-		func() {
+func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature crypto.Signature) (recvMsg *authSigMessage, err error) {
+	// Send our info and receive theirs in tandem.
+	var trs, _ = cmn.Parallel(
+		func(_ int) (val interface{}, err error, abort bool) {
 			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
-			_, err1 = sc.Write(msgBytes)
+			var _, err1 = sc.Write(msgBytes)
+			if err1 != nil {
+				return nil, err1, true // abort
+			} else {
+				return nil, nil, false
+			}
 		},
-		func() {
+		func(_ int) (val interface{}, err error, abort bool) {
 			readBuffer := make([]byte, authSigMsgSize)
-			_, err2 = io.ReadFull(sc, readBuffer)
+			var _, err2 = io.ReadFull(sc, readBuffer)
 			if err2 != nil {
-				return
+				return nil, err2, true // abort
 			}
 			n := int(0) // not used.
-			recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
-		})
+			var _recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
+			if err2 != nil {
+				return nil, err2, true // abort
+			} else {
+				return _recvMsg, nil, false
+			}
+		},
+	)
 
-	if err1 != nil {
-		return nil, err1
-	}
-	if err2 != nil {
-		return nil, err2
+	// If error:
+	if trs.FirstError() != nil {
+		err = trs.FirstError()
+		return
 	}
 
-	return &recvMsg, nil
+	var _recvMsg = trs.FirstValue().(authSigMessage)
+	return &_recvMsg, nil
 }
 
 //--------------------------------------------------------------------------------
@@ -328,7 +346,7 @@ func incr2Nonce(nonce *[24]byte) {
 // increment nonce big-endian by 1 with wraparound.
 func incrNonce(nonce *[24]byte) {
 	for i := 23; 0 <= i; i-- {
-		nonce[i] += 1
+		nonce[i]++
 		if nonce[i] != 0 {
 			return
 		}

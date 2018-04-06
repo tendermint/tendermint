@@ -39,8 +39,6 @@ type TestReactor struct {
 
 	mtx          sync.Mutex
 	channels     []*conn.ChannelDescriptor
-	peersAdded   []Peer
-	peersRemoved []Peer
 	logMessages  bool
 	msgsCounter  int
 	msgsReceived map[byte][]PeerMessage
@@ -61,17 +59,9 @@ func (tr *TestReactor) GetChannels() []*conn.ChannelDescriptor {
 	return tr.channels
 }
 
-func (tr *TestReactor) AddPeer(peer Peer) {
-	tr.mtx.Lock()
-	defer tr.mtx.Unlock()
-	tr.peersAdded = append(tr.peersAdded, peer)
-}
+func (tr *TestReactor) AddPeer(peer Peer) {}
 
-func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {
-	tr.mtx.Lock()
-	defer tr.mtx.Unlock()
-	tr.peersRemoved = append(tr.peersRemoved, peer)
-}
+func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {}
 
 func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 	if tr.logMessages {
@@ -100,6 +90,10 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 }
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
+	sw.SetAddrBook(&addrBookMock{
+		addrs:    make(map[string]struct{}),
+		ourAddrs: make(map[string]struct{})})
+
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x00), Priority: 10},
@@ -109,6 +103,7 @@ func initSwitchFunc(i int, sw *Switch) *Switch {
 		{ID: byte(0x02), Priority: 10},
 		{ID: byte(0x03), Priority: 10},
 	}, true))
+
 	return sw
 }
 
@@ -185,6 +180,32 @@ func TestConnAddrFilter(t *testing.T) {
 	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
+func TestSwitchFiltersOutItself(t *testing.T) {
+	s1 := MakeSwitch(config, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
+	// addr := s1.NodeInfo().NetAddress()
+
+	// // add ourselves like we do in node.go#427
+	// s1.addrBook.AddOurAddress(addr)
+
+	// simulate s1 having a public IP by creating a remote peer with the same ID
+	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: DefaultPeerConfig()}
+	rp.Start()
+
+	// addr should be rejected in addPeer based on the same ID
+	err := s1.DialPeerWithAddress(rp.Addr(), false)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrSwitchConnectToSelf, err)
+	}
+
+	assert.True(t, s1.addrBook.OurAddress(rp.Addr()))
+
+	assert.False(t, s1.addrBook.HasAddress(rp.Addr()))
+
+	rp.Stop()
+
+	assertNoPeersAfterTimeout(t, s1, 100*time.Millisecond)
+}
+
 func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
 	time.Sleep(timeout)
 	if sw.Peers().Size() != 0 {
@@ -201,14 +222,14 @@ func TestConnIDFilter(t *testing.T) {
 	c1, c2 := conn.NetPipe()
 
 	s1.SetIDFilter(func(id ID) error {
-		if id == PubKeyToID(s2.nodeInfo.PubKey) {
+		if id == s2.nodeInfo.ID() {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
 	s2.SetIDFilter(func(id ID) error {
-		if id == PubKeyToID(s1.nodeInfo.PubKey) {
+		if id == s1.nodeInfo.ID() {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
@@ -350,3 +371,29 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
 }
+
+type addrBookMock struct {
+	addrs    map[string]struct{}
+	ourAddrs map[string]struct{}
+}
+
+var _ AddrBook = (*addrBookMock)(nil)
+
+func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
+	book.addrs[addr.String()] = struct{}{}
+	return nil
+}
+func (book *addrBookMock) AddOurAddress(addr *NetAddress) { book.ourAddrs[addr.String()] = struct{}{} }
+func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
+	_, ok := book.ourAddrs[addr.String()]
+	return ok
+}
+func (book *addrBookMock) MarkGood(*NetAddress) {}
+func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
+	_, ok := book.addrs[addr.String()]
+	return ok
+}
+func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
+	delete(book.addrs, addr.String())
+}
+func (book *addrBookMock) Save() {}

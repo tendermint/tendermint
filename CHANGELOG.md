@@ -25,10 +25,24 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.18.0 (TBD)
+
+BREAKING:
+- [p2p] require all addresses come with an ID no matter what
+
+IMPROVEMENTS:
+- [p2p] seeds respond with a bias towards good peers
+- [config] trim whitespace from elements of lists (like `persistent_peers`)
+- [rpc] `/tx` and `/tx_search` responses now include the transaction hash
+- [rpc] include validator power in `/status`
+- [p2p] do not try to connect to ourselves (ok, maybe only once)
+
+BUG FIXES:
+- [rpc] fix subscribing using an abci.ResponseDeliverTx tag
+
 ## 0.17.1 (March 27th, 2018)
 
 BUG FIXES:
-
 - [types] Actually support `app_state` in genesis as `AppStateJSON`
 
 ## 0.17.0 (March 27th, 2018)

@@ -30,17 +30,24 @@ const (
 	defaultMinNumOutboundPeers = 10
 
 	// Seed/Crawler constants
-	// TODO:
-	// We want seeds to only advertise good peers.
-	// Peers are marked by external mechanisms.
-	// We need a config value that can be set to be
-	// on the order of how long it would take before a good
-	// peer is marked good.
-	defaultSeedDisconnectWaitPeriod = 2 * time.Minute  // disconnect after this
-	defaultCrawlPeerInterval        = 2 * time.Minute  // dont redial for this. TODO: back-off
-	defaultCrawlPeersPeriod         = 30 * time.Second // check some peers every this
+
+	// We want seeds to only advertise good peers. Therefore they should wait at
+	// least as long as we expect it to take for a peer to become good before
+	// disconnecting.
+	// see consensus/reactor.go: blocksToContributeToBecomeGoodPeer
+	// 10000 blocks assuming 1s blocks ~ 2.7 hours.
+	defaultSeedDisconnectWaitPeriod = 3 * time.Hour
+
+	defaultCrawlPeerInterval = 2 * time.Minute // don't redial for this. TODO: back-off. what for?
+
+	defaultCrawlPeersPeriod = 30 * time.Second // check some peers every this
 
 	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h)
+
+	// if node connects to seed, it does not have any trusted peers.
+	// Especially in the beginning, node should have more trusted peers than
+	// untrusted.
+	biasToSelectNewPeers = 30 // 70 to select good peers
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
@@ -157,7 +164,10 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		// peers when we need - we don't trust inbound peers as much.
 		addr := p.NodeInfo().NetAddress()
 		if !isAddrPrivate(addr, r.config.PrivatePeerIDs) {
-			r.book.AddAddress(addr, addr)
+			err := r.book.AddAddress(addr, addr)
+			if err != nil {
+				r.Logger.Error("Failed to add new address", "err", err)
+			}
 		}
 	}
 }
@@ -189,8 +199,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 		// Seeds disconnect after sending a batch of addrs
 		if r.config.SeedMode {
-			// TODO: should we be more selective ?
-			r.SendAddrs(src, r.book.GetSelection())
+			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
 			r.Switch.StopPeerGracefully(src)
 		} else {
 			r.SendAddrs(src, r.book.GetSelection())
@@ -259,7 +268,10 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
 		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
-			r.book.AddAddress(netAddr, srcAddr)
+			err := r.book.AddAddress(netAddr, srcAddr)
+			if err != nil {
+				r.Logger.Error("Failed to add new address", "err", err)
+			}
 		}
 	}
 	return nil
@@ -467,9 +479,8 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 	lAttempts, attempted := r.attemptsToDial.Load(addr.DialString())
 	if attempted {
 		return lAttempts.(_attemptsToDial).number
-	} else {
-		return 0
 	}
+	return 0
 }
 
 //----------------------------------------------------------
@@ -563,24 +574,16 @@ func (r *PEXReactor) crawlPeers() {
 			r.book.MarkAttempt(pi.Addr)
 			continue
 		}
-	}
-	// Crawl the connected peers asking for more addresses
-	for _, pi := range peerInfos {
-		// We will wait a minimum period of time before crawling peers again
-		if now.Sub(pi.LastAttempt) >= defaultCrawlPeerInterval {
-			peer := r.Switch.Peers().Get(pi.Addr.ID)
-			if peer != nil {
-				r.RequestAddrs(peer)
-			}
-		}
+		// Ask for more addresses
+		peer := r.Switch.Peers().Get(pi.Addr.ID)
+		r.RequestAddrs(peer)
 	}
 }
 
 // attemptDisconnects checks if we've been with each peer long enough to disconnect
 func (r *PEXReactor) attemptDisconnects() {
 	for _, peer := range r.Switch.Peers().List() {
-		status := peer.Status()
-		if status.Duration < defaultSeedDisconnectWaitPeriod {
+		if peer.Status().Duration < defaultSeedDisconnectWaitPeriod {
 			continue
 		}
 		if peer.IsPersistent() {
