@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
@@ -277,19 +276,11 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
-		var seeds []string
-		if config.P2P.Seeds != "" {
-			seeds = strings.Split(config.P2P.Seeds, ",")
-		}
-		var privatePeerIDs []string
-		if config.P2P.PrivatePeerIDs != "" {
-			privatePeerIDs = strings.Split(config.P2P.PrivatePeerIDs, ",")
-		}
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:          seeds,
+				Seeds:          cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
 				SeedMode:       config.P2P.SeedMode,
-				PrivatePeerIDs: privatePeerIDs})
+				PrivatePeerIDs: cmn.SplitAndTrim(config.P2P.PrivatePeerIDs, ",", " ")})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -339,7 +330,7 @@ func NewNode(config *cfg.Config,
 			return nil, err
 		}
 		if config.TxIndex.IndexTags != "" {
-			txIndexer = kv.NewTxIndex(store, kv.IndexTags(strings.Split(config.TxIndex.IndexTags, ",")))
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(cmn.SplitAndTrim(config.TxIndex.IndexTags, ",", " ")))
 		} else if config.TxIndex.IndexAllTags {
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
 		} else {
@@ -414,9 +405,14 @@ func (n *Node) OnStart() error {
 	}
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	// Start the switch
-	n.sw.SetNodeInfo(n.makeNodeInfo(nodeKey.PubKey()))
+	nodeInfo := n.makeNodeInfo(nodeKey.PubKey())
+	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
+
+	// Add ourselves to addrbook to prevent dialing ourselves
+	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
+
+	// Start the switch
 	err = n.sw.Start()
 	if err != nil {
 		return err
@@ -424,7 +420,7 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.PersistentPeers, ","), true)
+		err = n.sw.DialPeersAsync(n.addrBook, cmn.SplitAndTrim(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
@@ -495,7 +491,7 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := strings.Split(n.config.RPC.ListenAddress, ",")
+	listenAddrs := cmn.SplitAndTrim(n.config.RPC.ListenAddress, ",", " ")
 
 	if n.config.RPC.Unsafe {
 		rpccore.AddUnsafeRoutes()
@@ -643,14 +639,13 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	bytes := db.Get(genesisDocKey)
 	if len(bytes) == 0 {
 		return nil, errors.New("Genesis doc not found")
-	} else {
-		var genDoc *types.GenesisDoc
-		err := json.Unmarshal(bytes, &genDoc)
-		if err != nil {
-			cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
-		}
-		return genDoc, nil
 	}
+	var genDoc *types.GenesisDoc
+	err := json.Unmarshal(bytes, &genDoc)
+	if err != nil {
+		cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+	}
+	return genDoc, nil
 }
 
 // panics if failed to marshal the given genesis document

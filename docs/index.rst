@@ -44,7 +44,8 @@ Tendermint Tools
    tools/docker.rst
    tools/mintnet-kubernetes.rst
    tools/terraform-digitalocean.rst
-   tools/benchmarking-and-monitoring.rst
+   tools/benchmarking.rst
+   tools/monitoring.rst
 
 Tendermint 102
 --------------

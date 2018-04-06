@@ -1,6 +1,7 @@
 # Supported tags and respective `Dockerfile` links
 
-- `0.15.0`, `latest` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/170777300ea92dc21a8aec1abc16cb51812513a4/DOCKER/Dockerfile)
+- `0.17.1`, `latest` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/208ac32fa266657bd6c304e84ec828aa252bb0b8/DOCKER/Dockerfile)
+- `0.15.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/170777300ea92dc21a8aec1abc16cb51812513a4/DOCKER/Dockerfile)
 - `0.13.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/a28b3fff49dce2fb31f90abb2fc693834e0029c2/DOCKER/Dockerfile)
 - `0.12.1` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/457c688346b565e90735431619ca3ca597ef9007/DOCKER/Dockerfile)
 - `0.12.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/70d8afa6e952e24c573ece345560a5971bf2cc0e/DOCKER/Dockerfile)

@@ -1,8 +1,8 @@
-FROM alpine:3.6
+FROM alpine:3.7
 
 # This is the release of tendermint to pull in.
-ENV TM_VERSION 0.15.0
-ENV TM_SHA256SUM 71cc271c67eca506ca492c8b90b090132f104bf5dbfe0af2702a50886e88de17
+ENV TM_VERSION 0.17.1
+ENV TM_SHA256SUM d57008c63d2d9176861137e38ed203da486febf20ae7d388fb810a75afff8f24
 
 # Tendermint will be looking for genesis file in /tendermint (unless you change
 # `genesis_file` in config.toml). You can put your config.toml and private
@@ -26,7 +26,7 @@ RUN mkdir -p $DATA_ROOT && \
 RUN apk add --no-cache bash curl jq
 
 RUN apk add --no-cache openssl && \
-    wget https://s3-us-west-2.amazonaws.com/tendermint/binaries/tendermint/v${TM_VERSION}/tendermint_${TM_VERSION}_linux_amd64.zip && \
+    wget https://github.com/tendermint/tendermint/releases/download/v${TM_VERSION}/tendermint_${TM_VERSION}_linux_amd64.zip && \
     echo "${TM_SHA256SUM}  tendermint_${TM_VERSION}_linux_amd64.zip" | sha256sum -c && \
     unzip -d /bin tendermint_${TM_VERSION}_linux_amd64.zip && \
     apk del openssl && \

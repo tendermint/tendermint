@@ -141,9 +141,8 @@ func (b *Block) StringIndented(indent string) string {
 func (b *Block) StringShort() string {
 	if b == nil {
 		return "nil-Block"
-	} else {
-		return fmt.Sprintf("Block#%v", b.Hash())
 	}
+	return fmt.Sprintf("Block#%v", b.Hash())
 }
 
 //-----------------------------------------------------------------------------
@@ -177,7 +176,9 @@ type Header struct {
 }
 
 // Hash returns the hash of the header.
-// Returns nil if ValidatorHash is missing.
+// Returns nil if ValidatorHash is missing,
+// since a Header is not valid unless there is
+// a ValidaotrsHash (corresponding to the validator set).
 func (h *Header) Hash() cmn.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
@@ -215,7 +216,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Data:           %v
 %s  Validators:     %v
 %s  App:            %v
-%s  Conensus:       %v
+%s  Consensus:       %v
 %s  Results:        %v
 %s  Evidence:       %v
 %s}#%v`,

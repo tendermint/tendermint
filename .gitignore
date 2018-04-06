@@ -17,6 +17,7 @@ test/logs
 coverage.txt
 docs/_build
 docs/tools
+docs/abci-spec.rst
 *.log
 
 scripts/wal2json/wal2json

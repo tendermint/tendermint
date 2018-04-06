@@ -107,6 +107,7 @@ OUTER_LOOP:
 	return nil
 }
 
+// ID returns node's ID.
 func (info NodeInfo) ID() ID {
 	return PubKeyToID(info.PubKey)
 }
