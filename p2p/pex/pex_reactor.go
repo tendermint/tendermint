@@ -164,7 +164,10 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		// peers when we need - we don't trust inbound peers as much.
 		addr := p.NodeInfo().NetAddress()
 		if !isAddrPrivate(addr, r.config.PrivatePeerIDs) {
-			r.book.AddAddress(addr, addr)
+			err := r.book.AddAddress(addr, addr)
+			if err != nil {
+				r.Logger.Error("Failed to add new address", "err", err)
+			}
 		}
 	}
 }
@@ -265,7 +268,10 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
 		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
-			r.book.AddAddress(netAddr, srcAddr)
+			err := r.book.AddAddress(netAddr, srcAddr)
+			if err != nil {
+				r.Logger.Error("Failed to add new address", "err", err)
+			}
 		}
 	}
 	return nil
