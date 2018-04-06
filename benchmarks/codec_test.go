@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/go-crypto"
 
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
@@ -13,6 +14,8 @@ import (
 
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
@@ -43,6 +46,8 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	nodeInfo := p2p.NodeInfo{
 		PubKey:     pubKey,
@@ -66,6 +71,8 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	nodeInfo := p2p.NodeInfo{
 		PubKey:     pubKey,

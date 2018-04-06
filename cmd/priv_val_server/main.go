@@ -30,7 +30,7 @@ func main() {
 		"privPath", *privValPath,
 	)
 
-	privVal := priv_val.LoadPrivValidatorJSON(*privValPath)
+	privVal := priv_val.LoadFilePV(*privValPath)
 
 	rs := priv_val.NewRemoteSigner(
 		logger,

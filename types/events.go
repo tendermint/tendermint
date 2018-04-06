@@ -47,15 +47,17 @@ func (_ EventDataTx) AssertIsTMEventData()                {}
 func (_ EventDataRoundState) AssertIsTMEventData()        {}
 func (_ EventDataVote) AssertIsTMEventData()              {}
 func (_ EventDataProposalHeartbeat) AssertIsTMEventData() {}
+func (_ EventDataString) AssertIsTMEventData()            {}
 
 func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterInterface((*TMEventData)(nil), nil)
-	cdc.RegisterConcrete(EventDataNewBlock{}, "tendermint/EventDataNameNewBlock", nil)
-	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/EventDataNameNewBlockHeader", nil)
-	cdc.RegisterConcrete(EventDataTx{}, "tendermint/EventDataNameTx", nil)
-	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/EventDataNameRoundState", nil)
-	cdc.RegisterConcrete(EventDataVote{}, "tendermint/EventDataNameVote", nil)
-	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/EventDataNameProposalHeartbeat", nil)
+	cdc.RegisterConcrete(EventDataNewBlock{}, "tendermint/event/NewBlock", nil)
+	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader", nil)
+	cdc.RegisterConcrete(EventDataTx{}, "tendermint/event/Tx", nil)
+	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/event/RoundState", nil)
+	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
+	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/event/ProposalHeartbeat", nil)
+	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
 }
 
 // Most event messages are basic types (a block, a transaction)
@@ -92,6 +94,8 @@ type EventDataRoundState struct {
 type EventDataVote struct {
 	Vote *Vote
 }
+
+type EventDataString string
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBSUB
