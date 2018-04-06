@@ -21,6 +21,7 @@ import (
 type HTTPClient interface {
 	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
 	Codec() *amino.Codec
+	SetCodec(*amino.Codec)
 }
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
@@ -111,6 +112,10 @@ func (c *JSONRPCClient) Codec() *amino.Codec {
 	return c.cdc
 }
 
+func (c *JSONRPCClient) SetCodec(cdc *amino.Codec) {
+	c.cdc = cdc
+}
+
 //-------------------------------------------------------------
 
 // URI takes params as a map
@@ -150,6 +155,10 @@ func (c *URIClient) Call(method string, params map[string]interface{}, result in
 
 func (c *URIClient) Codec() *amino.Codec {
 	return c.cdc
+}
+
+func (c *URIClient) SetCodec(cdc *amino.Codec) {
+	c.cdc = cdc
 }
 
 //------------------------------------------------

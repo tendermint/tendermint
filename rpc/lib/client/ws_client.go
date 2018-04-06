@@ -230,6 +230,10 @@ func (c *WSClient) Codec() *amino.Codec {
 	return c.cdc
 }
 
+func (c *WSClient) SetCodec(cdc *amino.Codec) {
+	c.cdc = cdc
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Private methods
 

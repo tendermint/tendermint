@@ -35,19 +35,18 @@ const (
 // ENCODING / DECODING
 ///////////////////////////////////////////////////////////////////////////////
 
-var (
-	EventDataNameNewBlock          = "new_block"
-	EventDataNameNewBlockHeader    = "new_block_header"
-	EventDataNameTx                = "tx"
-	EventDataNameRoundState        = "round_state"
-	EventDataNameVote              = "vote"
-	EventDataNameProposalHeartbeat = "proposal_heartbeat"
-)
-
 // implements events.EventData
 type TMEventData interface {
+	AssertIsTMEventData()
 	// empty interface
 }
+
+func (_ EventDataNewBlock) AssertIsTMEventData()          {}
+func (_ EventDataNewBlockHeader) AssertIsTMEventData()    {}
+func (_ EventDataTx) AssertIsTMEventData()                {}
+func (_ EventDataRoundState) AssertIsTMEventData()        {}
+func (_ EventDataVote) AssertIsTMEventData()              {}
+func (_ EventDataProposalHeartbeat) AssertIsTMEventData() {}
 
 func RegisterEventDatas(cdc *amino.Codec) {
 	cdc.RegisterInterface((*TMEventData)(nil), nil)

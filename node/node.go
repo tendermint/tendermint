@@ -26,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/p2p/trust"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpc "github.com/tendermint/tendermint/rpc/lib"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
@@ -489,6 +490,8 @@ func (n *Node) ConfigureRPC() {
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
 	listenAddrs := strings.Split(n.config.RPC.ListenAddress, ",")
+	coreCodec := amino.NewCodec()
+	ctypes.RegisterAmino(coreCodec)
 
 	if n.config.RPC.Unsafe {
 		rpccore.AddUnsafeRoutes()
@@ -499,10 +502,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, rpccore.RoutesCodec, rpcserver.EventSubscriber(n.eventBus))
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.EventSubscriber(n.eventBus))
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpccore.RoutesCodec, rpcLogger)
+		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
 		if err != nil {
 			return nil, err

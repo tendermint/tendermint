@@ -2,11 +2,11 @@ package client
 
 import (
 	"context"
-	"encoding/json"
 	"sync"
 
 	"github.com/pkg/errors"
 
+	amino "github.com/tendermint/go-amino"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
@@ -32,10 +32,14 @@ type HTTP struct {
 // New takes a remote endpoint in the form tcp://<host>:<port>
 // and the websocket path (which always seems to be "/websocket")
 func NewHTTP(remote, wsEndpoint string) *HTTP {
+	rc := rpcclient.NewJSONRPCClient(remote)
+	cdc := rc.Codec()
+	ctypes.RegisterAmino(cdc)
+
 	return &HTTP{
-		rpc:      rpcclient.NewJSONRPCClient(remote),
+		rpc:      rc,
 		remote:   remote,
-		WSEvents: newWSEvents(remote, wsEndpoint),
+		WSEvents: newWSEvents(cdc, remote, wsEndpoint),
 	}
 }
 
@@ -208,6 +212,7 @@ func (c *HTTP) Validators(height *int64) (*ctypes.ResultValidators, error) {
 
 type WSEvents struct {
 	cmn.BaseService
+	cdc      *amino.Codec
 	remote   string
 	endpoint string
 	ws       *rpcclient.WSClient
@@ -216,8 +221,9 @@ type WSEvents struct {
 	subscriptions map[string]chan<- interface{}
 }
 
-func newWSEvents(remote, endpoint string) *WSEvents {
+func newWSEvents(cdc *amino.Codec, remote, endpoint string) *WSEvents {
 	wsEvents := &WSEvents{
+		cdc:           cdc,
 		endpoint:      endpoint,
 		remote:        remote,
 		subscriptions: make(map[string]chan<- interface{}),
@@ -231,6 +237,8 @@ func (w *WSEvents) OnStart() error {
 	w.ws = rpcclient.NewWSClient(w.remote, w.endpoint, rpcclient.OnReconnect(func() {
 		w.redoSubscriptions()
 	}))
+	w.ws.SetCodec(w.cdc)
+
 	err := w.ws.Start()
 	if err != nil {
 		return err
@@ -326,7 +334,7 @@ func (w *WSEvents) eventListener() {
 				continue
 			}
 			result := new(ctypes.ResultEvent)
-			err := json.Unmarshal(resp.Result, result)
+			err := w.cdc.UnmarshalJSON(resp.Result, result)
 			if err != nil {
 				w.Logger.Error("failed to unmarshal response", "err", err)
 				continue

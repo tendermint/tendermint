@@ -1,13 +1,11 @@
 package core
 
 import (
-	"github.com/tendermint/go-amino"
-	"github.com/tendermint/go-crypto"
 	rpc "github.com/tendermint/tendermint/rpc/lib/server"
-	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: better system than "unsafe" prefix
+// NOTE: Amino is registered in rpc/core/types/wire.go.
 var Routes = map[string]*rpc.RPCFunc{
 	// subscribe/unsubscribe are reserved for websocket events.
 	"subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),
@@ -49,15 +47,4 @@ func AddUnsafeRoutes() {
 	Routes["unsafe_start_cpu_profiler"] = rpc.NewRPCFunc(UnsafeStartCPUProfiler, "filename")
 	Routes["unsafe_stop_cpu_profiler"] = rpc.NewRPCFunc(UnsafeStopCPUProfiler, "")
 	Routes["unsafe_write_heap_profile"] = rpc.NewRPCFunc(UnsafeWriteHeapProfile, "filename")
-}
-
-var RoutesCodec *amino.Codec
-
-func init() {
-	cdc := amino.NewCodec()
-	RoutesCodec = cdc
-
-	types.RegisterEventDatas(cdc)
-	types.RegisterEvidences(cdc)
-	crypto.RegisterAmino(cdc)
 }
