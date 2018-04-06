@@ -406,6 +406,7 @@ func (n *Node) OnStart() error {
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
 	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+
 	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
 
