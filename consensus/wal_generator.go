@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	privval "github.com/tendermint/tendermint/types/priv_validator"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/db"
@@ -41,7 +41,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
 	// NOTE: we can't import node package because of circular dependency
 	privValidatorFile := config.PrivValidatorFile()
-	privValidator := privval.LoadOrGenFilePV(privValidatorFile)
+	privValidator := pvm.LoadOrGenFilePV(privValidatorFile)
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read genesis file")
@@ -72,7 +72,6 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
 	consensusState.SetEventBus(eventBus)
-	fmt.Println(">>privval", privValidator)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
 	}

@@ -107,27 +107,31 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 	// TODO optimize
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                StateChannel,
-			Priority:          5,
-			SendQueueCapacity: 100,
+			ID:                  StateChannel,
+			Priority:            5,
+			SendQueueCapacity:   100,
+			RecvMessageCapacity: maxConsensusMessageSize,
 		},
 		{
-			ID:                 DataChannel, // maybe split between gossiping current block and catchup stuff
-			Priority:           10,          // once we gossip the whole block there's nothing left to send until next height or round
-			SendQueueCapacity:  100,
-			RecvBufferCapacity: 50 * 4096,
+			ID:                  DataChannel, // maybe split between gossiping current block and catchup stuff
+			Priority:            10,          // once we gossip the whole block there's nothing left to send until next height or round
+			SendQueueCapacity:   100,
+			RecvBufferCapacity:  50 * 4096,
+			RecvMessageCapacity: maxConsensusMessageSize,
 		},
 		{
-			ID:                 VoteChannel,
-			Priority:           5,
-			SendQueueCapacity:  100,
-			RecvBufferCapacity: 100 * 100,
+			ID:                  VoteChannel,
+			Priority:            5,
+			SendQueueCapacity:   100,
+			RecvBufferCapacity:  100 * 100,
+			RecvMessageCapacity: maxConsensusMessageSize,
 		},
 		{
-			ID:                 VoteSetBitsChannel,
-			Priority:           1,
-			SendQueueCapacity:  2,
-			RecvBufferCapacity: 1024,
+			ID:                  VoteSetBitsChannel,
+			Priority:            1,
+			SendQueueCapacity:   2,
+			RecvBufferCapacity:  1024,
+			RecvMessageCapacity: maxConsensusMessageSize,
 		},
 	}
 }
@@ -1278,7 +1282,6 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 }
 
 // DecodeMessage decodes the given bytes into a ConsensusMessage.
-// TODO: check for unnecessary extra bytes at the end.
 func DecodeMessage(bz []byte) (msg ConsensusMessage, err error) {
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return

@@ -141,7 +141,7 @@ type EvidenceMessage interface{}
 func RegisterEvidenceMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*EvidenceMessage)(nil), nil)
 	cdc.RegisterConcrete(&EvidenceListMessage{},
-		"tendermint/evidence/EvidenceListMessagE", nil)
+		"tendermint/evidence/EvidenceListMessage", nil)
 }
 
 // DecodeMessage decodes a byte-array into a EvidenceMessage.

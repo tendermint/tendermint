@@ -179,7 +179,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			seenCommit: seenCommit1,
 
 			corruptSeenCommitInDB: true,
-			wantPanic:             "Error reading block commit",
+			wantPanic:             "Error reading block seen commit",
 		},
 
 		{

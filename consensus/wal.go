@@ -42,7 +42,7 @@ func RegisterWALMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(types.EventDataRoundState{}, "tendermint/wal/EventDataRoundState", nil)
 	cdc.RegisterConcrete(msgInfo{}, "tendermint/wal/MsgInfo", nil)
 	cdc.RegisterConcrete(timeoutInfo{}, "tendermint/wal/TimeoutInfo", nil)
-	cdc.RegisterConcrete(EndHeightMessage{}, "tendermint/wal/EndHeightMessagE", nil)
+	cdc.RegisterConcrete(EndHeightMessage{}, "tendermint/wal/EndHeightMessage", nil)
 }
 
 //--------------------------------------------------------

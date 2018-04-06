@@ -240,9 +240,10 @@ func BenchmarkSecretConnection(b *testing.B) {
 }
 
 func fingerprint(bz []byte) []byte {
-	if len(bz) < 40 {
+	const fbsize = 40
+	if len(bz) < fbsize {
 		return bz
 	} else {
-		return bz[:40]
+		return bz[:fbsize]
 	}
 }

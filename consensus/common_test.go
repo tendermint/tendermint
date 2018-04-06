@@ -21,7 +21,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	privval "github.com/tendermint/tendermint/types/priv_validator"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -278,10 +278,10 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	return cs
 }
 
-func loadPrivValidator(config *cfg.Config) *privval.FilePV {
+func loadPrivValidator(config *cfg.Config) *pvm.FilePV {
 	privValidatorFile := config.PrivValidatorFile()
 	ensureDir(path.Dir(privValidatorFile), 0700)
-	privValidator := privval.LoadOrGenFilePV(privValidatorFile)
+	privValidator := pvm.LoadOrGenFilePV(privValidatorFile)
 	privValidator.Reset()
 	return privValidator
 }
@@ -379,7 +379,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 			privVal = privVals[i]
 		} else {
 			_, tempFilePath := cmn.Tempfile("priv_validator_")
-			privVal = privval.GenFilePV(tempFilePath)
+			privVal = pvm.GenFilePV(tempFilePath)
 		}
 
 		app := appFunc()

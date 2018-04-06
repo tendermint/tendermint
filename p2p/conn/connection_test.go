@@ -136,7 +136,8 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	go func() {
 		// read ping
 		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+		const maxPacketPingSize = 1024
+		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPacketPingSize)
 		assert.Nil(t, err)
 		serverGotPing <- struct{}{}
 	}()

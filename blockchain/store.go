@@ -53,14 +53,9 @@ func (bs *BlockStore) Height() int64 {
 // LoadBlock returns the block with the given height.
 // If no block is found for that height, it returns nil.
 func (bs *BlockStore) LoadBlock(height int64) *types.Block {
-	var blockMeta = new(types.BlockMeta)
-	bz := bs.db.Get(calcBlockMetaKey(height))
-	if len(bz) == 0 {
+	var blockMeta = bs.LoadBlockMeta(height)
+	if blockMeta == nil {
 		return nil
-	}
-	err := cdc.UnmarshalBinaryBare(bz, blockMeta)
-	if err != nil {
-		panic(cmn.ErrorWrap(err, "Error reading block meta"))
 	}
 
 	var block = new(types.Block)
@@ -69,7 +64,7 @@ func (bs *BlockStore) LoadBlock(height int64) *types.Block {
 		part := bs.LoadBlockPart(height, i)
 		buf = append(buf, part.Bytes...)
 	}
-	err = cdc.UnmarshalBinary(buf, block)
+	err := cdc.UnmarshalBinary(buf, block)
 	if err != nil {
 		// NOTE: The existence of meta should imply the existence of the
 		// block. So, make sure meta is only saved after blocks are saved.
@@ -137,7 +132,7 @@ func (bs *BlockStore) LoadSeenCommit(height int64) *types.Commit {
 	}
 	err := cdc.UnmarshalBinaryBare(bz, commit)
 	if err != nil {
-		panic(cmn.ErrorWrap(err, "Error reading block commit"))
+		panic(cmn.ErrorWrap(err, "Error reading block seen commit"))
 	}
 	return commit
 }

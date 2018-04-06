@@ -208,7 +208,7 @@ func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte, argsOffset
 		return mapParamsToArgs(rpcFunc, cdc, m, argsOffset)
 	}
 
-	// Ttherwise, try an array.
+	// Otherwise, try an array.
 	var a []json.RawMessage
 	err = json.Unmarshal(raw, &a)
 	if err == nil {

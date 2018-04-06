@@ -26,7 +26,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	privval "github.com/tendermint/tendermint/types/priv_validator"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -325,7 +325,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := privval.LoadFilePV(config.PrivValidatorFile())
+	privVal := pvm.LoadFilePV(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {

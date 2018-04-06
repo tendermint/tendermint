@@ -26,6 +26,13 @@ const (
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
 	switchToConsensusIntervalSeconds = 1
+
+	// NOTE: keep up to date with bcBlockResponseMessage
+	bcBlockResponseMessagePrefixSize   = 4
+	bcBlockResponseMessageFieldKeySize = 1
+	maxMessageSize                     = types.MaxBlockSizeBytes +
+		bcBlockResponseMessagePrefixSize +
+		bcBlockResponseMessageFieldKeySize
 )
 
 type consensusReactor interface {
@@ -122,9 +129,11 @@ func (bcR *BlockchainReactor) OnStop() {
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                BlockchainChannel,
-			Priority:          10,
-			SendQueueCapacity: 1000,
+			ID:                  BlockchainChannel,
+			Priority:            10,
+			SendQueueCapacity:   1000,
+			RecvBufferCapacity:  50 * 4096,
+			RecvMessageCapacity: maxMessageSize,
 		},
 	}
 }
@@ -336,11 +345,6 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 // DecodeMessage decodes BlockchainMessage.
 // TODO: ensure that bz is completely read.
 func DecodeMessage(bz []byte) (msg BlockchainMessage, err error) {
-	const (
-		prefixSize     = 4
-		fieldKeySize   = 1
-		maxMessageSize = types.MaxBlockSizeBytes + prefixSize + fieldKeySize
-	)
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	if err != nil {
 		err = cmn.ErrorWrap(err, "DecodeMessage() had bytes left over")
