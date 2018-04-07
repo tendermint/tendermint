@@ -287,7 +287,7 @@ var testGenesis = `{
 }`
 
 var testPrivValidator = `{
-  "address": "515252BC8788931ADFF4796A389C9B1F7925A1B7",
+  "address": "849CB2C877F87A20925F35D00AE6688342D25B47",
   "pub_key": {
     "type": "AC26791624DE60",
     "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="

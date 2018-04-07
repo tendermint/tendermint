@@ -260,8 +260,8 @@
 [[projects]]
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "a04f2ae5c6ba037014531241ed973116290b029e"
-  version = "v0.6.0"
+  revision = "5d5f580f49ca66c13400938c64334186068c8b7c"
+  version = "v0.6.1"
 
 [[projects]]
   name = "github.com/tendermint/go-wire"
@@ -383,6 +383,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d14dbd59436d0ea3b322c42ce33c213b26cd2451ba023a466764b8002e0e649d"
+  inputs-digest = "ed1149ed5293b7b28b7505627648c6a1152aaff0ed06a3849995b29751ae00f3"
   solver-name = "gps-cdcl"
   solver-version = 1
