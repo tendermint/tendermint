@@ -35,7 +35,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		for e := range txEventsCh {
-			edt := e.(TMEventData).Unwrap().(EventDataTx)
+			edt := e.(EventDataTx)
 			assert.Equal(t, int64(1), edt.Height)
 			assert.Equal(t, uint32(0), edt.Index)
 			assert.Equal(t, tx, edt.Tx)

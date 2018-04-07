@@ -148,30 +148,30 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 		Round:  0,
 		Part:   parts.GetPart(0),
 	}
-	bz, err := cdc.MarshalBinary(struct{ ConsensusMessage }{msg})
+	bz, err := cdc.MarshalBinaryBare(msg)
 	require.NoError(t, err)
 
 	reactor.Receive(DataChannel, peer, bz)
-	assert.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should have increased by 1")
+	require.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should have increased by 1")
 
 	// 2) block part with the same height, but different round
 	msg.Round = 1
 
-	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{msg})
+	bz, err = cdc.MarshalBinaryBare(msg)
 	require.NoError(t, err)
 
 	reactor.Receive(DataChannel, peer, bz)
-	assert.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
+	require.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
 
 	// 3) block part from earlier height
 	msg.Height = 1
 	msg.Round = 0
 
-	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{msg})
+	bz, err = cdc.MarshalBinaryBare(msg)
 	require.NoError(t, err)
 
 	reactor.Receive(DataChannel, peer, bz)
-	assert.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
+	require.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
 }
 
 // Test we record votes from other peers
@@ -203,7 +203,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 		Type:             types.VoteTypePrevote,
 		BlockID:          types.BlockID{},
 	}
-	bz, err := cdc.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	bz, err := cdc.MarshalBinaryBare(&VoteMessage{vote})
 	require.NoError(t, err)
 
 	reactor.Receive(VoteChannel, peer, bz)
@@ -212,7 +212,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 	// 2) vote with the same height, but different round
 	vote.Round = 1
 
-	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	bz, err = cdc.MarshalBinaryBare(&VoteMessage{vote})
 	require.NoError(t, err)
 
 	reactor.Receive(VoteChannel, peer, bz)
@@ -222,7 +222,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 	vote.Height = 1
 	vote.Round = 0
 
-	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	bz, err = cdc.MarshalBinaryBare(&VoteMessage{vote})
 	require.NoError(t, err)
 
 	reactor.Receive(VoteChannel, peer, bz)

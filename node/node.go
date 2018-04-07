@@ -2,7 +2,6 @@ package node
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -644,7 +643,7 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 		return nil, errors.New("Genesis doc not found")
 	}
 	var genDoc *types.GenesisDoc
-	err := json.Unmarshal(bytes, &genDoc)
+	err := cdc.UnmarshalJSON(bytes, &genDoc)
 	if err != nil {
 		cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
 	}
@@ -653,7 +652,7 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 
 // panics if failed to marshal the given genesis document
 func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
-	bytes, err := json.Marshal(genDoc)
+	bytes, err := cdc.MarshalJSON(genDoc)
 	if err != nil {
 		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}

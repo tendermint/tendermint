@@ -176,12 +176,34 @@ func TestIndexAllTags(t *testing.T) {
 
 func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
 	tx := types.Tx("HELLO WORLD")
-	return &types.TxResult{Height: 1, Index: 0, Tx: tx, Result: abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: tags, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}}
+	return &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK,
+			Log:  "",
+			Tags: tags,
+			Fee:  cmn.KI64Pair{Key: nil, Value: 0},
+		},
+	}
 }
 
 func benchmarkTxIndex(txsCount int, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
+	txResult := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK,
+			Log:  "",
+			Tags: []cmn.KVPair{},
+			Fee:  cmn.KI64Pair{Key: []uint8{}, Value: 0},
+		},
+	}
 
 	dir, err := ioutil.TempDir("", "tx_index_db")
 	if err != nil {
