@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	cmn "github.com/tendermint/tmlibs/common"
@@ -15,6 +16,7 @@ import (
 // Block defines the atomic unit of a Tendermint blockchain.
 // TODO: add Version byte
 type Block struct {
+	mtx        sync.Mutex
 	*Header    `json:"header"`
 	*Data      `json:"data"`
 	Evidence   EvidenceData `json:"evidence"`
@@ -35,7 +37,7 @@ func MakeBlock(height int64, txs []Tx, commit *Commit) *Block {
 			Txs: txs,
 		},
 	}
-	block.FillHeader()
+	block.fillHeader()
 	return block
 }
 
@@ -68,8 +70,8 @@ func (b *Block) ValidateBasic() error {
 	return nil
 }
 
-// FillHeader fills in any remaining header fields that are a function of the block data
-func (b *Block) FillHeader() {
+// fillHeader fills in any remaining header fields that are a function of the block data
+func (b *Block) fillHeader() {
 	if b.LastCommitHash == nil {
 		b.LastCommitHash = b.LastCommit.Hash()
 	}
@@ -84,10 +86,16 @@ func (b *Block) FillHeader() {
 // Hash computes and returns the block hash.
 // If the block is incomplete, block hash is nil for safety.
 func (b *Block) Hash() cmn.HexBytes {
+	if b == nil {
+		return nil
+	}
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+
 	if b == nil || b.Header == nil || b.Data == nil || b.LastCommit == nil {
 		return nil
 	}
-	b.FillHeader()
+	b.fillHeader()
 	return b.Header.Hash()
 }
 

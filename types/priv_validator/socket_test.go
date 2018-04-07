@@ -133,7 +133,7 @@ func TestSocketPVDeadline(t *testing.T) {
 		)
 	)
 
-	SocketPVConnDeadline(10 * time.Millisecond)(sc)
+	SocketPVConnDeadline(100 * time.Millisecond)(sc)
 	SocketPVConnWait(500 * time.Millisecond)(sc)
 
 	go func(sc *SocketPV) {

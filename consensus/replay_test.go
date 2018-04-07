@@ -60,7 +60,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
 	// fmt.Printf("====== WAL: \n\r%s\n", bytes)
-	t.Logf("====== WAL: \n\r%s\n", bytes)
+	t.Logf("====== WAL: \n\r%X\n", bytes)
 
 	err := cs.Start()
 	require.NoError(t, err)
