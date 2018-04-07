@@ -24,14 +24,20 @@ var (
 	config *cfg.P2PConfig
 )
 
+var goodDial = dial
+
 // badDial returns an error for testing dial errors
 func badDial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
-	return nil, errors.New("dial err")
+	if config.Fail {
+		return nil, errors.New("dial err")
+	}
+	return goodDial(addr, config)
 }
 
 func init() {
 	config = cfg.DefaultP2PConfig()
 	config.PexReactor = true
+	dial = badDial
 }
 
 type PeerMessage struct {
@@ -309,7 +315,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 
 	// simulate first time dial failure
 	peerConfig := DefaultPeerConfig()
-	peerConfig.Dial = badDial
+	peerConfig.Fail = true
 	err = sw.addOutboundPeerWithConfig(rp.Addr(), peerConfig, true)
 	require.NotNil(err)
 
