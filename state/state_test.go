@@ -219,7 +219,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		// use the next pubkey
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
-			power += 1
+			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
 		state, err = updateState(state, blockID, header, responses)
@@ -237,7 +237,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		// use the next pubkey (note our counter starts at 0 this time)
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
 			changeIndex++
-			power += 1
+			power++
 		}
 		testCases[i-1] = power
 	}

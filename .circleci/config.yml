@@ -130,19 +130,6 @@ jobs:
           paths:
             - "profiles/*"
 
-  test_libs:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /tmp/workspace
-      - restore_cache:
-          key: v1-pkg-cache
-      - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Run tests
-          command: bash test/test_libs.sh
-
   test_persistence:
     <<: *defaults
     steps:
@@ -203,14 +190,6 @@ workflows:
           requires:
             - setup_abci
       - test_cover:
-          requires:
-            - setup_dependencies
-      - test_libs:
-          filters:
-            branches:
-              only:
-                - develop
-                - master
           requires:
             - setup_dependencies
       - test_persistence:

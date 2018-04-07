@@ -382,9 +382,9 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 	expectedBlocksToSync := NUM_BLOCKS - nBlocks
 	if nBlocks == NUM_BLOCKS && mode > 0 {
-		expectedBlocksToSync += 1
+		expectedBlocksToSync++
 	} else if nBlocks > 0 && mode == 1 {
-		expectedBlocksToSync += 1
+		expectedBlocksToSync++
 	}
 
 	if handshaker.NBlocks() != expectedBlocksToSync {
@@ -533,7 +533,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 				}
 				blocks = append(blocks, block)
 				commits = append(commits, thisBlockCommit)
-				height += 1
+				height++
 			}
 		case *types.PartSetHeader:
 			thisBlockParts = types.NewPartSetFromHeader(*p)

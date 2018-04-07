@@ -73,6 +73,7 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 			return nil, nil, false
 		},
 	)
+
 	require.Nil(tb, trs.FirstError())
 	require.True(tb, ok, "Unexpected task abortion")
 
@@ -181,7 +182,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 			var readCount = 0
 			for _, readChunk := range reads {
 				read += readChunk
-				readCount += 1
+				readCount++
 				if len(write) <= len(read) {
 					break
 				}

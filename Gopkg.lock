@@ -105,7 +105,11 @@
     "json/scanner",
     "json/token"
   ]
+<<<<<<< HEAD
   revision = "f40e974e75af4e271d97ce0fc917af5898ae7bda"
+=======
+  revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
+>>>>>>> develop
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -167,8 +171,8 @@
     ".",
     "mem"
   ]
-  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
-  version = "v1.0.2"
+  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -179,8 +183,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
-  version = "v0.0.1"
+  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
+  version = "v0.0.2"
 
 [[projects]]
   branch = "master"
@@ -226,7 +230,11 @@
     "leveldb/table",
     "leveldb/util"
   ]
+<<<<<<< HEAD
   revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
+=======
+  revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
+>>>>>>> develop
 
 [[projects]]
   name = "github.com/tendermint/abci"
@@ -238,8 +246,13 @@
     "server",
     "types"
   ]
+<<<<<<< HEAD
   revision = "c62aed95f2ce399ec815b0cafe478af002cdc4e6"
   version = "v0.10.3-dev"
+=======
+  revision = "46686763ba8ea595ede16530ed4a40fb38f49f94"
+  version = "v0.10.2"
+>>>>>>> develop
 
 [[projects]]
   branch = "master"
@@ -301,7 +314,11 @@
     "ripemd160",
     "salsa20/salsa"
   ]
+<<<<<<< HEAD
   revision = "88942b9c40a4c9d203b82b3731787b672d6e809b"
+=======
+  revision = "b2aa35443fbc700ab74c586ae79b81c171851023"
+>>>>>>> develop
 
 [[projects]]
   branch = "master"
@@ -315,13 +332,21 @@
     "lex/httplex",
     "trace"
   ]
+<<<<<<< HEAD
   revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
+=======
+  revision = "b3c676e531a6dc479fa1b35ac961c13f5e2b4d2e"
+>>>>>>> develop
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
+<<<<<<< HEAD
   revision = "91ee8cde435411ca3f1cd365e8f20131aed4d0a1"
+=======
+  revision = "1d206c9fa8975fb4cf00df1dc8bf3283dc24ba0e"
+>>>>>>> develop
 
 [[projects]]
   name = "golang.org/x/text"
@@ -348,7 +373,11 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
+<<<<<<< HEAD
   revision = "ab0870e398d5dd054b868c0db1481ab029b9a9f2"
+=======
+  revision = "35de2414665fc36f56b72d982c5af480d86de5ab"
+>>>>>>> develop
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -377,12 +406,21 @@
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
+<<<<<<< HEAD
   revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
   version = "v2.1.1"
+=======
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
+>>>>>>> develop
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
+<<<<<<< HEAD
   inputs-digest = "ed1149ed5293b7b28b7505627648c6a1152aaff0ed06a3849995b29751ae00f3"
+=======
+  inputs-digest = "b7c02a311569ec5fe2197614444fb231ea60f3e65a11a20e318421f1752054d7"
+>>>>>>> develop
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -4,6 +4,7 @@
 	Usage:
 			wal2json <path-to-wal>
 */
+
 package main
 
 import (

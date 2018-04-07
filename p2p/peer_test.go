@@ -140,6 +140,8 @@ func (p *remotePeer) Stop() {
 }
 
 func (p *remotePeer) accept(l net.Listener) {
+	conns := []net.Conn{}
+
 	for {
 		conn, err := l.Accept()
 		if err != nil {
@@ -160,10 +162,15 @@ func (p *remotePeer) accept(l net.Listener) {
 		if err != nil {
 			golog.Fatalf("Failed to perform handshake: %+v", err)
 		}
+
+		conns = append(conns, conn)
+
 		select {
 		case <-p.quit:
-			if err := conn.Close(); err != nil {
-				golog.Fatal(err)
+			for _, conn := range conns {
+				if err := conn.Close(); err != nil {
+					golog.Fatal(err)
+				}
 			}
 			return
 		default:

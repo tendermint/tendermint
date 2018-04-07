@@ -81,6 +81,7 @@ Available endpoints:
 /net_info
 /num_unconfirmed_txs
 /status
+/health
 /unconfirmed_txs
 /unsafe_flush_mempool
 /unsafe_stop_cpu_profiler

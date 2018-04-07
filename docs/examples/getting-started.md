@@ -12,7 +12,7 @@ and want to get started right away, continue. Otherwise, [review the documentati
 On a fresh Ubuntu 16.04 machine can be done with [this script](https://git.io/vNLfY), like so:
 
 ```
-curl -L https://git.io/vNLfY | bash
+curl -L https://git.io/vxWlX | bash
 source ~/.profile
 ```
 

@@ -31,15 +31,21 @@ const (
 
 //-----------------------------------------------------------------------------
 
+// An AddrBook represents an address book from the pex package, which is used
+// to store peer addresses.
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	AddOurAddress(*NetAddress)
+	OurAddress(*NetAddress) bool
 	MarkGood(*NetAddress)
+	RemoveAddress(*NetAddress)
+	HasAddress(*NetAddress) bool
 	Save()
 }
 
 //-----------------------------------------------------------------------------
 
-// `Switch` handles peer connections and exposes an API to receive incoming messages
+// Switch handles peer connections and exposes an API to receive incoming messages
 // on `Reactors`.  Each `Reactor` is responsible for handling incoming messages of one
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
@@ -64,6 +70,7 @@ type Switch struct {
 	rng *rand.Rand // seed for randomizing dial times and orders
 }
 
+// NewSwitch creates a new Switch with the given config.
 func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw := &Switch{
 		config:       config,
@@ -341,20 +348,21 @@ func (sw *Switch) IsDialing(id ID) bool {
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
 func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
+	// only log errors, dial correct addresses
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
 
+	ourAddr := sw.nodeInfo.NetAddress()
+
+	// TODO: move this out of here ?
 	if addrBook != nil {
 		// add peers to `addrBook`
-		ourAddr := sw.nodeInfo.NetAddress()
 		for _, netAddr := range netAddrs {
 			// do not add our address or ID
-			if netAddr.Same(ourAddr) {
-				continue
+			if !netAddr.Same(ourAddr) {
+				addrBook.AddAddress(netAddr, ourAddr)
 			}
-			// TODO: move this out of here ?
-			addrBook.AddAddress(netAddr, ourAddr)
 		}
 		// Persist some peers to disk right away.
 		// NOTE: integration tests depend on this
@@ -365,8 +373,14 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	perm := sw.rng.Perm(len(netAddrs))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
-			sw.randomSleep(0)
 			j := perm[i]
+
+			// do not dial ourselves
+			if netAddrs[j].Same(ourAddr) {
+				return
+			}
+
+			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(netAddrs[j], persistent)
 			if err != nil {
 				sw.Logger.Error("Error dialing peer", "err", err)
@@ -520,6 +534,15 @@ func (sw *Switch) addPeer(pc peerConn) error {
 
 	// Avoid self
 	if sw.nodeKey.ID() == peerID {
+		addr := peerNodeInfo.NetAddress()
+
+		// remove the given address from the address book if we're added it earlier
+		sw.addrBook.RemoveAddress(addr)
+
+		// add the given address to the address book to avoid dialing ourselves
+		// again this is our public address
+		sw.addrBook.AddOurAddress(addr)
+
 		return ErrSwitchConnectToSelf
 	}
 
@@ -545,7 +568,9 @@ func (sw *Switch) addPeer(pc peerConn) error {
 
 	// All good. Start peer
 	if sw.IsRunning() {
-		sw.startInitPeer(peer)
+		if err = sw.startInitPeer(peer); err != nil {
+			return err
+		}
 	}
 
 	// Add the peer to .peers.
@@ -559,14 +584,17 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	return nil
 }
 
-func (sw *Switch) startInitPeer(peer *peer) {
+func (sw *Switch) startInitPeer(peer *peer) error {
 	err := peer.Start() // spawn send/recv routines
 	if err != nil {
 		// Should never happen
 		sw.Logger.Error("Error starting peer", "peer", peer, "err", err)
+		return err
 	}
 
 	for _, reactor := range sw.reactors {
 		reactor.AddPeer(peer)
 	}
+
+	return nil
 }

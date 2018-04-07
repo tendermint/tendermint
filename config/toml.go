@@ -127,6 +127,7 @@ laddr = "{{ .P2P.ListenAddress }}"
 seeds = ""
 
 # Comma separated list of nodes to keep persistent connections to
+# Do not add private peers to this list if you don't want them advertised
 persistent_peers = ""
 
 # Path to address book
@@ -161,6 +162,9 @@ seed_mode = {{ .P2P.SeedMode }}
 
 # Authenticated encryption
 auth_enc = {{ .P2P.AuthEnc }}
+
+# Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
+private_peer_ids = "{{ .P2P.PrivatePeerIDs }}"
 
 ##### mempool configuration options #####
 [mempool]

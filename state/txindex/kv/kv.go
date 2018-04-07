@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -145,9 +146,8 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		res, err := txi.Get(hash)
 		if res == nil {
 			return []*types.TxResult{}, nil
-		} else {
-			return []*types.TxResult{res}, errors.Wrap(err, "error while retrieving the result")
 		}
+		return []*types.TxResult{res}, errors.Wrap(err, "error while retrieving the result")
 	}
 
 	// conditions to skip because they're handled before "everything else"
@@ -168,10 +168,10 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 
 		for _, r := range ranges {
 			if !hashesInitialized {
-				hashes = txi.matchRange(r, startKeyForRange(r, height))
+				hashes = txi.matchRange(r, []byte(r.key))
 				hashesInitialized = true
 			} else {
-				hashes = intersect(hashes, txi.matchRange(r, startKeyForRange(r, height)))
+				hashes = intersect(hashes, txi.matchRange(r, []byte(r.key)))
 			}
 		}
 	}
@@ -199,6 +199,11 @@ func (txi *TxIndex) Search(q *query.Query) ([]*types.TxResult, error) {
 		}
 		i++
 	}
+
+	// sort by height by default
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Height < results[j].Height
+	})
 
 	return results, nil
 }
@@ -232,6 +237,52 @@ type queryRange struct {
 	includeLowerBound bool
 	upperBound        interface{} // int || time.Time
 	includeUpperBound bool
+}
+
+func (r queryRange) lowerBoundValue() interface{} {
+	if r.lowerBound == nil {
+		return nil
+	}
+
+	if r.includeLowerBound {
+		return r.lowerBound
+	} else {
+		switch t := r.lowerBound.(type) {
+		case int64:
+			return t + 1
+		case time.Time:
+			return t.Unix() + 1
+		default:
+			panic("not implemented")
+		}
+	}
+}
+
+func (r queryRange) AnyBound() interface{} {
+	if r.lowerBound != nil {
+		return r.lowerBound
+	} else {
+		return r.upperBound
+	}
+}
+
+func (r queryRange) upperBoundValue() interface{} {
+	if r.upperBound == nil {
+		return nil
+	}
+
+	if r.includeUpperBound {
+		return r.upperBound
+	} else {
+		switch t := r.upperBound.(type) {
+		case int64:
+			return t - 1
+		case time.Time:
+			return t.Unix() - 1
+		default:
+			panic("not implemented")
+		}
+	}
 }
 
 func lookForRanges(conditions []query.Condition) (ranges queryRanges, indexes []int) {
@@ -297,34 +348,49 @@ func (txi *TxIndex) match(c query.Condition, startKey []byte) (hashes [][]byte) 
 	return
 }
 
-func (txi *TxIndex) matchRange(r queryRange, startKey []byte) (hashes [][]byte) {
-	it := dbm.IteratePrefix(txi.store, startKey)
+func (txi *TxIndex) matchRange(r queryRange, prefix []byte) (hashes [][]byte) {
+	// create a map to prevent duplicates
+	hashesMap := make(map[string][]byte)
+
+	lowerBound := r.lowerBoundValue()
+	upperBound := r.upperBoundValue()
+
+	it := dbm.IteratePrefix(txi.store, prefix)
 	defer it.Close()
 LOOP:
 	for ; it.Valid(); it.Next() {
 		if !isTagKey(it.Key()) {
 			continue
 		}
-		if r.upperBound != nil {
-			// no other way to stop iterator other than checking for upperBound
-			switch (r.upperBound).(type) {
-			case int64:
-				v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
-				if err == nil && v == r.upperBound {
-					if r.includeUpperBound {
-						hashes = append(hashes, it.Value())
-					}
-					break LOOP
-				}
-				// XXX: passing time in a ABCI Tags is not yet implemented
-				// case time.Time:
-				// 	v := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
-				// 	if v == r.upperBound {
-				// 		break
-				// 	}
+		switch r.AnyBound().(type) {
+		case int64:
+			v, err := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
+			if err != nil {
+				continue LOOP
 			}
+			include := true
+			if lowerBound != nil && v < lowerBound.(int64) {
+				include = false
+			}
+			if upperBound != nil && v > upperBound.(int64) {
+				include = false
+			}
+			if include {
+				hashesMap[fmt.Sprintf("%X", it.Value())] = it.Value()
+			}
+			// XXX: passing time in a ABCI Tags is not yet implemented
+			// case time.Time:
+			// 	v := strconv.ParseInt(extractValueFromKey(it.Key()), 10, 64)
+			// 	if v == r.upperBound {
+			// 		break
+			// 	}
 		}
-		hashes = append(hashes, it.Value())
+	}
+	hashes = make([][]byte, len(hashesMap))
+	i := 0
+	for _, h := range hashesMap {
+		hashes[i] = h
+		i++
 	}
 	return
 }
@@ -338,33 +404,6 @@ func startKey(c query.Condition, height int64) []byte {
 		key = fmt.Sprintf("%s/%v/%d", c.Tag, c.Operand, height)
 	} else {
 		key = fmt.Sprintf("%s/%v", c.Tag, c.Operand)
-	}
-	return []byte(key)
-}
-
-func startKeyForRange(r queryRange, height int64) []byte {
-	if r.lowerBound == nil {
-		return []byte(r.key)
-	}
-
-	var lowerBound interface{}
-	if r.includeLowerBound {
-		lowerBound = r.lowerBound
-	} else {
-		switch t := r.lowerBound.(type) {
-		case int64:
-			lowerBound = t + 1
-		case time.Time:
-			lowerBound = t.Unix() + 1
-		default:
-			panic("not implemented")
-		}
-	}
-	var key string
-	if height > 0 {
-		key = fmt.Sprintf("%s/%v/%d", r.key, lowerBound, height)
-	} else {
-		key = fmt.Sprintf("%s/%v", r.key, lowerBound)
 	}
 	return []byte(key)
 }

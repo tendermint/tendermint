@@ -11,10 +11,13 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/example/kvstore"
+	wire "github.com/tendermint/tendermint/wire"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
+	p2pdummy "github.com/tendermint/tendermint/p2p/dummy"
 	"github.com/tendermint/tendermint/types"
 
 	"github.com/stretchr/testify/assert"
@@ -119,6 +122,112 @@ func TestReactorProposalHeartbeats(t *testing.T) {
 	timeoutWaitGroup(t, N, func(j int) {
 		<-eventChans[j]
 	}, css)
+}
+
+// Test we record block parts from other peers
+func TestReactorRecordsBlockParts(t *testing.T) {
+	// create dummy peer
+	peer := p2pdummy.NewPeer()
+	ps := NewPeerState(peer).SetLogger(log.TestingLogger())
+	peer.Set(types.PeerStateKey, ps)
+
+	// create reactor
+	css := randConsensusNet(1, "consensus_reactor_records_block_parts_test", newMockTickerFunc(true), newPersistentKVStore)
+	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
+	reactor.SetEventBus(css[0].eventBus)
+	reactor.SetLogger(log.TestingLogger())
+	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
+	reactor.SetSwitch(sw)
+	err := reactor.Start()
+	require.NoError(t, err)
+	defer reactor.Stop()
+
+	// 1) new block part
+	parts := types.NewPartSetFromData(cmn.RandBytes(100), 10)
+	msg := &BlockPartMessage{
+		Height: 2,
+		Round:  0,
+		Part:   parts.GetPart(0),
+	}
+	bz, err := wire.MarshalBinary(struct{ ConsensusMessage }{msg})
+	require.NoError(t, err)
+
+	reactor.Receive(DataChannel, peer, bz)
+	assert.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should have increased by 1")
+
+	// 2) block part with the same height, but different round
+	msg.Round = 1
+
+	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{msg})
+	require.NoError(t, err)
+
+	reactor.Receive(DataChannel, peer, bz)
+	assert.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
+
+	// 3) block part from earlier height
+	msg.Height = 1
+	msg.Round = 0
+
+	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{msg})
+	require.NoError(t, err)
+
+	reactor.Receive(DataChannel, peer, bz)
+	assert.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
+}
+
+// Test we record votes from other peers
+func TestReactorRecordsVotes(t *testing.T) {
+	// create dummy peer
+	peer := p2pdummy.NewPeer()
+	ps := NewPeerState(peer).SetLogger(log.TestingLogger())
+	peer.Set(types.PeerStateKey, ps)
+
+	// create reactor
+	css := randConsensusNet(1, "consensus_reactor_records_votes_test", newMockTickerFunc(true), newPersistentKVStore)
+	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
+	reactor.SetEventBus(css[0].eventBus)
+	reactor.SetLogger(log.TestingLogger())
+	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
+	reactor.SetSwitch(sw)
+	err := reactor.Start()
+	require.NoError(t, err)
+	defer reactor.Stop()
+	_, val := css[0].state.Validators.GetByIndex(0)
+
+	// 1) new vote
+	vote := &types.Vote{
+		ValidatorIndex:   0,
+		ValidatorAddress: val.Address,
+		Height:           2,
+		Round:            0,
+		Timestamp:        time.Now().UTC(),
+		Type:             types.VoteTypePrevote,
+		BlockID:          types.BlockID{},
+	}
+	bz, err := wire.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	require.NoError(t, err)
+
+	reactor.Receive(VoteChannel, peer, bz)
+	assert.Equal(t, 1, ps.VotesSent(), "number of votes sent should have increased by 1")
+
+	// 2) vote with the same height, but different round
+	vote.Round = 1
+
+	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	require.NoError(t, err)
+
+	reactor.Receive(VoteChannel, peer, bz)
+	assert.Equal(t, 1, ps.VotesSent(), "number of votes sent should stay the same")
+
+	// 3) vote from earlier height
+	vote.Height = 1
+	vote.Round = 0
+
+	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	require.NoError(t, err)
+
+	reactor.Receive(VoteChannel, peer, bz)
+	assert.Equal(t, 1, ps.VotesSent(), "number of votes sent should stay the same")
 }
 
 //-------------------------------------------------------------
@@ -332,7 +441,7 @@ func waitForAndValidateBlockWithTx(t *testing.T, n int, activeVals map[string]st
 			// but they should be in order.
 			for _, tx := range newBlock.Data.Txs {
 				assert.EqualValues(t, txs[ntxs], tx)
-				ntxs += 1
+				ntxs++
 			}
 
 			if ntxs == len(txs) {
