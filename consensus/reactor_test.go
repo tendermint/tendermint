@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/tendermint/abci/example/kvstore"
-	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -149,7 +148,7 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 		Round:  0,
 		Part:   parts.GetPart(0),
 	}
-	bz, err := wire.MarshalBinary(struct{ ConsensusMessage }{msg})
+	bz, err := cdc.MarshalBinary(struct{ ConsensusMessage }{msg})
 	require.NoError(t, err)
 
 	reactor.Receive(DataChannel, peer, bz)
@@ -158,7 +157,7 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 	// 2) block part with the same height, but different round
 	msg.Round = 1
 
-	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{msg})
+	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{msg})
 	require.NoError(t, err)
 
 	reactor.Receive(DataChannel, peer, bz)
@@ -168,7 +167,7 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 	msg.Height = 1
 	msg.Round = 0
 
-	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{msg})
+	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{msg})
 	require.NoError(t, err)
 
 	reactor.Receive(DataChannel, peer, bz)
@@ -204,7 +203,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 		Type:             types.VoteTypePrevote,
 		BlockID:          types.BlockID{},
 	}
-	bz, err := wire.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	bz, err := cdc.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
 	require.NoError(t, err)
 
 	reactor.Receive(VoteChannel, peer, bz)
@@ -213,7 +212,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 	// 2) vote with the same height, but different round
 	vote.Round = 1
 
-	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
 	require.NoError(t, err)
 
 	reactor.Receive(VoteChannel, peer, bz)
@@ -223,7 +222,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 	vote.Height = 1
 	vote.Round = 0
 
-	bz, err = wire.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
+	bz, err = cdc.MarshalBinary(struct{ ConsensusMessage }{&VoteMessage{vote}})
 	require.NoError(t, err)
 
 	reactor.Receive(VoteChannel, peer, bz)
