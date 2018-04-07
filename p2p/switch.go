@@ -476,7 +476,9 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 	peerConn, err := newOutboundPeerConn(addr, config, persistent, sw.nodeKey.PrivKey)
 	if err != nil {
 		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
-		go sw.reconnectToPeer(addr)
+		if persistent {
+			go sw.reconnectToPeer(addr)
+		}
 		return err
 	}
 
