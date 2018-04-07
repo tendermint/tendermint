@@ -49,6 +49,12 @@ func (b *Block) AddEvidence(evidence []Evidence) {
 // ValidateBasic performs basic validation that doesn't involve state data.
 // It checks the internal consistency of the block.
 func (b *Block) ValidateBasic() error {
+	if b == nil {
+		return errors.New("Nil blocks are invalid")
+	}
+	b.mtx.Lock()
+	defer b.mtx.Unlock()
+
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
 		return fmt.Errorf("Wrong Block.Header.NumTxs. Expected %v, got %v", newTxs, b.NumTxs)
