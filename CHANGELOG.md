@@ -36,6 +36,8 @@ See github.com/tendermint/go-amino for details on the new format.
 See `scripts/wire2amino.go` for a tool to upgrade
 genesis/priv_validator/node_key JSON files.
 
+- [config] removed `wal_light` setting
+
 ## 0.18.0 (April 6th, 2018)
 
 BREAKING:

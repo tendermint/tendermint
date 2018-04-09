@@ -17,7 +17,7 @@ import (
 
 	"github.com/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -327,7 +327,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 
 	privVal := pvm.LoadFilePV(config.PrivValidatorFile())
 
-	wal, err := NewWAL(walFile, false)
+	wal, err := NewWAL(walFile)
 	if err != nil {
 		t.Fatal(err)
 	}

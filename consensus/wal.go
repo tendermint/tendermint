@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -67,12 +67,11 @@ type baseWAL struct {
 	cmn.BaseService
 
 	group *auto.Group
-	light bool // ignore block parts
 
 	enc *WALEncoder
 }
 
-func NewWAL(walFile string, light bool) (*baseWAL, error) {
+func NewWAL(walFile string) (*baseWAL, error) {
 	err := cmn.EnsureDir(filepath.Dir(walFile), 0700)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ensure WAL directory is in place")
@@ -84,7 +83,6 @@ func NewWAL(walFile string, light bool) (*baseWAL, error) {
 	}
 	wal := &baseWAL{
 		group: group,
-		light: light,
 		enc:   NewWALEncoder(group),
 	}
 	wal.BaseService = *cmn.NewBaseService(nil, "baseWAL", wal)
@@ -115,15 +113,6 @@ func (wal *baseWAL) OnStop() {
 func (wal *baseWAL) Save(msg WALMessage) {
 	if wal == nil {
 		return
-	}
-
-	if wal.light {
-		// in light mode we only write new steps, timeouts, and our own votes (no proposals, block parts)
-		if mi, ok := msg.(msgInfo); ok {
-			if mi.PeerID != "" {
-				return
-			}
-		}
 	}
 
 	// Write the wal message

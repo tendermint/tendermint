@@ -178,7 +178,6 @@ wal_dir = "{{ .Mempool.WalPath }}"
 [consensus]
 
 wal_file = "{{ .Consensus.WalPath }}"
-wal_light = {{ .Consensus.WalLight }}
 
 # All timeouts are in milliseconds
 timeout_propose = {{ .Consensus.TimeoutPropose }}

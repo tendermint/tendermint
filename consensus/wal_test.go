@@ -47,7 +47,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	}
 	walFile := tempWALWithData(walBody)
 
-	wal, err := NewWAL(walFile, false)
+	wal, err := NewWAL(walFile)
 	if err != nil {
 		t.Fatal(err)
 	}

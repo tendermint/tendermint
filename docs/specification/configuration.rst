@@ -140,7 +140,6 @@ like the file below, however, double check by inspecting the
     [consensus]
 
     wal_file = "data/cs.wal/wal"
-    wal_light = false
 
     # All timeouts are in milliseconds
     timeout_propose = 3000
