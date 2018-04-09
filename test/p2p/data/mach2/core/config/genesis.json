@@ -1,39 +1,39 @@
 {
-	"app_hash": "",
-	"chain_id": "chain-9ujDWI",
-	"genesis_time": "2016-06-24T20:01:19.322Z",
-	"validators": [
-		{
-			"power": 1,
-			"name": "mach1",
-			"pub_key": {
-        "type": "ed25519",
-        "data": "BE8933DFF1600C026E34718F1785A4CDEAB90C35698B394E38B6947AE91DE116"
-      }
-		},
-		{
-			"power": 1,
-			"name": "mach2",
-			"pub_key": {
-        "type": "ed25519",
-        "data": "6DC534465323126587D2A2A93B59D689B717073B1DE968A25A6EF13D595318AD"
-      }
-		},
-		{
-			"power": 1,
-			"name": "mach3",
-			"pub_key": {
-        "type": "ed25519",
-        "data": "AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
-      }
-		},
-		{
-			"power": 1,
-			"name": "mach4",
-			"pub_key": {
-        "type": "ed25519",
-        "data": "9EBC8F58CED4B46DCD5AB8ABA591DD253CD7CB5037273FDA32BC0B6461C4EFD9"
-      }
-		}
-	]
+  "genesis_time": "2016-06-24T20:01:19.322Z",
+  "chain_id": "chain-9ujDWI",
+  "validators": [
+    {
+      "pub_key": {
+        "type": "AC26791624DE60",
+        "value": "vokz3/FgDAJuNHGPF4Wkzeq5DDVpizlOOLaUeukd4RY="
+      },
+      "power": 1,
+      "name": "mach1"
+    },
+    {
+      "pub_key": {
+        "type": "AC26791624DE60",
+        "value": "bcU0RlMjEmWH0qKpO1nWibcXBzsd6WiiWm7xPVlTGK0="
+      },
+      "power": 1,
+      "name": "mach2"
+    },
+    {
+      "pub_key": {
+        "type": "AC26791624DE60",
+        "value": "rmesaX0TWqC0YB6lfqqz/r9Lqk8inEWlmMKYWxL80aE="
+      },
+      "power": 1,
+      "name": "mach3"
+    },
+    {
+      "pub_key": {
+        "type": "AC26791624DE60",
+        "value": "nryPWM7UtG3NWrirpZHdJTzXy1A3Jz/aMrwLZGHE79k="
+      },
+      "power": 1,
+      "name": "mach4"
+    }
+  ],
+  "app_hash": ""
 }

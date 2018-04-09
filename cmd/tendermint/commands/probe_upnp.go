@@ -1,7 +1,6 @@
 package commands
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -22,7 +21,7 @@ func probeUpnp(cmd *cobra.Command, args []string) error {
 		fmt.Println("Probe failed: ", err)
 	} else {
 		fmt.Println("Probe success!")
-		jsonBytes, err := json.Marshal(capabilities)
+		jsonBytes, err := cdc.MarshalJSON(capabilities)
 		if err != nil {
 			return err
 		}

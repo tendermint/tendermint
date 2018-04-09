@@ -33,12 +33,14 @@ func makeKVStoreConnPair() (fooConn, barConn kvstoreConn) {
 }
 
 func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection) {
-	fooConn, barConn := makeKVStoreConnPair()
-	fooPrvKey := crypto.GenPrivKeyEd25519().Wrap()
-	fooPubKey := fooPrvKey.PubKey()
-	barPrvKey := crypto.GenPrivKeyEd25519().Wrap()
-	barPubKey := barPrvKey.PubKey()
 
+	var fooConn, barConn = makeKVStoreConnPair()
+	var fooPrvKey = crypto.GenPrivKeyEd25519()
+	var fooPubKey = fooPrvKey.PubKey()
+	var barPrvKey = crypto.GenPrivKeyEd25519()
+	var barPubKey = barPrvKey.PubKey()
+
+	// Make connections from both sides in parallel.
 	var trs, ok = cmn.Parallel(
 		func(_ int) (val interface{}, err error, abort bool) {
 			fooSecConn, err = MakeSecretConnection(fooConn, fooPrvKey)
@@ -100,10 +102,10 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	}
 
 	// A helper that will run with (fooConn, fooWrites, fooReads) and vice versa
-	genNodeRunner := func(nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) cmn.Task {
+	genNodeRunner := func(id string, nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) cmn.Task {
 		return func(_ int) (interface{}, error, bool) {
-			// Node handskae
-			nodePrvKey := crypto.GenPrivKeyEd25519().Wrap()
+			// Initiate cryptographic private key and secret connection trhough nodeConn.
+			nodePrvKey := crypto.GenPrivKeyEd25519()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)
@@ -112,7 +114,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 			// In parallel, handle some reads and writes.
 			var trs, ok = cmn.Parallel(
 				func(_ int) (interface{}, error, bool) {
-					// Node writes
+					// Node writes:
 					for _, nodeWrite := range nodeWrites {
 						n, err := nodeSecretConn.Write([]byte(nodeWrite))
 						if err != nil {
@@ -132,7 +134,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 					return nil, nil, false
 				},
 				func(_ int) (interface{}, error, bool) {
-					// Node reads
+					// Node reads:
 					readBuffer := make([]byte, dataMaxSize)
 					for {
 						n, err := nodeSecretConn.Read(readBuffer)
@@ -165,8 +167,8 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 
 	// Run foo & bar in parallel
 	var trs, ok = cmn.Parallel(
-		genNodeRunner(fooConn, fooWrites, &fooReads),
-		genNodeRunner(barConn, barWrites, &barReads),
+		genNodeRunner("foo", fooConn, fooWrites, &fooReads),
+		genNodeRunner("bar", barConn, barWrites, &barReads),
 	)
 	require.Nil(t, trs.FirstError())
 	require.True(t, ok, "unexpected task abortion")
@@ -236,4 +238,13 @@ func BenchmarkSecretConnection(b *testing.B) {
 		b.Error(err)
 	}
 	//barSecConn.Close() race condition
+}
+
+func fingerprint(bz []byte) []byte {
+	const fbsize = 40
+	if len(bz) < fbsize {
+		return bz
+	} else {
+		return bz[:fbsize]
+	}
 }

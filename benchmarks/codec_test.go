@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
@@ -14,6 +14,8 @@ import (
 
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
@@ -37,7 +39,10 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(status)
+		jsonBytes, err := cdc.MarshalJSON(status)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 
@@ -45,6 +50,8 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	nodeInfo := p2p.NodeInfo{
 		PubKey:     pubKey,
@@ -58,13 +65,18 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(nodeInfo)
+		jsonBytes, err := cdc.MarshalJSON(nodeInfo)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 }
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	nodeInfo := p2p.NodeInfo{
 		PubKey:     pubKey,
@@ -78,7 +90,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.BinaryBytes(nodeInfo)
+		jsonBytes := cdc.MustMarshalBinaryBare(nodeInfo)
 		counter += len(jsonBytes)
 	}
 
@@ -86,7 +98,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
+	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
 	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
 	nodeInfo := proto.NodeInfo{
 		PubKey:     pubKey2,

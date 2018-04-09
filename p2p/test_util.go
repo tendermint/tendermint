@@ -24,7 +24,7 @@ func CreateRandomPeer(outbound bool) *peer {
 		},
 		nodeInfo: NodeInfo{
 			ListenAddr: netAddr.DialString(),
-			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
+			PubKey:     crypto.GenPrivKeyEd25519().PubKey(),
 		},
 		mconn: &conn.MConnection{},
 	}
@@ -131,7 +131,7 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{
-		PrivKey: crypto.GenPrivKeyEd25519().Wrap(),
+		PrivKey: crypto.GenPrivKeyEd25519(),
 	}
 	sw := NewSwitch(cfg)
 	sw.SetLogger(log.TestingLogger())

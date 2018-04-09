@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -138,6 +139,7 @@ func TestParseRPC(t *testing.T) {
 
 	demo := func(height int, name string) {}
 	call := NewRPCFunc(demo, "height,name")
+	cdc := amino.NewCodec()
 
 	cases := []struct {
 		raw    string
@@ -158,7 +160,7 @@ func TestParseRPC(t *testing.T) {
 	for idx, tc := range cases {
 		i := strconv.Itoa(idx)
 		data := []byte(tc.raw)
-		vals, err := jsonParamsToArgs(call, data, 0)
+		vals, err := jsonParamsToArgs(call, cdc, data, 0)
 		if tc.fail {
 			assert.NotNil(err, i)
 		} else {
