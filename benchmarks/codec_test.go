@@ -4,11 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
-
-	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
+
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
+	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -83,9 +83,9 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
-	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: nodeKey.PubKey().Unwrap().(crypto.PubKeyEd25519)[:]}}
+	id := &proto.ID{id: string(nodeKey.ID())}
 	nodeInfo := proto.NodeInfo{
-		ID:         nodeKey.ID(),
+		Id:         id,
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
