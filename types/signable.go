@@ -9,8 +9,3 @@ package types
 type Signable interface {
 	SignBytes(chainID string) []byte
 }
-
-// HashSignBytes is a convenience method for getting the hash of the bytes of a signable
-func HashSignBytes(chainID string, o Signable) []byte {
-	return tmHash(o.SignBytes(chainID))
-}

@@ -20,17 +20,15 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// 2 + 1024 == 1026 total frame size
-const dataLenSize = 2 // uint16 to describe the length, is <= dataMaxSize
+// 4 + 1024 == 1028 total frame size
+const dataLenSize = 4
 const dataMaxSize = 1024
 const totalFrameSize = dataMaxSize + dataLenSize
 const sealedFrameSize = totalFrameSize + secretbox.Overhead
-const authSigMsgSize = (32 + 1) + (64 + 1) // fixed size (length prefixed) byte arrays
 
 // Implements net.Conn
 type SecretConnection struct {
@@ -123,7 +121,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 			data = nil
 		}
 		chunkLength := len(chunk)
-		binary.BigEndian.PutUint16(frame, uint16(chunkLength))
+		binary.BigEndian.PutUint32(frame, uint32(chunkLength))
 		copy(frame[dataLenSize:], chunk)
 
 		// encrypt the frame
@@ -145,8 +143,8 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 // CONTRACT: data smaller than dataMaxSize is read atomically.
 func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	if 0 < len(sc.recvBuffer) {
-		n_ := copy(data, sc.recvBuffer)
-		sc.recvBuffer = sc.recvBuffer[n_:]
+		n = copy(data, sc.recvBuffer)
+		sc.recvBuffer = sc.recvBuffer[n:]
 		return
 	}
 
@@ -166,7 +164,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	incr2Nonce(sc.recvNonce)
 	// end decryption
 
-	var chunkLength = binary.BigEndian.Uint16(frame) // read the first two bytes
+	var chunkLength = binary.BigEndian.Uint32(frame) // read the first two bytes
 	if chunkLength > dataMaxSize {
 		return 0, errors.New("chunkLength is greater than dataMaxSize")
 	}
@@ -193,16 +191,17 @@ func genEphKeys() (ephPub, ephPriv *[32]byte) {
 	var err error
 	ephPub, ephPriv, err = box.GenerateKey(crand.Reader)
 	if err != nil {
-		cmn.PanicCrisis("Could not generate ephemeral keypairs")
+		panic("Could not generate ephemeral keypairs")
 	}
 	return
 }
 
 func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[32]byte, err error) {
+
 	// Send our pubkey and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
 		func(_ int) (val interface{}, err error, abort bool) {
-			var _, err1 = conn.Write(locEphPub[:])
+			var _, err1 = cdc.MarshalBinaryWriter(conn, locEphPub)
 			if err1 != nil {
 				return nil, err1, true // abort
 			} else {
@@ -211,7 +210,7 @@ func shareEphPubKey(conn io.ReadWriteCloser, locEphPub *[32]byte) (remEphPub *[3
 		},
 		func(_ int) (val interface{}, err error, abort bool) {
 			var _remEphPub [32]byte
-			var _, err2 = io.ReadFull(conn, _remEphPub[:])
+			var _, err2 = cdc.UnmarshalBinaryReader(conn, &_remEphPub, 1024*1024) // TODO
 			if err2 != nil {
 				return nil, err2, true // abort
 			} else {
@@ -277,12 +276,12 @@ type authSigMessage struct {
 	Sig crypto.Signature
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature crypto.Signature) (recvMsg *authSigMessage, err error) {
+func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature crypto.Signature) (recvMsg authSigMessage, err error) {
+
 	// Send our info and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
 		func(_ int) (val interface{}, err error, abort bool) {
-			msgBytes := wire.BinaryBytes(authSigMessage{pubKey.Wrap(), signature.Wrap()})
-			var _, err1 = sc.Write(msgBytes)
+			var _, err1 = cdc.MarshalBinaryWriter(sc, authSigMessage{pubKey, signature})
 			if err1 != nil {
 				return nil, err1, true // abort
 			} else {
@@ -290,13 +289,8 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 			}
 		},
 		func(_ int) (val interface{}, err error, abort bool) {
-			readBuffer := make([]byte, authSigMsgSize)
-			var _, err2 = io.ReadFull(sc, readBuffer)
-			if err2 != nil {
-				return nil, err2, true // abort
-			}
-			n := int(0) // not used.
-			var _recvMsg = wire.ReadBinary(authSigMessage{}, bytes.NewBuffer(readBuffer), authSigMsgSize, &n, &err2).(authSigMessage)
+			var _recvMsg authSigMessage
+			var _, err2 = cdc.UnmarshalBinaryReader(sc, &_recvMsg, 1024*1024) // TODO
 			if err2 != nil {
 				return nil, err2, true // abort
 			} else {
@@ -312,7 +306,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 	}
 
 	var _recvMsg = trs.FirstValue().(authSigMessage)
-	return &_recvMsg, nil
+	return _recvMsg, nil
 }
 
 //--------------------------------------------------------------------------------

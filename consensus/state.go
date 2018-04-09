@@ -10,8 +10,6 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
-
-	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -776,7 +774,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	// if not a validator, we're done
 	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-		cs.Logger.Debug("This node is not a validator")
+		cs.Logger.Debug("This node is not a validator", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
 		return
 	}
 	cs.Logger.Debug("This node is a validator")
@@ -1297,10 +1295,10 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		var n int
-		var err error
-		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
-			cs.state.ConsensusParams.BlockSize.MaxBytes, &n, &err).(*types.Block)
+		_, err = cdc.UnmarshalBinaryReader(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, int64(cs.state.ConsensusParams.BlockSize.MaxBytes))
+		if err != nil {
+			return true, err
+		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
@@ -1310,7 +1308,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}
-		return true, err
+		return true, nil
 	}
 	return added, nil
 }

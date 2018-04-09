@@ -8,6 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/go-amino"
 )
 
 type SampleResult struct {
@@ -16,8 +17,9 @@ type SampleResult struct {
 
 func TestResponses(t *testing.T) {
 	assert := assert.New(t)
+	cdc := amino.NewCodec()
 
-	a := NewRPCSuccessResponse("1", &SampleResult{"hello"})
+	a := NewRPCSuccessResponse(cdc, "1", &SampleResult{"hello"})
 	b, _ := json.Marshal(a)
 	s := `{"jsonrpc":"2.0","id":"1","result":{"Value":"hello"}}`
 	assert.Equal(string(s), string(b))

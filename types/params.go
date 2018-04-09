@@ -1,14 +1,13 @@
 package types
 
 import (
-	"github.com/pkg/errors"
-
 	abci "github.com/tendermint/abci/types"
+	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
 const (
-	maxBlockSizeBytes = 104857600 // 100MB
+	MaxBlockSizeBytes = 104857600 // 100MB
 )
 
 // ConsensusParams contains consensus critical parameters
@@ -89,16 +88,16 @@ func DefaultEvidenceParams() EvidenceParams {
 func (params *ConsensusParams) Validate() error {
 	// ensure some values are greater than 0
 	if params.BlockSize.MaxBytes <= 0 {
-		return errors.Errorf("BlockSize.MaxBytes must be greater than 0. Got %d", params.BlockSize.MaxBytes)
+		return cmn.NewError("BlockSize.MaxBytes must be greater than 0. Got %d", params.BlockSize.MaxBytes)
 	}
 	if params.BlockGossip.BlockPartSizeBytes <= 0 {
-		return errors.Errorf("BlockGossip.BlockPartSizeBytes must be greater than 0. Got %d", params.BlockGossip.BlockPartSizeBytes)
+		return cmn.NewError("BlockGossip.BlockPartSizeBytes must be greater than 0. Got %d", params.BlockGossip.BlockPartSizeBytes)
 	}
 
 	// ensure blocks aren't too big
-	if params.BlockSize.MaxBytes > maxBlockSizeBytes {
-		return errors.Errorf("BlockSize.MaxBytes is too big. %d > %d",
-			params.BlockSize.MaxBytes, maxBlockSizeBytes)
+	if params.BlockSize.MaxBytes > MaxBlockSizeBytes {
+		return cmn.NewError("BlockSize.MaxBytes is too big. %d > %d",
+			params.BlockSize.MaxBytes, MaxBlockSizeBytes)
 	}
 	return nil
 }
@@ -107,12 +106,12 @@ func (params *ConsensusParams) Validate() error {
 // in the block header
 func (params *ConsensusParams) Hash() []byte {
 	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
-		"block_gossip_part_size_bytes": wireHasher(params.BlockGossip.BlockPartSizeBytes),
-		"block_size_max_bytes":         wireHasher(params.BlockSize.MaxBytes),
-		"block_size_max_gas":           wireHasher(params.BlockSize.MaxGas),
-		"block_size_max_txs":           wireHasher(params.BlockSize.MaxTxs),
-		"tx_size_max_bytes":            wireHasher(params.TxSize.MaxBytes),
-		"tx_size_max_gas":              wireHasher(params.TxSize.MaxGas),
+		"block_gossip_part_size_bytes": aminoHasher(params.BlockGossip.BlockPartSizeBytes),
+		"block_size_max_bytes":         aminoHasher(params.BlockSize.MaxBytes),
+		"block_size_max_gas":           aminoHasher(params.BlockSize.MaxGas),
+		"block_size_max_txs":           aminoHasher(params.BlockSize.MaxTxs),
+		"tx_size_max_bytes":            aminoHasher(params.TxSize.MaxBytes),
+		"tx_size_max_gas":              aminoHasher(params.TxSize.MaxGas),
 	})
 }
 

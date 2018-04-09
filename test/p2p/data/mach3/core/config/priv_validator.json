@@ -1,14 +1,14 @@
 {
-	"address": "4C5F061DAC28660853904A66705B12CA2B317572",
-	"last_height": 0,
-	"last_round": 0,
-	"last_step": 0,
-	"priv_key": {
-    "type": "ed25519",
-    "data": "C1A4E47F349FC5F556F4A9A27BA776B94424C312BAA6CF6EE44B867348D7C3F2AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
+  "address": "7C747D7E002932B3864E3FBE9AC04287043F66A0",
+  "pub_key": {
+    "type": "AC26791624DE60",
+    "value": "rmesaX0TWqC0YB6lfqqz/r9Lqk8inEWlmMKYWxL80aE="
   },
-	"pub_key": {
-    "type": "ed25519",
-    "data": "AE67AC697D135AA0B4601EA57EAAB3FEBF4BAA4F229C45A598C2985B12FCD1A1"
+  "last_height": 0,
+  "last_round": 0,
+  "last_step": 0,
+  "priv_key": {
+    "type": "954568A3288910",
+    "value": "waTkfzSfxfVW9Kmie6d2uUQkwxK6ps9u5EuGc0jXw/KuZ6xpfRNaoLRgHqV+qrP+v0uqTyKcRaWYwphbEvzRoQ=="
   }
 }

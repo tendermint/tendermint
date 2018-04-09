@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/tendermint/go-wire/data"
+	"github.com/tendermint/go-amino"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
@@ -35,65 +35,30 @@ const (
 // ENCODING / DECODING
 ///////////////////////////////////////////////////////////////////////////////
 
-var (
-	EventDataNameNewBlock          = "new_block"
-	EventDataNameNewBlockHeader    = "new_block_header"
-	EventDataNameTx                = "tx"
-	EventDataNameRoundState        = "round_state"
-	EventDataNameVote              = "vote"
-	EventDataNameProposalHeartbeat = "proposal_heartbeat"
-)
-
 // implements events.EventData
-type TMEventDataInner interface {
+type TMEventData interface {
+	AssertIsTMEventData()
 	// empty interface
 }
 
-type TMEventData struct {
-	TMEventDataInner `json:"unwrap"`
+func (_ EventDataNewBlock) AssertIsTMEventData()          {}
+func (_ EventDataNewBlockHeader) AssertIsTMEventData()    {}
+func (_ EventDataTx) AssertIsTMEventData()                {}
+func (_ EventDataRoundState) AssertIsTMEventData()        {}
+func (_ EventDataVote) AssertIsTMEventData()              {}
+func (_ EventDataProposalHeartbeat) AssertIsTMEventData() {}
+func (_ EventDataString) AssertIsTMEventData()            {}
+
+func RegisterEventDatas(cdc *amino.Codec) {
+	cdc.RegisterInterface((*TMEventData)(nil), nil)
+	cdc.RegisterConcrete(EventDataNewBlock{}, "tendermint/event/NewBlock", nil)
+	cdc.RegisterConcrete(EventDataNewBlockHeader{}, "tendermint/event/NewBlockHeader", nil)
+	cdc.RegisterConcrete(EventDataTx{}, "tendermint/event/Tx", nil)
+	cdc.RegisterConcrete(EventDataRoundState{}, "tendermint/event/RoundState", nil)
+	cdc.RegisterConcrete(EventDataVote{}, "tendermint/event/Vote", nil)
+	cdc.RegisterConcrete(EventDataProposalHeartbeat{}, "tendermint/event/ProposalHeartbeat", nil)
+	cdc.RegisterConcrete(EventDataString(""), "tendermint/event/ProposalString", nil)
 }
-
-func (tmr TMEventData) MarshalJSON() ([]byte, error) {
-	return tmEventDataMapper.ToJSON(tmr.TMEventDataInner)
-}
-
-func (tmr *TMEventData) UnmarshalJSON(data []byte) (err error) {
-	parsed, err := tmEventDataMapper.FromJSON(data)
-	if err == nil && parsed != nil {
-		tmr.TMEventDataInner = parsed.(TMEventDataInner)
-	}
-	return
-}
-
-func (tmr TMEventData) Unwrap() TMEventDataInner {
-	tmrI := tmr.TMEventDataInner
-	for wrap, ok := tmrI.(TMEventData); ok; wrap, ok = tmrI.(TMEventData) {
-		tmrI = wrap.TMEventDataInner
-	}
-	return tmrI
-}
-
-func (tmr TMEventData) Empty() bool {
-	return tmr.TMEventDataInner == nil
-}
-
-const (
-	EventDataTypeNewBlock          = byte(0x01)
-	EventDataTypeFork              = byte(0x02)
-	EventDataTypeTx                = byte(0x03)
-	EventDataTypeNewBlockHeader    = byte(0x04)
-	EventDataTypeRoundState        = byte(0x11)
-	EventDataTypeVote              = byte(0x12)
-	EventDataTypeProposalHeartbeat = byte(0x20)
-)
-
-var tmEventDataMapper = data.NewMapper(TMEventData{}).
-	RegisterImplementation(EventDataNewBlock{}, EventDataNameNewBlock, EventDataTypeNewBlock).
-	RegisterImplementation(EventDataNewBlockHeader{}, EventDataNameNewBlockHeader, EventDataTypeNewBlockHeader).
-	RegisterImplementation(EventDataTx{}, EventDataNameTx, EventDataTypeTx).
-	RegisterImplementation(EventDataRoundState{}, EventDataNameRoundState, EventDataTypeRoundState).
-	RegisterImplementation(EventDataVote{}, EventDataNameVote, EventDataTypeVote).
-	RegisterImplementation(EventDataProposalHeartbeat{}, EventDataNameProposalHeartbeat, EventDataTypeProposalHeartbeat)
 
 // Most event messages are basic types (a block, a transaction)
 // but some (an input to a call tx or a receive) are more exotic
@@ -129,6 +94,8 @@ type EventDataRoundState struct {
 type EventDataVote struct {
 	Vote *Vote
 }
+
+type EventDataString string
 
 ///////////////////////////////////////////////////////////////////////////////
 // PUBSUB

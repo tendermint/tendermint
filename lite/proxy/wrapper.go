@@ -146,7 +146,7 @@ func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
 // 	}
 
 // 	// check to validate it if possible, and drop if not valid
-// 	switch t := tm.Unwrap().(type) {
+// 	switch t := tm.(type) {
 // 	case types.EventDataNewBlockHeader:
 // 		err := verifyHeader(s.client, t.Header)
 // 		if err != nil {

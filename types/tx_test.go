@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	ctest "github.com/tendermint/tmlibs/test"
 )
@@ -69,9 +68,9 @@ func TestValidTxProof(t *testing.T) {
 
 			// read-write must also work
 			var p2 TxProof
-			bin, err := wire.MarshalBinary(proof)
+			bin, err := cdc.MarshalBinary(proof)
 			assert.Nil(err)
-			err = wire.UnmarshalBinary(bin, &p2)
+			err = cdc.UnmarshalBinary(bin, &p2)
 			if assert.Nil(err, "%d: %d: %+v", h, i, err) {
 				assert.Nil(p2.Validate(root), "%d: %d", h, i)
 			}
@@ -97,7 +96,7 @@ func testTxProofUnchangable(t *testing.T) {
 
 	// make sure it is valid to start with
 	assert.Nil(proof.Validate(root))
-	bin, err := wire.MarshalBinary(proof)
+	bin, err := cdc.MarshalBinary(proof)
 	assert.Nil(err)
 
 	// try mutating the data and make sure nothing breaks
@@ -109,16 +108,17 @@ func testTxProofUnchangable(t *testing.T) {
 	}
 }
 
-// this make sure the proof doesn't deserialize into something valid
+// This makes sure that the proof doesn't deserialize into something valid.
 func assertBadProof(t *testing.T, root []byte, bad []byte, good TxProof) {
 	var proof TxProof
-	err := wire.UnmarshalBinary(bad, &proof)
+	err := cdc.UnmarshalBinary(bad, &proof)
 	if err == nil {
 		err = proof.Validate(root)
 		if err == nil {
-			// okay, this can happen if we have a slightly different total
-			// (where the path ends up the same), if it is something else, we have
-			// a real problem
+			// XXX Fix simple merkle proofs so the following is *not* OK.
+			// This can happen if we have a slightly different total (where the
+			// path ends up the same). If it is something else, we have a real
+			// problem.
 			assert.NotEqual(t, proof.Total, good.Total, "bad: %#v\ngood: %#v", proof, good)
 		}
 	}

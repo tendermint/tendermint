@@ -2,7 +2,6 @@ package types
 
 import (
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/tendermint/wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/merkle"
 )
@@ -18,7 +17,8 @@ type ABCIResult struct {
 
 // Hash returns the canonical hash of the ABCIResult
 func (a ABCIResult) Hash() []byte {
-	return tmHash(a)
+	bz := aminoHash(a)
+	return bz
 }
 
 // ABCIResults wraps the deliver tx results to return a proof
@@ -42,7 +42,7 @@ func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
 
 // Bytes serializes the ABCIResponse using wire
 func (a ABCIResults) Bytes() []byte {
-	bz, err := wire.MarshalBinary(a)
+	bz, err := cdc.MarshalBinary(a)
 	if err != nil {
 		panic(err)
 	}

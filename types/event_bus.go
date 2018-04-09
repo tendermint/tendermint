@@ -74,15 +74,15 @@ func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 //--- block, tx, and vote events
 
 func (b *EventBus) PublishEventNewBlock(event EventDataNewBlock) error {
-	return b.Publish(EventNewBlock, TMEventData{event})
+	return b.Publish(EventNewBlock, event)
 }
 
 func (b *EventBus) PublishEventNewBlockHeader(event EventDataNewBlockHeader) error {
-	return b.Publish(EventNewBlockHeader, TMEventData{event})
+	return b.Publish(EventNewBlockHeader, event)
 }
 
 func (b *EventBus) PublishEventVote(event EventDataVote) error {
-	return b.Publish(EventVote, TMEventData{event})
+	return b.Publish(EventVote, event)
 }
 
 // PublishEventTx publishes tx event with tags from Result. Note it will add
@@ -114,50 +114,50 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	logIfTagExists(TxHeightKey, tags, b.Logger)
 	tags[TxHeightKey] = event.Height
 
-	b.pubsub.PublishWithTags(ctx, TMEventData{event}, tmpubsub.NewTagMap(tags))
+	b.pubsub.PublishWithTags(ctx, event, tmpubsub.NewTagMap(tags))
 	return nil
 }
 
 func (b *EventBus) PublishEventProposalHeartbeat(event EventDataProposalHeartbeat) error {
-	return b.Publish(EventProposalHeartbeat, TMEventData{event})
+	return b.Publish(EventProposalHeartbeat, event)
 }
 
 //--- EventDataRoundState events
 
 func (b *EventBus) PublishEventNewRoundStep(event EventDataRoundState) error {
-	return b.Publish(EventNewRoundStep, TMEventData{event})
+	return b.Publish(EventNewRoundStep, event)
 }
 
 func (b *EventBus) PublishEventTimeoutPropose(event EventDataRoundState) error {
-	return b.Publish(EventTimeoutPropose, TMEventData{event})
+	return b.Publish(EventTimeoutPropose, event)
 }
 
 func (b *EventBus) PublishEventTimeoutWait(event EventDataRoundState) error {
-	return b.Publish(EventTimeoutWait, TMEventData{event})
+	return b.Publish(EventTimeoutWait, event)
 }
 
 func (b *EventBus) PublishEventNewRound(event EventDataRoundState) error {
-	return b.Publish(EventNewRound, TMEventData{event})
+	return b.Publish(EventNewRound, event)
 }
 
 func (b *EventBus) PublishEventCompleteProposal(event EventDataRoundState) error {
-	return b.Publish(EventCompleteProposal, TMEventData{event})
+	return b.Publish(EventCompleteProposal, event)
 }
 
 func (b *EventBus) PublishEventPolka(event EventDataRoundState) error {
-	return b.Publish(EventPolka, TMEventData{event})
+	return b.Publish(EventPolka, event)
 }
 
 func (b *EventBus) PublishEventUnlock(event EventDataRoundState) error {
-	return b.Publish(EventUnlock, TMEventData{event})
+	return b.Publish(EventUnlock, event)
 }
 
 func (b *EventBus) PublishEventRelock(event EventDataRoundState) error {
-	return b.Publish(EventRelock, TMEventData{event})
+	return b.Publish(EventRelock, event)
 }
 
 func (b *EventBus) PublishEventLock(event EventDataRoundState) error {
-	return b.Publish(EventLock, TMEventData{event})
+	return b.Publish(EventLock, event)
 }
 
 func logIfTagExists(tag string, tags map[string]interface{}, logger log.Logger) {

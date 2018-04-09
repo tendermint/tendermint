@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -59,6 +60,9 @@ var Routes = map[string]*server.RPCFunc{
 	"echo_data_bytes": server.NewRPCFunc(EchoDataBytesResult, "arg"),
 	"echo_int":        server.NewRPCFunc(EchoIntResult, "arg"),
 }
+
+// Amino codec required to encode/decode everything above.
+var RoutesCdc = amino.NewCodec()
 
 func EchoResult(v string) (*ResultEcho, error) {
 	return &ResultEcho{v}, nil
@@ -114,8 +118,8 @@ func setup() {
 
 	tcpLogger := logger.With("socket", "tcp")
 	mux := http.NewServeMux()
-	server.RegisterRPCFuncs(mux, Routes, tcpLogger)
-	wm := server.NewWebsocketManager(Routes, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
+	server.RegisterRPCFuncs(mux, Routes, RoutesCdc, tcpLogger)
+	wm := server.NewWebsocketManager(Routes, RoutesCdc, server.ReadWait(5*time.Second), server.PingPeriod(1*time.Second))
 	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
@@ -127,8 +131,8 @@ func setup() {
 
 	unixLogger := logger.With("socket", "unix")
 	mux2 := http.NewServeMux()
-	server.RegisterRPCFuncs(mux2, Routes, unixLogger)
-	wm = server.NewWebsocketManager(Routes)
+	server.RegisterRPCFuncs(mux2, Routes, RoutesCdc, unixLogger)
+	wm = server.NewWebsocketManager(Routes, RoutesCdc)
 	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {

@@ -1,14 +1,14 @@
-package types
+package privval
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"time"
 
-	"github.com/pkg/errors"
-	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
+	"github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -37,36 +37,36 @@ var (
 	connHeartbeat  = time.Second * defaultConnHeartBeatSeconds
 )
 
-// SocketClientOption sets an optional parameter on the SocketClient.
-type SocketClientOption func(*SocketClient)
+// SocketPVOption sets an optional parameter on the SocketPV.
+type SocketPVOption func(*SocketPV)
 
-// SocketClientAcceptDeadline sets the deadline for the SocketClient listener.
+// SocketPVAcceptDeadline sets the deadline for the SocketPV listener.
 // A zero time value disables the deadline.
-func SocketClientAcceptDeadline(deadline time.Duration) SocketClientOption {
-	return func(sc *SocketClient) { sc.acceptDeadline = deadline }
+func SocketPVAcceptDeadline(deadline time.Duration) SocketPVOption {
+	return func(sc *SocketPV) { sc.acceptDeadline = deadline }
 }
 
-// SocketClientConnDeadline sets the read and write deadline for connections
+// SocketPVConnDeadline sets the read and write deadline for connections
 // from external signing processes.
-func SocketClientConnDeadline(deadline time.Duration) SocketClientOption {
-	return func(sc *SocketClient) { sc.connDeadline = deadline }
+func SocketPVConnDeadline(deadline time.Duration) SocketPVOption {
+	return func(sc *SocketPV) { sc.connDeadline = deadline }
 }
 
-// SocketClientHeartbeat sets the period on which to check the liveness of the
+// SocketPVHeartbeat sets the period on which to check the liveness of the
 // connected Signer connections.
-func SocketClientHeartbeat(period time.Duration) SocketClientOption {
-	return func(sc *SocketClient) { sc.connHeartbeat = period }
+func SocketPVHeartbeat(period time.Duration) SocketPVOption {
+	return func(sc *SocketPV) { sc.connHeartbeat = period }
 }
 
-// SocketClientConnWait sets the timeout duration before connection of external
+// SocketPVConnWait sets the timeout duration before connection of external
 // signing processes are considered to be unsuccessful.
-func SocketClientConnWait(timeout time.Duration) SocketClientOption {
-	return func(sc *SocketClient) { sc.connWaitTimeout = timeout }
+func SocketPVConnWait(timeout time.Duration) SocketPVOption {
+	return func(sc *SocketPV) { sc.connWaitTimeout = timeout }
 }
 
-// SocketClient implements PrivValidator, it uses a socket to request signatures
+// SocketPV implements PrivValidator, it uses a socket to request signatures
 // from an external process.
-type SocketClient struct {
+type SocketPV struct {
 	cmn.BaseService
 
 	addr            string
@@ -80,16 +80,16 @@ type SocketClient struct {
 	listener net.Listener
 }
 
-// Check that SocketClient implements PrivValidator2.
-var _ types.PrivValidator2 = (*SocketClient)(nil)
+// Check that SocketPV implements PrivValidator.
+var _ types.PrivValidator = (*SocketPV)(nil)
 
-// NewSocketClient returns an instance of SocketClient.
-func NewSocketClient(
+// NewSocketPV returns an instance of SocketPV.
+func NewSocketPV(
 	logger log.Logger,
 	socketAddr string,
 	privKey crypto.PrivKeyEd25519,
-) *SocketClient {
-	sc := &SocketClient{
+) *SocketPV {
+	sc := &SocketPV{
 		addr:            socketAddr,
 		acceptDeadline:  acceptDeadline,
 		connDeadline:    connDeadline,
@@ -98,15 +98,14 @@ func NewSocketClient(
 		privKey:         privKey,
 	}
 
-	sc.BaseService = *cmn.NewBaseService(logger, "SocketClient", sc)
+	sc.BaseService = *cmn.NewBaseService(logger, "SocketPV", sc)
 
 	return sc
 }
 
 // GetAddress implements PrivValidator.
-// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-func (sc *SocketClient) GetAddress() types.Address {
-	addr, err := sc.Address()
+func (sc *SocketPV) GetAddress() types.Address {
+	addr, err := sc.getAddress()
 	if err != nil {
 		panic(err)
 	}
@@ -115,8 +114,8 @@ func (sc *SocketClient) GetAddress() types.Address {
 }
 
 // Address is an alias for PubKey().Address().
-func (sc *SocketClient) Address() (cmn.HexBytes, error) {
-	p, err := sc.PubKey()
+func (sc *SocketPV) getAddress() (cmn.HexBytes, error) {
+	p, err := sc.getPubKey()
 	if err != nil {
 		return nil, err
 	}
@@ -125,9 +124,8 @@ func (sc *SocketClient) Address() (cmn.HexBytes, error) {
 }
 
 // GetPubKey implements PrivValidator.
-// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-func (sc *SocketClient) GetPubKey() crypto.PubKey {
-	pubKey, err := sc.PubKey()
+func (sc *SocketPV) GetPubKey() crypto.PubKey {
+	pubKey, err := sc.getPubKey()
 	if err != nil {
 		panic(err)
 	}
@@ -135,23 +133,22 @@ func (sc *SocketClient) GetPubKey() crypto.PubKey {
 	return pubKey
 }
 
-// PubKey implements PrivValidator2.
-func (sc *SocketClient) PubKey() (crypto.PubKey, error) {
+func (sc *SocketPV) getPubKey() (crypto.PubKey, error) {
 	err := writeMsg(sc.conn, &PubKeyMsg{})
 	if err != nil {
-		return crypto.PubKey{}, err
+		return nil, err
 	}
 
 	res, err := readMsg(sc.conn)
 	if err != nil {
-		return crypto.PubKey{}, err
+		return nil, err
 	}
 
 	return res.(*PubKeyMsg).PubKey, nil
 }
 
-// SignVote implements PrivValidator2.
-func (sc *SocketClient) SignVote(chainID string, vote *types.Vote) error {
+// SignVote implements PrivValidator.
+func (sc *SocketPV) SignVote(chainID string, vote *types.Vote) error {
 	err := writeMsg(sc.conn, &SignVoteMsg{Vote: vote})
 	if err != nil {
 		return err
@@ -167,8 +164,8 @@ func (sc *SocketClient) SignVote(chainID string, vote *types.Vote) error {
 	return nil
 }
 
-// SignProposal implements PrivValidator2.
-func (sc *SocketClient) SignProposal(
+// SignProposal implements PrivValidator.
+func (sc *SocketPV) SignProposal(
 	chainID string,
 	proposal *types.Proposal,
 ) error {
@@ -187,8 +184,8 @@ func (sc *SocketClient) SignProposal(
 	return nil
 }
 
-// SignHeartbeat implements PrivValidator2.
-func (sc *SocketClient) SignHeartbeat(
+// SignHeartbeat implements PrivValidator.
+func (sc *SocketPV) SignHeartbeat(
 	chainID string,
 	heartbeat *types.Heartbeat,
 ) error {
@@ -208,21 +205,22 @@ func (sc *SocketClient) SignHeartbeat(
 }
 
 // OnStart implements cmn.Service.
-func (sc *SocketClient) OnStart() error {
+func (sc *SocketPV) OnStart() error {
 	if err := sc.listen(); err != nil {
+		err = cmn.ErrorWrap(err, "failed to listen")
 		sc.Logger.Error(
 			"OnStart",
-			"err", errors.Wrap(err, "failed to listen"),
+			"err", err,
 		)
-
 		return err
 	}
 
 	conn, err := sc.waitConnection()
 	if err != nil {
+		err = cmn.ErrorWrap(err, "failed to accept connection")
 		sc.Logger.Error(
 			"OnStart",
-			"err", errors.Wrap(err, "failed to accept connection"),
+			"err", err,
 		)
 
 		return err
@@ -234,27 +232,29 @@ func (sc *SocketClient) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
-func (sc *SocketClient) OnStop() {
+func (sc *SocketPV) OnStop() {
 	if sc.conn != nil {
 		if err := sc.conn.Close(); err != nil {
+			err = cmn.ErrorWrap(err, "failed to close connection")
 			sc.Logger.Error(
 				"OnStop",
-				"err", errors.Wrap(err, "failed to close connection"),
+				"err", err,
 			)
 		}
 	}
 
 	if sc.listener != nil {
 		if err := sc.listener.Close(); err != nil {
+			err = cmn.ErrorWrap(err, "failed to close listener")
 			sc.Logger.Error(
 				"OnStop",
-				"err", errors.Wrap(err, "failed to close listener"),
+				"err", err,
 			)
 		}
 	}
 }
 
-func (sc *SocketClient) acceptConnection() (net.Conn, error) {
+func (sc *SocketPV) acceptConnection() (net.Conn, error) {
 	conn, err := sc.listener.Accept()
 	if err != nil {
 		if !sc.IsRunning() {
@@ -264,7 +264,7 @@ func (sc *SocketClient) acceptConnection() (net.Conn, error) {
 
 	}
 
-	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey.Wrap())
+	conn, err = p2pconn.MakeSecretConnection(conn, sc.privKey)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +272,7 @@ func (sc *SocketClient) acceptConnection() (net.Conn, error) {
 	return conn, nil
 }
 
-func (sc *SocketClient) listen() error {
+func (sc *SocketPV) listen() error {
 	ln, err := net.Listen(cmn.ProtocolAndAddress(sc.addr))
 	if err != nil {
 		return err
@@ -290,7 +290,7 @@ func (sc *SocketClient) listen() error {
 
 // waitConnection uses the configured wait timeout to error if no external
 // process connects in the time period.
-func (sc *SocketClient) waitConnection() (net.Conn, error) {
+func (sc *SocketPV) waitConnection() (net.Conn, error) {
 	var (
 		connc = make(chan net.Conn, 1)
 		errc  = make(chan error, 1)
@@ -311,7 +311,7 @@ func (sc *SocketClient) waitConnection() (net.Conn, error) {
 		return conn, nil
 	case err := <-errc:
 		if _, ok := err.(timeoutError); ok {
-			return nil, errors.Wrap(ErrConnWaitTimeout, err.Error())
+			return nil, cmn.ErrorWrap(ErrConnWaitTimeout, err.Error())
 		}
 		return nil, err
 	case <-time.After(sc.connWaitTimeout):
@@ -344,7 +344,7 @@ type RemoteSigner struct {
 	connDeadline time.Duration
 	connRetries  int
 	privKey      crypto.PrivKeyEd25519
-	privVal      PrivValidator
+	privVal      types.PrivValidator
 
 	conn net.Conn
 }
@@ -353,7 +353,7 @@ type RemoteSigner struct {
 func NewRemoteSigner(
 	logger log.Logger,
 	chainID, socketAddr string,
-	privVal PrivValidator,
+	privVal types.PrivValidator,
 	privKey crypto.PrivKeyEd25519,
 ) *RemoteSigner {
 	rs := &RemoteSigner{
@@ -374,8 +374,8 @@ func NewRemoteSigner(
 func (rs *RemoteSigner) OnStart() error {
 	conn, err := rs.connect()
 	if err != nil {
-		rs.Logger.Error("OnStart", "err", errors.Wrap(err, "connect"))
-
+		err = cmn.ErrorWrap(err, "connect")
+		rs.Logger.Error("OnStart", "err", err)
 		return err
 	}
 
@@ -391,7 +391,7 @@ func (rs *RemoteSigner) OnStop() {
 	}
 
 	if err := rs.conn.Close(); err != nil {
-		rs.Logger.Error("OnStop", "err", errors.Wrap(err, "closing listener failed"))
+		rs.Logger.Error("OnStop", "err", cmn.ErrorWrap(err, "closing listener failed"))
 	}
 }
 
@@ -404,28 +404,31 @@ func (rs *RemoteSigner) connect() (net.Conn, error) {
 
 		conn, err := cmn.Connect(rs.addr)
 		if err != nil {
+			err = cmn.ErrorWrap(err, "connection failed")
 			rs.Logger.Error(
 				"connect",
 				"addr", rs.addr,
-				"err", errors.Wrap(err, "connection failed"),
+				"err", err,
 			)
 
 			continue
 		}
 
 		if err := conn.SetDeadline(time.Now().Add(connDeadline)); err != nil {
+			err = cmn.ErrorWrap(err, "setting connection timeout failed")
 			rs.Logger.Error(
 				"connect",
-				"err", errors.Wrap(err, "setting connection timeout failed"),
+				"err", err,
 			)
 			continue
 		}
 
-		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey.Wrap())
+		conn, err = p2pconn.MakeSecretConnection(conn, rs.privKey)
 		if err != nil {
+			err = cmn.ErrorWrap(err, "encrypting connection failed")
 			rs.Logger.Error(
 				"connect",
-				"err", errors.Wrap(err, "encrypting connection failed"),
+				"err", err,
 			)
 
 			continue
@@ -451,13 +454,12 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 			return
 		}
 
-		var res PrivValMsg
+		var res SocketPVMsg
 
 		switch r := req.(type) {
 		case *PubKeyMsg:
 			var p crypto.PubKey
-
-			p, err = rs.privVal.PubKey()
+			p = rs.privVal.GetPubKey()
 			res = &PubKeyMsg{p}
 		case *SignVoteMsg:
 			err = rs.privVal.SignVote(rs.chainID, r.Vote)
@@ -487,23 +489,16 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 
 //---------------------------------------------------------
 
-const (
-	msgTypePubKey        = byte(0x01)
-	msgTypeSignVote      = byte(0x10)
-	msgTypeSignProposal  = byte(0x11)
-	msgTypeSignHeartbeat = byte(0x12)
-)
+// SocketPVMsg is sent between RemoteSigner and SocketPV.
+type SocketPVMsg interface{}
 
-// PrivValMsg is sent between RemoteSigner and SocketClient.
-type PrivValMsg interface{}
-
-var _ = wire.RegisterInterface(
-	struct{ PrivValMsg }{},
-	wire.ConcreteType{&PubKeyMsg{}, msgTypePubKey},
-	wire.ConcreteType{&SignVoteMsg{}, msgTypeSignVote},
-	wire.ConcreteType{&SignProposalMsg{}, msgTypeSignProposal},
-	wire.ConcreteType{&SignHeartbeatMsg{}, msgTypeSignHeartbeat},
-)
+func RegisterSocketPVMsg(cdc *amino.Codec) {
+	cdc.RegisterInterface((*SocketPVMsg)(nil), nil)
+	cdc.RegisterConcrete(&PubKeyMsg{}, "tendermint/socketpv/PubKeyMsg", nil)
+	cdc.RegisterConcrete(&SignVoteMsg{}, "tendermint/socketpv/SignVoteMsg", nil)
+	cdc.RegisterConcrete(&SignProposalMsg{}, "tendermint/socketpv/SignProposalMsg", nil)
+	cdc.RegisterConcrete(&SignHeartbeatMsg{}, "tendermint/socketpv/SignHeartbeatMsg", nil)
+}
 
 // PubKeyMsg is a PrivValidatorSocket message containing the public key.
 type PubKeyMsg struct {
@@ -525,40 +520,19 @@ type SignHeartbeatMsg struct {
 	Heartbeat *types.Heartbeat
 }
 
-func readMsg(r io.Reader) (PrivValMsg, error) {
-	var (
-		n   int
-		err error
-	)
-
-	read := wire.ReadBinary(struct{ PrivValMsg }{}, r, 0, &n, &err)
-	if err != nil {
-		if _, ok := err.(timeoutError); ok {
-			return nil, errors.Wrap(ErrConnTimeout, err.Error())
-		}
-
-		return nil, err
+func readMsg(r io.Reader) (msg SocketPVMsg, err error) {
+	const maxSocketPVMsgSize = 1024 * 10
+	_, err = cdc.UnmarshalBinaryReader(r, &msg, maxSocketPVMsgSize)
+	if _, ok := err.(timeoutError); ok {
+		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
 	}
-
-	w, ok := read.(struct{ PrivValMsg })
-	if !ok {
-		return nil, errors.New("unknown type")
-	}
-
-	return w.PrivValMsg, nil
+	return
 }
 
-func writeMsg(w io.Writer, msg interface{}) error {
-	var (
-		err error
-		n   int
-	)
-
-	// TODO(xla): This extra wrap should be gone with the sdk-2 update.
-	wire.WriteBinary(struct{ PrivValMsg }{msg}, w, &n, &err)
+func writeMsg(w io.Writer, msg interface{}) (err error) {
+	_, err = cdc.MarshalBinaryWriter(w, msg)
 	if _, ok := err.(timeoutError); ok {
-		return errors.Wrap(ErrConnTimeout, err.Error())
+		err = cmn.ErrorWrap(ErrConnTimeout, err.Error())
 	}
-
-	return err
+	return
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -48,7 +47,9 @@ func TestByzantine(t *testing.T) {
 	for i := 0; i < N; i++ {
 		// make first val byzantine
 		if i == 0 {
-			css[i].privValidator = NewByzantinePrivValidator(css[i].privValidator)
+			// NOTE: Now, test validators are MockPV, which by default doesn't
+			// do any safety checks.
+			css[i].privValidator.(*types.MockPV).DisableChecks()
 			css[i].decideProposal = func(j int) func(int64, int) {
 				return func(height int64, round int) {
 					byzantineDecideProposalFunc(t, height, round, css[j], switches[j])
@@ -203,7 +204,7 @@ func byzantineDecideProposalFunc(t *testing.T, height int64, round int, cs *Cons
 func sendProposalAndParts(height int64, round int, cs *ConsensusState, peer p2p.Peer, proposal *types.Proposal, blockHash []byte, parts *types.PartSet) {
 	// proposal
 	msg := &ProposalMessage{Proposal: proposal}
-	peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
+	peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
 
 	// parts
 	for i := 0; i < parts.Total(); i++ {
@@ -213,7 +214,7 @@ func sendProposalAndParts(height int64, round int, cs *ConsensusState, peer p2p.
 			Round:  round,  // This tells peer that this part applies to us.
 			Part:   part,
 		}
-		peer.Send(DataChannel, struct{ ConsensusMessage }{msg})
+		peer.Send(DataChannel, cdc.MustMarshalBinaryBare(msg))
 	}
 
 	// votes
@@ -222,8 +223,8 @@ func sendProposalAndParts(height int64, round int, cs *ConsensusState, peer p2p.
 	precommit, _ := cs.signVote(types.VoteTypePrecommit, blockHash, parts.Header())
 	cs.mtx.Unlock()
 
-	peer.Send(VoteChannel, struct{ ConsensusMessage }{&VoteMessage{prevote}})
-	peer.Send(VoteChannel, struct{ ConsensusMessage }{&VoteMessage{precommit}})
+	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{prevote}))
+	peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(&VoteMessage{precommit}))
 }
 
 //----------------------------------------
@@ -263,48 +264,4 @@ func (br *ByzantineReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 }
 func (br *ByzantineReactor) Receive(chID byte, peer p2p.Peer, msgBytes []byte) {
 	br.reactor.Receive(chID, peer, msgBytes)
-}
-
-//----------------------------------------
-// byzantine privValidator
-
-type ByzantinePrivValidator struct {
-	types.Signer
-
-	pv types.PrivValidator
-}
-
-// Return a priv validator that will sign anything
-func NewByzantinePrivValidator(pv types.PrivValidator) *ByzantinePrivValidator {
-	return &ByzantinePrivValidator{
-		Signer: pv.(*types.PrivValidatorFS).Signer,
-		pv:     pv,
-	}
-}
-
-func (privVal *ByzantinePrivValidator) GetAddress() types.Address {
-	return privVal.pv.GetAddress()
-}
-
-func (privVal *ByzantinePrivValidator) GetPubKey() crypto.PubKey {
-	return privVal.pv.GetPubKey()
-}
-
-func (privVal *ByzantinePrivValidator) SignVote(chainID string, vote *types.Vote) (err error) {
-	vote.Signature, err = privVal.Sign(vote.SignBytes(chainID))
-	return err
-}
-
-func (privVal *ByzantinePrivValidator) SignProposal(chainID string, proposal *types.Proposal) (err error) {
-	proposal.Signature, _ = privVal.Sign(proposal.SignBytes(chainID))
-	return nil
-}
-
-func (privVal *ByzantinePrivValidator) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) (err error) {
-	heartbeat.Signature, _ = privVal.Sign(heartbeat.SignBytes(chainID))
-	return nil
-}
-
-func (privVal *ByzantinePrivValidator) String() string {
-	return cmn.Fmt("PrivValidator{%X}", privVal.GetAddress())
 }

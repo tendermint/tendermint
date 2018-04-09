@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"hash/crc32"
@@ -11,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/types"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -38,13 +37,13 @@ type EndHeightMessage struct {
 
 type WALMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ WALMessage }{},
-	wire.ConcreteType{types.EventDataRoundState{}, 0x01},
-	wire.ConcreteType{msgInfo{}, 0x02},
-	wire.ConcreteType{timeoutInfo{}, 0x03},
-	wire.ConcreteType{EndHeightMessage{}, 0x04},
-)
+func RegisterWALMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*WALMessage)(nil), nil)
+	cdc.RegisterConcrete(types.EventDataRoundState{}, "tendermint/wal/EventDataRoundState", nil)
+	cdc.RegisterConcrete(msgInfo{}, "tendermint/wal/MsgInfo", nil)
+	cdc.RegisterConcrete(timeoutInfo{}, "tendermint/wal/TimeoutInfo", nil)
+	cdc.RegisterConcrete(EndHeightMessage{}, "tendermint/wal/EndHeightMessage", nil)
+}
 
 //--------------------------------------------------------
 // Simple write-ahead logger
@@ -193,7 +192,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 
 // A WALEncoder writes custom-encoded WAL messages to an output stream.
 //
-// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value (go-wire encoded)
+// Format: 4 bytes CRC sum + 4 bytes length + arbitrary-length value (go-amino encoded)
 type WALEncoder struct {
 	wr io.Writer
 }
@@ -205,7 +204,7 @@ func NewWALEncoder(wr io.Writer) *WALEncoder {
 
 // Encode writes the custom encoding of v to the stream.
 func (enc *WALEncoder) Encode(v *TimedWALMessage) error {
-	data := wire.BinaryBytes(v)
+	data := cdc.MustMarshalBinaryBare(v)
 
 	crc := crc32.Checksum(data, crc32c)
 	length := uint32(len(data))
@@ -298,9 +297,8 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 		return nil, DataCorruptionError{fmt.Errorf("checksums do not match: (read: %v, actual: %v)", crc, actualCRC)}
 	}
 
-	var nn int
-	var res *TimedWALMessage // nolint: gosimple
-	res = wire.ReadBinary(&TimedWALMessage{}, bytes.NewBuffer(data), int(length), &nn, &err).(*TimedWALMessage)
+	var res = new(TimedWALMessage) // nolint: gosimple
+	err = cdc.UnmarshalBinaryBare(data, res)
 	if err != nil {
 		return nil, DataCorruptionError{fmt.Errorf("failed to decode data: %v", err)}
 	}

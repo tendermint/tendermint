@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/types"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -27,7 +27,7 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // ResetAll removes the privValidator files.
 // Exported so other CLI tools can use it.
 func ResetAll(dbDir, privValFile string, logger log.Logger) {
-	resetPrivValidatorFS(privValFile, logger)
+	resetFilePV(privValFile, logger)
 	if err := os.RemoveAll(dbDir); err != nil {
 		logger.Error("Error removing directory", "err", err)
 		return
@@ -44,18 +44,18 @@ func resetAll(cmd *cobra.Command, args []string) {
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetPrivValidator(cmd *cobra.Command, args []string) {
-	resetPrivValidatorFS(config.PrivValidatorFile(), logger)
+	resetFilePV(config.PrivValidatorFile(), logger)
 }
 
-func resetPrivValidatorFS(privValFile string, logger log.Logger) {
+func resetFilePV(privValFile string, logger log.Logger) {
 	// Get PrivValidator
 	if _, err := os.Stat(privValFile); err == nil {
-		privValidator := types.LoadPrivValidatorFS(privValFile)
-		privValidator.Reset()
+		pv := pvm.LoadFilePV(privValFile)
+		pv.Reset()
 		logger.Info("Reset PrivValidator", "file", privValFile)
 	} else {
-		privValidator := types.GenPrivValidatorFS(privValFile)
-		privValidator.Save()
+		pv := pvm.GenFilePV(privValFile)
+		pv.Save()
 		logger.Info("Generated PrivValidator", "file", privValFile)
 	}
 }
