@@ -569,9 +569,7 @@ func sovTest(x uint64) (n int) {
 	}
 	return n
 }
-func sozTest(x uint64) (n int) {
-	return sovTest(uint64((x << 1) ^ uint64((int64(x) >> 63))))
-}
+
 func (m *ResultStatus) Unmarshal(dAtA []byte) error {
 	var hasFields [1]uint64
 	l := len(dAtA)
