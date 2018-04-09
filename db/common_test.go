@@ -2,12 +2,21 @@ package db
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tmlibs/common"
 )
+
+//----------------------------------------
+// Helper functions.
+
+func checkValue(t *testing.T, db DB, key []byte, valueWanted []byte) {
+	valueGot := db.Get(key)
+	assert.Equal(t, valueWanted, valueGot)
+}
 
 func checkValid(t *testing.T, itr Iterator, expected bool) {
 	valid := itr.Valid()
@@ -46,110 +55,131 @@ func checkValuePanics(t *testing.T, itr Iterator) {
 }
 
 func newTempDB(t *testing.T, backend DBBackendType) (db DB) {
-	dir, dirname := cmn.Tempdir("test_go_iterator")
+	dir, dirname := cmn.Tempdir("db_common_test")
 	db = NewDB("testdb", backend, dirname)
 	dir.Close()
 	return db
 }
 
-func TestDBIteratorSingleKey(t *testing.T) {
-	for backend, _ := range backends {
-		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
-			db := newTempDB(t, backend)
-			db.SetSync(bz("1"), bz("value_1"))
-			itr := db.Iterator(nil, nil)
+//----------------------------------------
+// mockDB
 
-			checkValid(t, itr, true)
-			checkNext(t, itr, false)
-			checkValid(t, itr, false)
-			checkNextPanics(t, itr)
+// NOTE: not actually goroutine safe.
+// If you want something goroutine safe, maybe you just want a MemDB.
+type mockDB struct {
+	mtx   sync.Mutex
+	calls map[string]int
+}
 
-			// Once invalid...
-			checkInvalid(t, itr)
-		})
+func newMockDB() *mockDB {
+	return &mockDB{
+		calls: make(map[string]int),
 	}
 }
 
-func TestDBIteratorTwoKeys(t *testing.T) {
-	for backend, _ := range backends {
-		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
-			db := newTempDB(t, backend)
-			db.SetSync(bz("1"), bz("value_1"))
-			db.SetSync(bz("2"), bz("value_1"))
-
-			{ // Fail by calling Next too much
-				itr := db.Iterator(nil, nil)
-				checkValid(t, itr, true)
-
-				checkNext(t, itr, true)
-				checkValid(t, itr, true)
-
-				checkNext(t, itr, false)
-				checkValid(t, itr, false)
-
-				checkNextPanics(t, itr)
-
-				// Once invalid...
-				checkInvalid(t, itr)
-			}
-		})
-	}
+func (mdb *mockDB) Mutex() *sync.Mutex {
+	return &(mdb.mtx)
 }
 
-func TestDBIteratorMany(t *testing.T) {
-	for backend, _ := range backends {
-		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
-			db := newTempDB(t, backend)
-
-			keys := make([][]byte, 100)
-			for i := 0; i < 100; i++ {
-				keys[i] = []byte{byte(i)}
-			}
-
-			value := []byte{5}
-			for _, k := range keys {
-				db.Set(k, value)
-			}
-
-			itr := db.Iterator(nil, nil)
-			defer itr.Close()
-			for ; itr.Valid(); itr.Next() {
-				assert.Equal(t, db.Get(itr.Key()), itr.Value())
-			}
-		})
-	}
+func (mdb *mockDB) Get([]byte) []byte {
+	mdb.calls["Get"]++
+	return nil
 }
 
-func TestDBIteratorEmpty(t *testing.T) {
-	for backend, _ := range backends {
-		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
-			db := newTempDB(t, backend)
-			itr := db.Iterator(nil, nil)
-
-			checkInvalid(t, itr)
-		})
-	}
+func (mdb *mockDB) Has([]byte) bool {
+	mdb.calls["Has"]++
+	return false
 }
 
-func TestDBIteratorEmptyBeginAfter(t *testing.T) {
-	for backend, _ := range backends {
-		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
-			db := newTempDB(t, backend)
-			itr := db.Iterator(bz("1"), nil)
-
-			checkInvalid(t, itr)
-		})
-	}
+func (mdb *mockDB) Set([]byte, []byte) {
+	mdb.calls["Set"]++
 }
 
-func TestDBIteratorNonemptyBeginAfter(t *testing.T) {
-	for backend, _ := range backends {
-		t.Run(fmt.Sprintf("Backend %s", backend), func(t *testing.T) {
-			db := newTempDB(t, backend)
-			db.SetSync(bz("1"), bz("value_1"))
-			itr := db.Iterator(bz("2"), nil)
+func (mdb *mockDB) SetSync([]byte, []byte) {
+	mdb.calls["SetSync"]++
+}
 
-			checkInvalid(t, itr)
-		})
+func (mdb *mockDB) SetNoLock([]byte, []byte) {
+	mdb.calls["SetNoLock"]++
+}
+
+func (mdb *mockDB) SetNoLockSync([]byte, []byte) {
+	mdb.calls["SetNoLockSync"]++
+}
+
+func (mdb *mockDB) Delete([]byte) {
+	mdb.calls["Delete"]++
+}
+
+func (mdb *mockDB) DeleteSync([]byte) {
+	mdb.calls["DeleteSync"]++
+}
+
+func (mdb *mockDB) DeleteNoLock([]byte) {
+	mdb.calls["DeleteNoLock"]++
+}
+
+func (mdb *mockDB) DeleteNoLockSync([]byte) {
+	mdb.calls["DeleteNoLockSync"]++
+}
+
+func (mdb *mockDB) Iterator(start, end []byte) Iterator {
+	mdb.calls["Iterator"]++
+	return &mockIterator{}
+}
+
+func (mdb *mockDB) ReverseIterator(start, end []byte) Iterator {
+	mdb.calls["ReverseIterator"]++
+	return &mockIterator{}
+}
+
+func (mdb *mockDB) Close() {
+	mdb.calls["Close"]++
+}
+
+func (mdb *mockDB) NewBatch() Batch {
+	mdb.calls["NewBatch"]++
+	return &memBatch{db: mdb}
+}
+
+func (mdb *mockDB) Print() {
+	mdb.calls["Print"]++
+	fmt.Printf("mockDB{%v}", mdb.Stats())
+}
+
+func (mdb *mockDB) Stats() map[string]string {
+	mdb.calls["Stats"]++
+
+	res := make(map[string]string)
+	for key, count := range mdb.calls {
+		res[key] = fmt.Sprintf("%d", count)
 	}
+	return res
+}
+
+//----------------------------------------
+// mockIterator
+
+type mockIterator struct{}
+
+func (mockIterator) Domain() (start []byte, end []byte) {
+	return nil, nil
+}
+
+func (mockIterator) Valid() bool {
+	return false
+}
+
+func (mockIterator) Next() {
+}
+
+func (mockIterator) Key() []byte {
+	return nil
+}
+
+func (mockIterator) Value() []byte {
+	return nil
+}
+
+func (mockIterator) Close() {
 }

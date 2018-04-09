@@ -175,7 +175,7 @@ func TestSearch(t *testing.T) {
 			if !strings.HasPrefix(line, fmt.Sprintf("INFO %v ", cur)) {
 				t.Fatalf("Unexpected INFO #. Expected %v got:\n%v", cur, line)
 			}
-			cur += 1
+			cur++
 		}
 		gr.Close()
 	}

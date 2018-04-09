@@ -171,6 +171,14 @@ func (mBatch *cLevelDBBatch) Write() {
 	}
 }
 
+// Implements Batch.
+func (mBatch *cLevelDBBatch) WriteSync() {
+	err := mBatch.db.db.Write(mBatch.db.woSync, mBatch.batch)
+	if err != nil {
+		panic(err)
+	}
+}
+
 //----------------------------------------
 // Iterator
 // NOTE This is almost identical to db/go_level_db.Iterator

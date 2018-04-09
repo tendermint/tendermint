@@ -30,3 +30,22 @@ func TestIsHex(t *testing.T) {
 		assert.True(t, IsHex(v), "%q is hex", v)
 	}
 }
+
+func TestSplitAndTrim(t *testing.T) {
+	testCases := []struct {
+		s        string
+		sep      string
+		cutset   string
+		expected []string
+	}{
+		{"a,b,c", ",", " ", []string{"a", "b", "c"}},
+		{" a , b , c ", ",", " ", []string{"a", "b", "c"}},
+		{" a, b, c ", ",", " ", []string{"a", "b", "c"}},
+		{" , ", ",", " ", []string{"", ""}},
+		{"   ", ",", " ", []string{""}},
+	}
+
+	for _, tc := range testCases {
+		assert.Equal(t, tc.expected, SplitAndTrim(tc.s, tc.sep, tc.cutset), "%s", tc.s)
+	}
+}

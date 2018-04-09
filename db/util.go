@@ -4,35 +4,30 @@ import (
 	"bytes"
 )
 
-func IteratePrefix(db DB, prefix []byte) Iterator {
-	var start, end []byte
-	if len(prefix) == 0 {
-		start = nil
-		end = nil
-	} else {
-		start = cp(prefix)
-		end = cpIncr(prefix)
-	}
-	return db.Iterator(start, end)
-}
-
-//----------------------------------------
-
 func cp(bz []byte) (ret []byte) {
 	ret = make([]byte, len(bz))
 	copy(ret, bz)
 	return ret
 }
 
+// Returns a slice of the same length (big endian)
+// except incremented by one.
+// Returns nil on overflow (e.g. if bz bytes are all 0xFF)
 // CONTRACT: len(bz) > 0
 func cpIncr(bz []byte) (ret []byte) {
+	if len(bz) == 0 {
+		panic("cpIncr expects non-zero bz length")
+	}
 	ret = cp(bz)
 	for i := len(bz) - 1; i >= 0; i-- {
 		if ret[i] < byte(0xFF) {
-			ret[i] += 1
+			ret[i]++
 			return
-		} else {
-			ret[i] = byte(0x00)
+		}
+		ret[i] = byte(0x00)
+		if i == 0 {
+			// Overflow
+			return nil
 		}
 	}
 	return nil
@@ -48,13 +43,12 @@ func IsKeyInDomain(key, start, end []byte, isReverse bool) bool {
 			return false
 		}
 		return true
-	} else {
-		if start != nil && bytes.Compare(start, key) < 0 {
-			return false
-		}
-		if end != nil && bytes.Compare(key, end) <= 0 {
-			return false
-		}
-		return true
 	}
+	if start != nil && bytes.Compare(start, key) < 0 {
+		return false
+	}
+	if end != nil && bytes.Compare(key, end) <= 0 {
+		return false
+	}
+	return true
 }

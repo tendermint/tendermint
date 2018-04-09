@@ -43,9 +43,9 @@ func (sp *SimpleProof) StringIndented(indent string) string {
 
 // Use the leafHash and innerHashes to get the root merkle hash.
 // If the length of the innerHashes slice isn't exactly correct, the result is nil.
+// Recursive impl.
 func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][]byte) []byte {
-	// Recursive impl.
-	if index >= total {
+	if index >= total || index < 0 || total <= 0 {
 		return nil
 	}
 	switch total {
@@ -67,13 +67,12 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 				return nil
 			}
 			return SimpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
-		} else {
-			rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
-			if rightHash == nil {
-				return nil
-			}
-			return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
 		}
+		rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+		if rightHash == nil {
+			return nil
+		}
+		return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
 	}
 }
 
@@ -81,7 +80,7 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 // The node and the tree is thrown away afterwards.
 // Exactly one of node.Left and node.Right is nil, unless node is the root, in which case both are nil.
 // node.Parent.Hash = hash(node.Hash, node.Right.Hash) or
-// 									  hash(node.Left.Hash, node.Hash), depending on whether node is a left/right child.
+// hash(node.Left.Hash, node.Hash), depending on whether node is a left/right child.
 type SimpleProofNode struct {
 	Hash   []byte
 	Parent *SimpleProofNode

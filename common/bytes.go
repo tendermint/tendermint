@@ -51,3 +51,12 @@ func (bz HexBytes) Bytes() []byte {
 func (bz HexBytes) String() string {
 	return strings.ToUpper(hex.EncodeToString(bz))
 }
+
+func (bz HexBytes) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'p':
+		s.Write([]byte(fmt.Sprintf("%p", bz)))
+	default:
+		s.Write([]byte(fmt.Sprintf("%X", []byte(bz))))
+	}
+}

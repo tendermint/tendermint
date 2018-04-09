@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	. "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -54,7 +54,7 @@ The Group can also be used to binary-search for some line,
 assuming that marker lines are written occasionally.
 */
 type Group struct {
-	BaseService
+	cmn.BaseService
 
 	ID             string
 	Head           *AutoFile // The head AutoFile to write to
@@ -90,7 +90,7 @@ func OpenGroup(headPath string) (g *Group, err error) {
 		minIndex:       0,
 		maxIndex:       0,
 	}
-	g.BaseService = *NewBaseService(nil, "Group", g)
+	g.BaseService = *cmn.NewBaseService(nil, "Group", g)
 
 	gInfo := g.readGroupInfo()
 	g.minIndex = gInfo.MinIndex
@@ -267,7 +267,7 @@ func (g *Group) RotateFile() {
 		panic(err)
 	}
 
-	g.maxIndex += 1
+	g.maxIndex++
 }
 
 // NewReader returns a new group reader.
@@ -277,9 +277,8 @@ func (g *Group) NewReader(index int) (*GroupReader, error) {
 	err := r.SetIndex(index)
 	if err != nil {
 		return nil, err
-	} else {
-		return r, nil
 	}
+	return r, nil
 }
 
 // Returns -1 if line comes after, 0 if found, 1 if line comes before.
@@ -311,9 +310,8 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error
 			if err != nil {
 				r.Close()
 				return nil, false, err
-			} else {
-				return r, match, err
 			}
+			return r, match, err
 		}
 
 		// Read starting roughly at the middle file,
@@ -349,9 +347,8 @@ func (g *Group) Search(prefix string, cmp SearchFunc) (*GroupReader, bool, error
 			if err != nil {
 				r.Close()
 				return nil, false, err
-			} else {
-				return r, true, err
 			}
+			return r, true, err
 		} else {
 			// We passed it
 			maxIndex = curIndex - 1
@@ -429,9 +426,8 @@ GROUP_LOOP:
 			if err == io.EOF {
 				if found {
 					return match, found, nil
-				} else {
-					continue GROUP_LOOP
 				}
+				continue GROUP_LOOP
 			} else if err != nil {
 				return "", false, err
 			}
@@ -442,9 +438,8 @@ GROUP_LOOP:
 			if r.CurIndex() > i {
 				if found {
 					return match, found, nil
-				} else {
-					continue GROUP_LOOP
 				}
+				continue GROUP_LOOP
 			}
 		}
 	}
@@ -520,7 +515,7 @@ func (g *Group) readGroupInfo() GroupInfo {
 		minIndex, maxIndex = 0, 0
 	} else {
 		// Otherwise, the head file is 1 greater
-		maxIndex += 1
+		maxIndex++
 	}
 	return GroupInfo{minIndex, maxIndex, totalSize, headSize}
 }
@@ -528,9 +523,8 @@ func (g *Group) readGroupInfo() GroupInfo {
 func filePathForIndex(headPath string, index int, maxIndex int) string {
 	if index == maxIndex {
 		return headPath
-	} else {
-		return fmt.Sprintf("%v.%03d", headPath, index)
 	}
+	return fmt.Sprintf("%v.%03d", headPath, index)
 }
 
 //--------------------------------------------------------------------------------
@@ -567,9 +561,8 @@ func (gr *GroupReader) Close() error {
 		gr.curFile = nil
 		gr.curLine = nil
 		return err
-	} else {
-		return nil
 	}
+	return nil
 }
 
 // Read implements io.Reader, reading bytes from the current Reader
@@ -598,10 +591,10 @@ func (gr *GroupReader) Read(p []byte) (n int, err error) {
 		if err == io.EOF {
 			if n >= lenP {
 				return n, nil
-			} else { // Open the next file
-				if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
-					return n, err1
-				}
+			}
+			// Open the next file
+			if err1 := gr.openFile(gr.curIndex + 1); err1 != nil {
+				return n, err1
 			}
 		} else if err != nil {
 			return n, err
@@ -643,10 +636,9 @@ func (gr *GroupReader) ReadLine() (string, error) {
 			}
 			if len(bytesRead) > 0 && bytesRead[len(bytesRead)-1] == byte('\n') {
 				return linePrefix + string(bytesRead[:len(bytesRead)-1]), nil
-			} else {
-				linePrefix += string(bytesRead)
-				continue
 			}
+			linePrefix += string(bytesRead)
+			continue
 		} else if err != nil {
 			return "", err
 		}
@@ -726,11 +718,11 @@ func (gr *GroupReader) SetIndex(index int) error {
 func MakeSimpleSearchFunc(prefix string, target int) SearchFunc {
 	return func(line string) (int, error) {
 		if !strings.HasPrefix(line, prefix) {
-			return -1, errors.New(Fmt("Marker line did not have prefix: %v", prefix))
+			return -1, errors.New(cmn.Fmt("Marker line did not have prefix: %v", prefix))
 		}
 		i, err := strconv.Atoi(line[len(prefix):])
 		if err != nil {
-			return -1, errors.New(Fmt("Failed to parse marker line: %v", err.Error()))
+			return -1, errors.New(cmn.Fmt("Failed to parse marker line: %v", err.Error()))
 		}
 		if target < i {
 			return 1, nil

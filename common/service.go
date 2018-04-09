@@ -125,9 +125,8 @@ func (bs *BaseService) Start() error {
 		if atomic.LoadUint32(&bs.stopped) == 1 {
 			bs.Logger.Error(Fmt("Not starting %v -- already stopped", bs.name), "impl", bs.impl)
 			return ErrAlreadyStopped
-		} else {
-			bs.Logger.Info(Fmt("Starting %v", bs.name), "impl", bs.impl)
 		}
+		bs.Logger.Info(Fmt("Starting %v", bs.name), "impl", bs.impl)
 		err := bs.impl.OnStart()
 		if err != nil {
 			// revert flag
@@ -135,10 +134,9 @@ func (bs *BaseService) Start() error {
 			return err
 		}
 		return nil
-	} else {
-		bs.Logger.Debug(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
-		return ErrAlreadyStarted
 	}
+	bs.Logger.Debug(Fmt("Not starting %v -- already started", bs.name), "impl", bs.impl)
+	return ErrAlreadyStarted
 }
 
 // OnStart implements Service by doing nothing.
@@ -154,10 +152,9 @@ func (bs *BaseService) Stop() error {
 		bs.impl.OnStop()
 		close(bs.quit)
 		return nil
-	} else {
-		bs.Logger.Debug(Fmt("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
-		return ErrAlreadyStopped
 	}
+	bs.Logger.Debug(Fmt("Stopping %v (ignoring: already stopped)", bs.name), "impl", bs.impl)
+	return ErrAlreadyStopped
 }
 
 // OnStop implements Service by doing nothing.

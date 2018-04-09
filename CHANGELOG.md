@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.8.1 (April 5th, 2018)
+
+FEATURES:
+
+ - [common] Error.Error() includes cause
+ - [common] IsEmpty() for 0 length
+
+## 0.8.0 (April 4th, 2018)
+
+BREAKING:
+
+ - [merkle] `PutVarint->PutUvarint` in encodeByteSlice
+ - [db] batch.WriteSync()
+ - [common] Refactored and fixed `Parallel` function
+ - [common] Refactored `Rand` functionality
+ - [common] Remove unused `Right/LeftPadString` functions
+ - [common] Remove StackError, introduce Error interface (to replace use of pkg/errors)
+
+FEATURES:
+
+ - [db] NewPrefixDB for a DB with all keys prefixed
+ - [db] NewDebugDB prints everything during operation
+ - [common] SplitAndTrim func
+ - [common] rand.Float64(), rand.Int63n(n), rand.Int31n(n) and global equivalents
+ - [common] HexBytes Format()
+
+BUG FIXES:
+
+ - [pubsub] Fix unsubscribing
+ - [cli] Return config errors
+ - [common] Fix WriteFileAtomic Windows bug
+
 ## 0.7.1 (March 22, 2018)
 
 IMPROVEMENTS:

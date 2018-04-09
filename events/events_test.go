@@ -221,11 +221,11 @@ func TestRemoveListener(t *testing.T) {
 	// add some listeners and make sure they work
 	evsw.AddListenerForEvent("listener", "event1",
 		func(data EventData) {
-			sum1 += 1
+			sum1++
 		})
 	evsw.AddListenerForEvent("listener", "event2",
 		func(data EventData) {
-			sum2 += 1
+			sum2++
 		})
 	for i := 0; i < count; i++ {
 		evsw.FireEvent("event1", true)
