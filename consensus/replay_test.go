@@ -17,8 +17,7 @@ import (
 
 	"github.com/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-crypto"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -27,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -60,7 +60,7 @@ func startNewConsensusStateAndWaitForBlock(t *testing.T, lastBlockHeight int64, 
 
 	bytes, _ := ioutil.ReadFile(cs.config.WalFile())
 	// fmt.Printf("====== WAL: \n\r%s\n", bytes)
-	t.Logf("====== WAL: \n\r%s\n", bytes)
+	t.Logf("====== WAL: \n\r%X\n", bytes)
 
 	err := cs.Start()
 	require.NoError(t, err)
@@ -325,7 +325,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := types.LoadPrivValidatorFS(config.PrivValidatorFile())
+	privVal := pvm.LoadFilePV(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile, false)
 	if err != nil {
@@ -519,8 +519,8 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case EndHeightMessage:
 			// if its not the first one, we have a full block
 			if thisBlockParts != nil {
-				var n int
-				block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+				var block = new(types.Block)
+				_, err = cdc.UnmarshalBinaryReader(thisBlockParts.GetReader(), block, 0)
 				if err != nil {
 					panic(err)
 				}
@@ -552,8 +552,8 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		}
 	}
 	// grab the last block too
-	var n int
-	block := wire.ReadBinary(&types.Block{}, thisBlockParts.GetReader(), 0, &n, &err).(*types.Block)
+	var block = new(types.Block)
+	_, err = cdc.UnmarshalBinaryReader(thisBlockParts.GetReader(), block, 0)
 	if err != nil {
 		panic(err)
 	}

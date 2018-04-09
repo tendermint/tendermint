@@ -9,6 +9,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/types"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -46,10 +47,10 @@ func testnetFiles(cmd *cobra.Command, args []string) {
 			cmn.Exit(err.Error())
 		}
 		// Read priv_validator.json to populate vals
-		privValFile := filepath.Join(dataDir, mach, defaultConfig.PrivValidator)
-		privVal := types.LoadPrivValidatorFS(privValFile)
+		pvFile := filepath.Join(dataDir, mach, defaultConfig.PrivValidator)
+		pv := pvm.LoadFilePV(pvFile)
 		genVals[i] = types.GenesisValidator{
-			PubKey: privVal.GetPubKey(),
+			PubKey: pv.GetPubKey(),
 			Power:  1,
 			Name:   mach,
 		}
@@ -78,13 +79,13 @@ func initMachCoreDirectory(base, mach string) error {
 	// Create priv_validator.json file if not present
 	defaultConfig := cfg.DefaultBaseConfig()
 	dir := filepath.Join(base, mach)
-	privValPath := filepath.Join(dir, defaultConfig.PrivValidator)
-	dir = filepath.Dir(privValPath)
+	pvPath := filepath.Join(dir, defaultConfig.PrivValidator)
+	dir = filepath.Dir(pvPath)
 	err := cmn.EnsureDir(dir, 0700)
 	if err != nil {
 		return err
 	}
-	ensurePrivValidator(privValPath)
+	ensurePrivValidator(pvPath)
 	return nil
 
 }
@@ -93,6 +94,6 @@ func ensurePrivValidator(file string) {
 	if cmn.FileExists(file) {
 		return
 	}
-	privValidator := types.GenPrivValidatorFS(file)
-	privValidator.Save()
+	pv := pvm.GenFilePV(file)
+	pv.Save()
 }
