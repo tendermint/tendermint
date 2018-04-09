@@ -50,7 +50,7 @@ func TestInfo(t *testing.T) {
 		info, err := c.ABCIInfo()
 		require.Nil(t, err, "%d: %+v", i, err)
 		// TODO: this is not correct - fix merkleeyes!
-		// assert.EqualValues(t, status.LatestBlockHeight, info.Response.LastBlockHeight)
+		// assert.EqualValues(t, status.SyncInfo.LatestBlockHeight, info.Response.LastBlockHeight)
 		assert.True(t, strings.Contains(info.Response.Data, "size"))
 	}
 }
