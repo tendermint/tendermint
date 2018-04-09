@@ -18,7 +18,7 @@ func MaxNodeInfoSize() int {
 // between two peers during the Tendermint P2P handshake.
 type NodeInfo struct {
 	// Authenticate
-	ID         ID     `json:"node_id"`     // authenticated pubkey
+	ID         ID     `json:"id"`          // authenticated pubkey
 	ListenAddr string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility
@@ -120,7 +120,7 @@ func (info NodeInfo) NetAddress() *NetAddress {
 }
 
 func (info NodeInfo) String() string {
-	return fmt.Sprintf("NodeInfo{node_id: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.ID, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
+	return fmt.Sprintf("NodeInfo{id: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.ID, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {
