@@ -91,7 +91,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 	}
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
-	pc, err := newOutboundPeerConn(addr, config, false, pk)
+	pc, err := newOutboundPeerConn(addr, config, false, nodeKey.PrivKey)
 	if err != nil {
 		return nil, err
 	}
