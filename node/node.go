@@ -405,7 +405,8 @@ func (n *Node) OnStart() error {
 	}
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	nodeInfo := n.makeNodeInfo(nodeKey.PubKey())
+	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+
 	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
 
@@ -579,13 +580,13 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
+func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:  pubKey,
+		ID:  nodeID,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Channels: []byte{

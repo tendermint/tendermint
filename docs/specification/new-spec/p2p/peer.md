@@ -83,7 +83,7 @@ The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 
 ```golang
 type NodeInfo struct {
-  PubKey     crypto.PubKey
+  ID    p2p.ID
   Moniker    string
   Network    string
   RemoteAddr string
@@ -95,7 +95,7 @@ type NodeInfo struct {
 ```
 
 The connection is disconnected if:
-- `peer.NodeInfo.PubKey != peer.PubKey`
+- `peer.NodeInfo.ID` is not equal to `peerConn.ID`
 - `peer.NodeInfo.Version` is not formatted as `X.X.X` where X are integers known as Major, Minor, and Revision
 - `peer.NodeInfo.Version` Major is not the same as ours
 - `peer.NodeInfo.Version` Minor is not the same as ours

@@ -7,13 +7,17 @@ message ResultStatus {
 }
 
 message NodeInfo {
-  required PubKey pubKey = 1;
+  required ID id = 1;
   required string moniker = 2;
   required string network = 3;
   required string remoteAddr = 4;
   required string listenAddr = 5;
   required string version = 6;
   repeated string other = 7;
+}
+
+message ID {
+  optional string ID = 1;
 }
 
 message PubKey {

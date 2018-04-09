@@ -4,29 +4,29 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/go-amino"
-	"github.com/tendermint/go-crypto"
-
-	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
+
+	crypto "github.com/tendermint/go-crypto"
+	wire "github.com/tendermint/go-wire"
+	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
-	cdc := amino.NewCodec()
-	ctypes.RegisterAmino(cdc)
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
-			PubKey:     pubKey,
+			ID:         nodeKey.ID(),
 			Moniker:    "SOMENAME",
 			Network:    "SOMENAME",
 			ListenAddr: "SOMEADDR",
 			Version:    "SOMEVER",
 			Other:      []string{"SOMESTRING", "OTHERSTRING"},
 		},
-		PubKey:            pubKey,
+		PubKey:            nodeKey.PubKey(),
 		LatestBlockHash:   []byte("SOMEBYTES"),
 		LatestBlockHeight: 123,
 		LatestBlockTime:   time.Unix(0, 1234),
@@ -46,11 +46,11 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
-	cdc := amino.NewCodec()
-	ctypes.RegisterAmino(cdc)
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+  
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -71,11 +71,11 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
-	cdc := amino.NewCodec()
-	ctypes.RegisterAmino(cdc)
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -94,15 +94,20 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
-	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
+
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+	nodeID := string(nodeKey.ID())
+	someName := "SOMENAME"
+	someAddr := "SOMEADDR"
+	someVer := "SOMEVER"
+
 	nodeInfo := proto.NodeInfo{
-		PubKey:     pubKey2,
-		Moniker:    "SOMENAME",
-		Network:    "SOMENAME",
-		ListenAddr: "SOMEADDR",
-		Version:    "SOMEVER",
-		Other:      []string{"SOMESTRING", "OTHERSTRING"},
+		Id:         &proto.ID{ID: &nodeID},
+		Moniker:    &someName,
+		Network:    &someName,
+		ListenAddr: &someAddr,
+		Version:    &someVer,
+		Other:      []string{someAddr, someVer},
 	}
 	b.StartTimer()
 
