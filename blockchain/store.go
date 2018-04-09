@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -218,12 +217,12 @@ func calcSeenCommitKey(height int64) []byte {
 var blockStoreKey = []byte("blockStore")
 
 type BlockStoreStateJSON struct {
-	Height int64
+	Height int64 `json:"height"`
 }
 
 // Save persists the blockStore state to the database as JSON.
 func (bsj BlockStoreStateJSON) Save(db dbm.DB) {
-	bytes, err := json.Marshal(bsj)
+	bytes, err := cdc.MarshalJSON(bsj)
 	if err != nil {
 		cmn.PanicSanity(cmn.Fmt("Could not marshal state bytes: %v", err))
 	}
@@ -240,7 +239,7 @@ func LoadBlockStoreStateJSON(db dbm.DB) BlockStoreStateJSON {
 		}
 	}
 	bsj := BlockStoreStateJSON{}
-	err := json.Unmarshal(bytes, &bsj)
+	err := cdc.UnmarshalJSON(bytes, &bsj)
 	if err != nil {
 		panic(fmt.Sprintf("Could not unmarshal bytes: %X", bytes))
 	}

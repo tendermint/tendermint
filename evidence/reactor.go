@@ -2,10 +2,11 @@ package evidence
 
 import (
 	"fmt"
-	"github.com/tendermint/go-amino"
-	"github.com/tendermint/tmlibs/log"
 	"reflect"
 	"time"
+
+	"github.com/tendermint/go-amino"
+	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -14,7 +15,7 @@ import (
 const (
 	EvidenceChannel = byte(0x38)
 
-	maxEvidenceMessageSize     = 1048576 // 1MB TODO make it configurable
+	maxMsgSize                 = 1048576 // 1MB TODO make it configurable
 	broadcastEvidenceIntervalS = 60      // broadcast uncommitted evidence this often
 )
 
@@ -146,6 +147,10 @@ func RegisterEvidenceMessages(cdc *amino.Codec) {
 
 // DecodeMessage decodes a byte-array into a EvidenceMessage.
 func DecodeMessage(bz []byte) (msg EvidenceMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }

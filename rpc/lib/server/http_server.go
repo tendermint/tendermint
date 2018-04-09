@@ -18,32 +18,51 @@ import (
 )
 
 func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger) (listener net.Listener, err error) {
-	// listenAddr should be fully formed including tcp:// or unix:// prefix
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
-		logger.Error("WARNING (tendermint/rpc/lib): Please use fully formed listening addresses, including the tcp:// or unix:// prefix")
-		// we used to allow addrs without tcp/unix prefix by checking for a colon
-		// TODO: Deprecate
-		proto = types.SocketType(listenAddr)
-		addr = listenAddr
-		// return nil, errors.Errorf("Invalid listener address %s", lisenAddr)
-	} else {
-		proto, addr = parts[0], parts[1]
+		return nil, errors.Errorf("Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)", listenAddr)
 	}
+	proto, addr = parts[0], parts[1]
 
-	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s socket %v", proto, addr))
+	logger.Info(fmt.Sprintf("Starting RPC HTTP server on %s", listenAddr))
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
-		return nil, errors.Errorf("Failed to listen to %v: %v", listenAddr, err)
+		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
 	}
 
 	go func() {
-		res := http.Serve(
+		err := http.Serve(
 			listener,
 			RecoverAndLogHandler(handler, logger),
 		)
-		logger.Error("RPC HTTP server stopped", "result", res)
+		logger.Error("RPC HTTP server stopped", "err", err)
+	}()
+	return listener, nil
+}
+
+func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, keyFile string, logger log.Logger) (listener net.Listener, err error) {
+	var proto, addr string
+	parts := strings.SplitN(listenAddr, "://", 2)
+	if len(parts) != 2 {
+		return nil, errors.Errorf("Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)", listenAddr)
+	}
+	proto, addr = parts[0], parts[1]
+
+	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)", listenAddr, certFile, keyFile))
+	listener, err = net.Listen(proto, addr)
+	if err != nil {
+		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
+	}
+
+	go func() {
+		err := http.ServeTLS(
+			listener,
+			RecoverAndLogHandler(handler, logger),
+			certFile,
+			keyFile,
+		)
+		logger.Error("RPC HTTPS server stopped", "err", err)
 	}()
 	return listener, nil
 }

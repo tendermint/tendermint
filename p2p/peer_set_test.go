@@ -115,7 +115,7 @@ func TestPeerSetAddDuplicate(t *testing.T) {
 	errsTally := make(map[error]int)
 	for i := 0; i < n; i++ {
 		err := <-errsChan
-		errsTally[err] += 1
+		errsTally[err]++
 	}
 
 	// Our next procedure is to ensure that only one addition

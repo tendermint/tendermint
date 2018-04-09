@@ -47,7 +47,7 @@ func NewBaseReactor(name string, impl Reactor) *BaseReactor {
 func (br *BaseReactor) SetSwitch(sw *Switch) {
 	br.Switch = sw
 }
-func (_ *BaseReactor) GetChannels() []*conn.ChannelDescriptor        { return nil }
-func (_ *BaseReactor) AddPeer(peer Peer)                             {}
-func (_ *BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
-func (_ *BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}
+func (*BaseReactor) GetChannels() []*conn.ChannelDescriptor        { return nil }
+func (*BaseReactor) AddPeer(peer Peer)                             {}
+func (*BaseReactor) RemovePeer(peer Peer, reason interface{})      {}
+func (*BaseReactor) Receive(chID byte, peer Peer, msgBytes []byte) {}

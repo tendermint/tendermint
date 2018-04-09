@@ -329,21 +329,21 @@ func (c *WSClient) reconnectRoutine() {
 				c.Logger.Error("failed to reconnect", "err", err, "original_err", originalError)
 				c.Stop()
 				return
-			} else {
-				// drain reconnectAfter
-			LOOP:
-				for {
-					select {
-					case <-c.reconnectAfter:
-					default:
-						break LOOP
-					}
-				}
-				err = c.processBacklog()
-				if err == nil {
-					c.startReadWriteRoutines()
+			}
+			// drain reconnectAfter
+		LOOP:
+			for {
+				select {
+				case <-c.reconnectAfter:
+				default:
+					break LOOP
 				}
 			}
+			err := c.processBacklog()
+			if err == nil {
+				c.startReadWriteRoutines()
+			}
+
 		case <-c.Quit():
 			return
 		}

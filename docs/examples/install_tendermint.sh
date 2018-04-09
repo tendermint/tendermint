@@ -4,8 +4,8 @@
 # and has only been tested on Digital Ocean
 
 # get and unpack golang
-curl -O https://storage.googleapis.com/golang/go1.9.2.linux-amd64.tar.gz
-tar -xvf go1.9.2.linux-amd64.tar.gz
+curl -O https://storage.googleapis.com/golang/go1.10.linux-amd64.tar.gz
+tar -xvf go1.10.linux-amd64.tar.gz
 
 apt install make
 
@@ -26,7 +26,7 @@ go get $REPO
 cd $GOPATH/src/$REPO
 
 ## build
-git checkout v0.15.0
+git checkout v0.17.0
 make get_tools
 make get_vendor_deps
 make install

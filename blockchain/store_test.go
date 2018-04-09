@@ -31,7 +31,7 @@ func TestNewBlockStore(t *testing.T) {
 	db := db.NewMemDB()
 	db.Set(blockStoreKey, []byte(`{"height": 10000}`))
 	bs := NewBlockStore(db)
-	assert.Equal(t, bs.Height(), int64(10000), "failed to properly parse blockstore")
+	require.Equal(t, int64(10000), bs.Height(), "failed to properly parse blockstore")
 
 	panicCausers := []struct {
 		data    []byte

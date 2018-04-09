@@ -99,7 +99,7 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 
 	// BlockIDs must be different
 	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
-		return fmt.Errorf("DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote!", dve.VoteA.BlockID)
+		return fmt.Errorf("DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote", dve.VoteA.BlockID)
 	}
 
 	// Signatures must be valid

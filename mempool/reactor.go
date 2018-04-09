@@ -18,7 +18,7 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	maxMempoolMessageSize      = 1048576 // 1MB TODO make it configurable
+	maxMsgSize                 = 1048576 // 1MB TODO make it configurable
 	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
 )
 
@@ -167,6 +167,10 @@ func RegisterMempoolMessages(cdc *amino.Codec) {
 
 // DecodeMessage decodes a byte-array into a MempoolMessage.
 func DecodeMessage(bz []byte) (msg MempoolMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }

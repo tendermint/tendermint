@@ -105,7 +105,7 @@
     "json/scanner",
     "json/token"
   ]
-  revision = "f40e974e75af4e271d97ce0fc917af5898ae7bda"
+  revision = "ef8a98b0bbce4a65b5aa4c368430a80ddc533168"
 
 [[projects]]
   name = "github.com/inconshreveable/mousetrap"
@@ -159,7 +159,7 @@
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
-  revision = "8732c616f52954686704c8645fe1a9d59e9df7c1"
+  revision = "d932a24a8ccb8fcadc993e5c6c58f93dac168294"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -167,8 +167,8 @@
     ".",
     "mem"
   ]
-  revision = "bb8f1927f2a9d3ab41c9340aa034f6b803f4359c"
-  version = "v1.0.2"
+  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -179,8 +179,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "7b2c5ac9fc04fc5efafb60700713d4fa609b777b"
-  version = "v0.0.1"
+  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
+  version = "v0.0.2"
 
 [[projects]]
   branch = "master"
@@ -226,7 +226,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "169b1b37be738edb2813dab48c97a549bcf99bb5"
+  revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
 
 [[projects]]
   name = "github.com/tendermint/abci"
@@ -301,7 +301,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "88942b9c40a4c9d203b82b3731787b672d6e809b"
+  revision = "b2aa35443fbc700ab74c586ae79b81c171851023"
 
 [[projects]]
   branch = "master"
@@ -315,13 +315,13 @@
     "lex/httplex",
     "trace"
   ]
-  revision = "6078986fec03a1dcc236c34816c71b0e05018fda"
+  revision = "61147c48b25b599e5b561d2e9c4f3e1ef489ca41"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "91ee8cde435411ca3f1cd365e8f20131aed4d0a1"
+  revision = "3b87a42e500a6dc65dae1a55d0b641295971163e"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -348,7 +348,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "ab0870e398d5dd054b868c0db1481ab029b9a9f2"
+  revision = "ce84044298496ef4b54b4a0a0909ba593cc60e30"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -372,17 +372,18 @@
     "transport"
   ]
   revision = "5b3c4e850e90a4cf6a20ebd46c8b32a0a3afcb9e"
+  source = "github.com/grpc/grpc-go"
   version = "v1.7.5"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
   packages = ["."]
-  revision = "7f97868eec74b32b0982dd158a51a446d1da7eb5"
-  version = "v2.1.1"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ed1149ed5293b7b28b7505627648c6a1152aaff0ed06a3849995b29751ae00f3"
+  inputs-digest = "e5e6c7942710846bdb5589fba10c90a869773f2685da825b955510afe0d7c5a4"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -137,10 +137,6 @@ type BaseConfig struct {
 	DBPath string `mapstructure:"db_dir"`
 }
 
-func (c BaseConfig) ChainID() string {
-	return c.chainID
-}
-
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
 func DefaultBaseConfig() BaseConfig {
 	return BaseConfig{
@@ -161,32 +157,36 @@ func DefaultBaseConfig() BaseConfig {
 
 // TestBaseConfig returns a base configuration for testing a Tendermint node
 func TestBaseConfig() BaseConfig {
-	conf := DefaultBaseConfig()
-	conf.chainID = "tendermint_test"
-	conf.ProxyApp = "kvstore"
-	conf.FastSync = false
-	conf.DBBackend = "memdb"
-	return conf
+	cfg := DefaultBaseConfig()
+	cfg.chainID = "tendermint_test"
+	cfg.ProxyApp = "kvstore"
+	cfg.FastSync = false
+	cfg.DBBackend = "memdb"
+	return cfg
+}
+
+func (cfg BaseConfig) ChainID() string {
+	return cfg.chainID
 }
 
 // GenesisFile returns the full path to the genesis.json file
-func (b BaseConfig) GenesisFile() string {
-	return rootify(b.Genesis, b.RootDir)
+func (cfg BaseConfig) GenesisFile() string {
+	return rootify(cfg.Genesis, cfg.RootDir)
 }
 
 // PrivValidatorFile returns the full path to the priv_validator.json file
-func (b BaseConfig) PrivValidatorFile() string {
-	return rootify(b.PrivValidator, b.RootDir)
+func (cfg BaseConfig) PrivValidatorFile() string {
+	return rootify(cfg.PrivValidator, cfg.RootDir)
 }
 
 // NodeKeyFile returns the full path to the node_key.json file
-func (b BaseConfig) NodeKeyFile() string {
-	return rootify(b.NodeKey, b.RootDir)
+func (cfg BaseConfig) NodeKeyFile() string {
+	return rootify(cfg.NodeKey, cfg.RootDir)
 }
 
 // DBDir returns the full path to the database directory
-func (b BaseConfig) DBDir() string {
-	return rootify(b.DBPath, b.RootDir)
+func (cfg BaseConfig) DBDir() string {
+	return rootify(cfg.DBPath, cfg.RootDir)
 }
 
 // DefaultLogLevel returns a default log level of "error"
@@ -229,11 +229,11 @@ func DefaultRPCConfig() *RPCConfig {
 
 // TestRPCConfig returns a configuration for testing the RPC server
 func TestRPCConfig() *RPCConfig {
-	conf := DefaultRPCConfig()
-	conf.ListenAddress = "tcp://0.0.0.0:36657"
-	conf.GRPCListenAddress = "tcp://0.0.0.0:36658"
-	conf.Unsafe = true
-	return conf
+	cfg := DefaultRPCConfig()
+	cfg.ListenAddress = "tcp://0.0.0.0:36657"
+	cfg.GRPCListenAddress = "tcp://0.0.0.0:36658"
+	cfg.Unsafe = true
+	return cfg
 }
 
 //-----------------------------------------------------------------------------
@@ -250,8 +250,8 @@ type P2PConfig struct {
 	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
 
-	// Comma separated list of persistent peers to connect to
-	// We always connect to these
+	// Comma separated list of nodes to keep persistent connections to
+	// Do not add private peers to this list if you don't want them advertised
 	PersistentPeers string `mapstructure:"persistent_peers"`
 
 	// Skip UPNP port forwarding
@@ -289,6 +289,9 @@ type P2PConfig struct {
 
 	// Authenticated encryption
 	AuthEnc bool `mapstructure:"auth_enc"`
+
+	// Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
+	PrivatePeerIDs string `mapstructure:"private_peer_ids"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -310,16 +313,16 @@ func DefaultP2PConfig() *P2PConfig {
 
 // TestP2PConfig returns a configuration for testing the peer-to-peer layer
 func TestP2PConfig() *P2PConfig {
-	conf := DefaultP2PConfig()
-	conf.ListenAddress = "tcp://0.0.0.0:36656"
-	conf.SkipUPNP = true
-	conf.FlushThrottleTimeout = 10
-	return conf
+	cfg := DefaultP2PConfig()
+	cfg.ListenAddress = "tcp://0.0.0.0:36656"
+	cfg.SkipUPNP = true
+	cfg.FlushThrottleTimeout = 10
+	return cfg
 }
 
 // AddrBookFile returns the full path to the address book
-func (p *P2PConfig) AddrBookFile() string {
-	return rootify(p.AddrBook, p.RootDir)
+func (cfg *P2PConfig) AddrBookFile() string {
+	return rootify(cfg.AddrBook, cfg.RootDir)
 }
 
 //-----------------------------------------------------------------------------
@@ -348,14 +351,14 @@ func DefaultMempoolConfig() *MempoolConfig {
 
 // TestMempoolConfig returns a configuration for testing the Tendermint mempool
 func TestMempoolConfig() *MempoolConfig {
-	config := DefaultMempoolConfig()
-	config.CacheSize = 1000
-	return config
+	cfg := DefaultMempoolConfig()
+	cfg.CacheSize = 1000
+	return cfg
 }
 
 // WalDir returns the full path to the mempool's write-ahead log
-func (m *MempoolConfig) WalDir() string {
-	return rootify(m.WalPath, m.RootDir)
+func (cfg *MempoolConfig) WalDir() string {
+	return rootify(cfg.WalPath, cfg.RootDir)
 }
 
 //-----------------------------------------------------------------------------
@@ -392,6 +395,44 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters are in milliseconds
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+}
+
+// DefaultConsensusConfig returns a default configuration for the consensus service
+func DefaultConsensusConfig() *ConsensusConfig {
+	return &ConsensusConfig{
+		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
+		WalLight:                    false,
+		TimeoutPropose:              3000,
+		TimeoutProposeDelta:         500,
+		TimeoutPrevote:              1000,
+		TimeoutPrevoteDelta:         500,
+		TimeoutPrecommit:            1000,
+		TimeoutPrecommitDelta:       500,
+		TimeoutCommit:               1000,
+		SkipTimeoutCommit:           false,
+		MaxBlockSizeTxs:             10000,
+		MaxBlockSizeBytes:           1, // TODO
+		CreateEmptyBlocks:           true,
+		CreateEmptyBlocksInterval:   0,
+		PeerGossipSleepDuration:     100,
+		PeerQueryMaj23SleepDuration: 2000,
+	}
+}
+
+// TestConsensusConfig returns a configuration for testing the consensus service
+func TestConsensusConfig() *ConsensusConfig {
+	cfg := DefaultConsensusConfig()
+	cfg.TimeoutPropose = 100
+	cfg.TimeoutProposeDelta = 1
+	cfg.TimeoutPrevote = 10
+	cfg.TimeoutPrevoteDelta = 1
+	cfg.TimeoutPrecommit = 10
+	cfg.TimeoutPrecommitDelta = 1
+	cfg.TimeoutCommit = 10
+	cfg.SkipTimeoutCommit = true
+	cfg.PeerGossipSleepDuration = 5
+	cfg.PeerQueryMaj23SleepDuration = 250
+	return cfg
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
@@ -434,55 +475,17 @@ func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
 	return time.Duration(cfg.PeerQueryMaj23SleepDuration) * time.Millisecond
 }
 
-// DefaultConsensusConfig returns a default configuration for the consensus service
-func DefaultConsensusConfig() *ConsensusConfig {
-	return &ConsensusConfig{
-		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
-		WalLight:                    false,
-		TimeoutPropose:              3000,
-		TimeoutProposeDelta:         500,
-		TimeoutPrevote:              1000,
-		TimeoutPrevoteDelta:         500,
-		TimeoutPrecommit:            1000,
-		TimeoutPrecommitDelta:       500,
-		TimeoutCommit:               1000,
-		SkipTimeoutCommit:           false,
-		MaxBlockSizeTxs:             10000,
-		MaxBlockSizeBytes:           1, // TODO
-		CreateEmptyBlocks:           true,
-		CreateEmptyBlocksInterval:   0,
-		PeerGossipSleepDuration:     100,
-		PeerQueryMaj23SleepDuration: 2000,
-	}
-}
-
-// TestConsensusConfig returns a configuration for testing the consensus service
-func TestConsensusConfig() *ConsensusConfig {
-	config := DefaultConsensusConfig()
-	config.TimeoutPropose = 100
-	config.TimeoutProposeDelta = 1
-	config.TimeoutPrevote = 10
-	config.TimeoutPrevoteDelta = 1
-	config.TimeoutPrecommit = 10
-	config.TimeoutPrecommitDelta = 1
-	config.TimeoutCommit = 10
-	config.SkipTimeoutCommit = true
-	config.PeerGossipSleepDuration = 5
-	config.PeerQueryMaj23SleepDuration = 250
-	return config
-}
-
 // WalFile returns the full path to the write-ahead log file
-func (c *ConsensusConfig) WalFile() string {
-	if c.walFile != "" {
-		return c.walFile
+func (cfg *ConsensusConfig) WalFile() string {
+	if cfg.walFile != "" {
+		return cfg.walFile
 	}
-	return rootify(c.WalPath, c.RootDir)
+	return rootify(cfg.WalPath, cfg.RootDir)
 }
 
 // SetWalFile sets the path to the write-ahead log file
-func (c *ConsensusConfig) SetWalFile(walFile string) {
-	c.walFile = walFile
+func (cfg *ConsensusConfig) SetWalFile(walFile string) {
+	cfg.walFile = walFile
 }
 
 //-----------------------------------------------------------------------------

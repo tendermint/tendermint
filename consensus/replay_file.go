@@ -87,9 +87,9 @@ func (cs *ConsensusState) ReplayFile(file string, console bool) error {
 		}
 
 		if nextN > 0 {
-			nextN -= 1
+			nextN--
 		}
-		pb.count += 1
+		pb.count++
 	}
 	return nil
 }
@@ -153,7 +153,7 @@ func (pb *playback) replayReset(count int, newStepCh chan interface{}) error {
 		if err := pb.cs.readReplayMessage(msg, newStepCh); err != nil {
 			return err
 		}
-		pb.count += 1
+		pb.count++
 	}
 	return nil
 }
@@ -197,13 +197,12 @@ func (pb *playback) replayConsoleLoop() int {
 
 			if len(tokens) == 1 {
 				return 0
+			}
+			i, err := strconv.Atoi(tokens[1])
+			if err != nil {
+				fmt.Println("next takes an integer argument")
 			} else {
-				i, err := strconv.Atoi(tokens[1])
-				if err != nil {
-					fmt.Println("next takes an integer argument")
-				} else {
-					return i
-				}
+				return i
 			}
 
 		case "back":
@@ -299,7 +298,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 	// Create proxyAppConn connection (consensus, mempool, query)
 	clientCreator := proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir())
 	proxyApp := proxy.NewAppConns(clientCreator,
-		NewHandshaker(stateDB, state, blockStore, gdoc.AppState))
+		NewHandshaker(stateDB, state, blockStore, gdoc.AppState()))
 	err = proxyApp.Start()
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error starting proxy app conns: %v", err))
