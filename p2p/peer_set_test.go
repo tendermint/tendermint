@@ -16,7 +16,7 @@ func randPeer() *peer {
 	nodeKey := p2p.NodeKey{PrivKey:crypto.GenPrivKeyEd25519().Wrap()}
 	return &peer{
 		nodeInfo: NodeInfo{
-			NodeID: nodeKey.ID()
+			ID: nodeKey.ID()
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 		},
 	}

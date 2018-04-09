@@ -14,17 +14,17 @@ import (
 
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
-			PubKey:     pubKey,
+			ID:         nodeKey.ID(),
 			Moniker:    "SOMENAME",
 			Network:    "SOMENAME",
 			ListenAddr: "SOMEADDR",
 			Version:    "SOMEVER",
 			Other:      []string{"SOMESTRING", "OTHERSTRING"},
 		},
-		PubKey:            pubKey,
+		PubKey:            nodeKey.PubKey(),
 		LatestBlockHash:   []byte("SOMEBYTES"),
 		LatestBlockHeight: 123,
 		LatestBlockTime:   time.Unix(0, 1234),
@@ -41,9 +41,9 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -61,9 +61,9 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -82,10 +82,10 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
-	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: nodeKey.PubKey().Unwrap().(crypto.PubKeyEd25519)[:]}}
 	nodeInfo := proto.NodeInfo{
-		PubKey:     pubKey2,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",

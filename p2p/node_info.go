@@ -18,7 +18,7 @@ func MaxNodeInfoSize() int {
 // between two peers during the Tendermint P2P handshake.
 type NodeInfo struct {
 	// Authenticate
-	NodeID     ID     `json:"node_id"`     // authenticated pubkey
+	ID         ID     `json:"node_id"`     // authenticated pubkey
 	ListenAddr string `json:"listen_addr"` // accepting incoming
 
 	// Check compatibility
@@ -107,7 +107,7 @@ OUTER_LOOP:
 
 // ID returns node's ID.
 func (info NodeInfo) ID() ID {
-	return info.NodeID
+	return info.ID
 }
 
 // NetAddress returns a NetAddress derived from the NodeInfo -
@@ -115,7 +115,7 @@ func (info NodeInfo) ID() ID {
 // ListenAddr. Note that the ListenAddr is not authenticated and
 // may not match that address actually dialed if its an outbound peer.
 func (info NodeInfo) NetAddress() *NetAddress {
-	id := info.NodeID
+	id := info.ID
 	addr := info.ListenAddr
 	netAddr, err := NewNetAddressString(IDAddressString(id, addr))
 	if err != nil {
@@ -125,7 +125,7 @@ func (info NodeInfo) NetAddress() *NetAddress {
 }
 
 func (info NodeInfo) String() string {
-	return fmt.Sprintf("NodeInfo{node_id: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.NodeID, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
+	return fmt.Sprintf("NodeInfo{node_id: %v, moniker: %v, network: %v [listen %v], version: %v (%v)}", info.ID, info.Moniker, info.Network, info.ListenAddr, info.Version, info.Other)
 }
 
 func splitVersion(version string) (string, string, string, error) {

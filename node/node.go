@@ -584,7 +584,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.NodeInfo{
-		NodeID:  nodeID,
+		ID:  nodeID,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Channels: []byte{

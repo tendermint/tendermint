@@ -362,7 +362,7 @@ func (mp mockPeer) IsOutbound() bool   { return mp.outbound }
 func (mp mockPeer) IsPersistent() bool { return mp.persistent }
 func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 	return p2p.NodeInfo{
-		NodeID:     mp.ID(),
+		ID:         mp.ID(),
 		ListenAddr: mp.addr.DialString(),
 	}
 }

@@ -23,7 +23,7 @@ func CreateRandomPeer(outbound bool) *peer {
 			outbound: outbound,
 		},
 		nodeInfo: NodeInfo{
-			NodeID:     netAddr.ID,
+			ID:         netAddr.ID,
 			ListenAddr: netAddr.DialString(),
 		},
 		mconn: &conn.MConnection{},
@@ -137,7 +137,7 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	sw.SetLogger(log.TestingLogger())
 	sw = initSwitch(i, sw)
 	ni := NodeInfo{
-		NodeID:     nodeKey.ID(),
+		ID:         nodeKey.ID(),
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
