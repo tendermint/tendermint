@@ -517,7 +517,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	peerID := peerNodeInfo.ID()
+	peerID := peerNodeInfo.ID
 
 	// ensure connection key matches self reported key
 	if pc.config.AuthEnc {

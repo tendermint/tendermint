@@ -105,11 +105,6 @@ OUTER_LOOP:
 	return nil
 }
 
-// ID returns node's ID.
-func (info NodeInfo) ID() ID {
-	return info.ID
-}
-
 // NetAddress returns a NetAddress derived from the NodeInfo -
 // it includes the authenticated peer ID and the self-reported
 // ListenAddr. Note that the ListenAddr is not authenticated and
