@@ -17,7 +17,7 @@ message NodeInfo {
 }
 
 message ID {
-  optional string ID = 1;
+  optional string id = 1;
 }
 
 message PubKey {

@@ -406,7 +406,6 @@ func (n *Node) OnStart() error {
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
 	nodeInfo := n.makeNodeInfo(nodeKey.ID())
-
 	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
 
@@ -586,7 +585,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.NodeInfo{
-		ID:  nodeID,
+		ID:      nodeID,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Channels: []byte{

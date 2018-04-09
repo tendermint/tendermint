@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/p2p"
 
 	crypto "github.com/tendermint/go-crypto"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
@@ -90,15 +89,13 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 		{ID: testCh, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
-
-	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
-	pc, err := newOutboundPeerConn(addr, config, false, nodeKey.PrivKey)
-
+	pk := crypto.GenPrivKeyEd25519()
+	pc, err := newOutboundPeerConn(addr, config, false, pk)
 	if err != nil {
 		return nil, err
 	}
 	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       nodeKey.ID(),
+		ID:       addr.ID,
 		Moniker:  "host_peer",
 		Network:  "testing",
 		Version:  "123.123.123",
@@ -155,7 +152,7 @@ func (p *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 		_, err = pc.HandshakeTimeout(NodeInfo{
-			ID:         p.ID(),
+			ID:         p.Addr().ID,
 			Moniker:    "remote_peer",
 			Network:    "testing",
 			Version:    "123.123.123",
