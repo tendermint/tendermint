@@ -70,7 +70,7 @@ type ValidatorInfo struct {
 type ResultStatus struct {
 	NodeInfo      p2p.NodeInfo  `json:"node_info"`
 	SyncInfo      SyncInfo      `json:"sync_info"`
-	ValidatorInfo ValidatorInfo `json:"validator_info,omitempty"`
+	ValidatorInfo ValidatorInfo `json:"validator_info"`
 }
 
 func (s *ResultStatus) TxIndexEnabled() bool {

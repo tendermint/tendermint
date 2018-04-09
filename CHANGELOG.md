@@ -30,7 +30,6 @@ BREAKING:
 
 - [rpc]: Changed the output format for the `/status` endpoint
 
-
 ## 0.18.0 (April 6th, 2018)
 
 BREAKING:
