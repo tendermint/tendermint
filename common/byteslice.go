@@ -45,3 +45,29 @@ func TrimmedString(b []byte) string {
 	return string(bytes.TrimLeft(b, trimSet))
 
 }
+
+// PrefixEndBytes returns the end byteslice for a noninclusive range
+// that would include all byte slices for which the input is the prefix
+func PrefixEndBytes(prefix []byte) []byte {
+	if prefix == nil {
+		return nil
+	}
+
+	end := make([]byte, len(prefix))
+	copy(end, prefix)
+	finished := false
+
+	for !finished {
+		if end[len(end)-1] != byte(255) {
+			end[len(end)-1]++
+			finished = true
+		} else {
+			end = end[:len(end)-1]
+			if len(end) == 0 {
+				end = nil
+				finished = true
+			}
+		}
+	}
+	return end
+}
