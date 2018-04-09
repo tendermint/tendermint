@@ -338,3 +338,19 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 		t.Fatalf("expected more good peers (%% got: %d, %% expected: %d, number of good addrs: %d, total: %d)", got, expected, good, len(selection))
 	}
 }
+
+func TestAddrBookHasAddress(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+	addr := randIPv4Address(t)
+	book.AddAddress(addr, addr)
+
+	assert.True(t, book.HasAddress(addr))
+
+	book.RemoveAddress(addr)
+
+	assert.False(t, book.HasAddress(addr))
+}
