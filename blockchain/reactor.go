@@ -30,7 +30,7 @@ const (
 	// NOTE: keep up to date with bcBlockResponseMessage
 	bcBlockResponseMessagePrefixSize   = 4
 	bcBlockResponseMessageFieldKeySize = 1
-	maxMessageSize                     = types.MaxBlockSizeBytes +
+	maxMsgSize                         = types.MaxBlockSizeBytes +
 		bcBlockResponseMessagePrefixSize +
 		bcBlockResponseMessageFieldKeySize
 )
@@ -133,7 +133,7 @@ func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 			Priority:            10,
 			SendQueueCapacity:   1000,
 			RecvBufferCapacity:  50 * 4096,
-			RecvMessageCapacity: maxMessageSize,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
@@ -345,6 +345,10 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 // DecodeMessage decodes BlockchainMessage.
 // TODO: ensure that bz is completely read.
 func DecodeMessage(bz []byte) (msg BlockchainMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	if err != nil {
 		err = cmn.ErrorWrap(err, "DecodeMessage() had bytes left over")

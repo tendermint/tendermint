@@ -21,7 +21,7 @@ const (
 	// PexChannel is a channel for PEX messages
 	PexChannel = byte(0x00)
 
-	maxPexMessageSize = 1048576 // 1MB
+	maxMsgSize = 1048576 // 1MB
 
 	// ensure we have enough peers
 	defaultEnsurePeersPeriod   = 30 * time.Second
@@ -616,6 +616,10 @@ func RegisterPexMessage(cdc *amino.Codec) {
 
 // DecodeMessage implements interface registered above.
 func DecodeMessage(bz []byte) (msg PexMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
 	err = cdc.UnmarshalBinary(bz, &msg)
 	return
 }

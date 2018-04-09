@@ -25,7 +25,7 @@ const (
 	VoteChannel        = byte(0x22)
 	VoteSetBitsChannel = byte(0x23)
 
-	maxConsensusMessageSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
+	maxMsgSize = 1048576 // 1MB; NOTE/TODO: keep in sync with types.PartSet sizes.
 
 	blocksToContributeToBecomeGoodPeer = 10000
 )
@@ -112,28 +112,28 @@ func (conR *ConsensusReactor) GetChannels() []*p2p.ChannelDescriptor {
 			ID:                  StateChannel,
 			Priority:            5,
 			SendQueueCapacity:   100,
-			RecvMessageCapacity: maxConsensusMessageSize,
+			RecvMessageCapacity: maxMsgSize,
 		},
 		{
 			ID:                  DataChannel, // maybe split between gossiping current block and catchup stuff
 			Priority:            10,          // once we gossip the whole block there's nothing left to send until next height or round
 			SendQueueCapacity:   100,
 			RecvBufferCapacity:  50 * 4096,
-			RecvMessageCapacity: maxConsensusMessageSize,
+			RecvMessageCapacity: maxMsgSize,
 		},
 		{
 			ID:                  VoteChannel,
 			Priority:            5,
 			SendQueueCapacity:   100,
 			RecvBufferCapacity:  100 * 100,
-			RecvMessageCapacity: maxConsensusMessageSize,
+			RecvMessageCapacity: maxMsgSize,
 		},
 		{
 			ID:                  VoteSetBitsChannel,
 			Priority:            1,
 			SendQueueCapacity:   2,
 			RecvBufferCapacity:  1024,
-			RecvMessageCapacity: maxConsensusMessageSize,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
@@ -1314,6 +1314,10 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 
 // DecodeMessage decodes the given bytes into a ConsensusMessage.
 func DecodeMessage(bz []byte) (msg ConsensusMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
