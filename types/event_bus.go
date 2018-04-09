@@ -67,7 +67,7 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	b.pubsub.PublishWithTags(ctx, eventData, map[string]interface{}{EventTypeKey: eventType})
+	b.pubsub.PublishWithTags(ctx, eventData, tmpubsub.NewTagMap(map[string]interface{}{EventTypeKey: eventType}))
 	return nil
 }
 
@@ -114,7 +114,7 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	logIfTagExists(TxHeightKey, tags, b.Logger)
 	tags[TxHeightKey] = event.Height
 
-	b.pubsub.PublishWithTags(ctx, TMEventData{event}, tags)
+	b.pubsub.PublishWithTags(ctx, TMEventData{event}, tmpubsub.NewTagMap(tags))
 	return nil
 }
 
