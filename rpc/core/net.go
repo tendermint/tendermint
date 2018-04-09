@@ -43,7 +43,6 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 	for _, peer := range p2pSwitch.Peers().List() {
 		peers = append(peers, ctypes.Peer{
 			NodeInfo:         peer.NodeInfo(),
-			ID:               peer.ID(),
 			IsOutbound:       peer.IsOutbound(),
 			ConnectionStatus: peer.Status(),
 		})
