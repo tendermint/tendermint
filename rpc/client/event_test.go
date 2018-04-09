@@ -1,16 +1,16 @@
 package client_test
 
 import (
+	"reflect"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
-
 	"github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 var waitForEventTimeout = 5 * time.Second
@@ -23,116 +23,127 @@ func MakeTxKV() ([]byte, []byte, []byte) {
 }
 
 func TestHeaderEvents(t *testing.T) {
-	require := require.New(t)
 	for i, c := range GetClients() {
-		// start for this test it if it wasn't already running
-		if !c.IsRunning() {
-			// if so, then we start it, listen, and stop it.
-			err := c.Start()
-			require.Nil(err, "%d: %+v", i, err)
-			defer c.Stop()
-		}
+		i, c := i, c // capture params
+		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
+			// start for this test it if it wasn't already running
+			if !c.IsRunning() {
+				// if so, then we start it, listen, and stop it.
+				err := c.Start()
+				require.Nil(t, err, "%d: %+v", i, err)
+				defer c.Stop()
+			}
 
-		evtTyp := types.EventNewBlockHeader
-		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
-		require.Nil(err, "%d: %+v", i, err)
-		_, ok := evt.Unwrap().(types.EventDataNewBlockHeader)
-		require.True(ok, "%d: %#v", i, evt)
-		// TODO: more checks...
+			evtTyp := types.EventNewBlockHeader
+			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
+			require.Nil(t, err, "%d: %+v", i, err)
+			_, ok := evt.(types.EventDataNewBlockHeader)
+			require.True(t, ok, "%d: %#v", i, evt)
+			// TODO: more checks...
+		})
 	}
 }
 
 func TestBlockEvents(t *testing.T) {
-	require := require.New(t)
 	for i, c := range GetClients() {
-		// start for this test it if it wasn't already running
-		if !c.IsRunning() {
-			// if so, then we start it, listen, and stop it.
-			err := c.Start()
-			require.Nil(err, "%d: %+v", i, err)
-			defer c.Stop()
-		}
+		i, c := i, c // capture params
+		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
-		// listen for a new block; ensure height increases by 1
-		var firstBlockHeight int64
-		for j := 0; j < 3; j++ {
-			evtTyp := types.EventNewBlock
-			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
-			require.Nil(err, "%d: %+v", j, err)
-			blockEvent, ok := evt.Unwrap().(types.EventDataNewBlock)
-			require.True(ok, "%d: %#v", j, evt)
-
-			block := blockEvent.Block
-			if j == 0 {
-				firstBlockHeight = block.Header.Height
-				continue
+			// start for this test it if it wasn't already running
+			if !c.IsRunning() {
+				// if so, then we start it, listen, and stop it.
+				err := c.Start()
+				require.Nil(t, err, "%d: %+v", i, err)
+				defer c.Stop()
 			}
 
-			require.Equal(block.Header.Height, firstBlockHeight+int64(j))
-		}
+			// listen for a new block; ensure height increases by 1
+			var firstBlockHeight int64
+			for j := 0; j < 3; j++ {
+				evtTyp := types.EventNewBlock
+				evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
+				require.Nil(t, err, "%d: %+v", j, err)
+				blockEvent, ok := evt.(types.EventDataNewBlock)
+				require.True(t, ok, "%d: %#v", j, evt)
+
+				block := blockEvent.Block
+				if j == 0 {
+					firstBlockHeight = block.Header.Height
+					continue
+				}
+
+				require.Equal(t, block.Header.Height, firstBlockHeight+int64(j))
+			}
+		})
 	}
 }
 
 func TestTxEventsSentWithBroadcastTxAsync(t *testing.T) {
-	require := require.New(t)
 	for i, c := range GetClients() {
-		// start for this test it if it wasn't already running
-		if !c.IsRunning() {
-			// if so, then we start it, listen, and stop it.
-			err := c.Start()
-			require.Nil(err, "%d: %+v", i, err)
-			defer c.Stop()
-		}
+		i, c := i, c // capture params
+		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
-		// make the tx
-		_, _, tx := MakeTxKV()
-		evtTyp := types.EventTx
+			// start for this test it if it wasn't already running
+			if !c.IsRunning() {
+				// if so, then we start it, listen, and stop it.
+				err := c.Start()
+				require.Nil(t, err, "%d: %+v", i, err)
+				defer c.Stop()
+			}
 
-		// send async
-		txres, err := c.BroadcastTxAsync(tx)
-		require.Nil(err, "%+v", err)
-		require.Equal(txres.Code, abci.CodeTypeOK) // FIXME
+			// make the tx
+			_, _, tx := MakeTxKV()
+			evtTyp := types.EventTx
 
-		// and wait for confirmation
-		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
-		require.Nil(err, "%d: %+v", i, err)
-		// and make sure it has the proper info
-		txe, ok := evt.Unwrap().(types.EventDataTx)
-		require.True(ok, "%d: %#v", i, evt)
-		// make sure this is the proper tx
-		require.EqualValues(tx, txe.Tx)
-		require.True(txe.Result.IsOK())
+			// send async
+			txres, err := c.BroadcastTxAsync(tx)
+			require.Nil(t, err, "%+v", err)
+			require.Equal(t, txres.Code, abci.CodeTypeOK) // FIXME
+
+			// and wait for confirmation
+			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
+			require.Nil(t, err, "%d: %+v", i, err)
+			// and make sure it has the proper info
+			txe, ok := evt.(types.EventDataTx)
+			require.True(t, ok, "%d: %#v", i, evt)
+			// make sure this is the proper tx
+			require.EqualValues(t, tx, txe.Tx)
+			require.True(t, txe.Result.IsOK())
+		})
 	}
 }
 
 func TestTxEventsSentWithBroadcastTxSync(t *testing.T) {
-	require := require.New(t)
 	for i, c := range GetClients() {
-		// start for this test it if it wasn't already running
-		if !c.IsRunning() {
-			// if so, then we start it, listen, and stop it.
-			err := c.Start()
-			require.Nil(err, "%d: %+v", i, err)
-			defer c.Stop()
-		}
+		i, c := i, c // capture params
+		t.Run(reflect.TypeOf(c).String(), func(t *testing.T) {
 
-		// make the tx
-		_, _, tx := MakeTxKV()
-		evtTyp := types.EventTx
+			// start for this test it if it wasn't already running
+			if !c.IsRunning() {
+				// if so, then we start it, listen, and stop it.
+				err := c.Start()
+				require.Nil(t, err, "%d: %+v", i, err)
+				defer c.Stop()
+			}
 
-		// send sync
-		txres, err := c.BroadcastTxSync(tx)
-		require.Nil(err, "%+v", err)
-		require.Equal(txres.Code, abci.CodeTypeOK) // FIXME
+			// make the tx
+			_, _, tx := MakeTxKV()
+			evtTyp := types.EventTx
 
-		// and wait for confirmation
-		evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
-		require.Nil(err, "%d: %+v", i, err)
-		// and make sure it has the proper info
-		txe, ok := evt.Unwrap().(types.EventDataTx)
-		require.True(ok, "%d: %#v", i, evt)
-		// make sure this is the proper tx
-		require.EqualValues(tx, txe.Tx)
-		require.True(txe.Result.IsOK())
+			// send sync
+			txres, err := c.BroadcastTxSync(tx)
+			require.Nil(t, err, "%+v", err)
+			require.Equal(t, txres.Code, abci.CodeTypeOK) // FIXME
+
+			// and wait for confirmation
+			evt, err := client.WaitForOneEvent(c, evtTyp, waitForEventTimeout)
+			require.Nil(t, err, "%d: %+v", i, err)
+			// and make sure it has the proper info
+			txe, ok := evt.(types.EventDataTx)
+			require.True(t, ok, "%d: %#v", i, evt)
+			// make sure this is the proper tx
+			require.EqualValues(t, tx, txe.Tx)
+			require.True(t, txe.Result.IsOK())
+		})
 	}
 }

@@ -14,7 +14,9 @@ import (
 
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
+
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
 			ID:         nodeKey.ID(),
@@ -33,7 +35,10 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(status)
+		jsonBytes, err := cdc.MarshalJSON(status)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 
@@ -41,7 +46,9 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
+  
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+
 	nodeInfo := p2p.NodeInfo{
 		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
@@ -54,14 +61,19 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(nodeInfo)
+		jsonBytes, err := cdc.MarshalJSON(nodeInfo)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 }
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
+
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+
 	nodeInfo := p2p.NodeInfo{
 		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
@@ -74,7 +86,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.BinaryBytes(nodeInfo)
+		jsonBytes := cdc.MustMarshalBinaryBare(nodeInfo)
 		counter += len(jsonBytes)
 	}
 
@@ -82,11 +94,13 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
+
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
 	nodeID := string(nodeKey.ID())
 	someName := "SOMENAME"
 	someAddr := "SOMEADDR"
 	someVer := "SOMEVER"
+
 	nodeInfo := proto.NodeInfo{
 		Id:         &proto.ID{ID: &nodeID},
 		Moniker:    &someName,

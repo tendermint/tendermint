@@ -3,8 +3,6 @@ package blockchain
 import (
 	"testing"
 
-	wire "github.com/tendermint/go-wire"
-
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -18,8 +16,15 @@ import (
 
 func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 	config := cfg.ResetTestRoot("blockchain_reactor_test")
-	blockStore := NewBlockStore(dbm.NewMemDB())
-	state, _ := sm.LoadStateFromDBOrGenesisFile(dbm.NewMemDB(), config.GenesisFile())
+	// blockDB := dbm.NewDebugDB("blockDB", dbm.NewMemDB())
+	// stateDB := dbm.NewDebugDB("stateDB", dbm.NewMemDB())
+	blockDB := dbm.NewMemDB()
+	stateDB := dbm.NewMemDB()
+	blockStore := NewBlockStore(blockDB)
+	state, err := sm.LoadStateFromDBOrGenesisFile(stateDB, config.GenesisFile())
+	if err != nil {
+		panic(cmn.ErrorWrap(err, "error constructing state from genesis file"))
+	}
 	return state, blockStore
 }
 
@@ -76,10 +81,9 @@ func TestNoBlockResponse(t *testing.T) {
 	// wait for our response to be received on the peer
 	for _, tt := range tests {
 		reqBlockMsg := &bcBlockRequestMessage{tt.height}
-		reqBlockBytes := wire.BinaryBytes(struct{ BlockchainMessage }{reqBlockMsg})
+		reqBlockBytes := cdc.MustMarshalBinaryBare(reqBlockMsg)
 		bcr.Receive(chID, peer, reqBlockBytes)
-		value := peer.lastValue()
-		msg := value.(struct{ BlockchainMessage }).BlockchainMessage
+		msg := peer.lastBlockchainMessage()
 
 		if tt.existent {
 			if blockMsg, ok := msg.(*bcBlockResponseMessage); !ok {
@@ -173,26 +177,30 @@ func newbcrTestPeer(id p2p.ID) *bcrTestPeer {
 	return bcr
 }
 
-func (tp *bcrTestPeer) lastValue() interface{} { return <-tp.ch }
+func (tp *bcrTestPeer) lastBlockchainMessage() interface{} { return <-tp.ch }
 
-func (tp *bcrTestPeer) TrySend(chID byte, value interface{}) bool {
-	if _, ok := value.(struct{ BlockchainMessage }).
-		BlockchainMessage.(*bcStatusResponseMessage); ok {
+func (tp *bcrTestPeer) TrySend(chID byte, msgBytes []byte) bool {
+	var msg BlockchainMessage
+	err := cdc.UnmarshalBinaryBare(msgBytes, &msg)
+	if err != nil {
+		panic(cmn.ErrorWrap(err, "Error while trying to parse a BlockchainMessage"))
+	}
+	if _, ok := msg.(*bcStatusResponseMessage); ok {
 		// Discard status response messages since they skew our results
 		// We only want to deal with:
 		// + bcBlockResponseMessage
 		// + bcNoBlockResponseMessage
 	} else {
-		tp.ch <- value
+		tp.ch <- msg
 	}
 	return true
 }
 
-func (tp *bcrTestPeer) Send(chID byte, data interface{}) bool { return tp.TrySend(chID, data) }
-func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo                { return p2p.NodeInfo{} }
-func (tp *bcrTestPeer) Status() p2p.ConnectionStatus          { return p2p.ConnectionStatus{} }
-func (tp *bcrTestPeer) ID() p2p.ID                            { return tp.id }
-func (tp *bcrTestPeer) IsOutbound() bool                      { return false }
-func (tp *bcrTestPeer) IsPersistent() bool                    { return true }
-func (tp *bcrTestPeer) Get(s string) interface{}              { return s }
-func (tp *bcrTestPeer) Set(string, interface{})               {}
+func (tp *bcrTestPeer) Send(chID byte, msgBytes []byte) bool { return tp.TrySend(chID, msgBytes) }
+func (tp *bcrTestPeer) NodeInfo() p2p.NodeInfo               { return p2p.NodeInfo{} }
+func (tp *bcrTestPeer) Status() p2p.ConnectionStatus         { return p2p.ConnectionStatus{} }
+func (tp *bcrTestPeer) ID() p2p.ID                           { return tp.id }
+func (tp *bcrTestPeer) IsOutbound() bool                     { return false }
+func (tp *bcrTestPeer) IsPersistent() bool                   { return true }
+func (tp *bcrTestPeer) Get(s string) interface{}             { return s }
+func (tp *bcrTestPeer) Set(string, interface{})              {}

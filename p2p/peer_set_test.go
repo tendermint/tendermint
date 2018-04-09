@@ -14,7 +14,9 @@ import (
 
 // Returns an empty kvstore peer
 func randPeer() *peer {
+
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
+
 	return &peer{
 		nodeInfo: NodeInfo{
 			ID:         nodeKey.ID(),

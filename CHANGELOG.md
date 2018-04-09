@@ -25,6 +25,18 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.19.0 (TBD)
+
+BREAKING:
+
+Upgrade from go-wire to go-amino. This is a sweeping change that breaks everything that is
+serialized to disk or over the network.
+
+See github.com/tendermint/go-amino for details on the new format.
+
+See `scripts/wire2amino.go` for a tool to upgrade
+genesis/priv_validator/node_key JSON files.
+
 ## 0.18.0 (April 6th, 2018)
 
 BREAKING:

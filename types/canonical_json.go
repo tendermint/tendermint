@@ -3,14 +3,14 @@ package types
 import (
 	"time"
 
-	wire "github.com/tendermint/tendermint/wire"
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-// canonical json is wire's json for structs with fields in alphabetical order
+// Canonical json is amino's json for structs with fields in alphabetical order
 
 // TimeFormat is used for generating the sigs
-const TimeFormat = wire.RFC3339Millis
+const TimeFormat = amino.RFC3339Millis
 
 type CanonicalJSONBlockID struct {
 	Hash        cmn.HexBytes               `json:"hash,omitempty"`
@@ -18,11 +18,13 @@ type CanonicalJSONBlockID struct {
 }
 
 type CanonicalJSONPartSetHeader struct {
-	Hash  cmn.HexBytes `json:"hash"`
-	Total int          `json:"total"`
+	Hash  cmn.HexBytes `json:"hash,omitempty"`
+	Total int          `json:"total,omitempty"`
 }
 
 type CanonicalJSONProposal struct {
+	ChainID          string                     `json:"@chain_id"`
+	Type             string                     `json:"@type"`
 	BlockPartsHeader CanonicalJSONPartSetHeader `json:"block_parts_header"`
 	Height           int64                      `json:"height"`
 	POLBlockID       CanonicalJSONBlockID       `json:"pol_block_id"`
@@ -32,37 +34,23 @@ type CanonicalJSONProposal struct {
 }
 
 type CanonicalJSONVote struct {
+	ChainID   string               `json:"@chain_id"`
+	Type      string               `json:"@type"`
 	BlockID   CanonicalJSONBlockID `json:"block_id"`
 	Height    int64                `json:"height"`
 	Round     int                  `json:"round"`
 	Timestamp string               `json:"timestamp"`
-	Type      byte                 `json:"type"`
+	VoteType  byte                 `json:"type"`
 }
 
 type CanonicalJSONHeartbeat struct {
+	ChainID          string  `json:"@chain_id"`
+	Type             string  `json:"@type"`
 	Height           int64   `json:"height"`
 	Round            int     `json:"round"`
 	Sequence         int     `json:"sequence"`
 	ValidatorAddress Address `json:"validator_address"`
 	ValidatorIndex   int     `json:"validator_index"`
-}
-
-//------------------------------------
-// Messages including a "chain id" can only be applied to one chain, hence "Once"
-
-type CanonicalJSONOnceProposal struct {
-	ChainID  string                `json:"chain_id"`
-	Proposal CanonicalJSONProposal `json:"proposal"`
-}
-
-type CanonicalJSONOnceVote struct {
-	ChainID string            `json:"chain_id"`
-	Vote    CanonicalJSONVote `json:"vote"`
-}
-
-type CanonicalJSONOnceHeartbeat struct {
-	ChainID   string                 `json:"chain_id"`
-	Heartbeat CanonicalJSONHeartbeat `json:"heartbeat"`
 }
 
 //-----------------------------------
@@ -82,8 +70,10 @@ func CanonicalPartSetHeader(psh PartSetHeader) CanonicalJSONPartSetHeader {
 	}
 }
 
-func CanonicalProposal(proposal *Proposal) CanonicalJSONProposal {
+func CanonicalProposal(chainID string, proposal *Proposal) CanonicalJSONProposal {
 	return CanonicalJSONProposal{
+		ChainID:          chainID,
+		Type:             "proposal",
 		BlockPartsHeader: CanonicalPartSetHeader(proposal.BlockPartsHeader),
 		Height:           proposal.Height,
 		Timestamp:        CanonicalTime(proposal.Timestamp),
@@ -93,28 +83,32 @@ func CanonicalProposal(proposal *Proposal) CanonicalJSONProposal {
 	}
 }
 
-func CanonicalVote(vote *Vote) CanonicalJSONVote {
+func CanonicalVote(chainID string, vote *Vote) CanonicalJSONVote {
 	return CanonicalJSONVote{
+		ChainID:   chainID,
+		Type:      "vote",
 		BlockID:   CanonicalBlockID(vote.BlockID),
 		Height:    vote.Height,
 		Round:     vote.Round,
 		Timestamp: CanonicalTime(vote.Timestamp),
-		Type:      vote.Type,
+		VoteType:  vote.Type,
 	}
 }
 
-func CanonicalHeartbeat(heartbeat *Heartbeat) CanonicalJSONHeartbeat {
+func CanonicalHeartbeat(chainID string, heartbeat *Heartbeat) CanonicalJSONHeartbeat {
 	return CanonicalJSONHeartbeat{
-		heartbeat.Height,
-		heartbeat.Round,
-		heartbeat.Sequence,
-		heartbeat.ValidatorAddress,
-		heartbeat.ValidatorIndex,
+		ChainID:          chainID,
+		Type:             "heartbeat",
+		Height:           heartbeat.Height,
+		Round:            heartbeat.Round,
+		Sequence:         heartbeat.Sequence,
+		ValidatorAddress: heartbeat.ValidatorAddress,
+		ValidatorIndex:   heartbeat.ValidatorIndex,
 	}
 }
 
 func CanonicalTime(t time.Time) string {
-	// note that sending time over wire resets it to
+	// Note that sending time over amino resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
 	return t.UTC().Format(TimeFormat)

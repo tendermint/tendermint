@@ -1,13 +1,12 @@
 package mempool
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
@@ -19,7 +18,7 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	maxMempoolMessageSize      = 1048576 // 1MB TODO make it configurable
+	maxMsgSize                 = 1048576 // 1MB TODO make it configurable
 	peerCatchupSleepIntervalMS = 100     // If peer is behind, sleep this amount
 )
 
@@ -71,7 +70,7 @@ func (memR *MempoolReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Receive implements Reactor.
 // It adds any received transactions to the mempool.
 func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		memR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		memR.Switch.StopPeerForError(src, err)
@@ -137,7 +136,7 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		}
 		// send memTx
 		msg := &TxMessage{Tx: memTx.tx}
-		success := peer.Send(MempoolChannel, struct{ MempoolMessage }{msg})
+		success := peer.Send(MempoolChannel, cdc.MustMarshalBinaryBare(msg))
 		if !success {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
@@ -158,24 +157,21 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeTx = byte(0x01)
-)
-
 // MempoolMessage is a message sent or received by the MempoolReactor.
 type MempoolMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ MempoolMessage }{},
-	wire.ConcreteType{&TxMessage{}, msgTypeTx},
-)
+func RegisterMempoolMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*MempoolMessage)(nil), nil)
+	cdc.RegisterConcrete(&TxMessage{}, "tendermint/mempool/TxMessage", nil)
+}
 
 // DecodeMessage decodes a byte-array into a MempoolMessage.
-func DecodeMessage(bz []byte) (msgType byte, msg MempoolMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ MempoolMessage }{}, r, maxMempoolMessageSize, n, &err).(struct{ MempoolMessage }).MempoolMessage
+func DecodeMessage(bz []byte) (msg MempoolMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
+	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
 

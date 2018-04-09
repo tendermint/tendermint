@@ -61,7 +61,7 @@ import (
 //
 // go func() {
 //   for e := range txs {
-//     fmt.Println("got ", e.(types.TMEventData).Unwrap().(types.EventDataTx))
+//     fmt.Println("got ", e.(types.EventDataTx))
 //	 }
 // }()
 // ```
@@ -104,7 +104,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 	go func() {
 		for event := range ch {
 			tmResult := &ctypes.ResultEvent{query, event.(tmtypes.TMEventData)}
-			wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Request.ID+"#event", tmResult))
+			wsCtx.TryWriteRPCResponse(rpctypes.NewRPCSuccessResponse(wsCtx.Codec(), wsCtx.Request.ID+"#event", tmResult))
 		}
 	}()
 
