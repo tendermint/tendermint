@@ -83,14 +83,17 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519().Wrap()}
-	id := &proto.ID{id: string(nodeKey.ID())}
+	nodeID := string(nodeKey.ID())
+	someName := "SOMENAME"
+	someAddr := "SOMEADDR"
+	someVer := "SOMEVER"
 	nodeInfo := proto.NodeInfo{
-		Id:         id,
-		Moniker:    "SOMENAME",
-		Network:    "SOMENAME",
-		ListenAddr: "SOMEADDR",
-		Version:    "SOMEVER",
-		Other:      []string{"SOMESTRING", "OTHERSTRING"},
+		Id:         &proto.ID{ID: &nodeID)},
+		Moniker:    &someName,
+		Network:    &someName,
+		ListenAddr: &someAddr,
+		Version:    &someVer,
+		Other:      []string{someAddr, someVer},
 	}
 	b.StartTimer()
 
