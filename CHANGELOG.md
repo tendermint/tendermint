@@ -37,6 +37,7 @@ BREAKING:
 - [types] Merkle tree uses different encoding for varints (see tmlibs v0.8.0)
 - [types] ValidtorSet.GetByAddress returns -1 if no validator found
 - [p2p] require all addresses come with an ID no matter what
+- [rpc]: Changed the output format for the `/status` endpoint
 - [rpc] Listening address must contain tcp:// or unix:// prefix
 
 FEATURES:
