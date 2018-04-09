@@ -14,6 +14,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/tendermint/tmlibs/pubsub"
 )
 
 // Query holds the query string and the query parser.
@@ -145,8 +147,8 @@ func (q *Query) Conditions() []Condition {
 //
 // For example, query "name=John" matches tags = {"name": "John"}. More
 // examples could be found in parser_test.go and query_test.go.
-func (q *Query) Matches(tags map[string]interface{}) bool {
-	if len(tags) == 0 {
+func (q *Query) Matches(tags pubsub.TagMap) bool {
+	if tags.Len() == 0 {
 		return false
 	}
 
@@ -231,9 +233,9 @@ func (q *Query) Matches(tags map[string]interface{}) bool {
 // value from it to the operand using the operator.
 //
 // "tx.gas", "=", "7", { "tx.gas": 7, "tx.ID": "4AE393495334" }
-func match(tag string, op Operator, operand reflect.Value, tags map[string]interface{}) bool {
+func match(tag string, op Operator, operand reflect.Value, tags pubsub.TagMap) bool {
 	// look up the tag from the query in tags
-	value, ok := tags[tag]
+	value, ok := tags.Get(tag)
 	if !ok {
 		return false
 	}
