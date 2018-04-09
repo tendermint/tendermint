@@ -21,9 +21,7 @@ var ShowNodeIDCmd = &cobra.Command{
 func showNodeID(cmd *cobra.Command, args []string) error {
 	if cmn.FileExists(config.GenesisFile())&&cmn.FileExists(config.PrivValidatorFile()) {
 		nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
-		if err != nil {
-			return err
-		}
+		
 		fmt.Println(nodeKey.ID())
 	} else {
 
