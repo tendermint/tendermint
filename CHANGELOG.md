@@ -7,7 +7,6 @@ BREAKING CHANGES:
 - Upgrade consensus for more real-time use of evidence
 
 FEATURES:
-- Peer reputation management
 - Use the chain as its own CA for nodes and validators
 - Tooling to run multiple blockchains/apps, possibly in a single process
 - State syncing (without transaction replay)
@@ -25,18 +24,32 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.18.0 (TBD)
+## 0.18.0 (April 6th, 2018)
 
 BREAKING:
+
+- [types] Merkle tree uses different encoding for varints (see tmlibs v0.8.0)
+- [types] ValidtorSet.GetByAddress returns -1 if no validator found
 - [p2p] require all addresses come with an ID no matter what
+- [rpc] Listening address must contain tcp:// or unix:// prefix
+
+FEATURES:
+
+- [rpc] StartHTTPAndTLSServer (not used yet)
+- [rpc] Include validator's voting power in `/status`
+- [rpc] `/tx` and `/tx_search` responses now include the transaction hash
+- [rpc] Include peer NodeIDs in `/net_info`
 
 IMPROVEMENTS:
+- [config] trim whitespace from elements of lists (like `persistent_peers`)
+- [rpc] `/tx_search` results are sorted by height
+- [p2p] do not try to connect to ourselves (ok, maybe only once)
 - [p2p] seeds respond with a bias towards good peers
-- [rpc] `/tx` and `/tx_search` responses now include the transaction hash
-- [rpc] include validator power in `/status`
 
 BUG FIXES:
 - [rpc] fix subscribing using an abci.ResponseDeliverTx tag
+- [rpc] fix tx_indexers matchRange
+- [rpc] fix unsubscribing (see tmlibs v0.8.0)
 
 ## 0.17.1 (March 27th, 2018)
 
