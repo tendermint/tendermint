@@ -71,25 +71,23 @@
 
 [[constraint]]
   name = "github.com/tendermint/abci"
-  version = "0.10.3-dev"
+  version = "~0.10.3"
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
-  version = "0.6.1"
+  version = "~0.6.2"
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"
-  version = "0.9.6"
+  version = "~0.9.6"
 
 [[override]]
 # [[constraint]]
   name = "github.com/tendermint/tmlibs"
   version = "~0.8.1"
-  # branch = "develop"
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  source = "github.com/grpc/grpc-go"
   version = "~1.7.3"
 
 [prune]
