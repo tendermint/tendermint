@@ -25,15 +25,11 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## Develop
-
-BREAKING CHANGES:
-- [rpc]: Changed the output format for the `/status` endpoint
-
 ## 0.18.0 (TBD)
 
 BREAKING:
 - [p2p] require all addresses come with an ID no matter what
+- [rpc]: Changed the output format for the `/status` endpoint
 
 IMPROVEMENTS:
 - [p2p] seeds respond with a bias towards good peers
