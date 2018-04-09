@@ -41,7 +41,6 @@ FEATURES:
 - [rpc] `/tx` and `/tx_search` responses now include the transaction hash
 - [rpc] Include peer NodeIDs in `/net_info`
 
-
 IMPROVEMENTS:
 - [config] trim whitespace from elements of lists (like `persistent_peers`)
 - [rpc] `/tx_search` results are sorted by height
