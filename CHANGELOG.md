@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.3 (April 9, 2018)
+
+IMPROVEMENTS:
+
+- Update tmlibs dep
+
 ## 0.10.2 (March 23, 2018)
 
 Hot fix to remove `omitempty` from `fee` and to actually run `make
