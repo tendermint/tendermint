@@ -1,13 +1,13 @@
 # Changelog
 
-## 0.8.1 (develop branch)
+## 0.8.1 (April 5th, 2018)
 
 FEATURES:
 
  - [common] Error.Error() includes cause
  - [common] IsEmpty() for 0 length
 
-## 0.8.0 (develop branch)
+## 0.8.0 (April 4th, 2018)
 
 BREAKING:
 
