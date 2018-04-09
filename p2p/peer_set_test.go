@@ -8,16 +8,19 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Returns an empty kvstore peer
 func randPeer() *peer {
-	nk := p2p.NodeKey{crypto.GenPrivKeyEd25519().Wrap()}
+	privKey, err := crypto.PrivKeyFromBytes(crypto.GenPrivKeyEd25519().Bytes())
+	if err != nil {
+		panic(err)
+	}
+	nodeKey := NodeKey{PrivKey: privKey}
 	return &peer{
 		nodeInfo: NodeInfo{
-			ID:         nk.ID(),
+			ID:         nodeKey.ID(),
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 		},
 	}
