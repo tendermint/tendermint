@@ -222,14 +222,14 @@ func TestConnIDFilter(t *testing.T) {
 	c1, c2 := conn.NetPipe()
 
 	s1.SetIDFilter(func(id ID) error {
-		if id == s2.nodeInfo.ID() {
+		if id == s2.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
 	s2.SetIDFilter(func(id ID) error {
-		if id == s1.nodeInfo.ID() {
+		if id == s1.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil

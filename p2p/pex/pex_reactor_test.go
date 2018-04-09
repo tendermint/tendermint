@@ -290,7 +290,7 @@ func TestPEXReactorCrawlStatus(t *testing.T) {
 func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	peer := p2p.CreateRandomPeer(false)
 
-	pexR, book := createReactor(&PEXReactorConfig{PrivatePeerIDs: []string{string(peer.NodeInfo().ID())}})
+	pexR, book := createReactor(&PEXReactorConfig{PrivatePeerIDs: []string{string(peer.NodeInfo().ID)}})
 	defer teardownReactor(book)
 
 	// we have to send a request to receive responses

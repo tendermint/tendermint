@@ -39,6 +39,7 @@ FEATURES:
 - [rpc] StartHTTPAndTLSServer (not used yet)
 - [rpc] Include validator's voting power in `/status`
 - [rpc] `/tx` and `/tx_search` responses now include the transaction hash
+- [rpc] Include peer NodeIDs in `/net_info`
 
 IMPROVEMENTS:
 - [config] trim whitespace from elements of lists (like `persistent_peers`)
