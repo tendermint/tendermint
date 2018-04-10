@@ -1,6 +1,7 @@
 package core_types
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 
-	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -109,8 +109,8 @@ type ResultValidators struct {
 }
 
 type ResultDumpConsensusState struct {
-	RoundState      *cstypes.RoundState                `json:"round_state"`
-	PeerRoundStates map[p2p.ID]*cstypes.PeerRoundState `json:"peer_round_states"`
+	RoundState      json.RawMessage            `json:"round_state"`
+	PeerRoundStates map[p2p.ID]json.RawMessage `json:"peer_round_states"`
 }
 
 type ResultBroadcastTx struct {

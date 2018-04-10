@@ -52,7 +52,7 @@ func (rs RoundStepType) String() string {
 //-----------------------------------------------------------------------------
 
 // RoundState defines the internal consensus state.
-// It is Immutable when returned from ConsensusState.GetRoundState()
+// It should be immutable when returned from ConsensusState.GetRoundState(), but it's not.
 // TODO: Actually, only the top pointer is copied,
 // so access to field pointers is still racey
 // NOTE: Not thread safe. Should only be manipulated by functions downstream

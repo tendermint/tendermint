@@ -168,16 +168,21 @@ func (cs *ConsensusState) GetState() sm.State {
 	return cs.state.Copy()
 }
 
-// GetRoundState returns a copy of the internal consensus state.
+// GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	return cs.getRoundState()
-}
 
-func (cs *ConsensusState) getRoundState() *cstypes.RoundState {
 	rs := cs.RoundState // copy
 	return &rs
+}
+
+// GetRoundStateJSON returns a json of RoundState, marshalled using go-amino.
+func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	return cdc.MarshalJSON(cs.RoundState)
 }
 
 // GetValidators returns a copy of the current validators.
