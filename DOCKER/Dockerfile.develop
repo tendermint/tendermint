@@ -3,8 +3,8 @@ FROM alpine:3.7
 ENV DATA_ROOT /tendermint
 ENV TMHOME $DATA_ROOT
 
-RUN addgroup tmuser && \
-    adduser -S -G tmuser tmuser
+RUN addgroup -g 1000 tmuser && \
+    adduser -u 1000 -S tmuser -G tmuser
 
 RUN mkdir -p $DATA_ROOT && \
     chown -R tmuser:tmuser $DATA_ROOT
