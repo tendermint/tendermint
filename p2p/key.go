@@ -47,7 +47,7 @@ func PubKeyToID(pubKey crypto.PubKey) ID {
 // If the file does not exist, it generates and saves a new NodeKey.
 func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	if cmn.FileExists(filePath) {
-		nodeKey, err := loadNodeKey(filePath)
+		nodeKey, err := LoadNodeKey(filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +56,7 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	return genNodeKey(filePath)
 }
 
-func loadNodeKey(filePath string) (*NodeKey, error) {
+func LoadNodeKey(filePath string) (*NodeKey, error) {
 	jsonBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
