@@ -4,7 +4,7 @@ Install Tendermint
 From Binary
 -----------
 
-To download pre-built binaries, see the `Download page <https://tendermint.com/download>`__.
+To download pre-built binaries, see the `Download page <https://tendermint.com/downloads>`__.
 
 From Source
 -----------
@@ -37,13 +37,13 @@ First, install ``dep``:
 
 ::
 
+    cd $GOPATH/src/github.com/tendermint/tendermint
     make get_tools
 
 Now we can fetch the correct versions of each dependency by running:
 
 ::
 
-    cd $GOPATH/src/github.com/tendermint/tendermint
     make get_vendor_deps
     make install
 
@@ -96,6 +96,7 @@ If ``go get`` failing bothers you, fetch the code using ``git``:
     mkdir -p $GOPATH/src/github.com/tendermint
     git clone https://github.com/tendermint/tendermint $GOPATH/src/github.com/tendermint/tendermint
     cd $GOPATH/src/github.com/tendermint/tendermint
+    make get_tools
     make get_vendor_deps
     make install
 
