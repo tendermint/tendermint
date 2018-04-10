@@ -16,11 +16,8 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	privKey, err := crypto.PrivKeyFromBytes(crypto.GenPrivKeyEd25519().Bytes())
-	if err != nil {
-		panic(err)
-	}
-	nodeKey := p2p.NodeKey{PrivKey: privKey}
+	crypto.GenPrivKeyEd25519()
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
 			ID:         nodeKey.ID(),
@@ -52,11 +49,7 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	privKey, err := crypto.PrivKeyFromBytes(crypto.GenPrivKeyEd25519().Bytes())
-	if err != nil {
-		panic(err)
-	}
-	nodeKey := p2p.NodeKey{PrivKey: privKey}
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	nodeInfo := p2p.NodeInfo{
 		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
@@ -81,11 +74,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	privKey, err := crypto.PrivKeyFromBytes(crypto.GenPrivKeyEd25519().Bytes())
-	if err != nil {
-		panic(err)
-	}
-	nodeKey := p2p.NodeKey{PrivKey: privKey}
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	nodeInfo := p2p.NodeInfo{
 		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
@@ -106,11 +95,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	privKey, err := crypto.PrivKeyFromBytes(crypto.GenPrivKeyEd25519().Bytes())
-	if err != nil {
-		panic(err)
-	}
-	nodeKey := p2p.NodeKey{PrivKey: privKey}
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	nodeID := string(nodeKey.ID())
 	someName := "SOMENAME"
 	someAddr := "SOMEADDR"
