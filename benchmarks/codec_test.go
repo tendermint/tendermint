@@ -16,7 +16,6 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	crypto.GenPrivKeyEd25519()
 	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
@@ -104,7 +103,7 @@ func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	otherString := "OTHERSTRING"
 	nodeInfo := proto.NodeInfo{
 		Id:         &proto.ID{Id: &nodeID},
-		Moniker:    &someName,
+		Moniker:    "SOMENAME",
 		Network:    &someName,
 		ListenAddr: &someAddr,
 		Version:    &someVer,
