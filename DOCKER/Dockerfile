@@ -13,8 +13,8 @@ ENV DATA_ROOT /tendermint
 ENV TMHOME $DATA_ROOT
 
 # Set user right away for determinism
-RUN addgroup tmuser && \
-    adduser -S -G tmuser tmuser
+RUN addgroup -g 1000 -S tmuser && \
+    adduser -u 1000 -S tmuser -G tmuser
 
 # Create directory for persistence and give our user ownership
 RUN mkdir -p $DATA_ROOT && \
