@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -838,8 +838,8 @@ var (
 	ErrPeerStateInvalidStartTime = errors.New("Error peer state invalid startTime")
 )
 
-// PeerState contains the known state of a peer, including its connection
-// and threadsafe access to its PeerRoundState.
+// PeerState contains the known state of a peer, including its connection and
+// threadsafe access to its PeerRoundState.
 type PeerState struct {
 	Peer   p2p.Peer
 	logger log.Logger
@@ -878,12 +878,14 @@ func NewPeerState(peer p2p.Peer) *PeerState {
 	}
 }
 
+// SetLogger allows to set a logger on the peer state. Returns the peer state
+// itself.
 func (ps *PeerState) SetLogger(logger log.Logger) *PeerState {
 	ps.logger = logger
 	return ps
 }
 
-// GetRoundState returns an atomic snapshot of the PeerRoundState.
+// GetRoundState returns an shallow copy of the PeerRoundState.
 // There's no point in mutating it since it won't change PeerState.
 func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 	ps.mtx.Lock()
@@ -891,6 +893,14 @@ func (ps *PeerState) GetRoundState() *cstypes.PeerRoundState {
 
 	prs := ps.PeerRoundState // copy
 	return &prs
+}
+
+// GetRoundStateJSON returns a json of PeerRoundState, marshalled using go-amino.
+func (ps *PeerState) GetRoundStateJSON() ([]byte, error) {
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	return cdc.MarshalJSON(ps.PeerRoundState)
 }
 
 // GetHeight returns an atomic snapshot of the PeerRoundState's height
@@ -1055,7 +1065,7 @@ func (ps *PeerState) ensureCatchupCommitRound(height int64, round int, numValida
 	}
 }
 
-// EnsureVoteVitArrays ensures the bit-arrays have been allocated for tracking
+// EnsureVoteBitArrays ensures the bit-arrays have been allocated for tracking
 // what votes this peer has received.
 // NOTE: It's important to make sure that numValidators actually matches
 // what the node sees as the number of validators for height.
