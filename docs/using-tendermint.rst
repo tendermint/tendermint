@@ -81,13 +81,13 @@ We can see the chain's status at the ``/status`` end-point:
 
 ::
 
-    curl http://localhost:46657/status |  jsonpp
+    curl http://localhost:46657/status | jsonpp
 
 and the ``latest_app_hash`` in particular:
 
 ::
 
-    curl http://localhost:46657/status |  jsonpp | grep app_hash
+    curl http://localhost:46657/status | jsonpp | grep app_hash
 
 Visit http://localhost:46657 in your browser to see the list of other
 endpoints. Some take no arguments (like ``/status``), while others
@@ -185,7 +185,7 @@ once per second, it is possible to disable empty blocks or set a block creation
 interval. In the former case, blocks will be created when there are new
 transactions or when the AppHash changes.
 
-To configure Tendermint to not produce empty blocks unless there are 
+To configure Tendermint to not produce empty blocks unless there are
 transactions or the app hash changes, run Tendermint with this additional flag:
 
 ::
@@ -334,14 +334,14 @@ For instance,
 
 ::
 
-    tendermint node --p2p.seeds "1.2.3.4:46656,5.6.7.8:46656"
+    tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"
 
 Alternatively, you can use the ``/dial_seeds`` endpoint of the RPC to
 specify seeds for a running node to connect to:
 
 ::
 
-    curl 'localhost:46657/dial_seeds?seeds=\["1.2.3.4:46656","5.6.7.8:46656"\]'
+    curl 'localhost:46657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"\]'
 
 Note, if the peer-exchange protocol (PEX) is enabled (default), you should not
 normally need seeds after the first start. Peers will be gossipping about known
@@ -355,8 +355,8 @@ core instance.
 
 ::
 
-    tendermint node --p2p.persistent_peers "10.11.12.13:46656,10.11.12.14:46656"
-    curl 'localhost:46657/dial_peers?persistent=true&peers=\["1.2.3.4:46656","5.6.7.8:46656"\]'
+    tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:46656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:46656"
+    curl 'localhost:46657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:46656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:46656"\]'
 
 Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
