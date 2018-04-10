@@ -3,6 +3,7 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -26,6 +27,16 @@ func initFiles(cmd *cobra.Command, args []string) {
 		pv = pvm.GenFilePV(privValFile)
 		pv.Save()
 		logger.Info("Generated private validator", "path", privValFile)
+	}
+
+	nodeKeyFile := config.NodeKeyFile()
+	if cmn.FileExists(nodeKeyFile) {
+		logger.Info("Found node key", "path", nodeKeyFile)
+	} else {
+		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
+			panic(err)
+		}
+		logger.Info("Generated node key", "path", nodeKeyFile)
 	}
 
 	// genesis file
