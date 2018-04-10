@@ -103,7 +103,7 @@ func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	otherString := "OTHERSTRING"
 	nodeInfo := proto.NodeInfo{
 		Id:         &proto.ID{Id: &nodeID},
-		Moniker:    "SOMENAME",
+		Moniker:    &someName,
 		Network:    &someName,
 		ListenAddr: &someAddr,
 		Version:    &someVer,
