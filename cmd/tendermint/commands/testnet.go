@@ -69,7 +69,6 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		nodeDir := filepath.Join(outputDir, nodeDirName)
 		config.SetRoot(nodeDir)
 
-		// fix panic: open here1/node0/config/write-file-atomic-K4c7zNzGIbACwdBv9MdPt5v2FPuDQZ2w: no such file or directory
 		err := os.MkdirAll(filepath.Join(nodeDir, "config"), nodeDirPerm)
 		if err != nil {
 			_ = os.RemoveAll(outputDir)
@@ -91,7 +90,6 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		nodeDir := filepath.Join(outputDir, cmn.Fmt("%s%d", nodeDirPrefix, i+nValidators))
 		config.SetRoot(nodeDir)
 
-		// fix panic: open here1/node0/config/write-file-atomic-K4c7zNzGIbACwdBv9MdPt5v2FPuDQZ2w: no such file or directory
 		err := os.MkdirAll(filepath.Join(nodeDir, "config"), nodeDirPerm)
 		if err != nil {
 			_ = os.RemoveAll(outputDir)
