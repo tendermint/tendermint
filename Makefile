@@ -178,6 +178,32 @@ metalinter_all:
 	@echo "--> Running linter (all)"
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
+###########################################################
+### Local testnet using docker - for developer use only!
+
+# Build linux binary on other platforms
+GOPATH ?= $(shell go env GOPATH)
+docker-build:
+	docker run --rm -it -v $(GOPATH):/go -e CGO_ENABLED=0 -w /go/src/github.com/tendermint/tendermint golang:alpine go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+
+# Test source code in docker
+docker-test:
+	docker run --rm -it -v $(GOPATH):/go -e CGO_ENABLED=0 -w /go/src/github.com/tendermint/tendermint/cmd/tendermint golang:alpine go test $(PACKAGES)
+
+# Initialize a set of configurations if you don't have your own
+BINARY_FOLDER ?= $(shell pwd)/build
+docker-init:
+	docker run --rm -it -v $(BINARY_FOLDER):/tendermint:Z -e SIZE=4 tendermint/localnode dockerconfiginit
+
+# Run a 4-node testnet locally
+docker-start:
+	@echo "Wait until 'Attaching to node1, node2, node4, node3' message appears"
+	docker-compose up &
+
+# Stop testnet
+docker-stop:
+	docker-compose down
+
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
