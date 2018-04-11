@@ -1,40 +1,40 @@
 version: '3'
 
 services:
-  node1:
-    container_name: node1
+  mach0:
+    container_name: mach0
     image: "tendermint/localnode"
     ports:
       - "46656-46657:46656-46657"
     environment:
-      - ID=1
-      - SIZE=4
+      - ID=0
+      - LOG=${LOG:-tendermint.log}
     volumes:
       - ${FOLDER:-./build}:/tendermint
     networks:
       localnet:
         ipv4_address: 10.100.0.2
 
-  node2:
-    container_name: node2
+  mach1:
+    container_name: mach1
     image: "tendermint/localnode"
     ports:
       - "46659-46660:46656-46657"
     environment:
-      - ID=2
-      - SIZE=4
+      - ID=1
+      - LOG=${LOG:-tendermint.log}
     volumes:
       - ${FOLDER:-./build}:/tendermint
     networks:
       localnet:
         ipv4_address: 10.100.0.3
 
-  node3:
-    container_name: node3
+  mach2:
+    container_name: mach2
     image: "tendermint/localnode"
     environment:
-      - ID=3
-      - SIZE=4
+      - ID=2
+      - LOG=${LOG:-tendermint.log}
     ports:
       - "46661-46662:46656-46657"
     volumes:
@@ -43,12 +43,12 @@ services:
       localnet:
         ipv4_address: 10.100.0.4
 
-  node4:
-    container_name: node4
+  mach3:
+    container_name: mach3
     image: "tendermint/localnode"
     environment:
-      - ID=4
-      - SIZE=4
+      - ID=3
+      - LOG=${LOG:-tendermint.log}
     ports:
       - "46663-46664:46656-46657"
     volumes:

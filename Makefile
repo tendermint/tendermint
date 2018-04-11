@@ -182,23 +182,14 @@ metalinter_all:
 ### Local testnet using docker - for developer use only!
 
 # Build linux binary on other platforms
-GOPATH ?= $(shell go env GOPATH)
-docker-build:
-	docker run --rm -it -v $(GOPATH):/go -e CGO_ENABLED=0 -w /go/src/github.com/tendermint/tendermint golang:alpine go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
-
-# Test source code in docker
-docker-test:
-	docker run --rm -it -v $(GOPATH):/go -e CGO_ENABLED=0 -w /go/src/github.com/tendermint/tendermint/cmd/tendermint golang:alpine go test $(PACKAGES)
-
-# Initialize a set of configurations if you don't have your own
-BINARY_FOLDER ?= $(shell pwd)/build
-docker-init:
-	docker run --rm -it -v $(BINARY_FOLDER):/tendermint:Z -e SIZE=4 tendermint/localnode dockerconfiginit
+build-linux:
+	GOOS=linux GOARCH=amd64 $(MAKE) build
 
 # Run a 4-node testnet locally
 docker-start:
-	@echo "Wait until 'Attaching to node1, node2, node4, node3' message appears"
-	docker-compose up &
+#	@echo "Wait until 'Attaching to mach0, mach1, mach2, mach3' message appears"
+	@if ! [ -f build/mach0/config/genesis.json ]; then docker run --rm -e LOG="stdout" -v `pwd`/build:/tendermint tendermint/localnode testnet --dir . --n 4 ; fi
+	docker-compose up
 
 # Stop testnet
 docker-stop:
