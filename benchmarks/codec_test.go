@@ -16,20 +16,24 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
-			PubKey:     pubKey,
+			ID:         nodeKey.ID(),
 			Moniker:    "SOMENAME",
 			Network:    "SOMENAME",
 			ListenAddr: "SOMEADDR",
 			Version:    "SOMEVER",
 			Other:      []string{"SOMESTRING", "OTHERSTRING"},
 		},
-		PubKey:            pubKey,
-		LatestBlockHash:   []byte("SOMEBYTES"),
-		LatestBlockHeight: 123,
-		LatestBlockTime:   time.Unix(0, 1234),
+		SyncInfo: ctypes.SyncInfo{
+			LatestBlockHash:   []byte("SOMEBYTES"),
+			LatestBlockHeight: 123,
+			LatestBlockTime:   time.Unix(0, 1234),
+		},
+		ValidatorInfo: ctypes.ValidatorInfo{
+			PubKey:            nodeKey.PubKey(),
+		},
 	}
 	b.StartTimer()
 
@@ -48,9 +52,9 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -73,9 +77,9 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -94,15 +98,20 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().(crypto.PubKeyEd25519)
-	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeID := string(nodeKey.ID())
+	someName := "SOMENAME"
+	someAddr := "SOMEADDR"
+	someVer := "SOMEVER"
+	someString := "SOMESTRING"
+	otherString := "OTHERSTRING"
 	nodeInfo := proto.NodeInfo{
-		PubKey:     pubKey2,
-		Moniker:    "SOMENAME",
-		Network:    "SOMENAME",
-		ListenAddr: "SOMEADDR",
-		Version:    "SOMEVER",
-		Other:      []string{"SOMESTRING", "OTHERSTRING"},
+		Id:         &proto.ID{Id: &nodeID},
+		Moniker:    &someName,
+		Network:    &someName,
+		ListenAddr: &someAddr,
+		Version:    &someVer,
+		Other:      []string{someString, otherString},
 	}
 	b.StartTimer()
 

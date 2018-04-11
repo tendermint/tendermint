@@ -52,9 +52,6 @@ func (rs RoundStepType) String() string {
 //-----------------------------------------------------------------------------
 
 // RoundState defines the internal consensus state.
-// It is Immutable when returned from ConsensusState.GetRoundState()
-// TODO: Actually, only the top pointer is copied,
-// so access to field pointers is still racey
 // NOTE: Not thread safe. Should only be manipulated by functions downstream
 // of the cs.receiveRoutine
 type RoundState struct {

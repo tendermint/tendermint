@@ -3,6 +3,8 @@ package commands
 import (
 	"github.com/spf13/cobra"
 
+	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -12,10 +14,14 @@ import (
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Tendermint",
-	Run:   initFiles,
+	RunE:  initFiles,
 }
 
-func initFiles(cmd *cobra.Command, args []string) {
+func initFiles(cmd *cobra.Command, args []string) error {
+	return initFilesWithConfig(config)
+}
+
+func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
 	privValFile := config.PrivValidatorFile()
 	var pv *pvm.FilePV
@@ -26,6 +32,16 @@ func initFiles(cmd *cobra.Command, args []string) {
 		pv = pvm.GenFilePV(privValFile)
 		pv.Save()
 		logger.Info("Generated private validator", "path", privValFile)
+	}
+
+	nodeKeyFile := config.NodeKeyFile()
+	if cmn.FileExists(nodeKeyFile) {
+		logger.Info("Found node key", "path", nodeKeyFile)
+	} else {
+		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
+			return err
+		}
+		logger.Info("Generated node key", "path", nodeKeyFile)
 	}
 
 	// genesis file
@@ -42,8 +58,10 @@ func initFiles(cmd *cobra.Command, args []string) {
 		}}
 
 		if err := genDoc.SaveAs(genFile); err != nil {
-			panic(err)
+			return err
 		}
 		logger.Info("Generated genesis file", "path", genFile)
 	}
+
+	return nil
 }

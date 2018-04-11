@@ -2,7 +2,6 @@ package pex
 
 import (
 	"fmt"
-	"math/rand"
 	"reflect"
 	"sort"
 	"sync"
@@ -288,7 +287,7 @@ func (r *PEXReactor) SetEnsurePeersPeriod(d time.Duration) {
 // Ensures that sufficient peers are connected. (continuous)
 func (r *PEXReactor) ensurePeersRoutine() {
 	var (
-		seed   = rand.New(rand.NewSource(time.Now().UnixNano()))
+		seed   = cmn.NewRand()
 		jitter = seed.Int63n(r.ensurePeersPeriod.Nanoseconds())
 	)
 
@@ -375,7 +374,7 @@ func (r *PEXReactor) ensurePeers() {
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
-			peer := peers[rand.Int()%peersCount] // nolint: gas
+			peer := peers[cmn.RandInt()%peersCount] // nolint: gas
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
@@ -404,7 +403,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 
 	// exponential backoff if it's not our first attempt to dial given address
 	if attempts > 0 {
-		jitterSeconds := time.Duration(rand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
 		sinceLastDialed := time.Since(lastDialed)
 		if sinceLastDialed < backoffDuration {
@@ -457,7 +456,7 @@ func (r *PEXReactor) dialSeeds() {
 	}
 	seedAddrs, _ := p2p.NewNetAddressStrings(r.config.Seeds)
 
-	perm := rand.Perm(lSeeds)
+	perm := cmn.RandPerm(lSeeds)
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed

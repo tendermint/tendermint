@@ -1,6 +1,7 @@
 package core_types
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -8,7 +9,6 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 
-	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -54,19 +54,23 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 	}
 }
 
-type ValidatorStatus struct {
-	VotingPower int64 `json:"voting_power"`
+type SyncInfo struct {
+	LatestBlockHash   cmn.HexBytes `json:"latest_block_hash"`
+	LatestAppHash     cmn.HexBytes `json:"latest_app_hash"`
+	LatestBlockHeight int64        `json:"latest_block_height"`
+	LatestBlockTime   time.Time    `json:"latest_block_time"`
+	Syncing           bool         `json:"syncing"`
+}
+
+type ValidatorInfo struct {
+	PubKey      crypto.PubKey `json:"pub_key"`
+	VotingPower int64         `json:"voting_power"`
 }
 
 type ResultStatus struct {
-	NodeInfo          p2p.NodeInfo    `json:"node_info"`
-	PubKey            crypto.PubKey   `json:"pub_key"`
-	LatestBlockHash   cmn.HexBytes    `json:"latest_block_hash"`
-	LatestAppHash     cmn.HexBytes    `json:"latest_app_hash"`
-	LatestBlockHeight int64           `json:"latest_block_height"`
-	LatestBlockTime   time.Time       `json:"latest_block_time"`
-	Syncing           bool            `json:"syncing"`
-	ValidatorStatus   ValidatorStatus `json:"validator_status,omitempty"`
+	NodeInfo      p2p.NodeInfo  `json:"node_info"`
+	SyncInfo      SyncInfo      `json:"sync_info"`
+	ValidatorInfo ValidatorInfo `json:"validator_info"`
 }
 
 func (s *ResultStatus) TxIndexEnabled() bool {
@@ -98,7 +102,6 @@ type ResultDialPeers struct {
 
 type Peer struct {
 	p2p.NodeInfo     `json:"node_info"`
-	p2p.ID           `json:"node_id"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 }
@@ -109,8 +112,8 @@ type ResultValidators struct {
 }
 
 type ResultDumpConsensusState struct {
-	RoundState      *cstypes.RoundState                `json:"round_state"`
-	PeerRoundStates map[p2p.ID]*cstypes.PeerRoundState `json:"peer_round_states"`
+	RoundState      json.RawMessage            `json:"round_state"`
+	PeerRoundStates map[p2p.ID]json.RawMessage `json:"peer_round_states"`
 }
 
 type ResultBroadcastTx struct {
