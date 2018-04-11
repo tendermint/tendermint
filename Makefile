@@ -189,7 +189,7 @@ build-linux:
 docker-start:
 	@echo "Wait until 'Attaching to node0, node1, node2, node3' message appears"
 	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -e LOG="stdout" -v `pwd`/build:/tendermint tendermint/localnode testnet --v 4 --o build --populate-persistent-peers --starting-ip-address 10.100.0.2 ; fi
-	docker-compose up
+	docker-compose up &
 
 # Stop testnet
 docker-stop:
