@@ -61,8 +61,6 @@ var TestnetFilesCmd = &cobra.Command{
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) error {
-	_ = os.RemoveAll(outputDir)
-
 	config := cfg.DefaultConfig()
 	genVals := make([]types.GenesisValidator, nValidators)
 
