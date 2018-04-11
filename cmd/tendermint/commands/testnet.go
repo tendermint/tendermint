@@ -38,7 +38,7 @@ func init() {
 		"Number of validators to initialize the testnet with")
 	TestnetFilesCmd.Flags().IntVar(&nNonValidators, "n", 0,
 		"Number of non-validators to initialize the testnet with")
-	TestnetFilesCmd.Flags().StringVar(&outputDir, "o", "mytestnet",
+	TestnetFilesCmd.Flags().StringVar(&outputDir, "o", "./mytestnet",
 		"Directory to store initialization data for the testnet")
 	TestnetFilesCmd.Flags().StringVar(&nodeDirPrefix, "node-dir-prefix", "node",
 		"Prefix the directory name for each node with (node results in node0, node1, ...)")
@@ -61,9 +61,7 @@ var TestnetFilesCmd = &cobra.Command{
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) error {
-	if _, err := os.Stat(outputDir); err == nil {
-		return fmt.Errorf("Directory %s already exists", outputDir)
-	}
+	_ = os.RemoveAll(outputDir)
 
 	config := cfg.DefaultConfig()
 	genVals := make([]types.GenesisValidator, nValidators)
