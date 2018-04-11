@@ -83,11 +83,11 @@ We can see the chain's status at the ``/status`` end-point:
 
     curl http://localhost:46657/status | jsonpp
 
-and the ``latest_app_hash`` in particular:
+and the ``sync_info.latest_app_hash`` in particular:
 
 ::
 
-    curl http://localhost:46657/status | jsonpp | grep app_hash
+    curl http://localhost:46657/status |  jsonpp | grep sync_info.latest_app_hash
 
 Visit http://localhost:46657 in your browser to see the list of other
 endpoints. Some take no arguments (like ``/status``), while others

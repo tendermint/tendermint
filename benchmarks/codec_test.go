@@ -26,10 +26,14 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 			Version:    "SOMEVER",
 			Other:      []string{"SOMESTRING", "OTHERSTRING"},
 		},
-		PubKey:            nodeKey.PubKey(),
-		LatestBlockHash:   []byte("SOMEBYTES"),
-		LatestBlockHeight: 123,
-		LatestBlockTime:   time.Unix(0, 1234),
+		SyncInfo: ctypes.SyncInfo{
+			LatestBlockHash:   []byte("SOMEBYTES"),
+			LatestBlockHeight: 123,
+			LatestBlockTime:   time.Unix(0, 1234),
+		},
+		ValidatorInfo: ctypes.ValidatorInfo{
+			PubKey:            nodeKey.PubKey(),
+		},
 	}
 	b.StartTimer()
 

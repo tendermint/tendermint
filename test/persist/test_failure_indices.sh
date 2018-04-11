@@ -31,7 +31,7 @@ function start_procs(){
 		if [[ "$CIRCLECI" == true ]]; then
 			$TM_CMD &
 		else
-            $TM_CMD &> "tendermint_${name}.log" & 
+            $TM_CMD &> "tendermint_${name}.log" &
 		fi
         PID_TENDERMINT=$!
     else
@@ -60,8 +60,8 @@ function wait_for_port() {
     i=0
     while [ "$ERR" == 0 ]; do
         echo "... port $port is still bound. waiting ..."
-        sleep 1	
-        nc -z 127.0.0.1 $port 
+        sleep 1
+        nc -z 127.0.0.1 $port
         ERR=$?
         i=$((i + 1))
         if [[ $i == 10 ]]; then
@@ -97,7 +97,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
     ERR=$?
     i=0
     while [ "$ERR" != 0 ]; do
-        sleep 1	
+        sleep 1
         curl -s --unix-socket "$RPC_ADDR" http://localhost/status > /dev/null
         ERR=$?
         i=$((i + 1))
@@ -108,11 +108,11 @@ for failIndex in $(seq $failsStart $failsEnd); do
     done
 
     # wait for a new block
-    h1=$(curl -s --unix-socket "$RPC_ADDR" http://localhost/status | jq .result.latest_block_height)
+    h1=$(curl -s --unix-socket "$RPC_ADDR" http://localhost/status | jq .result.sync_info.latest_block_height)
     h2=$h1
     while [ "$h2" == "$h1" ]; do
         sleep 1
-        h2=$(curl -s --unix-socket "$RPC_ADDR" http://localhost/status | jq .result.latest_block_height)
+        h2=$(curl -s --unix-socket "$RPC_ADDR" http://localhost/status | jq .result.sync_info.latest_block_height)
     done
 
     kill_procs

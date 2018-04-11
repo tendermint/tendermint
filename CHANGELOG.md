@@ -28,6 +28,8 @@ BUG FIXES:
 
 BREAKING:
 
+- [rpc]: Changed the output format for the `/status` endpoint
+
 Upgrade from go-wire to go-amino. This is a sweeping change that breaks everything that is
 serialized to disk or over the network.
 
