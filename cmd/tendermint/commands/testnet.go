@@ -136,8 +136,7 @@ func hostnameOrIP(i int) string {
 			os.Exit(1)
 		}
 
-		ip = ip.Mask(ip.DefaultMask())
-		for j := 0; j <= i; j++ {
+		for j := 0; j < i; j++ {
 			ip[3]++
 		}
 		return ip.String()
@@ -149,6 +148,8 @@ func hostnameOrIP(i int) string {
 func populatePersistentPeersInConfigAndWriteIt(config *cfg.Config) error {
 	persistentPeers := make([]string, nValidators+nNonValidators)
 	for i := 0; i < nValidators+nNonValidators; i++ {
+		nodeDir := filepath.Join(outputDir, cmn.Fmt("%s%d", nodeDirPrefix, i))
+		config.SetRoot(nodeDir)
 		nodeKey, err := p2p.LoadNodeKey(config.NodeKeyFile())
 		if err != nil {
 			return err
