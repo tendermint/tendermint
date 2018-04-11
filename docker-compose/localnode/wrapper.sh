@@ -25,9 +25,9 @@ fi
 ##
 export TMHOME="/tendermint/node${ID}"
 
-if [ "$LOG" == "stdout" ]; then
-  "$BINARY" $@
+if [ -d "${TMHOME}/${LOG}" ]; then
+  "$BINARY" $@ | tee "${TMHOME}/${LOG}"
 else
-  "$BINARY" $@ > "${TMHOME}/${LOG}"
+  "$BINARY" $@
 fi
 
