@@ -20,7 +20,7 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 make build-linux
 
 #Create configuration
-docker run -e LOG="stdout" -v `pwd`/build:/tendermint tendermint/localnode testnet --dir . --n 1
+docker run -e LOG="stdout" -v `pwd`/build:/tendermint tendermint/localnode testnet --o . --v 1
 
 #Run the node
 docker run -v `pwd`/build:/tendermint tendermint/localnode

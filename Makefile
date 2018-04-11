@@ -179,7 +179,7 @@ metalinter_all:
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
 ###########################################################
-### Local testnet using docker - for developer use only!
+### Local testnet using docker
 
 # Build linux binary on other platforms
 build-linux:
@@ -187,8 +187,8 @@ build-linux:
 
 # Run a 4-node testnet locally
 docker-start:
-#	@echo "Wait until 'Attaching to mach0, mach1, mach2, mach3' message appears"
-	@if ! [ -f build/mach0/config/genesis.json ]; then docker run --rm -e LOG="stdout" -v `pwd`/build:/tendermint tendermint/localnode testnet --dir . --n 4 ; fi
+	@echo "Wait until 'Attaching to node0, node1, node2, node3' message appears"
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -e LOG="stdout" -v `pwd`/build:/tendermint tendermint/localnode testnet --v 4 --o build --populate-persistent-peers --starting-ip-address 10.100.0.2 ; fi
 	docker-compose up
 
 # Stop testnet
