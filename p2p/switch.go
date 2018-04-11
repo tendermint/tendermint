@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -67,7 +66,7 @@ type Switch struct {
 	filterConnByAddr func(net.Addr) error
 	filterConnByID   func(ID) error
 
-	rng *rand.Rand // seed for randomizing dial times and orders
+	rng *cmn.Rand // seed for randomizing dial times and orders
 }
 
 // NewSwitch creates a new Switch with the given config.
@@ -82,9 +81,8 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		dialing:      cmn.NewCMap(),
 	}
 
-	// Ensure we have a completely undeterministic PRNG. cmd.RandInt64() draws
-	// from a seed that's initialized with OS entropy on process start.
-	sw.rng = rand.New(rand.NewSource(cmn.RandInt64()))
+	// Ensure we have a completely undeterministic PRNG.
+	sw.rng = cmn.NewRand()
 
 	// TODO: collapse the peerConfig into the config ?
 	sw.peerConfig.MConfig.FlushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
