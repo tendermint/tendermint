@@ -10,10 +10,10 @@ services:
       - ID=0
       - LOG=${LOG:-tendermint.log}
     volumes:
-      - ${FOLDER:-./build}:/tendermint
+      - ${FOLDER:-./build}:/tendermint:Z
     networks:
       localnet:
-        ipv4_address: 10.100.0.2
+        ipv4_address: 192.167.10.2
 
   node1:
     container_name: node1
@@ -24,10 +24,10 @@ services:
       - ID=1
       - LOG=${LOG:-tendermint.log}
     volumes:
-      - ${FOLDER:-./build}:/tendermint
+      - ${FOLDER:-./build}:/tendermint:Z
     networks:
       localnet:
-        ipv4_address: 10.100.0.3
+        ipv4_address: 192.167.10.3
 
   node2:
     container_name: node2
@@ -38,10 +38,10 @@ services:
     ports:
       - "46661-46662:46656-46657"
     volumes:
-      - ${FOLDER:-./build}:/tendermint
+      - ${FOLDER:-./build}:/tendermint:Z
     networks:
       localnet:
-        ipv4_address: 10.100.0.4
+        ipv4_address: 192.167.10.4
 
   node3:
     container_name: node3
@@ -52,10 +52,10 @@ services:
     ports:
       - "46663-46664:46656-46657"
     volumes:
-      - ${FOLDER:-./build}:/tendermint
+      - ${FOLDER:-./build}:/tendermint:Z
     networks:
       localnet:
-        ipv4_address: 10.100.0.5
+        ipv4_address: 192.167.10.5
 
 networks:
   localnet:
@@ -64,5 +64,5 @@ networks:
       driver: default
       config:
       -
-        subnet: 10.100.0.0/16
+        subnet: 192.167.10.0/16
 
