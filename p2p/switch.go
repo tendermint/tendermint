@@ -359,7 +359,9 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 		for _, netAddr := range netAddrs {
 			// do not add our address or ID
 			if !netAddr.Same(ourAddr) {
-				addrBook.AddAddress(netAddr, ourAddr)
+				if err := addrBook.AddAddress(netAddr, ourAddr); err != nil {
+					sw.Logger.Error("Can't add peer's address to addrbook", "err", err)
+				}
 			}
 		}
 		// Persist some peers to disk right away.
