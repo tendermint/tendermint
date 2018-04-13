@@ -191,8 +191,8 @@
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/viper"
@@ -270,7 +270,6 @@
   version = "v0.7.3"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "autofile",
@@ -286,7 +285,8 @@
     "pubsub/query",
     "test"
   ]
-  revision = "357648b8d63732df77fb1dd0f5ad813800912854"
+  revision = "97e1f1ad3f510048929a51475811a18686c894df"
+  version = "0.8.2-rc0"
 
 [[projects]]
   branch = "master"
@@ -301,7 +301,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "b2aa35443fbc700ab74c586ae79b81c171851023"
+  revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
 
 [[projects]]
   branch = "master"
@@ -348,7 +348,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "ce84044298496ef4b54b4a0a0909ba593cc60e30"
+  revision = "51d0944304c3cbce4afe9e5247e21100037bff78"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -383,6 +383,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "794125e6cc5926371340043eed0ce8731a2212367cc6d4b845e4618ef2dd1996"
+  inputs-digest = "e70f8692c825e80ae8510546e297840b9560d00e11b2272749a55cc2ffd147f0"
   solver-name = "gps-cdcl"
   solver-version = 1
