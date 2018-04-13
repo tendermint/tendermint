@@ -43,21 +43,7 @@
       },
       {
         "name": "mattbell",
-        "address": "0644CF5459E6A9C43B3EC02D9DEB6DE1620BBE9A",
-        "coins": [
-          {
-            "denom": "fermion",
-            "amount": 100
-          },
-          {
-            "denom": "tokenmatt",
-            "amount": 1000
-          }
-        ]
-      },
-      {
-        "name": "mattbell",
-        "address": "0644CF5459E6A9C43B3EC02D9DEB6DE1620BBE9A",
+        "address": "C2BA52AC0E98907ED7DC7FBFE85FCF3D4BD4D018",
         "coins": [
           {
             "denom": "fermion",
