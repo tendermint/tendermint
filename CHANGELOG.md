@@ -24,6 +24,11 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.19.1 (TBD)
+
+IMPROVEMENTS:
+- [rpc] `/validators` now returns the effective validator set if no height was given (See #1211)
+
 ## 0.19.0 (TBD)
 
 BREAKING:

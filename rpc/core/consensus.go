@@ -46,12 +46,18 @@ import (
 // }
 // ```
 func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
+	// return the effective validator set if no height was given
+	if heightPtr == nil {
+		lastBlockHeight, vals := consensusState.GetValidators()
+		return &ctypes.ResultValidators{lastBlockHeight, vals}, nil
+	}
+
+	// return the stored validator set if height was given
 	storeHeight := blockStore.Height()
 	height, err := getHeight(storeHeight, heightPtr)
 	if err != nil {
 		return nil, err
 	}
-
 	validators, err := sm.LoadValidators(stateDB, height)
 	if err != nil {
 		return nil, err
