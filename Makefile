@@ -187,13 +187,31 @@ build-linux:
 
 # Run a 4-node testnet locally
 docker-start:
-	@echo "Wait until 'Attaching to node0, node1, node2, node3' message appears"
-	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v `pwd`/build:/tendermint:Z tendermint/localnode testnet --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
 	docker-compose up
 
 # Stop testnet
 docker-stop:
 	docker-compose down
+
+###########################################################
+### Remote full-nodes (sentry) using terraform and ansible
+
+# Server management
+server-setup:
+	@if ! [ -f $(HOME)/.ssh/id_rsa.pub ]; then ssh-keygen ; fi
+	cd networks/remote/terraform && terraform init && terraform apply -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
+#	@if ! [ -f $(CURDIR)/build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --n 4 --o . ; fi
+	build/tendermint testnet --n 4 --o build/
+	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l remotenet --ssh-common-args '-o StrictHostKeyChecking=False' install.yml
+	$(MAKE) server-config
+
+server-destroy:
+	cd networks/remote/terraform && terraform destroy
+
+# Configuration management
+server-config:
+	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l remotenet reconfig.yml -e BINARY=$(CURDIR)/build/tendermint -e CONFIGDIR=$(CURDIR)/build
 
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.

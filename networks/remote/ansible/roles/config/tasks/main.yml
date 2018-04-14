@@ -1,0 +1,15 @@
+---
+
+- name: Copy binary
+  copy:
+    src: "{{BINARY}}"
+    dest: /usr/bin
+    mode: 0755
+
+- name: Copy config
+  copy:
+    src: "{{CONFIGDIR}}/node0/"
+    dest: "/home/{{service}}/.{{service}}/"
+    owner: "{{service}}"
+    group: "{{service}}"
+
