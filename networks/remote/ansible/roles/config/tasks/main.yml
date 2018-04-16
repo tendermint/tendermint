@@ -7,9 +7,11 @@
     mode: 0755
 
 - name: Copy config
+  when: item <= N and ansible_hostname == 'remotenet-node' ~ item
   copy:
-    src: "{{CONFIGDIR}}/node0/"
+    src: "{{CONFIGDIR}}/node{{item}}/"
     dest: "/home/{{service}}/.{{service}}/"
     owner: "{{service}}"
     group: "{{service}}"
+  loop: [ 0, 1, 2, 3, 4, 5, 6, 7 ]
 
