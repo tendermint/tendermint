@@ -284,3 +284,6 @@ Commit
 
    - Persist the application state.
    - Return a Merkle root hash of the application state.
+   - It's critical that all application instances return the same hash. If not,
+     they will not be able to agree on the next block, because the hash is
+     included in the next block!
