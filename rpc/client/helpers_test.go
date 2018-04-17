@@ -32,7 +32,7 @@ func TestWaitForHeight(t *testing.T) {
 
 	// now set current block height to 10
 	m.Call = mock.Call{
-		Response: &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{LatestBlockHeight: 10} },
+		Response: &ctypes.ResultStatus{SyncInfo: ctypes.SyncInfo{LatestBlockHeight: 10}},
 	}
 
 	// we will not wait for more than 10 blocks
