@@ -32,7 +32,7 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 			LatestBlockTime:   time.Unix(0, 1234),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
-			PubKey:            nodeKey.PubKey(),
+			PubKey: nodeKey.PubKey(),
 		},
 	}
 	b.StartTimer()

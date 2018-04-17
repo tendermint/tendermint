@@ -1306,6 +1306,22 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
+
+		// Update ValidBlock
+		prevotes := cs.Votes.Prevotes(cs.Round)
+		blockID, ok := prevotes.TwoThirdsMajority()
+		if ok && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
+			// update valid value
+			if !cs.ValidBlock.HashesTo(blockID.Hash) && cs.ProposalBlock.HashesTo(blockID.Hash) {
+				cs.ValidRound = cs.Round
+				cs.ValidBlock = cs.ProposalBlock
+				cs.ValidBlockParts = cs.ProposalBlockParts
+			}
+			//TODO: In case there is +2/3 majority in Prevotes set for some block and cs.ProposalBlock contains different block,
+			//either proposer is faulty or voting power of faulty processes is more than 1/3. We should
+			//trigger in the future accountability procedure at this point.
+		}
+
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
 			cs.enterPrevote(height, cs.Round)
@@ -1412,9 +1428,9 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			}
 		}
 		// Update ValidBlock
-		if ok && !blockID.IsZero() && !cs.ValidBlock.HashesTo(blockID.Hash) && vote.Round > cs.ValidRound {
+		if ok && !blockID.IsZero() && (cs.ValidRound < vote.Round) && (vote.Round <= cs.Round) {
 			// update valid value
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
+			if !cs.ValidBlock.HashesTo(blockID.Hash) && cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.ValidRound = vote.Round
 				cs.ValidBlock = cs.ProposalBlock
 				cs.ValidBlockParts = cs.ProposalBlockParts
