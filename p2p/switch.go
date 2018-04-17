@@ -3,12 +3,9 @@ package p2p
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -69,7 +66,7 @@ type Switch struct {
 	filterConnByAddr func(net.Addr) error
 	filterConnByID   func(ID) error
 
-	rng *rand.Rand // seed for randomizing dial times and orders
+	rng *cmn.Rand // seed for randomizing dial times and orders
 }
 
 // NewSwitch creates a new Switch with the given config.
@@ -84,15 +81,14 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		dialing:      cmn.NewCMap(),
 	}
 
-	// Ensure we have a completely undeterministic PRNG. cmd.RandInt64() draws
-	// from a seed that's initialized with OS entropy on process start.
-	sw.rng = rand.New(rand.NewSource(cmn.RandInt64()))
+	// Ensure we have a completely undeterministic PRNG.
+	sw.rng = cmn.NewRand()
 
 	// TODO: collapse the peerConfig into the config ?
 	sw.peerConfig.MConfig.FlushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
 	sw.peerConfig.MConfig.SendRate = config.SendRate
 	sw.peerConfig.MConfig.RecvRate = config.RecvRate
-	sw.peerConfig.MConfig.MaxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
+	sw.peerConfig.MConfig.MaxPacketMsgPayloadSize = config.MaxPacketMsgPayloadSize
 	sw.peerConfig.AuthEnc = config.AuthEnc
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
@@ -178,7 +174,7 @@ func (sw *Switch) OnStart() error {
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return errors.Wrapf(err, "failed to start %v", reactor)
+			return cmn.ErrorWrap(err, "failed to start %v", reactor)
 		}
 	}
 	// Start listeners
@@ -213,18 +209,18 @@ func (sw *Switch) OnStop() {
 // Broadcast runs a go routine for each attempted send, which will block trying
 // to send for defaultSendTimeoutSeconds. Returns a channel which receives
 // success values for each attempted send (false if times out). Channel will be
-// closed once msg send to all peers.
+// closed once msg bytes are sent to all peers (or time out).
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
-func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
+func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
-	sw.Logger.Debug("Broadcast", "channel", chID, "msg", msg)
+	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	var wg sync.WaitGroup
 	for _, peer := range sw.peers.List() {
 		wg.Add(1)
 		go func(peer Peer) {
 			defer wg.Done()
-			success := peer.Send(chID, msg)
+			success := peer.Send(chID, msgBytes)
 			successChan <- success
 		}(peer)
 	}
@@ -363,7 +359,9 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 		for _, netAddr := range netAddrs {
 			// do not add our address or ID
 			if !netAddr.Same(ourAddr) {
-				addrBook.AddAddress(netAddr, ourAddr)
+				if err := addrBook.AddAddress(netAddr, ourAddr); err != nil {
+					sw.Logger.Error("Can't add peer's address to addrbook", "err", err)
+				}
 			}
 		}
 		// Persist some peers to disk right away.
@@ -517,7 +515,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	peerID := peerNodeInfo.ID()
+	peerID := peerNodeInfo.ID
 
 	// ensure connection key matches self reported key
 	if pc.config.AuthEnc {

@@ -20,7 +20,7 @@ func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -47,7 +47,7 @@ func TestPeerWithoutAuthEnc(t *testing.T) {
 	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: config}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
 	rp.Start()
 	defer rp.Stop()
 
@@ -68,7 +68,7 @@ func TestPeerSend(t *testing.T) {
 	config.AuthEnc = false
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: config}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
 	rp.Start()
 	defer rp.Stop()
 
@@ -81,7 +81,7 @@ func TestPeerSend(t *testing.T) {
 	defer p.Stop()
 
 	assert.True(p.CanSend(testCh))
-	assert.True(p.Send(testCh, "Asylum"))
+	assert.True(p.Send(testCh, []byte("Asylum")))
 }
 
 func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
@@ -89,13 +89,13 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 		{ID: testCh, Priority: 1},
 	}
 	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
-	pk := crypto.GenPrivKeyEd25519().Wrap()
+	pk := crypto.GenPrivKeyEd25519()
 	pc, err := newOutboundPeerConn(addr, config, false, pk)
 	if err != nil {
 		return nil, err
 	}
 	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		PubKey:   pk.PubKey(),
+		ID:       addr.ID,
 		Moniker:  "host_peer",
 		Network:  "testing",
 		Version:  "123.123.123",
@@ -152,7 +152,7 @@ func (p *remotePeer) accept(l net.Listener) {
 			golog.Fatalf("Failed to create a peer: %+v", err)
 		}
 		_, err = pc.HandshakeTimeout(NodeInfo{
-			PubKey:     p.PrivKey.PubKey(),
+			ID:         p.Addr().ID,
 			Moniker:    "remote_peer",
 			Network:    "testing",
 			Version:    "123.123.123",

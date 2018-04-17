@@ -3,9 +3,8 @@ package core
 import (
 	"time"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/consensus"
-	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -23,7 +22,7 @@ var subscribeTimeout = 5 * time.Second
 type Consensus interface {
 	GetState() sm.State
 	GetValidators() (int64, []*types.Validator)
-	GetRoundState() *cstypes.RoundState
+	GetRoundStateJSON() ([]byte, error)
 }
 
 type P2P interface {

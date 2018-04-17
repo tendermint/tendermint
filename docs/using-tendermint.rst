@@ -74,20 +74,17 @@ RPC server, for example:
 
     curl http://localhost:46657/broadcast_tx_commit?tx=\"abcd\"
 
-For handling responses, we recommend you `install the jsonpp
-tool <http://jmhodges.github.io/jsonpp/>`__ to pretty print the JSON.
-
 We can see the chain's status at the ``/status`` end-point:
 
 ::
 
-    curl http://localhost:46657/status |  jsonpp
+    curl http://localhost:46657/status | json_pp
 
 and the ``latest_app_hash`` in particular:
 
 ::
 
-    curl http://localhost:46657/status |  jsonpp | grep app_hash
+    curl http://localhost:46657/status | json_pp | grep latest_app_hash
 
 Visit http://localhost:46657 in your browser to see the list of other
 endpoints. Some take no arguments (like ``/status``), while others
@@ -185,7 +182,7 @@ once per second, it is possible to disable empty blocks or set a block creation
 interval. In the former case, blocks will be created when there are new
 transactions or when the AppHash changes.
 
-To configure Tendermint to not produce empty blocks unless there are 
+To configure Tendermint to not produce empty blocks unless there are
 transactions or the app hash changes, run Tendermint with this additional flag:
 
 ::
@@ -260,19 +257,19 @@ When ``tendermint init`` is run, both a ``genesis.json`` and
 ::
 
     {
-        "app_hash": "",
-        "chain_id": "test-chain-HZw6TB",
-        "genesis_time": "0001-01-01T00:00:00.000Z",
-        "validators": [
-            {
-                "power": 10,
-                "name": "",
-                "pub_key": [
-                    1,
-                    "5770B4DD55B3E08B7F5711C48B516347D8C33F47C30C226315D21AA64E0DFF2E"
-                ]
-            }
-        ]
+      "validators" : [
+        {
+          "pub_key" : {
+            "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
+            "type" : "AC26791624DE60"
+          },
+          "power" : 10,
+          "name" : ""
+        }
+      ],
+      "app_hash" : "",
+      "chain_id" : "test-chain-rDlYSN",
+      "genesis_time" : "0001-01-01T00:00:00Z"
     }
 
 And the ``priv_validator.json``:
@@ -280,20 +277,18 @@ And the ``priv_validator.json``:
 ::
 
     {
-        "address": "4F4D895F882A18E1D1FC608D102601DA8D3570E5",
-        "last_height": 0,
-        "last_round": 0,
-        "last_signature": null,
-        "last_signbytes": "",
-        "last_step": 0,
-        "priv_key": [
-            1,
-            "F9FA3CD435BDAE54D0BCA8F1BC289D718C23D855C6DB21E8543F5E4F457E62805770B4DD55B3E08B7F5711C48B516347D8C33F47C30C226315D21AA64E0DFF2E"
-        ],
-        "pub_key": [
-            1,
-            "5770B4DD55B3E08B7F5711C48B516347D8C33F47C30C226315D21AA64E0DFF2E"
-        ]
+      "last_step" : 0,
+      "last_round" : 0,
+      "address" : "B788DEDE4F50AD8BC9462DE76741CCAFF87D51E2",
+      "pub_key" : {
+        "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
+        "type" : "AC26791624DE60"
+      },
+      "last_height" : 0,
+      "priv_key" : {
+        "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
+        "type" : "954568A3288910"
+      }
     }
 
 The ``priv_validator.json`` actually contains a private key, and should
@@ -334,14 +329,14 @@ For instance,
 
 ::
 
-    tendermint node --p2p.seeds "1.2.3.4:46656,5.6.7.8:46656"
+    tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"
 
 Alternatively, you can use the ``/dial_seeds`` endpoint of the RPC to
 specify seeds for a running node to connect to:
 
 ::
 
-    curl 'localhost:46657/dial_seeds?seeds=\["1.2.3.4:46656","5.6.7.8:46656"\]'
+    curl 'localhost:46657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"\]'
 
 Note, if the peer-exchange protocol (PEX) is enabled (default), you should not
 normally need seeds after the first start. Peers will be gossipping about known
@@ -355,8 +350,8 @@ core instance.
 
 ::
 
-    tendermint node --p2p.persistent_peers "10.11.12.13:46656,10.11.12.14:46656"
-    curl 'localhost:46657/dial_peers?persistent=true&peers=\["1.2.3.4:46656","5.6.7.8:46656"\]'
+    tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:46656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:46656"
+    curl 'localhost:46657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:46656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:46656"\]'
 
 Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -387,20 +382,18 @@ Now we can update our genesis file. For instance, if the new
 ::
 
     {
-            "address": "AC379688105901436A34A65F185C115B8BB277A1",
-            "last_height": 0,
-            "last_round": 0,
-            "last_signature": null,
-            "last_signbytes": "",
-            "last_step": 0,
-            "priv_key": [
-                    1,
-                    "0D2ED337D748ADF79BE28559B9E59EBE1ABBA0BAFE6D65FCB9797985329B950C8F2B5AACAACC9FCE41881349743B0CFDE190DF0177744568D4E82A18F0B7DF94"
-            ],
-            "pub_key": [
-                    1,
-                    "8F2B5AACAACC9FCE41881349743B0CFDE190DF0177744568D4E82A18F0B7DF94"
-            ]
+      "address" : "5AF49D2A2D4F5AD4C7C8C4CC2FB020131E9C4902",
+      "pub_key" : {
+        "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
+        "type" : "AC26791624DE60"
+      },
+      "priv_key" : {
+        "value" : "EDJY9W6zlAw+su6ITgTKg2nTZcHAH1NMTW5iwlgmNDuX1f35+OR4HMN88ZtQzsAwhETq4k3vzM3n6WTk5ii16Q==",
+        "type" : "954568A3288910"
+      },
+      "last_step" : 0,
+      "last_round" : 0,
+      "last_height" : 0
     }
 
 then the new ``genesis.json`` will be:
@@ -408,27 +401,27 @@ then the new ``genesis.json`` will be:
 ::
 
     {
-        "app_hash": "",
-        "chain_id": "test-chain-HZw6TB",
-        "genesis_time": "0001-01-01T00:00:00.000Z",
-        "validators": [
-            {
-                "power": 10,
-                "name": "",
-                "pub_key": [
-                    1,
-                    "5770B4DD55B3E08B7F5711C48B516347D8C33F47C30C226315D21AA64E0DFF2E"
-                ]
-            },
-            {
-                "power": 10,
-                "name": "",
-                "pub_key": [
-                    1,
-                    "8F2B5AACAACC9FCE41881349743B0CFDE190DF0177744568D4E82A18F0B7DF94"
-                ]
-            }
-        ]
+      "validators" : [
+        {
+          "pub_key" : {
+            "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
+            "type" : "AC26791624DE60"
+          },
+          "power" : 10,
+          "name" : ""
+        },
+        {
+          "pub_key" : {
+            "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
+            "type" : "AC26791624DE60"
+          },
+          "power" : 10,
+          "name" : ""
+        }
+      ],
+      "app_hash" : "",
+      "chain_id" : "test-chain-rDlYSN",
+      "genesis_time" : "0001-01-01T00:00:00Z"
     }
 
 Update the ``genesis.json`` in ``~/.tendermint/config``. Copy the genesis file

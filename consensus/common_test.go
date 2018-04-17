@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -222,7 +223,7 @@ func subscribeToVoter(cs *ConsensusState, addr []byte) chan interface{} {
 	voteCh := make(chan interface{})
 	go func() {
 		for v := range voteCh0 {
-			vote := v.(types.TMEventData).Unwrap().(types.EventDataVote)
+			vote := v.(types.EventDataVote)
 			// we only fire for our own votes
 			if bytes.Equal(addr, vote.Vote.ValidatorAddress) {
 				voteCh <- v
@@ -277,10 +278,10 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	return cs
 }
 
-func loadPrivValidator(config *cfg.Config) *types.PrivValidatorFS {
+func loadPrivValidator(config *cfg.Config) *pvm.FilePV {
 	privValidatorFile := config.PrivValidatorFile()
 	ensureDir(path.Dir(privValidatorFile), 0700)
-	privValidator := types.LoadOrGenPrivValidatorFS(privValidatorFile)
+	privValidator := pvm.LoadOrGenFilePV(privValidatorFile)
 	privValidator.Reset()
 	return privValidator
 }
@@ -378,7 +379,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 			privVal = privVals[i]
 		} else {
 			_, tempFilePath := cmn.Tempfile("priv_validator_")
-			privVal = types.GenPrivValidatorFS(tempFilePath)
+			privVal = pvm.GenFilePV(tempFilePath)
 		}
 
 		app := appFunc()
@@ -394,7 +395,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 
 func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 	for i, s := range switches {
-		if bytes.Equal(peer.NodeInfo().PubKey.Address(), s.NodeInfo().PubKey.Address()) {
+		if peer.NodeInfo().ID == s.NodeInfo().ID {
 			return i
 		}
 	}
@@ -405,9 +406,9 @@ func getSwitchIndex(switches []*p2p.Switch, peer p2p.Peer) int {
 //-------------------------------------------------------------------------------
 // genesis
 
-func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []*types.PrivValidatorFS) {
+func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.GenesisDoc, []types.PrivValidator) {
 	validators := make([]types.GenesisValidator, numValidators)
-	privValidators := make([]*types.PrivValidatorFS, numValidators)
+	privValidators := make([]types.PrivValidator, numValidators)
 	for i := 0; i < numValidators; i++ {
 		val, privVal := types.RandValidator(randPower, minPower)
 		validators[i] = types.GenesisValidator{
@@ -425,7 +426,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	}, privValidators
 }
 
-func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []*types.PrivValidatorFS) {
+func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
 	db := dbm.NewMemDB()

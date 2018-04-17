@@ -3,7 +3,6 @@ package p2p
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 
@@ -48,7 +47,7 @@ func PubKeyToID(pubKey crypto.PubKey) ID {
 // If the file does not exist, it generates and saves a new NodeKey.
 func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	if cmn.FileExists(filePath) {
-		nodeKey, err := loadNodeKey(filePath)
+		nodeKey, err := LoadNodeKey(filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -57,13 +56,13 @@ func LoadOrGenNodeKey(filePath string) (*NodeKey, error) {
 	return genNodeKey(filePath)
 }
 
-func loadNodeKey(filePath string) (*NodeKey, error) {
+func LoadNodeKey(filePath string) (*NodeKey, error) {
 	jsonBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 	nodeKey := new(NodeKey)
-	err = json.Unmarshal(jsonBytes, nodeKey)
+	err = cdc.UnmarshalJSON(jsonBytes, nodeKey)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading NodeKey from %v: %v", filePath, err)
 	}
@@ -71,12 +70,12 @@ func loadNodeKey(filePath string) (*NodeKey, error) {
 }
 
 func genNodeKey(filePath string) (*NodeKey, error) {
-	privKey := crypto.GenPrivKeyEd25519().Wrap()
+	privKey := crypto.GenPrivKeyEd25519()
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}
 
-	jsonBytes, err := json.Marshal(nodeKey)
+	jsonBytes, err := cdc.MarshalJSON(nodeKey)
 	if err != nil {
 		return nil, err
 	}

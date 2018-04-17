@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net"
 	"net/http"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	metrics "github.com/rcrowley/go-metrics"
 
+	"github.com/tendermint/go-amino"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -31,6 +31,7 @@ type WSClient struct {
 	cmn.BaseService
 
 	conn *websocket.Conn
+	cdc  *amino.Codec
 
 	Address  string // IP:PORT or /path/to/socket
 	Endpoint string // /websocket/url/endpoint
@@ -77,6 +78,7 @@ type WSClient struct {
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
 	addr, dialer := makeHTTPDialer(remoteAddr)
 	c := &WSClient{
+		cdc:                  amino.NewCodec(),
 		Address:              addr,
 		Dialer:               dialer,
 		Endpoint:             endpoint,
@@ -206,7 +208,7 @@ func (c *WSClient) Send(ctx context.Context, request types.RPCRequest) error {
 
 // Call the given method. See Send description.
 func (c *WSClient) Call(ctx context.Context, method string, params map[string]interface{}) error {
-	request, err := types.MapToRequest("ws-client", method, params)
+	request, err := types.MapToRequest(c.cdc, "ws-client", method, params)
 	if err != nil {
 		return err
 	}
@@ -216,11 +218,19 @@ func (c *WSClient) Call(ctx context.Context, method string, params map[string]in
 // CallWithArrayParams the given method with params in a form of array. See
 // Send description.
 func (c *WSClient) CallWithArrayParams(ctx context.Context, method string, params []interface{}) error {
-	request, err := types.ArrayToRequest("ws-client", method, params)
+	request, err := types.ArrayToRequest(c.cdc, "ws-client", method, params)
 	if err != nil {
 		return err
 	}
 	return c.Send(ctx, request)
+}
+
+func (c *WSClient) Codec() *amino.Codec {
+	return c.cdc
+}
+
+func (c *WSClient) SetCodec(cdc *amino.Codec) {
+	c.cdc = cdc
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -255,7 +265,7 @@ func (c *WSClient) reconnect() error {
 	}()
 
 	for {
-		jitterSeconds := time.Duration(rand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempt)) * time.Second)
 
 		c.Logger.Info("reconnecting", "attempt", attempt+1, "backoff_duration", backoffDuration)

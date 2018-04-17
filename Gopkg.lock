@@ -159,7 +159,7 @@
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
-  revision = "8732c616f52954686704c8645fe1a9d59e9df7c1"
+  revision = "d932a24a8ccb8fcadc993e5c6c58f93dac168294"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -191,8 +191,8 @@
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
-  revision = "e57e3eeb33f795204c1ca35f56c44f83227c6e66"
-  version = "v1.0.0"
+  revision = "583c0c0531f06d5278b7d917446061adc344b5cd"
+  version = "v1.0.1"
 
 [[projects]]
   name = "github.com/spf13/viper"
@@ -238,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "46686763ba8ea595ede16530ed4a40fb38f49f94"
-  version = "v0.10.2"
+  revision = "78a8905690ef54f9d57e3b2b0ee7ad3a04ef3f1f"
+  version = "v0.10.3"
 
 [[projects]]
   branch = "master"
@@ -252,19 +252,21 @@
   revision = "d8387025d2b9d158cf4efb07e7ebf814bcce2057"
 
 [[projects]]
+  name = "github.com/tendermint/go-amino"
+  packages = ["."]
+  revision = "42246108ff925a457fb709475070a03dfd3e2b5c"
+  version = "0.9.6"
+
+[[projects]]
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "c3e19f3ea26f5c3357e0bcbb799b0761ef923755"
-  version = "v0.5.0"
+  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
+  version = "v0.6.2"
 
 [[projects]]
   name = "github.com/tendermint/go-wire"
-  packages = [
-    ".",
-    "data"
-  ]
+  packages = ["."]
   revision = "fa721242b042ecd4c6ed1a934ee740db4f74e45c"
-  source = "github.com/tendermint/go-amino"
   version = "v0.7.3"
 
 [[projects]]
@@ -283,8 +285,8 @@
     "pubsub/query",
     "test"
   ]
-  revision = "2e24b64fc121dcdf1cabceab8dc2f7257675483c"
-  version = "0.8.1"
+  revision = "97e1f1ad3f510048929a51475811a18686c894df"
+  version = "0.8.2-rc0"
 
 [[projects]]
   branch = "master"
@@ -299,7 +301,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "b2aa35443fbc700ab74c586ae79b81c171851023"
+  revision = "d6449816ce06963d9d136eee5a56fca5b0616e7e"
 
 [[projects]]
   branch = "master"
@@ -313,13 +315,13 @@
     "lex/httplex",
     "trace"
   ]
-  revision = "b3c676e531a6dc479fa1b35ac961c13f5e2b4d2e"
+  revision = "61147c48b25b599e5b561d2e9c4f3e1ef489ca41"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "1d206c9fa8975fb4cf00df1dc8bf3283dc24ba0e"
+  revision = "3b87a42e500a6dc65dae1a55d0b641295971163e"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -346,7 +348,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "35de2414665fc36f56b72d982c5af480d86de5ab"
+  revision = "51d0944304c3cbce4afe9e5247e21100037bff78"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -381,6 +383,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "b7c02a311569ec5fe2197614444fb231ea60f3e65a11a20e318421f1752054d7"
+  inputs-digest = "e70f8692c825e80ae8510546e297840b9560d00e11b2272749a55cc2ffd147f0"
   solver-name = "gps-cdcl"
   solver-version = 1

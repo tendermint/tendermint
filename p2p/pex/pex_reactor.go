@@ -1,16 +1,13 @@
 package pex
 
 import (
-	"bytes"
 	"fmt"
-	"math/rand"
 	"reflect"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -23,7 +20,7 @@ const (
 	// PexChannel is a channel for PEX messages
 	PexChannel = byte(0x00)
 
-	maxPexMessageSize = 1048576 // 1MB
+	maxMsgSize = 1048576 // 1MB
 
 	// ensure we have enough peers
 	defaultEnsurePeersPeriod   = 30 * time.Second
@@ -181,7 +178,7 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		r.Switch.StopPeerForError(src, err)
@@ -250,7 +247,7 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 		return
 	}
 	r.requestsSent.Set(id, struct{}{})
-	p.Send(PexChannel, struct{ PexMessage }{&pexRequestMessage{}})
+	p.Send(PexChannel, cdc.MustMarshalBinary(&pexRequestMessage{}))
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -260,7 +257,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 
 	if !r.requestsSent.Has(id) {
-		return errors.New("Received unsolicited pexAddrsMessage")
+		return cmn.NewError("Received unsolicited pexAddrsMessage")
 	}
 
 	r.requestsSent.Delete(id)
@@ -279,7 +276,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *PEXReactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: netAddrs}})
+	p.Send(PexChannel, cdc.MustMarshalBinary(&pexAddrsMessage{Addrs: netAddrs}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -290,7 +287,7 @@ func (r *PEXReactor) SetEnsurePeersPeriod(d time.Duration) {
 // Ensures that sufficient peers are connected. (continuous)
 func (r *PEXReactor) ensurePeersRoutine() {
 	var (
-		seed   = rand.New(rand.NewSource(time.Now().UnixNano()))
+		seed   = cmn.NewRand()
 		jitter = seed.Int63n(r.ensurePeersPeriod.Nanoseconds())
 	)
 
@@ -377,7 +374,7 @@ func (r *PEXReactor) ensurePeers() {
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
-			peer := peers[rand.Int()%peersCount] // nolint: gas
+			peer := peers[cmn.RandInt()%peersCount] // nolint: gas
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
@@ -406,7 +403,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 
 	// exponential backoff if it's not our first attempt to dial given address
 	if attempts > 0 {
-		jitterSeconds := time.Duration(rand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
 		sinceLastDialed := time.Since(lastDialed)
 		if sinceLastDialed < backoffDuration {
@@ -459,7 +456,7 @@ func (r *PEXReactor) dialSeeds() {
 	}
 	seedAddrs, _ := p2p.NewNetAddressStrings(r.config.Seeds)
 
-	perm := rand.Perm(lSeeds)
+	perm := cmn.RandPerm(lSeeds)
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
@@ -606,27 +603,23 @@ func isAddrPrivate(addr *p2p.NetAddress, privatePeerIDs []string) bool {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeRequest = byte(0x01)
-	msgTypeAddrs   = byte(0x02)
-)
-
 // PexMessage is a primary type for PEX messages. Underneath, it could contain
 // either pexRequestMessage, or pexAddrsMessage messages.
 type PexMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ PexMessage }{},
-	wire.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
-	wire.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
-)
+func RegisterPexMessage(cdc *amino.Codec) {
+	cdc.RegisterInterface((*PexMessage)(nil), nil)
+	cdc.RegisterConcrete(&pexRequestMessage{}, "tendermint/p2p/PexRequestMessage", nil)
+	cdc.RegisterConcrete(&pexAddrsMessage{}, "tendermint/p2p/PexAddrsMessage", nil)
+}
 
 // DecodeMessage implements interface registered above.
-func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
+func DecodeMessage(bz []byte) (msg PexMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
+	err = cdc.UnmarshalBinary(bz, &msg)
 	return
 }
 

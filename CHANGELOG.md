@@ -24,6 +24,24 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.19.0 (April 13th, 2018)
+
+BREAKING:
+- [cmd] improved `testnet` command; now it can fill in `persistent_peers` for you in the config file and much more (see `tendermint testnet --help` for details)
+- [cmd] `show_node_id` now returns an error if there is no node key
+- [rpc]: changed the output format for the `/status` endpoint (see https://godoc.org/github.com/tendermint/tendermint/rpc/core#Status)
+
+Upgrade from go-wire to go-amino. This is a sweeping change that breaks everything that is
+serialized to disk or over the network.
+
+See github.com/tendermint/go-amino for details on the new format.
+
+See `scripts/wire2amino.go` for a tool to upgrade
+genesis/priv_validator/node_key JSON files.
+
+FEATURES:
+- [cmd] added `gen_node_key` command
+
 ## 0.18.0 (April 6th, 2018)
 
 BREAKING:

@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-
-	wire "github.com/tendermint/tendermint/wire"
 )
 
 func examplePrevote() *Vote {
@@ -45,7 +43,7 @@ func TestVoteSignable(t *testing.T) {
 	signBytes := vote.SignBytes("test_chain_id")
 	signStr := string(signBytes)
 
-	expected := `{"chain_id":"test_chain_id","vote":{"block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":1000000}},"height":12345,"round":2,"timestamp":"2017-12-25T03:00:01.234Z","type":2}}`
+	expected := `{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":1000000}},"height":12345,"round":2,"timestamp":"2017-12-25T03:00:01.234Z","type":2}`
 	if signStr != expected {
 		// NOTE: when this fails, you probably want to fix up consensus/replay_test too
 		t.Errorf("Got unexpected sign string for Vote. Expected:\n%v\nGot:\n%v", expected, signStr)
@@ -58,8 +56,8 @@ func TestVoteString(t *testing.T) {
 		in   string
 		out  string
 	}{
-		{"Precommit", examplePrecommit().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
-		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 {<nil>} @ 2017-12-25T03:00:01.234Z}`},
+		{"Precommit", examplePrecommit().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 <nil> @ 2017-12-25T03:00:01.234Z}`},
+		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 <nil> @ 2017-12-25T03:00:01.234Z}`},
 	}
 
 	for _, tt := range tc {
@@ -73,31 +71,31 @@ func TestVoteString(t *testing.T) {
 }
 
 func TestVoteVerifySignature(t *testing.T) {
-	privVal := GenPrivValidatorFS("")
+	privVal := NewMockPV()
 	pubKey := privVal.GetPubKey()
 
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
 
 	// sign it
-	signature, err := privVal.Signer.Sign(signBytes)
+	err := privVal.SignVote("test_chain_id", vote)
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubKey.VerifyBytes(vote.SignBytes("test_chain_id"), signature)
+	valid := pubKey.VerifyBytes(vote.SignBytes("test_chain_id"), vote.Signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
 	precommit := new(Vote)
-	bs, err := wire.MarshalBinary(vote)
+	bs, err := cdc.MarshalBinary(vote)
 	require.NoError(t, err)
-	err = wire.UnmarshalBinary(bs, &precommit)
+	err = cdc.UnmarshalBinary(bs, &precommit)
 	require.NoError(t, err)
 
 	// verify the transmitted vote
 	newSignBytes := precommit.SignBytes("test_chain_id")
 	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubKey.VerifyBytes(newSignBytes, signature)
+	valid = pubKey.VerifyBytes(newSignBytes, precommit.Signature)
 	require.True(t, valid)
 }
 

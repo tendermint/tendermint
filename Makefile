@@ -178,7 +178,25 @@ metalinter_all:
 	@echo "--> Running linter (all)"
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
+###########################################################
+### Local testnet using docker
+
+# Build linux binary on other platforms
+build-linux:
+	GOOS=linux GOARCH=amd64 $(MAKE) build
+
+# Run a 4-node testnet locally
+docker-start:
+	@echo "Wait until 'Attaching to node0, node1, node2, node3' message appears"
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v `pwd`/build:/tendermint:Z tendermint/localnode testnet --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+	docker-compose up
+
+# Stop testnet
+docker-stop:
+	docker-compose down
+
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt
+.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux docker-start docker-stop
+

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/go-wire"
 
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
@@ -14,26 +14,35 @@ import (
 
 func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
-			PubKey:     pubKey,
+			ID:         nodeKey.ID(),
 			Moniker:    "SOMENAME",
 			Network:    "SOMENAME",
 			ListenAddr: "SOMEADDR",
 			Version:    "SOMEVER",
 			Other:      []string{"SOMESTRING", "OTHERSTRING"},
 		},
-		PubKey:            pubKey,
-		LatestBlockHash:   []byte("SOMEBYTES"),
-		LatestBlockHeight: 123,
-		LatestBlockTime:   time.Unix(0, 1234),
+		SyncInfo: ctypes.SyncInfo{
+			LatestBlockHash:   []byte("SOMEBYTES"),
+			LatestBlockHeight: 123,
+			LatestBlockTime:   time.Unix(0, 1234),
+		},
+		ValidatorInfo: ctypes.ValidatorInfo{
+			PubKey:            nodeKey.PubKey(),
+		},
 	}
 	b.StartTimer()
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(status)
+		jsonBytes, err := cdc.MarshalJSON(status)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 
@@ -41,9 +50,11 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -54,16 +65,21 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.JSONBytes(nodeInfo)
+		jsonBytes, err := cdc.MarshalJSON(nodeInfo)
+		if err != nil {
+			panic(err)
+		}
 		counter += len(jsonBytes)
 	}
 }
 
 func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	cdc := amino.NewCodec()
+	ctypes.RegisterAmino(cdc)
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:     pubKey,
+		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
 		Network:    "SOMENAME",
 		ListenAddr: "SOMEADDR",
@@ -74,7 +90,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 	counter := 0
 	for i := 0; i < b.N; i++ {
-		jsonBytes := wire.BinaryBytes(nodeInfo)
+		jsonBytes := cdc.MustMarshalBinaryBare(nodeInfo)
 		counter += len(jsonBytes)
 	}
 
@@ -82,15 +98,20 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	pubKey := crypto.GenPrivKeyEd25519().PubKey().Unwrap().(crypto.PubKeyEd25519)
-	pubKey2 := &proto.PubKey{Ed25519: &proto.PubKeyEd25519{Bytes: pubKey[:]}}
+	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeID := string(nodeKey.ID())
+	someName := "SOMENAME"
+	someAddr := "SOMEADDR"
+	someVer := "SOMEVER"
+	someString := "SOMESTRING"
+	otherString := "OTHERSTRING"
 	nodeInfo := proto.NodeInfo{
-		PubKey:     pubKey2,
-		Moniker:    "SOMENAME",
-		Network:    "SOMENAME",
-		ListenAddr: "SOMEADDR",
-		Version:    "SOMEVER",
-		Other:      []string{"SOMESTRING", "OTHERSTRING"},
+		Id:         &proto.ID{Id: &nodeID},
+		Moniker:    &someName,
+		Network:    &someName,
+		ListenAddr: &someAddr,
+		Version:    &someVer,
+		Other:      []string{someString, otherString},
 	}
 	b.StartTimer()
 

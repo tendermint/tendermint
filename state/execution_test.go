@@ -66,8 +66,8 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 		lastCommitPrecommits     []*types.Vote
 		expectedAbsentValidators []int32
 	}{
-		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now}, {ValidatorIndex: 1, Timestamp: now}}, []int32{}},
-		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now}, nil}, []int32{1}},
+		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, {ValidatorIndex: 1, Timestamp: now}}, []int32{}},
+		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, nil}, []int32{1}},
 		{"multiple absent", []*types.Vote{nil, nil}, []int32{0, 1}},
 	}
 

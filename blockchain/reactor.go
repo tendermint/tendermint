@@ -1,21 +1,16 @@
 package blockchain
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
-
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
-
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -31,6 +26,13 @@ const (
 	statusUpdateIntervalSeconds = 10
 	// check if we should switch to consensus reactor
 	switchToConsensusIntervalSeconds = 1
+
+	// NOTE: keep up to date with bcBlockResponseMessage
+	bcBlockResponseMessagePrefixSize   = 4
+	bcBlockResponseMessageFieldKeySize = 1
+	maxMsgSize                         = types.MaxBlockSizeBytes +
+		bcBlockResponseMessagePrefixSize +
+		bcBlockResponseMessageFieldKeySize
 )
 
 type consensusReactor interface {
@@ -51,9 +53,6 @@ func (e peerError) Error() string {
 // BlockchainReactor handles long-term catchup syncing.
 type BlockchainReactor struct {
 	p2p.BaseReactor
-
-	mtx    sync.Mutex
-	params types.ConsensusParams
 
 	// immutable
 	initialState sm.State
@@ -87,7 +86,6 @@ func NewBlockchainReactor(state sm.State, blockExec *sm.BlockExecutor, store *Bl
 	)
 
 	bcR := &BlockchainReactor{
-		params:       state.ConsensusParams,
 		initialState: state,
 		blockExec:    blockExec,
 		store:        store,
@@ -131,17 +129,19 @@ func (bcR *BlockchainReactor) OnStop() {
 func (bcR *BlockchainReactor) GetChannels() []*p2p.ChannelDescriptor {
 	return []*p2p.ChannelDescriptor{
 		{
-			ID:                BlockchainChannel,
-			Priority:          10,
-			SendQueueCapacity: 1000,
+			ID:                  BlockchainChannel,
+			Priority:            10,
+			SendQueueCapacity:   1000,
+			RecvBufferCapacity:  50 * 4096,
+			RecvMessageCapacity: maxMsgSize,
 		},
 	}
 }
 
 // AddPeer implements Reactor by sending our state to peer.
 func (bcR *BlockchainReactor) AddPeer(peer p2p.Peer) {
-	if !peer.Send(BlockchainChannel,
-		struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}}) {
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
+	if !peer.Send(BlockchainChannel, msgBytes) {
 		// doing nothing, will try later in `poolRoutine`
 	}
 	// peer is added to the pool once we receive the first
@@ -162,20 +162,19 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 
 	block := bcR.store.LoadBlock(msg.Height)
 	if block != nil {
-		msg := &bcBlockResponseMessage{Block: block}
-		return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
+		msgBytes := cdc.MustMarshalBinaryBare(&bcBlockResponseMessage{Block: block})
+		return src.TrySend(BlockchainChannel, msgBytes)
 	}
 
 	bcR.Logger.Info("Peer asking for a block we don't have", "src", src, "height", msg.Height)
 
-	return src.TrySend(BlockchainChannel, struct{ BlockchainMessage }{
-		&bcNoBlockResponseMessage{Height: msg.Height},
-	})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcNoBlockResponseMessage{Height: msg.Height})
+	return src.TrySend(BlockchainChannel, msgBytes)
 }
 
 // Receive implements Reactor by handling 4 types of messages (look below).
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes, bcR.maxMsgSize())
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		bcR.Switch.StopPeerForError(src, err)
@@ -194,8 +193,8 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		bcR.pool.AddBlock(src.ID(), msg.Block, len(msgBytes))
 	case *bcStatusRequestMessage:
 		// Send peer our state.
-		queued := src.TrySend(BlockchainChannel,
-			struct{ BlockchainMessage }{&bcStatusResponseMessage{bcR.store.Height()}})
+		msgBytes := cdc.MustMarshalBinaryBare(&bcStatusResponseMessage{bcR.store.Height()})
+		queued := src.TrySend(BlockchainChannel, msgBytes)
 		if !queued {
 			// sorry
 		}
@@ -205,21 +204,6 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 	default:
 		bcR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
 	}
-}
-
-// maxMsgSize returns the maximum allowable size of a
-// message on the blockchain reactor.
-func (bcR *BlockchainReactor) maxMsgSize() int {
-	bcR.mtx.Lock()
-	defer bcR.mtx.Unlock()
-	return bcR.params.BlockSize.MaxBytes + 2
-}
-
-// updateConsensusParams updates the internal consensus params
-func (bcR *BlockchainReactor) updateConsensusParams(params types.ConsensusParams) {
-	bcR.mtx.Lock()
-	defer bcR.mtx.Unlock()
-	bcR.params = params
 }
 
 // Handle messages from the poolReactor telling the reactor what to do.
@@ -247,8 +231,8 @@ FOR_LOOP:
 			if peer == nil {
 				continue FOR_LOOP // Peer has since been disconnected.
 			}
-			msg := &bcBlockRequestMessage{request.Height}
-			queued := peer.TrySend(BlockchainChannel, struct{ BlockchainMessage }{msg})
+			msgBytes := cdc.MustMarshalBinaryBare(&bcBlockRequestMessage{request.Height})
+			queued := peer.TrySend(BlockchainChannel, msgBytes)
 			if !queued {
 				// We couldn't make the request, send-queue full.
 				// The pool handles timeouts, just let it go.
@@ -321,9 +305,6 @@ FOR_LOOP:
 					}
 					blocksSynced++
 
-					// update the consensus params
-					bcR.updateConsensusParams(state.ConsensusParams)
-
 					if blocksSynced%100 == 0 {
 						lastRate = 0.9*lastRate + 0.1*(100/time.Since(lastHundred).Seconds())
 						bcR.Logger.Info("Fast Sync Rate", "height", bcR.pool.height,
@@ -341,43 +322,36 @@ FOR_LOOP:
 
 // BroadcastStatusRequest broadcasts `BlockStore` height.
 func (bcR *BlockchainReactor) BroadcastStatusRequest() error {
-	bcR.Switch.Broadcast(BlockchainChannel,
-		struct{ BlockchainMessage }{&bcStatusRequestMessage{bcR.store.Height()}})
+	msgBytes := cdc.MustMarshalBinaryBare(&bcStatusRequestMessage{bcR.store.Height()})
+	bcR.Switch.Broadcast(BlockchainChannel, msgBytes)
 	return nil
 }
 
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeBlockRequest    = byte(0x10)
-	msgTypeBlockResponse   = byte(0x11)
-	msgTypeNoBlockResponse = byte(0x12)
-	msgTypeStatusResponse  = byte(0x20)
-	msgTypeStatusRequest   = byte(0x21)
-)
-
 // BlockchainMessage is a generic message for this reactor.
 type BlockchainMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ BlockchainMessage }{},
-	wire.ConcreteType{&bcBlockRequestMessage{}, msgTypeBlockRequest},
-	wire.ConcreteType{&bcBlockResponseMessage{}, msgTypeBlockResponse},
-	wire.ConcreteType{&bcNoBlockResponseMessage{}, msgTypeNoBlockResponse},
-	wire.ConcreteType{&bcStatusResponseMessage{}, msgTypeStatusResponse},
-	wire.ConcreteType{&bcStatusRequestMessage{}, msgTypeStatusRequest},
-)
+func RegisterBlockchainMessages(cdc *amino.Codec) {
+	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
+	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/mempool/BlockRequest", nil)
+	cdc.RegisterConcrete(&bcBlockResponseMessage{}, "tendermint/mempool/BlockResponse", nil)
+	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/mempool/NoBlockResponse", nil)
+	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/mempool/StatusResponse", nil)
+	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/mempool/StatusRequest", nil)
+}
 
 // DecodeMessage decodes BlockchainMessage.
 // TODO: ensure that bz is completely read.
-func DecodeMessage(bz []byte, maxSize int) (msgType byte, msg BlockchainMessage, err error) {
-	msgType = bz[0]
-	n := int(0)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ BlockchainMessage }{}, r, maxSize, &n, &err).(struct{ BlockchainMessage }).BlockchainMessage
-	if err != nil && n != len(bz) {
-		err = errors.New("DecodeMessage() had bytes left over")
+func DecodeMessage(bz []byte) (msg BlockchainMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
+	err = cdc.UnmarshalBinaryBare(bz, &msg)
+	if err != nil {
+		err = cmn.ErrorWrap(err, "DecodeMessage() had bytes left over")
 	}
 	return
 }
@@ -402,7 +376,6 @@ func (brm *bcNoBlockResponseMessage) String() string {
 
 //-------------------------------------
 
-// NOTE: keep up-to-date with maxBlockchainResponseSize
 type bcBlockResponseMessage struct {
 	Block *types.Block
 }

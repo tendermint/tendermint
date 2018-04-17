@@ -48,12 +48,12 @@ func (p *peer) Status() tmconn.ConnectionStatus {
 }
 
 // Send does not do anything and just returns true.
-func (p *peer) Send(byte, interface{}) bool {
+func (p *peer) Send(byte, []byte) bool {
 	return true
 }
 
 // TrySend does not do anything and just returns true.
-func (p *peer) TrySend(byte, interface{}) bool {
+func (p *peer) TrySend(byte, []byte) bool {
 	return true
 }
 

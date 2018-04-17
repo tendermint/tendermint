@@ -1,10 +1,11 @@
 package p2p
 
 import (
-	"math/rand"
 	"net"
 	"sync"
 	"time"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -124,7 +125,7 @@ func (fc *FuzzedConnection) SetWriteDeadline(t time.Time) error {
 
 func (fc *FuzzedConnection) randomDuration() time.Duration {
 	maxDelayMillis := int(fc.config.MaxDelay.Nanoseconds() / 1000)
-	return time.Millisecond * time.Duration(rand.Int()%maxDelayMillis) // nolint: gas
+	return time.Millisecond * time.Duration(cmn.RandInt()%maxDelayMillis) // nolint: gas
 }
 
 // implements the fuzz (delay, kill conn)
@@ -137,7 +138,7 @@ func (fc *FuzzedConnection) fuzz() bool {
 	switch fc.config.Mode {
 	case FuzzModeDrop:
 		// randomly drop the r/w, drop the conn, or sleep
-		r := rand.Float64()
+		r := cmn.RandFloat64()
 		if r <= fc.config.ProbDropRW {
 			return true
 		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn {

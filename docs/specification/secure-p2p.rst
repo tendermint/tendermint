@@ -62,6 +62,13 @@ such as the Web-of-Trust or Certificate Authorities. In our case, we can
 use the blockchain itself as a certificate authority to ensure that we
 are connected to at least one validator.
 
+Config
+------
+
+Authenticated encryption is enabled by default. If you wish to use another
+authentication scheme or your peers are connected via VPN, you can turn it off
+by setting ``auth_enc`` to ``false`` in the config file.
+
 Additional Reading
 ------------------
 

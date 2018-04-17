@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/tendermint/go-amino"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -24,8 +25,9 @@ type Result struct {
 
 func main() {
 	mux := http.NewServeMux()
+	cdc := amino.NewCodec()
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-	rpcserver.RegisterRPCFuncs(mux, routes, logger)
+	rpcserver.RegisterRPCFuncs(mux, routes, cdc, logger)
 	_, err := rpcserver.StartHTTPServer("0.0.0.0:8008", mux, logger)
 	if err != nil {
 		cmn.Exit(err.Error())

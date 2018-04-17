@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 
+	"github.com/tendermint/go-amino"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -24,14 +25,14 @@ import (
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
 // "result" is the interface on which the result objects are registered, and is popualted with every RPCResponse
-func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, logger log.Logger) {
+func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, cdc *amino.Codec, logger log.Logger) {
 	// HTTP endpoints
 	for funcName, rpcFunc := range funcMap {
-		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, logger))
+		mux.HandleFunc("/"+funcName, makeHTTPHandler(rpcFunc, cdc, logger))
 	}
 
 	// JSONRPC endpoints
-	mux.HandleFunc("/", makeJSONRPCHandler(funcMap, logger))
+	mux.HandleFunc("/", makeJSONRPCHandler(funcMap, cdc, logger))
 }
 
 //-------------------------------------
@@ -98,7 +99,7 @@ func funcReturnTypes(f interface{}) []reflect.Type {
 // rpc.json
 
 // jsonrpc calls grab the given method's function info and runs reflect.Call
-func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.HandlerFunc {
+func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger log.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
@@ -135,7 +136,7 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 		}
 		var args []reflect.Value
 		if len(request.Params) > 0 {
-			args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
+			args, err = jsonParamsToArgsRPC(rpcFunc, cdc, request.Params)
 			if err != nil {
 				WriteRPCResponseHTTP(w, types.RPCInvalidParamsError(request.ID, errors.Wrap(err, "Error converting json params to arguments")))
 				return
@@ -148,18 +149,18 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, logger log.Logger) http.Han
 			WriteRPCResponseHTTP(w, types.RPCInternalError(request.ID, err))
 			return
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(request.ID, result))
+		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
 	}
 }
 
-func mapParamsToArgs(rpcFunc *RPCFunc, params map[string]*json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+func mapParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params map[string]json.RawMessage, argsOffset int) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(rpcFunc.argNames))
 	for i, argName := range rpcFunc.argNames {
 		argType := rpcFunc.args[i+argsOffset]
 
-		if p, ok := params[argName]; ok && p != nil && len(*p) > 0 {
+		if p, ok := params[argName]; ok && p != nil && len(p) > 0 {
 			val := reflect.New(argType)
-			err := json.Unmarshal(*p, val.Interface())
+			err := cdc.UnmarshalJSON(p, val.Interface())
 			if err != nil {
 				return nil, err
 			}
@@ -172,7 +173,7 @@ func mapParamsToArgs(rpcFunc *RPCFunc, params map[string]*json.RawMessage, argsO
 	return values, nil
 }
 
-func arrayParamsToArgs(rpcFunc *RPCFunc, params []*json.RawMessage, argsOffset int) ([]reflect.Value, error) {
+func arrayParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, params []json.RawMessage, argsOffset int) ([]reflect.Value, error) {
 	if len(rpcFunc.argNames) != len(params) {
 		return nil, errors.Errorf("Expected %v parameters (%v), got %v (%v)",
 			len(rpcFunc.argNames), rpcFunc.argNames, len(params), params)
@@ -182,7 +183,7 @@ func arrayParamsToArgs(rpcFunc *RPCFunc, params []*json.RawMessage, argsOffset i
 	for i, p := range params {
 		argType := rpcFunc.args[i+argsOffset]
 		val := reflect.New(argType)
-		err := json.Unmarshal(*p, val.Interface())
+		err := cdc.UnmarshalJSON(p, val.Interface())
 		if err != nil {
 			return nil, err
 		}
@@ -191,39 +192,41 @@ func arrayParamsToArgs(rpcFunc *RPCFunc, params []*json.RawMessage, argsOffset i
 	return values, nil
 }
 
-// raw is unparsed json (from json.RawMessage) encoding either a map or an array.
+// `raw` is unparsed json (from json.RawMessage) encoding either a map or an array.
+// `argsOffset` should be 0 for RPC calls, and 1 for WS requests, where len(rpcFunc.args) != len(rpcFunc.argNames).
 //
-// argsOffset should be 0 for RPC calls, and 1 for WS requests, where len(rpcFunc.args) != len(rpcFunc.argNames).
 // Example:
 //   rpcFunc.args = [rpctypes.WSRPCContext string]
 //   rpcFunc.argNames = ["arg"]
-func jsonParamsToArgs(rpcFunc *RPCFunc, raw []byte, argsOffset int) ([]reflect.Value, error) {
-	// first, try to get the map..
-	var m map[string]*json.RawMessage
+func jsonParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, raw []byte, argsOffset int) ([]reflect.Value, error) {
+
+	// TODO: Make more efficient, perhaps by checking the first character for '{' or '['?
+	// First, try to get the map.
+	var m map[string]json.RawMessage
 	err := json.Unmarshal(raw, &m)
 	if err == nil {
-		return mapParamsToArgs(rpcFunc, m, argsOffset)
+		return mapParamsToArgs(rpcFunc, cdc, m, argsOffset)
 	}
 
-	// otherwise, try an array
-	var a []*json.RawMessage
+	// Otherwise, try an array.
+	var a []json.RawMessage
 	err = json.Unmarshal(raw, &a)
 	if err == nil {
-		return arrayParamsToArgs(rpcFunc, a, argsOffset)
+		return arrayParamsToArgs(rpcFunc, cdc, a, argsOffset)
 	}
 
-	// otherwise, bad format, we cannot parse
+	// Otherwise, bad format, we cannot parse
 	return nil, errors.Errorf("Unknown type for JSON params: %v. Expected map or array", err)
 }
 
 // Convert a []interface{} OR a map[string]interface{} to properly typed values
-func jsonParamsToArgsRPC(rpcFunc *RPCFunc, params json.RawMessage) ([]reflect.Value, error) {
-	return jsonParamsToArgs(rpcFunc, params, 0)
+func jsonParamsToArgsRPC(rpcFunc *RPCFunc, cdc *amino.Codec, params json.RawMessage) ([]reflect.Value, error) {
+	return jsonParamsToArgs(rpcFunc, cdc, params, 0)
 }
 
 // Same as above, but with the first param the websocket connection
-func jsonParamsToArgsWS(rpcFunc *RPCFunc, params json.RawMessage, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
-	values, err := jsonParamsToArgs(rpcFunc, params, 1)
+func jsonParamsToArgsWS(rpcFunc *RPCFunc, cdc *amino.Codec, params json.RawMessage, wsCtx types.WSRPCContext) ([]reflect.Value, error) {
+	values, err := jsonParamsToArgs(rpcFunc, cdc, params, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -235,7 +238,7 @@ func jsonParamsToArgsWS(rpcFunc *RPCFunc, params json.RawMessage, wsCtx types.WS
 // rpc.http
 
 // convert from a function name to the http handler
-func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWriter, *http.Request) {
+func makeHTTPHandler(rpcFunc *RPCFunc, cdc *amino.Codec, logger log.Logger) func(http.ResponseWriter, *http.Request) {
 	// Exception for websocket endpoints
 	if rpcFunc.ws {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -245,7 +248,7 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 	// All other endpoints
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger.Debug("HTTP HANDLER", "req", r)
-		args, err := httpParamsToArgs(rpcFunc, r)
+		args, err := httpParamsToArgs(rpcFunc, cdc, r)
 		if err != nil {
 			WriteRPCResponseHTTP(w, types.RPCInvalidParamsError("", errors.Wrap(err, "Error converting http params to arguments")))
 			return
@@ -257,13 +260,13 @@ func makeHTTPHandler(rpcFunc *RPCFunc, logger log.Logger) func(http.ResponseWrit
 			WriteRPCResponseHTTP(w, types.RPCInternalError("", err))
 			return
 		}
-		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse("", result))
+		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, "", result))
 	}
 }
 
 // Covert an http query to a list of properly typed values.
 // To be properly decoded the arg must be a concrete type from tendermint (if its an interface).
-func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error) {
+func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]reflect.Value, error) {
 	values := make([]reflect.Value, len(rpcFunc.args))
 
 	for i, name := range rpcFunc.argNames {
@@ -278,7 +281,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 			continue
 		}
 
-		v, err, ok := nonJsonToArg(argType, arg)
+		v, err, ok := nonJSONToArg(cdc, argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -287,7 +290,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 			continue
 		}
 
-		values[i], err = _jsonStringToArg(argType, arg)
+		values[i], err = _jsonStringToArg(cdc, argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -296,9 +299,9 @@ func httpParamsToArgs(rpcFunc *RPCFunc, r *http.Request) ([]reflect.Value, error
 	return values, nil
 }
 
-func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
+func _jsonStringToArg(cdc *amino.Codec, ty reflect.Type, arg string) (reflect.Value, error) {
 	v := reflect.New(ty)
-	err := json.Unmarshal([]byte(arg), v.Interface())
+	err := cdc.UnmarshalJSON([]byte(arg), v.Interface())
 	if err != nil {
 		return v, err
 	}
@@ -306,7 +309,7 @@ func _jsonStringToArg(ty reflect.Type, arg string) (reflect.Value, error) {
 	return v, nil
 }
 
-func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
+func nonJSONToArg(cdc *amino.Codec, ty reflect.Type, arg string) (reflect.Value, error, bool) {
 	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
 	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
 	expectingString := ty.Kind() == reflect.String
@@ -332,7 +335,7 @@ func nonJsonToArg(ty reflect.Type, arg string) (reflect.Value, error, bool) {
 
 	if isQuotedString && expectingByteSlice {
 		v := reflect.New(reflect.TypeOf(""))
-		err := json.Unmarshal([]byte(arg), v.Interface())
+		err := cdc.UnmarshalJSON([]byte(arg), v.Interface())
 		if err != nil {
 			return reflect.ValueOf(nil), err, false
 		}
@@ -354,7 +357,7 @@ const (
 	defaultWSPingPeriod        = (defaultWSReadWait * 9) / 10
 )
 
-// a single websocket connection contains listener id, underlying ws
+// A single websocket connection contains listener id, underlying ws
 // connection, and the event switch for subscribing to events.
 //
 // In case of an error, the connection is stopped.
@@ -366,6 +369,7 @@ type wsConnection struct {
 	writeChan  chan types.RPCResponse
 
 	funcMap map[string]*RPCFunc
+	cdc     *amino.Codec
 
 	// write channel capacity
 	writeChanCapacity int
@@ -389,11 +393,12 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, options ...func(*wsConnection)) *wsConnection {
+func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, cdc *amino.Codec, options ...func(*wsConnection)) *wsConnection {
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,
 		funcMap:           funcMap,
+		cdc:               cdc,
 		writeWait:         defaultWSWriteWait,
 		writeChanCapacity: defaultWSWriteChanCapacity,
 		readWait:          defaultWSReadWait,
@@ -503,6 +508,12 @@ func (wsc *wsConnection) TryWriteRPCResponse(resp types.RPCResponse) bool {
 	}
 }
 
+// Codec returns an amino codec used to decode parameters and encode results.
+// It implements WSRPCConnection.
+func (wsc *wsConnection) Codec() *amino.Codec {
+	return wsc.cdc
+}
+
 // Read from the socket and subscribe to or unsubscribe from events
 func (wsc *wsConnection) readRoutine() {
 	defer func() {
@@ -569,11 +580,11 @@ func (wsc *wsConnection) readRoutine() {
 			if rpcFunc.ws {
 				wsCtx := types.WSRPCContext{Request: request, WSRPCConnection: wsc}
 				if len(request.Params) > 0 {
-					args, err = jsonParamsToArgsWS(rpcFunc, request.Params, wsCtx)
+					args, err = jsonParamsToArgsWS(rpcFunc, wsc.cdc, request.Params, wsCtx)
 				}
 			} else {
 				if len(request.Params) > 0 {
-					args, err = jsonParamsToArgsRPC(rpcFunc, request.Params)
+					args, err = jsonParamsToArgsRPC(rpcFunc, wsc.cdc, request.Params)
 				}
 			}
 			if err != nil {
@@ -590,7 +601,7 @@ func (wsc *wsConnection) readRoutine() {
 				wsc.WriteRPCResponse(types.RPCInternalError(request.ID, err))
 				continue
 			} else {
-				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(request.ID, result))
+				wsc.WriteRPCResponse(types.NewRPCSuccessResponse(wsc.cdc, request.ID, result))
 				continue
 			}
 
@@ -666,6 +677,7 @@ func (wsc *wsConnection) writeMessageWithDeadline(msgType int, msg []byte) error
 type WebsocketManager struct {
 	websocket.Upgrader
 	funcMap       map[string]*RPCFunc
+	cdc           *amino.Codec
 	logger        log.Logger
 	wsConnOptions []func(*wsConnection)
 }
@@ -673,9 +685,10 @@ type WebsocketManager struct {
 // NewWebsocketManager returns a new WebsocketManager that routes according to
 // the given funcMap and connects to the server with the given connection
 // options.
-func NewWebsocketManager(funcMap map[string]*RPCFunc, wsConnOptions ...func(*wsConnection)) *WebsocketManager {
+func NewWebsocketManager(funcMap map[string]*RPCFunc, cdc *amino.Codec, wsConnOptions ...func(*wsConnection)) *WebsocketManager {
 	return &WebsocketManager{
 		funcMap: funcMap,
+		cdc:     cdc,
 		Upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				// TODO ???
@@ -702,7 +715,7 @@ func (wm *WebsocketManager) WebsocketHandler(w http.ResponseWriter, r *http.Requ
 	}
 
 	// register connection
-	con := NewWSConnection(wsConn, wm.funcMap, wm.wsConnOptions...)
+	con := NewWSConnection(wsConn, wm.funcMap, wm.cdc, wm.wsConnOptions...)
 	con.SetLogger(wm.logger.With("remote", wsConn.RemoteAddr()))
 	wm.logger.Info("New websocket connection", "remote", con.remoteAddr)
 	err = con.Start() // Blocking

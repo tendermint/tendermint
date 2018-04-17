@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"math/rand"
 	"net"
 
 	crypto "github.com/tendermint/go-crypto"
@@ -23,8 +22,8 @@ func CreateRandomPeer(outbound bool) *peer {
 			outbound: outbound,
 		},
 		nodeInfo: NodeInfo{
+			ID:         netAddr.ID,
 			ListenAddr: netAddr.DialString(),
-			PubKey:     crypto.GenPrivKeyEd25519().Wrap().PubKey(),
 		},
 		mconn: &conn.MConnection{},
 	}
@@ -35,7 +34,7 @@ func CreateRandomPeer(outbound bool) *peer {
 func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error
-		addr = cmn.Fmt("%X@%v.%v.%v.%v:46656", cmn.RandBytes(20), rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256)
+		addr = cmn.Fmt("%X@%v.%v.%v.%v:46656", cmn.RandBytes(20), cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
@@ -131,17 +130,17 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{
-		PrivKey: crypto.GenPrivKeyEd25519().Wrap(),
+		PrivKey: crypto.GenPrivKeyEd25519(),
 	}
 	sw := NewSwitch(cfg)
 	sw.SetLogger(log.TestingLogger())
 	sw = initSwitch(i, sw)
 	ni := NodeInfo{
-		PubKey:     nodeKey.PubKey(),
+		ID:         nodeKey.ID(),
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
-		ListenAddr: cmn.Fmt("%v:%v", network, rand.Intn(64512)+1023),
+		ListenAddr: cmn.Fmt("%v:%v", network, cmn.RandIntn(64512)+1023),
 	}
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
