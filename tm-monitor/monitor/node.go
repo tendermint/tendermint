@@ -48,6 +48,7 @@ type Node struct {
 func NewNode(rpcAddr string, options ...func(*Node)) *Node {
 	em := em.NewEventMeter(rpcAddr, UnmarshalEvent)
 	rpcClient := rpc_client.NewURIClient(rpcAddr) // HTTP client by default
+	rpcClient.SetCodec(cdc)
 	return NewNodeWithEventMeterAndRpcClient(rpcAddr, em, rpcClient, options...)
 }
 
@@ -126,7 +127,7 @@ func (n *Node) Stop() {
 // implements eventmeter.EventCallbackFunc
 func newBlockCallback(n *Node) em.EventCallbackFunc {
 	return func(metric *em.EventMetric, data interface{}) {
-		block := data.(tmtypes.TMEventData).Unwrap().(tmtypes.EventDataNewBlockHeader).Header
+		block := data.(tmtypes.TMEventData).(tmtypes.EventDataNewBlockHeader).Header
 
 		n.Height = block.Height
 		n.logger.Info("new block", "height", block.Height, "numTxs", block.NumTxs)
@@ -226,16 +227,16 @@ func (n *Node) checkIsValidator() {
 }
 
 func (n *Node) getPubKey() (crypto.PubKey, error) {
-	if !n.pubKey.Empty() {
+	if n.pubKey != nil {
 		return n.pubKey, nil
 	}
 
 	status := new(ctypes.ResultStatus)
 	_, err := n.rpcClient.Call("status", nil, status)
 	if err != nil {
-		return crypto.PubKey{}, err
+		return nil, err
 	}
-	n.pubKey = status.PubKey
+	n.pubKey = status.ValidatorInfo.PubKey
 	return n.pubKey, nil
 }
 
@@ -252,7 +253,7 @@ type eventMeter interface {
 // UnmarshalEvent unmarshals a json event
 func UnmarshalEvent(b json.RawMessage) (string, events.EventData, error) {
 	event := new(ctypes.ResultEvent)
-	if err := json.Unmarshal(b, event); err != nil {
+	if err := cdc.UnmarshalJSON(b, event); err != nil {
 		return "", nil, err
 	}
 	return event.Query, event.Data, nil

@@ -12,6 +12,7 @@ import (
 	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 	mock "github.com/tendermint/tools/tm-monitor/mock"
 	monitor "github.com/tendermint/tools/tm-monitor/monitor"
+	"github.com/tendermint/go-amino"
 )
 
 const (
@@ -33,7 +34,7 @@ func TestNodeNewBlockReceived(t *testing.T) {
 	n.SendBlocksTo(blockCh)
 
 	blockHeader := &tmtypes.Header{Height: 5}
-	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.TMEventData{tmtypes.EventDataNewBlockHeader{blockHeader}})
+	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlockHeader{blockHeader})
 
 	assert.Equal(t, int64(5), n.Height)
 	assert.Equal(t, *blockHeader, <-blockCh)
@@ -79,8 +80,10 @@ func startValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter)
 	stubs := make(map[string]interface{})
 	pubKey := crypto.GenPrivKeyEd25519().PubKey()
 	stubs["validators"] = ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
-	stubs["status"] = ctypes.ResultStatus{PubKey: pubKey}
-	rpcClientMock := &mock.RpcClient{stubs}
+	stubs["status"] = ctypes.ResultStatus{ValidatorInfo: ctypes.ValidatorInfo{PubKey: pubKey}}
+	cdc := amino.NewCodec()
+	rpcClientMock := &mock.RpcClient{Stubs: stubs}
+	rpcClientMock.SetCodec(cdc)
 
 	n = monitor.NewNodeWithEventMeterAndRpcClient("tcp://127.0.0.1:46657", emMock, rpcClientMock)
 

@@ -39,15 +39,19 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
-  version = "0.5.0"
+  version = "~0.6.2"
+
+[[constraint]]
+  name = "github.com/tendermint/go-amino"
+  version = "~0.9.6"
 
 [[constraint]]
   name = "github.com/tendermint/tendermint"
-  version = "0.17.1"
+  version = "0.19.0"
 
-[[constraint]]
+[[override]]
   name = "github.com/tendermint/tmlibs"
-  version = "0.7.1"
+  version = "~0.8.2-rc1"
 
 [prune]
   go-tests = true

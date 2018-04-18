@@ -6,6 +6,7 @@ import (
 
 	"github.com/tendermint/tmlibs/log"
 	em "github.com/tendermint/tools/tm-monitor/eventmeter"
+	"github.com/tendermint/go-amino"
 )
 
 type EventMeter struct {
@@ -43,6 +44,7 @@ func (e *EventMeter) Call(callback string, args ...interface{}) {
 
 type RpcClient struct {
 	Stubs map[string]interface{}
+	cdc     *amino.Codec
 }
 
 func (c *RpcClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {
@@ -56,4 +58,12 @@ func (c *RpcClient) Call(method string, params map[string]interface{}, result in
 	rv.Set(reflect.ValueOf(s))
 
 	return s, nil
+}
+
+func (c *RpcClient) Codec() *amino.Codec {
+	return c.cdc
+}
+
+func (c *RpcClient) SetCodec(cdc *amino.Codec) {
+	c.cdc = cdc
 }
