@@ -206,7 +206,7 @@ localnet-stop:
 ### Remote full-nodes (sentry) using terraform and ansible
 
 # Server management
-server-setup:
+remotenet-start:
 	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
 	@if ! [ -f $(HOME)/.ssh/id_rsa.pub ]; then ssh-keygen ; fi
 	cd networks/remote/terraform && terraform init && terraform apply -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
@@ -215,15 +215,15 @@ server-setup:
 	@echo "Next step: Add your validator setup in the genesis.json and config.tml files and run \"make server-config\". (Public key of validator, chain ID, peer IP and node ID.)"
 
 # Configuration management
-server-config:
+remotenet-config:
 	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l remotenet config.yml -e BINARY=$(CURDIR)/build/tendermint -e CONFIGDIR=$(CURDIR)/build
 
-server-destroy:
+remotenet-stop:
 	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
 	cd networks/remote/terraform && terraform destroy -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
 
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker server-setup server-config server-destroy
+.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker remotenet-start remotenet-config remotenet-stop
 
