@@ -696,30 +696,32 @@ func (conR *ConsensusReactor) gossipVotesForHeight(logger log.Logger, rs *cstype
 			return true
 		}
 	}
-	// If there are prevotes to send...
-	if prs.Step <= cstypes.RoundStepPrevote && prs.Round != -1 && prs.Round <= rs.Round {
+
+	if prs.Step <= cstypes.RoundStepCommit && prs.Round != -1 && prs.Round <= rs.Round {
+		// If there are POLPrevotes to send...
+		if prs.ProposalPOLRound != -1 {
+			if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
+				if ps.PickSendVote(polPrevotes) {
+					logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
+						"round", prs.ProposalPOLRound)
+					return true
+				}
+			}
+		}
+
+		// If there are prevotes to send...
 		if ps.PickSendVote(rs.Votes.Prevotes(prs.Round)) {
 			logger.Debug("Picked rs.Prevotes(prs.Round) to send", "round", prs.Round)
 			return true
 		}
-	}
-	// If there are precommits to send...
-	if prs.Step <= cstypes.RoundStepPrecommit && prs.Round != -1 && prs.Round <= rs.Round {
+
+		// If there are precommits to send...
 		if ps.PickSendVote(rs.Votes.Precommits(prs.Round)) {
 			logger.Debug("Picked rs.Precommits(prs.Round) to send", "round", prs.Round)
 			return true
 		}
 	}
-	// If there are POLPrevotes to send...
-	if prs.ProposalPOLRound != -1 {
-		if polPrevotes := rs.Votes.Prevotes(prs.ProposalPOLRound); polPrevotes != nil {
-			if ps.PickSendVote(polPrevotes) {
-				logger.Debug("Picked rs.Prevotes(prs.ProposalPOLRound) to send",
-					"round", prs.ProposalPOLRound)
-				return true
-			}
-		}
-	}
+
 	return false
 }
 
