@@ -55,25 +55,25 @@ func (rs RoundStepType) String() string {
 // NOTE: Not thread safe. Should only be manipulated by functions downstream
 // of the cs.receiveRoutine
 type RoundState struct {
-	Height             int64 // Height we are working on
-	Round              int
-	Step               RoundStepType
-	StartTime          time.Time
-	CommitTime         time.Time // Subjective time when +2/3 precommits for Block at Round were found
-	Validators         *types.ValidatorSet
-	Proposal           *types.Proposal
-	ProposalBlock      *types.Block
-	ProposalBlockParts *types.PartSet
-	LockedRound        int
-	LockedBlock        *types.Block
-	LockedBlockParts   *types.PartSet
-	ValidRound         int
-	ValidBlock         *types.Block
-	ValidBlockParts    *types.PartSet
-	Votes              *HeightVoteSet
-	CommitRound        int            //
-	LastCommit         *types.VoteSet // Last precommits at Height-1
-	LastValidators     *types.ValidatorSet
+	Height             int64               `json:"height"` // Height we are working on
+	Round              int                 `json:"round"`
+	Step               RoundStepType       `json:"step"`
+	StartTime          time.Time           `json:"start_time"`
+	CommitTime         time.Time           `json:"commit_time"` // Subjective time when +2/3 precommits for Block at Round were found
+	Validators         *types.ValidatorSet `json:"validators"`
+	Proposal           *types.Proposal     `json:"proposal"`
+	ProposalBlock      *types.Block        `json:"proposal_block"`
+	ProposalBlockParts *types.PartSet      `json:"proposal_block_parts"`
+	LockedRound        int                 `json:"locked_round"`
+	LockedBlock        *types.Block        `json:"locked_block"`
+	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
+	ValidRound         int                 `json:"valid_round"`
+	ValidBlock         *types.Block        `json:"valid_block"`
+	ValidBlockParts    *types.PartSet      `json:"valid_block_parts"`
+	Votes              *HeightVoteSet      `json:"votes"`
+	CommitRound        int                 `json:"commit_round"` //
+	LastCommit         *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
+	LastValidators     *types.ValidatorSet `json:"last_validators"`
 }
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.
