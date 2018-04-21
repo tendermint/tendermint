@@ -3,7 +3,13 @@ package db
 import (
 	"fmt"
 	"sync"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
+
+func _fmt(f string, az ...interface{}) string {
+	return fmt.Sprintf(f, az...)
+}
 
 //----------------------------------------
 // debugDB
@@ -26,78 +32,84 @@ func (ddb debugDB) Mutex() *sync.Mutex { return nil }
 
 // Implements DB.
 func (ddb debugDB) Get(key []byte) (value []byte) {
-	defer fmt.Printf("%v.Get(%X) %X\n", ddb.label, key, value)
+	defer func() {
+		fmt.Printf("%v.Get(%v) %v\n", ddb.label, cmn.Cyan(_fmt("%X", key)), cmn.Blue(_fmt("%X", value)))
+	}()
 	value = ddb.db.Get(key)
 	return
 }
 
 // Implements DB.
 func (ddb debugDB) Has(key []byte) (has bool) {
-	defer fmt.Printf("%v.Has(%X) %v\n", ddb.label, key, has)
+	defer func() {
+		fmt.Printf("%v.Has(%v) %v\n", ddb.label, cmn.Cyan(_fmt("%X", key)), has)
+	}()
 	return ddb.db.Has(key)
 }
 
 // Implements DB.
 func (ddb debugDB) Set(key []byte, value []byte) {
-	fmt.Printf("%v.Set(%X, %X)\n", ddb.label, key, value)
+	fmt.Printf("%v.Set(%v, %v)\n", ddb.label, cmn.Cyan(_fmt("%X", key)), cmn.Yellow(_fmt("%X", value)))
 	ddb.db.Set(key, value)
 }
 
 // Implements DB.
 func (ddb debugDB) SetSync(key []byte, value []byte) {
-	fmt.Printf("%v.SetSync(%X, %X)\n", ddb.label, key, value)
+	fmt.Printf("%v.SetSync(%v, %v)\n", ddb.label, cmn.Cyan(_fmt("%X", key)), cmn.Yellow(_fmt("%X", value)))
 	ddb.db.SetSync(key, value)
 }
 
 // Implements atomicSetDeleter.
 func (ddb debugDB) SetNoLock(key []byte, value []byte) {
-	fmt.Printf("%v.SetNoLock(%X, %X)\n", ddb.label, key, value)
-	ddb.db.Set(key, value)
+	fmt.Printf("%v.SetNoLock(%v, %v)\n", ddb.label, cmn.Cyan(_fmt("%X", key)), cmn.Yellow(_fmt("%X", value)))
+	ddb.db.(atomicSetDeleter).SetNoLock(key, value)
 }
 
 // Implements atomicSetDeleter.
 func (ddb debugDB) SetNoLockSync(key []byte, value []byte) {
-	fmt.Printf("%v.SetNoLockSync(%X, %X)\n", ddb.label, key, value)
-	ddb.db.SetSync(key, value)
+	fmt.Printf("%v.SetNoLockSync(%v, %v)\n", ddb.label, cmn.Cyan(_fmt("%X", key)), cmn.Yellow(_fmt("%X", value)))
+	ddb.db.(atomicSetDeleter).SetNoLockSync(key, value)
 }
 
 // Implements DB.
 func (ddb debugDB) Delete(key []byte) {
-	fmt.Printf("%v.Delete(%X)\n", ddb.label, key)
+	fmt.Printf("%v.Delete(%v)\n", ddb.label, cmn.Red(_fmt("%X", key)))
 	ddb.db.Delete(key)
 }
 
 // Implements DB.
 func (ddb debugDB) DeleteSync(key []byte) {
-	fmt.Printf("%v.DeleteSync(%X)\n", ddb.label, key)
+	fmt.Printf("%v.DeleteSync(%v)\n", ddb.label, cmn.Red(_fmt("%X", key)))
 	ddb.db.DeleteSync(key)
 }
 
 // Implements atomicSetDeleter.
 func (ddb debugDB) DeleteNoLock(key []byte) {
-	fmt.Printf("%v.DeleteNoLock(%X)\n", ddb.label, key)
-	ddb.db.Delete(key)
+	fmt.Printf("%v.DeleteNoLock(%v)\n", ddb.label, cmn.Red(_fmt("%X", key)))
+	ddb.db.(atomicSetDeleter).DeleteNoLock(key)
 }
 
 // Implements atomicSetDeleter.
 func (ddb debugDB) DeleteNoLockSync(key []byte) {
-	fmt.Printf("%v.DeleteNoLockSync(%X)\n", ddb.label, key)
-	ddb.db.DeleteSync(key)
+	fmt.Printf("%v.DeleteNoLockSync(%v)\n", ddb.label, cmn.Red(_fmt("%X", key)))
+	ddb.db.(atomicSetDeleter).DeleteNoLockSync(key)
 }
 
 // Implements DB.
 func (ddb debugDB) Iterator(start, end []byte) Iterator {
-	fmt.Printf("%v.Iterator(%X, %X)\n", ddb.label, start, end)
+	fmt.Printf("%v.Iterator(%v, %v)\n", ddb.label, cmn.Cyan(_fmt("%X", start)), cmn.Blue(_fmt("%X", end)))
 	return NewDebugIterator(ddb.label, ddb.db.Iterator(start, end))
 }
 
 // Implements DB.
 func (ddb debugDB) ReverseIterator(start, end []byte) Iterator {
-	fmt.Printf("%v.ReverseIterator(%X, %X)\n", ddb.label, start, end)
+	fmt.Printf("%v.ReverseIterator(%v, %v)\n", ddb.label, cmn.Cyan(_fmt("%X", start)), cmn.Blue(_fmt("%X", end)))
 	return NewDebugIterator(ddb.label, ddb.db.ReverseIterator(start, end))
 }
 
 // Implements DB.
+// Panics if the underlying db is not an
+// atomicSetDeleter.
 func (ddb debugDB) NewBatch() Batch {
 	fmt.Printf("%v.NewBatch()\n", ddb.label)
 	return NewDebugBatch(ddb.label, ddb.db.NewBatch())
@@ -137,14 +149,18 @@ func NewDebugIterator(label string, itr Iterator) debugIterator {
 
 // Implements Iterator.
 func (ditr debugIterator) Domain() (start []byte, end []byte) {
-	defer fmt.Printf("%v.itr.Domain() (%X,%X)\n", ditr.label, start, end)
+	defer func() {
+		fmt.Printf("%v.itr.Domain() (%X,%X)\n", ditr.label, start, end)
+	}()
 	start, end = ditr.itr.Domain()
 	return
 }
 
 // Implements Iterator.
 func (ditr debugIterator) Valid() (ok bool) {
-	defer fmt.Printf("%v.itr.Valid() %v\n", ditr.label, ok)
+	defer func() {
+		fmt.Printf("%v.itr.Valid() %v\n", ditr.label, ok)
+	}()
 	ok = ditr.itr.Valid()
 	return
 }
@@ -157,14 +173,14 @@ func (ditr debugIterator) Next() {
 
 // Implements Iterator.
 func (ditr debugIterator) Key() (key []byte) {
-	fmt.Printf("%v.itr.Key() %X\n", ditr.label, key)
+	fmt.Printf("%v.itr.Key() %v\n", ditr.label, cmn.Cyan(_fmt("%X", key)))
 	key = ditr.itr.Key()
 	return
 }
 
 // Implements Iterator.
 func (ditr debugIterator) Value() (value []byte) {
-	fmt.Printf("%v.itr.Value() %X\n", ditr.label, value)
+	fmt.Printf("%v.itr.Value() %v\n", ditr.label, cmn.Blue(_fmt("%X", value)))
 	value = ditr.itr.Value()
 	return
 }
@@ -193,13 +209,13 @@ func NewDebugBatch(label string, bch Batch) debugBatch {
 
 // Implements Batch.
 func (dbch debugBatch) Set(key, value []byte) {
-	fmt.Printf("%v.batch.Set(%X, %X)\n", dbch.label, key, value)
+	fmt.Printf("%v.batch.Set(%v, %v)\n", dbch.label, cmn.Cyan(_fmt("%X", key)), cmn.Yellow(_fmt("%X", value)))
 	dbch.bch.Set(key, value)
 }
 
 // Implements Batch.
 func (dbch debugBatch) Delete(key []byte) {
-	fmt.Printf("%v.batch.Delete(%X)\n", dbch.label, key)
+	fmt.Printf("%v.batch.Delete(%v)\n", dbch.label, cmn.Red(_fmt("%X", key)))
 	dbch.bch.Delete(key)
 }
 

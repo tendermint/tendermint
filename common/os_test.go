@@ -23,11 +23,11 @@ func TestWriteFileAtomic(t *testing.T) {
 	}
 	defer os.Remove(f.Name())
 
-	if err := ioutil.WriteFile(f.Name(), old, 0664); err != nil {
+	if err = ioutil.WriteFile(f.Name(), old, 0664); err != nil {
 		t.Fatal(err)
 	}
 
-	if err := WriteFileAtomic(f.Name(), data, perm); err != nil {
+	if err = WriteFileAtomic(f.Name(), data, perm); err != nil {
 		t.Fatal(err)
 	}
 

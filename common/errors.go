@@ -178,7 +178,7 @@ func (err *cmnError) Format(s fmt.State, verb rune) {
 		if s.Flag('#') {
 			s.Write([]byte("--= Error =--\n"))
 			// Write msg.
-			s.Write([]byte(fmt.Sprintf("Message: %#s\n", err.msg)))
+			s.Write([]byte(fmt.Sprintf("Message: %s\n", err.msg)))
 			// Write cause.
 			s.Write([]byte(fmt.Sprintf("Cause: %#v\n", err.cause)))
 			// Write type.

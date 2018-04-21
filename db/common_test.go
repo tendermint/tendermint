@@ -33,6 +33,12 @@ func checkNextPanics(t *testing.T, itr Iterator) {
 	assert.Panics(t, func() { itr.Next() }, "checkNextPanics expected panic but didn't")
 }
 
+func checkDomain(t *testing.T, itr Iterator, start, end []byte) {
+	ds, de := itr.Domain()
+	assert.Equal(t, start, ds, "checkDomain domain start incorrect")
+	assert.Equal(t, end, de, "checkDomain domain end incorrect")
+}
+
 func checkItem(t *testing.T, itr Iterator, key []byte, value []byte) {
 	k, v := itr.Key(), itr.Value()
 	assert.Exactly(t, key, k)
