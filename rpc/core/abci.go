@@ -52,7 +52,7 @@ func ABCIQuery(path string, data cmn.HexBytes, height int64, trusted bool) (*cty
 		Path:   path,
 		Data:   data,
 		Height: height,
-		Prove:  trusted,
+		Prove:  !trusted,
 	})
 	if err != nil {
 		return nil, err
