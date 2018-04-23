@@ -91,10 +91,14 @@ func TestParallelAbort(t *testing.T) {
 	// Now let the last task (#3) complete after abort.
 	flow4 <- <-flow3
 
+	// Wait until all tasks have returned or panic'd.
+	taskResultSet.Wait()
+
 	// Verify task #0, #1, #2.
 	checkResult(t, taskResultSet, 0, 0, nil, nil)
 	checkResult(t, taskResultSet, 1, 1, errors.New("some error"), nil)
 	checkResult(t, taskResultSet, 2, 2, nil, nil)
+	checkResult(t, taskResultSet, 3, 3, nil, nil)
 }
 
 func TestParallelRecover(t *testing.T) {
