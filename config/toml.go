@@ -37,13 +37,13 @@ func EnsureRoot(rootDir string) {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		writeDefaultCondigFile(configFilePath)
+		writeDefaultConfigFile(configFilePath)
 	}
 }
 
 // XXX: this func should probably be called by cmd/tendermint/commands/init.go
 // alongside the writing of the genesis.json and priv_validator.json
-func writeDefaultCondigFile(configFilePath string) {
+func writeDefaultConfigFile(configFilePath string) {
 	WriteConfigFile(configFilePath, DefaultConfig())
 }
 
@@ -267,7 +267,7 @@ func ResetTestRoot(testName string) *Config {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		writeDefaultCondigFile(configFilePath)
+		writeDefaultConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
