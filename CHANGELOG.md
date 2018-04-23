@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3 (develop branch)
+
+FEATURES:
+
+ - [common] ASCIITrim()
+
 ## 0.8.2 (April 23rd, 2018)
 
 FEATURES:
