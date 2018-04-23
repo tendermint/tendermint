@@ -64,3 +64,11 @@ func TestIsASCIIText(t *testing.T) {
 		assert.True(t, IsASCIIText(v), "%q is ascii-text", v)
 	}
 }
+
+func TestASCIITrim(t *testing.T) {
+	assert.Equal(t, ASCIITrim(" "), "")
+	assert.Equal(t, ASCIITrim(" a"), "a")
+	assert.Equal(t, ASCIITrim("a "), "a")
+	assert.Equal(t, ASCIITrim(" a "), "a")
+	assert.Panics(t, func() { ASCIITrim("\xC2\xA2") })
+}
