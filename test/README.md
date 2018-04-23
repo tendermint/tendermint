@@ -1,7 +1,7 @@
 # Tendermint Tests
 
 The unit tests (ie. the `go test` s) can be run with `make test`.
-The integration tests can be run wtih `make test_integrations`.
+The integration tests can be run with `make test_integrations`.
 
 Running the integrations test will build a docker container with local version of tendermint
 and run the following tests in docker containers:
