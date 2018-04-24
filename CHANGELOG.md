@@ -19,6 +19,7 @@ IMPROVEMENTS:
 	- propagate block parts rarest first
 - Better testing of the consensus state machine (ie. use a DSL)
 - Auto compiled serialization/deserialization code instead of go-wire reflection
+- Enabled private IPv4 address usage. (RFC1918)
 
 BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
