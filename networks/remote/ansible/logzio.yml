@@ -1,0 +1,13 @@
+---
+
+- hosts: all
+  user: root
+  any_errors_fatal: true
+  gather_facts: no
+  vars:
+    - service: tendermint
+    - JOURNALBEAT_BINARY: "{{lookup('env', 'GOPATH')}}/bin/journalbeat"
+#    - LOGZIO_TOKEN: ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
+  roles:
+    - logzio
+

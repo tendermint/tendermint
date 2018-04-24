@@ -17,7 +17,6 @@ Prerequisites
 -  Create SSH keys
 -  Install the python dopy package (for the digital_ocean.py script)
 
-
 Build
 -----
 
@@ -36,4 +35,18 @@ Build
 
     # Reconfig the sentry nodes with a new BINARY and the configuration files from the build folder:
     ansible-playbook -i inventory/digital_ocean.py -l remotenet config.yml -e BINARY=`pwd`/build/tendermint -e CONFIGDIR=`pwd`/build
+
+Shipping logs to logz.io
+------------------------
+
+Logz.io is an Elastic stack (Elastic search, Logstash and Kibana) service provider. You can set up your nodes to log there automatically. Create an account and get your API key from the notes on `this page <https://app.logz.io/#/dashboard/data-sources/Filebeat>`__.
+
+::
+
+   yum install systemd-devel || echo "This will only work on RHEL-based systems."
+   apt-get install libsystemd-dev || echo "This will only work on Debian-based systems."
+
+   go get github.com/mheese/journalbeat
+   ansible-playbook -i inventory/digital_ocean.py -l remotenet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
+
 
