@@ -6,7 +6,7 @@ variable "DO_API_TOKEN" {
 
 variable "TESTNET_NAME" {
   description = "Name of the testnet"
-  default = "remotenet"
+  default = "sentrynet"
 }
 
 variable "SSH_KEY_FILE" {

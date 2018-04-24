@@ -7,7 +7,7 @@
     mode: 0755
 
 - name: Copy config
-  when: item <= N and ansible_hostname == 'remotenet-node' ~ item
+  when: item <= N and ansible_hostname == 'sentrynet-node' ~ item
   copy:
     src: "{{CONFIGDIR}}/node{{item}}/"
     dest: "/home/{{service}}/.{{service}}/"

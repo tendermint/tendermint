@@ -1,5 +1,7 @@
 ---
 
+#Note: You need to add LOGZIO_TOKEN variable with your API key. Like tihs: ansible-playbook -e LOGZIO_TOKEN=ABCXYZ123456
+
 - hosts: all
   user: root
   any_errors_fatal: true
@@ -7,7 +9,6 @@
   vars:
     - service: tendermint
     - JOURNALBEAT_BINARY: "{{lookup('env', 'GOPATH')}}/bin/journalbeat"
-#    - LOGZIO_TOKEN: ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
   roles:
     - logzio
 

@@ -26,7 +26,7 @@ Build
     export SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
 
     
-    ansible-playbook -i inventory/digital_ocean.py -l remotenet install.yml
+    ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
 
     # The scripts assume that you have your validator set up already.
     # You can create the folder structure for the sentry nodes using `tendermint testnet`.
@@ -34,7 +34,7 @@ Build
     # Then copy your genesis.json and modify the config.toml as you see fit.
 
     # Reconfig the sentry nodes with a new BINARY and the configuration files from the build folder:
-    ansible-playbook -i inventory/digital_ocean.py -l remotenet config.yml -e BINARY=`pwd`/build/tendermint -e CONFIGDIR=`pwd`/build
+    ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=`pwd`/build/tendermint -e CONFIGDIR=`pwd`/build
 
 Shipping logs to logz.io
 ------------------------
@@ -47,6 +47,6 @@ Logz.io is an Elastic stack (Elastic search, Logstash and Kibana) service provid
    apt-get install libsystemd-dev || echo "This will only work on Debian-based systems."
 
    go get github.com/mheese/journalbeat
-   ansible-playbook -i inventory/digital_ocean.py -l remotenet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
+   ansible-playbook -i inventory/digital_ocean.py -l sentrynet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 
 
