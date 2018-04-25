@@ -1322,7 +1322,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 		blockID, ok := prevotes.TwoThirdsMajority()
 		if ok && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
 			// update valid value
-			if !cs.ValidBlock.HashesTo(blockID.Hash) && cs.ProposalBlock.HashesTo(blockID.Hash) {
+			if cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.ValidRound = cs.Round
 				cs.ValidBlock = cs.ProposalBlock
 				cs.ValidBlockParts = cs.ProposalBlockParts
@@ -1440,7 +1440,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		// Update ValidBlock
 		if ok && !blockID.IsZero() && (cs.ValidRound < vote.Round) && (vote.Round <= cs.Round) {
 			// update valid value
-			if !cs.ValidBlock.HashesTo(blockID.Hash) && cs.ProposalBlock.HashesTo(blockID.Hash) {
+			if cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.ValidRound = vote.Round
 				cs.ValidBlock = cs.ProposalBlock
 				cs.ValidBlockParts = cs.ProposalBlockParts
