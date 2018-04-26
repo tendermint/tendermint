@@ -1,101 +1,119 @@
 # Tendermint Encoding
 
-## Binary Serialization (TMBIN)
+## Amino
 
-Tendermint aims to encode data structures in a manner similar to how the corresponding Go structs
-are laid out in memory.
-Variable length items are length-prefixed.
-While the encoding was inspired by Go, it is easily implemented in other languages as well, given its intuitive design.
+Tendermint uses the Protobuf3 derrivative [Amino]() for all data structures.
+Thik of Amino as an object-oriented Protobuf3 with native JSON support.
+The goal of the Amino encoding protocol is to bring parity between application
+logic objects and persistence objects.
 
-XXX: This is changing to use real varints and 4-byte-prefixes.
-See https://github.com/tendermint/go-wire/tree/sdk2.
+Please see the [Amino
+specification](https://github.com/tendermint/go-amino#amino-encoding-for-go) for
+more details.
 
-### Fixed Length Integers
+Notably, every object that satisfies an interface (eg. a particular kind of p2p message,
+or a particular kind of pubkey) is registered with a global name, the hash of
+which is included in the object's encoding as the so-called "prefix bytes".
 
-Fixed length integers are encoded in Big-Endian using the specified number of bytes.
-So `uint8` and `int8` use one byte, `uint16` and `int16` use two bytes,
-`uint32` and `int32` use 3 bytes, and `uint64` and `int64` use 4 bytes.
+## Public Key Cryptography
 
-Negative integers are encoded via twos-complement.
+Tendermint uses Amino to distinguish between different types of private keys,
+public keys, and signatures. Additionally, for each public key, Tendermint
+defines an Address function that can be used as a more compact identifier in
+place of the public key. Here we list the concrete types, their names,
+and prefix bytes for public keys and signatures. Note for brevity we don't
+include details of the private keys beyond their type and name, as they can be
+derrived the same way as the others using Amino.
 
-Examples:
+All registered objects are encoded by Amino using a 4-byte PrefixBytes that
+uniquely identifies the object and includes information about its underlying
+type. For details on how PrefixBytes are computed, see the [Amino
+spec](https://github.com/tendermint/go-amino#computing-the-prefix-and-disambiguation-bytes).
 
-```go
-encode(uint8(6))    == [0x06]
-encode(uint32(6))   == [0x00, 0x00, 0x00, 0x06]
+In what follows, we provide the type names and prefix bytes directly.
+Notice that when encoding byte-arrays, the length of the byte-array is appended
+to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes>
+<Length> <ByteArray>`
 
-encode(int8(-6))    == [0xFA]
-encode(int32(-6))   == [0xFF, 0xFF, 0xFF, 0xFA]
+### PubKeyEd25519
+
+```
+// Name: tendermint/PubKeyEd25519
+// PrefixBytes: 0x1624DE62
+// Length: 0x20
+// Notes: raw 32-byte Ed25519 pubkey
+type PubKeyEd25519 [32]byte
 ```
 
-### Variable Length Integers
+For example, the 32-byte Ed25519 pubkey
+`76852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85` would be
+encoded as
+`1624DE622076852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85`
 
-Variable length integers are encoded as length-prefixed Big-Endian integers.
-The length-prefix consists of a single byte and corresponds to the length of the encoded integer.
+### SignatureEd25519
 
-Negative integers are encoded by flipping the leading bit of the length-prefix to a `1`.
-
-Zero is encoded as `0x00`. It is not length-prefixed.
-
-Examples:
-
-```go
-encode(uint(6))     == [0x01, 0x06]
-encode(uint(70000)) == [0x03, 0x01, 0x11, 0x70]
-
-encode(int(-6))     == [0xF1, 0x06]
-encode(int(-70000)) == [0xF3, 0x01, 0x11, 0x70]
-
-encode(int(0))      == [0x00]
+```
+// Name: tendermint/SignatureKeyEd25519
+// PrefixBytes: 0x3DA1DB2A
+// Length: 0x40
+// Notes: raw 64-byte Ed25519 signature
+type SignatureEd25519 [64]byte
 ```
 
-### Strings
+For example, the 64-byte Ed25519 signature
+`005E76B3B0D790959B03F862A9EF8F6236457032B5F522C4CAB5AAD7C44A00A12669E1A2761798E70A0A923DA0CF981839558123CF6466553BCBFF25DADD630F`
+would be encoded as
+`3DA1DB2A40005E76B3B0D790959B03F862A9EF8F6236457032B5F522C4CAB5AAD7C44A00A12669E1A2761798E70A0A923DA0CF981839558123CF6466553BCBFF25DADD630F`
 
-An encoded string is length-prefixed followed by the underlying bytes of the string.
-The length-prefix is itself encoded as an `int`.
+### PrivKeyEd25519
 
-The empty string is encoded as `0x00`. It is not length-prefixed.
+```
+// Name: tendermint/PrivKeyEd25519
+// Notes: raw 32-byte priv key concatenated to raw 32-byte pub key
+type PrivKeyEd25519 [64]byte
+```
+### PubKeySecp256k1
 
-Examples:
-
-```go
-encode("")      == [0x00]
-encode("a")     == [0x01, 0x01, 0x61]
-encode("hello") == [0x01, 0x05, 0x68, 0x65, 0x6C, 0x6C, 0x6F]
-encode("¥")     == [0x01, 0x02, 0xC2, 0xA5]
+```
+// Name: tendermint/PubKeySecp256k1
+// PrefixBytes: 0xEB5AE982
+// Length: 0x21
+// Notes: OpenSSL compressed pubkey prefixed with 0x02 or 0x03
+type PubKeySecp256k1 [33]byte
 ```
 
-### Arrays (fixed length)
+For example, the 33-byte Secp256k1 pubkey
+`03573E0EC1F989DECC3913AC7D44D0509C1A992ECE700845594A1078DAF19A3380` would be
+encoded as
+`EB5AE9822103573E0EC1F989DECC3913AC7D44D0509C1A992ECE700845594A1078DAF19A3380`
 
-An encoded fix-lengthed array is the concatenation of the encoding of its elements.
-There is no length-prefix.
+### SignatureSecp256k1
 
-Examples:
-
-```go
-encode([4]int8{1, 2, 3, 4})     == [0x01, 0x02, 0x03, 0x04]
-encode([4]int16{1, 2, 3, 4})    == [0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04]
-encode([4]int{1, 2, 3, 4})      == [0x01, 0x01, 0x01, 0x02, 0x01, 0x03, 0x01, 0x04]
-encode([2]string{"abc", "efg"}) == [0x01, 0x03, 0x61, 0x62, 0x63, 0x01, 0x03, 0x65, 0x66, 0x67]
+```
+// Name: tendermint/SignatureKeySecp256k1
+// PrefixBytes: 0x16E1FEEA
+// Length: Variable
+// Encoding prefix: Variable
+// Notes: raw bytes of the Secp256k1 signature
+type SignatureSecp256k1 []byte
 ```
 
-### Slices (variable length)
+For example, the Secp256k1 signature
+`304402207447640A5C12A72BAA052D110B666FB6DF717A7B863361C092E751D016C6C08802205C20F9DEBF8915DED310B98BFA890105F43925FDB2B67B78510FE18EDA2B30DA` would
+be encoded as
+`16E1FEEA46304402202C10C874E413AF538D97EBEF2B01024719F8B7CC559CEEBDC7C380F9DCC4A6E002200EDE9B62F8531933F88DB2A62E73BA3D43ACEB1CBD23070C2F792AAA18717A4A`
 
-An encoded variable-length array is length-prefixed followed by the concatenation of the encoding of
-its elements.
-The length-prefix is itself encoded as an `int`.
+### PrivKeySecp256k1
 
-An empty slice is encoded as `0x00`. It is not length-prefixed.
-
-Examples:
-
-```go
-encode([]int8{})                == [0x00]
-encode([]int8{1, 2, 3, 4})      == [0x01, 0x04, 0x01, 0x02, 0x03, 0x04]
-encode([]int16{1, 2, 3, 4})     == [0x01, 0x04, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04]
-encode([]int{1, 2, 3, 4})       == [0x01, 0x04, 0x01, 0x01, 0x01, 0x02, 0x01, 0x03, 0x01, 0x4]
-encode([]string{"abc", "efg"})  == [0x01, 0x02, 0x01, 0x03, 0x61, 0x62, 0x63, 0x01, 0x03, 0x65, 0x66, 0x67]
 ```
+// Name: tendermint/PrivKeySecp256k1
+// Notes: raw 32-byte priv key
+type PrivKeySecp256k1 [32]byte
+```
+
+
+
+## Other Common Types
 
 ### BitArray
 
@@ -109,36 +127,22 @@ type BitArray struct {
 }
 ```
 
-### Time
-
-Time is encoded as an `int64` of the number of nanoseconds since January 1, 1970,
-rounded to the nearest millisecond.
-
-Times before then are invalid.
-
-Examples:
+### Part
 
 ```go
-encode(time.Time("Jan 1 00:00:00 UTC 1970"))            == [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-encode(time.Time("Jan 1 00:00:01 UTC 1970"))            == [0x00, 0x00, 0x00, 0x00, 0x3B, 0x9A, 0xCA, 0x00] // 1,000,000,000 ns
-encode(time.Time("Mon Jan 2 15:04:05 -0700 MST 2006"))  == [0x0F, 0xC4, 0xBB, 0xC1, 0x53, 0x03, 0x12, 0x00]
+type Part struct {
+    Index int
+    Bytes byte[]
+    Proof byte[]
+}
 ```
 
-### Structs
+### MakeParts
 
-An encoded struct is the concatenation of the encoding of its elements.
-There is no length-prefix.
-
-Examples:
+Encode an object using Amino and slice it into parts.
 
 ```go
-type MyStruct struct{
-    A int
-    B string
-    C time.Time
-}
-encode(MyStruct{4, "hello", time.Time("Mon Jan 2 15:04:05 -0700 MST 2006")}) ==
-    [0x01, 0x04, 0x01, 0x05, 0x68, 0x65, 0x6C, 0x6C, 0x6F, 0x0F, 0xC4, 0xBB, 0xC1, 0x53, 0x03, 0x12, 0x00]
+MakeParts(object, partSize)
 ```
 
 ## Merkle Trees
@@ -169,10 +173,9 @@ For `struct` arguments, we compute a `[][]byte` by sorting elements of the `stru
 field name and then hashing them.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
 
-## JSON (TMJSON)
+## AminoJSON
 
-Signed messages (eg. votes, proposals) in the consensus are encoded in TMJSON, rather than TMBIN.
-TMJSON is JSON where `[]byte` are encoded as uppercase hex, rather than base64.
+Signed messages (eg. votes, proposals) in the consensus are encoded in AminoJSON, rather than binary Amino.
 
 When signing, the elements of a message are sorted by key and the sorted message is embedded in an
 outer JSON that includes a `chain_id` field.
@@ -185,22 +188,5 @@ like:
 
 Note how the fields within each level are sorted.
 
-## Other
 
-### MakeParts
 
-Encode an object using TMBIN and slice it into parts.
-
-```go
-MakeParts(object, partSize)
-```
-
-### Part
-
-```go
-type Part struct {
-    Index int
-    Bytes byte[]
-    Proof byte[]
-}
-```
