@@ -3,7 +3,7 @@
 ## Amino
 
 Tendermint uses the Protobuf3 derrivative [Amino]() for all data structures.
-Thik of Amino as an object-oriented Protobuf3 with native JSON support.
+Think of Amino as an object-oriented Protobuf3 with native JSON support.
 The goal of the Amino encoding protocol is to bring parity between application
 logic objects and persistence objects.
 
