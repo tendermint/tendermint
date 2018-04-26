@@ -15,6 +15,18 @@ Notably, every object that satisfies an interface (eg. a particular kind of p2p 
 or a particular kind of pubkey) is registered with a global name, the hash of
 which is included in the object's encoding as the so-called "prefix bytes".
 
+## Byte Arrays
+
+The encoding of a byte array is simply the raw-bytes prefixed with the length of
+the array as a `UVarint` (what Protobuf calls a `Varint`).
+
+For details on varints, see the [protobuf
+spec](https://developers.google.com/protocol-buffers/docs/encoding#varints).
+
+For example, the byte-array `[0xA, 0xB]` would be encoded as `0x020A0B`,
+while a byte-array containing 300 entires beginning with `[0xA, 0xB, ...]` would
+be encoded as `0xAC020A0B...` where `0xAC02` is the UVarint encoding of 300.
+
 ## Public Key Cryptography
 
 Tendermint uses Amino to distinguish between different types of private keys,
@@ -117,8 +129,10 @@ type PrivKeySecp256k1 [32]byte
 
 ### BitArray
 
-BitArray is encoded as an `int` of the number of bits, and with an array of `uint64` to encode
-value of each array element.
+The BitArray is used in block headers and some consensus messages to signal
+whether or not something was done by each validator. BitArray is represented
+with a struct containing the number of bits (`Bits`) and the bit-array itself
+encoded in base64 (`Elems`).
 
 ```go
 type BitArray struct {
@@ -127,7 +141,20 @@ type BitArray struct {
 }
 ```
 
+This type is easily encoded directly by Amino.
+
+Note BitArray receives a special JSON encoding in the form of `x` and `_`
+representing `1` and `0`. Ie. the BitArray `10110` would be JSON encoded as
+`"x_xx_"`
+
 ### Part
+
+Part is used to break up blocks into pieces that can be gossiped in parallel
+and securely verified using a Merkle tree of the parts.
+
+Part contains the index of the part in the larger set (`Index`), the actual
+underlying data of the part (`Bytes`), and a simple Merkle proof that the part is contained in
+the larger set (`Proof`).
 
 ```go
 type Part struct {
@@ -142,14 +169,16 @@ type Part struct {
 Encode an object using Amino and slice it into parts.
 
 ```go
-MakeParts(object, partSize)
+func MakeParts(obj interface{}, partSize int) []Part
 ```
 
 ## Merkle Trees
 
 Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
 
-RIPEMD160 is always used as the hashing function.
+SHA256 is always used as the hashing function.
+
+### Simple Merkle Root
 
 The function `SimpleMerkleRoot` is a simple recursive function defined as follows:
 
@@ -163,15 +192,65 @@ func SimpleMerkleRoot(hashes [][]byte) []byte{
     default:
         left := SimpleMerkleRoot(hashes[:(len(hashes)+1)/2])
         right := SimpleMerkleRoot(hashes[(len(hashes)+1)/2:])
-        return RIPEMD160(append(left, right))
+        return SimpleConcatHash(left, right)
     }
+}
+
+func SimpleConcatHash(left, right []byte) []byte{
+    left = encodeByteSlice(left)
+    right = encodeByteSlice(right)
+    return SHA256(append(left, right))
 }
 ```
 
-Note: we abuse notion and call `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
+Note that the leaves are Amino encoded as byte-arrays (ie. simple Uvarint length
+prefix) before being concatenated together and hashed.
+
+Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
 For `struct` arguments, we compute a `[][]byte` by sorting elements of the `struct` according to
 field name and then hashing them.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
+
+### Simple Merkle Proof
+
+Proof that a leaf is in a Merkle tree consists of a simple structure:
+
+
+```
+type SimpleProof struct {
+        Aunts [][]byte
+}
+```
+
+Which is verified using the following:
+
+```
+func (proof SimpleProof) Verify(index, total int, leafHash, rootHash []byte) bool {
+	computedHash := computeHashFromAunts(index, total, leafHash, proof.Aunts)
+    return computedHash == rootHash
+}
+
+func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byte) []byte{
+	assert(index < total && index >= 0 && total > 0)
+
+	if total == 1{
+		assert(len(proof.Aunts) == 0)
+		return leafHash
+	}
+
+	assert(len(innerHashes) > 0)
+
+	numLeft := (total + 1) / 2
+	if index < numLeft {
+		leftHash := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+		assert(leftHash != nil)
+		return SimpleHashFromTwoHashes(leftHash, innerHashes[len(innerHashes)-1])
+	}
+	rightHash := computeHashFromAunts(index-numLeft, total-numLeft, leafHash, innerHashes[:len(innerHashes)-1])
+	assert(rightHash != nil)
+	return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
+}
+```
 
 ## AminoJSON
 
