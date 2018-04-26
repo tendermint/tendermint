@@ -201,7 +201,7 @@ func MakeParts(obj interface{}, partSize int) []Part
 
 Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
 
-SHA256 is always used as the hashing function.
+RIPEMD160 is always used as the hashing function.
 
 ### Simple Merkle Root
 
@@ -224,7 +224,7 @@ func SimpleMerkleRoot(hashes [][]byte) []byte{
 func SimpleConcatHash(left, right []byte) []byte{
     left = encodeByteSlice(left)
     right = encodeByteSlice(right)
-    return SHA256(append(left, right))
+    return RIPEMD160 (append(left, right))
 }
 ```
 
