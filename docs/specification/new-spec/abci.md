@@ -1,0 +1,48 @@
+# Application Blockchain Interface (ABCI)
+
+ABCI is the interface between Tendermint (a state-machine replication engine)
+and an application (the actual state machine).
+
+The ABCI message types are defined in a [protobuf
+file](https://github.com/tendermint/abci/blob/master/types/types.proto).
+For full details on the ABCI message types and protocol, see the [ABCI
+specificaiton](https://github.com/tendermint/abci/blob/master/specification.rst).
+For additional details on server implementation, see the [ABCI
+readme](https://github.com/tendermint/abci#implementation).
+
+Here we provide some more details around the use of ABCI by Tendermint and
+clarify common "gotchas".
+
+## Validator Updates
+
+Updates to the Tendermint validator set can be made by returning `Validator`
+objects in the `ResponseBeginBlock`:
+
+```
+message Validator {
+    bytes pub_key = 1;
+    int64 power = 2;
+}
+```
+
+The `pub_key` is the Amino encoded public key for the validator. For details on
+Amino encoded public keys, see the [section of the encoding spec](./encoding.md#public-key-cryptography).
+
+For example, the 32-byte Ed25519 pubkey
+`76852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85` would be
+Amino encoded as
+`1624DE622076852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85`
+
+The `power` is the new voting power for the validator, with the
+following rules:
+
+- power must be non-negative
+- if power is 0, the validator must already exist, and will be removed from the
+  validator set
+- if power is non-0:
+    - if the validator does not already exist, it will be added to the validator
+      set with the given power
+    - if the validator does already exist, its power will be adjusted to the given power
+
+
+## Query

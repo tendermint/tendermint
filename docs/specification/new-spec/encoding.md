@@ -33,7 +33,8 @@ Tendermint uses Amino to distinguish between different types of private keys,
 public keys, and signatures. Additionally, for each public key, Tendermint
 defines an Address function that can be used as a more compact identifier in
 place of the public key. Here we list the concrete types, their names,
-and prefix bytes for public keys and signatures. Note for brevity we don't
+and prefix bytes for public keys and signatures, as well as the address schemes
+for each PubKey. Note for brevity we don't
 include details of the private keys beyond their type and name, as they can be
 derrived the same way as the others using Amino.
 
