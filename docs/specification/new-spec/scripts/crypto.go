@@ -6,8 +6,11 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 )
 
+// SECRET
+var SECRET = []byte("some secret")
+
 func printEd() {
-	priv := crypto.GenPrivKeyEd25519()
+	priv := crypto.GenPrivKeyEd25519FromSecret(SECRET)
 	pub := priv.PubKey().(crypto.PubKeyEd25519)
 	sig := priv.Sign([]byte("hello")).(crypto.SignatureEd25519)
 
@@ -22,9 +25,15 @@ func printEd() {
 	fmt.Printf("// Length: 0x%X \n", length)
 	fmt.Println("// Notes: raw 32-byte Ed25519 pubkey")
 	fmt.Println("type PubKeyEd25519 [32]byte")
+	fmt.Println("")
+	fmt.Println(`func (pubkey PubKeyEd25519) Address() []byte {
+  // NOTE: hash of the Amino encoded bytes!
+  return RIPEMD160(AminoEncode(pubkey))
+}`)
 	fmt.Println("```")
 	fmt.Println("")
-	fmt.Printf("For example, the 32-byte Ed25519 pubkey `%X` would be encoded as `%X`\n", pub[:], pub.Bytes())
+	fmt.Printf("For example, the 32-byte Ed25519 pubkey `%X` would be encoded as `%X`.\n\n", pub[:], pub.Bytes())
+	fmt.Printf("The address would then be `RIPEMD160(0x%X)` or `%X`\n", pub.Bytes(), pub.Address())
 	fmt.Println("")
 
 	name = "tendermint/SignatureKeyEd25519"
@@ -55,7 +64,7 @@ func printEd() {
 }
 
 func printSecp() {
-	priv := crypto.GenPrivKeySecp256k1()
+	priv := crypto.GenPrivKeySecp256k1FromSecret(SECRET)
 	pub := priv.PubKey().(crypto.PubKeySecp256k1)
 	sig := priv.Sign([]byte("hello")).(crypto.SignatureSecp256k1)
 
@@ -70,9 +79,16 @@ func printSecp() {
 	fmt.Printf("// Length: 0x%X \n", length)
 	fmt.Println("// Notes: OpenSSL compressed pubkey prefixed with 0x02 or 0x03")
 	fmt.Println("type PubKeySecp256k1 [33]byte")
+	fmt.Println("")
+	fmt.Println(`func (pubkey PubKeySecp256k1) Address() []byte {
+  // NOTE: hash of the raw pubkey bytes (not Amino encoded!).
+  // Compatible with Bitcoin addresses.
+  return RIPEMD160(SHA256(pubkey[:]))
+}`)
 	fmt.Println("```")
 	fmt.Println("")
-	fmt.Printf("For example, the 33-byte Secp256k1 pubkey `%X` would be encoded as `%X`\n", pub[:], pub.Bytes())
+	fmt.Printf("For example, the 33-byte Secp256k1 pubkey `%X` would be encoded as `%X`\n\n", pub[:], pub.Bytes())
+	fmt.Printf("The address would then be `RIPEMD160(SHA256(0x%X))` or `%X`\n", pub[:], pub.Address())
 	fmt.Println("")
 
 	name = "tendermint/SignatureKeySecp256k1"
@@ -104,5 +120,6 @@ func printSecp() {
 
 func main() {
 	printEd()
+	fmt.Println("")
 	printSecp()
 }

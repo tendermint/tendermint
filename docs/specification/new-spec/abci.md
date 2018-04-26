@@ -28,7 +28,7 @@ message Validator {
 The `pub_key` is the Amino encoded public key for the validator. For details on
 Amino encoded public keys, see the [section of the encoding spec](./encoding.md#public-key-cryptography).
 
-For example, the 32-byte Ed25519 pubkey
+For Ed25519 pubkeys, the Amino prefix is always "1624DE6220". For example, the 32-byte Ed25519 pubkey
 `76852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85` would be
 Amino encoded as
 `1624DE622076852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85`
@@ -44,5 +44,23 @@ following rules:
       set with the given power
     - if the validator does already exist, its power will be adjusted to the given power
 
-
 ## Query
+
+Query is a generic message type with lots of flexibility to enable diverse sets
+of queries from applications. Tendermint has no requirements from the Query
+message for normal operation - that is, the ABCI app developer need not implement Query functionality if they do not wish too.
+That said, Tendermint makes a number of queries to support some optional
+features. These are:
+
+### Peer Filtering
+
+When Tendermint connects to a peer, it sends two queries to the ABCI application
+using the following paths, with no additional data:
+
+ - `/p2p/filter/addr/<IP:PORT>`, where `<IP:PORT>` denote the IP address and
+   the port of the connection
+ - `p2p/filter/pubkey/<ID>`, where `<ID>` is the peer node ID (ie. the
+   pubkey.Address() for the peer's PubKey)
+
+If either of these queries return a non-zero ABCI code, Tendermint will refuse
+to connect to the peer.
