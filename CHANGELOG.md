@@ -36,6 +36,12 @@ FEATURES:
 
 BUG FIXES
 
+- [rpc] Lower case JSON field names
+- [rpc] Fix missing entries and lower case the fields in `/dump_consensus_state`
+- [rpc] Fix NodeInfo.Channels format to hex
+- [rpc] Add Validator address to `/status`
+- [rpc] Fix `prove` in ABCIQuery
+- [cmd] MarshalJSONIndent on init
 - [spec] Document address format and pubkey encoding
 
 ## 0.19.0 (April 13th, 2018)
