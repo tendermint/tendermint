@@ -1,8 +1,11 @@
 package version
 
-const Maj = "0"
-const Min = "19"
-const Fix = "0"
+// Version components
+const (
+	Maj = "0"
+	Min = "19"
+	Fix = "0"
+)
 
 var (
 	// Version is the current version of Tendermint
