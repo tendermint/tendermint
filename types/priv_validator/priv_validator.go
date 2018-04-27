@@ -120,7 +120,7 @@ func (pv *FilePV) save() {
 	if outFile == "" {
 		panic("Cannot save PrivValidator: filePath not set")
 	}
-	jsonBytes, err := cdc.MarshalJSON(pv)
+	jsonBytes, err := cdc.MarshalJSONIndent(pv, "", "  ")
 	if err != nil {
 		panic(err)
 	}

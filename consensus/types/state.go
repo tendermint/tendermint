@@ -13,6 +13,7 @@ import (
 // RoundStepType enumerates the state of the consensus state machine
 type RoundStepType uint8 // These must be numeric, ordered.
 
+// RoundStepType
 const (
 	RoundStepNewHeight     = RoundStepType(0x01) // Wait til CommitTime + timeoutCommit
 	RoundStepNewRound      = RoundStepType(0x02) // Setup new round and go to RoundStepPropose
@@ -80,12 +81,12 @@ type RoundState struct {
 func (rs *RoundState) RoundStateEvent() types.EventDataRoundState {
 	// XXX: copy the RoundState
 	// if we want to avoid this, we may need synchronous events after all
-	rs_ := *rs
+	rsCopy := *rs
 	edrs := types.EventDataRoundState{
 		Height:     rs.Height,
 		Round:      rs.Round,
 		Step:       rs.Step.String(),
-		RoundState: &rs_,
+		RoundState: &rsCopy,
 	}
 	return edrs
 }
@@ -115,16 +116,16 @@ func (rs *RoundState) StringIndented(indent string) string {
 		indent, rs.Height, rs.Round, rs.Step,
 		indent, rs.StartTime,
 		indent, rs.CommitTime,
-		indent, rs.Validators.StringIndented(indent+"    "),
+		indent, rs.Validators.StringIndented(indent+"  "),
 		indent, rs.Proposal,
 		indent, rs.ProposalBlockParts.StringShort(), rs.ProposalBlock.StringShort(),
 		indent, rs.LockedRound,
 		indent, rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort(),
 		indent, rs.ValidRound,
 		indent, rs.ValidBlockParts.StringShort(), rs.ValidBlock.StringShort(),
-		indent, rs.Votes.StringIndented(indent+"    "),
+		indent, rs.Votes.StringIndented(indent+"  "),
 		indent, rs.LastCommit.StringShort(),
-		indent, rs.LastValidators.StringIndented(indent+"    "),
+		indent, rs.LastValidators.StringIndented(indent+"  "),
 		indent)
 }
 
