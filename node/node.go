@@ -382,16 +382,6 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// Run the RPC server first
-	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" {
-		listeners, err := n.startRPC()
-		if err != nil {
-			return err
-		}
-		n.rpcListeners = listeners
-	}
-
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
@@ -411,6 +401,16 @@ func (n *Node) OnStart() error {
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
+
+	// Run the RPC server first
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		listeners, err := n.startRPC()
+		if err != nil {
+			return err
+		}
+		n.rpcListeners = listeners
+	}
 
 	// Start the switch
 	err = n.sw.Start()
