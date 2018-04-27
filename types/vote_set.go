@@ -445,6 +445,26 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 		indent)
 }
 
+// Marshal the VoteSet to JSON. Same as String(), just in JSON,
+// and without the height/round/type_ (since its already included in the votes).
+func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
+	voteStrings := make([]string, len(voteSet.votes))
+	for i, vote := range voteSet.votes {
+		if vote == nil {
+			voteStrings[i] = "nil-Vote"
+		} else {
+			voteStrings[i] = vote.String()
+		}
+	}
+	return cdc.MarshalJSON(struct {
+		Votes         []string          `json:"votes"`
+		VotesBitArray *cmn.BitArray     `json:"votes_bit_array"`
+		PeerMaj23s    map[P2PID]BlockID `json:"peer_maj_23s"`
+	}{
+		voteStrings, voteSet.votesBitArray, voteSet.peerMaj23s,
+	})
+}
+
 func (voteSet *VoteSet) StringShort() string {
 	if voteSet == nil {
 		return "nil-VoteSet"

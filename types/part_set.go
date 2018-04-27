@@ -264,3 +264,20 @@ func (ps *PartSet) StringShort() string {
 	defer ps.mtx.Unlock()
 	return fmt.Sprintf("(%v of %v)", ps.Count(), ps.Total())
 }
+
+func (ps *PartSet) MarshalJSON() ([]byte, error) {
+	if ps == nil {
+		return []byte("nil-PartSet"), nil
+	}
+
+	ps.mtx.Lock()
+	defer ps.mtx.Unlock()
+
+	return cdc.MarshalJSON(struct {
+		CountTotal    string        `json:"count/total"`
+		PartsBitArray *cmn.BitArray `json:"parts_bit_array"`
+	}{
+		fmt.Sprintf("%d/%d", ps.Count(), ps.Total()),
+		ps.partsBitArray.Copy(),
+	})
+}
