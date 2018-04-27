@@ -367,10 +367,9 @@ func (cfg *MempoolConfig) WalDir() string {
 // ConsensusConfig defines the confuguration for the Tendermint consensus service,
 // including timeouts and details about the WAL and the block structure.
 type ConsensusConfig struct {
-	RootDir  string `mapstructure:"home"`
-	WalPath  string `mapstructure:"wal_file"`
-	WalLight bool   `mapstructure:"wal_light"`
-	walFile  string // overrides WalPath if set
+	RootDir string `mapstructure:"home"`
+	WalPath string `mapstructure:"wal_file"`
+	walFile string // overrides WalPath if set
 
 	// All timeouts are in milliseconds
 	TimeoutPropose        int `mapstructure:"timeout_propose"`
@@ -401,7 +400,6 @@ type ConsensusConfig struct {
 func DefaultConsensusConfig() *ConsensusConfig {
 	return &ConsensusConfig{
 		WalPath:                     filepath.Join(defaultDataDir, "cs.wal", "wal"),
-		WalLight:                    false,
 		TimeoutPropose:              3000,
 		TimeoutProposeDelta:         500,
 		TimeoutPrevote:              1000,

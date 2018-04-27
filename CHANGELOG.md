@@ -24,7 +24,15 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.19.1 (TBD)
+## 0.19.1 (April 27th, 2018)
+
+BREAKING (MINOR)
+
+- [config] Removed `wal_light` setting. If you really needed this, let us know
+
+FEATURES:
+
+- [cmd] Added `gen_node_key` command
 
 BUG FIXES
 
@@ -44,10 +52,6 @@ See github.com/tendermint/go-amino for details on the new format.
 
 See `scripts/wire2amino.go` for a tool to upgrade
 genesis/priv_validator/node_key JSON files.
-
-FEATURES:
-- [cmd] added `gen_node_key` command
-
 
 ## 0.18.0 (April 6th, 2018)
 
