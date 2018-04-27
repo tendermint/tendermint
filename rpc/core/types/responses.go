@@ -63,6 +63,7 @@ type SyncInfo struct {
 }
 
 type ValidatorInfo struct {
+	Address     cmn.HexBytes  `json:"address"`
 	PubKey      crypto.PubKey `json:"pub_key"`
 	VotingPower int64         `json:"voting_power"`
 }
