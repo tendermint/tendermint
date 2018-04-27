@@ -277,9 +277,36 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 }
 ```
 
-## AminoJSON
+## JSON
 
-Signed messages (eg. votes, proposals) in the consensus are encoded in AminoJSON, rather than binary Amino.
+### Amino
+
+TODO: improve this
+
+Amino also supports JSON encoding - registered types are simply encoded as:
+
+```
+{
+  "type": "<DisfixBytes>",
+  "value": <JSON>
+}
+
+For instance, an ED25519 PubKey would look like:
+
+```
+{
+  "type": "AC26791624DE60",
+  "value": "uZ4h63OFWuQ36ZZ4Bd6NF+/w9fWUwrOncrQsackrsTk="
+}
+```
+
+Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
+`"type"` is the full disfix bytes for Ed25519 pubkeys.
+
+
+### Signed Messages
+
+Signed messages (eg. votes, proposals) in the consensus are encoded using Amino-JSON, rather than in the standard binary format.
 
 When signing, the elements of a message are sorted by key and the sorted message is embedded in an
 outer JSON that includes a `chain_id` field.
@@ -291,6 +318,3 @@ like:
 ```
 
 Note how the fields within each level are sorted.
-
-
-
