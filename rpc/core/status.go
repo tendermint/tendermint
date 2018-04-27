@@ -79,6 +79,11 @@ func Status() (*ctypes.ResultStatus, error) {
 
 	latestBlockTime := time.Unix(0, latestBlockTimeNano)
 
+	var votingPower int64
+	if val := validatorAtHeight(latestHeight); val != nil {
+		votingPower = val.VotingPower
+	}
+
 	result := &ctypes.ResultStatus{
 		NodeInfo: p2pSwitch.NodeInfo(),
 		SyncInfo: ctypes.SyncInfo{
@@ -88,12 +93,11 @@ func Status() (*ctypes.ResultStatus, error) {
 			LatestBlockTime:   latestBlockTime,
 			Syncing:           consensusReactor.FastSync(),
 		},
-		ValidatorInfo: ctypes.ValidatorInfo{PubKey: pubKey},
-	}
-
-	// add ValidatorStatus if node is a validator
-	if val := validatorAtHeight(latestHeight); val != nil {
-		result.ValidatorInfo.VotingPower = val.VotingPower
+		ValidatorInfo: ctypes.ValidatorInfo{
+			Address:     pubKey.Address(),
+			PubKey:      pubKey,
+			VotingPower: votingPower,
+		},
 	}
 
 	return result, nil

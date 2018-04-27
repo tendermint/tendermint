@@ -3,6 +3,8 @@ package p2p
 import (
 	"fmt"
 	"strings"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -10,6 +12,7 @@ const (
 	maxNumChannels  = 16    // plenty of room for upgrades, for now
 )
 
+// Max size of the NodeInfo struct
 func MaxNodeInfoSize() int {
 	return maxNodeInfoSize
 }
@@ -21,10 +24,11 @@ type NodeInfo struct {
 	ID         ID     `json:"id"`          // authenticated identifier
 	ListenAddr string `json:"listen_addr"` // accepting incoming
 
-	// Check compatibility
-	Network  string `json:"network"`  // network/chain ID
-	Version  string `json:"version"`  // major.minor.revision
-	Channels []byte `json:"channels"` // channels this node knows about
+	// Check compatibility.
+	// Channels are HexBytes so easier to read as JSON
+	Network  string       `json:"network"`  // network/chain ID
+	Version  string       `json:"version"`  // major.minor.revision
+	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
 
 	// Sanitize
 	Moniker string   `json:"moniker"` // arbitrary moniker
