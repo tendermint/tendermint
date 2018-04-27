@@ -18,8 +18,8 @@ Fields
 -  ``power``: The validator's voting power.
 -  ``name``: Name of the validator (optional).
 -  ``app_hash``: The expected application hash (as returned by the
-   ``Commit`` ABCI message) upon genesis. If the app's hash does not
-   match, a warning message is printed.
+   ``ResponseInfo`` ABCI message) upon genesis. If the app's hash does not
+   match, Tendermint will panic.
 -  ``app_state``: The application state (e.g. initial distribution of tokens).
 
 Sample genesis.json

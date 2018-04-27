@@ -265,7 +265,7 @@ type Commit struct {
 	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
 	// Any peer with a block can gossip precommits by index with a peer without recalculating the
 	// active ValidatorSet.
-	BlockID    BlockID `json:"blockID"`
+	BlockID    BlockID `json:"block_id"`
 	Precommits []*Vote `json:"precommits"`
 
 	// Volatile

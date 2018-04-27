@@ -221,14 +221,14 @@ func TestConnIDFilter(t *testing.T) {
 	c1, c2 := conn.NetPipe()
 
 	s1.SetIDFilter(func(id ID) error {
-		if id == PubKeyToID(s2.nodeInfo.PubKey) {
+		if id == s2.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
 	s2.SetIDFilter(func(id ID) error {
-		if id == PubKeyToID(s1.nodeInfo.PubKey) {
+		if id == s1.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil

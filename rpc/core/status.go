@@ -27,15 +27,20 @@ import (
 // ```json
 // {
 // 	"result": {
-// 		"syncing": false,
-// 		"latest_block_time": "2017-12-07T18:19:47.617Z",
-// 		"latest_block_height": 6,
-// 		"latest_app_hash": "",
-// 		"latest_block_hash": "A63D0C3307DEDCCFCC82ED411AE9108B70B29E02",
-// 		"pub_key": {
-// 			"data": "8C9A68070CBE33F9C445862BA1E9D96A75CEB68C0CF6ADD3652D07DCAC5D0380",
-// 			"type": "ed25519"
-// 		},
+//		"sync_info": {
+// 			"syncing": false,
+// 			"latest_block_time": "2017-12-07T18:19:47.617Z",
+// 			"latest_block_height": 6,
+// 			"latest_app_hash": "",
+// 			"latest_block_hash": "A63D0C3307DEDCCFCC82ED411AE9108B70B29E02",
+//		}
+//		"validator_info": {
+// 			"pub_key": {
+// 				"data": "8C9A68070CBE33F9C445862BA1E9D96A75CEB68C0CF6ADD3652D07DCAC5D0380",
+// 				"type": "ed25519"
+// 			},
+//			"voting_power": 10
+//		}
 // 		"node_info": {
 // 			"other": [
 // 				"wire_version=0.7.2",
@@ -51,9 +56,6 @@ import (
 // 			"network": "test-chain-qhVCa2",
 // 			"moniker": "vagrant-ubuntu-trusty-64",
 // 			"pub_key": "844981FE99ABB19F7816F2D5E94E8A74276AB1153760A7799E925C75401856C6",
-//			"validator_status": {
-//				"voting_power": 10
-//			}
 // 		}
 // 	},
 // 	"id": "",
@@ -77,21 +79,25 @@ func Status() (*ctypes.ResultStatus, error) {
 
 	latestBlockTime := time.Unix(0, latestBlockTimeNano)
 
-	result := &ctypes.ResultStatus{
-		NodeInfo:          p2pSwitch.NodeInfo(),
-		PubKey:            pubKey,
-		LatestBlockHash:   latestBlockHash,
-		LatestAppHash:     latestAppHash,
-		LatestBlockHeight: latestHeight,
-		LatestBlockTime:   latestBlockTime,
-		Syncing:           consensusReactor.FastSync(),
+	var votingPower int64
+	if val := validatorAtHeight(latestHeight); val != nil {
+		votingPower = val.VotingPower
 	}
 
-	// add ValidatorStatus if node is a validator
-	if val := validatorAtHeight(latestHeight); val != nil {
-		result.ValidatorStatus = ctypes.ValidatorStatus{
-			VotingPower: val.VotingPower,
-		}
+	result := &ctypes.ResultStatus{
+		NodeInfo: p2pSwitch.NodeInfo(),
+		SyncInfo: ctypes.SyncInfo{
+			LatestBlockHash:   latestBlockHash,
+			LatestAppHash:     latestAppHash,
+			LatestBlockHeight: latestHeight,
+			LatestBlockTime:   latestBlockTime,
+			Syncing:           consensusReactor.FastSync(),
+		},
+		ValidatorInfo: ctypes.ValidatorInfo{
+			Address:     pubKey.Address(),
+			PubKey:      pubKey,
+			VotingPower: votingPower,
+		},
 	}
 
 	return result, nil

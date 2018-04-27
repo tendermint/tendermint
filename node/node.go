@@ -382,16 +382,6 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// Run the RPC server first
-	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" {
-		listeners, err := n.startRPC()
-		if err != nil {
-			return err
-		}
-		n.rpcListeners = listeners
-	}
-
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
@@ -405,14 +395,24 @@ func (n *Node) OnStart() error {
 	}
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	nodeInfo := n.makeNodeInfo(nodeKey.PubKey())
+	nodeInfo := n.makeNodeInfo(nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
 
-	// Start the switch
+	// Start the RPC server before the P2P server
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		listeners, err := n.startRPC()
+		if err != nil {
+			return err
+		}
+		n.rpcListeners = listeners
+	}
+
+	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
 		return err
@@ -579,13 +579,13 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
+func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:  pubKey,
+		ID:      nodeID,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Channels: []byte{

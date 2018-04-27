@@ -29,6 +29,7 @@ const (
 //--------------------------------------------------------
 // replay messages interactively or all at once
 
+// replay the wal file
 func RunReplayFile(config cfg.BaseConfig, csConfig *cfg.ConsensusConfig, console bool) {
 	consensusState := newConsensusStateForReplay(config, csConfig)
 
@@ -262,7 +263,7 @@ func (pb *playback) replayConsoleLoop() int {
 				case "locked_block":
 					fmt.Printf("%v %v\n", rs.LockedBlockParts.StringShort(), rs.LockedBlock.StringShort())
 				case "votes":
-					fmt.Println(rs.Votes.StringIndented("    "))
+					fmt.Println(rs.Votes.StringIndented("  "))
 
 				default:
 					fmt.Println("Unknown option", tokens[1])

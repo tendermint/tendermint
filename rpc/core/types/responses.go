@@ -54,19 +54,24 @@ func NewResultCommit(header *types.Header, commit *types.Commit,
 	}
 }
 
-type ValidatorStatus struct {
-	VotingPower int64 `json:"voting_power"`
+type SyncInfo struct {
+	LatestBlockHash   cmn.HexBytes `json:"latest_block_hash"`
+	LatestAppHash     cmn.HexBytes `json:"latest_app_hash"`
+	LatestBlockHeight int64        `json:"latest_block_height"`
+	LatestBlockTime   time.Time    `json:"latest_block_time"`
+	Syncing           bool         `json:"syncing"`
+}
+
+type ValidatorInfo struct {
+	Address     cmn.HexBytes  `json:"address"`
+	PubKey      crypto.PubKey `json:"pub_key"`
+	VotingPower int64         `json:"voting_power"`
 }
 
 type ResultStatus struct {
-	NodeInfo          p2p.NodeInfo    `json:"node_info"`
-	PubKey            crypto.PubKey   `json:"pub_key"`
-	LatestBlockHash   cmn.HexBytes    `json:"latest_block_hash"`
-	LatestAppHash     cmn.HexBytes    `json:"latest_app_hash"`
-	LatestBlockHeight int64           `json:"latest_block_height"`
-	LatestBlockTime   time.Time       `json:"latest_block_time"`
-	Syncing           bool            `json:"syncing"`
-	ValidatorStatus   ValidatorStatus `json:"validator_status,omitempty"`
+	NodeInfo      p2p.NodeInfo  `json:"node_info"`
+	SyncInfo      SyncInfo      `json:"sync_info"`
+	ValidatorInfo ValidatorInfo `json:"validator_info"`
 }
 
 func (s *ResultStatus) TxIndexEnabled() bool {
@@ -98,7 +103,6 @@ type ResultDialPeers struct {
 
 type Peer struct {
 	p2p.NodeInfo     `json:"node_info"`
-	p2p.ID           `json:"node_id"`
 	IsOutbound       bool                 `json:"is_outbound"`
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 }

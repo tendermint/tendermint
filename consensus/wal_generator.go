@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,7 +116,7 @@ func makePathname() string {
 func randPort() int {
 	// returns between base and base + spread
 	base, spread := 20000, 20000
-	return base + rand.Intn(spread)
+	return base + cmn.RandIntn(spread)
 }
 
 func makeAddrs() (string, string, string) {

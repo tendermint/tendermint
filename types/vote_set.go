@@ -56,9 +56,9 @@ type VoteSet struct {
 	height  int64
 	round   int
 	type_   byte
+	valSet  *ValidatorSet
 
 	mtx           sync.Mutex
-	valSet        *ValidatorSet
 	votesBitArray *cmn.BitArray
 	votes         []*Vote                // Primary votes to share
 	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
@@ -399,6 +399,8 @@ func (voteSet *VoteSet) HasTwoThirdsAny() bool {
 }
 
 func (voteSet *VoteSet) HasAll() bool {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
 	return voteSet.sum == voteSet.valSet.TotalVotingPower()
 }
 
@@ -424,6 +426,8 @@ func (voteSet *VoteSet) String() string {
 }
 
 func (voteSet *VoteSet) StringIndented(indent string) string {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
@@ -443,6 +447,28 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 		indent, voteSet.votesBitArray,
 		indent, voteSet.peerMaj23s,
 		indent)
+}
+
+// Marshal the VoteSet to JSON. Same as String(), just in JSON,
+// and without the height/round/type_ (since its already included in the votes).
+func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	voteStrings := make([]string, len(voteSet.votes))
+	for i, vote := range voteSet.votes {
+		if vote == nil {
+			voteStrings[i] = "nil-Vote"
+		} else {
+			voteStrings[i] = vote.String()
+		}
+	}
+	return cdc.MarshalJSON(struct {
+		Votes         []string          `json:"votes"`
+		VotesBitArray *cmn.BitArray     `json:"votes_bit_array"`
+		PeerMaj23s    map[P2PID]BlockID `json:"peer_maj_23s"`
+	}{
+		voteStrings, voteSet.votesBitArray, voteSet.peerMaj23s,
+	})
 }
 
 func (voteSet *VoteSet) StringShort() string {

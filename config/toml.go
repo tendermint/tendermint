@@ -37,16 +37,21 @@ func EnsureRoot(rootDir string) {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		writeConfigFile(configFilePath)
+		writeDefaultConfigFile(configFilePath)
 	}
 }
 
 // XXX: this func should probably be called by cmd/tendermint/commands/init.go
 // alongside the writing of the genesis.json and priv_validator.json
-func writeConfigFile(configFilePath string) {
+func writeDefaultConfigFile(configFilePath string) {
+	WriteConfigFile(configFilePath, DefaultConfig())
+}
+
+// WriteConfigFile renders config using the template and writes it to configFilePath.
+func WriteConfigFile(configFilePath string, config *Config) {
 	var buffer bytes.Buffer
 
-	if err := configTemplate.Execute(&buffer, DefaultConfig()); err != nil {
+	if err := configTemplate.Execute(&buffer, config); err != nil {
 		panic(err)
 	}
 
@@ -124,11 +129,11 @@ unsafe = {{ .RPC.Unsafe }}
 laddr = "{{ .P2P.ListenAddress }}"
 
 # Comma separated list of seed nodes to connect to
-seeds = ""
+seeds = "{{ .P2P.Seeds }}"
 
 # Comma separated list of nodes to keep persistent connections to
 # Do not add private peers to this list if you don't want them advertised
-persistent_peers = ""
+persistent_peers = "{{ .P2P.PersistentPeers }}"
 
 # Path to address book
 addr_book_file = "{{ .P2P.AddrBook }}"
@@ -261,7 +266,7 @@ func ResetTestRoot(testName string) *Config {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		writeConfigFile(configFilePath)
+		writeDefaultConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
