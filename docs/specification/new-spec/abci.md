@@ -33,6 +33,9 @@ For Ed25519 pubkeys, the Amino prefix is always "1624DE6220". For example, the 3
 Amino encoded as
 `1624DE622076852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85`
 
+(Note: in old versions of Tendermint (pre-v0.19.0), the pubkey is just prefixed with a
+single type byte, so for ED25519 we'd have `pub_key = 0x1 | pub`)
+
 The `power` is the new voting power for the validator, with the
 following rules:
 

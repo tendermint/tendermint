@@ -24,7 +24,9 @@ _NOTE: This is alpha software. Please contact us if you intend to run it in prod
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For more information, from introduction to install to application development, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+For more information, from introduction to installation and application development, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+
+For protocol details, see [the specification](./docs/specification/new-spec).
 
 ## Minimum requirements
 
@@ -46,7 +48,8 @@ For more details (or if it fails), [read the docs](https://tendermint.readthedoc
 
 ### Tendermint Core
 
-All resources involving the use of, building application on, or developing for, tendermint, can be found at [Read The Docs](https://tendermint.readthedocs.io/en/master/). Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
+To use Tendermint, build apps on it, or develop it, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
 
 ### Sub-projects
 
@@ -61,8 +64,8 @@ All resources involving the use of, building application on, or developing for, 
 
 ### Applications
 
-* [Ethermint](http://github.com/tendermint/ethermint); Ethereum on Tendermint
 * [Cosmos SDK](http://github.com/cosmos/cosmos-sdk); a cryptocurrency application framework
+* [Ethermint](http://github.com/tendermint/ethermint); Ethereum on Tendermint
 * [Many more](https://tendermint.readthedocs.io/en/master/ecosystem.html#abci-applications)
 
 ### More
