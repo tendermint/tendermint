@@ -267,7 +267,7 @@ func (ps *PartSet) StringShort() string {
 
 func (ps *PartSet) MarshalJSON() ([]byte, error) {
 	if ps == nil {
-		return []byte("nil-PartSet"), nil
+		return []byte("{}"), nil
 	}
 
 	ps.mtx.Lock()
@@ -278,6 +278,6 @@ func (ps *PartSet) MarshalJSON() ([]byte, error) {
 		PartsBitArray *cmn.BitArray `json:"parts_bit_array"`
 	}{
 		fmt.Sprintf("%d/%d", ps.Count(), ps.Total()),
-		ps.partsBitArray.Copy(),
+		ps.partsBitArray,
 	})
 }

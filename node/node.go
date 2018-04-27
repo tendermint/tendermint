@@ -402,7 +402,7 @@ func (n *Node) OnStart() error {
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
 
-	// Run the RPC server first
+	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
 		listeners, err := n.startRPC()
@@ -412,7 +412,7 @@ func (n *Node) OnStart() error {
 		n.rpcListeners = listeners
 	}
 
-	// Start the switch
+	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
 		return err
