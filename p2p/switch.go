@@ -403,7 +403,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
-				switch err {
+				switch err.(type) {
 				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeer:
 					sw.Logger.Debug("Error dialing peer", "err", err)
 				default:
@@ -534,6 +534,8 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
+	// dont connect to multiple peers on the same IP
+
 	// NOTE: if AuthEnc==false, we don't have a peerID until after the handshake.
 	// If AuthEnc==true then we already know the ID and could do the checks first before the handshake,
 	// but it's simple to just deal with both cases the same after the handshake.
@@ -564,20 +566,24 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	// Avoid self
 	if sw.nodeKey.ID() == peerID {
 		addr := peerNodeInfo.NetAddress()
-
-		// remove the given address from the address book if we added it earlier
+		// remove the given address from the address book
+		// and add to our addresses to avoid dialing again
 		sw.addrBook.RemoveAddress(addr)
-
-		// add the given address to the address book to avoid dialing ourselves
-		// again this is our public address
 		sw.addrBook.AddOurAddress(addr)
-
-		return ErrSwitchConnectToSelf
+		return ErrSwitchConnectToSelf{addr}
 	}
 
 	// Avoid duplicate
 	if sw.peers.Has(peerID) {
-		return ErrSwitchDuplicatePeer
+		return ErrSwitchDuplicatePeerID{peerID}
+	}
+
+	// check ips for both the connection addr and the self reported addr
+	if sw.peers.HasIP(addr) {
+		return ErrSwitchDuplicatePeerIP{addr}
+	}
+	if sw.peers.HasIP(peerNodeInfo.ListenAddr) {
+		return ErrSwitchDuplicatePeerIP{peerNodeInfo.ListenAddr}
 	}
 
 	// Filter peer against ID white list

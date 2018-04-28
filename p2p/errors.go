@@ -1,14 +1,32 @@
 package p2p
 
 import (
-	"errors"
 	"fmt"
 )
 
-var (
-	ErrSwitchDuplicatePeer = errors.New("Duplicate peer")
-	ErrSwitchConnectToSelf = errors.New("Connect to self")
-)
+type ErrSwitchDuplicatePeerID struct {
+	ID ID
+}
+
+func (e ErrSwitchDuplicatePeerID) Error() string {
+	return fmt.Errorf("Duplicate peer ID %v", e.ID)
+}
+
+type ErrSwitchDuplicatePeerIP struct {
+	Addr string
+}
+
+func (e ErrSwitchDuplicatePeerIP) Error() string {
+	return fmt.Errorf("Duplicate peer IP %v", e.Addr)
+}
+
+type ErrSwitchConnectToSelf struct {
+	Addr *NetAddress
+}
+
+func (e ErrSwitchConnectToSelf) Error() string {
+	return fmt.Errorf("Connect to self: %v", e.Addr)
+}
 
 type ErrSwitchAuthenticationFailure struct {
 	Dialed *NetAddress
