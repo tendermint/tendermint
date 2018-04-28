@@ -71,16 +71,111 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 // > The above command returns JSON structured like this:
 //
 // ```json
-// {
-// 	"error": "",
-// 	"result": {
-// 		"peer_round_states": [],
-// 		"round_state": "RoundState{\n  H:3537 R:0 S:RoundStepNewHeight\n  StartTime:     2017-05-31 12:32:31.178653883 +0000 UTC\n  CommitTime:    2017-05-31 12:32:30.178653883 +0000 UTC\n  Validators:    ValidatorSet{\n      Proposer: Validator{E89A51D60F68385E09E716D353373B11F8FACD62 {PubKeyEd25519{68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D}} VP:10 A:0}\n      Validators:\n        Validator{E89A51D60F68385E09E716D353373B11F8FACD62 {PubKeyEd25519{68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D}} VP:10 A:0}\n    }\n  Proposal:      <nil>\n  ProposalBlock: nil-PartSet nil-Block\n  LockedRound:   0\n  LockedBlock:   nil-PartSet nil-Block\n  Votes:         HeightVoteSet{H:3537 R:0~0\n      VoteSet{H:3537 R:0 T:1 +2/3:<nil> BA{1:_} map[]}\n      VoteSet{H:3537 R:0 T:2 +2/3:<nil> BA{1:_} map[]}\n    }\n  LastCommit: VoteSet{H:3536 R:0 T:2 +2/3:B7F988FBCDC68F9320E346EECAA76E32F6054654:1:673BE7C01F74 BA{1:X} map[]}\n  LastValidators:    ValidatorSet{\n      Proposer: Validator{E89A51D60F68385E09E716D353373B11F8FACD62 {PubKeyEd25519{68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D}} VP:10 A:0}\n      Validators:\n        Validator{E89A51D60F68385E09E716D353373B11F8FACD62 {PubKeyEd25519{68DFDA7E50F82946E7E8546BED37944A422CD1B831E70DF66BA3B8430593944D}} VP:10 A:0}\n    }\n}"
-// 	},
-// 	"id": "",
-// 	"jsonrpc": "2.0"
-// }
+//{
+//  "jsonrpc": "2.0",
+//  "id": "",
+//  "result": {
+//    "round_state": {
+//      "height": 138,
+//      "round": 0,
+//      "step": 1,
+//      "start_time": "2018-04-27T23:16:34.472087096-04:00",
+//      "commit_time": "2018-04-27T23:16:33.472087096-04:00",
+//      "validators": {
+//        "validators": [
+//          {
+//            "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
+//            "pub_key": {
+//              "type": "AC26791624DE60",
+//              "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
+//            },
+//            "voting_power": 10,
+//            "accum": 0
+//          }
+//        ],
+//        "proposer": {
+//          "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
+//          "pub_key": {
+//            "type": "AC26791624DE60",
+//            "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
+//          },
+//          "voting_power": 10,
+//          "accum": 0
+//        }
+//      },
+//      "proposal": null,
+//      "proposal_block": null,
+//      "proposal_block_parts": null,
+//      "locked_round": 0,
+//      "locked_block": null,
+//      "locked_block_parts": null,
+//      "valid_round": 0,
+//      "valid_block": null,
+//      "valid_block_parts": null,
+//      "votes": [
+//        {
+//          "round": 0,
+//          "prevotes": "_",
+//          "precommits": "_"
+//        }
+//      ],
+//      "commit_round": -1,
+//      "last_commit": {
+//        "votes": [
+//          "Vote{0:5875562FF0FF 137/00/2(Precommit) 5701C93659EA /ED3588D7AF29.../ @ 2018-04-28T03:16:33.469Z}"
+//        ],
+//        "votes_bit_array": "x",
+//        "peer_maj_23s": {}
+//      },
+//      "last_validators": {
+//        "validators": [
+//          {
+//            "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
+//            "pub_key": {
+//              "type": "AC26791624DE60",
+//              "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
+//            },
+//            "voting_power": 10,
+//            "accum": 0
+//          }
+//        ],
+//        "proposer": {
+//          "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
+//          "pub_key": {
+//            "type": "AC26791624DE60",
+//            "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
+//          },
+//          "voting_power": 10,
+//          "accum": 0
+//        }
+//      }
+//    },
+//    "peer_round_states": {
+//      "d4bf26bfa5e390b94d98106ab858abf64db26d48": {
+//        "Height": 136,
+//        "Round": 0,
+//        "Step": 1,
+//        "StartTime": "2018-04-27T23:16:33.841163812-04:00",
+//        "Proposal": false,
+//        "ProposalBlockPartsHeader": {
+//          "total": 1,
+//          "hash": "E27F2D13298F7CB14090EE60CD9AB214D2F5161F"
+//        },
+//        "ProposalBlockParts": "x",
+//        "ProposalPOLRound": -1,
+//        "ProposalPOL": "_",
+//        "Prevotes": "_",
+//        "Precommits": "x",
+//        "LastCommitRound": 0,
+//        "LastCommit": null,
+//        "CatchupCommitRound": 0,
+//        "CatchupCommit": "_"
+//      }
+//    }
+//  }
+//}
 // ```
+// UNSTABLE
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	peers := p2pSwitch.Peers().List()
 	peerRoundStates := make([]ctypes.PeerRoundState, len(peers))

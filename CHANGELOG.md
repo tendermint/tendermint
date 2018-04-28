@@ -45,7 +45,7 @@ Some of these are breaking in the RPC response, but they're really bugs!
 
 - [spec] Document address format and pubkey encoding pre and post Amino
 - [rpc] Lower case JSON field names
-- [rpc] Fix missing entries and lower case the fields in `/dump_consensus_state`
+- [rpc] Fix missing entries, improve, and lower case the fields in `/dump_consensus_state`
 - [rpc] Fix NodeInfo.Channels format to hex
 - [rpc] Add Validator address to `/status`
 - [rpc] Fix `prove` in ABCIQuery
