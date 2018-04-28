@@ -260,6 +260,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
+		// NOTE: this is the self-reported addr, not the original we dialed
 		go sw.reconnectToPeer(peer.NodeInfo().NetAddress())
 	}
 }
@@ -351,6 +352,7 @@ func (sw *Switch) IsDialing(id ID) bool {
 }
 
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
+// Used to dial peers from config on startup or from unsafe-RPC (trusted sources).
 // TODO: remove addrBook arg since it's now set on the switch
 func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)

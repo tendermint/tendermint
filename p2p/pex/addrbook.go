@@ -7,7 +7,6 @@ package pex
 import (
 	"crypto/sha256"
 	"encoding/binary"
-	"fmt"
 	"math"
 	"net"
 	"sync"
@@ -169,7 +168,9 @@ func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 	return ok
 }
 
-// AddAddress implements AddrBook - adds the given address as received from the given source.
+// AddAddress implements AddrBook
+// Add address to a "new" bucket. If it's already in one, only add it probabilistically.
+// Returns error if the addr is non-routable. Does not add self.
 // NOTE: addr must not be nil
 func (a *addrBook) AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error {
 	a.mtx.Lock()
@@ -298,25 +299,27 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	if a.size() == 0 {
+	bookSize := a.size()
+	if bookSize == 0 {
 		return nil
 	}
 
-	allAddr := make([]*p2p.NetAddress, a.size())
+	numAddresses := cmn.MaxInt(
+		cmn.MinInt(minGetSelection, bookSize),
+		bookSize*getSelectionPercent/100)
+	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
+
+	// XXX: instead of making a list of all addresses, shuffling, and slicing a random chunk,
+	// could we just select a random numAddresses of indexes?
+	allAddr := make([]*p2p.NetAddress, bookSize)
 	i := 0
 	for _, ka := range a.addrLookup {
 		allAddr[i] = ka.Addr
 		i++
 	}
 
-	numAddresses := cmn.MaxInt(
-		cmn.MinInt(minGetSelection, len(allAddr)),
-		len(allAddr)*getSelectionPercent/100)
-	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
-
 	// Fisher-Yates shuffle the array. We only need to do the first
 	// `numAddresses' since we are throwing the rest.
-	// XXX: What's the point of this if we already loop randomly through addrLookup ?
 	for i := 0; i < numAddresses; i++ {
 		// pick a number between current index and the end
 		j := cmn.RandIntn(len(allAddr)-i) + i
@@ -338,7 +341,8 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	if a.size() == 0 {
+	bookSize := a.size()
+	if bookSize == 0 {
 		return nil
 	}
 
@@ -350,8 +354,8 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	}
 
 	numAddresses := cmn.MaxInt(
-		cmn.MinInt(minGetSelection, a.size()),
-		a.size()*getSelectionPercent/100)
+		cmn.MinInt(minGetSelection, bookSize),
+		bookSize*getSelectionPercent/100)
 	numAddresses = cmn.MinInt(maxGetSelection, numAddresses)
 
 	selection := make([]*p2p.NetAddress, numAddresses)
@@ -605,12 +609,19 @@ func (a *addrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 // adds the address to a "new" bucket. if its already in one,
 // it only adds it probabilistically
 func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
-	if a.routabilityStrict && !addr.Routable() {
-		return fmt.Errorf("Cannot add non-routable address %v", addr)
+	if addr == nil {
+		return ErrAddrBookNilAddr{addr, src}
 	}
+	if src == nil {
+		return ErrAddrBookNilAddr{addr, src}
+	}
+
+	if a.routabilityStrict && !addr.Routable() {
+		return ErrAddrBookNonRoutable{addr}
+	}
+	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
 	if _, ok := a.ourAddrs[addr.String()]; ok {
-		// Ignore our own listener address.
-		return fmt.Errorf("Cannot add ourselves with address %v", addr)
+		return ErrAddrBookSelf
 	}
 
 	ka := a.addrLookup[addr.ID]
@@ -636,10 +647,8 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	bucket := a.calcNewBucket(addr, src)
 	added := a.addToNewBucket(ka, bucket)
 	if !added {
-		a.Logger.Info("Can't add new address, addr book is full", "address", addr, "total", a.size())
+		return ErrAddrBookFull{addr, a.size()}
 	}
-
-	a.Logger.Info("Added new address", "address", addr, "total", a.size())
 	return nil
 }
 

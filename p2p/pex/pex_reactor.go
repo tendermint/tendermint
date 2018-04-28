@@ -167,17 +167,28 @@ func (r *PEXReactor) AddPeer(p Peer) {
 			r.RequestAddrs(p)
 		}
 	} else {
-		// For inbound peers, the peer is its own source,
-		// and its NodeInfo has already been validated.
-		// Let the ensurePeersRoutine handle asking for more
-		// peers when we need - we don't trust inbound peers as much.
+		// inbound peer is its own source
 		addr := p.NodeInfo().NetAddress()
-		if !isAddrPrivate(addr, r.config.PrivatePeerIDs) {
-			err := r.book.AddAddress(addr, addr)
-			if err != nil {
+		src := addr
+
+		// ignore private addrs
+		if isAddrPrivate(addr, r.config.PrivatePeerIDs) {
+			return
+		}
+
+		// add to book. dont RequestAddrs right away because
+		// we don't trust inbound as much - let ensurePeersRoutine handle it.
+		err := r.book.AddAddress(addr, src)
+		if err != nil {
+			switch err.(type) {
+			case ErrAddrBookNilAddr:
 				r.Logger.Error("Failed to add new address", "err", err)
+			default:
+				// non-routable, self, full book, etc.
+				r.Logger.Debug("Failed to add new address", "err", err)
 			}
 		}
+
 	}
 }
 
@@ -277,25 +288,31 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 // request for this peer and deletes the open request.
 // If there's no open request for the src peer, it returns an error.
 func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
-	id := string(src.ID())
 
+	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
 		return cmn.NewError("Received unsolicited pexAddrsMessage")
 	}
-
 	r.requestsSent.Delete(id)
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
 		// TODO: make sure correct nodes never send nil and return error
-		//   if a netAddr == nil
-		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
-			// TODO: Should we moe the list of private peers into the AddrBook so AddAddress
-			// can do the check for us, and we don't have to worry about checking before calling ?
-			err := r.book.AddAddress(netAddr, srcAddr)
-			if err != nil {
-				r.Logger.Error("Failed to add new address", "err", err)
-			}
+		if netAddr == nil {
+			return cmn.NewError("received nil addr")
+		}
+
+		// ignore private peers
+		// TODO: give private peers to AddrBook so it can enforce this on AddAddress.
+		// We'd then have to check for ErrPrivatePeer on AddAddress here, which is
+		// an error we just ignore (maybe peer is probing us for our private peers :P)
+		if isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
+			continue
+		}
+
+		err := r.book.AddAddress(netAddr, srcAddr)
+		if err != nil {
+			r.Logger.Error("Failed to add new address", "err", err)
 		}
 	}
 	return nil
@@ -627,7 +644,7 @@ func (r *PEXReactor) attemptDisconnects() {
 	}
 }
 
-// isAddrPrivate returns true if addr is private.
+// isAddrPrivate returns true if addr.ID is a private ID.
 func isAddrPrivate(addr *p2p.NetAddress, privatePeerIDs []string) bool {
 	for _, id := range privatePeerIDs {
 		if string(addr.ID) == id {
