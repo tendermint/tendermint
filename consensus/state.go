@@ -990,6 +990,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		cs.newStep()
 	}()
 
+	// check for a polka
 	blockID, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
 
 	// If we don't have a polka, we must precommit nil

@@ -113,8 +113,13 @@ type ResultValidators struct {
 }
 
 type ResultDumpConsensusState struct {
-	RoundState      json.RawMessage            `json:"round_state"`
-	PeerRoundStates map[p2p.ID]json.RawMessage `json:"peer_round_states"`
+	RoundState      json.RawMessage  `json:"round_state"`
+	PeerRoundStates []PeerRoundState `json:"peer_round_states"`
+}
+
+type PeerRoundState struct {
+	NodeAddress    string          `json:"node_address"`
+	PeerRoundState json.RawMessage `json:"peer_round_state"`
 }
 
 type ResultBroadcastTx struct {

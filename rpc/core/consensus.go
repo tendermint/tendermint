@@ -1,10 +1,8 @@
 package core
 
 import (
-	"encoding/json"
-
 	cm "github.com/tendermint/tendermint/consensus"
-	p2p "github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -84,14 +82,18 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 // }
 // ```
 func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
-	peerRoundStates := make(map[p2p.ID]json.RawMessage)
-	for _, peer := range p2pSwitch.Peers().List() {
+	peers := p2pSwitch.Peers().List()
+	peerRoundStates := make([]ctypes.PeerRoundState, len(peers))
+	for i, peer := range peers {
 		peerState := peer.Get(types.PeerStateKey).(*cm.PeerState)
 		peerRoundState, err := peerState.GetRoundStateJSON()
 		if err != nil {
 			return nil, err
 		}
-		peerRoundStates[peer.ID()] = peerRoundState
+		peerRoundStates[i] = ctypes.PeerRoundState{
+			NodeAddress:    p2p.IDAddressString(peer.ID(), peer.NodeInfo().ListenAddr),
+			PeerRoundState: peerRoundState,
+		}
 	}
 	roundState, err := consensusState.GetRoundStateJSON()
 	if err != nil {
