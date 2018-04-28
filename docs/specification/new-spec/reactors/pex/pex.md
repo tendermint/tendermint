@@ -31,8 +31,9 @@ we try the seeds again.
 
 ## Listening
 
-Peers listen on a configurable ListenAddr that they self-report during
-handshakes with other peers.
+Peers listen on a configurable ListenAddr that they self-report in their
+NodeInfo during handshakes with other peers. Peers accept up to (MaxNumPeers -
+MinNumOutboundPeers) incoming peers.
 
 
 ## Address Book

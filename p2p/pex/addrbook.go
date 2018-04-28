@@ -493,11 +493,11 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 
 // Adds ka to new bucket. Returns false if it couldn't do it cuz buckets full.
 // NOTE: currently it always returns true.
-func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
+func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
 	// Sanity check
 	if ka.isOld() {
-		a.Logger.Error(cmn.Fmt("Cannot add address already in old bucket to a new bucket: %v", ka))
-		return false
+		a.Logger.Error("Failed Sanity Check! Cant add old address to new bucket", "ka", knownAddress, "bucket", bucketIdx)
+		return
 	}
 
 	addrStr := ka.Addr.String()
@@ -505,7 +505,7 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 
 	// Already exists?
 	if _, ok := bucket[addrStr]; ok {
-		return true
+		return
 	}
 
 	// Enforce max addresses.
@@ -523,8 +523,6 @@ func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) bool {
 
 	// Add it to addrLookup
 	a.addrLookup[ka.ID()] = ka
-
-	return true
 }
 
 // Adds ka to old bucket. Returns false if it couldn't do it cuz buckets full.
@@ -627,7 +625,6 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	}
 
 	ka := a.addrLookup[addr.ID]
-
 	if ka != nil {
 		// Already old.
 		if ka.isOld() {
@@ -647,10 +644,7 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	}
 
 	bucket := a.calcNewBucket(addr, src)
-	added := a.addToNewBucket(ka, bucket)
-	if !added {
-		return ErrAddrBookFull{addr, a.size()}
-	}
+	a.addToNewBucket(ka, bucket)
 	return nil
 }
 
@@ -696,20 +690,13 @@ func (a *addrBook) moveToOld(ka *knownAddress) {
 	oldBucketIdx := a.calcOldBucket(ka.Addr)
 	added := a.addToOldBucket(ka, oldBucketIdx)
 	if !added {
-		// No room, must evict something
+		// No room; move the oldest to a new bucket
 		oldest := a.pickOldest(bucketTypeOld, oldBucketIdx)
 		a.removeFromBucket(oldest, bucketTypeOld, oldBucketIdx)
-		// Find new bucket to put oldest in
 		newBucketIdx := a.calcNewBucket(oldest.Addr, oldest.Src)
-		added := a.addToNewBucket(oldest, newBucketIdx)
-		// No space in newBucket either, just put it in freedBucket from above.
-		if !added {
-			added := a.addToNewBucket(oldest, freedBucket)
-			if !added {
-				a.Logger.Error(cmn.Fmt("Could not migrate oldest %v to freedBucket %v", oldest, freedBucket))
-			}
-		}
-		// Finally, add to bucket again.
+		a.addToNewBucket(oldest, newBucketIdx)
+
+		// Finally, add our ka to old bucket again.
 		added = a.addToOldBucket(ka, oldBucketIdx)
 		if !added {
 			a.Logger.Error(cmn.Fmt("Could not re-add ka %v to oldBucketIdx %v", ka, oldBucketIdx))
