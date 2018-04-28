@@ -496,7 +496,7 @@ func (a *addrBook) getBucket(bucketType byte, bucketIdx int) map[string]*knownAd
 func (a *addrBook) addToNewBucket(ka *knownAddress, bucketIdx int) {
 	// Sanity check
 	if ka.isOld() {
-		a.Logger.Error("Failed Sanity Check! Cant add old address to new bucket", "ka", knownAddress, "bucket", bucketIdx)
+		a.Logger.Error("Failed Sanity Check! Cant add old address to new bucket", "ka", ka, "bucket", bucketIdx)
 		return
 	}
 
@@ -679,8 +679,6 @@ func (a *addrBook) moveToOld(ka *knownAddress) {
 		return
 	}
 
-	// Remember one of the buckets in which ka is in.
-	freedBucket := ka.Buckets[0]
 	// Remove from all (new) buckets.
 	a.removeFromAllBuckets(ka)
 	// It's officially old now.

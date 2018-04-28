@@ -35,22 +35,22 @@ Peers listen on a configurable ListenAddr that they self-report in their
 NodeInfo during handshakes with other peers. Peers accept up to (MaxNumPeers -
 MinNumOutboundPeers) incoming peers.
 
-
 ## Address Book
 
 Peers are tracked via their ID (their PubKey.Address()).
-For each ID, the address book keeps the most recent IP:PORT.
 Peers are added to the address book from the PEX when they first connect to us or
 when we hear about them from other peers.
 
 The address book is arranged in sets of buckets, and distinguishes between
 vetted (old) and unvetted (new) peers. It keeps different sets of buckets for vetted and
-unvetted peers. Buckets provide randomization over peer selection.
+unvetted peers. Buckets provide randomization over peer selection. Peers are put
+in buckets according to their IP groups.
 
-A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets.
+A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets, and
+each instance of the peer can have a different IP:PORT.
 
-If there's no space in the book, we check the bucket for bad peers, which include peers we've attempted to
-dial 3 times, and then remove them from only that bucket.
+If we're trying to add a new peer but there's no space in its bucket, we'll
+remove the worst peer from that bucket to make room.
 
 ## Vetting
 
