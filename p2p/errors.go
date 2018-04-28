@@ -18,3 +18,31 @@ type ErrSwitchAuthenticationFailure struct {
 func (e ErrSwitchAuthenticationFailure) Error() string {
 	return fmt.Sprintf("Failed to authenticate peer. Dialed %v, but got peer with ID %s", e.Dialed, e.Got)
 }
+
+//-------------------------------------------------------------------
+
+type ErrNetAddressNoID struct {
+	Addr string
+}
+
+func (e ErrNetAddressNoID) Error() string {
+	return fmt.Errorf("Address (%s) does not contain ID", e.Addr)
+}
+
+type ErrNetAddressInvalid struct {
+	Addr string
+	Err  error
+}
+
+func (e ErrNetAddressInvalid) Error() string {
+	return fmt.Errorf("Invalid address (%s): %v", e.Addr, e.Err)
+}
+
+type ErrNetAddressLookup struct {
+	Addr string
+	Err  error
+}
+
+func (e ErrNetAddressLookup) Error() string {
+	return fmt.Errorf("Error looking up host (%s): %v", e.Addr, e.Err)
+}
