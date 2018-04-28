@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 
 	abci "github.com/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
@@ -280,14 +279,6 @@ func NewNode(config *cfg.Config,
 		addrBook = pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
 		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 
-		var seeds []string
-		if config.P2P.Seeds != "" {
-			seeds = strings.Split(config.P2P.Seeds, ",")
-		}
-		var privatePeerIDs []string
-		if config.P2P.PrivatePeerIDs != "" {
-			privatePeerIDs = strings.Split(config.P2P.PrivatePeerIDs, ",")
-		}
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
