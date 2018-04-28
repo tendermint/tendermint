@@ -21,13 +21,19 @@ When we have no peers, or have been unable to find enough peers from existing on
 we dial a randomly selected seed to get a list of peers to dial.
 
 On startup, we will also immediately dial the given list of `persisten_peers`,
-and will attempt to maintain persistent connections with them. If the connections die,
+and will attempt to maintain persistent connections with them. If the connections die, or we fail to dail,
 we will redial every 5s for a a few minutes, then switch to an exponential backoff schedule,
 and after about a day of trying, stop dialing the peer.
 
-So long as we have less than `MaxPeers`, we periodically request additional peers
+So long as we have less than `MinNumOutboundPeers`, we periodically request additional peers
 from each of our own. If sufficient time goes by and we still can't find enough peers,
 we try the seeds again.
+
+## Listening
+
+Peers listen on a configurable ListenAddr that they self-report during
+handshakes with other peers.
+
 
 ## Address Book
 
@@ -41,6 +47,9 @@ vetted (old) and unvetted (new) peers. It keeps different sets of buckets for ve
 unvetted peers. Buckets provide randomization over peer selection.
 
 A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets.
+
+If there's no space in the book, we check the bucket for bad peers, which include peers we've attempted to
+dial 3 times, and then remove them from only that bucket.
 
 ## Vetting
 
@@ -74,17 +83,9 @@ Connection attempts are made with exponential backoff (plus jitter). Because
 the selection process happens every `ensurePeersPeriod`, we might not end up
 dialing a peer for much longer than the backoff duration.
 
-.......
------------------
-TODO: put this in the right place. And add more details.
 
-AddrBook: If there's no space in the book, we check the bucket for bad peers, which include peers we've attempted to
-dial 3 times, and then remove them from only that bucket.
-
+TODO
 PEX: if we fail to conenct to the peer after 16 tries (with exponential backoff), we remove from address book completely.
-
------------------
-.......
 
 
 ## Select Peers to Exchange
