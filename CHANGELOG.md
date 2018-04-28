@@ -24,6 +24,33 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.19.1 (April 27th, 2018)
+
+Note this release includes some small breaking changes in the RPC and one in the
+config that are really bug fixes. v0.19.1 will work with existing chains, and make Tendermint
+easier to use and debug. With <3
+
+BREAKING (MINOR)
+
+- [config] Removed `wal_light` setting. If you really needed this, let us know
+
+FEATURES:
+
+- [networks] moved in tooling from devops repo: terraform and ansible scripts for deploying testnets !
+- [cmd] Added `gen_node_key` command
+
+BUG FIXES
+
+Some of these are breaking in the RPC response, but they're really bugs!
+
+- [spec] Document address format and pubkey encoding pre and post Amino
+- [rpc] Lower case JSON field names
+- [rpc] Fix missing entries, improve, and lower case the fields in `/dump_consensus_state`
+- [rpc] Fix NodeInfo.Channels format to hex
+- [rpc] Add Validator address to `/status`
+- [rpc] Fix `prove` in ABCIQuery
+- [cmd] MarshalJSONIndent on init
+
 ## 0.19.0 (April 13th, 2018)
 
 BREAKING:
@@ -39,8 +66,9 @@ See github.com/tendermint/go-amino for details on the new format.
 See `scripts/wire2amino.go` for a tool to upgrade
 genesis/priv_validator/node_key JSON files.
 
-FEATURES:
-- [cmd] added `gen_node_key` command
+FEATURES
+
+- [test] docker-compose for local testnet setup (thanks Greg!)
 
 ## 0.18.0 (April 6th, 2018)
 

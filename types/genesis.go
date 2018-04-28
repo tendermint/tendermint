@@ -41,7 +41,7 @@ func (genDoc *GenesisDoc) AppState() json.RawMessage {
 
 // SaveAs is a utility method for saving GenensisDoc as a JSON file.
 func (genDoc *GenesisDoc) SaveAs(file string) error {
-	genDocBytes, err := cdc.MarshalJSON(genDoc)
+	genDocBytes, err := cdc.MarshalJSONIndent(genDoc, "", "  ")
 	if err != nil {
 		return err
 	}

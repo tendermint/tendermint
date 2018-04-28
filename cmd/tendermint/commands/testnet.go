@@ -57,7 +57,18 @@ func init() {
 var TestnetFilesCmd = &cobra.Command{
 	Use:   "testnet",
 	Short: "Initialize files for a Tendermint testnet",
-	RunE:  testnetFiles,
+	Long: `testnet will create "v" + "n" number of directories and populate each with
+necessary files (private validator, genesis, config, etc.).
+
+Note, strict routability for addresses is turned off in the config file.
+
+Optionally, it will fill in persistent_peers list in config file using either hostnames or IPs.
+
+Example:
+
+	tendermint testnet --v 4 --o ./output --populate-persistent-peers --starting-ip-address 192.168.10.2
+	`,
+	RunE: testnetFiles,
 }
 
 func testnetFiles(cmd *cobra.Command, args []string) error {
@@ -162,6 +173,7 @@ func populatePersistentPeersInConfigAndWriteIt(config *cfg.Config) error {
 		nodeDir := filepath.Join(outputDir, cmn.Fmt("%s%d", nodeDirPrefix, i))
 		config.SetRoot(nodeDir)
 		config.P2P.PersistentPeers = persistentPeersList
+		config.P2P.AddrBookStrict = false
 
 		// overwrite default config
 		cfg.WriteConfigFile(filepath.Join(nodeDir, "config", "config.toml"), config)
