@@ -126,9 +126,7 @@ func (r *PEXReactor) OnStart() error {
 	}
 
 	// return err if user provided a bad seed address
-	// NOTE: only if its an invalid address.
-	// If we simply fail to resovle a DNS name,
-	// we shouldn't exit here ...
+	// or a host name that we cant resolve
 	if err := r.checkSeeds(); err != nil {
 		return err
 	}
@@ -500,9 +498,6 @@ func (r *PEXReactor) checkSeeds() error {
 	if lSeeds == 0 {
 		return nil
 	}
-	// TODO: don't exit the program if we simply cant resolve a DNS name.
-	// But if names or addresses are incorrectly speficied (ie. invalid),
-	// then we should return an err that causes an exit
 	_, errs := p2p.NewNetAddressStrings(r.config.Seeds)
 	for _, err := range errs {
 		if err != nil {

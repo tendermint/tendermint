@@ -22,7 +22,9 @@ type NetAddress struct {
 	ID   ID     `json:"id"`
 	IP   net.IP `json:"ip"`
 	Port uint16 `json:"port"`
-	Name string `json:"name"` // optional DNS name
+
+	// TODO:
+	// Name string `json:"name"` // optional DNS name
 
 	// memoize .String()
 	str string
