@@ -4,7 +4,7 @@ import "time"
 
 func MakeCommit(blockID BlockID, height int64, round int,
 	voteSet *VoteSet,
-	validators []*PrivValidatorFS) (*Commit, error) {
+	validators []PrivValidator) (*Commit, error) {
 
 	// all sign
 	for i := 0; i < len(validators); i++ {
@@ -28,8 +28,8 @@ func MakeCommit(blockID BlockID, height int64, round int,
 	return voteSet.MakeCommit(), nil
 }
 
-func signAddVote(privVal *PrivValidatorFS, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
-	vote.Signature, err = privVal.Signer.Sign(vote.SignBytes(voteSet.ChainID()))
+func signAddVote(privVal PrivValidator, vote *Vote, voteSet *VoteSet) (signed bool, err error) {
+	err = privVal.SignVote(voteSet.ChainID(), vote)
 	if err != nil {
 		return false, err
 	}

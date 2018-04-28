@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/tendermint/go-amino"
 	tmpubsub "github.com/tendermint/tmlibs/pubsub"
 )
 
@@ -33,8 +34,16 @@ func (req RPCRequest) String() string {
 	return fmt.Sprintf("[%s %s]", req.ID, req.Method)
 }
 
-func MapToRequest(id string, method string, params map[string]interface{}) (RPCRequest, error) {
-	payload, err := json.Marshal(params)
+func MapToRequest(cdc *amino.Codec, id string, method string, params map[string]interface{}) (RPCRequest, error) {
+	var params_ = make(map[string]json.RawMessage, len(params))
+	for name, value := range params {
+		valueJSON, err := cdc.MarshalJSON(value)
+		if err != nil {
+			return RPCRequest{}, err
+		}
+		params_[name] = valueJSON
+	}
+	payload, err := json.Marshal(params_) // NOTE: Amino doesn't handle maps yet.
 	if err != nil {
 		return RPCRequest{}, err
 	}
@@ -42,8 +51,16 @@ func MapToRequest(id string, method string, params map[string]interface{}) (RPCR
 	return request, nil
 }
 
-func ArrayToRequest(id string, method string, params []interface{}) (RPCRequest, error) {
-	payload, err := json.Marshal(params)
+func ArrayToRequest(cdc *amino.Codec, id string, method string, params []interface{}) (RPCRequest, error) {
+	var params_ = make([]json.RawMessage, len(params))
+	for i, value := range params {
+		valueJSON, err := cdc.MarshalJSON(value)
+		if err != nil {
+			return RPCRequest{}, err
+		}
+		params_[i] = valueJSON
+	}
+	payload, err := json.Marshal(params_) // NOTE: Amino doesn't handle maps yet.
 	if err != nil {
 		return RPCRequest{}, err
 	}
@@ -75,12 +92,12 @@ type RPCResponse struct {
 	Error   *RPCError       `json:"error,omitempty"`
 }
 
-func NewRPCSuccessResponse(id string, res interface{}) RPCResponse {
+func NewRPCSuccessResponse(cdc *amino.Codec, id string, res interface{}) RPCResponse {
 	var rawMsg json.RawMessage
 
 	if res != nil {
 		var js []byte
-		js, err := json.Marshal(res)
+		js, err := cdc.MarshalJSON(res)
 		if err != nil {
 			return RPCInternalError(id, errors.Wrap(err, "Error marshalling response"))
 		}
@@ -101,9 +118,8 @@ func NewRPCErrorResponse(id string, code int, msg string, data string) RPCRespon
 func (resp RPCResponse) String() string {
 	if resp.Error == nil {
 		return fmt.Sprintf("[%s %v]", resp.ID, resp.Result)
-	} else {
-		return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
 	}
+	return fmt.Sprintf("[%s %s]", resp.ID, resp.Error)
 }
 
 func RPCParseError(id string, err error) RPCResponse {
@@ -138,6 +154,7 @@ type WSRPCConnection interface {
 	WriteRPCResponse(resp RPCResponse)
 	TryWriteRPCResponse(resp RPCResponse) bool
 	GetEventSubscriber() EventSubscriber
+	Codec() *amino.Codec
 }
 
 // EventSubscriber mirros tendermint/tendermint/types.EventBusSubscriber

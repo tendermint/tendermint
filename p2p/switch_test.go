@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -51,8 +50,6 @@ type TestReactor struct {
 
 	mtx          sync.Mutex
 	channels     []*conn.ChannelDescriptor
-	peersAdded   []Peer
-	peersRemoved []Peer
 	logMessages  bool
 	msgsCounter  int
 	msgsReceived map[byte][]PeerMessage
@@ -73,17 +70,9 @@ func (tr *TestReactor) GetChannels() []*conn.ChannelDescriptor {
 	return tr.channels
 }
 
-func (tr *TestReactor) AddPeer(peer Peer) {
-	tr.mtx.Lock()
-	defer tr.mtx.Unlock()
-	tr.peersAdded = append(tr.peersAdded, peer)
-}
+func (tr *TestReactor) AddPeer(peer Peer) {}
 
-func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {
-	tr.mtx.Lock()
-	defer tr.mtx.Unlock()
-	tr.peersRemoved = append(tr.peersRemoved, peer)
-}
+func (tr *TestReactor) RemovePeer(peer Peer, reason interface{}) {}
 
 func (tr *TestReactor) Receive(chID byte, peer Peer, msgBytes []byte) {
 	if tr.logMessages {
@@ -112,6 +101,10 @@ func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switc
 }
 
 func initSwitchFunc(i int, sw *Switch) *Switch {
+	sw.SetAddrBook(&addrBookMock{
+		addrs:    make(map[string]struct{}),
+		ourAddrs: make(map[string]struct{})})
+
 	// Make two reactors of two channels each
 	sw.AddReactor("foo", NewTestReactor([]*conn.ChannelDescriptor{
 		{ID: byte(0x00), Priority: 10},
@@ -121,6 +114,7 @@ func initSwitchFunc(i int, sw *Switch) *Switch {
 		{ID: byte(0x02), Priority: 10},
 		{ID: byte(0x03), Priority: 10},
 	}, true))
+
 	return sw
 }
 
@@ -137,9 +131,9 @@ func TestSwitches(t *testing.T) {
 	}
 
 	// Lets send some messages
-	ch0Msg := "channel zero"
-	ch1Msg := "channel foo"
-	ch2Msg := "channel bar"
+	ch0Msg := []byte("channel zero")
+	ch1Msg := []byte("channel foo")
+	ch2Msg := []byte("channel bar")
 
 	s1.Broadcast(byte(0x00), ch0Msg)
 	s1.Broadcast(byte(0x01), ch1Msg)
@@ -150,15 +144,15 @@ func TestSwitches(t *testing.T) {
 	assertMsgReceivedWithTimeout(t, ch2Msg, byte(0x02), s2.Reactor("bar").(*TestReactor), 10*time.Millisecond, 5*time.Second)
 }
 
-func assertMsgReceivedWithTimeout(t *testing.T, msg string, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
+func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, reactor *TestReactor, checkPeriod, timeout time.Duration) {
 	ticker := time.NewTicker(checkPeriod)
 	for {
 		select {
 		case <-ticker.C:
 			msgs := reactor.getMsgs(channel)
 			if len(msgs) > 0 {
-				if !bytes.Equal(msgs[0].Bytes, wire.BinaryBytes(msg)) {
-					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", wire.BinaryBytes(msg), msgs[0].Bytes)
+				if !bytes.Equal(msgs[0].Bytes, msgBytes) {
+					t.Fatalf("Unexpected message bytes. Wanted: %X, Got: %X", msgBytes, msgs[0].Bytes)
 				}
 				return
 			}
@@ -197,6 +191,32 @@ func TestConnAddrFilter(t *testing.T) {
 	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
+func TestSwitchFiltersOutItself(t *testing.T) {
+	s1 := MakeSwitch(config, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
+	// addr := s1.NodeInfo().NetAddress()
+
+	// // add ourselves like we do in node.go#427
+	// s1.addrBook.AddOurAddress(addr)
+
+	// simulate s1 having a public IP by creating a remote peer with the same ID
+	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: DefaultPeerConfig()}
+	rp.Start()
+
+	// addr should be rejected in addPeer based on the same ID
+	err := s1.DialPeerWithAddress(rp.Addr(), false)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrSwitchConnectToSelf, err)
+	}
+
+	assert.True(t, s1.addrBook.OurAddress(rp.Addr()))
+
+	assert.False(t, s1.addrBook.HasAddress(rp.Addr()))
+
+	rp.Stop()
+
+	assertNoPeersAfterTimeout(t, s1, 100*time.Millisecond)
+}
+
 func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) {
 	time.Sleep(timeout)
 	if sw.Peers().Size() != 0 {
@@ -213,14 +233,14 @@ func TestConnIDFilter(t *testing.T) {
 	c1, c2 := conn.NetPipe()
 
 	s1.SetIDFilter(func(id ID) error {
-		if id == PubKeyToID(s2.nodeInfo.PubKey) {
+		if id == s2.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
 	s2.SetIDFilter(func(id ID) error {
-		if id == PubKeyToID(s1.nodeInfo.PubKey) {
+		if id == s1.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
@@ -250,7 +270,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -280,7 +300,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
@@ -373,7 +393,7 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 	// Send random message from foo channel to another
 	for i := 0; i < b.N; i++ {
 		chID := byte(i % 4)
-		successChan := s1.Broadcast(chID, "test data")
+		successChan := s1.Broadcast(chID, []byte("test data"))
 		for s := range successChan {
 			if s {
 				numSuccess++
@@ -385,3 +405,29 @@ func BenchmarkSwitchBroadcast(b *testing.B) {
 
 	b.Logf("success: %v, failure: %v", numSuccess, numFailure)
 }
+
+type addrBookMock struct {
+	addrs    map[string]struct{}
+	ourAddrs map[string]struct{}
+}
+
+var _ AddrBook = (*addrBookMock)(nil)
+
+func (book *addrBookMock) AddAddress(addr *NetAddress, src *NetAddress) error {
+	book.addrs[addr.String()] = struct{}{}
+	return nil
+}
+func (book *addrBookMock) AddOurAddress(addr *NetAddress) { book.ourAddrs[addr.String()] = struct{}{} }
+func (book *addrBookMock) OurAddress(addr *NetAddress) bool {
+	_, ok := book.ourAddrs[addr.String()]
+	return ok
+}
+func (book *addrBookMock) MarkGood(*NetAddress) {}
+func (book *addrBookMock) HasAddress(addr *NetAddress) bool {
+	_, ok := book.addrs[addr.String()]
+	return ok
+}
+func (book *addrBookMock) RemoveAddress(addr *NetAddress) {
+	delete(book.addrs, addr.String())
+}
+func (book *addrBookMock) Save() {}

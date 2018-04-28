@@ -2,16 +2,14 @@ package node
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
-	"strings"
 
 	abci "github.com/tendermint/abci/types"
+	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -26,6 +24,7 @@ import (
 	"github.com/tendermint/tendermint/p2p/trust"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	grpccore "github.com/tendermint/tendermint/rpc/grpc"
 	rpc "github.com/tendermint/tendermint/rpc/lib"
 	rpcserver "github.com/tendermint/tendermint/rpc/lib/server"
@@ -34,7 +33,7 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
-	priv_val "github.com/tendermint/tendermint/types/priv_validator"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -79,7 +78,7 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	return NewNode(config,
-		types.LoadOrGenPrivValidatorFS(config.PrivValidatorFile()),
+		pvm.LoadOrGenFilePV(config.PrivValidatorFile()),
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -180,8 +179,8 @@ func NewNode(config *cfg.Config,
 			// TODO: persist this key so external signer
 			// can actually authenticate us
 			privKey = crypto.GenPrivKeyEd25519()
-			pvsc    = priv_val.NewSocketClient(
-				logger.With("module", "priv_val"),
+			pvsc    = pvm.NewSocketPV(
+				logger.With("module", "pvm"),
 				config.PrivValidatorListenAddr,
 				privKey,
 			)
@@ -277,19 +276,11 @@ func NewNode(config *cfg.Config,
 		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
 		trustMetricStore.SetLogger(p2pLogger)
 
-		var seeds []string
-		if config.P2P.Seeds != "" {
-			seeds = strings.Split(config.P2P.Seeds, ",")
-		}
-		var privatePeerIDs []string
-		if config.P2P.PrivatePeerIDs != "" {
-			privatePeerIDs = strings.Split(config.P2P.PrivatePeerIDs, ",")
-		}
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:          seeds,
+				Seeds:          cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
 				SeedMode:       config.P2P.SeedMode,
-				PrivatePeerIDs: privatePeerIDs})
+				PrivatePeerIDs: cmn.SplitAndTrim(config.P2P.PrivatePeerIDs, ",", " ")})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -339,7 +330,7 @@ func NewNode(config *cfg.Config,
 			return nil, err
 		}
 		if config.TxIndex.IndexTags != "" {
-			txIndexer = kv.NewTxIndex(store, kv.IndexTags(strings.Split(config.TxIndex.IndexTags, ",")))
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(cmn.SplitAndTrim(config.TxIndex.IndexTags, ",", " ")))
 		} else if config.TxIndex.IndexAllTags {
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
 		} else {
@@ -391,16 +382,6 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// Run the RPC server first
-	// so we can eg. receive txs for the first block
-	if n.config.RPC.ListenAddress != "" {
-		listeners, err := n.startRPC()
-		if err != nil {
-			return err
-		}
-		n.rpcListeners = listeners
-	}
-
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
 	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
@@ -414,9 +395,24 @@ func (n *Node) OnStart() error {
 	}
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	// Start the switch
-	n.sw.SetNodeInfo(n.makeNodeInfo(nodeKey.PubKey()))
+	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
+
+	// Add ourselves to addrbook to prevent dialing ourselves
+	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
+
+	// Start the RPC server before the P2P server
+	// so we can eg. receive txs for the first block
+	if n.config.RPC.ListenAddress != "" {
+		listeners, err := n.startRPC()
+		if err != nil {
+			return err
+		}
+		n.rpcListeners = listeners
+	}
+
+	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
 		return err
@@ -424,7 +420,7 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, strings.Split(n.config.P2P.PersistentPeers, ","), true)
+		err = n.sw.DialPeersAsync(n.addrBook, cmn.SplitAndTrim(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
@@ -452,7 +448,7 @@ func (n *Node) OnStop() {
 	n.eventBus.Stop()
 	n.indexerService.Stop()
 
-	if pvsc, ok := n.privValidator.(*priv_val.SocketClient); ok {
+	if pvsc, ok := n.privValidator.(*pvm.SocketPV); ok {
 		if err := pvsc.Stop(); err != nil {
 			n.Logger.Error("Error stopping priv validator socket client", "err", err)
 		}
@@ -495,7 +491,9 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := strings.Split(n.config.RPC.ListenAddress, ",")
+	listenAddrs := cmn.SplitAndTrim(n.config.RPC.ListenAddress, ",", " ")
+	coreCodec := amino.NewCodec()
+	ctypes.RegisterAmino(coreCodec)
 
 	if n.config.RPC.Unsafe {
 		rpccore.AddUnsafeRoutes()
@@ -506,10 +504,10 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	for i, listenAddr := range listenAddrs {
 		mux := http.NewServeMux()
 		rpcLogger := n.Logger.With("module", "rpc-server")
-		wm := rpcserver.NewWebsocketManager(rpccore.Routes, rpcserver.EventSubscriber(n.eventBus))
+		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.EventSubscriber(n.eventBus))
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, rpcLogger)
+		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
 		if err != nil {
 			return nil, err
@@ -581,13 +579,13 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
+func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
 	}
 	nodeInfo := p2p.NodeInfo{
-		PubKey:  pubKey,
+		ID:      nodeID,
 		Network: n.genesisDoc.ChainID,
 		Version: version.Version,
 		Channels: []byte{
@@ -598,7 +596,7 @@ func (n *Node) makeNodeInfo(pubKey crypto.PubKey) p2p.NodeInfo {
 		},
 		Moniker: n.config.Moniker,
 		Other: []string{
-			cmn.Fmt("wire_version=%v", wire.Version),
+			cmn.Fmt("amino_version=%v", amino.Version),
 			cmn.Fmt("p2p_version=%v", p2p.Version),
 			cmn.Fmt("consensus_version=%v", cs.Version),
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
@@ -643,19 +641,18 @@ func loadGenesisDoc(db dbm.DB) (*types.GenesisDoc, error) {
 	bytes := db.Get(genesisDocKey)
 	if len(bytes) == 0 {
 		return nil, errors.New("Genesis doc not found")
-	} else {
-		var genDoc *types.GenesisDoc
-		err := json.Unmarshal(bytes, &genDoc)
-		if err != nil {
-			cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
-		}
-		return genDoc, nil
 	}
+	var genDoc *types.GenesisDoc
+	err := cdc.UnmarshalJSON(bytes, &genDoc)
+	if err != nil {
+		cmn.PanicCrisis(fmt.Sprintf("Failed to load genesis doc due to unmarshaling error: %v (bytes: %X)", err, bytes))
+	}
+	return genDoc, nil
 }
 
 // panics if failed to marshal the given genesis document
 func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
-	bytes, err := json.Marshal(genDoc)
+	bytes, err := cdc.MarshalJSON(genDoc)
 	if err != nil {
 		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}

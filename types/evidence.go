@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/go-crypto"
-	wire "github.com/tendermint/tendermint/wire"
 	"github.com/tendermint/tmlibs/merkle"
 )
 
@@ -38,55 +38,10 @@ type Evidence interface {
 	String() string
 }
 
-//-------------------------------------------
-
-// EvidenceList is a list of Evidence. Evidences is not a word.
-type EvidenceList []Evidence
-
-// Hash returns the simple merkle root hash of the EvidenceList.
-func (evl EvidenceList) Hash() []byte {
-	// Recursive impl.
-	// Copied from tmlibs/merkle to avoid allocations
-	switch len(evl) {
-	case 0:
-		return nil
-	case 1:
-		return evl[0].Hash()
-	default:
-		left := EvidenceList(evl[:(len(evl)+1)/2]).Hash()
-		right := EvidenceList(evl[(len(evl)+1)/2:]).Hash()
-		return merkle.SimpleHashFromTwoHashes(left, right)
-	}
+func RegisterEvidences(cdc *amino.Codec) {
+	cdc.RegisterInterface((*Evidence)(nil), nil)
+	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
 }
-
-func (evl EvidenceList) String() string {
-	s := ""
-	for _, e := range evl {
-		s += fmt.Sprintf("%s\t\t", e)
-	}
-	return s
-}
-
-// Has returns true if the evidence is in the EvidenceList.
-func (evl EvidenceList) Has(evidence Evidence) bool {
-	for _, ev := range evl {
-		if ev.Equal(evidence) {
-			return true
-		}
-	}
-	return false
-}
-
-//-------------------------------------------
-
-const (
-	evidenceTypeDuplicateVote = byte(0x01)
-)
-
-var _ = wire.RegisterInterface(
-	struct{ Evidence }{},
-	wire.ConcreteType{&DuplicateVoteEvidence{}, evidenceTypeDuplicateVote},
-)
 
 //-------------------------------------------
 
@@ -120,7 +75,7 @@ func (dve *DuplicateVoteEvidence) Index() int {
 
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
-	return wireHasher(dve).Hash()
+	return aminoHasher(dve).Hash()
 }
 
 // Verify returns an error if the two votes aren't conflicting.
@@ -144,7 +99,7 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 
 	// BlockIDs must be different
 	if dve.VoteA.BlockID.Equals(dve.VoteB.BlockID) {
-		return fmt.Errorf("DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote!", dve.VoteA.BlockID)
+		return fmt.Errorf("DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote", dve.VoteA.BlockID)
 	}
 
 	// Signatures must be valid
@@ -165,8 +120,8 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 	}
 
 	// just check their hashes
-	dveHash := wireHasher(dve).Hash()
-	evHash := wireHasher(ev).Hash()
+	dveHash := aminoHasher(dve).Hash()
+	evHash := aminoHasher(ev).Hash()
 	return bytes.Equal(dveHash, evHash)
 }
 
@@ -215,4 +170,43 @@ func (e MockBadEvidence) Equal(ev Evidence) bool {
 }
 func (e MockBadEvidence) String() string {
 	return fmt.Sprintf("BadEvidence: %d/%s/%d", e.Height_, e.Address_, e.Index_)
+}
+
+//-------------------------------------------
+
+// EvidenceList is a list of Evidence. Evidences is not a word.
+type EvidenceList []Evidence
+
+// Hash returns the simple merkle root hash of the EvidenceList.
+func (evl EvidenceList) Hash() []byte {
+	// Recursive impl.
+	// Copied from tmlibs/merkle to avoid allocations
+	switch len(evl) {
+	case 0:
+		return nil
+	case 1:
+		return evl[0].Hash()
+	default:
+		left := EvidenceList(evl[:(len(evl)+1)/2]).Hash()
+		right := EvidenceList(evl[(len(evl)+1)/2:]).Hash()
+		return merkle.SimpleHashFromTwoHashes(left, right)
+	}
+}
+
+func (evl EvidenceList) String() string {
+	s := ""
+	for _, e := range evl {
+		s += fmt.Sprintf("%s\t\t", e)
+	}
+	return s
+}
+
+// Has returns true if the evidence is in the EvidenceList.
+func (evl EvidenceList) Has(evidence Evidence) bool {
+	for _, ev := range evl {
+		if ev.Equal(evidence) {
+			return true
+		}
+	}
+	return false
 }

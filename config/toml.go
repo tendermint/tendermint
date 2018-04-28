@@ -37,16 +37,21 @@ func EnsureRoot(rootDir string) {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		writeConfigFile(configFilePath)
+		writeDefaultConfigFile(configFilePath)
 	}
 }
 
 // XXX: this func should probably be called by cmd/tendermint/commands/init.go
 // alongside the writing of the genesis.json and priv_validator.json
-func writeConfigFile(configFilePath string) {
+func writeDefaultConfigFile(configFilePath string) {
+	WriteConfigFile(configFilePath, DefaultConfig())
+}
+
+// WriteConfigFile renders config using the template and writes it to configFilePath.
+func WriteConfigFile(configFilePath string, config *Config) {
 	var buffer bytes.Buffer
 
-	if err := configTemplate.Execute(&buffer, DefaultConfig()); err != nil {
+	if err := configTemplate.Execute(&buffer, config); err != nil {
 		panic(err)
 	}
 
@@ -124,11 +129,11 @@ unsafe = {{ .RPC.Unsafe }}
 laddr = "{{ .P2P.ListenAddress }}"
 
 # Comma separated list of seed nodes to connect to
-seeds = ""
+seeds = "{{ .P2P.Seeds }}"
 
 # Comma separated list of nodes to keep persistent connections to
 # Do not add private peers to this list if you don't want them advertised
-persistent_peers = ""
+persistent_peers = "{{ .P2P.PersistentPeers }}"
 
 # Path to address book
 addr_book_file = "{{ .P2P.AddrBook }}"
@@ -143,7 +148,7 @@ flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
 max_num_peers = {{ .P2P.MaxNumPeers }}
 
 # Maximum size of a message packet payload, in bytes
-max_msg_packet_payload_size = {{ .P2P.MaxMsgPacketPayloadSize }}
+max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}
 
 # Rate at which packets can be sent, in bytes/second
 send_rate = {{ .P2P.SendRate }}
@@ -178,7 +183,6 @@ wal_dir = "{{ .Mempool.WalPath }}"
 [consensus]
 
 wal_file = "{{ .Consensus.WalPath }}"
-wal_light = {{ .Consensus.WalLight }}
 
 # All timeouts are in milliseconds
 timeout_propose = {{ .Consensus.TimeoutPropose }}
@@ -262,7 +266,7 @@ func ResetTestRoot(testName string) *Config {
 
 	// Write default config file if missing.
 	if !cmn.FileExists(configFilePath) {
-		writeConfigFile(configFilePath)
+		writeDefaultConfigFile(configFilePath)
 	}
 	if !cmn.FileExists(genesisFilePath) {
 		cmn.MustWriteFile(genesisFilePath, []byte(testGenesis), 0644)
@@ -280,8 +284,8 @@ var testGenesis = `{
   "validators": [
     {
       "pub_key": {
-        "type": "ed25519",
-        "data":"3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+        "type": "AC26791624DE60",
+        "value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
       },
       "power": 10,
       "name": ""
@@ -291,14 +295,14 @@ var testGenesis = `{
 }`
 
 var testPrivValidator = `{
-  "address": "D028C9981F7A87F3093672BF0D5B0E2A1B3ED456",
+  "address": "849CB2C877F87A20925F35D00AE6688342D25B47",
   "pub_key": {
-    "type": "ed25519",
-    "data": "3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+    "type": "AC26791624DE60",
+    "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
   },
   "priv_key": {
-    "type": "ed25519",
-    "data": "27F82582AEFAE7AB151CFB01C48BB6C1A0DA78F9BDDA979A9F70A84D074EB07D3B3069C422E19688B45CBFAE7BB009FC0FA1B1EA86593519318B7214853803C8"
+    "type": "954568A3288910",
+    "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
   },
   "last_height": 0,
   "last_round": 0,

@@ -6,8 +6,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	wire "github.com/tendermint/go-wire"
-
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -81,16 +79,13 @@ func (s State) Copy() State {
 
 // Equals returns true if the States are identical.
 func (s State) Equals(s2 State) bool {
-	return bytes.Equal(s.Bytes(), s2.Bytes())
+	sbz, s2bz := s.Bytes(), s2.Bytes()
+	return bytes.Equal(sbz, s2bz)
 }
 
-// Bytes serializes the State using go-wire.
+// Bytes serializes the State using go-amino.
 func (s State) Bytes() []byte {
-	bz, err := wire.MarshalBinary(s)
-	if err != nil {
-		panic(err)
-	}
-	return bz
+	return cdc.MustMarshalBinaryBare(s)
 }
 
 // IsEmpty returns true if the State is equal to the empty State.

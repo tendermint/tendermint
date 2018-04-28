@@ -245,7 +245,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 // ./lite/doc.go for details on how a light client tracks validators.
 func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
 	for _, v := range updates {
-		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-wire encoded pubkey
+		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-amino encoded pubkey
 		if err != nil {
 			return err
 		}

@@ -3,12 +3,9 @@ package p2p
 import (
 	"fmt"
 	"math"
-	"math/rand"
 	"net"
 	"sync"
 	"time"
-
-	"github.com/pkg/errors"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -33,15 +30,21 @@ const (
 
 //-----------------------------------------------------------------------------
 
+// An AddrBook represents an address book from the pex package, which is used
+// to store peer addresses.
 type AddrBook interface {
 	AddAddress(addr *NetAddress, src *NetAddress) error
+	AddOurAddress(*NetAddress)
+	OurAddress(*NetAddress) bool
 	MarkGood(*NetAddress)
+	RemoveAddress(*NetAddress)
+	HasAddress(*NetAddress) bool
 	Save()
 }
 
 //-----------------------------------------------------------------------------
 
-// `Switch` handles peer connections and exposes an API to receive incoming messages
+// Switch handles peer connections and exposes an API to receive incoming messages
 // on `Reactors`.  Each `Reactor` is responsible for handling incoming messages of one
 // or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
 // incoming messages are received on the reactor.
@@ -64,9 +67,10 @@ type Switch struct {
 	filterConnByAddr func(net.Addr) error
 	filterConnByID   func(ID) error
 
-	rng *rand.Rand // seed for randomizing dial times and orders
+	rng *cmn.Rand // seed for randomizing dial times and orders
 }
 
+// NewSwitch creates a new Switch with the given config.
 func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw := &Switch{
 		config:       config,
@@ -79,15 +83,14 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 		reconnecting: cmn.NewCMap(),
 	}
 
-	// Ensure we have a completely undeterministic PRNG. cmd.RandInt64() draws
-	// from a seed that's initialized with OS entropy on process start.
-	sw.rng = rand.New(rand.NewSource(cmn.RandInt64()))
+	// Ensure we have a completely undeterministic PRNG.
+	sw.rng = cmn.NewRand()
 
 	// TODO: collapse the peerConfig into the config ?
 	sw.peerConfig.MConfig.FlushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
 	sw.peerConfig.MConfig.SendRate = config.SendRate
 	sw.peerConfig.MConfig.RecvRate = config.RecvRate
-	sw.peerConfig.MConfig.MaxMsgPacketPayloadSize = config.MaxMsgPacketPayloadSize
+	sw.peerConfig.MConfig.MaxPacketMsgPayloadSize = config.MaxPacketMsgPayloadSize
 	sw.peerConfig.AuthEnc = config.AuthEnc
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
@@ -173,7 +176,7 @@ func (sw *Switch) OnStart() error {
 	for _, reactor := range sw.reactors {
 		err := reactor.Start()
 		if err != nil {
-			return errors.Wrapf(err, "failed to start %v", reactor)
+			return cmn.ErrorWrap(err, "failed to start %v", reactor)
 		}
 	}
 	// Start listeners
@@ -208,18 +211,18 @@ func (sw *Switch) OnStop() {
 // Broadcast runs a go routine for each attempted send, which will block trying
 // to send for defaultSendTimeoutSeconds. Returns a channel which receives
 // success values for each attempted send (false if times out). Channel will be
-// closed once msg send to all peers.
+// closed once msg bytes are sent to all peers (or time out).
 //
 // NOTE: Broadcast uses goroutines, so order of broadcast may not be preserved.
-func (sw *Switch) Broadcast(chID byte, msg interface{}) chan bool {
+func (sw *Switch) Broadcast(chID byte, msgBytes []byte) chan bool {
 	successChan := make(chan bool, len(sw.peers.List()))
-	sw.Logger.Debug("Broadcast", "channel", chID, "msg", msg)
+	sw.Logger.Debug("Broadcast", "channel", chID, "msgBytes", fmt.Sprintf("%X", msgBytes))
 	var wg sync.WaitGroup
 	for _, peer := range sw.peers.List() {
 		wg.Add(1)
 		go func(peer Peer) {
 			defer wg.Done()
-			success := peer.Send(chID, msg)
+			success := peer.Send(chID, msgBytes)
 			successChan <- success
 		}(peer)
 	}
@@ -349,20 +352,23 @@ func (sw *Switch) IsDialing(id ID) bool {
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
 func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
+	// only log errors, dial correct addresses
 	for _, err := range errs {
 		sw.Logger.Error("Error in peer's address", "err", err)
 	}
 
+	ourAddr := sw.nodeInfo.NetAddress()
+
+	// TODO: move this out of here ?
 	if addrBook != nil {
 		// add peers to `addrBook`
-		ourAddr := sw.nodeInfo.NetAddress()
 		for _, netAddr := range netAddrs {
 			// do not add our address or ID
-			if netAddr.Same(ourAddr) {
-				continue
+			if !netAddr.Same(ourAddr) {
+				if err := addrBook.AddAddress(netAddr, ourAddr); err != nil {
+					sw.Logger.Error("Can't add peer's address to addrbook", "err", err)
+				}
 			}
-			// TODO: move this out of here ?
-			addrBook.AddAddress(netAddr, ourAddr)
 		}
 		// Persist some peers to disk right away.
 		// NOTE: integration tests depend on this
@@ -373,8 +379,14 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	perm := sw.rng.Perm(len(netAddrs))
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
-			sw.randomSleep(0)
 			j := perm[i]
+
+			// do not dial ourselves
+			if netAddrs[j].Same(ourAddr) {
+				return
+			}
+
+			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(netAddrs[j], persistent)
 			if err != nil {
 				sw.Logger.Error("Error dialing peer", "err", err)
@@ -512,7 +524,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	peerID := peerNodeInfo.ID()
+	peerID := peerNodeInfo.ID
 
 	// ensure connection key matches self reported key
 	if pc.config.AuthEnc {
@@ -531,6 +543,15 @@ func (sw *Switch) addPeer(pc peerConn) error {
 
 	// Avoid self
 	if sw.nodeKey.ID() == peerID {
+		addr := peerNodeInfo.NetAddress()
+
+		// remove the given address from the address book if we're added it earlier
+		sw.addrBook.RemoveAddress(addr)
+
+		// add the given address to the address book to avoid dialing ourselves
+		// again this is our public address
+		sw.addrBook.AddOurAddress(addr)
+
 		return ErrSwitchConnectToSelf
 	}
 

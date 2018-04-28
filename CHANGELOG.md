@@ -7,7 +7,6 @@ BREAKING CHANGES:
 - Upgrade consensus for more real-time use of evidence
 
 FEATURES:
-- Peer reputation management
 - Use the chain as its own CA for nodes and validators
 - Tooling to run multiple blockchains/apps, possibly in a single process
 - State syncing (without transaction replay)
@@ -26,10 +25,82 @@ BUG FIXES:
 - Graceful handling/recovery for violations of safety, or liveness
 - Fix reconnect to persistent peer when first dial fails
 
+## 0.19.1 (April 27th, 2018)
+
+Note this release includes some small breaking changes in the RPC and one in the
+config that are really bug fixes. v0.19.1 will work with existing chains, and make Tendermint
+easier to use and debug. With <3
+
+BREAKING (MINOR)
+
+- [config] Removed `wal_light` setting. If you really needed this, let us know
+
+FEATURES:
+
+- [networks] moved in tooling from devops repo: terraform and ansible scripts for deploying testnets !
+- [cmd] Added `gen_node_key` command
+
+BUG FIXES
+
+Some of these are breaking in the RPC response, but they're really bugs!
+
+- [spec] Document address format and pubkey encoding pre and post Amino
+- [rpc] Lower case JSON field names
+- [rpc] Fix missing entries, improve, and lower case the fields in `/dump_consensus_state`
+- [rpc] Fix NodeInfo.Channels format to hex
+- [rpc] Add Validator address to `/status`
+- [rpc] Fix `prove` in ABCIQuery
+- [cmd] MarshalJSONIndent on init
+
+## 0.19.0 (April 13th, 2018)
+
+BREAKING:
+- [cmd] improved `testnet` command; now it can fill in `persistent_peers` for you in the config file and much more (see `tendermint testnet --help` for details)
+- [cmd] `show_node_id` now returns an error if there is no node key
+- [rpc]: changed the output format for the `/status` endpoint (see https://godoc.org/github.com/tendermint/tendermint/rpc/core#Status)
+
+Upgrade from go-wire to go-amino. This is a sweeping change that breaks everything that is
+serialized to disk or over the network.
+
+See github.com/tendermint/go-amino for details on the new format.
+
+See `scripts/wire2amino.go` for a tool to upgrade
+genesis/priv_validator/node_key JSON files.
+
+FEATURES
+
+- [test] docker-compose for local testnet setup (thanks Greg!)
+
+## 0.18.0 (April 6th, 2018)
+
+BREAKING:
+
+- [types] Merkle tree uses different encoding for varints (see tmlibs v0.8.0)
+- [types] ValidtorSet.GetByAddress returns -1 if no validator found
+- [p2p] require all addresses come with an ID no matter what
+- [rpc] Listening address must contain tcp:// or unix:// prefix
+
+FEATURES:
+
+- [rpc] StartHTTPAndTLSServer (not used yet)
+- [rpc] Include validator's voting power in `/status`
+- [rpc] `/tx` and `/tx_search` responses now include the transaction hash
+- [rpc] Include peer NodeIDs in `/net_info`
+
+IMPROVEMENTS:
+- [config] trim whitespace from elements of lists (like `persistent_peers`)
+- [rpc] `/tx_search` results are sorted by height
+- [p2p] do not try to connect to ourselves (ok, maybe only once)
+- [p2p] seeds respond with a bias towards good peers
+
+BUG FIXES:
+- [rpc] fix subscribing using an abci.ResponseDeliverTx tag
+- [rpc] fix tx_indexers matchRange
+- [rpc] fix unsubscribing (see tmlibs v0.8.0)
+
 ## 0.17.1 (March 27th, 2018)
 
 BUG FIXES:
-
 - [types] Actually support `app_state` in genesis as `AppStateJSON`
 
 ## 0.17.0 (March 27th, 2018)

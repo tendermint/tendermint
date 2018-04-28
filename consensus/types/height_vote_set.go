@@ -207,6 +207,30 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 		indent)
 }
 
+type roundVoteBitArrays struct {
+	Round      int           `json:"round"`
+	Prevotes   *cmn.BitArray `json:"prevotes"`
+	Precommits *cmn.BitArray `json:"precommits"`
+}
+
+func (hvs *HeightVoteSet) MarshalJSON() ([]byte, error) {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
+	totalRounds := hvs.round + 1
+	roundsVotes := make([]roundVoteBitArrays, totalRounds)
+	// rounds 0 ~ hvs.round inclusive
+	for round := 0; round < totalRounds; round++ {
+		roundsVotes[round] = roundVoteBitArrays{
+			Round:      round,
+			Prevotes:   hvs.roundVoteSets[round].Prevotes.BitArray(),
+			Precommits: hvs.roundVoteSets[round].Precommits.BitArray(),
+		}
+	}
+	// TODO: all other peer catchup rounds
+
+	return cdc.MarshalJSON(roundsVotes)
+}
+
 // If a peer claims that it has 2/3 majority for given blockKey, call this.
 // NOTE: if there are too many peers, or too much peer churn,
 // this can cause memory issues.

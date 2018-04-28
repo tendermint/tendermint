@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/abci/types"
-	wire "github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -69,7 +68,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 		return state
 	}
 
-	err := wire.UnmarshalBinary(buf, &state)
+	err := cdc.UnmarshalBinaryBare(buf, &state)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:
@@ -104,22 +103,23 @@ type ABCIResponses struct {
 
 // NewABCIResponses returns a new ABCIResponses
 func NewABCIResponses(block *types.Block) *ABCIResponses {
+	resDeliverTxs := make([]*abci.ResponseDeliverTx, block.NumTxs)
+	if block.NumTxs == 0 {
+		// This makes Amino encoding/decoding consistent.
+		resDeliverTxs = nil
+	}
 	return &ABCIResponses{
-		DeliverTx: make([]*abci.ResponseDeliverTx, block.NumTxs),
+		DeliverTx: resDeliverTxs,
 	}
 }
 
-// Bytes serializes the ABCIResponse using go-wire
-func (a *ABCIResponses) Bytes() []byte {
-	bz, err := wire.MarshalBinary(*a)
-	if err != nil {
-		panic(err)
-	}
-	return bz
+// Bytes serializes the ABCIResponse using go-amino.
+func (arz *ABCIResponses) Bytes() []byte {
+	return cdc.MustMarshalBinaryBare(arz)
 }
 
-func (a *ABCIResponses) ResultsHash() []byte {
-	results := types.NewResults(a.DeliverTx)
+func (arz *ABCIResponses) ResultsHash() []byte {
+	results := types.NewResults(arz.DeliverTx)
 	return results.Hash()
 }
 
@@ -133,7 +133,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 	}
 
 	abciResponses := new(ABCIResponses)
-	err := wire.UnmarshalBinary(buf, abciResponses)
+	err := cdc.UnmarshalBinaryBare(buf, abciResponses)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadABCIResponses: Data has been corrupted or its spec has
@@ -159,13 +159,9 @@ type ValidatorsInfo struct {
 	LastHeightChanged int64
 }
 
-// Bytes serializes the ValidatorsInfo using go-wire
+// Bytes serializes the ValidatorsInfo using go-amino.
 func (valInfo *ValidatorsInfo) Bytes() []byte {
-	bz, err := wire.MarshalBinary(*valInfo)
-	if err != nil {
-		panic(err)
-	}
-	return bz
+	return cdc.MustMarshalBinaryBare(valInfo)
 }
 
 // LoadValidators loads the ValidatorSet for a given height.
@@ -194,7 +190,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	}
 
 	v := new(ValidatorsInfo)
-	err := wire.UnmarshalBinary(buf, v)
+	err := cdc.UnmarshalBinaryBare(buf, v)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadValidators: Data has been corrupted or its spec has changed:
@@ -227,13 +223,9 @@ type ConsensusParamsInfo struct {
 	LastHeightChanged int64
 }
 
-// Bytes serializes the ConsensusParamsInfo using go-wire
+// Bytes serializes the ConsensusParamsInfo using go-amino.
 func (params ConsensusParamsInfo) Bytes() []byte {
-	bz, err := wire.MarshalBinary(params)
-	if err != nil {
-		panic(err)
-	}
-	return bz
+	return cdc.MustMarshalBinaryBare(params)
 }
 
 // LoadConsensusParams loads the ConsensusParams for a given height.
@@ -263,7 +255,7 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
 	}
 
 	paramsInfo := new(ConsensusParamsInfo)
-	err := wire.UnmarshalBinary(buf, paramsInfo)
+	err := cdc.UnmarshalBinaryBare(buf, paramsInfo)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
 		cmn.Exit(cmn.Fmt(`LoadConsensusParams: Data has been corrupted or its spec has changed:

@@ -1,7 +1,7 @@
 # Tendermint Tests
 
 The unit tests (ie. the `go test` s) can be run with `make test`.
-The integration tests can be run wtih `make test_integrations`.
+The integration tests can be run with `make test_integrations`.
 
 Running the integrations test will build a docker container with local version of tendermint
 and run the following tests in docker containers:
@@ -19,7 +19,3 @@ and run the following tests in docker containers:
 	- send a tx on each node and ensure the state root is updated on all of them
 	- crash and restart nodes one at a time and ensure they can sync back up (via fastsync)
 	- crash and restart all nodes at once and ensure they can sync back up
-
-If on a `release-x.x.x` branch, we also run
-
-- `go test` for all our dependency libs (test/test_libs.sh)

@@ -41,7 +41,7 @@ func WaitForHeight(c StatusClient, h int64, waiter Waiter) error {
 		if err != nil {
 			return err
 		}
-		delta = h - s.LatestBlockHeight
+		delta = h - s.SyncInfo.LatestBlockHeight
 		// wait for the time, or abort early
 		if err := waiter(delta); err != nil {
 			return err
@@ -65,7 +65,7 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	query := types.QueryForEvent(evtTyp)
 	err := c.Subscribe(ctx, subscriber, query, evts)
 	if err != nil {
-		return types.TMEventData{}, errors.Wrap(err, "failed to subscribe")
+		return nil, errors.Wrap(err, "failed to subscribe")
 	}
 
 	// make sure to unregister after the test is over
@@ -75,6 +75,6 @@ func WaitForOneEvent(c EventsClient, evtTyp string, timeout time.Duration) (type
 	case evt := <-evts:
 		return evt.(types.TMEventData), nil
 	case <-ctx.Done():
-		return types.TMEventData{}, errors.New("timed out waiting for event")
+		return nil, errors.New("timed out waiting for event")
 	}
 }

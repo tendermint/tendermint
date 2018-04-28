@@ -10,8 +10,6 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
-
-	wire "github.com/tendermint/go-wire"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -170,16 +168,21 @@ func (cs *ConsensusState) GetState() sm.State {
 	return cs.state.Copy()
 }
 
-// GetRoundState returns a copy of the internal consensus state.
+// GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	return cs.getRoundState()
-}
 
-func (cs *ConsensusState) getRoundState() *cstypes.RoundState {
 	rs := cs.RoundState // copy
 	return &rs
+}
+
+// GetRoundStateJSON returns a json of RoundState, marshalled using go-amino.
+func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	return cdc.MarshalJSON(cs.RoundState)
 }
 
 // GetValidators returns a copy of the current validators.
@@ -290,7 +293,7 @@ func (cs *ConsensusState) Wait() {
 
 // OpenWAL opens a file to log all consensus messages and timeouts for deterministic accountability
 func (cs *ConsensusState) OpenWAL(walFile string) (WAL, error) {
-	wal, err := NewWAL(walFile, cs.config.WalLight)
+	wal, err := NewWAL(walFile)
 	if err != nil {
 		cs.Logger.Error("Failed to open WAL for consensus state", "wal", walFile, "err", err)
 		return nil, err
@@ -494,7 +497,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 func (cs *ConsensusState) newStep() {
 	rs := cs.RoundStateEvent()
 	cs.wal.Save(rs)
-	cs.nSteps += 1
+	cs.nSteps++
 	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
 	if cs.eventBus != nil {
 		cs.eventBus.PublishEventNewRoundStep(rs)
@@ -720,11 +723,7 @@ func (cs *ConsensusState) needProofBlock(height int64) bool {
 func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 	counter := 0
 	addr := cs.privValidator.GetAddress()
-	valIndex, v := cs.Validators.GetByAddress(addr)
-	if v == nil {
-		// not a validator
-		valIndex = -1
-	}
+	valIndex, _ := cs.Validators.GetByAddress(addr)
 	chainID := cs.state.ChainID
 	for {
 		rs := cs.GetRoundState()
@@ -741,7 +740,7 @@ func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 		}
 		cs.privValidator.SignHeartbeat(chainID, heartbeat)
 		cs.eventBus.PublishEventProposalHeartbeat(types.EventDataProposalHeartbeat{heartbeat})
-		counter += 1
+		counter++
 		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 	}
 }
@@ -780,7 +779,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	// if not a validator, we're done
 	if !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
-		cs.Logger.Debug("This node is not a validator")
+		cs.Logger.Debug("This node is not a validator", "addr", cs.privValidator.GetAddress(), "vals", cs.Validators)
 		return
 	}
 	cs.Logger.Debug("This node is a validator")
@@ -852,10 +851,10 @@ func (cs *ConsensusState) isProposalComplete() bool {
 	// make sure we have the prevotes from it too
 	if cs.Proposal.POLRound < 0 {
 		return true
-	} else {
-		// if this is false the proposer is lying or we haven't received the POL yet
-		return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
 	}
+	// if this is false the proposer is lying or we haven't received the POL yet
+	return cs.Votes.Prevotes(cs.Proposal.POLRound).HasTwoThirdsMajority()
+
 }
 
 // Create the next block to propose and return it.
@@ -991,6 +990,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		cs.newStep()
 	}()
 
+	// check for a polka
 	blockID, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
 
 	// If we don't have a polka, we must precommit nil
@@ -1301,10 +1301,10 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		var n int
-		var err error
-		cs.ProposalBlock = wire.ReadBinary(&types.Block{}, cs.ProposalBlockParts.GetReader(),
-			cs.state.ConsensusParams.BlockSize.MaxBytes, &n, &err).(*types.Block)
+		_, err = cdc.UnmarshalBinaryReader(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, int64(cs.state.ConsensusParams.BlockSize.MaxBytes))
+		if err != nil {
+			return true, err
+		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
@@ -1314,7 +1314,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 			// If we're waiting on the proposal block...
 			cs.tryFinalizeCommit(height)
 		}
-		return true, err
+		return true, nil
 	}
 	return added, nil
 }
@@ -1498,12 +1498,11 @@ func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.Part
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
 		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
 		return vote
-	} else {
-		//if !cs.replayMode {
-		cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
-		//}
-		return nil
 	}
+	//if !cs.replayMode {
+	cs.Logger.Error("Error signing vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)
+	//}
+	return nil
 }
 
 //---------------------------------------------------------

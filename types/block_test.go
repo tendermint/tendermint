@@ -15,8 +15,7 @@ func TestValidateBlock(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit,
-		10, 1)
+	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
@@ -29,7 +28,7 @@ func TestValidateBlock(t *testing.T) {
 
 	// tamper with NumTxs
 	block = MakeBlock(h, txs, commit)
-	block.NumTxs += 1
+	block.NumTxs++
 	err = block.ValidateBasic()
 	require.Error(t, err)
 

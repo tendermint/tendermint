@@ -5,6 +5,7 @@ import (
 )
 
 // TODO: better system than "unsafe" prefix
+// NOTE: Amino is registered in rpc/core/types/wire.go.
 var Routes = map[string]*rpc.RPCFunc{
 	// subscribe/unsubscribe are reserved for websocket events.
 	"subscribe":       rpc.NewWSRPCFunc(Subscribe, "query"),
@@ -33,7 +34,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"broadcast_tx_async":  rpc.NewRPCFunc(BroadcastTxAsync, "tx"),
 
 	// abci API
-	"abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,height,prove"),
+	"abci_query": rpc.NewRPCFunc(ABCIQuery, "path,data,height,trusted"),
 	"abci_info":  rpc.NewRPCFunc(ABCIInfo, ""),
 }
 

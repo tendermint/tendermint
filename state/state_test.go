@@ -7,11 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	abci "github.com/tendermint/abci/types"
-
-	crypto "github.com/tendermint/go-crypto"
-
+	"github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 
@@ -42,7 +39,7 @@ func TestStateCopy(t *testing.T) {
 	stateCopy := state.Copy()
 
 	assert.True(state.Equals(stateCopy),
-		cmn.Fmt(`expected state and its copy to be identical. got %v\n expected %v\n`,
+		cmn.Fmt("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			stateCopy, state))
 
 	stateCopy.LastBlockHeight++
@@ -62,7 +59,7 @@ func TestStateSaveLoad(t *testing.T) {
 
 	loadedState := LoadState(stateDB)
 	assert.True(state.Equals(loadedState),
-		cmn.Fmt(`expected state and its copy to be identical. got %v\n expected %v\n`,
+		cmn.Fmt("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			loadedState, state))
 }
 
@@ -78,8 +75,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// build mock responses
 	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
+	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
+	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
 		{
 			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
@@ -88,11 +85,11 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	}}
 
 	saveABCIResponses(stateDB, block.Height, abciResponses)
-	loadedAbciResponses, err := LoadABCIResponses(stateDB, block.Height)
+	loadedABCIResponses, err := LoadABCIResponses(stateDB, block.Height)
 	assert.Nil(err)
-	assert.Equal(abciResponses, loadedAbciResponses,
-		cmn.Fmt(`ABCIResponses don't match: Got %v, Expected %v`, loadedAbciResponses,
-			abciResponses))
+	assert.Equal(abciResponses, loadedABCIResponses,
+		cmn.Fmt("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
+			loadedABCIResponses, abciResponses))
 }
 
 // TestResultsSaveLoad tests saving and loading abci results.
@@ -109,8 +106,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		expected types.ABCIResults
 	}{
 		0: {
-			[]*abci.ResponseDeliverTx{},
-			types.ABCIResults{},
+			nil,
+			nil,
 		},
 		1: {
 			[]*abci.ResponseDeliverTx{
@@ -129,12 +126,12 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 					}},
 			},
 			types.ABCIResults{
-				{383, []byte{}},
+				{383, nil},
 				{0, []byte("Gotcha!")},
 			}},
 		3: {
 			nil,
-			types.ABCIResults{},
+			nil,
 		},
 	}
 
@@ -222,7 +219,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		// use the next pubkey
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
-			power += 1
+			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
 		state, err = updateState(state, blockID, header, responses)
@@ -240,7 +237,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		// use the next pubkey (note our counter starts at 0 this time)
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
 			changeIndex++
-			power += 1
+			power++
 		}
 		testCases[i-1] = power
 	}
@@ -430,7 +427,7 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{}},
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
 	// if the pubkey is new, remove the old and add the new
@@ -452,7 +449,7 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
-		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{}},
+		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
 	// if the pubkey is new, remove the old and add the new

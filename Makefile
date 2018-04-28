@@ -14,13 +14,13 @@ check: check_tools ensure_deps
 ### Build
 
 build:
-	go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
+	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
 
 install:
-	go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
 ########################################
 ### Distribution
@@ -119,11 +119,6 @@ test_integrations:
 	make test_persistence
 	make test_p2p
 
-test_libs:
-	# checkout every github.com/tendermint dir and run its tests
-	# NOTE: on release-* or master branches only (set by Jenkins)
-	docker run --name run_libs -t tester bash test/test_libs.sh
-
 test_release:
 	@go test -tags release $(PACKAGES)
 
@@ -183,7 +178,52 @@ metalinter_all:
 	@echo "--> Running linter (all)"
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
+###########################################################
+### Docker image
+
+build-docker:
+	cp build/tendermint DOCKER/tendermint
+	docker build --label=tendermint --tag="tendermint/tendermint" DOCKER
+	rm -rf DOCKER/tendermint
+
+###########################################################
+### Local testnet using docker
+
+# Build linux binary on other platforms
+build-linux:
+	GOOS=linux GOARCH=amd64 $(MAKE) build
+
+# Run a 4-node testnet locally
+localnet-start:
+	@if ! [ -f build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 4 --o . --populate-persistent-peers --starting-ip-address 192.167.10.2 ; fi
+	docker-compose up
+
+# Stop testnet
+localnet-stop:
+	docker-compose down
+
+###########################################################
+### Remote full-nodes (sentry) using terraform and ansible
+
+# Server management
+sentry-start:
+	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
+	@if ! [ -f $(HOME)/.ssh/id_rsa.pub ]; then ssh-keygen ; fi
+	cd networks/remote/terraform && terraform init && terraform apply -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
+	@if ! [ -f $(CURDIR)/build/node0/config/genesis.json ]; then docker run --rm -v $(CURDIR)/build:/tendermint:Z tendermint/localnode testnet --v 0 --n 4 --o . ; fi
+	cd networks/remote/ansible && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
+	@echo "Next step: Add your validator setup in the genesis.json and config.tml files and run \"make server-config\". (Public key of validator, chain ID, peer IP and node ID.)"
+
+# Configuration management
+sentry-config:
+	cd networks/remote/ansible && ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$(CURDIR)/build/tendermint -e CONFIGDIR=$(CURDIR)/build
+
+sentry-stop:
+	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
+	cd networks/remote/terraform && terraform destroy -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
+
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_libs test_integrations test_release test100 vagrant_test fmt
+.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker sentry-start sentry-config sentry-stop
+

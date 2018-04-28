@@ -81,9 +81,8 @@ Tendermint node as follows:
 
     curl -s localhost:46657/status
 
-The ``-s`` just silences ``curl``. For nicer output, pipe the result
-into a tool like `jq <https://stedolan.github.io/jq/>`__ or
-`jsonpp <https://github.com/jmhodges/jsonpp>`__.
+The ``-s`` just silences ``curl``. For nicer output, pipe the result into a
+tool like `jq <https://stedolan.github.io/jq/>`__ or ``json_pp``.
 
 Now let's send some transactions to the kvstore.
 
@@ -104,17 +103,23 @@ like:
       "id": "",
       "result": {
         "check_tx": {
-          "code": 0,
-          "data": "",
-          "log": ""
+          "fee": {}
         },
         "deliver_tx": {
-          "code": 0,
-          "data": "",
-          "log": ""
+          "tags": [
+            {
+              "key": "YXBwLmNyZWF0b3I=",
+              "value": "amFl"
+            },
+            {
+              "key": "YXBwLmtleQ==",
+              "value": "YWJjZA=="
+            }
+          ],
+          "fee": {}
         },
-        "hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF",
-        "height": 154
+        "hash": "9DF66553F98DE3C26E3C3317A3E4CED54F714E39",
+        "height": 14
       }
     }
 
@@ -134,20 +139,17 @@ The result should look like:
       "id": "",
       "result": {
         "response": {
-          "code": 0,
-          "index": 0,
-          "key": "",
-          "value": "61626364",
-          "proof": "",
-          "height": 0,
-          "log": "exists"
+          "log": "exists",
+          "index": "-1",
+          "key": "YWJjZA==",
+          "value": "YWJjZA=="
         }
       }
     }
 
-Note the ``value`` in the result (``61626364``); this is the
-hex-encoding of the ASCII of ``abcd``. You can verify this in
-a python 2 shell by running ``"61626364".decode('hex')`` or in python 3 shell by running ``import codecs; codecs.decode("61626364", 'hex').decode('ascii')``. Stay
+Note the ``value`` in the result (``YWJjZA==``); this is the
+base64-encoding of the ASCII of ``abcd``. You can verify this in
+a python 2 shell by running ``"61626364".decode('base64')`` or in python 3 shell by running ``import codecs; codecs.decode("61626364", 'base64').decode('ascii')``. Stay
 tuned for a future release that `makes this output more human-readable <https://github.com/tendermint/abci/issues/32>`__.
 
 Now let's try setting a different key and value:
@@ -157,7 +159,7 @@ Now let's try setting a different key and value:
     curl -s 'localhost:46657/broadcast_tx_commit?tx="name=satoshi"'
 
 Now if we query for ``name``, we should get ``satoshi``, or
-``7361746F736869`` in hex:
+``c2F0b3NoaQ==`` in base64:
 
 ::
 
@@ -226,17 +228,15 @@ the number ``1``. If instead, we try to send a ``5``, we get an error:
       "id": "",
       "result": {
         "check_tx": {
-          "code": 0,
-          "data": "",
-          "log": ""
+          "fee": {}
         },
         "deliver_tx": {
-          "code": 3,
-          "data": "",
-          "log": "Invalid nonce. Expected 1, got 5"
+          "code": 2,
+          "log": "Invalid nonce. Expected 1, got 5",
+          "fee": {}
         },
         "hash": "33B93DFF98749B0D6996A70F64071347060DC19C",
-        "height": 38
+        "height": 34
       }
     }
 
@@ -250,17 +250,13 @@ But if we send a ``1``, it works again:
       "id": "",
       "result": {
         "check_tx": {
-          "code": 0,
-          "data": "",
-          "log": ""
+          "fee": {}
         },
         "deliver_tx": {
-          "code": 0,
-          "data": "",
-          "log": ""
+          "fee": {}
         },
         "hash": "F17854A977F6FA7EEA1BD758E296710B86F72F3D",
-        "height": 87
+        "height": 60
       }
     }
 

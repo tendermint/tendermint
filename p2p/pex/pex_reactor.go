@@ -1,16 +1,13 @@
 package pex
 
 import (
-	"bytes"
 	"fmt"
-	"math/rand"
 	"reflect"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-	wire "github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -23,24 +20,31 @@ const (
 	// PexChannel is a channel for PEX messages
 	PexChannel = byte(0x00)
 
-	maxPexMessageSize = 1048576 // 1MB
+	maxMsgSize = 1048576 // 1MB
 
 	// ensure we have enough peers
 	defaultEnsurePeersPeriod   = 30 * time.Second
 	defaultMinNumOutboundPeers = 10
 
 	// Seed/Crawler constants
-	// TODO:
-	// We want seeds to only advertise good peers.
-	// Peers are marked by external mechanisms.
-	// We need a config value that can be set to be
-	// on the order of how long it would take before a good
-	// peer is marked good.
-	defaultSeedDisconnectWaitPeriod = 2 * time.Minute  // disconnect after this
-	defaultCrawlPeerInterval        = 2 * time.Minute  // dont redial for this. TODO: back-off
-	defaultCrawlPeersPeriod         = 30 * time.Second // check some peers every this
+
+	// We want seeds to only advertise good peers. Therefore they should wait at
+	// least as long as we expect it to take for a peer to become good before
+	// disconnecting.
+	// see consensus/reactor.go: blocksToContributeToBecomeGoodPeer
+	// 10000 blocks assuming 1s blocks ~ 2.7 hours.
+	defaultSeedDisconnectWaitPeriod = 3 * time.Hour
+
+	defaultCrawlPeerInterval = 2 * time.Minute // don't redial for this. TODO: back-off. what for?
+
+	defaultCrawlPeersPeriod = 30 * time.Second // check some peers every this
 
 	maxAttemptsToDial = 16 // ~ 35h in total (last attempt - 18h)
+
+	// if node connects to seed, it does not have any trusted peers.
+	// Especially in the beginning, node should have more trusted peers than
+	// untrusted.
+	biasToSelectNewPeers = 30 // 70 to select good peers
 )
 
 // PEXReactor handles PEX (peer exchange) and ensures that an
@@ -157,7 +161,10 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		// peers when we need - we don't trust inbound peers as much.
 		addr := p.NodeInfo().NetAddress()
 		if !isAddrPrivate(addr, r.config.PrivatePeerIDs) {
-			r.book.AddAddress(addr, addr)
+			err := r.book.AddAddress(addr, addr)
+			if err != nil {
+				r.Logger.Error("Failed to add new address", "err", err)
+			}
 		}
 	}
 }
@@ -171,7 +178,7 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	_, msg, err := DecodeMessage(msgBytes)
+	msg, err := DecodeMessage(msgBytes)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		r.Switch.StopPeerForError(src, err)
@@ -189,8 +196,7 @@ func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
 
 		// Seeds disconnect after sending a batch of addrs
 		if r.config.SeedMode {
-			// TODO: should we be more selective ?
-			r.SendAddrs(src, r.book.GetSelection())
+			r.SendAddrs(src, r.book.GetSelectionWithBias(biasToSelectNewPeers))
 			r.Switch.StopPeerGracefully(src)
 		} else {
 			r.SendAddrs(src, r.book.GetSelection())
@@ -241,7 +247,7 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 		return
 	}
 	r.requestsSent.Set(id, struct{}{})
-	p.Send(PexChannel, struct{ PexMessage }{&pexRequestMessage{}})
+	p.Send(PexChannel, cdc.MustMarshalBinary(&pexRequestMessage{}))
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -251,7 +257,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	id := string(src.ID())
 
 	if !r.requestsSent.Has(id) {
-		return errors.New("Received unsolicited pexAddrsMessage")
+		return cmn.NewError("Received unsolicited pexAddrsMessage")
 	}
 
 	r.requestsSent.Delete(id)
@@ -259,7 +265,10 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
 		if netAddr != nil && !isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
-			r.book.AddAddress(netAddr, srcAddr)
+			err := r.book.AddAddress(netAddr, srcAddr)
+			if err != nil {
+				r.Logger.Error("Failed to add new address", "err", err)
+			}
 		}
 	}
 	return nil
@@ -267,7 +276,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *PEXReactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, struct{ PexMessage }{&pexAddrsMessage{Addrs: netAddrs}})
+	p.Send(PexChannel, cdc.MustMarshalBinary(&pexAddrsMessage{Addrs: netAddrs}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -278,7 +287,7 @@ func (r *PEXReactor) SetEnsurePeersPeriod(d time.Duration) {
 // Ensures that sufficient peers are connected. (continuous)
 func (r *PEXReactor) ensurePeersRoutine() {
 	var (
-		seed   = rand.New(rand.NewSource(time.Now().UnixNano()))
+		seed   = cmn.NewRand()
 		jitter = seed.Int63n(r.ensurePeersPeriod.Nanoseconds())
 	)
 
@@ -365,7 +374,7 @@ func (r *PEXReactor) ensurePeers() {
 		peers := r.Switch.Peers().List()
 		peersCount := len(peers)
 		if peersCount > 0 {
-			peer := peers[rand.Int()%peersCount] // nolint: gas
+			peer := peers[cmn.RandInt()%peersCount] // nolint: gas
 			r.Logger.Info("We need more addresses. Sending pexRequest to random peer", "peer", peer)
 			r.RequestAddrs(peer)
 		}
@@ -394,7 +403,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 
 	// exponential backoff if it's not our first attempt to dial given address
 	if attempts > 0 {
-		jitterSeconds := time.Duration(rand.Float64() * float64(time.Second)) // 1s == (1e9 ns)
+		jitterSeconds := time.Duration(cmn.RandFloat64() * float64(time.Second)) // 1s == (1e9 ns)
 		backoffDuration := jitterSeconds + ((1 << uint(attempts)) * time.Second)
 		sinceLastDialed := time.Since(lastDialed)
 		if sinceLastDialed < backoffDuration {
@@ -447,7 +456,7 @@ func (r *PEXReactor) dialSeeds() {
 	}
 	seedAddrs, _ := p2p.NewNetAddressStrings(r.config.Seeds)
 
-	perm := rand.Perm(lSeeds)
+	perm := cmn.RandPerm(lSeeds)
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
@@ -467,9 +476,8 @@ func (r *PEXReactor) AttemptsToDial(addr *p2p.NetAddress) int {
 	lAttempts, attempted := r.attemptsToDial.Load(addr.DialString())
 	if attempted {
 		return lAttempts.(_attemptsToDial).number
-	} else {
-		return 0
 	}
+	return 0
 }
 
 //----------------------------------------------------------
@@ -563,24 +571,16 @@ func (r *PEXReactor) crawlPeers() {
 			r.book.MarkAttempt(pi.Addr)
 			continue
 		}
-	}
-	// Crawl the connected peers asking for more addresses
-	for _, pi := range peerInfos {
-		// We will wait a minimum period of time before crawling peers again
-		if now.Sub(pi.LastAttempt) >= defaultCrawlPeerInterval {
-			peer := r.Switch.Peers().Get(pi.Addr.ID)
-			if peer != nil {
-				r.RequestAddrs(peer)
-			}
-		}
+		// Ask for more addresses
+		peer := r.Switch.Peers().Get(pi.Addr.ID)
+		r.RequestAddrs(peer)
 	}
 }
 
 // attemptDisconnects checks if we've been with each peer long enough to disconnect
 func (r *PEXReactor) attemptDisconnects() {
 	for _, peer := range r.Switch.Peers().List() {
-		status := peer.Status()
-		if status.Duration < defaultSeedDisconnectWaitPeriod {
+		if peer.Status().Duration < defaultSeedDisconnectWaitPeriod {
 			continue
 		}
 		if peer.IsPersistent() {
@@ -603,27 +603,23 @@ func isAddrPrivate(addr *p2p.NetAddress, privatePeerIDs []string) bool {
 //-----------------------------------------------------------------------------
 // Messages
 
-const (
-	msgTypeRequest = byte(0x01)
-	msgTypeAddrs   = byte(0x02)
-)
-
 // PexMessage is a primary type for PEX messages. Underneath, it could contain
 // either pexRequestMessage, or pexAddrsMessage messages.
 type PexMessage interface{}
 
-var _ = wire.RegisterInterface(
-	struct{ PexMessage }{},
-	wire.ConcreteType{&pexRequestMessage{}, msgTypeRequest},
-	wire.ConcreteType{&pexAddrsMessage{}, msgTypeAddrs},
-)
+func RegisterPexMessage(cdc *amino.Codec) {
+	cdc.RegisterInterface((*PexMessage)(nil), nil)
+	cdc.RegisterConcrete(&pexRequestMessage{}, "tendermint/p2p/PexRequestMessage", nil)
+	cdc.RegisterConcrete(&pexAddrsMessage{}, "tendermint/p2p/PexAddrsMessage", nil)
+}
 
 // DecodeMessage implements interface registered above.
-func DecodeMessage(bz []byte) (msgType byte, msg PexMessage, err error) {
-	msgType = bz[0]
-	n := new(int)
-	r := bytes.NewReader(bz)
-	msg = wire.ReadBinary(struct{ PexMessage }{}, r, maxPexMessageSize, n, &err).(struct{ PexMessage }).PexMessage
+func DecodeMessage(bz []byte) (msg PexMessage, err error) {
+	if len(bz) > maxMsgSize {
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
+			len(bz), maxMsgSize)
+	}
+	err = cdc.UnmarshalBinary(bz, &msg)
 	return
 }
 

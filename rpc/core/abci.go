@@ -10,7 +10,7 @@ import (
 // Query the application for some information.
 //
 // ```shell
-// curl 'localhost:46657/abci_query?path=""&data="abcd"&prove=true'
+// curl 'localhost:46657/abci_query?path=""&data="abcd"&trusted=false'
 // ```
 //
 // ```go

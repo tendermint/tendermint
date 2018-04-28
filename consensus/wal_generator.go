@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/db"
@@ -40,7 +40,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
 	// NOTE: we can't import node package because of circular dependency
 	privValidatorFile := config.PrivValidatorFile()
-	privValidator := types.LoadOrGenPrivValidatorFS(privValidatorFile)
+	privValidator := pvm.LoadOrGenFilePV(privValidatorFile)
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read genesis file")
@@ -116,7 +116,7 @@ func makePathname() string {
 func randPort() int {
 	// returns between base and base + spread
 	base, spread := 20000, 20000
-	return base + rand.Intn(spread)
+	return base + cmn.RandIntn(spread)
 }
 
 func makeAddrs() (string, string, string) {

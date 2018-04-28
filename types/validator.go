@@ -71,7 +71,7 @@ func (v *Validator) String() string {
 // Hash computes the unique ID of a validator with a given voting power.
 // It excludes the Accum value, which changes with every round.
 func (v *Validator) Hash() []byte {
-	return tmHash(struct {
+	return aminoHash(struct {
 		Address     Address
 		PubKey      crypto.PubKey
 		VotingPower int64
@@ -82,14 +82,13 @@ func (v *Validator) Hash() []byte {
 	})
 }
 
-//--------------------------------------------------------------------------------
-// For testing...
+//----------------------------------------
+// RandValidator
 
 // RandValidator returns a randomized validator, useful for testing.
 // UNSTABLE
-func RandValidator(randPower bool, minPower int64) (*Validator, *PrivValidatorFS) {
-	_, tempFilePath := cmn.Tempfile("priv_validator_")
-	privVal := GenPrivValidatorFS(tempFilePath)
+func RandValidator(randPower bool, minPower int64) (*Validator, PrivValidator) {
+	privVal := NewMockPV()
 	votePower := minPower
 	if randPower {
 		votePower += int64(cmn.RandUint32())

@@ -9,18 +9,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/tendermint/state/txindex"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	db "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/pubsub/query"
+
+	"github.com/tendermint/tendermint/state/txindex"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
@@ -35,7 +36,7 @@ func TestTxIndex(t *testing.T) {
 	assert.Equal(t, txResult, loadedTxResult)
 
 	tx2 := types.Tx("BYE BYE WORLD")
-	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}}
+	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
 	hash2 := tx2.Hash()
 
 	err = indexer.Index(txResult2)
@@ -122,6 +123,35 @@ func TestTxSearchOneTxWithMultipleSameTagsButDifferentValues(t *testing.T) {
 	assert.Equal(t, []*types.TxResult{txResult}, results)
 }
 
+func TestTxSearchMultipleTxs(t *testing.T) {
+	allowedTags := []string{"account.number"}
+	indexer := NewTxIndex(db.NewMemDB(), IndexTags(allowedTags))
+
+	// indexed first, but bigger height (to test the order of transactions)
+	txResult := txResultWithTags([]cmn.KVPair{
+		{Key: []byte("account.number"), Value: []byte("1")},
+	})
+	txResult.Tx = types.Tx("Bob's account")
+	txResult.Height = 2
+	err := indexer.Index(txResult)
+	require.NoError(t, err)
+
+	// indexed second, but smaller height (to test the order of transactions)
+	txResult2 := txResultWithTags([]cmn.KVPair{
+		{Key: []byte("account.number"), Value: []byte("2")},
+	})
+	txResult2.Tx = types.Tx("Alice's account")
+	txResult2.Height = 1
+	err = indexer.Index(txResult2)
+	require.NoError(t, err)
+
+	results, err := indexer.Search(query.MustParse("account.number >= 1"))
+	assert.NoError(t, err)
+
+	require.Len(t, results, 2)
+	assert.Equal(t, []*types.TxResult{txResult2, txResult}, results)
+}
+
 func TestIndexAllTags(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB(), IndexAllTags())
 
@@ -146,12 +176,34 @@ func TestIndexAllTags(t *testing.T) {
 
 func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
 	tx := types.Tx("HELLO WORLD")
-	return &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: tags, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}}
+	return &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK,
+			Log:  "",
+			Tags: tags,
+			Fee:  cmn.KI64Pair{Key: nil, Value: 0},
+		},
+	}
 }
 
 func benchmarkTxIndex(txsCount int, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}}
+	txResult := &types.TxResult{
+		Height: 1,
+		Index:  0,
+		Tx:     tx,
+		Result: abci.ResponseDeliverTx{
+			Data: []byte{0},
+			Code: abci.CodeTypeOK,
+			Log:  "",
+			Tags: []cmn.KVPair{},
+			Fee:  cmn.KI64Pair{Key: []uint8{}, Value: 0},
+		},
+	}
 
 	dir, err := ioutil.TempDir("", "tx_index_db")
 	if err != nil {
@@ -167,7 +219,7 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 		if err := batch.Add(txResult); err != nil {
 			b.Fatal(err)
 		}
-		txResult.Index += 1
+		txResult.Index++
 	}
 
 	b.ResetTimer()
