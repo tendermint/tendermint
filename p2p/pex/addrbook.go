@@ -295,6 +295,7 @@ func (a *addrBook) MarkBad(addr *p2p.NetAddress) {
 
 // GetSelection implements AddrBook.
 // It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
+// Must never return a nil address.
 func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -332,6 +333,7 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 
 // GetSelectionWithBias implements AddrBook.
 // It randomly selects some addresses (old & new). Suitable for peer-exchange protocols.
+// Must never return a nil address.
 //
 // Each address is picked randomly from an old or new bucket according to the
 // biasTowardsNewAddrs argument, which must be between [0, 100] (or else is truncated to

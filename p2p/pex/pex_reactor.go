@@ -301,7 +301,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 	srcAddr := src.NodeInfo().NetAddress()
 	for _, netAddr := range addrs {
-		// TODO: make sure correct nodes never send nil and return error
+		// NOTE: GetSelection methods should never return nil addrs
 		if netAddr == nil {
 			return cmn.NewError("received nil addr")
 		}
@@ -316,7 +316,13 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 		err := r.book.AddAddress(netAddr, srcAddr)
 		if err != nil {
-			r.Logger.Error("Failed to add new address", "err", err)
+			switch err.(type) {
+			case ErrAddrBookNilAddr:
+				r.Logger.Error("Failed to add new address", "err", err)
+			default:
+				// Could be non-routable, self, or full book. But not worth logging an Error
+				r.Logger.Debug("Failed to add new address", "err", err)
+			}
 		}
 	}
 	return nil
@@ -410,7 +416,7 @@ func (r *PEXReactor) ensurePeers() {
 		}
 		// TODO: consider moving some checks from toDial into here
 		// so we don't even consider dialing peers that we want to wait
-		// before dialling again, or have dialled too many times already
+		// before dialling again, or have dialed too many times already
 		r.Logger.Info("Will dial address", "addr", try)
 		toDial[try.ID] = try
 	}

@@ -83,10 +83,7 @@ Connection attempts are made with exponential backoff (plus jitter). Because
 the selection process happens every `ensurePeersPeriod`, we might not end up
 dialing a peer for much longer than the backoff duration.
 
-
-TODO
-PEX: if we fail to conenct to the peer after 16 tries (with exponential backoff), we remove from address book completely.
-
+If we fail to conenct to the peer after 16 tries (with exponential backoff), we remove from address book completely.
 
 ## Select Peers to Exchange
 
