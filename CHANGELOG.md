@@ -29,15 +29,18 @@ BUG FIXES:
 FEATURES:
 
 - [p2p] Allow peers with different Minor versions to connect
+- [rpc] `/net_info` includes `n_peers`
 
 IMPROVEMENTS:
 
-- [p2p] Various code comments cleanup
+- [p2p] Various code comments, cleanup, error types
+- [p2p] Change some Error logs to Debug
 
 BUG FIXES:
 
 - [p2p] Fix reconnect to persistent peer when first dial fails
 - [p2p] Validate NodeInfo.ListenAddr
+- [p2p] Only allow (MaxNumPeers - MaxNumOutboundPeers) inbound peers
 - [p2p/pex] Limit max msg size to 64kB
 
 ## 0.19.1 (April 27th, 2018)

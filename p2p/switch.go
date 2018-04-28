@@ -401,7 +401,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
-				switch err.(type) {
+				switch err {
 				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeer:
 					sw.Logger.Debug("Error dialing peer", "err", err)
 				default:
