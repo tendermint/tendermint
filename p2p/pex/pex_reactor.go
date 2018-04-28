@@ -181,16 +181,19 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		// add to book. dont RequestAddrs right away because
 		// we don't trust inbound as much - let ensurePeersRoutine handle it.
 		err := r.book.AddAddress(addr, src)
-		if err != nil {
-			switch err.(type) {
-			case ErrAddrBookNilAddr:
-				r.Logger.Error("Failed to add new address", "err", err)
-			default:
-				// non-routable, self, full book, etc.
-				r.Logger.Debug("Failed to add new address", "err", err)
-			}
-		}
+		r.logErrAddrBook(err)
+	}
+}
 
+func (r *PEXReactor) logErrAddrBook(err error) {
+	if err != nil {
+		switch err.(type) {
+		case ErrAddrBookNilAddr:
+			r.Logger.Error("Failed to add new address", "err", err)
+		default:
+			// non-routable, self, full book, etc.
+			r.Logger.Debug("Failed to add new address", "err", err)
+		}
 	}
 }
 
@@ -313,15 +316,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		}
 
 		err := r.book.AddAddress(netAddr, srcAddr)
-		if err != nil {
-			switch err.(type) {
-			case ErrAddrBookNilAddr:
-				r.Logger.Error("Failed to add new address", "err", err)
-			default:
-				// Could be non-routable, self, or full book. But not worth logging an Error
-				r.Logger.Debug("Failed to add new address", "err", err)
-			}
-		}
+		r.logErrAddrBook(err)
 	}
 	return nil
 }

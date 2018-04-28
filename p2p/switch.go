@@ -401,7 +401,12 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
-				sw.Logger.Error("Error dialing peer", "err", err)
+				switch err.(type) {
+				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeer:
+					sw.Logger.Debug("Error dialing peer", "err", err)
+				default:
+					sw.Logger.Error("Error dialing peer", "err", err)
+				}
 			}
 		}(i)
 	}
@@ -500,7 +505,6 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peerConn, err := newOutboundPeerConn(addr, config, persistent, sw.nodeKey.PrivKey)
 	if err != nil {
-		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
 		if persistent {
 			go sw.reconnectToPeer(addr)
 		}
@@ -508,7 +512,6 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 	}
 
 	if err := sw.addPeer(peerConn); err != nil {
-		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
 		peerConn.CloseConn()
 		return err
 	}
