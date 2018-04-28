@@ -26,9 +26,19 @@ BUG FIXES:
 
 ## 0.19.2 (TBD)
 
+FEATURES:
+
+- [p2p] Allow peers with different Minor versions to connect
+
+IMPROVEMENTS:
+
+- [p2p] Various code comments cleanup
+
 BUG FIXES:
 
-- Fix reconnect to persistent peer when first dial fails
+- [p2p] Fix reconnect to persistent peer when first dial fails
+- [p2p] Validate NodeInfo.ListenAddr
+- [p2p/pex] Limit max msg size to 64kB
 
 ## 0.19.1 (April 27th, 2018)
 

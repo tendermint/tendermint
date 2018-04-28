@@ -26,7 +26,7 @@ type ErrNetAddressNoID struct {
 }
 
 func (e ErrNetAddressNoID) Error() string {
-	return fmt.Errorf("Address (%s) does not contain ID", e.Addr)
+	return fmt.Sprintf("Address (%s) does not contain ID", e.Addr)
 }
 
 type ErrNetAddressInvalid struct {
@@ -35,7 +35,7 @@ type ErrNetAddressInvalid struct {
 }
 
 func (e ErrNetAddressInvalid) Error() string {
-	return fmt.Errorf("Invalid address (%s): %v", e.Addr, e.Err)
+	return fmt.Sprintf("Invalid address (%s): %v", e.Addr, e.Err)
 }
 
 type ErrNetAddressLookup struct {
@@ -44,5 +44,5 @@ type ErrNetAddressLookup struct {
 }
 
 func (e ErrNetAddressLookup) Error() string {
-	return fmt.Errorf("Error looking up host (%s): %v", e.Addr, e.Err)
+	return fmt.Sprintf("Error looking up host (%s): %v", e.Addr, e.Err)
 }

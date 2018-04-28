@@ -57,7 +57,7 @@ func (info NodeInfo) Validate() error {
 	}
 
 	// ensure ListenAddr is good
-	netAddr, err := NewNetAddressString(IDAddressString(info.ID, info.ListenAddr))
+	_, err := NewNetAddressString(IDAddressString(info.ID, info.ListenAddr))
 	if err != nil {
 		return err
 	}

@@ -26,8 +26,8 @@ const (
 	maxAddressSize = 256
 
 	// NOTE: amplificaiton factor!
-	// small request results in up to maxPexMessageSize response
-	maxPexMessageSize = maxAddressSize * maxGetSelection
+	// small request results in up to maxMsgSize response
+	maxMsgSize = maxAddressSize * maxGetSelection
 
 	// ensure we have enough peers
 	defaultEnsurePeersPeriod   = 30 * time.Second
