@@ -56,7 +56,7 @@ func (info NodeInfo) Validate() error {
 }
 
 // CompatibleWith checks if two NodeInfo are compatible with eachother.
-// CONTRACT: two nodes are compatible if the major/minor versions match and network match
+// CONTRACT: two nodes are compatible if the major version matches and network match
 // and they have at least one channel in common.
 func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	iMajor, iMinor, _, iErr := splitVersion(info.Version)
@@ -77,9 +77,9 @@ func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 		return fmt.Errorf("Peer is on a different major version. Got %v, expected %v", oMajor, iMajor)
 	}
 
-	// minor version must match
+	// minor version can differ
 	if iMinor != oMinor {
-		return fmt.Errorf("Peer is on a different minor version. Got %v, expected %v", oMinor, iMinor)
+		// ok
 	}
 
 	// nodes must be on the same network
