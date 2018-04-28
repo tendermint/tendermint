@@ -20,10 +20,14 @@ const (
 	// PexChannel is a channel for PEX messages
 	PexChannel = byte(0x00)
 
-	// TODO: make smaller. Should match the maxGetSelection
-	// this is basically the amplification factor since a request
-	// msg is like 1 byte ... it can cause us to send msgs of this size!
-	maxPexMessageSize = 1048576 // 1MB
+	// over-estimate of max NetAddress size
+	// hexID (40) + IP (16) + Port (2) + Name (100) ...
+	// NOTE: dont use massive DNS name ..
+	maxAddressSize = 256
+
+	// NOTE: amplificaiton factor!
+	// small request results in up to maxPexMessageSize response
+	maxPexMessageSize = maxAddressSize * maxGetSelection
 
 	// ensure we have enough peers
 	defaultEnsurePeersPeriod   = 30 * time.Second
