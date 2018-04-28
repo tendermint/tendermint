@@ -283,11 +283,12 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 // with a fixed interval, then with exponential backoff.
 // If no success after all that, it stops trying, and leaves it
 // to the PEX/Addrbook to find the peer with the addr again
+// NOTE: this will keep trying even if the handshake or auth fails.
+// TODO: be more explicit with error types so we only retry on certain failures
 func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 	if sw.reconnecting.Has(string(addr.ID)) {
 		return
 	}
-
 	sw.reconnecting.Set(string(addr.ID), addr)
 	defer sw.reconnecting.Delete(string(addr.ID))
 
@@ -381,13 +382,14 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 		go func(i int) {
 			j := perm[i]
 
+			addr := netAddrs[j]
 			// do not dial ourselves
-			if netAddrs[j].Same(ourAddr) {
+			if addr.Same(ourAddr) {
 				return
 			}
 
 			sw.randomSleep(0)
-			err := sw.DialPeerWithAddress(netAddrs[j], persistent)
+			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
 				sw.Logger.Error("Error dialing peer", "err", err)
 			}

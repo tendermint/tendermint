@@ -23,6 +23,11 @@ IMPROVEMENTS:
 BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
+
+## 0.19.2 (TBD)
+
+BUG FIXES:
+
 - Fix reconnect to persistent peer when first dial fails
 
 ## 0.19.1 (April 27th, 2018)

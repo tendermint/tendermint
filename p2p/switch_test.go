@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -23,20 +22,9 @@ var (
 	config *cfg.P2PConfig
 )
 
-var goodDial = dial
-
-// badDial returns an error for testing dial errors
-func badDial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
-	if config.Fail {
-		return nil, errors.New("dial err")
-	}
-	return goodDial(addr, config)
-}
-
 func init() {
 	config = cfg.DefaultP2PConfig()
 	config.PexReactor = true
-	dial = badDial
 }
 
 type PeerMessage struct {
@@ -329,13 +317,13 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert.False(peer.IsRunning())
 
 	// simulate another remote peer
-	rp = &remotePeer{PrivKey: crypto.GenPrivKeyEd25519().Wrap(), Config: DefaultPeerConfig()}
+	rp = &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
 	rp.Start()
 	defer rp.Stop()
 
 	// simulate first time dial failure
 	peerConfig := DefaultPeerConfig()
-	peerConfig.Fail = true
+	peerConfig.DialFail = true
 	err = sw.addOutboundPeerWithConfig(rp.Addr(), peerConfig, true)
 	require.NotNil(err)
 
