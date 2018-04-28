@@ -26,6 +26,10 @@ const (
 	// ie. 3**10 = 16hrs
 	reconnectBackOffAttempts    = 10
 	reconnectBackOffBaseSeconds = 3
+
+	// keep at least this many outbound peers
+	// TODO: move to config
+	DefaultMinNumOutboundPeers = 10
 )
 
 //-----------------------------------------------------------------------------
@@ -458,7 +462,8 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// ignore connection if we already have enough
-		maxPeers := sw.config.MaxNumPeers
+		// leave room for MinNumOutboundPeers
+		maxPeers := sw.config.MaxNumPeers - DefaultMinNumOutboundPeers
 		if maxPeers <= sw.peers.Size() {
 			sw.Logger.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
 			continue

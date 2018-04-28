@@ -31,7 +31,7 @@ const (
 
 	// ensure we have enough peers
 	defaultEnsurePeersPeriod   = 30 * time.Second
-	defaultMinNumOutboundPeers = 10
+	defaultMinNumOutboundPeers = p2p.DefaultMinNumOutboundPeers
 
 	// Seed/Crawler constants
 
