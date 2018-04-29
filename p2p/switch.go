@@ -290,6 +290,8 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 // to the PEX/Addrbook to find the peer with the addr again
 // NOTE: this will keep trying even if the handshake or auth fails.
 // TODO: be more explicit with error types so we only retry on certain failures
+//  - ie. if we're getting ErrDuplicatePeer we can stop
+//  	because the addrbook got us the peer back already
 func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 	if sw.reconnecting.Has(string(addr.ID)) {
 		return
@@ -305,14 +307,14 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		}
 
 		err := sw.DialPeerWithAddress(addr, true)
-		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
-			// sleep a set amount
-			sw.randomSleep(reconnectInterval)
-			continue
-		} else {
-			return
+		if err == nil {
+			return // success
 		}
+
+		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
+		// sleep a set amount
+		sw.randomSleep(reconnectInterval)
+		continue
 	}
 
 	sw.Logger.Error("Failed to reconnect to peer. Beginning exponential backoff",
@@ -501,6 +503,8 @@ func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) er
 
 // dial the peer; make secret connection; authenticate against the dialed ID;
 // add the peer.
+// if dialing fails, start the reconnect loop. If handhsake fails, its over.
+// If peer is started succesffuly, reconnectLoop will start when StopPeerForError is called
 func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) error {
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peerConn, err := newOutboundPeerConn(addr, config, persistent, sw.nodeKey.PrivKey)
