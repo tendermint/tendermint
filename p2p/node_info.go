@@ -58,11 +58,7 @@ func (info NodeInfo) Validate() error {
 
 	// ensure ListenAddr is good
 	_, err := NewNetAddressString(IDAddressString(info.ID, info.ListenAddr))
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // CompatibleWith checks if two NodeInfo are compatible with eachother.
