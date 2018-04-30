@@ -26,6 +26,10 @@ const (
 	// ie. 3**10 = 16hrs
 	reconnectBackOffAttempts    = 10
 	reconnectBackOffBaseSeconds = 3
+
+	// keep at least this many outbound peers
+	// TODO: move to config
+	DefaultMinNumOutboundPeers = 10
 )
 
 //-----------------------------------------------------------------------------
@@ -260,6 +264,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
+		// NOTE: this is the self-reported addr, not the original we dialed
 		go sw.reconnectToPeer(peer.NodeInfo().NetAddress())
 	}
 }
@@ -285,6 +290,8 @@ func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 // to the PEX/Addrbook to find the peer with the addr again
 // NOTE: this will keep trying even if the handshake or auth fails.
 // TODO: be more explicit with error types so we only retry on certain failures
+//  - ie. if we're getting ErrDuplicatePeer we can stop
+//  	because the addrbook got us the peer back already
 func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 	if sw.reconnecting.Has(string(addr.ID)) {
 		return
@@ -300,14 +307,14 @@ func (sw *Switch) reconnectToPeer(addr *NetAddress) {
 		}
 
 		err := sw.DialPeerWithAddress(addr, true)
-		if err != nil {
-			sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
-			// sleep a set amount
-			sw.randomSleep(reconnectInterval)
-			continue
-		} else {
-			return
+		if err == nil {
+			return // success
 		}
+
+		sw.Logger.Info("Error reconnecting to peer. Trying again", "tries", i, "err", err, "addr", addr)
+		// sleep a set amount
+		sw.randomSleep(reconnectInterval)
+		continue
 	}
 
 	sw.Logger.Error("Failed to reconnect to peer. Beginning exponential backoff",
@@ -351,6 +358,8 @@ func (sw *Switch) IsDialing(id ID) bool {
 }
 
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
+// Used to dial peers from config on startup or from unsafe-RPC (trusted sources).
+// TODO: remove addrBook arg since it's now set on the switch
 func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent bool) error {
 	netAddrs, errs := NewNetAddressStrings(peers)
 	// only log errors, dial correct addresses
@@ -360,7 +369,10 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 
 	ourAddr := sw.nodeInfo.NetAddress()
 
-	// TODO: move this out of here ?
+	// TODO: this code feels like it's in the wrong place.
+	// The integration tests depend on the addrBook being saved
+	// right away but maybe we can change that. Recall that
+	// the addrBook is only written to disk every 2min
 	if addrBook != nil {
 		// add peers to `addrBook`
 		for _, netAddr := range netAddrs {
@@ -391,7 +403,12 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
-				sw.Logger.Error("Error dialing peer", "err", err)
+				switch err {
+				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeer:
+					sw.Logger.Debug("Error dialing peer", "err", err)
+				default:
+					sw.Logger.Error("Error dialing peer", "err", err)
+				}
 			}
 		}(i)
 	}
@@ -452,7 +469,8 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// ignore connection if we already have enough
-		maxPeers := sw.config.MaxNumPeers
+		// leave room for MinNumOutboundPeers
+		maxPeers := sw.config.MaxNumPeers - DefaultMinNumOutboundPeers
 		if maxPeers <= sw.peers.Size() {
 			sw.Logger.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
 			continue
@@ -485,11 +503,12 @@ func (sw *Switch) addInboundPeerWithConfig(conn net.Conn, config *PeerConfig) er
 
 // dial the peer; make secret connection; authenticate against the dialed ID;
 // add the peer.
+// if dialing fails, start the reconnect loop. If handhsake fails, its over.
+// If peer is started succesffuly, reconnectLoop will start when StopPeerForError is called
 func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig, persistent bool) error {
 	sw.Logger.Info("Dialing peer", "address", addr)
 	peerConn, err := newOutboundPeerConn(addr, config, persistent, sw.nodeKey.PrivKey)
 	if err != nil {
-		sw.Logger.Error("Failed to dial peer", "address", addr, "err", err)
 		if persistent {
 			go sw.reconnectToPeer(addr)
 		}
@@ -497,7 +516,6 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 	}
 
 	if err := sw.addPeer(peerConn); err != nil {
-		sw.Logger.Error("Failed to add peer", "address", addr, "err", err)
 		peerConn.CloseConn()
 		return err
 	}

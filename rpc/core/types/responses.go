@@ -100,6 +100,7 @@ func (s *ResultStatus) TxIndexEnabled() bool {
 type ResultNetInfo struct {
 	Listening bool     `json:"listening"`
 	Listeners []string `json:"listeners"`
+	NPeers    int      `json:"n_peers"`
 	Peers     []Peer   `json:"peers"`
 }
 

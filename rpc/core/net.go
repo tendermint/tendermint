@@ -23,6 +23,7 @@ import (
 // {
 // 	"error": "",
 // 	"result": {
+//		"n_peers": 0,
 // 		"peers": [],
 // 		"listeners": [
 // 			"Listener(@10.0.2.15:46656)"
@@ -47,9 +48,13 @@ func NetInfo() (*ctypes.ResultNetInfo, error) {
 			ConnectionStatus: peer.Status(),
 		})
 	}
+	// TODO: Should we include PersistentPeers and Seeds in here?
+	// PRO: useful info
+	// CON: privacy
 	return &ctypes.ResultNetInfo{
 		Listening: listening,
 		Listeners: listeners,
+		NPeers:    len(peers),
 		Peers:     peers,
 	}, nil
 }
