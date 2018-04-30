@@ -100,7 +100,6 @@ type Node struct {
 	// network
 	sw       *p2p.Switch  // p2p connections
 	addrBook pex.AddrBook // known peers
-	// trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
