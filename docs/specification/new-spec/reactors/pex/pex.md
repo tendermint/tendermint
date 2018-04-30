@@ -20,9 +20,9 @@ Peer discovery begins with a list of seeds.
 When we have no peers, or have been unable to find enough peers from existing ones,
 we dial a randomly selected seed to get a list of peers to dial.
 
-On startup, we will also immediately dial the given list of `persisten_peers`,
-and will attempt to maintain persistent connections with them. If the connections die, or we fail to dail,
-we will redial every 5s for a a few minutes, then switch to an exponential backoff schedule,
+On startup, we will also immediately dial the given list of `persistent_peers`,
+and will attempt to maintain persistent connections with them. If the connections die, or we fail to dial,
+we will redial every 5s for a few minutes, then switch to an exponential backoff schedule,
 and after about a day of trying, stop dialing the peer.
 
 So long as we have less than `MinNumOutboundPeers`, we periodically request additional peers
@@ -84,7 +84,7 @@ Connection attempts are made with exponential backoff (plus jitter). Because
 the selection process happens every `ensurePeersPeriod`, we might not end up
 dialing a peer for much longer than the backoff duration.
 
-If we fail to conenct to the peer after 16 tries (with exponential backoff), we remove from address book completely.
+If we fail to connect to the peer after 16 tries (with exponential backoff), we remove from address book completely.
 
 ## Select Peers to Exchange
 

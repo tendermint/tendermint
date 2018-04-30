@@ -221,7 +221,11 @@ func (a *addrBook) PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	if a.size() == 0 {
+	bookSize := a.size()
+	if bookSize <= 0 {
+		if bookSize < 0 {
+			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+		}
 		return nil
 	}
 	if biasTowardsNewAddrs > 100 {
@@ -301,7 +305,10 @@ func (a *addrBook) GetSelection() []*p2p.NetAddress {
 	defer a.mtx.Unlock()
 
 	bookSize := a.size()
-	if bookSize == 0 {
+	if bookSize <= 0 {
+		if bookSize < 0 {
+			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+		}
 		return nil
 	}
 
@@ -344,7 +351,10 @@ func (a *addrBook) GetSelectionWithBias(biasTowardsNewAddrs int) []*p2p.NetAddre
 	defer a.mtx.Unlock()
 
 	bookSize := a.size()
-	if bookSize == 0 {
+	if bookSize <= 0 {
+		if bookSize < 0 {
+			a.Logger.Error("Addrbook size less than 0", "nNew", a.nNew, "nOld", a.nOld)
+		}
 		return nil
 	}
 
@@ -609,10 +619,7 @@ func (a *addrBook) pickOldest(bucketType byte, bucketIdx int) *knownAddress {
 // adds the address to a "new" bucket. if its already in one,
 // it only adds it probabilistically
 func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
-	if addr == nil {
-		return ErrAddrBookNilAddr{addr, src}
-	}
-	if src == nil {
+	if addr == nil || src == nil {
 		return ErrAddrBookNilAddr{addr, src}
 	}
 
