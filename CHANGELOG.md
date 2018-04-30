@@ -24,7 +24,7 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
-## 0.19.2 (TBD)
+## 0.19.2 (April 30th, 2018)
 
 FEATURES:
 
@@ -42,6 +42,9 @@ BUG FIXES:
 - [p2p] Validate NodeInfo.ListenAddr
 - [p2p] Only allow (MaxNumPeers - MaxNumOutboundPeers) inbound peers
 - [p2p/pex] Limit max msg size to 64kB
+- [p2p] Fix panic when pex=false
+- [p2p] Allow multiple IPs per ID in AddrBook
+- [p2p] Fix before/after bugs in addrbook isBad()
 
 ## 0.19.1 (April 27th, 2018)
 
