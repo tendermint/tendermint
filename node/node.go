@@ -21,7 +21,6 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
-	"github.com/tendermint/tendermint/p2p/trust"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -99,9 +98,8 @@ type Node struct {
 	privValidator types.PrivValidator // local node's validator key
 
 	// network
-	sw               *p2p.Switch             // p2p connections
-	addrBook         pex.AddrBook            // known peers
-	trustMetricStore *trust.TrustMetricStore // trust metrics for all peers
+	sw       *p2p.Switch  // p2p connections
+	addrBook pex.AddrBook // known peers
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
@@ -262,20 +260,24 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 
 	// Optionally, start the pex reactor
-	var addrBook pex.AddrBook
-	var trustMetricStore *trust.TrustMetricStore
+	//
+	// TODO:
+	//
+	// We need to set Seeds and PersistentPeers on the switch,
+	// since it needs to be able to use these (and their DNS names)
+	// even if the PEX is off. We can include the DNS name in the NetAddress,
+	// but it would still be nice to have a clear list of the current "PersistentPeers"
+	// somewhere that we can return with net_info.
+	//
+	// Let's assume we always have IDs ... and we just dont authenticate them
+	// if auth_enc=false.
+	//
+	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
+	// Note we currently use the addrBook regardless at least for AddOurAddress
+	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
+	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 	if config.P2P.PexReactor {
-		addrBook = pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
-		addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
-
-		// Get the trust metric history data
-		trustHistoryDB, err := dbProvider(&DBContext{"trusthistory", config})
-		if err != nil {
-			return nil, err
-		}
-		trustMetricStore = trust.NewTrustMetricStore(trustHistoryDB, trust.DefaultConfig())
-		trustMetricStore.SetLogger(p2pLogger)
-
+		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
 				Seeds:          cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
@@ -355,9 +357,8 @@ func NewNode(config *cfg.Config,
 		genesisDoc:    genDoc,
 		privValidator: privValidator,
 
-		sw:               sw,
-		addrBook:         addrBook,
-		trustMetricStore: trustMetricStore,
+		sw:       sw,
+		addrBook: addrBook,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,

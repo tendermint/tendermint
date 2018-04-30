@@ -2,24 +2,23 @@
 
 This document explains how Tendermint Peers are identified and how they connect to one another.
 
-For details on peer discovery, see the [peer exchange (PEX) reactor doc](pex.md).
+For details on peer discovery, see the [peer exchange (PEX) reactor doc](/docs/specification/new-spec/reactors/pex/pex.md).
 
 ## Peer Identity
 
 Tendermint peers are expected to maintain long-term persistent identities in the form of a public key.
 Each peer has an ID defined as `peer.ID == peer.PubKey.Address()`, where `Address` uses the scheme defined in go-crypto.
 
-A single peer ID can have multiple IP addresses associated with it.
-TODO: define how to deal with this.
+A single peer ID can have multiple IP addresses associated with it, but a node
+will only ever connect to one at a time.
 
 When attempting to connect to a peer, we use the PeerURL: `<ID>@<IP>:<PORT>`.
 We will attempt to connect to the peer at IP:PORT, and verify,
 via authenticated encryption, that it is in possession of the private key
 corresponding to `<ID>`. This prevents man-in-the-middle attacks on the peer layer.
 
-Peers can also be connected to without specifying an ID, ie. just `<IP>:<PORT>`.
-In this case, the peer must be authenticated out-of-band of Tendermint,
-for instance via VPN.
+If `auth_enc = false`, peers can use an arbitrary ID, but they must always use
+one. Authentication can then happen out-of-band of Tendermint, for instance via VPN.
 
 ## Connections
 
@@ -84,12 +83,13 @@ The Tendermint Version Handshake allows the peers to exchange their NodeInfo:
 ```golang
 type NodeInfo struct {
   ID         p2p.ID
-  Moniker    string
-  Network    string
-  RemoteAddr string
   ListenAddr string
+
+  Network    string
   Version    string
   Channels   []int8
+
+  Moniker    string
   Other      []string
 }
 ```
@@ -98,9 +98,10 @@ The connection is disconnected if:
 - `peer.NodeInfo.ID` is not equal `peerConn.ID`
 - `peer.NodeInfo.Version` is not formatted as `X.X.X` where X are integers known as Major, Minor, and Revision
 - `peer.NodeInfo.Version` Major is not the same as ours
-- `peer.NodeInfo.Version` Minor is not the same as ours
 - `peer.NodeInfo.Network` is not the same as ours
 - `peer.Channels` does not intersect with our known Channels.
+- `peer.NodeInfo.ListenAddr` is malformed or is a DNS host that cannot be
+  resolved
 
 
 At this point, if we have not disconnected, the peer is valid.

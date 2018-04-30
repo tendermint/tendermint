@@ -19,10 +19,15 @@ import (
 // NetAddress defines information about a peer on the network
 // including its ID, IP address, and port.
 type NetAddress struct {
-	ID   ID
-	IP   net.IP
-	Port uint16
-	str  string
+	ID   ID     `json:"id"`
+	IP   net.IP `json:"ip"`
+	Port uint16 `json:"port"`
+
+	// TODO:
+	// Name string `json:"name"` // optional DNS name
+
+	// memoize .String()
+	str string
 }
 
 // IDAddressString returns id@hostPort.
@@ -56,10 +61,11 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 // NewNetAddressString returns a new NetAddress using the provided address in
 // the form of "ID@IP:Port".
 // Also resolves the host if host is not an IP.
+// Errors are of type ErrNetAddressXxx where Xxx is in (NoID, Invalid, Lookup)
 func NewNetAddressString(addr string) (*NetAddress, error) {
 	spl := strings.Split(addr, "@")
 	if len(spl) < 2 {
-		return nil, fmt.Errorf("Address (%s) does not contain ID", addr)
+		return nil, ErrNetAddressNoID{addr}
 	}
 	return NewNetAddressStringWithOptionalID(addr)
 }
@@ -76,11 +82,12 @@ func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
 		idStr := spl[0]
 		idBytes, err := hex.DecodeString(idStr)
 		if err != nil {
-			return nil, cmn.ErrorWrap(err, fmt.Sprintf("Address (%s) contains invalid ID", addrWithoutProtocol))
+			return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 		}
 		if len(idBytes) != IDByteLength {
-			return nil, fmt.Errorf("Address (%s) contains ID of invalid length (%d). Should be %d hex-encoded bytes",
-				addrWithoutProtocol, len(idBytes), IDByteLength)
+			return nil, ErrNetAddressInvalid{
+				addrWithoutProtocol,
+				fmt.Errorf("invalid hex length - got %d, expected %d", len(idBytes), IDByteLength)}
 		}
 
 		id, addrWithoutProtocol = ID(idStr), spl[1]
@@ -88,7 +95,7 @@ func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
 
 	host, portStr, err := net.SplitHostPort(addrWithoutProtocol)
 	if err != nil {
-		return nil, err
+		return nil, ErrNetAddressInvalid{addrWithoutProtocol, err}
 	}
 
 	ip := net.ParseIP(host)
@@ -96,7 +103,7 @@ func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
 		if len(host) > 0 {
 			ips, err := net.LookupIP(host)
 			if err != nil {
-				return nil, err
+				return nil, ErrNetAddressLookup{host, err}
 			}
 			ip = ips[0]
 		}
@@ -104,7 +111,7 @@ func NewNetAddressStringWithOptionalID(addr string) (*NetAddress, error) {
 
 	port, err := strconv.ParseUint(portStr, 10, 16)
 	if err != nil {
-		return nil, err
+		return nil, ErrNetAddressInvalid{portStr, err}
 	}
 
 	na := NewNetAddressIPPort(ip, uint16(port))
@@ -120,7 +127,7 @@ func NewNetAddressStrings(addrs []string) ([]*NetAddress, []error) {
 	for _, addr := range addrs {
 		netAddr, err := NewNetAddressString(addr)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("Error in address %s: %v", addr, err))
+			errs = append(errs, err)
 		} else {
 			netAddrs = append(netAddrs, netAddr)
 		}

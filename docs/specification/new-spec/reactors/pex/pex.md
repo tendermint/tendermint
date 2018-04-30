@@ -7,7 +7,8 @@ to good peers and to gossip peers to others.
 ## Peer Types
 
 Certain peers are special in that they are specified by the user as `persistent`,
-which means we auto-redial them if the connection fails.
+which means we auto-redial them if the connection fails, or if we fail to dial
+them.
 Some peers can be marked as `private`, which means
 we will not put them in the address book or gossip them to others.
 
@@ -19,22 +20,37 @@ Peer discovery begins with a list of seeds.
 When we have no peers, or have been unable to find enough peers from existing ones,
 we dial a randomly selected seed to get a list of peers to dial.
 
-So long as we have less than `MaxPeers`, we periodically request additional peers
+On startup, we will also immediately dial the given list of `persistent_peers`,
+and will attempt to maintain persistent connections with them. If the connections die, or we fail to dial,
+we will redial every 5s for a few minutes, then switch to an exponential backoff schedule,
+and after about a day of trying, stop dialing the peer.
+
+So long as we have less than `MinNumOutboundPeers`, we periodically request additional peers
 from each of our own. If sufficient time goes by and we still can't find enough peers,
 we try the seeds again.
+
+## Listening
+
+Peers listen on a configurable ListenAddr that they self-report in their
+NodeInfo during handshakes with other peers. Peers accept up to (MaxNumPeers -
+MinNumOutboundPeers) incoming peers.
 
 ## Address Book
 
 Peers are tracked via their ID (their PubKey.Address()).
-For each ID, the address book keeps the most recent IP:PORT.
 Peers are added to the address book from the PEX when they first connect to us or
 when we hear about them from other peers.
 
 The address book is arranged in sets of buckets, and distinguishes between
 vetted (old) and unvetted (new) peers. It keeps different sets of buckets for vetted and
-unvetted peers. Buckets provide randomization over peer selection.
+unvetted peers. Buckets provide randomization over peer selection. Peers are put
+in buckets according to their IP groups.
 
-A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets.
+A vetted peer can only be in one bucket. An unvetted peer can be in multiple buckets, and
+each instance of the peer can have a different IP:PORT.
+
+If we're trying to add a new peer but there's no space in its bucket, we'll
+remove the worst peer from that bucket to make room.
 
 ## Vetting
 
@@ -68,6 +84,8 @@ Connection attempts are made with exponential backoff (plus jitter). Because
 the selection process happens every `ensurePeersPeriod`, we might not end up
 dialing a peer for much longer than the backoff duration.
 
+If we fail to connect to the peer after 16 tries (with exponential backoff), we remove from address book completely.
+
 ## Select Peers to Exchange
 
 When we’re asked for peers, we select them as follows:
@@ -86,9 +104,9 @@ Note that the bad behaviour may be detected outside the PEX reactor itself
 (for instance, in the mconnection, or another reactor), but it must be communicated to the PEX reactor
 so it can remove and mark the peer.
 
-In the PEX, if a peer sends us unsolicited lists of peers,
-or if the peer sends too many requests for more peers in a given amount of time,
-we Disconnect and Mark.
+In the PEX, if a peer sends us an unsolicited list of peers,
+or if the peer sends a request too soon after another one,
+we Disconnect and MarkBad.
 
 ## Trust Metric
 

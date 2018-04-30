@@ -21,6 +21,7 @@ func MaxNodeInfoSize() int {
 // between two peers during the Tendermint P2P handshake.
 type NodeInfo struct {
 	// Authenticate
+	// TODO: replace with NetAddress
 	ID         ID     `json:"id"`          // authenticated identifier
 	ListenAddr string `json:"listen_addr"` // accepting incoming
 
@@ -37,7 +38,9 @@ type NodeInfo struct {
 
 // Validate checks the self-reported NodeInfo is safe.
 // It returns an error if there
-// are too many Channels or any duplicate Channels.
+// are too many Channels, if there are any duplicate Channels,
+// if the ListenAddr is malformed, or if the ListenAddr is a host name
+// that can not be resolved to some IP.
 // TODO: constraints for Moniker/Other? Or is that for the UI ?
 func (info NodeInfo) Validate() error {
 	if len(info.Channels) > maxNumChannels {
@@ -52,11 +55,14 @@ func (info NodeInfo) Validate() error {
 		}
 		channels[ch] = struct{}{}
 	}
-	return nil
+
+	// ensure ListenAddr is good
+	_, err := NewNetAddressString(IDAddressString(info.ID, info.ListenAddr))
+	return err
 }
 
 // CompatibleWith checks if two NodeInfo are compatible with eachother.
-// CONTRACT: two nodes are compatible if the major/minor versions match and network match
+// CONTRACT: two nodes are compatible if the major version matches and network match
 // and they have at least one channel in common.
 func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	iMajor, iMinor, _, iErr := splitVersion(info.Version)
@@ -77,9 +83,9 @@ func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 		return fmt.Errorf("Peer is on a different major version. Got %v, expected %v", oMajor, iMajor)
 	}
 
-	// minor version must match
+	// minor version can differ
 	if iMinor != oMinor {
-		return fmt.Errorf("Peer is on a different minor version. Got %v, expected %v", oMinor, iMinor)
+		// ok
 	}
 
 	// nodes must be on the same network
@@ -116,7 +122,14 @@ OUTER_LOOP:
 func (info NodeInfo) NetAddress() *NetAddress {
 	netAddr, err := NewNetAddressString(IDAddressString(info.ID, info.ListenAddr))
 	if err != nil {
-		panic(err) // everything should be well formed by now
+		switch err.(type) {
+		case ErrNetAddressLookup:
+			// XXX If the peer provided a host name  and the lookup fails here
+			// we're out of luck.
+			// TODO: use a NetAddress in NodeInfo
+		default:
+			panic(err) // everything should be well formed by now
+		}
 	}
 	return netAddr
 }

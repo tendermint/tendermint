@@ -5,15 +5,47 @@ and an application (the actual state machine).
 
 The ABCI message types are defined in a [protobuf
 file](https://github.com/tendermint/abci/blob/master/types/types.proto).
+
 For full details on the ABCI message types and protocol, see the [ABCI
 specificaiton](https://github.com/tendermint/abci/blob/master/specification.rst).
+Be sure to read the specification if you're trying to build an ABCI app!
+
 For additional details on server implementation, see the [ABCI
 readme](https://github.com/tendermint/abci#implementation).
 
 Here we provide some more details around the use of ABCI by Tendermint and
 clarify common "gotchas".
 
-## Validator Updates
+## ABCI connections
+
+Tendermint opens 3 ABCI connections to the app: one for Consensus, one for
+Mempool, one for Queries.
+
+## Async vs Sync
+
+The main ABCI server (ie. non-GRPC) provides ordered asynchronous messages.
+This is useful for DeliverTx and CheckTx, since it allows Tendermint to forward
+transactions to the app before it's finished processing previous ones.
+
+Thus, DeliverTx and CheckTx messages are sent asycnhronously, while all other
+messages are sent synchronously.
+
+## CheckTx and Commit
+
+It is typical to hold three distinct states in an ABCI app: CheckTxState, DeliverTxState,
+QueryState. The QueryState contains the latest committed state for a block.
+The CheckTxState and DeliverTxState may be updated concurrently with one another.
+Before Commit is called, Tendermint locks and flushes the mempool so that no new changes will happen
+to CheckTxState. When Commit completes, it unlocks the mempool.
+
+Thus, during Commit, it is safe to reset the QueryState and the CheckTxState to the latest DeliverTxState
+(ie. the new state from executing all the txs in the block).
+
+Note, however, that it is not possible to send transactions to Tendermint during Commit - if your app
+tries to send a `/broadcast_tx` to Tendermint during Commit, it will deadlock.
+
+
+## EndBlock Validator Updates
 
 Updates to the Tendermint validator set can be made by returning `Validator`
 objects in the `ResponseBeginBlock`:
@@ -67,3 +99,70 @@ using the following paths, with no additional data:
 
 If either of these queries return a non-zero ABCI code, Tendermint will refuse
 to connect to the peer.
+
+## Info and the Handshake/Replay
+
+On startup, Tendermint calls Info on the Query connection to get the latest
+committed state of the app. The app MUST return information consistent with the
+last block it succesfully completed Commit for.
+
+If the app succesfully committed block H but not H+1, then `last_block_height =
+H` and `last_block_app_hash = <hash returned by Commit for block H>`. If the app
+failed during the Commit of block H, then `last_block_height = H-1` and
+`last_block_app_hash = <hash returned by Commit for block H-1, which is the hash
+in the header of block H>`.
+
+We now distinguish three heights, and describe how Tendermint syncs itself with
+the app.
+
+```
+storeBlockHeight = height of the last block Tendermint saw a commit for
+stateBlockHeight = height of the last block for which Tendermint completed all
+    block processing and saved all ABCI results to disk
+appBlockHeight = height of the last block for which ABCI app succesfully
+    completely Commit
+
+```
+
+Note we always have `storeBlockHeight >= stateBlockHeight` and `storeBlockHeight >= appBlockHeight`
+Note also we never call Commit on an ABCI app twice for the same height.
+
+The procedure is as follows.
+
+First, some simeple start conditions:
+
+If `appBlockHeight == 0`, then call InitChain.
+
+If `storeBlockHeight == 0`, we're done.
+
+Now, some sanity checks:
+
+If `storeBlockHeight < appBlockHeight`, error
+If `storeBlockHeight < stateBlockHeight`, panic
+If `storeBlockHeight > stateBlockHeight+1`, panic
+
+Now, the meat:
+
+If `storeBlockHeight == stateBlockHeight && appBlockHeight < storeBlockHeight`,
+	replay all blocks in full from `appBlockHeight` to `storeBlockHeight`.
+	This happens if we completed processing the block, but the app forgot its height.
+
+If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`, we're done
+	This happens if we crashed at an opportune spot.
+
+If `storeBlockHeight == stateBlockHeight+1`
+	This happens if we started processing the block but didn't finish.
+
+	If `appBlockHeight < stateBlockHeight`
+		replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
+		and replay the block at `storeBlockHeight` using the WAL.
+	This happens if the app forgot the last block it committed.
+
+	If `appBlockHeight == stateBlockHeight`,
+		replay the last block (storeBlockHeight) in full.
+	This happens if we crashed before the app finished Commit
+
+	If appBlockHeight == storeBlockHeight {
+		update the state using the saved ABCI responses but dont run the block against the real app.
+	This happens if we crashed after the app finished Commit but before Tendermint saved the state.
+

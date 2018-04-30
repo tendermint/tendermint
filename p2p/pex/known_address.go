@@ -106,7 +106,6 @@ func (ka *knownAddress) removeBucketRef(bucketIdx int) int {
    All addresses that meet these criteria are assumed to be worthless and not
    worth keeping hold of.
 
-   XXX: so a good peer needs us to call MarkGood before the conditions above are reached!
 */
 func (ka *knownAddress) isBad() bool {
 	// Is Old --> good
@@ -115,14 +114,15 @@ func (ka *knownAddress) isBad() bool {
 	}
 
 	// Has been attempted in the last minute --> good
-	if ka.LastAttempt.Before(time.Now().Add(-1 * time.Minute)) {
+	if ka.LastAttempt.After(time.Now().Add(-1 * time.Minute)) {
 		return false
 	}
 
+	// TODO: From the future?
+
 	// Too old?
-	// XXX: does this mean if we've kept a connection up for this long we'll disconnect?!
-	// and shouldn't it be .Before ?
-	if ka.LastAttempt.After(time.Now().Add(-1 * numMissingDays * time.Hour * 24)) {
+	// TODO: should be a timestamp of last seen, not just last attempt
+	if ka.LastAttempt.Before(time.Now().Add(-1 * numMissingDays * time.Hour * 24)) {
 		return true
 	}
 
@@ -132,7 +132,6 @@ func (ka *knownAddress) isBad() bool {
 	}
 
 	// Hasn't succeeded in too long?
-	// XXX: does this mean if we've kept a connection up for this long we'll disconnect?!
 	if ka.LastSuccess.Before(time.Now().Add(-1*minBadDays*time.Hour*24)) &&
 		ka.Attempts >= maxFailures {
 		return true

@@ -90,7 +90,8 @@ type PeerConfig struct {
 
 	MConfig *tmconn.MConnConfig `mapstructure:"connection"`
 
-	Fuzz       bool            `mapstructure:"fuzz"` // fuzz connection (for testing)
+	DialFail   bool            `mapstructure:"dial_fail"` // for testing
+	Fuzz       bool            `mapstructure:"fuzz"`      // fuzz connection (for testing)
 	FuzzConfig *FuzzConnConfig `mapstructure:"fuzz_config"`
 }
 
@@ -101,6 +102,7 @@ func DefaultPeerConfig() *PeerConfig {
 		HandshakeTimeout: 20, // * time.Second,
 		DialTimeout:      3,  // * time.Second,
 		MConfig:          tmconn.DefaultMConnConfig(),
+		DialFail:         false,
 		Fuzz:             false,
 		FuzzConfig:       DefaultFuzzConnConfig(),
 	}
@@ -338,6 +340,10 @@ func (p *peer) String() string {
 // helper funcs
 
 func dial(addr *NetAddress, config *PeerConfig) (net.Conn, error) {
+	if config.DialFail {
+		return nil, fmt.Errorf("dial err (peerConfig.DialFail == true)")
+	}
+
 	conn, err := addr.DialTimeout(config.DialTimeout * time.Second)
 	if err != nil {
 		return nil, err
