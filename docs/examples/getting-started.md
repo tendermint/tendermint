@@ -10,10 +10,10 @@ documentation](http://tendermint.readthedocs.io/en/master/).
 
 ### Quick Install
 
-On a fresh Ubuntu 16.04 machine can be done with [this script](https://git.io/vNLfY), like so:
+On a fresh Ubuntu 16.04 machine can be done with [this script](https://git.io/vpgEI), like so:
 
 ```
-curl -L https://git.io/vxWlX | bash
+curl -L https://git.io/vpgEI | bash
 source ~/.profile
 ```
 
@@ -24,7 +24,7 @@ The script is also used to facilitate cluster deployment below.
 ### Manual Install
 
 Requires:
-- `go` minimum version 1.9
+- `go` minimum version 1.10
 - `$GOPATH` environment variable must be set
 - `$GOPATH/bin` must be on your `$PATH` (see https://github.com/tendermint/tendermint/wiki/Setting-GOPATH)
 
@@ -125,7 +125,7 @@ addresses below as IP1, IP2, IP3, IP4.
 Then, `ssh` into each machine, and execute [this script](https://git.io/vNLfY):
 
 ```
-curl -L https://git.io/vNLfY | bash
+curl -L https://git.io/vpgEI | bash
 source ~/.profile
 ```
 
@@ -134,10 +134,10 @@ This will install `go` and other dependencies, get the Tendermint source code, t
 Next, `cd` into `docs/examples`. Each command below should be run from each node, in sequence:
 
 ```
-tendermint node --home ./node1 --proxy_app=kvstore --p2p.persistent_peers="3a558bd6f8c97453aa6c2372bb800e8b6ed8e6db@IP1:46656,ccf30d873fddda10a495f42687c8f33472a6569f@IP2:46656,9a4c3de5d6788a76c6ee3cd9ff41e3b45b4cfd14@IP3:46656,58e6f2ab297b3ceae107ba4c8c2898da5c009ff4@IP4:46656"
-tendermint node --home ./node2 --proxy_app=kvstore --p2p.persistent_peers="3a558bd6f8c97453aa6c2372bb800e8b6ed8e6db@IP1:46656,ccf30d873fddda10a495f42687c8f33472a6569f@IP2:46656,9a4c3de5d6788a76c6ee3cd9ff41e3b45b4cfd14@IP3:46656,58e6f2ab297b3ceae107ba4c8c2898da5c009ff4@IP4:46656"
-tendermint node --home ./node3 --proxy_app=kvstore --p2p.persistent_peers="3a558bd6f8c97453aa6c2372bb800e8b6ed8e6db@IP1:46656,ccf30d873fddda10a495f42687c8f33472a6569f@IP2:46656,9a4c3de5d6788a76c6ee3cd9ff41e3b45b4cfd14@IP3:46656,58e6f2ab297b3ceae107ba4c8c2898da5c009ff4@IP4:46656"
-tendermint node --home ./node4 --proxy_app=kvstore --p2p.persistent_peers="3a558bd6f8c97453aa6c2372bb800e8b6ed8e6db@IP1:46656,ccf30d873fddda10a495f42687c8f33472a6569f@IP2:46656,9a4c3de5d6788a76c6ee3cd9ff41e3b45b4cfd14@IP3:46656,58e6f2ab297b3ceae107ba4c8c2898da5c009ff4@IP4:46656"
+tendermint node --home ./node0 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:46656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:46656"
+tendermint node --home ./node1 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:46656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:46656"
+tendermint node --home ./node2 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:46656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:46656"
+tendermint node --home ./node3 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:46656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:46656"
 ```
 
 Note that after the third node is started, blocks will start to stream in
