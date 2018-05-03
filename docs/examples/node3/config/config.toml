@@ -8,7 +8,7 @@
 proxy_app = "tcp://127.0.0.1:46658"
 
 # A custom human readable name for this node
-moniker = "ubuntu-s-1vcpu-2gb-tor1-01"
+moniker = "delta"
 
 # If this node is many blocks behind the tip of the chain, FastSync
 # allows them to catchup quickly by downloading blocks in parallel
