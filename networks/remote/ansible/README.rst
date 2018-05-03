@@ -34,7 +34,7 @@ Build
     # Then copy your genesis.json and modify the config.toml as you see fit.
 
     # Reconfig the sentry nodes with a new BINARY and the configuration files from the build folder:
-    ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=`pwd`/build/tendermint -e CONFIGDIR=`pwd`/build
+    ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$GOPATH/src/github.com/tendermint/tendermint/build/tendermint -e CONFIGDIR=$GOPATH/src/github.com/tendermint/tendermint/docs/examples
 
 Shipping logs to logz.io
 ------------------------
