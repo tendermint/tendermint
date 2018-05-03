@@ -1,5 +1,11 @@
-Using Terraform
-===============
+Terraform & Ansible
+===================
+
+The `terraform-digitalocean tool <https://github.com/tendermint/tools/tree/master/terraform-digitalocean>`__
+allows creating a set of servers on the DigitalOcean cloud.
+
+The `ansible playbooks <https://github.com/tendermint/tools/tree/master/ansible>`__
+allow creating and managing a ``basecoin`` or ``ethermint`` testnet on provisioned servers.
 
 This is a `Terraform <https://www.terraform.io/>`__ configuration that sets up DigitalOcean droplets.
 
