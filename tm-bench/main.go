@@ -13,9 +13,8 @@ import (
 
 	"text/tabwriter"
 
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmrpc "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tmlibs/log"
-	"github.com/tendermint/tools/tm-monitor/monitor"
 )
 
 var version = "0.3.0"
@@ -23,9 +22,8 @@ var version = "0.3.0"
 var logger = log.NewNopLogger()
 
 type statistics struct {
-	BlockTimeSample    metrics.Histogram
-	TxThroughputSample metrics.Histogram
-	BlockLatency       metrics.Histogram
+	TxsThroughput    metrics.Histogram `json:"txs_per_sec"`
+	BlocksThroughput metrics.Histogram `json:"blocks_per_sec"`
 }
 
 func main() {
@@ -60,7 +58,7 @@ Examples:
 
 	if verbose {
 		if outputFormat == "json" {
-			fmt.Println("Verbose mode not supported with json output.")
+			fmt.Fprintln(os.Stderr, "Verbose mode not supported with json output.")
 			os.Exit(1)
 		}
 		// Color errors red
@@ -79,71 +77,91 @@ Examples:
 
 	endpoints := strings.Split(flag.Arg(0), ",")
 
-	blockCh := make(chan tmtypes.Header, 100)
-	blockLatencyCh := make(chan float64, 100)
+	client := tmrpc.NewHTTP(endpoints[0], "/websocket")
 
-	nodes := startNodes(endpoints, blockCh, blockLatencyCh)
+	minHeight := latestBlockHeight(client)
+	logger.Info("Latest block height", "h", minHeight)
+
+	// record time start
+	timeStart := time.Now()
+	logger.Info("Time started", "t", timeStart)
 
 	transacters := startTransacters(endpoints, connections, txsRate)
 
-	stats := &statistics{
-		BlockTimeSample:    metrics.NewHistogram(metrics.NewUniformSample(1000)),
-		TxThroughputSample: metrics.NewHistogram(metrics.NewUniformSample(1000)),
-		BlockLatency:       metrics.NewHistogram(metrics.NewUniformSample(1000)),
-	}
-
-	lastBlockHeight := int64(-1)
-
-	durationTimer := time.After(time.Duration(duration) * time.Second)
-	ticker := time.NewTicker(1 * time.Second)
-	var blocks int
-	var txs int64
-	for {
-		select {
-		case b := <-blockCh:
-			if lastBlockHeight < b.Height {
-				blocks++
-				txs += b.NumTxs
-				lastBlockHeight = b.Height
-			}
-		case l := <-blockLatencyCh:
-			stats.BlockLatency.Update(int64(l))
-		case <-ticker.C:
-			stats.BlockTimeSample.Update(int64(blocks))
-			stats.TxThroughputSample.Update(txs)
-			blocks = 0
-			txs = 0
-		case <-durationTimer:
-			for _, t := range transacters {
-				t.Stop()
-			}
-
-			printStatistics(stats, outputFormat)
-
-			for _, n := range nodes {
-				n.Stop()
-			}
-			return
+	select {
+	case <-time.After(time.Duration(duration) * time.Second):
+		for _, t := range transacters {
+			t.Stop()
 		}
+		timeStop := time.Now()
+		logger.Info("Time stopped", "t", timeStop)
+
+		stats := calculateStatistics(client, minHeight, timeStart, timeStop)
+
+		printStatistics(stats, outputFormat)
+
+		return
 	}
 }
 
-func startNodes(endpoints []string, blockCh chan<- tmtypes.Header, blockLatencyCh chan<- float64) []*monitor.Node {
-	nodes := make([]*monitor.Node, len(endpoints))
+func latestBlockHeight(client tmrpc.Client) int64 {
+	status, err := client.Status()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	return status.SyncInfo.LatestBlockHeight
+}
 
-	for i, e := range endpoints {
-		n := monitor.NewNode(e)
-		n.SetLogger(logger.With("node", e))
-		n.SendBlocksTo(blockCh)
-		n.SendBlockLatenciesTo(blockLatencyCh)
-		if err := n.Start(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		nodes[i] = n
+func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeStop time.Time) *statistics {
+	stats := &statistics{
+		BlocksThroughput: metrics.NewHistogram(metrics.NewUniformSample(1000)),
+		TxsThroughput:    metrics.NewHistogram(metrics.NewUniformSample(1000)),
 	}
 
-	return nodes
+	// get blocks between minHeight and last height
+	info, err := client.BlockchainInfo(minHeight, 0)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	numBlocksPerSec := make(map[int64]int64)
+	numTxsPerSec := make(map[int64]int64)
+	for _, blockMeta := range info.BlockMetas {
+		// check if block was created before timeStop
+		if blockMeta.Header.Time.After(timeStop) {
+			break
+		}
+
+		sec := secondsSinceTimeStart(timeStart, blockMeta.Header.Time)
+
+		// increase number of blocks for that second
+		if _, ok := numBlocksPerSec[sec]; !ok {
+			numBlocksPerSec[sec] = 0
+		}
+		numBlocksPerSec[sec]++
+
+		// increase number of txs for that second
+		if _, ok := numTxsPerSec[sec]; !ok {
+			numTxsPerSec[sec] = 0
+		}
+		numTxsPerSec[sec] += blockMeta.Header.NumTxs
+	}
+
+	for _, n := range numBlocksPerSec {
+		stats.BlocksThroughput.Update(n)
+	}
+
+	for _, n := range numTxsPerSec {
+		stats.TxsThroughput.Update(n)
+	}
+
+	return stats
+}
+
+func secondsSinceTimeStart(timeStart, timePassed time.Time) int64 {
+	return int64(timePassed.Sub(timeStart).Seconds())
 }
 
 func startTransacters(endpoints []string, connections int, txsRate int) []*transacter {
@@ -153,7 +171,7 @@ func startTransacters(endpoints []string, connections int, txsRate int) []*trans
 		t := newTransacter(e, connections, txsRate)
 		t.SetLogger(logger)
 		if err := t.Start(); err != nil {
-			fmt.Println(err)
+			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
 		transacters[i] = t
@@ -162,47 +180,28 @@ func startTransacters(endpoints []string, connections int, txsRate int) []*trans
 	return transacters
 }
 
-type Results struct {
-	BlockLatencyMean   float64
-	BlockLatencyMax    int64
-	BlockLatencyStdDev float64
-	BlockTimeMean      float64
-	BlockTimeMax       int64
-	BlockTimeStdDev    float64
-	TxThroughputMean   float64
-	TxThroughputMax    int64
-	TxThroughputStdDev float64
-}
-
 func printStatistics(stats *statistics, outputFormat string) {
 	if outputFormat == "json" {
-		result, _ := json.Marshal(Results{
-			stats.BlockLatency.Mean() / 1000000.0,
-			stats.BlockLatency.Max() / 1000000.0,
-			stats.BlockLatency.StdDev() / 1000000.0,
-			stats.BlockTimeSample.Mean(),
-			stats.BlockTimeSample.Max(),
-			stats.BlockTimeSample.StdDev(),
-			stats.TxThroughputSample.Mean(),
-			stats.TxThroughputSample.Max(),
-			stats.TxThroughputSample.StdDev(),
-		})
+		result, err := json.Marshal(struct {
+			TxsThroughput    float64 `json:"txs_per_sec_avg"`
+			BlocksThroughput float64 `json:"blocks_per_sec_avg"`
+		}{stats.TxsThroughput.Mean(), stats.BlocksThroughput.Mean()})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 		fmt.Println(string(result))
 	} else {
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 5, ' ', 0)
-		fmt.Fprintln(w, "Stats\tAvg\tStdev\tMax\t")
-		fmt.Fprintln(w, fmt.Sprintf("Block latency\t%.2fms\t%.2fms\t%dms\t",
-			stats.BlockLatency.Mean()/1000000.0,
-			stats.BlockLatency.StdDev()/1000000.0,
-			stats.BlockLatency.Max()/1000000))
-		fmt.Fprintln(w, fmt.Sprintf("Blocks/sec\t%.3f\t%.3f\t%d\t",
-			stats.BlockTimeSample.Mean(),
-			stats.BlockTimeSample.StdDev(),
-			stats.BlockTimeSample.Max()))
+		fmt.Fprintln(w, "Stats\tAvg\tStdDev\tMax\t")
 		fmt.Fprintln(w, fmt.Sprintf("Txs/sec\t%.0f\t%.0f\t%d\t",
-			stats.TxThroughputSample.Mean(),
-			stats.TxThroughputSample.StdDev(),
-			stats.TxThroughputSample.Max()))
+			stats.TxsThroughput.Mean(),
+			stats.TxsThroughput.StdDev(),
+			stats.TxsThroughput.Max()))
+		fmt.Fprintln(w, fmt.Sprintf("Blocks/sec\t%.3f\t%.3f\t%d\t",
+			stats.BlocksThroughput.Mean(),
+			stats.BlocksThroughput.StdDev(),
+			stats.BlocksThroughput.Max()))
 		w.Flush()
 	}
 }

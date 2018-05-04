@@ -31,11 +31,11 @@
 
 [[constraint]]
   name = "github.com/gorilla/websocket"
-  version = "1.2.0"
+  version = "^1.2.0"
 
 [[constraint]]
   name = "github.com/pkg/errors"
-  version = "0.8.0"
+  version = "^0.8.0"
 
 [[constraint]]
   branch = "master"
@@ -43,15 +43,11 @@
 
 [[constraint]]
   name = "github.com/tendermint/tendermint"
-  version = "0.17.1"
+  version = "~0.19.2"
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  version = "0.7.1"
-
-[[constraint]]
-  name = "github.com/tendermint/tools"
-  branch = "master"
+  version = "~0.8.2"
 
 [prune]
   go-tests = true
