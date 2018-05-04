@@ -29,19 +29,20 @@ type statistics struct {
 func main() {
 	var duration, txsRate, connections int
 	var verbose bool
-	var outputFormat string
+	var outputFormat, broadcastTxMethod string
 
 	flag.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flag.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
 	flag.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
 	flag.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
+	flag.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
 	flag.BoolVar(&verbose, "v", false, "Verbose output")
 
 	flag.Usage = func() {
 		fmt.Println(`Tendermint blockchain benchmarking tool.
 
 Usage:
-	tm-bench [-c 1] [-T 10] [-r 1000] [endpoints] [-output-format <plain|json>]
+	tm-bench [-c 1] [-T 10] [-r 1000] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
 
 Examples:
 	tm-bench localhost:46657`)
@@ -75,6 +76,11 @@ Examples:
 		fmt.Printf("Running %ds test @ %s\n", duration, flag.Arg(0))
 	}
 
+	if broadcastTxMethod != "async" && broadcastTxMethod != "sync" && broadcastTxMethod != "commit" {
+		fmt.Fprintln(os.Stderr, "broadcast-tx-method should be either 'sync', 'async' or 'commit'.")
+		os.Exit(1)
+	}
+
 	endpoints := strings.Split(flag.Arg(0), ",")
 
 	client := tmrpc.NewHTTP(endpoints[0], "/websocket")
@@ -86,7 +92,7 @@ Examples:
 	timeStart := time.Now()
 	logger.Info("Time started", "t", timeStart)
 
-	transacters := startTransacters(endpoints, connections, txsRate)
+	transacters := startTransacters(endpoints, connections, txsRate, "broadcast_tx_"+broadcastTxMethod)
 
 	select {
 	case <-time.After(time.Duration(duration) * time.Second):
@@ -164,11 +170,11 @@ func secondsSinceTimeStart(timeStart, timePassed time.Time) int64 {
 	return int64(timePassed.Sub(timeStart).Seconds())
 }
 
-func startTransacters(endpoints []string, connections int, txsRate int) []*transacter {
+func startTransacters(endpoints []string, connections, txsRate int, broadcastTxMethod string) []*transacter {
 	transacters := make([]*transacter, len(endpoints))
 
 	for i, e := range endpoints {
-		t := newTransacter(e, connections, txsRate)
+		t := newTransacter(e, connections, txsRate, broadcastTxMethod)
 		t.SetLogger(logger)
 		if err := t.Start(); err != nil {
 			fmt.Fprintln(os.Stderr, err)

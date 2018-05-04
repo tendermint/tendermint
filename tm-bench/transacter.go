@@ -31,9 +31,10 @@ const (
 )
 
 type transacter struct {
-	Target      string
-	Rate        int
-	Connections int
+	Target            string
+	Rate              int
+	Connections       int
+	BroadcastTxMethod string
 
 	conns   []*websocket.Conn
 	wg      sync.WaitGroup
@@ -42,13 +43,14 @@ type transacter struct {
 	logger log.Logger
 }
 
-func newTransacter(target string, connections int, rate int) *transacter {
+func newTransacter(target string, connections, rate int, broadcastTxMethod string) *transacter {
 	return &transacter{
-		Target:      target,
-		Rate:        rate,
-		Connections: connections,
-		conns:       make([]*websocket.Conn, connections),
-		logger:      log.NewNopLogger(),
+		Target:            target,
+		Rate:              rate,
+		Connections:       connections,
+		BroadcastTxMethod: broadcastTxMethod,
+		conns:             make([]*websocket.Conn, connections),
+		logger:            log.NewNopLogger(),
 	}
 }
 
@@ -151,19 +153,19 @@ func (t *transacter) sendLoop(connIndex int) {
 			for i := 0; i < t.Rate; i++ {
 				// each transaction embeds connection index, tx number and hash of the hostname
 				tx := generateTx(connIndex, txNumber, hostnameHash)
-				paramsJson, err := json.Marshal(map[string]interface{}{"tx": hex.EncodeToString(tx)})
+				paramsJSON, err := json.Marshal(map[string]interface{}{"tx": hex.EncodeToString(tx)})
 				if err != nil {
 					fmt.Printf("failed to encode params: %v\n", err)
 					os.Exit(1)
 				}
-				rawParamsJson := json.RawMessage(paramsJson)
+				rawParamsJSON := json.RawMessage(paramsJSON)
 
 				c.SetWriteDeadline(time.Now().Add(sendTimeout))
 				err = c.WriteJSON(rpctypes.RPCRequest{
 					JSONRPC: "2.0",
 					ID:      "tm-bench",
-					Method:  "broadcast_tx_async",
-					Params:  rawParamsJson,
+					Method:  t.BroadcastTxMethod,
+					Params:  rawParamsJSON,
 				})
 				if err != nil {
 					fmt.Printf("%v. Try reducing the connections count and increasing the rate.\n", errors.Wrap(err, "txs send failed"))
