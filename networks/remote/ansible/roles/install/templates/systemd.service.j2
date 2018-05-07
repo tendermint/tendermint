@@ -8,7 +8,7 @@ Restart=on-failure
 User={{service}}
 Group={{service}}
 PermissionsStartOnly=true
-ExecStart=/usr/bin/tendermint node --proxy_app=dummy
+ExecStart=/usr/bin/tendermint node --proxy_app=kvstore
 ExecReload=/bin/kill -HUP $MAINPID
 KillSignal=SIGTERM
 
