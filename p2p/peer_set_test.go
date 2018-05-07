@@ -112,18 +112,24 @@ func TestPeerSetAddDuplicate(t *testing.T) {
 	}
 
 	// Now collect and tally the results
-	errsTally := make(map[error]int)
+	errsTally := make(map[string]int)
 	for i := 0; i < n; i++ {
 		err := <-errsChan
-		errsTally[err]++
+
+		switch err.(type) {
+		case ErrSwitchDuplicatePeerID:
+			errsTally["duplicateID"]++
+		default:
+			errsTally["other"]++
+		}
 	}
 
 	// Our next procedure is to ensure that only one addition
 	// succeeded and that the rest are each ErrSwitchDuplicatePeer.
-	wantErrCount, gotErrCount := n-1, errsTally[ErrSwitchDuplicatePeer]
+	wantErrCount, gotErrCount := n-1, errsTally["duplicateID"]
 	assert.Equal(t, wantErrCount, gotErrCount, "invalid ErrSwitchDuplicatePeer count")
 
-	wantNilErrCount, gotNilErrCount := 1, errsTally[nil]
+	wantNilErrCount, gotNilErrCount := 1, errsTally["other"]
 	assert.Equal(t, wantNilErrCount, gotNilErrCount, "invalid nil errCount")
 }
 

@@ -193,7 +193,7 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	// addr should be rejected in addPeer based on the same ID
 	err := s1.DialPeerWithAddress(rp.Addr(), false)
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrSwitchConnectToSelf, err)
+		assert.EqualValues(t, ErrSwitchConnectToSelf{}, err)
 	}
 
 	assert.True(t, s1.addrBook.OurAddress(rp.Addr()))

@@ -404,7 +404,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
 				switch err.(type) {
-				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeer:
+				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID:
 					sw.Logger.Debug("Error dialing peer", "err", err)
 				default:
 					sw.Logger.Error("Error dialing peer", "err", err)
@@ -579,11 +579,8 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	}
 
 	// check ips for both the connection addr and the self reported addr
-	if sw.peers.HasIP(addr) {
-		return ErrSwitchDuplicatePeerIP{addr}
-	}
-	if sw.peers.HasIP(peerNodeInfo.ListenAddr) {
-		return ErrSwitchDuplicatePeerIP{peerNodeInfo.ListenAddr}
+	if sw.peers.HasIP(pc.RemoteIP()) {
+		return ErrSwitchDuplicatePeerIP{pc.RemoteIP()}
 	}
 
 	// Filter peer against ID white list

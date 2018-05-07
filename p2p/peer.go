@@ -17,7 +17,7 @@ type Peer interface {
 	cmn.Service
 
 	ID() ID             // peer's cryptographic ID
-	RemoteIP() string   // remote IP of the connection
+	RemoteIP() net.IP   // remote IP of the connection
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
 	NodeInfo() NodeInfo // peer's info
@@ -38,6 +38,7 @@ type peerConn struct {
 	persistent bool
 	config     *PeerConfig
 	conn       net.Conn // source connection
+	ips        []net.IP
 }
 
 // ID only exists for SecretConnection.
@@ -47,12 +48,24 @@ func (pc peerConn) ID() ID {
 }
 
 // Return the IP from the connection RemoteAddr
-func (pc peerConn) RemoteIP() string {
+func (pc peerConn) RemoteIP() net.IP {
+	if len(pc.ips) > 0 {
+		return pc.ips[0]
+	}
+
 	host, _, err := net.SplitHostPort(pc.conn.RemoteAddr().String())
 	if err != nil {
 		panic(err)
 	}
-	return host
+
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		panic(err)
+	}
+
+	pc.ips = ips
+
+	return ips[0]
 }
 
 // peer implements Peer.

@@ -1,13 +1,14 @@
 package p2p
 
 import (
+	"net"
 	"sync"
 )
 
 // IPeerSet has a (immutable) subset of the methods of PeerSet.
 type IPeerSet interface {
 	Has(key ID) bool
-	HasIP(ip string) bool
+	HasIP(ip net.IP) bool
 	Get(key ID) Peer
 	List() []Peer
 	Size() int
@@ -18,10 +19,9 @@ type IPeerSet interface {
 // PeerSet is a special structure for keeping a table of peers.
 // Iteration over the peers is super fast and thread-safe.
 type PeerSet struct {
-	mtx      sync.Mutex
-	lookup   map[ID]*peerSetItem
-	lookupIP map[string]struct{}
-	list     []Peer
+	mtx    sync.Mutex
+	lookup map[ID]*peerSetItem
+	list   []Peer
 }
 
 type peerSetItem struct {
@@ -32,21 +32,21 @@ type peerSetItem struct {
 // NewPeerSet creates a new peerSet with a list of initial capacity of 256 items.
 func NewPeerSet() *PeerSet {
 	return &PeerSet{
-		lookup:   make(map[ID]*peerSetItem),
-		lookupIP: make(map[string]struct{}),
-		list:     make([]Peer, 0, 256),
+		lookup: make(map[ID]*peerSetItem),
+		list:   make([]Peer, 0, 256),
 	}
 }
 
 // Add adds the peer to the PeerSet.
-// It returns ErrSwitchDuplicatePeer if the peer is already present.
+// It returns an error carrying the reason, if the peer is already present.
 func (ps *PeerSet) Add(peer Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	if ps.lookup[peer.ID()] != nil {
 		return ErrSwitchDuplicatePeerID{peer.ID()}
 	}
-	if _, ok := ps.lookupIP[peer.RemoteIP()]; ok {
+
+	if ps.HasIP(peer.RemoteIP()) {
 		return ErrSwitchDuplicatePeerIP{peer.RemoteIP()}
 	}
 
@@ -55,7 +55,6 @@ func (ps *PeerSet) Add(peer Peer) error {
 	// iterating over the ps.list slice.
 	ps.list = append(ps.list, peer)
 	ps.lookup[peer.ID()] = &peerSetItem{peer, index}
-	ps.lookupIP[peer.RemoteIP()] = struct{}{}
 	return nil
 }
 
@@ -68,13 +67,19 @@ func (ps *PeerSet) Has(peerKey ID) bool {
 	return ok
 }
 
-// HasIP returns true iff the PeerSet contains
-// the peer referred to by this IP address.
-func (ps *PeerSet) HasIP(peerIP string) bool {
+// HasIP returns true if the PeerSet contains the peer referred to by this IP
+// address.
+func (ps *PeerSet) HasIP(peerIP net.IP) bool {
 	ps.mtx.Lock()
-	_, ok := ps.lookupIP[peerIP]
 	ps.mtx.Unlock()
-	return ok
+
+	for _, item := range ps.lookup {
+		if item.peer.RemoteIP().Equal(peerIP) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // Get looks up a peer by the provided peerKey.
@@ -92,7 +97,7 @@ func (ps *PeerSet) Get(peerKey ID) Peer {
 func (ps *PeerSet) Remove(peer Peer) {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
-	delete(ps.lookupIP[peer.RemoteIP()])
+
 	item := ps.lookup[peer.ID()]
 	if item == nil {
 		return

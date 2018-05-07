@@ -3,6 +3,7 @@ package pex
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -365,6 +366,7 @@ func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 		ListenAddr: mp.addr.DialString(),
 	}
 }
+func (mp mockPeer) RemoteIP() net.IP              { return net.ParseIP("127.0.0.1") }
 func (mp mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
 func (mp mockPeer) Send(byte, []byte) bool        { return false }
 func (mp mockPeer) TrySend(byte, []byte) bool     { return false }
