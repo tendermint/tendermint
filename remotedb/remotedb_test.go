@@ -36,9 +36,38 @@ func TestRemoteDB(t *testing.T) {
 	gv1 := client.Get(k1)
 	require.Equal(t, gv1, vv1)
 
+	// Simple iteration
+	itr := client.Iterator(nil, nil)
+	itr.Next()
+	require.Equal(t, itr.Key(), []byte("key-1"))
+	require.Equal(t, itr.Value(), []byte("value-1"))
+	require.Panics(t, itr.Next)
+	itr.Close()
+
+	// Set some more keys
+	k2 := []byte("key-2")
+	v2 := []byte("value-2")
+	client.Set(k2, v2)
+	gv2 := client.Get(k2)
+	require.Equal(t, gv2, v2)
+
+	// More iteration
+	itr = client.Iterator(nil, nil)
+	itr.Next()
+	require.Equal(t, itr.Key(), []byte("key-1"))
+	require.Equal(t, itr.Value(), []byte("value-1"))
+	itr.Next()
+	require.Equal(t, itr.Key(), []byte("key-2"))
+	require.Equal(t, itr.Value(), []byte("value-2"))
+	require.Panics(t, itr.Next)
+
 	// Deletion
 	client.Delete(k1)
-	gv2 := client.Get(k1)
+	client.Delete(k2)
+	gv1 = client.Get(k1)
+	gv2 = client.Get(k2)
 	require.Equal(t, len(gv2), 0, "after deletion, not expecting the key to exist anymore")
-	require.NotEqual(t, len(gv1), len(gv2), "after deletion, not expecting the key to exist anymore")
+	require.Equal(t, len(gv1), 0, "after deletion, not expecting the key to exist anymore")
+
+	// TODO Batch tests
 }
