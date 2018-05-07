@@ -5,7 +5,7 @@ variable "name" {
 variable "regions" {
   description = "Regions to launch in"
   type = "list"
-  default = ["AMS2", "FRA1", "LON1", "NYC3", "SFO2", "SGP1", "TOR1"]
+  default = ["TOR1"]
 }
 
 variable "ssh_key" {

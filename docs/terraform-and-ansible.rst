@@ -48,7 +48,7 @@ run ansible roles to configure the sentry node architecture. You must switch to 
 
 There are several roles that are self-explanatory:
 
-First, we configure our droplets by specifying the paths for tendermint (``BINARY``) and the node files (``CONFIGDIR``). The latter expects any number of directories named ``node0, node1, ...`` and so on (equal to the number of droplets created). For this example, we use pre-created files from `this directory <https://github.com/tendermint/tendermint/tree/master/docs/examples>`__. To create your own files, use either the ``tendermint testnet`` command or review `manual deployments <./deploy-testnets.rst>`__.
+First, we configure our droplets by specifying the paths for tendermint (``BINARY``) and the node files (``CONFIGDIR``). The latter expects any number of directories named ``node0, node1, ...`` and so on (equal to the number of droplets created). For this example, we use pre-created files from `this directory <https://github.com/tendermint/tendermint/tree/master/docs/examples>`__. To create your own files, use either the ``tendermint testnet`` command or review `manual deployments <./deploy-testnets.html>`__.
 
 Here's the command to run:
 
