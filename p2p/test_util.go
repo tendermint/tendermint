@@ -1,7 +1,9 @@
 package p2p
 
 import (
+	"fmt"
 	"net"
+	"time"
 
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -80,7 +82,37 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 func Connect2Switches(switches []*Switch, i, j int) {
 	switchI := switches[i]
 	switchJ := switches[j]
-	c1, c2 := conn.NetPipe()
+
+	p1 := &remotePeer{
+		Config:  switchJ.peerConfig,
+		PrivKey: switchJ.nodeKey.PrivKey,
+	}
+	p1.Start()
+
+	c1, err := net.DialTimeout(
+		"tcp",
+		fmt.Sprintf("%s:%d", p1.addr.IP.String(), p1.addr.Port),
+		100*time.Millisecond,
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	p2 := &remotePeer{
+		Config:  switchI.peerConfig,
+		PrivKey: switchI.nodeKey.PrivKey,
+	}
+	p2.Start()
+
+	c2, err := net.DialTimeout(
+		"tcp",
+		fmt.Sprintf("%s:%d", p2.addr.IP.String(), p2.addr.Port),
+		100*time.Millisecond,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	doneCh := make(chan struct{})
 	go func() {
 		err := switchI.addPeerWithConnection(c1)

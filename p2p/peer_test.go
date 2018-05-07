@@ -154,7 +154,7 @@ func (p *remotePeer) accept(l net.Listener) {
 		_, err = pc.HandshakeTimeout(NodeInfo{
 			ID:         p.Addr().ID,
 			Moniker:    "remote_peer",
-			Network:    "testing",
+			Network:    "localhost",
 			Version:    "123.123.123",
 			ListenAddr: l.Addr().String(),
 			Channels:   []byte{testCh},
