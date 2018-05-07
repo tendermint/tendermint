@@ -55,7 +55,7 @@ func (s *server) Init(ctx context.Context, in *protodb.Init) (*protodb.Entity, e
 	defer s.mu.Unlock()
 
 	s.db = db.NewDB(in.Name, db.DBBackendType(in.Type), in.Dir)
-	return &protodb.Entity{TimeAt: time.Now().Unix()}, nil
+	return &protodb.Entity{CreatedAt: time.Now().Unix()}, nil
 }
 
 func (s *server) Delete(ctx context.Context, in *protodb.Entity) (*protodb.Nothing, error) {
@@ -136,7 +136,7 @@ func (s *server) handleIterator(it db.Iterator, sendFunc func(*protodb.Iterator)
 	for it.Valid() {
 		start, end := it.Domain()
 		out := &protodb.Iterator{
-			Domain: &protodb.DDomain{Start: start, End: end},
+			Domain: &protodb.Domain{Start: start, End: end},
 			Valid:  it.Valid(),
 			Key:    it.Key(),
 			Value:  it.Value(),

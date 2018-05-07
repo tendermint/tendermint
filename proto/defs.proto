@@ -10,20 +10,19 @@ message Entity {
   bytes start	= 5;
   bytes end	= 6;
   string err	= 7;
-  string print	= 8;
-  int64 time_at = 9;
+  int64 created_at = 8;
 }
 
 message Nothing {
 }
 
-message DDomain {
+message Domain {
   bytes start = 1;
   bytes end   = 2;
 }
 
 message Iterator {
-  DDomain domain = 1;
+  Domain domain = 1;
   bool valid	 = 2;
   bytes key	 = 3;
   bytes value	 = 4;

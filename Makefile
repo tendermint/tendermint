@@ -7,7 +7,7 @@ GOTOOLS = \
 GOTOOLS_CHECK = dep gometalinter.v2 protoc protoc-gen-gogo
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
-all: check get_vendor_deps protoc build test install metalinter
+all: check get_vendor_deps protoc grpc_dbserver build test install metalinter
 
 check: check_tools
 
