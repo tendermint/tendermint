@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	"github.com/tendermint/tmlibs/db"
 	protodb "github.com/tendermint/tmlibs/proto"
@@ -15,19 +16,27 @@ import (
 // ListenAndServe is a blocking function that sets up a gRPC based
 // server at the address supplied, with the gRPC options passed in.
 // Normally in usage, invoke it in a goroutine like you would for http.ListenAndServe.
-func ListenAndServe(addr string, opts ...grpc.ServerOption) error {
+func ListenAndServe(addr string, cert string, key string, opts ...grpc.ServerOption) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
-	srv := NewServer(opts...)
+	srv, err := NewServer(cert, key, opts...)
+	if err != nil {
+		return err
+	}
 	return srv.Serve(ln)
 }
 
-func NewServer(opts ...grpc.ServerOption) *grpc.Server {
+func NewServer(cert string, key string, opts ...grpc.ServerOption) (*grpc.Server, error) {
+	creds, err := credentials.NewServerTLSFromFile(cert, key)
+	if err != nil {
+		return nil, err
+	}
+	opts = append(opts, grpc.Creds(creds))
 	srv := grpc.NewServer(opts...)
 	protodb.RegisterDBServer(srv, new(server))
-	return srv
+	return srv, nil
 }
 
 type server struct {

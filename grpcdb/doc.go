@@ -21,8 +21,10 @@ should use it, for functionality such as:
 
 or
 	addr := ":8998"
+  cert := "server.crt"
+  key := "server.key"
 	go func() {
-		if err := grpcdb.ListenAndServe(addr); err != nil {
+		if err := grpcdb.ListenAndServe(addr, cert, key); err != nil {
 			log.Fatalf("BindServer: %v", err)
 		}
 	}()

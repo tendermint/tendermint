@@ -2,6 +2,7 @@ package grpcdb
 
 import (
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 
 	protodb "github.com/tendermint/tmlibs/proto"
 )
@@ -16,12 +17,12 @@ const (
 
 // NewClient creates a gRPC client connected to the bound gRPC server at serverAddr.
 // Use kind to set the level of security to either Secure or Insecure.
-func NewClient(serverAddr string, kind Security) (protodb.DBClient, error) {
-	var opts []grpc.DialOption
-	if kind == Insecure {
-		opts = append(opts, grpc.WithInsecure())
+func NewClient(serverAddr string, serverCert string) (protodb.DBClient, error) {
+	creds, err := credentials.NewClientTLSFromFile(serverCert, "")
+	if err != nil {
+		return nil, err
 	}
-	cc, err := grpc.Dial(serverAddr, opts...)
+	cc, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, err
 	}

@@ -1,7 +1,8 @@
 GOTOOLS = \
 	github.com/golang/dep/cmd/dep \
 	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/gogo/protobuf/gogoproto
+	github.com/gogo/protobuf/gogoproto \
+	github.com/square/certstrap
 	# github.com/alecthomas/gometalinter.v2 \
 
 GOTOOLS_CHECK = dep gometalinter.v2 protoc protoc-gen-gogo
@@ -66,8 +67,21 @@ get_vendor_deps:
 ########################################
 ### Testing
 
-test:
+gen_certs: clean_certs
+	## Generating certificates for TLS testing...
+	certstrap init --common-name "tendermint.com" --passphrase ""
+	certstrap request-cert -ip "::" --passphrase ""
+	certstrap sign "::" --CA "tendermint.com" --passphrase ""
+	mv out/{::.crt,::.key} remotedb
+
+clean_certs:
+	## Cleaning TLS testing certificates...
+	rm -rf out
+	rm -f remotedb/{::.crt,::.key}
+
+test: gen_certs
 	go test -tags gcc $(shell go list ./... | grep -v vendor)
+	make clean_certs
 
 test100:
 	@for i in {1..100}; do make test; done
@@ -118,7 +132,7 @@ metalinter_all:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check protoc build check_tools get_tools get_protoc update_tools get_vendor_deps test fmt metalinter metalinter_all
+.PHONY: check protoc build check_tools get_tools get_protoc update_tools get_vendor_deps test fmt metalinter metalinter_all gen_certs clean_certs
 
 grpc_dbserver:
 	protoc -I proto/ proto/defs.proto --go_out=plugins=grpc:proto

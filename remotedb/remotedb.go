@@ -14,12 +14,8 @@ type RemoteDB struct {
 	dc  protodb.DBClient
 }
 
-func NewSecure(serverAddr string) (*RemoteDB, error) {
-	return newRemoteDB(grpcdb.NewClient(serverAddr, grpcdb.Secure))
-}
-
-func NewInsecure(serverAddr string) (*RemoteDB, error) {
-	return newRemoteDB(grpcdb.NewClient(serverAddr, grpcdb.Insecure))
+func NewRemoteDB(serverAddr string, serverKey string) (*RemoteDB, error) {
+	return newRemoteDB(grpcdb.NewClient(serverAddr, serverKey))
 }
 
 func newRemoteDB(gdc protodb.DBClient, err error) (*RemoteDB, error) {

@@ -11,13 +11,15 @@ import (
 
 func Example() {
 	addr := ":8998"
+	cert := "server.crt"
+	key := "server.key"
 	go func() {
-		if err := grpcdb.ListenAndServe(addr); err != nil {
+		if err := grpcdb.ListenAndServe(addr, cert, key); err != nil {
 			log.Fatalf("BindServer: %v", err)
 		}
 	}()
 
-	client, err := grpcdb.NewClient(addr, grpcdb.Insecure)
+	client, err := grpcdb.NewClient(addr, cert)
 	if err != nil {
 		log.Fatalf("Failed to create grpcDB client: %v", err)
 	}
