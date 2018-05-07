@@ -72,12 +72,12 @@ gen_certs: clean_certs
 	certstrap init --common-name "tendermint.com" --passphrase ""
 	certstrap request-cert -ip "::" --passphrase ""
 	certstrap sign "::" --CA "tendermint.com" --passphrase ""
-	mv out/{::.crt,::.key} remotedb
+	mv out/::.crt out/::.key remotedb
 
 clean_certs:
 	## Cleaning TLS testing certificates...
 	rm -rf out
-	rm -f remotedb/{::.crt,::.key}
+	rm -f remotedb/::.crt remotedb/::.key
 
 test: gen_certs
 	go test -tags gcc $(shell go list ./... | grep -v vendor)
