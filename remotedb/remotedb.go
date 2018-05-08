@@ -90,9 +90,11 @@ func (rd *RemoteDB) ReverseIterator(start, end []byte) db.Iterator {
 	return makeReverseIterator(dic)
 }
 
-// TODO: Implement NewBatch
 func (rd *RemoteDB) NewBatch() db.Batch {
-	panic("Unimplemented")
+	return &batch{
+		db:  rd,
+		ops: nil,
+	}
 }
 
 // TODO: Implement Print when db.DB implements a method
@@ -218,5 +220,43 @@ func (itr *iterator) Value() []byte {
 }
 
 func (itr *iterator) Close() {
-	// TODO: Shut down the iterator
+	err := itr.dic.CloseSend()
+	if err != nil {
+		panic(fmt.Sprintf("Error closing iterator: %v", err))
+	}
+}
+
+type batch struct {
+	db  *RemoteDB
+	ops []*protodb.Operation
+}
+
+var _ db.Batch = (*batch)(nil)
+
+func (bat *batch) Set(key, value []byte) {
+	op := &protodb.Operation{
+		Entity: &protodb.Entity{Key: key, Value: value},
+		Type:   protodb.Operation_SET,
+	}
+	bat.ops = append(bat.ops, op)
+}
+
+func (bat *batch) Delete(key []byte) {
+	op := &protodb.Operation{
+		Entity: &protodb.Entity{Key: key},
+		Type:   protodb.Operation_DELETE,
+	}
+	bat.ops = append(bat.ops, op)
+}
+
+func (bat *batch) Write() {
+	if _, err := bat.db.dc.BatchWrite(bat.db.ctx, &protodb.Batch{Ops: bat.ops}); err != nil {
+		panic(fmt.Sprintf("RemoteDB.BatchWrite: %v", err))
+	}
+}
+
+func (bat *batch) WriteSync() {
+	if _, err := bat.db.dc.BatchWriteSync(bat.db.ctx, &protodb.Batch{Ops: bat.ops}); err != nil {
+		panic(fmt.Sprintf("RemoteDB.BatchWriteSync: %v", err))
+	}
 }

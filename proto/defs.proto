@@ -2,6 +2,19 @@ syntax = "proto3";
 
 package protodb;
 
+message Batch {
+  repeated Operation ops = 1;
+}
+
+message Operation {
+  Entity entity = 1;
+  enum Type {
+    SET = 0;
+    DELETE = 1;
+  }
+  Type type = 2;
+}
+
 message Entity {
   int32 id	= 1;
   bytes key	= 2;
@@ -53,4 +66,6 @@ service DB {
   rpc reverseIterator(Entity) returns (stream Iterator) {}
   // rpc print(Nothing) returns (Entity) {}
   rpc stats(Nothing) returns (Stats) {}
+  rpc batchWrite(Batch) returns (Nothing) {}
+  rpc batchWriteSync(Batch) returns (Nothing) {}
 }

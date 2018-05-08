@@ -60,6 +60,7 @@ func TestRemoteDB(t *testing.T) {
 	require.Equal(t, itr.Key(), []byte("key-2"))
 	require.Equal(t, itr.Value(), []byte("value-2"))
 	require.Panics(t, itr.Next)
+	itr.Close()
 
 	// Deletion
 	client.Delete(k1)
@@ -69,5 +70,36 @@ func TestRemoteDB(t *testing.T) {
 	require.Equal(t, len(gv2), 0, "after deletion, not expecting the key to exist anymore")
 	require.Equal(t, len(gv1), 0, "after deletion, not expecting the key to exist anymore")
 
-	// TODO Batch tests
+	// Batch tests - set
+	k3 := []byte("key-3")
+	k4 := []byte("key-4")
+	k5 := []byte("key-5")
+	v3 := []byte("value-3")
+	v4 := []byte("value-4")
+	v5 := []byte("value-5")
+	bat := client.NewBatch()
+	bat.Set(k3, v3)
+	bat.Set(k4, v4)
+	rv3 := client.Get(k3)
+	require.Equal(t, 0, len(rv3), "expecting no k3 to have been stored")
+	rv4 := client.Get(k4)
+	require.Equal(t, 0, len(rv4), "expecting no k4 to have been stored")
+	bat.Write()
+	rv3 = client.Get(k3)
+	require.Equal(t, rv3, v3, "expecting k3 to have been stored")
+	rv4 = client.Get(k4)
+	require.Equal(t, rv4, v4, "expecting k4 to have been stored")
+
+	// Batch tests - set and delete
+	bat = client.NewBatch()
+	bat.Delete(k4)
+	bat.Set(k5, v5)
+	bat.Delete(k3)
+	bat.WriteSync()
+	rv3 = client.Get(k3)
+	require.Equal(t, 0, len(rv3), "expecting k3 to have been deleted")
+	rv4 = client.Get(k4)
+	require.Equal(t, 0, len(rv4), "expecting k4 to have been deleted")
+	rv5 := client.Get(k5)
+	require.Equal(t, rv5, v5, "expecting k5 to have been stored")
 }

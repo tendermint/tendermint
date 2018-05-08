@@ -169,3 +169,29 @@ func (s *server) Stats(context.Context, *protodb.Nothing) (*protodb.Stats, error
 	stats := s.db.Stats()
 	return &protodb.Stats{Data: stats, TimeAt: time.Now().Unix()}, nil
 }
+
+func (s *server) BatchWrite(c context.Context, b *protodb.Batch) (*protodb.Nothing, error) {
+	return s.batchWrite(c, b, false)
+}
+
+func (s *server) BatchWriteSync(c context.Context, b *protodb.Batch) (*protodb.Nothing, error) {
+	return s.batchWrite(c, b, true)
+}
+
+func (s *server) batchWrite(c context.Context, b *protodb.Batch, sync bool) (*protodb.Nothing, error) {
+	bat := s.db.NewBatch()
+	for _, op := range b.Ops {
+		switch op.Type {
+		case protodb.Operation_SET:
+			bat.Set(op.Entity.Key, op.Entity.Value)
+		case protodb.Operation_DELETE:
+			bat.Delete(op.Entity.Key)
+		}
+	}
+	if sync {
+		bat.WriteSync()
+	} else {
+		bat.Write()
+	}
+	return nothing, nil
+}
