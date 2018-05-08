@@ -17,7 +17,7 @@ const (
 
 // NewClient creates a gRPC client connected to the bound gRPC server at serverAddr.
 // Use kind to set the level of security to either Secure or Insecure.
-func NewClient(serverAddr string, serverCert string) (protodb.DBClient, error) {
+func NewClient(serverAddr, serverCert string) (protodb.DBClient, error) {
 	creds, err := credentials.NewClientTLSFromFile(serverCert, "")
 	if err != nil {
 		return nil, err

@@ -16,7 +16,7 @@ import (
 // ListenAndServe is a blocking function that sets up a gRPC based
 // server at the address supplied, with the gRPC options passed in.
 // Normally in usage, invoke it in a goroutine like you would for http.ListenAndServe.
-func ListenAndServe(addr string, cert string, key string, opts ...grpc.ServerOption) error {
+func ListenAndServe(addr, cert, key string, opts ...grpc.ServerOption) error {
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
@@ -28,7 +28,7 @@ func ListenAndServe(addr string, cert string, key string, opts ...grpc.ServerOpt
 	return srv.Serve(ln)
 }
 
-func NewServer(cert string, key string, opts ...grpc.ServerOption) (*grpc.Server, error) {
+func NewServer(cert, key string, opts ...grpc.ServerOption) (*grpc.Server, error) {
 	creds, err := credentials.NewServerTLSFromFile(cert, key)
 	if err != nil {
 		return nil, err
