@@ -4,8 +4,10 @@ Terraform & Ansible
 Automated deployments are done using `Terraform <https://www.terraform.io/>`__ to create servers on Digital Ocean then
 `Ansible <http://www.ansible.com/>`__ to create and manage testnets on those servers.
 
-Configure
----------
+Install
+-------
+
+NOTE: see the `integration bash script <https://github.com/tendermint/tendermint/blob/zach/ansible/networks/remote/integration.sh>`__ that can be run on a fresh DO droplet and will automatically spin up a 4 node testnet. The script more or less does everything described below.
 
 - Install `Terraform <https://www.terraform.io/downloads.html>`__ and `Ansible <http://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html>`__ on a Linux machine.
 - Create a `DigitalOcean API token <https://cloud.digitalocean.com/settings/api/tokens>`__ with read and write capability.
