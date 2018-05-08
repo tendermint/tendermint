@@ -135,6 +135,11 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 	numBlocksPerSec := make(map[int64]int64)
 	numTxsPerSec := make(map[int64]int64)
 	for _, blockMeta := range info.BlockMetas {
+		// check if block was created after timeStart
+		if blockMeta.Header.Time.Before(timeStart) {
+			continue
+		}
+
 		// check if block was created before timeStop
 		if blockMeta.Header.Time.After(timeStop) {
 			break
