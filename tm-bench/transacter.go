@@ -168,7 +168,7 @@ func (t *transacter) sendLoop(connIndex int) {
 					Params:  rawParamsJSON,
 				})
 				if err != nil {
-					fmt.Printf("%v. Try reducing the connections count and increasing the rate.\n", errors.Wrap(err, "txs send failed"))
+					fmt.Fprintf(os.Stderr, "%v. Try reducing the connections count and increasing the rate.\n", errors.Wrap(err, "txs send failed"))
 					os.Exit(1)
 				}
 
@@ -176,7 +176,9 @@ func (t *transacter) sendLoop(connIndex int) {
 			}
 
 			timeToSend := time.Now().Sub(startTime)
-			time.Sleep(time.Second - timeToSend)
+			if timeToSend < 1*time.Second {
+				time.Sleep(time.Second - timeToSend)
+			}
 			logger.Info(fmt.Sprintf("sent %d transactions", t.Rate), "took", timeToSend)
 		case <-pingsTicker.C:
 			// go-rpc server closes the connection in the absence of pings
