@@ -16,6 +16,14 @@ check: check_tools ensure_deps
 build:
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
+build_check:
+	# BELOW - go version natively
+	go version
+	GOCACHE=off CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	# BELOW - sha256sum of tendermint binary built natively
+	sha256sum build/tendermint
+	cd DOCKER && make build_check
+
 build_race:
 	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
 

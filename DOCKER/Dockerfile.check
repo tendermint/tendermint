@@ -1,0 +1,22 @@
+FROM alpine:edge
+
+ENV DATA_ROOT /tendermint
+
+RUN mkdir -p $DATA_ROOT
+
+RUN apk add --no-cache bash curl jq
+
+ENV GOPATH /go
+ENV PATH "$PATH:/go/bin"
+RUN mkdir -p /go/src/github.com/tendermint/tendermint && \
+    apk add --no-cache go build-base git && \
+    cd /go/src/github.com/tendermint/tendermint && \
+    git clone https://github.com/tendermint/tendermint . && \
+    git checkout develop && \
+    make get_tools && \
+    make get_vendor_deps && \
+    make install && \
+    cd - && \
+    rm -rf /go/src/github.com/tendermint/tendermint
+
+VOLUME $DATA_ROOT
