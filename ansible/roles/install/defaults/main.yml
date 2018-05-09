@@ -1,5 +1,0 @@
----
-release_install: true
-binary: "{{ lookup('env','GOPATH') | default('') }}/bin/{{service}}"
-devops_path: false
-
