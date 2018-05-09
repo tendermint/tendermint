@@ -1,9 +1,0 @@
----
-
-- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}:tag_Environment_{{ lookup('env','TF_VAR_TESTNET_NAME') | regex_replace('-','_') }}"
-  become: yes
-  roles:
-  - stop
-  - unsafe_reset
-  - start
-

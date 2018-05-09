@@ -1,5 +1,0 @@
----
-
-- name: Update 
-  jsonconfig: "dest='{{destination}}' json='{{jsonconfig}}' state={{(remove | default(false) | bool) | ternary('absent','present')}}"
-

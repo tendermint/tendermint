@@ -1,8 +1,0 @@
----
-#Ubuntu 16.04 is not installing the python package in the standard installation on DigitalOcean. This "patch" will install it so the rest of the ansible playbooks can work properly.
-
-- hosts: "{{ lookup('env','TF_VAR_TESTNET_NAME') }}:tag_Environment_{{ lookup('env','TF_VAR_TESTNET_NAME') | regex_replace('-','_') }}"
-  gather_facts: no
-  tasks:
-  - raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
-

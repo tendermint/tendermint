@@ -1,3 +1,0 @@
----
-destination: /etc/{{service}}/config.toml
-
