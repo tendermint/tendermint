@@ -3,7 +3,8 @@ GOTOOLS = \
 	gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+BUILD_FLAGS = -gcflags "-trimpath=$(GOPATH)/src" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+BUILD_PREFIX=env GOROOT_FINAL=/usr/local/go CGO_ENABLED=0
 
 all: check build test install
 
@@ -14,21 +15,25 @@ check: check_tools ensure_deps
 ### Build
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
 build_check:
 	# BELOW - go version natively
 	go version
-	GOCACHE=off CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	$(BUILD_PREFIX) GOCACHE=off go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 	# BELOW - sha256sum of tendermint binary built natively
 	sha256sum build/tendermint
-	cd DOCKER && make build_check
+	docker build --quiet --no-cache -t "tendermint/tendermint:check" -f DOCKER/Dockerfile.check .
+	# BELOW - go version in Docker
+	docker run tendermint/tendermint:check go version
+	# BELOW - sha256sum of tendermint binary built in Docker
+	docker run tendermint/tendermint:check sha256sum /go/bin/tendermint
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
+	$(BUILD_PREFIX) go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+	$(BUILD_PREFIX) go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
 ########################################
 ### Distribution
