@@ -15,19 +15,24 @@ check: check_tools ensure_deps
 ### Build
 
 build:
+	echo "Building at GOPATH ${GOPATH}"
 	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
-build_check:
-	# BELOW - go version natively
+build_reproducible:
+	sudo rm -rf /go && sudo mkdir /go && sudo chown -R cwgoes:wheel /go
+	# go version locally:
 	go version
-	$(BUILD_PREFIX) GOCACHE=off go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
-	# BELOW - sha256sum of tendermint binary built natively
-	sha256sum build/tendermint
-	docker build --quiet --no-cache -t "tendermint/tendermint:check" -f DOCKER/Dockerfile.check .
-	# BELOW - go version in Docker
-	docker run tendermint/tendermint:check go version
-	# BELOW - sha256sum of tendermint binary built in Docker
-	docker run tendermint/tendermint:check sha256sum /go/bin/tendermint
+	mkdir -p /go/src/github.com/tendermint/tendermint
+	cp -r *  /go/src/github.com/tendermint/tendermint
+	export GOPATH=/go && cd /go/src/github.com/tendermint/tendermint && make --silent get_tools && make --silent get_vendor_deps && make --silent install
+	# sha256 of local binary:
+	sha256sum /go/bin/tendermint
+	# Building in Docker...
+	docker build --quiet -t "tendermint/tendermint:reproducible" -f DOCKER/Dockerfile.reproducible .
+	# go version in Docker:
+	docker run tendermint/tendermint:reproducible go version
+	# sha256sum of Docker binary:
+	docker run tendermint/tendermint:reproducible sha256sum /go/bin/tendermint
 
 build_race:
 	$(BUILD_PREFIX) go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
