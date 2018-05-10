@@ -515,7 +515,7 @@ type TxIndexConfig struct {
 // DefaultTxIndexConfig returns a default configuration for the transaction indexer.
 func DefaultTxIndexConfig() *TxIndexConfig {
 	return &TxIndexConfig{
-		Indexer:      "kv",
+		Indexer:      "null",
 		IndexTags:    "",
 		IndexAllTags: false,
 	}
