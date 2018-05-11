@@ -20,6 +20,7 @@ build:
 	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
 build_nix: check_nix check_openssl
+	@echo "Building from default.nix / deps.nix. If you want to update dependencies you MUST run 'make dep2nix' first"
 	nix-build -E 'with import <nixpkgs> { };  callPackage ./default.nix {}'
 	rm -rf build && mkdir build && cp result-bin/bin/* build && unlink result-bin
 	openssl sha256 build/tendermint
@@ -45,22 +46,30 @@ dist:
 ########################################
 ### Tools & dependencies
 
-dep2nix:
-	dep2nix save
-
 check_tools:
 	@# https://stackoverflow.com/a/25668869
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
 
+check_dep2nix: check_nix
+	@echo $(if $(shell which dep2nix),Found dep2nix,$(error "No dep2nix in PATH, install it with 'make get_dep2nix'"))
+
 check_nix:
-	@echo $(if $(shell which nix-build),nix-build,$(error "No nix-build in PATH"))
+	@echo $(if $(shell which nix-build),Found nix-build,$(error "No nix-build in PATH"))
+	@echo $(if $(shell which nix-env),Found nix-env,$(error "No nix-env in PATH"))
 
 check_docker:
-	@echo $(if $(shell which docker),docker,$(error "No docker in PATH"))
+	@echo $(if $(shell which docker),Found docker,$(error "No docker in PATH"))
 
 check_openssl:
-	@echo $(if $(shell which openssl),openssl,$(error "No openssl in PATH"))
+	@echo $(if $(shell which openssl),Found openssl,$(error "No openssl in PATH"))
+
+dep2nix: check_dep2nix
+	@echo "Converting Gopkg.lock to deps.nix (if this fails with HTTP errors, just retry)..."
+	dep2nix save
+
+get_dep2nix: check_nix
+	cd $$(mktemp -d) && git clone https://github.com/nixcloud/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix
 
 get_tools:
 	@echo "--> Installing tools"
@@ -76,7 +85,6 @@ get_vendor_deps:
 	@rm -rf vendor/
 	@echo "--> Running dep"
 	@dep ensure -vendor-only
-
 
 #Run this locally.
 ensure_deps:
