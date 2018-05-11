@@ -4,7 +4,7 @@ GOTOOLS = \
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 BUILD_FLAGS=-asmflags "-trimpath" -gcflags "-trimpath=$(GOPATH)/src" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
-BUILD_PREFIX=CGO_ENABLED=0
+BUILD_PREFIX=CGO_ENABLED=1
 DOCKER_NIX_IMAGE=tendermint/tendermint:nix
 
 all: check build test install
