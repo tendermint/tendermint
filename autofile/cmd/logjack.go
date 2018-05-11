@@ -21,8 +21,8 @@ func parseFlags() (headPath string, chopSize int64, limitSize int64, version boo
 	var flagSet = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
 	var chopSizeStr, limitSizeStr string
 	flagSet.StringVar(&headPath, "head", "logjack.out", "Destination (head) file.")
-	flagSet.StringVar(&chopSizeStr, "chop", "1M", "Move file if greater than this")
-	flagSet.StringVar(&limitSizeStr, "limit", "1G", "Only keep this much (for each specified file). Remove old files.")
+	flagSet.StringVar(&chopSizeStr, "chop", "100M", "Move file if greater than this")
+	flagSet.StringVar(&limitSizeStr, "limit", "10G", "Only keep this much (for each specified file). Remove old files.")
 	flagSet.BoolVar(&version, "version", false, "Version")
 	flagSet.Parse(os.Args[1:])
 	chopSize = parseBytesize(chopSizeStr)
