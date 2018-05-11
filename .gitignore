@@ -25,3 +25,5 @@ scripts/cutWALUntil/cutWALUntil
 
 .idea/
 *.iml
+
+result-bin/

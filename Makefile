@@ -3,8 +3,8 @@ GOTOOLS = \
 	gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
-BUILD_FLAGS = -gcflags "-trimpath=$(GOPATH)/src" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
-BUILD_PREFIX=env GOROOT_FINAL=/usr/local/go CGO_ENABLED=0
+BUILD_FLAGS=-asmflags "-trimpath" -gcflags "-trimpath=$(GOPATH)/src" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+BUILD_PREFIX=CGO_ENABLED=0
 
 all: check build test install
 
@@ -18,21 +18,9 @@ build:
 	echo "Building at GOPATH ${GOPATH}"
 	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
-build_reproducible:
-	sudo rm -rf /go && sudo mkdir /go && sudo chown -R cwgoes:wheel /go
-	# go version locally:
-	go version
-	mkdir -p /go/src/github.com/tendermint/tendermint
-	cp -r *  /go/src/github.com/tendermint/tendermint
-	export GOPATH=/go && cd /go/src/github.com/tendermint/tendermint && make --silent get_tools && make --silent get_vendor_deps && make --silent install
-	# sha256 of local binary:
-	sha256sum /go/bin/tendermint
-	# Building in Docker...
-	docker build --quiet -t "tendermint/tendermint:reproducible" -f DOCKER/Dockerfile.reproducible .
-	# go version in Docker:
-	docker run tendermint/tendermint:reproducible go version
-	# sha256sum of Docker binary:
-	docker run tendermint/tendermint:reproducible sha256sum /go/bin/tendermint
+build_nix: check_nix
+	nix-build -E 'with import <nixpkgs> { };  callPackage ./default.nix {}'
+	sha256sum result-bin/bin/tendermint
 
 build_race:
 	$(BUILD_PREFIX) go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
@@ -50,10 +38,16 @@ dist:
 ########################################
 ### Tools & dependencies
 
+dep2nix:
+	dep2nix save
+
 check_tools:
 	@# https://stackoverflow.com/a/25668869
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
+
+check_nix:
+	@echo $(if $(shell which nix-build),nix-build,$(error "No nix-build in PATH"))
 
 get_tools:
 	@echo "--> Installing tools"
