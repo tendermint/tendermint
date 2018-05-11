@@ -112,6 +112,7 @@ jobs:
           name: build_nix
           command: |
             set -ex
+            make get_dep2nix
             make build_nix
       - save_cache:
           key: nix-cache

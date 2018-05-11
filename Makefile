@@ -19,9 +19,12 @@ build:
 	echo "Building at GOPATH ${GOPATH}"
 	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
-build_nix: check_nix check_openssl
-	@echo "Building from default.nix / deps.nix. If you want to update dependencies you MUST run 'make dep2nix' first"
+build_nix: check_nix check_dep2nix check_openssl
+	@echo "Converting Gopkg.lock to deps.nix (if this fails with HTTP errors, just retry)..."
+	dep2nix save
+	@echo "Building through nix..."
 	nix-build -E 'with import <nixpkgs> { };  callPackage ./default.nix {}'
+	@echo "Copying binaries..."
 	rm -rf build && mkdir build && cp result-bin/bin/* build && unlink result-bin
 	openssl sha256 build/tendermint
 
@@ -63,10 +66,6 @@ check_docker:
 
 check_openssl:
 	@echo $(if $(shell which openssl),Found openssl,$(error "No openssl in PATH"))
-
-dep2nix: check_dep2nix
-	@echo "Converting Gopkg.lock to deps.nix (if this fails with HTTP errors, just retry)..."
-	dep2nix save
 
 get_dep2nix: check_nix
 	cd $$(mktemp -d) && git clone https://github.com/nixcloud/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git

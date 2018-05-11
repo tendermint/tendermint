@@ -27,3 +27,6 @@ scripts/cutWALUntil/cutWALUntil
 *.iml
 
 result-bin/
+
+default.nix
+deps.nix
