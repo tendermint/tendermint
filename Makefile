@@ -69,7 +69,7 @@ dep2nix: check_dep2nix
 	dep2nix save
 
 get_dep2nix: check_nix
-	cd $$(mktemp -d) && git clone https://github.com/nixcloud/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix
+	cd $$(mktemp -d) && git clone https://github.com/nixcloud/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git
 
 get_tools:
 	@echo "--> Installing tools"
