@@ -4,14 +4,14 @@
 buildGoPackage rec {
   name = "tendermint-unstable-${version}";
   version = "2018-05-10";
-  rev = "9c1f7e6fbd315929d002a92bb67eccebae686019";
+  rev = "9a8f2dee4fb7edc858aeed106c1923b534950a35";
 
   goPackagePath = "github.com/tendermint/tendermint";
 
   src = fetchgit {
     inherit rev;
     url = "https://github.com/tendermint/tendermint.git";
-    sha256 = "0bayxz3k3js5b6ifj3f4wsyxjhvsr1sqqlny0kb8j1hm32p5zp7d";
+    sha256 = "0kgjwxraphqs3ffz3g80l9cs565y75y75fsmk5gcbpgzg6nmm6mb";
   };
 
   goDeps = ./deps.nix;
