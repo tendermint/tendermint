@@ -1434,13 +1434,12 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			// XXX: we should have !blockID.IsZero() always given ok is true
 			// XXX: is it ok if this doesnt run when ValidRound = vote.Round = 1
 			if !blockID.IsZero() && (cs.ValidRound < vote.Round) && (vote.Round <= cs.Round) {
-				// XXX: is the ProposalBlock != nil
+				// NOTE: our proposal block may be nil or not what received a polka
+				// TODO: we may want to still update the ValidBlock and obtain it via gossipping
 				if cs.ProposalBlock.HashesTo(blockID.Hash) {
 					cs.ValidRound = vote.Round
 					cs.ValidBlock = cs.ProposalBlock
 					cs.ValidBlockParts = cs.ProposalBlockParts
-					//TODO: We might want to update ValidBlock also in case we don't have that block yet,
-					// and obtain the required block using gossiping
 				}
 			}
 		}
