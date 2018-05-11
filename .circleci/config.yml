@@ -97,15 +97,12 @@ jobs:
     working_directory: /go/src/github.com/tendermint/tendermint
     docker:
       - image: nixos/nix
-    environment:
-      GOBIN: /home/circleci/.go_workspace/bin
-      GOPATH: /home/circleci/.go_workspace
     steps:
       - run:
           name: nix_setup
           command: |
             set -ex
-            apk add --no-cache build-base curl bash git ca-certificates 
+            apk add --no-cache build-base curl bash git ca-certificates go
             nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
             nix-channel --update
       - restore_cache:
@@ -114,11 +111,16 @@ jobs:
       - run:
           name: build_nix
           command: |
+            export GOPATH=/go
+            export GOBIN="$GOPATH/bin"
+            export PATH="$GOBIN:$PATH"
             set -ex
+            make get_tools
             make get_dep2nix
             mkdir -p $GOPATH/src/github.com/tendermint
             ln -sf $(pwd) $GOPATH/src/github.com/tendermint/tendermint
             cd $GOPATH/src/github.com/tendermint/tendermint
+            make get_vendor_deps
             make build_nix
       - save_cache:
           key: nix-cache

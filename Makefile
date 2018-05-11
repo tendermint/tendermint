@@ -18,7 +18,7 @@ build:
 	echo "Building at GOPATH ${GOPATH}"
 	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
-build_nix: check_nix
+build_nix: check_nix check_openssl
 	@echo "Creating default.nix..."
 	cd cmd/tendermint && go2nix save && rm deps.nix && mv default.nix ../..
 	@echo "Patching default.nix..."
@@ -66,6 +66,9 @@ check_nix:
 
 check_docker:
 	@echo $(if $(shell which docker),Found docker,$(error "No docker in PATH"))
+
+check_openssl:
+	@echo $(if $(shell which openssl),Found openssl,$(error "No openssl in PATH"))
 
 get_dep2nix:
 	cd $$(mktemp -d) && git clone https://github.com/cwgoes/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git && nix-env -i go2nix
