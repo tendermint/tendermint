@@ -4,6 +4,7 @@
 
 FEATURES:
 
+ - [autofile] logjack command for piping stdin to a rotating file
  - [common] ASCIITrim()
 
 ## 0.8.2 (April 23rd, 2018)
