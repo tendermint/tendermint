@@ -97,6 +97,9 @@ jobs:
     working_directory: /go/src/github.com/tendermint/tendermint
     docker:
       - image: nixos/nix
+    environment:
+      GOBIN: /home/circleci/.go_workspace/bin
+      GOPATH: /home/circleci/.go_workspace
     steps:
       - run:
           name: nix_setup
@@ -113,6 +116,9 @@ jobs:
           command: |
             set -ex
             make get_dep2nix
+            mkdir -p $GOPATH/src/github.com/tendermint
+            ln -sf $(pwd) $GOPATH/src/github.com/tendermint/tendermint
+            cd $GOPATH/src/github.com/tendermint/tendermint
             make build_nix
       - save_cache:
           key: nix-cache
