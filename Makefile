@@ -68,7 +68,7 @@ check_docker:
 	@echo $(if $(shell which docker),Found docker,$(error "No docker in PATH"))
 
 get_dep2nix:
-	cd $$(mktemp -d) && git clone https://github.com/nixcloud/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git && nix-env -i go2nix
+	cd $$(mktemp -d) && git clone https://github.com/cwgoes/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git && nix-env -i go2nix
 
 get_tools:
 	@echo "--> Installing tools"
