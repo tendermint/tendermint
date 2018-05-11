@@ -210,7 +210,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 				return
 			}
 			// Peer claims to have a maj23 for some BlockID at H,R,S,
-			err := votes.SetPeerMaj23(msg.Round, msg.Type, ps.Peer.ID(), msg.BlockID)
+			err := votes.SetPeerMaj23(msg.Round, msg.Type, ps.peer.ID(), msg.BlockID)
 			if err != nil {
 				conR.Switch.StopPeerForError(src, err)
 				return
@@ -840,33 +840,34 @@ var (
 
 // PeerState contains the known state of a peer, including its connection and
 // threadsafe access to its PeerRoundState.
+// NOTE: THIS GETS DUMPED WITH rpc/core/consensus.go.
+// Be mindful of what you Expose.
 type PeerState struct {
-	Peer   p2p.Peer
+	peer   p2p.Peer
 	logger log.Logger
 
-	mtx sync.Mutex
-	cstypes.PeerRoundState
-
-	stats *peerStateStats
+	mtx                    sync.Mutex      //
+	cstypes.PeerRoundState                 // Exposed.
+	Stats                  *peerStateStats //
 }
 
 // peerStateStats holds internal statistics for a peer.
 type peerStateStats struct {
-	lastVoteHeight int64
-	votes          int
-
-	lastBlockPartHeight int64
-	blockParts          int
+	LastVoteHeight      int64
+	Votes               int
+	LastBlockPartHeight int64
+	BlockParts          int
 }
 
 func (pss peerStateStats) String() string {
-	return fmt.Sprintf("peerStateStats{votes: %d, blockParts: %d}", pss.votes, pss.blockParts)
+	return fmt.Sprintf("peerStateStats{lvh: %d, votes: %d, lbph: %d, blockParts: %d}",
+		pss.LastVoteHeight, pss.Votes, pss.LastBlockPartHeight, pss.BlockParts)
 }
 
 // NewPeerState returns a new PeerState for the given Peer
 func NewPeerState(peer p2p.Peer) *PeerState {
 	return &PeerState{
-		Peer:   peer,
+		peer:   peer,
 		logger: log.NewNopLogger(),
 		PeerRoundState: cstypes.PeerRoundState{
 			Round:              -1,
@@ -874,7 +875,7 @@ func NewPeerState(peer p2p.Peer) *PeerState {
 			LastCommitRound:    -1,
 			CatchupCommitRound: -1,
 		},
-		stats: &peerStateStats{},
+		Stats: &peerStateStats{},
 	}
 }
 
@@ -961,7 +962,7 @@ func (ps *PeerState) PickSendVote(votes types.VoteSetReader) bool {
 	if vote, ok := ps.PickVoteToSend(votes); ok {
 		msg := &VoteMessage{vote}
 		ps.logger.Debug("Sending vote message", "ps", ps, "vote", vote)
-		return ps.Peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(msg))
+		return ps.peer.Send(VoteChannel, cdc.MustMarshalBinaryBare(msg))
 	}
 	return false
 }
@@ -1103,12 +1104,12 @@ func (ps *PeerState) RecordVote(vote *types.Vote) int {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.stats.lastVoteHeight >= vote.Height {
-		return ps.stats.votes
+	if ps.Stats.LastVoteHeight >= vote.Height {
+		return ps.Stats.Votes
 	}
-	ps.stats.lastVoteHeight = vote.Height
-	ps.stats.votes++
-	return ps.stats.votes
+	ps.Stats.LastVoteHeight = vote.Height
+	ps.Stats.Votes++
+	return ps.Stats.Votes
 }
 
 // VotesSent returns the number of blocks for which peer has been sending us
@@ -1117,7 +1118,7 @@ func (ps *PeerState) VotesSent() int {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	return ps.stats.votes
+	return ps.Stats.Votes
 }
 
 // RecordBlockPart updates internal statistics for this peer by recording the
@@ -1128,13 +1129,13 @@ func (ps *PeerState) RecordBlockPart(bp *BlockPartMessage) int {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	if ps.stats.lastBlockPartHeight >= bp.Height {
-		return ps.stats.blockParts
+	if ps.Stats.LastBlockPartHeight >= bp.Height {
+		return ps.Stats.BlockParts
 	}
 
-	ps.stats.lastBlockPartHeight = bp.Height
-	ps.stats.blockParts++
-	return ps.stats.blockParts
+	ps.Stats.LastBlockPartHeight = bp.Height
+	ps.Stats.BlockParts++
+	return ps.Stats.BlockParts
 }
 
 // BlockPartsSent returns the number of blocks for which peer has been sending
@@ -1143,7 +1144,7 @@ func (ps *PeerState) BlockPartsSent() int {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 
-	return ps.stats.blockParts
+	return ps.Stats.BlockParts
 }
 
 // SetHasVote sets the given vote as known by the peer
@@ -1292,13 +1293,13 @@ func (ps *PeerState) StringIndented(indent string) string {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
 	return fmt.Sprintf(`PeerState{
-%s  Key   %v
-%s  PRS   %v
-%s  Stats %v
+%s  Key        %v
+%s  RoundState %v
+%s  Stats      %v
 %s}`,
-		indent, ps.Peer.ID(),
+		indent, ps.peer.ID(),
 		indent, ps.PeerRoundState.StringIndented(indent+"  "),
-		indent, ps.stats,
+		indent, ps.Stats,
 		indent)
 }
 

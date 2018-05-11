@@ -74,7 +74,7 @@ func TestDumpConsensusState(t *testing.T) {
 		cons, err := nc.DumpConsensusState()
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.NotEmpty(t, cons.RoundState)
-		assert.Empty(t, cons.PeerRoundStates)
+		assert.Empty(t, cons.Peers)
 	}
 }
 
