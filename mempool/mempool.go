@@ -3,6 +3,7 @@ package mempool
 import (
 	"bytes"
 	"container/list"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -255,11 +256,11 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.logger.Debug("Added good transaction", "tx", tx, "res", r)
+			mem.logger.Info("Added good transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("Rejected bad transaction", "tx", tx, "res", r)
+			mem.logger.Info("Rejected bad transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
