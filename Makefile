@@ -19,15 +19,15 @@ build:
 	echo "Building at GOPATH ${GOPATH}"
 	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
-build_nix: check_nix
+build_nix: check_nix check_openssl
 	nix-build -E 'with import <nixpkgs> { };  callPackage ./default.nix {}'
 	rm -rf build && mkdir build && cp result-bin/bin/* build && unlink result-bin
-	sha256sum build/tendermint
+	openssl sha256 build/tendermint
 
-build_nix_docker: check_docker
+build_nix_docker: check_docker check_openssl
 	time docker build -t $(DOCKER_NIX_IMAGE) -f DOCKER/Dockerfile.nix .
 	scripts/cp-from-docker.sh $(DOCKER_NIX_IMAGE)
-	sha256sum build/tendermint
+	openssl sha256 build/tendermint
 
 build_race:
 	$(BUILD_PREFIX) go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
@@ -58,6 +58,9 @@ check_nix:
 
 check_docker:
 	@echo $(if $(shell which docker),docker,$(error "No docker in PATH"))
+
+check_openssl:
+	@echo $(if $(shell which openssl),openssl,$(error "No openssl in PATH"))
 
 get_tools:
 	@echo "--> Installing tools"
