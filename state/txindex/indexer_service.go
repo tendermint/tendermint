@@ -45,10 +45,16 @@ func (is *IndexerService) OnStart() error {
 		var batch *Batch
 		for {
 			select {
-			case e := <-blockHeadersCh:
+			case e, ok := <-blockHeadersCh:
+				if !ok {
+					return
+				}
 				numTxs = e.(types.EventDataNewBlockHeader).Header.NumTxs
 				batch = NewBatch(numTxs)
-			case e := <-txsCh:
+			case e, ok := <-txsCh:
+				if !ok {
+					return
+				}
 				if batch == nil {
 					panic("Expected pubsub to send block header first, but got tx event")
 				}
