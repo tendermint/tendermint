@@ -5,6 +5,7 @@ PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
 BUILD_FLAGS=-asmflags "-trimpath" -gcflags "-trimpath=$(GOPATH)/src" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 BUILD_PREFIX=CGO_ENABLED=0
+DOCKER_NIX_IMAGE=tendermint/tendermint:nix
 
 all: check build test install
 
@@ -20,7 +21,13 @@ build:
 
 build_nix: check_nix
 	nix-build -E 'with import <nixpkgs> { };  callPackage ./default.nix {}'
-	sha256sum result-bin/bin/tendermint
+	rm -rf build && mkdir build && cp result-bin/bin/* build && unlink result-bin
+	sha256sum build/tendermint
+
+build_nix_docker: check_docker
+	time docker build -t $(DOCKER_NIX_IMAGE) -f DOCKER/Dockerfile.nix .
+	scripts/cp-from-docker.sh $(DOCKER_NIX_IMAGE)
+	sha256sum build/tendermint
 
 build_race:
 	$(BUILD_PREFIX) go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
@@ -48,6 +55,9 @@ check_tools:
 
 check_nix:
 	@echo $(if $(shell which nix-build),nix-build,$(error "No nix-build in PATH"))
+
+check_docker:
+	@echo $(if $(shell which docker),docker,$(error "No docker in PATH"))
 
 get_tools:
 	@echo "--> Installing tools"

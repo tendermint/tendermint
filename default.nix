@@ -10,7 +10,7 @@ buildGoPackage rec {
 
   src = fetchgit {
     inherit rev;
-    url = "git@github.com:tendermint/tendermint.git";
+    url = "https://github.com/tendermint/tendermint.git";
     sha256 = "0rc5764ansfaz0ygfw9r427z7f0fwbph5c79rh2z69hxzm8bzar4";
   };
 
