@@ -11,7 +11,6 @@ all: check build test install
 
 check: check_tools ensure_deps
 
-
 ########################################
 ### Build
 
@@ -19,7 +18,11 @@ build:
 	echo "Building at GOPATH ${GOPATH}"
 	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
-build_nix: check_nix check_dep2nix check_openssl
+build_nix: check_nix
+	@echo "Creating default.nix..."
+	cd cmd/tendermint && go2nix save && rm deps.nix && mv default.nix ../..
+	@echo "Patching default.nix..."
+	sed -i 's/git@github.com\:tendermint\/tendermint.git/https\:\/\/github\.com\/tendermint\/tendermint\.git/g' default.nix
 	@echo "Converting Gopkg.lock to deps.nix (if this fails with HTTP errors, just retry)..."
 	dep2nix save
 	@echo "Building through nix..."
@@ -54,21 +57,18 @@ check_tools:
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
 
-check_dep2nix: check_nix
-	@echo $(if $(shell which dep2nix),Found dep2nix,$(error "No dep2nix in PATH, install it with 'make get_dep2nix'"))
-
 check_nix:
 	@echo $(if $(shell which nix-build),Found nix-build,$(error "No nix-build in PATH"))
 	@echo $(if $(shell which nix-env),Found nix-env,$(error "No nix-env in PATH"))
+	@echo $(if $(shell which openssl),Found openssl,$(error "No openssl in PATH"))
+	@echo $(if $(shell which dep2nix),Found dep2nix,$(error "No dep2nix in PATH, install it with 'make get_dep2nix'"))
+	@echo $(if $(shell which go2nix),Found go2nix,$(error "No go2nix in PATH, install it with 'make get_dep2nix'"))
 
 check_docker:
 	@echo $(if $(shell which docker),Found docker,$(error "No docker in PATH"))
 
-check_openssl:
-	@echo $(if $(shell which openssl),Found openssl,$(error "No openssl in PATH"))
-
-get_dep2nix: check_nix
-	cd $$(mktemp -d) && git clone https://github.com/nixcloud/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git
+get_dep2nix:
+	cd $$(mktemp -d) && git clone https://github.com/nixcloud/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git && nix-env -i go2nix
 
 get_tools:
 	@echo "--> Installing tools"
