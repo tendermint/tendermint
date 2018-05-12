@@ -130,13 +130,13 @@ type ResultValidators struct {
 // Info about the consensus state.
 // Unstable
 type ResultDumpConsensusState struct {
-	RoundState json.RawMessage      `json:"round_state"`
-	Peers      []PeerRoundStateInfo `json:"peers"`
+	RoundState json.RawMessage `json:"round_state"`
+	Peers      []PeerStateInfo `json:"peers"`
 }
 
-type PeerRoundStateInfo struct {
-	NodeAddress    string          `json:"node_address"`
-	PeerRoundState json.RawMessage `json:"peer_round_state"`
+type PeerStateInfo struct {
+	NodeAddress string          `json:"node_address"`
+	PeerState   json.RawMessage `json:"peer_state"`
 }
 
 // CheckTx result
