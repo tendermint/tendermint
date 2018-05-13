@@ -207,23 +207,28 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 		indent)
 }
 
-type roundVoteBitArrays struct {
-	Round      int           `json:"round"`
-	Prevotes   *cmn.BitArray `json:"prevotes"`
-	Precommits *cmn.BitArray `json:"precommits"`
+// `"__xx_xx____x:46/100:0.46"`
+type roundVotes struct {
+	Round              int      `json:"round"`
+	Prevotes           []string `json:"prevotes"`
+	PrevotesBitArray   string   `json:"prevotes_bit_array"`
+	Precommits         []string `json:"precommits"`
+	PrecommitsBitArray string   `json:"precommits_bit_array"`
 }
 
 func (hvs *HeightVoteSet) MarshalJSON() ([]byte, error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
 	totalRounds := hvs.round + 1
-	roundsVotes := make([]roundVoteBitArrays, totalRounds)
+	roundsVotes := make([]roundVotes, totalRounds)
 	// rounds 0 ~ hvs.round inclusive
 	for round := 0; round < totalRounds; round++ {
-		roundsVotes[round] = roundVoteBitArrays{
-			Round:      round,
-			Prevotes:   hvs.roundVoteSets[round].Prevotes.BitArray(),
-			Precommits: hvs.roundVoteSets[round].Precommits.BitArray(),
+		roundsVotes[round] = roundVotes{
+			Round:              round,
+			Prevotes:           hvs.roundVoteSets[round].Prevotes.VoteStrings(),
+			PrevotesBitArray:   hvs.roundVoteSets[round].Prevotes.BitArrayString(),
+			Precommits:         hvs.roundVoteSets[round].Precommits.VoteStrings(),
+			PrecommitsBitArray: hvs.roundVoteSets[round].Precommits.BitArrayString(),
 		}
 	}
 	// TODO: all other peer catchup rounds

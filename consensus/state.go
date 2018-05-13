@@ -1279,6 +1279,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 
 	cs.Proposal = proposal
 	cs.ProposalBlockParts = types.NewPartSetFromHeader(proposal.BlockPartsHeader)
+	cs.Logger.Info("Received proposal", "proposal", proposal)
 	return nil
 }
 
