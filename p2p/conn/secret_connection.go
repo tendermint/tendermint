@@ -19,9 +19,9 @@ import (
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
 
-	"github.com/btcsuite/golangcrypto/hkdf"
 	"github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
+	"golang.org/x/crypto/hkdf"
 )
 
 // 4 + 1024 == 1028 total frame size
