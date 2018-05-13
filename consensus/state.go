@@ -1307,19 +1307,20 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 
-		// Update ValidBlock
+		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, ok := prevotes.TwoThirdsMajority()
-		if ok && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
-			// update valid value
+		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
+		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
 			if cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.ValidRound = cs.Round
 				cs.ValidBlock = cs.ProposalBlock
 				cs.ValidBlockParts = cs.ProposalBlockParts
 			}
-			//TODO: In case there is +2/3 majority in Prevotes set for some block and cs.ProposalBlock contains different block,
-			//either proposer is faulty or voting power of faulty processes is more than 1/3. We should
-			//trigger in the future accountability procedure at this point.
+			// TODO: In case there is +2/3 majority in Prevotes set for some
+			// block and cs.ProposalBlock contains different block, either
+			// proposer is faulty or voting power of faulty processes is more
+			// than 1/3. We should trigger in the future accountability
+			// procedure at this point.
 		}
 
 		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {

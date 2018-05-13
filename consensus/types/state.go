@@ -67,9 +67,9 @@ type RoundState struct {
 	LockedRound        int
 	LockedBlock        *types.Block
 	LockedBlockParts   *types.PartSet
-	ValidRound         int
-	ValidBlock         *types.Block
-	ValidBlockParts    *types.PartSet
+	ValidRound         int            // Last known round with POL for non-nil valid block.
+	ValidBlock         *types.Block   // Last known block of POL mentioned above.
+	ValidBlockParts    *types.PartSet // Last known block parts of POL metnioned above.
 	Votes              *HeightVoteSet
 	CommitRound        int            //
 	LastCommit         *types.VoteSet // Last precommits at Height-1
