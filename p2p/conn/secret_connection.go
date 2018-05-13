@@ -18,8 +18,8 @@ import (
 
 	"golang.org/x/crypto/nacl/box"
 	"golang.org/x/crypto/nacl/secretbox"
-	"golang.org/x/crypto/ripemd160"
 
+	"github.com/btcsuite/golangcrypto/hkdf"
 	"github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -313,22 +313,19 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 
 // sha256
 func hash32(input []byte) (res *[32]byte) {
-	hasher := sha256.New()
-	hasher.Write(input) // nolint: errcheck, gas
-	resSlice := hasher.Sum(nil)
+	hash := sha256.New
+	hkdf := hkdf.New(hash, input, nil, nil)
 	res = new([32]byte)
-	copy(res[:], resSlice)
-	return
+	io.ReadFull(hkdf, res[:])
+	return res
 }
 
-// We only fill in the first 20 bytes with ripemd160
 func hash24(input []byte) (res *[24]byte) {
-	hasher := ripemd160.New()
-	hasher.Write(input) // nolint: errcheck, gas
-	resSlice := hasher.Sum(nil)
+	hash := sha256.New
+	hkdf := hkdf.New(hash, input, nil, nil)
 	res = new([24]byte)
-	copy(res[:], resSlice)
-	return
+	io.ReadFull(hkdf, res[:])
+	return res
 }
 
 // increment nonce big-endian by 2 with wraparound.
