@@ -17,18 +17,16 @@ import (
 	"time"
 
 	"golang.org/x/crypto/nacl/box"
-	"golang.org/x/crypto/nacl/secretbox"
-	"golang.org/x/crypto/ripemd160"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"golang.org/x/crypto/hkdf"
 )
 
 // 4 + 1024 == 1028 total frame size
 const dataLenSize = 4
 const dataMaxSize = 1024
 const totalFrameSize = dataMaxSize + dataLenSize
-const sealedFrameSize = totalFrameSize + secretbox.Overhead
 
 // Implements net.Conn
 type SecretConnection struct {
@@ -124,14 +122,18 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		binary.BigEndian.PutUint32(frame, uint32(chunkLength))
 		copy(frame[dataLenSize:], chunk)
 
+		aead, err := xchacha20poly1305.New(sc.shrSecret[:])
+		if err != nil {
+			return n, errors.New("Invalid SecretConnection Key")
+		}
 		// encrypt the frame
-		var sealedFrame = make([]byte, sealedFrameSize)
-		secretbox.Seal(sealedFrame[:0], frame, sc.sendNonce, sc.shrSecret)
+		var sealedFrame = make([]byte, aead.Overhead()+totalFrameSize)
+		aead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
 		// fmt.Printf("secretbox.Seal(sealed:%X,sendNonce:%X,shrSecret:%X\n", sealedFrame, sc.sendNonce, sc.shrSecret)
 		incr2Nonce(sc.sendNonce)
 		// end encryption
 
-		_, err := sc.conn.Write(sealedFrame)
+		_, err = sc.conn.Write(sealedFrame)
 		if err != nil {
 			return n, err
 		}
@@ -148,7 +150,11 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 		return
 	}
 
-	sealedFrame := make([]byte, sealedFrameSize)
+	aead, err := xchacha20poly1305.New(sc.shrSecret[:])
+	if err != nil {
+		return n, errors.New("Invalid SecretConnection Key")
+	}
+	sealedFrame := make([]byte, totalFrameSize+aead.Overhead())
 	_, err = io.ReadFull(sc.conn, sealedFrame)
 	if err != nil {
 		return
@@ -157,8 +163,8 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	// decrypt the frame
 	var frame = make([]byte, totalFrameSize)
 	// fmt.Printf("secretbox.Open(sealed:%X,recvNonce:%X,shrSecret:%X\n", sealedFrame, sc.recvNonce, sc.shrSecret)
-	_, ok := secretbox.Open(frame[:0], sealedFrame, sc.recvNonce, sc.shrSecret)
-	if !ok {
+	_, err = aead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
+	if err != nil {
 		return n, errors.New("Failed to decrypt SecretConnection")
 	}
 	incr2Nonce(sc.recvNonce)
@@ -317,22 +323,19 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 
 // sha256
 func hash32(input []byte) (res *[32]byte) {
-	hasher := sha256.New()
-	hasher.Write(input) // nolint: errcheck, gas
-	resSlice := hasher.Sum(nil)
+	hash := sha256.New
+	hkdf := hkdf.New(hash, input, nil, []byte("TENDERMINT_SECRET_CONNECTION_KEY_GEN"))
 	res = new([32]byte)
-	copy(res[:], resSlice)
-	return
+	io.ReadFull(hkdf, res[:])
+	return res
 }
 
-// We only fill in the first 20 bytes with ripemd160
 func hash24(input []byte) (res *[24]byte) {
-	hasher := ripemd160.New()
-	hasher.Write(input) // nolint: errcheck, gas
-	resSlice := hasher.Sum(nil)
+	hash := sha256.New
+	hkdf := hkdf.New(hash, input, nil, []byte("TENDERMINT_SECRET_CONNECTION_NONCE_GEN"))
 	res = new([24]byte)
-	copy(res[:], resSlice)
-	return
+	io.ReadFull(hkdf, res[:])
+	return res
 }
 
 // increment nonce big-endian by 2 with wraparound.

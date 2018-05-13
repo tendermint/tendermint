@@ -143,6 +143,7 @@
     ".",
     "hcl/ast",
     "hcl/parser",
+    "hcl/printer",
     "hcl/scanner",
     "hcl/strconv",
     "hcl/token",
@@ -194,11 +195,9 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:5ab79470a1d0fb19b041a624415612f8236b3c06070161a910562f2b2d064355"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  pruneopts = "UT"
-  revision = "f15292f7a699fcc1a38a80977f80a046874ba8ac"
+  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
 
 [[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
@@ -382,13 +381,8 @@
   digest = "1:df132ec33d5acb4a1ab58d637f1bc3557be49456ca59b9198f5c1e7fa32e0d31"
   name = "golang.org/x/crypto"
   packages = [
-    "bcrypt",
-    "blowfish",
-    "chacha20poly1305",
     "curve25519",
     "hkdf",
-    "internal/chacha20",
-    "internal/subtle",
     "nacl/box",
     "nacl/secretbox",
     "openpgp/armor",
@@ -463,25 +457,17 @@
   packages = [
     ".",
     "balancer",
-    "balancer/base",
-    "balancer/roundrobin",
     "codes",
     "connectivity",
     "credentials",
-    "encoding",
-    "encoding/proto",
+    "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
-    "internal/backoff",
-    "internal/channelz",
-    "internal/grpcrand",
     "keepalive",
     "metadata",
     "naming",
     "peer",
     "resolver",
-    "resolver/dns",
-    "resolver/passthrough",
     "stats",
     "status",
     "tap",

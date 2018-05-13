@@ -317,6 +317,14 @@ BUG FIXES
 - [cmd] Set GenesisTime during `tendermint init`
 - [consensus] fix ValidBlock rules
 
+## 0.20.0 (TBD)
+
+BREAKING:
+
+- [p2p] Change the key/nonce derivation in secret connection to use hkdf instead of a raw hash function.
+
+
+
 ## 0.19.2 (April 30th, 2018)
 
 FEATURES:
