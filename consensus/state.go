@@ -992,7 +992,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 
 	blockID, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
 
-	// If we don't have a polka, we must precommit nil
+	// If we don't have a polka, we must precommit nil.
 	if !ok {
 		if cs.LockedBlock != nil {
 			cs.Logger.Info("enterPrecommit: No +2/3 prevotes during enterPrecommit while we're locked. Precommitting nil")
@@ -1003,10 +1003,10 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		return
 	}
 
-	// At this point +2/3 prevoted for a particular block or nil
+	// At this point +2/3 prevoted for a particular block or nil.
 	cs.eventBus.PublishEventPolka(cs.RoundStateEvent())
 
-	// the latest POLRound should be this round
+	// the latest POLRound should be this round.
 	polRound, _ := cs.Votes.POLInfo()
 	if polRound < round {
 		cmn.PanicSanity(cmn.Fmt("This POLRound should be %v but got %", round, polRound))
@@ -1412,33 +1412,43 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	case types.VoteTypePrevote:
 		prevotes := cs.Votes.Prevotes(vote.Round)
 		cs.Logger.Info("Added to prevote", "vote", vote, "prevotes", prevotes.StringShort())
-		blockID, ok := prevotes.TwoThirdsMajority()
-		// First, unlock if prevotes is a valid POL.
-		// >> lockRound < POLRound <= unlockOrChangeLockRound (see spec)
-		// NOTE: If (lockRound < POLRound) but !(POLRound <= unlockOrChangeLockRound),
-		// we'll still enterNewRound(H,vote.R) and enterPrecommit(H,vote.R) to process it
-		// there.
-		if (cs.LockedBlock != nil) && (cs.LockedRound < vote.Round) && (vote.Round <= cs.Round) {
-			if ok && !cs.LockedBlock.HashesTo(blockID.Hash) {
+
+		// If +2/3 prevotes for a block or nil for *any* round:
+		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
+
+			// First, unlock if prevotes is a valid POL.
+			// `lockRound < POLRound <= unlockOrChangeLockRound (see spec)`
+			// NOTE: If `lockRound < POLRound` but `!(POLRound <=
+			// unlockOrChangeLockRound)`, we'll still enterNewRound(H,vote.R)
+			// and enterPrecommit(H,vote.R) to process it there.
+			if (cs.LockedBlock != nil) &&
+				(cs.LockedRound < vote.Round) &&
+				(vote.Round <= cs.Round) &&
+				!cs.LockedBlock.HashesTo(blockID.Hash) {
+
 				cs.Logger.Info("Unlocking because of POL.", "lockedRound", cs.LockedRound, "POLRound", vote.Round)
 				cs.LockedRound = 0
 				cs.LockedBlock = nil
 				cs.LockedBlockParts = nil
 				cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 			}
-		}
-		// Update ValidBlock
-		if ok && !blockID.IsZero() && (cs.ValidRound < vote.Round) && (vote.Round <= cs.Round) {
-			// update valid value
-			if cs.ProposalBlock.HashesTo(blockID.Hash) {
+
+			// Update Valid* if we can.
+			if !blockID.IsZero() &&
+				(cs.ValidRound < vote.Round) &&
+				(vote.Round <= cs.Round) &&
+				cs.ProposalBlock.HashesTo(blockID.Hash) {
+
 				cs.ValidRound = vote.Round
 				cs.ValidBlock = cs.ProposalBlock
 				cs.ValidBlockParts = cs.ProposalBlockParts
+				// TODO: We might want to update ValidBlock also in case we
+				// don't have that block yet, and obtain the required block
+				// using gossiping
 			}
-			//TODO: We might want to update ValidBlock also in case we don't have that block yet,
-			// and obtain the required block using gossiping
 		}
 
+		// If +2/3 prevotes for *anything* for this or future round:
 		if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
 			// Round-skip over to PrevoteWait or goto Precommit.
 			cs.enterNewRound(height, vote.Round) // if the vote is ahead of us
@@ -1454,6 +1464,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				cs.enterPrevote(height, cs.Round)
 			}
 		}
+
 	case types.VoteTypePrecommit:
 		precommits := cs.Votes.Precommits(vote.Round)
 		cs.Logger.Info("Added to precommit", "vote", vote, "precommits", precommits.StringShort())
