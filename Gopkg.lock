@@ -293,6 +293,7 @@
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
+    "hkdf",
     "nacl/box",
     "nacl/secretbox",
     "openpgp/armor",
@@ -384,6 +385,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "94cb2543199b0f4b6e9ac0e5b6469bdb77391da1c9f79f5b9792d7af936008ff"
+  inputs-digest = "8be1b57bbc10f45e48e15fe3e53738d122fe41c3fc5da523d9b88369b9c9d8bb"
   solver-name = "gps-cdcl"
   solver-version = 1
