@@ -2,9 +2,8 @@ package p2p
 
 import (
 	"fmt"
-	"strings"
-
 	cmn "github.com/tendermint/tmlibs/common"
+	"strings"
 )
 
 const (
@@ -31,7 +30,7 @@ type NodeInfo struct {
 	Version  string       `json:"version"`  // major.minor.revision
 	Channels cmn.HexBytes `json:"channels"` // channels this node knows about
 
-	// Sanitize
+	// ASCIIText fields
 	Moniker string   `json:"moniker"` // arbitrary moniker
 	Other   []string `json:"other"`   // other application specific data
 }
@@ -42,9 +41,26 @@ type NodeInfo struct {
 // if the ListenAddr is malformed, or if the ListenAddr is a host name
 // that can not be resolved to some IP.
 // TODO: constraints for Moniker/Other? Or is that for the UI ?
+// JAE: It needs to be done on the client, but to prevent ambiguous
+// unicode characters, maybe it's worth sanitizing it here.
+// In the future we might want to validate these, once we have a
+// name-resolution system up.
+// International clients could then use punycode (or we could use
+// url-encoding), and we just need to be careful with how we handle that in our
+// clients. (e.g. off by default).
 func (info NodeInfo) Validate() error {
 	if len(info.Channels) > maxNumChannels {
 		return fmt.Errorf("info.Channels is too long (%v). Max is %v", len(info.Channels), maxNumChannels)
+	}
+
+	// Sanitize ASCII text fields.
+	if !cmn.IsASCIIText(info.Moniker) || cmn.ASCIITrim(info.Moniker) == "" {
+		return fmt.Errorf("info.Moniker must be valid non-empty ASCII text without tabs, but got %v.", info.Moniker)
+	}
+	for i, s := range info.Other {
+		if !cmn.IsASCIIText(s) || cmn.ASCIITrim(s) == "" {
+			return fmt.Errorf("info.Other[%v] must be valid non-empty ASCII text without tabs, but got %v.", i, s)
+		}
 	}
 
 	channels := make(map[byte]struct{})
