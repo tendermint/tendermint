@@ -219,6 +219,12 @@ type roundVotes struct {
 func (hvs *HeightVoteSet) MarshalJSON() ([]byte, error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
+
+	roundsVotes := hvs.toRoundVotes()
+	return cdc.MarshalJSON(roundsVotes)
+}
+
+func (hvs *HeightVoteSet) toRoundVotes() []roundVotes {
 	totalRounds := hvs.round + 1
 	roundsVotes := make([]roundVotes, totalRounds)
 	// rounds 0 ~ hvs.round inclusive
@@ -232,8 +238,7 @@ func (hvs *HeightVoteSet) MarshalJSON() ([]byte, error) {
 		}
 	}
 	// TODO: all other peer catchup rounds
-
-	return cdc.MarshalJSON(roundsVotes)
+	return roundsVotes
 }
 
 // If a peer claims that it has 2/3 majority for given blockKey, call this.

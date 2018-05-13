@@ -140,6 +140,11 @@ type PeerStateInfo struct {
 	PeerState   json.RawMessage `json:"peer_state"`
 }
 
+// UNSTABLE
+type ResultConsensusState struct {
+	RoundState json.RawMessage `json:"round_state"`
+}
+
 // CheckTx result
 type ResultBroadcastTx struct {
 	Code uint32       `json:"code"`

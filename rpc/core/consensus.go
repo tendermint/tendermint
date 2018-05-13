@@ -211,3 +211,10 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	}
 	return &ctypes.ResultDumpConsensusState{roundState, peerStates}, nil
 }
+
+// UNSTABLE
+func ConsensusState() (*ctypes.ResultConsensusState, error) {
+	// Get self round state.
+	bz, err := consensusState.GetRoundStateSimpleJSON()
+	return &ctypes.ResultConsensusState{bz}, err
+}

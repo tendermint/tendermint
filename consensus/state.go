@@ -185,6 +185,14 @@ func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
 	return cdc.MarshalJSON(cs.RoundState)
 }
 
+// GetRoundStateSimpleJSON returns a json of RoundStateSimple, marshalled using go-amino.
+func (cs *ConsensusState) GetRoundStateSimpleJSON() ([]byte, error) {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
+}
+
 // GetValidators returns a copy of the current validators.
 func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
 	cs.mtx.Lock()
