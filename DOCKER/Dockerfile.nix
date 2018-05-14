@@ -1,16 +1,17 @@
 FROM nixos/nix:latest
 
+RUN apk add --no-cache build-base curl bash git ca-certificates go
+
 RUN nix-channel --add https://nixos.org/channels/nixpkgs-unstable nixpkgs
 RUN nix-channel --update
 
-RUN apk add --no-cache build-base curl bash git go
-
-ENV WORK /tendermint
 ENV GOPATH /go
-ENV PATH $GOPATH/bin:$PATH
+ENV GOBIN $GOPATH/bin
+ENV PATH $GOBIN:$PATH
+ENV WORK /tendermint
 
-RUN mkdir -p $GOPATH/src && ln -sf $GOPATH/src/tendermint $WORK
+RUN mkdir -p $WORK && mkdir -p $GOPATH/src/github.com/tendermint && ln -sf $WORK $GOPATH/src/github.com/tendermint/tendermint
 
 ADD . $WORK
 
-RUN cd $GOPATH/src/tendermint && make get_tools && make get_vendor_deps && make get_dep2nix && make build_nix
+RUN cd $GOPATH/src/github.com/tendermint/tendermint && make get_dep2nix && make build_nix
