@@ -41,32 +41,24 @@ func (is *IndexerService) OnStart() error {
 	}
 
 	go func() {
-		var numTxs, got int64
-		var batch *Batch
 		for {
-			select {
-			case e, ok := <-blockHeadersCh:
+			e, ok := <-blockHeadersCh
+			if !ok {
+				return
+			}
+			header := e.(types.EventDataNewBlockHeader).Header
+			batch := NewBatch(header.NumTxs)
+			for i := int64(0); i < header.NumTxs; i++ {
+				e, ok := <-txsCh
 				if !ok {
+					is.Logger.Error("Failed to index all transactions due to closed transactions channel", "height", header.Height, "numTxs", header.NumTxs, "numProcessed", i)
 					return
-				}
-				numTxs = e.(types.EventDataNewBlockHeader).Header.NumTxs
-				batch = NewBatch(numTxs)
-			case e, ok := <-txsCh:
-				if !ok {
-					return
-				}
-				if batch == nil {
-					panic("Expected pubsub to send block header first, but got tx event")
 				}
 				txResult := e.(types.EventDataTx).TxResult
 				batch.Add(&txResult)
-				got++
-				if numTxs == got {
-					is.idr.AddBatch(batch)
-					batch = nil
-					got = 0
-				}
 			}
+			is.idr.AddBatch(batch)
+			is.Logger.Info("Indexed block", "height", header.Height)
 		}
 	}()
 	return nil
