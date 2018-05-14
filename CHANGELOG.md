@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.8.3 (develop branch)
+## 0.8.3 (May 14th, 2018)
 
 FEATURES:
 
