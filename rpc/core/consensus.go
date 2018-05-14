@@ -211,3 +211,51 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	}
 	return &ctypes.ResultDumpConsensusState{roundState, peerStates}, nil
 }
+
+// ConsensusState returns a concise summary of the consensus state.
+// UNSTABLE
+//
+// ```shell
+// curl 'localhost:46657/consensus_state'
+// ```
+//
+// ```go
+// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// state, err := client.ConsensusState()
+// ```
+//
+// The above command returns JSON structured like this:
+//
+// ```json
+//{
+//  "jsonrpc": "2.0",
+//  "id": "",
+//  "result": {
+//    "round_state": {
+//      "height/round/step": "9336/0/1",
+//      "start_time": "2018-05-14T10:25:45.72595357-04:00",
+//      "proposal_block_hash": "",
+//      "locked_block_hash": "",
+//      "valid_block_hash": "",
+//      "height_vote_set": [
+//        {
+//          "round": 0,
+//          "prevotes": [
+//            "nil-Vote"
+//          ],
+//          "prevotes_bit_array": "BA{1:_} 0/10 = 0.00",
+//          "precommits": [
+//            "nil-Vote"
+//          ],
+//          "precommits_bit_array": "BA{1:_} 0/10 = 0.00"
+//        }
+//      ]
+//    }
+//  }
+//}
+//```
+func ConsensusState() (*ctypes.ResultConsensusState, error) {
+	// Get self round state.
+	bz, err := consensusState.GetRoundStateSimpleJSON()
+	return &ctypes.ResultConsensusState{bz}, err
+}

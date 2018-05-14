@@ -418,6 +418,9 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 	return BlockID{}, false
 }
 
+//--------------------------------------------------------------------------------
+// Strings and JSON
+
 func (voteSet *VoteSet) String() string {
 	if voteSet == nil {
 		return "nil-VoteSet"
@@ -454,6 +457,45 @@ func (voteSet *VoteSet) StringIndented(indent string) string {
 func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
+	return cdc.MarshalJSON(VoteSetJSON{
+		voteSet.voteStrings(),
+		voteSet.bitArrayString(),
+		voteSet.peerMaj23s,
+	})
+}
+
+// More human readable JSON of the vote set
+// NOTE: insufficient for unmarshalling from (compressed votes)
+// TODO: make the peerMaj23s nicer to read (eg just the block hash)
+type VoteSetJSON struct {
+	Votes         []string          `json:"votes"`
+	VotesBitArray string            `json:"votes_bit_array"`
+	PeerMaj23s    map[P2PID]BlockID `json:"peer_maj_23s"`
+}
+
+// Return the bit-array of votes including
+// the fraction of power that has voted like:
+// "BA{29:xx__x__x_x___x__x_______xxx__} 856/1304 = 0.66"
+func (voteSet *VoteSet) BitArrayString() string {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	return voteSet.bitArrayString()
+}
+
+func (voteSet *VoteSet) bitArrayString() string {
+	bAString := voteSet.votesBitArray.String()
+	voted, total, fracVoted := voteSet.sumTotalFrac()
+	return fmt.Sprintf("%s %d/%d = %.2f", bAString, voted, total, fracVoted)
+}
+
+// Returns a list of votes compressed to more readable strings.
+func (voteSet *VoteSet) VoteStrings() []string {
+	voteSet.mtx.Lock()
+	defer voteSet.mtx.Unlock()
+	return voteSet.voteStrings()
+}
+
+func (voteSet *VoteSet) voteStrings() []string {
 	voteStrings := make([]string, len(voteSet.votes))
 	for i, vote := range voteSet.votes {
 		if vote == nil {
@@ -462,13 +504,7 @@ func (voteSet *VoteSet) MarshalJSON() ([]byte, error) {
 			voteStrings[i] = vote.String()
 		}
 	}
-	return cdc.MarshalJSON(struct {
-		Votes         []string          `json:"votes"`
-		VotesBitArray *cmn.BitArray     `json:"votes_bit_array"`
-		PeerMaj23s    map[P2PID]BlockID `json:"peer_maj_23s"`
-	}{
-		voteStrings, voteSet.votesBitArray, voteSet.peerMaj23s,
-	})
+	return voteStrings
 }
 
 func (voteSet *VoteSet) StringShort() string {
@@ -477,8 +513,16 @@ func (voteSet *VoteSet) StringShort() string {
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
-	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v %v %v}`,
-		voteSet.height, voteSet.round, voteSet.type_, voteSet.maj23, voteSet.votesBitArray, voteSet.peerMaj23s)
+	_, _, frac := voteSet.sumTotalFrac()
+	return fmt.Sprintf(`VoteSet{H:%v R:%v T:%v +2/3:%v(%v) %v %v}`,
+		voteSet.height, voteSet.round, voteSet.type_, voteSet.maj23, frac, voteSet.votesBitArray, voteSet.peerMaj23s)
+}
+
+// return the power voted, the total, and the fraction
+func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
+	voted, total := voteSet.sum, voteSet.valSet.TotalVotingPower()
+	fracVoted := float64(voted) / float64(total)
+	return voted, total, fracVoted
 }
 
 //--------------------------------------------------------------------------------

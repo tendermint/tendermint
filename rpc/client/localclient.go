@@ -84,6 +84,10 @@ func (Local) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return core.DumpConsensusState()
 }
 
+func (Local) ConsensusState() (*ctypes.ResultConsensusState, error) {
+	return core.ConsensusState()
+}
+
 func (Local) Health() (*ctypes.ResultHealth, error) {
 	return core.Health()
 }

@@ -23,6 +23,7 @@ type Consensus interface {
 	GetState() sm.State
 	GetValidators() (int64, []*types.Validator)
 	GetRoundStateJSON() ([]byte, error)
+	GetRoundStateSimpleJSON() ([]byte, error)
 }
 
 type P2P interface {

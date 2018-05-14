@@ -1,10 +1,12 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //-----------------------------------------------------------------------------
@@ -75,6 +77,32 @@ type RoundState struct {
 	CommitRound        int                 `json:"commit_round"` //
 	LastCommit         *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
 	LastValidators     *types.ValidatorSet `json:"last_validators"`
+}
+
+// Compressed version of the RoundState for use in RPC
+type RoundStateSimple struct {
+	HeightRoundStep   string          `json:"height/round/step"`
+	StartTime         time.Time       `json:"start_time"`
+	ProposalBlockHash cmn.HexBytes    `json:"proposal_block_hash"`
+	LockedBlockHash   cmn.HexBytes    `json:"locked_block_hash"`
+	ValidBlockHash    cmn.HexBytes    `json:"valid_block_hash"`
+	Votes             json.RawMessage `json:"height_vote_set"`
+}
+
+// Compress the RoundState to RoundStateSimple
+func (rs *RoundState) RoundStateSimple() RoundStateSimple {
+	votesJSON, err := rs.Votes.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
+	return RoundStateSimple{
+		HeightRoundStep:   fmt.Sprintf("%d/%d/%d", rs.Height, rs.Round, rs.Step),
+		StartTime:         rs.StartTime,
+		ProposalBlockHash: rs.ProposalBlock.Hash(),
+		LockedBlockHash:   rs.LockedBlock.Hash(),
+		ValidBlockHash:    rs.ValidBlock.Hash(),
+		Votes:             votesJSON,
+	}
 }
 
 // RoundStateEvent returns the H/R/S of the RoundState as an event.

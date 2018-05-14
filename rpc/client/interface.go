@@ -84,6 +84,7 @@ type Client interface {
 type NetworkClient interface {
 	NetInfo() (*ctypes.ResultNetInfo, error)
 	DumpConsensusState() (*ctypes.ResultDumpConsensusState, error)
+	ConsensusState() (*ctypes.ResultConsensusState, error)
 	Health() (*ctypes.ResultHealth, error)
 }
 
