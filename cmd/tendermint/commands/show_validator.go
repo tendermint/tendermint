@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
 
 	privval "github.com/tendermint/tendermint/types/priv_validator"

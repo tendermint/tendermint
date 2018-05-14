@@ -1,9 +1,10 @@
 package types
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/go-crypto"
-	"testing"
 )
 
 func TestGenesisBad(t *testing.T) {
