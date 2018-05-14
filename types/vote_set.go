@@ -404,8 +404,8 @@ func (voteSet *VoteSet) HasAll() bool {
 	return voteSet.sum == voteSet.valSet.TotalVotingPower()
 }
 
-// Returns either a blockhash (or nil) that received +2/3 majority.
-// If there exists no such majority, returns (nil, PartSetHeader{}, false).
+// If there was a +2/3 majority for blockID, return blockID and true.
+// Else, return the empty BlockID{} and false.
 func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 	if voteSet == nil {
 		return BlockID{}, false

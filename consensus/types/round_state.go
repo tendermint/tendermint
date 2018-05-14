@@ -70,9 +70,9 @@ type RoundState struct {
 	LockedRound        int                 `json:"locked_round"`
 	LockedBlock        *types.Block        `json:"locked_block"`
 	LockedBlockParts   *types.PartSet      `json:"locked_block_parts"`
-	ValidRound         int                 `json:"valid_round"`
-	ValidBlock         *types.Block        `json:"valid_block"`
-	ValidBlockParts    *types.PartSet      `json:"valid_block_parts"`
+	ValidRound         int                 `json:"valid_round"`       // Last known round with POL for non-nil valid block.
+	ValidBlock         *types.Block        `json:"valid_block"`       // Last known block of POL mentioned above.
+	ValidBlockParts    *types.PartSet      `json:"valid_block_parts"` // Last known block parts of POL metnioned above.
 	Votes              *HeightVoteSet      `json:"votes"`
 	CommitRound        int                 `json:"commit_round"` //
 	LastCommit         *types.VoteSet      `json:"last_commit"`  // Last precommits at Height-1
