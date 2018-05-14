@@ -30,7 +30,7 @@ func RandVals(cnt int) []types.Validator {
 // don't make any tx that modify the validator state
 func InitDummy(app *PersistentDummyApplication) {
 	app.InitChain(types.RequestInitChain{
-		Validators:    RandVals(1),
-		AppStateBytes: []byte("[]"),
+		Validators:   RandVals(1),
+		GenesisBytes: []byte("[]"),
 	})
 }
