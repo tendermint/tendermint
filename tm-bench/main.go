@@ -102,7 +102,7 @@ Examples:
 		timeStop := time.Now()
 		logger.Info("Time stopped", "t", timeStop)
 
-		stats := calculateStatistics(client, minHeight, timeStart, timeStop)
+		stats := calculateStatistics(client, minHeight, timeStart, timeStop, duration)
 
 		printStatistics(stats, outputFormat)
 
@@ -119,7 +119,7 @@ func latestBlockHeight(client tmrpc.Client) int64 {
 	return status.SyncInfo.LatestBlockHeight
 }
 
-func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeStop time.Time) *statistics {
+func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeStop time.Time, duration int) *statistics {
 	stats := &statistics{
 		BlocksThroughput: metrics.NewHistogram(metrics.NewUniformSample(1000)),
 		TxsThroughput:    metrics.NewHistogram(metrics.NewUniformSample(1000)),
@@ -134,7 +134,18 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 
 	numBlocksPerSec := make(map[int64]int64)
 	numTxsPerSec := make(map[int64]int64)
+	// because during some seconds blocks won't be created...
+	for i := int64(0); i < int64(duration); i++ {
+		numBlocksPerSec[i] = 0
+		numTxsPerSec[i] = 0
+	}
+
 	for _, blockMeta := range info.BlockMetas {
+		// check if block was created after timeStart
+		if blockMeta.Header.Time.Before(timeStart) {
+			continue
+		}
+
 		// check if block was created before timeStop
 		if blockMeta.Header.Time.After(timeStop) {
 			break
