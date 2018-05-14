@@ -32,7 +32,7 @@ build_nix: check_nix check_openssl
 	openssl sha256 build/tendermint
 
 build_nix_docker: check_docker check_openssl
-	time docker build -t $(DOCKER_NIX_IMAGE) -f DOCKER/Dockerfile.nix .
+	docker build -t $(DOCKER_NIX_IMAGE) -f DOCKER/Dockerfile.nix .
 	scripts/cp-from-docker.sh $(DOCKER_NIX_IMAGE)
 	openssl sha256 build/tendermint
 
