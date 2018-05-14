@@ -1,5 +1,5 @@
-Specification
-=============
+ABCI Specification
+==================
 
 Message Types
 ~~~~~~~~~~~~~
@@ -228,6 +228,8 @@ CheckTx
    After ``Commit``, the mempool will rerun CheckTx on all remaining
    transactions, throwing out any that are no longer valid.
 
+   Keys and values in Tags must be UTF-8 encoded strings (e.g. "account.owner": "Bob", "balance": "100.0", "date": "2018-01-02")
+
 
 DeliverTx
 ^^^^^^^^^
@@ -251,6 +253,7 @@ DeliverTx
 
    - Deliver a transaction to be executed in full by the application. If the transaction is valid,
      returns CodeType.OK.
+   - Keys and values in Tags must be UTF-8 encoded strings (e.g. "account.owner": "Bob", "balance": "100.0", "time": "2018-01-02T12:30:00Z")
 
 EndBlock
 ^^^^^^^^
@@ -284,3 +287,6 @@ Commit
 
    - Persist the application state.
    - Return a Merkle root hash of the application state.
+   - It's critical that all application instances return the same hash. If not,
+     they will not be able to agree on the next block, because the hash is
+     included in the next block!
