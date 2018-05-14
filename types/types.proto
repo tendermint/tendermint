@@ -61,7 +61,7 @@ message RequestQuery {
 message RequestBeginBlock {
   bytes hash = 1;
   Header header = 2 [(gogoproto.nullable)=false];
-  repeated int32 absent_validators = 3;
+  repeated bytes absent_validators = 3;
   repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
 }
 
