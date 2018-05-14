@@ -24,6 +24,14 @@ BUG FIXES:
 - Graceful handling/recovery for apps that have non-determinism or fail to halt
 - Graceful handling/recovery for violations of safety, or liveness
 
+## 0.20.0 (TBD)
+
+BREAKING:
+
+- [p2p] Change the key/nonce derivation in secret connection to use hkdf instead of a raw hash function.
+
+
+
 ## 0.19.2 (April 30th, 2018)
 
 FEATURES:
