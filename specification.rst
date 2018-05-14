@@ -1,5 +1,5 @@
-Specification
-=============
+ABCI Specification
+==================
 
 Message Types
 ~~~~~~~~~~~~~
