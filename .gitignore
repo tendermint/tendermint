@@ -3,3 +3,4 @@ vendor
 types/types.pb.go
 *.sw[op]
 abci-cli
+coverage.txt
