@@ -72,12 +72,12 @@ gen_certs: clean_certs
 	certstrap init --common-name "tendermint.com" --passphrase ""
 	certstrap request-cert -ip "::" --passphrase ""
 	certstrap sign "::" --CA "tendermint.com" --passphrase ""
-	mv out/::.crt out/::.key remotedb
+	mv out/::.crt out/::.key db/remotedb
 
 clean_certs:
 	## Cleaning TLS testing certificates...
 	rm -rf out
-	rm -f remotedb/::.crt remotedb/::.key
+	rm -f db/remotedb/::.crt db/remotedb/::.key
 
 test: gen_certs
 	go test -tags gcc $(shell go list ./... | grep -v vendor)
@@ -135,4 +135,4 @@ metalinter_all:
 .PHONY: check protoc build check_tools get_tools get_protoc update_tools get_vendor_deps test fmt metalinter metalinter_all gen_certs clean_certs
 
 grpc_dbserver:
-	protoc -I proto/ proto/defs.proto --go_out=plugins=grpc:proto
+	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto

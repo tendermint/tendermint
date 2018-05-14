@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/grpcdb"
-	protodb "github.com/tendermint/tmlibs/proto"
+	"github.com/tendermint/tmlibs/db/remotedb/grpcdb"
+	protodb "github.com/tendermint/tmlibs/db/remotedb/proto"
 )
 
 type RemoteDB struct {

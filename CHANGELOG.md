@@ -4,6 +4,8 @@
 
 FEATURES:
 
+ - [db/remotedb] New DB type using an external CLevelDB process via
+   GRPC
  - [autofile] logjack command for piping stdin to a rotating file
  - [common] ASCIITrim()
 
