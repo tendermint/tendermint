@@ -1427,11 +1427,12 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		// If +2/3 prevotes for a block or nil for *any* round:
 		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
 
-			// First, unlock if prevotes is a valid POL.
-			// `lockRound < POLRound <= unlockOrChangeLockRound (see spec)`
-			// NOTE: If `lockRound < POLRound` but `!(POLRound <=
-			// unlockOrChangeLockRound)`, we'll still enterNewRound(H,vote.R)
-			// and enterPrecommit(H,vote.R) to process it there.
+			// There was a polka!
+			// If we're locked but this is a recent polka, unlock.
+			// If it matches our ProposalBlock, update the ValidBlock
+
+			// Unlock if `cs.LockedRound < vote.Round <= cs.Round`
+			// NOTE: If vote.Round > cs.Round, we'll deal with it when we get to vote.Round
 			if (cs.LockedBlock != nil) &&
 				(cs.LockedRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
@@ -1445,6 +1446,8 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			}
 
 			// Update Valid* if we can.
+			// NOTE: our proposal block may be nil or not what received a polka..
+			// TODO: we may want to still update the ValidBlock and obtain it via gossipping
 			if !blockID.IsZero() &&
 				(cs.ValidRound < vote.Round) &&
 				(vote.Round <= cs.Round) &&
@@ -1453,9 +1456,6 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				cs.ValidRound = vote.Round
 				cs.ValidBlock = cs.ProposalBlock
 				cs.ValidBlockParts = cs.ProposalBlockParts
-				// TODO: We might want to update ValidBlock also in case we
-				// don't have that block yet, and obtain the required block
-				// using gossiping
 			}
 		}
 
