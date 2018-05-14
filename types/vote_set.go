@@ -418,6 +418,9 @@ func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
 	return BlockID{}, false
 }
 
+//--------------------------------------------------------------------------------
+// Strings and JSON
+
 func (voteSet *VoteSet) String() string {
 	if voteSet == nil {
 		return "nil-VoteSet"
@@ -470,8 +473,9 @@ type VoteSetJSON struct {
 	PeerMaj23s    map[P2PID]BlockID `json:"peer_maj_23s"`
 }
 
-// Return the bit-array of votes including the fraction of power
-// that has voted eg. "__x_xxx_:6/20 = 0.3".
+// Return the bit-array of votes including
+// the fraction of power that has voted like:
+// "BA{29:xx__x__x_x___x__x_______xxx__} 856/1304 = 0.66"
 func (voteSet *VoteSet) BitArrayString() string {
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()

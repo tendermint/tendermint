@@ -79,6 +79,7 @@ type RoundState struct {
 	LastValidators     *types.ValidatorSet `json:"last_validators"`
 }
 
+// Compressed version of the RoundState for use in RPC
 type RoundStateSimple struct {
 	HeightRoundStep   string          `json:"height/round/step"`
 	StartTime         time.Time       `json:"start_time"`
@@ -88,8 +89,12 @@ type RoundStateSimple struct {
 	Votes             json.RawMessage `json:"height_vote_set"`
 }
 
+// Compress the RoundState to RoundStateSimple
 func (rs *RoundState) RoundStateSimple() RoundStateSimple {
-	votesJSON, _ := rs.Votes.MarshalJSON() // TODO err
+	votesJSON, err := rs.Votes.MarshalJSON()
+	if err != nil {
+		panic(err)
+	}
 	return RoundStateSimple{
 		HeightRoundStep:   fmt.Sprintf("%d/%d/%d", rs.Height, rs.Round, rs.Step),
 		StartTime:         rs.StartTime,
