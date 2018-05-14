@@ -14,6 +14,12 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+const (
+	// see README
+	defaultPerPage = 30
+	maxPerPage     = 100
+)
+
 var subscribeTimeout = 5 * time.Second
 
 //----------------------------------------------
@@ -116,4 +122,18 @@ func SetLogger(l log.Logger) {
 
 func SetEventBus(b *types.EventBus) {
 	eventBus = b
+}
+
+func validatePage(page int) int {
+	if page < 1 {
+		return 1
+	}
+	return page
+}
+
+func validatePerPage(perPage int) int {
+	if perPage < 1 || perPage > maxPerPage {
+		return defaultPerPage
+	}
+	return perPage
 }

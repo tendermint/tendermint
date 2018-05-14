@@ -128,8 +128,8 @@ func (Local) Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	return core.Tx(hash, prove)
 }
 
-func (Local) TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
-	return core.TxSearch(query, prove)
+func (Local) TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
+	return core.TxSearch(query, prove, page, perPage)
 }
 
 func (c *Local) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {
