@@ -3,12 +3,21 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"sort"
 )
 
 //------------------------------------------------------------------------------
 
 // Validators is a list of validators that implements the Sort interface
 type Validators []Validator
+
+var _ sort.Interface = (Validators)(nil)
+
+// All these methods for Validators:
+//    Len, Less and Swap
+// are for Validators to implement sort.Interface
+// which will be used by the sort package.
+// See Issue https://github.com/tendermint/abci/issues/212
 
 func (v Validators) Len() int {
 	return len(v)
