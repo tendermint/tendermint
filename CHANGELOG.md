@@ -1,28 +1,20 @@
 # Changelog
 
-## Roadmap
+## 0.19.3 (May 14th, 2018)
 
-BREAKING CHANGES:
-- Better support for injecting randomness
-- Upgrade consensus for more real-time use of evidence
+FEATURES
 
-FEATURES:
-- Use the chain as its own CA for nodes and validators
-- Tooling to run multiple blockchains/apps, possibly in a single process
-- State syncing (without transaction replay)
-- Add authentication and rate-limitting to the RPC
+- [rpc] New `/consensus_state` returns just the votes seen at the current height
 
-IMPROVEMENTS:
-- Improve subtleties around mempool caching and logic
-- Consensus optimizations:
-	- cache block parts for faster agreement after round changes
-	- propagate block parts rarest first
-- Better testing of the consensus state machine (ie. use a DSL)
-- Auto compiled serialization/deserialization code instead of go-wire reflection
+IMPROVEMENTS
 
-BUG FIXES:
-- Graceful handling/recovery for apps that have non-determinism or fail to halt
-- Graceful handling/recovery for violations of safety, or liveness
+- [rpc] Add stringified votes and fraction of power voted to `/dump_consensus_state`
+- [rpc] Add PeerStateStats to `/dump_consensus_state`
+
+BUG FIXES
+
+- [cmd] Set GenesisTime during `tendermint init`
+- [consensus] fix ValidBlock rules
 
 ## 0.19.2 (April 30th, 2018)
 

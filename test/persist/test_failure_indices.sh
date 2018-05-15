@@ -82,7 +82,7 @@ for failIndex in $(seq $failsStart $failsEnd); do
     echo "* Test FailIndex $failIndex"
     # test failure at failIndex
 
-    bash ./test/utils/txs.sh "localhost:46657" &
+    bash $(dirname $0)/txs.sh "localhost:46657" &
     start_procs 1 "$failIndex"
 
     # tendermint should already have exited when it hits the fail index

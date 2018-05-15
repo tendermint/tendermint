@@ -456,5 +456,5 @@ Upgrading
 
 The Tendermint development cycle includes a lot of breaking changes. Upgrading from
 an old version to a new version usually means throwing away the chain data. Try out
-the `tm-migrate <https://github.com/hxzqlh/tm-tools>`__ tool written by @hxqlh if
+the `tm-migrate <https://github.com/hxzqlh/tm-tools>`__ tool written by `@hxzqlh <https://github.com/hxzqlh>`__  if
 you are keen to preserve the state of your chain when upgrading to newer versions.
