@@ -360,11 +360,11 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 		for {
 			select {
 			case rs := <-rchs.newRoundSteps:
-				conR.broadcastNewRoundStepMessage(rs)
+				conR.broadcastNewRoundStepMessages(rs)
 			case vote := <-rchs.votes:
 				conR.broadcastHasVoteMessage(vote)
 			case heartbeat := <-rchs.proposalHeartbeats:
-				conR.broadcastProposalHeartbeat(heartbeat)
+				conR.broadcastProposalHeartbeatMessage(heartbeat)
 			case <-conR.Quit():
 				return
 			}
@@ -374,14 +374,14 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 	return nil
 }
 
-func (conR *ConsensusReactor) broadcastProposalHeartbeat(hb *types.Heartbeat) {
+func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(hb *types.Heartbeat) {
 	conR.Logger.Debug("Broadcasting proposal heartbeat message",
 		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence)
 	msg := &ProposalHeartbeatMessage{hb}
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
 }
 
-func (conR *ConsensusReactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
+func (conR *ConsensusReactor) broadcastNewRoundStepMessages(rs *cstypes.RoundState) {
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
 		conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
