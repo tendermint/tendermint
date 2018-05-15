@@ -110,7 +110,39 @@ type ConsensusState struct {
 
 	// closed when we finish shutting down
 	done chan struct{}
+
+	// synchronous pubsub between consensus state and reactor
+	// only set when there is a reactor
+	reactorChs reactorChsI
 }
+
+type reactorChsI interface {
+	NewRoundStep(*cstypes.RoundState)
+	Vote(*types.Vote)
+	ProposalHeartbeat(*types.Heartbeat)
+}
+
+// A list of channels to send new round steps, votes and proposal heartbeats to.
+type reactorChs struct {
+	newRoundSteps      chan (*cstypes.RoundState)
+	votes              chan (*types.Vote)
+	proposalHeartbeats chan (*types.Heartbeat)
+}
+
+var _ reactorChsI = (*reactorChs)(nil)
+
+// BLOCKING
+func (rchs *reactorChs) NewRoundStep(rs *cstypes.RoundState)   { rchs.newRoundSteps <- rs }
+func (rchs *reactorChs) Vote(vote *types.Vote)                 { rchs.votes <- vote }
+func (rchs *reactorChs) ProposalHeartbeat(hb *types.Heartbeat) { rchs.proposalHeartbeats <- hb }
+
+type nilReactorChs struct{}
+
+var _ reactorChsI = nilReactorChs{}
+
+func (nilReactorChs) NewRoundStep(rs *cstypes.RoundState)   {}
+func (nilReactorChs) Vote(vote *types.Vote)                 {}
+func (nilReactorChs) ProposalHeartbeat(hb *types.Heartbeat) {}
 
 // NewConsensusState returns a new ConsensusState.
 func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore types.BlockStore, mempool types.Mempool, evpool types.EvidencePool) *ConsensusState {
@@ -126,6 +158,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *s
 		doWALCatchup:     true,
 		wal:              nilWAL{},
 		evpool:           evpool,
+		reactorChs:       nilReactorChs{},
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -509,6 +542,7 @@ func (cs *ConsensusState) newStep() {
 	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
 	if cs.eventBus != nil {
 		cs.eventBus.PublishEventNewRoundStep(rs)
+		cs.reactorChs.NewRoundStep(&cs.RoundState)
 	}
 }
 
@@ -752,6 +786,7 @@ func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 		}
 		cs.privValidator.SignHeartbeat(chainID, heartbeat)
 		cs.eventBus.PublishEventProposalHeartbeat(types.EventDataProposalHeartbeat{heartbeat})
+		cs.reactorChs.ProposalHeartbeat(heartbeat)
 		counter++
 		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 	}
@@ -1418,6 +1453,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 
 		cs.Logger.Info(cmn.Fmt("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
 		cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+		cs.reactorChs.Vote(vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
 		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
@@ -1445,6 +1481,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	}
 
 	cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+	cs.reactorChs.Vote(vote)
 
 	switch vote.Type {
 	case types.VoteTypePrevote:

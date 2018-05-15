@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -48,6 +47,12 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *Consens
 	conR := &ConsensusReactor{
 		conS:     consensusState,
 		fastSync: fastSync,
+	}
+	// XXX: modifing state to send us new round steps, votes and proposal heartbeats
+	consensusState.reactorChs = &reactorChs{
+		newRoundSteps:      make(chan *cstypes.RoundState),
+		votes:              make(chan *types.Vote),
+		proposalHeartbeats: make(chan *types.Heartbeat),
 	}
 	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
 	return conR
@@ -345,60 +350,22 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// startBroadcastRoutine subscribes for new round steps, votes and proposal
-// heartbeats using the event bus and starts a go routine to broadcasts events
-// to peers upon receiving them.
+// startBroadcastRoutine subscribes for new round steps, votes and
+// proposal heartbeats using the channels created for precisely this
+// purpose in consensus state and starts a goroutine to broadcasts
+// events to peers upon receiving them.
 func (conR *ConsensusReactor) startBroadcastRoutine() error {
-	const subscriber = "consensus-reactor"
-	ctx := context.Background()
-
-	// new round steps
-	stepsCh := make(chan interface{})
-	err := conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, stepsCh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryNewRoundStep)
-	}
-
-	// votes
-	votesCh := make(chan interface{})
-	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryVote, votesCh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryVote)
-	}
-
-	// proposal heartbeats
-	heartbeatsCh := make(chan interface{})
-	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryProposalHeartbeat, heartbeatsCh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryProposalHeartbeat)
-	}
-
 	go func() {
-		var data interface{}
-		var ok bool
+		rchs := conR.conS.reactorChs.(*reactorChs)
 		for {
 			select {
-			case data, ok = <-stepsCh:
-				if ok { // a receive from a closed channel returns the zero value immediately
-					edrs := data.(types.EventDataRoundState)
-					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
-				}
-			case data, ok = <-votesCh:
-				if ok {
-					edv := data.(types.EventDataVote)
-					conR.broadcastHasVoteMessage(edv.Vote)
-				}
-			case data, ok = <-heartbeatsCh:
-				if ok {
-					edph := data.(types.EventDataProposalHeartbeat)
-					conR.broadcastProposalHeartbeatMessage(edph)
-				}
+			case rs := <-rchs.newRoundSteps:
+				conR.broadcastNewRoundStepMessage(rs)
+			case vote := <-rchs.votes:
+				conR.broadcastHasVoteMessage(vote)
+			case heartbeat := <-rchs.proposalHeartbeats:
+				conR.broadcastProposalHeartbeat(heartbeat)
 			case <-conR.Quit():
-				conR.eventBus.UnsubscribeAll(ctx, subscriber)
-				return
-			}
-			if !ok {
-				conR.eventBus.UnsubscribeAll(ctx, subscriber)
 				return
 			}
 		}
@@ -407,15 +374,14 @@ func (conR *ConsensusReactor) startBroadcastRoutine() error {
 	return nil
 }
 
-func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.EventDataProposalHeartbeat) {
-	hb := heartbeat.Heartbeat
+func (conR *ConsensusReactor) broadcastProposalHeartbeat(hb *types.Heartbeat) {
 	conR.Logger.Debug("Broadcasting proposal heartbeat message",
 		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence)
 	msg := &ProposalHeartbeatMessage{hb}
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
 }
 
-func (conR *ConsensusReactor) broadcastNewRoundStep(rs *cstypes.RoundState) {
+func (conR *ConsensusReactor) broadcastNewRoundStepMessage(rs *cstypes.RoundState) {
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
 		conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))
