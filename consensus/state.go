@@ -1210,23 +1210,28 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
-	// Finish writing to the WAL for this height.
-	// NOTE: If we fail before writing this, we'll never write it,
-	// and just recover by running ApplyBlock in the Handshake.
-	// If we moved it before persisting the block, we'd have to allow
-	// WAL replay for blocks with an #ENDHEIGHT
-	// As is, ConsensusState should not be started again
-	// until we successfully call ApplyBlock (ie. here or in Handshake after restart)
+	// Write EndHeightMessage{} for this height, implying that the blockstore
+	// has saved the block.
+	//
+	// If we crash before writing this EndHeightMessage{}, we will recover by
+	// running ApplyBlock during the ABCI handshake when we restart.  If we
+	// didn't save the block to the blockstore before writing
+	// EndHeightMessage{}, we'd have to change WAL replay -- currently it
+	// complains about replaying for heights where an #ENDHEIGHT entry already
+	// exists.
+	//
+	// Either way, the ConsensusState should not be resumed until we
+	// successfully call ApplyBlock (ie. later here, or in Handshake after
+	// restart).
 	cs.wal.Save(EndHeightMessage{height})
 
 	fail.Fail() // XXX
 
-	// Create a copy of the state for staging
-	// and an event cache for txs
+	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
 
 	// Execute and commit the block, update and save the state, and update the mempool.
-	// NOTE: the block.AppHash wont reflect these txs until the next block
+	// NOTE The block.AppHash wont reflect these txs until the next block.
 	var err error
 	stateCopy, err = cs.blockExec.ApplyBlock(stateCopy, types.BlockID{block.Hash(), blockParts.Header()}, block)
 	if err != nil {
