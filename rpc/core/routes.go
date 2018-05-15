@@ -26,7 +26,7 @@ var Routes = map[string]*rpc.RPCFunc{
 	"validators":           rpc.NewRPCFunc(Validators, "height"),
 	"dump_consensus_state": rpc.NewRPCFunc(DumpConsensusState, ""),
 	"consensus_state":      rpc.NewRPCFunc(ConsensusState, ""),
-	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, ""),
+	"unconfirmed_txs":      rpc.NewRPCFunc(UnconfirmedTxs, "limit"),
 	"num_unconfirmed_txs":  rpc.NewRPCFunc(NumUnconfirmedTxs, ""),
 
 	// broadcast API
