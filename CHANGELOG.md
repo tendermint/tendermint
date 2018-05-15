@@ -2,6 +2,10 @@
 
 ## 0.19.4 (TBD)
 
+BREAKING:
+- [rpc] `/tx_search` now outputs maximum `?per_page` txs (you can provide custom `?per_page` up to 100; defaults to 30). You can set the `?page` (starts at 1).
+- [rpc] `/unconfirmed_txs` now outputs maximum `?limit` txs (you can provide custom `?limit` up to 100; defaults to 30)
+
 ## 0.19.3 (May 14th, 2018)
 
 FEATURES
