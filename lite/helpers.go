@@ -97,7 +97,7 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 		ValidatorIndex:   idx,
 		Height:           header.Height,
 		Round:            1,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        time.Now().Round(0).UTC(),
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{Hash: header.Hash()},
 	}
@@ -115,7 +115,7 @@ func genHeader(chainID string, height int64, txs types.Txs,
 	return &types.Header{
 		ChainID:  chainID,
 		Height:   height,
-		Time:     time.Now(),
+		Time:     time.Now().Round(0).UTC(),
 		NumTxs:   int64(len(txs)),
 		TotalTxs: int64(len(txs)),
 		// LastBlockID

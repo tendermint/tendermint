@@ -13,12 +13,12 @@ import (
 // Validate block
 
 func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
-	// validate internal consistency
+	// Validate internal consistency.
 	if err := b.ValidateBasic(); err != nil {
 		return err
 	}
 
-	// validate basic info
+	// Validate basic info.
 	if b.ChainID != s.ChainID {
 		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", s.ChainID, b.ChainID)
 	}
@@ -33,18 +33,21 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 		}
 	*/
 
-	// validate prev block info
+	// Validate prev block info.
 	if !b.LastBlockID.Equals(s.LastBlockID) {
-		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", s.LastBlockID, b.LastBlockID)
+		return fmt.Errorf("Wrong Block.Header.LastBlockID. Expected %v, got %v", s.LastBlockID, b.LastBlockID)
 	}
 	newTxs := int64(len(b.Data.Txs))
 	if b.TotalTxs != s.LastBlockTotalTx+newTxs {
 		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", s.LastBlockTotalTx+newTxs, b.TotalTxs)
 	}
+	if !b.Time.After(s.LastBlockTime) {
+		return fmt.Errorf("Bad Block.Time. Expected something greater than %v (last block time), but got %v", s.LastBlockTime, b.Time)
+	}
 
-	// validate app info
+	// Validate app info.
 	if !bytes.Equal(b.AppHash, s.AppHash) {
-		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", s.AppHash, b.AppHash)
+		return fmt.Errorf("Wrong Block.Header.AppHash. Expected %X, got %v", s.AppHash, b.AppHash)
 	}
 	if !bytes.Equal(b.ConsensusHash, s.ConsensusParams.Hash()) {
 		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", s.ConsensusParams.Hash(), b.ConsensusHash)

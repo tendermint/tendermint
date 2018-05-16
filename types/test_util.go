@@ -16,7 +16,7 @@ func MakeCommit(blockID BlockID, height int64, round int,
 			Round:            round,
 			Type:             VoteTypePrecommit,
 			BlockID:          blockID,
-			Timestamp:        time.Now().UTC(),
+			Timestamp:        time.Now().Round(0).UTC(),
 		}
 
 		_, err := signAddVote(validators[i], vote, voteSet)

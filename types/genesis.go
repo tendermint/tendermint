@@ -84,9 +84,11 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		}
 	}
 
-	if genDoc.GenesisTime.IsZero() {
-		genDoc.GenesisTime = time.Now()
-	}
+	/*
+		if genDoc.GenesisTime.IsZero() {
+			genDoc.GenesisTime = time.Now().Round(0).UTC()
+		}
+	*/
 
 	return nil
 }

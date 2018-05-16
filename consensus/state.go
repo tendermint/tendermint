@@ -386,8 +386,8 @@ func (cs *ConsensusState) updateRoundStep(round int, step cstypes.RoundStepType)
 
 // enterNewRound(height, 0) at cs.StartTime.
 func (cs *ConsensusState) scheduleRound0(rs *cstypes.RoundState) {
-	//cs.Logger.Info("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
-	sleepDuration := rs.StartTime.Sub(time.Now()) // nolint: gotype, gosimple
+	//cs.Logger.Info("scheduleRound0", "now", time.Now().Round(0).UTC(), "startTime", cs.StartTime)
+	sleepDuration := rs.StartTime.Sub(time.Now().Round(0).UTC()) // nolint: gotype, gosimple
 	cs.scheduleTimeout(sleepDuration, rs.Height, 0, cstypes.RoundStepNewHeight)
 }
 
@@ -477,7 +477,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 		// to be gathered for the first block.
 		// And alternative solution that relies on clocks:
 		//  cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
-		cs.StartTime = cs.config.Commit(time.Now())
+		cs.StartTime = cs.config.Commit(time.Now().Round(0).UTC())
 	} else {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
@@ -672,7 +672,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		return
 	}
 
-	if now := time.Now(); cs.StartTime.After(now) {
+	if now := time.Now().Round(0).UTC(); cs.StartTime.After(now) {
 		cs.Logger.Info("Need to set a buffer and log message here for sanity.", "startTime", cs.StartTime, "now", now)
 	}
 
@@ -941,7 +941,10 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 		return
 	}
 
-	// Validate proposal block
+	// Validate proposal block timestamp.
+	// TODOerr := cs.validate
+
+	// Validate proposal block.
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
@@ -950,8 +953,8 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 		return
 	}
 
-	// Prevote cs.ProposalBlock
-	// NOTE: the proposal signature is validated when it is received,
+	// Prevote cs.ProposalBlock.
+	// NOTE: The proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
 	logger.Info("enterPrevote: ProposalBlock is valid")
 	cs.signAddVote(types.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
@@ -1112,7 +1115,7 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 		// keep cs.Round the same, commitRound points to the right Precommits set.
 		cs.updateRoundStep(cs.Round, cstypes.RoundStepCommit)
 		cs.CommitRound = commitRound
-		cs.CommitTime = time.Now()
+		cs.CommitTime = time.Now().Round(0).UTC()
 		cs.newStep()
 
 		// Maybe finalize immediately.
@@ -1521,7 +1524,7 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        time.Now().Round(0).UTC(),
 		Type:             type_,
 		BlockID:          types.BlockID{hash, header},
 	}

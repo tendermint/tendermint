@@ -60,7 +60,7 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
-	now := time.Now().UTC()
+	now := time.Now().Round(0).UTC()
 	testCases := []struct {
 		desc                     string
 		lastCommitPrecommits     []*types.Vote

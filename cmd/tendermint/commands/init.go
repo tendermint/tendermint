@@ -53,7 +53,7 @@ func initFilesWithConfig(config *cfg.Config) error {
 	} else {
 		genDoc := types.GenesisDoc{
 			ChainID:     cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
-			GenesisTime: time.Now(),
+			GenesisTime: time.Now().Round(0).UTC(),
 		}
 		genDoc.Validators = []types.GenesisValidator{{
 			PubKey: pv.GetPubKey(),

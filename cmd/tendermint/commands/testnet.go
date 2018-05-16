@@ -112,7 +112,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 
 	// Generate genesis doc from generated validators
 	genDoc := &types.GenesisDoc{
-		GenesisTime: time.Now(),
+		GenesisTime: time.Now().Round(0).UTC(),
 		ChainID:     "chain-" + cmn.RandStr(6),
 		Validators:  genVals,
 	}

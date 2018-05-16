@@ -116,7 +116,7 @@ func (wal *baseWAL) Save(msg WALMessage) {
 	}
 
 	// Write the wal message
-	if err := wal.enc.Encode(&TimedWALMessage{time.Now(), msg}); err != nil {
+	if err := wal.enc.Encode(&TimedWALMessage{time.Now().Round(0).UTC(), msg}); err != nil {
 		cmn.PanicQ(cmn.Fmt("Error writing msg to consensus wal: %v \n\nMessage: %v", err, msg))
 	}
 

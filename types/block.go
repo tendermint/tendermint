@@ -29,7 +29,7 @@ func MakeBlock(height int64, txs []Tx, commit *Commit) *Block {
 	block := &Block{
 		Header: &Header{
 			Height: height,
-			Time:   time.Now(),
+			Time:   time.Now().Round(0), // Strip monotonic.
 			NumTxs: int64(len(txs)),
 		},
 		LastCommit: commit,

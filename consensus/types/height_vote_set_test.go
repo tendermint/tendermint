@@ -55,7 +55,7 @@ func makeVoteHR(t *testing.T, height int64, round int, privVals []types.PrivVali
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        time.Now().Round(0).UTC(),
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{[]byte("fakehash"), types.PartSetHeader{}},
 	}
