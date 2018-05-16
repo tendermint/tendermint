@@ -12,21 +12,39 @@ Quick Start
 Docker
 ~~~~~~
 
+Assuming your application is running in another container with the name ``app``:
+
 ::
 
     docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
-    docker run -it --rm -v "/tmp:/tendermint" -p "46657:46657" --name=tm tendermint/tendermint
+    docker run -it --rm -v "/tmp:/tendermint" -p "46657:46657" --name=tm --link=app tendermint/tendermint node --proxy_app=tcp://app:46658
 
-    docker run -it --rm --link=tm tendermint/monitor tm:46657
+    docker run -it --rm -p "46670:46670" --link=tm tendermint/monitor tm:46657
+
+If you don't have an application yet, but still want to try monitor out, use ``kvstore``:
+
+::
+
+    docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
+    docker run -it --rm -v "/tmp:/tendermint" -p "46657:46657" --name=tm tendermint/tendermint node --proxy_app=kvstore
+
+    docker run -it --rm -p "46670:46670" --link=tm tendermint/monitor tm:46657
 
 Binaries
 ~~~~~~~~
 
-This will be the same as you did for ``tm-bench`` above, except for the last line which should be:
-
 ::
 
     tm-monitor localhost:46657
+
+Build from source
+~~~~~~~~~~~~~~~~~
+
+::
+
+    make get_tools
+    make get_vendor_deps
+    make install
 
 Usage
 ^^^^^
@@ -70,5 +88,6 @@ Development
 
 ::
 
+    make get_tools
     make get_vendor_deps
     make test
