@@ -1,6 +1,8 @@
 package commands
 
 import (
+	"time"
+
 	"github.com/spf13/cobra"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -50,7 +52,8 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
-			ChainID: cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
+			ChainID:     cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
+			GenesisTime: time.Now(),
 		}
 		genDoc.Validators = []types.GenesisValidator{{
 			PubKey: pv.GetPubKey(),

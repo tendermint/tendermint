@@ -174,6 +174,26 @@ func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {
 	}
 }
 
+// If a peer claims that it has 2/3 majority for given blockKey, call this.
+// NOTE: if there are too many peers, or too much peer churn,
+// this can cause memory issues.
+// TODO: implement ability to remove peers too
+func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID p2p.ID, blockID types.BlockID) error {
+	hvs.mtx.Lock()
+	defer hvs.mtx.Unlock()
+	if !types.IsVoteTypeValid(type_) {
+		return fmt.Errorf("SetPeerMaj23: Invalid vote type %v", type_)
+	}
+	voteSet := hvs.getVoteSet(round, type_)
+	if voteSet == nil {
+		return nil // something we don't know about yet
+	}
+	return voteSet.SetPeerMaj23(types.P2PID(peerID), blockID)
+}
+
+//---------------------------------------------------------
+// string and json
+
 func (hvs *HeightVoteSet) String() string {
 	return hvs.StringIndented("")
 }
@@ -207,43 +227,35 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 		indent)
 }
 
-type roundVoteBitArrays struct {
-	Round      int           `json:"round"`
-	Prevotes   *cmn.BitArray `json:"prevotes"`
-	Precommits *cmn.BitArray `json:"precommits"`
-}
-
 func (hvs *HeightVoteSet) MarshalJSON() ([]byte, error) {
 	hvs.mtx.Lock()
 	defer hvs.mtx.Unlock()
+
+	allVotes := hvs.toAllRoundVotes()
+	return cdc.MarshalJSON(allVotes)
+}
+
+func (hvs *HeightVoteSet) toAllRoundVotes() []roundVotes {
 	totalRounds := hvs.round + 1
-	roundsVotes := make([]roundVoteBitArrays, totalRounds)
+	allVotes := make([]roundVotes, totalRounds)
 	// rounds 0 ~ hvs.round inclusive
 	for round := 0; round < totalRounds; round++ {
-		roundsVotes[round] = roundVoteBitArrays{
-			Round:      round,
-			Prevotes:   hvs.roundVoteSets[round].Prevotes.BitArray(),
-			Precommits: hvs.roundVoteSets[round].Precommits.BitArray(),
+		allVotes[round] = roundVotes{
+			Round:              round,
+			Prevotes:           hvs.roundVoteSets[round].Prevotes.VoteStrings(),
+			PrevotesBitArray:   hvs.roundVoteSets[round].Prevotes.BitArrayString(),
+			Precommits:         hvs.roundVoteSets[round].Precommits.VoteStrings(),
+			PrecommitsBitArray: hvs.roundVoteSets[round].Precommits.BitArrayString(),
 		}
 	}
 	// TODO: all other peer catchup rounds
-
-	return cdc.MarshalJSON(roundsVotes)
+	return allVotes
 }
 
-// If a peer claims that it has 2/3 majority for given blockKey, call this.
-// NOTE: if there are too many peers, or too much peer churn,
-// this can cause memory issues.
-// TODO: implement ability to remove peers too
-func (hvs *HeightVoteSet) SetPeerMaj23(round int, type_ byte, peerID p2p.ID, blockID types.BlockID) error {
-	hvs.mtx.Lock()
-	defer hvs.mtx.Unlock()
-	if !types.IsVoteTypeValid(type_) {
-		return fmt.Errorf("SetPeerMaj23: Invalid vote type %v", type_)
-	}
-	voteSet := hvs.getVoteSet(round, type_)
-	if voteSet == nil {
-		return nil // something we don't know about yet
-	}
-	return voteSet.SetPeerMaj23(types.P2PID(peerID), blockID)
+type roundVotes struct {
+	Round              int      `json:"round"`
+	Prevotes           []string `json:"prevotes"`
+	PrevotesBitArray   string   `json:"prevotes_bit_array"`
+	Precommits         []string `json:"precommits"`
+	PrecommitsBitArray string   `json:"precommits_bit_array"`
 }

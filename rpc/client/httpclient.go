@@ -126,6 +126,15 @@ func (c *HTTP) DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 	return result, nil
 }
 
+func (c *HTTP) ConsensusState() (*ctypes.ResultConsensusState, error) {
+	result := new(ctypes.ResultConsensusState)
+	_, err := c.rpc.Call("consensus_state", map[string]interface{}{}, result)
+	if err != nil {
+		return nil, errors.Wrap(err, "ConsensusState")
+	}
+	return result, nil
+}
+
 func (c *HTTP) Health() (*ctypes.ResultHealth, error) {
 	result := new(ctypes.ResultHealth)
 	_, err := c.rpc.Call("health", map[string]interface{}{}, result)
