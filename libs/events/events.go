@@ -44,25 +44,19 @@ type eventSwitch struct {
 }
 
 func NewEventSwitch() EventSwitch {
-	evsw := &eventSwitch{}
+	evsw := &eventSwitch{
+		eventCells: make(map[string]*eventCell),
+		listeners:  make(map[string]*eventListener),
+	}
 	evsw.BaseService = *cmn.NewBaseService(nil, "EventSwitch", evsw)
 	return evsw
 }
 
 func (evsw *eventSwitch) OnStart() error {
-	evsw.BaseService.OnStart()
-	evsw.eventCells = make(map[string]*eventCell)
-	evsw.listeners = make(map[string]*eventListener)
 	return nil
 }
 
-func (evsw *eventSwitch) OnStop() {
-	evsw.mtx.Lock()
-	defer evsw.mtx.Unlock()
-	evsw.BaseService.OnStop()
-	evsw.eventCells = nil
-	evsw.listeners = nil
-}
+func (evsw *eventSwitch) OnStop() {}
 
 func (evsw *eventSwitch) AddListenerForEvent(listenerID, event string, cb EventCallback) {
 	// Get/Create eventCell and listener
