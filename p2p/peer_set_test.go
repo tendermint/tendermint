@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"math/rand"
+	"net"
 	"sync"
 	"testing"
 
@@ -12,23 +13,34 @@ import (
 )
 
 // Returns an empty kvstore peer
-func randPeer() *peer {
+func randPeer(ip net.IP) *peer {
+	if ip == nil {
+		ip = net.IP{127, 0, 0, 1}
+	}
+
 	nodeKey := NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
-	return &peer{
+	p := &peer{
 		nodeInfo: NodeInfo{
 			ID:         nodeKey.ID(),
 			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 		},
 	}
+
+	p.ips = []net.IP{
+		ip,
+	}
+
+	return p
 }
 
 func TestPeerSetAddRemoveOne(t *testing.T) {
 	t.Parallel()
+
 	peerSet := NewPeerSet()
 
 	var peerList []Peer
 	for i := 0; i < 5; i++ {
-		p := randPeer()
+		p := randPeer(net.IP{127, 0, 0, byte(i)})
 		if err := peerSet.Add(p); err != nil {
 			t.Error(err)
 		}
@@ -72,7 +84,7 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 	peers := []Peer{}
 	N := 100
 	for i := 0; i < N; i++ {
-		peer := randPeer()
+		peer := randPeer(net.IP{127, 0, 0, byte(i)})
 		if err := peerSet.Add(peer); err != nil {
 			t.Errorf("Failed to add new peer")
 		}
@@ -96,7 +108,7 @@ func TestPeerSetAddRemoveMany(t *testing.T) {
 func TestPeerSetAddDuplicate(t *testing.T) {
 	t.Parallel()
 	peerSet := NewPeerSet()
-	peer := randPeer()
+	peer := randPeer(nil)
 
 	n := 20
 	errsChan := make(chan error)
@@ -133,10 +145,17 @@ func TestPeerSetAddDuplicate(t *testing.T) {
 	assert.Equal(t, wantNilErrCount, gotNilErrCount, "invalid nil errCount")
 }
 
+func TestPeerSetAddDuplicateIP(t *testing.T) {
+}
+
 func TestPeerSetGet(t *testing.T) {
 	t.Parallel()
-	peerSet := NewPeerSet()
-	peer := randPeer()
+
+	var (
+		peerSet = NewPeerSet()
+		peer    = randPeer(nil)
+	)
+
 	assert.Nil(t, peerSet.Get(peer.ID()), "expecting a nil lookup, before .Add")
 
 	if err := peerSet.Add(peer); err != nil {
@@ -150,8 +169,8 @@ func TestPeerSetGet(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			got, want := peerSet.Get(peer.ID()), peer
-			assert.Equal(t, got, want, "#%d: got=%v want=%v", i, got, want)
+			have, want := peerSet.Get(peer.ID()), peer
+			assert.Equal(t, have, want, "%d: have %v, want %v", i, have, want)
 		}(i)
 	}
 	wg.Wait()

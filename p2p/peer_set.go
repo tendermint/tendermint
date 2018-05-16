@@ -42,11 +42,12 @@ func NewPeerSet() *PeerSet {
 func (ps *PeerSet) Add(peer Peer) error {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
+
 	if ps.lookup[peer.ID()] != nil {
 		return ErrSwitchDuplicatePeerID{peer.ID()}
 	}
 
-	if ps.HasIP(peer.RemoteIP()) {
+	if ps.hasIP(peer.RemoteIP()) {
 		return ErrSwitchDuplicatePeerIP{peer.RemoteIP()}
 	}
 
@@ -71,8 +72,14 @@ func (ps *PeerSet) Has(peerKey ID) bool {
 // address.
 func (ps *PeerSet) HasIP(peerIP net.IP) bool {
 	ps.mtx.Lock()
-	ps.mtx.Unlock()
+	defer ps.mtx.Unlock()
 
+	return ps.hasIP(peerIP)
+}
+
+// hasIP does not acquire a lock so it can be used in public methods which
+// already lock.
+func (ps *PeerSet) hasIP(peerIP net.IP) bool {
 	for _, item := range ps.lookup {
 		if item.peer.RemoteIP().Equal(peerIP) {
 			return true

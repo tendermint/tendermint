@@ -1,8 +1,6 @@
 package p2p
 
 import (
-	golog "log"
-	"net"
 	"testing"
 	"time"
 
@@ -13,8 +11,6 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tmlibs/log"
 )
-
-const testCh = 0x01
 
 func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -108,72 +104,4 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 	p := newPeer(pc, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
-}
-
-type remotePeer struct {
-	PrivKey crypto.PrivKey
-	Config  *PeerConfig
-	addr    *NetAddress
-	quit    chan struct{}
-}
-
-func (p *remotePeer) Addr() *NetAddress {
-	return p.addr
-}
-
-func (p *remotePeer) ID() ID {
-	return PubKeyToID(p.PrivKey.PubKey())
-}
-
-func (p *remotePeer) Start() {
-	l, e := net.Listen("tcp", "127.0.0.1:0") // any available address
-	if e != nil {
-		golog.Fatalf("net.Listen tcp :0: %+v", e)
-	}
-	p.addr = NewNetAddress(PubKeyToID(p.PrivKey.PubKey()), l.Addr())
-	p.quit = make(chan struct{})
-	go p.accept(l)
-}
-
-func (p *remotePeer) Stop() {
-	close(p.quit)
-}
-
-func (p *remotePeer) accept(l net.Listener) {
-	conns := []net.Conn{}
-
-	for {
-		conn, err := l.Accept()
-		if err != nil {
-			golog.Fatalf("Failed to accept conn: %+v", err)
-		}
-		pc, err := newInboundPeerConn(conn, p.Config, p.PrivKey)
-		if err != nil {
-			golog.Fatalf("Failed to create a peer: %+v", err)
-		}
-		_, err = pc.HandshakeTimeout(NodeInfo{
-			ID:         p.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "localhost",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   []byte{testCh},
-		}, 1*time.Second)
-		if err != nil {
-			golog.Fatalf("Failed to perform handshake: %+v", err)
-		}
-
-		conns = append(conns, conn)
-
-		select {
-		case <-p.quit:
-			for _, conn := range conns {
-				if err := conn.Close(); err != nil {
-					golog.Fatal(err)
-				}
-			}
-			return
-		default:
-		}
-	}
 }
