@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.19.3 (TBD)
+## 0.19.3 (May 14th, 2018)
 
 FEATURES
 
@@ -14,6 +14,7 @@ IMPROVEMENTS
 BUG FIXES
 
 - [cmd] Set GenesisTime during `tendermint init`
+- [consensus] fix ValidBlock rules
 
 ## 0.19.2 (April 30th, 2018)
 
