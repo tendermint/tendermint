@@ -12,8 +12,8 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
-	tmquery "github.com/tendermint/tmlibs/pubsub/query"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {

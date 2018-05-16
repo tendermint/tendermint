@@ -11,7 +11,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 /*

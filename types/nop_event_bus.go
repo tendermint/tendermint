@@ -3,7 +3,7 @@ package types
 import (
 	"context"
 
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 type NopEventBus struct{}

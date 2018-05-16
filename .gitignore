@@ -25,3 +25,5 @@ scripts/cutWALUntil/cutWALUntil
 
 .idea/
 *.iml
+
+libs/pubsub/query/fuzz_test/output

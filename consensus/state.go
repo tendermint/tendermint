@@ -11,11 +11,11 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tmlibs/common"
-	tmevents "github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"

@@ -278,12 +278,9 @@
     "clist",
     "common",
     "db",
-    "events",
     "flowrate",
     "log",
     "merkle",
-    "pubsub",
-    "pubsub/query",
     "test"
   ]
   revision = "cc5f287c4798ffe88c04d02df219ecb6932080fd"
@@ -385,6 +382,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a88c20b6e36b3529d6fdcffc3603d9eb193fc3809de8afbba07bad990539b256"
+  inputs-digest = "d85c98dcac32cc1fe05d006aa75e8985f6447a150a041b972a673a65e7681da9"
   solver-name = "gps-cdcl"
   solver-version = 1
