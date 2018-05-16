@@ -66,16 +66,16 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 		lastCommitPrecommits     []*types.Vote
 		expectedAbsentValidators []int32
 	}{
-		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, {ValidatorIndex: 1, Timestamp: now}}, []int32{}},
-		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, nil}, []int32{1}},
-		{"multiple absent", []*types.Vote{nil, nil}, []int32{0, 1}},
+		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, {ValidatorIndex: 1, Timestamp: now}}, [][]byte{}},
+		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, nil}, [][]byte{privKey2.PubKey().Bytes()}},
+		{"multiple absent", []*types.Vote{nil, nil}, [][]byte{privKey.PubKey().Bytes(), privKey2.PubKey().Bytes()}},
 	}
 
 	for _, tc := range testCases {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the absent validator
@@ -120,7 +120,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
 		block.Evidence.Evidence = tc.evidence
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator

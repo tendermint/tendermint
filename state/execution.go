@@ -359,8 +359,8 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
-func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block)
+func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger, vs *types.ValidatorSet) ([]byte, error) {
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, vs)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

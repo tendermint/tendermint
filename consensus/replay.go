@@ -365,7 +365,8 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger)
+		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, new(types.ValidatorSet))
+		// TODO: Temporary, see above comment.
 		if err != nil {
 			return nil, err
 		}
