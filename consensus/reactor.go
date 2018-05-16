@@ -10,6 +10,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
+	tmevents "github.com/tendermint/tmlibs/events"
 	"github.com/tendermint/tmlibs/log"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -48,12 +49,6 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *Consens
 		conS:     consensusState,
 		fastSync: fastSync,
 	}
-	// XXX: modifing state to send us new round steps, votes and proposal heartbeats
-	consensusState.reactorChs = &reactorChs{
-		newRoundSteps:      make(chan *cstypes.RoundState),
-		votes:              make(chan *types.Vote),
-		proposalHeartbeats: make(chan *types.Heartbeat),
-	}
 	conR.BaseReactor = *p2p.NewBaseReactor("ConsensusReactor", conR)
 	return conR
 }
@@ -65,16 +60,12 @@ func (conR *ConsensusReactor) OnStart() error {
 		return err
 	}
 
-	err := conR.startBroadcastRoutine()
-	if err != nil {
-		return err
-	}
-
 	if !conR.FastSync() {
 		err := conR.conS.Start()
 		if err != nil {
 			return err
 		}
+		conR.subscribeToBroadcastEvents()
 	}
 
 	return nil
@@ -106,7 +97,9 @@ func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int
 	err := conR.conS.Start()
 	if err != nil {
 		conR.Logger.Error("Error starting conS", "err", err)
+		return
 	}
+	conR.subscribeToBroadcastEvents()
 }
 
 // GetChannels implements Reactor
@@ -350,28 +343,30 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// startBroadcastRoutine subscribes for new round steps, votes and
-// proposal heartbeats using the channels created for precisely this
-// purpose in consensus state and starts a goroutine to broadcasts
-// events to peers upon receiving them.
-func (conR *ConsensusReactor) startBroadcastRoutine() error {
-	go func() {
-		rchs := conR.conS.reactorChs.(*reactorChs)
-		for {
-			select {
-			case rs := <-rchs.newRoundSteps:
-				conR.broadcastNewRoundStepMessages(rs)
-			case vote := <-rchs.votes:
-				conR.broadcastHasVoteMessage(vote)
-			case heartbeat := <-rchs.proposalHeartbeats:
-				conR.broadcastProposalHeartbeatMessage(heartbeat)
-			case <-conR.Quit():
-				return
-			}
-		}
-	}()
+// subscribeToBroadcastEvents subscribes for new round steps, votes and
+// proposal heartbeats using internal pubsub defined on state to broadcast
+// them to peers upon receiving.
+func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
+	// assert consensus state is running
+	if !conR.conS.IsRunning() {
+		panic("consensus state must be running at this point")
+	}
 
-	return nil
+	const subscriber = "consensus-reactor"
+	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventNewRoundStep,
+		func(data tmevents.EventData) {
+			conR.broadcastNewRoundStepMessages(data.(*cstypes.RoundState))
+		})
+
+	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventVote,
+		func(data tmevents.EventData) {
+			conR.broadcastHasVoteMessage(data.(*types.Vote))
+		})
+
+	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventProposalHeartbeat,
+		func(data tmevents.EventData) {
+			conR.broadcastProposalHeartbeatMessage(data.(*types.Heartbeat))
+		})
 }
 
 func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(hb *types.Heartbeat) {
