@@ -565,7 +565,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	if sw.nodeKey.ID() == peerID {
 		addr := peerNodeInfo.NetAddress()
 
-		// remove the given address from the address book if we're added it earlier
+		// remove the given address from the address book if we added it earlier
 		sw.addrBook.RemoveAddress(addr)
 
 		// add the given address to the address book to avoid dialing ourselves
