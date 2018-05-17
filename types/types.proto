@@ -244,6 +244,7 @@ message Validator {
 message Evidence {
   bytes pub_key = 1;
   int64 height = 2;
+  int64 time = 3;
 }
 
 //----------------------------------------
