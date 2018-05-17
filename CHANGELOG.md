@@ -1,6 +1,17 @@
 # Changelog
 
-## 0.19.4 (TBD)
+## 0.19.4 (May 17th, 2018)
+
+IMPROVEMENTS
+
+- [state] Improve tx indexing by using batches
+- [consensus, state] Improve logging (more consensus logs, fewer tx logs)
+- [spec] Moved to `docs/spec` (TODO cleanup the rest of the docs ...)
+
+
+BUG FIXES
+
+- [consensus] Fix issue #1575 where a late proposer can get stuck
 
 ## 0.19.3 (May 14th, 2018)
 
