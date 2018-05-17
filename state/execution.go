@@ -341,22 +341,16 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 // Fire TxEvent for every tx.
 // NOTE: if Tendermint crashes before commit, some or all of these events may be published again.
 func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *types.Block, abciResponses *ABCIResponses) {
-	// NOTE: do we still need this buffer ?
-	txEventBuffer := types.NewTxEventBuffer(eventBus, int(block.NumTxs))
+	eventBus.PublishEventNewBlock(types.EventDataNewBlock{block})
+	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{block.Header})
+
 	for i, tx := range block.Data.Txs {
-		txEventBuffer.PublishEventTx(types.EventDataTx{types.TxResult{
+		eventBus.PublishEventTx(types.EventDataTx{types.TxResult{
 			Height: block.Height,
 			Index:  uint32(i),
 			Tx:     tx,
 			Result: *(abciResponses.DeliverTx[i]),
 		}})
-	}
-
-	eventBus.PublishEventNewBlock(types.EventDataNewBlock{block})
-	eventBus.PublishEventNewBlockHeader(types.EventDataNewBlockHeader{block.Header})
-	err := txEventBuffer.Flush()
-	if err != nil {
-		logger.Error("Failed to flush event buffer", "err", err)
 	}
 }
 
