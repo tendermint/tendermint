@@ -184,9 +184,6 @@ if os.path.isdir(tools_dir) != True:
 if os.path.isdir(assets_dir) != True:
     os.mkdir(assets_dir)
 
-urllib.urlretrieve(tools_repo+tools_branch+'/ansible/README.rst', filename=tools_dir+'/ansible.rst')
-urllib.urlretrieve(tools_repo+tools_branch+'/ansible/assets/a_plus_t.png', filename=assets_dir+'/a_plus_t.png')
-
 urllib.urlretrieve(tools_repo+tools_branch+'/docker/README.rst', filename=tools_dir+'/docker.rst')
 
 urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/README.rst', filename=tools_dir+'/mintnet-kubernetes.rst')
@@ -195,7 +192,6 @@ urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/gce2.png'
 urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/statefulset.png', filename=assets_dir+'/statefulset.png')
 urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/t_plus_k.png', filename=assets_dir+'/t_plus_k.png')
 
-urllib.urlretrieve(tools_repo+tools_branch+'/terraform-digitalocean/README.rst', filename=tools_dir+'/terraform-digitalocean.rst')
 urllib.urlretrieve(tools_repo+tools_branch+'/tm-bench/README.rst', filename=tools_dir+'/benchmarking.rst')
 urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-monitor/README.rst', filename='tools/monitoring.rst')
 
