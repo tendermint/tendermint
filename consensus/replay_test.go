@@ -538,7 +538,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case *types.PartSetHeader:
 			thisBlockParts = types.NewPartSetFromHeader(*p)
 		case *types.Part:
-			_, err := thisBlockParts.AddPart(p, false)
+			_, err := thisBlockParts.AddPart(p)
 			if err != nil {
 				return nil, nil, err
 			}
