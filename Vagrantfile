@@ -10,31 +10,37 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<-SHELL
-    # add docker repo
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-    add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
-
-    # and golang 1.9 support
-    # official repo doesn't have race detection runtime...
-    # add-apt-repository ppa:gophers/archive
-    add-apt-repository ppa:longsleep/golang-backports
+    apt-get update
 
     # install base requirements
-    apt-get update
     apt-get install -y --no-install-recommends wget curl jq zip \
         make shellcheck bsdmainutils psmisc
-    apt-get install -y docker-ce golang-1.9-go
     apt-get install -y language-pack-en
+
+    # install docker
+    apt-get install -y --no-install-recommends apt-transport-https \
+      ca-certificates curl software-properties-common
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+    add-apt-repository \
+      "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) \
+      stable"
+    apt-get install -y docker-ce
+    usermod -a -G docker vagrant
+
+    # install go
+    wget -q https://dl.google.com/go/go1.10.1.linux-amd64.tar.gz
+    tar -xvf go1.10.1.linux-amd64.tar.gz
+    mv go /usr/local
+    rm -f go1.10.1.linux-amd64.tar.gz
 
     # cleanup
     apt-get autoremove -y
 
-    # needed for docker
-    usermod -a -G docker vagrant
-
     # set env variables
-    echo 'export PATH=$PATH:/usr/lib/go-1.9/bin:/home/vagrant/go/bin' >> /home/vagrant/.bash_profile
+    echo 'export GOROOT=/usr/local/go' >> /home/vagrant/.bash_profile
     echo 'export GOPATH=/home/vagrant/go' >> /home/vagrant/.bash_profile
+    echo 'export PATH=$PATH:$GOROOT/bin:$GOPATH/bin' >> /home/vagrant/.bash_profile
     echo 'export LC_ALL=en_US.UTF-8' >> /home/vagrant/.bash_profile
     echo 'cd go/src/github.com/tendermint/tendermint' >> /home/vagrant/.bash_profile
 
