@@ -214,7 +214,7 @@ Broadcast API
 Earlier, we used the ``broadcast_tx_commit`` endpoint to send a
 transaction. When a transaction is sent to a Tendermint node, it will
 run via ``CheckTx`` against the application. If it passes ``CheckTx``,
-it will be included in the mempool, broadcast to other peers, and
+it will be included in the mempool, broadcasted to other peers, and
 eventually included in a block.
 
 Since there are multiple phases to processing a transaction, we offer
