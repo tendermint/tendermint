@@ -203,10 +203,9 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	defer mem.proxyMtx.Unlock()
 
 	// CACHE
-	if mem.cache.Exists(tx) {
+	if !mem.cache.Push(tx) {
 		return ErrTxInCache
 	}
-	mem.cache.Push(tx)
 	// END CACHE
 
 	// WAL
@@ -461,14 +460,6 @@ func (cache *txCache) Reset() {
 	cache.map_ = make(map[string]struct{}, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
-}
-
-// Exists returns true if the given tx is cached.
-func (cache *txCache) Exists(tx types.Tx) bool {
-	cache.mtx.Lock()
-	_, exists := cache.map_[string(tx)]
-	cache.mtx.Unlock()
-	return exists
 }
 
 // Push adds the given tx to the txCache. It returns false if tx is already in the cache.
