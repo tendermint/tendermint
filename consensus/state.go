@@ -1113,7 +1113,7 @@ func (cs *ConsensusState) enterPrecommitWait(height int64, round int) {
 
 // Enter: +2/3 precommits for block
 func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
-	logger := cs.Logger.With("height", height, "round", round)
+	logger := cs.Logger.With("height", height, "commitRound", commitRound)
 
 	if cs.Height != height || cstypes.RoundStepCommit <= cs.Step {
 		logger.Debug(cmn.Fmt("enterCommit(%v/%v): Invalid args. Current step: %v/%v/%v", height, commitRound, cs.Height, cs.Round, cs.Step))
@@ -1142,7 +1142,7 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 	// Move them over to ProposalBlock if they match the commit hash,
 	// otherwise they'll be cleared in updateToState.
 	if cs.LockedBlock.HashesTo(blockID.Hash) {
-		l.Info("Commit is for locked block. Set ProposalBlock=LockedBlock", "blockHash", blockID.Hash)
+		logger.Info("Commit is for locked block. Set ProposalBlock=LockedBlock", "blockHash", blockID.Hash)
 		cs.ProposalBlock = cs.LockedBlock
 		cs.ProposalBlockParts = cs.LockedBlockParts
 	}
@@ -1150,7 +1150,7 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 	// If we don't have the block being committed, set up to get it.
 	if !cs.ProposalBlock.HashesTo(blockID.Hash) {
 		if !cs.ProposalBlockParts.HasHeader(blockID.PartsHeader) {
-			l.Info("Commit is for a block we don't know about. Set ProposalBlock=nil", "proposal", cs.ProposalBlock.Hash(), "commit", blockID.Hash)
+			logger.Info("Commit is for a block we don't know about. Set ProposalBlock=nil", "proposal", cs.ProposalBlock.Hash(), "commit", blockID.Hash)
 			// We're getting the wrong block.
 			// Set up ProposalBlockParts and keep waiting.
 			cs.ProposalBlock = nil
