@@ -584,7 +584,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		_, err = cs.addProposalBlockPart(msg.Height, msg.Part, peerID != "")
+		_, err = cs.addProposalBlockPart(msg.Height, msg.Part)
 		if err != nil && msg.Round != cs.Round {
 			err = nil
 		}
@@ -1298,7 +1298,7 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit, once we have the full block.
-func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, verify bool) (added bool, err error) {
+func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part) (added bool, err error) {
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
 		return false, nil
@@ -1309,7 +1309,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part, v
 		return false, nil // TODO: bad peer? Return error?
 	}
 
-	added, err = cs.ProposalBlockParts.AddPart(part, verify)
+	added, err = cs.ProposalBlockParts.AddPart(part)
 	if err != nil {
 		return added, err
 	}
