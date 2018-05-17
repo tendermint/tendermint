@@ -49,7 +49,13 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 
 */
 
-var ErrTxInCache = errors.New("Tx already exists in cache")
+var (
+	// ErrTxInCache is returned to the client if we saw tx earlier
+	ErrTxInCache = errors.New("Tx already exists in cache")
+
+	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
+	ErrMempoolIsFull = errors.New("Mempool is full")
+)
 
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
@@ -80,7 +86,6 @@ type Mempool struct {
 }
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-// TODO: Extract logger into arguments.
 func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64) *Mempool {
 	mempool := &Mempool{
 		config:        config,
@@ -201,6 +206,10 @@ func (mem *Mempool) TxsWaitChan() <-chan struct{} {
 func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
+
+	if mem.Size() >= mem.config.Size {
+		return ErrMempoolIsFull
+	}
 
 	// CACHE
 	if !mem.cache.Push(tx) {

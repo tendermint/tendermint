@@ -136,6 +136,12 @@ like the file below, however, double check by inspecting the
     broadcast = true
     wal_dir = "data/mempool.wal"
 
+    # size of the mempool
+    size = 100000
+
+    # size of the cache (used to filter transactions we saw earlier)
+    cache_size = 100000
+
     ##### consensus configuration options #####
     [consensus]
 
