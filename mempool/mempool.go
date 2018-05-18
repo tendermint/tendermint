@@ -49,7 +49,13 @@ TODO: Better handle abci client errors. (make it automatically handle connection
 
 */
 
-var ErrTxInCache = errors.New("Tx already exists in cache")
+var (
+	// ErrTxInCache is returned to the client if we saw tx earlier
+	ErrTxInCache = errors.New("Tx already exists in cache")
+
+	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
+	ErrMempoolIsFull = errors.New("Mempool is full")
+)
 
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
@@ -80,7 +86,6 @@ type Mempool struct {
 }
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-// TODO: Extract logger into arguments.
 func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64) *Mempool {
 	mempool := &Mempool{
 		config:        config,
@@ -202,11 +207,14 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
+	if mem.Size() >= mem.config.Size {
+		return ErrMempoolIsFull
+	}
+
 	// CACHE
-	if mem.cache.Exists(tx) {
+	if !mem.cache.Push(tx) {
 		return ErrTxInCache
 	}
-	mem.cache.Push(tx)
 	// END CACHE
 
 	// WAL
@@ -264,8 +272,6 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
-
-			// TODO: handle other retcodes
 		}
 	default:
 		// ignore other messages
@@ -461,14 +467,6 @@ func (cache *txCache) Reset() {
 	cache.map_ = make(map[string]struct{}, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
-}
-
-// Exists returns true if the given tx is cached.
-func (cache *txCache) Exists(tx types.Tx) bool {
-	cache.mtx.Lock()
-	_, exists := cache.map_[string(tx)]
-	cache.mtx.Unlock()
-	return exists
 }
 
 // Push adds the given tx to the txCache. It returns false if tx is already in the cache.
