@@ -1,8 +1,8 @@
 Transactional Semantics
 =======================
 
-In `"Using
-Tendermint"<./specification/using-tendermint.html#broadcast-api>`__ we
+In `Using
+Tendermint <./using-tendermint.html#broadcast-api>`__ we
 discussed different API endpoints for sending transactions and
 differences between them.
 
@@ -18,7 +18,7 @@ to peers the node crashes.
 
 We are planning to provide such guarantees by using a WAL and
 replaying transactions (See
-`GH#248<https://github.com/tendermint/tendermint/issues/248>`__), but
+`GH#248 <https://github.com/tendermint/tendermint/issues/248>`__), but
 it's non-trivial to do this all efficiently.
 
 The temporary solution is for clients to monitor the node and resubmit
