@@ -153,7 +153,7 @@ jobs:
       - checkout
       - run: mkdir -p $GOPATH/src/github.com/tendermint
       - run: ln -sf /home/circleci/project $GOPATH/src/github.com/tendermint/tendermint
-      - run: bash test/circleci/p2p.sh
+      - run: bash test/p2p/circleci.sh
 
   upload_coverage:
     <<: *defaults
