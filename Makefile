@@ -86,7 +86,7 @@ test_race:
 test_cover:
 	@ bash tests/test_cover.sh
 
-test_app:
+test_apps:
 	# test the counter using a go test script
 	@ bash tests/test_app/test.sh
 

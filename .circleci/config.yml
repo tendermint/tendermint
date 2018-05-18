@@ -46,7 +46,7 @@ jobs:
           paths:
             - /go/src/github.com/tendermint/abci
 
-  test_integration:
+  test_apps:
     <<: *defaults
     steps:
       - attach_workspace:
@@ -56,10 +56,10 @@ jobs:
       - restore_cache:
           key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Run integration tests
+          name: Run apps tests
           command: |
             export PATH="$GOBIN:$PATH"
-            bash tests/test.sh
+            bash tests/test_app/test.sh
 
   test_cover:
     <<: *defaults
@@ -111,9 +111,9 @@ workflows:
       - test_cover:
           requires:
             - setup_dependencies
-      - test_integration:
+      - test_apps:
           requires:
             - setup_dependencies
       - upload_coverage:
           requires:
-            - test_integration
+            - test_cover
