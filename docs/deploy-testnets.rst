@@ -29,23 +29,28 @@ Here are the steps to setting up a testnet manually:
    ``46656``. Thus, if the IP addresses of your nodes were
    ``192.168.0.1, 192.168.0.2, 192.168.0.3, 192.168.0.4``, the command
    would look like:
-   ``tendermint node --proxy_app=kvstore --p2p.persistent_peers=96663a3dd0d7b9d17d4c8211b191af259621c693@192.168.0.1:46656, 429fcf25974313b95673f58d77eacdd434402665@192.168.0.2:46656, 0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@192.168.0.3:46656, f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@192.168.0.4:46656``.
+
+::
+
+    tendermint node --proxy_app=kvstore --p2p.persistent_peers=96663a3dd0d7b9d17d4c8211b191af259621c693@192.168.0.1:46656, 429fcf25974313b95673f58d77eacdd434402665@192.168.0.2:46656, 0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@192.168.0.3:46656, f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@192.168.0.4:46656
 
 After a few seconds, all the nodes should connect to each other and start
 making blocks! For more information, see the Tendermint Networks section
 of `the guide to using Tendermint <using-tendermint.html>`__.
 
-While the manual deployment is easy enough, an automated deployment is
-usually quicker. The below examples show different tools that can be used
-for automated deployments.
+But wait! Steps 3 and 4 are quite manual. Instead, use `this script <https://github.com/tendermint/tendermint/blob/develop/docs/examples/init_testnet.sh>`__, which does the heavy lifting for you. And it gets better.
+
+Instead of the previously linked script to initialize the files required for a testnet, we have the ``tendermint testnet`` command. By default, running ``tendermint testnet`` will create all the required files, just like the script. Of course, you'll still need to manually edit some fields in the ``config.toml``. Alternatively, see the available flags to auto-populate the ``config.toml`` with the fields that would otherwise be passed in via flags when running ``tendermint node``. As you might imagine, this command is useful for manual or automated deployments.
 
 Automated Deployments
 ---------------------
 
+The easiest and fastest way to get a testnet up in less than 5 minutes.
+
 Local
 ^^^^^
 
-With ``docker`` installed, run the command:
+With ``docker`` and ``docker-compose`` installed, run the command:
 
 ::
 
@@ -53,16 +58,7 @@ With ``docker`` installed, run the command:
 
 from the root of the tendermint repository. This will spin up a 4-node local testnet.
 
-Cloud Deployment using Kubernetes
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The `mintnet-kubernetes tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__
-allows automating the deployment of a Tendermint network on an already
-provisioned Kubernetes cluster. For simple provisioning of a Kubernetes
-cluster, check out the `Google Cloud Platform <https://cloud.google.com/>`__.
-
-Cloud Deployment using Terraform and Ansible
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Cloud
+^^^^^
 
 See the `next section <./terraform-and-ansible.html>`__ for details.
-
