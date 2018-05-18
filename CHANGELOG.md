@@ -1,5 +1,7 @@
 # Changelog
 
+## 0.19.5 (TBD)
+
 ## 0.19.4 (May 17th, 2018)
 
 IMPROVEMENTS
