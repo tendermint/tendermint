@@ -12,6 +12,8 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
+var testIPSuffix = 0
+
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
@@ -50,6 +52,16 @@ func (pc peerConn) ID() ID {
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
 	if len(pc.ips) > 0 {
+		return pc.ips[0]
+	}
+
+	if pc.conn.RemoteAddr().String() == "pipe" {
+		pc.ips = []net.IP{
+			net.IP{172, 16, 0, byte(testIPSuffix)},
+		}
+
+		testIPSuffix++
+
 		return pc.ips[0]
 	}
 
