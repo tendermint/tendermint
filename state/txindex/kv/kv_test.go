@@ -190,7 +190,7 @@ func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
 	}
 }
 
-func benchmarkTxIndex(txsCount int, b *testing.B) {
+func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	tx := types.Tx("HELLO WORLD")
 	txResult := &types.TxResult{
 		Height: 1,
@@ -215,7 +215,7 @@ func benchmarkTxIndex(txsCount int, b *testing.B) {
 	indexer := NewTxIndex(store)
 
 	batch := txindex.NewBatch(txsCount)
-	for i := 0; i < txsCount; i++ {
+	for i := int64(0); i < txsCount; i++ {
 		if err := batch.Add(txResult); err != nil {
 			b.Fatal(err)
 		}

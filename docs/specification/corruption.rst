@@ -38,6 +38,7 @@ Recovering from data corruption can be hard and time-consuming. Here are two app
 
 1) Delete the WAL file and restart Tendermint. It will attempt to sync with other peers.
 2) Try to repair the WAL file manually:
+
   1. Create a backup of the corrupted WAL file:
 
   .. code:: bash

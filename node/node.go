@@ -343,6 +343,7 @@ func NewNode(config *cfg.Config,
 	}
 
 	indexerService := txindex.NewIndexerService(txIndexer, eventBus)
+	indexerService.SetLogger(logger.With("module", "txindex"))
 
 	// run the profile server
 	profileHost := config.ProfListenAddress
