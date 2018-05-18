@@ -272,8 +272,6 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
-
-			// TODO: handle other retcodes
 		}
 	default:
 		// ignore other messages
