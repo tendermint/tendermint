@@ -9,7 +9,7 @@ VOLUME [ /tendermint ]
 WORKDIR /tendermint
 EXPOSE 46656 46657
 ENTRYPOINT ["/usr/bin/wrapper.sh"]
-CMD ["node", "--proxy_app", "dummy"]
+CMD ["node", "--proxy_app", "kvstore"]
 STOPSIGNAL SIGTERM
 
 COPY wrapper.sh /usr/bin/wrapper.sh
