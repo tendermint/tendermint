@@ -4,6 +4,8 @@
 
 - [p2p] Change the KDF to HKDF from SHA256 & RIPEMD160 for better security.
 
+## 0.19.5 (TBD)
+
 ## 0.19.4 (May 17th, 2018)
 
 IMPROVEMENTS

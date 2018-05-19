@@ -335,6 +335,7 @@ type MempoolConfig struct {
 	RecheckEmpty bool   `mapstructure:"recheck_empty"`
 	Broadcast    bool   `mapstructure:"broadcast"`
 	WalPath      string `mapstructure:"wal_dir"`
+	Size         int    `mapstructure:"size"`
 	CacheSize    int    `mapstructure:"cache_size"`
 }
 
@@ -345,6 +346,7 @@ func DefaultMempoolConfig() *MempoolConfig {
 		RecheckEmpty: true,
 		Broadcast:    true,
 		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
+		Size:         100000,
 		CacheSize:    100000,
 	}
 }

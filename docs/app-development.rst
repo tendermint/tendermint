@@ -178,21 +178,22 @@ connection, to query the local state of the app.
 Mempool Connection
 ~~~~~~~~~~~~~~~~~~
 
-The mempool connection is used *only* for CheckTx requests. Transactions
-are run using CheckTx in the same order they were received by the
-validator. If the CheckTx returns ``OK``, the transaction is kept in
-memory and relayed to other peers in the same order it was received.
-Otherwise, it is discarded.
+The mempool connection is used *only* for CheckTx requests.
+Transactions are run using CheckTx in the same order they were
+received by the validator. If the CheckTx returns ``OK``, the
+transaction is kept in memory and relayed to other peers in the same
+order it was received. Otherwise, it is discarded.
 
-CheckTx requests run concurrently with block processing; so they should
-run against a copy of the main application state which is reset after
-every block. This copy is necessary to track transitions made by a
-sequence of CheckTx requests before they are included in a block. When a
-block is committed, the application must ensure to reset the mempool
-state to the latest committed state. Tendermint Core will then filter
-through all transactions in the mempool, removing any that were included
-in the block, and re-run the rest using CheckTx against the post-Commit
-mempool state.
+CheckTx requests run concurrently with block processing; so they
+should run against a copy of the main application state which is reset
+after every block. This copy is necessary to track transitions made by
+a sequence of CheckTx requests before they are included in a block.
+When a block is committed, the application must ensure to reset the
+mempool state to the latest committed state. Tendermint Core will then
+filter through all transactions in the mempool, removing any that were
+included in the block, and re-run the rest using CheckTx against the
+post-Commit mempool state (this behaviour can be turned off with
+``[mempool] recheck = false``).
 
 .. container:: toggle
 
@@ -225,6 +226,23 @@ mempool state.
                 return ResponseCheckTx.newBuilder().setCode(CodeType.OK).build();
             }
         }
+
+Replay Protection
+^^^^^^^^^^^^^^^^^
+To prevent old transactions from being replayed, CheckTx must
+implement replay protection.
+
+Tendermint provides the first defence layer by keeping a lightweight
+in-memory cache of 100k (``[mempool] cache_size``) last transactions in
+the mempool. If Tendermint is just started or the clients sent more
+than 100k transactions, old transactions may be sent to the
+application. So it is important CheckTx implements some logic to
+handle them.
+
+There are cases where a transaction will (or may) become valid in some
+future state, in which case you probably want to disable Tendermint's
+cache. You can do that by setting ``[mempool] cache_size = 0`` in the
+config.
 
 Consensus Connection
 ~~~~~~~~~~~~~~~~~~~~
