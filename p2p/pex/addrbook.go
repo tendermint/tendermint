@@ -186,7 +186,7 @@ func (a *addrBook) RemoveAddress(addr *p2p.NetAddress) {
 	if ka == nil {
 		return
 	}
-	a.Logger.Info("Remove address from book", "addr", ka.Addr, "ID", ka.ID)
+	a.Logger.Info("Remove address from book", "addr", ka.Addr, "ID", ka.ID())
 	a.removeFromAllBuckets(ka)
 }
 

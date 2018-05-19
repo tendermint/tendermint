@@ -97,7 +97,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 
 	incompletePartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 2})
 	uncontiguousPartSet := types.NewPartSetFromHeader(types.PartSetHeader{Total: 0})
-	uncontiguousPartSet.AddPart(part2, false)
+	uncontiguousPartSet.AddPart(part2)
 
 	header1 := types.Header{
 		Height:  1,

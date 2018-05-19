@@ -79,11 +79,11 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"
-  version = "~0.9.7"
+  version = "0.9.9"
 
-[[constraint]]
+[[override]]
   name = "github.com/tendermint/tmlibs"
-  version = "~0.8.2-rc0"
+  version = "~0.8.3-rc0"
 
 [[constraint]]
   name = "google.golang.org/grpc"

@@ -74,7 +74,18 @@ func TestDumpConsensusState(t *testing.T) {
 		cons, err := nc.DumpConsensusState()
 		require.Nil(t, err, "%d: %+v", i, err)
 		assert.NotEmpty(t, cons.RoundState)
-		assert.Empty(t, cons.PeerRoundStates)
+		assert.Empty(t, cons.Peers)
+	}
+}
+
+func TestConsensusState(t *testing.T) {
+	for i, c := range GetClients() {
+		// FIXME: fix server so it doesn't panic on invalid input
+		nc, ok := c.(client.NetworkClient)
+		require.True(t, ok, "%d", i)
+		cons, err := nc.ConsensusState()
+		require.Nil(t, err, "%d: %+v", i, err)
+		assert.NotEmpty(t, cons.RoundState)
 	}
 }
 

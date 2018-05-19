@@ -34,7 +34,7 @@ type Batch struct {
 }
 
 // NewBatch creates a new Batch.
-func NewBatch(n int) *Batch {
+func NewBatch(n int64) *Batch {
 	return &Batch{
 		Ops: make([]*types.TxResult, n),
 	}

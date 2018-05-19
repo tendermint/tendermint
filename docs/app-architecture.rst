@@ -66,15 +66,14 @@ and possibly await a response). And one method to query app-specific
 data from the ABCI application.
 
 Pros:
-* Server code already written
-* Access to block headers to validate merkle proofs (nice for light clients)
-* Basic read/write functionality is supported
+
+- Server code already written
+- Access to block headers to validate merkle proofs (nice for light clients)
+- Basic read/write functionality is supported
 
 Cons:
-* Limited interface to app. All queries must be serialized into
-[]byte (less expressive than JSON over HTTP) and there is no way to push
-data from ABCI app to the client (eg. notify me if account X receives a
-transaction)
+
+- Limited interface to app. All queries must be serialized into []byte (less expressive than JSON over HTTP) and there is no way to push data from ABCI app to the client (eg. notify me if account X receives a transaction)
 
 Custom ABCI server
 ~~~~~~~~~~~~~~~~~~
@@ -92,14 +91,19 @@ store. For "reads", we can do any queries we wish that are supported by
 our architecture, using any web technology that is useful. The general
 architecture is shown in the following diagram:
 
-Pros: \* Separates application logic from blockchain logic \* Allows
-much richer, more flexible client-facing API \* Allows pub-sub, watching
-certain fields, etc.
+.. figure:: assets/tm-application-example.png
 
-Cons: \* Access to ABCI app can be dangerous (be VERY careful not to
-write unless it comes from the validator node) \* No direct access to
-the blockchain headers to verify tx \* You must write your own API (but
-maybe that's a pro...)
+Pros:
+
+- Separates application logic from blockchain logic
+- Allows much richer, more flexible client-facing API
+- Allows pub-sub, watching certain fields, etc.
+
+Cons:
+
+- Access to ABCI app can be dangerous (be VERY careful not to write unless it comes from the validator node)
+- No direct access to the blockchain headers to verify tx
+- You must write your own API (but maybe that's a pro...)
 
 Hybrid solutions
 ~~~~~~~~~~~~~~~~
@@ -108,9 +112,13 @@ Likely the least secure but most versatile. The client can access both
 the tendermint node for all blockchain info, as well as a custom app
 server, for complex queries and pub-sub on the abci app.
 
-Pros: All from both above solutions
+Pros:
 
-Cons: Even more complexity; even more attack vectors (less
+- All from both above solutions
+
+Cons:
+
+- Even more complexity; even more attack vectors (less
 security)
 
 Scalability
