@@ -28,8 +28,11 @@ genesis file (``genesis.json``) containing the associated public key,
 in ``$TMHOME/config``.
 This is all that's necessary to run a local testnet with one validator.
 
-For more elaborate initialization, see our `testnet deployment
-tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__.
+For more elaborate initialization, see the `tesnet` command:
+
+::
+
+    tendermint testnet --help
 
 Run
 ---
