@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.4 (TBD)
+
+BREAKING CHANGES:
+
+- [types] Added `type` field to `Evidence` (opaque bytes indicating kind of fraud)
+- [types] Added `time` field to `Evidence` (note that this is the timestamp of the block which was double-signed, not the time the evidence was received)
+
 ## 0.10.3 (April 9, 2018)
 
 IMPROVEMENTS:
