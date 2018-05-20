@@ -2,7 +2,7 @@
 
 ## 0.19.5
 
-May 20th, 2018
+*May 20th, 2018*
 
 BREAKING CHANGES
 
@@ -14,6 +14,7 @@ FEATURES
 
 - [rpc] `/tx_search` takes `page` and `per_page` args to paginate results
 - [rpc] `/unconfirmed_txs` takes `limit` arg to limit the output
+- [config] `mempool.size` and `mempool.cache_size` options
 
 IMPROVEMENTS
 
