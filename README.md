@@ -39,18 +39,17 @@ Go version | Go1.9 or higher
 
 See the [install instructions](/docs/install.rst)
 
-## Documentation
+## Quick Start
 
-- [Run a single Tendermint
-  node](/docs/using-tendermint.rst)
-- [Run a local Tendermint cluster using docker-compose](/networks/local)
-- [Run a remote Tendermint cluster using terraform and ansible](/networks/remote)
+- [Single node](/docs/using-tendermint.rst)
+- [Local cluster using docker-compose](/networks/local)
+- [Remote cluster using terraform and ansible](/networks/remote)
 
 ## Resources
 
 ### Tendermint Core
 
-For more on Tendermint and how to build apps, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+For more, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
 Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
 
 ### Sub-projects
