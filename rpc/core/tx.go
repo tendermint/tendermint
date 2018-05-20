@@ -6,6 +6,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tmlibs/common"
 	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
@@ -104,7 +105,8 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	}, nil
 }
 
-// TxSearch allows you to query for multiple transactions results.
+// TxSearch allows you to query for multiple transactions results. It returns a
+// list of transactions (maximum ?per_page entries) and the total count.
 //
 // ```shell
 // curl "localhost:46657/tx_search?query=\"account.owner='Ivan'\"&prove=true"
@@ -120,36 +122,37 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 //
 // ```json
 // {
-//   "result": [
-//     {
-//       "proof": {
-//         "Proof": {
-//           "aunts": [
-//             "J3LHbizt806uKnABNLwG4l7gXCA=",
-//             "iblMO/M1TnNtlAefJyNCeVhjAb0=",
-//             "iVk3ryurVaEEhdeS0ohAJZ3wtB8=",
-//             "5hqMkTeGqpct51ohX0lZLIdsn7Q=",
-//             "afhsNxFnLlZgFDoyPpdQSe0bR8g="
-//           ]
-//         },
-//         "Data": "mvZHHa7HhZ4aRT0xMDA=",
-//         "RootHash": "F6541223AA46E428CB1070E9840D2C3DF3B6D776",
-//         "Total": 32,
-//         "Index": 31
-//       },
-//       "tx": "mvZHHa7HhZ4aRT0xMDA=",
-//       "tx_result": {},
-//       "index": 31,
-//       "height": 12,
-//       "hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
-//     }
-//   ],
+//   "jsonrpc": "2.0",
 //   "id": "",
-//   "jsonrpc": "2.0"
+//   "result": {
+// 	   "txs": [
+//       {
+//         "proof": {
+//           "Proof": {
+//             "aunts": [
+//               "J3LHbizt806uKnABNLwG4l7gXCA=",
+//               "iblMO/M1TnNtlAefJyNCeVhjAb0=",
+//               "iVk3ryurVaEEhdeS0ohAJZ3wtB8=",
+//               "5hqMkTeGqpct51ohX0lZLIdsn7Q=",
+//               "afhsNxFnLlZgFDoyPpdQSe0bR8g="
+//             ]
+//           },
+//           "Data": "mvZHHa7HhZ4aRT0xMDA=",
+//           "RootHash": "F6541223AA46E428CB1070E9840D2C3DF3B6D776",
+//           "Total": 32,
+//           "Index": 31
+//         },
+//         "tx": "mvZHHa7HhZ4aRT0xMDA=",
+//         "tx_result": {},
+//         "index": 31,
+//         "height": 12,
+//         "hash": "2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
+//       }
+//     ],
+//     "total_count": 1
+//   }
 // }
 // ```
-//
-// Returns transactions matching the given query.
 //
 // ### Query Parameters
 //
@@ -157,6 +160,8 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 // |-----------+--------+---------+----------+-----------------------------------------------------------|
 // | query     | string | ""      | true     | Query                                                     |
 // | prove     | bool   | false   | false    | Include proofs of the transactions inclusion in the block |
+// | page      | int    | 1       | false    | Page number (1-based)                                     |
+// | per_page  | int    | 30      | false    | Number of entries per page (max: 100)                     |
 //
 // ### Returns
 //
@@ -166,7 +171,7 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 // - `index`: `int` - index of the transaction
 // - `height`: `int` - height of the block where this transaction was in
 // - `hash`: `[]byte` - hash of the transaction
-func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
+func TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSearch, error) {
 	// if index is disabled, return error
 	if _, ok := txIndexer.(*null.TxIndex); ok {
 		return nil, fmt.Errorf("Transaction indexing is disabled")
@@ -182,11 +187,15 @@ func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 		return nil, err
 	}
 
-	// TODO: we may want to consider putting a maximum on this length and somehow
-	// informing the user that things were truncated.
-	apiResults := make([]*ctypes.ResultTx, len(results))
+	totalCount := len(results)
+	page = validatePage(page, perPage, totalCount)
+	perPage = validatePerPage(perPage)
+	skipCount := (page - 1) * perPage
+
+	apiResults := make([]*ctypes.ResultTx, cmn.MinInt(perPage, totalCount-skipCount))
 	var proof types.TxProof
-	for i, r := range results {
+	for i := 0; i < len(apiResults); i++ {
+		r := results[skipCount+i]
 		height := r.Height
 		index := r.Index
 
@@ -205,5 +214,5 @@ func TxSearch(query string, prove bool) ([]*ctypes.ResultTx, error) {
 		}
 	}
 
-	return apiResults, nil
+	return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
 }

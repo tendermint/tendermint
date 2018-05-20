@@ -172,6 +172,12 @@ type ResultTx struct {
 	Proof    types.TxProof          `json:"proof,omitempty"`
 }
 
+// Result of searching for txs
+type ResultTxSearch struct {
+	Txs        []*ResultTx `json:"txs"`
+	TotalCount int         `json:"total_count"`
+}
+
 // List of mempool txs
 type ResultUnconfirmedTxs struct {
 	N   int        `json:"n_txs"`
