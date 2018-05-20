@@ -24,9 +24,7 @@ _NOTE: This is alpha software. Please contact us if you intend to run it in prod
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For more information, from introduction to installation and application development, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
-
-For protocol details, see [the specification](./docs/specification/new-spec).
+For protocol details, see [the specification](/docs/spec).
 
 ## Minimum requirements
 
@@ -36,19 +34,20 @@ Go version | Go1.9 or higher
 
 ## Install
 
-To download pre-built binaries, see our [downloads page](https://tendermint.com/downloads).
+See the [install instructions](/docs/install.rst)
 
-To install from source, you should be able to:
+## Documentation
 
-`go get -u github.com/tendermint/tendermint/cmd/tendermint`
-
-For more details (or if it fails), [read the docs](https://tendermint.readthedocs.io/en/master/install.html).
+- [Run a single Tendermint
+  node](/docs/using-tendermint.rst)
+- [Run a local Tendermint cluster using docker-compose](/networks/local)
+- [Run a remote Tendermint cluster using terraform and ansible](/networks/remote)
 
 ## Resources
 
 ### Tendermint Core
 
-To use Tendermint, build apps on it, or develop it, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+For more on Tendermint and how to build apps, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
 Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
 
 ### Sub-projects
