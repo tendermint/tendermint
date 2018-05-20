@@ -31,7 +31,7 @@ func TestNodeStartStop(t *testing.T) {
 	assert.NoError(t, err)
 	select {
 	case <-blockCh:
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("timed out waiting for the node to produce a block")
 	}
 

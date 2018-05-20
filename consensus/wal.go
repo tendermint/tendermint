@@ -110,8 +110,9 @@ func (wal *baseWAL) OnStop() {
 	wal.group.Stop()
 }
 
-// called in newStep and for each receive on the
-// peerMsgQueue and the timoutTicker
+// Write is called in newStep and for each receive on the
+// peerMsgQueue and the timoutTicker.
+// NOTE: does not call fsync()
 func (wal *baseWAL) Write(msg WALMessage) {
 	if wal == nil {
 		return
@@ -119,25 +120,21 @@ func (wal *baseWAL) Write(msg WALMessage) {
 
 	// Write the wal message
 	if err := wal.enc.Encode(&TimedWALMessage{time.Now(), msg}); err != nil {
-		cmn.PanicQ(cmn.Fmt("Error writing msg to consensus wal: %v \n\nMessage: %v", err, msg))
+		panic(cmn.Fmt("Error writing msg to consensus wal: %v \n\nMessage: %v", err, msg))
 	}
 }
 
-// called when we receive a msg from ourselves
-// so that we write to disk before sending signed messages
+// WriteSync is called when we receive a msg from ourselves
+// so that we write to disk before sending signed messages.
+// NOTE: calls fsync()
 func (wal *baseWAL) WriteSync(msg WALMessage) {
 	if wal == nil {
 		return
 	}
 
-	// Write the wal message
-	if err := wal.enc.Encode(&TimedWALMessage{time.Now(), msg}); err != nil {
-		cmn.PanicQ(cmn.Fmt("Error writing msg to consensus wal: %v \n\nMessage: %v", err, msg))
-	}
-
-	// TODO: only flush when necessary
+	wal.Write(msg)
 	if err := wal.group.Flush(); err != nil {
-		cmn.PanicQ(cmn.Fmt("Error flushing consensus wal buf to file. Error: %v \n", err))
+		panic(cmn.Fmt("Error flushing consensus wal buf to file. Error: %v \n", err))
 	}
 }
 
