@@ -229,6 +229,9 @@ message Header {
   // hashes
   bytes last_block_hash = 6;
   bytes app_hash = 7;
+
+  // consensus
+  RequestValidator proposer = 8;
 }
 
 // Validator for use in responses
