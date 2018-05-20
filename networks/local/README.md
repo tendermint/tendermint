@@ -1,27 +1,28 @@
-# Local Docker Testnet
+# Local Cluster with Docker Compose
 
 ## Requirements
 
+- [Install tendermint](/docs/install.rst)
 - [Install docker](https://docs.docker.com/engine/installation/)
 - [Install docker-compose](https://docs.docker.com/compose/install/)
 
 ## Build
 
-Build the `tendermint` binary and the `tendermint/localnode` docker image:
+Build the `tendermint` binary and the `tendermint/localnode` docker image.
+
+Note the binary will be mounted into the container so it can be updated without
+rebuilding the image.
 
 ```
 cd $GOPATH/src/github.com/tendermint/tendermint
 
-# Install dependencies (skip if already done)
-make get_tools
-make get_vendor_deps
-
-# Build binary in ./build
+# Build the linux binary in ./build
 make build-linux
 
 # Build tendermint/localnode image
 make build-docker-localnode
 ```
+
 
 ## Run a testnet
 
