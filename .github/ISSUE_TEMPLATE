@@ -19,10 +19,6 @@ in a case of bug.
 
 **ABCI app** (name for built-in, URL for self-written if it's publicly available):
 
-
-**Merkleeyes version** (use `git rev-parse --verify HEAD`, skip if you don't use it):
-
-
 **Environment**:
 - **OS** (e.g. from /etc/os-release):
 - **Install tools**:

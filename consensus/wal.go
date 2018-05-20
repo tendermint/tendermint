@@ -50,7 +50,8 @@ func RegisterWALMessages(cdc *amino.Codec) {
 
 // WAL is an interface for any write-ahead logger.
 type WAL interface {
-	Save(WALMessage)
+	Write(WALMessage)
+	WriteSync(WALMessage)
 	Group() *auto.Group
 	SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error)
 
@@ -98,7 +99,7 @@ func (wal *baseWAL) OnStart() error {
 	if err != nil {
 		return err
 	} else if size == 0 {
-		wal.Save(EndHeightMessage{0})
+		wal.WriteSync(EndHeightMessage{0})
 	}
 	err = wal.group.Start()
 	return err
@@ -109,8 +110,22 @@ func (wal *baseWAL) OnStop() {
 	wal.group.Stop()
 }
 
-// called in newStep and for each pass in receiveRoutine
-func (wal *baseWAL) Save(msg WALMessage) {
+// called in newStep and for each receive on the
+// peerMsgQueue and the timoutTicker
+func (wal *baseWAL) Write(msg WALMessage) {
+	if wal == nil {
+		return
+	}
+
+	// Write the wal message
+	if err := wal.enc.Encode(&TimedWALMessage{time.Now(), msg}); err != nil {
+		cmn.PanicQ(cmn.Fmt("Error writing msg to consensus wal: %v \n\nMessage: %v", err, msg))
+	}
+}
+
+// called when we receive a msg from ourselves
+// so that we write to disk before sending signed messages
+func (wal *baseWAL) WriteSync(msg WALMessage) {
 	if wal == nil {
 		return
 	}
@@ -297,8 +312,9 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 
 type nilWAL struct{}
 
-func (nilWAL) Save(m WALMessage)  {}
-func (nilWAL) Group() *auto.Group { return nil }
+func (nilWAL) Write(m WALMessage)     {}
+func (nilWAL) WriteSync(m WALMessage) {}
+func (nilWAL) Group() *auto.Group     { return nil }
 func (nilWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
 	return nil, false, nil
 }
