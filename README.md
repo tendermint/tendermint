@@ -26,8 +26,12 @@ and securely replicates it on many machines.
 
 For protocol details, see [the specification](/docs/spec).
 
+## Security
+
 To report a security vulnerability, see our [bug bounty
-program](SECURITY.md).
+program](https://tendermint.com/security).
+
+For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.md)
 
 ## Minimum requirements
 
