@@ -1,6 +1,27 @@
 # Changelog
 
-## 0.19.5 (TBD)
+## 0.19.5
+
+May 20th, 2018
+
+BREAKING CHANGES
+
+- [rpc/client] TxSearch and UnconfirmedTxs have new arguments (see below)
+- [version] Breaking changes to Go APIs will not be reflected in breaking
+  version change, but will be included in changelog.
+
+FEATURES
+
+- [rpc] `/tx_search` takes `page` and `per_page` args to paginate results
+- [rpc] `/unconfirmed_txs` takes `limit` arg to limit the output
+
+IMPROVEMENTS
+
+- [docs] Lots of updates
+
+BUG FIXES
+
+- [mempool] Enforce upper bound on number of transactions
 
 ## 0.19.4 (May 17th, 2018)
 
