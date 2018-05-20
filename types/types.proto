@@ -255,6 +255,7 @@ message Evidence {
   RequestValidator validator = 2;
   int64 height = 3;
   int64 time = 4;
+  int64 total_voting_power = 5;
 }
 
 //----------------------------------------
