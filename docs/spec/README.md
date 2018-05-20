@@ -10,12 +10,17 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ## Contents
 
+- [Overview](#overview)
+
 ### Data Structures
 
-- [Overview](#overview)
-- [Encoding and Digests](encoding.md)
-- [Blockchain](blockchain.md)
-- [State](state.md)
+- [Encoding and Digests](./blockchain/encoding.md)
+- [Blockchain](./blockchain/blockchain.md)
+- [State](./blockchain/state.md)
+
+### Consensus Protocol
+
+- TODO
 
 ### P2P and Network Protocols
 
