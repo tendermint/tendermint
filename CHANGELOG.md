@@ -7,13 +7,14 @@
 BREAKING CHANGES
 
 - [rpc/client] TxSearch and UnconfirmedTxs have new arguments (see below)
+- [rpc/client] TxSearch returns ResultTxSearch
 - [version] Breaking changes to Go APIs will not be reflected in breaking
   version change, but will be included in changelog.
 
 FEATURES
 
-- [rpc] `/tx_search` takes `page` and `per_page` args to paginate results
-- [rpc] `/unconfirmed_txs` takes `limit` arg to limit the output
+- [rpc] `/tx_search` takes `page` (starts at 1) and `per_page` (max 100, default 30) args to paginate results
+- [rpc] `/unconfirmed_txs` takes `limit` (max 100, default 30) arg to limit the output
 - [config] `mempool.size` and `mempool.cache_size` options
 
 IMPROVEMENTS
@@ -32,14 +33,9 @@ IMPROVEMENTS
 - [consensus, state] Improve logging (more consensus logs, fewer tx logs)
 - [spec] Moved to `docs/spec` (TODO cleanup the rest of the docs ...)
 
-
 BUG FIXES
 
 - [consensus] Fix issue #1575 where a late proposer can get stuck
-
-BREAKING:
-- [rpc] `/tx_search` now outputs maximum `?per_page` txs (you can provide custom `?per_page` up to 100; defaults to 30). You can set the `?page` (starts at 1).
-- [rpc] `/unconfirmed_txs` now outputs maximum `?limit` txs (you can provide custom `?limit` up to 100; defaults to 30)
 
 ## 0.19.3 (May 14th, 2018)
 
