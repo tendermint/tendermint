@@ -20,6 +20,7 @@ FEATURES
 IMPROVEMENTS
 
 - [docs] Lots of updates
+- [consensus] Only Fsync() the WAL before executing msgs from ourselves
 
 BUG FIXES
 
