@@ -124,10 +124,14 @@ func SetEventBus(b *types.EventBus) {
 	eventBus = b
 }
 
-func validatePage(page int) int {
+func validatePage(page, perPage, totalCount int) int {
+	pages := ((totalCount - 1) / perPage) + 1
 	if page < 1 {
-		return 1
+		page = 1
+	} else if page > pages {
+		page = pages
 	}
+
 	return page
 }
 

@@ -188,7 +188,7 @@ func TxSearch(query string, prove bool, page, perPage int) (*ctypes.ResultTxSear
 	}
 
 	totalCount := len(results)
-	page = validatePage(page)
+	page = validatePage(page, perPage, totalCount)
 	perPage = validatePerPage(perPage)
 	skipCount := (page - 1) * perPage
 
