@@ -334,11 +334,11 @@ func TestTxSearch(t *testing.T) {
 
 		// now we query for the tx.
 		// since there's only one tx, we know index=0.
-		results, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true)
+		result, err := c.TxSearch(fmt.Sprintf("tx.hash='%v'", txHash), true, 1, 30)
 		require.Nil(t, err, "%+v", err)
-		require.Len(t, results, 1)
+		require.Len(t, result.Txs, 1)
 
-		ptx := results[0]
+		ptx := result.Txs[0]
 		assert.EqualValues(t, txHeight, ptx.Height)
 		assert.EqualValues(t, tx, ptx.Tx)
 		assert.Zero(t, ptx.Index)
@@ -352,14 +352,14 @@ func TestTxSearch(t *testing.T) {
 		}
 
 		// we query for non existing tx
-		results, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false)
+		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
 		require.Nil(t, err, "%+v", err)
-		require.Len(t, results, 0)
+		require.Len(t, result.Txs, 0)
 
 		// we query using a tag (see kvstore application)
-		results, err = c.TxSearch("app.creator='jae'", false)
+		result, err = c.TxSearch("app.creator='jae'", false, 1, 30)
 		require.Nil(t, err, "%+v", err)
-		if len(results) == 0 {
+		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")
 		}
 	}

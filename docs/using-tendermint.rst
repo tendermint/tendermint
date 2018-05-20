@@ -28,8 +28,11 @@ genesis file (``genesis.json``) containing the associated public key,
 in ``$TMHOME/config``.
 This is all that's necessary to run a local testnet with one validator.
 
-For more elaborate initialization, see our `testnet deployment
-tool <https://github.com/tendermint/tools/tree/master/mintnet-kubernetes>`__.
+For more elaborate initialization, see the `tesnet` command:
+
+::
+
+    tendermint testnet --help
 
 Run
 ---
@@ -214,7 +217,7 @@ Broadcast API
 Earlier, we used the ``broadcast_tx_commit`` endpoint to send a
 transaction. When a transaction is sent to a Tendermint node, it will
 run via ``CheckTx`` against the application. If it passes ``CheckTx``,
-it will be included in the mempool, broadcast to other peers, and
+it will be included in the mempool, broadcasted to other peers, and
 eventually included in a block.
 
 Since there are multiple phases to processing a transaction, we offer

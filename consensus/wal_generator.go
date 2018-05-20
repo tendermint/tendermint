@@ -83,7 +83,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	numBlocksWritten := make(chan struct{})
 	wal := newByteBufferWAL(logger, NewWALEncoder(wr), int64(numBlocks), numBlocksWritten)
 	// see wal.go#103
-	wal.Save(EndHeightMessage{0})
+	wal.Write(EndHeightMessage{0})
 	consensusState.wal = wal
 
 	if err := consensusState.Start(); err != nil {
@@ -166,7 +166,7 @@ func newByteBufferWAL(logger log.Logger, enc *WALEncoder, nBlocks int64, signalS
 // Save writes message to the internal buffer except when heightToStop is
 // reached, in which case it will signal the caller via signalWhenStopsTo and
 // skip writing.
-func (w *byteBufferWAL) Save(m WALMessage) {
+func (w *byteBufferWAL) Write(m WALMessage) {
 	if w.stopped {
 		w.logger.Debug("WAL already stopped. Not writing message", "msg", m)
 		return
@@ -187,6 +187,10 @@ func (w *byteBufferWAL) Save(m WALMessage) {
 	if err != nil {
 		panic(fmt.Sprintf("failed to encode the msg %v", m))
 	}
+}
+
+func (w *byteBufferWAL) WriteSync(m WALMessage) {
+	w.Write(m)
 }
 
 func (w *byteBufferWAL) Group() *auto.Group {

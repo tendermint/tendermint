@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.19.5
+
+*May 20th, 2018*
+
+BREAKING CHANGES
+
+- [rpc/client] TxSearch and UnconfirmedTxs have new arguments (see below)
+- [rpc/client] TxSearch returns ResultTxSearch
+- [version] Breaking changes to Go APIs will not be reflected in breaking
+  version change, but will be included in changelog.
+
+FEATURES
+
+- [rpc] `/tx_search` takes `page` (starts at 1) and `per_page` (max 100, default 30) args to paginate results
+- [rpc] `/unconfirmed_txs` takes `limit` (max 100, default 30) arg to limit the output
+- [config] `mempool.size` and `mempool.cache_size` options
+
+IMPROVEMENTS
+
+- [docs] Lots of updates
+- [consensus] Only Fsync() the WAL before executing msgs from ourselves
+
+BUG FIXES
+
+- [mempool] Enforce upper bound on number of transactions
+
 ## 0.19.4 (May 17th, 2018)
 
 IMPROVEMENTS
@@ -7,7 +33,6 @@ IMPROVEMENTS
 - [state] Improve tx indexing by using batches
 - [consensus, state] Improve logging (more consensus logs, fewer tx logs)
 - [spec] Moved to `docs/spec` (TODO cleanup the rest of the docs ...)
-
 
 BUG FIXES
 

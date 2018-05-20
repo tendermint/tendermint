@@ -24,9 +24,14 @@ _NOTE: This is alpha software. Please contact us if you intend to run it in prod
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For more information, from introduction to installation and application development, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+For protocol details, see [the specification](/docs/spec).
 
-For protocol details, see [the specification](./docs/specification/new-spec).
+## Security
+
+To report a security vulnerability, see our [bug bounty
+program](https://tendermint.com/security).
+
+For examples of the kinds of bugs we're looking for, see [SECURITY.md](SECURITY.md)
 
 ## Minimum requirements
 
@@ -36,19 +41,19 @@ Go version | Go1.9 or higher
 
 ## Install
 
-To download pre-built binaries, see our [downloads page](https://tendermint.com/downloads).
+See the [install instructions](/docs/install.rst)
 
-To install from source, you should be able to:
+## Quick Start
 
-`go get -u github.com/tendermint/tendermint/cmd/tendermint`
-
-For more details (or if it fails), [read the docs](https://tendermint.readthedocs.io/en/master/install.html).
+- [Single node](/docs/using-tendermint.rst)
+- [Local cluster using docker-compose](/networks/local)
+- [Remote cluster using terraform and ansible](/networks/remote)
 
 ## Resources
 
 ### Tendermint Core
 
-To use Tendermint, build apps on it, or develop it, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+For more, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
 Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
 
 ### Sub-projects
@@ -88,7 +93,11 @@ According to SemVer, anything in the public API can change at any time before ve
 
 To provide some stability to Tendermint users in these 0.X.X days, the MINOR version is used
 to signal breaking changes across a subset of the total public API. This subset includes all
-interfaces exposed to other processes (cli, rpc, p2p, etc.), as well as parts of the following packages:
+interfaces exposed to other processes (cli, rpc, p2p, etc.), but does not
+include the in-process Go APIs.
+
+That said, breaking changes in the following packages will be documented in the
+CHANGELOG even if they don't lead to MINOR version bumps:
 
 - types
 - rpc/client

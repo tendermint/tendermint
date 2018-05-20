@@ -13,3 +13,9 @@ go get github.com/melekes/godoc2md
 
 godoc2md -template rpc/core/doc_template.txt github.com/tendermint/tendermint/rpc/core | grep -v -e "pipe.go" -e "routes.go" -e "dev.go" | sed 's$/src/target$https://github.com/tendermint/tendermint/tree/master/rpc/core$'
 ```
+
+## Pagination
+
+Requests that return multiple items will be paginated to 30 items by default.
+You can specify further pages with the ?page parameter. You can also set a
+custom page size up to 100 with the ?per_page parameter.

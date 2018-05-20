@@ -186,14 +186,8 @@ if os.path.isdir(assets_dir) != True:
 
 urllib.urlretrieve(tools_repo+tools_branch+'/docker/README.rst', filename=tools_dir+'/docker.rst')
 
-urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/README.rst', filename=tools_dir+'/mintnet-kubernetes.rst')
-urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/gce1.png', filename=assets_dir+'/gce1.png')
-urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/gce2.png', filename=assets_dir+'/gce2.png')
-urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/statefulset.png', filename=assets_dir+'/statefulset.png')
-urllib.urlretrieve(tools_repo+tools_branch+'/mintnet-kubernetes/assets/t_plus_k.png', filename=assets_dir+'/t_plus_k.png')
-
 urllib.urlretrieve(tools_repo+tools_branch+'/tm-bench/README.rst', filename=tools_dir+'/benchmarking.rst')
-urllib.urlretrieve('https://raw.githubusercontent.com/tendermint/tools/master/tm-monitor/README.rst', filename='tools/monitoring.rst')
+urllib.urlretrieve(tools_repo+tools_branch+'/tm-monitor/README.rst', filename='tools/monitoring.rst')
 
 #### abci spec #################################
 

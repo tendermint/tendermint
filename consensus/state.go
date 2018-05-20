@@ -504,7 +504,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 
 func (cs *ConsensusState) newStep() {
 	rs := cs.RoundStateEvent()
-	cs.wal.Save(rs)
+	cs.wal.Write(rs)
 	cs.nSteps++
 	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
 	if cs.eventBus != nil {
@@ -542,16 +542,16 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		case height := <-cs.mempool.TxsAvailable():
 			cs.handleTxsAvailable(height)
 		case mi = <-cs.peerMsgQueue:
-			cs.wal.Save(mi)
+			cs.wal.Write(mi)
 			// handles proposals, block parts, votes
 			// may generate internal events (votes, complete proposals, 2/3 majorities)
 			cs.handleMsg(mi)
 		case mi = <-cs.internalMsgQueue:
-			cs.wal.Save(mi)
+			cs.wal.WriteSync(mi) // NOTE: fsync
 			// handles proposals, block parts, votes
 			cs.handleMsg(mi)
 		case ti := <-cs.timeoutTicker.Chan(): // tockChan:
-			cs.wal.Save(ti)
+			cs.wal.Write(ti)
 			// if the timeout is relevant to the rs
 			// go to the next step
 			cs.handleTimeout(ti, rs)
@@ -1241,7 +1241,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// Either way, the ConsensusState should not be resumed until we
 	// successfully call ApplyBlock (ie. later here, or in Handshake after
 	// restart).
-	cs.wal.Save(EndHeightMessage{height})
+	cs.wal.WriteSync(EndHeightMessage{height}) // NOTE: fsync
 
 	fail.Fail() // XXX
 

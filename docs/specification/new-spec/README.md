@@ -1,1 +1,1 @@
-Spec moved to [docs/spec](./docs/spec).
+Spec moved to [docs/spec](/docs/spec).

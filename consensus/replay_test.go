@@ -218,15 +218,15 @@ func (e ReachedHeightToStopError) Error() string {
 	return fmt.Sprintf("reached height to stop %d", e.height)
 }
 
-// Save simulate WAL's crashing by sending an error to the panicCh and then
+// Write simulate WAL's crashing by sending an error to the panicCh and then
 // exiting the cs.receiveRoutine.
-func (w *crashingWAL) Save(m WALMessage) {
+func (w *crashingWAL) Write(m WALMessage) {
 	if endMsg, ok := m.(EndHeightMessage); ok {
 		if endMsg.Height == w.heightToStop {
 			w.panicCh <- ReachedHeightToStopError{endMsg.Height}
 			runtime.Goexit()
 		} else {
-			w.next.Save(m)
+			w.next.Write(m)
 		}
 		return
 	}
@@ -238,8 +238,12 @@ func (w *crashingWAL) Save(m WALMessage) {
 		runtime.Goexit()
 	} else {
 		w.msgIndex++
-		w.next.Save(m)
+		w.next.Write(m)
 	}
+}
+
+func (w *crashingWAL) WriteSync(m WALMessage) {
+	w.Write(m)
 }
 
 func (w *crashingWAL) Group() *auto.Group { return w.next.Group() }

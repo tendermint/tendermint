@@ -4,53 +4,48 @@ Install Tendermint
 From Binary
 -----------
 
-To download pre-built binaries, see the `Download page <https://tendermint.com/downloads>`__.
+To download pre-built binaries, see the `releases page <https://github.com/tendermint/tendermint/releases>`__.
 
 From Source
 -----------
 
-You'll need ``go``, maybe `dep <https://github.com/golang/dep>`__, and the Tendermint source code.
-
-Install Go
-^^^^^^^^^^
-
-Make sure you have `installed Go <https://golang.org/doc/install>`__ and
-set the ``GOPATH``. You should also put ``GOPATH/bin`` on your ``PATH``.
+You'll need ``go`` `installed <https://golang.org/doc/install>`__ and the required
+`environment variables set <https://github.com/tendermint/tendermint/wiki/Setting-GOPATH>`__
 
 Get Source Code
 ^^^^^^^^^^^^^^^
 
-You should be able to install the latest with a simple
+::
+
+    mkdir -p $GOPATH/src/github.com/tendermint
+    cd $GOPATH/src/github.com/tendermint
+    git clone https://github.com/tendermint/tendermint.git
+    cd tendermint
+
+Get Tools & Dependencies
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 ::
 
-    go get github.com/tendermint/tendermint/cmd/tendermint
-
-Run ``tendermint --help`` and ``tendermint version`` to ensure your
-installation worked.
-
-If the installation failed, a dependency may have been updated and become
-incompatible with the latest Tendermint master branch. We solve this
-using the ``dep`` tool for dependency management.
-
-First, install ``dep``:
-
-::
-
-    cd $GOPATH/src/github.com/tendermint/tendermint
     make get_tools
+    make get_vendor_deps
 
-Now we can fetch the correct versions of each dependency by running:
+Compile
+^^^^^^^
 
 ::
 
-    make get_vendor_deps
     make install
 
-Note that even though ``go get`` originally failed, the repository was
-still cloned to the correct location in the ``$GOPATH``.
+to put the binary in ``$GOPATH/bin`` or use:
 
-The latest Tendermint Core version is now installed.
+::
+
+    make build
+
+to put the binary in ``./build``.
+
+The latest ``tendermint version`` is now installed.
 
 Reinstall
 ---------
@@ -85,20 +80,6 @@ do, use ``dep``, as above:
 
 Since the third option just uses ``dep`` right away, it should always
 work.
-
-Troubleshooting
----------------
-
-If ``go get`` failing bothers you, fetch the code using ``git``:
-
-::
-
-    mkdir -p $GOPATH/src/github.com/tendermint
-    git clone https://github.com/tendermint/tendermint $GOPATH/src/github.com/tendermint/tendermint
-    cd $GOPATH/src/github.com/tendermint/tendermint
-    make get_tools
-    make get_vendor_deps
-    make install
 
 Run
 ^^^
