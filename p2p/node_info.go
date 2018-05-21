@@ -2,8 +2,9 @@ package p2p
 
 import (
 	"fmt"
-	cmn "github.com/tendermint/tmlibs/common"
 	"strings"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 const (
@@ -33,6 +34,9 @@ type NodeInfo struct {
 	// ASCIIText fields
 	Moniker string   `json:"moniker"` // arbitrary moniker
 	Other   []string `json:"other"`   // other application specific data
+
+	// UNSTABLE
+	UnverifiedValidatorAddress cmn.HexBytes `json:"unverified_validator_address"`
 }
 
 // Validate checks the self-reported NodeInfo is safe.

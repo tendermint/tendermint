@@ -604,6 +604,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
 			cmn.Fmt("tx_index=%v", txIndexerStatus),
 		},
+		UnverifiedValidatorAddress: n.privValidator.GetAddress(),
 	}
 
 	if n.config.P2P.PexReactor {
