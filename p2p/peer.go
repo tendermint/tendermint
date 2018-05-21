@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
 	"github.com/tendermint/go-crypto"
@@ -12,7 +13,7 @@ import (
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
-var testIPSuffix = 0
+var testIPSuffix uint32 = 0
 
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
@@ -57,10 +58,8 @@ func (pc peerConn) RemoteIP() net.IP {
 
 	if pc.conn.RemoteAddr().String() == "pipe" {
 		pc.ips = []net.IP{
-			net.IP{172, 16, 0, byte(testIPSuffix)},
+			net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))},
 		}
-
-		testIPSuffix++
 
 		return pc.ips[0]
 	}
