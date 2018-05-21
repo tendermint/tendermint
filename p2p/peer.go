@@ -56,7 +56,7 @@ func (pc peerConn) RemoteIP() net.IP {
 		return pc.ips[0]
 	}
 
-	if pc.conn.RemoteAddr().String() == "pipe" {
+	if pc.conn == nil || pc.conn.RemoteAddr().String() == "pipe" {
 		pc.ips = []net.IP{
 			net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))},
 		}
