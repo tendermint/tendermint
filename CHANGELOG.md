@@ -1,9 +1,11 @@
 # Changelog
 
-## 0.8.3 (develop branch)
+## 0.8.3 (May 14th, 2018)
 
 FEATURES:
 
+ - [db/remotedb] New DB type using an external CLevelDB process via
+   GRPC
  - [autofile] logjack command for piping stdin to a rotating file
  - [common] ASCIITrim()
 

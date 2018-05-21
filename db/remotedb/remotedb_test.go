@@ -2,12 +2,13 @@ package remotedb_test
 
 import (
 	"net"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tmlibs/grpcdb"
-	"github.com/tendermint/tmlibs/remotedb"
+	"github.com/tendermint/tmlibs/db/remotedb"
+	"github.com/tendermint/tmlibs/db/remotedb/grpcdb"
 )
 
 func TestRemoteDB(t *testing.T) {
@@ -26,7 +27,14 @@ func TestRemoteDB(t *testing.T) {
 
 	client, err := remotedb.NewRemoteDB(ln.Addr().String(), cert)
 	require.Nil(t, err, "expecting a successful client creation")
-	require.Nil(t, client.InitRemote(&remotedb.Init{Name: "test-remote-db", Type: "leveldb"}))
+	dbName := "test-remote-db"
+	require.Nil(t, client.InitRemote(&remotedb.Init{Name: dbName, Type: "leveldb"}))
+	defer func() {
+		err := os.RemoveAll(dbName + ".db")
+		if err != nil {
+			panic(err)
+		}
+	}()
 
 	k1 := []byte("key-1")
 	v1 := client.Get(k1)
