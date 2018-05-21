@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -141,7 +140,6 @@ func MakeGenesisDocFromFile(genDocFile string) (*types.GenesisDoc, error) {
 		return nil, fmt.Errorf("Couldn't read GenesisDoc file: %v", err)
 	}
 	genDoc, err := types.GenesisDocFromJSON(genDocJSON)
-	fmt.Println(">>>", string(genDocJSON), spew.Sdump(genDoc))
 	if err != nil {
 		return nil, fmt.Errorf("Error reading GenesisDoc: %v", err)
 	}

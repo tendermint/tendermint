@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/abci/example/kvstore"
@@ -140,11 +139,6 @@ LOOP:
 		logger := log.NewNopLogger()
 		stateDB := dbm.NewMemDB()
 		state, _ := sm.MakeGenesisStateFromFile(consensusReplayConfig.GenesisFile())
-		fmt.Println("==== QQQ ")
-		spew.Dump(state)
-		fmt.Println("==== QQQ ")
-		spew.Dump(consensusReplayConfig.GenesisFile())
-		fmt.Println("==== QQQ ")
 		privValidator := loadPrivValidator(consensusReplayConfig)
 		blockDB := dbm.NewMemDB()
 		cs := newConsensusStateWithConfigAndBlockStore(consensusReplayConfig, state, privValidator, kvstore.NewKVStoreApplication(), blockDB)
