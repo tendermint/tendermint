@@ -273,9 +273,6 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 
 	b = make([]byte, 4)
 	_, err = dec.rd.Read(b)
-	if err == io.EOF {
-		return nil, err
-	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read length: %v", err)
 	}
@@ -287,9 +284,6 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 
 	data := make([]byte, length)
 	_, err = dec.rd.Read(data)
-	if err == io.EOF {
-		return nil, err
-	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data: %v", err)
 	}
