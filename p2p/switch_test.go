@@ -322,7 +322,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 		Config:  DefaultPeerConfig(),
 		// Use different interface to prevent duplicate IP filter, this will break
 		// beyond two peers.
-		listenAddr: "0.0.0.0:0",
+		listenAddr: "127.0.0.2:0",
 	}
 	rp.Start()
 	defer rp.Stop()
