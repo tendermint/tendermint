@@ -26,9 +26,7 @@ func randPeer(ip net.IP) *peer {
 		},
 	}
 
-	p.ips = []net.IP{
-		ip,
-	}
+	p.ip = ip
 
 	return p
 }

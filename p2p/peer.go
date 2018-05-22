@@ -41,7 +41,7 @@ type peerConn struct {
 	persistent bool
 	config     *PeerConfig
 	conn       net.Conn // source connection
-	ips        []net.IP
+	ip         net.IP
 }
 
 // ID only exists for SecretConnection.
@@ -52,16 +52,16 @@ func (pc peerConn) ID() ID {
 
 // Return the IP from the connection RemoteAddr
 func (pc peerConn) RemoteIP() net.IP {
-	if len(pc.ips) > 0 {
-		return pc.ips[0]
+	if pc.ip != nil {
+		return pc.ip
 	}
 
+	// In test cases a conn could not be present at all or be an in-memory
+	// implementation where we want to return a fake ip.
 	if pc.conn == nil || pc.conn.RemoteAddr().String() == "pipe" {
-		pc.ips = []net.IP{
-			net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))},
-		}
+		pc.ip = net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))}
 
-		return pc.ips[0]
+		return pc.ip
 	}
 
 	host, _, err := net.SplitHostPort(pc.conn.RemoteAddr().String())
@@ -74,9 +74,9 @@ func (pc peerConn) RemoteIP() net.IP {
 		panic(err)
 	}
 
-	pc.ips = ips
+	pc.ip = ips[0]
 
-	return ips[0]
+	return pc.ip
 }
 
 // peer implements Peer.

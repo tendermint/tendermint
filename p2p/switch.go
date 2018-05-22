@@ -534,8 +534,6 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	// dont connect to multiple peers on the same IP
-
 	// NOTE: if AuthEnc==false, we don't have a peerID until after the handshake.
 	// If AuthEnc==true then we already know the ID and could do the checks first before the handshake,
 	// but it's simple to just deal with both cases the same after the handshake.
@@ -578,8 +576,9 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return ErrSwitchDuplicatePeerID{peerID}
 	}
 
-	// check ips for both the connection addr and the self reported addr
-	if sw.peers.HasIP(pc.RemoteIP()) {
+	// Check for duplicate connection or peer info IP.
+	if sw.peers.HasIP(pc.RemoteIP()) ||
+		sw.peers.HasIP(peerNodeInfo.NetAddress().IP) {
 		return ErrSwitchDuplicatePeerIP{pc.RemoteIP()}
 	}
 
