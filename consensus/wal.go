@@ -282,7 +282,7 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 	length := binary.BigEndian.Uint32(b)
 
 	if length > maxMsgSizeBytes {
-		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)}
+		return nil, fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)
 	}
 
 	data := make([]byte, length)
