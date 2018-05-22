@@ -146,6 +146,17 @@ func TestPeerSetAddDuplicate(t *testing.T) {
 }
 
 func TestPeerSetAddDuplicateIP(t *testing.T) {
+	t.Parallel()
+
+	peerSet := NewPeerSet()
+
+	if err := peerSet.Add(randPeer(net.IP{172, 0, 0, 1})); err != nil {
+		t.Fatal(err)
+	}
+
+	// Add peer with same IP.
+	err := peerSet.Add(randPeer(net.IP{172, 0, 0, 1}))
+	assert.Equal(t, ErrSwitchDuplicatePeerIP{IP: net.IP{172, 0, 0, 1}}, err)
 }
 
 func TestPeerSetGet(t *testing.T) {
