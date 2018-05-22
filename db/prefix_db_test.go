@@ -2,7 +2,7 @@ package db
 
 import "testing"
 
-func TestIteratePrefix(t *testing.T) {
+func mockDBWithStuff() DB {
 	db := NewMemDB()
 	// Under "key" prefix
 	db.Set(bz("key"), bz("value"))
@@ -14,10 +14,13 @@ func TestIteratePrefix(t *testing.T) {
 	db.Set(bz("k"), bz("val"))
 	db.Set(bz("ke"), bz("valu"))
 	db.Set(bz("kee"), bz("valuu"))
-	xitr := db.Iterator(nil, nil)
-	xitr.Key()
+	return db
+}
 
+func TestPrefixDBSimple(t *testing.T) {
+	db := mockDBWithStuff()
 	pdb := NewPrefixDB(db, bz("key"))
+
 	checkValue(t, pdb, bz("key"), nil)
 	checkValue(t, pdb, bz(""), bz("value"))
 	checkValue(t, pdb, bz("key1"), nil)
@@ -30,9 +33,14 @@ func TestIteratePrefix(t *testing.T) {
 	checkValue(t, pdb, bz("k"), nil)
 	checkValue(t, pdb, bz("ke"), nil)
 	checkValue(t, pdb, bz("kee"), nil)
+}
+
+func TestPrefixDBIterator1(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
 
 	itr := pdb.Iterator(nil, nil)
-	itr.Key()
+	checkDomain(t, itr, nil, nil)
 	checkItem(t, itr, bz(""), bz("value"))
 	checkNext(t, itr, true)
 	checkItem(t, itr, bz("1"), bz("value1"))
@@ -40,5 +48,100 @@ func TestIteratePrefix(t *testing.T) {
 	checkItem(t, itr, bz("2"), bz("value2"))
 	checkNext(t, itr, true)
 	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
+	itr.Close()
+}
+
+func TestPrefixDBIterator2(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
+
+	itr := pdb.Iterator(nil, bz(""))
+	checkDomain(t, itr, nil, bz(""))
+	checkInvalid(t, itr)
+	itr.Close()
+}
+
+func TestPrefixDBIterator3(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
+
+	itr := pdb.Iterator(bz(""), nil)
+	checkDomain(t, itr, bz(""), nil)
+	checkItem(t, itr, bz(""), bz("value"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("1"), bz("value1"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("2"), bz("value2"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
+	itr.Close()
+}
+
+func TestPrefixDBIterator4(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
+
+	itr := pdb.Iterator(bz(""), bz(""))
+	checkDomain(t, itr, bz(""), bz(""))
+	checkInvalid(t, itr)
+	itr.Close()
+}
+
+func TestPrefixDBReverseIterator1(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
+
+	itr := pdb.ReverseIterator(nil, nil)
+	checkDomain(t, itr, nil, nil)
+	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("2"), bz("value2"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("1"), bz("value1"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz(""), bz("value"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
+	itr.Close()
+}
+
+func TestPrefixDBReverseIterator2(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
+
+	itr := pdb.ReverseIterator(nil, bz(""))
+	checkDomain(t, itr, nil, bz(""))
+	checkItem(t, itr, bz("3"), bz("value3"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("2"), bz("value2"))
+	checkNext(t, itr, true)
+	checkItem(t, itr, bz("1"), bz("value1"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
+	itr.Close()
+}
+
+func TestPrefixDBReverseIterator3(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
+
+	itr := pdb.ReverseIterator(bz(""), nil)
+	checkDomain(t, itr, bz(""), nil)
+	checkItem(t, itr, bz(""), bz("value"))
+	checkNext(t, itr, false)
+	checkInvalid(t, itr)
+	itr.Close()
+}
+
+func TestPrefixDBReverseIterator4(t *testing.T) {
+	db := mockDBWithStuff()
+	pdb := NewPrefixDB(db, bz("key"))
+
+	itr := pdb.ReverseIterator(bz(""), bz(""))
+	checkInvalid(t, itr)
 	itr.Close()
 }

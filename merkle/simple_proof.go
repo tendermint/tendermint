@@ -22,6 +22,20 @@ func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleP
 	return
 }
 
+func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs []*SimpleProof) {
+	sm := NewSimpleMap()
+	for k, v := range m {
+		sm.Set(k, v)
+	}
+	sm.Sort()
+	kvs := sm.kvs
+	kvsH := make([]Hasher, 0, len(kvs))
+	for _, kvp := range kvs {
+		kvsH = append(kvsH, KVPair(kvp))
+	}
+	return SimpleProofsFromHashers(kvsH)
+}
+
 // Verify that leafHash is a leaf hash of the simple-merkle-tree
 // which hashes to rootHash.
 func (sp *SimpleProof) Verify(index int, total int, leafHash []byte, rootHash []byte) bool {

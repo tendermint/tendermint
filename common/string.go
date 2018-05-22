@@ -57,3 +57,33 @@ func SplitAndTrim(s, sep, cutset string) []string {
 	}
 	return spl
 }
+
+// Returns true if s is a non-empty printable non-tab ascii character.
+func IsASCIIText(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	for _, b := range []byte(s) {
+		if 32 <= b && b <= 126 {
+			// good
+		} else {
+			return false
+		}
+	}
+	return true
+}
+
+// NOTE: Assumes that s is ASCII as per IsASCIIText(), otherwise panics.
+func ASCIITrim(s string) string {
+	r := make([]byte, 0, len(s))
+	for _, b := range []byte(s) {
+		if b == 32 {
+			continue // skip space
+		} else if 32 < b && b <= 126 {
+			r = append(r, b)
+		} else {
+			panic(fmt.Sprintf("non-ASCII (non-tab) char 0x%X", b))
+		}
+	}
+	return string(r)
+}

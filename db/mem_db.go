@@ -37,7 +37,8 @@ func (db *MemDB) Get(key []byte) []byte {
 	defer db.mtx.Unlock()
 	key = nonNilBytes(key)
 
-	return db.db[string(key)]
+	value := db.db[string(key)]
+	return value
 }
 
 // Implements DB.
@@ -162,7 +163,7 @@ func (db *MemDB) ReverseIterator(start, end []byte) Iterator {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
-	keys := db.getSortedKeys(end, start, true)
+	keys := db.getSortedKeys(start, end, true)
 	return newMemDBIterator(db, keys, start, end)
 }
 
@@ -236,7 +237,8 @@ func (itr *memDBIterator) assertIsValid() {
 func (db *MemDB) getSortedKeys(start, end []byte, reverse bool) []string {
 	keys := []string{}
 	for key := range db.db {
-		if IsKeyInDomain([]byte(key), start, end, false) {
+		inDomain := IsKeyInDomain([]byte(key), start, end, reverse)
+		if inDomain {
 			keys = append(keys, key)
 		}
 	}
@@ -244,7 +246,9 @@ func (db *MemDB) getSortedKeys(start, end []byte, reverse bool) []string {
 	if reverse {
 		nkeys := len(keys)
 		for i := 0; i < nkeys/2; i++ {
+			temp := keys[i]
 			keys[i] = keys[nkeys-i-1]
+			keys[nkeys-i-1] = temp
 		}
 	}
 	return keys

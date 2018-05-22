@@ -32,7 +32,7 @@ type TaskResultSet struct {
 func newTaskResultSet(chz []TaskResultCh) *TaskResultSet {
 	return &TaskResultSet{
 		chz:     chz,
-		results: nil,
+		results: make([]taskResultOK, len(chz)),
 	}
 }
 
@@ -49,21 +49,44 @@ func (trs *TaskResultSet) LatestResult(index int) (TaskResult, bool) {
 }
 
 // NOTE: Not concurrency safe.
+// Writes results to trs.results without waiting for all tasks to complete.
 func (trs *TaskResultSet) Reap() *TaskResultSet {
-	if trs.results == nil {
-		trs.results = make([]taskResultOK, len(trs.chz))
-	}
 	for i := 0; i < len(trs.results); i++ {
 		var trch = trs.chz[i]
 		select {
-		case result := <-trch:
-			// Overwrite result.
-			trs.results[i] = taskResultOK{
-				TaskResult: result,
-				OK:         true,
+		case result, ok := <-trch:
+			if ok {
+				// Write result.
+				trs.results[i] = taskResultOK{
+					TaskResult: result,
+					OK:         true,
+				}
+			} else {
+				// We already wrote it.
 			}
 		default:
 			// Do nothing.
+		}
+	}
+	return trs
+}
+
+// NOTE: Not concurrency safe.
+// Like Reap() but waits until all tasks have returned or panic'd.
+func (trs *TaskResultSet) Wait() *TaskResultSet {
+	for i := 0; i < len(trs.results); i++ {
+		var trch = trs.chz[i]
+		select {
+		case result, ok := <-trch:
+			if ok {
+				// Write result.
+				trs.results[i] = taskResultOK{
+					TaskResult: result,
+					OK:         true,
+				}
+			} else {
+				// We already wrote it.
+			}
 		}
 	}
 	return trs
@@ -116,7 +139,11 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 			defer func() {
 				if pnk := recover(); pnk != nil {
 					atomic.AddInt32(numPanics, 1)
+					// Send panic to taskResultCh.
 					taskResultCh <- TaskResult{nil, ErrorWrap(pnk, "Panic in task")}
+					// Closing taskResultCh lets trs.Wait() work.
+					close(taskResultCh)
+					// Decrement waitgroup.
 					taskDoneCh <- false
 				}
 			}()
@@ -125,6 +152,8 @@ func Parallel(tasks ...Task) (trs *TaskResultSet, ok bool) {
 			// Send val/err to taskResultCh.
 			// NOTE: Below this line, nothing must panic/
 			taskResultCh <- TaskResult{val, err}
+			// Closing taskResultCh lets trs.Wait() work.
+			close(taskResultCh)
 			// Decrement waitgroup.
 			taskDoneCh <- abort
 		}(i, task, taskResultCh)

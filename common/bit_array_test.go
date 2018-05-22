@@ -2,8 +2,10 @@ package common
 
 import (
 	"bytes"
+	"encoding/json"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -210,8 +212,56 @@ func TestUpdateNeverPanics(t *testing.T) {
 }
 
 func TestNewBitArrayNeverCrashesOnNegatives(t *testing.T) {
-	bitList := []int{-127, -128, -1<<31}
+	bitList := []int{-127, -128, -1 << 31}
 	for _, bits := range bitList {
 		_ = NewBitArray(bits)
+	}
+}
+
+func TestJSONMarshalUnmarshal(t *testing.T) {
+
+	bA1 := NewBitArray(0)
+
+	bA2 := NewBitArray(1)
+
+	bA3 := NewBitArray(1)
+	bA3.SetIndex(0, true)
+
+	bA4 := NewBitArray(5)
+	bA4.SetIndex(0, true)
+	bA4.SetIndex(1, true)
+
+	testCases := []struct {
+		bA           *BitArray
+		marshalledBA string
+	}{
+		{nil, `null`},
+		{bA1, `null`},
+		{bA2, `"_"`},
+		{bA3, `"x"`},
+		{bA4, `"xx___"`},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.bA.String(), func(t *testing.T) {
+			bz, err := json.Marshal(tc.bA)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.marshalledBA, string(bz))
+
+			var unmarshalledBA *BitArray
+			err = json.Unmarshal(bz, &unmarshalledBA)
+			require.NoError(t, err)
+
+			if tc.bA == nil {
+				require.Nil(t, unmarshalledBA)
+			} else {
+				require.NotNil(t, unmarshalledBA)
+				assert.EqualValues(t, tc.bA.Bits, unmarshalledBA.Bits)
+				if assert.EqualValues(t, tc.bA.String(), unmarshalledBA.String()) {
+					assert.EqualValues(t, tc.bA.Elems, unmarshalledBA.Elems)
+				}
+			}
+		})
 	}
 }
