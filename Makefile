@@ -226,8 +226,11 @@ sentry-stop:
 	@if [ -z "$(DO_API_TOKEN)" ]; then echo "DO_API_TOKEN environment variable not set." ; false ; fi
 	cd networks/remote/terraform && terraform destroy -var DO_API_TOKEN="$(DO_API_TOKEN)" -var SSH_KEY_FILE="$(HOME)/.ssh/id_rsa.pub"
 
+# meant for the CI, inspect script & adapt accordingly
+build-slate:
+	bash scripts/slate.sh
+
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop
-
+.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate
