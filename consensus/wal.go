@@ -111,7 +111,7 @@ func (wal *baseWAL) OnStop() {
 }
 
 // Write is called in newStep and for each receive on the
-// peerMsgQueue and the timoutTicker.
+// peerMsgQueue and the timeoutTicker.
 // NOTE: does not call fsync()
 func (wal *baseWAL) Write(msg WALMessage) {
 	if wal == nil {
