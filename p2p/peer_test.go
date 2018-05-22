@@ -112,11 +112,12 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 }
 
 type remotePeer struct {
-	PrivKey  crypto.PrivKey
-	Config   *PeerConfig
-	addr     *NetAddress
-	quit     chan struct{}
-	channels cmn.HexBytes
+	PrivKey    crypto.PrivKey
+	Config     *PeerConfig
+	addr       *NetAddress
+	quit       chan struct{}
+	channels   cmn.HexBytes
+	listenAddr string
 }
 
 func (rp *remotePeer) Addr() *NetAddress {
@@ -128,7 +129,11 @@ func (rp *remotePeer) ID() ID {
 }
 
 func (rp *remotePeer) Start() {
-	l, e := net.Listen("tcp", "127.0.0.1:0") // any available address
+	if rp.listenAddr == "" {
+		rp.listenAddr = "127.0.0.1:0"
+	}
+
+	l, e := net.Listen("tcp", rp.listenAddr) // any available address
 	if e != nil {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}

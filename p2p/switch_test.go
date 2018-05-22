@@ -317,7 +317,13 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert.False(peer.IsRunning())
 
 	// simulate another remote peer
-	rp = &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp = &remotePeer{
+		PrivKey: crypto.GenPrivKeyEd25519(),
+		Config:  DefaultPeerConfig(),
+		// Use different interface to prevent duplicate IP filter, this will break
+		// beyond two peers.
+		listenAddr: "0.0.0.0:0",
+	}
 	rp.Start()
 	defer rp.Stop()
 
