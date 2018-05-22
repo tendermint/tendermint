@@ -144,8 +144,8 @@ type WALSearchOptions struct {
 	IgnoreDataCorruptionErrors bool
 }
 
-// SearchForEndHeight searches for the EndHeightMessage with the height and
-// returns an auto.GroupReader, whenever it was found or not and an error.
+// SearchForEndHeight searches for the EndHeightMessage with the given height
+// and returns an auto.GroupReader, whenever it was found or not and an error.
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
@@ -170,7 +170,9 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 				break
 			}
 			if options.IgnoreDataCorruptionErrors && IsDataCorruptionError(err) {
+				wal.Logger.Debug("Corrupted entry. Skipping...", "err", err)
 				// do nothing
+				continue
 			} else if err != nil {
 				gr.Close()
 				return nil, false, err
