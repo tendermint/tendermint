@@ -151,6 +151,7 @@ type WALSearchOptions struct {
 // CONTRACT: caller must close group reader.
 func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
 	var msg *TimedWALMessage
+	lastHeightFound := int64(-1)
 
 	// NOTE: starting from the last file in the group because we're usually
 	// searching for the last height. See replay.go
@@ -166,6 +167,11 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 		for {
 			msg, err = dec.Decode()
 			if err == io.EOF {
+				// OPTIMISATION: no need to look for height in older files if we've seen h < height
+				if lastHeightFound > 0 && lastHeightFound < height {
+					gr.Close()
+					return nil, false, nil
+				}
 				// check next file
 				break
 			}
@@ -179,6 +185,7 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 			}
 
 			if m, ok := msg.Msg.(EndHeightMessage); ok {
+				lastHeightFound = m.Height
 				if m.Height == height { // found
 					wal.Logger.Debug("Found", "height", height, "index", index)
 					return gr, true, nil
