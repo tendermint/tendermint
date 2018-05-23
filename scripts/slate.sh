@@ -7,9 +7,9 @@ if [ "$CIRCLE_BRANCH" == "" ]; then
 fi
 
 # check for changes in the `rpc/core` directory
-did_rpc_change=$(git diff --name-status $CIRCLE_BRANCH develop | grep rpc/core)
+did_rpc_change=$(git diff --name-status $CIRCLE_BRANCH origin/develop | grep rpc/core)
 
-if [ "$did_rpc_change" == "" ]: then
+if [ "$did_rpc_change" == "" ]; then
 	echo "no changes detected in rpc/core, exiting"
 	exit 0
 else
@@ -26,7 +26,7 @@ fi
 
 # godoc2md used to convert the go documentation from
 # `rpc/core` into a markdown file consumed by Slate
-go get github.com/melekes/godoc2md
+go get github.com/davecheney/godoc2md
 
 # slate works via forks, and we'll be committing to
 # master branch, which will trigger our fork to run
