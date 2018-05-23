@@ -2,7 +2,7 @@
 
 ## Amino
 
-Tendermint uses the Protobuf3 derivative [Amino](https://github.com/tendermint/go-amino for all data structures).
+Tendermint uses the Protobuf3 derivative [Amino](https://github.com/tendermint/go-amino) for all data structures.
 Think of Amino as an object-oriented Protobuf3 with native JSON support.
 The goal of the Amino encoding protocol is to bring parity between application
 logic objects and persistence objects.
