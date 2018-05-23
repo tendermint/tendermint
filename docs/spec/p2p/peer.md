@@ -2,7 +2,7 @@
 
 This document explains how Tendermint Peers are identified and how they connect to one another.
 
-For details on peer discovery, see the [peer exchange (PEX) reactor doc](/docs/specification/new-spec/reactors/pex/pex.md).
+For details on peer discovery, see the [peer exchange (PEX) reactor doc](../reactors/pex/pex.md).
 
 ## Peer Identity
 
