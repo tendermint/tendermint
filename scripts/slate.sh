@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ "$CIRCLE_BRANCH" != "develop" ]; then
+	exit 0
+fi
+
 # godoc2md used to convert the go documentation from
 # `rpc/core` into a markdown file consumed by Slate
 go get github.com/melekes/godoc2md
