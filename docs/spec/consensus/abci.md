@@ -58,7 +58,7 @@ message Validator {
 ```
 
 The `pub_key` is the Amino encoded public key for the validator. For details on
-Amino encoded public keys, see the [section of the encoding spec](./encoding.md#public-key-cryptography).
+Amino encoded public keys, see the [section of the encoding spec](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/encoding.md#public-key-cryptography).
 
 For Ed25519 pubkeys, the Amino prefix is always "1624DE6220". For example, the 32-byte Ed25519 pubkey
 `76852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85` would be
@@ -121,7 +121,6 @@ stateBlockHeight = height of the last block for which Tendermint completed all
     block processing and saved all ABCI results to disk
 appBlockHeight = height of the last block for which ABCI app succesfully
     completely Commit
-
 ```
 
 Note we always have `storeBlockHeight >= stateBlockHeight` and `storeBlockHeight >= appBlockHeight`
@@ -165,4 +164,3 @@ If `storeBlockHeight == stateBlockHeight+1`
 	If appBlockHeight == storeBlockHeight {
 		update the state using the saved ABCI responses but dont run the block against the real app.
 	This happens if we crashed after the app finished Commit but before Tendermint saved the state.
-
