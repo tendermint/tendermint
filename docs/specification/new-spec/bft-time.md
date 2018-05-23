@@ -29,7 +29,7 @@ func MinValidTime(last_block_time, now time.Time, round int) time.Time {
 }
 
 // wiggle and wiggle_r are provided by consensus config.
-func MaxValidTime(last_block_time, round int) time.Time {
+func MaxValidTime(last_block_time, now time.Time, round int) time.Time {
 	return now.
 		Add(wiggle).
 		Add(wiggle*wiggle_r*round)

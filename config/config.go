@@ -394,6 +394,11 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters are in milliseconds
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	// Block time parameters in milliseconds
+	BlockTimeIota    int     `mapstructure:"blocktime_iota"`
+	BlockTimeWiggle  int     `mapstructure:"blocktime_wiggle"`
+	BlockTimeWiggleR float64 `mapstructure:"blocktime_wiggle_r"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -414,6 +419,9 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0,
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
+		BlockTimeIota:               10,
+		BlockTimeWiggle:             20000,
+		BlockTimeWiggleR:            0.05,
 	}
 }
 
@@ -430,6 +438,10 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5
 	cfg.PeerQueryMaj23SleepDuration = 250
+
+	// 1 second so we actually test the iota function.
+	// This is enforced logically in the propose function.
+	cfg.BlockTimeIota = 200
 	return cfg
 }
 
@@ -471,6 +483,33 @@ func (cfg *ConsensusConfig) PeerGossipSleep() time.Duration {
 // PeerQueryMaj23Sleep returns the amount of time to sleep after each VoteSetMaj23Message is sent in the ConsensusReactor
 func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
 	return time.Duration(cfg.PeerQueryMaj23SleepDuration) * time.Millisecond
+}
+
+// BlockTimeMinValidTime returns the minimum acceptable block time, as part
+// of "subjective time validity". See the BFT time spec.
+func (cfg *ConsensusConfig) BlockTimeMinValidTime(lastBlockTime, now time.Time, round int) time.Time {
+	var minValidTime time.Time = lastBlockTime.Add(time.Duration(cfg.BlockTimeIota) * time.Millisecond)
+	if round == 0 {
+		wiggleAgo := now.Add(-1 * time.Duration(cfg.BlockTimeWiggle) * time.Millisecond)
+		if wiggleAgo.After(minValidTime) {
+			minValidTime = wiggleAgo
+		}
+	} else {
+		// For all subsequent rounds, we accept any block > last_block_time+iota.
+	}
+	return minValidTime
+}
+
+// BlockTimeMaxValidTime returns the maximum acceptable block time, as part
+// of "subjective time validity". See the BFT time spec.
+func (cfg *ConsensusConfig) BlockTimeMaxValidTime(lastBlockTime, now time.Time, round int) time.Time {
+	return now.
+		Add(time.Duration(cfg.BlockTimeWiggle) * time.Millisecond).
+		Add(
+			time.Duration(
+				float64(cfg.BlockTimeWiggle)*cfg.BlockTimeWiggleR*float64(round),
+			) * time.Millisecond,
+		)
 }
 
 // WalFile returns the full path to the write-ahead log file

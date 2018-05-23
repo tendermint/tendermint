@@ -74,7 +74,7 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	for _, tc := range testCases {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
+		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, 0)
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
 		require.Nil(t, err, tc.desc)
 
@@ -118,7 +118,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	for _, tc := range testCases {
 		lastCommit := &types.Commit{BlockID: prevBlockID}
 
-		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
+		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, 0)
 		block.Evidence.Evidence = tc.evidence
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
 		require.Nil(t, err, tc.desc)
@@ -150,7 +150,7 @@ func state() State {
 }
 
 func makeBlock(state State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit))
+	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), 0)
 	return block
 }
 

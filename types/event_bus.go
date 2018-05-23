@@ -21,7 +21,10 @@ type EventBusSubscriber interface {
 // are proxied to underlying pubsub server. All events must be published using
 // EventBus to ensure correct data types.
 type EventBus struct {
+	// JAE: This is supposed to be unnecessary as pubsub is already.
+	// TODO: Use BaseService as intended by overriding OnStart/Stop.
 	cmn.BaseService
+
 	pubsub *tmpubsub.Server
 }
 
@@ -32,7 +35,7 @@ func NewEventBus() *EventBus {
 
 // NewEventBusWithBufferCapacity returns a new event bus with the given buffer capacity.
 func NewEventBusWithBufferCapacity(cap int) *EventBus {
-	// capacity could be exposed later if needed
+	// Capacity could be exposed later if needed.
 	pubsub := tmpubsub.NewServer(tmpubsub.BufferCapacity(cap))
 	b := &EventBus{pubsub: pubsub}
 	b.BaseService = *cmn.NewBaseService(nil, "EventBus", b)

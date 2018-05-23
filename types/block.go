@@ -31,6 +31,7 @@ func MakeBlock(height int64, txs []Tx, commit *Commit) *Block {
 			Height: height,
 			Time:   time.Now().Round(0), // Strip monotonic.
 			NumTxs: int64(len(txs)),
+			Nonce:  cmn.RandStr(12),
 		},
 		LastCommit: commit,
 		Data: &Data{
@@ -177,6 +178,7 @@ type Header struct {
 	Height  int64     `json:"height"`
 	Time    time.Time `json:"time"`
 	NumTxs  int64     `json:"num_txs"`
+	Nonce   string    `json:"nonce"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
@@ -209,6 +211,7 @@ func (h *Header) Hash() cmn.HexBytes {
 		"Height":      aminoHasher(h.Height),
 		"Time":        aminoHasher(h.Time),
 		"NumTxs":      aminoHasher(h.NumTxs),
+		"Nonce":       aminoHasher(h.Nonce),
 		"TotalTxs":    aminoHasher(h.TotalTxs),
 		"LastBlockID": aminoHasher(h.LastBlockID),
 		"LastCommit":  aminoHasher(h.LastCommitHash),
@@ -231,6 +234,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Height:         %v
 %s  Time:           %v
 %s  NumTxs:         %v
+%s  Nonce:          %v
 %s  TotalTxs:       %v
 %s  LastBlockID:    %v
 %s  LastCommit:     %v
@@ -245,6 +249,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.Height,
 		indent, h.Time,
 		indent, h.NumTxs,
+		indent, h.Nonce,
 		indent, h.TotalTxs,
 		indent, h.LastBlockID,
 		indent, h.LastCommitHash,

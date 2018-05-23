@@ -31,7 +31,7 @@ func makeStateAndBlockStore(logger log.Logger) (sm.State, *BlockStore) {
 func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainReactor {
 	state, blockStore := makeStateAndBlockStore(logger)
 
-	// Make the blockchainReactor itself
+	// Make the blockchainReactor itself.
 	fastSync := true
 	var nilApp proxy.AppConnConsensus
 	blockExec := sm.NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nilApp,
@@ -40,10 +40,10 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 	bcReactor := NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
-	// Next: we need to set a switch in order for peers to be added in
+	// Next: we need to set a switch in order for peers to be added in.
 	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig())
 
-	// Lastly: let's add some blocks in
+	// Lastly: let's add some blocks in.
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {
 		firstBlock := makeBlock(blockHeight, state)
 		secondBlock := makeBlock(blockHeight+1, state)
@@ -155,7 +155,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 }
 
 func makeBlock(height int64, state sm.State) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), new(types.Commit))
+	block, _ := state.MakeBlock(height, makeTxs(height), new(types.Commit), 0)
 	return block
 }
 

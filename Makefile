@@ -132,7 +132,7 @@ vagrant_test:
 ### go tests
 test:
 	@echo "--> Running go test"
-	@go test $(PACKAGES)
+	@GOCACHE=off go test $(PACKAGES)
 
 test_race:
 	@echo "--> Running go test --race"

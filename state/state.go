@@ -102,11 +102,12 @@ func (s State) GetValidators() (last *types.ValidatorSet, current *types.Validat
 // Create a block from the latest state
 
 // MakeBlock builds a block with the given txs and commit from the current state.
-func (s State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
-	// build base block
+func (s State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit, blockTimeIota int) (*types.Block, *types.PartSet) {
+
+	// Build base block.
 	block := types.MakeBlock(height, txs, commit)
 
-	// fill header with state data
+	// Fill header with state data.
 	block.ChainID = s.ChainID
 	block.TotalTxs = s.LastBlockTotalTx + block.NumTxs
 	block.LastBlockID = s.LastBlockID
@@ -114,6 +115,12 @@ func (s State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*t
 	block.AppHash = s.AppHash
 	block.ConsensusHash = s.ConsensusParams.Hash()
 	block.LastResultsHash = s.LastResultsHash
+
+	// Ensure valid time. See BFT time spec.
+	minValidTime := s.LastBlockTime.Add(time.Duration(blockTimeIota) * time.Millisecond)
+	if block.Time.Before(minValidTime) {
+		block.Time = minValidTime
+	}
 
 	return block, block.MakePartSet(s.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }

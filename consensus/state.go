@@ -885,7 +885,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
-	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
+	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, cs.config.BlockTimeIota)
 	evidence := cs.evpool.PendingEvidence()
 	block.AddEvidence(evidence)
 	return block, parts
@@ -941,8 +941,26 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 		return
 	}
 
-	// Validate proposal block timestamp.
-	// TODOerr := cs.validate
+	// Validate proposal block timestamp ("subjective time validity").
+	// See the BFT time spec.
+	lastBlockTime := cs.state.LastBlockTime
+	now := time.Now().Round(0).UTC()
+	minValidTime := cs.config.BlockTimeMinValidTime(lastBlockTime, now, round)
+	if cs.ProposalBlock.Time.Before(minValidTime) {
+		logger.Info("enterPrevote: ProposalBlock time too low",
+			"blockTime", cs.ProposalBlock.Time,
+			"minValidTime", minValidTime)
+		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
+		return
+	}
+	maxValidTime := cs.config.BlockTimeMaxValidTime(lastBlockTime, now, round)
+	if maxValidTime.Before(cs.ProposalBlock.Time) {
+		logger.Info("enterPrevote: ProposalBlock time too high",
+			"blockTime", cs.ProposalBlock.Time,
+			"maxValidTime", maxValidTime)
+		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
+		return
+	}
 
 	// Validate proposal block.
 	err := cs.blockExec.ValidateBlock(cs.state, cs.ProposalBlock)
