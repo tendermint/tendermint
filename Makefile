@@ -2,7 +2,7 @@ GOTOOLS = \
 	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep \
 	gopkg.in/alecthomas/gometalinter.v2 \
-	github.com/golang/protobuf/protoc-gen-go \
+	github.com/golang/protobuf/protoc-gen-go
 GOTOOLS_CHECK = gox dep gometalinter.v2 protoc protoc-gen-go
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 INCLUDE = -I=. -I=${GOPATH}/src
