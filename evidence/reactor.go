@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/log"
 
+	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -118,19 +119,46 @@ func (evR *EvidenceReactor) broadcastRoutine() {
 		case evidence := <-evR.evpool.EvidenceChan():
 			// broadcast some new evidence
 			msg := &EvidenceListMessage{[]types.Evidence{evidence}}
-			evR.Switch.Broadcast(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+			evR.broadcastEvidenceListMsg(msg)
 
-			// TODO: Broadcast runs asynchronously, so this should wait on the successChan
-			// in another routine before marking to be proper.
+			// TODO: the broadcast here is just doing TrySend.
+			// We should make sure the send succeeds before marking broadcasted.
 			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(evidence)
 		case <-ticker.C:
 			// broadcast all pending evidence
 			msg := &EvidenceListMessage{evR.evpool.PendingEvidence()}
-			evR.Switch.Broadcast(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+			evR.broadcastEvidenceListMsg(msg)
 		case <-evR.Quit():
 			return
 		}
 	}
+}
+
+func (evR *EvidenceReactor) broadcastEvidenceListMsg(msg *EvidenceListMessage) {
+	// NOTE: we dont send evidence to peers higher than their height,
+	// because they can't validate it (don't have validators from the height).
+	// So, for now, only send the `msg` to peers synced to the highest height in the list.
+	// TODO: send each peer all the evidence below its current height -
+	//  might require a routine per peer, like the mempool.
+
+	var maxHeight int64
+	for _, ev := range msg.Evidence {
+		if ev.Height() > maxHeight {
+			maxHeight = ev.Height()
+		}
+	}
+
+	for _, peer := range evR.Switch.Peers().List() {
+		ps := peer.Get(types.PeerStateKey).(PeerState)
+		rs := ps.GetRoundState()
+		if rs.Height >= maxHeight {
+			peer.TrySend(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+		}
+	}
+}
+
+type PeerState interface {
+	GetRoundState() *cstypes.PeerRoundState
 }
 
 //-----------------------------------------------------------------------------
