@@ -3,6 +3,7 @@ package pex
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -72,7 +73,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// create switches
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.MakeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+		switches[i] = p2p.MakeSwitch(config, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
 			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
 			books[i].SetLogger(logger.With("pex", i))
 			sw.SetAddrBook(books[i])
@@ -365,6 +366,7 @@ func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 		ListenAddr: mp.addr.DialString(),
 	}
 }
+func (mp mockPeer) RemoteIP() net.IP              { return net.ParseIP("127.0.0.1") }
 func (mp mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
 func (mp mockPeer) Send(byte, []byte) bool        { return false }
 func (mp mockPeer) TrySend(byte, []byte) bool     { return false }

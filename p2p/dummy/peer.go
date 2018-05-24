@@ -1,6 +1,8 @@
 package dummy
 
 import (
+	"net"
+
 	p2p "github.com/tendermint/tendermint/p2p"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -19,6 +21,7 @@ func NewPeer() *peer {
 		kv: make(map[string]interface{}),
 	}
 	p.BaseService = *cmn.NewBaseService(nil, "peer", p)
+
 	return p
 }
 
@@ -40,6 +43,11 @@ func (p *peer) IsPersistent() bool {
 // NodeInfo always returns empty node info.
 func (p *peer) NodeInfo() p2p.NodeInfo {
 	return p2p.NodeInfo{}
+}
+
+// RemoteIP always returns localhost.
+func (p *peer) RemoteIP() net.IP {
+	return net.ParseIP("127.0.0.1")
 }
 
 // Status always returns empry connection status.
