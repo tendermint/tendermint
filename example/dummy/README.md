@@ -1,4 +1,0 @@
-# Dummy
-
-DEPRECATED. See KVStore
-

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"sort"
+
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //------------------------------------------------------------------------------
@@ -25,7 +27,7 @@ func (v Validators) Len() int {
 
 // XXX: doesn't distinguish same validator with different power
 func (v Validators) Less(i, j int) bool {
-	return bytes.Compare(v[i].PubKey, v[j].PubKey) <= 0
+	return bytes.Compare(v[i].PubKey.Data, v[j].PubKey.Data) <= 0
 }
 
 func (v Validators) Swap(i, j int) {
@@ -37,7 +39,11 @@ func (v Validators) Swap(i, j int) {
 func ValidatorsString(vs Validators) string {
 	s := make([]validatorPretty, len(vs))
 	for i, v := range vs {
-		s[i] = validatorPretty(v)
+		s[i] = validatorPretty{
+			Address: v.Address,
+			PubKey:  v.PubKey.Data,
+			Power:   v.Power,
+		}
 	}
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -47,6 +53,7 @@ func ValidatorsString(vs Validators) string {
 }
 
 type validatorPretty struct {
-	PubKey []byte `json:"pub_key"`
-	Power  int64  `json:"power"`
+	Address cmn.HexBytes `json:"address"`
+	PubKey  []byte       `json:"pub_key"`
+	Power   int64        `json:"power"`
 }
