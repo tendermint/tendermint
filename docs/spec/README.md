@@ -14,9 +14,9 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ### Data Structures
 
-- [Encoding and Digests](./blockchain/encoding.md)
-- [Blockchain](./blockchain/blockchain.md)
-- [State](./blockchain/state.md)
+- [Encoding and Digests](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/encoding.md)
+- [Blockchain](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/blockchain.md)
+- [State](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/state.md)
 
 ### Consensus Protocol
 
@@ -24,11 +24,11 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ### P2P and Network Protocols
 
-- [The Base P2P Layer](p2p): multiplex the protocols ("reactors") on authenticated and encrypted TCP connections
-- [Peer Exchange (PEX)](reactors/pex): gossip known peer addresses so peers can find each other
-- [Block Sync](reactors/block_sync): gossip blocks so peers can catch up quickly
-- [Consensus](reactors/consensus): gossip votes and block parts so new blocks can be committed
-- [Mempool](reactors/mempool): gossip transactions so they get included in blocks
+- [The Base P2P Layer](https://github.com/tendermint/tendermint/tree/master/docs/spec/p2p): multiplex the protocols ("reactors") on authenticated and encrypted TCP connections
+- [Peer Exchange (PEX)](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/pex): gossip known peer addresses so peers can find each other
+- [Block Sync](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/block_sync): gossip blocks so peers can catch up quickly
+- [Consensus](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/consensus): gossip votes and block parts so new blocks can be committed
+- [Mempool](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/mempool): gossip transactions so they get included in blocks
 - Evidence: TODO
 
 ### More

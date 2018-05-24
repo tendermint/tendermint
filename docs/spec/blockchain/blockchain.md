@@ -162,7 +162,7 @@ We refer to certain globally available objects:
 and `state` keeps track of the validator set, the consensus parameters
 and other results from the application.
 Elements of an object are accessed as expected,
-ie. `block.Header`. See [here](state.md) for the definition of `state`.
+ie. `block.Header`. See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/state.md) for the definition of `state`.
 
 ### Header
 
