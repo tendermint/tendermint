@@ -23,3 +23,8 @@ scripts/cutWALUntil/cutWALUntil
 
 .idea/
 *.iml
+
+result-bin/
+
+default.nix
+deps.nix

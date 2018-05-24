@@ -3,24 +3,44 @@ GOTOOLS = \
 	gopkg.in/alecthomas/gometalinter.v2
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
 BUILD_TAGS?=tendermint
-BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+BUILD_FLAGS=-asmflags "-trimpath" -gcflags "-trimpath=$(GOPATH)/src" -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+BUILD_PREFIX=CGO_ENABLED=1
+DOCKER_NIX_IMAGE=tendermint/tendermint:nix
 
 all: check build test install
 
 check: check_tools ensure_deps
 
-
 ########################################
 ### Build
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	echo "Building at GOPATH ${GOPATH}"
+	$(BUILD_PREFIX) go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+
+build_nix: check_nix check_openssl
+	@echo "Creating default.nix..."
+	cd cmd/tendermint && echo $$(pwd) && go2nix save && rm deps.nix && mv default.nix ../..
+	@echo "Patching default.nix..."
+	sed -i 's/git@github.com\:tendermint\/tendermint.git/https\:\/\/github\.com\/tendermint\/tendermint\.git/g' default.nix
+	@echo "Converting Gopkg.lock to deps.nix (if this fails with HTTP errors, just retry)..."
+	dep2nix save
+	@echo "Building through nix..."
+	nix-build -E 'with import <nixpkgs> { };  callPackage ./default.nix {}'
+	@echo "Copying binaries..."
+	rm -rf build && mkdir build && cp result-bin/bin/* build && unlink result-bin
+	openssl sha256 build/tendermint
+
+build_nix_docker: check_docker check_openssl
+	docker build -t $(DOCKER_NIX_IMAGE) -f DOCKER/Dockerfile.nix .
+	scripts/cp-from-docker.sh $(DOCKER_NIX_IMAGE)
+	openssl sha256 build/tendermint
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
+	$(BUILD_PREFIX) go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+	$(BUILD_PREFIX) go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
 ########################################
 ### Distribution
@@ -37,6 +57,22 @@ check_tools:
 	@echo "Found tools: $(foreach tool,$(notdir $(GOTOOLS)),\
         $(if $(shell which $(tool)),$(tool),$(error "No $(tool) in PATH")))"
 
+check_nix:
+	@echo $(if $(shell which nix-build),Found nix-build,$(error "No nix-build in PATH"))
+	@echo $(if $(shell which nix-env),Found nix-env,$(error "No nix-env in PATH"))
+	@echo $(if $(shell which openssl),Found openssl,$(error "No openssl in PATH"))
+	@echo $(if $(shell which dep2nix),Found dep2nix,$(error "No dep2nix in PATH, install it with 'make get_dep2nix'"))
+	@echo $(if $(shell which go2nix),Found go2nix,$(error "No go2nix in PATH, install it with 'make get_dep2nix'"))
+
+check_docker:
+	@echo $(if $(shell which docker),Found docker,$(error "No docker in PATH"))
+
+check_openssl:
+	@echo $(if $(shell which openssl),Found openssl,$(error "No openssl in PATH"))
+
+get_dep2nix:
+	cd $$(mktemp -d) && git clone https://github.com/cwgoes/dep2nix.git && cd dep2nix && nix-env -f default.nix -i dep2nix && nix-env -i nix-prefetch-git go2nix
+
 get_tools:
 	@echo "--> Installing tools"
 	go get -u -v $(GOTOOLS)
@@ -51,7 +87,6 @@ get_vendor_deps:
 	@rm -rf vendor/
 	@echo "--> Running dep"
 	@dep ensure -vendor-only
-
 
 #Run this locally.
 ensure_deps:
