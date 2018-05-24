@@ -94,9 +94,6 @@ test_cli:
 	# test the cli against the examples in the tutorial at tendermint.com
 	@ bash tests/test_cli/test.sh
 
-fmt:
-	@ go fmt ./...
-
 ########################################
 ### Formatting, linting, and vetting
 

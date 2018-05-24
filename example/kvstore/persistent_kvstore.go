@@ -129,15 +129,16 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 	return
 }
 
-func MakeValSetChangeTx(pubkey []byte, power int64) []byte {
-	return []byte(cmn.Fmt("val:%X/%d", pubkey, power))
+func MakeValSetChangeTx(pubkey types.PubKey, power int64) []byte {
+	return []byte(cmn.Fmt("val:%X/%d", pubkey.Data, power))
 }
 
 func isValidatorTx(tx []byte) bool {
 	return strings.HasPrefix(string(tx), ValidatorSetChangePrefix)
 }
 
-// format is "val:pubkey1/power1,addr2/power2,addr3/power3"tx
+// format is "val:pubkey/power"
+// pubkey is raw 32-byte ed25519 key
 func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
@@ -150,19 +151,13 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	}
 	pubkeyS, powerS := pubKeyAndPower[0], pubKeyAndPower[1]
 
-	// decode the pubkey, ensuring its go-crypto encoded
+	// decode the pubkey
 	pubkey, err := hex.DecodeString(pubkeyS)
 	if err != nil {
 		return types.ResponseDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%s) is invalid hex", pubkeyS)}
 	}
-	/*_, err = crypto.PubKeyFromBytes(pubkey)
-	if err != nil {
-		return types.ResponseDeliverTx{
-			Code: code.CodeTypeEncodingError,
-			Log:  fmt.Sprintf("Pubkey (%X) is invalid go-crypto encoded", pubkey)}
-	}*/
 
 	// decode the power
 	power, err := strconv.ParseInt(powerS, 10, 64)
@@ -173,12 +168,12 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	}
 
 	// update
-	return app.updateValidator(types.Validator{pubkey, power})
+	return app.updateValidator(types.Ed25519Validator(pubkey, int64(power)))
 }
 
 // add, update, or remove a validator
 func (app *PersistentKVStoreApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
-	key := []byte("val:" + string(v.PubKey))
+	key := []byte("val:" + string(v.PubKey.Data))
 	if v.Power == 0 {
 		// remove validator
 		if !app.app.state.db.Has(key) {

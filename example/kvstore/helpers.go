@@ -8,9 +8,12 @@ import (
 // RandVal creates one random validator, with a key derived
 // from the input value
 func RandVal(i int) types.Validator {
-	pubkey := cmn.RandBytes(33)
+	addr := cmn.RandBytes(20)
+	pubkey := cmn.RandBytes(32)
 	power := cmn.RandUint16() + 1
-	return types.Validator{pubkey, int64(power)}
+	v := types.Ed25519Validator(pubkey, int64(power))
+	v.Address = addr
+	return v
 }
 
 // RandVals returns a list of cnt validators for initializing
