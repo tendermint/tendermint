@@ -73,13 +73,13 @@
   name = "github.com/tendermint/abci"
   version = "~0.10.3"
 
-[[constraint]]
+[[override]]
   name = "github.com/tendermint/go-crypto"
-  version = "~0.6.2"
+  branch = "develop"
 
-[[constraint]]
+[[override]]
   name = "github.com/tendermint/go-amino"
-  version = "0.9.9"
+  branch = "develop"
 
 [[override]]
   name = "github.com/tendermint/tmlibs"

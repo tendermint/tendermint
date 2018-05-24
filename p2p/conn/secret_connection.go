@@ -17,9 +17,9 @@ import (
 	"time"
 
 	"golang.org/x/crypto/nacl/box"
-	"golang.org/x/crypto/nacl/secretbox"
 
 	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/go-crypto/xchacha20poly1305"
 	cmn "github.com/tendermint/tmlibs/common"
 	"golang.org/x/crypto/hkdf"
 )
@@ -28,7 +28,6 @@ import (
 const dataLenSize = 4
 const dataMaxSize = 1024
 const totalFrameSize = dataMaxSize + dataLenSize
-const sealedFrameSize = totalFrameSize + secretbox.Overhead
 
 // Implements net.Conn
 type SecretConnection struct {
@@ -124,9 +123,10 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		binary.BigEndian.PutUint32(frame, uint32(chunkLength))
 		copy(frame[dataLenSize:], chunk)
 
+		aead, _ := xchacha20poly1305.New(sc.shrSecret[:])
 		// encrypt the frame
-		var sealedFrame = make([]byte, sealedFrameSize)
-		secretbox.Seal(sealedFrame[:0], frame, sc.sendNonce, sc.shrSecret)
+		var sealedFrame = make([]byte, aead.Overhead()+totalFrameSize)
+		aead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
 		// fmt.Printf("secretbox.Seal(sealed:%X,sendNonce:%X,shrSecret:%X\n", sealedFrame, sc.sendNonce, sc.shrSecret)
 		incr2Nonce(sc.sendNonce)
 		// end encryption
@@ -148,7 +148,8 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 		return
 	}
 
-	sealedFrame := make([]byte, sealedFrameSize)
+	aead, _ := xchacha20poly1305.New(sc.shrSecret[:])
+	sealedFrame := make([]byte, totalFrameSize+aead.Overhead())
 	_, err = io.ReadFull(sc.conn, sealedFrame)
 	if err != nil {
 		return
@@ -157,8 +158,8 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	// decrypt the frame
 	var frame = make([]byte, totalFrameSize)
 	// fmt.Printf("secretbox.Open(sealed:%X,recvNonce:%X,shrSecret:%X\n", sealedFrame, sc.recvNonce, sc.shrSecret)
-	_, ok := secretbox.Open(frame[:0], sealedFrame, sc.recvNonce, sc.shrSecret)
-	if !ok {
+	_, err = aead.Open(frame[:0], sc.recvNonce[:], sealedFrame, nil)
+	if err != nil {
 		return n, errors.New("Failed to decrypt SecretConnection")
 	}
 	incr2Nonce(sc.recvNonce)

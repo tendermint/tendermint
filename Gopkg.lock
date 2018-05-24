@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
-  revision = "675abc5df3c5531bc741b56a765e35623459da6d"
+  revision = "bc0944904505aab55e089371a892be2f87883161"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -82,7 +82,7 @@
   branch = "master"
   name = "github.com/golang/snappy"
   packages = ["."]
-  revision = "553a641470496b2327abcac10b36396bd98e45c9"
+  revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -128,14 +128,14 @@
 [[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
-  revision = "c3beff4c2358b44d0493c7dda585e7db7ff28ae6"
-  version = "v1.7.6"
+  revision = "c2353362d570a7bfa228149c62842019201cfb71"
+  version = "v1.8.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
+  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -159,7 +159,7 @@
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
-  revision = "d932a24a8ccb8fcadc993e5c6c58f93dac168294"
+  revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -179,8 +179,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
-  version = "v0.0.2"
+  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
+  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -226,7 +226,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
+  revision = "5d6fca44a948d2be89a9702de7717f0168403d3d"
 
 [[projects]]
   name = "github.com/tendermint/abci"
@@ -252,22 +252,22 @@
   revision = "d8387025d2b9d158cf4efb07e7ebf814bcce2057"
 
 [[projects]]
+  branch = "develop"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
-  version = "0.9.9"
+  revision = "50745aab48d8a16d05a4b4b4ab2257ed09ac10c5"
 
 [[projects]]
+  branch = "develop"
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
-  version = "v0.6.2"
+  revision = "f0b1f6e8ac66cfedc0ea003ef8ffbe00a17925c7"
 
 [[projects]]
   name = "github.com/tendermint/go-wire"
   packages = ["."]
-  revision = "fa721242b042ecd4c6ed1a934ee740db4f74e45c"
-  version = "v0.7.3"
+  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
+  version = "0.9.9"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -285,8 +285,8 @@
     "pubsub/query",
     "test"
   ]
-  revision = "cc5f287c4798ffe88c04d02df219ecb6932080fd"
-  version = "v0.8.3-rc0"
+  revision = "d970af87248a4e162590300dbb74e102183a417d"
+  version = "v0.8.3"
 
 [[projects]]
   branch = "master"
@@ -302,7 +302,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "b0697eccbea9adec5b7ba8008f4c33d98d733388"
+  revision = "75e913eb8a8e3d31a97b216de09de106a7b07681"
 
 [[projects]]
   branch = "master"
@@ -314,16 +314,15 @@
     "http2/hpack",
     "idna",
     "internal/timeseries",
-    "lex/httplex",
     "trace"
   ]
-  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
+  revision = "9ef9f5bb98a1fdc41f8cf6c250a4404b4085e389"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "bb9c189858d91f42db229b04d45a4c3d23a7662a"
+  revision = "77b0e4315053a57ed2962443614bdb28db152054"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -350,7 +349,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
+  revision = "694d95ba50e67b2e363f3483057db5d4910c18f9"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -385,6 +384,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6715bcc64fb9bfdd42fabeab29761e254d6e5ce545bb1cc149ee5d62dd729c08"
+  inputs-digest = "1d0c1a3870072772a6203366ee03066854a23e01962998f534d7d4b80309884e"
   solver-name = "gps-cdcl"
   solver-version = 1
