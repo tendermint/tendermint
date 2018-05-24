@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/tendermint/go-amino"
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 //----------------------------------------

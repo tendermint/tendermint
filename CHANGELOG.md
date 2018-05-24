@@ -4,6 +4,11 @@
 
 *TBD*
 
+IMPROVEMENTS:
+
+- [consensus] consensus reactor now receives events from a separate event bus,
+  which is not dependant on external RPC load
+
 ## 0.19.5
 
 *May 20th, 2018*
