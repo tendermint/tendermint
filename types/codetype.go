@@ -33,3 +33,35 @@ func (r ResponseQuery) IsOK() bool {
 func (r ResponseQuery) IsErr() bool {
 	return r.Code != CodeTypeOK
 }
+
+//----------------------------------------------------
+
+// IsOK returns true if Code is OK.
+func (r ResultCheckTx) IsOK() bool {
+	return r.Code == CodeTypeOK
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r ResultCheckTx) IsErr() bool {
+	return r.Code != CodeTypeOK
+}
+
+// IsOK returns true if Code is OK.
+func (r ResultDeliverTx) IsOK() bool {
+	return r.Code == CodeTypeOK
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r ResultDeliverTx) IsErr() bool {
+	return r.Code != CodeTypeOK
+}
+
+// IsOK returns true if Code is OK.
+func (r ResultQuery) IsOK() bool {
+	return r.Code == CodeTypeOK
+}
+
+// IsErr returns true if Code is something other than OK.
+func (r ResultQuery) IsErr() bool {
+	return r.Code != CodeTypeOK
+}

@@ -84,55 +84,64 @@ func NewGRPCApplication(app Application) *GRPCApplication {
 	return &GRPCApplication{app}
 }
 
-func (app *GRPCApplication) Echo(ctx context.Context, req *ParamsEcho) (*ResultEcho, error) {
-	return &ResultEcho{req.Message}, nil
+func (app *GRPCApplication) Echo(ctx context.Context, req *RequestEcho) (*ResponseEcho, error) {
+	return &ResponseEcho{req.Message}, nil
 }
 
-func (app *GRPCApplication) Flush(ctx context.Context, req *ParamsFlush) (*ResultFlush, error) {
-	return &ResultFlush{}, nil
+func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*ResponseFlush, error) {
+	return &ResponseFlush{}, nil
 }
 
-func (app *GRPCApplication) Info(ctx context.Context, req *ParamsInfo) (*ResultInfo, error) {
-	res := app.app.Info(*req)
-	return &res, nil
+func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
+	res := app.app.Info(ToParamsInfo(*req))
+	r := FromResultInfo(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) SetOption(ctx context.Context, req *ParamsSetOption) (*ResultSetOption, error) {
-	res := app.app.SetOption(*req)
-	return &res, nil
+func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
+	res := app.app.SetOption(ToParamsSetOption(*req))
+	r := FromResultSetOption(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) DeliverTx(ctx context.Context, req *ParamsDeliverTx) (*ResultDeliverTx, error) {
+func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
 	res := app.app.DeliverTx(req.Tx)
-	return &res, nil
+	r := FromResultDeliverTx(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) CheckTx(ctx context.Context, req *ParamsCheckTx) (*ResultCheckTx, error) {
+func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	res := app.app.CheckTx(req.Tx)
-	return &res, nil
+	r := FromResultCheckTx(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) Query(ctx context.Context, req *ParamsQuery) (*ResultQuery, error) {
-	res := app.app.Query(*req)
-	return &res, nil
+func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {
+	res := app.app.Query(ToParamsQuery(*req))
+	r := FromResultQuery(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) Commit(ctx context.Context, req *ParamsCommit) (*ResultCommit, error) {
+func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*ResponseCommit, error) {
 	res := app.app.Commit()
-	return &res, nil
+	r := FromResultCommit(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) InitChain(ctx context.Context, req *ParamsInitChain) (*ResultInitChain, error) {
-	res := app.app.InitChain(*req)
-	return &res, nil
+func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
+	res := app.app.InitChain(ToParamsInitChain(*req))
+	r := FromResultInitChain(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) BeginBlock(ctx context.Context, req *ParamsBeginBlock) (*ResultBeginBlock, error) {
-	res := app.app.BeginBlock(*req)
-	return &res, nil
+func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
+	res := app.app.BeginBlock(ToParamsBeginBlock(*req))
+	r := FromResultBeginBlock(res)
+	return &r, nil
 }
 
-func (app *GRPCApplication) EndBlock(ctx context.Context, req *ParamsEndBlock) (*ResultEndBlock, error) {
-	res := app.app.EndBlock(*req)
-	return &res, nil
+func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
+	res := app.app.EndBlock(ToParamsEndBlock(*req))
+	r := FromResultEndBlock(res)
+	return &r, nil
 }

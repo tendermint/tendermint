@@ -21,11 +21,11 @@ func NewCounterApplication(serial bool) *CounterApplication {
 	return &CounterApplication{serial: serial}
 }
 
-func (app *CounterApplication) Info(req types.RequestInfo) types.ResponseInfo {
-	return types.ResponseInfo{Data: cmn.Fmt("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
+func (app *CounterApplication) Info(req types.ParamsInfo) types.ResultInfo {
+	return types.ResultInfo{Data: cmn.Fmt("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 
-func (app *CounterApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
+func (app *CounterApplication) SetOption(req types.ParamsSetOption) types.ResultSetOption {
 	key, value := req.Key, req.Value
 	if key == "serial" && value == "on" {
 		app.serial = true
@@ -33,20 +33,20 @@ func (app *CounterApplication) SetOption(req types.RequestSetOption) types.Respo
 		/*
 			TODO Panic and have the ABCI server pass an exception.
 			The client can call SetOptionSync() and get an `error`.
-			return types.ResponseSetOption{
+			return types.ResultSetOption{
 				Error: cmn.Fmt("Unknown key (%s) or value (%s)", key, value),
 			}
 		*/
-		return types.ResponseSetOption{}
+		return types.ResultSetOption{}
 	}
 
-	return types.ResponseSetOption{}
+	return types.ResultSetOption{}
 }
 
-func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *CounterApplication) DeliverTx(tx []byte) types.ResultDeliverTx {
 	if app.serial {
 		if len(tx) > 8 {
-			return types.ResponseDeliverTx{
+			return types.ResultDeliverTx{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}
 		}
@@ -54,19 +54,19 @@ func (app *CounterApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue != uint64(app.txCount) {
-			return types.ResponseDeliverTx{
+			return types.ResultDeliverTx{
 				Code: code.CodeTypeBadNonce,
 				Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.txCount, txValue)}
 		}
 	}
 	app.txCount++
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+	return types.ResultDeliverTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *CounterApplication) CheckTx(tx []byte) types.ResultCheckTx {
 	if app.serial {
 		if len(tx) > 8 {
-			return types.ResponseCheckTx{
+			return types.ResultCheckTx{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Max tx size is 8 bytes, got %d", len(tx))}
 		}
@@ -74,31 +74,31 @@ func (app *CounterApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 		copy(tx8[len(tx8)-len(tx):], tx)
 		txValue := binary.BigEndian.Uint64(tx8)
 		if txValue < uint64(app.txCount) {
-			return types.ResponseCheckTx{
+			return types.ResultCheckTx{
 				Code: code.CodeTypeBadNonce,
 				Log:  fmt.Sprintf("Invalid nonce. Expected >= %v, got %v", app.txCount, txValue)}
 		}
 	}
-	return types.ResponseCheckTx{Code: code.CodeTypeOK}
+	return types.ResultCheckTx{Code: code.CodeTypeOK}
 }
 
-func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
+func (app *CounterApplication) Commit() (resp types.ResultCommit) {
 	app.hashCount++
 	if app.txCount == 0 {
-		return types.ResponseCommit{}
+		return types.ResultCommit{}
 	}
 	hash := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return types.ResponseCommit{Data: hash}
+	return types.ResultCommit{Data: hash}
 }
 
-func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+func (app *CounterApplication) Query(reqQuery types.ParamsQuery) types.ResultQuery {
 	switch reqQuery.Path {
 	case "hash":
-		return types.ResponseQuery{Value: []byte(cmn.Fmt("%v", app.hashCount))}
+		return types.ResultQuery{Value: []byte(cmn.Fmt("%v", app.hashCount))}
 	case "tx":
-		return types.ResponseQuery{Value: []byte(cmn.Fmt("%v", app.txCount))}
+		return types.ResultQuery{Value: []byte(cmn.Fmt("%v", app.txCount))}
 	default:
-		return types.ResponseQuery{Log: cmn.Fmt("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
+		return types.ResultQuery{Log: cmn.Fmt("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 	}
 }

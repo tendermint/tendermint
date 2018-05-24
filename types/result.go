@@ -21,6 +21,10 @@ type ResultInfo struct {
 	LastBlockAppHash []byte `json:"last_block_app_hash,omitempty"`
 }
 
+func FromResultInfo(res ResultInfo) ResponseInfo {
+	return ResponseInfo(res)
+}
+
 type ResultSetOption struct {
 	Code uint32 `json:"code,omitempty"`
 	// bytes data = 2;
@@ -28,8 +32,16 @@ type ResultSetOption struct {
 	Info string `json:"info,omitempty"`
 }
 
+func FromResultSetOption(res ResultSetOption) ResponseSetOption {
+	return ResponseSetOption(res)
+}
+
 type ResultInitChain struct {
 	Validators []Validator `json:"validators"`
+}
+
+func FromResultInitChain(res ResultInitChain) ResponseInitChain {
+	return ResponseInitChain(res)
 }
 
 type ResultQuery struct {
@@ -44,8 +56,16 @@ type ResultQuery struct {
 	Height int64  `json:"height,omitempty"`
 }
 
+func FromResultQuery(res ResultQuery) ResponseQuery {
+	return ResponseQuery(res)
+}
+
 type ResultBeginBlock struct {
 	Tags []common.KVPair `json:"tags,omitempty"`
+}
+
+func FromResultBeginBlock(res ResultBeginBlock) ResponseBeginBlock {
+	return ResponseBeginBlock(res)
 }
 
 type ResultCheckTx struct {
@@ -59,6 +79,10 @@ type ResultCheckTx struct {
 	Fee       common.KI64Pair `json:"fee"`
 }
 
+func FromResultCheckTx(res ResultCheckTx) ResponseCheckTx {
+	return ResponseCheckTx(res)
+}
+
 type ResultDeliverTx struct {
 	Code      uint32          `json:"code,omitempty"`
 	Data      []byte          `json:"data,omitempty"`
@@ -70,13 +94,25 @@ type ResultDeliverTx struct {
 	Fee       common.KI64Pair `json:"fee"`
 }
 
+func FromResultDeliverTx(res ResultDeliverTx) ResponseDeliverTx {
+	return ResponseDeliverTx(res)
+}
+
 type ResultEndBlock struct {
 	ValidatorUpdates      []Validator      `json:"validator_updates"`
 	ConsensusParamUpdates *ConsensusParams `json:"consensus_param_updates,omitempty"`
 	Tags                  []common.KVPair  `json:"tags,omitempty"`
 }
 
+func FromResultEndBlock(res ResultEndBlock) ResponseEndBlock {
+	return ResponseEndBlock(res)
+}
+
 type ResultCommit struct {
 	// reserve 1
 	Data []byte `json:"data,omitempty"`
+}
+
+func FromResultCommit(res ResultCommit) ResponseCommit {
+	return ResponseCommit(res)
 }
