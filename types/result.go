@@ -1,6 +1,6 @@
 package types
 
-import common "github.com/tendermint/tmlibs/common"
+import cmn "github.com/tendermint/tmlibs/common"
 
 // nondeterministic
 type ResultException struct {
@@ -41,7 +41,10 @@ type ResultInitChain struct {
 }
 
 func FromResultInitChain(res ResultInitChain) ResponseInitChain {
-	return ResponseInitChain(res)
+	vals := valsToPointers(res.Validators)
+	return ResponseInitChain{
+		Validators: vals,
+	}
 }
 
 type ResultQuery struct {
@@ -61,51 +64,80 @@ func FromResultQuery(res ResultQuery) ResponseQuery {
 }
 
 type ResultBeginBlock struct {
-	Tags []common.KVPair `json:"tags,omitempty"`
+	Tags []cmn.KVPair `json:"tags,omitempty"`
 }
 
 func FromResultBeginBlock(res ResultBeginBlock) ResponseBeginBlock {
-	return ResponseBeginBlock(res)
+	tags := tagsToPointers(res.Tags)
+	return ResponseBeginBlock{
+		Tags: tags,
+	}
 }
 
 type ResultCheckTx struct {
-	Code      uint32          `json:"code,omitempty"`
-	Data      []byte          `json:"data,omitempty"`
-	Log       string          `json:"log,omitempty"`
-	Info      string          `json:"info,omitempty"`
-	GasWanted int64           `json:"gas_wanted,omitempty"`
-	GasUsed   int64           `json:"gas_used,omitempty"`
-	Tags      []common.KVPair `json:"tags,omitempty"`
-	Fee       common.KI64Pair `json:"fee"`
+	Code      uint32       `json:"code,omitempty"`
+	Data      []byte       `json:"data,omitempty"`
+	Log       string       `json:"log,omitempty"`
+	Info      string       `json:"info,omitempty"`
+	GasWanted int64        `json:"gas_wanted,omitempty"`
+	GasUsed   int64        `json:"gas_used,omitempty"`
+	Tags      []cmn.KVPair `json:"tags,omitempty"`
+	Fee       cmn.KI64Pair `json:"fee"`
 }
 
 func FromResultCheckTx(res ResultCheckTx) ResponseCheckTx {
-	return ResponseCheckTx(res)
+	tags := tagsToPointers(res.Tags)
+	return ResponseCheckTx{
+		Code:      res.Code,
+		Data:      res.Data,
+		Log:       res.Log,
+		Info:      res.Info,
+		GasWanted: res.GasWanted,
+		GasUsed:   res.GasUsed,
+		Tags:      tags,
+		Fee:       &res.Fee,
+	}
 }
 
 type ResultDeliverTx struct {
-	Code      uint32          `json:"code,omitempty"`
-	Data      []byte          `json:"data,omitempty"`
-	Log       string          `json:"log,omitempty"`
-	Info      string          `json:"info,omitempty"`
-	GasWanted int64           `json:"gas_wanted,omitempty"`
-	GasUsed   int64           `json:"gas_used,omitempty"`
-	Tags      []common.KVPair `json:"tags,omitempty"`
-	Fee       common.KI64Pair `json:"fee"`
+	Code      uint32       `json:"code,omitempty"`
+	Data      []byte       `json:"data,omitempty"`
+	Log       string       `json:"log,omitempty"`
+	Info      string       `json:"info,omitempty"`
+	GasWanted int64        `json:"gas_wanted,omitempty"`
+	GasUsed   int64        `json:"gas_used,omitempty"`
+	Tags      []cmn.KVPair `json:"tags,omitempty"`
+	Fee       cmn.KI64Pair `json:"fee"`
 }
 
 func FromResultDeliverTx(res ResultDeliverTx) ResponseDeliverTx {
-	return ResponseDeliverTx(res)
+	tags := tagsToPointers(res.Tags)
+	return ResponseDeliverTx{
+		Code:      res.Code,
+		Data:      res.Data,
+		Log:       res.Log,
+		Info:      res.Info,
+		GasWanted: res.GasWanted,
+		GasUsed:   res.GasUsed,
+		Tags:      tags,
+		Fee:       &res.Fee,
+	}
 }
 
 type ResultEndBlock struct {
 	ValidatorUpdates      []Validator      `json:"validator_updates"`
 	ConsensusParamUpdates *ConsensusParams `json:"consensus_param_updates,omitempty"`
-	Tags                  []common.KVPair  `json:"tags,omitempty"`
+	Tags                  []cmn.KVPair     `json:"tags,omitempty"`
 }
 
 func FromResultEndBlock(res ResultEndBlock) ResponseEndBlock {
-	return ResponseEndBlock(res)
+	tags := tagsToPointers(res.Tags)
+	vals := valsToPointers(res.ValidatorUpdates)
+	return ResponseEndBlock{
+		ValidatorUpdates:      vals,
+		ConsensusParamUpdates: res.ConsensusParamUpdates,
+		Tags: tags,
+	}
 }
 
 type ResultCommit struct {
@@ -115,4 +147,24 @@ type ResultCommit struct {
 
 func FromResultCommit(res ResultCommit) ResponseCommit {
 	return ResponseCommit(res)
+}
+
+//-------------------------------------------------------
+
+func tagsToPointers(tags []cmn.KVPair) []*cmn.KVPair {
+	tagPtrs := make([]*cmn.KVPair, len(tags))
+	for i := 0; i < len(tags); i++ {
+		t := tags[i]
+		tagPtrs[i] = &t
+	}
+	return tagPtrs
+}
+
+func valsToPointers(vals []Validator) []*Validator {
+	valPtrs := make([]*Validator, len(vals))
+	for i := 0; i < len(vals); i++ {
+		v := vals[i]
+		valPtrs[i] = &v
+	}
+	return valPtrs
 }

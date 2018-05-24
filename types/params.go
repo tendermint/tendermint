@@ -35,8 +35,13 @@ type ParamsInitChain struct {
 }
 
 func ToParamsInitChain(req RequestInitChain) ParamsInitChain {
+	vals := make([]Validator, len(req.Validators))
+	for i := 0; i < len(vals); i++ {
+		v := req.Validators[i]
+		vals[i] = *v
+	}
 	return ParamsInitChain{
-		Validators:   req.Validators,
+		Validators:   vals,
 		GenesisBytes: req.GenesisBytes,
 	}
 }
@@ -70,11 +75,17 @@ func ToParamsBeginBlock(req RequestBeginBlock) ParamsBeginBlock {
 		v := req.Validators[i]
 		vals[i] = *v
 	}
+
+	evidence := make([]Evidence, len(req.ByzantineValidators))
+	for i := 0; i < len(evidence); i++ {
+		ev := req.ByzantineValidators[i]
+		evidence[i] = *ev
+	}
 	return ParamsBeginBlock{
 		Hash:                req.Hash,
-		Header:              req.Header,
+		Header:              *req.Header,
 		Validators:          vals,
-		ByzantineValidators: req.ByzantineValidators,
+		ByzantineValidators: evidence,
 	}
 }
 

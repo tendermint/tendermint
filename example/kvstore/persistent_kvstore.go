@@ -129,7 +129,7 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 	return
 }
 
-func MakeValSetChangeTx(pubkey types.PubKey, power int64) []byte {
+func MakeValSetChangeTx(pubkey *types.PubKey, power int64) []byte {
 	return []byte(cmn.Fmt("val:%X/%d", pubkey.Data, power))
 }
 

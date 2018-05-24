@@ -15,7 +15,7 @@ const (
 func Ed25519Validator(pubkey []byte, power int64) Validator {
 	return Validator{
 		// Address:
-		PubKey: PubKey{
+		PubKey: &PubKey{
 			Type: PubKeyEd25519,
 			Data: pubkey,
 		},
