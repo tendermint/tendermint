@@ -314,7 +314,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature cr
 // sha256
 func hash32(input []byte) (res *[32]byte) {
 	hash := sha256.New
-	hkdf := hkdf.New(hash, input, nil, nil)
+	hkdf := hkdf.New(hash, input, nil, []byte("TENDERMINT_SECRET_CONNECTION_KEY_GEN"))
 	res = new([32]byte)
 	io.ReadFull(hkdf, res[:])
 	return res
@@ -322,7 +322,7 @@ func hash32(input []byte) (res *[32]byte) {
 
 func hash24(input []byte) (res *[24]byte) {
 	hash := sha256.New
-	hkdf := hkdf.New(hash, input, nil, nil)
+	hkdf := hkdf.New(hash, input, nil, []byte("TENDERMINT_SECRET_CONNECTION_NONCE_GEN"))
 	res = new([24]byte)
 	io.ReadFull(hkdf, res[:])
 	return res
