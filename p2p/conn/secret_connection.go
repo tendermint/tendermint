@@ -123,7 +123,10 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		binary.BigEndian.PutUint32(frame, uint32(chunkLength))
 		copy(frame[dataLenSize:], chunk)
 
-		aead, _ := xchacha20poly1305.New(sc.shrSecret[:])
+		aead, err := xchacha20poly1305.New(sc.shrSecret[:])
+		if err != nil {
+			return n, errors.New("Invalid SecretConnection Key")
+		}
 		// encrypt the frame
 		var sealedFrame = make([]byte, aead.Overhead()+totalFrameSize)
 		aead.Seal(sealedFrame[:0], sc.sendNonce[:], frame, nil)
@@ -131,7 +134,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 		incr2Nonce(sc.sendNonce)
 		// end encryption
 
-		_, err := sc.conn.Write(sealedFrame)
+		_, err = sc.conn.Write(sealedFrame)
 		if err != nil {
 			return n, err
 		}
@@ -148,7 +151,10 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 		return
 	}
 
-	aead, _ := xchacha20poly1305.New(sc.shrSecret[:])
+	aead, err := xchacha20poly1305.New(sc.shrSecret[:])
+	if err != nil {
+		return n, errors.New("Invalid SecretConnection Key")
+	}
 	sealedFrame := make([]byte, totalFrameSize+aead.Overhead())
 	_, err = io.ReadFull(sc.conn, sealedFrame)
 	if err != nil {
