@@ -945,7 +945,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 	// See the BFT time spec.
 	lastBlockTime := cs.state.LastBlockTime
 	now := time.Now().Round(0).UTC()
-	minValidTime := cs.config.BlockTimeMinValidTime(lastBlockTime, now, round)
+	minValidTime := cs.config.BlockTimeMinValidTime(lastBlockTime)
 	if cs.ProposalBlock.Time.Before(minValidTime) {
 		logger.Info("enterPrevote: ProposalBlock time too low",
 			"blockTime", cs.ProposalBlock.Time,
@@ -953,7 +953,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
-	maxValidTime := cs.config.BlockTimeMaxValidTime(lastBlockTime, now, round)
+	maxValidTime := cs.config.BlockTimeMaxValidTime(now, round)
 	if maxValidTime.Before(cs.ProposalBlock.Time) {
 		logger.Info("enterPrevote: ProposalBlock time too high",
 			"blockTime", cs.ProposalBlock.Time,

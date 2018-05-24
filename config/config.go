@@ -396,9 +396,9 @@ type ConsensusConfig struct {
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
 
 	// Block time parameters in milliseconds
-	BlockTimeIota    int     `mapstructure:"blocktime_iota"`
-	BlockTimeWiggle  int     `mapstructure:"blocktime_wiggle"`
-	BlockTimeWiggleR float64 `mapstructure:"blocktime_wiggle_r"`
+	BlockTimeIota        int `mapstructure:"blocktime_iota"`
+	BlockTimeWiggle      int `mapstructure:"blocktime_wiggle"`
+	BlockTimeWiggleDelta int `mapstructure:"blocktime_wiggle_delta"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -421,7 +421,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		PeerQueryMaj23SleepDuration: 2000,
 		BlockTimeIota:               10,
 		BlockTimeWiggle:             20000,
-		BlockTimeWiggleR:            0.05,
+		BlockTimeWiggleDelta:        1000,
 	}
 }
 
@@ -487,27 +487,19 @@ func (cfg *ConsensusConfig) PeerQueryMaj23Sleep() time.Duration {
 
 // BlockTimeMinValidTime returns the minimum acceptable block time, as part
 // of "subjective time validity". See the BFT time spec.
-func (cfg *ConsensusConfig) BlockTimeMinValidTime(lastBlockTime, now time.Time, round int) time.Time {
-	var minValidTime time.Time = lastBlockTime.Add(time.Duration(cfg.BlockTimeIota) * time.Millisecond)
-	if round == 0 {
-		wiggleAgo := now.Add(-1 * time.Duration(cfg.BlockTimeWiggle) * time.Millisecond)
-		if wiggleAgo.After(minValidTime) {
-			minValidTime = wiggleAgo
-		}
-	} else {
-		// For all subsequent rounds, we accept any block > last_block_time+iota.
-	}
-	return minValidTime
+func (cfg *ConsensusConfig) BlockTimeMinValidTime(lastBlockTime time.Time) time.Time {
+	return lastBlockTime.
+		Add(time.Duration(cfg.BlockTimeIota) * time.Millisecond)
 }
 
 // BlockTimeMaxValidTime returns the maximum acceptable block time, as part
 // of "subjective time validity". See the BFT time spec.
-func (cfg *ConsensusConfig) BlockTimeMaxValidTime(lastBlockTime, now time.Time, round int) time.Time {
+func (cfg *ConsensusConfig) BlockTimeMaxValidTime(now time.Time, round int) time.Time {
 	return now.
 		Add(time.Duration(cfg.BlockTimeWiggle) * time.Millisecond).
 		Add(
 			time.Duration(
-				float64(cfg.BlockTimeWiggle)*cfg.BlockTimeWiggleR*float64(round),
+				int64(cfg.BlockTimeWiggleDelta)*int64(round),
 			) * time.Millisecond,
 		)
 }
