@@ -27,12 +27,12 @@ func ReadMessage(r io.Reader, msg proto.Message) error {
 }
 
 func readProtoMsg(r io.Reader, msg proto.Message, maxSize int) error {
-	// binary.ReadVarint takes an io.ByteReader, eg. a bufio.Reader
+	// binary.ReadUvarint takes an io.ByteReader, eg. a bufio.Reader
 	reader, ok := r.(*bufio.Reader)
 	if !ok {
 		reader = bufio.NewReader(r)
 	}
-	length64, err := binary.ReadVarint(reader)
+	length64, err := binary.ReadUvarint(reader)
 	if err != nil {
 		return err
 	}
@@ -48,11 +48,11 @@ func readProtoMsg(r io.Reader, msg proto.Message, maxSize int) error {
 }
 
 //-----------------------------------------------------------------------
-// NOTE: we copied wire.EncodeByteSlice from go-wire rather than keep
-// go-wire as a dep
+// NOTE: we copied wire.EncodeByteSlice from go-amino rather than keep
+// go-amino as a dep
 
 func encodeByteSlice(w io.Writer, bz []byte) (err error) {
-	err = encodeVarint(w, int64(len(bz)))
+	err = encodeUvarint(w, uint64(len(bz)))
 	if err != nil {
 		return
 	}
@@ -60,9 +60,9 @@ func encodeByteSlice(w io.Writer, bz []byte) (err error) {
 	return
 }
 
-func encodeVarint(w io.Writer, i int64) (err error) {
+func encodeUvarint(w io.Writer, u uint64) (err error) {
 	var buf [10]byte
-	n := binary.PutVarint(buf[:], i)
+	n := binary.PutUvarint(buf[:], u)
 	_, err = w.Write(buf[0:n])
 	return
 }
