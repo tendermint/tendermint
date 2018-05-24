@@ -86,8 +86,6 @@ jobs:
           key: v1-pkg-cache
       - restore_cache:
           key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
-      - checkout
-      - run: git fetch -a origin
       - run:
           name: slate docs
           command: |

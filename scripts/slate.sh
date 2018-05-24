@@ -7,7 +7,7 @@ if [ "$CIRCLE_BRANCH" == "" ]; then
 fi
 
 # check for changes in the `rpc/core` directory
-did_rpc_change=$(git diff --name-status $CIRCLE_BRANCH origin/develop | grep rpc/core)
+did_rpc_change=$(git diff --name-status $CIRCLE_BRANCH origin/master | grep rpc/core)
 
 if [ "$did_rpc_change" == "" ]; then
 	echo "no changes detected in rpc/core, exiting"
@@ -17,11 +17,11 @@ else
 fi
 
 # only run this script on changes to rpc/core committed to develop
-if [ "$CIRCLE_BRANCH" != "develop" ]; then
-	echo "the branch being built isn't develop, exiting"
+if [ "$CIRCLE_BRANCH" != "master" ]; then
+	echo "the branch being built isn't master, exiting"
 	exit 0
 else
-	echo "on develop, building the RPC docs"
+	echo "on master, building the RPC docs"
 fi
 
 # godoc2md used to convert the go documentation from
