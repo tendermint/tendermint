@@ -164,7 +164,7 @@ func (store *EvidenceStore) MarkEvidenceAsBroadcasted(evidence types.Evidence) {
 	store.db.Delete(key)
 }
 
-// MarkEvidenceAsPending removes evidence from pending and outqueue and sets the state to committed.
+// MarkEvidenceAsCommitted removes evidence from pending and outqueue and sets the state to committed.
 func (store *EvidenceStore) MarkEvidenceAsCommitted(evidence types.Evidence) {
 	// if its committed, its been broadcast
 	store.MarkEvidenceAsBroadcasted(evidence)
