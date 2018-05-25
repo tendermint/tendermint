@@ -2,12 +2,17 @@
 
 ## 0.19.6
 
-*TBD*
 
 IMPROVEMENTS:
 
-- [consensus] consensus reactor now receives events from a separate event bus,
+- [consensus] Consensus reactor now receives events from a separate synchronous event bus,
   which is not dependant on external RPC load
+
+BUG FIX:
+
+- [evidence] Dont send peers evidence from heights they haven't synced to yet
+- [p2p] Refuse connections to more than one peer with the same IP
+- [docs] Various fixes
 
 ## 0.19.5
 

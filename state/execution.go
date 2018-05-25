@@ -106,7 +106,7 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 
 	fail.Fail() // XXX
 
-	// Update evpool now that state is saved
+	// Update evpool now that state is saved.
 	// TODO: handle the crash/recover scenario
 	// ie. (may need to call Update for last block)
 	blockExec.evpool.Update(block)
