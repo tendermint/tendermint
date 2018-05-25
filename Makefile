@@ -91,7 +91,11 @@ test_apps:
 	@ bash tests/test_app/test.sh
 
 test_cli:
-	# test the cli against the examples in the tutorial at tendermint.com
+	# test the cli against the examples in the tutorial at:
+	# http://tendermint.readthedocs.io/projects/tools/en/master/abci-cli.html
+	#
+	# XXX: if this test fails, fix it and update the docs at:
+	# https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.rst
 	@ bash tests/test_cli/test.sh
 
 ########################################
