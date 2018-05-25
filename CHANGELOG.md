@@ -2,7 +2,9 @@
 
 ## 0.19.6
 
-*TBD*
+FEATURES
+
+- [rpc] the RPC documentation is now published to https://tendermint.github.io/slate
 
 IMPROVEMENTS:
 

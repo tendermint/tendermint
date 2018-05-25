@@ -77,6 +77,22 @@ jobs:
           paths:
             - "bin/abci*"
 
+  build_slate:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: slate docs
+          command: |
+            set -ex
+            export PATH="$GOBIN:$PATH"
+            make build-slate
+
   lint:
     <<: *defaults
     steps:
@@ -180,6 +196,9 @@ workflows:
   test-suite:
     jobs:
       - setup_dependencies
+      - build_slate:
+          requires:
+            - setup_dependencies
       - setup_abci:
           requires:
             - setup_dependencies
