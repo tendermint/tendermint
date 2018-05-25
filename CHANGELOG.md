@@ -8,6 +8,7 @@ IMPROVEMENTS:
 
 - [consensus] consensus reactor now receives events from a separate event bus,
   which is not dependant on external RPC load
+- [consensus/wal] do not look for height in older files if we've seen height - 1
 
 ## 0.19.5
 

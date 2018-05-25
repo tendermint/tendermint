@@ -568,7 +568,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		// and add to our addresses to avoid dialing again
 		sw.addrBook.RemoveAddress(addr)
 		sw.addrBook.AddOurAddress(addr)
-		return ErrSwitchConnectToSelf{}
+		return ErrSwitchConnectToSelf{addr}
 	}
 
 	// Avoid duplicate

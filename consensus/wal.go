@@ -111,7 +111,7 @@ func (wal *baseWAL) OnStop() {
 }
 
 // Write is called in newStep and for each receive on the
-// peerMsgQueue and the timoutTicker.
+// peerMsgQueue and the timeoutTicker.
 // NOTE: does not call fsync()
 func (wal *baseWAL) Write(msg WALMessage) {
 	if wal == nil {
@@ -144,13 +144,14 @@ type WALSearchOptions struct {
 	IgnoreDataCorruptionErrors bool
 }
 
-// SearchForEndHeight searches for the EndHeightMessage with the height and
-// returns an auto.GroupReader, whenever it was found or not and an error.
+// SearchForEndHeight searches for the EndHeightMessage with the given height
+// and returns an auto.GroupReader, whenever it was found or not and an error.
 // Group reader will be nil if found equals false.
 //
 // CONTRACT: caller must close group reader.
 func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) (gr *auto.GroupReader, found bool, err error) {
 	var msg *TimedWALMessage
+	lastHeightFound := int64(-1)
 
 	// NOTE: starting from the last file in the group because we're usually
 	// searching for the last height. See replay.go
@@ -166,17 +167,25 @@ func (wal *baseWAL) SearchForEndHeight(height int64, options *WALSearchOptions) 
 		for {
 			msg, err = dec.Decode()
 			if err == io.EOF {
+				// OPTIMISATION: no need to look for height in older files if we've seen h < height
+				if lastHeightFound > 0 && lastHeightFound < height {
+					gr.Close()
+					return nil, false, nil
+				}
 				// check next file
 				break
 			}
 			if options.IgnoreDataCorruptionErrors && IsDataCorruptionError(err) {
+				wal.Logger.Debug("Corrupted entry. Skipping...", "err", err)
 				// do nothing
+				continue
 			} else if err != nil {
 				gr.Close()
 				return nil, false, err
 			}
 
 			if m, ok := msg.Msg.(EndHeightMessage); ok {
+				lastHeightFound = m.Height
 				if m.Height == height { // found
 					wal.Logger.Debug("Found", "height", height, "index", index)
 					return gr, true, nil
@@ -271,23 +280,17 @@ func (dec *WALDecoder) Decode() (*TimedWALMessage, error) {
 
 	b = make([]byte, 4)
 	_, err = dec.rd.Read(b)
-	if err == io.EOF {
-		return nil, err
-	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read length: %v", err)
 	}
 	length := binary.BigEndian.Uint32(b)
 
 	if length > maxMsgSizeBytes {
-		return nil, DataCorruptionError{fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)}
+		return nil, fmt.Errorf("length %d exceeded maximum possible value of %d bytes", length, maxMsgSizeBytes)
 	}
 
 	data := make([]byte, length)
 	_, err = dec.rd.Read(data)
-	if err == io.EOF {
-		return nil, err
-	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read data: %v", err)
 	}
