@@ -74,7 +74,7 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 		return s, ErrInvalidBlock(err)
 	}
 
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, s.Validators)
 	if err != nil {
 		return s, ErrProxyAppConn(err)
 	}
@@ -160,7 +160,7 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus, block *types.Block) (*ABCIResponses, error) {
+func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus, block *types.Block, vs *types.ValidatorSet) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
