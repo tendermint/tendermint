@@ -132,3 +132,58 @@ now, validators are supposed to use external tools like `NGINX
 <https://www.nginx.com/blog/rate-limiting-nginx/>__` or `traefik
 <https://docs.traefik.io/configuration/commons/#rate-limiting>__` to archive
 the same things.
+
+Debugging Tendermint
+--------------------
+
+If you ever have to debug Tendermint, the first thing you should probably do is
+to check out the logs. See `"How to read logs" <./how-to-read-logs.html>__`,
+where we explain what certain log statements mean.
+
+If, after skimming through the logs, things are not clear still, the second
+TODO is to query the `/status` RPC endpoint. It provides the necessary info:
+whenever the node is syncing or not, what height it is on, etc.
+
+```
+$ curl http(s)://{ip}:{rpcPort}/status
+```
+
+`/dump_consensus_state` will give you a detailed overview of the consensus
+state (proposer, lastest validators, peers states). From it, you should be able
+to figure out why, for example, the network had halted.
+
+```
+$ curl http(s)://{ip}:{rpcPort}/dump_consensus_state
+```
+
+There is a reduced version of this endpoint - `/consensus_state`, which
+returns just the votes seen at the current height.
+
+- `Github Issues <https://github.com/tendermint/tendermint/issues>__`
+- `StackOverflow questions <https://stackoverflow.com/questions/tagged/tendermint>__`
+
+Monitoring Tendermint
+---------------------
+
+Each Tendermint instance has a standard `/health` RPC endpoint, which responds
+with 200 (OK) if everything is fine and 500 (or no response) - if something is
+wrong.
+
+Other useful endpoints include mentioned earlier `/status`, `/net_info` and
+`/validators`.
+
+We have a small tool, called tm-monitor, which outputs information from the
+endpoints above plus some statistics. The tool can be found `here
+<https://github.com/tendermint/tools/tree/master/tm-monitor>__`.
+
+What happens when my app die?
+-----------------------------
+
+You are supposed to run Tendermint under a `process supervisor
+<https://en.wikipedia.org/wiki/Process_supervision>__` (like systemd or runit).
+It will ensure Tendermint is always running (despite possible errors).
+
+Getting back to the original question, if your application dies, Tendermint
+will panic. After a process supervisor restarts your application, Tendermint
+should be able to reconnect successfully. The order of restart does not matter
+for it.
