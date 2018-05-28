@@ -69,59 +69,65 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 // peers have different IP addresses, they all have the same underlying remote
 // IP: 127.0.0.1.
 //
-// func TestPEXReactorRunning(t *testing.T) {
-// 	N := 3
-// 	switches := make([]*p2p.Switch, N)
+func TestPEXReactorRunning(t *testing.T) {
+	N := 3
+	switches := make([]*p2p.Switch, N)
 
-// 	// directory to store address books
-// 	dir, err := ioutil.TempDir("", "pex_reactor")
-// 	require.Nil(t, err)
-// 	defer os.RemoveAll(dir) // nolint: errcheck
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
 
-// 	books := make([]*addrBook, N)
-// 	logger := log.TestingLogger()
+	var (
+		books      = make([]*addrBook, N)
+		logger     = log.TestingLogger()
+		peerConfig = p2p.DefaultPeerConfig()
+	)
 
-// 	// create switches
-// 	for i := 0; i < N; i++ {
-// 		switches[i] = p2p.MakeSwitch(config, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
-// 			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
-// 			books[i].SetLogger(logger.With("pex", i))
-// 			sw.SetAddrBook(books[i])
+	peerConfig.Local = true
 
-// 			sw.SetLogger(logger.With("pex", i))
+	// create switches
+	for i := 0; i < N; i++ {
+		switches[i] = p2p.MakeSwitch(config, peerConfig, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
+			books[i].SetLogger(logger.With("pex", i))
+			sw.SetAddrBook(books[i])
 
-// 			r := NewPEXReactor(books[i], &PEXReactorConfig{})
-// 			r.SetLogger(logger.With("pex", i))
-// 			r.SetEnsurePeersPeriod(250 * time.Millisecond)
-// 			sw.AddReactor("pex", r)
+			sw.SetLogger(logger.With("pex", i))
 
-// 			return sw
-// 		})
-// 	}
+			r := NewPEXReactor(books[i], &PEXReactorConfig{})
+			r.SetLogger(logger.With("pex", i))
+			r.SetEnsurePeersPeriod(250 * time.Millisecond)
+			sw.AddReactor("pex", r)
 
-// 	addOtherNodeAddrToAddrBook := func(switchIndex, otherSwitchIndex int) {
-// 		addr := switches[otherSwitchIndex].NodeInfo().NetAddress()
-// 		books[switchIndex].AddAddress(addr, addr)
-// 	}
+			return sw
+		})
+	}
 
-// 	addOtherNodeAddrToAddrBook(0, 1)
-// 	addOtherNodeAddrToAddrBook(1, 0)
-// 	addOtherNodeAddrToAddrBook(2, 1)
+	addOtherNodeAddrToAddrBook := func(switchIndex, otherSwitchIndex int) {
+		addr := switches[otherSwitchIndex].NodeInfo().NetAddress()
+		t.Logf("ADDR: %s", addr.String())
+		books[switchIndex].AddAddress(addr, addr)
+	}
 
-// 	for i, sw := range switches {
-// 		sw.AddListener(p2p.NewDefaultListener("tcp", sw.NodeInfo().ListenAddr, true, logger.With("pex", i)))
+	addOtherNodeAddrToAddrBook(0, 1)
+	addOtherNodeAddrToAddrBook(1, 0)
+	addOtherNodeAddrToAddrBook(2, 1)
 
-// 		err := sw.Start() // start switch and reactors
-// 		require.Nil(t, err)
-// 	}
+	for i, sw := range switches {
+		sw.AddListener(p2p.NewDefaultListener("tcp", sw.NodeInfo().ListenAddr, true, logger.With("pex", i)))
 
-// 	assertPeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second, N-1)
+		err := sw.Start() // start switch and reactors
+		require.Nil(t, err)
+	}
 
-// 	// stop them
-// 	for _, s := range switches {
-// 		s.Stop()
-// 	}
-// }
+	assertPeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second, N-1)
+
+	// stop them
+	for _, s := range switches {
+		s.Stop()
+	}
+}
 
 func TestPEXReactorReceive(t *testing.T) {
 	r, book := createReactor(&PEXReactorConfig{})
@@ -212,6 +218,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	// 1. create seed
 	seed := p2p.MakeSwitch(
 		config,
+		nil,
 		0,
 		"127.0.0.1",
 		"123.123.123",
@@ -242,6 +249,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	// 2. create usual peer with only seed configured.
 	peer := p2p.MakeSwitch(
 		config,
+		nil,
 		1,
 		"127.0.0.1",
 		"123.123.123",
@@ -449,7 +457,7 @@ func teardownReactor(book *addrBook) {
 }
 
 func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
-	sw := p2p.MakeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
+	sw := p2p.MakeSwitch(config, nil, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
 	sw.SetLogger(log.TestingLogger())
 	for _, r := range reactors {
 		sw.AddReactor(r.String(), r)

@@ -135,7 +135,7 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
 	reactor.SetEventBus(css[0].eventBus)
 	reactor.SetLogger(log.TestingLogger())
-	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
+	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), nil, 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
 	reactor.SetSwitch(sw)
 	err := reactor.Start()
 	require.NoError(t, err)
@@ -186,7 +186,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
 	reactor.SetEventBus(css[0].eventBus)
 	reactor.SetLogger(log.TestingLogger())
-	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
+	sw := p2p.MakeSwitch(cfg.DefaultP2PConfig(), nil, 1, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
 	reactor.SetSwitch(sw)
 	err := reactor.Start()
 	require.NoError(t, err)

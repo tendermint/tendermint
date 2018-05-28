@@ -127,6 +127,7 @@ type PeerConfig struct {
 	DialFail   bool            `mapstructure:"dial_fail"` // for testing
 	Fuzz       bool            `mapstructure:"fuzz"`      // fuzz connection (for testing)
 	FuzzConfig *FuzzConnConfig `mapstructure:"fuzz_config"`
+	Local      bool            `mapstructure:"local"` // for testing on local loopback
 }
 
 // DefaultPeerConfig returns the default config.
@@ -139,6 +140,7 @@ func DefaultPeerConfig() *PeerConfig {
 		DialFail:         false,
 		Fuzz:             false,
 		FuzzConfig:       DefaultFuzzConnConfig(),
+		Local:            false,
 	}
 }
 
