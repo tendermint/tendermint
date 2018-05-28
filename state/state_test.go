@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 
@@ -121,7 +121,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{Code: 383},
 				{Data: []byte("Gotcha!"),
 					Tags: []cmn.KVPair{
-						cmn.KVPair{[]byte("a"), []byte{1}},
+						cmn.KVPair{[]byte("a"), []byte("1")},
 						cmn.KVPair{[]byte("build"), []byte("stuff")},
 					}},
 			},

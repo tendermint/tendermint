@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.0
+
+BREAKING:
+
+- [libs/pubsub] TagMap#Get returns a string value
+- [libs/pubsub] NewTagMap accepts a map of strings
+
 ## 0.19.6
 
 FEATURES

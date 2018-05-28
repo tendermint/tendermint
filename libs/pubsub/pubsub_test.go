@@ -49,14 +49,14 @@ func TestDifferentClients(t *testing.T) {
 	ch1 := make(chan interface{}, 1)
 	err := s.Subscribe(ctx, "client-1", query.MustParse("tm.events.type='NewBlock'"), ch1)
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Iceman", pubsub.NewTagMap(map[string]interface{}{"tm.events.type": "NewBlock"}))
+	err = s.PublishWithTags(ctx, "Iceman", pubsub.NewTagMap(map[string]string{"tm.events.type": "NewBlock"}))
 	require.NoError(t, err)
 	assertReceive(t, "Iceman", ch1)
 
 	ch2 := make(chan interface{}, 1)
 	err = s.Subscribe(ctx, "client-2", query.MustParse("tm.events.type='NewBlock' AND abci.account.name='Igor'"), ch2)
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Ultimo", pubsub.NewTagMap(map[string]interface{}{"tm.events.type": "NewBlock", "abci.account.name": "Igor"}))
+	err = s.PublishWithTags(ctx, "Ultimo", pubsub.NewTagMap(map[string]string{"tm.events.type": "NewBlock", "abci.account.name": "Igor"}))
 	require.NoError(t, err)
 	assertReceive(t, "Ultimo", ch1)
 	assertReceive(t, "Ultimo", ch2)
@@ -64,7 +64,7 @@ func TestDifferentClients(t *testing.T) {
 	ch3 := make(chan interface{}, 1)
 	err = s.Subscribe(ctx, "client-3", query.MustParse("tm.events.type='NewRoundStep' AND abci.account.name='Igor' AND abci.invoice.number = 10"), ch3)
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Valeria Richards", pubsub.NewTagMap(map[string]interface{}{"tm.events.type": "NewRoundStep"}))
+	err = s.PublishWithTags(ctx, "Valeria Richards", pubsub.NewTagMap(map[string]string{"tm.events.type": "NewRoundStep"}))
 	require.NoError(t, err)
 	assert.Zero(t, len(ch3))
 }
@@ -81,7 +81,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 	ch1 := make(chan interface{}, 1)
 	err := s.Subscribe(ctx, clientID, q, ch1)
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Goblin Queen", pubsub.NewTagMap(map[string]interface{}{"tm.events.type": "NewBlock"}))
+	err = s.PublishWithTags(ctx, "Goblin Queen", pubsub.NewTagMap(map[string]string{"tm.events.type": "NewBlock"}))
 	require.NoError(t, err)
 	assertReceive(t, "Goblin Queen", ch1)
 
@@ -89,7 +89,7 @@ func TestClientSubscribesTwice(t *testing.T) {
 	err = s.Subscribe(ctx, clientID, q, ch2)
 	require.Error(t, err)
 
-	err = s.PublishWithTags(ctx, "Spider-Man", pubsub.NewTagMap(map[string]interface{}{"tm.events.type": "NewBlock"}))
+	err = s.PublishWithTags(ctx, "Spider-Man", pubsub.NewTagMap(map[string]string{"tm.events.type": "NewBlock"}))
 	require.NoError(t, err)
 	assertReceive(t, "Spider-Man", ch1)
 }
@@ -209,7 +209,7 @@ func benchmarkNClients(n int, b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.PublishWithTags(ctx, "Gamora", pubsub.NewTagMap(map[string]interface{}{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": i}))
+		s.PublishWithTags(ctx, "Gamora", pubsub.NewTagMap(map[string]string{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": string(i)}))
 	}
 }
 
@@ -232,7 +232,7 @@ func benchmarkNClientsOneQuery(n int, b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		s.PublishWithTags(ctx, "Gamora", pubsub.NewTagMap(map[string]interface{}{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": 1}))
+		s.PublishWithTags(ctx, "Gamora", pubsub.NewTagMap(map[string]string{"abci.Account.Owner": "Ivan", "abci.Invoices.Number": "1"}))
 	}
 }
 

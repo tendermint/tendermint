@@ -22,7 +22,7 @@ func TestExample(t *testing.T) {
 	ch := make(chan interface{}, 1)
 	err := s.Subscribe(ctx, "example-client", query.MustParse("abci.account.name='John'"), ch)
 	require.NoError(t, err)
-	err = s.PublishWithTags(ctx, "Tombstone", pubsub.NewTagMap(map[string]interface{}{"abci.account.name": "John"}))
+	err = s.PublishWithTags(ctx, "Tombstone", pubsub.NewTagMap(map[string]string{"abci.account.name": "John"}))
 	require.NoError(t, err)
 	assertReceive(t, "Tombstone", ch)
 }
