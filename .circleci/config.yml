@@ -61,6 +61,23 @@ jobs:
             export PATH="$GOBIN:$PATH"
             bash tests/test_app/test.sh
 
+# XXX: if this test fails, fix it and update the docs at:
+# https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.rst
+  test_cli:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run cli tests
+          command: |
+            export PATH="$GOBIN:$PATH"
+            bash tests/test_cli/test.sh
+
   test_cover:
     <<: *defaults
     parallelism: 4
@@ -112,6 +129,9 @@ workflows:
           requires:
             - setup_dependencies
       - test_apps:
+          requires:
+            - setup_dependencies
+      - test_cli:
           requires:
             - setup_dependencies
       - upload_coverage:
