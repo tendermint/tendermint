@@ -77,6 +77,13 @@ const (
 	OpContains
 )
 
+const (
+	// DateLayout defines a layout for all dates (`DATE date`)
+	DateLayout = "2006-01-02"
+	// TimeLayout defines a layout for all times (`TIME time`)
+	TimeLayout = time.RFC3339
+)
+
 // Conditions returns a list of conditions.
 func (q *Query) Conditions() []Condition {
 	conditions := make([]Condition, 0)
@@ -112,7 +119,7 @@ func (q *Query) Conditions() []Condition {
 			conditions = append(conditions, Condition{tag, op, valueWithoutSingleQuotes})
 		case rulenumber:
 			number := buffer[begin:end]
-			if strings.Contains(number, ".") { // if it looks like a floating-point number
+			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
 					panic(fmt.Sprintf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)", err, number))
@@ -126,7 +133,7 @@ func (q *Query) Conditions() []Condition {
 				conditions = append(conditions, Condition{tag, op, value})
 			}
 		case ruletime:
-			value, err := time.Parse(time.RFC3339, buffer[begin:end])
+			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
 				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)", err, buffer[begin:end]))
 			}
@@ -188,7 +195,7 @@ func (q *Query) Matches(tags pubsub.TagMap) bool {
 			}
 		case rulenumber:
 			number := buffer[begin:end]
-			if strings.Contains(number, ".") { // if it looks like a floating-point number
+			if strings.ContainsAny(number, ".") { // if it looks like a floating-point number
 				value, err := strconv.ParseFloat(number, 64)
 				if err != nil {
 					panic(fmt.Sprintf("got %v while trying to parse %s as float64 (should never happen if the grammar is correct)", err, number))
@@ -206,7 +213,7 @@ func (q *Query) Matches(tags pubsub.TagMap) bool {
 				}
 			}
 		case ruletime:
-			value, err := time.Parse(time.RFC3339, buffer[begin:end])
+			value, err := time.Parse(TimeLayout, buffer[begin:end])
 			if err != nil {
 				panic(fmt.Sprintf("got %v while trying to parse %s as time.Time / RFC3339 (should never happen if the grammar is correct)", err, buffer[begin:end]))
 			}
@@ -242,9 +249,18 @@ func match(tag string, op Operator, operand reflect.Value, tags pubsub.TagMap) b
 	switch operand.Kind() {
 	case reflect.Struct: // time
 		operandAsTime := operand.Interface().(time.Time)
-		v, ok := value.(time.Time)
-		if !ok { // if value from tags is not time.Time
-			return false
+		// try our best to convert value from tags to time.Time
+		var (
+			v   time.Time
+			err error
+		)
+		if strings.ContainsAny(value, "T") {
+			v, err = time.Parse(TimeLayout, value)
+		} else {
+			v, err = time.Parse(DateLayout, value)
+		}
+		if err != nil {
+			panic(fmt.Sprintf("Failed to convert value %v from tag to time.Time: %v", value, err))
 		}
 		switch op {
 		case OpLessEqual:
@@ -262,23 +278,9 @@ func match(tag string, op Operator, operand reflect.Value, tags pubsub.TagMap) b
 		operandFloat64 := operand.Interface().(float64)
 		var v float64
 		// try our best to convert value from tags to float64
-		switch vt := value.(type) {
-		case float64:
-			v = vt
-		case float32:
-			v = float64(vt)
-		case int:
-			v = float64(vt)
-		case int8:
-			v = float64(vt)
-		case int16:
-			v = float64(vt)
-		case int32:
-			v = float64(vt)
-		case int64:
-			v = float64(vt)
-		default: // fail for all other types
-			panic(fmt.Sprintf("Incomparable types: %T (%v) vs float64 (%v)", value, value, operandFloat64))
+		v, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			panic(fmt.Sprintf("Failed to convert value %v from tag to float64: %v", value, err))
 		}
 		switch op {
 		case OpLessEqual:
@@ -295,24 +297,20 @@ func match(tag string, op Operator, operand reflect.Value, tags pubsub.TagMap) b
 	case reflect.Int64:
 		operandInt := operand.Interface().(int64)
 		var v int64
-		// try our best to convert value from tags to int64
-		switch vt := value.(type) {
-		case int64:
-			v = vt
-		case int8:
-			v = int64(vt)
-		case int16:
-			v = int64(vt)
-		case int32:
-			v = int64(vt)
-		case int:
-			v = int64(vt)
-		case float64:
-			v = int64(vt)
-		case float32:
-			v = int64(vt)
-		default: // fail for all other types
-			panic(fmt.Sprintf("Incomparable types: %T (%v) vs int64 (%v)", value, value, operandInt))
+		// if value looks like float, we try to parse it as float
+		if strings.ContainsAny(value, ".") {
+			v1, err := strconv.ParseFloat(value, 64)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to convert value %v from tag to float64: %v", value, err))
+			}
+			v = int64(v1)
+		} else {
+			var err error
+			// try our best to convert value from tags to int64
+			v, err = strconv.ParseInt(value, 10, 64)
+			if err != nil {
+				panic(fmt.Sprintf("Failed to convert value %v from tag to int64: %v", value, err))
+			}
 		}
 		switch op {
 		case OpLessEqual:
@@ -327,15 +325,11 @@ func match(tag string, op Operator, operand reflect.Value, tags pubsub.TagMap) b
 			return v == operandInt
 		}
 	case reflect.String:
-		v, ok := value.(string)
-		if !ok { // if value from tags is not string
-			return false
-		}
 		switch op {
 		case OpEqual:
-			return v == operand.String()
+			return value == operand.String()
 		case OpContains:
-			return strings.Contains(v, operand.String())
+			return strings.Contains(value, operand.String())
 		}
 	default:
 		panic(fmt.Sprintf("Unknown kind of operand %v", operand.Kind()))

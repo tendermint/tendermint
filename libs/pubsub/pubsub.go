@@ -38,18 +38,6 @@ var (
 	ErrAlreadySubscribed = errors.New("already subscribed")
 )
 
-// TagMap is used to associate tags to a message.
-// They can be queried by subscribers to choose messages they will received.
-type TagMap interface {
-	// Get returns the value for a key, or nil if no value is present.
-	// The ok result indicates whether value was found in the tags.
-	Get(key string) (value interface{}, ok bool)
-	// Len returns the number of tags.
-	Len() int
-}
-
-type tagMap map[string]interface{}
-
 type cmd struct {
 	op       operation
 	query    Query
@@ -80,14 +68,28 @@ type Server struct {
 // Option sets a parameter for the server.
 type Option func(*Server)
 
+// TagMap is used to associate tags to a message.
+// They can be queried by subscribers to choose messages they will received.
+type TagMap interface {
+	// Get returns the value for a key, or nil if no value is present.
+	// The ok result indicates whether value was found in the tags.
+	Get(key string) (value string, ok bool)
+	// Len returns the number of tags.
+	Len() int
+}
+
+type tagMap map[string]string
+
+var _ TagMap = (*tagMap)(nil)
+
 // NewTagMap constructs a new immutable tag set from a map.
-func NewTagMap(data map[string]interface{}) TagMap {
+func NewTagMap(data map[string]string) TagMap {
 	return tagMap(data)
 }
 
 // Get returns the value for a key, or nil if no value is present.
 // The ok result indicates whether value was found in the tags.
-func (ts tagMap) Get(key string) (value interface{}, ok bool) {
+func (ts tagMap) Get(key string) (value string, ok bool) {
 	value, ok = ts[key]
 	return
 }
@@ -213,7 +215,7 @@ func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 // Publish publishes the given message. An error will be returned to the caller
 // if the context is canceled.
 func (s *Server) Publish(ctx context.Context, msg interface{}) error {
-	return s.PublishWithTags(ctx, msg, NewTagMap(make(map[string]interface{})))
+	return s.PublishWithTags(ctx, msg, NewTagMap(make(map[string]string)))
 }
 
 // PublishWithTags publishes the given message with the set of tags. The set is
