@@ -74,7 +74,6 @@ type ConsensusState struct {
 	privValidator types.PrivValidator // for signing votes
 
 	// services for creating and executing blocks
-	// TODO: encapsulate all of this in one "BlockManager"
 	blockExec  *sm.BlockExecutor
 	blockStore sm.BlockStore
 	mempool    sm.Mempool

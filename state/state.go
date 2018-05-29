@@ -24,7 +24,7 @@ var (
 // Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
-	// Immutable
+	// immutable
 	ChainID string
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
@@ -38,7 +38,8 @@ type State struct {
 	// so we can query for historical validator sets.
 	// Note that if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
-	Validators                  *types.ValidatorSet
+	NextNextValidators          *types.ValidatorSet
+	NextValidators              *types.ValidatorSet
 	LastValidators              *types.ValidatorSet
 	LastHeightValidatorsChanged int64
 
@@ -50,7 +51,7 @@ type State struct {
 	// Merkle root of the results from executing prev block
 	LastResultsHash []byte
 
-	// The latest AppHash we've received from calling abci.Commit()
+	// the latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
 }
 
@@ -64,7 +65,8 @@ func (state State) Copy() State {
 		LastBlockID:      state.LastBlockID,
 		LastBlockTime:    state.LastBlockTime,
 
-		Validators:                  state.Validators.Copy(),
+		NextNextValidators:          state.NextNextValidators.Copy(),
+		NextValidators:              state.NextValidators.Copy(),
 		LastValidators:              state.LastValidators.Copy(),
 		LastHeightValidatorsChanged: state.LastHeightValidatorsChanged,
 
@@ -90,12 +92,12 @@ func (state State) Bytes() []byte {
 
 // IsEmpty returns true if the State is equal to the empty State.
 func (state State) IsEmpty() bool {
-	return state.Validators == nil // XXX can't compare to Empty
+	return state.NextValidators == nil // XXX can't compare to Empty
 }
 
 // GetValidators returns the last and current validator sets.
-func (state State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
-	return state.LastValidators, state.Validators
+func (state State) GetValidators() (last, next, nextNext *types.ValidatorSet) {
+	return state.LastValidators, state.NextValidators, s.NextNextValidators
 }
 
 //------------------------------------------------------------------------
@@ -111,6 +113,7 @@ func (state State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit)
 	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
 	block.LastBlockID = state.LastBlockID
 	block.ValidatorsHash = state.Validators.Hash()
+	block.NextValidatorsHash = state.NextValidators.Hash()
 	block.AppHash = state.AppHash
 	block.ConsensusHash = state.ConsensusParams.Hash()
 	block.LastResultsHash = state.LastResultsHash
@@ -175,7 +178,8 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		Validators:                  types.NewValidatorSet(validators),
+		NextNextValidators:          types.NewValidatorSet(validators),
+		NextValidators:              types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,
 

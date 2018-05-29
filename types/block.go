@@ -187,10 +187,11 @@ type Header struct {
 	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
 
 	// hashes from the app output from the prev block
-	ValidatorsHash  cmn.HexBytes `json:"validators_hash"`   // validators for the current block
-	ConsensusHash   cmn.HexBytes `json:"consensus_hash"`    // consensus params for current block
-	AppHash         cmn.HexBytes `json:"app_hash"`          // state after txs from the previous block
-	LastResultsHash cmn.HexBytes `json:"last_results_hash"` // root hash of all results from the txs from the previous block
+	ValidatorsHash     cmn.HexBytes `json:"validators_hash"`      // validators for the current block
+	NextValidatorsHash cmn.HexBytes `json:"next_validators_hash"` // validators for the next block
+	ConsensusHash      cmn.HexBytes `json:"consensus_hash"`       // consensus params for current block
+	AppHash            cmn.HexBytes `json:"app_hash"`             // state after txs from the previous block
+	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
 
 	// consensus info
 	EvidenceHash cmn.HexBytes `json:"evidence_hash"` // evidence included in the block
@@ -205,19 +206,20 @@ func (h *Header) Hash() cmn.HexBytes {
 		return nil
 	}
 	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
-		"ChainID":     aminoHasher(h.ChainID),
-		"Height":      aminoHasher(h.Height),
-		"Time":        aminoHasher(h.Time),
-		"NumTxs":      aminoHasher(h.NumTxs),
-		"TotalTxs":    aminoHasher(h.TotalTxs),
-		"LastBlockID": aminoHasher(h.LastBlockID),
-		"LastCommit":  aminoHasher(h.LastCommitHash),
-		"Data":        aminoHasher(h.DataHash),
-		"Validators":  aminoHasher(h.ValidatorsHash),
-		"App":         aminoHasher(h.AppHash),
-		"Consensus":   aminoHasher(h.ConsensusHash),
-		"Results":     aminoHasher(h.LastResultsHash),
-		"Evidence":    aminoHasher(h.EvidenceHash),
+		"ChainID":        aminoHasher(h.ChainID),
+		"Height":         aminoHasher(h.Height),
+		"Time":           aminoHasher(h.Time),
+		"NumTxs":         aminoHasher(h.NumTxs),
+		"TotalTxs":       aminoHasher(h.TotalTxs),
+		"LastBlockID":    aminoHasher(h.LastBlockID),
+		"LastCommit":     aminoHasher(h.LastCommitHash),
+		"Data":           aminoHasher(h.DataHash),
+		"Validators":     aminoHasher(h.ValidatorsHash),
+		"NextValidators": aminoHasher(h.NextValidatorsHash),
+		"App":            aminoHasher(h.AppHash),
+		"Consensus":      aminoHasher(h.ConsensusHash),
+		"Results":        aminoHasher(h.LastResultsHash),
+		"Evidence":       aminoHasher(h.EvidenceHash),
 	})
 }
 
@@ -236,6 +238,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  LastCommit:     %v
 %s  Data:           %v
 %s  Validators:     %v
+%s  NextValidators: %v
 %s  App:            %v
 %s  Consensus:       %v
 %s  Results:        %v
@@ -250,6 +253,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastCommitHash,
 		indent, h.DataHash,
 		indent, h.ValidatorsHash,
+		indent, h.NextValidatorsHash,
 		indent, h.AppHash,
 		indent, h.ConsensusHash,
 		indent, h.LastResultsHash,

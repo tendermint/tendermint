@@ -80,18 +80,18 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	fail.Fail() // XXX
 
-	// save the results before we commit
+	// Save the results before we commit.
 	saveABCIResponses(blockExec.db, block.Height, abciResponses)
 
 	fail.Fail() // XXX
 
-	// update the state with the block and responses
+	// Update the state with the block and responses.
 	state, err = updateState(state, blockID, block.Header, abciResponses)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
 
-	// lock mempool, commit app state, update mempoool
+	// Lock mempool, commit app state, update mempoool.
 	appHash, err := blockExec.Commit(block)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
@@ -102,13 +102,13 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 
 	fail.Fail() // XXX
 
-	// update the app hash and save the state
+	// Update the app hash and save the state.
 	state.AppHash = appHash
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
 
-	// events are fired after everything else
+	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses)
 
@@ -164,7 +164,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	txIndex := 0
 	abciResponses := NewABCIResponses(block)
 
-	// Execute transactions and get hash
+	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		switch r := res.Value.(type) {
 		case *abci.Response_DeliverTx:
@@ -186,7 +186,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 
 	signVals, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
 
-	// Begin block
+	// Begin block.
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              types.TM2PB.Header(block.Header),
@@ -198,7 +198,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		return nil, err
 	}
 
-	// Run txs of block
+	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
@@ -206,7 +206,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	// End block
+	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
@@ -307,26 +307,25 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 func updateState(state State, blockID types.BlockID, header *types.Header,
 	abciResponses *ABCIResponses) (State, error) {
 
-	// copy the valset so we can apply changes from EndBlock
-	// and update s.LastValidators and s.Validators
-	prevValSet := state.Validators.Copy()
-	nextValSet := prevValSet.Copy()
+	// Copy the valset so we can apply changes from EndBlock
+	// and update s.LastValidators and s.Validators.
+	nnValSet := state.NextNextValidators.Copy()
 
-	// update the validator set with the latest abciResponses
+	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorUpdates)
+		err := updateValidators(nnValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
 			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
-		// change results from this height but only applies to the next height
-		lastHeightValsChanged = header.Height + 1
+		// Change results from this height but only applies to the next next height.
+		lastHeightValsChanged = header.Height + 1 + 1
 	}
 
-	// Update validator accums and set state variables
-	nextValSet.IncrementAccum(1)
+	// Update validator accums and set state variables.
+	nnValSet.IncrementAccum(1)
 
-	// update the params with the latest abciResponses
+	// Update the params with the latest abciResponses.
 	nextParams := state.ConsensusParams
 	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
@@ -336,7 +335,7 @@ func updateState(state State, blockID types.BlockID, header *types.Header,
 		if err != nil {
 			return state, fmt.Errorf("Error updating consensus params: %v", err)
 		}
-		// change results from this height but only applies to the next height
+		// Change results from this height but only applies to the next height.
 		lastHeightParamsChanged = header.Height + 1
 	}
 
@@ -348,8 +347,9 @@ func updateState(state State, blockID types.BlockID, header *types.Header,
 		LastBlockTotalTx:                 state.LastBlockTotalTx + header.NumTxs,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
-		Validators:                       nextValSet,
-		LastValidators:                   state.Validators.Copy(),
+		NextNextValidators:               nnValSet,
+		NextValidators:                   state.NextNextValidators.Copy(),
+		LastValidators:                   state.NextValidators.Copy(),
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
