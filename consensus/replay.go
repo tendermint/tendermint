@@ -264,15 +264,15 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 	stateBlockHeight := state.LastBlockHeight
 	h.logger.Info("ABCI Replay Blocks", "appHeight", appBlockHeight, "storeHeight", storeBlockHeight, "stateHeight", stateBlockHeight)
 
-	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
+	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
-		validators := types.TM2PB.Validators(state.Validators)
+		nvals := types.TM2PB.Validators(state.Validators) // state.Validators would work too.
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime.Unix(), // TODO
 			ChainId:         h.genDoc.ChainID,
 			ConsensusParams: csParams,
-			Validators:      validators,
+			Validators:      nvals,
 			AppStateBytes:   h.genDoc.AppStateJSON,
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)
@@ -280,9 +280,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 			return nil, err
 		}
 
-		// if the app returned validators
-		// or consensus params, update the state
-		// with the them
+		// If the app returned validators or consensus params, update the state.
 		if len(res.Validators) > 0 {
 			vals, err := types.PB2TM.Validators(res.Validators)
 			if err != nil {
@@ -296,7 +294,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 		sm.SaveState(h.stateDB, state)
 	}
 
-	// First handle edge cases and constraints on the storeBlockHeight
+	// First handle edge cases and constraints on the storeBlockHeight.
 	if storeBlockHeight == 0 {
 		return appHash, checkAppHash(state, appHash)
 
