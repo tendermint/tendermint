@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.6
+
+*May 29th, 2018*
+
+BUG FIXES
+
+- [blockchain] Fix fast-sync deadlock during high peer turnover
+
 ## 0.19.5
 
 *May 20th, 2018*
