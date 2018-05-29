@@ -151,8 +151,8 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 }
 
 func TestConnAddrFilter(t *testing.T) {
-	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, nil, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(config, nil, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
@@ -180,7 +180,7 @@ func TestConnAddrFilter(t *testing.T) {
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
-	s1 := MakeSwitch(config, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, nil, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
 	// addr := s1.NodeInfo().NetAddress()
 
 	// // add ourselves like we do in node.go#427
@@ -213,8 +213,8 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 }
 
 func TestConnIDFilter(t *testing.T) {
-	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, nil, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(config, nil, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
@@ -250,7 +250,7 @@ func TestConnIDFilter(t *testing.T) {
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(config, nil, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -280,7 +280,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(config, nil, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)

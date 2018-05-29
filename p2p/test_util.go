@@ -58,9 +58,12 @@ const TEST_HOST = "localhost"
 // initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
 func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
+	peerConfig := DefaultPeerConfig()
+	peerConfig.Local = true
+
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, peerConfig, i, TEST_HOST, "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -134,7 +137,13 @@ func StartSwitches(switches []*Switch) error {
 
 var listenAddrSuffix uint32 = 1
 
-func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
+func MakeSwitch(
+	cfg *cfg.P2PConfig,
+	peerConfig *PeerConfig,
+	i int,
+	network, version string,
+	initSwitch func(int, *Switch) *Switch,
+) *Switch {
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{
@@ -155,5 +164,10 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 	}
 	sw.SetNodeInfo(ni)
 	sw.SetNodeKey(nodeKey)
+
+	if peerConfig != nil {
+		sw.SetPeerConfig(peerConfig)
+	}
+
 	return sw
 }

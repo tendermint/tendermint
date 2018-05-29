@@ -341,6 +341,11 @@ func (sw *Switch) SetAddrBook(addrBook AddrBook) {
 	sw.addrBook = addrBook
 }
 
+// SetPeerConfig sets the PeerConfig used for peer setup.
+func (sw *Switch) SetPeerConfig(config *PeerConfig) {
+	sw.peerConfig = config
+}
+
 // MarkPeerAsGood marks the given peer as good when it did something useful
 // like contributed to consensus.
 func (sw *Switch) MarkPeerAsGood(peer Peer) {
@@ -530,6 +535,11 @@ func (sw *Switch) addOutboundPeerWithConfig(addr *NetAddress, config *PeerConfig
 func (sw *Switch) addPeer(pc peerConn) error {
 
 	addr := pc.conn.RemoteAddr()
+
+	if pc.config.Local {
+		addr = pc.conn.LocalAddr()
+	}
+
 	if err := sw.FilterConnByAddr(addr); err != nil {
 		return err
 	}
