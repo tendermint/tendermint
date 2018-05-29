@@ -269,8 +269,8 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(state.Validators)
 		req := abci.RequestInitChain{
-			Validators:    validators,
-			AppStateBytes: h.appState,
+			Validators:   validators,
+			GenesisBytes: h.appState,
 		}
 		_, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {

@@ -187,10 +187,11 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	// determine which validators did not sign last block
-	absentVals := make([]int32, 0)
+	absentVals := make([][]byte, 0)
 	for valI, vote := range block.LastCommit.Precommits {
+		addr, _ := vs.GetByIndex(valI)
 		if vote == nil {
-			absentVals = append(absentVals, int32(valI))
+			absentVals = append(absentVals, addr)
 		}
 	}
 

@@ -69,9 +69,9 @@
   name = "github.com/stretchr/testify"
   version = "~1.2.1"
 
-[[constraint]]
+[[override]]
   name = "github.com/tendermint/abci"
-  branch = "develop"
+  revision = "f9dce537281ffba5d1e047e6729429f7e5fb90c9"
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"

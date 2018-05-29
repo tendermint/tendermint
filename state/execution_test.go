@@ -19,6 +19,7 @@ import (
 
 var (
 	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test"))
+	privKey2     = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test_2"))
 	chainID      = "execution_chain"
 	testPartSize = 65536
 	nTxsPerBlock = 10
@@ -64,7 +65,7 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	testCases := []struct {
 		desc                     string
 		lastCommitPrecommits     []*types.Vote
-		expectedAbsentValidators []int32
+		expectedAbsentValidators [][]byte
 	}{
 		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, {ValidatorIndex: 1, Timestamp: now}}, [][]byte{}},
 		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, nil}, [][]byte{privKey2.PubKey().Bytes()}},
@@ -109,10 +110,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		expectedByzantineValidators []abci.Evidence
 	}{
 		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
-		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{ev1.Address(), ev1.Height()}}},
+		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{nil, ev1.Address(), ev1.Height(), int64(0)}}},
 		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
-			{ev1.Address(), ev1.Height()},
-			{ev2.Address(), ev2.Height()}}},
+			{nil, ev1.Address(), ev1.Height(), int64(0)},
+			{nil, ev2.Address(), ev2.Height(), int64(0)}}},
 	}
 
 	for _, tc := range testCases {
@@ -161,7 +162,7 @@ var _ abci.Application = (*testApp)(nil)
 type testApp struct {
 	abci.BaseApplication
 
-	AbsentValidators    []int32
+	AbsentValidators    [][]byte
 	ByzantineValidators []abci.Evidence
 }
 
