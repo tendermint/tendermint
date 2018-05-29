@@ -234,10 +234,54 @@ NOTE: if you are going to use Tendermint in a public domain, make sure you read
 Configuration parameters
 ------------------------
 
-- ``skip_timeout_commit``
+- ``p2p.flush_throttle_timeout``
+  ``p2p.max_packet_msg_payload_size``
+  ``p2p.send_rate``
+  ``p2p.recv_rate``
+
+If you are going to use Tendermint in a private domain and you have a private
+high-speed network among your peers, it makes sense to lower flush throttle
+timeout and increase other params.
+
+::
+
+    [p2p]
+
+    send_rate=20000000 # 2MB/s
+    recv_rate=20000000 # 2MB/s
+    flush_throttle_timeout=10
+    max_packet_msg_payload_size=10240 # 10KB
+
+- ``mempool.recheck``
+
+After every block, Tendermint rechecks every transaction left in the mempool to
+see if transactions committed in that block affected the application state, so
+some of the transactions left may become invalid. If that does not apply to
+your application, you can disable it by setting ``mempool.recheck=false``.
+
+- ``mempool.broadcast``
+
+Setting this to false will stop the mempool from relaying transactions to other
+peers until they are included in a block. It means only the peer you send the
+tx to will see it until it is included in a block.
+
+- ``consensus.skip_timeout_commit``
 
 We want skip_timeout_commit=false when there is economics on the line because
 proposers should wait to hear for more votes. But if you don't care about that
 and want the fastest consensus, you can skip it. So we will keep it false for
 the hub and as default, but for enterprise applications, no problem to set to
 true.
+
+- ``consensus.peer_gossip_sleep_duration``
+
+You can try to reduce the time node sleeps before checking if theres something to send its peers.
+
+- ``consensus.timeout_commit``
+
+You can also try lowering ``timeout_commit`` (time we sleep before proposing the next block).
+
+- ``consensus.max_block_size_txs``
+
+By default, the maximum number of transactions per a block is 10_000. Feel free
+to change it to suit your needs.
