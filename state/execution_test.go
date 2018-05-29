@@ -18,7 +18,7 @@ import (
 )
 
 var (
-	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test"))
+	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test_1"))
 	privKey2     = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test_2"))
 	chainID      = "execution_chain"
 	testPartSize = 65536
@@ -143,7 +143,8 @@ func state() State {
 	s, _ := MakeGenesisState(&types.GenesisDoc{
 		ChainID: chainID,
 		Validators: []types.GenesisValidator{
-			{privKey.PubKey(), 10000, "test"},
+			{privKey.PubKey(), 10000, "test1"},
+			{privKey2.PubKey(), 10000, "test2"},
 		},
 		AppHash: nil,
 	})

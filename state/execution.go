@@ -189,9 +189,9 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	// determine which validators did not sign last block
 	absentVals := make([][]byte, 0)
 	for valI, vote := range block.LastCommit.Precommits {
-		addr, _ := vs.GetByIndex(valI)
 		if vote == nil {
-			absentVals = append(absentVals, addr)
+			_, val := vs.GetByIndex(valI)
+			absentVals = append(absentVals, val.PubKey.Bytes())
 		}
 	}
 
