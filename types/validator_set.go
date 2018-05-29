@@ -46,7 +46,14 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 	return vs
 }
 
-// incrementAccum and update the proposer
+// Increment Accum and update the proposer on a copy, and return it.
+func (valSet *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
+	copy := valSet.Copy()
+	copy.IncrementAccum(times)
+	return copy
+}
+
+// Increment Accum and update the proposer.
 func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
@@ -387,7 +394,7 @@ func (valSet *ValidatorSet) StringIndented(indent string) string {
 %s}`,
 		indent, valSet.GetProposer().String(),
 		indent,
-		indent, strings.Join(valStrings, "\n"+indent+"  "),
+		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)
 
 }
