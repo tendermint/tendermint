@@ -192,3 +192,52 @@ Signal handling
 We catch SIGINT and SIGTERM and try to clean up nicely. For other signals we
 use the default behaviour in Go: `Default behavior of signals in Go programs
 <https://golang.org/pkg/os/signal/#hdr-Default_behavior_of_signals_in_Go_programs>`__.
+
+Hardware
+--------
+
+Processor and Memory
+~~~~~~~~~~~~~~~~~~~~
+
+While actual specs vary depending on the load and validators count, minimal requirements are:
+
+- 1GB RAM
+- 25GB of disk space
+- 1.4 GHz CPU
+
+SSD disks are preffereble for applications with high transaction throughput.
+
+Recommended:
+
+- 2GB RAM
+- 100GB SSD
+- x64 2.0 GHz 2v CPU
+
+Operating Systems
+~~~~~~~~~~~~~~~~~
+
+Tendermint can be compiled for a wide range of operating systems thanks to Go
+language (the list of $OS/$ARCH pairs can be found `here
+<https://golang.org/doc/install/source#environment>`__).
+
+While we do not favor any operation system, more secure and stable Linux server
+distributions (like Centos) should be preferred over desktop operation systems
+(like Mac OS).
+
+Misc.
+~~~~~
+
+NOTE: if you are going to use Tendermint in a public domain, make sure you read
+`hardware recommendations (see "4. Hardware")
+<https://cosmos.network/validators>`__ for a validator in the Cosmos network.
+
+Configuration parameters
+------------------------
+
+- ``skip_timeout_commit``
+
+We want skip_timeout_commit=false when there is economics on the line because
+proposers should wait to hear for more votes. But if you don't care about that
+and want the fastest consensus, you can skip it. So we will keep it false for
+the hub and as default, but for enterprise applications, no problem to set to
+true.
