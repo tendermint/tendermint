@@ -81,18 +81,18 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 
 	fail.Fail() // XXX
 
-	// save the results before we commit
+	// Save the results before we commit.
 	saveABCIResponses(blockExec.db, block.Height, abciResponses)
 
 	fail.Fail() // XXX
 
-	// update the state with the block and responses
+	// Update the state with the block and responses.
 	s, err = updateState(s, blockID, block.Header, abciResponses)
 	if err != nil {
 		return s, fmt.Errorf("Commit failed for application: %v", err)
 	}
 
-	// lock mempool, commit state, update mempoool
+	// Lock mempool, commit state, update mempoool.
 	appHash, err := blockExec.Commit(block)
 	if err != nil {
 		return s, fmt.Errorf("Commit failed for application: %v", err)
@@ -100,18 +100,18 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 
 	fail.Fail() // XXX
 
-	// update the app hash and save the state
+	// Update the app hash and save the state.
 	s.AppHash = appHash
 	SaveState(blockExec.db, s)
 
 	fail.Fail() // XXX
 
-	// Update evpool now that state is saved
+	// Update evpool now that state is saved.
 	// TODO: handle the crash/recover scenario
 	// ie. (may need to call Update for last block)
 	blockExec.evpool.Update(block)
 
-	// events are fired after everything else
+	// Events are fired after everything else.
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses)
 
@@ -166,7 +166,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	txIndex := 0
 	abciResponses := NewABCIResponses(block)
 
-	// Execute transactions and get hash
+	// Execute transactions and get hash.
 	proxyCb := func(req *abci.Request, res *abci.Response) {
 		switch r := res.Value.(type) {
 		case *abci.Response_DeliverTx:
@@ -186,7 +186,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	// determine which validators did not sign last block
+	// Determine which validators did not sign last block.
 	absentVals := make([]int32, 0)
 	for valI, vote := range block.LastCommit.Precommits {
 		if vote == nil {
@@ -194,7 +194,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	// TODO: determine which validators were byzantine
+	// TODO: determine which validators were byzantine.
 	byzantineVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		byzantineVals[i] = abci.Evidence{
@@ -203,7 +203,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	// Begin block
+	// Begin block.
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              types.TM2PB.Header(block.Header),
@@ -215,7 +215,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		return nil, err
 	}
 
-	// Run txs of block
+	// Run txs of block.
 	for _, tx := range block.Txs {
 		proxyAppConn.DeliverTxAsync(tx)
 		if err := proxyAppConn.Error(); err != nil {
@@ -223,7 +223,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	// End block
+	// End block.
 	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
@@ -240,9 +240,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	return abciResponses, nil
 }
 
-// If more or equal than 1/3 of total voting power changed in one block, then
-// a light client could never prove the transition externally. See
-// ./lite/doc.go for details on how a light client tracks validators.
+// See ./lite/doc.go for details on how a light client tracks validators.
 func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
 	for _, v := range updates {
 		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-amino encoded pubkey
@@ -286,26 +284,25 @@ func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) 
 func updateState(s State, blockID types.BlockID, header *types.Header,
 	abciResponses *ABCIResponses) (State, error) {
 
-	// copy the valset so we can apply changes from EndBlock
-	// and update s.LastValidators and s.Validators
-	prevValSet := s.Validators.Copy()
-	nextValSet := prevValSet.Copy()
+	// Copy the valset so we can apply changes from EndBlock
+	// and update s.LastValidators and s.Validators.
+	nnValSet := s.NextNextValidators.Copy()
 
-	// update the validator set with the latest abciResponses
+	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := s.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorUpdates)
+		err := updateValidators(nnValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
 			return s, fmt.Errorf("Error changing validator set: %v", err)
 		}
-		// change results from this height but only applies to the next height
-		lastHeightValsChanged = header.Height + 1
+		// Change results from this height but only applies to the next next height.
+		lastHeightValsChanged = header.Height + 1 + 1
 	}
 
-	// Update validator accums and set state variables
-	nextValSet.IncrementAccum(1)
+	// Update validator accums and set state variables.
+	nnValSet.IncrementAccum(1)
 
-	// update the params with the latest abciResponses
+	// Update the params with the latest abciResponses.
 	nextParams := s.ConsensusParams
 	lastHeightParamsChanged := s.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
@@ -315,7 +312,7 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 		if err != nil {
 			return s, fmt.Errorf("Error updating consensus params: %v", err)
 		}
-		// change results from this height but only applies to the next height
+		// Change results from this height but only applies to the next height.
 		lastHeightParamsChanged = header.Height + 1
 	}
 
@@ -327,8 +324,9 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 		LastBlockTotalTx:                 s.LastBlockTotalTx + header.NumTxs,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
-		Validators:                       nextValSet,
-		LastValidators:                   s.Validators.Copy(),
+		NextNextValidators:               nnValSet,
+		NextValidators:                   s.NextNextValidators.Copy(),
+		LastValidators:                   s.NextValidators.Copy(),
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,

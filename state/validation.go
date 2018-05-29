@@ -13,12 +13,13 @@ import (
 // Validate block
 
 func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
-	// validate internal consistency
+
+	// Validate internal consistency.
 	if err := b.ValidateBasic(); err != nil {
 		return err
 	}
 
-	// validate basic info
+	// Validate basic info.
 	if b.ChainID != s.ChainID {
 		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", s.ChainID, b.ChainID)
 	}
@@ -33,7 +34,7 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 		}
 	*/
 
-	// validate prev block info
+	// Validate prev block info.
 	if !b.LastBlockID.Equals(s.LastBlockID) {
 		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", s.LastBlockID, b.LastBlockID)
 	}
@@ -42,7 +43,7 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", s.LastBlockTotalTx+newTxs, b.TotalTxs)
 	}
 
-	// validate app info
+	// Validate app info.
 	if !bytes.Equal(b.AppHash, s.AppHash) {
 		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", s.AppHash, b.AppHash)
 	}
@@ -52,8 +53,11 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 	if !bytes.Equal(b.LastResultsHash, s.LastResultsHash) {
 		return fmt.Errorf("Wrong Block.Header.LastResultsHash.  Expected %X, got %v", s.LastResultsHash, b.LastResultsHash)
 	}
-	if !bytes.Equal(b.ValidatorsHash, s.Validators.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v", s.Validators.Hash(), b.ValidatorsHash)
+	if !bytes.Equal(b.ValidatorsHash, s.NextValidators.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v", s.NextValidators.Hash(), b.ValidatorsHash)
+	}
+	if !bytes.Equal(b.NextValidatorsHash, s.NextNextValidators.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v", s.NextNextValidators.Hash(), b.NextValidatorsHash)
 	}
 
 	// Validate block LastCommit.
@@ -73,6 +77,7 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 		}
 	}
 
+	// Validate all evidence.
 	for _, ev := range b.Evidence.Evidence {
 		if err := VerifyEvidence(stateDB, s, ev); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
