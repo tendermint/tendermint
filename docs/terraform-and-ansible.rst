@@ -66,7 +66,7 @@ Next, we run the install role:
 
     ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
 
-which as you'll see below, executes ``tendermint node --proxy_app=kvstore`` on all droplets. Although we'll soon be modifying this role and running it again, this first execution allows us to get each ``node_info.id`` that corresponds to each ``node_info.listen_addr``. (This part will be automated in the future). In your browser (or using ``curl``), for every droplet, go to IP:46657/status and note the two just mentioned ``node_info`` fields. Notice that blocks aren't being created (``latest_block_height`` should be zero and not increasing).
+which as you'll see below, executes ``tendermint node --proxy_app=kvstore`` on all droplets. Although we'll soon be modifying this role and running it again, this first execution allows us to get each ``node_info.id`` that corresponds to each ``node_info.listen_addr``. (This part will be automated in the future). In your browser (or using ``curl``), for every droplet, go to IP:26657/status and note the two just mentioned ``node_info`` fields. Notice that blocks aren't being created (``latest_block_height`` should be zero and not increasing).
 
 Next, open ``roles/install/templates/systemd.service.j2`` and look for the line ``ExecStart`` which should look something like:
 
@@ -88,7 +88,7 @@ and add the ``--p2p.persistent_peers`` flag with the relevant information for ea
     User={{service}}
     Group={{service}}
     PermissionsStartOnly=true
-    ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:46656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:46656
+    ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:26656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:26656
     ExecReload=/bin/kill -HUP $MAINPID
     KillSignal=SIGTERM
 

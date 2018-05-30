@@ -16,11 +16,11 @@ import (
 // place.
 //
 // ```shell
-// curl "localhost:46657/tx?hash=0x2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
+// curl "localhost:26657/tx?hash=0x2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"
 // ```
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // tx, err := client.Tx([]byte("2B8EC32BA2579B3B8606E42C06DE2F7AFA2556EF"), true)
 // ```
 //
@@ -110,11 +110,11 @@ func Tx(hash []byte, prove bool) (*ctypes.ResultTx, error) {
 // list of transactions (maximum ?per_page entries) and the total count.
 //
 // ```shell
-// curl "localhost:46657/tx_search?query=\"account.owner='Ivan'\"&prove=true"
+// curl "localhost:26657/tx_search?query=\"account.owner='Ivan'\"&prove=true"
 // ```
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // q, err := tmquery.New("account.owner='Ivan'")
 // tx, err := client.TxSearch(q, true)
 // ```

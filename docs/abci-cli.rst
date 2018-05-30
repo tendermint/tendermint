@@ -49,7 +49,7 @@ Now run ``abci-cli`` to see the list of commands:
 
     Flags:
           --abci string      socket or grpc (default "socket")
-          --address string   address of application socket (default "tcp://127.0.0.1:46658")
+          --address string   address of application socket (default "tcp://127.0.0.1:26658")
       -h, --help             help for abci-cli
       -v, --verbose          print the command and results as if it were a console session
 

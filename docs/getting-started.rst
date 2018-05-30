@@ -79,7 +79,7 @@ Tendermint node as follows:
 
 ::
 
-    curl -s localhost:46657/status
+    curl -s localhost:26657/status
 
 The ``-s`` just silences ``curl``. For nicer output, pipe the result into a
 tool like `jq <https://stedolan.github.io/jq/>`__ or ``json_pp``.
@@ -88,7 +88,7 @@ Now let's send some transactions to the kvstore.
 
 ::
 
-    curl -s 'localhost:46657/broadcast_tx_commit?tx="abcd"'
+    curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 
 Note the single quote (``'``) around the url, which ensures that the
 double quotes (``"``) are not escaped by bash. This command sent a
@@ -128,7 +128,7 @@ querying the app:
 
 ::
 
-    curl -s 'localhost:46657/abci_query?data="abcd"'
+    curl -s 'localhost:26657/abci_query?data="abcd"'
 
 The result should look like:
 
@@ -156,14 +156,14 @@ Now let's try setting a different key and value:
 
 ::
 
-    curl -s 'localhost:46657/broadcast_tx_commit?tx="name=satoshi"'
+    curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 
 Now if we query for ``name``, we should get ``satoshi``, or
 ``c2F0b3NoaQ==`` in base64:
 
 ::
 
-    curl -s 'localhost:46657/abci_query?data="name"'
+    curl -s 'localhost:26657/abci_query?data="name"'
 
 Try some other transactions and queries to make sure everything is
 working!
@@ -215,14 +215,14 @@ must be the number ``0``:
 
 ::
 
-    curl localhost:46657/broadcast_tx_commit?tx=0x00
+    curl localhost:26657/broadcast_tx_commit?tx=0x00
 
 Note the empty (hence successful) response. The next transaction must be
 the number ``1``. If instead, we try to send a ``5``, we get an error:
 
 ::
 
-    > curl localhost:46657/broadcast_tx_commit?tx=0x05
+    > curl localhost:26657/broadcast_tx_commit?tx=0x05
     {
       "jsonrpc": "2.0",
       "id": "",
@@ -244,7 +244,7 @@ But if we send a ``1``, it works again:
 
 ::
 
-    > curl localhost:46657/broadcast_tx_commit?tx=0x01
+    > curl localhost:26657/broadcast_tx_commit?tx=0x01
     {
       "jsonrpc": "2.0",
       "id": "",
@@ -300,9 +300,9 @@ like before - the results should be the same:
 
 ::
 
-    curl localhost:46657/broadcast_tx_commit?tx=0x00 # ok
-    curl localhost:46657/broadcast_tx_commit?tx=0x05 # invalid nonce
-    curl localhost:46657/broadcast_tx_commit?tx=0x01 # ok
+    curl localhost:26657/broadcast_tx_commit?tx=0x00 # ok
+    curl localhost:26657/broadcast_tx_commit?tx=0x05 # invalid nonce
+    curl localhost:26657/broadcast_tx_commit?tx=0x01 # ok
 
 Neat, eh?
 

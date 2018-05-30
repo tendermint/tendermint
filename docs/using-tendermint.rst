@@ -44,7 +44,7 @@ To run a Tendermint node, use
     tendermint node
 
 By default, Tendermint will try to connect to an ABCI application on
-`127.0.0.1:46658 <127.0.0.1:46658>`__. If you have the ``kvstore`` ABCI
+`127.0.0.1:26658 <127.0.0.1:26658>`__. If you have the ``kvstore`` ABCI
 app installed, run it in another window. If you don't, kill Tendermint
 and run an in-process version of the ``kvstore`` app:
 
@@ -75,21 +75,21 @@ RPC server, for example:
 
 ::
 
-    curl http://localhost:46657/broadcast_tx_commit?tx=\"abcd\"
+    curl http://localhost:26657/broadcast_tx_commit?tx=\"abcd\"
 
 We can see the chain's status at the ``/status`` end-point:
 
 ::
 
-    curl http://localhost:46657/status | json_pp
+    curl http://localhost:26657/status | json_pp
 
 and the ``latest_app_hash`` in particular:
 
 ::
 
-    curl http://localhost:46657/status | json_pp | grep latest_app_hash
+    curl http://localhost:26657/status | json_pp | grep latest_app_hash
 
-Visit http://localhost:46657 in your browser to see the list of other
+Visit http://localhost:26657 in your browser to see the list of other
 endpoints. Some take no arguments (like ``/status``), while others
 specify the argument name and use ``_`` as a placeholder.
 
@@ -105,7 +105,7 @@ To send a UTF8 string byte array, quote the value of the tx pramater:
 
 ::
 
-    curl 'http://localhost:46657/broadcast_tx_commit?tx="hello"'
+    curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
 
 which sends a 5 byte transaction: "h e l l o" [68 65 6c 6c 6f].
 
@@ -114,7 +114,7 @@ To avoid the single quotes, escape the double quotes:
 
 ::
 
-    curl http://localhost:46657/broadcast_tx_commit?tx=\"hello\"
+    curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
 
 
 
@@ -122,7 +122,7 @@ Using a special character:
 
 ::
 
-    curl 'http://localhost:46657/broadcast_tx_commit?tx="€5"'
+    curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
 
 sends a 4 byte transaction: "€5" (UTF8) [e2 82 ac 35].
 
@@ -130,7 +130,7 @@ To send as raw hex, omit quotes AND prefix the hex string with ``0x``:
 
 ::
 
-    curl http://localhost:46657/broadcast_tx_commit?tx=0x01020304
+    curl http://localhost:26657/broadcast_tx_commit?tx=0x01020304
 
 which sends a 4 byte transaction: [01 02 03 04].
 
@@ -138,7 +138,7 @@ With ``POST`` (using ``json``), the raw hex must be ``base64`` encoded:
 
 ::
 
-    curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:46657
+    curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:26657
 
 which sends the same 4 byte transaction: [01 02 03 04].
 
@@ -332,14 +332,14 @@ For instance,
 
 ::
 
-    tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"
+    tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
 
 Alternatively, you can use the ``/dial_seeds`` endpoint of the RPC to
 specify seeds for a running node to connect to:
 
 ::
 
-    curl 'localhost:46657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"\]'
+    curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]'
 
 Note, if the peer-exchange protocol (PEX) is enabled (default), you should not
 normally need seeds after the first start. Peers will be gossipping about known
@@ -353,8 +353,8 @@ core instance.
 
 ::
 
-    tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:46656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:46656"
-    curl 'localhost:46657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:46656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:46656"\]'
+    tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
+    curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
 
 Adding a Non-Validator
 ~~~~~~~~~~~~~~~~~~~~~~
