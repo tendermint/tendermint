@@ -253,9 +253,9 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, stateDB, state := setupTestCase(t)
-	require.Equal(t, 0, state.LastBlockHeight)
+	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.NextValidators = genValSet(valSetSize)
-	state.NextNextValidators = state.NextValidators.Copy()
+	state.NextNextValidators = state.NextValidators.CopyIncrementAccum(1)
 	SaveState(stateDB, state)
 	defer tearDown(t)
 

@@ -8,10 +8,10 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 func init() {
@@ -64,22 +64,22 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	startTestRound(cs1, height, round)
 
-	// wait for new round so proposer is set
+	// Wait for new round so proposer is set.
 	<-newRoundCh
 
-	// lets commit a block and ensure proposer for the next height is correct
+	// Commit a block and ensure proposer for the next height is correct.
 	prop := cs1.GetRoundState().Validators.GetProposer()
 	if !bytes.Equal(prop.Address, cs1.privValidator.GetAddress()) {
 		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
 	}
 
-	// wait for complete proposal
+	// Wait for complete proposal.
 	<-proposalCh
 
 	rs := cs1.GetRoundState()
 	signAddVotes(cs1, types.VoteTypePrecommit, rs.ProposalBlock.Hash(), rs.ProposalBlockParts.Header(), vss[1:]...)
 
-	// wait for new round so next validator is set
+	// Wait for new round so next validator is set.
 	<-newRoundCh
 
 	prop = cs1.GetRoundState().Validators.GetProposer()

@@ -108,7 +108,7 @@ func (s State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*t
 	block.TotalTxs = s.LastBlockTotalTx + block.NumTxs
 	block.LastBlockID = s.LastBlockID
 	block.ValidatorsHash = s.NextValidators.Hash()
-	block.NextValidatorsHash = s.NextValidators.Hash()
+	block.NextValidatorsHash = s.NextNextValidators.Hash()
 	block.AppHash = s.AppHash
 	block.ConsensusHash = s.ConsensusParams.Hash()
 	block.LastResultsHash = s.LastResultsHash
@@ -173,7 +173,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextNextValidators:          types.NewValidatorSet(validators),
+		NextNextValidators:          types.NewValidatorSet(validators).CopyIncrementAccum(1),
 		NextValidators:              types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,
