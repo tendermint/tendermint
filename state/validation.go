@@ -55,8 +55,8 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
 		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v", state.Validators.Hash(), block.ValidatorsHash)
 	}
-	if !bytes.Equal(block.NextValidatorsHash, state.NextNextValidators.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v", state.NextNextValidators.Hash(), block.NextValidatorsHash)
+	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v", state.NextValidators.Hash(), block.NextValidatorsHash)
 	}
 
 	// Validate block LastCommit.

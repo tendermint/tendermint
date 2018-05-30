@@ -26,8 +26,8 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 	state := sm.State{
 		LastBlockHeight:             0,
 		LastBlockTime:               time.Now(),
-		NextValidators:              valSet,
-		NextNextValidators:          valSet.CopyIncrementAccum(1),
+		Validators:                  valSet,
+		NextValidators:              valSet.CopyIncrementAccum(1),
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			EvidenceParams: types.EvidenceParams{

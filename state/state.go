@@ -38,8 +38,8 @@ type State struct {
 	// so we can query for historical validator sets.
 	// Note that if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
-	NextNextValidators          *types.ValidatorSet
 	NextValidators              *types.ValidatorSet
+	Validators                  *types.ValidatorSet
 	LastValidators              *types.ValidatorSet
 	LastHeightValidatorsChanged int64
 
@@ -65,8 +65,8 @@ func (state State) Copy() State {
 		LastBlockID:      state.LastBlockID,
 		LastBlockTime:    state.LastBlockTime,
 
-		NextNextValidators:          state.NextNextValidators.Copy(),
 		NextValidators:              state.NextValidators.Copy(),
+		Validators:                  state.Validators.Copy(),
 		LastValidators:              state.LastValidators.Copy(),
 		LastHeightValidatorsChanged: state.LastHeightValidatorsChanged,
 
@@ -92,7 +92,7 @@ func (state State) Bytes() []byte {
 
 // IsEmpty returns true if the State is equal to the empty State.
 func (state State) IsEmpty() bool {
-	return state.NextValidators == nil // XXX can't compare to Empty
+	return state.Validators == nil // XXX can't compare to Empty
 }
 
 //------------------------------------------------------------------------
@@ -107,8 +107,8 @@ func (state State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit)
 	block.ChainID = state.ChainID
 	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
 	block.LastBlockID = state.LastBlockID
-	block.ValidatorsHash = state.NextValidators.Hash()
-	block.NextValidatorsHash = state.NextNextValidators.Hash()
+	block.ValidatorsHash = state.Validators.Hash()
+	block.NextValidatorsHash = state.NextValidators.Hash()
 	block.AppHash = state.AppHash
 	block.ConsensusHash = state.ConsensusParams.Hash()
 	block.LastResultsHash = state.LastResultsHash
@@ -173,8 +173,8 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextNextValidators:          types.NewValidatorSet(validators).CopyIncrementAccum(1),
-		NextValidators:              types.NewValidatorSet(validators),
+		NextValidators:              types.NewValidatorSet(validators).CopyIncrementAccum(1),
+		Validators:                  types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,
 

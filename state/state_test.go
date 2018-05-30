@@ -172,23 +172,23 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	// Should be able to load for height 1.
 	v, err = LoadValidators(stateDB, 1)
 	assert.Nil(err, "expected no err at height 1")
-	assert.Equal(v.Hash(), state.NextValidators.Hash(), "expected validator hashes to match")
+	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
 	// Should be able to load for height 2.
 	v, err = LoadValidators(stateDB, 2)
 	assert.Nil(err, "expected no err at height 2")
-	assert.Equal(v.Hash(), state.NextNextValidators.Hash(), "expected validator hashes to match")
+	assert.Equal(v.Hash(), state.NextValidators.Hash(), "expected validator hashes to match")
 
 	// Increment height, save; should be able to load for next & next next height.
 	state.LastBlockHeight++
 	nextHeight := state.LastBlockHeight + 1
-	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextNextValidators)
+	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	vp0, err := LoadValidators(stateDB, nextHeight+0)
 	assert.Nil(err, "expected no err")
 	vp1, err := LoadValidators(stateDB, nextHeight+1)
 	assert.Nil(err, "expected no err")
-	assert.Equal(vp0.Hash(), state.NextValidators.Hash(), "expected validator hashes to match")
-	assert.Equal(vp1.Hash(), state.NextNextValidators.Hash(), "expected validator hashes to match")
+	assert.Equal(vp0.Hash(), state.Validators.Hash(), "expected validator hashes to match")
+	assert.Equal(vp1.Hash(), state.NextValidators.Hash(), "expected next validator hashes to match")
 }
 
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
@@ -204,7 +204,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	// with the right validator set for each height.
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
-	_, val := state.NextValidators.GetByIndex(0)
+	_, val := state.Validators.GetByIndex(0)
 	power := val.VotingPower
 	var err error
 	for i := int64(1); i < highestHeight; i++ {
@@ -217,7 +217,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 		state, err = updateState(state, blockID, header, responses)
 		assert.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
-		saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextNextValidators)
+		saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	}
 
 	// On each height change, increment the power by one.
@@ -251,12 +251,12 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, stateDB, state := setupTestCase(t)
 	require.Equal(t, int64(0), state.LastBlockHeight)
-	state.NextValidators = genValSet(valSetSize)
-	state.NextNextValidators = state.NextValidators.CopyIncrementAccum(1)
+	state.Validators = genValSet(valSetSize)
+	state.NextValidators = state.Validators.CopyIncrementAccum(1)
 	SaveState(stateDB, state)
 	defer tearDown(t)
 
-	_, valOld := state.NextValidators.GetByIndex(0)
+	_, valOld := state.Validators.GetByIndex(0)
 	var pubkeyOld = valOld.PubKey
 	var pubkey = crypto.GenPrivKeyEd25519().PubKey()
 
@@ -268,7 +268,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	state, err = updateState(state, blockID, header, responses)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
-	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextNextValidators)
+	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
 	// Load nextheight, it should be the oldpubkey.
 	v0, err := LoadValidators(stateDB, nextHeight)
@@ -438,7 +438,7 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, pubkey crypto.PubKey) 
 	}
 
 	// If the pubkey is new, remove the old and add the new.
-	_, val := state.NextNextValidators.GetByIndex(0)
+	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.Validator{
@@ -460,7 +460,7 @@ func makeHeaderPartsResponsesValPowerChange(state State, power int64) (
 	}
 
 	// If the pubkey is new, remove the old and add the new.
-	_, val := state.NextNextValidators.GetByIndex(0)
+	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.Validator{

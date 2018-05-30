@@ -194,15 +194,15 @@ func NewNode(config *cfg.Config,
 	// Decide whether to fast-sync or not
 	// We don't fast-sync when the only validator is us.
 	fastSync := config.FastSync
-	if state.NextValidators.Size() == 1 {
-		addr, _ := state.NextValidators.GetByIndex(0)
+	if state.Validators.Size() == 1 {
+		addr, _ := state.Validators.GetByIndex(0)
 		if bytes.Equal(privValidator.GetAddress(), addr) {
 			fastSync = false
 		}
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.NextValidators.HasAddress(privValidator.GetAddress()) {
+	if state.Validators.HasAddress(privValidator.GetAddress()) {
 		consensusLogger.Info("This node is a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	} else {
 		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())

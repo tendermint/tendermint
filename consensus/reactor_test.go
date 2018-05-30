@@ -191,7 +191,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 	err := reactor.Start()
 	require.NoError(t, err)
 	defer reactor.Stop()
-	_, val := css[0].state.NextValidators.GetByIndex(0)
+	_, val := css[0].state.Validators.GetByIndex(0)
 
 	// 1) new vote
 	vote := &types.Vote{

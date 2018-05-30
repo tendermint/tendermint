@@ -89,10 +89,10 @@ func saveState(db dbm.DB, state State, key []byte) {
 	// If first block, save validators for block 1.
 	if nextHeight == 1 {
 		lastHeightVoteChanged := int64(1) // Due to Tendermint validator set changes being delayed 1 block.
-		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.NextValidators)
+		saveValidatorsInfo(db, nextHeight, lastHeightVoteChanged, state.Validators)
 	}
-	// Save next next validators.
-	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextNextValidators)
+	// Save next validators.
+	saveValidatorsInfo(db, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	// Save next consensus params.
 	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
 	db.SetSync(stateKey, state.Bytes())
