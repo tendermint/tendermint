@@ -47,10 +47,6 @@ func (ps *PeerSet) Add(peer Peer) error {
 		return ErrSwitchDuplicatePeerID{peer.ID()}
 	}
 
-	if ps.hasIP(peer.RemoteIP()) {
-		return ErrSwitchDuplicatePeerIP{peer.RemoteIP()}
-	}
-
 	index := len(ps.list)
 	// Appending is safe even with other goroutines
 	// iterating over the ps.list slice.

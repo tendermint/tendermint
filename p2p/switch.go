@@ -577,8 +577,9 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	}
 
 	// Check for duplicate connection or peer info IP.
-	if sw.peers.HasIP(pc.RemoteIP()) ||
-		sw.peers.HasIP(peerNodeInfo.NetAddress().IP) {
+	if !sw.config.SkipDuplicatePeerIPCheck &&
+		(sw.peers.HasIP(pc.RemoteIP()) ||
+			sw.peers.HasIP(peerNodeInfo.NetAddress().IP)) {
 		return ErrSwitchDuplicatePeerIP{pc.RemoteIP()}
 	}
 
