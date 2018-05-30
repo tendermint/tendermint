@@ -123,6 +123,11 @@ Recommended:
 - 100GB SSD
 - x64 2.0 GHz 2v CPU
 
+While for now, Tendermint stores all the history and it may require significant
+disk space over time, we are planning to implement state syncing (See `#828
+<https://github.com/tendermint/tendermint/issues/828>`__). So, storing all the
+past blocks will not be necessary.
+
 Operating Systems
 ~~~~~~~~~~~~~~~~~
 
