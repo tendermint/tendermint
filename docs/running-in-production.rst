@@ -38,7 +38,7 @@ Rate-limiting and authentication are another key aspects to help protect
 against DOS attacks. While in the future we may implement these features, for
 now, validators are supposed to use external tools like `NGINX
 <https://www.nginx.com/blog/rate-limiting-nginx/>`__ or `traefik
-<https://docs.traefik.io/configuration/commons/#rate-limiting>`__ to archive
+<https://docs.traefik.io/configuration/commons/#rate-limiting>`__ to achieve
 the same things.
 
 Debugging Tendermint
@@ -84,8 +84,8 @@ We have a small tool, called tm-monitor, which outputs information from the
 endpoints above plus some statistics. The tool can be found `here
 <https://github.com/tendermint/tools/tree/master/tm-monitor>`__.
 
-What happens when my app die?
------------------------------
+What happens when my app dies?
+------------------------------
 
 You are supposed to run Tendermint under a `process supervisor
 <https://en.wikipedia.org/wiki/Process_supervision>`__ (like systemd or runit).
@@ -115,7 +115,7 @@ While actual specs vary depending on the load and validators count, minimal requ
 - 25GB of disk space
 - 1.4 GHz CPU
 
-SSD disks are preffereble for applications with high transaction throughput.
+SSD disks are preferable for applications with high transaction throughput.
 
 Recommended:
 
@@ -179,13 +179,14 @@ tx to will see it until it is included in a block.
 
 We want skip_timeout_commit=false when there is economics on the line because
 proposers should wait to hear for more votes. But if you don't care about that
-and want the fastest consensus, you can skip it. So we will keep it false for
-the hub and as default, but for enterprise applications, no problem to set to
-true.
+and want the fastest consensus, you can skip it. It will be kept false by
+default for public deployments (e.g. `Cosmos Hub
+<https://cosmos.network/intro/hub>`__) while for enterprise applications,
+setting it to true is not a problem.
 
 - ``consensus.peer_gossip_sleep_duration``
 
-You can try to reduce the time node sleeps before checking if theres something to send its peers.
+You can try to reduce the time your node sleeps before checking if theres something to send its peers.
 
 - ``consensus.timeout_commit``
 
