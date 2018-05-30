@@ -418,7 +418,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 
 	// TODO: get the genesis bytes (https://github.com/tendermint/tendermint/issues/1224)
 	var genesisBytes []byte
-	validators := types.TM2PB.Validators(state.Validators)
+	validators := types.TM2PB.Validators(state.NextValidators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators, genesisBytes}); err != nil {
 		panic(err)
 	}
@@ -455,7 +455,7 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 
 	// TODO: get the genesis bytes (https://github.com/tendermint/tendermint/issues/1224)
 	var genesisBytes []byte
-	validators := types.TM2PB.Validators(state.Validators)
+	validators := types.TM2PB.Validators(state.NextValidators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators, genesisBytes}); err != nil {
 		panic(err)
 	}

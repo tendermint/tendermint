@@ -95,11 +95,6 @@ func (s State) IsEmpty() bool {
 	return s.NextValidators == nil // XXX can't compare to Empty
 }
 
-// GetValidators returns the last and current validator sets.
-func (s State) GetValidators() (last, next, nextNext *types.ValidatorSet) {
-	return s.LastValidators, s.NextValidators, s.NextNextValidators
-}
-
 //------------------------------------------------------------------------
 // Create a block from the latest state
 

@@ -387,7 +387,7 @@ func (valSet *ValidatorSet) StringIndented(indent string) string {
 %s}`,
 		indent, valSet.GetProposer().String(),
 		indent,
-		indent, strings.Join(valStrings, "\n"+indent+"  "),
+		indent, strings.Join(valStrings, "\n"+indent+"    "),
 		indent)
 
 }
