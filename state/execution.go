@@ -286,12 +286,12 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 
 	// Copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators.
-	nnValSet := s.NextNextValidators.Copy()
+	nValSet := s.NextValidators.Copy()
 
 	// Update the validator set with the latest abciResponses.
 	lastHeightValsChanged := s.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
-		err := updateValidators(nnValSet, abciResponses.EndBlock.ValidatorUpdates)
+		err := updateValidators(nValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
 			return s, fmt.Errorf("Error changing validator set: %v", err)
 		}
@@ -300,7 +300,7 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 	}
 
 	// Update validator accums and set state variables.
-	nnValSet.IncrementAccum(1)
+	nValSet.IncrementAccum(1)
 
 	// Update the params with the latest abciResponses.
 	nextParams := s.ConsensusParams
@@ -324,9 +324,9 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 		LastBlockTotalTx:                 s.LastBlockTotalTx + header.NumTxs,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
-		NextNextValidators:               nnValSet,
-		NextValidators:                   s.NextNextValidators.Copy(),
-		LastValidators:                   s.NextValidators.Copy(),
+		NextValidators:                   nValSet,
+		Validators:                       s.NextValidators.Copy(),
+		LastValidators:                   s.Validators.Copy(),
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
