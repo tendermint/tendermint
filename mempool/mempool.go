@@ -386,7 +386,7 @@ func (mem *Mempool) Update(height int64, txs types.Txs) error {
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
-	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
+	if mem.config.Recheck && (mem.config.RecheckEmpty || len(goodTxs) > 0) {
 		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
