@@ -1,13 +1,6 @@
 syntax = "proto3";
 package common;
 
-// For more information on gogo.proto, see:
-// https://github.com/gogo/protobuf/blob/master/extensions.md
-// NOTE: Try really hard not to use custom types,
-// it's often complicated, broken, nor not worth it.
-import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-
-
 //----------------------------------------
 // Abstract types
 
