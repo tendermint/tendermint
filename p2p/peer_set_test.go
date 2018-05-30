@@ -22,7 +22,7 @@ func randPeer(ip net.IP) *peer {
 	p := &peer{
 		nodeInfo: NodeInfo{
 			ID:         nodeKey.ID(),
-			ListenAddr: cmn.Fmt("%v.%v.%v.%v:46656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			ListenAddr: cmn.Fmt("%v.%v.%v.%v:26656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
 		},
 	}
 

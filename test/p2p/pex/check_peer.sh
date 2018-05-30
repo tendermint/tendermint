@@ -4,7 +4,7 @@ set -u
 ID=$1
 N=$2
 
-addr=$(test/p2p/ip.sh "$ID"):46657
+addr=$(test/p2p/ip.sh "$ID"):26657
 
 echo "2. wait until peer $ID connects to other nodes using pex reactor"
 peers_count="0"
