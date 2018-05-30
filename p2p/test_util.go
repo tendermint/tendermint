@@ -3,7 +3,6 @@ package p2p
 import (
 	"fmt"
 	"net"
-	"sync/atomic"
 
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -132,8 +131,6 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-var listenAddrSuffix uint32 = 1
-
 func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
 	// new switch, add reactors
 	// TODO: let the config be passed in?
@@ -148,7 +145,7 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
-		ListenAddr: fmt.Sprintf("127.0.0.%d:%d", atomic.AddUint32(&listenAddrSuffix, 1), cmn.RandIntn(64512)+1023),
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
 	}
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)
