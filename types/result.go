@@ -1,121 +1,170 @@
 package types
 
-import (
-	"bytes"
-	"encoding/json"
+import cmn "github.com/tendermint/tmlibs/common"
 
-	"github.com/gogo/protobuf/jsonpb"
-)
-
-const (
-	CodeTypeOK uint32 = 0
-)
-
-// IsOK returns true if Code is OK.
-func (r ResponseCheckTx) IsOK() bool {
-	return r.Code == CodeTypeOK
+// nondeterministic
+type ResultException struct {
+	Error string `json:"error,omitempty"`
 }
 
-// IsErr returns true if Code is something other than OK.
-func (r ResponseCheckTx) IsErr() bool {
-	return r.Code != CodeTypeOK
+type ResultEcho struct {
+	Message string `json:"message,omitempty"`
 }
 
-// IsOK returns true if Code is OK.
-func (r ResponseDeliverTx) IsOK() bool {
-	return r.Code == CodeTypeOK
+type ResultFlush struct {
 }
 
-// IsErr returns true if Code is something other than OK.
-func (r ResponseDeliverTx) IsErr() bool {
-	return r.Code != CodeTypeOK
+type ResultInfo struct {
+	Data             string `json:"data,omitempty"`
+	Version          string `json:"version,omitempty"`
+	LastBlockHeight  int64  `json:"last_block_height,omitempty"`
+	LastBlockAppHash []byte `json:"last_block_app_hash,omitempty"`
 }
 
-// IsOK returns true if Code is OK.
-func (r ResponseQuery) IsOK() bool {
-	return r.Code == CodeTypeOK
+func FromResultInfo(res ResultInfo) ResponseInfo {
+	return ResponseInfo(res)
 }
 
-// IsErr returns true if Code is something other than OK.
-func (r ResponseQuery) IsErr() bool {
-	return r.Code != CodeTypeOK
+type ResultSetOption struct {
+	Code uint32 `json:"code,omitempty"`
+	// bytes data = 2;
+	Log  string `json:"log,omitempty"`
+	Info string `json:"info,omitempty"`
 }
 
-//---------------------------------------------------------------------------
-// override JSON marshalling so we dont emit defaults (ie. disable omitempty)
-// note we need Unmarshal functions too because protobuf had the bright idea
-// to marshal int64->string. cool. cool, cool, cool: https://developers.google.com/protocol-buffers/docs/proto3#json
+func FromResultSetOption(res ResultSetOption) ResponseSetOption {
+	return ResponseSetOption(res)
+}
 
-var (
-	jsonpbMarshaller = jsonpb.Marshaler{
-		EnumsAsInts:  true,
-		EmitDefaults: false,
+type ResultInitChain struct {
+	Validators []Validator `json:"validators"`
+}
+
+func FromResultInitChain(res ResultInitChain) ResponseInitChain {
+	vals := valsToPointers(res.Validators)
+	return ResponseInitChain{
+		Validators: vals,
 	}
-	jsonpbUnmarshaller = jsonpb.Unmarshaler{}
-)
-
-func (r *ResponseSetOption) MarshalJSON() ([]byte, error) {
-	s, err := jsonpbMarshaller.MarshalToString(r)
-	return []byte(s), err
 }
 
-func (r *ResponseSetOption) UnmarshalJSON(b []byte) error {
-	reader := bytes.NewBuffer(b)
-	return jsonpbUnmarshaller.Unmarshal(reader, r)
+type ResultQuery struct {
+	Code uint32 `json:"code,omitempty"`
+	// bytes data = 2; // use "value" instead.
+	Log    string `json:"log,omitempty"`
+	Info   string `json:"info,omitempty"`
+	Index  int64  `json:"index,omitempty"`
+	Key    []byte `json:"key,omitempty"`
+	Value  []byte `json:"value,omitempty"`
+	Proof  []byte `json:"proof,omitempty"`
+	Height int64  `json:"height,omitempty"`
 }
 
-func (r *ResponseCheckTx) MarshalJSON() ([]byte, error) {
-	s, err := jsonpbMarshaller.MarshalToString(r)
-	return []byte(s), err
+func FromResultQuery(res ResultQuery) ResponseQuery {
+	return ResponseQuery(res)
 }
 
-func (r *ResponseCheckTx) UnmarshalJSON(b []byte) error {
-	reader := bytes.NewBuffer(b)
-	return jsonpbUnmarshaller.Unmarshal(reader, r)
+type ResultBeginBlock struct {
+	Tags []cmn.KVPair `json:"tags,omitempty"`
 }
 
-func (r *ResponseDeliverTx) MarshalJSON() ([]byte, error) {
-	s, err := jsonpbMarshaller.MarshalToString(r)
-	return []byte(s), err
+func FromResultBeginBlock(res ResultBeginBlock) ResponseBeginBlock {
+	tags := tagsToPointers(res.Tags)
+	return ResponseBeginBlock{
+		Tags: tags,
+	}
 }
 
-func (r *ResponseDeliverTx) UnmarshalJSON(b []byte) error {
-	reader := bytes.NewBuffer(b)
-	return jsonpbUnmarshaller.Unmarshal(reader, r)
+type ResultCheckTx struct {
+	Code      uint32       `json:"code,omitempty"`
+	Data      []byte       `json:"data,omitempty"`
+	Log       string       `json:"log,omitempty"`
+	Info      string       `json:"info,omitempty"`
+	GasWanted int64        `json:"gas_wanted,omitempty"`
+	GasUsed   int64        `json:"gas_used,omitempty"`
+	Tags      []cmn.KVPair `json:"tags,omitempty"`
+	Fee       cmn.KI64Pair `json:"fee"`
 }
 
-func (r *ResponseQuery) MarshalJSON() ([]byte, error) {
-	s, err := jsonpbMarshaller.MarshalToString(r)
-	return []byte(s), err
+func FromResultCheckTx(res ResultCheckTx) ResponseCheckTx {
+	tags := tagsToPointers(res.Tags)
+	return ResponseCheckTx{
+		Code:      res.Code,
+		Data:      res.Data,
+		Log:       res.Log,
+		Info:      res.Info,
+		GasWanted: res.GasWanted,
+		GasUsed:   res.GasUsed,
+		Tags:      tags,
+		Fee:       &res.Fee,
+	}
 }
 
-func (r *ResponseQuery) UnmarshalJSON(b []byte) error {
-	reader := bytes.NewBuffer(b)
-	return jsonpbUnmarshaller.Unmarshal(reader, r)
+type ResultDeliverTx struct {
+	Code      uint32       `json:"code,omitempty"`
+	Data      []byte       `json:"data,omitempty"`
+	Log       string       `json:"log,omitempty"`
+	Info      string       `json:"info,omitempty"`
+	GasWanted int64        `json:"gas_wanted,omitempty"`
+	GasUsed   int64        `json:"gas_used,omitempty"`
+	Tags      []cmn.KVPair `json:"tags,omitempty"`
+	Fee       cmn.KI64Pair `json:"fee"`
 }
 
-func (r *ResponseCommit) MarshalJSON() ([]byte, error) {
-	s, err := jsonpbMarshaller.MarshalToString(r)
-	return []byte(s), err
+func FromResultDeliverTx(res ResultDeliverTx) ResponseDeliverTx {
+	tags := tagsToPointers(res.Tags)
+	return ResponseDeliverTx{
+		Code:      res.Code,
+		Data:      res.Data,
+		Log:       res.Log,
+		Info:      res.Info,
+		GasWanted: res.GasWanted,
+		GasUsed:   res.GasUsed,
+		Tags:      tags,
+		Fee:       &res.Fee,
+	}
 }
 
-func (r *ResponseCommit) UnmarshalJSON(b []byte) error {
-	reader := bytes.NewBuffer(b)
-	return jsonpbUnmarshaller.Unmarshal(reader, r)
+type ResultEndBlock struct {
+	ValidatorUpdates      []Validator      `json:"validator_updates"`
+	ConsensusParamUpdates *ConsensusParams `json:"consensus_param_updates,omitempty"`
+	Tags                  []cmn.KVPair     `json:"tags,omitempty"`
 }
 
-// Some compile time assertions to ensure we don't
-// have accidental runtime surprises later on.
-
-// jsonEncodingRoundTripper ensures that asserted
-// interfaces implement both MarshalJSON and UnmarshalJSON
-type jsonRoundTripper interface {
-	json.Marshaler
-	json.Unmarshaler
+func FromResultEndBlock(res ResultEndBlock) ResponseEndBlock {
+	tags := tagsToPointers(res.Tags)
+	vals := valsToPointers(res.ValidatorUpdates)
+	return ResponseEndBlock{
+		ValidatorUpdates:      vals,
+		ConsensusParamUpdates: res.ConsensusParamUpdates,
+		Tags: tags,
+	}
 }
 
-var _ jsonRoundTripper = (*ResponseCommit)(nil)
-var _ jsonRoundTripper = (*ResponseQuery)(nil)
-var _ jsonRoundTripper = (*ResponseDeliverTx)(nil)
-var _ jsonRoundTripper = (*ResponseCheckTx)(nil)
-var _ jsonRoundTripper = (*ResponseSetOption)(nil)
+type ResultCommit struct {
+	// reserve 1
+	Data []byte `json:"data,omitempty"`
+}
+
+func FromResultCommit(res ResultCommit) ResponseCommit {
+	return ResponseCommit(res)
+}
+
+//-------------------------------------------------------
+
+func tagsToPointers(tags []cmn.KVPair) []*cmn.KVPair {
+	tagPtrs := make([]*cmn.KVPair, len(tags))
+	for i := 0; i < len(tags); i++ {
+		t := tags[i]
+		tagPtrs[i] = &t
+	}
+	return tagPtrs
+}
+
+func valsToPointers(vals []Validator) []*Validator {
+	valPtrs := make([]*Validator, len(vals))
+	for i := 0; i < len(vals); i++ {
+		v := vals[i]
+		valPtrs[i] = &v
+	}
+	return valPtrs
+}

@@ -172,32 +172,32 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_Flush:
 		responses <- types.ToResponseFlush()
 	case *types.Request_Info:
-		res := s.app.Info(*r.Info)
-		responses <- types.ToResponseInfo(res)
+		res := s.app.Info(types.ToParamsInfo(*r.Info))
+		responses <- types.ToResponseInfo(types.FromResultInfo(res))
 	case *types.Request_SetOption:
-		res := s.app.SetOption(*r.SetOption)
-		responses <- types.ToResponseSetOption(res)
+		res := s.app.SetOption(types.ToParamsSetOption(*r.SetOption))
+		responses <- types.ToResponseSetOption(types.FromResultSetOption(res))
 	case *types.Request_DeliverTx:
 		res := s.app.DeliverTx(r.DeliverTx.Tx)
-		responses <- types.ToResponseDeliverTx(res)
+		responses <- types.ToResponseDeliverTx(types.FromResultDeliverTx(res))
 	case *types.Request_CheckTx:
 		res := s.app.CheckTx(r.CheckTx.Tx)
-		responses <- types.ToResponseCheckTx(res)
+		responses <- types.ToResponseCheckTx(types.FromResultCheckTx(res))
 	case *types.Request_Commit:
 		res := s.app.Commit()
-		responses <- types.ToResponseCommit(res)
+		responses <- types.ToResponseCommit(types.FromResultCommit(res))
 	case *types.Request_Query:
-		res := s.app.Query(*r.Query)
-		responses <- types.ToResponseQuery(res)
+		res := s.app.Query(types.ToParamsQuery(*r.Query))
+		responses <- types.ToResponseQuery(types.FromResultQuery(res))
 	case *types.Request_InitChain:
-		res := s.app.InitChain(*r.InitChain)
-		responses <- types.ToResponseInitChain(res)
+		res := s.app.InitChain(types.ToParamsInitChain(*r.InitChain))
+		responses <- types.ToResponseInitChain(types.FromResultInitChain(res))
 	case *types.Request_BeginBlock:
-		res := s.app.BeginBlock(*r.BeginBlock)
-		responses <- types.ToResponseBeginBlock(res)
+		res := s.app.BeginBlock(types.ToParamsBeginBlock(*r.BeginBlock))
+		responses <- types.ToResponseBeginBlock(types.FromResultBeginBlock(res))
 	case *types.Request_EndBlock:
-		res := s.app.EndBlock(*r.EndBlock)
-		responses <- types.ToResponseEndBlock(res)
+		res := s.app.EndBlock(types.ToParamsEndBlock(*r.EndBlock))
+		responses <- types.ToResponseEndBlock(types.FromResultEndBlock(res))
 	default:
 		responses <- types.ToResponseException("Unknown request")
 	}

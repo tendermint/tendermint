@@ -6,23 +6,23 @@ import (
 
 // Application is an interface that enables any finite, deterministic state machine
 // to be driven by a blockchain-based replication engine via the ABCI.
-// All methods take a RequestXxx argument and return a ResponseXxx argument,
+// All methods take a ParamsXxx argument and return a ResultXxx argument,
 // except CheckTx/DeliverTx, which take `tx []byte`, and `Commit`, which takes nothing.
 type Application interface {
 	// Info/Query Connection
-	Info(RequestInfo) ResponseInfo                // Return application info
-	SetOption(RequestSetOption) ResponseSetOption // Set application option
-	Query(RequestQuery) ResponseQuery             // Query for state
+	Info(ParamsInfo) ResultInfo                // Return application info
+	SetOption(ParamsSetOption) ResultSetOption // Set application option
+	Query(ParamsQuery) ResultQuery             // Query for state
 
 	// Mempool Connection
-	CheckTx(tx []byte) ResponseCheckTx // Validate a tx for the mempool
+	CheckTx(tx []byte) ResultCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
-	DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+	InitChain(ParamsInitChain) ResultInitChain    // Initialize blockchain with validators and other info from TendermintCore
+	BeginBlock(ParamsBeginBlock) ResultBeginBlock // Signals the beginning of a block
+	DeliverTx(tx []byte) ResultDeliverTx          // Deliver a tx for full processing
+	EndBlock(ParamsEndBlock) ResultEndBlock       // Signals the end of a block, returns changes to the validator set
+	Commit() ResultCommit                         // Commit the state and return the application Merkle root hash
 }
 
 //-------------------------------------------------------
@@ -37,40 +37,40 @@ func NewBaseApplication() *BaseApplication {
 	return &BaseApplication{}
 }
 
-func (BaseApplication) Info(req RequestInfo) ResponseInfo {
-	return ResponseInfo{}
+func (BaseApplication) Info(req ParamsInfo) ResultInfo {
+	return ResultInfo{}
 }
 
-func (BaseApplication) SetOption(req RequestSetOption) ResponseSetOption {
-	return ResponseSetOption{}
+func (BaseApplication) SetOption(req ParamsSetOption) ResultSetOption {
+	return ResultSetOption{}
 }
 
-func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
-	return ResponseDeliverTx{Code: CodeTypeOK}
+func (BaseApplication) DeliverTx(tx []byte) ResultDeliverTx {
+	return ResultDeliverTx{Code: CodeTypeOK}
 }
 
-func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
-	return ResponseCheckTx{Code: CodeTypeOK}
+func (BaseApplication) CheckTx(tx []byte) ResultCheckTx {
+	return ResultCheckTx{Code: CodeTypeOK}
 }
 
-func (BaseApplication) Commit() ResponseCommit {
-	return ResponseCommit{}
+func (BaseApplication) Commit() ResultCommit {
+	return ResultCommit{}
 }
 
-func (BaseApplication) Query(req RequestQuery) ResponseQuery {
-	return ResponseQuery{Code: CodeTypeOK}
+func (BaseApplication) Query(req ParamsQuery) ResultQuery {
+	return ResultQuery{Code: CodeTypeOK}
 }
 
-func (BaseApplication) InitChain(req RequestInitChain) ResponseInitChain {
-	return ResponseInitChain{}
+func (BaseApplication) InitChain(req ParamsInitChain) ResultInitChain {
+	return ResultInitChain{}
 }
 
-func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
-	return ResponseBeginBlock{}
+func (BaseApplication) BeginBlock(req ParamsBeginBlock) ResultBeginBlock {
+	return ResultBeginBlock{}
 }
 
-func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
-	return ResponseEndBlock{}
+func (BaseApplication) EndBlock(req ParamsEndBlock) ResultEndBlock {
+	return ResultEndBlock{}
 }
 
 //-------------------------------------------------------
@@ -93,46 +93,55 @@ func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*Resp
 }
 
 func (app *GRPCApplication) Info(ctx context.Context, req *RequestInfo) (*ResponseInfo, error) {
-	res := app.app.Info(*req)
-	return &res, nil
+	res := app.app.Info(ToParamsInfo(*req))
+	r := FromResultInfo(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) SetOption(ctx context.Context, req *RequestSetOption) (*ResponseSetOption, error) {
-	res := app.app.SetOption(*req)
-	return &res, nil
+	res := app.app.SetOption(ToParamsSetOption(*req))
+	r := FromResultSetOption(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx) (*ResponseDeliverTx, error) {
 	res := app.app.DeliverTx(req.Tx)
-	return &res, nil
+	r := FromResultDeliverTx(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	res := app.app.CheckTx(req.Tx)
-	return &res, nil
+	r := FromResultCheckTx(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) Query(ctx context.Context, req *RequestQuery) (*ResponseQuery, error) {
-	res := app.app.Query(*req)
-	return &res, nil
+	res := app.app.Query(ToParamsQuery(*req))
+	r := FromResultQuery(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) Commit(ctx context.Context, req *RequestCommit) (*ResponseCommit, error) {
 	res := app.app.Commit()
-	return &res, nil
+	r := FromResultCommit(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) InitChain(ctx context.Context, req *RequestInitChain) (*ResponseInitChain, error) {
-	res := app.app.InitChain(*req)
-	return &res, nil
+	res := app.app.InitChain(ToParamsInitChain(*req))
+	r := FromResultInitChain(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlock) (*ResponseBeginBlock, error) {
-	res := app.app.BeginBlock(*req)
-	return &res, nil
+	res := app.app.BeginBlock(ToParamsBeginBlock(*req))
+	r := FromResultBeginBlock(res)
+	return &r, nil
 }
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
-	res := app.app.EndBlock(*req)
-	return &res, nil
+	res := app.app.EndBlock(ToParamsEndBlock(*req))
+	r := FromResultEndBlock(res)
+	return &r, nil
 }

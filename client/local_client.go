@@ -53,21 +53,21 @@ func (app *localClient) EchoAsync(msg string) *ReqRes {
 
 func (app *localClient) InfoAsync(req types.RequestInfo) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.Info(req)
+	res := app.Application.Info(types.ToParamsInfo(req))
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestInfo(req),
-		types.ToResponseInfo(res),
+		types.ToResponseInfo(types.FromResultInfo(res)),
 	)
 }
 
 func (app *localClient) SetOptionAsync(req types.RequestSetOption) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.SetOption(req)
+	res := app.Application.SetOption(types.ToParamsSetOption(req))
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestSetOption(req),
-		types.ToResponseSetOption(res),
+		types.ToResponseSetOption(types.FromResultSetOption(res)),
 	)
 }
 
@@ -77,7 +77,7 @@ func (app *localClient) DeliverTxAsync(tx []byte) *ReqRes {
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestDeliverTx(tx),
-		types.ToResponseDeliverTx(res),
+		types.ToResponseDeliverTx(types.FromResultDeliverTx(res)),
 	)
 }
 
@@ -87,17 +87,17 @@ func (app *localClient) CheckTxAsync(tx []byte) *ReqRes {
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestCheckTx(tx),
-		types.ToResponseCheckTx(res),
+		types.ToResponseCheckTx(types.FromResultCheckTx(res)),
 	)
 }
 
 func (app *localClient) QueryAsync(req types.RequestQuery) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.Query(req)
+	res := app.Application.Query(types.ToParamsQuery(req))
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestQuery(req),
-		types.ToResponseQuery(res),
+		types.ToResponseQuery(types.FromResultQuery(res)),
 	)
 }
 
@@ -107,16 +107,16 @@ func (app *localClient) CommitAsync() *ReqRes {
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestCommit(),
-		types.ToResponseCommit(res),
+		types.ToResponseCommit(types.FromResultCommit(res)),
 	)
 }
 
 func (app *localClient) InitChainAsync(req types.RequestInitChain) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.InitChain(req)
+	res := app.Application.InitChain(types.ToParamsInitChain(req))
 	reqRes := app.callback(
 		types.ToRequestInitChain(req),
-		types.ToResponseInitChain(res),
+		types.ToResponseInitChain(types.FromResultInitChain(res)),
 	)
 	app.mtx.Unlock()
 	return reqRes
@@ -124,21 +124,21 @@ func (app *localClient) InitChainAsync(req types.RequestInitChain) *ReqRes {
 
 func (app *localClient) BeginBlockAsync(req types.RequestBeginBlock) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.BeginBlock(req)
+	res := app.Application.BeginBlock(types.ToParamsBeginBlock(req))
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestBeginBlock(req),
-		types.ToResponseBeginBlock(res),
+		types.ToResponseBeginBlock(types.FromResultBeginBlock(res)),
 	)
 }
 
 func (app *localClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	app.mtx.Lock()
-	res := app.Application.EndBlock(req)
+	res := app.Application.EndBlock(types.ToParamsEndBlock(req))
 	app.mtx.Unlock()
 	return app.callback(
 		types.ToRequestEndBlock(req),
-		types.ToResponseEndBlock(res),
+		types.ToResponseEndBlock(types.FromResultEndBlock(res)),
 	)
 }
 
@@ -154,63 +154,63 @@ func (app *localClient) EchoSync(msg string) (*types.ResponseEcho, error) {
 
 func (app *localClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {
 	app.mtx.Lock()
-	res := app.Application.Info(req)
+	res := types.FromResultInfo(app.Application.Info(types.ToParamsInfo(req)))
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) SetOptionSync(req types.RequestSetOption) (*types.ResponseSetOption, error) {
 	app.mtx.Lock()
-	res := app.Application.SetOption(req)
+	res := types.FromResultSetOption(app.Application.SetOption(types.ToParamsSetOption(req)))
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error) {
 	app.mtx.Lock()
-	res := app.Application.DeliverTx(tx)
+	res := types.FromResultDeliverTx(app.Application.DeliverTx(tx))
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
 	app.mtx.Lock()
-	res := app.Application.CheckTx(tx)
+	res := types.FromResultCheckTx(app.Application.CheckTx(tx))
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
 	app.mtx.Lock()
-	res := app.Application.Query(req)
+	res := types.FromResultQuery(app.Application.Query(types.ToParamsQuery(req)))
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) CommitSync() (*types.ResponseCommit, error) {
 	app.mtx.Lock()
-	res := app.Application.Commit()
+	res := types.FromResultCommit(app.Application.Commit())
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) InitChainSync(req types.RequestInitChain) (*types.ResponseInitChain, error) {
 	app.mtx.Lock()
-	res := app.Application.InitChain(req)
+	res := types.FromResultInitChain(app.Application.InitChain(types.ToParamsInitChain(req)))
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) BeginBlockSync(req types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
 	app.mtx.Lock()
-	res := app.Application.BeginBlock(req)
+	res := types.FromResultBeginBlock(app.Application.BeginBlock(types.ToParamsBeginBlock(req)))
 	app.mtx.Unlock()
 	return &res, nil
 }
 
 func (app *localClient) EndBlockSync(req types.RequestEndBlock) (*types.ResponseEndBlock, error) {
 	app.mtx.Lock()
-	res := app.Application.EndBlock(req)
+	res := types.FromResultEndBlock(app.Application.EndBlock(types.ToParamsEndBlock(req)))
 	app.mtx.Unlock()
 	return &res, nil
 }

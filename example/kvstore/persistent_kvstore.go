@@ -50,19 +50,19 @@ func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 	app.logger = l
 }
 
-func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.ResponseInfo {
+func (app *PersistentKVStoreApplication) Info(req types.ParamsInfo) types.ResultInfo {
 	res := app.app.Info(req)
 	res.LastBlockHeight = app.app.state.Height
 	res.LastBlockAppHash = app.app.state.AppHash
 	return res
 }
 
-func (app *PersistentKVStoreApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
+func (app *PersistentKVStoreApplication) SetOption(req types.ParamsSetOption) types.ResultSetOption {
 	return app.app.SetOption(req)
 }
 
 // tx is either "val:pubkey/power" or "key=value" or just arbitrary bytes
-func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) types.ResultDeliverTx {
 	// if it starts with "val:", update the validator set
 	// format is "val:pubkey/power"
 	if isValidatorTx(tx) {
@@ -75,40 +75,40 @@ func (app *PersistentKVStoreApplication) DeliverTx(tx []byte) types.ResponseDeli
 	return app.app.DeliverTx(tx)
 }
 
-func (app *PersistentKVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+func (app *PersistentKVStoreApplication) CheckTx(tx []byte) types.ResultCheckTx {
 	return app.app.CheckTx(tx)
 }
 
 // Commit will panic if InitChain was not called
-func (app *PersistentKVStoreApplication) Commit() types.ResponseCommit {
+func (app *PersistentKVStoreApplication) Commit() types.ResultCommit {
 	return app.app.Commit()
 }
 
-func (app *PersistentKVStoreApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
+func (app *PersistentKVStoreApplication) Query(reqQuery types.ParamsQuery) types.ResultQuery {
 	return app.app.Query(reqQuery)
 }
 
 // Save the validators in the merkle tree
-func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) types.ResponseInitChain {
+func (app *PersistentKVStoreApplication) InitChain(req types.ParamsInitChain) types.ResultInitChain {
 	for _, v := range req.Validators {
 		r := app.updateValidator(v)
 		if r.IsErr() {
 			app.logger.Error("Error updating validators", "r", r)
 		}
 	}
-	return types.ResponseInitChain{}
+	return types.ResultInitChain{}
 }
 
 // Track the block hash and header information
-func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
+func (app *PersistentKVStoreApplication) BeginBlock(req types.ParamsBeginBlock) types.ResultBeginBlock {
 	// reset valset changes
 	app.ValUpdates = make([]types.Validator, 0)
-	return types.ResponseBeginBlock{}
+	return types.ResultBeginBlock{}
 }
 
 // Update the validator set
-func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-	return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
+func (app *PersistentKVStoreApplication) EndBlock(req types.ParamsEndBlock) types.ResultEndBlock {
+	return types.ResultEndBlock{ValidatorUpdates: app.ValUpdates}
 }
 
 //---------------------------------------------
@@ -129,7 +129,7 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 	return
 }
 
-func MakeValSetChangeTx(pubkey types.PubKey, power int64) []byte {
+func MakeValSetChangeTx(pubkey *types.PubKey, power int64) []byte {
 	return []byte(cmn.Fmt("val:%X/%d", pubkey.Data, power))
 }
 
@@ -139,13 +139,13 @@ func isValidatorTx(tx []byte) bool {
 
 // format is "val:pubkey/power"
 // pubkey is raw 32-byte ed25519 key
-func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.ResultDeliverTx {
 	tx = tx[len(ValidatorSetChangePrefix):]
 
 	//get the pubkey and power
 	pubKeyAndPower := strings.Split(string(tx), "/")
 	if len(pubKeyAndPower) != 2 {
-		return types.ResponseDeliverTx{
+		return types.ResultDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Expected 'pubkey/power'. Got %v", pubKeyAndPower)}
 	}
@@ -154,7 +154,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	// decode the pubkey
 	pubkey, err := hex.DecodeString(pubkeyS)
 	if err != nil {
-		return types.ResponseDeliverTx{
+		return types.ResultDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Pubkey (%s) is invalid hex", pubkeyS)}
 	}
@@ -162,7 +162,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	// decode the power
 	power, err := strconv.ParseInt(powerS, 10, 64)
 	if err != nil {
-		return types.ResponseDeliverTx{
+		return types.ResultDeliverTx{
 			Code: code.CodeTypeEncodingError,
 			Log:  fmt.Sprintf("Power (%s) is not an int", powerS)}
 	}
@@ -172,12 +172,12 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 }
 
 // add, update, or remove a validator
-func (app *PersistentKVStoreApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) updateValidator(v types.Validator) types.ResultDeliverTx {
 	key := []byte("val:" + string(v.PubKey.Data))
 	if v.Power == 0 {
 		// remove validator
 		if !app.app.state.db.Has(key) {
-			return types.ResponseDeliverTx{
+			return types.ResultDeliverTx{
 				Code: code.CodeTypeUnauthorized,
 				Log:  fmt.Sprintf("Cannot remove non-existent validator %X", key)}
 		}
@@ -186,7 +186,7 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.Validator) type
 		// add or update validator
 		value := bytes.NewBuffer(make([]byte, 0))
 		if err := types.WriteMessage(&v, value); err != nil {
-			return types.ResponseDeliverTx{
+			return types.ResultDeliverTx{
 				Code: code.CodeTypeEncodingError,
 				Log:  fmt.Sprintf("Error encoding validator: %v", err)}
 		}
@@ -196,5 +196,5 @@ func (app *PersistentKVStoreApplication) updateValidator(v types.Validator) type
 	// we only update the changes array if we successfully updated the tree
 	app.ValUpdates = append(app.ValUpdates, v)
 
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK}
+	return types.ResultDeliverTx{Code: code.CodeTypeOK}
 }

@@ -32,7 +32,7 @@
 # Use `~` for only minor version bumps.
 
 [[constraint]]
-  name = "github.com/gogo/protobuf"
+  name = "github.com/golang/protobuf"
   version = "~1.0.0"
 
 [[constraint]]
@@ -45,11 +45,18 @@
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  version = "0.8.1"
+  branch = "develop"
+  # version = "0.8.1"
 
 [[constraint]]
   name = "google.golang.org/grpc"
   version = "~1.7.3"
+
+# this got updated and broke, so locked to an old working commit ...
+[[override]]
+  name = "google.golang.org/genproto"
+  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
+
 
 [prune]
   go-tests = true
