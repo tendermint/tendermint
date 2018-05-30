@@ -202,7 +202,7 @@ func (cs *ConsensusState) GetRoundStateSimpleJSON() ([]byte, error) {
 func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
-	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
+	return cs.state.LastBlockHeight, cs.state.NextValidators.Copy().Validators
 }
 
 // SetPrivValidator sets the private validator account for signing votes.
@@ -466,7 +466,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	}
 
 	// Reset fields based on state.
-	validators := state.Validators
+	validators := state.NextValidators
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
 		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
