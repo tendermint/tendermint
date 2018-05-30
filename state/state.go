@@ -100,15 +100,15 @@ func (state State) IsEmpty() bool {
 
 // MakeBlock builds a block with the given txs and commit from the current state.
 func (state State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
-	// build base block
+	// Build base block.
 	block := types.MakeBlock(height, txs, commit)
 
-	// fill header with state data
+	// Fill header with state data.
 	block.ChainID = state.ChainID
 	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
 	block.LastBlockID = state.LastBlockID
-	block.ValidatorsHash = state.Validators.Hash()
-	block.NextValidatorsHash = state.NextValidators.Hash()
+	block.ValidatorsHash = state.NextValidators.Hash()
+	block.NextValidatorsHash = state.NextNextValidators.Hash()
 	block.AppHash = state.AppHash
 	block.ConsensusHash = state.ConsensusParams.Hash()
 	block.LastResultsHash = state.LastResultsHash
@@ -173,7 +173,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
-		NextNextValidators:          types.NewValidatorSet(validators),
+		NextNextValidators:          types.NewValidatorSet(validators).CopyIncrementAccum(1),
 		NextValidators:              types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,
