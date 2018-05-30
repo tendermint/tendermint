@@ -8,7 +8,7 @@ cd "$GOPATH/src/github.com/tendermint/tendermint"
 
 echo "Waiting for nodes to come online"
 for i in $(seq 1 "$N"); do
-	addr=$(test/p2p/ip.sh "$i"):46657
+	addr=$(test/p2p/ip.sh "$i"):26657
 	curl -s "$addr/status" > /dev/null
 	ERR=$?
 	while [ "$ERR" != 0 ]; do
@@ -20,4 +20,4 @@ for i in $(seq 1 "$N"); do
 done
 
 IP=$(test/p2p/ip.sh 1)
-curl "$IP:46657/dial_peers?persistent=true&peers=\\[$PEERS\\]"
+curl "$IP:26657/dial_peers?persistent=true&peers=\\[$PEERS\\]"

@@ -10,9 +10,9 @@ ID=$1
 #
 ###########################################
 
-addr=$(test/p2p/ip.sh $ID):46657
+addr=$(test/p2p/ip.sh $ID):26657
 peerID=$(( $(($ID % 4)) + 1  )) # 1->2 ... 3->4 ... 4->1
-peer_addr=$(test/p2p/ip.sh $peerID):46657
+peer_addr=$(test/p2p/ip.sh $peerID):26657
 
 # get another peer's height
 h1=`curl -s $peer_addr/status | jq .result.sync_info.latest_block_height`

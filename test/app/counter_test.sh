@@ -50,7 +50,7 @@ function sendTx() {
 	fi
 	set -u
 	if [[ "$GRPC_BROADCAST_TX" == "" ]]; then
-		RESPONSE=$(curl -s localhost:46657/broadcast_tx_commit?tx=0x"$TX")
+		RESPONSE=$(curl -s localhost:26657/broadcast_tx_commit?tx=0x"$TX")
 		IS_ERR=$(echo "$RESPONSE" | jq 'has("error")')
 		ERROR=$(echo "$RESPONSE" | jq '.error')
 		ERROR=$(echo "$ERROR" | tr -d '"') # remove surrounding quotes
