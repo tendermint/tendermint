@@ -120,14 +120,14 @@
   revision = "5d6fca44a948d2be89a9702de7717f0168403d3d"
 
 [[projects]]
-  branch = "bucky/no-gogo"
+  branch = "develop"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "common",
     "db",
     "log"
   ]
-  revision = "d24a30858e23ace7aeee306e2ce652aba8021631"
+  revision = "e0acf357bb8832faebdb79f07490d0f530afc7b1"
 
 [[projects]]
   branch = "master"
@@ -141,7 +141,7 @@
     "internal/timeseries",
     "trace"
   ]
-  revision = "9ef9f5bb98a1fdc41f8cf6c250a4404b4085e389"
+  revision = "89e543239a64caf31d3a6865872ea120b41446df"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -196,6 +196,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e0b98059927fe32f1398b66d5d3464fac7d0b4c011855863a04f21b5bd8b7032"
+  inputs-digest = "5a730a9d84b37f95b1b10260a91bcd26a143a50b3301ec6dfb7483e89c44eabd"
   solver-name = "gps-cdcl"
   solver-version = 1

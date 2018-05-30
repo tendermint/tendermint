@@ -45,7 +45,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  branch = "bucky/no-gogo"
+  branch = "develop"
   # version = "0.8.1"
 
 [[constraint]]
