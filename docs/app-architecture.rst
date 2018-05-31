@@ -6,11 +6,11 @@ application.
 
 The following diagram provides a superb example:
 
-https://lh3.googleusercontent.com/eOT9KuaBjv7xKBg2xN8u2O1nU2Iw1-6PtFXrBSFWW8LYhfAMu84EwXW4RwyOnuiNqCoOoqXxE8Pkhr4Fyq9f=w2559-h1303-rw
+https://drive.google.com/open?id=1yR2XpRi9YCY9H9uMfcw8-RMJpvDyvjz9
 
 The end-user application here is the Cosmos Voyager, at the bottom left.
 Voyager communicates with a REST API exposed by a local Light-Client Daemon.
-The Light-Client Daemon is an application specific program that communciates with
+The Light-Client Daemon is an application specific program that communicates with
 Tendermint nodes and verifies Tendermint light-client proofs through the Tendermint Core RPC.
 The Tendermint Core process communicates with a local ABCI application, where the
 user query or transaction is actually processed.
