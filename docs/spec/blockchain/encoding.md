@@ -49,7 +49,10 @@ spec](https://github.com/tendermint/go-amino#computing-the-prefix-and-disambigua
 In what follows, we provide the type names and prefix bytes directly.
 Notice that when encoding byte-arrays, the length of the byte-array is appended
 to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes>
-<Length> <ByteArray>`
+<Length> <ByteArray>`. In other words, to encode any type listed below you do not need to be 
+familiar with amino encoding. 
+You can simply use below table and concatenate Prefix || Length (of raw bytes) || raw bytes 
+( while || stands for byte concatenation here).
 
 | Type | Name | Prefix | Length | Notes |
 | ---- | ---- | ------ | ----- | ------ |
@@ -63,17 +66,14 @@ to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes>
 | SignatureEd25519 | tendermint/SignatureKeyEd25519 | 0x3DA1DB2A | 0x40 | raw 64-byte Ed25519 signature |
 | SignatureSecp256k1 | tendermint/SignatureKeySecp256k1 | 0x16E1FEEA | variable | raw bytes of the Secp256k1 signature |
 
-To encode any of the above you do not need to be familiar with amino encoding. You can simply 
-use above table and concatenate Prefix || Length of raw bytes || raw bytes ( || stands for simple concatenation here).
+### Examples
 
-For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
-`020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9` would be
-encoded as
+1. For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
+`020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`  
+would be encoded as
 `EB5AE98221020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 
-SignatureSecp256k1:
-
-For example, the variable size Secp256k1 signature (in this particular example 70 or 0x46 bytes)
+2. For example, the variable size Secp256k1 signature (in this particular example 70 or 0x46 bytes)
 `304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
 would be encoded as
 `16E1FEEA46304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
