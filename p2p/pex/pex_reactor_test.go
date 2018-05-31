@@ -27,7 +27,7 @@ var (
 func init() {
 	config = cfg.DefaultP2PConfig()
 	config.PexReactor = true
-	config.SkipDuplicatePeerIPCheck = true
+	config.AllowDuplicateIP = true
 }
 
 func TestPEXReactorBasic(t *testing.T) {
