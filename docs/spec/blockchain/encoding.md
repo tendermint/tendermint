@@ -39,7 +39,7 @@ place of the public key. Here we list the concrete types, their names,
 and prefix bytes for public keys and signatures, as well as the address schemes
 for each PubKey. Note for brevity we don't
 include details of the private keys beyond their type and name, as they can be
-derrived the same way as the others using Amino.
+derived the same way as the others using Amino.
 
 All registered objects are encoded by Amino using a 4-byte PrefixBytes that
 uniquely identifies the object and includes information about its underlying
@@ -51,104 +51,32 @@ Notice that when encoding byte-arrays, the length of the byte-array is appended
 to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes>
 <Length> <ByteArray>`
 
-NOTE: the remainder of this section on Public Key Cryptography can be generated
-from [this script](https://github.com/tendermint/tendermint/blob/master/docs/spec/scripts/crypto.go)
+| Type | Name | Prefix | Length | Notes |
+| ---- | ---- | ------ | ----- | ------ |
+| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE62 | 0x20 | raw 32-byte Ed25519 pubkey |
+| PubKeyLedgerEd25519 | tendermint/PubKeyLedgerEd25519 | 0x5C3453B2 | 0x20 |  |
+| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE982 | 0x21 |  |
+| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288912 | 0x40 |  |
+| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79A | 0x20 | OpenSSL compressed pubkey prefixed with 0x02 or 0x03 |
+| PrivKeyLedgerSecp256k1 | tendermint/PrivKeyLedgerSecp256k1 | 0x10CAB393 | variable |  |
+| PrivKeyLedgerEd25519 | tendermint/PrivKeyLedgerEd25519 | 0x0CFEEF9B | variable |  |
+| SignatureEd25519 | tendermint/SignatureKeyEd25519 | 0x3DA1DB2A | 0x40 | raw 64-byte Ed25519 signature |
+| SignatureSecp256k1 | tendermint/SignatureKeySecp256k1 | 0x16E1FEEA | variable | raw bytes of the Secp256k1 signature |
 
-### PubKeyEd25519
+To encode any of the above you do not need to be familiar with amino encoding. You can simply 
+use above table and concatenate Prefix || Length of raw bytes || raw bytes ( || stands for simple concatenation here).
 
-```
-// Name: tendermint/PubKeyEd25519
-// PrefixBytes: 0x1624DE62
-// Length: 0x20
-// Notes: raw 32-byte Ed25519 pubkey
-type PubKeyEd25519 [32]byte
-
-func (pubkey PubKeyEd25519) Address() []byte {
-      // NOTE: hash of the Amino encoded bytes!
-        return RIPEMD160(AminoEncode(pubkey))
-}
-```
-
-For example, the 32-byte Ed25519 pubkey
-`CCACD52F9B29D04393F01CD9AF6535455668115641F3D8BAEFD2295F24BAF60E` would be
-encoded as
-`1624DE6220CCACD52F9B29D04393F01CD9AF6535455668115641F3D8BAEFD2295F24BAF60E`.
-
-The address would then be
-`RIPEMD160(0x1624DE6220CCACD52F9B29D04393F01CD9AF6535455668115641F3D8BAEFD2295F24BAF60E)`
-or `430FF75BAF1EC4B0D51BB3EEC2955479D0071605`
-
-### SignatureEd25519
-
-```
-// Name: tendermint/SignatureKeyEd25519
-// PrefixBytes: 0x3DA1DB2A
-// Length: 0x40
-// Notes: raw 64-byte Ed25519 signature
-type SignatureEd25519 [64]byte
-```
-
-For example, the 64-byte Ed25519 signature
-`1B6034A8ED149D3C94FDA13EC03B26CC0FB264D9B0E47D3FA3DEF9FCDE658E49C80B35F9BE74949356401B15B18FB817D6E54495AD1C4A8401B248466CB0DB0B`
-would be encoded as
-`3DA1DB2A401B6034A8ED149D3C94FDA13EC03B26CC0FB264D9B0E47D3FA3DEF9FCDE658E49C80B35F9BE74949356401B15B18FB817D6E54495AD1C4A8401B248466CB0DB0B`
-
-### PrivKeyEd25519
-
-```
-// Name: tendermint/PrivKeyEd25519
-// Notes: raw 32-byte priv key concatenated to raw 32-byte pub key
-type PrivKeyEd25519 [64]byte
-```
-
-### PubKeySecp256k1
-
-```
-// Name: tendermint/PubKeySecp256k1
-// PrefixBytes: 0xEB5AE982
-// Length: 0x21
-// Notes: OpenSSL compressed pubkey prefixed with 0x02 or 0x03
-type PubKeySecp256k1 [33]byte
-
-func (pubkey PubKeySecp256k1) Address() []byte {
-      // NOTE: hash of the raw pubkey bytes (not Amino encoded!).
-        // Compatible with Bitcoin addresses.
-          return RIPEMD160(SHA256(pubkey[:]))
-}
-```
-
-For example, the 33-byte Secp256k1 pubkey
+For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
 `020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9` would be
 encoded as
 `EB5AE98221020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 
-The address would then be
-`RIPEMD160(SHA256(0x020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9))`
-or `0AE5BEE929ABE51BAD345DB925EEA652680783FC`
+SignatureSecp256k1:
 
-### SignatureSecp256k1
-
-```
-// Name: tendermint/SignatureKeySecp256k1
-// PrefixBytes: 0x16E1FEEA
-// Length: Variable
-// Encoding prefix: Variable
-// Notes: raw bytes of the Secp256k1 signature
-type SignatureSecp256k1 []byte
-```
-
-For example, the Secp256k1 signature
+For example, the variable size Secp256k1 signature (in this particular example 70 or 0x46 bytes)
 `304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
 would be encoded as
 `16E1FEEA46304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
-
-### PrivKeySecp256k1
-
-```
-// Name: tendermint/PrivKeySecp256k1
-// Notes: raw 32-byte priv key
-type PrivKeySecp256k1 [32]byte
-```
 
 ## Other Common Types
 
