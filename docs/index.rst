@@ -58,6 +58,7 @@ Tendermint 102
    subscribing-to-events-via-websocket.rst
    indexing-transactions.rst
    how-to-read-logs.rst
+   running-in-production.rst
 
 Tendermint 201
 --------------
