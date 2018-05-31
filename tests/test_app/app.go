@@ -12,7 +12,7 @@ import (
 
 func startClient(abciType string) abcicli.Client {
 	// Start client
-	client, err := abcicli.NewClient("tcp://127.0.0.1:46658", abciType, true)
+	client, err := abcicli.NewClient("tcp://127.0.0.1:26658", abciType, true)
 	if err != nil {
 		panic(err.Error())
 	}

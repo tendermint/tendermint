@@ -11,7 +11,7 @@ import (
 )
 
 func TestClientServerNoAddrPrefix(t *testing.T) {
-	addr := "localhost:46658"
+	addr := "localhost:26658"
 	transport := "socket"
 	app := kvstore.NewKVStoreApplication()
 
