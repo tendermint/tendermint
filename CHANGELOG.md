@@ -1,13 +1,11 @@
 # Changelog
 
-## 0.20.0
+## 0.19.7
 
 BREAKING:
 
 - [libs/pubsub] TagMap#Get returns a string value
 - [libs/pubsub] NewTagMap accepts a map of strings
-
-## 0.19.6
 
 FEATURES
 
@@ -18,6 +16,14 @@ IMPROVEMENTS:
 - [consensus] consensus reactor now receives events from a separate event bus,
   which is not dependant on external RPC load
 - [consensus/wal] do not look for height in older files if we've seen height - 1
+
+## 0.19.6
+
+*May 29th, 2018*
+
+BUG FIXES
+
+- [blockchain] Fix fast-sync deadlock during high peer turnover
 
 ## 0.19.5
 
