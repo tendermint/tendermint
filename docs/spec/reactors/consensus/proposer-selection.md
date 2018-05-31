@@ -44,4 +44,3 @@ p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p0, p1, p0, p0, p0, p0, p0, etc
 
 This basically means that almost all rounds have the same proposer. But in this case, the process p0 has anyway enough 
 voting power to decide whatever he wants, so the fact that he coordinates almost all rounds seems correct.
-

@@ -1,6 +1,7 @@
 package p2p
 
 import (
+	"fmt"
 	"net"
 
 	crypto "github.com/tendermint/go-crypto"
@@ -80,7 +81,9 @@ func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Swit
 func Connect2Switches(switches []*Switch, i, j int) {
 	switchI := switches[i]
 	switchJ := switches[j]
+
 	c1, c2 := conn.NetPipe()
+
 	doneCh := make(chan struct{})
 	go func() {
 		err := switchI.addPeerWithConnection(c1)
@@ -142,7 +145,7 @@ func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch f
 		Moniker:    cmn.Fmt("switch%d", i),
 		Network:    network,
 		Version:    version,
-		ListenAddr: cmn.Fmt("%v:%v", network, cmn.RandIntn(64512)+1023),
+		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
 	}
 	for ch := range sw.reactorsByCh {
 		ni.Channels = append(ni.Channels, ch)

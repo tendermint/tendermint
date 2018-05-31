@@ -2,7 +2,7 @@
 
 ## Amino
 
-Tendermint uses the Protobuf3 derrivative [Amino]() for all data structures.
+Tendermint uses the Protobuf3 derivative [Amino](https://github.com/tendermint/go-amino) for all data structures.
 Think of Amino as an object-oriented Protobuf3 with native JSON support.
 The goal of the Amino encoding protocol is to bring parity between application
 logic objects and persistence objects.
@@ -51,8 +51,8 @@ Notice that when encoding byte-arrays, the length of the byte-array is appended
 to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes>
 <Length> <ByteArray>`
 
-(NOTE: the remainder of this section on Public Key Cryptography can be generated
-from [this script](./scripts/crypto.go))
+NOTE: the remainder of this section on Public Key Cryptography can be generated
+from [this script](https://github.com/tendermint/tendermint/blob/master/docs/spec/scripts/crypto.go)
 
 ### PubKeyEd25519
 
@@ -290,6 +290,7 @@ Amino also supports JSON encoding - registered types are simply encoded as:
   "type": "<DisfixBytes>",
   "value": <JSON>
 }
+```
 
 For instance, an ED25519 PubKey would look like:
 

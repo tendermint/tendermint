@@ -77,6 +77,22 @@ jobs:
           paths:
             - "bin/abci*"
 
+  build_slate:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v1-pkg-cache
+      - restore_cache:
+          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: slate docs
+          command: |
+            set -ex
+            export PATH="$GOBIN:$PATH"
+            make build-slate
+
   lint:
     <<: *defaults
     steps:
@@ -123,7 +139,7 @@ jobs:
             for pkg in $(go list github.com/tendermint/tendermint/... | grep -v /vendor/ | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
-              go test -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg"
+              GOCACHE=off go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg"
             done
       - persist_to_workspace:
           root: /tmp/workspace
@@ -180,6 +196,9 @@ workflows:
   test-suite:
     jobs:
       - setup_dependencies
+      - build_slate:
+          requires:
+            - setup_dependencies
       - setup_abci:
           requires:
             - setup_dependencies

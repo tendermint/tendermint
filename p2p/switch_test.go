@@ -25,6 +25,7 @@ var (
 func init() {
 	config = cfg.DefaultP2PConfig()
 	config.PexReactor = true
+	config.AllowDuplicateIP = true
 }
 
 type PeerMessage struct {
@@ -180,7 +181,7 @@ func TestConnAddrFilter(t *testing.T) {
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
-	s1 := MakeSwitch(config, 1, "127.0.0.2", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(config, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
 	// addr := s1.NodeInfo().NetAddress()
 
 	// // add ourselves like we do in node.go#427
@@ -193,7 +194,7 @@ func TestSwitchFiltersOutItself(t *testing.T) {
 	// addr should be rejected in addPeer based on the same ID
 	err := s1.DialPeerWithAddress(rp.Addr(), false)
 	if assert.Error(t, err) {
-		assert.Equal(t, ErrSwitchConnectToSelf, err)
+		assert.Equal(t, ErrSwitchConnectToSelf{rp.Addr()}.Error(), err.Error())
 	}
 
 	assert.True(t, s1.addrBook.OurAddress(rp.Addr()))
@@ -317,7 +318,13 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert.False(peer.IsRunning())
 
 	// simulate another remote peer
-	rp = &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp = &remotePeer{
+		PrivKey: crypto.GenPrivKeyEd25519(),
+		Config:  DefaultPeerConfig(),
+		// Use different interface to prevent duplicate IP filter, this will break
+		// beyond two peers.
+		listenAddr: "127.0.0.1:0",
+	}
 	rp.Start()
 	defer rp.Stop()
 

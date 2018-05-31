@@ -3,6 +3,7 @@ package pex
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
 	"path/filepath"
 	"testing"
@@ -26,6 +27,7 @@ var (
 func init() {
 	config = cfg.DefaultP2PConfig()
 	config.PexReactor = true
+	config.AllowDuplicateIP = true
 }
 
 func TestPEXReactorBasic(t *testing.T) {
@@ -58,6 +60,16 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	assert.Equal(t, size+1, book.Size())
 }
 
+// --- FAIL: TestPEXReactorRunning (11.10s)
+// 				pex_reactor_test.go:411: expected all switches to be connected to at
+// 				least one peer (switches: 0 => {outbound: 1, inbound: 0}, 1 =>
+// 				{outbound: 0, inbound: 1}, 2 => {outbound: 0, inbound: 0}, )
+//
+// EXPLANATION: peers are getting rejected because in switch#addPeer we check
+// if any peer (who we already connected to) has the same IP. Even though local
+// peers have different IP addresses, they all have the same underlying remote
+// IP: 127.0.0.1.
+//
 func TestPEXReactorRunning(t *testing.T) {
 	N := 3
 	switches := make([]*p2p.Switch, N)
@@ -72,7 +84,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// create switches
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.MakeSwitch(config, i, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+		switches[i] = p2p.MakeSwitch(config, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
 			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
 			books[i].SetLogger(logger.With("pex", i))
 			sw.SetAddrBook(books[i])
@@ -365,6 +377,7 @@ func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 		ListenAddr: mp.addr.DialString(),
 	}
 }
+func (mp mockPeer) RemoteIP() net.IP              { return net.ParseIP("127.0.0.1") }
 func (mp mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
 func (mp mockPeer) Send(byte, []byte) bool        { return false }
 func (mp mockPeer) TrySend(byte, []byte) bool     { return false }

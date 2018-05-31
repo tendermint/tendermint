@@ -8,7 +8,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 /*

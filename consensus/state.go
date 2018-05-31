@@ -15,6 +15,7 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -110,6 +111,10 @@ type ConsensusState struct {
 
 	// closed when we finish shutting down
 	done chan struct{}
+
+	// synchronous pubsub between consensus state and reactor.
+	// state only emits EventNewRoundStep, EventVote and EventProposalHeartbeat
+	evsw tmevents.EventSwitch
 }
 
 // NewConsensusState returns a new ConsensusState.
@@ -126,6 +131,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *s
 		doWALCatchup:     true,
 		wal:              nilWAL{},
 		evpool:           evpool,
+		evsw:             tmevents.NewEventSwitch(),
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -227,6 +233,10 @@ func (cs *ConsensusState) LoadCommit(height int64) *types.Commit {
 // OnStart implements cmn.Service.
 // It loads the latest state via the WAL, and starts the timeout and receive routines.
 func (cs *ConsensusState) OnStart() error {
+	if err := cs.evsw.Start(); err != nil {
+		return err
+	}
+
 	// we may set the WAL in testing before calling Start,
 	// so only OpenWAL if its still the nilWAL
 	if _, ok := cs.wal.(nilWAL); ok {
@@ -244,8 +254,7 @@ func (cs *ConsensusState) OnStart() error {
 	// NOTE: we will get a build up of garbage go routines
 	// firing on the tockChan until the receiveRoutine is started
 	// to deal with them (by that point, at most one will be valid)
-	err := cs.timeoutTicker.Start()
-	if err != nil {
+	if err := cs.timeoutTicker.Start(); err != nil {
 		return err
 	}
 
@@ -283,6 +292,8 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 // OnStop implements cmn.Service. It stops all routines and waits for the WAL to finish.
 func (cs *ConsensusState) OnStop() {
 	cs.BaseService.OnStop()
+
+	cs.evsw.Stop()
 
 	cs.timeoutTicker.Stop()
 
@@ -509,6 +520,7 @@ func (cs *ConsensusState) newStep() {
 	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
 	if cs.eventBus != nil {
 		cs.eventBus.PublishEventNewRoundStep(rs)
+		cs.evsw.FireEvent(types.EventNewRoundStep, &cs.RoundState)
 	}
 }
 
@@ -752,6 +764,7 @@ func (cs *ConsensusState) proposalHeartbeat(height int64, round int) {
 		}
 		cs.privValidator.SignHeartbeat(chainID, heartbeat)
 		cs.eventBus.PublishEventProposalHeartbeat(types.EventDataProposalHeartbeat{heartbeat})
+		cs.evsw.FireEvent(types.EventProposalHeartbeat, heartbeat)
 		counter++
 		time.Sleep(proposalHeartbeatIntervalSeconds * time.Second)
 	}
@@ -1418,6 +1431,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 
 		cs.Logger.Info(cmn.Fmt("Added to lastPrecommits: %v", cs.LastCommit.StringShort()))
 		cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+		cs.evsw.FireEvent(types.EventVote, vote)
 
 		// if we can skip timeoutCommit and have all the votes now,
 		if cs.config.SkipTimeoutCommit && cs.LastCommit.HasAll() {
@@ -1445,6 +1459,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	}
 
 	cs.eventBus.PublishEventVote(types.EventDataVote{vote})
+	cs.evsw.FireEvent(types.EventVote, vote)
 
 	switch vote.Type {
 	case types.VoteTypePrevote:

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -281,6 +281,7 @@ func (r *PEXReactor) receiveRequest(src Peer) error {
 // RequestAddrs asks peer for more addresses if we do not already
 // have a request out for this peer.
 func (r *PEXReactor) RequestAddrs(p Peer) {
+	r.Logger.Debug("Request addrs", "from", p)
 	id := string(p.ID())
 	if r.requestsSent.Has(id) {
 		return

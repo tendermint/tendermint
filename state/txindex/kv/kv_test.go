@@ -11,8 +11,8 @@ import (
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	db "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/pubsub/query"
 
+	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/state/txindex"
 	"github.com/tendermint/tendermint/types"
 )

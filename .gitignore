@@ -5,7 +5,6 @@
 .DS_Store
 build/*
 rpc/test/.tendermint
-.debora
 .tendermint
 remote_dump
 .revision
@@ -13,7 +12,6 @@ vendor
 .vagrant
 test/p2p/data/
 test/logs
-.glide
 coverage.txt
 docs/_build
 docs/tools
@@ -25,3 +23,5 @@ scripts/cutWALUntil/cutWALUntil
 
 .idea/
 *.iml
+
+libs/pubsub/query/fuzz_test/output
