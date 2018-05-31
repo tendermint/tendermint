@@ -5,7 +5,6 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -192,20 +191,19 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	// TODO: determine which validators were byzantine
-	byzantineVals := make([]abci.Evidence, len(block.Evidence.Evidence))
+	byzantineVals := make([]*abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
-		byzantineVals[i] = abci.Evidence{
-			PubKey: ev.Address(), // XXX
+		byzantineVals[i] = &abci.Evidence{
+			// TODO: fill this in
 			Height: ev.Height(),
 		}
 	}
 
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:                block.Hash(),
-		Header:              types.TM2PB.Header(block.Header),
-		AbsentValidators:    absentVals,
+		Hash:   block.Hash(),
+		Header: types.TM2PB.Header(block.Header),
+		// TODO: fill this in
 		ByzantineValidators: byzantineVals,
 	})
 	if err != nil {
@@ -241,9 +239,9 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
+func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator) error {
 	for _, v := range updates {
-		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-amino encoded pubkey
+		pubkey, err := types.PB2TM.PubKey(v.PubKey)
 		if err != nil {
 			return err
 		}
