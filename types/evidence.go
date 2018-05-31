@@ -40,7 +40,7 @@ type Evidence interface {
 	Verify(chainID string) error // verify the evidence
 	Equal(Evidence) bool         // check equality of evidence
 
-	String() string
+	String() string // used as type in abci.Evidence
 }
 
 func RegisterEvidences(cdc *amino.Codec) {

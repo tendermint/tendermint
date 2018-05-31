@@ -199,6 +199,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	byzantineVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		byzantineVals[i] = abci.Evidence{
+			Type:   []byte(ev.String()),
 			PubKey: ev.Address(), // XXX
 			Height: ev.Height(),
 		}

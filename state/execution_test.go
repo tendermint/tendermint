@@ -110,10 +110,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		expectedByzantineValidators []abci.Evidence
 	}{
 		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
-		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{nil, ev1.Address(), ev1.Height(), int64(0)}}},
+		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{[]byte(ev1.String()), ev1.Address(), ev1.Height(), int64(0)}}},
 		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
-			{nil, ev1.Address(), ev1.Height(), int64(0)},
-			{nil, ev2.Address(), ev2.Height(), int64(0)}}},
+			{[]byte(ev1.String()), ev1.Address(), ev1.Height(), int64(0)},
+			{[]byte(ev2.String()), ev2.Address(), ev2.Height(), int64(0)}}},
 	}
 
 	for _, tc := range testCases {
