@@ -2,6 +2,8 @@
 
 ## 0.19.7
 
+*May 31st, 2018*
+
 BREAKING:
 
 - [libs/pubsub] TagMap#Get returns a string value
@@ -13,6 +15,7 @@ FEATURES
 - [p2p] AllowDuplicateIP config option to refuse connections from same IP.
     - true by default for now, false by default in next breaking release
 - [docs] Add docs for query, tx indexing, events, pubsub
+- [docs] Add some notes about running Tendermint in production
 
 IMPROVEMENTS:
 
