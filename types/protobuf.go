@@ -14,8 +14,8 @@ var TM2PB = tm2pb{}
 
 type tm2pb struct{}
 
-func (tm2pb) Header(header *Header) types.Header {
-	return types.Header{
+func (tm2pb) Header(header *Header) *types.Header {
+	return &types.Header{
 		ChainId:       header.ChainID,
 		Height:        header.Height,
 		Time:          header.Time.Unix(),
@@ -25,8 +25,8 @@ func (tm2pb) Header(header *Header) types.Header {
 	}
 }
 
-func (tm2pb) Validator(val *Validator) types.Validator {
-	return types.Validator{
+func (tm2pb) Validator(val *Validator) *types.Validator {
+	return &types.Validator{
 		PubKey: TM2PB.PubKey(val.PubKey),
 		Power:  val.VotingPower,
 	}
@@ -49,8 +49,8 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) *types.PubKey {
 	}
 }
 
-func (tm2pb) Validators(vals *ValidatorSet) []types.Validator {
-	validators := make([]types.Validator, len(vals.Validators))
+func (tm2pb) Validators(vals *ValidatorSet) []*types.Validator {
+	validators := make([]*types.Validator, len(vals.Validators))
 	for i, val := range vals.Validators {
 		validators[i] = TM2PB.Validator(val)
 	}
@@ -72,5 +72,29 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *types.ConsensusParams {
 		BlockGossip: &types.BlockGossip{
 			BlockPartSizeBytes: int32(params.BlockGossip.BlockPartSizeBytes),
 		},
+	}
+}
+
+//----------------------------------------------------------------------------
+
+// PB2TM is used for converting protobuf types to Tendermint types.
+// UNSTABLE
+var PB2TM = pb2tm{}
+
+type pb2tm struct{}
+
+// TODO: validate key lengths ...
+func (pb2tm) PubKey(pubKey *types.PubKey) (crypto.PubKey, error) {
+	switch pubKey.Type {
+	case "ed25519":
+		var pk crypto.PubKeyEd25519
+		copy(pk[:], pubKey.Data)
+		return pk, nil
+	case "secp256k1":
+		var pk crypto.PubKeySecp256k1
+		copy(pk[:], pubKey.Data)
+		return pk, nil
+	default:
+		return nil, fmt.Errorf("Unknown pubkey type %v", pubKey.Type)
 	}
 }
