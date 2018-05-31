@@ -403,8 +403,8 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			sw.randomSleep(0)
 			err := sw.DialPeerWithAddress(addr, persistent)
 			if err != nil {
-				switch err {
-				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeer:
+				switch err.(type) {
+				case ErrSwitchConnectToSelf, ErrSwitchDuplicatePeerID:
 					sw.Logger.Debug("Error dialing peer", "err", err)
 				default:
 					sw.Logger.Error("Error dialing peer", "err", err)
@@ -564,20 +564,23 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	// Avoid self
 	if sw.nodeKey.ID() == peerID {
 		addr := peerNodeInfo.NetAddress()
-
-		// remove the given address from the address book if we added it earlier
+		// remove the given address from the address book
+		// and add to our addresses to avoid dialing again
 		sw.addrBook.RemoveAddress(addr)
-
-		// add the given address to the address book to avoid dialing ourselves
-		// again this is our public address
 		sw.addrBook.AddOurAddress(addr)
-
-		return ErrSwitchConnectToSelf
+		return ErrSwitchConnectToSelf{addr}
 	}
 
 	// Avoid duplicate
 	if sw.peers.Has(peerID) {
-		return ErrSwitchDuplicatePeer
+		return ErrSwitchDuplicatePeerID{peerID}
+	}
+
+	// Check for duplicate connection or peer info IP.
+	if !sw.config.AllowDuplicateIP &&
+		(sw.peers.HasIP(pc.RemoteIP()) ||
+			sw.peers.HasIP(peerNodeInfo.NetAddress().IP)) {
+		return ErrSwitchDuplicatePeerIP{pc.RemoteIP()}
 	}
 
 	// Filter peer against ID white list

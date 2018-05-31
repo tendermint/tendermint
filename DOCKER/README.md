@@ -17,7 +17,7 @@
 # Quick reference
 
 * **Where to get help:**
-  https://tendermint.com/community
+  https://cosmos.network/community
 
 * **Where to file issues:**
   https://github.com/tendermint/tendermint/issues
@@ -37,25 +37,29 @@ To get started developing applications, see the [application developers guide](h
 
 ## Start one instance of the Tendermint core with the `kvstore` app
 
-A very simple example of a built-in app and Tendermint core in one container.
+A quick example of a built-in app and Tendermint core in one container.
 
 ```
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app=kvstore
 ```
 
-## mintnet-kubernetes
+# Local cluster
 
-If you want to see many containers talking to each other, consider using [mintnet-kubernetes](https://github.com/tendermint/tools/tree/master/mintnet-kubernetes), which is a tool for running Tendermint-based applications on a Kubernetes cluster.
+To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/master/Makefile) and run:
+
+```
+make build-linux
+make build-docker-localnode
+make localnet-start
+```
+
+Note that this will build and use a different image than the ones provided here.
 
 # License
 
-View [license information](https://raw.githubusercontent.com/tendermint/tendermint/master/LICENSE) for the software contained in this image.
+- Tendermint's license is [Apache 2.0](https://github.com/tendermint/tendermint/master/LICENSE).
 
-# User Feedback
+# Contributing
 
-## Contributing
-
-You are invited to contribute new features, fixes, or updates, large or small; we are always thrilled to receive pull requests, and do our best to process them as fast as we can.
-
-Before you start to code, we recommend discussing your plans through a [GitHub](https://github.com/tendermint/tendermint/issues) issue, especially for more ambitious contributions. This gives other contributors a chance to point you in the right direction, give you feedback on your design, and help you find out if someone else is working on the same thing.
+Contributions are most welcome! See the [contributing file](https://github.com/tendermint/tendermint/blob/master/CONTRIBUTING.md) for more information.

@@ -47,3 +47,13 @@ type bcStatusResponseMessage struct {
 ## Protocol
 
 TODO
+
+## Channels
+
+Defines `maxMsgSize` for the maximum size of incoming messages,
+`SendQueueCapacity` and `RecvBufferCapacity` for maximum sending and
+receiving buffers respectively. These are supposed to prevent amplification
+attacks by setting up the upper limit on how much data we can receive & send to
+a peer.
+
+Sending incorrectly encoded data will result in stopping the peer.

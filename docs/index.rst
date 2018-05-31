@@ -55,7 +55,10 @@ Tendermint 102
    abci-spec.rst
    app-architecture.rst
    app-development.rst
+   subscribing-to-events-via-websocket.rst
+   indexing-transactions.rst
    how-to-read-logs.rst
+   running-in-production.rst
 
 Tendermint 201
 --------------

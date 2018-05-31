@@ -6,7 +6,7 @@ import (
 
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 const defaultCapacity = 1000
@@ -67,7 +67,7 @@ func (b *EventBus) UnsubscribeAll(ctx context.Context, subscriber string) error 
 func (b *EventBus) Publish(eventType string, eventData TMEventData) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
-	b.pubsub.PublishWithTags(ctx, eventData, tmpubsub.NewTagMap(map[string]interface{}{EventTypeKey: eventType}))
+	b.pubsub.PublishWithTags(ctx, eventData, tmpubsub.NewTagMap(map[string]string{EventTypeKey: eventType}))
 	return nil
 }
 
@@ -92,7 +92,7 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	tags := make(map[string]interface{})
+	tags := make(map[string]string)
 
 	// validate and fill tags from tx result
 	for _, tag := range event.Result.Tags {
@@ -112,7 +112,7 @@ func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	tags[TxHashKey] = fmt.Sprintf("%X", event.Tx.Hash())
 
 	logIfTagExists(TxHeightKey, tags, b.Logger)
-	tags[TxHeightKey] = event.Height
+	tags[TxHeightKey] = fmt.Sprintf("%d", event.Height)
 
 	b.pubsub.PublishWithTags(ctx, event, tmpubsub.NewTagMap(tags))
 	return nil
@@ -160,7 +160,7 @@ func (b *EventBus) PublishEventLock(event EventDataRoundState) error {
 	return b.Publish(EventLock, event)
 }
 
-func logIfTagExists(tag string, tags map[string]interface{}, logger log.Logger) {
+func logIfTagExists(tag string, tags map[string]string, logger log.Logger) {
 	if value, ok := tags[tag]; ok {
 		logger.Error("Found predefined tag (value will be overwritten)", "tag", tag, "value", value)
 	}

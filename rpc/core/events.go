@@ -5,10 +5,10 @@ import (
 
 	"github.com/pkg/errors"
 
+	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 	tmtypes "github.com/tendermint/tendermint/types"
-	tmquery "github.com/tendermint/tmlibs/pubsub/query"
 )
 
 // Subscribe for events via WebSocket.
@@ -46,10 +46,10 @@ import (
 // https://godoc.org/github.com/tendermint/tendermint/types#pkg-constants
 //
 // For complete query syntax, check out
-// https://godoc.org/github.com/tendermint/tmlibs/pubsub/query.
+// https://godoc.org/github.com/tendermint/tendermint/libs/pubsub/query.
 //
 // ```go
-// import "github.com/tendermint/tmlibs/pubsub/query"
+// import "github.com/tendermint/tendermint/libs/pubsub/query"
 // import "github.com/tendermint/tendermint/types"
 //
 // client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")

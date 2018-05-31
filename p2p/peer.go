@@ -3,20 +3,24 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"sync/atomic"
 	"time"
 
-	"github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
+var testIPSuffix uint32 = 0
+
 // Peer is an interface representing a peer connected on a reactor.
 type Peer interface {
 	cmn.Service
 
 	ID() ID             // peer's cryptographic ID
+	RemoteIP() net.IP   // remote IP of the connection
 	IsOutbound() bool   // did we dial the peer
 	IsPersistent() bool // do we redial this peer when we disconnect
 	NodeInfo() NodeInfo // peer's info
@@ -37,12 +41,42 @@ type peerConn struct {
 	persistent bool
 	config     *PeerConfig
 	conn       net.Conn // source connection
+	ip         net.IP
 }
 
 // ID only exists for SecretConnection.
 // NOTE: Will panic if conn is not *SecretConnection.
 func (pc peerConn) ID() ID {
 	return PubKeyToID(pc.conn.(*tmconn.SecretConnection).RemotePubKey())
+}
+
+// Return the IP from the connection RemoteAddr
+func (pc peerConn) RemoteIP() net.IP {
+	if pc.ip != nil {
+		return pc.ip
+	}
+
+	// In test cases a conn could not be present at all or be an in-memory
+	// implementation where we want to return a fake ip.
+	if pc.conn == nil || pc.conn.RemoteAddr().String() == "pipe" {
+		pc.ip = net.IP{172, 16, 0, byte(atomic.AddUint32(&testIPSuffix, 1))}
+
+		return pc.ip
+	}
+
+	host, _, err := net.SplitHostPort(pc.conn.RemoteAddr().String())
+	if err != nil {
+		panic(err)
+	}
+
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		panic(err)
+	}
+
+	pc.ip = ips[0]
+
+	return pc.ip
 }
 
 // peer implements Peer.

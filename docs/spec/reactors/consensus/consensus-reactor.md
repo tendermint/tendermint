@@ -342,3 +342,11 @@ It broadcasts `NewRoundStepMessage` or `CommitStepMessage` upon new round state 
 broadcasting these messages does not depend on the PeerRoundState; it is sent on the StateChannel. 
 Upon receiving VoteMessage it broadcasts `HasVoteMessage` message to its peers on the StateChannel. 
 `ProposalHeartbeatMessage` is sent the same way on the StateChannel.
+
+## Channels
+
+Defines 4 channels: state, data, vote and vote_set_bits. Each channel
+has  `SendQueueCapacity` and `RecvBufferCapacity` and
+`RecvMessageCapacity` set to `maxMsgSize`.
+
+Sending incorrectly encoded data will result in stopping the peer.

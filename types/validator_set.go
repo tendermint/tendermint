@@ -59,13 +59,14 @@ func (valSet *ValidatorSet) IncrementAccum(times int) {
 	// Decrement the validator with most accum times times
 	for i := 0; i < times; i++ {
 		mostest := validatorsHeap.Peek().(*Validator)
-		if i == times-1 {
-			valSet.Proposer = mostest
-		}
-
 		// mind underflow
 		mostest.Accum = safeSubClip(mostest.Accum, valSet.TotalVotingPower())
-		validatorsHeap.Update(mostest, accumComparable{mostest})
+
+		if i == times-1 {
+			valSet.Proposer = mostest
+		} else {
+			validatorsHeap.Update(mostest, accumComparable{mostest})
+		}
 	}
 }
 

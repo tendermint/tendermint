@@ -1,7 +1,6 @@
 package consensus
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"sync"
@@ -14,6 +13,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -43,7 +43,8 @@ type ConsensusReactor struct {
 	eventBus *types.EventBus
 }
 
-// NewConsensusReactor returns a new ConsensusReactor with the given consensusState.
+// NewConsensusReactor returns a new ConsensusReactor with the given
+// consensusState.
 func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *ConsensusReactor {
 	conR := &ConsensusReactor{
 		conS:     consensusState,
@@ -53,17 +54,15 @@ func NewConsensusReactor(consensusState *ConsensusState, fastSync bool) *Consens
 	return conR
 }
 
-// OnStart implements BaseService.
+// OnStart implements BaseService by subscribing to events, which later will be
+// broadcasted to other peers and starting state if we're not in fast sync.
 func (conR *ConsensusReactor) OnStart() error {
 	conR.Logger.Info("ConsensusReactor ", "fastSync", conR.FastSync())
 	if err := conR.BaseReactor.OnStart(); err != nil {
 		return err
 	}
 
-	err := conR.startBroadcastRoutine()
-	if err != nil {
-		return err
-	}
+	conR.subscribeToBroadcastEvents()
 
 	if !conR.FastSync() {
 		err := conR.conS.Start()
@@ -75,9 +74,11 @@ func (conR *ConsensusReactor) OnStart() error {
 	return nil
 }
 
-// OnStop implements BaseService
+// OnStop implements BaseService by unsubscribing from events and stopping
+// state.
 func (conR *ConsensusReactor) OnStop() {
 	conR.BaseReactor.OnStop()
+	conR.unsubscribeFromBroadcastEvents()
 	conR.conS.Stop()
 }
 
@@ -101,6 +102,7 @@ func (conR *ConsensusReactor) SwitchToConsensus(state sm.State, blocksSynced int
 	err := conR.conS.Start()
 	if err != nil {
 		conR.Logger.Error("Error starting conS", "err", err)
+		return
 	}
 }
 
@@ -345,77 +347,40 @@ func (conR *ConsensusReactor) FastSync() bool {
 
 //--------------------------------------
 
-// startBroadcastRoutine subscribes for new round steps, votes and proposal
-// heartbeats using the event bus and starts a go routine to broadcasts events
-// to peers upon receiving them.
-func (conR *ConsensusReactor) startBroadcastRoutine() error {
+// subscribeToBroadcastEvents subscribes for new round steps, votes and
+// proposal heartbeats using internal pubsub defined on state to broadcast
+// them to peers upon receiving.
+func (conR *ConsensusReactor) subscribeToBroadcastEvents() {
 	const subscriber = "consensus-reactor"
-	ctx := context.Background()
+	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventNewRoundStep,
+		func(data tmevents.EventData) {
+			conR.broadcastNewRoundStepMessages(data.(*cstypes.RoundState))
+		})
 
-	// new round steps
-	stepsCh := make(chan interface{})
-	err := conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryNewRoundStep, stepsCh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryNewRoundStep)
-	}
+	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventVote,
+		func(data tmevents.EventData) {
+			conR.broadcastHasVoteMessage(data.(*types.Vote))
+		})
 
-	// votes
-	votesCh := make(chan interface{})
-	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryVote, votesCh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryVote)
-	}
-
-	// proposal heartbeats
-	heartbeatsCh := make(chan interface{})
-	err = conR.eventBus.Subscribe(ctx, subscriber, types.EventQueryProposalHeartbeat, heartbeatsCh)
-	if err != nil {
-		return errors.Wrapf(err, "failed to subscribe %s to %s", subscriber, types.EventQueryProposalHeartbeat)
-	}
-
-	go func() {
-		var data interface{}
-		var ok bool
-		for {
-			select {
-			case data, ok = <-stepsCh:
-				if ok { // a receive from a closed channel returns the zero value immediately
-					edrs := data.(types.EventDataRoundState)
-					conR.broadcastNewRoundStep(edrs.RoundState.(*cstypes.RoundState))
-				}
-			case data, ok = <-votesCh:
-				if ok {
-					edv := data.(types.EventDataVote)
-					conR.broadcastHasVoteMessage(edv.Vote)
-				}
-			case data, ok = <-heartbeatsCh:
-				if ok {
-					edph := data.(types.EventDataProposalHeartbeat)
-					conR.broadcastProposalHeartbeatMessage(edph)
-				}
-			case <-conR.Quit():
-				conR.eventBus.UnsubscribeAll(ctx, subscriber)
-				return
-			}
-			if !ok {
-				conR.eventBus.UnsubscribeAll(ctx, subscriber)
-				return
-			}
-		}
-	}()
-
-	return nil
+	conR.conS.evsw.AddListenerForEvent(subscriber, types.EventProposalHeartbeat,
+		func(data tmevents.EventData) {
+			conR.broadcastProposalHeartbeatMessage(data.(*types.Heartbeat))
+		})
 }
 
-func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(heartbeat types.EventDataProposalHeartbeat) {
-	hb := heartbeat.Heartbeat
+func (conR *ConsensusReactor) unsubscribeFromBroadcastEvents() {
+	const subscriber = "consensus-reactor"
+	conR.conS.evsw.RemoveListener(subscriber)
+}
+
+func (conR *ConsensusReactor) broadcastProposalHeartbeatMessage(hb *types.Heartbeat) {
 	conR.Logger.Debug("Broadcasting proposal heartbeat message",
 		"height", hb.Height, "round", hb.Round, "sequence", hb.Sequence)
 	msg := &ProposalHeartbeatMessage{hb}
 	conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(msg))
 }
 
-func (conR *ConsensusReactor) broadcastNewRoundStep(rs *cstypes.RoundState) {
+func (conR *ConsensusReactor) broadcastNewRoundStepMessages(rs *cstypes.RoundState) {
 	nrsMsg, csMsg := makeRoundStepMessages(rs)
 	if nrsMsg != nil {
 		conR.Switch.Broadcast(StateChannel, cdc.MustMarshalBinaryBare(nrsMsg))

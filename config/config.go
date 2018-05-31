@@ -292,6 +292,9 @@ type P2PConfig struct {
 
 	// Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 	PrivatePeerIDs string `mapstructure:"private_peer_ids"`
+
+	// Toggle to disable guard against peers connecting from the same ip.
+	AllowDuplicateIP bool `mapstructure:"allow_duplicate_ip"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -308,6 +311,7 @@ func DefaultP2PConfig() *P2PConfig {
 		PexReactor:              true,
 		SeedMode:                false,
 		AuthEnc:                 true,
+		AllowDuplicateIP:        true, // so non-breaking yet
 	}
 }
 
@@ -317,6 +321,7 @@ func TestP2PConfig() *P2PConfig {
 	cfg.ListenAddress = "tcp://0.0.0.0:36656"
 	cfg.SkipUPNP = true
 	cfg.FlushThrottleTimeout = 10
+	cfg.AllowDuplicateIP = true
 	return cfg
 }
 

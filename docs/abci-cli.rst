@@ -183,6 +183,7 @@ Try running these commands:
     
     > commit
     -> code: OK
+    -> data.hex: 0x0000000000000000
     
     > deliver_tx "abc"
     -> code: OK
@@ -194,7 +195,7 @@ Try running these commands:
     
     > commit
     -> code: OK
-    -> data.hex: 0x49DFD15CCDACDEAE9728CB01FBB5E8688CA58B91
+    -> data.hex: 0x0200000000000000
     
     > query "abc"
     -> code: OK
@@ -208,7 +209,7 @@ Try running these commands:
     
     > commit
     -> code: OK
-    -> data.hex: 0x70102DB32280373FBF3F9F89DA2A20CE2CD62B0B
+    -> data.hex: 0x0400000000000000
     
     > query "def"
     -> code: OK
@@ -301,6 +302,7 @@ In another window, start the ``abci-cli console``:
 
     > set_option serial on
     -> code: OK
+    -> log: OK (SetOption doesn't return anything.)
     
     > check_tx 0x00
     -> code: OK

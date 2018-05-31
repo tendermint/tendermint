@@ -12,8 +12,8 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
-	tmpubsub "github.com/tendermint/tmlibs/pubsub"
-	tmquery "github.com/tendermint/tmlibs/pubsub/query"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
@@ -23,12 +23,12 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	defer eventBus.Stop()
 
 	tx := Tx("foo")
-	result := abci.ResponseDeliverTx{Data: []byte("bar"), Tags: []cmn.KVPair{}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
+	result := abci.ResponseDeliverTx{Data: []byte("bar"), Tags: []cmn.KVPair{{[]byte("baz"), []byte("1")}}, Fee: cmn.KI64Pair{Key: []uint8{}, Value: 0}}
 
 	txEventsCh := make(chan interface{})
 
 	// PublishEventTx adds all these 3 tags, so the query below should work
-	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X'", tx.Hash())
+	query := fmt.Sprintf("tm.event='Tx' AND tx.height=1 AND tx.hash='%X' AND baz=1", tx.Hash())
 	err = eventBus.Subscribe(context.Background(), "test", tmquery.MustParse(query), txEventsCh)
 	require.NoError(t, err)
 
