@@ -88,6 +88,17 @@ func (tm2pb) Evidence(ev_ Evidence) abci.Evidence {
 			//	Time:             ev.Time(),
 			//	TotalVotingPower: 10,
 		}
+	case *MockGoodEvidence, MockGoodEvidence:
+		return abci.Evidence{
+			Type: "mock/good",
+			Validator: abci.Validator{
+				Address: ev.Address(),
+				// TODO
+			},
+			Height: ev.Height(),
+			//	Time:             ev.Time(),
+			//	TotalVotingPower: 10,
+		}
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev_, reflect.TypeOf(ev_)))
 	}
