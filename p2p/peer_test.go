@@ -41,32 +41,10 @@ func TestPeerBasic(t *testing.T) {
 	assert.Equal(rp.ID(), p.ID())
 }
 
-func TestPeerWithoutAuthEnc(t *testing.T) {
-	assert, require := assert.New(t), require.New(t)
-
-	config := DefaultPeerConfig()
-	config.AuthEnc = false
-
-	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
-	rp.Start()
-	defer rp.Stop()
-
-	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
-	require.Nil(err)
-
-	err = p.Start()
-	require.Nil(err)
-	defer p.Stop()
-
-	assert.True(p.IsRunning())
-}
-
 func TestPeerSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	config := DefaultPeerConfig()
-	config.AuthEnc = false
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}

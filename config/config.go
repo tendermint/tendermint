@@ -287,9 +287,6 @@ type P2PConfig struct {
 	// Does not work if the peer-exchange reactor is disabled.
 	SeedMode bool `mapstructure:"seed_mode"`
 
-	// Authenticated encryption
-	AuthEnc bool `mapstructure:"auth_enc"`
-
 	// Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 	PrivatePeerIDs string `mapstructure:"private_peer_ids"`
 
@@ -310,7 +307,6 @@ func DefaultP2PConfig() *P2PConfig {
 		RecvRate:                512000, // 500 kB/s
 		PexReactor:              true,
 		SeedMode:                false,
-		AuthEnc:                 true,
 		AllowDuplicateIP:        true, // so non-breaking yet
 	}
 }

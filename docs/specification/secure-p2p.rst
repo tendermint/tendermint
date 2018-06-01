@@ -65,9 +65,7 @@ are connected to at least one validator.
 Config
 ------
 
-Authenticated encryption is enabled by default. If you wish to use another
-authentication scheme or your peers are connected via VPN, you can turn it off
-by setting ``auth_enc`` to ``false`` in the config file.
+Authenticated encryption is enabled by default.
 
 Additional Reading
 ------------------
