@@ -57,8 +57,11 @@
   name = "github.com/gogo/protobuf"
   packages = [
     "gogoproto",
+    "jsonpb",
     "proto",
-    "protoc-gen-gogo/descriptor"
+    "protoc-gen-gogo/descriptor",
+    "sortkeys",
+    "types"
   ]
   revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
   version = "v1.0.0"
@@ -66,12 +69,10 @@
 [[projects]]
   name = "github.com/golang/protobuf"
   packages = [
-    "jsonpb",
     "proto",
     "ptypes",
     "ptypes/any",
     "ptypes/duration",
-    "ptypes/struct",
     "ptypes/timestamp"
   ]
   revision = "925541529c1fa6821df4e44ce2723319eb2be768"
@@ -237,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "b1b784cfa837cfbcd14f3bb38d97c2a899ff882a"
-  version = "v0.11.0-rc2"
+  revision = "c681347ee3c4906b169d39ffc4def87714494cbd"
+  version = "v0.11.0-rc3"
 
 [[projects]]
   branch = "master"
@@ -298,7 +299,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "ab813273cd59e1333f7ae7bff5d027d4aadf528c"
+  revision = "5ba7f63082460102a45837dbd1827e10f9479ac0"
 
 [[projects]]
   branch = "master"
@@ -379,6 +380,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "566dc31959f39d2dab32eb822741c9c44a193f8dc65479acca2977a91cbd3cef"
+  inputs-digest = "c1260317b13244e66948fff5db0cfe374670afd7ed716448ba77d0b882df163a"
   solver-name = "gps-cdcl"
   solver-version = 1
