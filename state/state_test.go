@@ -78,10 +78,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
-		{
-			PubKey: crypto.GenPrivKeyEd25519().PubKey().Bytes(),
-			Power:  10,
-		},
+		types.TM2PB.ValidatorFromPubKeyAndPower(crypto.GenPrivKeyEd25519().PubKey(), 10),
 	}}
 
 	saveABCIResponses(stateDB, block.Height, abciResponses)
@@ -435,8 +432,8 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.Validator{
-				{val.PubKey.Bytes(), 0},
-				{pubkey.Bytes(), 10},
+				types.TM2PB.ValidatorFromPubKeyAndPower(val.PubKey, 0),
+				types.TM2PB.ValidatorFromPubKeyAndPower(pubkey, 10),
 			},
 		}
 	}
@@ -457,7 +454,7 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 	if val.VotingPower != power {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.Validator{
-				{val.PubKey.Bytes(), power},
+				types.TM2PB.ValidatorFromPubKeyAndPower(val.PubKey, power),
 			},
 		}
 	}
