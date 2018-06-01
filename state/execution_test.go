@@ -80,7 +80,7 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the absent validator
-		assert.Equal(t, tc.expectedAbsentValidators, app.AbsentValidators, tc.desc)
+		assert.Equal(t, tc.expectedAbsentValidators, app.Validators, tc.desc)
 	}
 }
 
@@ -110,10 +110,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		expectedByzantineValidators []abci.Evidence
 	}{
 		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
-		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{ev1.Address(), ev1.Height()}}},
+		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{types.TM2PB.Evidence(ev1)}},
 		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
-			{ev1.Address(), ev1.Height()},
-			{ev2.Address(), ev2.Height()}}},
+			types.TM2PB.Evidence(ev1),
+			types.TM2PB.Evidence(ev1)}},
 	}
 
 	for _, tc := range testCases {
@@ -162,7 +162,7 @@ var _ abci.Application = (*testApp)(nil)
 type testApp struct {
 	abci.BaseApplication
 
-	AbsentValidators    []int32
+	Validators          []abci.SigningValidator
 	ByzantineValidators []abci.Evidence
 }
 
@@ -175,7 +175,7 @@ func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 }
 
 func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	app.AbsentValidators = req.AbsentValidators
+	app.Validators = req.Validators
 	app.ByzantineValidators = req.ByzantineValidators
 	return abci.ResponseBeginBlock{}
 }

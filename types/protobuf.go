@@ -4,18 +4,18 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/tendermint/abci/types"
+	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
 )
 
-// TM2PB is used for converting Tendermint types to protobuf types.
+// TM2PB is used for converting Tendermint abci to protobuf abci.
 // UNSTABLE
 var TM2PB = tm2pb{}
 
 type tm2pb struct{}
 
-func (tm2pb) Header(header *Header) types.Header {
-	return types.Header{
+func (tm2pb) Header(header *Header) abci.Header {
+	return abci.Header{
 		ChainID:       header.ChainID,
 		Height:        header.Height,
 		Time:          header.Time.Unix(),
@@ -25,22 +25,22 @@ func (tm2pb) Header(header *Header) types.Header {
 	}
 }
 
-func (tm2pb) Validator(val *Validator) types.Validator {
-	return types.Validator{
+func (tm2pb) Validator(val *Validator) abci.Validator {
+	return abci.Validator{
 		PubKey: TM2PB.PubKey(val.PubKey),
 		Power:  val.VotingPower,
 	}
 }
 
-func (tm2pb) PubKey(pubKey crypto.PubKey) types.PubKey {
+func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	switch pk := pubKey.(type) {
 	case crypto.PubKeyEd25519:
-		return types.PubKey{
+		return abci.PubKey{
 			Type: "ed25519",
 			Data: pk[:],
 		}
 	case crypto.PubKeySecp256k1:
-		return types.PubKey{
+		return abci.PubKey{
 			Type: "secp256k1",
 			Data: pk[:],
 		}
@@ -49,42 +49,70 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) types.PubKey {
 	}
 }
 
-func (tm2pb) Validators(vals *ValidatorSet) []types.Validator {
-	validators := make([]types.Validator, len(vals.Validators))
+func (tm2pb) Validators(vals *ValidatorSet) []abci.Validator {
+	validators := make([]abci.Validator, len(vals.Validators))
 	for i, val := range vals.Validators {
 		validators[i] = TM2PB.Validator(val)
 	}
 	return validators
 }
 
-func (tm2pb) ConsensusParams(params *ConsensusParams) *types.ConsensusParams {
-	return &types.ConsensusParams{
-		BlockSize: &types.BlockSize{
+func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
+	return &abci.ConsensusParams{
+		BlockSize: &abci.BlockSize{
 
 			MaxBytes: int32(params.BlockSize.MaxBytes),
 			MaxTxs:   int32(params.BlockSize.MaxTxs),
 			MaxGas:   params.BlockSize.MaxGas,
 		},
-		TxSize: &types.TxSize{
+		TxSize: &abci.TxSize{
 			MaxBytes: int32(params.TxSize.MaxBytes),
 			MaxGas:   params.TxSize.MaxGas,
 		},
-		BlockGossip: &types.BlockGossip{
+		BlockGossip: &abci.BlockGossip{
 			BlockPartSizeBytes: int32(params.BlockGossip.BlockPartSizeBytes),
 		},
 	}
 }
 
+func (tm2pb) Evidence(ev_ Evidence) abci.Evidence {
+	switch ev := ev_.(type) {
+	case *DuplicateVoteEvidence:
+		return abci.Evidence{
+			Type: "duplicate/vote",
+			Validator: abci.Validator{
+				Address: ev.Address(),
+				// TODO
+			},
+			Height: ev.Height(),
+			//	Time:             ev.Time(),
+			//	TotalVotingPower: 10,
+		}
+	default:
+		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev_, reflect.TypeOf(ev_)))
+	}
+
+}
+
+func (tm2pb) ValidatorFromPubKeyAndPower(pubkey crypto.PubKey, power int64) abci.Validator {
+	pubkeyABCI := TM2PB.PubKey(pubkey)
+	return abci.Validator{
+		Address: pubkey.Address(),
+		PubKey:  pubkeyABCI,
+		Power:   power,
+	}
+}
+
 //----------------------------------------------------------------------------
 
-// PB2TM is used for converting protobuf types to Tendermint types.
+// PB2TM is used for converting protobuf abci to Tendermint abci.
 // UNSTABLE
 var PB2TM = pb2tm{}
 
 type pb2tm struct{}
 
 // TODO: validate key lengths ...
-func (pb2tm) PubKey(pubKey types.PubKey) (crypto.PubKey, error) {
+func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 	switch pubKey.Type {
 	case "ed25519":
 		var pk crypto.PubKeyEd25519
