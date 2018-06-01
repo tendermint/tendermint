@@ -31,7 +31,7 @@ func TestApplyBlock(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB := state(1), dbm.NewMemDB()
+	state, stateDB := state(1, 1)
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
 		types.MockMempool{}, types.MockEvidencePool{})
@@ -54,7 +54,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state := state(2)
+	state, stateDB := state(2, 2)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -77,8 +77,9 @@ func TestBeginBlockValidators(t *testing.T) {
 	for _, tc := range testCases {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
+		// block for height 2
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
 
 		// -> app receives a list of validators with a bool indicating if they signed
@@ -105,30 +106,31 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state := state(2)
+	state, stateDB := state(2, 12)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
-	height1, idx1, val1 := int64(8), 0, []byte("val1")
-	height2, idx2, val2 := int64(3), 1, []byte("val2")
+	height1, idx1, val1 := int64(8), 0, state.Validators.Validators[0].Address
+	height2, idx2, val2 := int64(3), 1, state.Validators.Validators[1].Address
 	ev1 := types.NewMockGoodEvidence(height1, idx1, val1)
 	ev2 := types.NewMockGoodEvidence(height2, idx2, val2)
 
+	now := time.Now()
+	valSet := state.Validators
 	testCases := []struct {
 		desc                        string
 		evidence                    []types.Evidence
 		expectedByzantineValidators []abci.Evidence
 	}{
 		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
-		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{types.TM2PB.Evidence(ev1)}},
+		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{types.TM2PB.Evidence(ev1, valSet, now)}},
 		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
-			types.TM2PB.Evidence(ev1),
-			types.TM2PB.Evidence(ev2)}},
+			types.TM2PB.Evidence(ev1, valSet, now),
+			types.TM2PB.Evidence(ev2, valSet, now)}},
 	}
 
-	now := time.Now().UTC()
 	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
 	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
 	votes := []*types.Vote{vote0, vote1}
@@ -136,8 +138,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	for _, tc := range testCases {
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
+		block.Time = now
 		block.Evidence.Evidence = tc.evidence
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator
@@ -155,7 +158,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func state(nVals int) State {
+func state(nVals, height int) (State, dbm.DB) {
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
 		secret := []byte(fmt.Sprintf("test%d", i))
@@ -169,7 +172,16 @@ func state(nVals int) State {
 		Validators: vals,
 		AppHash:    nil,
 	})
-	return s
+
+	// save validators to db for 2 heights
+	stateDB := dbm.NewMemDB()
+	SaveState(stateDB, s)
+
+	for i := 1; i < height; i++ {
+		s.LastBlockHeight += 1
+		SaveState(stateDB, s)
+	}
+	return s, stateDB
 }
 
 func makeBlock(state State, height int64) *types.Block {

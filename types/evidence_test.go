@@ -59,17 +59,16 @@ func TestEvidence(t *testing.T) {
 		{vote1, badVote, false},                                          // signed by wrong key
 	}
 
+	pubKey := val.GetPubKey()
 	for _, c := range cases {
 		ev := &DuplicateVoteEvidence{
-			PubKey: val.GetPubKey(),
-			VoteA:  c.vote1,
-			VoteB:  c.vote2,
+			VoteA: c.vote1,
+			VoteB: c.vote2,
 		}
 		if c.valid {
-			assert.Nil(t, ev.Verify(chainID), "evidence should be valid")
+			assert.Nil(t, ev.Verify(chainID, pubKey), "evidence should be valid")
 		} else {
-			assert.NotNil(t, ev.Verify(chainID), "evidence should be invalid")
+			assert.NotNil(t, ev.Verify(chainID, pubKey), "evidence should be invalid")
 		}
 	}
-
 }

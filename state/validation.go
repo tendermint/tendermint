@@ -73,6 +73,9 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 		}
 	}
 
+	// TODO: Each check requires loading an old validator set.
+	// We should cap the amount of evidence per block
+	// to prevent potential proposer DoS.
 	for _, ev := range b.Evidence.Evidence {
 		if err := VerifyEvidence(stateDB, s, ev); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
@@ -82,11 +85,11 @@ func validateBlock(stateDB dbm.DB, s State, b *types.Block) error {
 	return nil
 }
 
-// XXX: What's cheaper (ie. what should be checked first):
-//  evidence internal validity (ie. sig checks) or validator existed (fetch historical val set from db)
-
-// VerifyEvidence verifies the evidence fully by checking it is internally
-// consistent and sufficiently recent.
+// VerifyEvidence verifies the evidence fully by checking:
+// - it is sufficiently recent (MaxAge)
+// - it is from a key who was a validator at the given height
+// - it is internally consistent
+// - it was properly signed by the alleged equivocator
 func VerifyEvidence(stateDB dbm.DB, s State, evidence types.Evidence) error {
 	height := s.LastBlockHeight
 
@@ -97,10 +100,6 @@ func VerifyEvidence(stateDB dbm.DB, s State, evidence types.Evidence) error {
 			evidence.Height(), height-maxAge)
 	}
 
-	if err := evidence.Verify(s.ChainID); err != nil {
-		return err
-	}
-
 	valset, err := LoadValidators(stateDB, evidence.Height())
 	if err != nil {
 		// TODO: if err is just that we cant find it cuz we pruned, ignore.
@@ -108,14 +107,18 @@ func VerifyEvidence(stateDB dbm.DB, s State, evidence types.Evidence) error {
 		return err
 	}
 
-	// The address must have been an active validator at the height
+	// The address must have been an active validator at the height.
+	// NOTE: we will ignore evidence from H if the key was not a validator
+	// at H, even if it is a validator at some nearby H'
 	ev := evidence
-	height, addr, idx := ev.Height(), ev.Address(), ev.Index()
-	valIdx, val := valset.GetByAddress(addr)
+	height, addr := ev.Height(), ev.Address()
+	_, val := valset.GetByAddress(addr)
 	if val == nil {
 		return fmt.Errorf("Address %X was not a validator at height %d", addr, height)
-	} else if idx != valIdx {
-		return fmt.Errorf("Address %X was validator %d at height %d, not %d", addr, valIdx, height, idx)
+	}
+
+	if err := evidence.Verify(s.ChainID, val.PubKey); err != nil {
+		return err
 	}
 
 	return nil

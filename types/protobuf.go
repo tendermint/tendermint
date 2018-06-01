@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
@@ -75,34 +76,37 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	}
 }
 
-func (tm2pb) Evidence(ev_ Evidence) abci.Evidence {
-	switch ev := ev_.(type) {
-	case *DuplicateVoteEvidence:
-		return abci.Evidence{
-			Type: "duplicate/vote",
-			Validator: abci.Validator{
-				Address: ev.Address(),
-				// TODO
-			},
-			Height: ev.Height(),
-			//	Time:             ev.Time(),
-			//	TotalVotingPower: 10,
-		}
-	case *MockGoodEvidence, MockGoodEvidence:
-		return abci.Evidence{
-			Type: "mock/good",
-			Validator: abci.Validator{
-				Address: ev.Address(),
-				// TODO
-			},
-			Height: ev.Height(),
-			//	Time:             ev.Time(),
-			//	TotalVotingPower: 10,
-		}
-	default:
-		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev_, reflect.TypeOf(ev_)))
+// ABCI Evidence includes information from the past that's not included in the evidence itself
+// so Evidence types stays compact.
+func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
+	_, val := valSet.GetByAddress(ev.Address())
+	if val == nil {
+		// should already have checked this
+		panic(val)
 	}
 
+	abciEvidence := abci.Evidence{
+		Validator: abci.Validator{
+			Address: ev.Address(),
+			PubKey:  TM2PB.PubKey(val.PubKey),
+			Power:   val.VotingPower,
+		},
+		Height:           ev.Height(),
+		Time:             evTime.Unix(),
+		TotalVotingPower: valSet.TotalVotingPower(),
+	}
+
+	// set type
+	switch ev.(type) {
+	case *DuplicateVoteEvidence:
+		abciEvidence.Type = "duplicate/vote"
+	case *MockGoodEvidence, MockGoodEvidence:
+		abciEvidence.Type = "mock/good"
+	default:
+		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
+	}
+
+	return abciEvidence
 }
 
 func (tm2pb) ValidatorFromPubKeyAndPower(pubkey crypto.PubKey, power int64) abci.Validator {
