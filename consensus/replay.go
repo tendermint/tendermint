@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -197,20 +196,20 @@ type Handshaker struct {
 	stateDB      dbm.DB
 	initialState sm.State
 	store        sm.BlockStore
-	appState     json.RawMessage
+	genDoc       *types.GenesisDoc
 	logger       log.Logger
 
 	nBlocks int // number of blocks applied to the state
 }
 
 func NewHandshaker(stateDB dbm.DB, state sm.State,
-	store sm.BlockStore, appState json.RawMessage) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
 		stateDB:      stateDB,
 		initialState: state,
 		store:        store,
-		appState:     appState,
+		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
 	}
@@ -269,8 +268,11 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(state.Validators)
 		req := abci.RequestInitChain{
-			Validators:    validators,
-			AppStateBytes: h.appState,
+			Time:            h.genDoc.GenesisTime.Unix(), // TODO
+			ChainId:         h.genDoc.ChainID,
+			ConsensusParams: types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams),
+			Validators:      validators,
+			AppStateBytes:   h.genDoc.AppStateJSON,
 		}
 		_, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
