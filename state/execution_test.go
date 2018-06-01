@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,7 +20,6 @@ import (
 )
 
 var (
-	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test"))
 	chainID      = "execution_chain"
 	testPartSize = 65536
 	nTxsPerBlock = 10
@@ -32,7 +32,7 @@ func TestApplyBlock(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state, stateDB := state(), dbm.NewMemDB()
+	state, stateDB := state(1), dbm.NewMemDB()
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
 		MockMempool{}, MockEvidencePool{})
@@ -46,8 +46,8 @@ func TestApplyBlock(t *testing.T) {
 	// TODO check state and mempool
 }
 
-// TestBeginBlockAbsentValidators ensures we send absent validators list.
-func TestBeginBlockAbsentValidators(t *testing.T) {
+// TestBeginBlockValidators ensures we send absent validators list.
+func TestBeginBlockValidators(t *testing.T) {
 	app := &testApp{}
 	cc := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(cc, nil)
@@ -55,32 +55,45 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state := state()
+	state := state(2)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
 	now := time.Now().UTC()
+	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
+	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
+
 	testCases := []struct {
 		desc                     string
 		lastCommitPrecommits     []*types.Vote
-		expectedAbsentValidators []int32
+		expectedAbsentValidators []int
 	}{
-		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, {ValidatorIndex: 1, Timestamp: now}}, []int32{}},
-		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, nil}, []int32{1}},
-		{"multiple absent", []*types.Vote{nil, nil}, []int32{0, 1}},
+		{"none absent", []*types.Vote{vote0, vote1}, []int{}},
+		{"one absent", []*types.Vote{vote0, nil}, []int{1}},
+		{"multiple absent", []*types.Vote{nil, nil}, []int{0, 1}},
 	}
 
 	for _, tc := range testCases {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
 		require.Nil(t, err, tc.desc)
 
-		// -> app must receive an index of the absent validator
-		assert.Equal(t, tc.expectedAbsentValidators, app.Validators, tc.desc)
+		// -> app receives a list of validators with a bool indicating if they signed
+		ctr := 0
+		for i, v := range app.Validators {
+			if ctr < len(tc.expectedAbsentValidators) &&
+				tc.expectedAbsentValidators[ctr] == i {
+
+				assert.False(t, v.SignedLastBlock)
+				ctr++
+			} else {
+				assert.True(t, v.SignedLastBlock)
+			}
+		}
 	}
 }
 
@@ -93,7 +106,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	require.Nil(t, err)
 	defer proxyApp.Stop()
 
-	state := state()
+	state := state(2)
 
 	prevHash := state.LastBlockID.Hash
 	prevParts := types.PartSetHeader{}
@@ -113,15 +126,19 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{types.TM2PB.Evidence(ev1)}},
 		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
 			types.TM2PB.Evidence(ev1),
-			types.TM2PB.Evidence(ev1)}},
+			types.TM2PB.Evidence(ev2)}},
 	}
 
+	now := time.Now().UTC()
+	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
+	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
+	votes := []*types.Vote{vote0, vote1}
+	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
-		lastCommit := &types.Commit{BlockID: prevBlockID}
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
 		block.Evidence.Evidence = tc.evidence
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator
@@ -139,13 +156,19 @@ func makeTxs(height int64) (txs []types.Tx) {
 	return txs
 }
 
-func state() State {
+func state(nVals int) State {
+	vals := make([]types.GenesisValidator, nVals)
+	for i := 0; i < nVals; i++ {
+		secret := []byte(fmt.Sprintf("test%d", i))
+		pk := crypto.GenPrivKeyEd25519FromSecret(secret)
+		vals[i] = types.GenesisValidator{
+			pk.PubKey(), 1000, fmt.Sprintf("test%d", i),
+		}
+	}
 	s, _ := MakeGenesisState(&types.GenesisDoc{
-		ChainID: chainID,
-		Validators: []types.GenesisValidator{
-			{privKey.PubKey(), 10000, "test"},
-		},
-		AppHash: nil,
+		ChainID:    chainID,
+		Validators: vals,
+		AppHash:    nil,
 	})
 	return s
 }
