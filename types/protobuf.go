@@ -57,8 +57,8 @@ func (tm2pb) Validators(vals *ValidatorSet) []types.Validator {
 	return validators
 }
 
-func (tm2pb) ConsensusParams(params *ConsensusParams) types.ConsensusParams {
-	return types.ConsensusParams{
+func (tm2pb) ConsensusParams(params *ConsensusParams) *types.ConsensusParams {
+	return &types.ConsensusParams{
 		BlockSize: &types.BlockSize{
 
 			MaxBytes: int32(params.BlockSize.MaxBytes),
