@@ -173,11 +173,12 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	}
 
 	if valInfo.ValidatorSet == nil {
-		valInfo = loadValidatorsInfo(db, valInfo.LastHeightChanged)
-		if valInfo == nil {
+		valInfo2 := loadValidatorsInfo(db, valInfo.LastHeightChanged)
+		if valInfo2 == nil {
 			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at height %d as
                         last changed from height %d`, valInfo.LastHeightChanged, height))
 		}
+		valInfo = valInfo2
 	}
 
 	return valInfo.ValidatorSet, nil
