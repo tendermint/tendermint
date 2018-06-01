@@ -2,10 +2,11 @@ GOTOOLS = \
 	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep \
 	gopkg.in/alecthomas/gometalinter.v2 \
-	github.com/golang/protobuf/protoc-gen-go
-GOTOOLS_CHECK = gox dep gometalinter.v2 protoc protoc-gen-go
+	github.com/gogo/protobuf/protoc-gen-gogo \
+	github.com/gogo/protobuf/gogoproto
+GOTOOLS_CHECK = gox dep gometalinter.v2 protoc protoc-gen-gogo
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
-INCLUDE = -I=. -I=${GOPATH}/src
+INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 
 all: check get_vendor_deps protoc build test install metalinter
 
@@ -19,7 +20,7 @@ protoc:
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) --go_out=plugins=grpc:. types/*.proto
+	protoc $(INCLUDE) --gogo_out=plugins=grpc:. types/*.proto
 	@echo "--> adding nolint declarations to protobuf generated files"
 	@awk '/package types/ { print "//nolint: gas"; print; next }1' types/types.pb.go > types/types.pb.go.new
 	@mv types/types.pb.go.new types/types.pb.go

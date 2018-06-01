@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 )
 
 const (
@@ -27,12 +27,12 @@ func ReadMessage(r io.Reader, msg proto.Message) error {
 }
 
 func readProtoMsg(r io.Reader, msg proto.Message, maxSize int) error {
-	// binary.ReadUvarint takes an io.ByteReader, eg. a bufio.Reader
+	// binary.ReadVarint takes an io.ByteReader, eg. a bufio.Reader
 	reader, ok := r.(*bufio.Reader)
 	if !ok {
 		reader = bufio.NewReader(r)
 	}
-	length64, err := binary.ReadUvarint(reader)
+	length64, err := binary.ReadVarint(reader)
 	if err != nil {
 		return err
 	}
@@ -48,11 +48,11 @@ func readProtoMsg(r io.Reader, msg proto.Message, maxSize int) error {
 }
 
 //-----------------------------------------------------------------------
-// NOTE: we copied wire.EncodeByteSlice from go-amino rather than keep
-// go-amino as a dep
+// NOTE: we copied wire.EncodeByteSlice from go-wire rather than keep
+// go-wire as a dep
 
 func encodeByteSlice(w io.Writer, bz []byte) (err error) {
-	err = encodeUvarint(w, uint64(len(bz)))
+	err = encodeVarint(w, int64(len(bz)))
 	if err != nil {
 		return
 	}
@@ -60,9 +60,9 @@ func encodeByteSlice(w io.Writer, bz []byte) (err error) {
 	return
 }
 
-func encodeUvarint(w io.Writer, u uint64) (err error) {
+func encodeVarint(w io.Writer, i int64) (err error) {
 	var buf [10]byte
-	n := binary.PutUvarint(buf[:], u)
+	n := binary.PutVarint(buf[:], i)
 	_, err = w.Write(buf[0:n])
 	return
 }

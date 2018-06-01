@@ -8,21 +8,6 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-const (
-	PubKeyEd25519 = "ed25519"
-)
-
-func Ed25519Validator(pubkey []byte, power int64) Validator {
-	return Validator{
-		// Address:
-		PubKey: &PubKey{
-			Type: PubKeyEd25519,
-			Data: pubkey,
-		},
-		Power: power,
-	}
-}
-
 //------------------------------------------------------------------------------
 
 // Validators is a list of validators that implements the Sort interface

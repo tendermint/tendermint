@@ -32,7 +32,7 @@ func RandVals(cnt int) []types.Validator {
 // which allows tests to pass and is fine as long as you
 // don't make any tx that modify the validator state
 func InitKVStore(app *PersistentKVStoreApplication) {
-	app.InitChain(types.ParamsInitChain{
+	app.InitChain(types.RequestInitChain{
 		Validators:   RandVals(1),
 		GenesisBytes: []byte("[]"),
 	})
