@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -21,7 +21,7 @@ func TestMarshalJSON(t *testing.T) {
 		Code:      1,
 		Data:      []byte("hello"),
 		GasWanted: 43,
-		Tags: []*cmn.KVPair{
+		Tags: []cmn.KVPair{
 			{[]byte("pho"), []byte("bo")},
 		},
 	}
@@ -82,8 +82,8 @@ func TestWriteReadMessage2(t *testing.T) {
 			Data:      []byte(phrase),
 			Log:       phrase,
 			GasWanted: 10,
-			Tags: []*cmn.KVPair{
-				{[]byte("abc"), []byte("def")},
+			Tags: []cmn.KVPair{
+				cmn.KVPair{[]byte("abc"), []byte("def")},
 			},
 			// Fee: cmn.KI64Pair{
 		},

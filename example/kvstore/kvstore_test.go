@@ -25,7 +25,7 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine
-	resQuery := app.Query(types.ParamsQuery{
+	resQuery := app.Query(types.RequestQuery{
 		Path: "/store",
 		Data: []byte(key),
 	})
@@ -33,7 +33,7 @@ func testKVStore(t *testing.T, app types.Application, tx []byte, key, value stri
 	require.Equal(t, value, string(resQuery.Value))
 
 	// make sure proof is fine
-	resQuery = app.Query(types.ParamsQuery{
+	resQuery = app.Query(types.RequestQuery{
 		Path:  "/store",
 		Data:  []byte(key),
 		Prove: true,
@@ -79,7 +79,7 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	InitKVStore(kvstore)
 	height := int64(0)
 
-	resInfo := kvstore.Info(types.ParamsInfo{})
+	resInfo := kvstore.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -90,11 +90,11 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	header := types.Header{
 		Height: int64(height),
 	}
-	kvstore.BeginBlock(types.ParamsBeginBlock{hash, header, nil, nil})
-	kvstore.EndBlock(types.ParamsEndBlock{header.Height})
+	kvstore.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
+	kvstore.EndBlock(types.RequestEndBlock{header.Height})
 	kvstore.Commit()
 
-	resInfo = kvstore.Info(types.ParamsInfo{})
+	resInfo = kvstore.Info(types.RequestInfo{})
 	if resInfo.LastBlockHeight != height {
 		t.Fatalf("expected height of %d, got %d", height, resInfo.LastBlockHeight)
 	}
@@ -114,7 +114,7 @@ func TestValUpdates(t *testing.T) {
 	nInit := 5
 	vals := RandVals(total)
 	// iniitalize with the first nInit
-	kvstore.InitChain(types.ParamsInitChain{
+	kvstore.InitChain(types.RequestInitChain{
 		Validators: vals[:nInit],
 	})
 
@@ -176,13 +176,13 @@ func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff
 		Height: height,
 	}
 
-	kvstore.BeginBlock(types.ParamsBeginBlock{hash, header, nil, nil})
+	kvstore.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
 	for _, tx := range txs {
 		if r := kvstore.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)
 		}
 	}
-	resEndBlock := kvstore.EndBlock(types.ParamsEndBlock{header.Height})
+	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{header.Height})
 	kvstore.Commit()
 
 	valsEqual(t, diff, resEndBlock.ValidatorUpdates)

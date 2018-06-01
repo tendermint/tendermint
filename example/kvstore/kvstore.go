@@ -64,12 +64,12 @@ func NewKVStoreApplication() *KVStoreApplication {
 	return &KVStoreApplication{state: state}
 }
 
-func (app *KVStoreApplication) Info(req types.ParamsInfo) (resInfo types.ResultInfo) {
-	return types.ResultInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size)}
+func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+	return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size)}
 }
 
 // tx is either "key=value" or just arbitrary bytes
-func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResultDeliverTx {
+func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	var key, value []byte
 	parts := bytes.Split(tx, []byte("="))
 	if len(parts) == 2 {
@@ -84,24 +84,24 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResultDeliverTx {
 		{[]byte("app.creator"), []byte("jae")},
 		{[]byte("app.key"), key},
 	}
-	return types.ResultDeliverTx{Code: code.CodeTypeOK, Tags: tags}
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }
 
-func (app *KVStoreApplication) CheckTx(tx []byte) types.ResultCheckTx {
-	return types.ResultCheckTx{Code: code.CodeTypeOK}
+func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
+	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
-func (app *KVStoreApplication) Commit() types.ResultCommit {
+func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
 	binary.PutVarint(appHash, app.state.Size)
 	app.state.AppHash = appHash
 	app.state.Height += 1
 	saveState(app.state)
-	return types.ResultCommit{Data: appHash}
+	return types.ResponseCommit{Data: appHash}
 }
 
-func (app *KVStoreApplication) Query(reqQuery types.ParamsQuery) (resQuery types.ResultQuery) {
+func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	if reqQuery.Prove {
 		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Index = -1 // TODO make Proof return index
