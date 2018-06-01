@@ -254,7 +254,8 @@ func TestReactorVotingPowerChange(t *testing.T) {
 	logger.Debug("---------------------------- Testing changing the voting power of one validator a few times")
 
 	val1PubKey := css[0].privValidator.GetPubKey()
-	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKey.Bytes(), 25)
+	val1PubKeyABCI := types.TM2PB.PubKey(val1PubKey)
+	updateValidatorTx := kvstore.MakeValSetChangeTx(val1PubKeyABCI, 25)
 	previousTotalVotingPower := css[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
@@ -266,7 +267,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
-	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKey.Bytes(), 2)
+	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 2)
 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
@@ -278,7 +279,7 @@ func TestReactorVotingPowerChange(t *testing.T) {
 		t.Fatalf("expected voting power to change (before: %d, after: %d)", previousTotalVotingPower, css[0].GetRoundState().LastValidators.TotalVotingPower())
 	}
 
-	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKey.Bytes(), 26)
+	updateValidatorTx = kvstore.MakeValSetChangeTx(val1PubKeyABCI, 26)
 	previousTotalVotingPower = css[0].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nVals, activeVals, eventChans, css, updateValidatorTx)
@@ -316,7 +317,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing adding one validator")
 
 	newValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
-	newValidatorTx1 := kvstore.MakeValSetChangeTx(newValidatorPubKey1.Bytes(), testMinPower)
+	valPubKey1ABCI := types.TM2PB.PubKey(newValidatorPubKey1)
+	newValidatorTx1 := kvstore.MakeValSetChangeTx(valPubKey1ABCI, testMinPower)
 
 	// wait till everyone makes block 2
 	// ensure the commit includes all validators
@@ -342,7 +344,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing changing the voting power of one validator")
 
 	updateValidatorPubKey1 := css[nVals].privValidator.GetPubKey()
-	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updateValidatorPubKey1.Bytes(), 25)
+	updatePubKey1ABCI := types.TM2PB.PubKey(updateValidatorPubKey1)
+	updateValidatorTx1 := kvstore.MakeValSetChangeTx(updatePubKey1ABCI, 25)
 	previousTotalVotingPower := css[nVals].GetRoundState().LastValidators.TotalVotingPower()
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, updateValidatorTx1)
@@ -358,10 +361,12 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	logger.Info("---------------------------- Testing adding two validators at once")
 
 	newValidatorPubKey2 := css[nVals+1].privValidator.GetPubKey()
-	newValidatorTx2 := kvstore.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), testMinPower)
+	newVal2ABCI := types.TM2PB.PubKey(newValidatorPubKey2)
+	newValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, testMinPower)
 
 	newValidatorPubKey3 := css[nVals+2].privValidator.GetPubKey()
-	newValidatorTx3 := kvstore.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), testMinPower)
+	newVal3ABCI := types.TM2PB.PubKey(newValidatorPubKey3)
+	newValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, testMinPower)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, newValidatorTx2, newValidatorTx3)
@@ -373,8 +378,8 @@ func TestReactorValidatorSetChanges(t *testing.T) {
 	//---------------------------------------------------------------------------
 	logger.Info("---------------------------- Testing removing two validators at once")
 
-	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newValidatorPubKey2.Bytes(), 0)
-	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newValidatorPubKey3.Bytes(), 0)
+	removeValidatorTx2 := kvstore.MakeValSetChangeTx(newVal2ABCI, 0)
+	removeValidatorTx3 := kvstore.MakeValSetChangeTx(newVal3ABCI, 0)
 
 	waitForAndValidateBlock(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
 	waitForAndValidateBlockWithTx(t, nPeers, activeVals, eventChans, css, removeValidatorTx2, removeValidatorTx3)
