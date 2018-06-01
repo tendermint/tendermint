@@ -13,8 +13,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	priv_val "github.com/tendermint/tendermint/types/priv_validator"
 )
 
 type GenesisValidator struct {
@@ -84,7 +84,7 @@ func convertPrivVal(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 	var pubKey crypto.PubKeyEd25519
 	copy(pubKey[:], privVal.PubKey.Data)
 
-	privValNew := priv_val.FilePV{
+	privValNew := privval.FilePV{
 		Address:    pubKey.Address(),
 		PubKey:     pubKey,
 		LastHeight: privVal.LastHeight,

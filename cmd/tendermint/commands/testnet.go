@@ -12,8 +12,8 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -89,7 +89,7 @@ func testnetFiles(cmd *cobra.Command, args []string) error {
 		initFilesWithConfig(config)
 
 		pvFile := filepath.Join(nodeDir, config.BaseConfig.PrivValidator)
-		pv := pvm.LoadFilePV(pvFile)
+		pv := privval.LoadFilePV(pvFile)
 		genVals[i] = types.GenesisValidator{
 			PubKey: pv.GetPubKey(),
 			Power:  1,

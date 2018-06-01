@@ -21,6 +21,7 @@ import (
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	rpccore "github.com/tendermint/tendermint/rpc/core"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -32,7 +33,6 @@ import (
 	"github.com/tendermint/tendermint/state/txindex/kv"
 	"github.com/tendermint/tendermint/state/txindex/null"
 	"github.com/tendermint/tendermint/types"
-	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
@@ -77,7 +77,7 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	return NewNode(config,
-		pvm.LoadOrGenFilePV(config.PrivValidatorFile()),
+		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -177,8 +177,8 @@ func NewNode(config *cfg.Config,
 			// TODO: persist this key so external signer
 			// can actually authenticate us
 			privKey = crypto.GenPrivKeyEd25519()
-			pvsc    = pvm.NewSocketPV(
-				logger.With("module", "pvm"),
+			pvsc    = privval.NewSocketPV(
+				logger.With("module", "privval"),
 				config.PrivValidatorListenAddr,
 				privKey,
 			)
@@ -447,7 +447,7 @@ func (n *Node) OnStop() {
 	n.eventBus.Stop()
 	n.indexerService.Stop()
 
-	if pvsc, ok := n.privValidator.(*pvm.SocketPV); ok {
+	if pvsc, ok := n.privValidator.(*privval.SocketPV); ok {
 		if err := pvsc.Stop(); err != nil {
 			n.Logger.Error("Error stopping priv validator socket client", "err", err)
 		}
