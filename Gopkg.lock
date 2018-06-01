@@ -2,6 +2,12 @@
 
 
 [[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcutil"
+  packages = ["bech32"]
+  revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -40,16 +46,6 @@
   packages = ["."]
   revision = "817915b46b97fd7bb80e8ab6b69f01a53ac3eebf"
   version = "v1.6.0"
-
-[[projects]]
-  name = "github.com/gogo/protobuf"
-  packages = [
-    "gogoproto",
-    "proto",
-    "protoc-gen-gogo/descriptor"
-  ]
-  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
-  version = "v1.0.0"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -197,11 +193,6 @@
   revision = "b89cc31ef7977104127d34c1bd31ebd1a9db2199"
 
 [[projects]]
-  name = "golang.org/x/crypto"
-  packages = ["ripemd160"]
-  revision = "edd5e9b0879d13ee6970a50153d85b8fec9f7686"
-
-[[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = [
@@ -285,6 +276,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8aa4ea7ef6d0ff170127eb5bca89c6c37c767d58047159cfd26a431c5cd5e7ad"
+  inputs-digest = "e0c0af880b57928787ea78a820abefd2759e6aee4cba18e67ab36b80e62ad581"
   solver-name = "gps-cdcl"
   solver-version = 1

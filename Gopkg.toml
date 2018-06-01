@@ -61,6 +61,9 @@
   name = "github.com/stretchr/testify"
   version = "1.2.1"
 
+[[constraint]]
+  name = "github.com/btcsuite/btcutil"
+  branch ="master"
 [prune]
   go-tests = true
   unused-packages = true
