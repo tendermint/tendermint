@@ -191,9 +191,9 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 		}
 	}
 
-	byzantineVals := make([]*abci.Evidence, len(block.Evidence.Evidence))
+	byzantineVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
-		byzantineVals[i] = &abci.Evidence{
+		byzantineVals[i] = abci.Evidence{
 			// TODO: fill this in
 			Height: ev.Height(),
 		}
@@ -239,7 +239,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, updates []*abci.Validator) error {
+func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
 	for _, v := range updates {
 		pubkey, err := types.PB2TM.PubKey(v.PubKey)
 		if err != nil {

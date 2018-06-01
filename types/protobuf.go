@@ -14,9 +14,9 @@ var TM2PB = tm2pb{}
 
 type tm2pb struct{}
 
-func (tm2pb) Header(header *Header) *types.Header {
-	return &types.Header{
-		ChainId:       header.ChainID,
+func (tm2pb) Header(header *Header) types.Header {
+	return types.Header{
+		ChainID:       header.ChainID,
 		Height:        header.Height,
 		Time:          header.Time.Unix(),
 		NumTxs:        int32(header.NumTxs), // XXX: overflow
@@ -25,22 +25,22 @@ func (tm2pb) Header(header *Header) *types.Header {
 	}
 }
 
-func (tm2pb) Validator(val *Validator) *types.Validator {
-	return &types.Validator{
+func (tm2pb) Validator(val *Validator) types.Validator {
+	return types.Validator{
 		PubKey: TM2PB.PubKey(val.PubKey),
 		Power:  val.VotingPower,
 	}
 }
 
-func (tm2pb) PubKey(pubKey crypto.PubKey) *types.PubKey {
+func (tm2pb) PubKey(pubKey crypto.PubKey) types.PubKey {
 	switch pk := pubKey.(type) {
 	case crypto.PubKeyEd25519:
-		return &types.PubKey{
+		return types.PubKey{
 			Type: "ed25519",
 			Data: pk[:],
 		}
 	case crypto.PubKeySecp256k1:
-		return &types.PubKey{
+		return types.PubKey{
 			Type: "secp256k1",
 			Data: pk[:],
 		}
@@ -49,16 +49,16 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) *types.PubKey {
 	}
 }
 
-func (tm2pb) Validators(vals *ValidatorSet) []*types.Validator {
-	validators := make([]*types.Validator, len(vals.Validators))
+func (tm2pb) Validators(vals *ValidatorSet) []types.Validator {
+	validators := make([]types.Validator, len(vals.Validators))
 	for i, val := range vals.Validators {
 		validators[i] = TM2PB.Validator(val)
 	}
 	return validators
 }
 
-func (tm2pb) ConsensusParams(params *ConsensusParams) *types.ConsensusParams {
-	return &types.ConsensusParams{
+func (tm2pb) ConsensusParams(params *ConsensusParams) types.ConsensusParams {
+	return types.ConsensusParams{
 		BlockSize: &types.BlockSize{
 
 			MaxBytes: int32(params.BlockSize.MaxBytes),
@@ -84,7 +84,7 @@ var PB2TM = pb2tm{}
 type pb2tm struct{}
 
 // TODO: validate key lengths ...
-func (pb2tm) PubKey(pubKey *types.PubKey) (crypto.PubKey, error) {
+func (pb2tm) PubKey(pubKey types.PubKey) (crypto.PubKey, error) {
 	switch pubKey.Type {
 	case "ed25519":
 		var pk crypto.PubKeyEd25519
