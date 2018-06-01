@@ -184,10 +184,24 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	// determine which validators did not sign last block
-	signVals := make([]abci.SigningValidator, len(block.LastCommit.Precommits))
+	// determine which validators did not sign last block.
+	//  only applies after first block
+	if block.Height > 1 {
+		precommitLen := len(block.LastCommit.Precommits)
+		valSetLen := len(valSet.Validators)
+		if precommitLen != valSetLen {
+			// sanity check
+			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, valSet.Validators))
+		}
+	}
+
+	signVals := make([]abci.SigningValidator, len(valSet.Validators))
 	for i, val := range valSet.Validators {
-		vote := block.LastCommit.Precommits[i]
+		var vote *types.Vote
+		if i < len(block.LastCommit.Precommits) {
+			vote = block.LastCommit.Precommits[i]
+		}
 		val := abci.SigningValidator{
 			Validator:       types.TM2PB.Validator(val),
 			SignedLastBlock: vote != nil,
