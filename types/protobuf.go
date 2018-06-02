@@ -9,7 +9,22 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 )
 
-// TM2PB is used for converting Tendermint abci to protobuf abci.
+//-------------------------------------------------------
+// Use strings to distinguish types in ABCI messages
+
+const (
+	ABCIEvidenceTypeDuplicateVote = "duplicate/vote"
+	ABCIEvidenceTypeMockGood      = "mock/good"
+)
+
+const (
+	ABCIPubKeyTypeEd25519   = "ed25519"
+	ABCIPubKeyTypeSecp256k1 = "secp256k1"
+)
+
+//-------------------------------------------------------
+
+// TM2PB is used for converting Tendermint ABCI to protobuf ABCI.
 // UNSTABLE
 var TM2PB = tm2pb{}
 
@@ -99,9 +114,9 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	// set type
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
-		abciEvidence.Type = "duplicate/vote"
+		abciEvidence.Type = ABCIEvidenceTypeDuplicateVote
 	case *MockGoodEvidence, MockGoodEvidence:
-		abciEvidence.Type = "mock/good"
+		abciEvidence.Type = ABCIEvidenceTypeMockGood
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}
@@ -120,20 +135,28 @@ func (tm2pb) ValidatorFromPubKeyAndPower(pubkey crypto.PubKey, power int64) abci
 
 //----------------------------------------------------------------------------
 
-// PB2TM is used for converting protobuf abci to Tendermint abci.
+// PB2TM is used for converting protobuf ABCI to Tendermint ABCI.
 // UNSTABLE
 var PB2TM = pb2tm{}
 
 type pb2tm struct{}
 
-// TODO: validate key lengths ...
 func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
+	// TODO: define these in go-crypto and use them
+	sizeEd := 32
+	sizeSecp := 33
 	switch pubKey.Type {
-	case "ed25519":
+	case ABCIPubKeyTypeEd25519:
+		if len(pubKey.Data) != sizeEd {
+			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeEd)
+		}
 		var pk crypto.PubKeyEd25519
 		copy(pk[:], pubKey.Data)
 		return pk, nil
-	case "secp256k1":
+	case ABCIPubKeyTypeSecp256k1:
+		if len(pubKey.Data) != sizeSecp {
+			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeSecp)
+		}
 		var pk crypto.PubKeySecp256k1
 		copy(pk[:], pubKey.Data)
 		return pk, nil
