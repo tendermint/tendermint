@@ -152,7 +152,7 @@ func (e MockGoodEvidence) Equal(ev Evidence) bool {
 		bytes.Equal(e.Address_, e2.Address_)
 }
 func (e MockGoodEvidence) String() string {
-	return fmt.Sprintf("GoodEvidence: %d/%s/%d", e.Height_, e.Address_)
+	return fmt.Sprintf("GoodEvidence: %d/%s", e.Height_, e.Address_)
 }
 
 // UNSTABLE
@@ -169,7 +169,7 @@ func (e MockBadEvidence) Equal(ev Evidence) bool {
 		bytes.Equal(e.Address_, e2.Address_)
 }
 func (e MockBadEvidence) String() string {
-	return fmt.Sprintf("BadEvidence: %d/%s/%d", e.Height_, e.Address_)
+	return fmt.Sprintf("BadEvidence: %d/%s", e.Height_, e.Address_)
 }
 
 //-------------------------------------------
