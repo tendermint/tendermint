@@ -238,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "c681347ee3c4906b169d39ffc4def87714494cbd"
-  version = "v0.11.0-rc3"
+  revision = "9af8b7a7c87478869f8c280ed9539470b8f470b4"
+  version = "v0.11.0-rc4"
 
 [[projects]]
   branch = "master"
@@ -262,12 +262,6 @@
   packages = ["."]
   revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
   version = "v0.6.2"
-
-[[projects]]
-  name = "github.com/tendermint/go-wire"
-  packages = ["."]
-  revision = "3c22a7a539411f89a96738fcfa14c1027e24e5ec"
-  version = "0.9.10"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
