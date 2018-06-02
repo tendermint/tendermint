@@ -269,9 +269,6 @@ func NewNode(config *cfg.Config,
 	// but it would still be nice to have a clear list of the current "PersistentPeers"
 	// somewhere that we can return with net_info.
 	//
-	// Let's assume we always have IDs ... and we just dont authenticate them
-	// if auth_enc=false.
-	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
 	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
