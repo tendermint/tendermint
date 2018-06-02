@@ -133,18 +133,21 @@ jobs:
           key: v1-pkg-cache
       - restore_cache:
           key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run: mkdir -p /tmp/logs
       - run:
           name: Run tests
           command: |
             for pkg in $(go list github.com/tendermint/tendermint/... | grep -v /vendor/ | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
-              GOCACHE=off go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg"
+              GOCACHE=off go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
             done
       - persist_to_workspace:
           root: /tmp/workspace
           paths:
             - "profiles/*"
+      - store_artifacts:
+          path: /tmp/logs
 
   test_persistence:
     <<: *defaults
