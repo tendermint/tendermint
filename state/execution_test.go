@@ -18,7 +18,8 @@ import (
 )
 
 var (
-	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test"))
+	privKey      = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test_1"))
+	privKey2     = crypto.GenPrivKeyEd25519FromSecret([]byte("execution_test_2"))
 	chainID      = "execution_chain"
 	testPartSize = 65536
 	nTxsPerBlock = 10
@@ -64,18 +65,18 @@ func TestBeginBlockAbsentValidators(t *testing.T) {
 	testCases := []struct {
 		desc                     string
 		lastCommitPrecommits     []*types.Vote
-		expectedAbsentValidators []int32
+		expectedAbsentValidators [][]byte
 	}{
-		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, {ValidatorIndex: 1, Timestamp: now}}, []int32{}},
-		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, nil}, []int32{1}},
-		{"multiple absent", []*types.Vote{nil, nil}, []int32{0, 1}},
+		{"none absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, {ValidatorIndex: 1, Timestamp: now}}, [][]byte{}},
+		{"one absent", []*types.Vote{{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}, nil}, [][]byte{privKey2.PubKey().Bytes()}},
+		{"multiple absent", []*types.Vote{nil, nil}, [][]byte{privKey.PubKey().Bytes(), privKey2.PubKey().Bytes()}},
 	}
 
 	for _, tc := range testCases {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the absent validator
@@ -109,10 +110,10 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 		expectedByzantineValidators []abci.Evidence
 	}{
 		{"none byzantine", []types.Evidence{}, []abci.Evidence{}},
-		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{ev1.Address(), ev1.Height()}}},
+		{"one byzantine", []types.Evidence{ev1}, []abci.Evidence{{[]byte(ev1.String()), ev1.Address(), ev1.Height(), int64(0)}}},
 		{"multiple byzantine", []types.Evidence{ev1, ev2}, []abci.Evidence{
-			{ev1.Address(), ev1.Height()},
-			{ev2.Address(), ev2.Height()}}},
+			{[]byte(ev1.String()), ev1.Address(), ev1.Height(), int64(0)},
+			{[]byte(ev2.String()), ev2.Address(), ev2.Height(), int64(0)}}},
 	}
 
 	for _, tc := range testCases {
@@ -120,7 +121,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 
 		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
 		block.Evidence.Evidence = tc.evidence
-		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger())
+		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators)
 		require.Nil(t, err, tc.desc)
 
 		// -> app must receive an index of the byzantine validator
@@ -142,7 +143,8 @@ func state() State {
 	s, _ := MakeGenesisState(&types.GenesisDoc{
 		ChainID: chainID,
 		Validators: []types.GenesisValidator{
-			{privKey.PubKey(), 10000, "test"},
+			{privKey.PubKey(), 10000, "test1"},
+			{privKey2.PubKey(), 10000, "test2"},
 		},
 		AppHash: nil,
 	})
@@ -161,7 +163,7 @@ var _ abci.Application = (*testApp)(nil)
 type testApp struct {
 	abci.BaseApplication
 
-	AbsentValidators    []int32
+	AbsentValidators    [][]byte
 	ByzantineValidators []abci.Evidence
 }
 

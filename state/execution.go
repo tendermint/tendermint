@@ -74,7 +74,7 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 		return s, ErrInvalidBlock(err)
 	}
 
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, s.Validators)
 	if err != nil {
 		return s, ErrProxyAppConn(err)
 	}
@@ -160,7 +160,7 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus, block *types.Block) (*ABCIResponses, error) {
+func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus, block *types.Block, vs *types.ValidatorSet) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -187,10 +187,11 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	proxyAppConn.SetResponseCallback(proxyCb)
 
 	// determine which validators did not sign last block
-	absentVals := make([]int32, 0)
+	absentVals := make([][]byte, 0)
 	for valI, vote := range block.LastCommit.Precommits {
 		if vote == nil {
-			absentVals = append(absentVals, int32(valI))
+			_, val := vs.GetByIndex(valI)
+			absentVals = append(absentVals, val.PubKey.Bytes())
 		}
 	}
 
@@ -198,6 +199,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	byzantineVals := make([]abci.Evidence, len(block.Evidence.Evidence))
 	for i, ev := range block.Evidence.Evidence {
 		byzantineVals[i] = abci.Evidence{
+			Type:   []byte(ev.String()),
 			PubKey: ev.Address(), // XXX
 			Height: ev.Height(),
 		}
@@ -359,8 +361,8 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
-func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block)
+func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger, vs *types.ValidatorSet) ([]byte, error) {
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, vs)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err

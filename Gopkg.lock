@@ -238,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "78a8905690ef54f9d57e3b2b0ee7ad3a04ef3f1f"
-  version = "v0.10.3"
+  revision = "f9dce537281ffba5d1e047e6729429f7e5fb90c9"
+  version = "v0.11.0-rc0"
 
 [[projects]]
   branch = "master"
@@ -382,6 +382,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d85c98dcac32cc1fe05d006aa75e8985f6447a150a041b972a673a65e7681da9"
+  inputs-digest = "90dc14750c1499107a3e6728ae696f9977f56bee2855c2f1c0a14831a165cc0e"
   solver-name = "gps-cdcl"
   solver-version = 1

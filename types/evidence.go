@@ -9,6 +9,11 @@ import (
 	"github.com/tendermint/tmlibs/merkle"
 )
 
+const (
+	// Evidence type for duplicate vote
+	DUPLICATE_VOTE = "DUPLICATE_VOTE"
+)
+
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
 type ErrEvidenceInvalid struct {
 	Evidence   Evidence
@@ -35,7 +40,7 @@ type Evidence interface {
 	Verify(chainID string) error // verify the evidence
 	Equal(Evidence) bool         // check equality of evidence
 
-	String() string
+	String() string // used as type in abci.Evidence
 }
 
 func RegisterEvidences(cdc *amino.Codec) {
@@ -54,8 +59,7 @@ type DuplicateVoteEvidence struct {
 
 // String returns a string representation of the evidence.
 func (dve *DuplicateVoteEvidence) String() string {
-	return fmt.Sprintf("VoteA: %v; VoteB: %v", dve.VoteA, dve.VoteB)
-
+	return DUPLICATE_VOTE
 }
 
 // Height returns the height this evidence refers to.
