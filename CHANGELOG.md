@@ -2,13 +2,18 @@
 
 ## 0.19.8
 
-*TBD*
+*June 4th, 2018*
 
 BREAKING:
 
 - [p2p] Remove `auth_enc` config option, peer connections are always auth
   encrypted. Technically a breaking change but seems no one was using it and
   arguably a bug fix :)
+
+BUG FIXES
+
+- [mempool] Fix deadlock under high load when `skip_timeout_commit=true` and
+  `create_empty_blocks=false`
 
 ## 0.19.7
 
