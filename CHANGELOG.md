@@ -1,5 +1,8 @@
 # Changelog
 
+- [p2p] remove `auth_enc` config option, peer connections are always auth
+  encrypted
+
 ## 0.19.7
 
 BREAKING:

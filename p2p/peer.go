@@ -116,8 +116,6 @@ func newPeer(pc peerConn, nodeInfo NodeInfo,
 
 // PeerConfig is a Peer configuration.
 type PeerConfig struct {
-	AuthEnc bool `mapstructure:"auth_enc"` // authenticated encryption
-
 	// times are in seconds
 	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
@@ -132,7 +130,6 @@ type PeerConfig struct {
 // DefaultPeerConfig returns the default config.
 func DefaultPeerConfig() *PeerConfig {
 	return &PeerConfig{
-		AuthEnc:          true,
 		HandshakeTimeout: 20, // * time.Second,
 		DialTimeout:      3,  // * time.Second,
 		MConfig:          tmconn.DefaultMConnConfig(),
@@ -159,7 +156,7 @@ func newOutboundPeerConn(addr *NetAddress, config *PeerConfig, persistent bool, 
 	}
 
 	// ensure dialed ID matches connection ID
-	if config.AuthEnc && addr.ID != pc.ID() {
+	if addr.ID != pc.ID() {
 		if err2 := conn.Close(); err2 != nil {
 			return pc, cmn.ErrorWrap(err, err2.Error())
 		}
@@ -187,17 +184,15 @@ func newPeerConn(rawConn net.Conn,
 		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, config.FuzzConfig)
 	}
 
-	if config.AuthEnc {
-		// Set deadline for secret handshake
-		if err := conn.SetDeadline(time.Now().Add(config.HandshakeTimeout * time.Second)); err != nil {
-			return pc, cmn.ErrorWrap(err, "Error setting deadline while encrypting connection")
-		}
+	// Set deadline for secret handshake
+	if err := conn.SetDeadline(time.Now().Add(config.HandshakeTimeout * time.Second)); err != nil {
+		return pc, cmn.ErrorWrap(err, "Error setting deadline while encrypting connection")
+	}
 
-		// Encrypt connection
-		conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
-		if err != nil {
-			return pc, cmn.ErrorWrap(err, "Error creating peer")
-		}
+	// Encrypt connection
+	conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
+	if err != nil {
+		return pc, cmn.ErrorWrap(err, "Error creating peer")
 	}
 
 	// Only the information we already have

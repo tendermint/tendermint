@@ -17,9 +17,6 @@ We will attempt to connect to the peer at IP:PORT, and verify,
 via authenticated encryption, that it is in possession of the private key
 corresponding to `<ID>`. This prevents man-in-the-middle attacks on the peer layer.
 
-If `auth_enc = false`, peers can use an arbitrary ID, but they must always use
-one. Authentication can then happen out-of-band of Tendermint, for instance via VPN.
-
 ## Connections
 
 All p2p connections use TCP.

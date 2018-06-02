@@ -95,7 +95,6 @@ func NewSwitch(config *cfg.P2PConfig) *Switch {
 	sw.peerConfig.MConfig.SendRate = config.SendRate
 	sw.peerConfig.MConfig.RecvRate = config.RecvRate
 	sw.peerConfig.MConfig.MaxPacketMsgPayloadSize = config.MaxPacketMsgPayloadSize
-	sw.peerConfig.AuthEnc = config.AuthEnc
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 	return sw
@@ -534,10 +533,6 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	// NOTE: if AuthEnc==false, we don't have a peerID until after the handshake.
-	// If AuthEnc==true then we already know the ID and could do the checks first before the handshake,
-	// but it's simple to just deal with both cases the same after the handshake.
-
 	// Exchange NodeInfo on the conn
 	peerNodeInfo, err := pc.HandshakeTimeout(sw.nodeInfo, time.Duration(sw.peerConfig.HandshakeTimeout*time.Second))
 	if err != nil {
@@ -547,13 +542,14 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	peerID := peerNodeInfo.ID
 
 	// ensure connection key matches self reported key
-	if pc.config.AuthEnc {
-		connID := pc.ID()
+	connID := pc.ID()
 
-		if peerID != connID {
-			return fmt.Errorf("nodeInfo.ID() (%v) doesn't match conn.ID() (%v)",
-				peerID, connID)
-		}
+	if peerID != connID {
+		return fmt.Errorf(
+			"nodeInfo.ID() (%v) doesn't match conn.ID() (%v)",
+			peerID,
+			connID,
+		)
 	}
 
 	// Validate the peers nodeInfo
