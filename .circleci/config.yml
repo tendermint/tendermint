@@ -199,9 +199,6 @@ workflows:
   test-suite:
     jobs:
       - setup_dependencies
-      - build_slate:
-          requires:
-            - setup_dependencies
       - setup_abci:
           requires:
             - setup_dependencies
