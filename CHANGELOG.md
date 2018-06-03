@@ -1,7 +1,14 @@
 # Changelog
 
-- [p2p] remove `auth_enc` config option, peer connections are always auth
-  encrypted
+## 0.19.8
+
+*TBD*
+
+BREAKING:
+
+- [p2p] Remove `auth_enc` config option, peer connections are always auth
+  encrypted. Technically a breaking change but seems no one was using it and
+  arguably a bug fix :)
 
 ## 0.19.7
 
