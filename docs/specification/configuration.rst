@@ -122,9 +122,6 @@ like the file below, however, double check by inspecting the
     # Does not work if the peer-exchange reactor is disabled.
     seed_mode = false
 
-    # Authenticated encryption
-    auth_enc = true
-
     # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
     private_peer_ids = ""
 

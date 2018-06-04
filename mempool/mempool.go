@@ -72,8 +72,8 @@ type Mempool struct {
 	rechecking           int32           // for re-checking filtered txs on Update()
 	recheckCursor        *clist.CElement // next expected response
 	recheckEnd           *clist.CElement // re-checking stops here
-	notifiedTxsAvailable bool            // true if fired on txsAvailable for this height
-	txsAvailable         chan int64      // fires the next height once for each height, when the mempool is not empty
+	notifiedTxsAvailable bool
+	txsAvailable         chan int64 // fires the next height once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -328,8 +328,12 @@ func (mem *Mempool) notifyTxsAvailable() {
 		panic("notified txs available but mempool is empty!")
 	}
 	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
+		select {
+		case mem.txsAvailable <- mem.height + 1:
+		default:
+		}
+
 		mem.notifiedTxsAvailable = true
-		mem.txsAvailable <- mem.height + 1
 	}
 }
 
@@ -382,7 +386,7 @@ func (mem *Mempool) Update(height int64, txs types.Txs) error {
 	// Recheck mempool txs if any txs were committed in the block
 	// NOTE/XXX: in some apps a tx could be invalidated due to EndBlock,
 	//	so we really still do need to recheck, but this is for debugging
-	if mem.config.Recheck && (mem.config.RecheckEmpty || len(txs) > 0) {
+	if mem.config.Recheck && (mem.config.RecheckEmpty || len(goodTxs) > 0) {
 		mem.logger.Info("Recheck txs", "numtxs", len(goodTxs), "height", height)
 		mem.recheckTxs(goodTxs)
 		// At this point, mem.txs are being rechecked.
