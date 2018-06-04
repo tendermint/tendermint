@@ -196,7 +196,7 @@ func makeHeightSearchFunc(height int64) auto.SearchFunc {
 type Handshaker struct {
 	stateDB      dbm.DB
 	initialState sm.State
-	store        types.BlockStore
+	store        sm.BlockStore
 	appState     json.RawMessage
 	logger       log.Logger
 
@@ -204,7 +204,7 @@ type Handshaker struct {
 }
 
 func NewHandshaker(stateDB dbm.DB, state sm.State,
-	store types.BlockStore, appState json.RawMessage) *Handshaker {
+	store sm.BlockStore, appState json.RawMessage) *Handshaker {
 
 	return &Handshaker{
 		stateDB:      stateDB,
@@ -390,7 +390,7 @@ func (h *Handshaker) replayBlock(state sm.State, height int64, proxyApp proxy.Ap
 	block := h.store.LoadBlock(height)
 	meta := h.store.LoadBlockMeta(height)
 
-	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, types.MockMempool{}, types.MockEvidencePool{})
+	blockExec := sm.NewBlockExecutor(h.stateDB, h.logger, proxyApp, sm.MockMempool{}, sm.MockEvidencePool{})
 
 	var err error
 	state, err = blockExec.ApplyBlock(state, meta.BlockID, block)

@@ -34,7 +34,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB := state(), dbm.NewMemDB()
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		types.MockMempool{}, types.MockEvidencePool{})
+		sm.MockMempool{}, sm.MockEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}

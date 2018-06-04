@@ -29,8 +29,8 @@ type BlockExecutor struct {
 	eventBus types.BlockEventPublisher
 
 	// update these with block results after commit
-	mempool types.Mempool
-	evpool  types.EvidencePool
+	mempool Mempool
+	evpool  EvidencePool
 
 	logger log.Logger
 }
@@ -38,7 +38,7 @@ type BlockExecutor struct {
 // NewBlockExecutor returns a new BlockExecutor with a NopEventBus.
 // Call SetEventBus to provide one.
 func NewBlockExecutor(db dbm.DB, logger log.Logger, proxyApp proxy.AppConnConsensus,
-	mempool types.Mempool, evpool types.EvidencePool) *BlockExecutor {
+	mempool Mempool, evpool EvidencePool) *BlockExecutor {
 	return &BlockExecutor{
 		db:       db,
 		proxyApp: proxyApp,
@@ -98,6 +98,9 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
 
+	// Update evpool with the block and state.
+	blockExec.evpool.Update(block, state)
+
 	fail.Fail() // XXX
 
 	// update the app hash and save the state
@@ -105,11 +108,6 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
-
-	// Update evpool now that state is saved.
-	// TODO: handle the crash/recover scenario
-	// ie. (may need to call Update for last block)
-	blockExec.evpool.Update(block)
 
 	// events are fired after everything else
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay

@@ -65,8 +65,8 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 		return nil, errors.Wrap(err, "failed to start event bus")
 	}
 	defer eventBus.Stop()
-	mempool := types.MockMempool{}
-	evpool := types.MockEvidencePool{}
+	mempool := sm.MockMempool{}
+	evpool := sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)
