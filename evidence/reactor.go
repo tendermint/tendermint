@@ -138,7 +138,7 @@ func (evR *EvidenceReactor) broadcastEvidenceListMsg(msg *EvidenceListMessage) {
 	// NOTE: we dont send evidence to peers higher than their height,
 	// because they can't validate it (don't have validators from the height).
 	// So, for now, only send the `msg` to peers synced to the highest height in the list.
-	// TODO: send each peer all the evidence below its current height -
+	// TODO: send each peer all the evidence below its current height within maxAge -
 	//  might require a routine per peer, like the mempool.
 
 	var maxHeight int64
@@ -149,9 +149,17 @@ func (evR *EvidenceReactor) broadcastEvidenceListMsg(msg *EvidenceListMessage) {
 	}
 
 	for _, peer := range evR.Switch.Peers().List() {
-		ps := peer.Get(types.PeerStateKey).(PeerState)
+		ps, ok := peer.Get(types.PeerStateKey).(PeerState)
+		if !ok {
+			evR.Logger.Info("Found peer without PeerState", "peer", peer)
+			continue
+		}
+
+		// only send to peer if maxHeight < peerHeight < maxHeight + maxAge
+		maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
 		rs := ps.GetRoundState()
-		if rs.Height >= maxHeight {
+		if rs.Height >= maxHeight &&
+			rs.Height < maxAge+maxHeight {
 			peer.TrySend(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
 		}
 	}
