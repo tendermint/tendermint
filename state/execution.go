@@ -59,8 +59,8 @@ func (blockExec *BlockExecutor) SetEventBus(eventBus types.BlockEventPublisher) 
 // If the block is invalid, it returns an error.
 // Validation does not mutate state, but does require historical information from the stateDB,
 // ie. to verify evidence from a validator at an old height.
-func (blockExec *BlockExecutor) ValidateBlock(s State, block *types.Block) error {
-	return validateBlock(blockExec.db, s, block)
+func (blockExec *BlockExecutor) ValidateBlock(state State, block *types.Block) error {
+	return validateBlock(blockExec.db, state, block)
 }
 
 // ApplyBlock validates the block against the state, executes it against the app,
@@ -68,15 +68,15 @@ func (blockExec *BlockExecutor) ValidateBlock(s State, block *types.Block) error
 // It's the only function that needs to be called
 // from outside this package to process and commit an entire block.
 // It takes a blockID to avoid recomputing the parts hash.
-func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block *types.Block) (State, error) {
+func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, block *types.Block) (State, error) {
 
-	if err := blockExec.ValidateBlock(s, block); err != nil {
-		return s, ErrInvalidBlock(err)
+	if err := blockExec.ValidateBlock(state, block); err != nil {
+		return state, ErrInvalidBlock(err)
 	}
 
 	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block)
 	if err != nil {
-		return s, ErrProxyAppConn(err)
+		return state, ErrProxyAppConn(err)
 	}
 
 	fail.Fail() // XXX
@@ -87,22 +87,22 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 	fail.Fail() // XXX
 
 	// update the state with the block and responses
-	s, err = updateState(s, blockID, block.Header, abciResponses)
+	state, err = updateState(state, blockID, block.Header, abciResponses)
 	if err != nil {
-		return s, fmt.Errorf("Commit failed for application: %v", err)
+		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
 
 	// lock mempool, commit state, update mempoool
 	appHash, err := blockExec.Commit(block)
 	if err != nil {
-		return s, fmt.Errorf("Commit failed for application: %v", err)
+		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
 
 	fail.Fail() // XXX
 
 	// update the app hash and save the state
-	s.AppHash = appHash
-	SaveState(blockExec.db, s)
+	state.AppHash = appHash
+	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
 
@@ -115,7 +115,7 @@ func (blockExec *BlockExecutor) ApplyBlock(s State, blockID types.BlockID, block
 	// NOTE: if we crash between Commit and Save, events wont be fired during replay
 	fireEvents(blockExec.logger, blockExec.eventBus, block, abciResponses)
 
-	return s, nil
+	return state, nil
 }
 
 // Commit locks the mempool, runs the ABCI Commit message, and updates the mempool.
@@ -283,20 +283,20 @@ func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) 
 }
 
 // updateState returns a new State updated according to the header and responses.
-func updateState(s State, blockID types.BlockID, header *types.Header,
+func updateState(state State, blockID types.BlockID, header *types.Header,
 	abciResponses *ABCIResponses) (State, error) {
 
 	// copy the valset so we can apply changes from EndBlock
 	// and update s.LastValidators and s.Validators
-	prevValSet := s.Validators.Copy()
+	prevValSet := state.Validators.Copy()
 	nextValSet := prevValSet.Copy()
 
 	// update the validator set with the latest abciResponses
-	lastHeightValsChanged := s.LastHeightValidatorsChanged
+	lastHeightValsChanged := state.LastHeightValidatorsChanged
 	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
 		err := updateValidators(nextValSet, abciResponses.EndBlock.ValidatorUpdates)
 		if err != nil {
-			return s, fmt.Errorf("Error changing validator set: %v", err)
+			return state, fmt.Errorf("Error changing validator set: %v", err)
 		}
 		// change results from this height but only applies to the next height
 		lastHeightValsChanged = header.Height + 1
@@ -306,14 +306,14 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 	nextValSet.IncrementAccum(1)
 
 	// update the params with the latest abciResponses
-	nextParams := s.ConsensusParams
-	lastHeightParamsChanged := s.LastHeightConsensusParamsChanged
+	nextParams := state.ConsensusParams
+	lastHeightParamsChanged := state.LastHeightConsensusParamsChanged
 	if abciResponses.EndBlock.ConsensusParamUpdates != nil {
 		// NOTE: must not mutate s.ConsensusParams
-		nextParams = s.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
+		nextParams = state.ConsensusParams.Update(abciResponses.EndBlock.ConsensusParamUpdates)
 		err := nextParams.Validate()
 		if err != nil {
-			return s, fmt.Errorf("Error updating consensus params: %v", err)
+			return state, fmt.Errorf("Error updating consensus params: %v", err)
 		}
 		// change results from this height but only applies to the next height
 		lastHeightParamsChanged = header.Height + 1
@@ -322,13 +322,13 @@ func updateState(s State, blockID types.BlockID, header *types.Header,
 	// NOTE: the AppHash has not been populated.
 	// It will be filled on state.Save.
 	return State{
-		ChainID:                          s.ChainID,
+		ChainID:                          state.ChainID,
 		LastBlockHeight:                  header.Height,
-		LastBlockTotalTx:                 s.LastBlockTotalTx + header.NumTxs,
+		LastBlockTotalTx:                 state.LastBlockTotalTx + header.NumTxs,
 		LastBlockID:                      blockID,
 		LastBlockTime:                    header.Time,
 		Validators:                       nextValSet,
-		LastValidators:                   s.Validators.Copy(),
+		LastValidators:                   state.Validators.Copy(),
 		LastHeightValidatorsChanged:      lastHeightValsChanged,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
