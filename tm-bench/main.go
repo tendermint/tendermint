@@ -132,6 +132,22 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 		os.Exit(1)
 	}
 
+	maxHeight := info.LastHeight
+	diff := maxHeight - minHeight
+
+	blockMetas := info.BlockMetas
+	offset := len(blockMetas)
+	for len(blockMetas) < int(diff) {
+		// get blocks between minHeight and last height
+		info, err := client.BlockchainInfo(minHeight+int64(offset), 0)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		blockMetas = append(blockMetas, info.BlockMetas...)
+		offset = len(blockMetas)
+	}
+
 	numBlocksPerSec := make(map[int64]int64)
 	numTxsPerSec := make(map[int64]int64)
 	// because during some seconds blocks won't be created...
@@ -140,7 +156,7 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 		numTxsPerSec[i] = 0
 	}
 
-	for _, blockMeta := range info.BlockMetas {
+	for _, blockMeta := range blockMetas {
 		// check if block was created after timeStart
 		if blockMeta.Header.Time.Before(timeStart) {
 			continue
@@ -173,6 +189,9 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 	for _, n := range numTxsPerSec {
 		stats.TxsThroughput.Update(n)
 	}
+
+	fmt.Println("blocks", numBlocksPerSec)
+	fmt.Println("txs", numTxsPerSec)
 
 	return stats
 }

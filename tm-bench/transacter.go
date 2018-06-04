@@ -176,9 +176,6 @@ func (t *transacter) sendLoop(connIndex int) {
 			}
 
 			timeToSend := time.Now().Sub(startTime)
-			if timeToSend < 1*time.Second {
-				time.Sleep(time.Second - timeToSend)
-			}
 			logger.Info(fmt.Sprintf("sent %d transactions", t.Rate), "took", timeToSend)
 		case <-pingsTicker.C:
 			// go-rpc server closes the connection in the absence of pings
