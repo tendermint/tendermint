@@ -17,10 +17,6 @@ Impl:
 	- First commit atomically in outqueue, pending, lookup.
 	- Once broadcast, remove from outqueue. No need to sync
 	- Once committed, atomically remove from pending and update lookup.
-		- TODO: If we crash after committed but before removing/updating,
-			we'll be stuck broadcasting evidence we never know we committed.
-			so either share the state db and atomically MarkCommitted
-			with ApplyBlock, or check all outqueue/pending on Start to see if its committed
 
 Schema for indexing evidence (note you need both height and hash to find a piece of evidence):
 

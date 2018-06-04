@@ -92,7 +92,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
 
-	// lock mempool, commit state, update mempoool
+	// lock mempool, commit app state, update mempoool
 	appHash, err := blockExec.Commit(block)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)

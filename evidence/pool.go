@@ -69,16 +69,18 @@ func (evpool *EvidencePool) State() sm.State {
 
 // Update loads the latest
 func (evpool *EvidencePool) Update(block *types.Block, state sm.State) {
-	evpool.mtx.Lock()
-	defer evpool.mtx.Unlock()
 
 	// sanity check
 	if state.LastBlockHeight != block.Height {
 		panic(fmt.Sprintf("Failed EvidencePool.Update sanity check: got state.Height=%d with block.Height=%d", state.LastBlockHeight, block.Height))
 	}
-	evpool.state = state
 
-	// NOTE: shouldn't need the mutex
+	// update the state
+	evpool.mtx.Lock()
+	evpool.state = state
+	evpool.mtx.Unlock()
+
+	// remove evidence from pending and mark committed
 	evpool.MarkEvidenceAsCommitted(block.Evidence.Evidence)
 }
 
