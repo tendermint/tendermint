@@ -49,15 +49,12 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	assert.Equal(t, size+1, book.Size())
 
 	r.RemovePeer(peer, "peer not available")
-	assert.Equal(t, size+1, book.Size())
 
 	outboundPeer := p2p.CreateRandomPeer(true)
 
 	r.AddPeer(outboundPeer)
-	assert.Equal(t, size+1, book.Size(), "outbound peers should not be added to the address book")
 
 	r.RemovePeer(outboundPeer, "peer not available")
-	assert.Equal(t, size+1, book.Size())
 }
 
 // --- FAIL: TestPEXReactorRunning (11.10s)
