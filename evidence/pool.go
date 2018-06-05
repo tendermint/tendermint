@@ -116,28 +116,28 @@ func (evpool *EvidencePool) AddEvidence(evidence types.Evidence) (err error) {
 	return nil
 }
 
-// MarkEvidenceAsCommitted marks all the evidence as committed.
+// MarkEvidenceAsCommitted marks all the evidence as committed and removes it from the queue.
 func (evpool *EvidencePool) MarkEvidenceAsCommitted(height int64, evidence []types.Evidence) {
+	// make a map of committed evidence to remove from the clist
 	blockEvidenceMap := make(map[string]struct{})
 	for _, ev := range evidence {
 		evpool.evidenceStore.MarkEvidenceAsCommitted(ev)
-		blockEvidenceMap[ev.String()] = struct{}{}
+		blockEvidenceMap[evMapKey(ev)] = struct{}{}
 	}
 
-	maxAge := evpool.State().ConsensusParams.EvidenceParams.MaxAge
-
 	// remove committed evidence from the clist
-	evpool.filterEvidence(height, maxAge, blockEvidenceMap)
+	maxAge := evpool.State().ConsensusParams.EvidenceParams.MaxAge
+	evpool.removeEvidence(height, maxAge, blockEvidenceMap)
 
 }
 
-func (evpool *EvidencePool) filterEvidence(height, maxAge int64, blockEvidenceMap map[string]struct{}) {
+func (evpool *EvidencePool) removeEvidence(height, maxAge int64, blockEvidenceMap map[string]struct{}) {
 	for e := evpool.evidenceList.Front(); e != nil; e = e.Next() {
 		ev := e.Value.(types.Evidence)
 
 		// Remove the evidence if it's already in a block
 		// or if it's now too old.
-		if _, ok := blockEvidenceMap[ev.String()]; ok ||
+		if _, ok := blockEvidenceMap[evMapKey(ev)]; ok ||
 			ev.Height() < height-maxAge {
 
 			// remove from clist
@@ -145,4 +145,8 @@ func (evpool *EvidencePool) filterEvidence(height, maxAge int64, blockEvidenceMa
 			e.DetachPrev()
 		}
 	}
+}
+
+func evMapKey(ev types.Evidence) string {
+	return string(ev.Hash())
 }
