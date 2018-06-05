@@ -84,7 +84,7 @@ func _waitForEvidence(t *testing.T, wg *sync.WaitGroup, evs types.EvidenceList, 
 	}
 
 	reapedEv := evpool.PendingEvidence()
-	// put the reaped evidence is a map so we can quickly check we got everything
+	// put the reaped evidence in a map so we can quickly check we got everything
 	evMap := make(map[string]types.Evidence)
 	for _, e := range reapedEv {
 		evMap[string(e.Hash())] = e
@@ -95,6 +95,7 @@ func _waitForEvidence(t *testing.T, wg *sync.WaitGroup, evs types.EvidenceList, 
 			fmt.Sprintf("evidence at index %d on reactor %d don't match: %v vs %v",
 				i, reactorIdx, expectedEv, gotEv))
 	}
+
 	wg.Done()
 }
 
@@ -110,7 +111,7 @@ func sendEvidence(t *testing.T, evpool *EvidencePool, valAddr []byte, n int) typ
 }
 
 var (
-	NUM_EVIDENCE = 1
+	NUM_EVIDENCE = 10
 	TIMEOUT      = 120 * time.Second // ridiculously high because CircleCI is slow
 )
 
@@ -174,4 +175,8 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 
 	// only ones less than the peers height should make it through
 	waitForEvidence(t, evList[:NUM_EVIDENCE/2], reactors[1:2])
+
+	// peers should still be connected
+	peers := reactors[1].Switch.Peers().List()
+	assert.Equal(t, 1, len(peers))
 }
