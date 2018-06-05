@@ -105,14 +105,17 @@ func TestByzantine(t *testing.T) {
 		p2p.Connect2Switches(sws, i, j)
 	})
 
-	// start the state machines
-	byzR := reactors[0].(*ByzantineReactor)
-	s := byzR.reactor.conS.GetState()
-	byzR.reactor.SwitchToConsensus(s, 0)
+	// start the non-byz state machines.
+	// note these must be started before the byz
 	for i := 1; i < N; i++ {
 		cr := reactors[i].(*ConsensusReactor)
 		cr.SwitchToConsensus(cr.conS.GetState(), 0)
 	}
+
+	// start the byzantine state machine
+	byzR := reactors[0].(*ByzantineReactor)
+	s := byzR.reactor.conS.GetState()
+	byzR.reactor.SwitchToConsensus(s, 0)
 
 	// byz proposer sends one block to peers[0]
 	// and the other block to peers[1] and peers[2].
