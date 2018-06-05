@@ -5,14 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tmlibs/common"
-)
-
-const (
-	// FuzzModeDrop is a mode in which we randomly drop reads/writes, connections or sleep
-	FuzzModeDrop = iota
-	// FuzzModeDelay is a mode in which we randomly sleep
-	FuzzModeDelay
 )
 
 // FuzzedConnection wraps any net.Conn and depending on the mode either delays
@@ -24,37 +18,17 @@ type FuzzedConnection struct {
 	start  <-chan time.Time
 	active bool
 
-	config *FuzzConnConfig
-}
-
-// FuzzConnConfig is a FuzzedConnection configuration.
-type FuzzConnConfig struct {
-	Mode         int
-	MaxDelay     time.Duration
-	ProbDropRW   float64
-	ProbDropConn float64
-	ProbSleep    float64
-}
-
-// DefaultFuzzConnConfig returns the default config.
-func DefaultFuzzConnConfig() *FuzzConnConfig {
-	return &FuzzConnConfig{
-		Mode:         FuzzModeDrop,
-		MaxDelay:     3 * time.Second,
-		ProbDropRW:   0.2,
-		ProbDropConn: 0.00,
-		ProbSleep:    0.00,
-	}
+	config *config.FuzzConnConfig
 }
 
 // FuzzConn creates a new FuzzedConnection. Fuzzing starts immediately.
 func FuzzConn(conn net.Conn) net.Conn {
-	return FuzzConnFromConfig(conn, DefaultFuzzConnConfig())
+	return FuzzConnFromConfig(conn, config.DefaultFuzzConnConfig())
 }
 
 // FuzzConnFromConfig creates a new FuzzedConnection from a config. Fuzzing
 // starts immediately.
-func FuzzConnFromConfig(conn net.Conn, config *FuzzConnConfig) net.Conn {
+func FuzzConnFromConfig(conn net.Conn, config *config.FuzzConnConfig) net.Conn {
 	return &FuzzedConnection{
 		conn:   conn,
 		start:  make(<-chan time.Time),
@@ -66,12 +40,16 @@ func FuzzConnFromConfig(conn net.Conn, config *FuzzConnConfig) net.Conn {
 // FuzzConnAfter creates a new FuzzedConnection. Fuzzing starts when the
 // duration elapses.
 func FuzzConnAfter(conn net.Conn, d time.Duration) net.Conn {
-	return FuzzConnAfterFromConfig(conn, d, DefaultFuzzConnConfig())
+	return FuzzConnAfterFromConfig(conn, d, config.DefaultFuzzConnConfig())
 }
 
 // FuzzConnAfterFromConfig creates a new FuzzedConnection from a config.
 // Fuzzing starts when the duration elapses.
-func FuzzConnAfterFromConfig(conn net.Conn, d time.Duration, config *FuzzConnConfig) net.Conn {
+func FuzzConnAfterFromConfig(
+	conn net.Conn,
+	d time.Duration,
+	config *config.FuzzConnConfig,
+) net.Conn {
 	return &FuzzedConnection{
 		conn:   conn,
 		start:  time.After(d),
@@ -81,7 +59,7 @@ func FuzzConnAfterFromConfig(conn net.Conn, d time.Duration, config *FuzzConnCon
 }
 
 // Config returns the connection's config.
-func (fc *FuzzedConnection) Config() *FuzzConnConfig {
+func (fc *FuzzedConnection) Config() *config.FuzzConnConfig {
 	return fc.config
 }
 
@@ -136,7 +114,7 @@ func (fc *FuzzedConnection) fuzz() bool {
 	}
 
 	switch fc.config.Mode {
-	case FuzzModeDrop:
+	case config.FuzzModeDrop:
 		// randomly drop the r/w, drop the conn, or sleep
 		r := cmn.RandFloat64()
 		if r <= fc.config.ProbDropRW {
@@ -149,7 +127,7 @@ func (fc *FuzzedConnection) fuzz() bool {
 		} else if r < fc.config.ProbDropRW+fc.config.ProbDropConn+fc.config.ProbSleep {
 			time.Sleep(fc.randomDuration())
 		}
-	case FuzzModeDelay:
+	case config.FuzzModeDelay:
 		// sleep a bit
 		time.Sleep(fc.randomDuration())
 	}

@@ -5,6 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	tmconn "github.com/tendermint/tendermint/p2p/conn"
+)
+
+const (
+	// FuzzModeDrop is a mode in which we randomly drop reads/writes, connections or sleep
+	FuzzModeDrop = iota
+	// FuzzModeDelay is a mode in which we randomly sleep
+	FuzzModeDelay
 )
 
 // NOTE: Most of the structs & relevant comments + the
@@ -287,11 +296,24 @@ type P2PConfig struct {
 	// Does not work if the peer-exchange reactor is disabled.
 	SeedMode bool `mapstructure:"seed_mode"`
 
-	// Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
+	// Comma separated list of peer IDs to keep private (will not be gossiped to
+	// other peers)
 	PrivatePeerIDs string `mapstructure:"private_peer_ids"`
 
 	// Toggle to disable guard against peers connecting from the same ip.
 	AllowDuplicateIP bool `mapstructure:"allow_duplicate_ip"`
+
+	// Peer connection configuration.
+	HandshakeTimeout time.Duration      `mapstructure:"handshake_timeout"`
+	DialTimeout      time.Duration      `mapstructure:"dial_timeout"`
+	MConfig          tmconn.MConnConfig `mapstructure:"connection"`
+
+	// Testing params.
+	// Force dial to fail
+	TestDialFail bool `mapstructure:"test_dial_fail"`
+	// FUzz connection
+	TestFuzz       bool            `mapstructure:"test_fuzz"`
+	TestFuzzConfig *FuzzConnConfig `mapstructure:"test_fuzz_config"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -308,6 +330,12 @@ func DefaultP2PConfig() *P2PConfig {
 		PexReactor:              true,
 		SeedMode:                false,
 		AllowDuplicateIP:        true, // so non-breaking yet
+		HandshakeTimeout:        20 * time.Second,
+		DialTimeout:             3 * time.Second,
+		MConfig:                 tmconn.DefaultMConnConfig(),
+		TestDialFail:            false,
+		TestFuzz:                false,
+		TestFuzzConfig:          DefaultFuzzConnConfig(),
 	}
 }
 
@@ -324,6 +352,26 @@ func TestP2PConfig() *P2PConfig {
 // AddrBookFile returns the full path to the address book
 func (cfg *P2PConfig) AddrBookFile() string {
 	return rootify(cfg.AddrBook, cfg.RootDir)
+}
+
+// FuzzConnConfig is a FuzzedConnection configuration.
+type FuzzConnConfig struct {
+	Mode         int
+	MaxDelay     time.Duration
+	ProbDropRW   float64
+	ProbDropConn float64
+	ProbSleep    float64
+}
+
+// DefaultFuzzConnConfig returns the default config.
+func DefaultFuzzConnConfig() *FuzzConnConfig {
+	return &FuzzConnConfig{
+		Mode:         FuzzModeDrop,
+		MaxDelay:     3 * time.Second,
+		ProbDropRW:   0.2,
+		ProbDropConn: 0.00,
+		ProbSleep:    0.00,
+	}
 }
 
 //-----------------------------------------------------------------------------
