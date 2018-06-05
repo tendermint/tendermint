@@ -130,30 +130,13 @@ func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 		}
 
 		ev := next.Value.(types.Evidence)
-		// make sure the peer is up to date
-		height := ev.Height()
-		peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
-		if !ok {
-			evR.Logger.Info("Found peer without PeerState", "peer", peer)
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-			continue
-
+		msg, retry := evR.checkSendEvidenceMessage(peer, ev)
+		if msg != nil {
+			success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+			retry = !success
 		}
 
-		// NOTE: We only send evidence to peers where
-		// peerHeight - maxAge < evidenceHeight < peerHeight
-		maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
-		peerHeight := peerState.GetHeight()
-		if peerHeight < height ||
-			peerHeight > height+maxAge {
-			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
-			continue
-		}
-
-		// send evidence
-		msg := &EvidenceListMessage{[]types.Evidence{ev}}
-		success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
-		if !success {
+		if retry {
 			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 			continue
 		}
@@ -173,6 +156,38 @@ func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
 			return
 		}
 	}
+}
+
+// Returns the message to send the peer, or nil if the evidence is invalid for the peer.
+// If message is nil, return true if we should sleep and try again.
+func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evidence) (msg EvidenceMessage, retry bool) {
+
+	// make sure the peer is up to date
+	evHeight := ev.Height()
+	peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
+	if !ok {
+		evR.Logger.Info("Found peer without PeerState", "peer", peer)
+		return nil, true
+	}
+
+	// NOTE: We only send evidence to peers where
+	// peerHeight - maxAge < evidenceHeight < peerHeight
+	maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
+	peerHeight := peerState.GetHeight()
+	if peerHeight < evHeight {
+		// peer is behind. sleep while he catches up
+		return nil, true
+	} else if peerHeight > evHeight+maxAge {
+		// evidence is too old, skip
+		// NOTE: if evidence is too old for an honest peer,
+		// then we're behind and either it already got committed or it never will!
+		evR.Logger.Info("Not sending peer old evidence", "peerHeight", peerHeight, "evHeight", evHeight, "maxAge", maxAge, "peer", peer)
+		return nil, false
+	}
+
+	// send evidence
+	msg = &EvidenceListMessage{[]types.Evidence{ev}}
+	return msg, false
 }
 
 // PeerState describes the state of a peer.
