@@ -171,27 +171,30 @@ texinfo_documents = [
      'Database'),
 ]
 
-# ---- customization -------------------------
+# ---------------- customizations ----------------------
 
+# Docker README
+from shutil import copyfile
+
+copyfile('../DOCKER/README.md', tools_dir+'docker.md')
+
+# tm-bench and tm-monitor
 tools_repo = "https://raw.githubusercontent.com/tendermint/tools/"
 tools_branch = "master"
 
 tools_dir = "./tools"
-assets_dir = tools_dir + "/assets"
 
 if os.path.isdir(tools_dir) != True:
     os.mkdir(tools_dir)
 if os.path.isdir(assets_dir) != True:
     os.mkdir(assets_dir)
 
-urllib.urlretrieve(tools_repo+tools_branch+'/docker/README.rst', filename=tools_dir+'/docker.rst')
-
-urllib.urlretrieve(tools_repo+tools_branch+'/tm-bench/README.rst', filename=tools_dir+'/benchmarking.rst')
-urllib.urlretrieve(tools_repo+tools_branch+'/tm-monitor/README.rst', filename='tools/monitoring.rst')
+urllib.urlretrieve(tools_repo+tools_branch+'/tm-bench/README.md', filename=tools_dir+'/benchmarking.md')
+urllib.urlretrieve(tools_repo+tools_branch+'/tm-monitor/README.md', filename=tools_dir+'/monitoring.md')
 
 #### abci spec #################################
 
 abci_repo = "https://raw.githubusercontent.com/tendermint/abci/"
 abci_branch = "develop"
 
-urllib.urlretrieve(abci_repo+abci_branch+'/specification.rst', filename='abci-spec.rst')
+urllib.urlretrieve(abci_repo+abci_branch+'/specification.md', filename='abci-spec.md')
