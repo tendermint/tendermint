@@ -15,6 +15,8 @@ func TestPaginationPage(t *testing.T) {
 		page       int
 		newPage    int
 	}{
+		{0, 0, 1, 1},
+
 		{0, 10, 0, 1},
 		{0, 10, 1, 1},
 		{0, 10, 2, 1},
