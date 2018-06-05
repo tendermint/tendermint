@@ -97,3 +97,14 @@ func TestRPCNotification(t *testing.T) {
 	require.Nil(t, err, "reading from the body should not give back an error")
 	require.Equal(t, len(blob), 0, "a notification SHOULD NOT be responded to by the server")
 }
+
+func TestUnknownRPCPath(t *testing.T) {
+	mux := testMux()
+	req, _ := http.NewRequest("GET", "http://localhost/unknownrpcpath", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+	res := rec.Result()
+
+	// Always expecting back a 404 error
+	require.Equal(t, http.StatusNotFound, res.StatusCode, "should always return 404")
+}
