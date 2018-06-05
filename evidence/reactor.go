@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
+	clist "github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
-	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -16,8 +16,10 @@ import (
 const (
 	EvidenceChannel = byte(0x38)
 
-	maxMsgSize                 = 1048576 // 1MB TODO make it configurable
-	broadcastEvidenceIntervalS = 60      // broadcast uncommitted evidence this often
+	maxMsgSize = 1048576 // 1MB TODO make it configurable
+
+	broadcastEvidenceIntervalS = 60  // broadcast uncommitted evidence this often
+	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 )
 
 // EvidenceReactor handles evpool evidence broadcasting amongst peers.
@@ -47,7 +49,6 @@ func (evR *EvidenceReactor) OnStart() error {
 	if err := evR.BaseReactor.OnStart(); err != nil {
 		return err
 	}
-	go evR.broadcastRoutine()
 	return nil
 }
 
@@ -64,14 +65,7 @@ func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor.
 func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
-	// send the peer our high-priority evidence.
-	// the rest will be sent by the broadcastRoutine
-	evidences := evR.evpool.PriorityEvidence()
-	msg := &EvidenceListMessage{evidences}
-	success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
-	if !success {
-		// TODO: remove peer ?
-	}
+	go evR.broadcastEvidenceRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
@@ -110,63 +104,80 @@ func (evR *EvidenceReactor) SetEventBus(b *types.EventBus) {
 	evR.eventBus = b
 }
 
-// Broadcast new evidence to all peers.
-// Broadcasts must be non-blocking so routine is always available to read off EvidenceChan.
-func (evR *EvidenceReactor) broadcastRoutine() {
-	ticker := time.NewTicker(time.Second * broadcastEvidenceIntervalS)
+// Modeled after the mempool routine.
+// - Evidence accumulates in a clist.
+// - Each peer has a routien that iterates through the clist,
+// sending available evidence to the peer.
+// - If we're waiting for new evidence and the list is not empty,
+// start iterating from the beginning again.
+func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
+	var next *clist.CElement
 	for {
-		select {
-		case evidence := <-evR.evpool.EvidenceChan():
-			// broadcast some new evidence
-			msg := &EvidenceListMessage{[]types.Evidence{evidence}}
-			evR.broadcastEvidenceListMsg(msg)
+		// This happens because the CElement we were looking at got garbage
+		// collected (removed). That is, .NextWait() returned nil. Go ahead and
+		// start from the beginning.
+		if next == nil {
+			select {
+			case <-evR.evpool.EvidenceWaitChan(): // Wait until evidence is available
+				if next = evR.evpool.EvidenceFront(); next == nil {
+					continue
+				}
+			case <-peer.Quit():
+				return
+			case <-evR.Quit():
+				return
+			}
+		}
 
-			// TODO: the broadcast here is just doing TrySend.
-			// We should make sure the send succeeds before marking broadcasted.
-			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(evidence)
-		case <-ticker.C:
-			// broadcast all pending evidence
-			msg := &EvidenceListMessage{evR.evpool.PendingEvidence()}
-			evR.broadcastEvidenceListMsg(msg)
+		ev := next.Value.(types.Evidence)
+		// make sure the peer is up to date
+		height := ev.Height()
+		peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
+		if !ok {
+			evR.Logger.Info("Found peer without PeerState", "peer", peer)
+			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			continue
+
+		}
+
+		// NOTE: We only send evidence to peers where
+		// peerHeight - maxAge < evidenceHeight < peerHeight
+		maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
+		peerHeight := peerState.GetHeight()
+		if peerHeight < height ||
+			peerHeight > height+maxAge {
+			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			continue
+		}
+
+		// send evidence
+		msg := &EvidenceListMessage{[]types.Evidence{ev}}
+		success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+		if !success {
+			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			continue
+		}
+
+		afterCh := time.After(time.Second * broadcastEvidenceIntervalS)
+		select {
+		case <-afterCh:
+			// start from the beginning every tick.
+			// TODO: only do this if we're at the end of the list!
+			next = nil
+		case <-next.NextWaitChan():
+			// see the start of the for loop for nil check
+			next = next.Next()
+		case <-peer.Quit():
+			return
 		case <-evR.Quit():
 			return
 		}
 	}
 }
 
-func (evR *EvidenceReactor) broadcastEvidenceListMsg(msg *EvidenceListMessage) {
-	// NOTE: we dont send evidence to peers higher than their height,
-	// because they can't validate it (don't have validators from the height).
-	// So, for now, only send the `msg` to peers synced to the highest height in the list.
-	// TODO: send each peer all the evidence below its current height within maxAge -
-	//  might require a routine per peer, like the mempool.
-
-	var maxHeight int64
-	for _, ev := range msg.Evidence {
-		if ev.Height() > maxHeight {
-			maxHeight = ev.Height()
-		}
-	}
-
-	for _, peer := range evR.Switch.Peers().List() {
-		ps, ok := peer.Get(types.PeerStateKey).(PeerState)
-		if !ok {
-			evR.Logger.Info("Found peer without PeerState", "peer", peer)
-			continue
-		}
-
-		// only send to peer if maxHeight < peerHeight < maxHeight + maxAge
-		maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
-		rs := ps.GetRoundState()
-		if rs.Height >= maxHeight &&
-			rs.Height < maxAge+maxHeight {
-			peer.TrySend(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
-		}
-	}
-}
-
+// PeerState describes the state of a peer.
 type PeerState interface {
-	GetRoundState() *cstypes.PeerRoundState
+	GetHeight() int64
 }
 
 //-----------------------------------------------------------------------------

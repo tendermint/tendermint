@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
-	cstypes "github.com/tendermint/tendermint/consensus/types"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -149,10 +148,8 @@ type peerState struct {
 	height int64
 }
 
-func (ps peerState) GetRoundState() *cstypes.PeerRoundState {
-	return &cstypes.PeerRoundState{
-		Height: ps.height,
-	}
+func (ps peerState) GetHeight() int64 {
+	return ps.height
 }
 
 func TestReactorSelectiveBroadcast(t *testing.T) {
