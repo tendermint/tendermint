@@ -545,9 +545,7 @@ FOR_LOOP:
 // not goroutine-safe
 func (c *MConnection) stopPongTimer() {
 	if c.pongTimer != nil {
-		if !c.pongTimer.Stop() {
-			<-c.pongTimer.C
-		}
+		_ = c.pongTimer.Stop()
 		c.pongTimer = nil
 	}
 }
