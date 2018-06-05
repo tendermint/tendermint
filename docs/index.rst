@@ -18,10 +18,10 @@ Tendermint 101
 .. toctree::
    :maxdepth: 2
 
-   introduction.rst
-   install.rst
-   getting-started.rst
-   using-tendermint.rst
+   introduction.md
+   install.md
+   getting-started.md
+   using-tendermint.md
 
 Tendermint Ecosystem
 --------------------
@@ -29,7 +29,7 @@ Tendermint Ecosystem
 .. toctree::
    :maxdepth: 2
 
-   ecosystem.rst
+   ecosystem.md
 
 Tendermint Tools
 ----------------
@@ -39,11 +39,13 @@ Tendermint Tools
 .. toctree::
    :maxdepth: 2
 
-   deploy-testnets.rst
-   terraform-and-ansible.rst
+   deploy-testnets.md
+   terraform-and-ansible.md
    tools/docker.rst
    tools/benchmarking.rst
    tools/monitoring.rst
+
+.. TODO fix tools
 
 Tendermint 102
 --------------
@@ -51,14 +53,14 @@ Tendermint 102
 .. toctree::
    :maxdepth: 2
 
-   abci-cli.rst
-   abci-spec.rst
-   app-architecture.rst
-   app-development.rst
-   subscribing-to-events-via-websocket.rst
-   indexing-transactions.rst
-   how-to-read-logs.rst
-   running-in-production.rst
+   abci-cli.md
+   abci-spec.rst 
+   app-architecture.md
+   app-development.md
+   subscribing-to-events-via-websocket.md
+   indexing-transactions.md
+   how-to-read-logs.md
+   running-in-production.md
 
 Tendermint 201
 --------------
@@ -66,9 +68,9 @@ Tendermint 201
 .. toctree::
    :maxdepth: 2
 
-   specification.rst
-   determinism.rst
-   transactional-semantics.rst
+   specification.md
+   determinism.md
+   transactional-semantics.md
 
 * For a deeper dive, see `this thesis <https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769>`__.
 * There is also the `original whitepaper <https://tendermint.com/static/docs/tendermint.pdf>`__, though it is now quite outdated.
