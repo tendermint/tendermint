@@ -39,6 +39,7 @@ var (
 	defaultPrivValPath     = filepath.Join(defaultConfigDir, defaultPrivValName)
 	defaultNodeKeyPath     = filepath.Join(defaultConfigDir, defaultNodeKeyName)
 	defaultAddrBookPath    = filepath.Join(defaultConfigDir, defaultAddrBookName)
+	defaultProfListenAddr  = "localhost:6060"
 )
 
 // Config defines the top level configuration for a Tendermint node
@@ -156,7 +157,7 @@ func DefaultBaseConfig() BaseConfig {
 		ProxyApp:          "tcp://127.0.0.1:46658",
 		ABCI:              "socket",
 		LogLevel:          DefaultPackageLogLevels(),
-		ProfListenAddress: "",
+		ProfListenAddress: defaultProfListenAddr,
 		FastSync:          true,
 		FilterPeers:       false,
 		DBBackend:         "leveldb",
