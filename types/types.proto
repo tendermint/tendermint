@@ -231,7 +231,7 @@ message Header {
 
   // hashes
   bytes last_block_hash = 6;
-  bytes val_set_hash = 7;
+  bytes validators_hash = 7;
   bytes app_hash = 8;
 
   // consensus

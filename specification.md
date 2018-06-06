@@ -269,7 +269,7 @@ See below for more details on the message types and how they are used.
     - `TotalTxs (int64)`: Total number of transactions in the blockchain until
       now
     - `LastBlockHash ([]byte)`: Hash of the previous (parent) block
-    - `ValSetHash ([]byte)`: Hash of the validator set for this block
+    - `ValidatorsHash ([]byte)`: Hash of the validator set for this block
     - `AppHash ([]byte)`: Data returned by the last call to `Commit` - typically the
       Merkle root of the application state after executing the previous block's
       transactions
