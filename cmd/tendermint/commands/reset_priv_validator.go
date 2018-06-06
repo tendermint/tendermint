@@ -13,14 +13,14 @@ import (
 // instance.
 var ResetAllCmd = &cobra.Command{
 	Use:   "unsafe_reset_all",
-	Short: "(unsafe) Remove all the data and WAL, reset this node's validator",
+	Short: "(unsafe) Remove all the data and WAL, reset this node's validator to genesis state",
 	Run:   resetAll,
 }
 
 // ResetPrivValidatorCmd resets the private validator files.
 var ResetPrivValidatorCmd = &cobra.Command{
 	Use:   "unsafe_reset_priv_validator",
-	Short: "(unsafe) Reset this node's validator",
+	Short: "(unsafe) Reset this node's validator to genesis state",
 	Run:   resetPrivValidator,
 }
 
@@ -32,7 +32,7 @@ func ResetAll(dbDir, privValFile string, logger log.Logger) {
 		logger.Error("Error removing directory", "err", err)
 		return
 	}
-	logger.Info("Removed all data", "dir", dbDir)
+	logger.Info("Removed all blockchain history", "dir", dbDir)
 }
 
 // XXX: this is totally unsafe.
@@ -52,7 +52,7 @@ func resetFilePV(privValFile string, logger log.Logger) {
 	if _, err := os.Stat(privValFile); err == nil {
 		pv := privval.LoadFilePV(privValFile)
 		pv.Reset()
-		logger.Info("Reset PrivValidator", "file", privValFile)
+		logger.Info("Reset PrivValidator to genesis state", "file", privValFile)
 	} else {
 		pv := privval.GenFilePV(privValFile)
 		pv.Save()
