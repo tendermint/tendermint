@@ -274,10 +274,12 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 			Validators:      validators,
 			AppStateBytes:   h.genDoc.AppStateJSON,
 		}
-		_, err := proxyApp.Consensus().InitChainSync(req)
+		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
 			return nil, err
 		}
+		state.Validators = res.Validators
+		return res.AppHash, nil
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight
