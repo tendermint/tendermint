@@ -49,14 +49,14 @@ spec](https://github.com/tendermint/go-amino#computing-the-prefix-and-disambigua
 In what follows, we provide the type names and prefix bytes directly.
 Notice that when encoding byte-arrays, the length of the byte-array is appended
 to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes>
-<Length> <ByteArray>`. In other words, to encode any type listed below you do not need to be 
-familiar with amino encoding. 
-You can simply use below table and concatenate Prefix || Length (of raw bytes) || raw bytes 
+<Length> <ByteArray>`. In other words, to encode any type listed below you do not need to be
+familiar with amino encoding.
+You can simply use below table and concatenate Prefix || Length (of raw bytes) || raw bytes
 ( while || stands for byte concatenation here).
 
 | Type | Name | Prefix | Length |
-| ---- | ---- | ------ | ----- | 
-| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE62 | 0x20 | 
+| ---- | ---- | ------ | ----- |
+| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE62 | 0x20 |
 | PubKeyLedgerEd25519 | tendermint/PubKeyLedgerEd25519 | 0x5C3453B2 | 0x20 |
 | PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE982 | 0x21 |
 | PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288912 | 0x40 |
@@ -69,7 +69,7 @@ You can simply use below table and concatenate Prefix || Length (of raw bytes) |
 ### Examples
 
 1. For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
-`020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`  
+`020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 would be encoded as
 `EB5AE98221020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 
@@ -77,6 +77,31 @@ would be encoded as
 `304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
 would be encoded as
 `16E1FEEA46304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
+
+### Addresses
+
+Addresses for each public key types are computed as follows:
+
+#### Ed25519
+
+RIPEMD160 hash of the Amino encoded public key:
+
+```
+address = RIPEMD160(AMINO(pubkey))
+```
+
+NOTE: this will soon change to the truncated 20-bytes of the SHA256 of the raw
+public key
+
+#### Secp256k1
+
+RIPEMD160 hash of the SHA256 hash of the OpenSSL compressed public key:
+
+```
+address = RIPEMD160(SHA256(pubkey))
+```
+
+This is the same as Bitcoin.
 
 ## Other Common Types
 

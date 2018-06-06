@@ -52,20 +52,33 @@ objects in the `ResponseBeginBlock`:
 
 ```
 message Validator {
-    bytes pub_key = 1;
-    int64 power = 2;
+  bytes address = 1;
+  PubKey pub_key = 2;
+  int64 power = 3;
 }
+
+message PubKey {
+  string type = 1;
+  bytes  data = 2;
+}
+
 ```
 
-The `pub_key` is the Amino encoded public key for the validator. For details on
-Amino encoded public keys, see the [section of the encoding spec](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/encoding.md#public-key-cryptography).
+The `pub_key` currently supports two types:
+    - `type = "ed25519" and `data = <raw 32-byte public key>`
+    - `type = "secp256k1" and `data = <33-byte OpenSSL compressed public key>`
 
+If the address is provided, it must match the address of the pubkey, as
+specified [here](/docs/spec/blockchain/encoding.md#Addresses)
+
+(Note: In the v0.19 series, the `pub_key` is the [Amino encoded public
+key](/docs/spec/blockchain/encoding.md#public-key-cryptography).
 For Ed25519 pubkeys, the Amino prefix is always "1624DE6220". For example, the 32-byte Ed25519 pubkey
 `76852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85` would be
 Amino encoded as
-`1624DE622076852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85`
+`1624DE622076852933A4686A721442E931A8415F62F5F1AEDF4910F1F252FB393F74C40C85`)
 
-(Note: in old versions of Tendermint (pre-v0.19.0), the pubkey is just prefixed with a
+(Note: In old versions of Tendermint (pre-v0.19.0), the pubkey is just prefixed with a
 single type byte, so for ED25519 we'd have `pub_key = 0x1 | pub`)
 
 The `power` is the new voting power for the validator, with the
