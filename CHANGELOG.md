@@ -6,6 +6,14 @@
 
 BREAKING:
 
+## 0.8.4
+
+*June 5, 2018*
+
+IMPROVEMENTS:
+
+ - [autofile] Flush on Stop; Close() method to Flush and close file
+
 ## 0.8.3
 
 *May 21, 2018*
