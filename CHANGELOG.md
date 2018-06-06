@@ -2,6 +2,25 @@
 
 ## 0.19.9
 
+*June 5th, 2018*
+
+BREAKING CHANGES
+
+- [types/priv_validator] Moved to top level `privval` package
+
+FEATURES
+
+- [config] Collapse PeerConfig into P2PConfig
+- [docs] Add quick-install script
+- [docs/spec] Add table of Amino prefixes
+
+BUG FIXES
+
+- [rpc] Return 404 for unknown endpoints
+- [consensus] Flush WAL on stop
+- [evidence] Don't send evidence to peers that are behind
+- [p2p] Fix memory leak on peer disconnects
+- [rpc] Fix panic when `per_page=0`
 
 ## 0.19.8
 
