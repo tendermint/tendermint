@@ -82,9 +82,21 @@ test_race:
 	@echo "==> Running go test --race"
 	@go test -v -race $(PACKAGES)
 
-test_integrations:
-	@bash test.sh
+### three tests tested by Jenkins
+test_cover:
+	@ bash tests/test_cover.sh
 
+test_apps:
+	# test the counter using a go test script
+	@ bash tests/test_app/test.sh
+
+test_cli:
+	# test the cli against the examples in the tutorial at:
+	# http://tendermint.readthedocs.io/projects/tools/en/master/abci-cli.html
+	#
+	# XXX: if this test fails, fix it and update the docs at:
+	# https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.rst
+	@ bash tests/test_cli/test.sh
 
 ########################################
 ### Formatting, linting, and vetting
@@ -159,4 +171,4 @@ devdoc_clean:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check protoc build dist install check_tools get_tools get_protoc update_tools get_vendor_deps test test_race test_integrations fmt metalinter metalinter_all docker_build docker_run docker_run_rm devdoc_init devdoc devdoc_save devdoc_clean
+.PHONY: check protoc build dist install check_tools get_tools get_protoc update_tools get_vendor_deps test test_race fmt metalinter metalinter_all docker_build docker_run docker_run_rm devdoc_init devdoc devdoc_save devdoc_clean

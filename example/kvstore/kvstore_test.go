@@ -198,7 +198,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.Validator) {
 	sort.Sort(types.Validators(vals2))
 	for i, v1 := range vals1 {
 		v2 := vals2[i]
-		if !bytes.Equal(v1.PubKey, v2.PubKey) ||
+		if !bytes.Equal(v1.PubKey.Data, v2.PubKey.Data) ||
 			v1.Power != v2.Power {
 			t.Fatalf("vals dont match at index %d. got %X/%d , expected %X/%d", i, v2.PubKey, v2.Power, v1.PubKey, v1.Power)
 		}

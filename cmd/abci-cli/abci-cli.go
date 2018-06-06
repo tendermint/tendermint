@@ -44,11 +44,9 @@ var (
 	flagProve  bool
 
 	// counter
-	flagAddrC  string
 	flagSerial bool
 
 	// kvstore
-	flagAddrD   string
 	flagPersist string
 )
 
@@ -125,17 +123,14 @@ func addQueryFlags() {
 }
 
 func addCounterFlags() {
-	counterCmd.PersistentFlags().StringVarP(&flagAddrC, "addr", "", "tcp://0.0.0.0:46658", "listen address")
 	counterCmd.PersistentFlags().BoolVarP(&flagSerial, "serial", "", false, "enforce incrementing (serial) transactions")
 }
 
 func addDummyFlags() {
-	dummyCmd.PersistentFlags().StringVarP(&flagAddrD, "addr", "", "tcp://0.0.0.0:46658", "listen address")
 	dummyCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
 
 func addKVStoreFlags() {
-	kvstoreCmd.PersistentFlags().StringVarP(&flagAddrD, "addr", "", "tcp://0.0.0.0:46658", "listen address")
 	kvstoreCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
 
@@ -659,7 +654,7 @@ func cmdCounter(cmd *cobra.Command, args []string) error {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 
 	// Start the listener
-	srv, err := server.NewServer(flagAddrC, flagAbci, app)
+	srv, err := server.NewServer(flagAddress, flagAbci, app)
 	if err != nil {
 		return err
 	}
@@ -689,7 +684,7 @@ func cmdKVStore(cmd *cobra.Command, args []string) error {
 	}
 
 	// Start the listener
-	srv, err := server.NewServer(flagAddrD, flagAbci, app)
+	srv, err := server.NewServer(flagAddress, flagAbci, app)
 	if err != nil {
 		return err
 	}

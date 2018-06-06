@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.11.0
+
+*TBD*
+
+BREAKING CHANGES:
+
+- [example/dummy] Remove. See example/kvstore
+- [types] Upgrade many messages:
+    - RequestInitChain takes all fields from a Genesis file
+    - RequestBeginBlock provides a list of all validators and whether or not
+      they signed
+    - Header: remove some fields, add proposer
+    - BlockID, PartSetHeader: remove
+    - Validator: includes address
+    - PubKey: new message with `type` and `data`
+    - Evidence: add type and more fields
+
+FEATURES:
+
+- [types] Add some fields
+    - ResponseInitChain includes ConsensusParams and Validators
+    - ResponseBeginBlock includes tags
+    - ResponseEndBlock includes tags
+
 ## 0.10.3 (April 9, 2018)
 
 IMPROVEMENTS:

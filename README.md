@@ -5,11 +5,8 @@
 Blockchains are systems for multi-master state machine replication.
 **ABCI** is an interface that defines the boundary between the replication engine (the blockchain),
 and the state machine (the application).
-By using a socket protocol, we enable a consensus engine running in one process
-to manage an application state running in another.
-
-For background information on ABCI, motivations, and tendermint, please visit [the documentation](http://tendermint.readthedocs.io/en/master/).
-The two guides to focus on are the `Application Development Guide` and `Using ABCI-CLI`.
+Using a socket protocol, a consensus engine running in one process
+can manage an application state running in another.
 
 Previously, the ABCI was referred to as TMSP.
 
@@ -17,8 +14,19 @@ The community has provided a number of addtional implementations, see the [Tende
 
 ## Specification
 
-The [primary specification](https://github.com/tendermint/abci/blob/master/types/types.proto)
-is made using Protocol Buffers. To build it, run
+A detailed description of the ABCI methods and message types is contained in:
+
+- [A prose specification](specification.md)
+- [A protobuf file](https://github.com/tendermint/abci/blob/master/types/types.proto)
+- [A Go interface](https://github.com/tendermint/abci/blob/master/types/application.go).
+
+For more background information on ABCI, motivations, and tendermint, please visit [the documentation](http://tendermint.readthedocs.io/en/master/).
+The two guides to focus on are the `Application Development Guide` and `Using ABCI-CLI`.
+
+
+## Protocl Buffers
+
+To compile the protobuf file, run:
 
 ```
 make protoc
@@ -28,12 +36,10 @@ See `protoc --help` and [the Protocol Buffers site](https://developers.google.co
 for details on compiling for other languages. Note we also include a [GRPC](http://www.grpc.io/docs)
 service definition.
 
-For the specification as an interface in Go, see the
-[types/application.go file](https://github.com/tendermint/abci/blob/master/types/application.go).
+## Install ABCI-CLI
 
-See the [spec file](specification.rst) for a detailed description of the message types.
-
-## Install
+The `abci-cli` is a simple tool for debugging ABCI servers and running some
+example apps. To install it:
 
 ```
 go get github.com/tendermint/abci
