@@ -107,7 +107,7 @@ using the following paths, with no additional data:
 
  - `/p2p/filter/addr/<IP:PORT>`, where `<IP:PORT>` denote the IP address and
    the port of the connection
- - `p2p/filter/pubkey/<ID>`, where `<ID>` is the peer node ID (ie. the
+ - `p2p/filter/id/<ID>`, where `<ID>` is the peer node ID (ie. the
    pubkey.Address() for the peer's PubKey)
 
 If either of these queries return a non-zero ABCI code, Tendermint will refuse

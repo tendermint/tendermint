@@ -302,7 +302,7 @@ func NewNode(config *cfg.Config,
 			return nil
 		})
 		sw.SetIDFilter(func(id p2p.ID) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/pubkey/%s", id)})
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/id/%s", id)})
 			if err != nil {
 				return err
 			}

@@ -8,6 +8,8 @@ BREAKING CHANGES
 
 - [abci] Upgrade to
   [v0.11.0](https://github.com/tendermint/abci/blob/master/CHANGELOG.md#0110)
+- [abci] Query path for filtering peers by node ID changed from
+  `p2p/filter/pubkey/<id>` to `p2p/filter/id/<id>`
 
 NOTE: this release does not break any blockchain data structures or
 protocols other than the ABCI messages between Tendermint and the application.
