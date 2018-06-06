@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 
 	"context"
 
-	"github.com/tendermint/go-wire"
 	"github.com/tendermint/tendermint/rpc/grpc"
 )
 
@@ -32,5 +32,11 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(string(wire.JSONBytes(res)))
+
+	bz, err := json.Marshal(res)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(string(bz))
 }
