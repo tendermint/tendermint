@@ -6,7 +6,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
@@ -82,7 +82,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case *TxMessage:
 		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", msg.Tx, "err", err)
+			memR.Logger.Info("Could not check tx", "tx", msg.Tx.HashString(), "err", err)
 		}
 		// broadcasting happens from go routines per peer
 	default:
