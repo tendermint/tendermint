@@ -71,8 +71,9 @@ type Group struct {
 	// and their dependencies.
 }
 
+// OpenGroup creates a new Group with head at headPath. It returns an error if
+// it fails to open head file.
 func OpenGroup(headPath string) (g *Group, err error) {
-
 	dir := path.Dir(headPath)
 	head, err := OpenAutoFile(headPath)
 	if err != nil {
@@ -98,16 +99,27 @@ func OpenGroup(headPath string) (g *Group, err error) {
 	return
 }
 
+// OnStart implements Service by starting the goroutine that checks file and
+// group limits.
 func (g *Group) OnStart() error {
-	g.BaseService.OnStart()
 	go g.processTicks()
 	return nil
 }
 
-// NOTE: g.Head must be closed separately
+// OnStop implements Service by stopping the goroutine described above.
+// NOTE: g.Head must be closed separately using Close.
 func (g *Group) OnStop() {
-	g.BaseService.OnStop()
 	g.ticker.Stop()
+	g.Flush() // flush any uncommitted data
+}
+
+// Close closes the head file. The group must be stopped by this moment.
+func (g *Group) Close() {
+	g.Flush() // flush any uncommitted data
+
+	g.mtx.Lock()
+	_ = g.Head.closeFile()
+	g.mtx.Unlock()
 }
 
 // SetHeadSizeLimit allows you to overwrite default head size limit - 10MB.
