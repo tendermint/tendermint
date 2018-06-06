@@ -1,7 +1,6 @@
 package state
 
 import (
-	"bytes"
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
@@ -271,38 +270,23 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
-func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
-	for _, v := range updates {
-		pubkey, err := types.PB2TM.PubKey(v.PubKey)
-		if err != nil {
-			return err
-		}
+func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validator) error {
+	updates, err := types.PB2TM.Validators(abciUpdates)
+	if err != nil {
+		return err
+	}
 
-		address := pubkey.Address()
-
-		// If the app provided an address too, it must match.
-		// This is just a sanity check.
-		if len(v.Address) > 0 {
-			if !bytes.Equal(address, v.Address) {
-				return fmt.Errorf("Validator.Address (%X) does not match PubKey.Address (%X)",
-					v.Address, address)
-			}
-		}
-
-		power := int64(v.Power)
-		// mind the overflow from int64
-		if power < 0 {
-			return fmt.Errorf("Power (%d) overflows int64", v.Power)
-		}
-
+	// these are tendermint types now
+	for _, valUpdate := range updates {
+		address := valUpdate.Address
 		_, val := currentSet.GetByAddress(address)
 		if val == nil {
 			// add val
-			added := currentSet.Add(types.NewValidator(pubkey, power))
+			added := currentSet.Add(valUpdate)
 			if !added {
-				return fmt.Errorf("Failed to add new validator %X with voting power %d", address, power)
+				return fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
-		} else if v.Power == 0 {
+		} else if valUpdate.VotingPower == 0 {
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {
@@ -310,10 +294,9 @@ func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) 
 			}
 		} else {
 			// update val
-			val.VotingPower = power
-			updated := currentSet.Update(val)
+			updated := currentSet.Update(valUpdate)
 			if !updated {
-				return fmt.Errorf("Failed to update validator %X with voting power %d", address, power)
+				return fmt.Errorf("Failed to update validator %X to %v", address, valUpdate)
 			}
 		}
 	}

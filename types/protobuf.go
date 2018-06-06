@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"reflect"
 	"time"
@@ -175,8 +176,16 @@ func (pb2tm) Validators(vals []abci.Validator) ([]*Validator, error) {
 		if err != nil {
 			return nil, err
 		}
+		// If the app provided an address too, it must match.
+		// This is just a sanity check.
+		if len(v.Address) > 0 {
+			if !bytes.Equal(pub.Address(), v.Address) {
+				return nil, fmt.Errorf("Validator.Address (%X) does not match PubKey.Address (%X)",
+					v.Address, pub.Address())
+			}
+		}
 		tmVals[i] = &Validator{
-			Address:     v.Address,
+			Address:     pub.Address(),
 			PubKey:      pub,
 			VotingPower: v.Power,
 		}

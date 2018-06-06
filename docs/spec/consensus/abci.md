@@ -92,6 +92,19 @@ following rules:
       set with the given power
     - if the validator does already exist, its power will be adjusted to the given power
 
+## InitChain Validator Updates
+
+ResponseInitChain has the option to return a list of validators.
+If the list is not empty, Tendermint will adopt it for the validator set.
+This way the application can determine the initial validator set for the
+blockchain.
+
+Note that if addressses are included in the returned validators, they must match
+the address of the public key.
+
+ResponseInitChain also includes ConsensusParams, but these are presently
+ignored.
+
 ## Query
 
 Query is a generic message type with lots of flexibility to enable diverse sets
