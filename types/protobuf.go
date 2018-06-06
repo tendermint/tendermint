@@ -52,12 +52,12 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	switch pk := pubKey.(type) {
 	case crypto.PubKeyEd25519:
 		return abci.PubKey{
-			Type: "ed25519",
+			Type: ABCIPubKeyTypeEd25519,
 			Data: pk[:],
 		}
 	case crypto.PubKeySecp256k1:
 		return abci.PubKey{
-			Type: "secp256k1",
+			Type: ABCIPubKeyTypeSecp256k1,
 			Data: pk[:],
 		}
 	default:

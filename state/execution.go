@@ -258,7 +258,7 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 		// `SetValidatorSet()` and `ToABCI` methods ?
 		valset, err := LoadValidators(stateDB, ev.Height())
 		if err != nil {
-			panic(err) // shoudn't happen
+			panic(err) // shouldn't happen
 		}
 		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 	}
