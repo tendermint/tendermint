@@ -41,9 +41,8 @@ Tendermint Tools
 
    deploy-testnets.md
    terraform-and-ansible.md
-   tools/docker.rst
-   tools/benchmarking.rst
-   tools/monitoring.rst
+   tools/benchmarking.md
+   tools/monitoring.md
 
 .. TODO fix tools
 
