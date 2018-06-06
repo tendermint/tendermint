@@ -45,7 +45,6 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 }
 
 func TestEvidencePool(t *testing.T) {
-	assert := assert.New(t)
 
 	valAddr := []byte("val1")
 	height := int64(5)
@@ -56,26 +55,25 @@ func TestEvidencePool(t *testing.T) {
 	goodEvidence := types.NewMockGoodEvidence(height, 0, valAddr)
 	badEvidence := types.MockBadEvidence{goodEvidence}
 
+	// bad evidence
 	err := pool.AddEvidence(badEvidence)
-	assert.NotNil(err)
+	assert.NotNil(t, err)
 
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		<-pool.EvidenceChan()
+		<-pool.EvidenceWaitChan()
 		wg.Done()
 	}()
 
 	err = pool.AddEvidence(goodEvidence)
-	assert.Nil(err)
+	assert.Nil(t, err)
 	wg.Wait()
 
-	// if we send it again it wont fire on the chan
+	assert.Equal(t, 1, pool.evidenceList.Len())
+
+	// if we send it again, it shouldnt change the size
 	err = pool.AddEvidence(goodEvidence)
-	assert.Nil(err)
-	select {
-	case <-pool.EvidenceChan():
-		t.Fatal("unexpected read on EvidenceChan")
-	default:
-	}
+	assert.Nil(t, err)
+	assert.Equal(t, 1, pool.evidenceList.Len())
 }

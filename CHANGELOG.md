@@ -2,7 +2,6 @@
 
 ## 0.19.9
 
-*TBD*
 
 ## 0.19.8
 
@@ -38,7 +37,7 @@ FEATURES
 
 IMPROVEMENTS:
 
-- [consensus] consensus reactor now receives events from a separate event bus,
+- [consensus] Consensus reactor now receives events from a separate synchronous event bus,
   which is not dependant on external RPC load
 - [consensus/wal] do not look for height in older files if we've seen height - 1
 - [docs] Various cleanup and link fixes
@@ -50,6 +49,12 @@ IMPROVEMENTS:
 BUG FIXES
 
 - [blockchain] Fix fast-sync deadlock during high peer turnover
+
+BUG FIX:
+
+- [evidence] Dont send peers evidence from heights they haven't synced to yet
+- [p2p] Refuse connections to more than one peer with the same IP
+- [docs] Various fixes
 
 ## 0.19.5
 

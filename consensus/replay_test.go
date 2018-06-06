@@ -263,8 +263,8 @@ const (
 )
 
 var (
-	mempool = types.MockMempool{}
-	evpool  = types.MockEvidencePool{}
+	mempool = sm.MockMempool{}
+	evpool  = sm.MockEvidencePool{}
 )
 
 //---------------------------------------

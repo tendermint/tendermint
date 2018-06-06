@@ -310,7 +310,7 @@ func newConsensusStateForReplay(config cfg.BaseConfig, csConfig *cfg.ConsensusCo
 		cmn.Exit(cmn.Fmt("Failed to start event bus: %v", err))
 	}
 
-	mempool, evpool := types.MockMempool{}, types.MockEvidencePool{}
+	mempool, evpool := sm.MockMempool{}, sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 
 	consensusState := NewConsensusState(csConfig, state.Copy(), blockExec,

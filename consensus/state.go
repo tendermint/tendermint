@@ -76,9 +76,9 @@ type ConsensusState struct {
 	// services for creating and executing blocks
 	// TODO: encapsulate all of this in one "BlockManager"
 	blockExec  *sm.BlockExecutor
-	blockStore types.BlockStore
-	mempool    types.Mempool
-	evpool     types.EvidencePool
+	blockStore sm.BlockStore
+	mempool    sm.Mempool
+	evpool     sm.EvidencePool
 
 	// internal state
 	mtx sync.Mutex
@@ -118,7 +118,7 @@ type ConsensusState struct {
 }
 
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore types.BlockStore, mempool types.Mempool, evpool types.EvidencePool) *ConsensusState {
+func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore sm.BlockStore, mempool sm.Mempool, evpool sm.EvidencePool) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		blockExec:        blockExec,
