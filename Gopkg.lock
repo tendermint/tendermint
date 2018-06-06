@@ -238,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "78a8905690ef54f9d57e3b2b0ee7ad3a04ef3f1f"
-  version = "v0.10.3"
+  revision = "7cf66f570e2f47b286985e2d688b0a400c028e4c"
+  version = "v0.11.0-rc6"
 
 [[projects]]
   branch = "master"
@@ -262,12 +262,6 @@
   packages = ["."]
   revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
   version = "v0.6.2"
-
-[[projects]]
-  name = "github.com/tendermint/go-wire"
-  packages = ["."]
-  revision = "3c22a7a539411f89a96738fcfa14c1027e24e5ec"
-  version = "0.9.10"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -299,7 +293,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "df8d4716b3472e4a531c33cedbe537dae921a1a9"
+  revision = "b47b1587369238182299fe4dad77d05b8b461e06"
 
 [[projects]]
   branch = "master"
@@ -380,6 +374,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bdcf814c0cd3b8d6cc11ad03da556abe169f872a45e6dcbd8b08588b4587ddde"
+  inputs-digest = "132980da98fc92b6c0dd988df07316a340f5fc91ee77593cf984ade4e3e5fd62"
   solver-name = "gps-cdcl"
   solver-version = 1

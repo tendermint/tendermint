@@ -28,12 +28,11 @@ func (err *ErrEvidenceInvalid) Error() string {
 
 // Evidence represents any provable malicious activity by a validator
 type Evidence interface {
-	Height() int64               // height of the equivocation
-	Address() []byte             // address of the equivocating validator
-	Index() int                  // index of the validator in the validator set
-	Hash() []byte                // hash of the evidence
-	Verify(chainID string) error // verify the evidence
-	Equal(Evidence) bool         // check equality of evidence
+	Height() int64                                     // height of the equivocation
+	Address() []byte                                   // address of the equivocating validator
+	Hash() []byte                                      // hash of the evidence
+	Verify(chainID string, pubKey crypto.PubKey) error // verify the evidence
+	Equal(Evidence) bool                               // check equality of evidence
 
 	String() string
 }
@@ -68,11 +67,6 @@ func (dve *DuplicateVoteEvidence) Address() []byte {
 	return dve.PubKey.Address()
 }
 
-// Index returns the index of the validator.
-func (dve *DuplicateVoteEvidence) Index() int {
-	return dve.VoteA.ValidatorIndex
-}
-
 // Hash returns the hash of the evidence.
 func (dve *DuplicateVoteEvidence) Hash() []byte {
 	return aminoHasher(dve).Hash()
@@ -80,7 +74,7 @@ func (dve *DuplicateVoteEvidence) Hash() []byte {
 
 // Verify returns an error if the two votes aren't conflicting.
 // To be conflicting, they must be from the same validator, for the same H/R/S, but for different blocks.
-func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
+func (dve *DuplicateVoteEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
 	// H/R/S must be the same
 	if dve.VoteA.Height != dve.VoteB.Height ||
 		dve.VoteA.Round != dve.VoteB.Round ||
@@ -92,7 +86,8 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 	if !bytes.Equal(dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress) {
 		return fmt.Errorf("DuplicateVoteEvidence Error: Validator addresses do not match. Got %X and %X", dve.VoteA.ValidatorAddress, dve.VoteB.ValidatorAddress)
 	}
-	// XXX: Should we enforce index is the same ?
+
+	// Index must be the same
 	if dve.VoteA.ValidatorIndex != dve.VoteB.ValidatorIndex {
 		return fmt.Errorf("DuplicateVoteEvidence Error: Validator indices do not match. Got %d and %d", dve.VoteA.ValidatorIndex, dve.VoteB.ValidatorIndex)
 	}
@@ -102,11 +97,18 @@ func (dve *DuplicateVoteEvidence) Verify(chainID string) error {
 		return fmt.Errorf("DuplicateVoteEvidence Error: BlockIDs are the same (%v) - not a real duplicate vote", dve.VoteA.BlockID)
 	}
 
+	// pubkey must match address (this should already be true, sanity check)
+	addr := dve.VoteA.ValidatorAddress
+	if !bytes.Equal(pubKey.Address(), addr) {
+		return fmt.Errorf("DuplicateVoteEvidence FAILED SANITY CHECK - address (%X) doesn't match pubkey (%v - %X)",
+			addr, pubKey, pubKey.Address())
+	}
+
 	// Signatures must be valid
-	if !dve.PubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
+	if !pubKey.VerifyBytes(dve.VoteA.SignBytes(chainID), dve.VoteA.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteA: %v", ErrVoteInvalidSignature)
 	}
-	if !dve.PubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
+	if !pubKey.VerifyBytes(dve.VoteB.SignBytes(chainID), dve.VoteB.Signature) {
 		return fmt.Errorf("DuplicateVoteEvidence Error verifying VoteB: %v", ErrVoteInvalidSignature)
 	}
 
@@ -131,29 +133,26 @@ func (dve *DuplicateVoteEvidence) Equal(ev Evidence) bool {
 type MockGoodEvidence struct {
 	Height_  int64
 	Address_ []byte
-	Index_   int
 }
 
 // UNSTABLE
-func NewMockGoodEvidence(height int64, index int, address []byte) MockGoodEvidence {
-	return MockGoodEvidence{height, address, index}
+func NewMockGoodEvidence(height int64, idx int, address []byte) MockGoodEvidence {
+	return MockGoodEvidence{height, address}
 }
 
 func (e MockGoodEvidence) Height() int64   { return e.Height_ }
 func (e MockGoodEvidence) Address() []byte { return e.Address_ }
-func (e MockGoodEvidence) Index() int      { return e.Index_ }
 func (e MockGoodEvidence) Hash() []byte {
-	return []byte(fmt.Sprintf("%d-%d", e.Height_, e.Index_))
+	return []byte(fmt.Sprintf("%d-%x", e.Height_, e.Address_))
 }
-func (e MockGoodEvidence) Verify(chainID string) error { return nil }
+func (e MockGoodEvidence) Verify(chainID string, pubKey crypto.PubKey) error { return nil }
 func (e MockGoodEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockGoodEvidence)
 	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_) &&
-		e.Index_ == e2.Index_
+		bytes.Equal(e.Address_, e2.Address_)
 }
 func (e MockGoodEvidence) String() string {
-	return fmt.Sprintf("GoodEvidence: %d/%s/%d", e.Height_, e.Address_, e.Index_)
+	return fmt.Sprintf("GoodEvidence: %d/%s", e.Height_, e.Address_)
 }
 
 // UNSTABLE
@@ -161,15 +160,16 @@ type MockBadEvidence struct {
 	MockGoodEvidence
 }
 
-func (e MockBadEvidence) Verify(chainID string) error { return fmt.Errorf("MockBadEvidence") }
+func (e MockBadEvidence) Verify(chainID string, pubKey crypto.PubKey) error {
+	return fmt.Errorf("MockBadEvidence")
+}
 func (e MockBadEvidence) Equal(ev Evidence) bool {
 	e2 := ev.(MockBadEvidence)
 	return e.Height_ == e2.Height_ &&
-		bytes.Equal(e.Address_, e2.Address_) &&
-		e.Index_ == e2.Index_
+		bytes.Equal(e.Address_, e2.Address_)
 }
 func (e MockBadEvidence) String() string {
-	return fmt.Sprintf("BadEvidence: %d/%s/%d", e.Height_, e.Address_, e.Index_)
+	return fmt.Sprintf("BadEvidence: %d/%s", e.Height_, e.Address_)
 }
 
 //-------------------------------------------

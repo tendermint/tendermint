@@ -366,7 +366,8 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	}
 
 	// now start the app using the handshake - it should sync
-	handshaker := NewHandshaker(stateDB, state, store, nil)
+	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	handshaker := NewHandshaker(stateDB, state, store, genDoc)
 	proxyApp := proxy.NewAppConns(clientCreator2, handshaker)
 	if err := proxyApp.Start(); err != nil {
 		t.Fatalf("Error starting proxy app connections: %v", err)
@@ -416,10 +417,10 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	}
 	defer proxyApp.Stop()
 
-	// TODO: get the genesis bytes (https://github.com/tendermint/tendermint/issues/1224)
-	var genesisBytes []byte
 	validators := types.TM2PB.Validators(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators, genesisBytes}); err != nil {
+	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
+		Validators: validators,
+	}); err != nil {
 		panic(err)
 	}
 
@@ -453,10 +454,10 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 	}
 	defer proxyApp.Stop()
 
-	// TODO: get the genesis bytes (https://github.com/tendermint/tendermint/issues/1224)
-	var genesisBytes []byte
 	validators := types.TM2PB.Validators(state.Validators)
-	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{validators, genesisBytes}); err != nil {
+	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
+		Validators: validators,
+	}); err != nil {
 		panic(err)
 	}
 

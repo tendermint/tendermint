@@ -5,7 +5,6 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -74,7 +73,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, ErrInvalidBlock(err)
 	}
 
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, state.LastValidators, blockExec.db)
 	if err != nil {
 		return state, ErrProxyAppConn(err)
 	}
@@ -158,7 +157,8 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 
 // Executes block's transactions on proxyAppConn.
 // Returns a list of transaction results and updates to the validator set
-func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus, block *types.Block) (*ABCIResponses, error) {
+func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
+	block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) (*ABCIResponses, error) {
 	var validTxs, invalidTxs = 0, 0
 
 	txIndex := 0
@@ -184,29 +184,14 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	// determine which validators did not sign last block
-	absentVals := make([]int32, 0)
-	for valI, vote := range block.LastCommit.Precommits {
-		if vote == nil {
-			absentVals = append(absentVals, int32(valI))
-		}
-	}
-
-	// TODO: determine which validators were byzantine
-	byzantineVals := make([]abci.Evidence, len(block.Evidence.Evidence))
-	for i, ev := range block.Evidence.Evidence {
-		byzantineVals[i] = abci.Evidence{
-			PubKey: ev.Address(), // XXX
-			Height: ev.Height(),
-		}
-	}
+	signVals, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
 
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
 		Hash:                block.Hash(),
 		Header:              types.TM2PB.Header(block.Header),
-		AbsentValidators:    absentVals,
-		ByzantineValidators: byzantineVals,
+		Validators:          signVals,
+		ByzantineValidators: byzVals,
 	})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.BeginBlock", "err", err)
@@ -238,12 +223,56 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	return abciResponses, nil
 }
 
+func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) ([]abci.SigningValidator, []abci.Evidence) {
+
+	// Sanity check that commit length matches validator set size -
+	// only applies after first block
+	if block.Height > 1 {
+		precommitLen := len(block.LastCommit.Precommits)
+		valSetLen := len(lastValSet.Validators)
+		if precommitLen != valSetLen {
+			// sanity check
+			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
+				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
+		}
+	}
+
+	// determine which validators did not sign last block.
+	signVals := make([]abci.SigningValidator, len(lastValSet.Validators))
+	for i, val := range lastValSet.Validators {
+		var vote *types.Vote
+		if i < len(block.LastCommit.Precommits) {
+			vote = block.LastCommit.Precommits[i]
+		}
+		val := abci.SigningValidator{
+			Validator:       types.TM2PB.Validator(val),
+			SignedLastBlock: vote != nil,
+		}
+		signVals[i] = val
+	}
+
+	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
+	for i, ev := range block.Evidence.Evidence {
+		// We need the validator set. We already did this in validateBlock.
+		// TODO: Should we instead cache the valset in the evidence itself and add
+		// `SetValidatorSet()` and `ToABCI` methods ?
+		valset, err := LoadValidators(stateDB, ev.Height())
+		if err != nil {
+			panic(err) // shouldn't happen
+		}
+		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
+	}
+
+	return signVals, byzVals
+
+}
+
 // If more or equal than 1/3 of total voting power changed in one block, then
 // a light client could never prove the transition externally. See
 // ./lite/doc.go for details on how a light client tracks validators.
 func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) error {
 	for _, v := range updates {
-		pubkey, err := crypto.PubKeyFromBytes(v.PubKey) // NOTE: expects go-amino encoded pubkey
+		pubkey, err := types.PB2TM.PubKey(v.PubKey)
 		if err != nil {
 			return err
 		}
@@ -357,8 +386,9 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
-func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block, logger log.Logger) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block)
+func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block,
+	logger log.Logger, lastValSet *types.ValidatorSet, stateDB dbm.DB) ([]byte, error) {
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, lastValSet, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
