@@ -5,6 +5,18 @@
 *TBD*
 
 BREAKING:
+ - [events, pubsub] Removed - moved to github.com/tendermint/tendermint
+ - [merkle] Use 20-bytes of SHA256 instead of RIPEMD160. NOTE: this package is
+   moving to github.com/tendermint/go-crypto !
+ - [common] Remove gogoproto from KVPair types
+
+FEATURES:
+
+ - [db/remotedb] New DB type using an external CLevelDB process via
+   GRPC
+ - [autofile] logjack command for piping stdin to a rotating file
+ - [bech32] New package. NOTE: should move out of here - it's just two small
+   functions
 
 ## 0.8.4
 
@@ -20,9 +32,6 @@ IMPROVEMENTS:
 
 FEATURES:
 
- - [db/remotedb] New DB type using an external CLevelDB process via
-   GRPC
- - [autofile] logjack command for piping stdin to a rotating file
  - [common] ASCIITrim()
 
 ## 0.8.2 (April 23rd, 2018)
