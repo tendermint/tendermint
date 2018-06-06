@@ -32,6 +32,7 @@ func createTestGroup(t *testing.T, headSizeLimit int64) *Group {
 }
 
 func destroyTestGroup(t *testing.T, g *Group) {
+	g.Close()
 	err := os.RemoveAll(g.Dir)
 	require.NoError(t, err, "Error removing test Group directory")
 }
