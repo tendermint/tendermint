@@ -2,7 +2,7 @@
 
 ## 0.11.0
 
-*TBD*
+*June 6, 2018*
 
 BREAKING CHANGES:
 
