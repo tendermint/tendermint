@@ -3,6 +3,9 @@
 ## 0.19.10
 
 *TBD*
+PENDING
+
+- Enable profiler by default for testing purposes, at `localhost:6060`
 
 ## 0.19.9
 
