@@ -50,11 +50,13 @@ connection. They may be referred to as the `DeliverTx state`, the
 
 See below for more details on the message types and how they are used.
 
+## Request/Response Messages
+
 ### Echo
 
--   **Arguments**:
+-   **Request**:
     -   `Message (string)`: A string to echo back
--   **Returns**:
+-   **Response**:
     -   `Message (string)`: The input string
 -   **Usage**:
     -   Echo a string to test an abci client/server implementation
@@ -70,9 +72,9 @@ See below for more details on the message types and how they are used.
 
 ### Info
 
--   **Arguments**:
+-   **Request**:
     -   `Version (string)`: The Tendermint version
--   **Returns**:
+-   **Response**:
     -   `Data (string)`: Some arbitrary information
     -   `Version (Version)`: Version information
     -   `LastBlockHeight (int64)`: Latest block for which the app has
@@ -88,10 +90,10 @@ See below for more details on the message types and how they are used.
 
 ### SetOption
 
--   **Arguments**:
+-   **Request**:
     -   `Key (string)`: Key to set
     -   `Value (string)`: Value to set for key
--   **Returns**:
+-   **Response**:
     -   `Code (uint32)`: Response code
     -   `Log (string)`: The output of the application's logger. May
         be non-deterministic.
@@ -105,15 +107,19 @@ See below for more details on the message types and how they are used.
 
 ### InitChain
 
--   **Arguments**:
+-   **Request**:
     -   `Validators ([]Validator)`: Initial genesis validators
     -   `AppStateBytes ([]byte)`: Serialized initial application state
+-   **Response**:
+    -   `ConsensusParams (ConsensusParams)`: Initial
+        consensus-critical parameters.
+    -   `Validators ([]Validator)`: Initial validator set.
 -   **Usage**:
     -   Called once upon genesis.
 
 ### Query
 
--   **Arguments**:
+-   **Request**:
     -   `Data ([]byte)`: Raw query bytes. Can be used with or in lieu
         of Path.
     -   `Path (string)`: Path of request, like an HTTP GET path. Can be
@@ -128,7 +134,7 @@ See below for more details on the message types and how they are used.
         application's Merkle root hash, which represents the state as it
         was after committing the block at Height-1
     -   `Prove (bool)`: Return Merkle proof with response if possible
--   **Returns**:
+-   **Response**:
     -   `Code (uint32)`: Response code.
     -   `Log (string)`: The output of the application's logger. May
         be non-deterministic.
@@ -148,26 +154,28 @@ See below for more details on the message types and how they are used.
 
 ### BeginBlock
 
--   **Arguments**:
+-   **Request**:
     -   `Hash ([]byte)`: The block's hash. This can be derived from the
         block header.
     -   `Header (struct{})`: The block header
-    -   `AbsentValidators ([]int32)`: List of indices of validators not
-        included in the LastCommit
+    -   `Validators ([]SigningValidator)`: List of validators in the current validator
+        set and whether or not they signed a vote in the LastCommit
     -   `ByzantineValidators ([]Evidence)`: List of evidence of
         validators that acted maliciously
+-   **Response**:
+    -   `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
 -   **Usage**:
     -   Signals the beginning of a new block. Called prior to
         any DeliverTxs.
     -   The header is expected to at least contain the Height.
-    -   The `AbsentValidators` and `ByzantineValidators` can be used to
+    -   The `Validators` and `ByzantineValidators` can be used to
         determine rewards and punishments for the validators.
 
 ### CheckTx
 
--   **Arguments**:
+-   **Request**:
     -   `Tx ([]byte)`: The request transaction bytes
--   **Returns**:
+-   **Response**:
     -   `Code (uint32)`: Response code
     -   `Data ([]byte)`: Result bytes, if any.
     -   `Log (string)`: The output of the application's logger. May
@@ -201,9 +209,9 @@ See below for more details on the message types and how they are used.
 
 ### DeliverTx
 
--   **Arguments**:
+-   **Request**:
     -   `Tx ([]byte)`: The request transaction bytes.
--   **Returns**:
+-   **Response**:
     -   `Code (uint32)`: Response code.
     -   `Data ([]byte)`: Result bytes, if any.
     -   `Log (string)`: The output of the application's logger. May
@@ -224,13 +232,14 @@ See below for more details on the message types and how they are used.
 
 ### EndBlock
 
--   **Arguments**:
+-   **Request**:
     -   `Height (int64)`: Height of the block just executed.
--   **Returns**:
+-   **Response**:
     -   `ValidatorUpdates ([]Validator)`: Changes to validator set (set
         voting power to 0 to remove).
     -   `ConsensusParamUpdates (ConsensusParams)`: Changes to
         consensus-critical time, size, and other parameters.
+    -   `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
 -   **Usage**:
     -   Signals the end of a block.
     -   Called prior to each Commit, after all transactions.
@@ -239,7 +248,7 @@ See below for more details on the message types and how they are used.
 
 ### Commit
 
--   **Returns**:
+-   **Response**:
     -   `Data ([]byte)`: The Merkle root hash
 -   **Usage**:
     -   Persist the application state.
@@ -247,3 +256,68 @@ See below for more details on the message types and how they are used.
     -   It's critical that all application instances return the
         same hash. If not, they will not be able to agree on the next
         block, because the hash is included in the next block!
+
+## Data Messages
+
+### Header
+
+- **Fields**:
+    - `ChainID (string)`: ID of the blockchain
+    - `Height (int64)`: Height of the block in the chain
+    - `Time (int64)`: Unix time of the block
+    - `NumTxs (int32)`: Number of transactions in the block
+    - `TotalTxs (int64)`: Total number of transactions in the blockchain until
+      now
+    - `LastBlockHash ([]byte)`: Hash of the previous (parent) block
+    - `AppHash ([]byte)`: Data returned by the last call to `Commit` - typically the
+      Merkle root of the application state after executing the previous block's
+      transactions
+    - `Proposer (Validator)`: Original proposer for the block
+- **Usage**:
+    - Provided in RequestBeginBlock
+    - Provides important context about the current state of the blockchain -
+      especially height and time.
+    - Provides the proposer of the current block, for use in proposer-based
+      reward mechanisms.
+
+### Validator
+
+- **Fields**:
+    - `Address ([]byte)`: Address of the validator (hash of the public key)
+    - `PubKey (PubKey)`:  Public key of the validator
+    - `Power (int64)`: Voting power of the validator
+- **Usage**:
+    - Provides all identifying information about the validator
+
+### SigningValidator
+
+- **Fields**:
+    - `Validator (Validator)`: A validator
+    - `SignedLastBlock (bool)`: Indicated whether or not the validator signed
+      the last block
+- **Usage**:
+    - Indicates whether a validator signed the last block, allowing for rewards
+      based on validator availability
+
+### PubKey
+
+- **Fields**:
+    - `Type (string)`: Type of the public key. A simple string like `"ed25519"`.
+      In the future, may indicate a serialization algorithm to parse the `Data`,
+      for instance `"amino"`.
+    - `Data ([]byte)`: Public key data. For a simple public key, it's just the
+      raw bytes. If the `Type` indicates an encoding algorithm, this is the
+      encoded public key.
+- **Usage**:
+    - A generic and extensible typed public key
+
+### Evidence
+
+- **Fields**:
+    - `Type (string)`: Type of the evidence. A hierarchical path like
+      "duplicate/vote".
+    - `Validator (Validator`: The offending validator
+    - `Height (int64)`: Height when the offense was committed
+    - `Time (int64)`: Unix time of the block at height `Height`
+    - `TotalVotingPower (int64)`: Total voting power of the validator set at
+      height `Height`
