@@ -13,10 +13,10 @@ import (
 	"github.com/tendermint/abci/example/kvstore"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/db"
@@ -40,7 +40,7 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	// COPY PASTE FROM node.go WITH A FEW MODIFICATIONS
 	// NOTE: we can't import node package because of circular dependency
 	privValidatorFile := config.PrivValidatorFile()
-	privValidator := pvm.LoadOrGenFilePV(privValidatorFile)
+	privValidator := privval.LoadOrGenFilePV(privValidatorFile)
 	genDoc, err := types.GenesisDocFromFile(config.GenesisFile())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read genesis file")
@@ -65,8 +65,8 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 		return nil, errors.Wrap(err, "failed to start event bus")
 	}
 	defer eventBus.Stop()
-	mempool := types.MockMempool{}
-	evpool := types.MockEvidencePool{}
+	mempool := sm.MockMempool{}
+	evpool := sm.MockEvidencePool{}
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(), mempool, evpool)
 	consensusState := NewConsensusState(config.Consensus, state.Copy(), blockExec, blockStore, mempool, evpool)
 	consensusState.SetLogger(logger)

@@ -8,7 +8,7 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
@@ -56,7 +56,7 @@ const TEST_HOST = "localhost"
 // If connect==Connect2Switches, the switches will be fully connected.
 // initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
 // NOTE: panics if any switch fails to start.
-func MakeConnectedSwitches(cfg *cfg.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
+func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
 		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
@@ -104,7 +104,7 @@ func Connect2Switches(switches []*Switch, i, j int) {
 }
 
 func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
-	pc, err := newInboundPeerConn(conn, sw.peerConfig, sw.nodeKey.PrivKey)
+	pc, err := newInboundPeerConn(conn, sw.config, sw.nodeKey.PrivKey)
 	if err != nil {
 		if err := conn.Close(); err != nil {
 			sw.Logger.Error("Error closing connection", "err", err)
@@ -131,7 +131,7 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func MakeSwitch(cfg *cfg.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
+func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{

@@ -13,21 +13,22 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/p2p"
-	"github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 var (
-	config *cfg.P2PConfig
+	cfg *config.P2PConfig
 )
 
 func init() {
-	config = cfg.DefaultP2PConfig()
-	config.PexReactor = true
-	config.AllowDuplicateIP = true
+	cfg = config.DefaultP2PConfig()
+	cfg.PexReactor = true
+	cfg.AllowDuplicateIP = true
 }
 
 func TestPEXReactorBasic(t *testing.T) {
@@ -53,6 +54,7 @@ func TestPEXReactorAddRemovePeer(t *testing.T) {
 	outboundPeer := p2p.CreateRandomPeer(true)
 
 	r.AddPeer(outboundPeer)
+	assert.Equal(t, size+1, book.Size(), "outbound peers should not be added to the address book")
 
 	r.RemovePeer(outboundPeer, "peer not available")
 }
@@ -81,7 +83,7 @@ func TestPEXReactorRunning(t *testing.T) {
 
 	// create switches
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.MakeSwitch(config, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+		switches[i] = p2p.MakeSwitch(cfg, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
 			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
 			books[i].SetLogger(logger.With("pex", i))
 			sw.SetAddrBook(books[i])
@@ -209,7 +211,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 
 	// 1. create seed
 	seed := p2p.MakeSwitch(
-		config,
+		cfg,
 		0,
 		"127.0.0.1",
 		"123.123.123",
@@ -239,7 +241,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 
 	// 2. create usual peer with only seed configured.
 	peer := p2p.MakeSwitch(
-		config,
+		cfg,
 		1,
 		"127.0.0.1",
 		"123.123.123",
@@ -425,7 +427,7 @@ func assertPeersWithTimeout(
 	}
 }
 
-func createReactor(config *PEXReactorConfig) (r *PEXReactor, book *addrBook) {
+func createReactor(conf *PEXReactorConfig) (r *PEXReactor, book *addrBook) {
 	// directory to store address book
 	dir, err := ioutil.TempDir("", "pex_reactor")
 	if err != nil {
@@ -434,7 +436,7 @@ func createReactor(config *PEXReactorConfig) (r *PEXReactor, book *addrBook) {
 	book = NewAddrBook(filepath.Join(dir, "addrbook.json"), true)
 	book.SetLogger(log.TestingLogger())
 
-	r = NewPEXReactor(book, config)
+	r = NewPEXReactor(book, conf)
 	r.SetLogger(log.TestingLogger())
 	return
 }
@@ -447,7 +449,7 @@ func teardownReactor(book *addrBook) {
 }
 
 func createSwitchAndAddReactors(reactors ...p2p.Reactor) *p2p.Switch {
-	sw := p2p.MakeSwitch(config, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
+	sw := p2p.MakeSwitch(cfg, 0, "127.0.0.1", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch { return sw })
 	sw.SetLogger(log.TestingLogger())
 	for _, r := range reactors {
 		sw.AddReactor(r.String(), r)

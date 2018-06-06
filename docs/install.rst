@@ -1,6 +1,9 @@
 Install Tendermint
 ==================
 
+The fastest and easiest way to install the ``tendermint`` binary
+is to run `this script <https://github.com/tendermint/tendermint/blob/develop/scripts/install_tendermint.sh>`__ on a fresh Ubuntu instance. Read the comments / instructions carefully (i.e., reset your terminal after running the script).
+
 From Binary
 -----------
 

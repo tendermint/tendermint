@@ -10,9 +10,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
-	tmconn "github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/config"
+	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
 const testCh = 0x01
@@ -21,11 +23,11 @@ func TestPeerBasic(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: cfg}
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), DefaultPeerConfig())
+	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), cfg)
 	require.Nil(err)
 
 	err = p.Start()
@@ -44,7 +46,7 @@ func TestPeerBasic(t *testing.T) {
 func TestPeerSend(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	config := DefaultPeerConfig()
+	config := cfg
 
 	// simulate remote peer
 	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: config}
@@ -63,7 +65,7 @@ func TestPeerSend(t *testing.T) {
 	assert.True(p.Send(testCh, []byte("Asylum")))
 }
 
-func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig) (*peer, error) {
+func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *config.P2PConfig) (*peer, error) {
 	chDescs := []*tmconn.ChannelDescriptor{
 		{ID: testCh, Priority: 1},
 	}
@@ -91,7 +93,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *PeerConfig)
 
 type remotePeer struct {
 	PrivKey    crypto.PrivKey
-	Config     *PeerConfig
+	Config     *config.P2PConfig
 	addr       *NetAddress
 	quit       chan struct{}
 	channels   cmn.HexBytes

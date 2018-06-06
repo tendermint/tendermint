@@ -51,9 +51,9 @@ var (
 
 	// interfaces defined in types and above
 	stateDB        dbm.DB
-	blockStore     types.BlockStore
-	mempool        types.Mempool
-	evidencePool   types.EvidencePool
+	blockStore     sm.BlockStore
+	mempool        sm.Mempool
+	evidencePool   sm.EvidencePool
 	consensusState Consensus
 	p2pSwitch      P2P
 
@@ -72,15 +72,15 @@ func SetStateDB(db dbm.DB) {
 	stateDB = db
 }
 
-func SetBlockStore(bs types.BlockStore) {
+func SetBlockStore(bs sm.BlockStore) {
 	blockStore = bs
 }
 
-func SetMempool(mem types.Mempool) {
+func SetMempool(mem sm.Mempool) {
 	mempool = mem
 }
 
-func SetEvidencePool(evpool types.EvidencePool) {
+func SetEvidencePool(evpool sm.EvidencePool) {
 	evidencePool = evpool
 }
 
@@ -125,6 +125,10 @@ func SetEventBus(b *types.EventBus) {
 }
 
 func validatePage(page, perPage, totalCount int) int {
+	if perPage < 1 {
+		return 1
+	}
+
 	pages := ((totalCount - 1) / perPage) + 1
 	if page < 1 {
 		page = 1

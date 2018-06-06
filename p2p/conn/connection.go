@@ -83,7 +83,7 @@ type MConnection struct {
 	onReceive     receiveCbFunc
 	onError       errorCbFunc
 	errored       uint32
-	config        *MConnConfig
+	config        MConnConfig
 
 	quit       chan struct{}
 	flushTimer *cmn.ThrottleTimer // flush writes as necessary but throttled.
@@ -121,8 +121,8 @@ func (cfg *MConnConfig) maxPacketMsgTotalSize() int {
 }
 
 // DefaultMConnConfig returns the default config.
-func DefaultMConnConfig() *MConnConfig {
-	return &MConnConfig{
+func DefaultMConnConfig() MConnConfig {
+	return MConnConfig{
 		SendRate:                defaultSendRate,
 		RecvRate:                defaultRecvRate,
 		MaxPacketMsgPayloadSize: maxPacketMsgPayloadSizeDefault,
@@ -143,7 +143,7 @@ func NewMConnection(conn net.Conn, chDescs []*ChannelDescriptor, onReceive recei
 }
 
 // NewMConnectionWithConfig wraps net.Conn and creates multiplex connection with a config
-func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config *MConnConfig) *MConnection {
+func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onReceive receiveCbFunc, onError errorCbFunc, config MConnConfig) *MConnection {
 	if config.PongTimeout >= config.PingInterval {
 		panic("pongTimeout must be less than pingInterval (otherwise, next ping will reset pong timer)")
 	}
@@ -545,9 +545,7 @@ FOR_LOOP:
 // not goroutine-safe
 func (c *MConnection) stopPongTimer() {
 	if c.pongTimer != nil {
-		if !c.pongTimer.Stop() {
-			<-c.pongTimer.C
-		}
+		_ = c.pongTimer.Stop()
 		c.pongTimer = nil
 	}
 }

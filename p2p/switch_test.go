@@ -14,18 +14,18 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tmlibs/log"
 
-	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 var (
-	config *cfg.P2PConfig
+	cfg *config.P2PConfig
 )
 
 func init() {
-	config = cfg.DefaultP2PConfig()
-	config.PexReactor = true
-	config.AllowDuplicateIP = true
+	cfg = config.DefaultP2PConfig()
+	cfg.PexReactor = true
+	cfg.AllowDuplicateIP = true
 }
 
 type PeerMessage struct {
@@ -85,7 +85,7 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 // XXX: note this uses net.Pipe and not a proper TCP conn
 func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
-	switches := MakeConnectedSwitches(config, 2, initSwitch, Connect2Switches)
+	switches := MakeConnectedSwitches(cfg, 2, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
 }
 
@@ -152,8 +152,8 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 }
 
 func TestConnAddrFilter(t *testing.T) {
-	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
@@ -181,14 +181,14 @@ func TestConnAddrFilter(t *testing.T) {
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
-	s1 := MakeSwitch(config, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
 	// addr := s1.NodeInfo().NetAddress()
 
 	// // add ourselves like we do in node.go#427
 	// s1.addrBook.AddOurAddress(addr)
 
 	// simulate s1 having a public IP by creating a remote peer with the same ID
-	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: s1.nodeKey.PrivKey, Config: cfg}
 	rp.Start()
 
 	// addr should be rejected in addPeer based on the same ID
@@ -214,8 +214,8 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 }
 
 func TestConnIDFilter(t *testing.T) {
-	s1 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	s2 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
@@ -251,7 +251,7 @@ func TestConnIDFilter(t *testing.T) {
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -259,11 +259,11 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: cfg}
 	rp.Start()
 	defer rp.Stop()
 
-	pc, err := newOutboundPeerConn(rp.Addr(), DefaultPeerConfig(), false, sw.nodeKey.PrivKey)
+	pc, err := newOutboundPeerConn(rp.Addr(), cfg, false, sw.nodeKey.PrivKey)
 	require.Nil(err)
 	err = sw.addPeer(pc)
 	require.Nil(err)
@@ -281,7 +281,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(config, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -289,11 +289,11 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: DefaultPeerConfig()}
+	rp := &remotePeer{PrivKey: crypto.GenPrivKeyEd25519(), Config: cfg}
 	rp.Start()
 	defer rp.Stop()
 
-	pc, err := newOutboundPeerConn(rp.Addr(), DefaultPeerConfig(), true, sw.nodeKey.PrivKey)
+	pc, err := newOutboundPeerConn(rp.Addr(), cfg, true, sw.nodeKey.PrivKey)
 	//	sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey,
 	require.Nil(err)
 
@@ -320,7 +320,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	// simulate another remote peer
 	rp = &remotePeer{
 		PrivKey: crypto.GenPrivKeyEd25519(),
-		Config:  DefaultPeerConfig(),
+		Config:  cfg,
 		// Use different interface to prevent duplicate IP filter, this will break
 		// beyond two peers.
 		listenAddr: "127.0.0.1:0",
@@ -329,9 +329,9 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer rp.Stop()
 
 	// simulate first time dial failure
-	peerConfig := DefaultPeerConfig()
-	peerConfig.DialFail = true
-	err = sw.addOutboundPeerWithConfig(rp.Addr(), peerConfig, true)
+	conf := config.DefaultP2PConfig()
+	conf.TestDialFail = true
+	err = sw.addOutboundPeerWithConfig(rp.Addr(), conf, true)
 	require.NotNil(err)
 
 	// DialPeerWithAddres - sw.peerConfig resets the dialer
@@ -348,7 +348,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 }
 
 func TestSwitchFullConnectivity(t *testing.T) {
-	switches := MakeConnectedSwitches(config, 3, initSwitchFunc, Connect2Switches)
+	switches := MakeConnectedSwitches(cfg, 3, initSwitchFunc, Connect2Switches)
 	defer func() {
 		for _, sw := range switches {
 			sw.Stop()

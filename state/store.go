@@ -80,15 +80,15 @@ func loadState(db dbm.DB, key []byte) (state State) {
 }
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
-func SaveState(db dbm.DB, s State) {
-	saveState(db, s, stateKey)
+func SaveState(db dbm.DB, state State) {
+	saveState(db, state, stateKey)
 }
 
-func saveState(db dbm.DB, s State, key []byte) {
-	nextHeight := s.LastBlockHeight + 1
-	saveValidatorsInfo(db, nextHeight, s.LastHeightValidatorsChanged, s.Validators)
-	saveConsensusParamsInfo(db, nextHeight, s.LastHeightConsensusParamsChanged, s.ConsensusParams)
-	db.SetSync(stateKey, s.Bytes())
+func saveState(db dbm.DB, state State, key []byte) {
+	nextHeight := state.LastBlockHeight + 1
+	saveValidatorsInfo(db, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
+	saveConsensusParamsInfo(db, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
+	db.SetSync(stateKey, state.Bytes())
 }
 
 //------------------------------------------------------------------------

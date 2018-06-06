@@ -32,7 +32,7 @@ func RegisterRPCFuncs(mux *http.ServeMux, funcMap map[string]*RPCFunc, cdc *amin
 	}
 
 	// JSONRPC endpoints
-	mux.HandleFunc("/", makeJSONRPCHandler(funcMap, cdc, logger))
+	mux.HandleFunc("/", handleInvalidJSONRPCPaths(makeJSONRPCHandler(funcMap, cdc, logger)))
 }
 
 //-------------------------------------
@@ -150,6 +150,19 @@ func makeJSONRPCHandler(funcMap map[string]*RPCFunc, cdc *amino.Codec, logger lo
 			return
 		}
 		WriteRPCResponseHTTP(w, types.NewRPCSuccessResponse(cdc, request.ID, result))
+	}
+}
+
+func handleInvalidJSONRPCPaths(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Since the pattern "/" matches all paths not matched by other registered patterns we check whether the path is indeed
+		// "/", otherwise return a 404 error
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
+
+		next(w, r)
 	}
 }
 

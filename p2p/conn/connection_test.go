@@ -6,9 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/go-amino"
+
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -242,7 +244,11 @@ func TestMConnectionMultiplePings(t *testing.T) {
 }
 
 func TestMConnectionPingPongs(t *testing.T) {
+	// check that we are not leaking any go-routines
+	defer leaktest.CheckTimeout(t, 10*time.Second)()
+
 	server, client := net.Pipe()
+
 	defer server.Close()
 	defer client.Close()
 

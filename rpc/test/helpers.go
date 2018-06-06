@@ -15,11 +15,11 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	core_grpc "github.com/tendermint/tendermint/rpc/grpc"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
-	pvm "github.com/tendermint/tendermint/types/priv_validator"
 )
 
 var globalConfig *cfg.Config
@@ -118,7 +118,7 @@ func NewTendermint(app abci.Application) *nm.Node {
 	logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 	logger = log.NewFilter(logger, log.AllowError())
 	pvFile := config.PrivValidatorFile()
-	pv := pvm.LoadOrGenFilePV(pvFile)
+	pv := privval.LoadOrGenFilePV(pvFile)
 	papp := proxy.NewLocalClientCreator(app)
 	node, err := nm.NewNode(config, pv, papp,
 		nm.DefaultGenesisDocProviderFunc(config),

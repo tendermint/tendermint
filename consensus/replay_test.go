@@ -23,10 +23,10 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -263,8 +263,8 @@ const (
 )
 
 var (
-	mempool = types.MockMempool{}
-	evpool  = types.MockEvidencePool{}
+	mempool = sm.MockMempool{}
+	evpool  = sm.MockEvidencePool{}
 )
 
 //---------------------------------------
@@ -329,7 +329,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	walFile := tempWALWithData(walBody)
 	config.Consensus.SetWalFile(walFile)
 
-	privVal := pvm.LoadFilePV(config.PrivValidatorFile())
+	privVal := privval.LoadFilePV(config.PrivValidatorFile())
 
 	wal, err := NewWAL(walFile)
 	if err != nil {

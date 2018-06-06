@@ -55,67 +55,67 @@ type State struct {
 }
 
 // Copy makes a copy of the State for mutating.
-func (s State) Copy() State {
+func (state State) Copy() State {
 	return State{
-		ChainID: s.ChainID,
+		ChainID: state.ChainID,
 
-		LastBlockHeight:  s.LastBlockHeight,
-		LastBlockTotalTx: s.LastBlockTotalTx,
-		LastBlockID:      s.LastBlockID,
-		LastBlockTime:    s.LastBlockTime,
+		LastBlockHeight:  state.LastBlockHeight,
+		LastBlockTotalTx: state.LastBlockTotalTx,
+		LastBlockID:      state.LastBlockID,
+		LastBlockTime:    state.LastBlockTime,
 
-		Validators:                  s.Validators.Copy(),
-		LastValidators:              s.LastValidators.Copy(),
-		LastHeightValidatorsChanged: s.LastHeightValidatorsChanged,
+		Validators:                  state.Validators.Copy(),
+		LastValidators:              state.LastValidators.Copy(),
+		LastHeightValidatorsChanged: state.LastHeightValidatorsChanged,
 
-		ConsensusParams:                  s.ConsensusParams,
-		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
+		ConsensusParams:                  state.ConsensusParams,
+		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
 
-		AppHash: s.AppHash,
+		AppHash: state.AppHash,
 
-		LastResultsHash: s.LastResultsHash,
+		LastResultsHash: state.LastResultsHash,
 	}
 }
 
 // Equals returns true if the States are identical.
-func (s State) Equals(s2 State) bool {
-	sbz, s2bz := s.Bytes(), s2.Bytes()
+func (state State) Equals(state2 State) bool {
+	sbz, s2bz := state.Bytes(), state2.Bytes()
 	return bytes.Equal(sbz, s2bz)
 }
 
 // Bytes serializes the State using go-amino.
-func (s State) Bytes() []byte {
-	return cdc.MustMarshalBinaryBare(s)
+func (state State) Bytes() []byte {
+	return cdc.MustMarshalBinaryBare(state)
 }
 
 // IsEmpty returns true if the State is equal to the empty State.
-func (s State) IsEmpty() bool {
-	return s.Validators == nil // XXX can't compare to Empty
+func (state State) IsEmpty() bool {
+	return state.Validators == nil // XXX can't compare to Empty
 }
 
 // GetValidators returns the last and current validator sets.
-func (s State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
-	return s.LastValidators, s.Validators
+func (state State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
+	return state.LastValidators, state.Validators
 }
 
 //------------------------------------------------------------------------
 // Create a block from the latest state
 
 // MakeBlock builds a block with the given txs and commit from the current state.
-func (s State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
+func (state State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
 	// build base block
 	block := types.MakeBlock(height, txs, commit)
 
 	// fill header with state data
-	block.ChainID = s.ChainID
-	block.TotalTxs = s.LastBlockTotalTx + block.NumTxs
-	block.LastBlockID = s.LastBlockID
-	block.ValidatorsHash = s.Validators.Hash()
-	block.AppHash = s.AppHash
-	block.ConsensusHash = s.ConsensusParams.Hash()
-	block.LastResultsHash = s.LastResultsHash
+	block.ChainID = state.ChainID
+	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
+	block.LastBlockID = state.LastBlockID
+	block.ValidatorsHash = state.Validators.Hash()
+	block.AppHash = state.AppHash
+	block.ConsensusHash = state.ConsensusParams.Hash()
+	block.LastResultsHash = state.LastResultsHash
 
-	return block, block.MakePartSet(s.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
 //------------------------------------------------------------------------

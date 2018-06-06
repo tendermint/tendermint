@@ -10,11 +10,12 @@ import (
 	"github.com/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/abci/types"
 	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
+
+	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -34,7 +35,7 @@ func TestApplyBlock(t *testing.T) {
 	state, stateDB := state(), dbm.NewMemDB()
 
 	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
-		types.MockMempool{}, types.MockEvidencePool{})
+		MockMempool{}, MockEvidencePool{})
 
 	block := makeBlock(state, 1)
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}

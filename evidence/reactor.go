@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
+	clist "github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -15,8 +16,10 @@ import (
 const (
 	EvidenceChannel = byte(0x38)
 
-	maxMsgSize                 = 1048576 // 1MB TODO make it configurable
-	broadcastEvidenceIntervalS = 60      // broadcast uncommitted evidence this often
+	maxMsgSize = 1048576 // 1MB TODO make it configurable
+
+	broadcastEvidenceIntervalS = 60  // broadcast uncommitted evidence this often
+	peerCatchupSleepIntervalMS = 100 // If peer is behind, sleep this amount
 )
 
 // EvidenceReactor handles evpool evidence broadcasting amongst peers.
@@ -43,11 +46,7 @@ func (evR *EvidenceReactor) SetLogger(l log.Logger) {
 
 // OnStart implements cmn.Service
 func (evR *EvidenceReactor) OnStart() error {
-	if err := evR.BaseReactor.OnStart(); err != nil {
-		return err
-	}
-	go evR.broadcastRoutine()
-	return nil
+	return evR.BaseReactor.OnStart()
 }
 
 // GetChannels implements Reactor.
@@ -63,14 +62,7 @@ func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
 
 // AddPeer implements Reactor.
 func (evR *EvidenceReactor) AddPeer(peer p2p.Peer) {
-	// send the peer our high-priority evidence.
-	// the rest will be sent by the broadcastRoutine
-	evidences := evR.evpool.PriorityEvidence()
-	msg := &EvidenceListMessage{evidences}
-	success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
-	if !success {
-		// TODO: remove peer ?
-	}
+	go evR.broadcastEvidenceRoutine(peer)
 }
 
 // RemovePeer implements Reactor.
@@ -109,28 +101,95 @@ func (evR *EvidenceReactor) SetEventBus(b *types.EventBus) {
 	evR.eventBus = b
 }
 
-// Broadcast new evidence to all peers.
-// Broadcasts must be non-blocking so routine is always available to read off EvidenceChan.
-func (evR *EvidenceReactor) broadcastRoutine() {
-	ticker := time.NewTicker(time.Second * broadcastEvidenceIntervalS)
+// Modeled after the mempool routine.
+// - Evidence accumulates in a clist.
+// - Each peer has a routien that iterates through the clist,
+// sending available evidence to the peer.
+// - If we're waiting for new evidence and the list is not empty,
+// start iterating from the beginning again.
+func (evR *EvidenceReactor) broadcastEvidenceRoutine(peer p2p.Peer) {
+	var next *clist.CElement
 	for {
-		select {
-		case evidence := <-evR.evpool.EvidenceChan():
-			// broadcast some new evidence
-			msg := &EvidenceListMessage{[]types.Evidence{evidence}}
-			evR.Switch.Broadcast(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+		// This happens because the CElement we were looking at got garbage
+		// collected (removed). That is, .NextWait() returned nil. Go ahead and
+		// start from the beginning.
+		if next == nil {
+			select {
+			case <-evR.evpool.EvidenceWaitChan(): // Wait until evidence is available
+				if next = evR.evpool.EvidenceFront(); next == nil {
+					continue
+				}
+			case <-peer.Quit():
+				return
+			case <-evR.Quit():
+				return
+			}
+		}
 
-			// TODO: Broadcast runs asynchronously, so this should wait on the successChan
-			// in another routine before marking to be proper.
-			evR.evpool.evidenceStore.MarkEvidenceAsBroadcasted(evidence)
-		case <-ticker.C:
-			// broadcast all pending evidence
-			msg := &EvidenceListMessage{evR.evpool.PendingEvidence()}
-			evR.Switch.Broadcast(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+		ev := next.Value.(types.Evidence)
+		msg, retry := evR.checkSendEvidenceMessage(peer, ev)
+		if msg != nil {
+			success := peer.Send(EvidenceChannel, cdc.MustMarshalBinaryBare(msg))
+			retry = !success
+		}
+
+		if retry {
+			time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
+			continue
+		}
+
+		afterCh := time.After(time.Second * broadcastEvidenceIntervalS)
+		select {
+		case <-afterCh:
+			// start from the beginning every tick.
+			// TODO: only do this if we're at the end of the list!
+			next = nil
+		case <-next.NextWaitChan():
+			// see the start of the for loop for nil check
+			next = next.Next()
+		case <-peer.Quit():
+			return
 		case <-evR.Quit():
 			return
 		}
 	}
+}
+
+// Returns the message to send the peer, or nil if the evidence is invalid for the peer.
+// If message is nil, return true if we should sleep and try again.
+func (evR EvidenceReactor) checkSendEvidenceMessage(peer p2p.Peer, ev types.Evidence) (msg EvidenceMessage, retry bool) {
+
+	// make sure the peer is up to date
+	evHeight := ev.Height()
+	peerState, ok := peer.Get(types.PeerStateKey).(PeerState)
+	if !ok {
+		evR.Logger.Info("Found peer without PeerState", "peer", peer)
+		return nil, true
+	}
+
+	// NOTE: We only send evidence to peers where
+	// peerHeight - maxAge < evidenceHeight < peerHeight
+	maxAge := evR.evpool.State().ConsensusParams.EvidenceParams.MaxAge
+	peerHeight := peerState.GetHeight()
+	if peerHeight < evHeight {
+		// peer is behind. sleep while he catches up
+		return nil, true
+	} else if peerHeight > evHeight+maxAge {
+		// evidence is too old, skip
+		// NOTE: if evidence is too old for an honest peer,
+		// then we're behind and either it already got committed or it never will!
+		evR.Logger.Info("Not sending peer old evidence", "peerHeight", peerHeight, "evHeight", evHeight, "maxAge", maxAge, "peer", peer)
+		return nil, false
+	}
+
+	// send evidence
+	msg = &EvidenceListMessage{[]types.Evidence{ev}}
+	return msg, false
+}
+
+// PeerState describes the state of a peer.
+type PeerState interface {
+	GetHeight() int64
 }
 
 //-----------------------------------------------------------------------------

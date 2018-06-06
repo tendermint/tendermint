@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.19.9
+
+*June 5th, 2018*
+
+BREAKING CHANGES
+
+- [types/priv_validator] Moved to top level `privval` package
+
+FEATURES
+
+- [config] Collapse PeerConfig into P2PConfig
+- [docs] Add quick-install script
+- [docs/spec] Add table of Amino prefixes
+
+BUG FIXES
+
+- [rpc] Return 404 for unknown endpoints
+- [consensus] Flush WAL on stop
+- [evidence] Don't send evidence to peers that are behind
+- [p2p] Fix memory leak on peer disconnects
+- [rpc] Fix panic when `per_page=0`
+
 ## 0.19.8
 
 *June 4th, 2018*
@@ -34,7 +56,7 @@ FEATURES
 
 IMPROVEMENTS:
 
-- [consensus] consensus reactor now receives events from a separate event bus,
+- [consensus] Consensus reactor now receives events from a separate synchronous event bus,
   which is not dependant on external RPC load
 - [consensus/wal] do not look for height in older files if we've seen height - 1
 - [docs] Various cleanup and link fixes
@@ -46,6 +68,12 @@ IMPROVEMENTS:
 BUG FIXES
 
 - [blockchain] Fix fast-sync deadlock during high peer turnover
+
+BUG FIX:
+
+- [evidence] Dont send peers evidence from heights they haven't synced to yet
+- [p2p] Refuse connections to more than one peer with the same IP
+- [docs] Various fixes
 
 ## 0.19.5
 

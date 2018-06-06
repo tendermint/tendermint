@@ -8,7 +8,7 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
-	priv_val "github.com/tendermint/tendermint/types/priv_validator"
+	"github.com/tendermint/tendermint/privval"
 )
 
 func main() {
@@ -30,13 +30,13 @@ func main() {
 		"privPath", *privValPath,
 	)
 
-	privVal := priv_val.LoadFilePV(*privValPath)
+	pv := privval.LoadFilePV(*privValPath)
 
-	rs := priv_val.NewRemoteSigner(
+	rs := privval.NewRemoteSigner(
 		logger,
 		*chainID,
 		*addr,
-		privVal,
+		pv,
 		crypto.GenPrivKeyEd25519(),
 	)
 	err := rs.Start()

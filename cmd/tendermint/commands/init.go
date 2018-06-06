@@ -7,8 +7,8 @@ import (
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	pvm "github.com/tendermint/tendermint/types/priv_validator"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -26,12 +26,12 @@ func initFiles(cmd *cobra.Command, args []string) error {
 func initFilesWithConfig(config *cfg.Config) error {
 	// private validator
 	privValFile := config.PrivValidatorFile()
-	var pv *pvm.FilePV
+	var pv *privval.FilePV
 	if cmn.FileExists(privValFile) {
-		pv = pvm.LoadFilePV(privValFile)
+		pv = privval.LoadFilePV(privValFile)
 		logger.Info("Found private validator", "path", privValFile)
 	} else {
-		pv = pvm.GenFilePV(privValFile)
+		pv = privval.GenFilePV(privValFile)
 		pv.Save()
 		logger.Info("Generated private validator", "path", privValFile)
 	}
