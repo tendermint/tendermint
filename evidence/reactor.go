@@ -46,10 +46,7 @@ func (evR *EvidenceReactor) SetLogger(l log.Logger) {
 
 // OnStart implements cmn.Service
 func (evR *EvidenceReactor) OnStart() error {
-	if err := evR.BaseReactor.OnStart(); err != nil {
-		return err
-	}
-	return nil
+	return evR.BaseReactor.OnStart()
 }
 
 // GetChannels implements Reactor.
