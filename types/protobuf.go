@@ -167,3 +167,19 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 		return nil, fmt.Errorf("Unknown pubkey type %v", pubKey.Type)
 	}
 }
+
+func (pb2tm) Validators(vals []abci.Validator) ([]*Validator, error) {
+	tmVals := make([]*Validator, len(vals))
+	for i, v := range vals {
+		pub, err := PB2TM.PubKey(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		tmVals[i] = &Validator{
+			Address:     v.Address,
+			PubKey:      pub,
+			VotingPower: v.Power,
+		}
+	}
+	return tmVals, nil
+}

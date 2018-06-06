@@ -238,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "7cf66f570e2f47b286985e2d688b0a400c028e4c"
-  version = "v0.11.0-rc6"
+  revision = "ebee2fe114020aa49c70bbbae50b7079fc7e7b90"
+  version = "v0.11.0"
 
 [[projects]]
   branch = "master"
@@ -313,7 +313,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
+  revision = "9527bec2660bd847c050fda93a0f0c6dee0800bb"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -374,6 +374,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "132980da98fc92b6c0dd988df07316a340f5fc91ee77593cf984ade4e3e5fd62"
+  inputs-digest = "ae6792578b0664708339f4c05e020687d6b799ad6f8282394b919de69e403d1f"
   solver-name = "gps-cdcl"
   solver-version = 1
