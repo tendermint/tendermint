@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-
-	tmconn "github.com/tendermint/tendermint/p2p/conn"
 )
 
 const (
@@ -304,9 +302,8 @@ type P2PConfig struct {
 	AllowDuplicateIP bool `mapstructure:"allow_duplicate_ip"`
 
 	// Peer connection configuration.
-	HandshakeTimeout time.Duration      `mapstructure:"handshake_timeout"`
-	DialTimeout      time.Duration      `mapstructure:"dial_timeout"`
-	MConfig          tmconn.MConnConfig `mapstructure:"connection"`
+	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
+	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
 
 	// Testing params.
 	// Force dial to fail
@@ -332,7 +329,6 @@ func DefaultP2PConfig() *P2PConfig {
 		AllowDuplicateIP:        true, // so non-breaking yet
 		HandshakeTimeout:        20 * time.Second,
 		DialTimeout:             3 * time.Second,
-		MConfig:                 tmconn.DefaultMConnConfig(),
 		TestDialFail:            false,
 		TestFuzz:                false,
 		TestFuzzConfig:          DefaultFuzzConnConfig(),
