@@ -37,10 +37,11 @@ Tendermint Tools
 .. the tools/ files are pulled in from the tools repo
 .. see the bottom of conf.py
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    deploy-testnets.md
    terraform-and-ansible.md
+   tools/docker.md
    tools/benchmarking.md
    tools/monitoring.md
 
@@ -67,9 +68,10 @@ Tendermint 201
 .. toctree::
    :maxdepth: 2
 
-   specification.md
    determinism.md
    transactional-semantics.md
+
+.. specification.md
 
 * For a deeper dive, see `this thesis <https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769>`__.
 * There is also the `original whitepaper <https://tendermint.com/static/docs/tendermint.pdf>`__, though it is now quite outdated.

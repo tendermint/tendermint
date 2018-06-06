@@ -300,8 +300,8 @@ Monax's permissioning scheme, and native contracts extensions.
 But the ultimate flexibility comes from being able to write the
 application easily in any language.
 
-We have implemented the counter in a number of languages (see the
-example directory &lt;https://github.com/tendermint/abci/tree/master/example\_\_).
+We have implemented the counter in a number of languages [see the
+example directory](https://github.com/tendermint/abci/tree/master/example).
 
 To run the Node JS version, `cd` to `example/js` and run
 
