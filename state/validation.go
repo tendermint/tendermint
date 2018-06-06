@@ -117,7 +117,7 @@ func VerifyEvidence(stateDB dbm.DB, state State, evidence types.Evidence) error 
 		return fmt.Errorf("Address %X was not a validator at height %d", addr, height)
 	}
 
-	if err := evidence.Verify(s.ChainID, val.PubKey); err != nil {
+	if err := evidence.Verify(state.ChainID, val.PubKey); err != nil {
 		return err
 	}
 

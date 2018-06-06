@@ -73,7 +73,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 		return state, ErrInvalidBlock(err)
 	}
 
-	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, s.LastValidators, blockExec.db)
+	abciResponses, err := execBlockOnProxyApp(blockExec.logger, blockExec.proxyApp, block, state.LastValidators, blockExec.db)
 	if err != nil {
 		return state, ErrProxyAppConn(err)
 	}
