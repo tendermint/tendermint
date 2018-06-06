@@ -32,12 +32,13 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
-		ChainID:       header.ChainID,
-		Height:        header.Height,
-		Time:          header.Time.Unix(),
-		NumTxs:        int32(header.NumTxs), // XXX: overflow
-		LastBlockHash: header.LastBlockID.Hash,
-		AppHash:       header.AppHash,
+		ChainID:        header.ChainID,
+		Height:         header.Height,
+		Time:           header.Time.Unix(),
+		NumTxs:         int32(header.NumTxs), // XXX: overflow
+		LastBlockHash:  header.LastBlockID.Hash,
+		ValidatorsHash: header.ValidatorsHash,
+		AppHash:        header.AppHash,
 	}
 }
 

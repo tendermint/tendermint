@@ -238,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "9af8b7a7c87478869f8c280ed9539470b8f470b4"
-  version = "v0.11.0-rc4"
+  revision = "7cf66f570e2f47b286985e2d688b0a400c028e4c"
+  version = "v0.11.0-rc6"
 
 [[projects]]
   branch = "master"
@@ -293,7 +293,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "df8d4716b3472e4a531c33cedbe537dae921a1a9"
+  revision = "b47b1587369238182299fe4dad77d05b8b461e06"
 
 [[projects]]
   branch = "master"
@@ -374,6 +374,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "6d7d755329cebd1f640324a38507c41b638ca0898737db9d633c75eff58c46f0"
+  inputs-digest = "132980da98fc92b6c0dd988df07316a340f5fc91ee77593cf984ade4e3e5fd62"
   solver-name = "gps-cdcl"
   solver-version = 1
