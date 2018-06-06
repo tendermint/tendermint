@@ -106,8 +106,8 @@ func (wal *baseWAL) OnStart() error {
 }
 
 func (wal *baseWAL) OnStop() {
-	wal.BaseService.OnStop()
 	wal.group.Stop()
+	wal.group.Close()
 }
 
 // Write is called in newStep and for each receive on the

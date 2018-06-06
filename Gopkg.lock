@@ -281,10 +281,10 @@
     "flowrate",
     "log",
     "merkle",
+    "merkle/tmhash",
     "test"
   ]
-  revision = "cc5f287c4798ffe88c04d02df219ecb6932080fd"
-  version = "v0.8.3-rc0"
+  revision = "0803cd354816952a8d8bcba88c592b3eb54ac427"
 
 [[projects]]
   branch = "master"
@@ -382,6 +382,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d85c98dcac32cc1fe05d006aa75e8985f6447a150a041b972a673a65e7681da9"
+  inputs-digest = "aa8421ead26741e4ff7a59edb48dd7f12c8f29e3d6c0a893f95ea3fa3023a095"
   solver-name = "gps-cdcl"
   solver-version = 1
