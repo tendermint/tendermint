@@ -171,4 +171,4 @@ devdoc_clean:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check protoc build dist install check_tools get_tools get_protoc update_tools get_vendor_deps test test_race test_integrations fmt metalinter metalinter_all docker_build docker_run docker_run_rm devdoc_init devdoc devdoc_save devdoc_clean
+.PHONY: check protoc build dist install check_tools get_tools get_protoc update_tools get_vendor_deps test test_race fmt metalinter metalinter_all docker_build docker_run docker_run_rm devdoc_init devdoc devdoc_save devdoc_clean
