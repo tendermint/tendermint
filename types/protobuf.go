@@ -32,20 +32,26 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
-		ChainID:        header.ChainID,
-		Height:         header.Height,
-		Time:           header.Time.Unix(),
-		NumTxs:         int32(header.NumTxs), // XXX: overflow
+		ChainID: header.ChainID,
+		Height:  header.Height,
+
+		Time:     header.Time.Unix(),
+		NumTxs:   int32(header.NumTxs), // XXX: overflow
+		TotalTxs: header.NumTxs,
+
 		LastBlockHash:  header.LastBlockID.Hash,
 		ValidatorsHash: header.ValidatorsHash,
 		AppHash:        header.AppHash,
+
+		// Proposer: TODO
 	}
 }
 
 func (tm2pb) Validator(val *Validator) abci.Validator {
 	return abci.Validator{
-		PubKey: TM2PB.PubKey(val.PubKey),
-		Power:  val.VotingPower,
+		Address: val.PubKey.Address(),
+		PubKey:  TM2PB.PubKey(val.PubKey),
+		Power:   val.VotingPower,
 	}
 }
 
@@ -101,28 +107,24 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 		panic(val)
 	}
 
-	abciEvidence := abci.Evidence{
-		Validator: abci.Validator{
-			Address: ev.Address(),
-			PubKey:  TM2PB.PubKey(val.PubKey),
-			Power:   val.VotingPower,
-		},
-		Height:           ev.Height(),
-		Time:             evTime.Unix(),
-		TotalVotingPower: valSet.TotalVotingPower(),
-	}
-
 	// set type
+	var evType string
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
-		abciEvidence.Type = ABCIEvidenceTypeDuplicateVote
+		evType = ABCIEvidenceTypeDuplicateVote
 	case *MockGoodEvidence, MockGoodEvidence:
-		abciEvidence.Type = ABCIEvidenceTypeMockGood
+		evType = ABCIEvidenceTypeMockGood
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
 	}
 
-	return abciEvidence
+	return abci.Evidence{
+		Type:             evType,
+		Validator:        TM2PB.Validator(val),
+		Height:           ev.Height(),
+		Time:             evTime.Unix(),
+		TotalVotingPower: valSet.TotalVotingPower(),
+	}
 }
 
 func (tm2pb) ValidatorFromPubKeyAndPower(pubkey crypto.PubKey, power int64) abci.Validator {
@@ -164,4 +166,20 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 	default:
 		return nil, fmt.Errorf("Unknown pubkey type %v", pubKey.Type)
 	}
+}
+
+func (pb2tm) Validators(vals []abci.Validator) ([]*Validator, error) {
+	tmVals := make([]*Validator, len(vals))
+	for i, v := range vals {
+		pub, err := PB2TM.PubKey(v.PubKey)
+		if err != nil {
+			return nil, err
+		}
+		tmVals[i] = &Validator{
+			Address:     v.Address,
+			PubKey:      pub,
+			VotingPower: v.Power,
+		}
+	}
+	return tmVals, nil
 }

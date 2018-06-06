@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/abci/example/kvstore"
@@ -633,4 +634,54 @@ func (bs *mockBlockStore) LoadBlockCommit(height int64) *types.Commit {
 }
 func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
 	return bs.commits[height-1]
+}
+
+//----------------------------------------
+
+func TestInitChainUpdateValidators(t *testing.T) {
+	val, _ := types.RandValidator(true, 10)
+	vals := types.NewValidatorSet([]*types.Validator{val})
+	app := &initChainApp{vals: types.TM2PB.Validators(vals)}
+	clientCreator := proxy.NewLocalClientCreator(app)
+
+	config := ResetConfig("proxy_test_")
+	privVal := privval.LoadFilePV(config.PrivValidatorFile())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
+
+	oldValAddr := state.Validators.Validators[0].Address
+
+	// now start the app using the handshake - it should sync
+	genDoc, _ := sm.MakeGenesisDocFromFile(config.GenesisFile())
+	handshaker := NewHandshaker(stateDB, state, store, genDoc)
+	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
+	if err := proxyApp.Start(); err != nil {
+		t.Fatalf("Error starting proxy app connections: %v", err)
+	}
+	defer proxyApp.Stop()
+
+	// reload the state, check the validator set was updated
+	state = sm.LoadState(stateDB)
+
+	newValAddr := state.Validators.Validators[0].Address
+	expectValAddr := val.Address
+	assert.NotEqual(t, oldValAddr, newValAddr)
+	assert.Equal(t, newValAddr, expectValAddr)
+}
+
+func newInitChainApp(vals []abci.Validator) *initChainApp {
+	return &initChainApp{
+		vals: vals,
+	}
+}
+
+// returns the vals on InitChain
+type initChainApp struct {
+	abci.BaseApplication
+	vals []abci.Validator
+}
+
+func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {
+	return abci.ResponseInitChain{
+		Validators: ica.vals,
+	}
 }

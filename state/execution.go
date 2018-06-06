@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
@@ -278,6 +279,16 @@ func updateValidators(currentSet *types.ValidatorSet, updates []abci.Validator) 
 		}
 
 		address := pubkey.Address()
+
+		// If the app provided an address too, it must match.
+		// This is just a sanity check.
+		if len(v.Address) > 0 {
+			if !bytes.Equal(address, v.Address) {
+				return fmt.Errorf("Validator.Address (%X) does not match PubKey.Address (%X)",
+					v.Address, address)
+			}
+		}
+
 		power := int64(v.Power)
 		// mind the overflow from int64
 		if power < 0 {

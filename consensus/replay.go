@@ -267,17 +267,31 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(state.Validators)
+		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime.Unix(), // TODO
 			ChainId:         h.genDoc.ChainID,
-			ConsensusParams: types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams),
+			ConsensusParams: csParams,
 			Validators:      validators,
 			AppStateBytes:   h.genDoc.AppStateJSON,
 		}
-		_, err := proxyApp.Consensus().InitChainSync(req)
+		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
 			return nil, err
 		}
+
+		// update the state
+		if len(res.Validators) > 0 {
+			vals, err := types.PB2TM.Validators(res.Validators)
+			if err != nil {
+				return nil, err
+			}
+			state.Validators = types.NewValidatorSet(vals)
+		}
+		if res.ConsensusParams != nil {
+			// TODO
+		}
+		sm.SaveState(h.stateDB, state)
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight
