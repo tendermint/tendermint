@@ -9,7 +9,7 @@ import (
 )
 
 func TestValidateBlock(t *testing.T) {
-	state := state()
+	state, _ := state(1, 1)
 
 	blockExec := NewBlockExecutor(dbm.NewMemDB(), log.TestingLogger(), nil, nil, nil)
 

@@ -102,6 +102,7 @@ type peer struct {
 
 func newPeer(
 	pc peerConn,
+	mConfig tmconn.MConnConfig,
 	nodeInfo NodeInfo,
 	reactorsByCh map[byte]Reactor,
 	chDescs []*tmconn.ChannelDescriptor,
@@ -120,7 +121,7 @@ func newPeer(
 		reactorsByCh,
 		chDescs,
 		onPeerError,
-		pc.config.MConfig,
+		mConfig,
 	)
 	p.BaseService = *cmn.NewBaseService(nil, "Peer", p)
 

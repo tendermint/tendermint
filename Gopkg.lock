@@ -238,8 +238,8 @@
     "server",
     "types"
   ]
-  revision = "78a8905690ef54f9d57e3b2b0ee7ad3a04ef3f1f"
-  version = "v0.10.3"
+  revision = "ebee2fe114020aa49c70bbbae50b7079fc7e7b90"
+  version = "v0.11.0"
 
 [[projects]]
   branch = "master"
@@ -262,12 +262,6 @@
   packages = ["."]
   revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
   version = "v0.6.2"
-
-[[projects]]
-  name = "github.com/tendermint/go-wire"
-  packages = ["."]
-  revision = "3c22a7a539411f89a96738fcfa14c1027e24e5ec"
-  version = "0.9.10"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -299,7 +293,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "df8d4716b3472e4a531c33cedbe537dae921a1a9"
+  revision = "b47b1587369238182299fe4dad77d05b8b461e06"
 
 [[projects]]
   branch = "master"
@@ -319,7 +313,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "c11f84a56e43e20a78cee75a7c034031ecf57d1f"
+  revision = "9527bec2660bd847c050fda93a0f0c6dee0800bb"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -380,6 +374,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bdcf814c0cd3b8d6cc11ad03da556abe169f872a45e6dcbd8b08588b4587ddde"
+  inputs-digest = "ae6792578b0664708339f4c05e020687d6b799ad6f8282394b919de69e403d1f"
   solver-name = "gps-cdcl"
   solver-version = 1

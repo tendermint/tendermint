@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.20.0
+
+*June 6th, 2018*
+
+This is the first in a series of breaking releases coming to Tendermint after
+soliciting developer feedback and conducting security audits.
+
+This release does not break any blockchain data structures or
+protocols other than the ABCI messages between Tendermint and the application.
+
+Applications that upgrade for ABCI v0.11.0 should be able to continue running Tendermint
+v0.20.0 on blockchains created with v0.19.X
+
+BREAKING CHANGES
+
+- [abci] Upgrade to
+  [v0.11.0](https://github.com/tendermint/abci/blob/master/CHANGELOG.md#0110)
+- [abci] Change Query path for filtering peers by node ID from
+  `p2p/filter/pubkey/<id>` to `p2p/filter/id/<id>`
+
 ## 0.19.9
 
 *June 5th, 2018*
