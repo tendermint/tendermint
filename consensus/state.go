@@ -886,7 +886,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 			if rsp.Status > 0 {
 				cs.decideProposal(height, round)
 			} else {
-				logger.Warning("previous Period could not be found in Bridge, waiting...", "height", height)
+				logger.Error("previous Period could not be found in Bridge, waiting...", "height", height)
 				cs.scheduleTimeout(5000, height, round, cstypes.RoundStepNewRound)
 			}
 		} else {
