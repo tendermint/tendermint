@@ -5,21 +5,24 @@ import (
 	"net"
 	"time"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 type accept struct {
-	mPeer *multiplexPeer
+	mPeer *peer
 	err   error
 }
 
 // PeerTransport proxies incoming and outgoing peer connections.
 type PeerTransport interface {
 	// Accept returns a newly connected Peer.
-	Accept() (Peer, error)
+	Accept(config.P2PConfig) (Peer, error)
 
 	// Dial connects to a Peer.
-	Dial(NetAddress) (Peer, error)
+	Dial(NetAddress, config.P2PConfig, bool) (Peer, error)
+
+	ExternalAddress() NetAddress
 
 	// lifecycle methods
 	Close() error
@@ -42,13 +45,15 @@ type multiplexTransport struct {
 var _ PeerTransport = (*multiplexTransport)(nil)
 
 // NewMTransport returns network connected multiplexed peers.
-func NewMTransport(nodeInfo NodeInfo) PeerTransport {
+func NewMTransport(nodeInfo NodeInfo, nodeKey NodeKey) *multiplexTransport {
+	// TODO(xla): Move over proper external address discvoery.
 	return &multiplexTransport{
 		nodeInfo: nodeInfo,
+		nodeKey:  nodeKey,
 	}
 }
 
-func (mt *multiplexTransport) Accept() (Peer, error) {
+func (mt *multiplexTransport) Accept(cfg config.P2PConfig) (Peer, error) {
 	a := <-mt.acceptc
 	return a.mPeer, a.err
 }
