@@ -76,6 +76,10 @@ initial validator set that the application could process to determine the
 initial validator set. Additionally, InitChain would benefit from getting all
 the genesis information.
 
+### Header
+
+ABCI provides the Header in RequestBeginBlock so the application can have
+important information about the latest state of the blockchain.
 
 ## Decision
 
@@ -140,11 +144,7 @@ We continue to use the Bitcoin address scheme for secp256k1 keys.
 
 ### Validators
 
-Change the following:
-
-- Validator includes an optional `bytes address` field
-- If the field is provided, it *MUST* correspond to the `pubkey.Address()`
-
+Add a `bytes address` field:
 
 ```
 message Validator {
@@ -154,18 +154,39 @@ message Validator {
 }
 ```
 
-### AbsentValidators
+### RequestBeginBlock and AbsentValidators
 
 To simplify this, RequestBeginBlock will include the complete validator set,
-including the address, public key, and voting power of each validator, along
+including the address, and voting power of each validator, along
 with a boolean for whether or not they voted:
 
 ```
+message RequestBeginBlock {
+  bytes hash
+  Header header
+  repeated SigningValidator validators
+  repeated Evidence byzantine_validators
+}
+
 message SigningValidator {
     Validator validator
     bool signed_last_block
 }
 ```
+
+Note that in Validators in RequestBeginBlock, we DO NOT include public keys. Public keys are
+larger than addresses and in the future, with quantum computers, will be much
+larger. The overhead of passing them, especially during fast-sync, is
+significant.
+
+Additional, addresses are changing to be simpler to compute, further removing
+the need to include pubkeys here.
+
+In short, ABCI developers must be aware of both addresses and public keys.
+
+### ResponseEndBlock
+
+Since ResponseEndBlock includes Validator, it must now include their address.
 
 ### InitChain
 
@@ -186,6 +207,12 @@ message ResponseInitChain {
 }
 ```
 
+### Header
+
+Now that Tendermint Amino will be compatible with Proto3, the Header in ABCI
+should exactly match the Tendermint header - they will then be encoded
+identically in ABCI and in Tendermint Core.
+
 ## Status
 
 Accepted.
@@ -195,11 +222,15 @@ Accepted.
 ### Positive
 
 - Easier for developers to build on the ABCI
+- ABCI and Tendermint headers are identically serialized
 
 ### Negative
 
 - Maintenance overhead of alternative type encoding scheme
-- Performance overhead of passing all the validator info every block
+- Performance overhead of passing all validator info every block (at least its
+  only addresses, and not also pubkeys)
 - Maintenance overhead of duplicate types
 
 ### Neutral
+
+- ABCI developers must know about validator addresses
