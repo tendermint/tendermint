@@ -14,10 +14,12 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
+	abci "github.com/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	tmevents "github.com/tendermint/tendermint/libs/events"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
 )
@@ -71,7 +73,9 @@ type ConsensusState struct {
 	cmn.BaseService
 
 	// config details
-	config        *cfg.ConsensusConfig
+	config *cfg.ConsensusConfig
+	// execute the app against this
+	proxyApp      proxy.AppConnConsensus
 	privValidator types.PrivValidator // for signing votes
 
 	// services for creating and executing blocks
@@ -135,10 +139,12 @@ func NewConsensusState(
 	blockStore sm.BlockStore,
 	mempool sm.Mempool,
 	evpool sm.EvidencePool,
+	proxyApp proxy.AppConnConsensus,
 	options ...CSOption,
 ) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
+		proxyApp:         proxyApp,
 		blockExec:        blockExec,
 		blockStore:       blockStore,
 		mempool:          mempool,
@@ -870,7 +876,22 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 
 	if cs.isProposer() {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
-		cs.decideProposal(height, round)
+		if height%32 == 0 {
+			rsp, err := cs.proxyApp.CheckBridgeSync(abci.RequestCheckBridge{0})
+			if err != nil {
+				logger.Error("Error in proxyAppConn.EndBlock", "err", err)
+				return
+			}
+			// check in ethereum contract if the period up to block height -32 has been mined?
+			if rsp.Status > 0 {
+				cs.decideProposal(height, round)
+			} else {
+				logger.Warning("previous Period could not be found in Bridge, waiting...", "height", height)
+				cs.scheduleTimeout(5000, height, round, cstypes.RoundStepNewRound)
+			}
+		} else {
+			cs.decideProposal(height, round)
+		}
 	} else {
 		logger.Info("enterPropose: Not our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 	}

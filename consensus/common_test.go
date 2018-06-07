@@ -268,7 +268,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	// Make ConsensusState
 	stateDB := dbm.NewMemDB()
 	blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
-	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+	cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool, nil)
 	cs.SetLogger(log.TestingLogger().With("module", "consensus"))
 	cs.SetPrivValidator(pv)
 
