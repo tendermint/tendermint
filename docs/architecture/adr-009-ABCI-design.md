@@ -1,0 +1,205 @@
+# ADR 009: ABCI UX Improvements
+
+## Context
+
+The ABCI was first introduced in late 2015.  It's purpose is to be:
+
+- a generic interface between state machines and their replication engines
+- agnostic to the language the state machine is written in
+- agnostic to the replication engine that drives it
+
+This means ABCI should provide an interface for both pluggable applications and
+pluggable consensus engines.
+
+To achieve this, it uses Protocol Buffers for message types. The dominant
+implementation is in Go.
+
+After some recent discussions with the community on github, the following were
+identified as pain points:
+
+- Amino encoded types
+- Managing validator sets
+- Imports in the protobuf file
+
+See the following relevent github issues:
+- TODO
+
+### Imports
+
+The native Protobuf library in Go generates code that is inellegant and difficult to work with.
+The solution in the Go community is to use a fork of it called `gogoproto`.
+While `gogoproto` is nice, it creates an additional dependency, and compiling
+the protobuf types for other languages has been reported to fail when `gogoproto` is used.
+
+### Amino
+
+Amino is an encoding protocol designed to improve over insufficiencies of protobuf.
+It's goal is to be Protobuf4.
+
+Many people are frustrated by incompatibility with protobuf,
+and with the requirement for Amino to be used at all within ABCI.
+
+We intend to make Amino successful enough that we can eventually use it for ABCI
+message types directly. By then it should be called Protobuf4. In the meantime,
+we want it to be easy to use.
+
+### PubKey
+
+PubKeys were previously encoded using Amino (and before that, go-wire).
+
+### Addresses
+
+The address for an ED25519 pubkey is currently the RIPEMD160 of the Amino
+encoded pubkey.
+
+### Validators
+
+To change the validator set, applications can return a list of validator updates
+with ResponseEndBlock. In these updates, the public key *must* be included,
+because Tendermint requires the public key to verify validator signatures.  This
+means ABCI developers have to work with PubKeys. That said, it would also be
+convenient to work with address information, and for it to be simple to do so.
+
+### AbsentValidators
+
+Tendermint also provides a list of validators in BeginBlock who did not sign the
+last block. This allows applications to reflect availability behaviour in the
+application, for instance by punishing validators for not having votes included
+in commits.
+
+### InitChain
+
+Tendermint passes in a list of validators here, and nothing else.  It would
+benefit the application to be able to control the initial validator set. For
+instance the genesis file could include application-based information about the
+initial validator set that the application could process to determine the
+initial validator set. Additionally, InitChain would benefit from getting all
+the genesis information.
+
+
+## Decision
+
+### Imports
+
+Move away from gogoproto. In the short term, we will just maintain a second
+protobuf file without the gogoproto annotations. In the medium term, we will
+make copies of all the structs in Golang and shuttle back and forth. In the long
+term, we will use Amino.
+
+### Amino
+
+To simplify ABCI application development in the short term,
+Amino will be completely removed from the ABCI:
+
+- It will not be required for PubKey encoding
+- It will not be required for computing PubKey addresses
+
+That said, we are working to make Amino a huge success, and to become Protobuf4.
+To facilitate adoption and cross-language compatibility in the near-term, Amino
+v1 will:
+
+- be fully compatible with the subset of Protobuf3 that excludes `oneof`
+- use the Amino prefix system to provide interface types, as opposed to `oneof`
+  style union types.
+
+That said, an Amino v2 will be worked on to improve the performance of the
+format and its useability in cryptographic applications.
+
+
+### PubKey
+
+Encoding schemes infect software. As a generic middleware, ABCI aims to have
+some cross scheme compatibility. For this it has no choice but to include opaque
+bytes from time to time. While we will not enforce Amino encoding for these
+bytes yet, we need to provide a type system. The simplest way to do this is to
+use a type string.
+
+PubKey will now look like:
+
+```
+message PubKey {
+    string type
+    bytes data
+}
+```
+
+where `type` can be:
+
+- "ed225519", with `data = <raw 32-byte pubkey>`
+- "secp256k1", with `data = <33-byte OpenSSL compressed pubkey>`
+
+and generated types. At the least we should use a reflection-based protobuf so
+we can just encode our own types, rather than using protobuf generated ones.
+
+### Addresses
+
+To simplify and improve computing addresses, we change it to the first 20-bytes of the SHA256
+of the raw 32-byte public key.
+
+We continue to use the Bitcoin address scheme for secp256k1 keys.
+
+### Validators
+
+Change the following:
+
+- Validator includes an optional `bytes address` field
+- If the field is provided, it *MUST* correspond to the `pubkey.Address()`
+
+
+```
+message Validator {
+    bytes address
+    PubKey pub_key
+    int64 power
+}
+```
+
+### AbsentValidators
+
+To simplify this, RequestBeginBlock will include the complete validator set,
+including the address, public key, and voting power of each validator, along
+with a boolean for whether or not they voted:
+
+```
+message SigningValidator {
+    Validator validator
+    bool signed_last_block
+}
+```
+
+### InitChain
+
+Change RequestInitChain and ResponseInitChain to
+
+```
+message RequestInitChain {
+    int64 time
+    string chain_id
+    ConsensusParams consensus_params
+    repeated Validator validators
+    bytes app_state_bytes
+}
+
+message ResponseInitChain {
+    ConsensusParams consensus_params
+    repeated Validator validators
+}
+```
+
+## Status
+
+Accepted.
+
+## Consequences
+
+### Positive
+
+- Easier for developers to build on the ABCI
+
+### Negative
+
+- Maintenance overhead of alternative type encoding scheme
+- Performance overhead of passing all the validator info every block
+- Maintenance overhead of duplicate types
+
+### Neutral
