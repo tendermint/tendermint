@@ -135,7 +135,7 @@ func checkResult(t *testing.T, taskResultSet *TaskResultSet, index int, val inte
 	if err != nil {
 		assert.Equal(t, err, taskResult.Error, taskName)
 	} else if pnk != nil {
-		assert.Equal(t, pnk, taskResult.Error.(Error).Cause(), taskName)
+		assert.Equal(t, pnk, taskResult.Error.(Error).Data(), taskName)
 	} else {
 		assert.Nil(t, taskResult.Error, taskName)
 	}
