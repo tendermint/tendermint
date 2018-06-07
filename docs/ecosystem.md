@@ -1,4 +1,4 @@
-# Tendermint Ecosystem
+# Ecosystem
 
 The growing list of applications built using various pieces of the
 Tendermint stack can be found at:

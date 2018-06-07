@@ -1,9 +1,4 @@
-# Introduction
-
-Welcome to the Tendermint guide! This is the best place to start if you
-are new to Tendermint.
-
-## What is Tendermint?
+# What is Tendermint?
 
 Tendermint is software for securely and consistently replicating an
 application on many machines. By securely, we mean that Tendermint works

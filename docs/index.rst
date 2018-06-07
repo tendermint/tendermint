@@ -12,23 +12,17 @@ Welcome to Tendermint!
    :width: 200px
    :align: center
 
-Tendermint 101
---------------
+Introduction
+------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    introduction.md
    install.md
    getting-started.md
    using-tendermint.md
-
-Tendermint Ecosystem
---------------------
-
-.. toctree::
-   :maxdepth: 2
-
+   deploy-testnets.md
    ecosystem.md
 
 Tendermint Tools
@@ -39,22 +33,19 @@ Tendermint Tools
 .. toctree::
    :maxdepth: 1
 
-   deploy-testnets.md
-   terraform-and-ansible.md
    tools/docker.md
+   terraform-and-ansible.md
    tools/benchmarking.md
    tools/monitoring.md
 
-.. TODO fix tools
-
-Tendermint 102
---------------
+ABCI, Apps, Logging, Etc
+------------------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    abci-cli.md
-   abci-spec.rst 
+   abci-spec.md
    app-architecture.md
    app-development.md
    subscribing-to-events-via-websocket.md
@@ -62,16 +53,16 @@ Tendermint 102
    how-to-read-logs.md
    running-in-production.md
 
-Tendermint 201
---------------
+Research & Specification
+------------------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
    determinism.md
    transactional-semantics.md
 
-.. specification.md
+.. specification.md ## keep this file for legacy purpose. needs to be fixed though
 
 * For a deeper dive, see `this thesis <https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769>`__.
 * There is also the `original whitepaper <https://tendermint.com/static/docs/tendermint.pdf>`__, though it is now quite outdated.
