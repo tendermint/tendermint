@@ -22,8 +22,10 @@ node testnet. The script more or less does everything described below.
 -   Create SSH keys (`ssh-keygen`)
 -   Set environment variables:
 
-    export DO_API_TOKEN="abcdef01234567890abcdef01234567890"
-    export SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
+```    
+export DO_API_TOKEN="abcdef01234567890abcdef01234567890"
+export SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
+```
 
 These will be used by both `terraform` and `ansible`.
 

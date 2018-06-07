@@ -203,9 +203,6 @@ can take on the order of a second. For a quick result, use
 `broadcast_tx_sync`, but the transaction will not be committed until
 later, and by that point its effect on the state may change.
 
-Note: see the Transactions =&gt; Formatting section for details about
-transaction formating.
-
 ## Tendermint Networks
 
 When `tendermint init` is run, both a `genesis.json` and
@@ -377,7 +374,7 @@ They should start making blocks, and will only continue to do so as long
 as both of them are online.
 
 To make a Tendermint network that can tolerate one of the validators
-failing, you need at least four validator nodes (&gt; 2/3).
+failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
 explicitly programmed by the application developer. See the [application

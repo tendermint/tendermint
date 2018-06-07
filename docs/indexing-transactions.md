@@ -61,7 +61,7 @@ Note, there are a few predefined tags:
 
 Tendermint will throw a warning if you try to use any of the above keys.
 
-## Quering transactions
+## Querying transactions
 
 You can query the transaction results by calling `/tx_search` RPC
 endpoint:

@@ -332,6 +332,7 @@ In go:
     }
 
 In Java:
+
     /*
      * all types come from protobuf definition
      */
