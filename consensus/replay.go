@@ -280,7 +280,9 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 			return nil, err
 		}
 
-		// update the state
+		// if the app returned validators
+		// or consensus params, update the state
+		// with the them
 		if len(res.Validators) > 0 {
 			vals, err := types.PB2TM.Validators(res.Validators)
 			if err != nil {
@@ -289,7 +291,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 			state.Validators = types.NewValidatorSet(vals)
 		}
 		if res.ConsensusParams != nil {
-			// TODO
+			state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
 		}
 		sm.SaveState(h.stateDB, state)
 	}

@@ -38,7 +38,7 @@ func (tm2pb) Header(header *Header) abci.Header {
 
 		Time:     header.Time.Unix(),
 		NumTxs:   int32(header.NumTxs), // XXX: overflow
-		TotalTxs: header.NumTxs,
+		TotalTxs: header.TotalTxs,
 
 		LastBlockHash:  header.LastBlockID.Hash,
 		ValidatorsHash: header.ValidatorsHash,
@@ -48,6 +48,7 @@ func (tm2pb) Header(header *Header) abci.Header {
 	}
 }
 
+// XXX: panics on unknown pubkey type
 func (tm2pb) Validator(val *Validator) abci.Validator {
 	return abci.Validator{
 		Address: val.PubKey.Address(),
@@ -56,6 +57,8 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 	}
 }
 
+// XXX: panics on nil or unknown pubkey type
+// TODO: add cases when new pubkey types are added to go-crypto
 func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	switch pk := pubKey.(type) {
 	case crypto.PubKeyEd25519:
@@ -73,6 +76,7 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	}
 }
 
+// XXX: panics on nil or unknown pubkey type
 func (tm2pb) Validators(vals *ValidatorSet) []abci.Validator {
 	validators := make([]abci.Validator, len(vals.Validators))
 	for i, val := range vals.Validators {
@@ -101,6 +105,7 @@ func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 
 // ABCI Evidence includes information from the past that's not included in the evidence itself
 // so Evidence types stays compact.
+// XXX: panics on nil or unknown pubkey type
 func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.Evidence {
 	_, val := valSet.GetByAddress(ev.Address())
 	if val == nil {
@@ -113,7 +118,8 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	switch ev.(type) {
 	case *DuplicateVoteEvidence:
 		evType = ABCIEvidenceTypeDuplicateVote
-	case *MockGoodEvidence, MockGoodEvidence:
+	case MockGoodEvidence:
+		// XXX: not great to have test types in production paths ...
 		evType = ABCIEvidenceTypeMockGood
 	default:
 		panic(fmt.Sprintf("Unknown evidence type: %v %v", ev, reflect.TypeOf(ev)))
@@ -128,6 +134,7 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 	}
 }
 
+// XXX: panics on nil or unknown pubkey type
 func (tm2pb) ValidatorFromPubKeyAndPower(pubkey crypto.PubKey, power int64) abci.Validator {
 	pubkeyABCI := TM2PB.PubKey(pubkey)
 	return abci.Validator{
@@ -191,4 +198,24 @@ func (pb2tm) Validators(vals []abci.Validator) ([]*Validator, error) {
 		}
 	}
 	return tmVals, nil
+}
+
+func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
+	return ConsensusParams{
+		BlockSize: BlockSize{
+			MaxBytes: int(csp.BlockSize.MaxBytes), // XXX
+			MaxTxs:   int(csp.BlockSize.MaxTxs),   // XXX
+			MaxGas:   csp.BlockSize.MaxGas,
+		},
+		TxSize: TxSize{
+			MaxBytes: int(csp.TxSize.MaxBytes), // XXX
+			MaxGas:   csp.TxSize.MaxGas,
+		},
+		BlockGossip: BlockGossip{
+			BlockPartSizeBytes: int(csp.BlockGossip.BlockPartSizeBytes), // XXX
+		},
+		// TODO: EvidenceParams: EvidenceParams{
+		// MaxAge: int(csp.Evidence.MaxAge), // XXX
+		// },
+	}
 }
