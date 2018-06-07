@@ -70,6 +70,8 @@ type Switch struct {
 	filterConnByAddr func(net.Addr) error
 	filterConnByID   func(ID) error
 
+	mConfig conn.MConnConfig
+
 	rng *cmn.Rand // seed for randomizing dial times and orders
 }
 
@@ -88,10 +90,13 @@ func NewSwitch(cfg *config.P2PConfig) *Switch {
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = cmn.NewRand()
 
-	sw.config.MConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
-	sw.config.MConfig.SendRate = cfg.SendRate
-	sw.config.MConfig.RecvRate = cfg.RecvRate
-	sw.config.MConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
+	mConfig := conn.DefaultMConnConfig()
+	mConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
+	mConfig.SendRate = cfg.SendRate
+	mConfig.RecvRate = cfg.RecvRate
+	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
+
+	sw.mConfig = mConfig
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
 	return sw
@@ -600,7 +605,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	peer := newPeer(pc, peerNodeInfo, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
+	peer := newPeer(pc, sw.mConfig, peerNodeInfo, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 	peer.SetLogger(sw.Logger.With("peer", addr))
 
 	peer.Logger.Info("Successful handshake with peer", "peerNodeInfo", peerNodeInfo)
