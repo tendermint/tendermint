@@ -95,6 +95,14 @@ BUG FIX:
 - [p2p] Refuse connections to more than one peer with the same IP
 - [docs] Various fixes
 
+BREAKING CHANGES
+
+- [p2p] added UnverifiedValidatorAddress to NodeInfo
+
+IMPROVEMENTS
+
+- [rpc] added `unverified_validator_address` to each peer in `/dump_consensus_state`
+
 ## 0.19.5
 
 *May 20th, 2018*

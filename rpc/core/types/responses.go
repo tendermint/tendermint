@@ -136,8 +136,9 @@ type ResultDumpConsensusState struct {
 
 // UNSTABLE
 type PeerStateInfo struct {
-	NodeAddress string          `json:"node_address"`
-	PeerState   json.RawMessage `json:"peer_state"`
+	NodeAddress                string          `json:"node_address"`
+	UnverifiedValidatorAddress cmn.HexBytes    `json:"unverified_validator_address"`
+	PeerState                  json.RawMessage `json:"peer_state"`
 }
 
 // UNSTABLE

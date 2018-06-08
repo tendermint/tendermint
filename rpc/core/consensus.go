@@ -200,6 +200,7 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 		peerStates[i] = ctypes.PeerStateInfo{
 			// Peer basic info.
 			NodeAddress: p2p.IDAddressString(peer.ID(), peer.NodeInfo().ListenAddr),
+			UnverifiedValidatorAddress: peer.NodeInfo().UnverifiedValidatorAddress,
 			// Peer consensus state.
 			PeerState: peerStateJSON,
 		}
