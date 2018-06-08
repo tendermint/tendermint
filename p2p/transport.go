@@ -52,6 +52,10 @@ func MultiplexTransportMConfig(cfg conn.MConnConfig) MultiplexTransportOption {
 	return func(mt *multiplexTransport) { mt.mConfig = cfg }
 }
 
+func MultiplexTransportNodeInfo(ni NodeInfo) MultiplexTransportOption {
+	return func(mt *multiplexTransport) { mt.nodeInfo = ni }
+}
+
 // multiplexTransport accepts tcp connections and upgrades to multiplexted
 // peers.
 type multiplexTransport struct {
@@ -59,6 +63,7 @@ type multiplexTransport struct {
 
 	acceptc chan accept
 	closec  <-chan struct{}
+	listenc <-chan struct{}
 
 	addr             NetAddress
 	dialTimeout      time.Duration
@@ -73,9 +78,16 @@ type multiplexTransport struct {
 var _ PeerTransport = (*multiplexTransport)(nil)
 
 // NewMTransport returns network connected multiplexed peers.
-func NewMTransport(nodeInfo NodeInfo, nodeKey NodeKey) *multiplexTransport {
+func NewMTransport(
+	addr NetAddress,
+	nodeInfo NodeInfo,
+	nodeKey NodeKey,
+) *multiplexTransport {
 	// TODO(xla): Move over proper external address discvoery.
 	return &multiplexTransport{
+		addr:     addr,
+		acceptc:  make(chan accept),
+		closec:   make(chan struct{}),
 		mConfig:  conn.DefaultMConnConfig(),
 		nodeInfo: nodeInfo,
 		nodeKey:  nodeKey,
@@ -126,7 +138,6 @@ func (mt *multiplexTransport) Listen(addr NetAddress) error {
 		return err
 	}
 
-	mt.addr = addr
 	mt.listener = ln
 
 	go mt.acceptPeers()

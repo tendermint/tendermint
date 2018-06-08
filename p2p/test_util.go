@@ -64,7 +64,7 @@ func MakeConnectedSwitches(
 	cfg *config.P2PConfig,
 	n int,
 	initSwitch func(int, *Switch) *Switch,
-	connect func(testing.TB, *Switch, *Switch),
+	connect func(testing.TB, []*Switch, int, int),
 ) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
@@ -77,7 +77,7 @@ func MakeConnectedSwitches(
 
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
-			connect(t, switches[i], switches[j])
+			connect(t, switches, i, j)
 		}
 	}
 
@@ -87,10 +87,11 @@ func MakeConnectedSwitches(
 // Connect2Switches will connect switches i and j via net.Pipe().
 // Blocks until a connection is established, returns early if timeout
 // reached.
-func Connect2Switches(t testing.TB, sw0, sw1 *Switch) {
+func Connect2Switches(t testing.TB, ss []*Switch, i, j int) {
 	var (
-		c0, c1 = conn.NetPipe()
-		addc   = make(chan struct{})
+		addc     = make(chan struct{})
+		c0, c1   = conn.NetPipe()
+		sw0, sw1 = ss[i], ss[j]
 	)
 
 	addPeer := func(sw *Switch, c net.Conn, donec chan<- struct{}) {

@@ -167,7 +167,7 @@ func TestConnAddrFilter(t *testing.T) {
 		return nil
 	})
 
-	Connect2Switches(t, s0, s1)
+	Connect2Switches(t, []*Switch{s0, s1}, 0, 1)
 
 	assertNoPeersAfterTimeout(t, s0, 400*time.Millisecond)
 	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
@@ -226,7 +226,7 @@ func TestConnIDFilter(t *testing.T) {
 		return nil
 	})
 
-	Connect2Switches(t, sw0, sw1)
+	Connect2Switches(t, []*Switch{sw0, sw1}, 0, 1)
 
 	assertNoPeersAfterTimeout(t, sw0, 400*time.Millisecond)
 	assertNoPeersAfterTimeout(t, sw1, 400*time.Millisecond)

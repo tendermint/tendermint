@@ -391,8 +391,16 @@ func (n *Node) OnStart() error {
 	}
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	nodeInfo := n.makeNodeInfo(nodeKey.ID())
-	transport := p2p.NewMTransport(nodeInfo, *nodeKey)
+	// Create & add transport
+	_, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
+
+	addr, err := p2p.NewNetAddressStringWithOptionalID(address)
+	if err != nil {
+		return err
+	}
+
+	transport := p2p.NewMTransport(*addr, p2p.NodeInfo{}, *nodeKey)
+	n.sw.SetTransport(transport)
 
 	// Set MConfig.
 	config := n.config.P2P
@@ -401,18 +409,13 @@ func (n *Node) OnStart() error {
 	mConfig.SendRate = config.SendRate
 	mConfig.RecvRate = config.RecvRate
 	mConfig.MaxPacketMsgPayloadSize = config.MaxPacketMsgPayloadSize
-	p2p.MultiplexTransportMConfig(mConfig)
-
-	// Create & add listener
-	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-
-	addr, err := p2p.NewNetAddressStringWithOptionalID(address)
-	if err != nil {
-		return err
-	}
+	p2p.MultiplexTransportMConfig(mConfig)(transport)
 
 	go transport.Listen(*addr)
 
+	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+
+	p2p.MultiplexTransportNodeInfo(nodeInfo)(transport)
 	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
 
