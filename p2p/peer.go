@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"sync/atomic"
-	"time"
 
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
@@ -240,45 +239,6 @@ func (p *peer) hasChannel(chID byte) bool {
 // started.
 func (pc *peerConn) CloseConn() {
 	pc.conn.Close() // nolint: errcheck
-}
-
-// HandshakeTimeout performs the Tendermint P2P handshake between a given node
-// and the peer by exchanging their NodeInfo. It sets the received nodeInfo on
-// the peer.
-// NOTE: blocking
-func (pc *peerConn) HandshakeTimeout(
-	ourNodeInfo NodeInfo,
-	timeout time.Duration,
-) (peerNodeInfo NodeInfo, err error) {
-	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error setting deadline")
-	}
-
-	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.MarshalBinaryWriter(pc.conn, ourNodeInfo)
-			return
-		},
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.UnmarshalBinaryReader(
-				pc.conn,
-				&peerNodeInfo,
-				int64(MaxNodeInfoSize()),
-			)
-			return
-		},
-	)
-	if err := trs.FirstError(); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error during handshake")
-	}
-
-	// Remove deadline
-	if err := pc.conn.SetDeadline(time.Time{}); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error removing deadline")
-	}
-
-	return peerNodeInfo, nil
 }
 
 // Addr returns peer's remote network address.

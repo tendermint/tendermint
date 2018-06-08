@@ -70,28 +70,39 @@ func createOutboundPeerAndPerformHandshake(
 	config *config.P2PConfig,
 	mConfig tmconn.MConnConfig,
 ) (*peer, error) {
-	chDescs := []*tmconn.ChannelDescriptor{
-		{ID: testCh, Priority: 1},
-	}
-	reactorsByCh := map[byte]Reactor{testCh: NewTestReactor(chDescs, true)}
-	pk := crypto.GenPrivKeyEd25519()
-	pc, err := newOutboundPeerConn(addr, config, false, pk)
-	if err != nil {
-		return nil, err
-	}
-	nodeInfo, err := pc.HandshakeTimeout(NodeInfo{
-		ID:       addr.ID,
-		Moniker:  "host_peer",
-		Network:  "testing",
-		Version:  "123.123.123",
-		Channels: []byte{testCh},
-	}, 1*time.Second)
+	var (
+		chDescs = []*tmconn.ChannelDescriptor{
+			{ID: testCh, Priority: 1},
+		}
+		conf = peerConfig{
+			chDescs: chDescs,
+			mConfig: tmconn.DefaultMConnConfig(),
+			nodeInfo: NodeInfo{
+				ID:       addr.ID,
+				Moniker:  "host_peer",
+				Network:  "testing",
+				Version:  "123.123.123",
+				Channels: []byte{testCh},
+			},
+			nodeKey:      NodeKey{PrivKey: crypto.GenPrivKeyEd25519()},
+			onPeerError:  func(p Peer, r interface{}) {},
+			p2pConfig:    *cfg,
+			reactorsByCh: map[byte]Reactor{testCh: NewTestReactor(chDescs, true)},
+		}
+		timeout = 100 * time.Millisecond
+	)
+
+	c, err := addr.DialTimeout(timeout)
 	if err != nil {
 		return nil, err
 	}
 
-	p := newPeer(pc, mConfig, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p, err := upgrade(c, timeout, conf)
+	if err != nil {
+		return nil, err
+	}
 	p.SetLogger(log.TestingLogger().With("peer", addr))
+
 	return p, nil
 }
 
@@ -137,34 +148,32 @@ func (rp *remotePeer) accept(l net.Listener) {
 	conns := []net.Conn{}
 
 	for {
-		conn, err := l.Accept()
+		c, err := l.Accept()
 		if err != nil {
 			golog.Fatalf("Failed to accept conn: %+v", err)
 		}
 
-		pc, err := newInboundPeerConn(conn, rp.Config, rp.PrivKey)
-		if err != nil {
-			golog.Fatalf("Failed to create a peer: %+v", err)
-		}
+		_, err = upgrade(c, 100*time.Millisecond, peerConfig{
+			mConfig: tmconn.DefaultMConnConfig(),
+			nodeInfo: NodeInfo{
+				ID:         rp.Addr().ID,
+				Moniker:    "remote_peer",
+				Network:    "testing",
+				Version:    "123.123.123",
+				ListenAddr: l.Addr().String(),
+				Channels:   rp.channels,
+			},
+			nodeKey: NodeKey{
+				PrivKey: rp.PrivKey,
+			},
+		})
 
-		_, err = pc.HandshakeTimeout(NodeInfo{
-			ID:         rp.Addr().ID,
-			Moniker:    "remote_peer",
-			Network:    "testing",
-			Version:    "123.123.123",
-			ListenAddr: l.Addr().String(),
-			Channels:   rp.channels,
-		}, 1*time.Second)
-		if err != nil {
-			golog.Fatalf("Failed to perform handshake: %+v", err)
-		}
-
-		conns = append(conns, conn)
+		conns = append(conns, c)
 
 		select {
 		case <-rp.quit:
-			for _, conn := range conns {
-				if err := conn.Close(); err != nil {
+			for _, c := range conns {
+				if err := c.Close(); err != nil {
 					golog.Fatal(err)
 				}
 			}
