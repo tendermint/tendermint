@@ -260,14 +260,14 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "3c22a7a539411f89a96738fcfa14c1027e24e5ec"
-  version = "0.9.10"
+  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
+  version = "0.9.9"
 
 [[projects]]
   branch = "cwgoes/unified-ledger-keybase"
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "60827afab070785d024e53103161d9fa41766441"
+  revision = "94d6b8dcd64c1775111670781a8e9af35c3b42e5"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -287,9 +287,10 @@
   version = "v0.8.4"
 
 [[projects]]
+  branch = "master"
   name = "github.com/zondax/ledger-goclient"
   packages = ["."]
-  revision = "3e2146609cdb97894c064d59e9d00accd8c2b1dd"
+  revision = "065cbf938a16f20335c40cfe180f9cd4955c6a5a"
 
 [[projects]]
   branch = "master"
@@ -385,6 +386,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "01a7988ca7a700692173ded3924d2eee1a58cc96db70ea54df09b6352c1780d0"
+  inputs-digest = "fc67e319cb7caf342229bef74f6bf6b2a6af9f067839f21a989c997299bdb8b7"
   solver-name = "gps-cdcl"
   solver-version = 1
