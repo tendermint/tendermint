@@ -3,6 +3,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/brejski/hid"
+  packages = ["."]
+  revision = "06112dcfcc50a7e0e4fd06e17f9791e788fdaafc"
+
+[[projects]]
+  branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
@@ -226,7 +232,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "5d6fca44a948d2be89a9702de7717f0168403d3d"
+  revision = "db3ee9ee8931e51af7158114b9d02bf93d1a7811"
 
 [[projects]]
   name = "github.com/tendermint/abci"
@@ -254,14 +260,14 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
-  version = "0.9.9"
+  revision = "3c22a7a539411f89a96738fcfa14c1027e24e5ec"
+  version = "0.9.10"
 
 [[projects]]
+  branch = "cwgoes/unified-ledger-keybase"
   name = "github.com/tendermint/go-crypto"
   packages = ["."]
-  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
-  version = "v0.6.2"
+  revision = "60827afab070785d024e53103161d9fa41766441"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -281,6 +287,11 @@
   version = "v0.8.4"
 
 [[projects]]
+  name = "github.com/zondax/ledger-goclient"
+  packages = ["."]
+  revision = "3e2146609cdb97894c064d59e9d00accd8c2b1dd"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
@@ -293,7 +304,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "b47b1587369238182299fe4dad77d05b8b461e06"
+  revision = "8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9"
 
 [[projects]]
   branch = "master"
@@ -374,6 +385,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ae6792578b0664708339f4c05e020687d6b799ad6f8282394b919de69e403d1f"
+  inputs-digest = "01a7988ca7a700692173ded3924d2eee1a58cc96db70ea54df09b6352c1780d0"
   solver-name = "gps-cdcl"
   solver-version = 1
