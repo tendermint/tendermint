@@ -101,6 +101,7 @@ func Connect2Switches(t testing.TB, sw0, sw1 *Switch) {
 			nodeKey:      *sw.nodeKey,
 			onPeerError:  sw.StopPeerForError,
 			outbound:     true,
+			p2pConfig:    *sw.config,
 			reactorsByCh: sw.reactorsByCh,
 		})
 		if err != nil {
@@ -128,7 +129,7 @@ func Connect2Switches(t testing.TB, sw0, sw1 *Switch) {
 	select {
 	case <-donec:
 	case <-time.After(20 * time.Millisecond):
-		panic()
+		panic("Connect2Switches timed out")
 	}
 }
 

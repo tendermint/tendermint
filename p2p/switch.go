@@ -144,6 +144,12 @@ func (sw *Switch) IsListening() bool {
 	return true
 }
 
+func (sw *Switch) Listeners() []Listener {
+	return []Listener{
+		sw.transport,
+	}
+}
+
 // SetNodeInfo sets the switch's NodeInfo for checking compatibility and handshaking with other nodes.
 // NOTE: Not goroutine safe.
 func (sw *Switch) SetNodeInfo(nodeInfo NodeInfo) {
@@ -160,6 +166,16 @@ func (sw *Switch) NodeInfo() NodeInfo {
 // NOTE: Not goroutine safe.
 func (sw *Switch) SetNodeKey(nodeKey *NodeKey) {
 	sw.nodeKey = nodeKey
+}
+
+// NodeKey returns the switch's NodeKey.
+func (sw *Switch) NodeKey() *NodeKey {
+	return sw.nodeKey
+}
+
+// SetTransport sets the switch's Transport.
+func (sw *Switch) SetTransport(transport PeerTransport) {
+	sw.transport = transport
 }
 
 //---------------------------------------------------------------------

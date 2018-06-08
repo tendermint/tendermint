@@ -166,6 +166,7 @@ func (rp *remotePeer) accept(l net.Listener) {
 			nodeKey: NodeKey{
 				PrivKey: rp.PrivKey,
 			},
+			p2pConfig: *rp.Config,
 		})
 
 		conns = append(conns, c)

@@ -30,6 +30,8 @@ type peerConfig struct {
 
 // PeerTransport proxies incoming and outgoing peer connections.
 type PeerTransport interface {
+	fmt.Stringer
+
 	// Accept returns a newly connected Peer.
 	Accept(peerConfig) (Peer, error)
 
@@ -86,6 +88,7 @@ func (mt *multiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 		return nil, a.err
 	}
 
+	cfg.mConfig = mt.mConfig
 	cfg.nodeInfo = mt.nodeInfo
 	cfg.nodeKey = mt.nodeKey
 
@@ -101,6 +104,7 @@ func (mt *multiplexTransport) Dial(
 		return nil, err
 	}
 
+	cfg.mConfig = mt.mConfig
 	cfg.nodeInfo = mt.nodeInfo
 	cfg.nodeKey = mt.nodeKey
 	cfg.outbound = true
@@ -128,6 +132,12 @@ func (mt *multiplexTransport) Listen(addr NetAddress) error {
 	go mt.acceptPeers()
 
 	return nil
+}
+
+func (mt *multiplexTransport) String() string {
+	addr := mt.ExternalAddress()
+	a := &addr
+	return fmt.Sprintf("PeerTransport<%v>", a.String())
 }
 
 func (mt *multiplexTransport) acceptPeers() {

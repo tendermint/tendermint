@@ -261,6 +261,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 		nodeKey:      *sw.nodeKey,
 		onPeerError:  sw.StopPeerForError,
 		outbound:     true,
+		p2pConfig:    *sw.config,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	require.Nil(err)
@@ -305,6 +306,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 		nodeKey:      *sw.nodeKey,
 		onPeerError:  sw.StopPeerForError,
 		outbound:     true,
+		p2pConfig:    *sw.config,
 		reactorsByCh: sw.reactorsByCh,
 	})
 	require.Nil(err)
@@ -341,10 +343,27 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer rp.Stop()
 
 	// simulate first time dial failure
+	c, err = rp.Addr().DialTimeout(timeout)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	conf := config.DefaultP2PConfig()
 	conf.TestDialFail = true
-	err = sw.addOutboundPeerWithConfig(rp.Addr(), conf, true)
+
+	p, err = upgrade(c, timeout, peerConfig{
+		chDescs:      sw.chDescs,
+		mConfig:      conn.DefaultMConnConfig(),
+		nodeInfo:     sw.nodeInfo,
+		nodeKey:      *sw.nodeKey,
+		onPeerError:  sw.StopPeerForError,
+		outbound:     true,
+		p2pConfig:    *conf,
+		reactorsByCh: sw.reactorsByCh,
+	})
 	require.NotNil(err)
+
+	require.Nil(sw.addPeer(p))
 
 	// DialPeerWithAddres - sw.peerConfig resets the dialer
 
@@ -360,7 +379,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 }
 
 func TestSwitchFullConnectivity(t *testing.T) {
-	switches := MakeConnectedSwitches(cfg, 3, initSwitchFunc, Connect2Switches)
+	switches := MakeConnectedSwitches(t, cfg, 3, initSwitchFunc, Connect2Switches)
 	defer func() {
 		for _, sw := range switches {
 			sw.Stop()

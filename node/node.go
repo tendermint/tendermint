@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	abci "github.com/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
@@ -20,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
+	"github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
@@ -252,7 +254,7 @@ func NewNode(config *cfg.Config,
 
 	p2pLogger := logger.With("module", "p2p")
 
-	sw := p2p.NewSwitch(config.P2P)
+	sw := p2p.NewSwitch(config.P2P, nil)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
@@ -381,11 +383,6 @@ func (n *Node) OnStart() error {
 		return err
 	}
 
-	// Create & add listener
-	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
-	n.sw.AddListener(l)
-
 	// Generate node PrivKey
 	// TODO: pass in like privValidator
 	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
@@ -395,6 +392,27 @@ func (n *Node) OnStart() error {
 	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
 	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+	transport := p2p.NewMTransport(nodeInfo, *nodeKey)
+
+	// Set MConfig.
+	config := n.config.P2P
+	mConfig := conn.DefaultMConnConfig()
+	mConfig.FlushThrottle = time.Duration(config.FlushThrottleTimeout) * time.Millisecond
+	mConfig.SendRate = config.SendRate
+	mConfig.RecvRate = config.RecvRate
+	mConfig.MaxPacketMsgPayloadSize = config.MaxPacketMsgPayloadSize
+	p2p.MultiplexTransportMConfig(mConfig)
+
+	// Create & add listener
+	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
+
+	addr, err := p2p.NewNetAddressStringWithOptionalID(address)
+	if err != nil {
+		return err
+	}
+
+	go transport.Listen(*addr)
+
 	n.sw.SetNodeInfo(nodeInfo)
 	n.sw.SetNodeKey(nodeKey)
 
@@ -460,13 +478,6 @@ func (n *Node) RunForever() {
 	cmn.TrapSignal(func() {
 		n.Stop()
 	})
-}
-
-// AddListener adds a listener to accept inbound peer connections.
-// It should be called before starting the Node.
-// The first listener is the primary listener (in NodeInfo)
-func (n *Node) AddListener(l p2p.Listener) {
-	n.sw.AddListener(l)
 }
 
 // ConfigureRPC sets all variables in rpccore so they will serve
