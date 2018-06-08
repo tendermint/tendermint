@@ -1,6 +1,8 @@
 ABCI Specification
 ==================
 
+NOTE: this file has moved to `specification.md <./specification.md>`__. It is left to prevent link breakages for the forseable future. It can safely be deleted in a few months.
+
 Message Types
 ~~~~~~~~~~~~~
 

@@ -47,8 +47,11 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  repeated Validator validators = 1 [(gogoproto.nullable)=false];
-  bytes genesis_bytes = 2;
+  int64 time = 1;
+  string chain_id = 2;
+  ConsensusParams consensus_params = 3;
+  repeated Validator validators = 4  [(gogoproto.nullable)=false];
+  bytes app_state_bytes = 5;
 }
 
 message RequestQuery {
@@ -61,7 +64,7 @@ message RequestQuery {
 message RequestBeginBlock {
   bytes hash = 1;
   Header header = 2 [(gogoproto.nullable)=false];
-  repeated SigningValidator validators = 3;
+  repeated SigningValidator validators = 3  [(gogoproto.nullable)=false];
   repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
 }
 
@@ -128,7 +131,8 @@ message ResponseSetOption {
 }
 
 message ResponseInitChain {
-  repeated Validator validators = 1 [(gogoproto.nullable)=false];
+  ConsensusParams consensus_params = 1;
+  repeated Validator validators = 2 [(gogoproto.nullable)=false];
 }
 
 message ResponseQuery {
@@ -230,7 +234,7 @@ message Header {
   bytes app_hash = 7;
 
   // consensus
-  Validator proposer = 8;
+  Validator proposer = 8 [(gogoproto.nullable)=false];
 }
 
 // Validator
@@ -242,7 +246,7 @@ message Validator {
 
 // Validator with an extra bool
 message SigningValidator {
-  Validator validator = 1;
+  Validator validator = 1 [(gogoproto.nullable)=false];
   bool signed_last_block = 2;
 }
 
@@ -253,7 +257,7 @@ message PubKey {
 
 message Evidence {
   string type = 1;
-  Validator validator = 2;
+  Validator validator = 2 [(gogoproto.nullable)=false];
   int64 height = 3;
   int64 time = 4;
   int64 total_voting_power = 5;
