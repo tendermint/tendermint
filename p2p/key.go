@@ -34,7 +34,11 @@ func (nodeKey *NodeKey) ID() ID {
 
 // PubKey returns the peer's PubKey
 func (nodeKey *NodeKey) PubKey() crypto.PubKey {
-	return nodeKey.PrivKey.PubKey()
+	pubKey, err := nodeKey.PrivKey.PubKey()
+	if err != nil {
+		panic(err)
+	}
+	return pubKey
 }
 
 // PubKeyToID returns the ID corresponding to the given PubKey.

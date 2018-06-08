@@ -52,18 +52,29 @@ func NewMockPV() *MockPV {
 
 // Implements PrivValidator.
 func (pv *MockPV) GetAddress() Address {
-	return pv.privKey.PubKey().Address()
+	pubKey, err := pv.privKey.PubKey()
+	if err != nil {
+		panic(err)
+	}
+	return pubKey.Address()
 }
 
 // Implements PrivValidator.
 func (pv *MockPV) GetPubKey() crypto.PubKey {
-	return pv.privKey.PubKey()
+	pubKey, err := pv.privKey.PubKey()
+	if err != nil {
+		panic(err)
+	}
+	return pubKey
 }
 
 // Implements PrivValidator.
 func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
 	signBytes := vote.SignBytes(chainID)
-	sig := pv.privKey.Sign(signBytes)
+	sig, err := pv.privKey.Sign(signBytes)
+	if err != nil {
+		panic(err)
+	}
 	vote.Signature = sig
 	return nil
 }
@@ -71,14 +82,20 @@ func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
 // Implements PrivValidator.
 func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 	signBytes := proposal.SignBytes(chainID)
-	sig := pv.privKey.Sign(signBytes)
+	sig, err := pv.privKey.Sign(signBytes)
+	if err != nil {
+		panic(err)
+	}
 	proposal.Signature = sig
 	return nil
 }
 
 // signHeartbeat signs the heartbeat without any checking.
 func (pv *MockPV) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
-	sig := pv.privKey.Sign(heartbeat.SignBytes(chainID))
+	sig, err := pv.privKey.Sign(heartbeat.SignBytes(chainID))
+	if err != nil {
+		panic(err)
+	}
 	heartbeat.Signature = sig
 	return nil
 }

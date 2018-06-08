@@ -64,7 +64,11 @@ func (v ValKeys) ExtendSecp(n int) ValKeys {
 func (v ValKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 	res := make([]*types.Validator, len(v))
 	for i, k := range v {
-		res[i] = types.NewValidator(k.PubKey(), init+int64(i)*inc)
+		pubKey, err := k.PubKey()
+		if err != nil {
+			panic(err)
+		}
+		res[i] = types.NewValidator(pubKey, init+int64(i)*inc)
 	}
 	return types.NewValidatorSet(res)
 }
@@ -90,7 +94,11 @@ func (v ValKeys) signHeader(header *types.Header, first, last int) *types.Commit
 }
 
 func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey) *types.Vote {
-	addr := key.PubKey().Address()
+	pubKey, err := key.PubKey()
+	if err != nil {
+		panic(err)
+	}
+	addr := pubKey.Address()
 	idx, _ := vals.GetByAddress(addr)
 	vote := &types.Vote{
 		ValidatorAddress: addr,
@@ -103,7 +111,10 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 	}
 	// Sign it
 	signBytes := vote.SignBytes(header.ChainID)
-	vote.Signature = key.Sign(signBytes)
+	vote.Signature, err = key.Sign(signBytes)
+	if err != nil {
+		panic(err)
+	}
 	return vote
 }
 
