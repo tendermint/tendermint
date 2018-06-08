@@ -1,5 +1,10 @@
 # ADR 009: ABCI UX Improvements
 
+## Changelog
+
+07-06-2018: Minor updates based on discussion with Jae
+07-06-2018: Initial draft to match what was released in ABCI v0.11
+
 ## Context
 
 The ABCI was first introduced in late 2015.  It's purpose is to be:
@@ -21,8 +26,7 @@ identified as pain points:
 - Managing validator sets
 - Imports in the protobuf file
 
-See the following relevent github issues:
-- TODO
+See the [references](#references) for more.
 
 ### Imports
 
@@ -234,3 +238,18 @@ Accepted.
 ### Neutral
 
 - ABCI developers must know about validator addresses
+
+## References
+
+- [ABCI v0.10.3 Specification (before this
+  proposal)](https://github.com/tendermint/abci/blob/v0.10.3/specification.rst)
+- [ABCI v0.11.0 Specification (implementing first draft of this
+  proposal)](https://github.com/tendermint/abci/blob/v0.11.0/specification.md)
+- [Ed25519 addresses](https://github.com/tendermint/go-crypto/issues/103)
+- [InitChain contains the
+  Genesis](https://github.com/tendermint/abci/issues/216)
+- [PubKeys](https://github.com/tendermint/tendermint/issues/1524)
+- [Notes on
+  Header](https://github.com/tendermint/tendermint/issues/1605)
+- [Gogoproto issues](https://github.com/tendermint/abci/issues/256)
+- [Absent Validators](https://github.com/tendermint/abci/issues/231)
