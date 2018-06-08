@@ -1,4 +1,6 @@
-# Supported tags and respective `Dockerfile` links
+# Docker
+
+## Supported tags and respective `Dockerfile` links
 
 - `0.17.1`, `latest` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/208ac32fa266657bd6c304e84ec828aa252bb0b8/DOCKER/Dockerfile)
 - `0.15.0` [(Dockerfile)](https://github.com/tendermint/tendermint/blob/170777300ea92dc21a8aec1abc16cb51812513a4/DOCKER/Dockerfile)
@@ -14,7 +16,7 @@
 
 `develop` tag points to the [develop](https://github.com/tendermint/tendermint/tree/develop) branch.
 
-# Quick reference
+## Quick reference
 
 * **Where to get help:**
   https://cosmos.network/community
@@ -25,7 +27,7 @@
 * **Supported Docker versions:**
   [the latest release](https://github.com/moby/moby/releases) (down to 1.6 on a best-effort basis)
 
-# Tendermint
+## Tendermint
 
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine, written in any programming language, and securely replicates it on many machines.
 
@@ -33,9 +35,9 @@ For more background, see the [introduction](https://tendermint.readthedocs.io/en
 
 To get started developing applications, see the [application developers guide](https://tendermint.readthedocs.io/en/master/getting-started.html).
 
-# How to use this image
+## How to use this image
 
-## Start one instance of the Tendermint core with the `kvstore` app
+### Start one instance of the Tendermint core with the `kvstore` app
 
 A quick example of a built-in app and Tendermint core in one container.
 
@@ -44,7 +46,7 @@ docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint node --proxy_app=kvstore
 ```
 
-# Local cluster
+## Local cluster
 
 To run a 4-node network, see the `Makefile` in the root of [the repo](https://github.com/tendermint/tendermint/master/Makefile) and run:
 
@@ -56,10 +58,10 @@ make localnet-start
 
 Note that this will build and use a different image than the ones provided here.
 
-# License
+## License
 
 - Tendermint's license is [Apache 2.0](https://github.com/tendermint/tendermint/master/LICENSE).
 
-# Contributing
+## Contributing
 
 Contributions are most welcome! See the [contributing file](https://github.com/tendermint/tendermint/blob/master/CONTRIBUTING.md) for more information.
