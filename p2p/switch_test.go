@@ -155,8 +155,8 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 }
 
 func TestConnAddrFilter(t *testing.T) {
-	s0 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	s1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	s0 := MakeSwitch(t, cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(t, cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s0.Stop()
 	defer s1.Stop()
 
@@ -174,7 +174,7 @@ func TestConnAddrFilter(t *testing.T) {
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
-	s1 := MakeSwitch(cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
+	s1 := MakeSwitch(t, cfg, 1, "127.0.0.1", "123.123.123", initSwitchFunc)
 	// addr := s1.NodeInfo().NetAddress()
 
 	// // add ourselves like we do in node.go#427
@@ -207,8 +207,8 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 }
 
 func TestConnIDFilter(t *testing.T) {
-	sw0 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	sw1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw0 := MakeSwitch(t, cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw1 := MakeSwitch(t, cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	defer sw0.Stop()
 	defer sw1.Stop()
 
@@ -235,7 +235,7 @@ func TestConnIDFilter(t *testing.T) {
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(t, cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)
@@ -280,7 +280,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
-	sw := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw := MakeSwitch(t, cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	err := sw.Start()
 	if err != nil {
 		t.Error(err)

@@ -32,7 +32,7 @@ func evidenceLogger() log.Logger {
 }
 
 // connect N evidence reactors through N switches
-func makeAndConnectEvidenceReactors(config *cfg.Config, stateDBs []dbm.DB) []*EvidenceReactor {
+func makeAndConnectEvidenceReactors(t *testing.T, config *cfg.Config, stateDBs []dbm.DB) []*EvidenceReactor {
 	N := len(stateDBs)
 	reactors := make([]*EvidenceReactor, N)
 	logger := evidenceLogger()
@@ -44,7 +44,7 @@ func makeAndConnectEvidenceReactors(config *cfg.Config, stateDBs []dbm.DB) []*Ev
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(t, config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("EVIDENCE", reactors[i])
 		return s
 
@@ -129,7 +129,7 @@ func TestReactorBroadcastEvidence(t *testing.T) {
 	}
 
 	// make reactors from statedb
-	reactors := makeAndConnectEvidenceReactors(config, stateDBs)
+	reactors := makeAndConnectEvidenceReactors(t, config, stateDBs)
 
 	// set the peer height on each reactor
 	for _, r := range reactors {
@@ -165,7 +165,7 @@ func TestReactorSelectiveBroadcast(t *testing.T) {
 	stateDB2 := initializeValidatorState(valAddr, height2)
 
 	// make reactors from statedb
-	reactors := makeAndConnectEvidenceReactors(config, []dbm.DB{stateDB1, stateDB2})
+	reactors := makeAndConnectEvidenceReactors(t, config, []dbm.DB{stateDB1, stateDB2})
 	peer := reactors[0].Switch.Peers().List()[0]
 	ps := peerState{height2}
 	peer.Set(types.PeerStateKey, ps)

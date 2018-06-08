@@ -68,7 +68,7 @@ func MakeConnectedSwitches(
 ) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(t, cfg, i, TEST_HOST, "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -106,12 +106,12 @@ func Connect2Switches(t testing.TB, ss []*Switch, i, j int) {
 			reactorsByCh: sw.reactorsByCh,
 		})
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 
 		err = sw.addPeer(p)
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
 
 		donec <- struct{}{}
@@ -147,6 +147,7 @@ func StartSwitches(switches []*Switch) error {
 }
 
 func MakeSwitch(
+	t testing.TB,
 	cfg *config.P2PConfig,
 	i int,
 	network, version string,
@@ -167,13 +168,20 @@ func MakeSwitch(
 		}
 	)
 
-	sw := NewSwitch(cfg, nil)
+	addr, err := NewNetAddressStringWithOptionalID(nodeInof.ListenAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	transport := NewMTransport(*addr, nodeInfo, *nodeKey)
+
+	sw := NewSwitch(cfg, transport)
 	sw.SetLogger(log.TestingLogger())
+	sw.SetNodeInfo(nodeInfo)
+	sw.SetNodeKey(nodeKey)
 	sw = initSwitch(i, sw)
 	for ch := range sw.reactorsByCh {
 		nodeInfo.Channels = append(nodeInfo.Channels, ch)
 	}
-	sw.SetNodeInfo(nodeInfo)
-	sw.SetNodeKey(nodeKey)
 	return sw
 }

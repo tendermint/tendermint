@@ -181,7 +181,8 @@ func (sw *Switch) SetTransport(transport PeerTransport) {
 //---------------------------------------------------------------------
 // Service start/stop
 
-// OnStart implements BaseService. It starts all the reactors, peers, and listeners.
+// OnStart implements BaseService. It starts all the reactors, peers, and
+// listeners.
 func (sw *Switch) OnStart() error {
 	// Start reactors
 	for _, reactor := range sw.reactors {
@@ -525,6 +526,10 @@ func (sw *Switch) addInboundPeer(p Peer) error {
 // StopPeerForError is called
 func (sw *Switch) addOutboundPeer(addr *NetAddress, persistent bool) error {
 	sw.Logger.Info("Dialing peer", "address", addr)
+
+	if sw.transport == nil {
+		panic(sw.config)
+	}
 
 	p, err := sw.transport.Dial(*addr, peerConfig{
 		chDescs:      sw.chDescs,
