@@ -2,7 +2,7 @@
 
 ## Changelog
 
-07-06-2018: Minor updates based on discussion with Jae
+07-06-2018: Some updates based on discussion with Jae
 07-06-2018: Initial draft to match what was released in ABCI v0.11
 
 ## Context
@@ -168,8 +168,13 @@ with a boolean for whether or not they voted:
 message RequestBeginBlock {
   bytes hash
   Header header
-  repeated SigningValidator validators
+  LastCommitInfo last_commit_info
   repeated Evidence byzantine_validators
+}
+
+message LastCommitInfo {
+  int32 CommitRound
+  repeated SigningValidator validators
 }
 
 message SigningValidator {
