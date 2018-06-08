@@ -34,7 +34,8 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
 		privKey := crypto.GenPrivKeyEd25519()
-		pubKey := privKey.PubKey()
+		pubKey, err := privKey.PubKey()
+		assert.Nil(b, err)
 		val := NewValidator(pubKey, 0)
 		if !vset.Add(val) {
 			panic("Failed to add validator")
@@ -315,7 +316,8 @@ func TestSafeSubClip(t *testing.T) {
 
 func TestValidatorSetVerifyCommit(t *testing.T) {
 	privKey := crypto.GenPrivKeyEd25519()
-	pubKey := privKey.PubKey()
+	pubKey, err := privKey.PubKey()
+	assert.Nil(t, err)
 	v1 := NewValidator(pubKey, 1000)
 	vset := NewValidatorSet([]*Validator{v1})
 
@@ -331,7 +333,9 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Type:             VoteTypePrecommit,
 		BlockID:          blockID,
 	}
-	vote.Signature = privKey.Sign(vote.SignBytes(chainID))
+	sig, err := privKey.Sign(vote.SignBytes(chainID))
+	assert.Nil(t, err)
+	vote.Signature = sig
 	commit := &Commit{
 		BlockID:    blockID,
 		Precommits: []*Vote{vote},
@@ -365,6 +369,6 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	}
 
 	// test a good one
-	err := vset.VerifyCommit(chainID, blockID, height, commit)
+	err = vset.VerifyCommit(chainID, blockID, height, commit)
 	assert.Nil(t, err)
 }

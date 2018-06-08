@@ -164,8 +164,12 @@ func state(nVals, height int) (State, dbm.DB) {
 	for i := 0; i < nVals; i++ {
 		secret := []byte(fmt.Sprintf("test%d", i))
 		pk := crypto.GenPrivKeyEd25519FromSecret(secret)
+		pubKey, err := pk.PubKey()
+		if err != nil {
+			panic(err)
+		}
 		vals[i] = types.GenesisValidator{
-			pk.PubKey(), 1000, fmt.Sprintf("test%d", i),
+			pubKey, 1000, fmt.Sprintf("test%d", i),
 		}
 	}
 	s, _ := MakeGenesisState(&types.GenesisDoc{

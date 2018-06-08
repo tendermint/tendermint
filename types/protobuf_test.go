@@ -9,8 +9,10 @@ import (
 )
 
 func TestABCIPubKey(t *testing.T) {
-	pkEd := crypto.GenPrivKeyEd25519().PubKey()
-	pkSecp := crypto.GenPrivKeySecp256k1().PubKey()
+	pkEd, err := crypto.GenPrivKeyEd25519().PubKey()
+	assert.Nil(t, err)
+	pkSecp, err := crypto.GenPrivKeySecp256k1().PubKey()
+	assert.Nil(t, err)
 	testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
 	testABCIPubKey(t, pkSecp, ABCIPubKeyTypeSecp256k1)
 }
@@ -23,7 +25,8 @@ func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) {
 }
 
 func TestABCIValidators(t *testing.T) {
-	pkEd := crypto.GenPrivKeyEd25519().PubKey()
+	pkEd, err := crypto.GenPrivKeyEd25519().PubKey()
+	assert.Nil(t, err)
 
 	// correct validator
 	tmValExpected := &Validator{

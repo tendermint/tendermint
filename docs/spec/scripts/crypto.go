@@ -11,8 +11,16 @@ var SECRET = []byte("some secret")
 
 func printEd() {
 	priv := crypto.GenPrivKeyEd25519FromSecret(SECRET)
-	pub := priv.PubKey().(crypto.PubKeyEd25519)
-	sig := priv.Sign([]byte("hello")).(crypto.SignatureEd25519)
+	pubKey, err := priv.PubKey()
+	if err != nil {
+		panic(err)
+	}
+	pub := pubKey.(crypto.PubKeyEd25519)
+	signature, err := priv.Sign([]byte("hello"))
+	if err != nil {
+		panic(err)
+	}
+	sig := signature.(crypto.SignatureEd25519)
 
 	name := "tendermint/PubKeyEd25519"
 	length := len(pub[:])
@@ -65,8 +73,16 @@ func printEd() {
 
 func printSecp() {
 	priv := crypto.GenPrivKeySecp256k1FromSecret(SECRET)
-	pub := priv.PubKey().(crypto.PubKeySecp256k1)
-	sig := priv.Sign([]byte("hello")).(crypto.SignatureSecp256k1)
+	pubKey, err := priv.PubKey()
+	if err != nil {
+		panic(err)
+	}
+	pub := pubKey.(crypto.PubKeySecp256k1)
+	signature, err := priv.Sign([]byte("hello"))
+	sig := signature.(crypto.SignatureSecp256k1)
+	if err != nil {
+		panic(err)
+	}
 
 	name := "tendermint/PubKeySecp256k1"
 	length := len(pub[:])

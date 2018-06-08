@@ -36,9 +36,16 @@ func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection
 
 	var fooConn, barConn = makeKVStoreConnPair()
 	var fooPrvKey = crypto.GenPrivKeyEd25519()
-	var fooPubKey = fooPrvKey.PubKey()
+	var fooPubKey, err = fooPrvKey.PubKey()
+	if err != nil {
+		panic(err)
+	}
 	var barPrvKey = crypto.GenPrivKeyEd25519()
-	var barPubKey = barPrvKey.PubKey()
+	var barPubKey crypto.PubKey
+	barPubKey, err = barPrvKey.PubKey()
+	if err != nil {
+		panic(err)
+	}
 
 	// Make connections from both sides in parallel.
 	var trs, ok = cmn.Parallel(
