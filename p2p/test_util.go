@@ -54,11 +54,18 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 
 const TEST_HOST = "localhost"
 
-// MakeConnectedSwitches returns n switches, connected according to the connect func.
-// If connect==Connect2Switches, the switches will be fully connected.
-// initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
+// MakeConnectedSwitches returns n switches, connected according to the connect
+// func. If connect==Connect2Switches, the switches will be fully connected.
+// initSwitch defines how the i'th switch should be initialized (ie. with what
+// reactors).
 // NOTE: panics if any switch fails to start.
-func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
+func MakeConnectedSwitches(
+	t testing.TB,
+	cfg *config.P2PConfig,
+	n int,
+	initSwitch func(int, *Switch) *Switch,
+	connect func(testing.TB, *Switch, *Switch),
+) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
 		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
@@ -70,7 +77,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *S
 
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
-			connect(switches, i, j)
+			connect(t, switches[i], switches[j])
 		}
 	}
 
@@ -80,7 +87,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *S
 // Connect2Switches will connect switches i and j via net.Pipe().
 // Blocks until a connection is established, returns early if timeout
 // reached.
-func Connect2Switches(t *testing.T, sw0, sw1 *Switch) {
+func Connect2Switches(t testing.TB, sw0, sw1 *Switch) {
 	var (
 		c0, c1 = conn.NetPipe()
 		addc   = make(chan struct{})
@@ -90,6 +97,8 @@ func Connect2Switches(t *testing.T, sw0, sw1 *Switch) {
 		p, err := upgrade(c, 10*time.Millisecond, peerConfig{
 			chDescs:      sw.chDescs,
 			mConfig:      conn.DefaultMConnConfig(),
+			nodeInfo:     sw.nodeInfo,
+			nodeKey:      *sw.nodeKey,
 			onPeerError:  sw.StopPeerForError,
 			outbound:     true,
 			reactorsByCh: sw.reactorsByCh,

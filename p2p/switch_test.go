@@ -83,9 +83,12 @@ func (tr *TestReactor) getMsgs(chID byte) []PeerMessage {
 
 // convenience method for creating two switches connected to each other.
 // XXX: note this uses net.Pipe and not a proper TCP conn
-func MakeSwitchPair(t testing.TB, initSwitch func(int, *Switch) *Switch) (*Switch, *Switch) {
+func MakeSwitchPair(
+	t testing.TB,
+	initSwitch func(int, *Switch) *Switch,
+) (*Switch, *Switch) {
 	// Create two switches that will be interconnected.
-	switches := MakeConnectedSwitches(cfg, 2, initSwitch, Connect2Switches)
+	switches := MakeConnectedSwitches(t, cfg, 2, initSwitch, Connect2Switches)
 	return switches[0], switches[1]
 }
 
@@ -206,18 +209,18 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 func TestConnIDFilter(t *testing.T) {
 	sw0 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	sw1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	defer s1.Stop()
-	defer s2.Stop()
+	defer sw0.Stop()
+	defer sw1.Stop()
 
 	sw0.SetIDFilter(func(id ID) error {
-		if id == s1.nodeInfo.ID {
+		if id == sw1.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
 	sw1.SetIDFilter(func(id ID) error {
-		if id == s0.nodeInfo.ID {
+		if id == sw0.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
@@ -244,16 +247,30 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	pc, err := newOutboundPeerConn(rp.Addr(), cfg, false, sw.nodeKey.PrivKey)
+	timeout := 10 * time.Millisecond
+
+	c, err := rp.Addr().DialTimeout(timeout)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, err := upgrade(c, timeout, peerConfig{
+		chDescs:      sw.chDescs,
+		mConfig:      conn.DefaultMConnConfig(),
+		nodeInfo:     sw.nodeInfo,
+		nodeKey:      *sw.nodeKey,
+		onPeerError:  sw.StopPeerForError,
+		outbound:     true,
+		reactorsByCh: sw.reactorsByCh,
+	})
 	require.Nil(err)
-	err = sw.addPeer(pc)
-	require.Nil(err)
+	require.Nil(sw.addPeer(p))
 
 	peer := sw.Peers().Get(rp.ID())
 	require.NotNil(peer)
 
 	// simulate failure by closing connection
-	pc.CloseConn()
+	p.CloseConn()
 
 	assertNoPeersAfterTimeout(t, sw, 100*time.Millisecond)
 	assert.False(peer.IsRunning())
@@ -274,17 +291,31 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	pc, err := newOutboundPeerConn(rp.Addr(), cfg, true, sw.nodeKey.PrivKey)
-	//	sw.reactorsByCh, sw.chDescs, sw.StopPeerForError, sw.nodeKey.PrivKey,
+	timeout := 10 * time.Millisecond
+
+	c, err := rp.Addr().DialTimeout(timeout)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, err := upgrade(c, timeout, peerConfig{
+		chDescs:      sw.chDescs,
+		mConfig:      conn.DefaultMConnConfig(),
+		nodeInfo:     sw.nodeInfo,
+		nodeKey:      *sw.nodeKey,
+		onPeerError:  sw.StopPeerForError,
+		outbound:     true,
+		reactorsByCh: sw.reactorsByCh,
+	})
 	require.Nil(err)
 
-	require.Nil(sw.addPeer(pc))
+	require.Nil(sw.addPeer(p))
 
 	peer := sw.Peers().Get(rp.ID())
 	require.NotNil(peer)
 
 	// simulate failure by closing connection
-	pc.CloseConn()
+	p.CloseConn()
 
 	// TODO: remove sleep, detect the disconnection, wait for reconnect
 	npeers := sw.Peers().Size()
