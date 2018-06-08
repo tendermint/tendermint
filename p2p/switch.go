@@ -410,7 +410,7 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 	sw.dialing.Set(string(addr.ID), addr)
 	defer sw.dialing.Delete(string(addr.ID))
-	return sw.addOutboundPeerWithConfig(addr, *sw.config, persistent)
+	return sw.addOutboundPeer(addr, persistent)
 }
 
 // sleep for interval plus some random amount of ms on [0, dialRandomizerIntervalMilliseconds]
@@ -453,7 +453,13 @@ func (sw *Switch) SetIDFilter(f func(ID) error) {
 
 func (sw *Switch) acceptRoutine() {
 	for {
-		p, err := sw.transport.Accept(*sw.config)
+		p, err := sw.transport.Accept(peerConfig{
+			chDescs:      sw.chDescs,
+			mConfig:      sw.mConfig,
+			onPeerError:  sw.StopPeerForError,
+			p2pConfig:    *sw.config,
+			reactorsByCh: sw.reactorsByCh,
+		})
 		if err != nil {
 			sw.Logger.Info(
 				"Ignoring inbound connection: error while adding peer",
@@ -496,19 +502,22 @@ func (sw *Switch) addInboundPeer(p Peer) error {
 	return sw.addPeer(p)
 }
 
-// dial the peer; make secret connection; authenticate against the dialed ID;
+// dial the peer
 // add the peer.
 // if dialing fails, start the reconnect loop. If handhsake fails, its over.
 // If peer is started succesffuly, reconnectLoop will start when
 // StopPeerForError is called
-func (sw *Switch) addOutboundPeerWithConfig(
-	addr *NetAddress,
-	config config.P2PConfig,
-	persistent bool,
-) error {
+func (sw *Switch) addOutboundPeer(addr *NetAddress, persistent bool) error {
 	sw.Logger.Info("Dialing peer", "address", addr)
 
-	p, err := sw.transport.Dial(*addr, config, persistent)
+	p, err := sw.transport.Dial(*addr, peerConfig{
+		chDescs:      sw.chDescs,
+		mConfig:      sw.mConfig,
+		onPeerError:  sw.StopPeerForError,
+		persistent:   persistent,
+		p2pConfig:    *sw.config,
+		reactorsByCh: sw.reactorsByCh,
+	})
 	if err != nil {
 		if persistent {
 			go sw.reconnectToPeer(addr)

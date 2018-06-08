@@ -5,28 +5,49 @@ import (
 	"net"
 	"time"
 
+	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 type accept struct {
-	mPeer *peer
-	err   error
+	conn net.Conn
+	err  error
+}
+
+// TODO(xla): Remove once MConnection is refactored into mPer.
+type peerConfig struct {
+	chDescs      []*conn.ChannelDescriptor
+	mConfig      conn.MConnConfig
+	nodeInfo     NodeInfo
+	nodeKey      NodeKey
+	onPeerError  func(Peer, interface{})
+	outbound     bool
+	p2pConfig    config.P2PConfig
+	persistent   bool
+	reactorsByCh map[byte]Reactor
 }
 
 // PeerTransport proxies incoming and outgoing peer connections.
 type PeerTransport interface {
 	// Accept returns a newly connected Peer.
-	Accept(config.P2PConfig) (Peer, error)
+	Accept(peerConfig) (Peer, error)
 
 	// Dial connects to a Peer.
-	Dial(NetAddress, config.P2PConfig, bool) (Peer, error)
+	Dial(NetAddress, peerConfig) (Peer, error)
 
 	ExternalAddress() NetAddress
 
 	// lifecycle methods
 	Close() error
 	Listen(NetAddress) error
+}
+
+// MultiplexTransportOption sets an optional parameter on multiplexTransport.
+type MultiplexTransportOption func(*multiplexTransport)
+
+func MultiplexTransportMConfig(cfg conn.MConnConfig) MultiplexTransportOption {
+	return func(mt *multiplexTransport) { mt.mConfig = cfg }
 }
 
 // multiplexTransport accepts tcp connections and upgrades to multiplexted
@@ -37,9 +58,14 @@ type multiplexTransport struct {
 	acceptc chan accept
 	closec  <-chan struct{}
 
+	addr             NetAddress
 	dialTimeout      time.Duration
 	handshakeTimeout time.Duration
 	nodeInfo         NodeInfo
+	nodeKey          NodeKey
+
+	// TODO(xla): Remove when MConnection is refactored into mPeer.
+	mConfig conn.MConnConfig
 }
 
 var _ PeerTransport = (*multiplexTransport)(nil)
@@ -48,33 +74,42 @@ var _ PeerTransport = (*multiplexTransport)(nil)
 func NewMTransport(nodeInfo NodeInfo, nodeKey NodeKey) *multiplexTransport {
 	// TODO(xla): Move over proper external address discvoery.
 	return &multiplexTransport{
+		mConfig:  conn.DefaultMConnConfig(),
 		nodeInfo: nodeInfo,
 		nodeKey:  nodeKey,
 	}
 }
 
-func (mt *multiplexTransport) Accept(cfg config.P2PConfig) (Peer, error) {
+func (mt *multiplexTransport) Accept(cfg peerConfig) (Peer, error) {
 	a := <-mt.acceptc
-	return a.mPeer, a.err
+	if a.err != nil {
+		return nil, a.err
+	}
+
+	cfg.nodeInfo = mt.nodeInfo
+	cfg.nodeKey = mt.nodeKey
+
+	return upgrade(a.conn, mt.handshakeTimeout, cfg)
 }
 
-func (mt *multiplexTransport) Dial(addr NetAddress) (Peer, error) {
+func (mt *multiplexTransport) Dial(
+	addr NetAddress,
+	cfg peerConfig,
+) (Peer, error) {
 	c, err := addr.DialTimeout(mt.dialTimeout)
 	if err != nil {
 		return nil, err
 	}
 
-	c, err = mt.secretConn(c)
-	if err != nil {
-		return nil, err
-	}
+	cfg.nodeInfo = mt.nodeInfo
+	cfg.nodeKey = mt.nodeKey
+	cfg.outbound = true
 
-	peerNodeInfo, err := mt.handshake(c)
-	if err != nil {
-		return nil, err
-	}
+	return upgrade(c, mt.handshakeTimeout, cfg)
+}
 
-	return newMultiplexPeer(c.(*conn.SecretConnection), addr, peerNodeInfo)
+func (mt *multiplexTransport) ExternalAddress() NetAddress {
+	return mt.addr
 }
 
 func (mt *multiplexTransport) Close() error {
@@ -87,11 +122,12 @@ func (mt *multiplexTransport) Listen(addr NetAddress) error {
 		return err
 	}
 
+	mt.addr = addr
 	mt.listener = ln
 
 	go mt.acceptPeers()
 
-	return fmt.Errorf("not implemented")
+	return nil
 }
 
 func (mt *multiplexTransport) acceptPeers() {
@@ -107,31 +143,16 @@ func (mt *multiplexTransport) acceptPeers() {
 			return
 		}
 
-		mp, err := mt.acceptPeer(c)
-
-		mt.acceptc <- accept{mp, err}
+		mt.acceptc <- accept{c, err}
 	}
 }
 
-func (mt *multiplexTransport) acceptPeer(c net.Conn) (*multiplexPeer, error) {
-	c, err := mt.secretConn(c)
-	if err != nil {
-		return nil, err
-	}
-
-	peerNodeInfo, err := mt.handshake(c)
-	if err != nil {
-		return nil, err
-	}
-
-	addr := NewNetAddress(peerNodeInfo.ID, c.RemoteAddr())
-
-	return newMultiplexPeer(c.(*conn.SecretConnection), *addr, peerNodeInfo)
-
-}
-
-func (mt *multiplexTransport) handshake(c net.Conn) (NodeInfo, error) {
-	if err := c.SetDeadline(time.Now().Add(mt.handshakeTimeout)); err != nil {
+func handshake(
+	c net.Conn,
+	timeout time.Duration,
+	nodeInfo NodeInfo,
+) (NodeInfo, error) {
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return NodeInfo{}, err
 	}
 
@@ -140,7 +161,7 @@ func (mt *multiplexTransport) handshake(c net.Conn) (NodeInfo, error) {
 		peerNodeInfo NodeInfo
 	)
 	go func(errc chan<- error, c net.Conn) {
-		_, err := cdc.MarshalBinaryWriter(c, mt.nodeInfo)
+		_, err := cdc.MarshalBinaryWriter(c, nodeInfo)
 		errc <- err
 	}(errc, c)
 	go func(errc chan<- error, c net.Conn) {
@@ -159,18 +180,46 @@ func (mt *multiplexTransport) handshake(c net.Conn) (NodeInfo, error) {
 		}
 	}
 
-	return c.SetDeadline(time.Time{})
+	return peerNodeInfo, c.SetDeadline(time.Time{})
 }
 
-func (mt *multiplexTransport) secretConn(c) (net.Conn, error) {
-	if err := c.SetDeadline(time.Now().Add(mt.handshakeTimeout)); err != nil {
+func secretConn(c net.Conn, timeout time.Duration, privKey crypto.PrivKey) (net.Conn, error) {
+	if err := c.SetDeadline(time.Now().Add(timeout)); err != nil {
 		return nil, err
 	}
 
-	c, err = conn.MakeSecretConnection(c, mt.privKey)
+	c, err := conn.MakeSecretConnection(c, privKey)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.SetDeadline(time.Time{})
+	return c, c.SetDeadline(time.Time{})
+}
+
+func upgrade(c net.Conn, timeout time.Duration, cfg peerConfig) (*peer, error) {
+	c, err := secretConn(c, timeout, cfg.nodeKey.PrivKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ni, err := handshake(c, timeout, cfg.nodeInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	pc := peerConn{
+		conn:       c,
+		config:     &cfg.p2pConfig,
+		outbound:   cfg.outbound,
+		persistent: cfg.persistent,
+	}
+
+	return newPeer(
+		pc,
+		cfg.mConfig,
+		ni,
+		cfg.reactorsByCh,
+		cfg.chDescs,
+		cfg.onPeerError,
+	), nil
 }

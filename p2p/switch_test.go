@@ -152,32 +152,22 @@ func assertMsgReceivedWithTimeout(t *testing.T, msgBytes []byte, channel byte, r
 }
 
 func TestConnAddrFilter(t *testing.T) {
+	s0 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	s1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	defer s0.Stop()
 	defer s1.Stop()
-	defer s2.Stop()
-
-	c1, c2 := conn.NetPipe()
 
 	s1.SetAddrFilter(func(addr net.Addr) error {
-		if addr.String() == c1.RemoteAddr().String() {
+		if addr.String() == "pipe" {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
-	// connect to good peer
-	go func() {
-		err := s1.addPeerWithConnection(c1)
-		assert.NotNil(t, err, "expected err")
-	}()
-	go func() {
-		err := s2.addPeerWithConnection(c2)
-		assert.NotNil(t, err, "expected err")
-	}()
+	Connect2Switches(t, s0, s1)
 
+	assertNoPeersAfterTimeout(t, s0, 400*time.Millisecond)
 	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
-	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
 }
 
 func TestSwitchFiltersOutItself(t *testing.T) {
@@ -214,38 +204,29 @@ func assertNoPeersAfterTimeout(t *testing.T, sw *Switch, timeout time.Duration) 
 }
 
 func TestConnIDFilter(t *testing.T) {
-	s1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
-	s2 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw0 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
+	sw1 := MakeSwitch(cfg, 1, "testing", "123.123.123", initSwitchFunc)
 	defer s1.Stop()
 	defer s2.Stop()
 
-	c1, c2 := conn.NetPipe()
-
-	s1.SetIDFilter(func(id ID) error {
-		if id == s2.nodeInfo.ID {
-			return fmt.Errorf("Error: pipe is blacklisted")
-		}
-		return nil
-	})
-
-	s2.SetIDFilter(func(id ID) error {
+	sw0.SetIDFilter(func(id ID) error {
 		if id == s1.nodeInfo.ID {
 			return fmt.Errorf("Error: pipe is blacklisted")
 		}
 		return nil
 	})
 
-	go func() {
-		err := s1.addPeerWithConnection(c1)
-		assert.NotNil(t, err, "expected error")
-	}()
-	go func() {
-		err := s2.addPeerWithConnection(c2)
-		assert.NotNil(t, err, "expected error")
-	}()
+	sw1.SetIDFilter(func(id ID) error {
+		if id == s0.nodeInfo.ID {
+			return fmt.Errorf("Error: pipe is blacklisted")
+		}
+		return nil
+	})
 
-	assertNoPeersAfterTimeout(t, s1, 400*time.Millisecond)
-	assertNoPeersAfterTimeout(t, s2, 400*time.Millisecond)
+	Connect2Switches(t, sw0, sw1)
+
+	assertNoPeersAfterTimeout(t, sw0, 400*time.Millisecond)
+	assertNoPeersAfterTimeout(t, sw1, 400*time.Millisecond)
 }
 
 func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
