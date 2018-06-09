@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/tendermint/tendermint/lite"
 	"github.com/tendermint/tendermint/lite/proxy"
 	"github.com/tendermint/tendermint/types"
 )
@@ -26,9 +25,9 @@ var hdrHeight11 = &types.Header{
 
 func TestValidateBlock(t *testing.T) {
 	tests := []struct {
-		block   *types.Block
-		commit  lite.Commit
-		wantErr string
+		block        *types.Block
+		signedHeader types.SignedHeader
+		wantErr      string
 	}{
 		{
 			block: nil, wantErr: "non-nil Block",
@@ -37,32 +36,32 @@ func TestValidateBlock(t *testing.T) {
 			block: &types.Block{}, wantErr: "nil Header",
 		},
 		{
-			block: &types.Block{Header: new(types.Header)},
+			block: &types.Block{Header: new(types.Header)}, wantErr: "unexpected empty SignedHeader",
 		},
 
 		// Start Header.Height mismatch test
 		{
-			block:   &types.Block{Header: &types.Header{Height: 10}},
-			commit:  lite.Commit{Header: &types.Header{Height: 11}},
-			wantErr: "don't match - 10 vs 11",
+			block:        &types.Block{Header: &types.Header{Height: 10}},
+			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
+			wantErr:      "Header heights mismatched",
 		},
 
 		{
-			block:  &types.Block{Header: &types.Header{Height: 11}},
-			commit: lite.Commit{Header: &types.Header{Height: 11}},
+			block:        &types.Block{Header: &types.Header{Height: 11}},
+			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
 		},
 		// End Header.Height mismatch test
 
 		// Start Header.Hash mismatch test
 		{
-			block:   &types.Block{Header: hdrHeight11},
-			commit:  lite.Commit{Header: &types.Header{Height: 11}},
-			wantErr: "Headers don't match",
+			block:        &types.Block{Header: hdrHeight11},
+			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
+			wantErr:      "Headers don't match",
 		},
 
 		{
-			block:  &types.Block{Header: hdrHeight11},
-			commit: lite.Commit{Header: hdrHeight11},
+			block:        &types.Block{Header: hdrHeight11},
+			signedHeader: types.SignedHeader{Header: hdrHeight11},
 		},
 		// End Header.Hash mismatch test
 
@@ -72,7 +71,7 @@ func TestValidateBlock(t *testing.T) {
 				Header: &types.Header{Height: 11},
 				Data:   &types.Data{Txs: []types.Tx{[]byte("0xDE"), []byte("AD")}},
 			},
-			commit: lite.Commit{
+			signedHeader: types.SignedHeader{
 				Header: &types.Header{Height: 11},
 				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("0xDEADBEEF")}},
 			},
@@ -83,7 +82,7 @@ func TestValidateBlock(t *testing.T) {
 				Header: &types.Header{Height: 11, DataHash: deadBeefHash},
 				Data:   &types.Data{Txs: deadBeefTxs},
 			},
-			commit: lite.Commit{
+			signedHeader: types.SignedHeader{
 				Header: &types.Header{Height: 11},
 				Commit: &types.Commit{BlockID: types.BlockID{Hash: []byte("DEADBEEF")}},
 			},
@@ -92,7 +91,7 @@ func TestValidateBlock(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		err := proxy.ValidateBlock(tt.block, tt.commit)
+		err := proxy.ValidateBlock(tt.block, tt.signedHeader)
 		if tt.wantErr != "" {
 			if err == nil {
 				assert.FailNowf(t, "Unexpectedly passed", "#%d", i)
@@ -108,9 +107,9 @@ func TestValidateBlock(t *testing.T) {
 
 func TestValidateBlockMeta(t *testing.T) {
 	tests := []struct {
-		meta    *types.BlockMeta
-		commit  lite.Commit
-		wantErr string
+		meta         *types.BlockMeta
+		signedHeader types.SignedHeader
+		wantErr      string
 	}{
 		{
 			meta: nil, wantErr: "non-nil BlockMeta",
@@ -119,32 +118,32 @@ func TestValidateBlockMeta(t *testing.T) {
 			meta: &types.BlockMeta{}, wantErr: "non-nil Header",
 		},
 		{
-			meta: &types.BlockMeta{Header: new(types.Header)},
+			meta: &types.BlockMeta{Header: new(types.Header)}, wantErr: "unexpected empty SignedHeader",
 		},
 
 		// Start Header.Height mismatch test
 		{
-			meta:    &types.BlockMeta{Header: &types.Header{Height: 10}},
-			commit:  lite.Commit{Header: &types.Header{Height: 11}},
-			wantErr: "don't match - 10 vs 11",
+			meta:         &types.BlockMeta{Header: &types.Header{Height: 10}},
+			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
+			wantErr:      "Header heights mismatched",
 		},
 
 		{
-			meta:   &types.BlockMeta{Header: &types.Header{Height: 11}},
-			commit: lite.Commit{Header: &types.Header{Height: 11}},
+			meta:         &types.BlockMeta{Header: &types.Header{Height: 11}},
+			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
 		},
 		// End Header.Height mismatch test
 
 		// Start Headers don't match test
 		{
-			meta:    &types.BlockMeta{Header: hdrHeight11},
-			commit:  lite.Commit{Header: &types.Header{Height: 11}},
-			wantErr: "Headers don't match",
+			meta:         &types.BlockMeta{Header: hdrHeight11},
+			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
+			wantErr:      "Headers don't match",
 		},
 
 		{
-			meta:   &types.BlockMeta{Header: hdrHeight11},
-			commit: lite.Commit{Header: hdrHeight11},
+			meta:         &types.BlockMeta{Header: hdrHeight11},
+			signedHeader: types.SignedHeader{Header: hdrHeight11},
 		},
 
 		{
@@ -156,7 +155,7 @@ func TestValidateBlockMeta(t *testing.T) {
 					Time: testTime1,
 				},
 			},
-			commit: lite.Commit{
+			signedHeader: types.SignedHeader{
 				Header: &types.Header{Height: 11, DataHash: deadBeefHash},
 			},
 			wantErr: "Headers don't match",
@@ -170,7 +169,7 @@ func TestValidateBlockMeta(t *testing.T) {
 					Time:           testTime1,
 				},
 			},
-			commit: lite.Commit{
+			signedHeader: types.SignedHeader{
 				Header: &types.Header{
 					Height: 11, DataHash: deadBeefHash,
 					ValidatorsHash: []byte("Tendermint"),
@@ -189,7 +188,7 @@ func TestValidateBlockMeta(t *testing.T) {
 					Time:           testTime2,
 				},
 			},
-			commit: lite.Commit{
+			signedHeader: types.SignedHeader{
 				Header: &types.Header{
 					Height: 11, DataHash: deadBeefHash,
 					ValidatorsHash: []byte("Tendermint-x"),
@@ -203,7 +202,7 @@ func TestValidateBlockMeta(t *testing.T) {
 	}
 
 	for i, tt := range tests {
-		err := proxy.ValidateBlockMeta(tt.meta, tt.commit)
+		err := proxy.ValidateBlockMeta(tt.meta, tt.signedHeader)
 		if tt.wantErr != "" {
 			if err == nil {
 				assert.FailNowf(t, "Unexpectedly passed", "#%d: wanted error %q", i, tt.wantErr)

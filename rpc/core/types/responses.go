@@ -33,10 +33,8 @@ type ResultBlock struct {
 
 // Commit and Header
 type ResultCommit struct {
-	// SignedHeader is header and commit, embedded so we only have
-	// one level in the json output
-	types.SignedHeader
-	CanonicalCommit bool `json:"canonical"`
+	types.SignedHeader `json:"signed_header"`
+	CanonicalCommit    bool `json:"canonical"`
 }
 
 // ABCI results from a block

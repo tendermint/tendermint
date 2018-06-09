@@ -9,6 +9,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/brejski/hid"
+  packages = ["."]
+  revision = "06112dcfcc50a7e0e4fd06e17f9791e788fdaafc"
+
+[[projects]]
+  branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
@@ -289,11 +295,8 @@
 [[projects]]
   name = "github.com/tendermint/abci"
   packages = [
-    "client",
     "example/code",
-    "example/counter",
     "example/kvstore",
-    "server",
     "types"
   ]
   revision = "198dccf0ddfd1bb176f87657e3286a05a6ed9540"
@@ -327,10 +330,16 @@
     "flowrate",
     "log",
     "merkle",
+    "merkle/tmhash",
     "test"
   ]
-  revision = "692f1d86a6e2c0efa698fd1e4541b68c74ffaf38"
-  version = "v0.8.4"
+  revision = "fb7ec62b2925f48de159aeea73b254ae8c58a738"
+  version = "v0.9.0-rc1"
+
+[[projects]]
+  name = "github.com/zondax/ledger-goclient"
+  packages = ["."]
+  revision = "3e2146609cdb97894c064d59e9d00accd8c2b1dd"
 
 [[projects]]
   branch = "master"
@@ -435,6 +444,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d17038089dd6383ff5028229d4026bb92f5c7adc7e9c1cd52584237e2e5fd431"
+  inputs-digest = "fcc5b0344f1e328b6abefa1a937d1161e14bbaef603e6f2065e6690531bc5de1"
   solver-name = "gps-cdcl"
   solver-version = 1

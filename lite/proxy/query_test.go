@@ -19,12 +19,12 @@ import (
 )
 
 var node *nm.Node
+var chainID = "tendermint_test" // TODO use from config.
 
 // TODO fix tests!!
 
 func TestMain(m *testing.M) {
 	app := kvstore.NewKVStoreApplication()
-
 	node = rpctest.StartTendermint(app)
 
 	code := m.Run()
@@ -55,28 +55,28 @@ func _TestAppProofs(t *testing.T) {
 	brh := br.Height
 
 	// This sets up our trust on the node based on some past point.
-	source := certclient.NewProvider(cl)
-	seed, err := source.GetByHeight(brh - 2)
+	source := certclient.NewProvider(chainID, cl)
+	seed, err := source.LatestFullCommit(chainID, brh-2, brh-2)
 	require.NoError(err, "%+v", err)
-	cert := lite.NewStaticCertifier("my-chain", seed.Validators)
+	cert := lite.NewBaseCertifier("my-chain", seed.Height(), seed.Validators)
 
 	client.WaitForHeight(cl, 3, nil)
-	latest, err := source.LatestCommit()
+	latest, err := source.LatestFullCommit(chainID, 1, 1<<63-1)
 	require.NoError(err, "%+v", err)
-	rootHash := latest.Header.AppHash
+	rootHash := latest.SignedHeader.AppHash
 
 	// verify a query before the tx block has no data (and valid non-exist proof)
 	bs, height, proof, err := GetWithProof(k, brh-1, cl, cert)
 	fmt.Println(bs, height, proof, err)
 	require.NotNil(err)
-	require.True(IsNoDataErr(err), err.Error())
+	require.True(IsErrNoData(err), err.Error())
 	require.Nil(bs)
 
 	// but given that block it is good
 	bs, height, proof, err = GetWithProof(k, brh, cl, cert)
 	require.NoError(err, "%+v", err)
 	require.NotNil(proof)
-	require.True(height >= int64(latest.Header.Height))
+	require.True(height >= int64(latest.Height()))
 
 	// Alexis there is a bug here, somehow the above code gives us rootHash = nil
 	// and proof.Verify doesn't care, while proofNotExists.Verify fails.
@@ -92,7 +92,7 @@ func _TestAppProofs(t *testing.T) {
 	// Test non-existing key.
 	missing := []byte("my-missing-key")
 	bs, _, proof, err = GetWithProof(missing, 0, cl, cert)
-	require.True(IsNoDataErr(err))
+	require.True(IsErrNoData(err))
 	require.Nil(bs)
 	require.NotNil(proof)
 	err = proof.Verify(missing, nil, rootHash)
@@ -114,10 +114,10 @@ func _TestTxProofs(t *testing.T) {
 	require.EqualValues(0, br.DeliverTx.Code)
 	brh := br.Height
 
-	source := certclient.NewProvider(cl)
-	seed, err := source.GetByHeight(brh - 2)
+	source := certclient.NewProvider(chainID, cl)
+	seed, err := source.LatestFullCommit(chainID, brh-2, brh-2)
 	require.NoError(err, "%+v", err)
-	cert := lite.NewStaticCertifier("my-chain", seed.Validators)
+	cert := lite.NewBaseCertifier("my-chain", seed.Height(), seed.Validators)
 
 	// First let's make sure a bogus transaction hash returns a valid non-existence proof.
 	key := types.Tx([]byte("bogus")).Hash()
