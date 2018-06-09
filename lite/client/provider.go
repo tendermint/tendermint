@@ -1,19 +1,20 @@
 /*
 Package client defines a provider that uses a rpcclient
 to get information, which is used to get new headers
-and validators directly from a node.
+and validators directly from a Tendermint client.
 */
 package client
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/lite"
-	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.
@@ -23,119 +24,110 @@ type SignStatusClient interface {
 }
 
 type provider struct {
-	node       SignStatusClient
-	lastHeight int64
+	chainID string
+	client  SignStatusClient
 }
 
-// NewProvider can wrap any rpcclient to expose it as
-// a read-only provider.
-func NewProvider(node SignStatusClient) lite.Provider {
-	return &provider{node: node}
+// NewProvider implements Provider (but not PersistentProvider).
+func NewProvider(chainID string, client SignStatusClient) lite.Provider {
+	return &provider{chainID: chainID, client: client}
 }
 
 // NewHTTPProvider can connect to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
 func NewHTTPProvider(remote string) lite.Provider {
 	return &provider{
-		node: rpcclient.NewHTTP(remote, "/websocket"),
+		client: rpcclient.NewHTTP(remote, "/websocket"),
 	}
 }
 
-// StatusClient returns the internal node as a StatusClient
+// StatusClient returns the internal client as a StatusClient
 func (p *provider) StatusClient() rpcclient.StatusClient {
-	return p.node
+	return p.client
 }
 
-// StoreCommit is a noop, as clients can only read from the chain...
-func (p *provider) StoreCommit(_ lite.FullCommit) error { return nil }
-
-// GetHash gets the most recent validator and sees if it matches
-//
-// TODO: improve when the rpc interface supports more functionality
-func (p *provider) GetByHash(hash []byte) (lite.FullCommit, error) {
-	var fc lite.FullCommit
-	vals, err := p.node.Validators(nil)
-	// if we get no validators, or a different height, return an error
+// LatestFullCommit implements Provider.
+func (p *provider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (fc lite.FullCommit, err error) {
+	if chainID != p.chainID {
+		err = fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
+		return
+	}
+	if maxHeight != 0 && maxHeight < minHeight {
+		err = fmt.Errorf("need maxHeight == 0 or minHeight <= maxHeight, got %v and %v",
+			minHeight, maxHeight)
+		return
+	}
+	commit, err := p.fetchLatestCommit(minHeight, maxHeight)
 	if err != nil {
-		return fc, err
+		return
 	}
-	p.updateHeight(vals.BlockHeight)
-	vhash := types.NewValidatorSet(vals.Validators).Hash()
-	if !bytes.Equal(hash, vhash) {
-		return fc, liteErr.ErrCommitNotFound()
-	}
-	return p.seedFromVals(vals)
+	fc, err = p.fillFullCommit(commit.SignedHeader)
+	return
 }
 
-// GetByHeight gets the validator set by height
-func (p *provider) GetByHeight(h int64) (fc lite.FullCommit, err error) {
-	commit, err := p.node.Commit(&h)
-	if err != nil {
-		return fc, err
-	}
-	return p.seedFromCommit(commit)
-}
-
-// LatestCommit returns the newest commit stored.
-func (p *provider) LatestCommit() (fc lite.FullCommit, err error) {
-	commit, err := p.GetLatestCommit()
-	if err != nil {
-		return fc, err
-	}
-	return p.seedFromCommit(commit)
-}
-
-// GetLatestCommit should return the most recent commit there is,
-// which handles queries for future heights as per the semantics
-// of GetByHeight.
-func (p *provider) GetLatestCommit() (*ctypes.ResultCommit, error) {
-	status, err := p.node.Status()
+// fetchLatestCommit fetches the latest commit from the client.
+func (p *provider) fetchLatestCommit(minHeight int64, maxHeight int64) (*ctypes.ResultCommit, error) {
+	status, err := p.client.Status()
 	if err != nil {
 		return nil, err
 	}
-	return p.node.Commit(&status.SyncInfo.LatestBlockHeight)
-}
-
-// CommitFromResult ...
-func CommitFromResult(result *ctypes.ResultCommit) lite.Commit {
-	return (lite.Commit)(result.SignedHeader)
-}
-
-func (p *provider) seedFromVals(vals *ctypes.ResultValidators) (lite.FullCommit, error) {
-	// now get the commits and build a full commit
-	commit, err := p.node.Commit(&vals.BlockHeight)
-	if err != nil {
-		return lite.FullCommit{}, err
+	if status.SyncInfo.LatestBlockHeight < minHeight {
+		err = fmt.Errorf("provider is at %v but require minHeight=%v",
+			status.SyncInfo.LatestBlockHeight, minHeight)
+		return
 	}
-	fc := lite.NewFullCommit(
-		CommitFromResult(commit),
-		types.NewValidatorSet(vals.Validators),
-	)
-	return fc, nil
+	if maxHeight == 0 {
+		maxHeight = status.SyncInfo.LatestBlockHeight
+	} else if status.SyncInfo.LatestBlockHeight < maxHeight {
+		maxHeight = status.SyncInfo.LatestBlockHeight
+	}
+	return p.client.Commit(&maxHeight)
 }
 
-func (p *provider) seedFromCommit(commit *ctypes.ResultCommit) (fc lite.FullCommit, err error) {
-	fc.Commit = CommitFromResult(commit)
+// Get the valset that corresponds to signedHeader and return.
+// This checks the cryptographic signatures of fc.Commit against fc.Validators.
+func (p *provider) FillFullCommit(signedHeader *types.SignedHeader) (fc lite.FullCommit, err error) {
+	return p.fillFullCommit(signedHeader)
+}
 
-	// now get the proper validators
-	vals, err := p.node.Validators(&commit.Header.Height)
+func (p *provider) fillFullCommit(signedHeader *types.SignedHeader) (fc lite.FullCommit, err error) {
+	fc.SignedHeader = signedHeader
+
+	// Get the validators.
+	height := new(int)
+	*height = signedHeader.Header.Height
+	vals, err := p.client.Validators(height)
 	if err != nil {
 		return fc, err
 	}
 
-	// make sure they match the commit (as we cannot enforce height)
+	// Check valset hash against signedHeader validators hash.
 	vset := types.NewValidatorSet(vals.Validators)
-	if !bytes.Equal(vset.Hash(), commit.Header.ValidatorsHash) {
-		return fc, liteErr.ErrValidatorsChanged()
+	if !bytes.Equal(vset.Hash(), signedHeader.Header.ValidatorsHash) {
+		return fc, errors.New("wrong validators received from client")
 	}
-
-	p.updateHeight(commit.Header.Height)
 	fc.Validators = vset
-	return fc, nil
-}
 
-func (p *provider) updateHeight(h int64) {
-	if h > p.lastHeight {
-		p.lastHeight = h
+	// Get the next validators.
+	nextHeight := new(int)
+	*nextHeight = signedHeader.Header.Height + 1
+	nextVals, err := p.client.Validators(nextHeight)
+	if err != nil {
+		return fc, err
 	}
+
+	// Check next valset hash against signedHeader next validators hash.
+	vset := types.NewValidatorSet(nextVals.Validators)
+	if !bytes.Equal(vset.Hash(), signedHeader.Header.NextValidatorsHash) {
+		return fc, errors.New("wrong validators received from client")
+	}
+	fc.NextValidators = vset
+
+	// Sanity check fc.
+	// This checks the cryptographic signatures of fc.Commit against fc.Validators.
+	if err := fc.ValidateBasic(signedHeader.Header.ChainID); err != nil {
+		return nil, err
+	}
+
+	return fc, nil
 }

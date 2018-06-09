@@ -247,7 +247,7 @@ func (valSet *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 	}
 }
 
-// Verify that +2/3 of the set had signed the given signBytes
+// Verify that +2/3 of the set had signed the given signBytes.
 func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
 	if valSet.Size() != len(commit.Precommits) {
 		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", valSet.Size(), len(commit.Precommits))
@@ -255,32 +255,37 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 	if height != commit.Height() {
 		return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
 	}
+	if !blockID.Equals(commit.BlockID) {
+		return fmt.Errorf("Invalid commit -- wrong block id: want %v got %v",
+			blockID, commit.BlockID)
+	}
 
 	talliedVotingPower := int64(0)
 	round := commit.Round()
 
 	for idx, precommit := range commit.Precommits {
-		// may be nil if validator skipped.
 		if precommit == nil {
-			continue
+			continue // OK, some precommits can be missing.
 		}
 		if precommit.Height != height {
-			return fmt.Errorf("Invalid commit -- wrong height: %v vs %v", height, precommit.Height)
+			return fmt.Errorf("Invalid commit -- wrong height: want %v got %v", height, precommit.Height)
 		}
 		if precommit.Round != round {
-			return fmt.Errorf("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
 		}
 		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
+		// NOTE: This will go away when we refactor Commit.
+		if !blockID.Equals(precommit.BlockID) {
+			return fmt.Errorf("Invalid commit -- wrong block id @ index %v: want %v got %v",
+				idx, blockID, precommit.BlockID)
+		}
 		_, val := valSet.GetByIndex(idx)
-		// Validate signature
+		// Validate signature.
 		precommitSignBytes := precommit.SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
-		}
-		if !blockID.Equals(precommit.BlockID) {
-			continue // Not an error, but doesn't count
 		}
 		// Good precommit!
 		talliedVotingPower += val.VotingPower
@@ -298,22 +303,15 @@ func (valSet *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height
 //
 // valSet is the validator set that we know
 // * over 2/3 of the power in old signed this block
-//
-// newSet is the validator set that signed this block
-// * only votes from old are sufficient for 2/3 majority
-//   in the new set as well
-//
-// That means that:
-// * 10% of the valset can't just declare themselves kings
-// * If the validator set is 3x old size, we need more proof to trust
-func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string,
-	blockID BlockID, height int64, commit *Commit) error {
+func (valSet *ValidatorSet) VerifyCommitAny(
+	chainID string, blockID BlockID, height int64, commit *Commit) error {
 
-	if newSet.Size() != len(commit.Precommits) {
-		return cmn.NewError("Invalid commit -- wrong set size: %v vs %v", newSet.Size(), len(commit.Precommits))
-	}
 	if height != commit.Height() {
 		return cmn.NewError("Invalid commit -- wrong height: %v vs %v", height, commit.Height())
+	}
+	if !blockID.Equals(commit.BlockID) {
+		return fmt.Errorf("Invalid commit -- wrong block id: want %v got %v",
+			blockID, commit.BlockID)
 	}
 
 	oldVotingPower := int64(0)
@@ -322,12 +320,10 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 	round := commit.Round()
 
 	for idx, precommit := range commit.Precommits {
-		// first check as in VerifyCommit
 		if precommit == nil {
 			continue
 		}
 		if precommit.Height != height {
-			// return certerr.ErrHeightMismatch(height, precommit.Height)
 			return cmn.NewError("Blocks don't match - %d vs %d", round, precommit.Round)
 		}
 		if precommit.Round != round {
@@ -336,31 +332,25 @@ func (valSet *ValidatorSet) VerifyCommitAny(newSet *ValidatorSet, chainID string
 		if precommit.Type != VoteTypePrecommit {
 			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
 		}
+		// NOTE: This will go away when we refactor Commit.
 		if !blockID.Equals(precommit.BlockID) {
-			continue // Not an error, but doesn't count
+			return fmt.Errorf("Invalid commit -- wrong block id @ index %v: want %v got %v",
+				idx, blockID, precommit.BlockID)
 		}
-
-		// we only grab by address, ignoring unknown validators
-		vi, ov := valSet.GetByAddress(precommit.ValidatorAddress)
-		if ov == nil || seen[vi] {
+		// See if this validator is in valSet.
+		idx, val := valSet.GetByAddress(precommit.ValidatorAddress)
+		if val == nil || seen[idx] {
 			continue // missing or double vote...
 		}
-		seen[vi] = true
+		seen[idx] = true
 
-		// Validate signature old school
+		// Validate signature.
 		precommitSignBytes := precommit.SignBytes(chainID)
-		if !ov.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
+		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
-		oldVotingPower += ov.VotingPower
-
-		// check new school
-		_, cv := newSet.GetByIndex(idx)
-		if cv.PubKey.Equals(ov.PubKey) {
-			// make sure this is properly set in the current block as well
-			newVotingPower += cv.VotingPower
-		}
+		oldVotingPower += val.VotingPower
 	}
 
 	if oldVotingPower <= valSet.TotalVotingPower()*2/3 {
