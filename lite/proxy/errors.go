@@ -3,7 +3,7 @@ package proxy
 import (
 	"fmt"
 
-	"github.com/pkg/errors"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 //--------------------------------------------

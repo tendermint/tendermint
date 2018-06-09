@@ -1,30 +1,28 @@
-package lite_test
+package lite
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/tendermint/tendermint/lite"
-	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
-func TestStaticCert(t *testing.T) {
+func TestBaseCert(t *testing.T) {
 	// assert, require := assert.New(t), require.New(t)
 	assert := assert.New(t)
 	// require := require.New(t)
 
-	keys := lite.GenValKeys(4)
+	keys := genPrivKeys(4)
 	// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 	vals := keys.ToValidators(20, 10)
 	// and a certifier based on our known set
 	chainID := "test-static"
-	cert := lite.NewStaticCertifier(chainID, vals)
+	cert := NewBaseCertifier(chainID, vals)
 
 	cases := []struct {
-		keys        lite.ValKeys
+		keys        privKeys
 		vals        *types.ValidatorSet
 		height      int64
 		first, last int  // who actually signs
@@ -43,17 +41,16 @@ func TestStaticCert(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		check := tc.keys.GenCommit(chainID, tc.height, nil, tc.vals,
+		sh := tc.keys.GenSignedHeader(chainID, tc.height, nil, tc.vals,
 			[]byte("foo"), []byte("params"), []byte("results"), tc.first, tc.last)
-		err := cert.Certify(check)
+		err := cert.Certify(sh)
 		if tc.proper {
 			assert.Nil(err, "%+v", err)
 		} else {
 			assert.NotNil(err)
 			if tc.changed {
-				assert.True(liteErr.IsValidatorsChangedErr(err), "%+v", err)
+				assert.True(lerr.IsErrValidatorsChanged(err), "%+v", err)
 			}
 		}
 	}
-
 }

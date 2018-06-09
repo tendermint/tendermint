@@ -351,6 +351,7 @@ func (commit *Commit) IsCommit() bool {
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
+// Does not actually check the cryptographic signatures.
 func (commit *Commit) ValidateBasic() error {
 	if commit.BlockID.IsZero() {
 		return errors.New("Commit cannot be for nil block")
@@ -360,23 +361,23 @@ func (commit *Commit) ValidateBasic() error {
 	}
 	height, round := commit.Height(), commit.Round()
 
-	// validate the precommits
+	// Validate the precommits.
 	for _, precommit := range commit.Precommits {
 		// It's OK for precommits to be missing.
 		if precommit == nil {
 			continue
 		}
-		// Ensure that all votes are precommits
+		// Ensure that all votes are precommits.
 		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
 				precommit.Type)
 		}
-		// Ensure that all heights are the same
+		// Ensure that all heights are the same.
 		if precommit.Height != height {
 			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
 				height, precommit.Height)
 		}
-		// Ensure that all rounds are the same
+		// Ensure that all rounds are the same.
 		if precommit.Round != round {
 			return fmt.Errorf("Invalid commit precommit round. Expected %v, got %v",
 				round, precommit.Round)
@@ -417,10 +418,49 @@ func (commit *Commit) StringIndented(indent string) string {
 
 //-----------------------------------------------------------------------------
 
-// SignedHeader is a header along with the commits that prove it
+// SignedHeader is a header along with the commits that prove it.
 type SignedHeader struct {
 	Header *Header `json:"header"`
 	Commit *Commit `json:"commit"`
+}
+
+// ValidateBasic does basic consistency checks and makes sure the header
+// and commit are consistent.
+//
+// NOTE: This does not actually check the cryptographic signatures.  Make
+// sure to use a Certifier to validate the signatures actually provide a
+// significantly strong proof for this header's validity.
+func (sh SignedHeader) ValidateBasic(chainID string) error {
+
+	// Make sure the header is consistent with the commit.
+	if sh.Header == nil {
+		return errors.New("SignedHeader missing header.")
+	}
+	if sh.Commit == nil {
+		return errors.New("SignedHeader missing commit (precommit votes).")
+	}
+	// Check ChainID.
+	if sh.Header.ChainID != chainID {
+		return errors.Errorf("Header belongs to another chain '%s' not '%s'",
+			sh.Header.ChainID, chainID)
+	}
+	// Check Height.
+	if sh.Commit.Height() != sh.Header.Height {
+		return liteErr.ErrHeightMismatch(sh.Commit.Height(), sh.Header.Height)
+	}
+	// Check Hash.
+	hhash := sh.Header.Hash()
+	chash := sh.Commit.BlockID.Hash
+	if !bytes.Equal(hhash, chash) {
+		return errors.Errorf("SignedHeader commit signs block %X, header is block %X",
+			chash, hhash)
+	}
+	// ValidateBasic on the Commit.
+	err := sh.Commit.ValidateBasic()
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	return nil
 }
 
 //-----------------------------------------------------------------------------
