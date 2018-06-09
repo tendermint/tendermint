@@ -718,6 +718,8 @@ func TestStateLockPOLUnlock(t *testing.T) {
 func TestStateLockPOLSafety1(t *testing.T) {
 	cs1, vss := randConsensusState(4)
 	vs2, vs3, vs4 := vss[1], vss[2], vss[3]
+	h := cs1.GetRoundState().Height
+	r := cs1.GetRoundState().Round
 
 	partSize := cs1.state.ConsensusParams.BlockPartSizeBytes
 
@@ -734,7 +736,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	rs := re.(types.EventDataRoundState).RoundState.(*cstypes.RoundState)
 	propBlock := rs.ProposalBlock
 
-	<-voteCh // prevote
+	ensureVote(voteCh, h, r, types.VoteTypePrevote)
 
 	validatePrevote(t, cs1, 0, vss[0], propBlock.Hash())
 
@@ -755,6 +757,11 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	// we do see them precommit nil
 	signAddVotes(cs1, types.VoteTypePrecommit, nil, types.PartSetHeader{}, vs2, vs3, vs4)
 
+	ensureVote(voteCh, h, r, types.VoteTypePrecommit)
+
+	<-newRoundCh
+	t.Log("### ONTO ROUND 1")
+
 	prop, propBlock := decideProposal(cs1, vs2, vs2.Height, vs2.Round+1)
 	propBlockHash := propBlock.Hash()
 	propBlockParts := propBlock.MakePartSet(partSize)
@@ -765,9 +772,6 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	if err := cs1.SetProposalAndBlock(prop, propBlock, propBlockParts, "some peer"); err != nil {
 		t.Fatal(err)
 	}
-
-	<-newRoundCh
-	t.Log("### ONTO ROUND 1")
 	/*Round2
 	// we timeout and prevote our lock
 	// a polka happened but we didn't see it!
@@ -788,13 +792,13 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	}
 	t.Logf("new prop hash %v", fmt.Sprintf("%X", propBlockHash))
 	// go to prevote, prevote for proposal block
-	<-voteCh
+	ensureVote(voteCh, h, r+1, types.VoteTypePrevote)
 	validatePrevote(t, cs1, 1, vss[0], propBlockHash)
 
 	// now we see the others prevote for it, so we should lock on it
 	signAddVotes(cs1, types.VoteTypePrevote, propBlockHash, propBlockParts.Header(), vs2, vs3, vs4)
 
-	<-voteCh // precommit
+	ensureVote(voteCh, h, r+1, types.VoteTypePrecommit)
 
 	// we should have precommitted
 	validatePrecommit(t, cs1, 1, 1, vss[0], propBlockHash, propBlockHash)
@@ -816,7 +820,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	<-timeoutProposeCh
 
 	// finish prevote
-	<-voteCh
+	ensureVote(voteCh, h, r+2, types.VoteTypePrevote)
 
 	// we should prevote what we're locked on
 	validatePrevote(t, cs1, 2, vss[0], propBlockHash)

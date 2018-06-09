@@ -284,10 +284,11 @@
     "flowrate",
     "log",
     "merkle",
+    "merkle/tmhash",
     "test"
   ]
-  revision = "692f1d86a6e2c0efa698fd1e4541b68c74ffaf38"
-  version = "v0.8.4"
+  revision = "fb7ec62b2925f48de159aeea73b254ae8c58a738"
+  version = "v0.9.0-rc1"
 
 [[projects]]
   name = "github.com/zondax/ledger-goclient"
@@ -328,7 +329,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "8014b7b116a67fea23fbb82cd834c9ad656ea44b"
+  revision = "6c888cc515d3ed83fc103cf1d84468aad274b0a7"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -389,6 +390,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7c26489f4f0e2efd039c9b1b07f05ac6eb9d1424075ce6934ab8c30098386902"
+  inputs-digest = "b1ef98eb79519180b9937b4ae01d28855a79a12967030727662a0791ea0a9c79"
   solver-name = "gps-cdcl"
   solver-version = 1
