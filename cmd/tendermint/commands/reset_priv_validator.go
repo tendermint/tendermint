@@ -24,17 +24,6 @@ var ResetPrivValidatorCmd = &cobra.Command{
 	Run:   resetPrivValidator,
 }
 
-// ResetAll removes the privValidator files.
-// Exported so other CLI tools can use it.
-func ResetAll(dbDir, privValFile string, logger log.Logger) {
-	resetFilePV(privValFile, logger)
-	if err := os.RemoveAll(dbDir); err != nil {
-		logger.Error("Error removing directory", "err", err)
-		return
-	}
-	logger.Info("Removed all blockchain history", "dir", dbDir)
-}
-
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) {
@@ -47,6 +36,18 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 	resetFilePV(config.PrivValidatorFile(), logger)
 }
 
+// ResetAll removes the privValidator files.
+// Exported so other CLI tools can use it.
+func ResetAll(dbDir, addrBookFile, privValFile string, logger log.Logger) {
+	resetFilePV(privValFile, logger)
+	resetAddrBook(addrBookFile, logger)
+	if err := os.RemoveAll(dbDir); err != nil {
+		logger.Error("Error removing directory", "err", err)
+		return
+	}
+	logger.Info("Removed all blockchain history", "dir", dbDir)
+}
+
 func resetFilePV(privValFile string, logger log.Logger) {
 	// Get PrivValidator
 	if _, err := os.Stat(privValFile); err == nil {
@@ -57,5 +58,15 @@ func resetFilePV(privValFile string, logger log.Logger) {
 		pv := privval.GenFilePV(privValFile)
 		pv.Save()
 		logger.Info("Generated PrivValidator", "file", privValFile)
+	}
+}
+
+// Deletes the addrbook.json file. It will be generated in node.NewNode, which is executed with
+// `tendermint start`.
+func resetAddrBook(addrBookFile string, logger log.Logger) {
+	if err := os.Remove(addrBookFile); err == nil {
+		logger.Info("Cleared AddrBook to an empty state", "file", addrBookFile)
+	} else {
+		logger.Info("Failed to clear AddrBook to an empty state", "file", addrBookFile)
 	}
 }
