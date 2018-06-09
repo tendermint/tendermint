@@ -207,7 +207,6 @@ func TestDifferByTimestamp(t *testing.T) {
 
 		signBytes := vote.SignBytes(chainID)
 		sig := vote.Signature
-		timeStamp := clipToMS(vote.Timestamp)
 
 		// manipulate the timestamp. should get changed back
 		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
@@ -216,7 +215,6 @@ func TestDifferByTimestamp(t *testing.T) {
 		err = privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error on signing same vote")
 
-		assert.Equal(t, timeStamp, vote.Timestamp)
 		assert.Equal(t, signBytes, vote.SignBytes(chainID))
 		assert.Equal(t, sig, vote.Signature)
 	}

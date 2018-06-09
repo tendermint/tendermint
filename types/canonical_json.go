@@ -34,13 +34,12 @@ type CanonicalJSONProposal struct {
 }
 
 type CanonicalJSONVote struct {
-	ChainID   string               `json:"@chain_id"`
-	Type      string               `json:"@type"`
-	BlockID   CanonicalJSONBlockID `json:"block_id"`
-	Height    int64                `json:"height"`
-	Round     int                  `json:"round"`
-	Timestamp string               `json:"timestamp"`
-	VoteType  byte                 `json:"type"`
+	ChainID  string               `json:"@chain_id"`
+	Type     string               `json:"@type"`
+	BlockID  CanonicalJSONBlockID `json:"block_id"`
+	Height   int64                `json:"height"`
+	Round    int                  `json:"round"`
+	VoteType byte                 `json:"type"`
 }
 
 type CanonicalJSONHeartbeat struct {
@@ -85,13 +84,12 @@ func CanonicalProposal(chainID string, proposal *Proposal) CanonicalJSONProposal
 
 func CanonicalVote(chainID string, vote *Vote) CanonicalJSONVote {
 	return CanonicalJSONVote{
-		ChainID:   chainID,
-		Type:      "vote",
-		BlockID:   CanonicalBlockID(vote.BlockID),
-		Height:    vote.Height,
-		Round:     vote.Round,
-		Timestamp: CanonicalTime(vote.Timestamp),
-		VoteType:  vote.Type,
+		ChainID:  chainID,
+		Type:     "vote",
+		BlockID:  CanonicalBlockID(vote.BlockID),
+		Height:   vote.Height,
+		Round:    vote.Round,
+		VoteType: vote.Type,
 	}
 }
 

@@ -268,7 +268,7 @@ We call this encoding the CanonicalSignBytes. For instance, CanonicalSignBytes f
 like:
 
 ```json
-{"chain_id":"my-chain-id","vote":{"block_id":{"hash":DEADBEEF,"parts":{"hash":BEEFDEAD,"total":3}},"height":3,"round":2,"timestamp":1234567890, "type":2}
+{"chain_id":"my-chain-id","vote":{"block_id":{"hash":DEADBEEF,"parts":{"hash":BEEFDEAD,"total":3}},"height":3,"round":2, "type":2}
 ```
 
 Note how the fields within each level are sorted.
