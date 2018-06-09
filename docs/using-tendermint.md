@@ -272,13 +272,36 @@ with the consensus protocol.
 
 ### Peers
 
+#### Seed
+A seed node is a node who relays the addresses of other peers which they know
+of. These nodes constantly crawl the network to try to get more peers. The
+addresses which the seed node relays get saved into a local address book. Once
+these are in the address book, you will connect to those addresses directly.
+Basically the seed nodes job is just to relay everyones addresses. You won't
+connect to seed nodes once you have received enough addresses, so typically you
+only need them on the first start. The seed node will immediately disconnect
+from you after sending you some addresses.
+
+#### Persistent Peer
+Persistent peers are people you want to be constantly connected with. If you
+disconnect you will try to connect directly back to them as opposed to using
+another address from the address book. On restarts you will always try to
+connect to these peers regardless of the size of your address book.
+
+All peers relay peers they know of by default. This is called the peer exchange
+protocol (PeX). With PeX, peers will be gossipping about known peers and forming
+a network, storing peer addresses in the addrbook. Because of this, you don't
+have to use a seed node if you have a live persistent peer.
+
+#### Connecting to Peers
+
 To connect to peers on start-up, specify them in the
-`$TMHOME/config/config.toml` or on the command line. Use seeds to
-specify seed nodes from which you can get many other peer addresses, and
+`$TMHOME/config/config.toml` or on the command line. Use `seeds` to
+specify seed nodes, and
 `persistent_peers` to specify peers that your node will maintain
 persistent connections with.
 
-For instance,
+For example,
 
     tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"
 
@@ -287,10 +310,8 @@ specify seeds for a running node to connect to:
 
     curl 'localhost:46657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:46656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:46656"\]'
 
-Note, if the peer-exchange protocol (PEX) is enabled (default), you
-should not normally need seeds after the first start. Peers will be
-gossipping about known peers and forming a network, storing peer
-addresses in the addrbook.
+Note, with PeX enabled, you
+should not need seeds after the first start.
 
 If you want Tendermint to connect to specific set of addresses and
 maintain a persistent connection with each, you can use the
