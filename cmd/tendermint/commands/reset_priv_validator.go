@@ -27,7 +27,7 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) {
-	ResetAll(config.DBDir(), config.PrivValidatorFile(), logger)
+	ResetAll(config.DBDir(), config.P2P.AddrBook, config.PrivValidatorFile(), logger)
 }
 
 // XXX: this is totally unsafe.
