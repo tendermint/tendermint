@@ -62,7 +62,7 @@ that come from the `ABCI
 application <https://github.com/tendermint/abci>`__. It represents the
 state of the actual application, rather that the state of the blockchain
 itself. This means it's necessary in order to perform any business
-logic, such as verifying and account balance.
+logic, such as verifying an account balance.
 
 **Note** After the transactions are committed to a block, they still
 need to be processed in a separate step, which happens between the
