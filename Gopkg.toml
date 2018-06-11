@@ -75,7 +75,7 @@
 
 [[override]]
   name = "github.com/tendermint/go-crypto"
-  branch = "cwgoes/unified-ledger-keybase"
+  branch = "develop"
 
 [[override]]
   name = "github.com/tendermint/go-amino"
