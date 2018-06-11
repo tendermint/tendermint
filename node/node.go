@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/http"
 
+	prometheus "github.com/go-kit/kit/metrics/prometheus"
+	stdprometheus "github.com/prometheus/client_golang/prometheus"
+
 	abci "github.com/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
@@ -241,8 +244,15 @@ func NewNode(config *cfg.Config,
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
+	// TODO: extract to provider
+	metrics := &cs.Metrics{
+		Height: prometheus.NewCounter(stdprometheus.NewCounterVec(stdprometheus.CounterOpts{
+			Name: "height",
+		}, []string{})),
+	}
+	stdprometheus.MustRegister(metrics.Height)
 	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
-		blockExec, blockStore, mempool, evidencePool)
+		blockExec, blockStore, mempool, evidencePool, metrics)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
