@@ -129,7 +129,7 @@ For example, a precommit vote might have the following ``sign-bytes``:
 
 .. code:: json
 
-    {"chain_id":"my_chain","vote":{"block_hash":"611801F57B4CE378DF1A3FFF1216656E89209A99","block_parts_header":{"hash":"B26697379DBE0774CC2C3B656083F07CA7E0F9CE","total":123},"height":1234,"round":1,"type":2}}
+    {"chain_id":"my_chain","vote":{"block_hash":"611801F57B4CE378DF1A3FFF1216656E89209A99","block_parts_header":{"hash":"B46697379DBE0774CC2C3B656083F07CA7E0F9CE","total":123},"height":1234,"round":1,"type":2}}
 
 Block Hash
 ~~~~~~~~~~
