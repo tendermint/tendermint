@@ -46,10 +46,10 @@ func init() {
 	TestnetFilesCmd.Flags().BoolVar(&populatePersistentPeers, "populate-persistent-peers", true,
 		"Update config of each node with the list of persistent peers build using either hostname-prefix or starting-ip-address")
 	TestnetFilesCmd.Flags().StringVar(&hostnamePrefix, "hostname-prefix", "node",
-		"Hostname prefix (node results in persistent peers list ID0@node0:46656, ID1@node1:46656, ...)")
+		"Hostname prefix (node results in persistent peers list ID0@node0:26656, ID1@node1:26656, ...)")
 	TestnetFilesCmd.Flags().StringVar(&startingIPAddress, "starting-ip-address", "",
-		"Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:46656, ID1@192.168.0.2:46656, ...)")
-	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 46656,
+		"Starting IP address (192.168.0.1 results in persistent peers list ID0@192.168.0.1:26656, ID1@192.168.0.2:26656, ...)")
+	TestnetFilesCmd.Flags().IntVar(&p2pPort, "p2p-port", 26656,
 		"P2P Port")
 }
 

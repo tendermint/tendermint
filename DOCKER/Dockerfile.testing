@@ -13,6 +13,6 @@ RUN echo 'deb http://httpredir.debian.org/debian testing main non-free contrib' 
 
 VOLUME /go
 
-EXPOSE 46656
-EXPOSE 46657
+EXPOSE 26656
+EXPOSE 26657
 

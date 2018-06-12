@@ -31,7 +31,7 @@ It can be posted via `broadcast_commit`, `broadcast_sync` or
 wait before returning (sync makes sure CheckTx passes, commit
 makes sure it was included in a signed block).
 
-Request (`POST http://gaia.zone:46657/`):
+Request (`POST http://gaia.zone:26657/`):
 
 ```json
 {

@@ -9,7 +9,7 @@ MAX_ATTEMPTS_TO_CATCH_UP=120
 echo "Waiting for nodes to come online"
 set +e
 for i in $(seq 1 "$NUM_OF_PEERS"); do
-	addr=$(test/p2p/ip.sh "$i"):46657
+	addr=$(test/p2p/ip.sh "$i"):26657
 	curl -s "$addr/status" > /dev/null
 	ERR=$?
 	while [ "$ERR" != 0 ]; do
@@ -22,7 +22,7 @@ done
 set -e
 
 # get the first peer's height
-addr=$(test/p2p/ip.sh 1):46657
+addr=$(test/p2p/ip.sh 1):26657
 h1=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height)
 echo "1st peer is on height $h1"
 
@@ -32,7 +32,7 @@ for i in $(seq 2 "$NUM_OF_PEERS"); do
 	hi=0
 
 	while [[ $hi -le $h1 ]] ; do
-		addr=$(test/p2p/ip.sh "$i"):46657
+		addr=$(test/p2p/ip.sh "$i"):26657
 		hi=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height)
 
 		echo "... peer $i is on height $hi"

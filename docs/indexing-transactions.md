@@ -63,10 +63,14 @@ Tendermint will throw a warning if you try to use any of the above keys.
 
 ## Querying transactions
 
+<<<<<<< HEAD:docs/indexing-transactions.md
 You can query the transaction results by calling `/tx_search` RPC
 endpoint:
+=======
+    curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
+>>>>>>> f4e1725e77d6e0cc0854f48891199a7f070b40a8:docs/indexing-transactions.rst
 
-    curl "localhost:46657/tx_search?query=\"account.name='igor'\"&prove=true"
+    curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 
 Check out [API docs](https://tendermint.github.io/slate/?shell#txsearch)
 for more information on query syntax and other options.
