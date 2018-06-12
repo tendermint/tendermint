@@ -358,13 +358,9 @@ type mockPeer struct {
 
 func newMockPeer() mockPeer {
 	_, netAddr := p2p.CreateRoutableAddr()
-	pubKey, err := crypto.GenPrivKeyEd25519().PubKey()
-	if err != nil {
-		panic(err)
-	}
 	mp := mockPeer{
 		addr:   netAddr,
-		pubKey: pubKey,
+		pubKey: crypto.GenPrivKeyEd25519().PubKey(),
 	}
 	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
 	mp.Start()

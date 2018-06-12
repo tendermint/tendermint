@@ -34,11 +34,9 @@ func TestGenesisGood(t *testing.T) {
 	assert.NoError(t, err, "expected no error for good genDoc json")
 
 	// create a base gendoc from struct
-	pubKey, err := crypto.GenPrivKeyEd25519().PubKey()
-	assert.Nil(t, err)
 	baseGenDoc := &GenesisDoc{
 		ChainID:    "abc",
-		Validators: []GenesisValidator{{pubKey, 10, "myval"}},
+		Validators: []GenesisValidator{{crypto.GenPrivKeyEd25519().PubKey(), 10, "myval"}},
 	}
 	genDocBytes, err = cdc.MarshalJSON(baseGenDoc)
 	assert.NoError(t, err, "error marshalling genDoc")

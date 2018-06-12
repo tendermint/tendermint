@@ -11,11 +11,7 @@ var SECRET = []byte("some secret")
 
 func printEd() {
 	priv := crypto.GenPrivKeyEd25519FromSecret(SECRET)
-	pubKey, err := priv.PubKey()
-	if err != nil {
-		panic(err)
-	}
-	pub := pubKey.(crypto.PubKeyEd25519)
+	pub := priv.PubKey().(crypto.PubKeyEd25519)
 	signature, err := priv.Sign([]byte("hello"))
 	if err != nil {
 		panic(err)
@@ -73,11 +69,7 @@ func printEd() {
 
 func printSecp() {
 	priv := crypto.GenPrivKeySecp256k1FromSecret(SECRET)
-	pubKey, err := priv.PubKey()
-	if err != nil {
-		panic(err)
-	}
-	pub := pubKey.(crypto.PubKeySecp256k1)
+	pub := priv.PubKey().(crypto.PubKeySecp256k1)
 	signature, err := priv.Sign([]byte("hello"))
 	sig := signature.(crypto.SignatureSecp256k1)
 	if err != nil {

@@ -46,10 +46,7 @@ type SecretConnection struct {
 // See docs/sts-final.pdf for more information.
 func MakeSecretConnection(conn io.ReadWriteCloser, locPrivKey crypto.PrivKey) (*SecretConnection, error) {
 
-	locPubKey, err := locPrivKey.PubKey()
-	if err != nil {
-		panic(err)
-	}
+	locPubKey := locPrivKey.PubKey()
 
 	// Generate ephemeral keys for perfect forward secrecy.
 	locEphPub, locEphPriv := genEphKeys()

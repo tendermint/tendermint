@@ -77,10 +77,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	abciResponses := NewABCIResponses(block)
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
-	pubKey, err := crypto.GenPrivKeyEd25519().PubKey()
-	assert.Nil(t, err)
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
-		types.TM2PB.ValidatorFromPubKeyAndPower(pubKey, 10),
+		types.TM2PB.ValidatorFromPubKeyAndPower(crypto.GenPrivKeyEd25519().PubKey(), 10),
 	}}
 
 	saveABCIResponses(stateDB, block.Height, abciResponses)
@@ -262,11 +260,10 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	defer tearDown(t)
 
 	const height = 1
-	pubkey, err := crypto.GenPrivKeyEd25519().PubKey()
-	require.Nil(t, err)
+	pubkey := crypto.GenPrivKeyEd25519().PubKey()
 	// swap the first validator with a new one ^^^ (validator set size stays the same)
 	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
-	state, err = updateState(state, blockID, header, responses)
+	state, err := updateState(state, blockID, header, responses)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
@@ -285,11 +282,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 func genValSet(size int) *types.ValidatorSet {
 	vals := make([]*types.Validator, size)
 	for i := 0; i < size; i++ {
-		pubKey, err := crypto.GenPrivKeyEd25519().PubKey()
-		if err != nil {
-			panic(err)
-		}
-		vals[i] = types.NewValidator(pubKey, 10)
+		vals[i] = types.NewValidator(crypto.GenPrivKeyEd25519().PubKey(), 10)
 	}
 	return types.NewValidatorSet(vals)
 }
@@ -376,11 +369,7 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 }
 
 func pk() []byte {
-	pk, err := crypto.GenPrivKeyEd25519().PubKey()
-	if err != nil {
-		panic(err)
-	}
-	return pk.Bytes()
+	return crypto.GenPrivKeyEd25519().PubKey().Bytes()
 }
 
 func TestApplyUpdates(t *testing.T) {

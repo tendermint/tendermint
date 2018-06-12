@@ -48,8 +48,7 @@ func TestUnmarshalValidator(t *testing.T) {
 
 	// create some fixed values
 	privKey := crypto.GenPrivKeyEd25519()
-	pubKey, err := privKey.PubKey()
-	assert.Nil(t, err)
+	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
 	pubArray := [32]byte(pubKey.(crypto.PubKeyEd25519))
 	pubBytes := pubArray[:]
@@ -74,7 +73,7 @@ func TestUnmarshalValidator(t *testing.T) {
 }`, addr, pubB64, privB64)
 
 	val := FilePV{}
-	err = cdc.UnmarshalJSON([]byte(serialized), &val)
+	err := cdc.UnmarshalJSON([]byte(serialized), &val)
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match

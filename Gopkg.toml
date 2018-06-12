@@ -75,7 +75,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
-  version = "0.8.0"
+  branch = "cwgoes/no-pubkey-err"
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"

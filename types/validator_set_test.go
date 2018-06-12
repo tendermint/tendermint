@@ -34,8 +34,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
 		privKey := crypto.GenPrivKeyEd25519()
-		pubKey, err := privKey.PubKey()
-		assert.Nil(b, err)
+		pubKey := privKey.PubKey()
 		val := NewValidator(pubKey, 0)
 		if !vset.Add(val) {
 			panic("Failed to add validator")
@@ -316,8 +315,7 @@ func TestSafeSubClip(t *testing.T) {
 
 func TestValidatorSetVerifyCommit(t *testing.T) {
 	privKey := crypto.GenPrivKeyEd25519()
-	pubKey, err := privKey.PubKey()
-	assert.Nil(t, err)
+	pubKey := privKey.PubKey()
 	v1 := NewValidator(pubKey, 1000)
 	vset := NewValidatorSet([]*Validator{v1})
 

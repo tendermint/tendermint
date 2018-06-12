@@ -264,13 +264,13 @@
   version = "0.10.0-rc2"
 
 [[projects]]
+  branch = "cwgoes/no-pubkey-err"
   name = "github.com/tendermint/go-crypto"
   packages = [
     ".",
     "tmhash"
   ]
-  revision = "e4e3f8d8084637493b3208cf174a8338cbf618ac"
-  version = "v0.8.0"
+  revision = "cdfec812e58ff0ae9091324ee31d4ba0529dea62"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -327,7 +327,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "bff228c7b664c5fce602223a05fb708fd8654986"
+  revision = "a9e25c09b96b8870693763211309e213c6ef299d"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -388,6 +388,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "5e07e3cf83443850a605d0eced9161cb4770b50e865d6d8b49c8972fce978b56"
+  inputs-digest = "cb528884901ffc18e710304d9fc57207e7a1f2b6b2a505f10220896b3b846813"
   solver-name = "gps-cdcl"
   solver-version = 1

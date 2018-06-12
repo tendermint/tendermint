@@ -109,10 +109,7 @@ func (rp *remotePeer) Addr() *NetAddress {
 }
 
 func (rp *remotePeer) ID() ID {
-	pubKey, err := rp.PrivKey.PubKey()
-	if err != nil {
-		panic(err)
-	}
+	pubKey := rp.PrivKey.PubKey()
 	return PubKeyToID(pubKey)
 }
 
@@ -125,10 +122,7 @@ func (rp *remotePeer) Start() {
 	if e != nil {
 		golog.Fatalf("net.Listen tcp :0: %+v", e)
 	}
-	pubKey, err := rp.PrivKey.PubKey()
-	if err != nil {
-		panic(err)
-	}
+	pubKey := rp.PrivKey.PubKey()
 	rp.addr = NewNetAddress(PubKeyToID(pubKey), l.Addr())
 	rp.quit = make(chan struct{})
 	if rp.channels == nil {

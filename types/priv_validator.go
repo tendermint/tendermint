@@ -52,20 +52,12 @@ func NewMockPV() *MockPV {
 
 // Implements PrivValidator.
 func (pv *MockPV) GetAddress() Address {
-	pubKey, err := pv.privKey.PubKey()
-	if err != nil {
-		panic(err)
-	}
-	return pubKey.Address()
+	return pv.privKey.PubKey().Address()
 }
 
 // Implements PrivValidator.
 func (pv *MockPV) GetPubKey() crypto.PubKey {
-	pubKey, err := pv.privKey.PubKey()
-	if err != nil {
-		panic(err)
-	}
-	return pubKey
+	return pv.privKey.PubKey()
 }
 
 // Implements PrivValidator.

@@ -68,10 +68,7 @@ func (pv *FilePV) GetPubKey() crypto.PubKey {
 // and sets the filePath, but does not call Save().
 func GenFilePV(filePath string) *FilePV {
 	privKey := crypto.GenPrivKeyEd25519()
-	pubKey, err := privKey.PubKey()
-	if err != nil {
-		panic(err)
-	}
+	pubKey := privKey.PubKey()
 	return &FilePV{
 		Address:  pubKey.Address(),
 		PubKey:   pubKey,

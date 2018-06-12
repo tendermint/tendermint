@@ -22,7 +22,7 @@ build_race:
 install:
 	go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
-build_docker:
+build_in_docker:
 	docker run --rm -it -v $(shell pwd):/go/src/github.com/tendermint/tendermint golang:1.10.2 make -C /go/src/github.com/tendermint/tendermint get_tools update_tools get_vendor_deps build
 
 ########################################
@@ -236,4 +236,4 @@ build-slate:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate
+.PHONY: check build build_race build_in_docker dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate
