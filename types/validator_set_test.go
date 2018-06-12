@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -332,7 +333,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		BlockID:          blockID,
 	}
 	sig, err := privKey.Sign(vote.SignBytes(chainID))
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	vote.Signature = sig
 	commit := &Commit{
 		BlockID:    blockID,
