@@ -71,7 +71,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/abci"
-  branch = "develop"
+  branch = "~0.11.0"
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
