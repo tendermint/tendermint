@@ -287,7 +287,7 @@ var testGenesis = `{
   "validators": [
     {
       "pub_key": {
-        "type": "AC26791624DE60",
+        "type": "tendermint/PubKeyEd25519",
         "value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
       },
       "power": 10,
@@ -300,11 +300,11 @@ var testGenesis = `{
 var testPrivValidator = `{
   "address": "849CB2C877F87A20925F35D00AE6688342D25B47",
   "pub_key": {
-    "type": "AC26791624DE60",
+    "type": "tendermint/PubKeyEd25519",
     "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
   },
   "priv_key": {
-    "type": "954568A3288910",
+    "type": "tendermint/PrivKeyEd25519",
     "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
   },
   "last_height": 0,

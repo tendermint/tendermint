@@ -55,7 +55,7 @@ import (
 //    "validator_info": {
 //      "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
 //      "pub_key": {
-//        "type": "AC26791624DE60",
+//        "type": "tendermint/PubKeyEd25519",
 //        "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
 //      },
 //      "voting_power": 10
