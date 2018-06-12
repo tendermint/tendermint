@@ -231,10 +231,11 @@ message Header {
 
   // hashes
   bytes last_block_hash = 6;
-  bytes app_hash = 7;
+  bytes validators_hash = 7;
+  bytes app_hash = 8;
 
   // consensus
-  Validator proposer = 8 [(gogoproto.nullable)=false];
+  Validator proposer = 9 [(gogoproto.nullable)=false];
 }
 
 // Validator
