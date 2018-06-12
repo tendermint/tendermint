@@ -30,7 +30,7 @@ See the [references](#references) for more.
 
 ### Imports
 
-The native Protobuf library in Go generates code that is inellegant and difficult to work with.
+The native proto library in Go generates code that is inellegant and difficult to work with.
 The solution in the Go community is to use a fork of it called `gogoproto`.
 While `gogoproto` is nice, it creates an additional dependency, and compiling
 the protobuf types for other languages has been reported to fail when `gogoproto` is used.
@@ -38,13 +38,13 @@ the protobuf types for other languages has been reported to fail when `gogoproto
 ### Amino
 
 Amino is an encoding protocol designed to improve over insufficiencies of protobuf.
-It's goal is to be Protobuf4.
+It's goal is to be proto4.
 
 Many people are frustrated by incompatibility with protobuf,
 and with the requirement for Amino to be used at all within ABCI.
 
 We intend to make Amino successful enough that we can eventually use it for ABCI
-message types directly. By then it should be called Protobuf4. In the meantime,
+message types directly. By then it should be called proto4. In the meantime,
 we want it to be easy to use.
 
 ### PubKey
@@ -102,11 +102,11 @@ Amino will be completely removed from the ABCI:
 - It will not be required for PubKey encoding
 - It will not be required for computing PubKey addresses
 
-That said, we are working to make Amino a huge success, and to become Protobuf4.
+That said, we are working to make Amino a huge success, and to become proto4.
 To facilitate adoption and cross-language compatibility in the near-term, Amino
 v1 will:
 
-- be fully compatible with the subset of Protobuf3 that excludes `oneof`
+- be fully compatible with the subset of proto3 that excludes `oneof`
 - use the Amino prefix system to provide interface types, as opposed to `oneof`
   style union types.
 
