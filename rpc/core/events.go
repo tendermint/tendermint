@@ -52,7 +52,7 @@ import (
 // import "github.com/tendermint/tendermint/libs/pubsub/query"
 // import "github.com/tendermint/tendermint/types"
 //
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // ctx, cancel := context.WithTimeout(context.Background(), timeout)
 // defer cancel()
 // query := query.MustParse("tm.event = 'Tx' AND tx.height = 3")
@@ -114,7 +114,7 @@ func Subscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultSubscri
 // Unsubscribe from events via WebSocket.
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // err := client.Unsubscribe("test-client", query)
 // ```
 //
@@ -153,7 +153,7 @@ func Unsubscribe(wsCtx rpctypes.WSRPCContext, query string) (*ctypes.ResultUnsub
 // Unsubscribe from all events via WebSocket.
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // err := client.UnsubscribeAll("test-client")
 // ```
 //

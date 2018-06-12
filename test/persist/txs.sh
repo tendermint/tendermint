@@ -2,7 +2,7 @@
 set -u
 
 # wait till node is up, send txs
-ADDR=$1 #="127.0.0.1:46657"
+ADDR=$1 #="127.0.0.1:26657"
 curl -s $ADDR/status > /dev/null
 ERR=$?
 while [ "$ERR" != 0 ]; do

@@ -7,7 +7,7 @@ RUN apk update && \
 
 VOLUME [ /tendermint ]
 WORKDIR /tendermint
-EXPOSE 46656 46657
+EXPOSE 26656 26657
 ENTRYPOINT ["/usr/bin/wrapper.sh"]
 CMD ["node", "--proxy_app", "kvstore"]
 STOPSIGNAL SIGTERM

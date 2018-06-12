@@ -1,8 +1,8 @@
 #! /bin/bash
-set -e
+set -ex
 
 function toHex() {
-    echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}' 
+    echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}'
 
 }
 
@@ -15,7 +15,7 @@ TESTNAME=$1
 KEY="abcd"
 VALUE="dcba"
 echo $(toHex $KEY=$VALUE)
-curl -s 127.0.0.1:46657/broadcast_tx_commit?tx=$(toHex $KEY=$VALUE)
+curl -s 127.0.0.1:26657/broadcast_tx_commit?tx=$(toHex $KEY=$VALUE)
 echo $?
 echo ""
 
@@ -56,7 +56,7 @@ set -e
 echo "... testing query with /abci_query 2"
 
 # we should be able to look up the key
-RESPONSE=`curl -s "127.0.0.1:46657/abci_query?path=\"\"&data=$(toHex $KEY)&prove=false"`
+RESPONSE=`curl -s "127.0.0.1:26657/abci_query?path=\"\"&data=$(toHex $KEY)&prove=false"`
 RESPONSE=`echo $RESPONSE | jq .result.response.log`
 
 set +e
@@ -69,7 +69,7 @@ fi
 set -e
 
 # we should not be able to look up the value
-RESPONSE=`curl -s "127.0.0.1:46657/abci_query?path=\"\"&data=$(toHex $VALUE)&prove=false"`
+RESPONSE=`curl -s "127.0.0.1:26657/abci_query?path=\"\"&data=$(toHex $VALUE)&prove=false"`
 RESPONSE=`echo $RESPONSE | jq .result.response.log`
 set +e
 A=`echo $RESPONSE | grep 'exists'`
