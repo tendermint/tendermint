@@ -264,13 +264,13 @@
   version = "0.10.0-rc2"
 
 [[projects]]
-  branch = "cwgoes/no-pubkey-err"
+  branch = "develop"
   name = "github.com/tendermint/go-crypto"
   packages = [
     ".",
     "tmhash"
   ]
-  revision = "cdfec812e58ff0ae9091324ee31d4ba0529dea62"
+  revision = "8e273220a35e200caa63ad6d1fbe5a91a49b45e2"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -388,6 +388,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cb528884901ffc18e710304d9fc57207e7a1f2b6b2a505f10220896b3b846813"
+  inputs-digest = "287cd50f385a85de109d1e89b335e748e18a18bb736707a8e7aa9701092af913"
   solver-name = "gps-cdcl"
   solver-version = 1
