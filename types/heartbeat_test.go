@@ -39,11 +39,11 @@ func TestHeartbeatWriteSignBytes(t *testing.T) {
 	hb := &Heartbeat{ValidatorIndex: 1, Height: 10, Round: 1}
 	bz := hb.SignBytes("0xdeadbeef")
 	// XXX HMMMMMMM
-	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":10,"round":1,"sequence":0,"validator_address":"","validator_index":1}`)
+	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":10,"round":1,"sequence":0,"validator_address":"","validator_index":"1"}`)
 
 	plainHb := &Heartbeat{}
 	bz = plainHb.SignBytes("0xdeadbeef")
-	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":0,"round":0,"sequence":0,"validator_address":"","validator_index":0}`)
+	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":0,"round":0,"sequence":0,"validator_address":"","validator_index":"0"}`)
 
 	require.Panics(t, func() {
 		var nilHb *Heartbeat
