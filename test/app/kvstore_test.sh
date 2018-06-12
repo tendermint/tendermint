@@ -1,8 +1,8 @@
 #! /bin/bash
-set -e
+set -ex
 
 function toHex() {
-    echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}' 
+    echo -n $1 | hexdump -ve '1/1 "%.2X"' | awk '{print "0x" $0}'
 
 }
 
