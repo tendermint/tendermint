@@ -264,10 +264,13 @@
   version = "0.9.9"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/go-crypto"
-  packages = ["."]
-  revision = "66794a174ac0f0a03235ba1348321e247f391822"
+  packages = [
+    ".",
+    "tmhash"
+  ]
+  revision = "e4e3f8d8084637493b3208cf174a8338cbf618ac"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -385,6 +388,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cebfbfb1ba222ac265db9b2e98f3d38977bdaaff06a2a3f4eab03cc18028e767"
+  inputs-digest = "cefc8aedc7d72a943701f72f18b2e58be113eb01b978476ab1fd22a687a69ed0"
   solver-name = "gps-cdcl"
   solver-version = 1
