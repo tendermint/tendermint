@@ -36,37 +36,34 @@ func resetPrivValidator(cmd *cobra.Command, args []string) {
 	resetFilePV(config.PrivValidatorFile(), logger)
 }
 
-// ResetAll removes the privValidator files.
+// ResetAll removes the privValidator and address book files plus all data.
 // Exported so other CLI tools can use it.
 func ResetAll(dbDir, addrBookFile, privValFile string, logger log.Logger) {
 	resetFilePV(privValFile, logger)
-	resetAddrBook(addrBookFile, logger)
-	if err := os.RemoveAll(dbDir); err != nil {
-		logger.Error("Error removing directory", "err", err)
-		return
+	removeAddrBook(addrBookFile, logger)
+	if err := os.RemoveAll(dbDir); err == nil {
+		logger.Info("Removed all blockchain history", "dir", dbDir)
+	} else {
+		logger.Error("Error removing all blockchain history", "dir", dbDir, "err", err)
 	}
-	logger.Info("Removed all blockchain history", "dir", dbDir)
 }
 
 func resetFilePV(privValFile string, logger log.Logger) {
-	// Get PrivValidator
 	if _, err := os.Stat(privValFile); err == nil {
 		pv := privval.LoadFilePV(privValFile)
 		pv.Reset()
-		logger.Info("Reset PrivValidator to genesis state", "file", privValFile)
+		logger.Info("Reset private validator file to genesis state", "file", privValFile)
 	} else {
 		pv := privval.GenFilePV(privValFile)
 		pv.Save()
-		logger.Info("Generated PrivValidator", "file", privValFile)
+		logger.Info("Generated private validator file", "file", privValFile)
 	}
 }
 
-// Deletes the addrbook.json file. It will be generated in node.NewNode, which is executed with
-// `tendermint start`.
-func resetAddrBook(addrBookFile string, logger log.Logger) {
+func removeAddrBook(addrBookFile string, logger log.Logger) {
 	if err := os.Remove(addrBookFile); err == nil {
-		logger.Info("Cleared AddrBook to an empty state", "file", addrBookFile)
+		logger.Info("Removed existing address book", "file", addrBookFile)
 	} else {
-		logger.Info("Failed to clear AddrBook to an empty state", "file", addrBookFile)
+		logger.Info("Error removing address book", "file", addrBookFile, "err", err)
 	}
 }
