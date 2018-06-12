@@ -27,7 +27,7 @@ var ResetPrivValidatorCmd = &cobra.Command{
 // XXX: this is totally unsafe.
 // it's only suitable for testnets.
 func resetAll(cmd *cobra.Command, args []string) {
-	ResetAll(config.DBDir(), config.P2P.AddrBook, config.PrivValidatorFile(), logger)
+	ResetAll(config.DBDir(), config.P2P.AddrBookFile(), config.PrivValidatorFile(), logger)
 }
 
 // XXX: this is totally unsafe.
@@ -63,7 +63,7 @@ func resetFilePV(privValFile string, logger log.Logger) {
 func removeAddrBook(addrBookFile string, logger log.Logger) {
 	if err := os.Remove(addrBookFile); err == nil {
 		logger.Info("Removed existing address book", "file", addrBookFile)
-	} else {
+	} else if !os.IsNotExist(err) {
 		logger.Info("Error removing address book", "file", addrBookFile, "err", err)
 	}
 }
