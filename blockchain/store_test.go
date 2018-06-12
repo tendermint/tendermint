@@ -29,7 +29,7 @@ func TestLoadBlockStoreStateJSON(t *testing.T) {
 
 func TestNewBlockStore(t *testing.T) {
 	db := db.NewMemDB()
-	db.Set(blockStoreKey, []byte(`{"height": 10000}`))
+	db.Set(blockStoreKey, []byte(`{"height": "10000"}`))
 	bs := NewBlockStore(db)
 	require.Equal(t, int64(10000), bs.Height(), "failed to properly parse blockstore")
 

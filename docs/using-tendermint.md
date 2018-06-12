@@ -238,7 +238,7 @@ And the `priv_validator.json`:
       "last_height" : "0",
       "priv_key" : {
         "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
-        "type" : "954568A3288910"
+        "type" : "tendermint/PrivKeyEd25519"
       }
     }
 
@@ -352,7 +352,7 @@ Now we can update our genesis file. For instance, if the new
       },
       "priv_key" : {
         "value" : "EDJY9W6zlAw+su6ITgTKg2nTZcHAH1NMTW5iwlgmNDuX1f35+OR4HMN88ZtQzsAwhETq4k3vzM3n6WTk5ii16Q==",
-        "type" : "954568A3288910"
+        "type" : "tendermint/PrivKeyEd25519"
       },
       "last_step" : 0,
       "last_round" : "0",

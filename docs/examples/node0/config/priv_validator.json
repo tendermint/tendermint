@@ -8,7 +8,7 @@
   "last_round": "0",
   "last_step": 0,
   "priv_key": {
-    "type": "954568A3288910",
+    "type": "tendermint/PrivKeyEd25519",
     "value": "YLxp3ho+kySgAnzjBptbxDzSGw2ntGZLsIHQsaVxY/cP6TgB2Odg9ZsH3CZp3XfsF2mj+QC6U6hNFCsvL9BziQ=="
   }
 }
