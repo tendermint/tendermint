@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0
+
+*2018-06-12*
+
+BREAKING CHANGES:
+
+- [abci-cli] Change rpc port from 46658 to 26658.
+- [examples] Change rpc port from 46658 to 26658.
+
 ## 0.11.0
 
 *June 6, 2018*
