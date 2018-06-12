@@ -263,7 +263,8 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	pubkey := crypto.GenPrivKeyEd25519().PubKey()
 	// swap the first validator with a new one ^^^ (validator set size stays the same)
 	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
-	state, err := updateState(state, blockID, header, responses)
+	var err error
+	state, err = updateState(state, blockID, header, responses)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
