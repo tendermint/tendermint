@@ -229,13 +229,13 @@ And the `priv_validator.json`:
 
     {
       "last_step" : 0,
-      "last_round" : 0,
+      "last_round" : "0",
       "address" : "B788DEDE4F50AD8BC9462DE76741CCAFF87D51E2",
       "pub_key" : {
         "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
         "type" : "AC26791624DE60"
       },
-      "last_height" : 0,
+      "last_height" : "0",
       "priv_key" : {
         "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
         "type" : "954568A3288910"
@@ -355,8 +355,8 @@ Now we can update our genesis file. For instance, if the new
         "type" : "954568A3288910"
       },
       "last_step" : 0,
-      "last_round" : 0,
-      "last_height" : 0
+      "last_round" : "0",
+      "last_height" : "0"
     }
 
 then the new `genesis.json` will be:
