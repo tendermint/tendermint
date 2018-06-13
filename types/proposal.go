@@ -34,7 +34,7 @@ func NewProposal(height int64, round int, blockPartsHeader PartSetHeader, polRou
 	return &Proposal{
 		Height:           height,
 		Round:            round,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        time.Now().Round(0).UTC(),
 		BlockPartsHeader: blockPartsHeader,
 		POLRound:         polRound,
 		POLBlockID:       polBlockID,
@@ -45,7 +45,7 @@ func NewProposal(height int64, round int, blockPartsHeader PartSetHeader, polRou
 func (p *Proposal) String() string {
 	return fmt.Sprintf("Proposal{%v/%v %v (%v,%v) %v @ %s}",
 		p.Height, p.Round, p.BlockPartsHeader, p.POLRound,
-		p.POLBlockID, p.Signature, CanonicalTime(p.Timestamp))
+		p.POLBlockID, p.Signature, p.Timestamp)
 }
 
 // SignBytes returns the Proposal bytes for signing

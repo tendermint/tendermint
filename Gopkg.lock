@@ -284,6 +284,7 @@
     "flowrate",
     "log",
     "merkle",
+    "merkle/tmhash",
     "test"
   ]
   revision = "692f1d86a6e2c0efa698fd1e4541b68c74ffaf38"

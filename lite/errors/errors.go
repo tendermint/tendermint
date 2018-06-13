@@ -27,16 +27,8 @@ func (e errValidatorsDifferent) Error() string {
 
 type errTooMuchChange struct{}
 
-func (e errCommitTooMuchChange) Error() string {
+func (e errTooMuchChange) Error() string {
 	return "Insufficient signatures to validate due to valset changes"
-}
-
-type errHeightMismatch struct {
-	h1, h2 int64
-}
-
-func (e errHeightMismatch) Error() string {
-	return fmt.Sprintf("Blocks don't match - %d vs %d", e.h1, e.h2)
 }
 
 //----------------------------------------
@@ -88,22 +80,6 @@ func ErrTooMuchChange() error {
 func IsErrTooMuchChange(err error) bool {
 	if err_, ok := err.(cmn.Error); ok {
 		_, ok := err_.Data().(errTooMuchChange)
-		return ok
-	}
-	return false
-}
-
-//-----------------
-// ErrHeightMismatch
-
-// ErrHeightMismatch returns an mismatch error with stack-trace
-func ErrHeightMismatch(h1, h2 int64) error {
-	return cmn.ErrorWrap(errHeightMismatch{h1, h2}, "")
-}
-
-func IsErrHeightMismatch(err error) bool {
-	if err_, ok := err.(cmn.Error); ok {
-		_, ok := err_.Data().(errHeightMismatch)
 		return ok
 	}
 	return false

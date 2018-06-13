@@ -102,7 +102,7 @@ func (vote *Vote) String() string {
 		vote.ValidatorIndex, cmn.Fingerprint(vote.ValidatorAddress),
 		vote.Height, vote.Round, vote.Type, typeString,
 		cmn.Fingerprint(vote.BlockID.Hash), vote.Signature,
-		CanonicalTime(vote.Timestamp))
+		vote.Timestamp)
 }
 
 func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
