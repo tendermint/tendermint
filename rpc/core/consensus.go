@@ -12,11 +12,11 @@ import (
 // If no height is provided, it will fetch the current validator set.
 //
 // ```shell
-// curl 'localhost:46657/validators'
+// curl 'localhost:26657/validators'
 // ```
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // state, err := client.Validators()
 // ```
 //
@@ -61,11 +61,11 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 // UNSTABLE
 //
 // ```shell
-// curl 'localhost:46657/dump_consensus_state'
+// curl 'localhost:26657/dump_consensus_state'
 // ```
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // state, err := client.DumpConsensusState()
 // ```
 //
@@ -153,7 +153,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //     },
 //     "peers": [
 //       {
-//         "node_address": "30ad1854af22506383c3f0e57fb3c7f90984c5e8@172.16.63.221:46656",
+//         "node_address": "30ad1854af22506383c3f0e57fb3c7f90984c5e8@172.16.63.221:26656",
 //         "peer_state": {
 //           "round_state": {
 //             "height": 7185,
@@ -216,11 +216,11 @@ func DumpConsensusState() (*ctypes.ResultDumpConsensusState, error) {
 // UNSTABLE
 //
 // ```shell
-// curl 'localhost:46657/consensus_state'
+// curl 'localhost:26657/consensus_state'
 // ```
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // state, err := client.ConsensusState()
 // ```
 //

@@ -90,10 +90,10 @@ ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY
 sleep 10
 
 # get each nodes ID then populate the ansible file
-id0=`curl $ip0:46657/status | jq .result.node_info.id`
-id1=`curl $ip1:46657/status | jq .result.node_info.id`
-id2=`curl $ip2:46657/status | jq .result.node_info.id`
-id3=`curl $ip3:46657/status | jq .result.node_info.id`
+id0=`curl $ip0:26657/status | jq .result.node_info.id`
+id1=`curl $ip1:26657/status | jq .result.node_info.id`
+id2=`curl $ip2:26657/status | jq .result.node_info.id`
+id3=`curl $ip3:26657/status | jq .result.node_info.id`
 
 id0=$(strip $id0)
 id1=$(strip $id1)
@@ -115,7 +115,7 @@ Restart=on-failure
 User={{service}}
 Group={{service}}
 PermissionsStartOnly=true
-ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=$id0@$ip0:46656,$id1@$ip1:46656,$id2@$ip2:46656,$id3@$ip3:46656
+ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=$id0@$ip0:26656,$id1@$ip1:26656,$id2@$ip2:26656,$id3@$ip3:26656
 ExecReload=/bin/kill -HUP \$MAINPID
 KillSignal=SIGTERM
 
