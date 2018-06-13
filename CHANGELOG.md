@@ -1,5 +1,12 @@
 # Changelog
 
+* June 13, 2018
+
+SYNTAX
+
+- Isaac runs `gofmt` on the project.
+
+
 ## 0.20.0
 
 *June 6th, 2018*
