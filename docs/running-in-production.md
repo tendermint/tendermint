@@ -193,3 +193,14 @@ proposing the next block).
 
 By default, the maximum number of transactions per a block is 10_000.
 Feel free to change it to suit your needs.
+
+-   `p2p.addr_book_strict`
+
+By default, Tendermint checks whenever a peer's address is routable before
+saving it to the address book. The address is considered as routable if the IP
+is [valid and within allowed
+ranges](https://github.com/tendermint/tendermint/blob/27bd1deabe4ba6a2d9b463b8f3e3f1e31b993e61/p2p/netaddress.go#L209).
+
+This may not be the case for private networks, where your IP range is usually
+strictly limited and private. If that case, you need to set `addr_book_strict`
+to `false` (turn off).
