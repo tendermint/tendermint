@@ -9,6 +9,7 @@ import (
 
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	abci "github.com/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
@@ -532,6 +533,7 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.EventSubscriber(n.eventBus))
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
+		mux.Handle("/metrics", promhttp.Handler())
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
 		if err != nil {

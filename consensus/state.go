@@ -391,8 +391,8 @@ func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *t
 // internal functions for managing the state
 
 func (cs *ConsensusState) updateHeight(height int64) {
-	cs.Height = height
 	cs.metrics.Height.Add(float64(height - cs.Height))
+	cs.Height = height
 }
 
 func (cs *ConsensusState) updateRoundStep(round int, step cstypes.RoundStepType) {
