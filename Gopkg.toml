@@ -83,7 +83,7 @@
 
 [[override]]
   name = "github.com/tendermint/tmlibs"
-  version = "~0.8.3-rc0"
+  branch = "jae/errors_simplification"
 
 [[constraint]]
   name = "google.golang.org/grpc"

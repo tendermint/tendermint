@@ -7,7 +7,7 @@ import (
 
 	"context"
 
-	"github.com/tendermint/go-wire"
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/rpc/grpc"
 )
 
@@ -32,5 +32,10 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(string(wire.JSONBytes(res)))
+	bz, err := amino.NewCodec().MarshalJSON(res)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(string(bz))
 }

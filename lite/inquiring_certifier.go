@@ -102,8 +102,13 @@ func (ic *InquiringCertifier) Certify(shdr types.SignedHeader) error {
 // verifyAndSave will verify if this is a valid source full commit given the
 // best match trusted full commit, and if good, persist to ic.trusted.
 // Returns ErrTooMuchChange when >2/3 of tfc did not sign sfc.
+// Panics if tfc.Height() >= sfc.Height().
 func (ic *InquiringCertifier) verifyAndSave(tfc, sfc FullCommit) error {
-	err = tfc.NextValidators.VerifyCommitAny(
+	if tfc.Height() >= sfc.Height() {
+		panic("should not happen")
+	}
+	err = tfc.NextValidators.VerifyFutureCommit(
+		sfc.Validators,
 		ic.chainID, sfc.Commit.BlockID,
 		sfc.Header.Height, sfc.Header.Commit,
 	)
