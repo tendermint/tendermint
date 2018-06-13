@@ -7,7 +7,7 @@
         "type": "tendermint/PubKeyEd25519",
         "value": "vokz3/FgDAJuNHGPF4Wkzeq5DDVpizlOOLaUeukd4RY="
       },
-      "power": 1,
+      "power": "1",
       "name": "mach1"
     },
     {
@@ -15,7 +15,7 @@
         "type": "tendermint/PubKeyEd25519",
         "value": "bcU0RlMjEmWH0qKpO1nWibcXBzsd6WiiWm7xPVlTGK0="
       },
-      "power": 1,
+      "power": "1",
       "name": "mach2"
     },
     {
@@ -23,7 +23,7 @@
         "type": "tendermint/PubKeyEd25519",
         "value": "rmesaX0TWqC0YB6lfqqz/r9Lqk8inEWlmMKYWxL80aE="
       },
-      "power": 1,
+      "power": "1",
       "name": "mach3"
     },
     {
@@ -31,7 +31,7 @@
         "type": "tendermint/PubKeyEd25519",
         "value": "nryPWM7UtG3NWrirpZHdJTzXy1A3Jz/aMrwLZGHE79k="
       },
-      "power": 1,
+      "power": "1",
       "name": "mach4"
     }
   ],
