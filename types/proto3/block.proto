@@ -39,6 +39,6 @@ message Header {
 }
 
 message Timestamp {
-  sint64 seconds = 1;
-  sint32 nanos = 2;
+  sfixed64 seconds = 1;
+  sfixed32 nanos = 2;
 }

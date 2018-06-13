@@ -12,11 +12,12 @@ func TestProto3Compatibility(t *testing.T) {
 	// TODO(ismail): table tests instead...
 	tm, err := time.Parse("Mon Jan 2 15:04:05 -0700 MST 2006", "Mon Jan 2 15:04:05 -0700 MST 2006")
 	assert.NoError(t, err)
-
+	seconds := tm.Unix()
+	nanos := int32(tm.Nanosecond())
 	pbHeader := proto3.Header{
 		ChainID: "cosmos",
 		Height:150,
-		Time: &proto3.Timestamp{Seconds:tm.Unix(), Nanos:int32(tm.Nanosecond())},
+		Time: &proto3.Timestamp{Seconds:seconds, Nanos:nanos},
 		NumTxs: 7,
 		LastBlockID: &proto3.BlockID{
 			Hash: []byte("some serious hashing"),
