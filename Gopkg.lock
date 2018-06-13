@@ -258,10 +258,10 @@
   revision = "d8387025d2b9d158cf4efb07e7ebf814bcce2057"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "4c0fad7406513c2f2234ff6fa649aacf111cdf10"
+  revision = "3029a19e28956a5cf1e959f69c16542fe7dcb696"
+  version = "0.10.0"
 
 [[projects]]
   branch = "develop"
@@ -388,6 +388,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "d1dafdf88979a6b083db07927c3b45ebb890031037d434d08738550e2029b7f6"
+  inputs-digest = "25971e95adb59a6d6f30dda96d6df5465f8d39e399c7b8f60a6610fe3a1432d6"
   solver-name = "gps-cdcl"
   solver-version = 1

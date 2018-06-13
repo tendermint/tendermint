@@ -77,11 +77,11 @@
   name = "github.com/tendermint/go-crypto"
   branch = "develop"
 
-[[override]]
+[[constraint]]
   name = "github.com/tendermint/go-amino"
-  branch = "develop"
+  version = "=0.10.0"
 
-[[override]]
+[[constraint]]
   name = "github.com/tendermint/tmlibs"
   version = "~0.8.4"
 
