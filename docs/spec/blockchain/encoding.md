@@ -249,7 +249,7 @@ For instance, an ED25519 PubKey would look like:
 
 ```
 {
-  "type": "AC26791624DE60",
+  "type": "tendermint/PubKeyEd25519",
   "value": "uZ4h63OFWuQ36ZZ4Bd6NF+/w9fWUwrOncrQsackrsTk="
 }
 ```

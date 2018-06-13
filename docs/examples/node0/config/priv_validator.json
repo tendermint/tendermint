@@ -1,7 +1,7 @@
 {
   "address": "122A9414774A2FCAD026201DA477EF3F41970EF0",
   "pub_key": {
-    "type": "AC26791624DE60",
+    "type": "tendermint/PubKeyEd25519",
     "value": "D+k4AdjnYPWbB9wmad137Bdpo/kAulOoTRQrLy/Qc4k="
   },
   "last_height": "0",
