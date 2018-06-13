@@ -246,11 +246,27 @@ func NewNode(config *cfg.Config,
 	// Make ConsensusReactor
 	// TODO: extract to provider
 	metrics := &cs.Metrics{
-		Height: prometheus.NewCounter(stdprometheus.NewCounterVec(stdprometheus.CounterOpts{
-			Name: "height",
-		}, []string{})),
+		Height: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Subsystem: "consensus",
+			Name:      "height",
+			Help:      "Height of the chain.",
+		}, []string{}),
+		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "validators",
+			Help:      "Number of validators who signed, partitioned by height.",
+		}, []string{"height"}),
+		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "missing_validators",
+			Help:      "Number of validators who did not sign, partitioned by height.",
+		}, []string{"height"}),
+		ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "byzantine_validators",
+			Help:      "Number of validators who tried to double sign, partitioned by height.",
+		}, []string{"height"}),
 	}
-	stdprometheus.MustRegister(metrics.Height)
 	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
 		blockExec, blockStore, mempool, evidencePool, metrics)
 	consensusState.SetLogger(consensusLogger)
