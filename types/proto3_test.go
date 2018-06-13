@@ -9,7 +9,6 @@ import (
 )
 
 func TestProto3Compatibility(t *testing.T) {
-	// TODO(ismail): table tests instead...
 	tm, err := time.Parse("Mon Jan 2 15:04:05 -0700 MST 2006", "Mon Jan 2 15:04:05 -0700 MST 2006")
 	assert.NoError(t, err)
 	seconds := tm.Unix()
@@ -32,7 +31,6 @@ func TestProto3Compatibility(t *testing.T) {
 		ValidatorsHash:[]byte("validators hash"),
 
 	}
-	// TODO(ismail): add another test where parts are missing (to see if default values are treated equiv.)
 	aminoHeader := Header{
 		ChainID: "cosmos",
 		Height:150,
@@ -54,6 +52,39 @@ func TestProto3Compatibility(t *testing.T) {
 	assert.NoError(t, err, "unexpected error")
 
 	pb, err := proto.Marshal(&pbHeader)
+	assert.NoError(t, err, "unexpected error")
+	// This works:
+	assert.Equal(t, ab, pb, "encoding doesn't match")
+
+	emptyLastBlockPb := proto3.Header{
+		ChainID: "cosmos",
+		Height:150,
+		Time: &proto3.Timestamp{Seconds:seconds, Nanos:nanos},
+		NumTxs: 7,
+		LastBlockID: &proto3.BlockID{
+			PartsHeader: &proto3.PartSetHeader{},
+		},
+		TotalTxs: 100,
+		LastCommitHash: []byte("commit hash"),
+		DataHash: []byte("data hash"),
+		ValidatorsHash:[]byte("validators hash"),
+
+	}
+	emptyLastBlockAm := Header{
+		ChainID: "cosmos",
+		Height:150,
+		Time: tm,
+		NumTxs: 7,
+		TotalTxs: 100,
+		LastCommitHash: []byte("commit hash"),
+		DataHash: []byte("data hash"),
+		ValidatorsHash:[]byte("validators hash"),
+	}
+
+	ab, err = cdc.MarshalBinaryBare(emptyLastBlockAm)
+	assert.NoError(t, err, "unexpected error")
+
+	pb, err = proto.Marshal(&emptyLastBlockPb)
 	assert.NoError(t, err, "unexpected error")
 	// This works:
 	assert.Equal(t, ab, pb, "encoding doesn't match")
