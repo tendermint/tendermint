@@ -61,6 +61,7 @@ func TestProto3Compatibility(t *testing.T) {
 		Height:150,
 		Time: &proto3.Timestamp{Seconds:seconds, Nanos:nanos},
 		NumTxs: 7,
+		// TODO(ismail): as Jae suggested, we'll add a flag to make this obsolete:
 		LastBlockID: &proto3.BlockID{
 			PartsHeader: &proto3.PartSetHeader{},
 		},
