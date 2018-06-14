@@ -89,13 +89,16 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	if err := consensusState.Start(); err != nil {
 		return nil, errors.Wrap(err, "failed to start consensus state")
 	}
-	defer consensusState.Stop()
 
 	select {
 	case <-numBlocksWritten:
+		consensusState.Stop()
+		consensusState.Wait()
 		wr.Flush()
 		return b.Bytes(), nil
 	case <-time.After(1 * time.Minute):
+		consensusState.Stop()
+		consensusState.Wait()
 		wr.Flush()
 		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
