@@ -1,6 +1,10 @@
 package lite
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -60,10 +64,10 @@ func (fc FullCommit) ValidateBasic(chainID string) error {
 		return err
 	}
 	// Validate the signatures on the commit.
-	hdr := fc.SignedHeader.Header
+	hdr, cmt := fc.SignedHeader.Header, fc.SignedHeader.Commit
 	err = fc.Validators.VerifyCommit(
-		hdr.ChainID, signedHeader.Commit.BlockID,
-		hdr.Height, signedHeader.Commit)
+		hdr.ChainID, cmt.BlockID,
+		hdr.Height, cmt)
 	if err != nil {
 		return err
 	}
@@ -74,16 +78,16 @@ func (fc FullCommit) ValidateBasic(chainID string) error {
 
 // Height returns the height of the header.
 func (fc FullCommit) Height() int64 {
-	if c.SignedHeader.Header == nil {
+	if fc.SignedHeader.Header == nil {
 		panic("should not happen")
 	}
-	return c.SignedHeader.Header.Height
+	return fc.SignedHeader.Height
 }
 
 // ChainID returns the chainID of the header.
 func (fc FullCommit) ChainID() string {
-	if c.SignedHeader.Header == nil {
+	if fc.SignedHeader.Header == nil {
 		panic("should not happen")
 	}
-	return c.SignedHeader.Header.ChainID
+	return fc.SignedHeader.ChainID
 }

@@ -3,14 +3,13 @@ package types
 import (
 	"time"
 
-	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Canonical json is amino's json for structs with fields in alphabetical order
 
 // TimeFormat is used for generating the sigs
-const TimeFormat = amino.RFC3339Millis
+const TimeFormat = time.RFC3339Nano
 
 type CanonicalJSONBlockID struct {
 	Hash        cmn.HexBytes               `json:"hash,omitempty"`
@@ -30,7 +29,7 @@ type CanonicalJSONProposal struct {
 	POLBlockID       CanonicalJSONBlockID       `json:"pol_block_id"`
 	POLRound         int                        `json:"pol_round"`
 	Round            int                        `json:"round"`
-	Timestamp        time.Time                  `json:"timestamp"`
+	Timestamp        string                     `json:"timestamp"`
 }
 
 type CanonicalJSONVote struct {
@@ -39,7 +38,7 @@ type CanonicalJSONVote struct {
 	BlockID   CanonicalJSONBlockID `json:"block_id"`
 	Height    int64                `json:"height"`
 	Round     int                  `json:"round"`
-	Timestamp time.Time            `json:"timestamp"`
+	Timestamp string               `json:"timestamp"`
 	VoteType  byte                 `json:"type"`
 }
 

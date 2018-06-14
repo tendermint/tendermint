@@ -5,7 +5,7 @@
   branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
-  revision = "675abc5df3c5531bc741b56a765e35623459da6d"
+  revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -75,14 +75,14 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/golang/snappy"
   packages = ["."]
-  revision = "553a641470496b2327abcac10b36396bd98e45c9"
+  revision = "2e65f85255dbc3072edf28d6b5b8efc472979f5a"
 
 [[projects]]
   name = "github.com/gorilla/websocket"
@@ -128,20 +128,20 @@
 [[projects]]
   name = "github.com/magiconair/properties"
   packages = ["."]
-  revision = "c3beff4c2358b44d0493c7dda585e7db7ff28ae6"
-  version = "v1.7.6"
+  revision = "c2353362d570a7bfa228149c62842019201cfb71"
+  version = "v1.8.0"
 
 [[projects]]
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "00c29f56e2386353d58c599509e8dc3801b0d716"
+  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
   packages = ["."]
-  revision = "acdc4509485b587f5e675510c4f2c63e90ff68a8"
-  version = "v1.1.0"
+  revision = "c01d1270ff3e442a8a57cddc1c92dc1138598194"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -159,7 +159,7 @@
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
-  revision = "d932a24a8ccb8fcadc993e5c6c58f93dac168294"
+  revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
 
 [[projects]]
   name = "github.com/spf13/afero"
@@ -167,8 +167,8 @@
     ".",
     "mem"
   ]
-  revision = "63644898a8da0bc22138abf860edaf5277b6102e"
-  version = "v1.1.0"
+  revision = "787d034dfe70e44075ccc060d346146ef53270ad"
+  version = "v1.1.1"
 
 [[projects]]
   name = "github.com/spf13/cast"
@@ -179,8 +179,8 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "a1f051bc3eba734da4772d60e2d677f47cf93ef4"
-  version = "v0.0.2"
+  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
+  version = "v0.0.3"
 
 [[projects]]
   branch = "master"
@@ -206,8 +206,8 @@
     "assert",
     "require"
   ]
-  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
-  version = "v1.2.1"
+  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
+  version = "v1.2.2"
 
 [[projects]]
   branch = "master"
@@ -226,7 +226,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
+  revision = "e2150783cd35f5b607daca48afd8c57ec54cc995"
 
 [[projects]]
   name = "github.com/tendermint/abci"
@@ -254,8 +254,8 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
-  version = "0.9.9"
+  revision = "3029a19e28956a5cf1e959f69c16542fe7dcb696"
+  version = "0.10.0"
 
 [[projects]]
   name = "github.com/tendermint/go-crypto"
@@ -264,7 +264,6 @@
   version = "v0.6.2"
 
 [[projects]]
-  branch = "jae/errors_simplification"
   name = "github.com/tendermint/tmlibs"
   packages = [
     "autofile",
@@ -279,13 +278,15 @@
     "merkle/tmhash",
     "test"
   ]
-  revision = "c56c05b5213b565e8a820671ab8ac0a2fa283928"
+  revision = "fb7ec62b2925f48de159aeea73b254ae8c58a738"
+  version = "v0.9.0-rc1"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
+    "internal/subtle",
     "nacl/box",
     "nacl/secretbox",
     "openpgp/armor",
@@ -294,7 +295,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "b0697eccbea9adec5b7ba8008f4c33d98d733388"
+  revision = "37a17fe027db43f76fd88b056ddf588563fc8722"
 
 [[projects]]
   branch = "master"
@@ -306,16 +307,15 @@
     "http2/hpack",
     "idna",
     "internal/timeseries",
-    "lex/httplex",
     "trace"
   ]
-  revision = "5f9ae10d9af5b1c89ae6904293b14b064d4ada23"
+  revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "bb9c189858d91f42db229b04d45a4c3d23a7662a"
+  revision = "56ede360ec1c541828fb88741b3f1049406d28f5"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -342,7 +342,7 @@
   branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
+  revision = "32ee49c4dd805befd833990acba36cb75042378c"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -377,6 +377,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "ae08edbbd18e40cf9e324d9c89c4a4b661f7b6a7efe585ebda5b016f58d895d9"
+  inputs-digest = "2d84d3ed1ee284ab4d4767492fcdc9fd944ae3de89c0841b6805c837380b6133"
   solver-name = "gps-cdcl"
   solver-version = 1

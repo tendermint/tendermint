@@ -360,8 +360,8 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 			return fmt.Errorf("Invalid commit -- wrong block id @ index %v: want %v got %v",
 				idx, blockID, precommit.BlockID)
 		}
-		// See if this validator is in vals.
-		idx, val := vals.GetByAddress(precommit.ValidatorAddress)
+		// See if this validator is in oldVals.
+		idx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
 		if val == nil || seen[idx] {
 			continue // missing or double vote...
 		}
@@ -376,9 +376,9 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		oldVotingPower += val.VotingPower
 	}
 
-	if oldVotingPower <= vals.TotalVotingPower()*2/3 {
+	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
 		return cmn.NewError("Invalid commit -- insufficient old voting power: got %v, needed %v",
-			oldVotingPower, (vals.TotalVotingPower()*2/3 + 1))
+			oldVotingPower, (oldVals.TotalVotingPower()*2/3 + 1))
 	}
 	return nil
 }

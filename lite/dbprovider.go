@@ -1,18 +1,37 @@
 package lite
 
 import (
-	"encoding/hex"
-	"sort"
-	"sync"
+	"fmt"
+	"regexp"
+	"strconv"
 
 	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/go-crypto"
 	lerr "github.com/tendermint/tendermint/lite/errors"
+	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
 func signedHeaderKey(chainID string, height int64) []byte {
 	return []byte(fmt.Sprintf("%s/%010d/sh", chainID, height))
+}
+
+var signedHeaderKeyPattern = regexp.MustCompile(`([^/]+)/([0-9]*)/sh`)
+
+func parseSignedHeaderKey(key []byte) (chainID string, height int64, ok bool) {
+	submatch := signedHeaderKeyPattern.FindSubmatch(key)
+	if submatch == nil {
+		return "", 0, false
+	}
+	chainID = string(submatch[1])
+	heightStr := string(submatch[2])
+	heightInt, err := strconv.Atoi(heightStr)
+	if err != nil {
+		return "", 0, false
+	}
+	height = int64(heightInt)
+	ok = true // good!
+	return
 }
 
 func validatorSetKey(chainID string, height int64) []byte {
@@ -26,8 +45,9 @@ type DBProvider struct {
 }
 
 func NewDBProvider(db dbm.DB) *DBProvider {
+	//db = dbm.NewDebugDB("db provider "+cmn.RandStr(4), db)
 	cdc := amino.NewCodec()
-	crypto.RegisterAmino(cdC)
+	crypto.RegisterAmino(cdc)
 	dbp := &DBProvider{db: db, cdc: cdc}
 	return dbp
 }
@@ -35,7 +55,7 @@ func NewDBProvider(db dbm.DB) *DBProvider {
 // Implements PersistentProvider.
 func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
-	batch := dbp.db.Batch()
+	batch := dbp.db.NewBatch()
 
 	// Save the fc.validators.
 	// We might be overwriting what we already have, but
@@ -85,45 +105,61 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 	)
 	defer itr.Close()
 
-	if itr.Valid() {
-		// Found the latest full commit signed header.
-		shBz := itr.Value()
-		sh := SignedHeader{}
-		err := dbp.cdc.UnmarshalBinary(shBz, &sh)
-		if err != nil {
-			return FullCommit{}, nil
+	for itr.Valid() {
+		key := itr.Key()
+		_, _, ok := parseSignedHeaderKey(key)
+		if !ok {
+			// Skip over other keys.
+			itr.Next()
+			continue
 		} else {
-			return dbp.fillFullCommit(sh)
+			// Found the latest full commit signed header.
+			shBz := itr.Value()
+			sh := types.SignedHeader{}
+			err := dbp.cdc.UnmarshalBinary(shBz, &sh)
+			if err != nil {
+				return FullCommit{}, err
+			} else {
+				return dbp.fillFullCommit(sh)
+			}
 		}
-	} else {
-		return FullCommit{}, lerr.ErrCommitNotFound()
 	}
+	return FullCommit{}, lerr.ErrCommitNotFound()
 }
 
-func (dbp *DBProvider) fillFullCommit(sh *types.SignedHeader) (FullCommit, error) {
-	var chainID = sh.Header.ChainID
-	var height = sh.Header.Height
+func (dbp *DBProvider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
+	return dbp.getValidatorSet(chainID, height)
+}
+
+func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
+	vsBz := dbp.db.Get(validatorSetKey(chainID, height))
+	if vsBz == nil {
+		err = lerr.ErrMissingValidators(chainID, height)
+		return
+	}
+	err = dbp.cdc.UnmarshalBinary(vsBz, &valset)
+	if err != nil {
+		return
+	}
+	valset.TotalVotingPower() // to test deep equality.
+	return
+}
+
+func (dbp *DBProvider) fillFullCommit(sh types.SignedHeader) (FullCommit, error) {
+	var chainID = sh.ChainID
+	var height = sh.Height
 	var valset, nvalset *types.ValidatorSet
 	// Load the validator set.
-	vsBz := dbp.db.Get(validatorSetKey(chainID, sh.Header.Height))
-	if vsBz == nil {
-		return FullCommit{}, errors.New("missing validator set at DB key %s",
-			validatorSetKey(chainID, sh.Header.Height))
-	}
-	err := dbp.cdc.UnmarshalBinary(vsBz, &valset)
+	valset, err := dbp.getValidatorSet(chainID, height)
 	if err != nil {
-		return FullCommit{}, nil
+		return FullCommit{}, err
 	}
 	// Load the next validator set.
-	nvsBz := dbp.db.Get(validatorSetKey(chainID, sh.Header.Height+1))
-	if vsBz == nil {
-		return FullCommit{}, errors.New("missing validator set at DB key %s",
-			validatorSetKey(chainID, sh.Header.Height+1))
-	}
-	err = dbp.cdc.UnmarshalBinary(nvsBz, &nvalset)
+	nvalset, err = dbp.getValidatorSet(chainID, height+1)
 	if err != nil {
-		return FullCommit{}, nil
+		return FullCommit{}, err
 	}
+	// Return filled FullCommit.
 	return FullCommit{
 		SignedHeader:   sh,
 		Validators:     valset,

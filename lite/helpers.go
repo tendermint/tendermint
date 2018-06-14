@@ -28,7 +28,7 @@ func genPrivKeys(n int) privKeys {
 // Change replaces the key at index i.
 func (pkz privKeys) Change(i int) privKeys {
 	res := make(privKeys, len(pkz))
-	copy(res, v)
+	copy(res, pkz)
 	res[i] = crypto.GenPrivKeyEd25519()
 	return res
 }
@@ -45,7 +45,7 @@ func (pkz privKeys) Extend(n int) privKeys {
 // (should be enough for testing).
 func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 	res := make([]*types.Validator, len(pkz))
-	for i, k := range v {
+	for i, k := range pkz {
 		res[i] = types.NewValidator(k.PubKey(), init+int64(i)*inc)
 	}
 	return types.NewValidatorSet(res)
@@ -55,12 +55,12 @@ func (pkz privKeys) ToValidators(init, inc int64) *types.ValidatorSet {
 func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Commit {
 	votes := make([]*types.Vote, len(pkz))
 
-	// we need this list to keep the ordering...
+	// We need this list to keep the ordering.
 	vset := pkz.ToValidators(1, 0)
 
-	// fill in the votes we want
+	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
-		vote := makeVote(header, vset, v[i])
+		vote := makeVote(header, vset, pkz[i])
 		votes[vote.ValidatorIndex] = vote
 	}
 
@@ -79,7 +79,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 		ValidatorIndex:   idx,
 		Height:           header.Height,
 		Round:            1,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        time.Now().Round(0).UTC(),
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{Hash: header.Hash()},
 	}
@@ -95,7 +95,7 @@ func genHeader(chainID string, height int64, txs types.Txs,
 	return &types.Header{
 		ChainID:  chainID,
 		Height:   height,
-		Time:     time.Now(),
+		Time:     time.Now().Round(0).UTC(),
 		NumTxs:   int64(len(txs)),
 		TotalTxs: int64(len(txs)),
 		// LastBlockID

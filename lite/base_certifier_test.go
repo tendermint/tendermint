@@ -19,7 +19,7 @@ func TestBaseCert(t *testing.T) {
 	vals := keys.ToValidators(20, 10)
 	// and a certifier based on our known set
 	chainID := "test-static"
-	cert := NewBaseCertifier(chainID, vals)
+	cert := NewBaseCertifier(chainID, 2, vals)
 
 	cases := []struct {
 		keys        privKeys
@@ -29,19 +29,21 @@ func TestBaseCert(t *testing.T) {
 		proper      bool // true -> expect no error
 		changed     bool // true -> expect validator change error
 	}{
+		// height regression
+		{keys, vals, 1, 0, len(keys), false, false},
 		// perfect, signed by everyone
-		{keys, vals, 1, 0, len(keys), true, false},
+		{keys, vals, 2, 0, len(keys), true, false},
 		// skip little guy is okay
-		{keys, vals, 2, 1, len(keys), true, false},
+		{keys, vals, 3, 1, len(keys), true, false},
 		// but not the big guy
-		{keys, vals, 3, 0, len(keys) - 1, false, false},
-		// even changing the power a little bit breaks the static validator
-		// the sigs are enough, but the validator hash is unknown
-		{keys, keys.ToValidators(20, 11), 4, 0, len(keys), false, true},
+		{keys, vals, 4, 0, len(keys) - 1, false, false},
+		// Changing the power a little bit breaks the static validator.
+		// The sigs are enough, but the validator hash is unknown.
+		{keys, keys.ToValidators(20, 11), 5, 0, len(keys), false, true},
 	}
 
 	for _, tc := range cases {
-		sh := tc.keys.GenSignedHeader(chainID, tc.height, nil, tc.vals,
+		sh := tc.keys.GenSignedHeader(chainID, tc.height, nil, tc.vals, tc.vals,
 			[]byte("foo"), []byte("params"), []byte("results"), tc.first, tc.last)
 		err := cert.Certify(sh)
 		if tc.proper {
@@ -49,7 +51,7 @@ func TestBaseCert(t *testing.T) {
 		} else {
 			assert.NotNil(err)
 			if tc.changed {
-				assert.True(lerr.IsErrValidatorsChanged(err), "%+v", err)
+				assert.True(lerr.IsErrUnexpectedValidators(err), "%+v", err)
 			}
 		}
 	}
