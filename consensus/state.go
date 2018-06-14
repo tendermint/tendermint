@@ -1281,7 +1281,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
-	cs.recordValidatorMetrics(height, block)
+	cs.recordMetrics(height, block)
 
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
@@ -1298,11 +1298,10 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// * cs.StartTime is set to when we will start round0.
 }
 
-func (cs *ConsensusState) recordValidatorMetrics(height int64, block *types.Block) {
+func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	heightStr := fmt.Sprintf("%d", height)
 
 	cs.metrics.Validators.With("height", heightStr).Set(float64(cs.Validators.Size()))
-
 	missingValidators := 0
 	for i := range cs.Validators.Validators {
 		var vote *types.Vote
@@ -1314,8 +1313,12 @@ func (cs *ConsensusState) recordValidatorMetrics(height int64, block *types.Bloc
 		}
 	}
 	cs.metrics.MissingValidators.With("height", heightStr).Set(float64(missingValidators))
-
 	cs.metrics.ByzantineValidators.With("height", heightStr).Set(float64(len(block.Evidence.Evidence)))
+
+	cs.metrics.NumTxs.With("height", heightStr).Set(float64(block.NumTxs))
+	cs.metrics.TotalTxs.Add(float64(block.NumTxs))
+
+	cs.metrics.BlockSizeBytes.With("height", heightStr).Set(float64(block.Size()))
 }
 
 //-----------------------------------------------------------------------------

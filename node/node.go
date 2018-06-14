@@ -252,6 +252,7 @@ func NewNode(config *cfg.Config,
 			Name:      "height",
 			Help:      "Height of the chain.",
 		}, []string{}),
+
 		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
 			Name:      "validators",
@@ -266,6 +267,39 @@ func NewNode(config *cfg.Config,
 			Subsystem: "consensus",
 			Name:      "byzantine_validators",
 			Help:      "Number of validators who tried to double sign, partitioned by height.",
+		}, []string{"height"}),
+
+		// BlockInterval: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		// 	Subsystem: "consensus",
+		// 	Name:      "block_interval",
+		// 	Help:      "Time between this and the last block, partitioned by height.",
+		// }, []string{"height"}),
+		// BlockTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		// 	Subsystem: "consensus",
+		// 	Name:      "time_to_create_block",
+		// 	Help:      "Time to create a block (from sending a proposal to commit), partitioned by height",
+		// }, []string{"height"}),
+		// TimeBetweenBlocks: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+		// 	Subsystem: "consensus",
+		// 	Name:      "time_between_blocks",
+		// 	Help:      "Time between committing the last block and (receiving/sending a proposal), partitioned by height",
+		// }, []string{"height"}),
+
+		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "num_txs",
+			Help:      "Number of transactions, partitioned by height.",
+		}, []string{"height"}),
+		TotalTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Subsystem: "consensus",
+			Name:      "total_txs",
+			Help:      "Total number of transactions.",
+		}, []string{}),
+
+		BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "block_size_bytes",
+			Help:      "Size of the block, partitioned by height.",
 		}, []string{"height"}),
 	}
 	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
