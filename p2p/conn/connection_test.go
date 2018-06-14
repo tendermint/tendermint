@@ -14,6 +14,8 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+const maxPingPongPacketSize = 1024 // bytes
+
 func createTestMConnection(conn net.Conn) *MConnection {
 	onReceive := func(chID byte, msgBytes []byte) {
 	}
@@ -138,8 +140,7 @@ func TestMConnectionPongTimeoutResultsInError(t *testing.T) {
 	go func() {
 		// read ping
 		var pkt PacketPing
-		const maxPacketPingSize = 1024
-		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPacketPingSize)
+		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
 		assert.Nil(t, err)
 		serverGotPing <- struct{}{}
 	}()
@@ -186,7 +187,7 @@ func TestMConnectionMultiplePongsInTheBeginning(t *testing.T) {
 	go func() {
 		// read ping (one byte)
 		var packet, err = Packet(nil), error(nil)
-		_, err = cdc.UnmarshalBinaryReader(server, &packet, 1024)
+		_, err = cdc.UnmarshalBinaryReader(server, &packet, maxPingPongPacketSize)
 		require.Nil(t, err)
 		serverGotPing <- struct{}{}
 		// respond with pong
@@ -229,15 +230,15 @@ func TestMConnectionMultiplePings(t *testing.T) {
 	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
 	require.Nil(t, err)
 	var pkt PacketPong
-	_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+	_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
 	require.Nil(t, err)
 	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
 	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+	_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
 	require.Nil(t, err)
 	_, err = server.Write(cdc.MustMarshalBinary(PacketPing{}))
 	require.Nil(t, err)
-	_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+	_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
 	require.Nil(t, err)
 
 	assert.True(t, mconn.IsRunning())
@@ -269,7 +270,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 	go func() {
 		// read ping
 		var pkt PacketPing
-		_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
 		require.Nil(t, err)
 		serverGotPing <- struct{}{}
 		// respond with pong
@@ -279,7 +280,7 @@ func TestMConnectionPingPongs(t *testing.T) {
 		time.Sleep(mconn.config.PingInterval)
 
 		// read ping
-		_, err = cdc.UnmarshalBinaryReader(server, &pkt, 1024)
+		_, err = cdc.UnmarshalBinaryReader(server, &pkt, maxPingPongPacketSize)
 		require.Nil(t, err)
 		// respond with pong
 		_, err = server.Write(cdc.MustMarshalBinary(PacketPong{}))
