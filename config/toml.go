@@ -298,7 +298,7 @@ var testGenesis = `{
 }`
 
 var testPrivValidator = `{
-  "address": "849CB2C877F87A20925F35D00AE6688342D25B47",
+  "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
   "pub_key": {
     "type": "tendermint/PubKeyEd25519",
     "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
