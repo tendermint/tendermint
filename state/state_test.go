@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// setupTestCase does setup common to all test cases
+// setupTestCase does setup common to all test cases.
 func setupTestCase(t *testing.T) (func(t *testing.T), dbm.DB, State) {
 	config := cfg.ResetTestRoot("state_")
 	dbType := dbm.DBBackendType(config.DBBackend)
@@ -72,7 +72,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 
 	state.LastBlockHeight++
 
-	// build mock responses
+	// Build mock responses.
 	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
@@ -89,7 +89,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 			loadedABCIResponses, abciResponses))
 }
 
-// TestResultsSaveLoad tests saving and loading abci results.
+// TestResultsSaveLoad tests saving and loading ABCI results.
 func TestABCIResponsesSaveLoad2(t *testing.T) {
 	tearDown, stateDB, _ := setupTestCase(t)
 	defer tearDown(t)
@@ -97,8 +97,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 	assert := assert.New(t)
 
 	cases := [...]struct {
-		// height is implied index+2
-		// as block 1 is created from genesis
+		// Height is implied to equal index+2,
+		// as block 1 is created from genesis.
 		added    []*abci.ResponseDeliverTx
 		expected types.ABCIResults
 	}{
@@ -132,14 +132,14 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		},
 	}
 
-	// query all before, should return error
+	// Query all before, this should return error.
 	for i := range cases {
 		h := int64(i + 1)
 		res, err := LoadABCIResponses(stateDB, h)
 		assert.Error(err, "%d: %#v", i, res)
 	}
 
-	// add all cases
+	// Add all cases.
 	for i, tc := range cases {
 		h := int64(i + 1) // last block height, one below what we save
 		responses := &ABCIResponses{
@@ -149,7 +149,7 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 		saveABCIResponses(stateDB, h, responses)
 	}
 
-	// query all before, should return expected value
+	// Query all before, should return expected value.
 	for i, tc := range cases {
 		h := int64(i + 1)
 		res, err := LoadABCIResponses(stateDB, h)
@@ -165,34 +165,30 @@ func TestValidatorSimpleSaveLoad(t *testing.T) {
 	// nolint: vetshadow
 	assert := assert.New(t)
 
-	// can't load anything for height 0
+	// Can't load anything for height 0.
 	v, err := LoadValidators(stateDB, 0)
 	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at height 0")
 
-	// should be able to load for height 1
+	// Should be able to load for height 1.
 	v, err = LoadValidators(stateDB, 1)
 	assert.Nil(err, "expected no err at height 1")
 	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
 
-	// increment height, save; should be able to load for next height
+	// Should be able to load for height 2.
+	v, err = LoadValidators(stateDB, 2)
+	assert.Nil(err, "expected no err at height 2")
+	assert.Equal(v.Hash(), state.NextValidators.Hash(), "expected validator hashes to match")
+
+	// Increment height, save; should be able to load for next & next next height.
 	state.LastBlockHeight++
 	nextHeight := state.LastBlockHeight + 1
-	saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
-	v, err = LoadValidators(stateDB, nextHeight)
+	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
+	vp0, err := LoadValidators(stateDB, nextHeight+0)
 	assert.Nil(err, "expected no err")
-	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
-
-	// increment height, save; should be able to load for next height
-	state.LastBlockHeight += 10
-	nextHeight = state.LastBlockHeight + 1
-	saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
-	v, err = LoadValidators(stateDB, nextHeight)
+	vp1, err := LoadValidators(stateDB, nextHeight+1)
 	assert.Nil(err, "expected no err")
-	assert.Equal(v.Hash(), state.Validators.Hash(), "expected validator hashes to match")
-
-	// should be able to load for next next height
-	_, err = LoadValidators(stateDB, state.LastBlockHeight+2)
-	assert.IsType(ErrNoValSetForHeight{}, err, "expected err at unknown height")
+	assert.Equal(vp0.Hash(), state.Validators.Hash(), "expected validator hashes to match")
+	assert.Equal(vp1.Hash(), state.NextValidators.Hash(), "expected next validator hashes to match")
 }
 
 // TestValidatorChangesSaveLoad tests saving and loading a validator set with changes.
@@ -200,38 +196,37 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 
-	// change vals at these heights
+	// Change vals at these heights.
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
-	// build the validator history by running updateState
-	// with the right validator set for each height
+	// Build the validator history by running updateState
+	// with the right validator set for each height.
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
 	_, val := state.Validators.GetByIndex(0)
 	power := val.VotingPower
 	var err error
 	for i := int64(1); i < highestHeight; i++ {
-		// when we get to a change height,
-		// use the next pubkey
+		// When we get to a change height, use the next pubkey.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
 			power++
 		}
-		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
+		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, power)
 		state, err = updateState(state, blockID, header, responses)
 		assert.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
-		saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
+		saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 	}
 
-	// on each change height, increment the power by one.
+	// On each height change, increment the power by one.
 	testCases := make([]int64, highestHeight)
 	changeIndex = 0
 	power = val.VotingPower
 	for i := int64(1); i < highestHeight+1; i++ {
-		// we we get to the height after a change height
-		// use the next pubkey (note our counter starts at 0 this time)
+		// We get to the height after a change height use the next pubkey (note
+		// our counter starts at 0 this time).
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
 			changeIndex++
 			power++
@@ -240,7 +235,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 	}
 
 	for i, power := range testCases {
-		v, err := LoadValidators(stateDB, int64(i+1))
+		v, err := LoadValidators(stateDB, int64(i+1+1)) // +1 because vset changes delayed by 1 block.
 		assert.Nil(t, err, fmt.Sprintf("expected no err at height %d", i))
 		assert.Equal(t, v.Size(), 1, "validator set size is greater than 1: %d", v.Size())
 		_, val := v.GetByIndex(0)
@@ -255,25 +250,41 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	const valSetSize = 7
 	tearDown, stateDB, state := setupTestCase(t)
+	require.Equal(t, int64(0), state.LastBlockHeight)
 	state.Validators = genValSet(valSetSize)
+	state.NextValidators = state.Validators.CopyIncrementAccum(1)
 	SaveState(stateDB, state)
 	defer tearDown(t)
 
-	const height = 1
-	pubkey := crypto.GenPrivKeyEd25519().PubKey()
-	// swap the first validator with a new one ^^^ (validator set size stays the same)
-	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
+	_, valOld := state.Validators.GetByIndex(0)
+	var pubkeyOld = valOld.PubKey
+	var pubkey = crypto.GenPrivKeyEd25519().PubKey()
+
+	// Swap the first validator with a new one (validator set size stays the same).
+	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, pubkey)
+
+	// Save state etc.
 	var err error
 	state, err = updateState(state, blockID, header, responses)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
-	saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
+	saveValidatorsInfo(stateDB, nextHeight+1, state.LastHeightValidatorsChanged, state.NextValidators)
 
-	v, err := LoadValidators(stateDB, height+1)
+	// Load nextheight, it should be the oldpubkey.
+	v0, err := LoadValidators(stateDB, nextHeight)
 	assert.Nil(t, err)
-	assert.Equal(t, valSetSize, v.Size())
+	assert.Equal(t, valSetSize, v0.Size())
+	index, val := v0.GetByAddress(pubkeyOld.Address())
+	assert.NotNil(t, val)
+	if index < 0 {
+		t.Fatal("expected to find old validator")
+	}
 
-	index, val := v.GetByAddress(pubkey.Address())
+	// Load nextheight+1, it should be the new pubkey.
+	v1, err := LoadValidators(stateDB, nextHeight+1)
+	assert.Nil(t, err)
+	assert.Equal(t, valSetSize, v1.Size())
+	index, val = v1.GetByAddress(pubkey.Address())
 	assert.NotNil(t, val)
 	if index < 0 {
 		t.Fatal("expected to find newly added validator")
@@ -294,12 +305,12 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	tearDown, stateDB, state := setupTestCase(t)
 	defer tearDown(t)
 
-	// change vals at these heights
+	// Change vals at these heights.
 	changeHeights := []int64{1, 2, 4, 5, 10, 15, 16, 17, 20}
 	N := len(changeHeights)
 
-	// each valset is just one validator
-	// create list of them
+	// Each valset is just one validator.
+	// create list of them.
 	params := make([]types.ConsensusParams, N+1)
 	params[0] = state.ConsensusParams
 	for i := 1; i < N+1; i++ {
@@ -307,20 +318,19 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		params[i].BlockSize.MaxBytes += i
 	}
 
-	// build the params history by running updateState
-	// with the right params set for each height
+	// Build the params history by running updateState
+	// with the right params set for each height.
 	highestHeight := changeHeights[N-1] + 5
 	changeIndex := 0
 	cp := params[changeIndex]
 	var err error
 	for i := int64(1); i < highestHeight; i++ {
-		// when we get to a change height,
-		// use the next params
+		// When we get to a change height, use the next params.
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex] {
 			changeIndex++
 			cp = params[changeIndex]
 		}
-		header, blockID, responses := makeHeaderPartsResponsesParams(state, i, cp)
+		header, blockID, responses := makeHeaderPartsResponsesParams(state, cp)
 		state, err = updateState(state, blockID, header, responses)
 
 		require.Nil(t, err)
@@ -328,13 +338,13 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 		saveConsensusParamsInfo(stateDB, nextHeight, state.LastHeightConsensusParamsChanged, state.ConsensusParams)
 	}
 
-	// make all the test cases by using the same params until after the change
+	// Make all the test cases by using the same params until after the change.
 	testCases := make([]paramsChangeTestCase, highestHeight)
 	changeIndex = 0
 	cp = params[changeIndex]
 	for i := int64(1); i < highestHeight+1; i++ {
-		// we we get to the height after a change height
-		// use the next pubkey (note our counter starts at 0 this time)
+		// We get to the height after a change height use the next pubkey (note
+		// our counter starts at 0 this time).
 		if changeIndex < len(changeHeights) && i == changeHeights[changeIndex]+1 {
 			changeIndex++
 			cp = params[changeIndex]
@@ -419,16 +429,16 @@ func TestApplyUpdates(t *testing.T) {
 	}
 }
 
-func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
-	pubkey crypto.PubKey) (*types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesValPubKeyChange(state State, pubkey crypto.PubKey) (
+	*types.Header, types.BlockID, *ABCIResponses) {
 
-	block := makeBlock(state, height)
+	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
-	// if the pubkey is new, remove the old and add the new
-	_, val := state.Validators.GetByIndex(0)
+	// If the pubkey is new, remove the old and add the new.
+	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.Validator{
@@ -441,16 +451,16 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesValPowerChange(state State, height int64,
-	power int64) (*types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesValPowerChange(state State, power int64) (
+	*types.Header, types.BlockID, *ABCIResponses) {
 
-	block := makeBlock(state, height)
+	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ValidatorUpdates: nil},
 	}
 
-	// if the pubkey is new, remove the old and add the new
-	_, val := state.Validators.GetByIndex(0)
+	// If the pubkey is new, remove the old and add the new.
+	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
 			ValidatorUpdates: []abci.Validator{
@@ -462,10 +472,10 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
 }
 
-func makeHeaderPartsResponsesParams(state State, height int64,
-	params types.ConsensusParams) (*types.Header, types.BlockID, *ABCIResponses) {
+func makeHeaderPartsResponsesParams(state State, params types.ConsensusParams) (
+	*types.Header, types.BlockID, *ABCIResponses) {
 
-	block := makeBlock(state, height)
+	block := makeBlock(state, state.LastBlockHeight+1)
 	abciResponses := &ABCIResponses{
 		EndBlock: &abci.ResponseEndBlock{ConsensusParamUpdates: types.TM2PB.ConsensusParams(&params)},
 	}
@@ -475,15 +485,4 @@ func makeHeaderPartsResponsesParams(state State, height int64,
 type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams
-}
-
-func makeHeaderPartsResults(state State, height int64,
-	results []*abci.ResponseDeliverTx) (*types.Header, types.BlockID, *ABCIResponses) {
-
-	block := makeBlock(state, height)
-	abciResponses := &ABCIResponses{
-		DeliverTx: results,
-		EndBlock:  &abci.ResponseEndBlock{},
-	}
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
 }

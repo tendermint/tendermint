@@ -81,8 +81,8 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -270,7 +270,7 @@
     ".",
     "tmhash"
   ]
-  revision = "8e273220a35e200caa63ad6d1fbe5a91a49b45e2"
+  revision = "41369d7529bb0f79a327446dd0d35e5fe162e711"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -284,10 +284,11 @@
     "flowrate",
     "log",
     "merkle",
+    "merkle/tmhash",
     "test"
   ]
-  revision = "692f1d86a6e2c0efa698fd1e4541b68c74ffaf38"
-  version = "v0.8.4"
+  revision = "fb7ec62b2925f48de159aeea73b254ae8c58a738"
+  version = "v0.9.0-rc1"
 
 [[projects]]
   name = "github.com/zondax/ledger-goclient"
@@ -328,7 +329,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "56ede360ec1c541828fb88741b3f1049406d28f5"
+  revision = "8883426083c04a2627e6e59d84d5f6fb63d16c91"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -389,6 +390,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "25971e95adb59a6d6f30dda96d6df5465f8d39e399c7b8f60a6610fe3a1432d6"
+  inputs-digest = "af6071fa27aac0c193d61b82215c8ec234a69b0a7d0469a5e2f781a92c827224"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -49,7 +49,7 @@ func TestNewBlockStore(t *testing.T) {
 			return nil, nil
 		})
 		require.NotNil(t, panicErr, "#%d panicCauser: %q expected a panic", i, tt.data)
-		assert.Contains(t, panicErr.Error(), tt.wantErr, "#%d data: %q", i, tt.data)
+		assert.Contains(t, fmt.Sprintf("%#v", panicErr), tt.wantErr, "#%d data: %q", i, tt.data)
 	}
 
 	db.Set(blockStoreKey, nil)
@@ -238,7 +238,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		if subStr := tuple.wantPanic; subStr != "" {
 			if panicErr == nil {
 				t.Errorf("#%d: want a non-nil panic", i)
-			} else if got := panicErr.Error(); !strings.Contains(got, subStr) {
+			} else if got := fmt.Sprintf("%#v", panicErr); !strings.Contains(got, subStr) {
 				t.Errorf("#%d:\n\tgotErr: %q\nwant substring: %q", i, got, subStr)
 			}
 			continue
@@ -287,7 +287,7 @@ func TestLoadBlockPart(t *testing.T) {
 	db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "Error reading block part")
+	require.Contains(t, fmt.Sprintf("%#v", panicErr), "Error reading block part")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
 	db.Set(calcBlockPartKey(height, index), cdc.MustMarshalBinaryBare(part1))
@@ -316,7 +316,7 @@ func TestLoadBlockMeta(t *testing.T) {
 	db.Set(calcBlockMetaKey(height), []byte("Tendermint-Meta"))
 	res, _, panicErr = doFn(loadMeta)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "Error reading block meta")
+	require.Contains(t, fmt.Sprintf("%#v", panicErr), "Error reading block meta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{}

@@ -9,7 +9,7 @@ import (
 // Canonical json is amino's json for structs with fields in alphabetical order
 
 // TimeFormat is used for generating the sigs
-const TimeFormat = "2006-01-02T15:04:05.000Z" // forced microseconds
+const TimeFormat = time.RFC3339Nano
 
 type CanonicalJSONBlockID struct {
 	Hash        cmn.HexBytes               `json:"hash,omitempty"`
@@ -84,13 +84,12 @@ func CanonicalProposal(chainID string, proposal *Proposal) CanonicalJSONProposal
 
 func CanonicalVote(chainID string, vote *Vote) CanonicalJSONVote {
 	return CanonicalJSONVote{
-		ChainID:   chainID,
-		Type:      "vote",
-		BlockID:   CanonicalBlockID(vote.BlockID),
-		Height:    vote.Height,
-		Round:     vote.Round,
-		Timestamp: CanonicalTime(vote.Timestamp),
-		VoteType:  vote.Type,
+		ChainID:  chainID,
+		Type:     "vote",
+		BlockID:  CanonicalBlockID(vote.BlockID),
+		Height:   vote.Height,
+		Round:    vote.Round,
+		VoteType: vote.Type,
 	}
 }
 
@@ -110,5 +109,5 @@ func CanonicalTime(t time.Time) string {
 	// Note that sending time over amino resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
-	return t.UTC().Format(TimeFormat)
+	return t.Round(0).UTC().Format(TimeFormat)
 }

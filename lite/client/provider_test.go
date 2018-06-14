@@ -6,8 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/lite"
-	liteErr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
@@ -18,46 +16,41 @@ func TestProvider(t *testing.T) {
 
 	cfg := rpctest.GetConfig()
 	rpcAddr := cfg.RPC.ListenAddress
-	genDoc, _ := types.GenesisDocFromFile(cfg.GenesisFile())
+	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
+	panic(err)
 	chainID := genDoc.ChainID
 	p := NewHTTPProvider(rpcAddr)
 	require.NotNil(t, p)
 
 	// let it produce some blocks
-	err := rpcclient.WaitForHeight(p.(*provider).node, 6, nil)
+	err = rpcclient.WaitForHeight(p.(*provider).client, 6, nil)
 	require.Nil(err)
 
 	// let's get the highest block
-	seed, err := p.LatestCommit()
+	fc, err := p.LatestFullCommit(chainID, 1, 1<<63-1)
 
 	require.Nil(err, "%+v", err)
-	sh := seed.Height()
-	vhash := seed.Header.ValidatorsHash
+	sh := fc.Height()
 	assert.True(sh < 5000)
 
 	// let's check this is valid somehow
-	assert.Nil(seed.ValidateBasic(chainID))
-	cert := lite.NewStaticCertifier(chainID, seed.Validators)
+	assert.Nil(fc.ValidateBasic(chainID))
 
 	// historical queries now work :)
 	lower := sh - 5
-	seed, err = p.GetByHeight(lower)
+	fc, err = p.LatestFullCommit(chainID, lower, lower)
 	assert.Nil(err, "%+v", err)
-	assert.Equal(lower, seed.Height())
+	assert.Equal(lower, fc.Height())
 
-	// also get by hash (given the match)
-	seed, err = p.GetByHash(vhash)
-	require.Nil(err, "%+v", err)
-	require.Equal(vhash, seed.Header.ValidatorsHash)
-	err = cert.Certify(seed.Commit)
-	assert.Nil(err, "%+v", err)
+	/*
+		// also get by hash (given the match)
+		fc, err = p.GetByHash(vhash)
+		require.Nil(err, "%+v", err)
+		require.Equal(vhash, fc.Header.ValidatorsHash)
 
-	// get by hash fails without match
-	seed, err = p.GetByHash([]byte("foobar"))
-	assert.NotNil(err)
-	assert.True(liteErr.IsCommitNotFoundErr(err))
-
-	// storing the seed silently ignored
-	err = p.StoreCommit(seed)
-	assert.Nil(err, "%+v", err)
+		// get by hash fails without match
+		fc, err = p.GetByHash([]byte("foobar"))
+		assert.NotNil(err)
+		assert.True(liteErr.IsCommitNotFoundErr(err))
+	*/
 }

@@ -109,7 +109,7 @@ func validatorAtHeight(h int64) *types.Validator {
 
 	privValAddress := pubKey.Address()
 
-	// if we're still at height h, search in the current validator set
+	// If we're still at height h, search in the current validator set.
 	if lastBlockHeight == h {
 		for _, val := range vals {
 			if bytes.Equal(val.Address, privValAddress) {
@@ -118,12 +118,11 @@ func validatorAtHeight(h int64) *types.Validator {
 		}
 	}
 
-	// if we've moved to the next height, retrieve the validator set from DB
+	// If we've moved to the next height, retrieve the validator set from DB.
 	if lastBlockHeight > h {
 		vals, err := sm.LoadValidators(stateDB, h)
 		if err != nil {
-			// should not happen
-			return nil
+			return nil // should not happen
 		}
 		_, val := vals.GetByAddress(privValAddress)
 		return val
