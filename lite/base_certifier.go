@@ -43,27 +43,30 @@ func (bc *BaseCertifier) ChainID() string {
 func (bc *BaseCertifier) Certify(signedHeader types.SignedHeader) error {
 
 	// We can't certify commits older than bc.height.
-	if signedHeader.Height() < bc.height {
+	if signedHeader.Height < bc.height {
 		return cmn.NewError("BaseCertifier height is %v, cannot certify height %v",
-			bc.height, signedHeader.Height())
+			bc.height, signedHeader.Height)
 	}
 
 	// We can't certify with the wrong validator set.
 	if !bytes.Equal(signedHeader.ValidatorsHash,
 		bc.valset.Hash()) {
-		return lerr.ErrValidatorsChanged(signedHeader.Header.ValidatorsHash, bc.valset.Hash())
+		return lerr.ErrUnexpectedValidators(signedHeader.ValidatorsHash, bc.valset.Hash())
 	}
 
 	// Do basic sanity checks.
 	err := signedHeader.ValidateBasic(bc.chainID)
 	if err != nil {
-		return err
+		return cmn.ErrorWrap(err, "in certify")
 	}
 
 	// Check commit signatures.
 	err = bc.valset.VerifyCommit(
 		bc.chainID, signedHeader.Commit.BlockID,
-		signedHeader.Header.Height, signedHeader.Commit)
+		signedHeader.Height, signedHeader.Commit)
+	if err != nil {
+		return cmn.ErrorWrap(err, "in certify")
+	}
 
-	return cmn.ErrorWrap(err)
+	return nil
 }

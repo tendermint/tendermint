@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 
 	"github.com/tendermint/tendermint/lite"
+	lerr "github.com/tendermint/tendermint/lite/errors"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.
@@ -74,7 +75,7 @@ func (p *provider) fetchLatestCommit(minHeight int64, maxHeight int64) (*ctypes.
 	if status.SyncInfo.LatestBlockHeight < minHeight {
 		err = fmt.Errorf("provider is at %v but require minHeight=%v",
 			status.SyncInfo.LatestBlockHeight, minHeight)
-		return
+		return nil, err
 	}
 	if maxHeight == 0 {
 		maxHeight = status.SyncInfo.LatestBlockHeight
@@ -84,49 +85,64 @@ func (p *provider) fetchLatestCommit(minHeight int64, maxHeight int64) (*ctypes.
 	return p.client.Commit(&maxHeight)
 }
 
-// Get the valset that corresponds to signedHeader and return.
-// This checks the cryptographic signatures of fc.Commit against fc.Validators.
-func (p *provider) FillFullCommit(signedHeader *types.SignedHeader) (fc lite.FullCommit, err error) {
-	return p.fillFullCommit(signedHeader)
+// Implements Provider.
+func (p *provider) ValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
+	return p.getValidatorSet(chainID, height)
 }
 
-func (p *provider) fillFullCommit(signedHeader *types.SignedHeader) (fc lite.FullCommit, err error) {
+func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
+	if chainID != p.chainID {
+		err = fmt.Errorf("expected chainID %s, got %s", p.chainID, chainID)
+		return
+	}
+	if height < 1 {
+		err = fmt.Errorf("expected height >= 1, got %v", height)
+		return
+	}
+	heightPtr := new(int64)
+	*heightPtr = height
+	res, err := p.client.Validators(heightPtr)
+	if err != nil {
+		// TODO pass through other types of errors.
+		return nil, lerr.ErrMissingValidators(chainID, height)
+	}
+	valset = types.NewValidatorSet(res.Validators)
+	valset.TotalVotingPower() // to test deep equality.
+	return
+}
+
+// This checks the cryptographic signatures of fc.Commit against fc.Validators.
+func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.FullCommit, err error) {
 	fc.SignedHeader = signedHeader
 
 	// Get the validators.
-	height := new(int)
-	*height = signedHeader.Header.Height
-	vals, err := p.client.Validators(height)
+	valset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height)
 	if err != nil {
-		return fc, err
+		return lite.FullCommit{}, err
 	}
 
 	// Check valset hash against signedHeader validators hash.
-	vset := types.NewValidatorSet(vals.Validators)
-	if !bytes.Equal(vset.Hash(), signedHeader.Header.ValidatorsHash) {
-		return fc, errors.New("wrong validators received from client")
+	if !bytes.Equal(valset.Hash(), signedHeader.ValidatorsHash) {
+		return lite.FullCommit{}, errors.New("wrong validators received from client")
 	}
-	fc.Validators = vset
+	fc.Validators = valset
 
 	// Get the next validators.
-	nextHeight := new(int)
-	*nextHeight = signedHeader.Header.Height + 1
-	nextVals, err := p.client.Validators(nextHeight)
+	nvalset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height+1)
 	if err != nil {
-		return fc, err
+		return lite.FullCommit{}, err
 	}
 
 	// Check next valset hash against signedHeader next validators hash.
-	vset := types.NewValidatorSet(nextVals.Validators)
-	if !bytes.Equal(vset.Hash(), signedHeader.Header.NextValidatorsHash) {
-		return fc, errors.New("wrong validators received from client")
+	if !bytes.Equal(nvalset.Hash(), signedHeader.NextValidatorsHash) {
+		return lite.FullCommit{}, errors.New("wrong validators received from client")
 	}
-	fc.NextValidators = vset
+	fc.NextValidators = nvalset
 
 	// Sanity check fc.
 	// This checks the cryptographic signatures of fc.Commit against fc.Validators.
-	if err := fc.ValidateBasic(signedHeader.Header.ChainID); err != nil {
-		return nil, err
+	if err := fc.ValidateBasic(signedHeader.ChainID); err != nil {
+		return lite.FullCommit{}, err
 	}
 
 	return fc, nil

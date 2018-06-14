@@ -1,6 +1,8 @@
 package lite
 
 import (
+	"bytes"
+
 	"github.com/tendermint/tendermint/types"
 
 	lerr "github.com/tendermint/tendermint/lite/errors"
@@ -15,7 +17,7 @@ var _ Certifier = (*InquiringCertifier)(nil)
 type InquiringCertifier struct {
 	chainID string
 	// These are only properly validated data, from local system.
-	trusted Provider
+	trusted PersistentProvider
 	// This is a source of new info, like a node rpc, or other import method.
 	source Provider
 }
@@ -45,58 +47,69 @@ func (ic *InquiringCertifier) ChainID() string {
 //
 // If the validators have changed since the last know time, it looks to
 // ic.trusted and ic.source to prove the new validators.  On success, it will
-// store the SignedHeader in ic.trusted.
+// try to store the SignedHeader in ic.trusted if the next
+// validator can be sourced.
 func (ic *InquiringCertifier) Certify(shdr types.SignedHeader) error {
 
 	// Get the latest known full commit <= h-1 from our trusted providers.
 	// The full commit at h-1 contains the valset to sign for h.
-	h := shdr.Height() - 1
-	fc, err := ic.trusted.LatestFullCommit(ic.chainID, 1, h)
+	h := shdr.Height - 1
+	tfc, err := ic.trusted.LatestFullCommit(ic.chainID, 1, h)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if fc.Height() == h {
+	if tfc.Height() == h {
 		// Return error if valset doesn't match.
 		if !bytes.Equal(
-			fc.NextValidators.Hash(),
+			tfc.NextValidators.Hash(),
 			shdr.Header.ValidatorsHash) {
-			return ErrValidatorsDifferent(
-				fc.NextValidators.Hash(),
+			return lerr.ErrUnexpectedValidators(
+				tfc.NextValidators.Hash(),
 				shdr.Header.ValidatorsHash)
 		}
 	} else {
 		// If valset doesn't match...
-		if !bytes.Equal(fc.NextValidators.Hash(),
+		if !bytes.Equal(tfc.NextValidators.Hash(),
 			shdr.Header.ValidatorsHash) {
 			// ... update.
-			fc, err = ic.updateToHeight(h)
+			tfc, err = ic.updateToHeight(h)
 			if err != nil {
 				return err
 			}
 			// Return error if valset _still_ doesn't match.
-			if !bytes.Equal(fc.NextValidators.Hash(),
+			if !bytes.Equal(tfc.NextValidators.Hash(),
 				shdr.Header.ValidatorsHash) {
-				return ErrValidatorsDifferent(
-					fc.NextValidators.Hash(),
+				return lerr.ErrUnexpectedValidators(
+					tfc.NextValidators.Hash(),
 					shdr.Header.ValidatorsHash)
 			}
 		}
 	}
 
 	// Certify the signed header using the matching valset.
-	cert := NewBaseCertifier(ic.chainID, fc.NextValidators, fc.Height())
+	cert := NewBaseCertifier(ic.chainID, tfc.Height()+1, tfc.NextValidators)
 	err = cert.Certify(shdr)
 	if err != nil {
 		return err
 	}
 
-	// Construct (fill) and save the new full commit.
-	fc2, err := ic.source.FillFullCommit(shdr)
-	if err != nil {
+	// Get the next validator set.
+	nvalset, err := ic.source.ValidatorSet(ic.chainID, shdr.Height+1)
+	if lerr.IsErrMissingValidators(err) {
+		// Ignore this error.
+		return nil
+	} else if err != nil {
 		return err
+	} else {
+		// Create filled FullCommit.
+		nfc := FullCommit{
+			SignedHeader:   shdr,
+			Validators:     tfc.NextValidators,
+			NextValidators: nvalset,
+		}
+		return ic.trusted.SaveFullCommit(nfc)
 	}
-	return ic.trusted.SaveFullCommit(fc2)
 }
 
 // verifyAndSave will verify if this is a valid source full commit given the
@@ -107,10 +120,10 @@ func (ic *InquiringCertifier) verifyAndSave(tfc, sfc FullCommit) error {
 	if tfc.Height() >= sfc.Height() {
 		panic("should not happen")
 	}
-	err = tfc.NextValidators.VerifyFutureCommit(
+	err := tfc.NextValidators.VerifyFutureCommit(
 		sfc.Validators,
-		ic.chainID, sfc.Commit.BlockID,
-		sfc.Header.Height, sfc.Header.Commit,
+		ic.chainID, sfc.SignedHeader.Commit.BlockID,
+		sfc.SignedHeader.Height, sfc.SignedHeader.Commit,
 	)
 	if err != nil {
 		return err
@@ -151,7 +164,7 @@ FOR_LOOP:
 
 		// Try to update to full commit with checks.
 		err = ic.verifyAndSave(tfc, sfc)
-		if err != nil {
+		if err == nil {
 			// All good!
 			return sfc, nil
 		} else {
@@ -175,10 +188,10 @@ FOR_LOOP:
 	}
 }
 
-func (ic *InquiringCertifier) LastTrustedHeight() (int64, error) {
+func (ic *InquiringCertifier) LastTrustedHeight() int64 {
 	fc, err := ic.trusted.LatestFullCommit(ic.chainID, 1, 1<<63-1)
 	if err != nil {
-		return 0, err
+		panic("should not happen")
 	}
-	return fc.Height(), nil
+	return fc.Height()
 }

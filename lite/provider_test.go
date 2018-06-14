@@ -1,12 +1,14 @@
 package lite
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	lerr "github.com/tendermint/tendermint/lite/errors"
+	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
@@ -15,13 +17,16 @@ import (
 type missingProvider struct{}
 
 // NewMissingProvider returns a provider which does not store anything and always misses.
-func NewMissingProvider() Provider {
+func NewMissingProvider() PersistentProvider {
 	return missingProvider{}
 }
 
 func (missingProvider) SaveFullCommit(FullCommit) error { return nil }
 func (missingProvider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (FullCommit, error) {
 	return FullCommit{}, lerr.ErrCommitNotFound()
+}
+func (missingProvider) ValidatorSet(chainID string, height int64) (*types.ValidatorSet, error) {
+	return nil, errors.New("missing validator set")
 }
 
 func TestMemProvider(t *testing.T) {
@@ -38,7 +43,7 @@ func TestMultiProvider(t *testing.T) {
 	checkProvider(t, p, "test-cache", "kjfhekfhkewhgit")
 }
 
-func checkProvider(t *testing.T, p Provider, chainID, app string) {
+func checkProvider(t *testing.T, p PersistentProvider, chainID, app string) {
 	assert, require := assert.New(t), require.New(t)
 	appHash := []byte(app)
 	keys := genPrivKeys(5)
@@ -55,14 +60,14 @@ func checkProvider(t *testing.T, p Provider, chainID, app string) {
 	// Check that provider is initially empty.
 	fc, err := p.LatestFullCommit(chainID, 1, 1<<63-1)
 	require.NotNil(err)
-	assert.True(lerr.IsCommitNotFoundErr(err))
+	assert.True(lerr.IsErrCommitNotFound(err))
 
 	// Save all full commits to the provider.
 	for _, fc := range fcz {
 		err = p.SaveFullCommit(fc)
 		require.Nil(err)
 		// Make sure we can get it back.
-		fc2, err := p.LatestFullCommit(chainID, fc.Height())
+		fc2, err := p.LatestFullCommit(chainID, fc.Height(), fc.Height())
 		assert.Nil(err)
 		assert.Equal(fc.SignedHeader, fc2.SignedHeader)
 		assert.Equal(fc.Validators, fc2.Validators)
@@ -70,14 +75,14 @@ func checkProvider(t *testing.T, p Provider, chainID, app string) {
 	}
 
 	// Make sure we get the last hash if we overstep.
-	fc, err = p.LatestFullCommit(5000)
+	fc, err = p.LatestFullCommit(chainID, 1, 5000)
 	if assert.Nil(err) {
 		assert.Equal(fcz[count-1].Height(), fc.Height())
 		assert.Equal(fcz[count-1], fc)
 	}
 
 	// ... and middle ones as well.
-	fc, err = p.LatestFullCommit(47)
+	fc, err = p.LatestFullCommit(chainID, 1, 47)
 	if assert.Nil(err) {
 		// we only step by 10, so 40 must be the one below this
 		assert.EqualValues(40, fc.Height())
@@ -86,7 +91,7 @@ func checkProvider(t *testing.T, p Provider, chainID, app string) {
 }
 
 // This will make a get height, and if it is good, set the data as well.
-func checkLatestFullCommit(t *testing.T, p Provider, chainID string, ask, expect int64) {
+func checkLatestFullCommit(t *testing.T, p PersistentProvider, chainID string, ask, expect int64) {
 	fc, err := p.LatestFullCommit(chainID, 1, ask)
 	require.Nil(t, err)
 	if assert.Equal(t, expect, fc.Height()) {

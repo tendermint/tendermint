@@ -409,10 +409,12 @@ func (commit *Commit) StringIndented(indent string) string {
 	}
 	return fmt.Sprintf(`Commit{
 %s  BlockID:    %v
-%s  Precommits: %v
+%s  Precommits:
+%s    %v
 %s}#%v`,
 		indent, commit.BlockID,
-		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
+		indent,
+		indent, strings.Join(precommitStrings, "\n"+indent+"    "),
 		indent, commit.hash)
 }
 
@@ -420,8 +422,8 @@ func (commit *Commit) StringIndented(indent string) string {
 
 // SignedHeader is a header along with the commits that prove it.
 type SignedHeader struct {
-	Header *Header `json:"header"`
-	Commit *Commit `json:"commit"`
+	*Header `json:"header"`
+	Commit  *Commit `json:"commit"`
 }
 
 // ValidateBasic does basic consistency checks and makes sure the header
@@ -440,17 +442,17 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 		return errors.New("SignedHeader missing commit (precommit votes).")
 	}
 	// Check ChainID.
-	if sh.Header.ChainID != chainID {
+	if sh.ChainID != chainID {
 		return fmt.Errorf("Header belongs to another chain '%s' not '%s'",
-			sh.Header.ChainID, chainID)
+			sh.ChainID, chainID)
 	}
 	// Check Height.
-	if sh.Commit.Height() != sh.Header.Height {
+	if sh.Commit.Height() != sh.Height {
 		return fmt.Errorf("SignedHeader header and commit height mismatch: %v vs %v",
-			sh.Header.Height, sh.Commit.Height())
+			sh.Height, sh.Commit.Height())
 	}
 	// Check Hash.
-	hhash := sh.Header.Hash()
+	hhash := sh.Hash()
 	chash := sh.Commit.BlockID.Hash
 	if !bytes.Equal(hhash, chash) {
 		return fmt.Errorf("SignedHeader commit signs block %X, header is block %X",
@@ -462,6 +464,22 @@ func (sh SignedHeader) ValidateBasic(chainID string) error {
 		return cmn.ErrorWrap(err, "commit.ValidateBasic failed during SignedHeader.ValidateBasic")
 	}
 	return nil
+}
+
+func (sh SignedHeader) String() string {
+	return sh.StringIndented("")
+}
+
+// StringIndented returns a string representation of the SignedHeader.
+func (sh SignedHeader) StringIndented(indent string) string {
+	return fmt.Sprintf(`SignedHeader{
+%s  %v
+%s  %v
+%s}`,
+		indent, sh.Header.StringIndented(indent+"  "),
+		indent, sh.Commit.StringIndented(indent+"  "),
+		indent)
+	return ""
 }
 
 //-----------------------------------------------------------------------------

@@ -3,7 +3,6 @@ package proxy
 import (
 	"github.com/tendermint/tendermint/lite"
 	lclient "github.com/tendermint/tendermint/lite/client"
-	"github.com/tendermint/tendermint/lite/files"
 	dbm "github.com/tendermint/tmlibs/db"
 )
 

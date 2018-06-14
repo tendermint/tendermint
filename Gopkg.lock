@@ -81,8 +81,8 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -355,7 +355,7 @@
 [[projects]]
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
+  revision = "32ee49c4dd805befd833990acba36cb75042378c"
 
 [[projects]]
   name = "google.golang.org/grpc"
