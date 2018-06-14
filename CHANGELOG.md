@@ -9,6 +9,7 @@ BREAKING:
  - [merkle] Use 20-bytes of SHA256 instead of RIPEMD160. NOTE: this package is
    moving to github.com/tendermint/go-crypto !
  - [common] Remove gogoproto from KVPair types
+ - [common] Error simplification, #220
 
 FEATURES:
 
@@ -17,6 +18,8 @@ FEATURES:
  - [autofile] logjack command for piping stdin to a rotating file
  - [bech32] New package. NOTE: should move out of here - it's just two small
    functions
+ - [common] ColoredBytes([]byte) string for printing mixed ascii and bytes
+ - [db] DebugDB uses ColoredBytes()
 
 ## 0.8.4
 
