@@ -30,6 +30,9 @@ type ValidatorSet struct {
 }
 
 func NewValidatorSet(valz []*Validator) *ValidatorSet {
+	if valz != nil && len(valz) == 0 {
+		panic("validator set initialization slice cannot be an empty slice (but it can be nil)")
+	}
 	validators := make([]*Validator, len(valz))
 	for i, val := range valz {
 		validators[i] = val.Copy()
@@ -38,8 +41,7 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	vals := &ValidatorSet{
 		Validators: validators,
 	}
-
-	if vals != nil {
+	if valz != nil {
 		vals.IncrementAccum(1)
 	}
 
@@ -55,15 +57,16 @@ func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
 
 // Increment Accum and update the proposer.
 func (vals *ValidatorSet) IncrementAccum(times int) {
+
 	// Add VotingPower * times to each validator and order into heap.
 	validatorsHeap := cmn.NewHeap()
 	for _, val := range vals.Validators {
-		// check for overflow both multiplication and sum
+		// Check for overflow both multiplication and sum.
 		val.Accum = safeAddClip(val.Accum, safeMulClip(val.VotingPower, int64(times)))
 		validatorsHeap.PushComparable(val, accumComparable{val})
 	}
 
-	// Decrement the validator with most accum times times
+	// Decrement the validator with most accum times times.
 	for i := 0; i < times; i++ {
 		mostest := validatorsHeap.Peek().(*Validator)
 		// mind underflow
