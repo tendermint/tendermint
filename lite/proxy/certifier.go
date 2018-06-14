@@ -15,12 +15,16 @@ func GetCertifier(chainID, rootDir, nodeAddr string) (*lite.InquiringCertifier, 
 	source := lclient.NewHTTPProvider(nodeAddr)
 
 	// XXX: total insecure hack to avoid `init`
-	fc, err := source.LatestFullCommit(1, 1)
+	fc, err := source.LatestFullCommit(chainID, 1, 1)
+	if err != nil {
+		return nil, err
+	}
+	err = trust.SaveFullCommit(fc)
 	if err != nil {
 		return nil, err
 	}
 
-	cert, err := lite.NewInquiringCertifier(chainID, fc, trust, source)
+	cert, err := lite.NewInquiringCertifier(chainID, trust, source)
 	if err != nil {
 		return nil, err
 	}

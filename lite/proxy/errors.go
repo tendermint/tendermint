@@ -1,12 +1,10 @@
 package proxy
 
 import (
-	"fmt"
-
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
-var errNoData struct{}
+type errNoData struct{}
 
 func (e errNoData) Error() string {
 	return "No data returned for query"
@@ -22,5 +20,5 @@ func IsErrNoData(err error) bool {
 }
 
 func ErrNoData() error {
-	return cmn.ErrorWrap(errNoData{})
+	return cmn.ErrorWrap(errNoData{}, "")
 }
