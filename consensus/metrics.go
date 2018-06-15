@@ -13,6 +13,8 @@ type Metrics struct {
 	MissingValidators metrics.Gauge
 	// number of validators who tried to double sign
 	ByzantineValidators metrics.Gauge
+	// time between this and the last block
+	BlockIntervalSeconds metrics.Histogram
 	// number of transactions
 	NumTxs metrics.Gauge
 	// total number of transactions
@@ -24,12 +26,13 @@ type Metrics struct {
 // NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
-		Height:              discard.NewCounter(),
-		Validators:          discard.NewGauge(),
-		MissingValidators:   discard.NewGauge(),
-		ByzantineValidators: discard.NewGauge(),
-		NumTxs:              discard.NewGauge(),
-		TotalTxs:            discard.NewCounter(),
-		BlockSizeBytes:      discard.NewGauge(),
+		Height:               discard.NewCounter(),
+		Validators:           discard.NewGauge(),
+		MissingValidators:    discard.NewGauge(),
+		ByzantineValidators:  discard.NewGauge(),
+		BlockIntervalSeconds: discard.NewHistogram(),
+		NumTxs:               discard.NewGauge(),
+		TotalTxs:             discard.NewCounter(),
+		BlockSizeBytes:       discard.NewGauge(),
 	}
 }

@@ -1299,9 +1299,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 }
 
 func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
-	heightStr := fmt.Sprintf("%d", height)
-
-	cs.metrics.Validators.With("height", heightStr).Set(float64(cs.Validators.Size()))
+	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
 	missingValidators := 0
 	for i := range cs.Validators.Validators {
 		var vote *types.Vote
@@ -1312,13 +1310,19 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 			missingValidators++
 		}
 	}
-	cs.metrics.MissingValidators.With("height", heightStr).Set(float64(missingValidators))
-	cs.metrics.ByzantineValidators.With("height", heightStr).Set(float64(len(block.Evidence.Evidence)))
+	cs.metrics.MissingValidators.Set(float64(missingValidators))
+	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
 
-	cs.metrics.NumTxs.With("height", heightStr).Set(float64(block.NumTxs))
+	if height > 1 {
+		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
+		cs.metrics.BlockIntervalSeconds.
+			Observe(block.Time.Sub(lastBlockMeta.Header.Time).Seconds())
+	}
+
+	cs.metrics.NumTxs.Set(float64(block.NumTxs))
 	cs.metrics.TotalTxs.Add(float64(block.NumTxs))
 
-	cs.metrics.BlockSizeBytes.With("height", heightStr).Set(float64(block.Size()))
+	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
 }
 
 //-----------------------------------------------------------------------------

@@ -85,8 +85,64 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
+		DefaultMetricsProvider,
 		logger,
 	)
+}
+
+// MetricsProvider returns a consensus Metrics.
+type MetricsProvider func() *cs.Metrics
+
+// DefaultMetrics returns a consensus Metrics build using Prometheus client
+// library.
+func DefaultMetricsProvider() *cs.Metrics {
+	return &cs.Metrics{
+		Height: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Subsystem: "consensus",
+			Name:      "height",
+			Help:      "Height of the chain.",
+		}, []string{}),
+
+		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "validators",
+			Help:      "Number of validators who signed, partitioned by height.",
+		}, []string{}),
+		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "missing_validators",
+			Help:      "Number of validators who did not sign, partitioned by height.",
+		}, []string{}),
+		ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "byzantine_validators",
+			Help:      "Number of validators who tried to double sign, partitioned by height.",
+		}, []string{}),
+
+		BlockIntervalSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+			Subsystem: "consensus",
+			Name:      "block_interval_seconds",
+			Help:      "Time between this and the last block, partitioned by height.",
+			Buckets:   []float64{1, 2.5, 5, 10, 60},
+		}, []string{}),
+
+		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "num_txs",
+			Help:      "Number of transactions, partitioned by height.",
+		}, []string{}),
+		TotalTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Subsystem: "consensus",
+			Name:      "total_txs",
+			Help:      "Total number of transactions.",
+		}, []string{}),
+
+		BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "block_size_bytes",
+			Help:      "Size of the block, partitioned by height.",
+		}, []string{}),
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -126,6 +182,7 @@ func NewNode(config *cfg.Config,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
+	metricsProvider MetricsProvider,
 	logger log.Logger) (*Node, error) {
 
 	// Get BlockStore
@@ -245,65 +302,9 @@ func NewNode(config *cfg.Config,
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
-	// TODO: extract to provider
-	metrics := &cs.Metrics{
-		Height: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Subsystem: "consensus",
-			Name:      "height",
-			Help:      "Height of the chain.",
-		}, []string{}),
-
-		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "validators",
-			Help:      "Number of validators who signed, partitioned by height.",
-		}, []string{"height"}),
-		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "missing_validators",
-			Help:      "Number of validators who did not sign, partitioned by height.",
-		}, []string{"height"}),
-		ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "byzantine_validators",
-			Help:      "Number of validators who tried to double sign, partitioned by height.",
-		}, []string{"height"}),
-
-		// BlockInterval: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-		// 	Subsystem: "consensus",
-		// 	Name:      "block_interval",
-		// 	Help:      "Time between this and the last block, partitioned by height.",
-		// }, []string{"height"}),
-		// BlockTime: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-		// 	Subsystem: "consensus",
-		// 	Name:      "time_to_create_block",
-		// 	Help:      "Time to create a block (from sending a proposal to commit), partitioned by height",
-		// }, []string{"height"}),
-		// TimeBetweenBlocks: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-		// 	Subsystem: "consensus",
-		// 	Name:      "time_between_blocks",
-		// 	Help:      "Time between committing the last block and (receiving/sending a proposal), partitioned by height",
-		// }, []string{"height"}),
-
-		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "num_txs",
-			Help:      "Number of transactions, partitioned by height.",
-		}, []string{"height"}),
-		TotalTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Subsystem: "consensus",
-			Name:      "total_txs",
-			Help:      "Total number of transactions.",
-		}, []string{}),
-
-		BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "block_size_bytes",
-			Help:      "Size of the block, partitioned by height.",
-		}, []string{"height"}),
-	}
+	csMetrics := metricsProvider()
 	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
-		blockExec, blockStore, mempool, evidencePool, metrics)
+		blockExec, blockStore, mempool, evidencePool, csMetrics)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
