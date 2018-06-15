@@ -19,7 +19,7 @@ import (
 
 const (
 	maxPacketMsgPayloadSizeDefault = 1024 // NOTE: Must be below 16,384 bytes for 14 below.
-	maxPacketMsgOverheadSize       = 15   // NOTE: See connection_test for derivation.
+	maxPacketMsgOverheadSize       = 13   // NOTE: See connection_test for derivation.
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
