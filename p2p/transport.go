@@ -38,6 +38,10 @@ type PeerTransport interface {
 	// Dial connects to a Peer.
 	Dial(NetAddress, peerConfig) (Peer, error)
 
+	// ExternalAddress is the configured address to advertise.
+	// TODO(xla): Is currently expected from the old Listener interface and
+	// shouldn't be part of the transport as it increases the surfaces and can be
+	// handled differently on the caller side.
 	ExternalAddress() NetAddress
 
 	// lifecycle methods
