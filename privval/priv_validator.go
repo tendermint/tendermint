@@ -261,10 +261,10 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 		return err
 	}
 
-	// It passed the checks. Sign the proposal
+	// It passed the checks. Sign the proposal or return an error if the signing fails
 	sig, err := pv.PrivKey.Sign(signBytes)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	pv.saveSigned(height, round, step, signBytes, sig)
 	proposal.Signature = sig
