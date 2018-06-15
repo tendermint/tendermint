@@ -111,7 +111,7 @@ func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
 			Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 				Subsystem: "consensus",
 				Name:      "validators",
-				Help:      "Number of validators who signed.",
+				Help:      "Number of validators.",
 			}, []string{}),
 			ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 				Subsystem: "consensus",
