@@ -93,8 +93,8 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 // MetricsProvider returns a consensus and p2p Metrics.
 type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 
-// DefaultMetricsProvider returns a consensus and p2p Metrics build using
-// Prometheus client library.
+// DefaultMetricsProvider returns consensus, p2p and mempool Metrics build
+// using Prometheus client library.
 func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
 	return &cs.Metrics{
 			Height: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
@@ -174,6 +174,11 @@ func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
 				Help:      "Size of the mempool (number of uncommitted transactions).",
 			}, []string{}),
 		}
+}
+
+// NopMetricsProvider returns consensus, p2p and mempool Metrics as no-op.
+func NopMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
+	return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
 }
 
 //------------------------------------------------------------------------------
@@ -300,7 +305,17 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	}
 
-	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
+	// metrics
+	var (
+		csMetrics    *cs.Metrics
+		p2pMetrics   *p2p.Metrics
+		memplMetrics *mempl.Metrics
+	)
+	if config.BaseConfig.Monitoring {
+		csMetrics, p2pMetrics, memplMetrics = metricsProvider()
+	} else {
+		csMetrics, p2pMetrics, memplMetrics = NopMetricsProvider()
+	}
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
@@ -600,7 +615,9 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.EventSubscriber(n.eventBus))
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		mux.Handle("/metrics", promhttp.Handler())
+		if n.config.BaseConfig.Monitoring {
+			mux.Handle("/metrics", promhttp.Handler())
+		}
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
 		if err != nil {

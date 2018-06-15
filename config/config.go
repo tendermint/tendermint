@@ -142,6 +142,10 @@ type BaseConfig struct {
 
 	// Database directory
 	DBPath string `mapstructure:"db_dir"`
+
+	// When true, metrics are served under `/metrics` using a Prometheus client
+	// Check out the documentation for the list of available metrics.
+	Monitoring bool `mapstructure:"monitoring"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -159,6 +163,7 @@ func DefaultBaseConfig() BaseConfig {
 		FilterPeers:       false,
 		DBBackend:         "leveldb",
 		DBPath:            "data",
+		Monitoring:        false,
 	}
 }
 
@@ -411,7 +416,7 @@ func (cfg *MempoolConfig) WalDir() string {
 //-----------------------------------------------------------------------------
 // ConsensusConfig
 
-// ConsensusConfig defines the confuguration for the Tendermint consensus service,
+// ConsensusConfig defines the configuration for the Tendermint consensus service,
 // including timeouts and details about the WAL and the block structure.
 type ConsensusConfig struct {
 	RootDir string `mapstructure:"home"`
@@ -536,7 +541,7 @@ func (cfg *ConsensusConfig) SetWalFile(walFile string) {
 //-----------------------------------------------------------------------------
 // TxIndexConfig
 
-// TxIndexConfig defines the confuguration for the transaction
+// TxIndexConfig defines the configuration for the transaction
 // indexer, including tags to index.
 type TxIndexConfig struct {
 	// What indexer to use for transactions
