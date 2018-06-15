@@ -147,8 +147,9 @@ flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
 # Maximum number of peers to connect to
 max_num_peers = {{ .P2P.MaxNumPeers }}
 
-# Maximum size of a message packet payload, in bytes
-max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}
+# Maximum size of a message packet, in bytes
+# Includes a header, which is ~13 bytes
+max_packet_msg_size = {{ .P2P.MaxPacketMsgSize }}
 
 # Rate at which packets can be sent, in bytes/second
 send_rate = {{ .P2P.SendRate }}

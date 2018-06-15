@@ -423,19 +423,10 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	// send msg thats just right
 	var err error
 	var buf = new(bytes.Buffer)
-	// - Uvarint length of MustMarshalBinary(packet) = 1 or 2 bytes
-	//   (as long as it's less than 16,384 bytes)
-	// - Prefix bytes = 4 bytes
-	// - ChannelID field key + byte = 2 bytes
-	// - EOF field key + byte = 2 bytes
-	// - Bytes field key = 1 bytes
-	// - Uvarint length of MustMarshalBinary(bytes) = 1 or 2 bytes
-	// - Struct terminator = 1 byte
-	// = up to 14 bytes overhead for the packet.
 	var packet = PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgSize-emptyPacketMsgSize()),
 	}
 	_, err = cdc.MarshalBinaryWriter(buf, packet)
 	assert.Nil(t, err)
@@ -449,7 +440,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	packet = PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+1),
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgSize+1),
 	}
 	_, err = cdc.MarshalBinaryWriter(buf, packet)
 	assert.Nil(t, err)

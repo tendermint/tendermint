@@ -276,8 +276,9 @@ type P2PConfig struct {
 	// Time to wait before flushing messages out on the connection, in ms
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
 
-	// Maximum size of a message packet payload, in bytes
-	MaxPacketMsgPayloadSize int `mapstructure:"max_packet_msg_payload_size"`
+	// Maximum size of a message packet, in bytes
+	// Includes a header, which is ~13 bytes
+	MaxPacketMsgSize int `mapstructure:"max_packet_msg_size"`
 
 	// Rate at which packets can be sent, in bytes/second
 	SendRate int64 `mapstructure:"send_rate"`
@@ -316,22 +317,22 @@ type P2PConfig struct {
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:           "tcp://0.0.0.0:26656",
-		AddrBook:                defaultAddrBookPath,
-		AddrBookStrict:          true,
-		MaxNumPeers:             50,
-		FlushThrottleTimeout:    100,
-		MaxPacketMsgPayloadSize: 1024,   // 1 kB
-		SendRate:                512000, // 500 kB/s
-		RecvRate:                512000, // 500 kB/s
-		PexReactor:              true,
-		SeedMode:                false,
-		AllowDuplicateIP:        true, // so non-breaking yet
-		HandshakeTimeout:        20 * time.Second,
-		DialTimeout:             3 * time.Second,
-		TestDialFail:            false,
-		TestFuzz:                false,
-		TestFuzzConfig:          DefaultFuzzConnConfig(),
+		ListenAddress:        "tcp://0.0.0.0:26656",
+		AddrBook:             defaultAddrBookPath,
+		AddrBookStrict:       true,
+		MaxNumPeers:          50,
+		FlushThrottleTimeout: 100,
+		MaxPacketMsgSize:     1024,   // 1 kB
+		SendRate:             512000, // 500 kB/s
+		RecvRate:             512000, // 500 kB/s
+		PexReactor:           true,
+		SeedMode:             false,
+		AllowDuplicateIP:     true, // so non-breaking yet
+		HandshakeTimeout:     20 * time.Second,
+		DialTimeout:          3 * time.Second,
+		TestDialFail:         false,
+		TestFuzz:             false,
+		TestFuzzConfig:       DefaultFuzzConnConfig(),
 	}
 }
 
