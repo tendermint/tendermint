@@ -91,11 +91,11 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 }
 
 // MetricsProvider returns a consensus and p2p Metrics.
-type MetricsProvider func() (*cs.Metrics, *p2p.Metrics)
+type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 
 // DefaultMetricsProvider returns a consensus and p2p Metrics build using
 // Prometheus client library.
-func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics) {
+func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
 	return &cs.Metrics{
 			Height: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 				Subsystem: "consensus",
@@ -166,6 +166,12 @@ func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics) {
 				Subsystem: "p2p",
 				Name:      "peers",
 				Help:      "Number of peers.",
+			}, []string{}),
+		}, &mempl.Metrics{
+			Size: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "mempool",
+				Name:      "size",
+				Help:      "Size of the mempool (number of uncommitted transactions).",
 			}, []string{}),
 		}
 }
@@ -294,9 +300,11 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	}
 
+	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
+
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
-	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight)
+	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight, memplMetrics)
 	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempool.SetLogger(mempoolLogger)
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
@@ -325,8 +333,6 @@ func NewNode(config *cfg.Config,
 	// Make BlockchainReactor
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
-
-	csMetrics, p2pMetrics := metricsProvider()
 
 	// Make ConsensusReactor
 	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),

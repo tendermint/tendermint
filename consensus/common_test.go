@@ -255,7 +255,7 @@ func newConsensusStateWithConfigAndBlockStore(thisConfig *cfg.Config, state sm.S
 	proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
 
 	// Make Mempool
-	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+	mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0, mempl.NopMetrics())
 	mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
 	if thisConfig.Consensus.WaitForTxs() {
 		mempool.EnableTxsAvailable()

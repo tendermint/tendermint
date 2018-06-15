@@ -33,7 +33,7 @@ func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 	if err != nil {
 		panic(err)
 	}
-	mempool := NewMempool(config.Mempool, appConnMem, 0)
+	mempool := NewMempool(config.Mempool, appConnMem, 0, NopMetrics())
 	mempool.SetLogger(log.TestingLogger())
 	return mempool
 }
@@ -241,7 +241,7 @@ func TestMempoolCloseWAL(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
 	appConnMem, _ := cc.NewABCIClient()
-	mempool := NewMempool(wcfg, appConnMem, 10)
+	mempool := NewMempool(wcfg, appConnMem, 10, NopMetrics())
 	mempool.InitWAL()
 
 	// 4. Ensure that the directory contains the WAL file

@@ -83,10 +83,12 @@ type Mempool struct {
 	wal *auto.AutoFile
 
 	logger log.Logger
+
+	metrics *Metrics
 }
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64, metrics *Metrics) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -98,6 +100,7 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
 		cache:         newTxCache(config.CacheSize),
+		metrics:       metrics,
 	}
 	proxyAppConn.SetResponseCallback(mempool.resCb)
 	return mempool
@@ -250,6 +253,7 @@ func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 	} else {
 		mem.resCbRecheck(req, res)
 	}
+	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
 func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
@@ -393,6 +397,7 @@ func (mem *Mempool) Update(height int64, txs types.Txs) error {
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
 	}
+	mem.metrics.Size.Set(float64(mem.Size()))
 	return nil
 }
 
