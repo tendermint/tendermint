@@ -70,25 +70,28 @@ will need to write interfaces ourselves.
 
 ### List of metrics
 
-|   | Name                                    | Type    | Labels                    | Description                                                                   |
-| - | --------------------------------------- | ------- | ------------------------- | ----------------------------------------------------------------------------- |
-| A | height                                  | Counter | height-X                  |                                                                               |
-| A | validators                              | Gauge   | height-X                  | Number of validators who signed                                               |
-| A | missing_validators                      | Gauge   | height-X                  | umber of validators who did not sign                                          |
-| A | byzantine_validators                    | Gauge   | height-X                  | Number of validators who tried to double sign                                 |
-| A | block_interval                          | Timing  |                           | Time between this and last block (Block.Header.Time)                          |
-|   | block_time                              | Timing  |                           | Time to create a block (from creating a proposal to commit)                   |
-|   | time_between_blocks                     | Timing  |                           | Time between committing last block and (receiving proposal creating proposal) |
-| A | rounds                                  | Counter | height-X                  | Number of rounds                                                              |
-|   | prevotes                                | Counter | height-X height-X-round-Y |                                                                               |
-|   | precommits                              | Counter | height-X height-X-round-Y |                                                                               |
-|   | prevotes_total_power                    | Counter | height-X height-X-round-Y |                                                                               |
-|   | precommits_total_power                  | Counter | height-X height-X-round-Y |                                                                               |
-| A | num_txs                                 | Counter | height-X                  |                                                                               |
-|   | total_txs                               | Counter |                           |                                                                               |
-|   | block_size                              | Gauge   | height-X                  | In bytes                                                                      |
-|   | peers                                   | Gauge   |                           | Number of peers node's connected to                                           |
-|   | power                                   | Gauge   |                           |                                                                               |
+|   | Name                                    | Type    | Description                                                                   |
+| - | --------------------------------------- | ------- | ----------------------------------------------------------------------------- |
+| A | consensus_height                        | Gauge   |                                                                               |
+| A | consensus_validators                    | Gauge   | Number of validators who signed                                               |
+| A | consensus_validators_power              | Gauge   | Total voting power of all validators                                          |
+| A | consensus_missing_validators            | Gauge   | Number of validators who did not sign                                         |
+| A | consensus_missing_validators_power      | Gauge   | Total voting power of the missing validators                                  |
+| A | consensus_byzantine_validators          | Gauge   | Number of validators who tried to double sign                                 |
+| A | consensus_byzantine_validators_power    | Gauge   | Total voting power of the byzantine validators                                |
+| A | consensus_block_interval                | Timing  | Time between this and last block (Block.Header.Time)                          |
+|   | consensus_block_time                    | Timing  | Time to create a block (from creating a proposal to commit)                   |
+|   | consensus_time_between_blocks           | Timing  | Time between committing last block and (receiving proposal creating proposal) |
+| A | consensus_rounds                        | Gauge   | Number of rounds                                                              |
+|   | consensus_prevotes                      | Gauge   |                                                                               |
+|   | consensus_precommits                    | Gauge   |                                                                               |
+|   | consensus_prevotes_total_power          | Gauge   |                                                                               |
+|   | consensus_precommits_total_power        | Gauge   |                                                                               |
+| A | consensus_num_txs                       | Gauge   |                                                                               |
+| A | mempool_size                            | Gauge   |                                                                               |
+| A | consensus_total_txs                     | Gauge   |                                                                               |
+| A | consensus_block_size                    | Gauge   | In bytes                                                                      |
+| A | p2p_peers                               | Gauge   | Number of peers node's connected to                                           |
 
 `A`	- will be implemented in the fist place.
 
@@ -96,10 +99,18 @@ will need to write interfaces ourselves.
 
 ## Status
 
+Proposed.
+
 ## Consequences
 
 ### Positive
 
+Better visibility, support of variety of monitoring backends
+
 ### Negative
 
+One more library to audit, messing metrics reporting code with business domain.
+
 ### Neutral
+
+-
