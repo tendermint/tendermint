@@ -7,6 +7,7 @@ import "github.com/go-kit/kit/metrics/discard"
 // see MetricsProvider for descriptions.
 type Metrics struct {
 	Height metrics.Counter
+	Rounds metrics.Gauge
 
 	Validators               metrics.Gauge
 	ValidatorsPower          metrics.Gauge

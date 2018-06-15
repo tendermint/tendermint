@@ -697,6 +697,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	}
 
 	logger.Info(cmn.Fmt("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
+	cs.metrics.Rounds.Set(float64(round))
 
 	// Increment validators if necessary
 	validators := cs.Validators

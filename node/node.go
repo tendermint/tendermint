@@ -102,6 +102,11 @@ func DefaultMetricsProvider() *cs.Metrics {
 			Name:      "height",
 			Help:      "Height of the chain.",
 		}, []string{}),
+		Rounds: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "rounds",
+			Help:      "Number of rounds.",
+		}, []string{}),
 
 		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
