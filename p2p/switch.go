@@ -73,10 +73,12 @@ type Switch struct {
 	mConfig conn.MConnConfig
 
 	rng *cmn.Rand // seed for randomizing dial times and orders
+
+	metrics *Metrics
 }
 
 // NewSwitch creates a new Switch with the given config.
-func NewSwitch(cfg *config.P2PConfig) *Switch {
+func NewSwitch(cfg *config.P2PConfig, metrics *Metrics) *Switch {
 	sw := &Switch{
 		config:       cfg,
 		reactors:     make(map[string]Reactor),
@@ -85,6 +87,7 @@ func NewSwitch(cfg *config.P2PConfig) *Switch {
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
 		reconnecting: cmn.NewCMap(),
+		metrics:      metrics,
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
@@ -279,6 +282,7 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	sw.peers.Remove(peer)
+	sw.metrics.Peers.Add(float64(-1))
 	peer.Stop()
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
@@ -623,6 +627,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	if err := sw.peers.Add(peer); err != nil {
 		return err
 	}
+	sw.metrics.Peers.Add(float64(1))
 
 	sw.Logger.Info("Added peer", "peer", peer)
 	return nil

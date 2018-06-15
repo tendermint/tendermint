@@ -90,79 +90,84 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	)
 }
 
-// MetricsProvider returns a consensus Metrics.
-type MetricsProvider func() *cs.Metrics
+// MetricsProvider returns a consensus and p2p Metrics.
+type MetricsProvider func() (*cs.Metrics, *p2p.Metrics)
 
-// DefaultMetrics returns a consensus Metrics build using Prometheus client
-// library.
-func DefaultMetricsProvider() *cs.Metrics {
+// DefaultMetricsProvider returns a consensus and p2p Metrics build using
+// Prometheus client library.
+func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics) {
 	return &cs.Metrics{
-		Height: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Subsystem: "consensus",
-			Name:      "height",
-			Help:      "Height of the chain.",
-		}, []string{}),
-		Rounds: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "rounds",
-			Help:      "Number of rounds.",
-		}, []string{}),
+			Height: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "height",
+				Help:      "Height of the chain.",
+			}, []string{}),
+			Rounds: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "rounds",
+				Help:      "Number of rounds.",
+			}, []string{}),
 
-		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "validators",
-			Help:      "Number of validators who signed.",
-		}, []string{}),
-		ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "validators_power",
-			Help:      "Total power of all validators.",
-		}, []string{}),
-		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "missing_validators",
-			Help:      "Number of validators who did not sign.",
-		}, []string{}),
-		MissingValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "missing_validators_power",
-			Help:      "Total power of the missing validators.",
-		}, []string{}),
-		ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "byzantine_validators",
-			Help:      "Number of validators who tried to double sign.",
-		}, []string{}),
-		ByzantineValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "byzantine_validators_power",
-			Help:      "Total power of the byzantine validators.",
-		}, []string{}),
+			Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "validators",
+				Help:      "Number of validators who signed.",
+			}, []string{}),
+			ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "validators_power",
+				Help:      "Total power of all validators.",
+			}, []string{}),
+			MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "missing_validators",
+				Help:      "Number of validators who did not sign.",
+			}, []string{}),
+			MissingValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "missing_validators_power",
+				Help:      "Total power of the missing validators.",
+			}, []string{}),
+			ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "byzantine_validators",
+				Help:      "Number of validators who tried to double sign.",
+			}, []string{}),
+			ByzantineValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "byzantine_validators_power",
+				Help:      "Total power of the byzantine validators.",
+			}, []string{}),
 
-		BlockIntervalSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-			Subsystem: "consensus",
-			Name:      "block_interval_seconds",
-			Help:      "Time between this and the last block.",
-			Buckets:   []float64{1, 2.5, 5, 10, 60},
-		}, []string{}),
+			BlockIntervalSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
+				Subsystem: "consensus",
+				Name:      "block_interval_seconds",
+				Help:      "Time between this and the last block.",
+				Buckets:   []float64{1, 2.5, 5, 10, 60},
+			}, []string{}),
 
-		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "num_txs",
-			Help:      "Number of transactions.",
-		}, []string{}),
-		TotalTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
-			Subsystem: "consensus",
-			Name:      "total_txs",
-			Help:      "Total number of transactions.",
-		}, []string{}),
-
-		BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-			Subsystem: "consensus",
-			Name:      "block_size_bytes",
-			Help:      "Size of the block.",
-		}, []string{}),
-	}
+			NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "num_txs",
+				Help:      "Number of transactions.",
+			}, []string{}),
+			BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "block_size_bytes",
+				Help:      "Size of the block.",
+			}, []string{}),
+			TotalTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "consensus",
+				Name:      "total_txs",
+				Help:      "Total number of transactions.",
+			}, []string{}),
+		}, &p2p.Metrics{
+			Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+				Subsystem: "p2p",
+				Name:      "peers",
+				Help:      "Number of peers.",
+			}, []string{}),
+		}
 }
 
 //------------------------------------------------------------------------------
@@ -321,8 +326,9 @@ func NewNode(config *cfg.Config,
 	bcReactor := bc.NewBlockchainReactor(state.Copy(), blockExec, blockStore, fastSync)
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
+	csMetrics, p2pMetrics := metricsProvider()
+
 	// Make ConsensusReactor
-	csMetrics := metricsProvider()
 	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
 		blockExec, blockStore, mempool, evidencePool, csMetrics)
 	consensusState.SetLogger(consensusLogger)
@@ -334,7 +340,7 @@ func NewNode(config *cfg.Config,
 
 	p2pLogger := logger.With("module", "p2p")
 
-	sw := p2p.NewSwitch(config.P2P)
+	sw := p2p.NewSwitch(config.P2P, p2pMetrics)
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)

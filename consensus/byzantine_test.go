@@ -38,7 +38,7 @@ func TestByzantine(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.NewSwitch(config.P2P)
+		switches[i] = p2p.NewSwitch(config.P2P, p2p.NopMetrics())
 		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 

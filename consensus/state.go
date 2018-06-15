@@ -391,7 +391,7 @@ func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *t
 // internal functions for managing the state
 
 func (cs *ConsensusState) updateHeight(height int64) {
-	cs.metrics.Height.Add(float64(height - cs.Height))
+	cs.metrics.Height.Set(float64(height))
 	cs.Height = height
 }
 
@@ -697,7 +697,6 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	}
 
 	logger.Info(cmn.Fmt("enterNewRound(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
-	cs.metrics.Rounds.Set(float64(round))
 
 	// Increment validators if necessary
 	validators := cs.Validators
@@ -724,6 +723,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 
 	cs.eventBus.PublishEventNewRound(cs.RoundStateEvent())
+	cs.metrics.Rounds.Set(float64(round))
 
 	// Wait for txs to be available in the mempool
 	// before we enterPropose in round 0. If the last block changed the app hash,
@@ -1282,6 +1282,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
+	// must be called before we update state
 	cs.recordMetrics(height, block)
 
 	// NewHeightStep!
@@ -1332,9 +1333,8 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	}
 
 	cs.metrics.NumTxs.Set(float64(block.NumTxs))
-	cs.metrics.TotalTxs.Add(float64(block.NumTxs))
-
 	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
+	cs.metrics.TotalTxs.Set(float64(block.TotalTxs))
 }
 
 //-----------------------------------------------------------------------------
