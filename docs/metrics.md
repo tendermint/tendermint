@@ -24,3 +24,11 @@ to enable it.
 | consensus_total_txs                     | Gauge   | Total number of transactions committed                                        |
 | consensus_block_size                    | Gauge   | Block size in bytes                                                           |
 | p2p_peers                               | Gauge   | Number of peers node's connected to                                           |
+
+## Useful queries
+
+Percentage of missing + byzantine validators:
+
+```
+((consensus_byzantine_validators_power + consensus_missing_validators_power) / consensus_validators_power) * 100
+```
