@@ -77,9 +77,9 @@
   name = "github.com/tendermint/go-crypto"
   version = "~0.9.0"
 
-[[override]]
+[[constraint]]
   name = "github.com/tendermint/go-amino"
-  revision = "a3c8cf329f44cec2d185be2308364f50b78c5401"
+  version = "~0.10.1"
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"

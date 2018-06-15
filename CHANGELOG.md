@@ -1,5 +1,11 @@
 # Changelog
 
+## TBD
+
+BREAKING CHANGES
+
+- CGO_ENABLED is no longer set to 0. Tendermint now requires a C compiler to build. Deterministic builds can still be accomplished with `make build_in_docker`.
+
 ## 0.20.0
 
 *June 6th, 2018*
