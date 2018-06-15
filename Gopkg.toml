@@ -75,7 +75,7 @@
 
 [[constraint]]
   name = "github.com/tendermint/go-crypto"
-  branch = "develop"
+  version = "~0.9.0"
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"

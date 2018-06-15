@@ -264,13 +264,13 @@
   version = "0.10.0"
 
 [[projects]]
-  branch = "develop"
   name = "github.com/tendermint/go-crypto"
   packages = [
     ".",
     "tmhash"
   ]
-  revision = "8e273220a35e200caa63ad6d1fbe5a91a49b45e2"
+  revision = "6a6b591a3d7592a04b46af95451cb5be3b114f76"
+  version = "v0.9.0"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -292,7 +292,7 @@
 [[projects]]
   name = "github.com/zondax/ledger-goclient"
   packages = ["."]
-  revision = "065cbf938a16f20335c40cfe180f9cd4955c6a5a"
+  revision = "3e2146609cdb97894c064d59e9d00accd8c2b1dd"
 
 [[projects]]
   branch = "master"
@@ -308,7 +308,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "37a17fe027db43f76fd88b056ddf588563fc8722"
+  revision = "a8fb68e7206f8c78be19b432c58eb52a6aa34462"
 
 [[projects]]
   branch = "master"
@@ -328,7 +328,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "56ede360ec1c541828fb88741b3f1049406d28f5"
+  revision = "8883426083c04a2627e6e59d84d5f6fb63d16c91"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -389,6 +389,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "25971e95adb59a6d6f30dda96d6df5465f8d39e399c7b8f60a6610fe3a1432d6"
+  inputs-digest = "8ac7cb48e360930c750dbe904680c72512607bddbc26cebdaaffd7527487d6fa"
   solver-name = "gps-cdcl"
   solver-version = 1
