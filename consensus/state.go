@@ -1300,18 +1300,29 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
+	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
 	missingValidators := 0
-	for i := range cs.Validators.Validators {
+	missingValidatorsPower := int64(0)
+	for i, val := range cs.Validators.Validators {
 		var vote *types.Vote
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
 		}
 		if vote == nil {
 			missingValidators++
+			missingValidatorsPower += val.VotingPower
 		}
 	}
 	cs.metrics.MissingValidators.Set(float64(missingValidators))
+	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
 	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
+	byzantineValidatorsPower := int64(0)
+	for _, ev := range block.Evidence.Evidence {
+		if _, val := cs.Validators.GetByAddress(ev.Address()); val != nil {
+			byzantineValidatorsPower += val.VotingPower
+		}
+	}
+	cs.metrics.ByzantineValidatorsPower.Set(float64(byzantineValidatorsPower))
 
 	if height > 1 {
 		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)

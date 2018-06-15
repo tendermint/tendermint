@@ -106,30 +106,45 @@ func DefaultMetricsProvider() *cs.Metrics {
 		Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
 			Name:      "validators",
-			Help:      "Number of validators who signed, partitioned by height.",
+			Help:      "Number of validators who signed.",
+		}, []string{}),
+		ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "validators_power",
+			Help:      "Total power of all validators.",
 		}, []string{}),
 		MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
 			Name:      "missing_validators",
-			Help:      "Number of validators who did not sign, partitioned by height.",
+			Help:      "Number of validators who did not sign.",
+		}, []string{}),
+		MissingValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "missing_validators_power",
+			Help:      "Total power of the missing validators.",
 		}, []string{}),
 		ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
 			Name:      "byzantine_validators",
-			Help:      "Number of validators who tried to double sign, partitioned by height.",
+			Help:      "Number of validators who tried to double sign.",
+		}, []string{}),
+		ByzantineValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
+			Subsystem: "consensus",
+			Name:      "byzantine_validators_power",
+			Help:      "Total power of the byzantine validators.",
 		}, []string{}),
 
 		BlockIntervalSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
 			Subsystem: "consensus",
 			Name:      "block_interval_seconds",
-			Help:      "Time between this and the last block, partitioned by height.",
+			Help:      "Time between this and the last block.",
 			Buckets:   []float64{1, 2.5, 5, 10, 60},
 		}, []string{}),
 
 		NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
 			Name:      "num_txs",
-			Help:      "Number of transactions, partitioned by height.",
+			Help:      "Number of transactions.",
 		}, []string{}),
 		TotalTxs: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
 			Subsystem: "consensus",
@@ -140,7 +155,7 @@ func DefaultMetricsProvider() *cs.Metrics {
 		BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
 			Subsystem: "consensus",
 			Name:      "block_size_bytes",
-			Help:      "Size of the block, partitioned by height.",
+			Help:      "Size of the block.",
 		}, []string{}),
 	}
 }
