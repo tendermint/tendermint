@@ -372,16 +372,23 @@ against the given signature and message bytes.
 
 ## Evidence
 
-TODO
+There is currently only one kind of evidence:
 
 ```
-TODO
+// amino: "tendermint/DuplicateVoteEvidence"
+type DuplicateVoteEvidence struct {
+	PubKey crypto.PubKey
+	VoteA  *Vote
+	VoteB  *Vote
+}
 ```
 
-Every piece of evidence contains two conflicting votes from a single validator that
-was active at the height indicated in the votes.
-The votes must not be too old.
+DuplicateVoteEvidence `ev` is valid if
 
+- `ev.VoteA` and `ev.VoteB` can be verified with `ev.PubKey`
+- `ev.VoteA` and `ev.VoteB` have the same `Height, Round, Address, Index, Type`
+- `ev.VoteA.BlockID != ev.VoteB.BlockID`
+- `(block.Height - ev.VoteA.Height) < MAX_EVIDENCE_AGE`
 
 # Execution
 
