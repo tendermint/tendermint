@@ -36,14 +36,14 @@ func TestValidateBlock(t *testing.T) {
 			block: &types.Block{}, wantErr: "nil Header",
 		},
 		{
-			block: &types.Block{Header: new(types.Header)},
+			block: &types.Block{Header: new(types.Header)}, wantErr: "unexpected empty SignedHeader",
 		},
 
 		// Start Header.Height mismatch test
 		{
 			block:        &types.Block{Header: &types.Header{Height: 10}},
 			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
-			wantErr:      "don't match - 10 vs 11",
+			wantErr:      "Header heights mismatched",
 		},
 
 		{
@@ -118,14 +118,14 @@ func TestValidateBlockMeta(t *testing.T) {
 			meta: &types.BlockMeta{}, wantErr: "non-nil Header",
 		},
 		{
-			meta: &types.BlockMeta{Header: new(types.Header)},
+			meta: &types.BlockMeta{Header: new(types.Header)}, wantErr: "unexpected empty SignedHeader",
 		},
 
 		// Start Header.Height mismatch test
 		{
 			meta:         &types.BlockMeta{Header: &types.Header{Height: 10}},
 			signedHeader: types.SignedHeader{Header: &types.Header{Height: 11}},
-			wantErr:      "don't match - 10 vs 11",
+			wantErr:      "Header heights mismatched",
 		},
 
 		{

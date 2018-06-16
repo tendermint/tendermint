@@ -14,6 +14,7 @@ package pubsub
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sync"
 
 	cmn "github.com/tendermint/tmlibs/common"
@@ -281,7 +282,8 @@ loop:
 }
 
 func (state *state) add(clientID string, q Query, ch chan<- interface{}) {
-	// add query if needed
+
+	// initialize clientToChannelMap per query if needed
 	if _, ok := state.queries[q]; !ok {
 		state.queries[q] = make(map[string]chan<- interface{})
 	}

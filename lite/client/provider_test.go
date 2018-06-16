@@ -1,15 +1,29 @@
 package client
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/tendermint/abci/example/kvstore"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	rpctest "github.com/tendermint/tendermint/rpc/test"
 	"github.com/tendermint/tendermint/types"
 )
+
+// TODO fix tests!!
+func TestMain(m *testing.M) {
+	app := kvstore.NewKVStoreApplication()
+	node := rpctest.StartTendermint(app)
+
+	code := m.Run()
+
+	node.Stop()
+	node.Wait()
+	os.Exit(code)
+}
 
 func TestProvider(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
@@ -17,9 +31,12 @@ func TestProvider(t *testing.T) {
 	cfg := rpctest.GetConfig()
 	rpcAddr := cfg.RPC.ListenAddress
 	genDoc, err := types.GenesisDocFromFile(cfg.GenesisFile())
-	panic(err)
+	if err != nil {
+		panic(err)
+	}
 	chainID := genDoc.ChainID
-	p := NewHTTPProvider(rpcAddr)
+	t.Log("chainID:", chainID)
+	p := NewHTTPProvider(chainID, rpcAddr)
 	require.NotNil(t, p)
 
 	// let it produce some blocks

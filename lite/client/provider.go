@@ -6,8 +6,6 @@ and validators directly from a Tendermint client.
 package client
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -36,9 +34,10 @@ func NewProvider(chainID string, client SignStatusClient) lite.Provider {
 
 // NewHTTPProvider can connect to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
-func NewHTTPProvider(remote string) lite.Provider {
+func NewHTTPProvider(chainID, remote string) lite.Provider {
 	return &provider{
-		client: rpcclient.NewHTTP(remote, "/websocket"),
+		chainID: chainID,
+		client:  rpcclient.NewHTTP(remote, "/websocket"),
 	}
 }
 
@@ -111,7 +110,7 @@ func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.
 	return
 }
 
-// This checks the cryptographic signatures of fc.Commit against fc.Validators.
+// This does no validation.
 func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.FullCommit, err error) {
 	fc.SignedHeader = signedHeader
 
@@ -120,29 +119,14 @@ func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.Full
 	if err != nil {
 		return lite.FullCommit{}, err
 	}
-
-	// Check valset hash against signedHeader validators hash.
-	if !bytes.Equal(valset.Hash(), signedHeader.ValidatorsHash) {
-		return lite.FullCommit{}, errors.New("wrong validators received from client")
-	}
 	fc.Validators = valset
 
 	// Get the next validators.
 	nvalset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height+1)
 	if err != nil {
 		return lite.FullCommit{}, err
-	}
-
-	// Check next valset hash against signedHeader next validators hash.
-	if !bytes.Equal(nvalset.Hash(), signedHeader.NextValidatorsHash) {
-		return lite.FullCommit{}, errors.New("wrong validators received from client")
-	}
-	fc.NextValidators = nvalset
-
-	// Sanity check fc.
-	// This checks the cryptographic signatures of fc.Commit against fc.Validators.
-	if err := fc.ValidateBasic(signedHeader.ChainID); err != nil {
-		return lite.FullCommit{}, err
+	} else {
+		fc.NextValidators = nvalset
 	}
 
 	return fc, nil

@@ -12,7 +12,7 @@ func GetCertifier(chainID, rootDir, nodeAddr string) (*lite.InquiringCertifier, 
 		lite.NewDBProvider(dbm.NewDB("trust-base", dbm.LevelDBBackend, rootDir)),
 	)
 
-	source := lclient.NewHTTPProvider(nodeAddr)
+	source := lclient.NewHTTPProvider(chainID, nodeAddr)
 
 	// XXX: total insecure hack to avoid `init`
 	fc, err := source.LatestFullCommit(chainID, 1, 1)

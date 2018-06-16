@@ -25,7 +25,6 @@ var chainID = "tendermint_test" // TODO use from config.
 
 func TestMain(m *testing.M) {
 	app := kvstore.NewKVStoreApplication()
-
 	node = rpctest.StartTendermint(app)
 
 	code := m.Run()

@@ -34,7 +34,7 @@ func ValidateHeader(head *types.Header, sh types.SignedHeader) error {
 		return errors.New("expecting a non-nil Header")
 	}
 	if sh.Header == nil {
-		return errors.New("expecting a non-zero SignedHeader")
+		return errors.New("unexpected empty SignedHeader")
 	}
 	// Make sure they are for the same height (obvious fail).
 	if head.Height != sh.Height {

@@ -108,6 +108,12 @@ func (ic *InquiringCertifier) Certify(shdr types.SignedHeader) error {
 			Validators:     tfc.NextValidators,
 			NextValidators: nvalset,
 		}
+		// Validate the full commit.  This checks the cryptographic
+		// signatures of Commit against Validators.
+		if err := nfc.ValidateBasic(ic.chainID); err != nil {
+			return err
+		}
+		// Trust it.
 		return ic.trusted.SaveFullCommit(nfc)
 	}
 }
@@ -142,6 +148,12 @@ func (ic *InquiringCertifier) updateToHeight(h int64) (FullCommit, error) {
 	// Fetch latest full commit from source.
 	sfc, err := ic.source.LatestFullCommit(ic.chainID, h, h)
 	if err != nil {
+		return FullCommit{}, err
+	}
+
+	// Validate the full commit.  This checks the cryptographic
+	// signatures of Commit against Validators.
+	if err := sfc.ValidateBasic(ic.chainID); err != nil {
 		return FullCommit{}, err
 	}
 
