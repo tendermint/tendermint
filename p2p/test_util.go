@@ -137,7 +137,7 @@ func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitc
 	nodeKey := &NodeKey{
 		PrivKey: crypto.GenPrivKeyEd25519(),
 	}
-	sw := NewSwitch(cfg, NopMetrics())
+	sw := NewSwitch(cfg)
 	sw.SetLogger(log.TestingLogger())
 	sw = initSwitch(i, sw)
 	ni := NodeInfo{

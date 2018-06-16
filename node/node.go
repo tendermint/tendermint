@@ -321,9 +321,10 @@ func NewNode(config *cfg.Config,
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
-	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight, memplMetrics)
-	mempool.InitWAL() // no need to have the mempool wal during tests
+	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight,
+		mempl.WithMetrics(memplMetrics))
 	mempool.SetLogger(mempoolLogger)
+	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
@@ -353,7 +354,7 @@ func NewNode(config *cfg.Config,
 
 	// Make ConsensusReactor
 	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
-		blockExec, blockStore, mempool, evidencePool, csMetrics)
+		blockExec, blockStore, mempool, evidencePool, cs.WithMetrics(csMetrics))
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
@@ -363,7 +364,7 @@ func NewNode(config *cfg.Config,
 
 	p2pLogger := logger.With("module", "p2p")
 
-	sw := p2p.NewSwitch(config.P2P, p2pMetrics)
+	sw := p2p.NewSwitch(config.P2P, p2p.WithMetrics(p2pMetrics))
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)

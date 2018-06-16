@@ -88,7 +88,7 @@ type Mempool struct {
 }
 
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64, metrics *Metrics) *Mempool {
+func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64, options ...func(*Mempool)) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -100,9 +100,12 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
 		cache:         newTxCache(config.CacheSize),
-		metrics:       metrics,
+		metrics:       NopMetrics(),
 	}
 	proxyAppConn.SetResponseCallback(mempool.resCb)
+	for _, option := range options {
+		option(mempool)
+	}
 	return mempool
 }
 
@@ -116,6 +119,13 @@ func (mem *Mempool) EnableTxsAvailable() {
 // SetLogger sets the Logger.
 func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
+}
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) func(*Mempool) {
+	return func(mem *Mempool) {
+		mem.metrics = metrics
+	}
 }
 
 // CloseWAL closes and discards the underlying WAL file.

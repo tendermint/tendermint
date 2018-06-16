@@ -78,7 +78,7 @@ type Switch struct {
 }
 
 // NewSwitch creates a new Switch with the given config.
-func NewSwitch(cfg *config.P2PConfig, metrics *Metrics) *Switch {
+func NewSwitch(cfg *config.P2PConfig, options ...func(*Switch)) *Switch {
 	sw := &Switch{
 		config:       cfg,
 		reactors:     make(map[string]Reactor),
@@ -87,7 +87,7 @@ func NewSwitch(cfg *config.P2PConfig, metrics *Metrics) *Switch {
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
 		reconnecting: cmn.NewCMap(),
-		metrics:      metrics,
+		metrics:      NopMetrics(),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
@@ -102,7 +102,19 @@ func NewSwitch(cfg *config.P2PConfig, metrics *Metrics) *Switch {
 	sw.mConfig = mConfig
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
+
+	for _, option := range options {
+		option(sw)
+	}
+
 	return sw
+}
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) func(*Switch) {
+	return func(sw *Switch) {
+		sw.metrics = metrics
+	}
 }
 
 //---------------------------------------------------------------------

@@ -121,7 +121,7 @@ type ConsensusState struct {
 }
 
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore sm.BlockStore, mempool sm.Mempool, evpool sm.EvidencePool, metrics *Metrics) *ConsensusState {
+func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore sm.BlockStore, mempool sm.Mempool, evpool sm.EvidencePool, options ...func(*ConsensusState)) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		blockExec:        blockExec,
@@ -135,7 +135,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *s
 		wal:              nilWAL{},
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
-		metrics:          metrics,
+		metrics:          NopMetrics(),
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -147,6 +147,9 @@ func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *s
 	// We do that upon Start().
 	cs.reconstructLastCommit(state)
 	cs.BaseService = *cmn.NewBaseService(nil, "ConsensusState", cs)
+	for _, option := range options {
+		option(cs)
+	}
 	return cs
 }
 
@@ -163,6 +166,13 @@ func (cs *ConsensusState) SetLogger(l log.Logger) {
 func (cs *ConsensusState) SetEventBus(b *types.EventBus) {
 	cs.eventBus = b
 	cs.blockExec.SetEventBus(b)
+}
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) func(*ConsensusState) {
+	return func(cs *ConsensusState) {
+		cs.metrics = metrics
+	}
 }
 
 // String returns a string.
