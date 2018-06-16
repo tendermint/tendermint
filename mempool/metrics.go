@@ -1,7 +1,9 @@
 package mempool
 
-import "github.com/go-kit/kit/metrics"
-import "github.com/go-kit/kit/metrics/discard"
+import (
+	"github.com/go-kit/kit/metrics"
+	"github.com/go-kit/kit/metrics/discard"
+)
 
 // Metrics contains metrics exposed by this package.
 // see MetricsProvider for descriptions.
