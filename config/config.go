@@ -45,34 +45,37 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
-	RPC       *RPCConfig       `mapstructure:"rpc"`
-	P2P       *P2PConfig       `mapstructure:"p2p"`
-	Mempool   *MempoolConfig   `mapstructure:"mempool"`
-	Consensus *ConsensusConfig `mapstructure:"consensus"`
-	TxIndex   *TxIndexConfig   `mapstructure:"tx_index"`
+	RPC             *RPCConfig             `mapstructure:"rpc"`
+	P2P             *P2PConfig             `mapstructure:"p2p"`
+	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
+	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
+	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
 func DefaultConfig() *Config {
 	return &Config{
-		BaseConfig: DefaultBaseConfig(),
-		RPC:        DefaultRPCConfig(),
-		P2P:        DefaultP2PConfig(),
-		Mempool:    DefaultMempoolConfig(),
-		Consensus:  DefaultConsensusConfig(),
-		TxIndex:    DefaultTxIndexConfig(),
+		BaseConfig:      DefaultBaseConfig(),
+		RPC:             DefaultRPCConfig(),
+		P2P:             DefaultP2PConfig(),
+		Mempool:         DefaultMempoolConfig(),
+		Consensus:       DefaultConsensusConfig(),
+		TxIndex:         DefaultTxIndexConfig(),
+		Instrumentation: DefaultInstrumentationConfig(),
 	}
 }
 
 // TestConfig returns a configuration that can be used for testing
 func TestConfig() *Config {
 	return &Config{
-		BaseConfig: TestBaseConfig(),
-		RPC:        TestRPCConfig(),
-		P2P:        TestP2PConfig(),
-		Mempool:    TestMempoolConfig(),
-		Consensus:  TestConsensusConfig(),
-		TxIndex:    TestTxIndexConfig(),
+		BaseConfig:      TestBaseConfig(),
+		RPC:             TestRPCConfig(),
+		P2P:             TestP2PConfig(),
+		Mempool:         TestMempoolConfig(),
+		Consensus:       TestConsensusConfig(),
+		TxIndex:         TestTxIndexConfig(),
+		Instrumentation: TestInstrumentationConfig(),
 	}
 }
 
@@ -142,10 +145,6 @@ type BaseConfig struct {
 
 	// Database directory
 	DBPath string `mapstructure:"db_dir"`
-
-	// When true, metrics are served under `/metrics` using a Prometheus client
-	// Check out the documentation for the list of available metrics.
-	Monitoring bool `mapstructure:"monitoring"`
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
@@ -163,7 +162,6 @@ func DefaultBaseConfig() BaseConfig {
 		FilterPeers:       false,
 		DBBackend:         "leveldb",
 		DBPath:            "data",
-		Monitoring:        false,
 	}
 }
 
@@ -576,6 +574,35 @@ func DefaultTxIndexConfig() *TxIndexConfig {
 // TestTxIndexConfig returns a default configuration for the transaction indexer.
 func TestTxIndexConfig() *TxIndexConfig {
 	return DefaultTxIndexConfig()
+}
+
+//-----------------------------------------------------------------------------
+// InstrumentationConfig
+
+// InstrumentationConfig defines the configuration for metrics reporting.
+type InstrumentationConfig struct {
+	// When true, Prometheus metrics are served under /metrics on
+	// PrometheusListenAddr.
+	// Check out the documentation for the list of available metrics.
+	Prometheus bool `mapstructure:"prometheus"`
+
+	// Address to listen for Prometheus collector(s) connections.
+	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
+}
+
+// DefaultInstrumentationConfig returns a default configuration for metrics
+// reporting.
+func DefaultInstrumentationConfig() *InstrumentationConfig {
+	return &InstrumentationConfig{
+		Prometheus:           false,
+		PrometheusListenAddr: ":26660",
+	}
+}
+
+// TestInstrumentationConfig returns a default configuration for metrics
+// reporting.
+func TestInstrumentationConfig() *InstrumentationConfig {
+	return DefaultInstrumentationConfig()
 }
 
 //-----------------------------------------------------------------------------

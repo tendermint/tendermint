@@ -2,6 +2,7 @@ package node
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -210,6 +211,7 @@ type Node struct {
 	rpcListeners     []net.Listener         // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
+	prometheusSrv    *http.Server
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.
@@ -311,7 +313,7 @@ func NewNode(config *cfg.Config,
 		p2pMetrics   *p2p.Metrics
 		memplMetrics *mempl.Metrics
 	)
-	if config.BaseConfig.Monitoring {
+	if config.Instrumentation.Prometheus {
 		csMetrics, p2pMetrics, memplMetrics = metricsProvider()
 	} else {
 		csMetrics, p2pMetrics, memplMetrics = NopMetricsProvider()
@@ -520,6 +522,10 @@ func (n *Node) OnStart() error {
 		n.rpcListeners = listeners
 	}
 
+	if n.config.Instrumentation.Prometheus {
+		n.prometheusSrv = n.StartPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
+	}
+
 	// Start the switch (the P2P server).
 	err = n.sw.Start()
 	if err != nil {
@@ -559,6 +565,13 @@ func (n *Node) OnStop() {
 	if pvsc, ok := n.privValidator.(*privval.SocketPV); ok {
 		if err := pvsc.Stop(); err != nil {
 			n.Logger.Error("Error stopping priv validator socket client", "err", err)
+		}
+	}
+
+	if n.prometheusSrv != nil {
+		if err := n.prometheusSrv.Shutdown(context.Background()); err != nil {
+			// Error from closing listeners, or context timeout:
+			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
 	}
 }
@@ -615,9 +628,6 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm := rpcserver.NewWebsocketManager(rpccore.Routes, coreCodec, rpcserver.EventSubscriber(n.eventBus))
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
-		if n.config.BaseConfig.Monitoring {
-			mux.Handle("/metrics", promhttp.Handler())
-		}
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
 		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
 		if err != nil {
@@ -637,6 +647,22 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	}
 
 	return listeners, nil
+}
+
+// StartPrometheusServer starts a Prometheus HTTP server, listening for metrics
+// collectors on addr.
+func (n *Node) StartPrometheusServer(addr string) *http.Server {
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: promhttp.Handler(),
+	}
+	go func(s *http.Server, logger log.Logger) {
+		if err := s.ListenAndServe(); err != http.ErrServerClosed {
+			// Error starting or closing listener:
+			logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+		}
+	}(srv, n.Logger)
+	return srv
 }
 
 // Switch returns the Node's Switch.
