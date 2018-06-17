@@ -32,8 +32,8 @@ for use in public blockchains, such as the [Cosmos Network](https://cosmos.netwo
 We are also still making breaking changes to the protocol and the APIs.
 Thus we tag the releases as *alpha software*.
 
-In any case, if you intend to run Tendermint in production, please contact
-us :)
+In any case, if you intend to run Tendermint in production,
+please [contact us](https://riot.im/app/#/room/#tendermint:matrix.org) :)
 
 ## Security
 
