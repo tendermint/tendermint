@@ -478,6 +478,11 @@ func (cache *txCache) Push(tx types.Tx) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
 
+	// if cache size is 0, do nothing
+	if cache.size == 0 {
+		return true
+	}
+
 	if _, exists := cache.map_[string(tx)]; exists {
 		return false
 	}
