@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
-const defaultCapacity = 1000
+const defaultCapacity = 0
 
 type EventBusSubscriber interface {
 	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error
