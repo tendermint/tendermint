@@ -8,8 +8,6 @@ import (
 	"net"
 	"net/http"
 
-	prometheus "github.com/go-kit/kit/metrics/prometheus"
-	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	abci "github.com/tendermint/abci/types"
@@ -24,6 +22,7 @@ import (
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
+	prometrics "github.com/tendermint/tendermint/metrics/prometheus"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
@@ -91,90 +90,13 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	)
 }
 
-// MetricsProvider returns a consensus and p2p Metrics.
+// MetricsProvider returns a consensus, p2p and mempool Metrics.
 type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 
 // DefaultMetricsProvider returns consensus, p2p and mempool Metrics build
 // using Prometheus client library.
 func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
-	return &cs.Metrics{
-			Height: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "height",
-				Help:      "Height of the chain.",
-			}, []string{}),
-			Rounds: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "rounds",
-				Help:      "Number of rounds.",
-			}, []string{}),
-
-			Validators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "validators",
-				Help:      "Number of validators.",
-			}, []string{}),
-			ValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "validators_power",
-				Help:      "Total power of all validators.",
-			}, []string{}),
-			MissingValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "missing_validators",
-				Help:      "Number of validators who did not sign.",
-			}, []string{}),
-			MissingValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "missing_validators_power",
-				Help:      "Total power of the missing validators.",
-			}, []string{}),
-			ByzantineValidators: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "byzantine_validators",
-				Help:      "Number of validators who tried to double sign.",
-			}, []string{}),
-			ByzantineValidatorsPower: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "byzantine_validators_power",
-				Help:      "Total power of the byzantine validators.",
-			}, []string{}),
-
-			BlockIntervalSeconds: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
-				Subsystem: "consensus",
-				Name:      "block_interval_seconds",
-				Help:      "Time between this and the last block.",
-				Buckets:   []float64{1, 2.5, 5, 10, 60},
-			}, []string{}),
-
-			NumTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "num_txs",
-				Help:      "Number of transactions.",
-			}, []string{}),
-			BlockSizeBytes: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "block_size_bytes",
-				Help:      "Size of the block.",
-			}, []string{}),
-			TotalTxs: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "consensus",
-				Name:      "total_txs",
-				Help:      "Total number of transactions.",
-			}, []string{}),
-		}, &p2p.Metrics{
-			Peers: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "p2p",
-				Name:      "peers",
-				Help:      "Number of peers.",
-			}, []string{}),
-		}, &mempl.Metrics{
-			Size: prometheus.NewGaugeFrom(stdprometheus.GaugeOpts{
-				Subsystem: "mempool",
-				Name:      "size",
-				Help:      "Size of the mempool (number of uncommitted transactions).",
-			}, []string{}),
-		}
+	return prometrics.Consensus(), prometrics.P2P(), prometrics.Mempool()
 }
 
 // NopMetricsProvider returns consensus, p2p and mempool Metrics as no-op.

@@ -8,6 +8,7 @@ import (
 // Metrics contains metrics exposed by this package.
 // see MetricsProvider for descriptions.
 type Metrics struct {
+	// Size of the mempool.
 	Size metrics.Gauge
 }
 

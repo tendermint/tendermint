@@ -6,24 +6,35 @@ import (
 )
 
 // Metrics contains metrics exposed by this package.
-// see MetricsProvider for descriptions.
 type Metrics struct {
+	// Height of the chain.
 	Height metrics.Gauge
 
+	// Number of rounds.
 	Rounds metrics.Gauge
 
-	Validators               metrics.Gauge
-	ValidatorsPower          metrics.Gauge
-	MissingValidators        metrics.Gauge
-	MissingValidatorsPower   metrics.Gauge
-	ByzantineValidators      metrics.Gauge
+	// Number of validators.
+	Validators metrics.Gauge
+	// Total power of all validators.
+	ValidatorsPower metrics.Gauge
+	// Number of validators who did not sign.
+	MissingValidators metrics.Gauge
+	// Total power of the missing validators.
+	MissingValidatorsPower metrics.Gauge
+	// Number of validators who tried to double sign.
+	ByzantineValidators metrics.Gauge
+	// Total power of the byzantine validators.
 	ByzantineValidatorsPower metrics.Gauge
 
+	// Time between this and the last block.
 	BlockIntervalSeconds metrics.Histogram
 
-	NumTxs         metrics.Gauge
+	// Number of transactions.
+	NumTxs metrics.Gauge
+	// Size of the block.
 	BlockSizeBytes metrics.Gauge
-	TotalTxs       metrics.Gauge
+	// Total number of transactions.
+	TotalTxs metrics.Gauge
 }
 
 // NopMetrics returns no-op Metrics.

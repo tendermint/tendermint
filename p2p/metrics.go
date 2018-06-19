@@ -6,8 +6,8 @@ import (
 )
 
 // Metrics contains metrics exposed by this package.
-// see MetricsProvider for descriptions.
 type Metrics struct {
+	// Number of peers.
 	Peers metrics.Gauge
 }
 
