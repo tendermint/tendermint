@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.1
+
+*June 18th, 2018*
+
+BUG FIXES
+
+- [consensus] Fix #1754 where we don't make blocks when `create_empty_blocks=false`
+- [mempool] Fix #1761 where we don't process txs if `cache_size=0`
+
 ## 0.20.0
 
 *June 6th, 2018*
