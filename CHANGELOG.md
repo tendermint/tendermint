@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.1
+
+*June 18th, 2018*
+
+BUG FIXES
+
+[consensus] Fix #1754 where we don't make blocks when `create_empty_blocks=false`
+
 ## 0.20.0
 
 *June 6th, 2018*
