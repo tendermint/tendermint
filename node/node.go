@@ -524,7 +524,7 @@ func (n *Node) OnStart() error {
 	}
 
 	if n.config.Instrumentation.Prometheus {
-		n.prometheusSrv = n.StartPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
+		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
 	}
 
 	// Start the switch (the P2P server).
@@ -650,19 +650,19 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	return listeners, nil
 }
 
-// StartPrometheusServer starts a Prometheus HTTP server, listening for metrics
+// startPrometheusServer starts a Prometheus HTTP server, listening for metrics
 // collectors on addr.
-func (n *Node) StartPrometheusServer(addr string) *http.Server {
+func (n *Node) startPrometheusServer(addr string) *http.Server {
 	srv := &http.Server{
 		Addr:    addr,
 		Handler: promhttp.Handler(),
 	}
-	go func(s *http.Server, logger log.Logger) {
-		if err := s.ListenAndServe(); err != http.ErrServerClosed {
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
 			// Error starting or closing listener:
-			logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
 		}
-	}(srv, n.Logger)
+	}()
 	return srv
 }
 
