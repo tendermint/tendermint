@@ -45,6 +45,14 @@ func (memR *MempoolReactor) SetLogger(l log.Logger) {
 	memR.Mempool.SetLogger(l)
 }
 
+// OnStart implements p2p.BaseReactor.
+func (memR *MempoolReactor) OnStart() error {
+	if !memR.config.Broadcast {
+		memR.Logger.Info("Tx broadcasting is disabled")
+	}
+	return nil
+}
+
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
 func (memR *MempoolReactor) GetChannels() []*p2p.ChannelDescriptor {
@@ -103,7 +111,6 @@ type PeerState interface {
 // Send new mempool txs to peer.
 func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 	if !memR.config.Broadcast {
-		memR.Logger.Info("Tx broadcasting is disabled")
 		return
 	}
 
