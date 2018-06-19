@@ -328,11 +328,11 @@ func (mem *Mempool) notifyTxsAvailable() {
 		panic("notified txs available but mempool is empty!")
 	}
 	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
+		// channel cap is 1, so this will send once
 		select {
 		case mem.txsAvailable <- mem.height + 1:
 		default:
 		}
-
 		mem.notifiedTxsAvailable = true
 	}
 }

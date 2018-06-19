@@ -103,6 +103,7 @@ type PeerState interface {
 // Send new mempool txs to peer.
 func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 	if !memR.config.Broadcast {
+		memR.Logger.Info("Tx broadcasting is disabled")
 		return
 	}
 
@@ -129,7 +130,8 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		height := memTx.Height()
 		if peerState_i := peer.Get(types.PeerStateKey); peerState_i != nil {
 			peerState := peerState_i.(PeerState)
-			if peerState.GetHeight() < height-1 { // Allow for a lag of 1 block
+			peerHeight := peerState.GetHeight()
+			if peerHeight < height-1 { // Allow for a lag of 1 block
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
