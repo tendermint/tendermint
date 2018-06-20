@@ -87,8 +87,16 @@ type Mempool struct {
 	metrics *Metrics
 }
 
+// MempoolOption sets an optional parameter on the Mempool.
+type MempoolOption func(*Mempool)
+
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64, options ...func(*Mempool)) *Mempool {
+func NewMempool(
+	config *cfg.MempoolConfig,
+	proxyAppConn proxy.AppConnMempool,
+	height int64,
+	options ...MempoolOption,
+) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -122,10 +130,8 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 }
 
 // WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) func(*Mempool) {
-	return func(mem *Mempool) {
-		mem.metrics = metrics
-	}
+func WithMetrics(metrics *Metrics) MempoolOption {
+	return func(mem *Mempool) { mem.metrics = metrics }
 }
 
 // CloseWAL closes and discards the underlying WAL file.

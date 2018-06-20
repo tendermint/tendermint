@@ -77,8 +77,11 @@ type Switch struct {
 	metrics *Metrics
 }
 
+// SwitchOption sets an optional parameter on the Switch.
+type SwitchOption func(*Switch)
+
 // NewSwitch creates a new Switch with the given config.
-func NewSwitch(cfg *config.P2PConfig, options ...func(*Switch)) *Switch {
+func NewSwitch(cfg *config.P2PConfig, options ...SwitchOption) *Switch {
 	sw := &Switch{
 		config:       cfg,
 		reactors:     make(map[string]Reactor),
@@ -111,10 +114,8 @@ func NewSwitch(cfg *config.P2PConfig, options ...func(*Switch)) *Switch {
 }
 
 // WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) func(*Switch) {
-	return func(sw *Switch) {
-		sw.metrics = metrics
-	}
+func WithMetrics(metrics *Metrics) SwitchOption {
+	return func(sw *Switch) { sw.metrics = metrics }
 }
 
 //---------------------------------------------------------------------

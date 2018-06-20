@@ -120,8 +120,19 @@ type ConsensusState struct {
 	metrics *Metrics
 }
 
+// CSOption sets an optional parameter on the ConsensusState.
+type CSOption func(*ConsensusState)
+
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore sm.BlockStore, mempool sm.Mempool, evpool sm.EvidencePool, options ...func(*ConsensusState)) *ConsensusState {
+func NewConsensusState(
+	config *cfg.ConsensusConfig,
+	state sm.State,
+	blockExec *sm.BlockExecutor,
+	blockStore sm.BlockStore,
+	mempool sm.Mempool,
+	evpool sm.EvidencePool,
+	options ...CSOption,
+) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		blockExec:        blockExec,
@@ -169,10 +180,8 @@ func (cs *ConsensusState) SetEventBus(b *types.EventBus) {
 }
 
 // WithMetrics sets the metrics.
-func WithMetrics(metrics *Metrics) func(*ConsensusState) {
-	return func(cs *ConsensusState) {
-		cs.metrics = metrics
-	}
+func WithMetrics(metrics *Metrics) CSOption {
+	return func(cs *ConsensusState) { cs.metrics = metrics }
 }
 
 // String returns a string.
@@ -1338,8 +1347,9 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 
 	if height > 1 {
 		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
-		cs.metrics.BlockIntervalSeconds.
-			Observe(block.Time.Sub(lastBlockMeta.Header.Time).Seconds())
+		cs.metrics.BlockIntervalSeconds.Observe(
+			block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
+		)
 	}
 
 	cs.metrics.NumTxs.Set(float64(block.NumTxs))

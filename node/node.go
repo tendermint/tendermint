@@ -22,7 +22,6 @@ import (
 	cs "github.com/tendermint/tendermint/consensus"
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
-	prometrics "github.com/tendermint/tendermint/metrics/prometheus"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/pex"
 	"github.com/tendermint/tendermint/privval"
@@ -96,7 +95,7 @@ type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 // DefaultMetricsProvider returns consensus, p2p and mempool Metrics build
 // using Prometheus client library.
 func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
-	return prometrics.Consensus(), prometrics.P2P(), prometrics.Mempool()
+	return cs.PrometheusMetrics(), p2p.PrometheusMetrics(), mempl.PrometheusMetrics()
 }
 
 // NopMetricsProvider returns consensus, p2p and mempool Metrics as no-op.
@@ -243,8 +242,12 @@ func NewNode(config *cfg.Config,
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
-	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight,
-		mempl.WithMetrics(memplMetrics))
+	mempool := mempl.NewMempool(
+		config.Mempool,
+		proxyApp.Mempool(),
+		state.LastBlockHeight,
+		mempl.WithMetrics(memplMetrics),
+	)
 	mempool.SetLogger(mempoolLogger)
 	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
@@ -275,8 +278,15 @@ func NewNode(config *cfg.Config,
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
-	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
-		blockExec, blockStore, mempool, evidencePool, cs.WithMetrics(csMetrics))
+	consensusState := cs.NewConsensusState(
+		config.Consensus,
+		state.Copy(),
+		blockExec,
+		blockStore,
+		mempool,
+		evidencePool,
+		cs.WithMetrics(csMetrics),
+	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
