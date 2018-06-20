@@ -12,12 +12,20 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/netutil"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tmlibs/log"
 )
 
-func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger) (listener net.Listener, err error) {
+// Config is an RPC server configuration.
+type Config struct {
+	MaxOpenConnections int
+}
+
+// StartHTTPServer starts an HTTP server on listenAddr with the given handler.
+// It wraps handler with RecoverAndLogHandler.
+func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger, config Config) (listener net.Listener, err error) {
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
@@ -30,6 +38,9 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger)
 	if err != nil {
 		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
 	}
+	if config.MaxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
+	}
 
 	go func() {
 		err := http.Serve(
@@ -41,7 +52,10 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger)
 	return listener, nil
 }
 
-func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, keyFile string, logger log.Logger) (listener net.Listener, err error) {
+// StartHTTPAndTLSServer starts an HTTPS server on listenAddr with the given
+// handler.
+// It wraps handler with RecoverAndLogHandler.
+func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, keyFile string, logger log.Logger, config Config) (listener net.Listener, err error) {
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
@@ -53,6 +67,9 @@ func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, ke
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
 		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
+	}
+	if config.MaxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
 	}
 
 	go func() {

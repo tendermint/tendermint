@@ -16,10 +16,10 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
-	"github.com/tendermint/tendermint/crypto"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -562,7 +562,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
+		listener, err := rpcserver.StartHTTPServer(
+			listenAddr,
+			mux,
+			rpcLogger,
+			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -572,7 +577,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		listener, err := grpccore.StartGRPCServer(grpcListenAddr)
+		listener, err := grpccore.StartGRPCServer(
+			grpcListenAddr,
+			grpccore.Config{
+				MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections,
+			},
+		)
 		if err != nil {
 			return nil, err
 		}

@@ -362,6 +362,7 @@
     "http2/hpack",
     "idna",
     "internal/timeseries",
+    "netutil",
     "trace"
   ]
   revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
