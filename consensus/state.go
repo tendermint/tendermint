@@ -460,9 +460,12 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 
 	// If state isn't further out than cs.state, just ignore.
 	// This happens when SwitchToConsensus() is called in the reactor.
-	// We don't want to reset e.g. the Votes.
+	// We don't want to reset e.g. the Votes, but we still want to
+	// signal the new round step, because other services (eg. mempool)
+	// depend on having an up-to-date peer state!
 	if !cs.state.IsEmpty() && (state.LastBlockHeight <= cs.state.LastBlockHeight) {
 		cs.Logger.Info("Ignoring updateToState()", "newHeight", state.LastBlockHeight+1, "oldHeight", cs.state.LastBlockHeight+1)
+		cs.newStep()
 		return
 	}
 
@@ -492,6 +495,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	} else {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
+
 	cs.Validators = validators
 	cs.Proposal = nil
 	cs.ProposalBlock = nil
@@ -517,7 +521,7 @@ func (cs *ConsensusState) newStep() {
 	rs := cs.RoundStateEvent()
 	cs.wal.Write(rs)
 	cs.nSteps++
-	// newStep is called by updateToStep in NewConsensusState before the eventBus is set!
+	// newStep is called by updateToState in NewConsensusState before the eventBus is set!
 	if cs.eventBus != nil {
 		cs.eventBus.PublishEventNewRoundStep(rs)
 		cs.evsw.FireEvent(types.EventNewRoundStep, &cs.RoundState)
