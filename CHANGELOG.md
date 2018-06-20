@@ -12,7 +12,7 @@ BUG FIXES
 
 - [consensus] Fix #1754 where we don't make blocks when `create_empty_blocks=false`
 - [mempool] Fix #1761 where we don't process txs if `cache_size=0`
-- [rpc] fix memory leak in Websocket (when using `/subscribe` method)
+- [rpc] Fix memory leak in Websocket (when using `/subscribe` method)
 
 ## 0.20.0
 

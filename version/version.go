@@ -10,7 +10,7 @@ const (
 var (
 	// Version is the current version of Tendermint
 	// Must be a string because scripts like dist.sh read this file.
-	Version = "0.21.0-dev"
+	Version = "0.21.0"
 
 	// GitCommit is the current HEAD set using ldflags.
 	GitCommit string
