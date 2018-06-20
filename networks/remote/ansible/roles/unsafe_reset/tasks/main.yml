@@ -1,4 +1,0 @@
-- command: "{{service}} unsafe_reset_all {{ (service != 'tendermint') | ternary('node','') }} --home /home/{{service}}/.{{service}}"
-  become_user: "{{service}}"
-  become: yes
-
