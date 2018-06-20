@@ -27,7 +27,6 @@ cd tendermint
 
 ### Get Tools & Dependencies
 
-
 ```
 make get_tools
 make get_vendor_deps
@@ -58,29 +57,14 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 make install
 ```
 
-To upgrade, there are a few options:
+To upgrade, run 
 
--  set a new `$GOPATH` and run
-   `go get github.com/tendermint/tendermint/cmd/tendermint`. This
-   makes a fresh copy of everything for the new version.
--  run `go get -u github.com/tendermint/tendermint/cmd/tendermint`,
-   where the `-u` fetches the latest updates for the repository and
-   its dependencies
--  fetch and checkout the latest master branch in
-   `$GOPATH/src/github.com/tendermint/tendermint`, and then run
-   `make get_vendor_deps && make install` as above.
-
-Note the first two options should usually work, but may fail. If they
-do, use `dep`, as above:
-
-```    
+```
 cd $GOPATH/src/github.com/tendermint/tendermint
+git pull origin master
 make get_vendor_deps
 make install
 ```
-
-Since the third option just uses `dep` right away, it should always
-work.
 
 ## Run
 
