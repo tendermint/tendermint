@@ -23,30 +23,44 @@ package.
 This section expands on the proposed types (changed and new) with their
 respective APIs.
 
+#### Switch
+
+``` go
+```
+
+#### PeerBehaviour
+
+``` go
+// PeerBehaviour is the interface that can be expected by external callers who
+// want to inform about Peer actions which should result in trust changes.
+// Currently those are the vetting of a Peer and informing about bad behaviour.
+type PeerBehaviour interface {
+	// Errored informs about any kind of Peer misbehaviour. It expects one of the
+	// ErrPeerBehaviour errors to properly assess the severity and in some cases
+	// disconnect or ban the Peer entirely.
+	Errored(*Peer, error)
+
+	// Vetted should be called if the Peer has shown to be reliable.
+	Vetted(*Peer)
+}
+```
 
 #### PeerTransport
 
-Responsible for the emitting and connecting to Peers. The implementation of
-`Peer` is left to the transport, which implies that the chosen transport
-dictates the characteristics of the implementation handed back to the `Switch`.
-
+Responsible for emitting and connecting to Peers. The implementation of `Peer`
+is left to the transport, which implies that the chosen transport dictates the
+characteristics of the implementation handed back to the `Switch`. It is the
+place where we enforce low-level guards, like dropping connections from our own
+node.
 
 ``` go
 // PeerTransport proxies incoming and outgoing peer connections.
 type PeerTransport interface {
-	fmt.Stringer
-
 	// Accept returns a newly connected Peer.
 	Accept(peerConfig) (Peer, error)
 
 	// Dial connects to a Peer.
 	Dial(NetAddress, peerConfig) (Peer, error)
-
-	// ExternalAddress is the configured address to advertise.
-	// TODO(xla): Is currently expected from the old Listener interface and
-	// shouldn't be part of the transport as it increases the surfaces and can be
-	// handled differently on the caller side.
-	ExternalAddress() NetAddress
 
 	// lifecycle methods
 	Close() error
@@ -54,7 +68,9 @@ type PeerTransport interface {
 }
 ```
 
-#### Switch
+#### PEX
+
+#### AddrBook
 
 **TODO**
 
