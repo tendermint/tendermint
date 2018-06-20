@@ -419,7 +419,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
-			css[j].mempool.CheckTx(tx, nil)
+			err := css[j].mempool.CheckTx(tx, nil)
 			assert.Nil(t, err)
 		}
 	}, css)

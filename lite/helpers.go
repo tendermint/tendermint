@@ -96,7 +96,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 }
 
 func genHeader(chainID string, height int64, txs types.Txs,
-	valset, nvalset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
+	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
 
 	return &types.Header{
 		ChainID:  chainID,
@@ -107,7 +107,7 @@ func genHeader(chainID string, height int64, txs types.Txs,
 		// LastBlockID
 		// LastCommitHash
 		ValidatorsHash:     valset.Hash(),
-		NextValidatorsHash: nvalset.Hash(),
+		NextValidatorsHash: nextValset.Hash(),
 		DataHash:           txs.Hash(),
 		AppHash:            appHash,
 		ConsensusHash:      consHash,
@@ -117,9 +117,9 @@ func genHeader(chainID string, height int64, txs types.Txs,
 
 // GenSignedHeader calls genHeader and signHeader and combines them into a SignedHeader.
 func (pkz privKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
-	valset, nvalset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) types.SignedHeader {
+	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) types.SignedHeader {
 
-	header := genHeader(chainID, height, txs, valset, nvalset, appHash, consHash, resHash)
+	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
 	check := types.SignedHeader{
 		Header: header,
 		Commit: pkz.signHeader(header, first, last),
@@ -129,12 +129,12 @@ func (pkz privKeys) GenSignedHeader(chainID string, height int64, txs types.Txs,
 
 // GenFullCommit calls genHeader and signHeader and combines them into a FullCommit.
 func (pkz privKeys) GenFullCommit(chainID string, height int64, txs types.Txs,
-	valset, nvalset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) FullCommit {
+	valset, nextValset *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) FullCommit {
 
-	header := genHeader(chainID, height, txs, valset, nvalset, appHash, consHash, resHash)
+	header := genHeader(chainID, height, txs, valset, nextValset, appHash, consHash, resHash)
 	commit := types.SignedHeader{
 		Header: header,
 		Commit: pkz.signHeader(header, first, last),
 	}
-	return NewFullCommit(commit, valset, nvalset)
+	return NewFullCommit(commit, valset, nextValset)
 }

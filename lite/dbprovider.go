@@ -148,14 +148,14 @@ func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *ty
 func (dbp *DBProvider) fillFullCommit(sh types.SignedHeader) (FullCommit, error) {
 	var chainID = sh.ChainID
 	var height = sh.Height
-	var valset, nvalset *types.ValidatorSet
+	var valset, nextValset *types.ValidatorSet
 	// Load the validator set.
 	valset, err := dbp.getValidatorSet(chainID, height)
 	if err != nil {
 		return FullCommit{}, err
 	}
 	// Load the next validator set.
-	nvalset, err = dbp.getValidatorSet(chainID, height+1)
+	nextValset, err = dbp.getValidatorSet(chainID, height+1)
 	if err != nil {
 		return FullCommit{}, err
 	}
@@ -163,6 +163,6 @@ func (dbp *DBProvider) fillFullCommit(sh types.SignedHeader) (FullCommit, error)
 	return FullCommit{
 		SignedHeader:   sh,
 		Validators:     valset,
-		NextValidators: nvalset,
+		NextValidators: nextValset,
 	}, nil
 }
