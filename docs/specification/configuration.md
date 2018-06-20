@@ -171,19 +171,30 @@ peer_query_maj23_sleep_duration = 2000
 # What indexer to use for transactions
 #
 # Options:
-#   1) "null" (default)
-#   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
-indexer = "{{ .TxIndex.Indexer }}"
+#   1) "null"
+#   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+indexer = "kv"
 
 # Comma-separated list of tags to index (by default the only tag is tx hash)
 #
 # It's recommended to index only a subset of tags due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
-index_tags = "{{ .TxIndex.IndexTags }}"
+index_tags = ""
 
 # When set to true, tells indexer to index all tags. Note this may be not
 # desirable (see the comment above). IndexTags has a precedence over
 # IndexAllTags (i.e. when given both, IndexTags will be indexed).
-index_all_tags = {{ .TxIndex.IndexAllTags }}
+index_all_tags = false
+
+##### instrumentation configuration options #####
+[instrumentation]
+
+# When true, Prometheus metrics are served under /metrics on
+# PrometheusListenAddr.
+# Check out the documentation for the list of available metrics.
+prometheus = false
+
+# Address to listen for Prometheus collector(s) connections
+prometheus_listen_addr = ":26660"
 ```

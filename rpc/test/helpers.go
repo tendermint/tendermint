@@ -122,7 +122,9 @@ func NewTendermint(app abci.Application) *nm.Node {
 	papp := proxy.NewLocalClientCreator(app)
 	node, err := nm.NewNode(config, pv, papp,
 		nm.DefaultGenesisDocProviderFunc(config),
-		nm.DefaultDBProvider, logger)
+		nm.DefaultDBProvider,
+		nm.DefaultMetricsProvider,
+		logger)
 	if err != nil {
 		panic(err)
 	}

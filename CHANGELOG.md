@@ -1,5 +1,10 @@
 # Changelog
 
+## TBD
+
+FEATURES:
+- [node] added metrics (served under /metrics using a Prometheus client; disabled by default)
+
 ## 0.20.1
 
 BUG FIXES:
