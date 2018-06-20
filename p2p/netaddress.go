@@ -196,11 +196,7 @@ func (na *NetAddress) Dial() (net.Conn, error) {
 
 // DialTimeout calls net.DialTimeout on the address.
 func (na *NetAddress) DialTimeout(timeout time.Duration) (net.Conn, error) {
-	conn, err := net.DialTimeout("tcp", na.DialString(), timeout)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
+	return net.DialTimeout("tcp", na.DialString(), timeout)
 }
 
 // Routable returns true if the address is routable.

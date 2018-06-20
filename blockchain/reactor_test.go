@@ -42,7 +42,7 @@ func newBlockchainReactor(logger log.Logger, maxBlockHeight int64) *BlockchainRe
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Next: we need to set a switch in order for peers to be added in
-	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig())
+	bcReactor.Switch = p2p.NewSwitch(cfg.DefaultP2PConfig(), nil)
 
 	// Lastly: let's add some blocks in
 	for blockHeight := int64(1); blockHeight <= maxBlockHeight; blockHeight++ {

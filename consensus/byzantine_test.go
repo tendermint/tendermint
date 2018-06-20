@@ -38,7 +38,7 @@ func TestByzantine(t *testing.T) {
 	switches := make([]*p2p.Switch, N)
 	p2pLogger := logger.With("module", "p2p")
 	for i := 0; i < N; i++ {
-		switches[i] = p2p.NewSwitch(config.P2P)
+		switches[i] = p2p.NewSwitch(config.P2P, nil)
 		switches[i].SetLogger(p2pLogger.With("validator", i))
 	}
 
@@ -90,16 +90,16 @@ func TestByzantine(t *testing.T) {
 		}
 	}()
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(t, config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		// ignore new switch s, we already made ours
 		switches[i].AddReactor("CONSENSUS", reactors[i])
 		return switches[i]
-	}, func(sws []*p2p.Switch, i, j int) {
+	}, func(t testing.TB, ss []*p2p.Switch, i, j int) {
 		// the network starts partitioned with globally active adversary
 		if i != 0 {
 			return
 		}
-		p2p.Connect2Switches(sws, i, j)
+		p2p.Connect2Switches(t, ss, i, j)
 	})
 
 	// start the non-byz state machines.
@@ -125,14 +125,14 @@ func TestByzantine(t *testing.T) {
 	// partition B
 	ind1 := getSwitchIndex(switches, peers[1])
 	ind2 := getSwitchIndex(switches, peers[2])
-	p2p.Connect2Switches(switches, ind1, ind2)
+	p2p.Connect2Switches(t, switches, ind1, ind2)
 
 	// wait for someone in the big partition (B) to make a block
 	<-eventChans[ind2]
 
 	t.Log("A block has been committed. Healing partition")
-	p2p.Connect2Switches(switches, ind0, ind1)
-	p2p.Connect2Switches(switches, ind0, ind2)
+	p2p.Connect2Switches(t, switches, ind0, ind1)
+	p2p.Connect2Switches(t, switches, ind0, ind2)
 
 	// wait till everyone makes the first new block
 	// (one of them already has)

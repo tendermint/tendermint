@@ -3,6 +3,8 @@ package p2p
 import (
 	"fmt"
 	"net"
+	"testing"
+	"time"
 
 	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -52,14 +54,21 @@ func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 
 const TEST_HOST = "localhost"
 
-// MakeConnectedSwitches returns n switches, connected according to the connect func.
-// If connect==Connect2Switches, the switches will be fully connected.
-// initSwitch defines how the i'th switch should be initialized (ie. with what reactors).
+// MakeConnectedSwitches returns n switches, connected according to the connect
+// func. If connect==Connect2Switches, the switches will be fully connected.
+// initSwitch defines how the i'th switch should be initialized (ie. with what
+// reactors).
 // NOTE: panics if any switch fails to start.
-func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
+func MakeConnectedSwitches(
+	t testing.TB,
+	cfg *config.P2PConfig,
+	n int,
+	initSwitch func(int, *Switch) *Switch,
+	connect func(testing.TB, []*Switch, int, int),
+) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(t, cfg, i, TEST_HOST, "123.123.123", initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -68,7 +77,7 @@ func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *S
 
 	for i := 0; i < n; i++ {
 		for j := i + 1; j < n; j++ {
-			connect(switches, i, j)
+			connect(t, switches, i, j)
 		}
 	}
 
@@ -76,47 +85,53 @@ func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *S
 }
 
 // Connect2Switches will connect switches i and j via net.Pipe().
-// Blocks until a connection is established.
-// NOTE: caller ensures i and j are within bounds.
-func Connect2Switches(switches []*Switch, i, j int) {
-	switchI := switches[i]
-	switchJ := switches[j]
+// Blocks until a connection is established, returns early if timeout
+// reached.
+func Connect2Switches(t testing.TB, ss []*Switch, i, j int) {
+	var (
+		addc     = make(chan struct{})
+		c0, c1   = conn.NetPipe()
+		sw0, sw1 = ss[i], ss[j]
+	)
 
-	c1, c2 := conn.NetPipe()
-
-	doneCh := make(chan struct{})
-	go func() {
-		err := switchI.addPeerWithConnection(c1)
+	addPeer := func(sw *Switch, c net.Conn, donec chan<- struct{}) {
+		p, err := upgrade(c, 10*time.Millisecond, peerConfig{
+			chDescs:      sw.chDescs,
+			mConfig:      conn.DefaultMConnConfig(),
+			nodeInfo:     sw.nodeInfo,
+			nodeKey:      *sw.nodeKey,
+			onPeerError:  sw.StopPeerForError,
+			outbound:     true,
+			p2pConfig:    *sw.config,
+			reactorsByCh: sw.reactorsByCh,
+		})
 		if err != nil {
-			panic(err)
+			t.Fatal(err)
 		}
-		doneCh <- struct{}{}
-	}()
-	go func() {
-		err := switchJ.addPeerWithConnection(c2)
-		if err != nil {
-			panic(err)
-		}
-		doneCh <- struct{}{}
-	}()
-	<-doneCh
-	<-doneCh
-}
 
-func (sw *Switch) addPeerWithConnection(conn net.Conn) error {
-	pc, err := newInboundPeerConn(conn, sw.config, sw.nodeKey.PrivKey)
-	if err != nil {
-		if err := conn.Close(); err != nil {
-			sw.Logger.Error("Error closing connection", "err", err)
+		err = sw.addPeer(p)
+		if err != nil {
+			t.Fatal(err)
 		}
-		return err
-	}
-	if err = sw.addPeer(pc); err != nil {
-		pc.CloseConn()
-		return err
+
+		donec <- struct{}{}
 	}
 
-	return nil
+	go addPeer(sw0, c0, addc)
+	go addPeer(sw1, c1, addc)
+
+	donec := make(chan struct{})
+	go func() {
+		<-addc
+		<-addc
+		close(donec)
+	}()
+
+	select {
+	case <-donec:
+	case <-time.After(20 * time.Millisecond):
+		panic("Connect2Switches timed out")
+	}
 }
 
 // StartSwitches calls sw.Start() for each given switch.
@@ -131,26 +146,42 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
+func MakeSwitch(
+	t testing.TB,
+	cfg *config.P2PConfig,
+	i int,
+	network, version string,
+	initSwitch func(int, *Switch) *Switch,
+) *Switch {
 	// new switch, add reactors
 	// TODO: let the config be passed in?
-	nodeKey := &NodeKey{
-		PrivKey: crypto.GenPrivKeyEd25519(),
+	var (
+		nodeKey = &NodeKey{
+			PrivKey: crypto.GenPrivKeyEd25519(),
+		}
+		nodeInfo = NodeInfo{
+			ID:         nodeKey.ID(),
+			Moniker:    cmn.Fmt("switch%d", i),
+			Network:    network,
+			Version:    version,
+			ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
+		}
+	)
+
+	addr, err := NewNetAddressStringWithOptionalID(nodeInof.ListenAddr)
+	if err != nil {
+		t.Fatal(err)
 	}
-	sw := NewSwitch(cfg)
+
+	transport := NewMTransport(*addr, nodeInfo, *nodeKey)
+
+	sw := NewSwitch(cfg, transport)
 	sw.SetLogger(log.TestingLogger())
-	sw = initSwitch(i, sw)
-	ni := NodeInfo{
-		ID:         nodeKey.ID(),
-		Moniker:    cmn.Fmt("switch%d", i),
-		Network:    network,
-		Version:    version,
-		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
-	}
-	for ch := range sw.reactorsByCh {
-		ni.Channels = append(ni.Channels, ch)
-	}
-	sw.SetNodeInfo(ni)
+	sw.SetNodeInfo(nodeInfo)
 	sw.SetNodeKey(nodeKey)
+	sw = initSwitch(i, sw)
+	for ch := range sw.reactorsByCh {
+		nodeInfo.Channels = append(nodeInfo.Channels, ch)
+	}
 	return sw
 }

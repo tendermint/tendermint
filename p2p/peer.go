@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"net"
 	"sync/atomic"
-	"time"
 
-	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -128,85 +126,6 @@ func newPeer(
 	return p
 }
 
-func newOutboundPeerConn(
-	addr *NetAddress,
-	config *config.P2PConfig,
-	persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-) (peerConn, error) {
-	conn, err := dial(addr, config)
-	if err != nil {
-		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
-	}
-
-	pc, err := newPeerConn(conn, config, true, persistent, ourNodePrivKey)
-	if err != nil {
-		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
-		}
-		return peerConn{}, err
-	}
-
-	// ensure dialed ID matches connection ID
-	if addr.ID != pc.ID() {
-		if cerr := conn.Close(); cerr != nil {
-			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
-		}
-		return peerConn{}, ErrSwitchAuthenticationFailure{addr, pc.ID()}
-	}
-
-	return pc, nil
-}
-
-func newInboundPeerConn(
-	conn net.Conn,
-	config *config.P2PConfig,
-	ourNodePrivKey crypto.PrivKey,
-) (peerConn, error) {
-
-	// TODO: issue PoW challenge
-
-	return newPeerConn(conn, config, false, false, ourNodePrivKey)
-}
-
-func newPeerConn(
-	rawConn net.Conn,
-	cfg *config.P2PConfig,
-	outbound, persistent bool,
-	ourNodePrivKey crypto.PrivKey,
-) (pc peerConn, err error) {
-	conn := rawConn
-
-	// Fuzz connection
-	if cfg.TestFuzz {
-		// so we have time to do peer handshakes and get set up
-		conn = FuzzConnAfterFromConfig(conn, 10*time.Second, cfg.TestFuzzConfig)
-	}
-
-	// Set deadline for secret handshake
-	dl := time.Now().Add(cfg.HandshakeTimeout)
-	if err := conn.SetDeadline(dl); err != nil {
-		return pc, cmn.ErrorWrap(
-			err,
-			"Error setting deadline while encrypting connection",
-		)
-	}
-
-	// Encrypt connection
-	conn, err = tmconn.MakeSecretConnection(conn, ourNodePrivKey)
-	if err != nil {
-		return pc, cmn.ErrorWrap(err, "Error creating peer")
-	}
-
-	// Only the information we already have
-	return peerConn{
-		config:     cfg,
-		outbound:   outbound,
-		persistent: persistent,
-		conn:       conn,
-	}, nil
-}
-
 //---------------------------------------------------
 // Implements cmn.Service
 
@@ -320,45 +239,6 @@ func (p *peer) hasChannel(chID byte) bool {
 // started.
 func (pc *peerConn) CloseConn() {
 	pc.conn.Close() // nolint: errcheck
-}
-
-// HandshakeTimeout performs the Tendermint P2P handshake between a given node
-// and the peer by exchanging their NodeInfo. It sets the received nodeInfo on
-// the peer.
-// NOTE: blocking
-func (pc *peerConn) HandshakeTimeout(
-	ourNodeInfo NodeInfo,
-	timeout time.Duration,
-) (peerNodeInfo NodeInfo, err error) {
-	// Set deadline for handshake so we don't block forever on conn.ReadFull
-	if err := pc.conn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error setting deadline")
-	}
-
-	var trs, _ = cmn.Parallel(
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.MarshalBinaryWriter(pc.conn, ourNodeInfo)
-			return
-		},
-		func(_ int) (val interface{}, err error, abort bool) {
-			_, err = cdc.UnmarshalBinaryReader(
-				pc.conn,
-				&peerNodeInfo,
-				int64(MaxNodeInfoSize()),
-			)
-			return
-		},
-	)
-	if err := trs.FirstError(); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error during handshake")
-	}
-
-	// Remove deadline
-	if err := pc.conn.SetDeadline(time.Time{}); err != nil {
-		return peerNodeInfo, cmn.ErrorWrap(err, "Error removing deadline")
-	}
-
-	return peerNodeInfo, nil
 }
 
 // Addr returns peer's remote network address.

@@ -84,6 +84,16 @@ func TestPEXReactorRunning(t *testing.T) {
 	// create switches
 	for i := 0; i < N; i++ {
 		switches[i] = p2p.MakeSwitch(cfg, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
+			addr, err := p2p.NewNetAddressStringWithOptionalID(sw.NodeInfo().ListenAddr)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			transport := p2p.NewMTransport(*addr, sw.NodeInfo(), *sw.NodeKey())
+			p2p.MultiplexTransportMConfig(conn.DefaultMConnConfig())
+
+			sw.SetTransport(transport)
+
 			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
 			books[i].SetLogger(logger.With("pex", i))
 			sw.SetAddrBook(books[i])
@@ -108,14 +118,12 @@ func TestPEXReactorRunning(t *testing.T) {
 	addOtherNodeAddrToAddrBook(1, 0)
 	addOtherNodeAddrToAddrBook(2, 1)
 
-	for i, sw := range switches {
-		sw.AddListener(p2p.NewDefaultListener("tcp", sw.NodeInfo().ListenAddr, true, logger.With("pex", i)))
-
+	for _, sw := range switches {
 		err := sw.Start() // start switch and reactors
 		require.Nil(t, err)
 	}
 
-	assertPeersWithTimeout(t, switches, 10*time.Millisecond, 10*time.Second, N-1)
+	assertPeersWithTimeout(t, switches, 10*time.Millisecond, 100*time.Millisecond, N-1)
 
 	// stop them
 	for _, s := range switches {
@@ -228,14 +236,16 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 			return sw
 		},
 	)
-	seed.AddListener(
-		p2p.NewDefaultListener(
-			"tcp",
-			seed.NodeInfo().ListenAddr,
-			true,
-			log.TestingLogger(),
-		),
-	)
+
+	addr, err := p2p.NewNetAddressStringWithOptionalID(seed.NodeInfo().ListenAddr)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	transport := p2p.NewMTransport(*addr, seed.NodeInfo(), *seed.NodeKey())
+	p2p.MultiplexTransportMConfig(conn.DefaultMConnConfig())
+	seed.SetTransport(transport)
+
 	require.Nil(t, seed.Start())
 	defer seed.Stop()
 

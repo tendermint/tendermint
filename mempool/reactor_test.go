@@ -35,7 +35,7 @@ func mempoolLogger() log.Logger {
 }
 
 // connect N mempool reactors through N switches
-func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor {
+func makeAndConnectMempoolReactors(t *testing.T, config *cfg.Config, N int) []*MempoolReactor {
 	reactors := make([]*MempoolReactor, N)
 	logger := mempoolLogger()
 	for i := 0; i < N; i++ {
@@ -47,7 +47,7 @@ func makeAndConnectMempoolReactors(config *cfg.Config, N int) []*MempoolReactor 
 		reactors[i].SetLogger(logger.With("validator", i))
 	}
 
-	p2p.MakeConnectedSwitches(config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
+	p2p.MakeConnectedSwitches(t, config.P2P, N, func(i int, s *p2p.Switch) *p2p.Switch {
 		s.AddReactor("MEMPOOL", reactors[i])
 		return s
 
@@ -101,7 +101,7 @@ const (
 func TestReactorBroadcastTxMessage(t *testing.T) {
 	config := cfg.TestConfig()
 	const N = 4
-	reactors := makeAndConnectMempoolReactors(config, N)
+	reactors := makeAndConnectMempoolReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			r.Stop()
@@ -121,7 +121,7 @@ func TestBroadcastTxForPeerStopsWhenPeerStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectMempoolReactors(config, N)
+	reactors := makeAndConnectMempoolReactors(t, config, N)
 	defer func() {
 		for _, r := range reactors {
 			r.Stop()
@@ -144,7 +144,7 @@ func TestBroadcastTxForPeerStopsWhenReactorStops(t *testing.T) {
 
 	config := cfg.TestConfig()
 	const N = 2
-	reactors := makeAndConnectMempoolReactors(config, N)
+	reactors := makeAndConnectMempoolReactors(t, config, N)
 
 	// stop reactors
 	for _, r := range reactors {
