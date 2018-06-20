@@ -61,10 +61,6 @@ type PeerTransport interface {
 
 	// Dial connects to a Peer.
 	Dial(NetAddress, peerConfig) (Peer, error)
-
-	// lifecycle methods
-	Close() error
-	Listen(NetAddress) error
 }
 ```
 
