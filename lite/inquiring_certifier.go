@@ -95,7 +95,7 @@ func (ic *InquiringCertifier) Certify(shdr types.SignedHeader) error {
 	}
 
 	// Get the next validator set.
-	nvalset, err := ic.source.ValidatorSet(ic.chainID, shdr.Height+1)
+	nextValset, err := ic.source.ValidatorSet(ic.chainID, shdr.Height+1)
 	if lerr.IsErrMissingValidators(err) {
 		// Ignore this error.
 		return nil
@@ -106,7 +106,7 @@ func (ic *InquiringCertifier) Certify(shdr types.SignedHeader) error {
 		nfc := FullCommit{
 			SignedHeader:   shdr,
 			Validators:     tfc.NextValidators,
-			NextValidators: nvalset,
+			NextValidators: nextValset,
 		}
 		// Validate the full commit.  This checks the cryptographic
 		// signatures of Commit against Validators.

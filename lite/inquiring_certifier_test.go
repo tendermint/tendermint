@@ -28,12 +28,12 @@ func TestInquirerValidPath(t *testing.T) {
 	fcz := make([]FullCommit, count)
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(vote, 0)
-		nvals := nkeys.ToValidators(vote, 0)
+		nextVals := nkeys.ToValidators(vote, 0)
 		h := int64(1 + i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		fcz[i] = keys.GenFullCommit(
 			chainID, h, nil,
-			vals, nvals,
+			vals, nextVals,
 			appHash, consHash, resHash, 0, len(keys))
 		// Extend the keys by 1 each time.
 		keys = nkeys
@@ -85,13 +85,13 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	fcz := make([]FullCommit, count)
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(vote, 0)
-		nvals := nkeys.ToValidators(vote, 0)
+		nextVals := nkeys.ToValidators(vote, 0)
 		h := int64(1 + i)
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		resHash := []byte(fmt.Sprintf("res=%d", h))
 		fcz[i] = keys.GenFullCommit(
 			chainID, h, nil,
-			vals, nvals,
+			vals, nextVals,
 			appHash, consHash, resHash, 0, len(keys))
 		// Extend the keys by 1 each time.
 		keys = nkeys

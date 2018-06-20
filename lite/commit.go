@@ -20,11 +20,11 @@ type FullCommit struct {
 }
 
 // NewFullCommit returns a new FullCommit.
-func NewFullCommit(signedHeader types.SignedHeader, valset, nvalset *types.ValidatorSet) FullCommit {
+func NewFullCommit(signedHeader types.SignedHeader, valset, nextValset *types.ValidatorSet) FullCommit {
 	return FullCommit{
 		SignedHeader:   signedHeader,
 		Validators:     valset,
-		NextValidators: nvalset,
+		NextValidators: nextValset,
 	}
 }
 

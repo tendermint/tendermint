@@ -53,7 +53,7 @@ func (p *provider) LatestFullCommit(chainID string, minHeight, maxHeight int64) 
 		return
 	}
 	if maxHeight != 0 && maxHeight < minHeight {
-		err = fmt.Errorf("need maxHeight == 0 or minHeight <= maxHeight, got %v and %v",
+		err = fmt.Errorf("need maxHeight == 0 or minHeight <= maxHeight, got min %v and max %v",
 			minHeight, maxHeight)
 		return
 	}
@@ -95,7 +95,7 @@ func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.
 		return
 	}
 	if height < 1 {
-		err = fmt.Errorf("expected height >= 1, got %v", height)
+		err = fmt.Errorf("expected height >= 1, got height %v", height)
 		return
 	}
 	heightPtr := new(int64)
@@ -122,11 +122,11 @@ func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.Full
 	fc.Validators = valset
 
 	// Get the next validators.
-	nvalset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height+1)
+	nextValset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height+1)
 	if err != nil {
 		return lite.FullCommit{}, err
 	} else {
-		fc.NextValidators = nvalset
+		fc.NextValidators = nextValset
 	}
 
 	return fc, nil
