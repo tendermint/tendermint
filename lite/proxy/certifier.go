@@ -6,22 +6,24 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
-func GetCertifier(chainID, rootDir, nodeAddr string) (*lite.InquiringCertifier, error) {
+func GetCertifier(chainID, rootDir string, client lclient.SignStatusClient) (*lite.InquiringCertifier, error) {
 	trust := lite.NewMultiProvider(
-		lite.NewDBProvider(dbm.NewMemDB()),
+		lite.NewDBProvider(dbm.NewMemDB()).SetLimit(10),
 		lite.NewDBProvider(dbm.NewDB("trust-base", dbm.LevelDBBackend, rootDir)),
 	)
+	source := lclient.NewProvider(chainID, client)
 
-	source := lclient.NewHTTPProvider(chainID, nodeAddr)
-
-	// XXX: total insecure hack to avoid `init`
-	fc, err := source.LatestFullCommit(chainID, 1, 1)
+	// TODO: Make this more secure, e.g. make it interactive in the console?
+	_, err := trust.LatestFullCommit(chainID, 1, 1<<63-1)
 	if err != nil {
-		return nil, err
-	}
-	err = trust.SaveFullCommit(fc)
-	if err != nil {
-		return nil, err
+		fc, err := source.LatestFullCommit(chainID, 1, 1)
+		if err != nil {
+			return nil, err
+		}
+		err = trust.SaveFullCommit(fc)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	cert, err := lite.NewInquiringCertifier(chainID, trust, source)

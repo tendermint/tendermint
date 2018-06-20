@@ -12,36 +12,11 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 )
 
-func signedHeaderKey(chainID string, height int64) []byte {
-	return []byte(fmt.Sprintf("%s/%010d/sh", chainID, height))
-}
-
-var signedHeaderKeyPattern = regexp.MustCompile(`([^/]+)/([0-9]*)/sh`)
-
-func parseSignedHeaderKey(key []byte) (chainID string, height int64, ok bool) {
-	submatch := signedHeaderKeyPattern.FindSubmatch(key)
-	if submatch == nil {
-		return "", 0, false
-	}
-	chainID = string(submatch[1])
-	heightStr := string(submatch[2])
-	heightInt, err := strconv.Atoi(heightStr)
-	if err != nil {
-		return "", 0, false
-	}
-	height = int64(heightInt)
-	ok = true // good!
-	return
-}
-
-func validatorSetKey(chainID string, height int64) []byte {
-	return []byte(fmt.Sprintf("%s/%010d/vs", chainID, height))
-}
-
 type DBProvider struct {
 	chainID string
 	db      dbm.DB
 	cdc     *amino.Codec
+	limit   int
 }
 
 func NewDBProvider(db dbm.DB) *DBProvider {
@@ -49,6 +24,11 @@ func NewDBProvider(db dbm.DB) *DBProvider {
 	cdc := amino.NewCodec()
 	crypto.RegisterAmino(cdc)
 	dbp := &DBProvider{db: db, cdc: cdc}
+	return dbp
+}
+
+func (dbp *DBProvider) SetLimit(limit int) *DBProvider {
+	dbp.limit = limit
 	return dbp
 }
 
@@ -85,6 +65,13 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
 	// And write sync.
 	batch.WriteSync()
+
+	// Garbage collect.
+	// TODO: optimize later.
+	if dbp.limit > 0 {
+		dbp.deleteAfterN(fc.ChainID(), dbp.limit)
+	}
+
 	return nil
 }
 
@@ -165,4 +152,82 @@ func (dbp *DBProvider) fillFullCommit(sh types.SignedHeader) (FullCommit, error)
 		Validators:     valset,
 		NextValidators: nextValset,
 	}, nil
+}
+
+func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
+	itr := dbp.db.ReverseIterator(
+		signedHeaderKey(chainID, 1<<63-1),
+		signedHeaderKey(chainID, 0),
+	)
+	defer itr.Close()
+
+	var lastHeight int64 = 1<<63 - 1
+	var numSeen = 0
+
+	for itr.Valid() {
+		key := itr.Key()
+		_, height, ok := parseChainKeyPrefix(key)
+		if !ok {
+			return fmt.Errorf("unexpected key %v", key)
+		} else {
+			if height < lastHeight {
+				lastHeight = height
+				numSeen += 1
+			}
+			if numSeen > after {
+				dbp.db.Delete(key)
+			}
+		}
+	}
+	return nil
+}
+
+//----------------------------------------
+
+func signedHeaderKey(chainID string, height int64) []byte {
+	return []byte(fmt.Sprintf("%s/%010d/sh", chainID, height))
+}
+
+var signedHeaderKeyPattern = regexp.MustCompile(`([^/]+)/([0-9]*)/sh`)
+
+func parseSignedHeaderKey(key []byte) (chainID string, height int64, ok bool) {
+	submatch := signedHeaderKeyPattern.FindSubmatch(key)
+	if submatch == nil {
+		return "", 0, false
+	}
+	chainID = string(submatch[1])
+	heightStr := string(submatch[2])
+	heightInt, err := strconv.Atoi(heightStr)
+	if err != nil {
+		return "", 0, false
+	}
+	height = int64(heightInt)
+	ok = true // good!
+	return
+}
+
+func validatorSetKey(chainID string, height int64) []byte {
+	return []byte(fmt.Sprintf("%s/%010d/vs", chainID, height))
+}
+
+func chainKeyPrefix(chainID string, height int64) []byte {
+	return []byte(fmt.Sprintf("%s/%010d/", chainID, height))
+}
+
+var chainKeyPrefixPattern = regexp.MustCompile(`([^/]+)/([0-9]*)/`)
+
+func parseChainKeyPrefix(key []byte) (chainID string, height int64, ok bool) {
+	submatch := chainKeyPrefixPattern.FindSubmatch(key)
+	if submatch == nil {
+		return "", 0, false
+	}
+	chainID = string(submatch[1])
+	heightStr := string(submatch[2])
+	heightInt, err := strconv.Atoi(heightStr)
+	if err != nil {
+		return "", 0, false
+	}
+	height = int64(heightInt)
+	ok = true // good!
+	return
 }
