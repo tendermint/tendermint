@@ -3,7 +3,7 @@ package benchmarks
 import (
 	"testing"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func BenchmarkSomething(b *testing.B) {

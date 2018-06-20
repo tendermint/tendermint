@@ -5,14 +5,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/client"
 )
 
 func TestSocketClientStopForErrorDeadlock(t *testing.T) {
 	c := abcicli.NewSocketClient(":80", false)
 	err := errors.New("foo-tendermint")
 
-	// See Issue https://github.com/tendermint/abci/issues/114
+	// See Issue https://github.com/tendermint/tendermint/abci/issues/114
 	doneChan := make(chan bool)
 	go func() {
 		defer close(doneChan)

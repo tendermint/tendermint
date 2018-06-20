@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Volatile state for each Validator

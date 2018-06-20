@@ -8,6 +8,12 @@
   revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcutil"
+  packages = ["bech32"]
+  revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -20,10 +26,10 @@
   revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
 
 [[projects]]
+  branch = "master"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
-  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
-  version = "v1.2.0"
+  revision = "b008db64ef8daabb22ff6daa557f33b41d8f6ccd"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -229,19 +235,6 @@
   revision = "e2150783cd35f5b607daca48afd8c57ec54cc995"
 
 [[projects]]
-  name = "github.com/tendermint/abci"
-  packages = [
-    "client",
-    "example/code",
-    "example/counter",
-    "example/kvstore",
-    "server",
-    "types"
-  ]
-  revision = "198dccf0ddfd1bb176f87657e3286a05a6ed9540"
-  version = "v0.12.0"
-
-[[projects]]
   branch = "master"
   name = "github.com/tendermint/ed25519"
   packages = [
@@ -266,16 +259,8 @@
 [[projects]]
   name = "github.com/tendermint/tmlibs"
   packages = [
-    "autofile",
-    "cli",
-    "cli/flags",
-    "clist",
     "common",
-    "db",
-    "flowrate",
-    "log",
-    "merkle",
-    "test"
+    "log"
   ]
   revision = "692f1d86a6e2c0efa698fd1e4541b68c74ffaf38"
   version = "v0.8.4"
@@ -374,6 +359,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "62d0626fa963b25411234da915fb3b8bfc7aefffd76824d27ac1647ca2b5d489"
+  inputs-digest = "52432d1648661726cd9bebee13f25144033371c80c04007de0fd4b7208fde4ab"
   solver-name = "gps-cdcl"
   solver-version = 1

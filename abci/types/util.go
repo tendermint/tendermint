@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"sort"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 //------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ var _ sort.Interface = (Validators)(nil)
 //    Len, Less and Swap
 // are for Validators to implement sort.Interface
 // which will be used by the sort package.
-// See Issue https://github.com/tendermint/abci/issues/212
+// See Issue https://github.com/tendermint/tendermint/abci/issues/212
 
 func (v Validators) Len() int {
 	return len(v)

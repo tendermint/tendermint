@@ -6,7 +6,7 @@ import (
 
 	"github.com/tendermint/go-amino"
 	"github.com/tendermint/go-crypto"
-	"github.com/tendermint/tmlibs/merkle"
+	"github.com/tendermint/tendermint/libs/merkle"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.

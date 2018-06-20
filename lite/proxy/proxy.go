@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/tendermint/go-amino"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"github.com/tendermint/tendermint/rpc/core"
