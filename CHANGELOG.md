@@ -6,7 +6,8 @@
 
 BREAKING CHANGES
 
-- [config] Change default ports from 4665X to 2665X
+- [config] Change default ports from 4665X to 2665X. Ports over 32768 are
+  ephemeral and reserved for use by the kernel.
 
 BUG FIXES
 
