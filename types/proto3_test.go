@@ -89,4 +89,13 @@ func TestProto3Compatibility(t *testing.T) {
 	assert.NoError(t, err, "unexpected error")
 	// This works:
 	assert.Equal(t, ab, pb, "encoding doesn't match")
+
+	pb, err = proto.Marshal(&proto3.Header{})
+	assert.NoError(t, err, "unexpected error")
+	t.Log(pb)
+
+	pb, err = proto.Marshal(&proto3.Timestamp{})
+	assert.NoError(t, err, "unexpected error")
+	t.Log(pb)
+
 }
