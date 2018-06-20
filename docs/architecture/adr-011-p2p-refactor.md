@@ -66,11 +66,11 @@ type PeerTransport interface {
 
 #### PEX
 
+**TODO**
+
 #### AddrBook
 
 **TODO**
-
-
 
 ## Status
 

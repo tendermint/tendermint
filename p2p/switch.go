@@ -75,6 +75,32 @@ type Switch struct {
 	rng *cmn.Rand // seed for randomizing dial times and orders
 }
 
+type Switch struct {
+	acceptc   chan Peer
+	transport PeerTransport
+}
+
+func NewSwitch(transport PeerTransport) *Switch {
+	return &Switch{
+		acceptc:   make(chan Peer),
+		transport: transport,
+	}
+}
+
+func (sw *Switch) Start() {
+	go sw.acceptPeers(sw.acceptc)
+}
+
+func (sw *Switch) run() {
+	for {
+		select {
+		case peer := <-sw.acceptc:
+		case addr := <-sw.dialc:
+		case addr := <-sw.removec:
+		}
+	}
+}
+
 // NewSwitch creates a new Switch with the given config.
 func NewSwitch(cfg *config.P2PConfig, transport PeerTransport) *Switch {
 	sw := &Switch{
