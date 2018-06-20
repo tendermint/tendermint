@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.20.1
+
+BUG FIXES:
+
+- [rpc] fix memory leak in Websocket (when using `/subscribe` method)
+
 ## 0.20.0
 
 *June 6th, 2018*
