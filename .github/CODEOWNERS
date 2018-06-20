@@ -1,0 +1,4 @@
+# CODEOWNERS: https://help.github.com/articles/about-codeowners/
+
+# Everything goes through Bucky, Anton, Alex. For now.
+*       @ebuchman @melekes @xla

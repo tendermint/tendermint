@@ -1,0 +1,20 @@
+{% extends "!layout.html" %}
+
+{% set css_files = css_files + ["_static/custom_collapsible_code.css"] %}
+
+# sadly, I didn't find a css style way to add custom JS to a list that is automagically added to head like CSS (above) #}
+{% block extrahead %}
+<script type="text/javascript" src="_static/custom_collapsible_code.js"></script>
+{% endblock %}
+
+{% block footer %}
+<script type="text/javascript">
+    $(document).ready(function() {
+        // using this approach as we don't have access to the jQuery selectors
+        // when executing the function on load in HEAD
+        makeCodeBlocksCollapsible();
+    });
+</script>
+{% endblock %}
+
+
