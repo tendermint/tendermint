@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +17,6 @@ import (
 	rs "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tmlibs/log"
-	"github.com/gorilla/websocket"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -124,22 +124,22 @@ func TestWebsocketManagerHandler(t *testing.T) {
 	s := newWSServer()
 	defer s.Close()
 
-		// check upgrader works
-			d := websocket.Dialer{}
+	// check upgrader works
+	d := websocket.Dialer{}
 	c, dialResp, err := d.Dial("ws://"+s.Listener.Addr().String()+"/websocket", nil)
 	require.NoError(t, err)
 
-		if got, want := dialResp.StatusCode, http.StatusSwitchingProtocols; got != want {
-			t.Errorf("dialResp.StatusCode = %q, want %q", got, want)
-		}
+	if got, want := dialResp.StatusCode, http.StatusSwitchingProtocols; got != want {
+		t.Errorf("dialResp.StatusCode = %q, want %q", got, want)
+	}
 
-		// check basic functionality works
-			req, err := types.MapToRequest(amino.NewCodec(), "TestWebsocketManager", "c", map[string]interface{}{"s": "a", "i": 10})
+	// check basic functionality works
+	req, err := types.MapToRequest(amino.NewCodec(), "TestWebsocketManager", "c", map[string]interface{}{"s": "a", "i": 10})
 	require.NoError(t, err)
 	err = c.WriteJSON(req)
 	require.NoError(t, err)
 
-		var resp types.RPCResponse
+	var resp types.RPCResponse
 	err = c.ReadJSON(&resp)
 	require.NoError(t, err)
 	require.Nil(t, resp.Error)
@@ -147,13 +147,13 @@ func TestWebsocketManagerHandler(t *testing.T) {
 
 func newWSServer() *httptest.Server {
 	funcMap := map[string]*rs.RPCFunc{
-			"c": rs.NewWSRPCFunc(func(wsCtx types.WSRPCContext, s string, i int) (string, error) { return "foo", nil }, "s,i"),
-					  	}
+		"c": rs.NewWSRPCFunc(func(wsCtx types.WSRPCContext, s string, i int) (string, error) { return "foo", nil }, "s,i"),
+	}
 	wm := rs.NewWebsocketManager(funcMap, amino.NewCodec())
 	wm.SetLogger(log.TestingLogger())
 
-		mux := http.NewServeMux()
+	mux := http.NewServeMux()
 	mux.HandleFunc("/websocket", wm.WebsocketHandler)
 
-		return httptest.NewServer(mux)
+	return httptest.NewServer(mux)
 }
