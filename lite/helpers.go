@@ -103,6 +103,7 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 	}
 	// Sign it
 	signBytes := vote.SignBytes(header.ChainID)
+	// TODO Consider reworking makeVote API to return an error
 	sig, err := key.Sign(signBytes)
 	if err != nil {
 		panic(err)
