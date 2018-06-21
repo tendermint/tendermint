@@ -268,6 +268,7 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 
 func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature crypto.Signature) {
 	signature, err := locPrivKey.Sign(challenge[:])
+	// TODO(ismail): let signChallenge return an error instead
 	if err != nil {
 		panic(err)
 	}

@@ -76,7 +76,7 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 	signBytes := proposal.SignBytes(chainID)
 	sig, err := pv.privKey.Sign(signBytes)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	proposal.Signature = sig
 	return nil
@@ -86,7 +86,7 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 func (pv *MockPV) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
 	sig, err := pv.privKey.Sign(heartbeat.SignBytes(chainID))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	heartbeat.Signature = sig
 	return nil
