@@ -92,10 +92,11 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 
 	select {
 	case <-numBlocksWritten:
+		consensusState.Stop()
 		wr.Flush()
 		return b.Bytes(), nil
 	case <-time.After(1 * time.Minute):
-		wr.Flush()
+		consensusState.Stop()
 		return []byte{}, fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
