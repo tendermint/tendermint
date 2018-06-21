@@ -5,11 +5,27 @@
 FEATURES:
 - [node] added metrics (served under /metrics using a Prometheus client; disabled by default)
 
-## 0.20.1
+## 0.21.0
 
-BUG FIXES:
+*June 21th, 2018*
 
-- [rpc] fix memory leak in Websocket (when using `/subscribe` method)
+BREAKING CHANGES
+
+- [config] Change default ports from 4665X to 2665X. Ports over 32768 are
+  ephemeral and reserved for use by the kernel.
+- [cmd] `unsafe_reset_all` removes the addrbook.json
+
+IMPROVEMENT
+
+- [pubsub] Set default capacity to 0
+- [docs] Various improvements
+
+BUG FIXES
+
+- [consensus] Fix an issue where we don't make blocks after `fast_sync` when `create_empty_blocks=false`
+- [mempool] Fix #1761 where we don't process txs if `cache_size=0`
+- [rpc] Fix memory leak in Websocket (when using `/subscribe` method)
+- [config] Escape paths in config - fixes config paths on Windows
 
 ## 0.20.0
 
