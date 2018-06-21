@@ -5,6 +5,14 @@
 BREAKING CHANGES
 
 - CGO_ENABLED is no longer set to 0. Tendermint now requires a C compiler to build. Deterministic builds can still be accomplished with `make build_in_docker`.
+FEATURES:
+- [node] added metrics (served under /metrics using a Prometheus client; disabled by default)
+
+## 0.20.1
+
+BUG FIXES:
+
+- [rpc] fix memory leak in Websocket (when using `/subscribe` method)
 
 ## 0.20.0
 

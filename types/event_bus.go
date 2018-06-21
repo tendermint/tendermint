@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
-const defaultCapacity = 1000
+const defaultCapacity = 0
 
 type EventBusSubscriber interface {
 	Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error

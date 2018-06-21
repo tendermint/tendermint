@@ -52,6 +52,7 @@ ABCI, Apps, Logging, Etc
    indexing-transactions.md
    how-to-read-logs.md
    running-in-production.md
+   metrics.md
 
 Research & Specification
 ------------------------

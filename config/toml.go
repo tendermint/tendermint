@@ -233,6 +233,17 @@ index_tags = "{{ .TxIndex.IndexTags }}"
 # desirable (see the comment above). IndexTags has a precedence over
 # IndexAllTags (i.e. when given both, IndexTags will be indexed).
 index_all_tags = {{ .TxIndex.IndexAllTags }}
+
+##### instrumentation configuration options #####
+[instrumentation]
+
+# When true, Prometheus metrics are served under /metrics on
+# PrometheusListenAddr.
+# Check out the documentation for the list of available metrics.
+prometheus = {{ .Instrumentation.Prometheus }}
+
+# Address to listen for Prometheus collector(s) connections
+prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
 `
 
 /****** these are for test settings ***********/
