@@ -33,7 +33,7 @@ func TestVector(t *testing.T) {
 		ct, _ := hex.DecodeString(cts[i])
 
 		byteArr := []byte{byte(i)}
-		nonce := make([]byte, 24, 24)
+		nonce := make([]byte, 24)
 		nonce[0] = byteArr[0]
 
 		plaintext, err := aead.Open(nil, nonce, ct, byteArr)
