@@ -9,7 +9,7 @@ import (
 // Canonical json is amino's json for structs with fields in alphabetical order
 
 // TimeFormat is used for generating the sigs
-const TimeFormat = "2006-01-02T15:04:05.000Z"
+const TimeFormat = time.RFC3339Nano
 
 type CanonicalJSONBlockID struct {
 	Hash        cmn.HexBytes               `json:"hash,omitempty"`

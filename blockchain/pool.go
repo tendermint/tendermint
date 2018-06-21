@@ -29,10 +29,10 @@ eg, L = latency = 0.1s
 */
 
 const (
-	requestIntervalMS         = 100
-	maxTotalRequesters        = 1000
+	requestIntervalMS         = 2
+	maxTotalRequesters        = 600
 	maxPendingRequests        = maxTotalRequesters
-	maxPendingRequestsPerPeer = 50
+	maxPendingRequestsPerPeer = 20
 
 	// Minimum recv rate to ensure we're receiving blocks from a peer fast
 	// enough. If a peer is not sending us data at at least that rate, we
@@ -219,14 +219,12 @@ func (pool *BlockPool) RedoRequest(height int64) p2p.ID {
 	defer pool.mtx.Unlock()
 
 	request := pool.requesters[height]
-
-	if request.block == nil {
-		panic("Expected block to be non-nil")
+	peerID := request.getPeerID()
+	if peerID != p2p.ID("") {
+		// RemovePeer will redo all requesters associated with this peer.
+		pool.removePeer(peerID)
 	}
-
-	// RemovePeer will redo all requesters associated with this peer.
-	pool.removePeer(request.peerID)
-	return request.peerID
+	return peerID
 }
 
 // TODO: ensure that blocks come in order for each peer.
