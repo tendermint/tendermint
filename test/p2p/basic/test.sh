@@ -54,12 +54,12 @@ for i in `seq 1 $N`; do
 	done
 
 	# - assert block height is greater than 1
-	BLOCK_HEIGHT=`curl -s $addr/status | jq .result.sync_info.latest_block_height`
+	BLOCK_HEIGHT=`curl -s $addr/status | jq .result.sync_info.latest_block_height | jq fromjson`
 	COUNT=0
 	while [ "$BLOCK_HEIGHT" -le 1 ]; do
 		echo "Waiting for node $i to commit a block ..."
 		sleep 1
-		BLOCK_HEIGHT=`curl -s $addr/status | jq .result.sync_info.latest_block_height`
+		BLOCK_HEIGHT=`curl -s $addr/status | jq .result.sync_info.latest_block_height | jq fromjson`
 		COUNT=$((COUNT+1))
 		if [ "$COUNT" -gt "$MAX_SLEEP" ]; then
 			echo "Waited too long for node $i to commit a block"

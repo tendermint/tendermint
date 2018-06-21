@@ -316,12 +316,6 @@
   version = "0.10.1"
 
 [[projects]]
-  name = "github.com/tendermint/go-crypto"
-  packages = ["tmhash"]
-  revision = "6a6b591a3d7592a04b46af95451cb5be3b114f76"
-  version = "v0.9.0"
-
-[[projects]]
   name = "github.com/tendermint/tmlibs"
   packages = [
     "autofile",
