@@ -77,16 +77,26 @@ type Mempool struct {
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
-	cache *txCache
+	cache txCache
 
 	// A log of mempool txs
 	wal *auto.AutoFile
 
 	logger log.Logger
+
+	metrics *Metrics
 }
 
+// MempoolOption sets an optional parameter on the Mempool.
+type MempoolOption func(*Mempool)
+
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64) *Mempool {
+func NewMempool(
+	config *cfg.MempoolConfig,
+	proxyAppConn proxy.AppConnMempool,
+	height int64,
+	options ...MempoolOption,
+) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -97,9 +107,17 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		recheckCursor: nil,
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
-		cache:         newTxCache(config.CacheSize),
+		metrics:       NopMetrics(),
+	}
+	if config.CacheSize > 0 {
+		mempool.cache = newMapTxCache(config.CacheSize)
+	} else {
+		mempool.cache = nopTxCache{}
 	}
 	proxyAppConn.SetResponseCallback(mempool.resCb)
+	for _, option := range options {
+		option(mempool)
+	}
 	return mempool
 }
 
@@ -113,6 +131,11 @@ func (mem *Mempool) EnableTxsAvailable() {
 // SetLogger sets the Logger.
 func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
+}
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) MempoolOption {
+	return func(mem *Mempool) { mem.metrics = metrics }
 }
 
 // CloseWAL closes and discards the underlying WAL file.
@@ -250,6 +273,7 @@ func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 	} else {
 		mem.resCbRecheck(req, res)
 	}
+	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
 func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
@@ -328,11 +352,11 @@ func (mem *Mempool) notifyTxsAvailable() {
 		panic("notified txs available but mempool is empty!")
 	}
 	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
+		// channel cap is 1, so this will send once
 		select {
 		case mem.txsAvailable <- mem.height + 1:
 		default:
 		}
-
 		mem.notifiedTxsAvailable = true
 	}
 }
@@ -393,6 +417,7 @@ func (mem *Mempool) Update(height int64, txs types.Txs) error {
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
 	}
+	mem.metrics.Size.Set(float64(mem.Size()))
 	return nil
 }
 
@@ -448,33 +473,42 @@ func (memTx *mempoolTx) Height() int64 {
 
 //--------------------------------------------------------------------------------
 
-// txCache maintains a cache of transactions.
-type txCache struct {
+type txCache interface {
+	Reset()
+	Push(tx types.Tx) bool
+	Remove(tx types.Tx)
+}
+
+// mapTxCache maintains a cache of transactions.
+type mapTxCache struct {
 	mtx  sync.Mutex
 	size int
 	map_ map[string]struct{}
 	list *list.List // to remove oldest tx when cache gets too big
 }
 
-// newTxCache returns a new txCache.
-func newTxCache(cacheSize int) *txCache {
-	return &txCache{
+var _ txCache = (*mapTxCache)(nil)
+
+// newMapTxCache returns a new mapTxCache.
+func newMapTxCache(cacheSize int) *mapTxCache {
+	return &mapTxCache{
 		size: cacheSize,
 		map_: make(map[string]struct{}, cacheSize),
 		list: list.New(),
 	}
 }
 
-// Reset resets the txCache to empty.
-func (cache *txCache) Reset() {
+// Reset resets the cache to an empty state.
+func (cache *mapTxCache) Reset() {
 	cache.mtx.Lock()
 	cache.map_ = make(map[string]struct{}, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }
 
-// Push adds the given tx to the txCache. It returns false if tx is already in the cache.
-func (cache *txCache) Push(tx types.Tx) bool {
+// Push adds the given tx to the cache and returns true. It returns false if tx
+// is already in the cache.
+func (cache *mapTxCache) Push(tx types.Tx) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
 
@@ -496,8 +530,16 @@ func (cache *txCache) Push(tx types.Tx) bool {
 }
 
 // Remove removes the given tx from the cache.
-func (cache *txCache) Remove(tx types.Tx) {
+func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
 	delete(cache.map_, string(tx))
 	cache.mtx.Unlock()
 }
+
+type nopTxCache struct{}
+
+var _ txCache = (*nopTxCache)(nil)
+
+func (nopTxCache) Reset()             {}
+func (nopTxCache) Push(types.Tx) bool { return true }
+func (nopTxCache) Remove(types.Tx)    {}

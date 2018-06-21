@@ -6,9 +6,11 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/libs/clist"
 	"github.com/tendermint/tendermint/libs/log"
+
+
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -43,6 +45,14 @@ func NewMempoolReactor(config *cfg.MempoolConfig, mempool *Mempool) *MempoolReac
 func (memR *MempoolReactor) SetLogger(l log.Logger) {
 	memR.Logger = l
 	memR.Mempool.SetLogger(l)
+}
+
+// OnStart implements p2p.BaseReactor.
+func (memR *MempoolReactor) OnStart() error {
+	if !memR.config.Broadcast {
+		memR.Logger.Info("Tx broadcasting is disabled")
+	}
+	return nil
 }
 
 // GetChannels implements Reactor.
@@ -129,7 +139,8 @@ func (memR *MempoolReactor) broadcastTxRoutine(peer p2p.Peer) {
 		height := memTx.Height()
 		if peerState_i := peer.Get(types.PeerStateKey); peerState_i != nil {
 			peerState := peerState_i.(PeerState)
-			if peerState.GetHeight() < height-1 { // Allow for a lag of 1 block
+			peerHeight := peerState.GetHeight()
+			if peerHeight < height-1 { // Allow for a lag of 1 block
 				time.Sleep(peerCatchupSleepIntervalMS * time.Millisecond)
 				continue
 			}
