@@ -11,7 +11,7 @@ import (
 )
 
 // Test that a test vector we generated is valid. (Ensures backwards
-// compatability)
+// compatibility)
 func TestVector(t *testing.T) {
 	key, _ := hex.DecodeString("56f8de45d3c294c7675bcaf457bdd4b71c380b9b2408ce9412b348d0f08b69ee")
 	aead, err := New(key[:])
