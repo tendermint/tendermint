@@ -24,26 +24,76 @@
 #   go-tests = true
 #   unused-packages = true
 
+
 [[constraint]]
-  name = "github.com/btcsuite/btcutil"
+  name = "github.com/ebuchman/fail-test"
   branch = "master"
+
+[[constraint]]
+  name = "github.com/fortytw2/leaktest"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/go-kit/kit"
+  version = "~0.6.0"
+
+[[constraint]]
+  name = "github.com/gogo/protobuf"
+  version = "~1.0.0"
+
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  version = "~1.0.0"
+
+[[constraint]]
+  name = "github.com/gorilla/websocket"
+  version = "~1.2.0"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  version = "~0.8.0"
+
+[[constraint]]
+  name = "github.com/rcrowley/go-metrics"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "~0.0.1"
+
+[[constraint]]
+  name = "github.com/spf13/viper"
+  version = "~1.0.0"
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "1.2.1"
+  version = "~1.2.1"
 
 [[constraint]]
-  name = "github.com/tendermint/ed25519"
-  branch = "master"
+  name = "github.com/tendermint/abci"
+  version = "~0.12.0"
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"
-  version = "0.10.0-rc2"
+  version = "~0.10.1"
+
+[[override]]
+  name = "github.com/tendermint/tmlibs"
+  version = "~0.8.4"
 
 [[constraint]]
-  name = "github.com/tendermint/tmlibs"
-  version = "0.8.1"
+  name = "google.golang.org/grpc"
+  version = "~1.7.3"
+
+# this got updated and broke, so locked to an old working commit ...
+[[override]]
+  name = "google.golang.org/genproto"
+  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
 
 [prune]
   go-tests = true
   unused-packages = true
+
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  version = "0.8.0"

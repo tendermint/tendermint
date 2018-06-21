@@ -1,0 +1,29 @@
+message ResultStatus {
+  optional NodeInfo nodeInfo = 1;
+  required PubKey pubKey = 2;
+  required bytes latestBlockHash = 3;
+  required int64 latestBlockHeight = 4;
+  required int64 latestBlocktime = 5;
+}
+
+message NodeInfo {
+  required ID id = 1;
+  required string moniker = 2;
+  required string network = 3;
+  required string remoteAddr = 4;
+  required string listenAddr = 5;
+  required string version = 6;
+  repeated string other = 7;
+}
+
+message ID {
+  required string id = 1;
+}
+
+message PubKey {
+  optional PubKeyEd25519 ed25519 = 1;
+}
+
+message PubKeyEd25519 {
+  required bytes bytes = 1;
+}
