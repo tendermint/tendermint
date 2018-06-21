@@ -36,12 +36,16 @@ func TestVector(t *testing.T) {
 		nonce := make([]byte, 24)
 		nonce[0] = byteArr[0]
 
+		// Test that we get the expected plaintext on open
 		plaintext, err := aead.Open(nil, nonce, ct, byteArr)
 		if err != nil {
 			t.Errorf("%dth Open failed", i)
 			continue
 		}
 		assert.Equal(t, byteArr, plaintext)
+		// Test that sealing yields the expected ciphertext
+		ciphertext := aead.Seal(nil, nonce, plaintext, byteArr)
+		assert.Equal(t, ct, ciphertext)
 	}
 }
 
