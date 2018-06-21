@@ -2,7 +2,7 @@
 
 ## 0.21.0
 
-*June 20th, 2018*
+*June 21th, 2018*
 
 BREAKING CHANGES
 
@@ -17,7 +17,7 @@ IMPROVEMENT
 
 BUG FIXES
 
-- [consensus] Fix #1754 where we don't make blocks when `create_empty_blocks=false`
+- [consensus] Fix an issue where we don't make blocks after `fast_sync` when `create_empty_blocks=false`
 - [mempool] Fix #1761 where we don't process txs if `cache_size=0`
 - [rpc] Fix memory leak in Websocket (when using `/subscribe` method)
 - [config] Escape paths in config - fixes config paths on Windows
