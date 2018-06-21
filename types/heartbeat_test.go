@@ -31,7 +31,6 @@ func TestHeartbeatString(t *testing.T) {
 	sig, err := key.Sign([]byte("Tendermint"))
 	require.NoError(t, err)
 	hb.Signature = sig
-
 	require.Equal(t, hb.String(), "Heartbeat{1:000000000000 11/02 (0) /FF41E371B9BF.../}")
 }
 

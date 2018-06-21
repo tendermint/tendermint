@@ -14,7 +14,7 @@ import (
 
 	cmn "github.com/tendermint/tmlibs/common"
 
-	"github.com/tendermint/go-crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // An address is a []byte, but hex-encoded even in JSON.

@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/go-crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 type strHasher string

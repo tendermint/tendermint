@@ -7,7 +7,7 @@ import (
 	. "github.com/tendermint/tmlibs/test"
 
 	"testing"
-	"github.com/tendermint/go-crypto/tmhash"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 type testItem []byte
