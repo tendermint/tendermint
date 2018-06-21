@@ -68,7 +68,7 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	// First, connect a client
 	node := rpcclient.NewHTTP(nodeAddr, "/websocket")
 
-	cert, err := proxy.GetCertifier(chainID, home, nodeAddr)
+	cert, err := proxy.GetCertifier(chainID, home, node)
 	if err != nil {
 		return err
 	}

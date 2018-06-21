@@ -174,14 +174,14 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 	require.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
 }
 
-// Test we record votes from other peers
+// Test we record votes from other peers.
 func TestReactorRecordsVotes(t *testing.T) {
-	// create dummy peer
+	// Create dummy peer.
 	peer := p2pdummy.NewPeer()
 	ps := NewPeerState(peer).SetLogger(log.TestingLogger())
 	peer.Set(types.PeerStateKey, ps)
 
-	// create reactor
+	// Create reactor.
 	css := randConsensusNet(1, "consensus_reactor_records_votes_test", newMockTickerFunc(true), newPersistentKVStore)
 	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
 	reactor.SetEventBus(css[0].eventBus)
@@ -419,7 +419,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
-			css[j].mempool.CheckTx(tx, nil)
+			err := css[j].mempool.CheckTx(tx, nil)
 			assert.Nil(t, err)
 		}
 	}, css)

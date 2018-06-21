@@ -36,7 +36,7 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger)
 			listener,
 			RecoverAndLogHandler(handler, logger),
 		)
-		logger.Error("RPC HTTP server stopped", "err", err)
+		logger.Info("RPC HTTP server stopped", "err", err)
 	}()
 	return listener, nil
 }
