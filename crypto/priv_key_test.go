@@ -28,7 +28,7 @@ func TestReadPrivKey(t *testing.T) {
 
 	// garbage in, garbage out
 	garbage := []byte("hjgewugfbiewgofwgewr")
-	XXX This test wants to register BadKey globally to go-crypto,
+	XXX This test wants to register BadKey globally to crypto,
 	but we don't want to support that.
 	_, err := PrivKeyFromBytes(garbage)
 	require.Error(err)

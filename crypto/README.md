@@ -1,6 +1,6 @@
-# go-crypto
+# crypto
 
-go-crypto is the cryptographic package adapted for Tendermint's uses
+crypto is the cryptographic package adapted for Tendermint's uses
 
 ## Importing it
 `import "github.com/tendermint/tendermint/crypto"`
@@ -11,7 +11,7 @@ For Binary encoding, please refer to the [Tendermint encoding spec](https://gith
 
 ## JSON Encoding
 
-go-crypto `.Bytes()` uses Amino:binary encoding, but Amino:JSON is also supported.
+crypto `.Bytes()` uses Amino:binary encoding, but Amino:JSON is also supported.
 
 ```go
 Example Amino:JSON encodings:
