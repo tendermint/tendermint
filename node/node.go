@@ -12,11 +12,11 @@ import (
 
 	abci "github.com/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/go-crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
+	"github.com/tendermint/tendermint/crypto"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"

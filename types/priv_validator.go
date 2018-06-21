@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 // PrivValidator defines the functionality of a local Tendermint validator
@@ -63,7 +63,10 @@ func (pv *MockPV) GetPubKey() crypto.PubKey {
 // Implements PrivValidator.
 func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
 	signBytes := vote.SignBytes(chainID)
-	sig := pv.privKey.Sign(signBytes)
+	sig, err := pv.privKey.Sign(signBytes)
+	if err != nil {
+		return err
+	}
 	vote.Signature = sig
 	return nil
 }
@@ -71,14 +74,20 @@ func (pv *MockPV) SignVote(chainID string, vote *Vote) error {
 // Implements PrivValidator.
 func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 	signBytes := proposal.SignBytes(chainID)
-	sig := pv.privKey.Sign(signBytes)
+	sig, err := pv.privKey.Sign(signBytes)
+	if err != nil {
+		return err
+	}
 	proposal.Signature = sig
 	return nil
 }
 
 // signHeartbeat signs the heartbeat without any checking.
 func (pv *MockPV) SignHeartbeat(chainID string, heartbeat *Heartbeat) error {
-	sig := pv.privKey.Sign(heartbeat.SignBytes(chainID))
+	sig, err := pv.privKey.Sign(heartbeat.SignBytes(chainID))
+	if err != nil {
+		return err
+	}
 	heartbeat.Signature = sig
 	return nil
 }

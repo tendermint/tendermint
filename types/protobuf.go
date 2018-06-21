@@ -7,7 +7,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 )
 
 //-------------------------------------------------------

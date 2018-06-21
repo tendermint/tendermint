@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"

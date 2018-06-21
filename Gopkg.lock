@@ -14,6 +14,12 @@
   revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcutil"
+  packages = ["base58"]
+  revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -26,10 +32,10 @@
   revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
 
 [[projects]]
+  branch = "master"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
-  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
-  version = "v1.2.0"
+  revision = "b008db64ef8daabb22ff6daa557f33b41d8f6ccd"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -306,14 +312,8 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
-  version = "0.9.9"
-
-[[projects]]
-  name = "github.com/tendermint/go-crypto"
-  packages = ["."]
-  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
-  version = "v0.6.2"
+  revision = "2106ca61d91029c931fd54968c2bb02dc96b1412"
+  version = "0.10.1"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -336,7 +336,12 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
+    "bcrypt",
+    "blowfish",
+    "chacha20poly1305",
     "curve25519",
+    "hkdf",
+    "internal/chacha20",
     "nacl/box",
     "nacl/secretbox",
     "openpgp/armor",
@@ -364,7 +369,10 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "cpu",
+    "unix"
+  ]
   revision = "a9e25c09b96b8870693763211309e213c6ef299d"
 
 [[projects]]
@@ -426,6 +434,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3bd388e520a08cd0aa14df2d6f5ecb46449d7c36fd80cf52eb775798e6accbaa"
+  inputs-digest = "d17038089dd6383ff5028229d4026bb92f5c7adc7e9c1cd52584237e2e5fd431"
   solver-name = "gps-cdcl"
   solver-version = 1

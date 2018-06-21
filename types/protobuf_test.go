@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 )
 
 func TestABCIPubKey(t *testing.T) {

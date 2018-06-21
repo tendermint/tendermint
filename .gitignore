@@ -25,3 +25,4 @@ scripts/cutWALUntil/cutWALUntil
 *.iml
 
 libs/pubsub/query/fuzz_test/output
+shunit2

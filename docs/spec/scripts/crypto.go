@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	crypto "github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 // SECRET
@@ -12,7 +12,11 @@ var SECRET = []byte("some secret")
 func printEd() {
 	priv := crypto.GenPrivKeyEd25519FromSecret(SECRET)
 	pub := priv.PubKey().(crypto.PubKeyEd25519)
-	sig := priv.Sign([]byte("hello")).(crypto.SignatureEd25519)
+	sigV, err := priv.Sign([]byte("hello"))
+	if err != nil {
+		fmt.Println("Unexpected error:", err)
+	}
+	sig := sigV.(crypto.SignatureEd25519)
 
 	name := "tendermint/PubKeyEd25519"
 	length := len(pub[:])
@@ -66,7 +70,11 @@ func printEd() {
 func printSecp() {
 	priv := crypto.GenPrivKeySecp256k1FromSecret(SECRET)
 	pub := priv.PubKey().(crypto.PubKeySecp256k1)
-	sig := priv.Sign([]byte("hello")).(crypto.SignatureSecp256k1)
+	sigV, err := priv.Sign([]byte("hello"))
+	if err != nil {
+		fmt.Println("Unexpected error:", err)
+	}
+	sig := sigV.(crypto.SignatureSecp256k1)
 
 	name := "tendermint/PubKeySecp256k1"
 	length := len(pub[:])
