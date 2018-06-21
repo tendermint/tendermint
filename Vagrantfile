@@ -14,7 +14,7 @@ Vagrant.configure("2") do |config|
 
     # install base requirements
     apt-get install -y --no-install-recommends wget curl jq zip \
-        make shellcheck bsdmainutils psmisc
+        make shellcheck bsdmainutils psmisc build-essential
     apt-get install -y language-pack-en
 
     # install docker

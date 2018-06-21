@@ -15,7 +15,7 @@ peerID=$(( $(($ID % 4)) + 1  )) # 1->2 ... 3->4 ... 4->1
 peer_addr=$(test/p2p/ip.sh $peerID):26657
 
 # get another peer's height
-h1=`curl -s $peer_addr/status | jq .result.sync_info.latest_block_height`
+h1=`curl -s $peer_addr/status | jq .result.sync_info.latest_block_height | jq fromjson`
 
 # get another peer's state
 root1=`curl -s $peer_addr/status | jq .result.sync_info.latest_app_hash`
@@ -29,7 +29,7 @@ set +o pipefail
 h2="0"
 while [[ "$h2" -lt "$(($h1+3))" ]]; do
 	sleep 1
-	h2=`curl -s $addr/status | jq .result.sync_info.latest_block_height`
+	h2=`curl -s $addr/status | jq .result.sync_info.latest_block_height | jq fromjson`
 	echo "... $h2"
 done
 

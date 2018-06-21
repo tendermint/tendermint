@@ -267,7 +267,11 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 }
 
 func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature crypto.Signature) {
-	signature = locPrivKey.Sign(challenge[:])
+	// TODO Consider reworking signChallenge API to return an error
+	signature, err := locPrivKey.Sign(challenge[:])
+	if err != nil {
+		panic(err)
+	}
 	return
 }
 

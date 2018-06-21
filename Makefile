@@ -14,13 +14,16 @@ check: check_tools ensure_deps
 ### Build
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
+	go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+	go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+
+build_in_docker:
+	docker run --rm -it -v $(shell pwd):/go/src/github.com/tendermint/tendermint golang:1.10.2 make -C /go/src/github.com/tendermint/tendermint get_tools update_tools get_vendor_deps build
 
 ########################################
 ### Distribution
@@ -233,4 +236,4 @@ build-slate:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate
+.PHONY: check build build_race build_in_docker dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate

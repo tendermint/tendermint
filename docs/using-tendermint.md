@@ -214,7 +214,7 @@ When `tendermint init` is run, both a `genesis.json` and
         {
           "pub_key" : {
             "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-            "type" : "AC26791624DE60"
+            "type" : "tendermint/PubKeyEd25519"
           },
           "power" : 10,
           "name" : ""
@@ -229,16 +229,16 @@ And the `priv_validator.json`:
 
     {
       "last_step" : 0,
-      "last_round" : 0,
+      "last_round" : "0",
       "address" : "B788DEDE4F50AD8BC9462DE76741CCAFF87D51E2",
       "pub_key" : {
         "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-        "type" : "AC26791624DE60"
+        "type" : "tendermint/PubKeyEd25519"
       },
-      "last_height" : 0,
+      "last_height" : "0",
       "priv_key" : {
         "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
-        "type" : "954568A3288910"
+        "type" : "tendermint/PrivKeyEd25519"
       }
     }
 
@@ -348,15 +348,15 @@ Now we can update our genesis file. For instance, if the new
       "address" : "5AF49D2A2D4F5AD4C7C8C4CC2FB020131E9C4902",
       "pub_key" : {
         "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
-        "type" : "AC26791624DE60"
+        "type" : "tendermint/PubKeyEd25519"
       },
       "priv_key" : {
         "value" : "EDJY9W6zlAw+su6ITgTKg2nTZcHAH1NMTW5iwlgmNDuX1f35+OR4HMN88ZtQzsAwhETq4k3vzM3n6WTk5ii16Q==",
-        "type" : "954568A3288910"
+        "type" : "tendermint/PrivKeyEd25519"
       },
       "last_step" : 0,
-      "last_round" : 0,
-      "last_height" : 0
+      "last_round" : "0",
+      "last_height" : "0"
     }
 
 then the new `genesis.json` will be:
@@ -366,7 +366,7 @@ then the new `genesis.json` will be:
         {
           "pub_key" : {
             "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-            "type" : "AC26791624DE60"
+            "type" : "tendermint/PubKeyEd25519"
           },
           "power" : 10,
           "name" : ""
@@ -374,7 +374,7 @@ then the new `genesis.json` will be:
         {
           "pub_key" : {
             "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
-            "type" : "AC26791624DE60"
+            "type" : "tendermint/PubKeyEd25519"
           },
           "power" : 10,
           "name" : ""

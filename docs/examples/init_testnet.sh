@@ -30,7 +30,7 @@ echo "{
   \"validators\": [
     {
      \"pub_key\": {
-       \"type\": \"AC26791624DE60\",
+       \"type\": \"tendermint/PubKeyEd25519\",
        \"value\": $value0
      },
       \"power:\": 10,
@@ -38,7 +38,7 @@ echo "{
     },
     {
      \"pub_key\": {
-       \"type\": \"AC26791624DE60\",
+       \"type\": \"tendermint/PubKeyEd25519\",
        \"value\": $value1
      },
       \"power:\": 10,
@@ -46,7 +46,7 @@ echo "{
     },
     {
      \"pub_key\": {
-       \"type\": \"AC26791624DE60\",
+       \"type\": \"tendermint/PubKeyEd25519\",
        \"value\": $value2
      },
       \"power:\": 10,
@@ -54,7 +54,7 @@ echo "{
     },
     {
      \"pub_key\": {
-       \"type\": \"AC26791624DE60\",
+       \"type\": \"tendermint/PubKeyEd25519\",
        \"value\": $value3
      },
       \"power:\": 10,

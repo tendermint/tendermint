@@ -147,8 +147,9 @@ flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
 # Maximum number of peers to connect to
 max_num_peers = {{ .P2P.MaxNumPeers }}
 
-# Maximum size of a message packet payload, in bytes
-max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}
+# Maximum size of a message packet, in bytes
+# Includes a header, which is ~13 bytes
+max_packet_msg_size = {{ .P2P.MaxPacketMsgSize }}
 
 # Rate at which packets can be sent, in bytes/second
 send_rate = {{ .P2P.SendRate }}
@@ -298,10 +299,10 @@ var testGenesis = `{
   "validators": [
     {
       "pub_key": {
-        "type": "AC26791624DE60",
+        "type": "tendermint/PubKeyEd25519",
         "value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
       },
-      "power": 10,
+      "power": "10",
       "name": ""
     }
   ],
@@ -309,16 +310,16 @@ var testGenesis = `{
 }`
 
 var testPrivValidator = `{
-  "address": "849CB2C877F87A20925F35D00AE6688342D25B47",
+  "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
   "pub_key": {
-    "type": "AC26791624DE60",
+    "type": "tendermint/PubKeyEd25519",
     "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
   },
   "priv_key": {
-    "type": "954568A3288910",
+    "type": "tendermint/PrivKeyEd25519",
     "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
   },
-  "last_height": 0,
-  "last_round": 0,
+  "last_height": "0",
+  "last_round": "0",
   "last_step": 0
 }`

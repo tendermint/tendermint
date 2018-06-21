@@ -3,6 +3,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/brejski/hid"
+  packages = ["."]
+  revision = "06112dcfcc50a7e0e4fd06e17f9791e788fdaafc"
+
+[[projects]]
+  branch = "master"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
@@ -306,14 +312,17 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
-  version = "0.9.9"
+  revision = "2106ca61d91029c931fd54968c2bb02dc96b1412"
+  version = "0.10.1"
 
 [[projects]]
   name = "github.com/tendermint/go-crypto"
-  packages = ["."]
-  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
-  version = "v0.6.2"
+  packages = [
+    ".",
+    "tmhash"
+  ]
+  revision = "6a6b591a3d7592a04b46af95451cb5be3b114f76"
+  version = "v0.9.0"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -333,10 +342,16 @@
   version = "v0.8.4"
 
 [[projects]]
+  name = "github.com/zondax/ledger-goclient"
+  packages = ["."]
+  revision = "3e2146609cdb97894c064d59e9d00accd8c2b1dd"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
     "curve25519",
+    "internal/subtle",
     "nacl/box",
     "nacl/secretbox",
     "openpgp/armor",
@@ -345,7 +360,7 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "8ac0e0d97ce45cd83d1d7243c060cb8461dda5e9"
+  revision = "a8fb68e7206f8c78be19b432c58eb52a6aa34462"
 
 [[projects]]
   branch = "master"
@@ -365,7 +380,7 @@
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "a9e25c09b96b8870693763211309e213c6ef299d"
+  revision = "8014b7b116a67fea23fbb82cd834c9ad656ea44b"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -426,6 +441,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "3bd388e520a08cd0aa14df2d6f5ecb46449d7c36fd80cf52eb775798e6accbaa"
+  inputs-digest = "7c26489f4f0e2efd039c9b1b07f05ac6eb9d1424075ce6934ab8c30098386902"
   solver-name = "gps-cdcl"
   solver-version = 1
