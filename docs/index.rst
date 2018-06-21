@@ -12,24 +12,18 @@ Welcome to Tendermint!
    :width: 200px
    :align: center
 
-Tendermint 101
---------------
+Introduction
+------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   introduction.rst
-   install.rst
-   getting-started.rst
-   using-tendermint.rst
-
-Tendermint Ecosystem
---------------------
-
-.. toctree::
-   :maxdepth: 2
-
-   ecosystem.rst
+   introduction.md
+   install.md
+   getting-started.md
+   using-tendermint.md
+   deploy-testnets.md
+   ecosystem.md
 
 Tendermint Tools
 ----------------
@@ -37,38 +31,38 @@ Tendermint Tools
 .. the tools/ files are pulled in from the tools repo
 .. see the bottom of conf.py
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   deploy-testnets.rst
-   terraform-and-ansible.rst
-   tools/docker.rst
-   tools/benchmarking.rst
-   tools/monitoring.rst
+   tools/docker.md
+   terraform-and-ansible.md
+   tools/benchmarking.md
+   tools/monitoring.md
 
-Tendermint 102
---------------
-
-.. toctree::
-   :maxdepth: 2
-
-   abci-cli.rst
-   abci-spec.rst
-   app-architecture.rst
-   app-development.rst
-   subscribing-to-events-via-websocket.rst
-   indexing-transactions.rst
-   how-to-read-logs.rst
-   running-in-production.rst
-
-Tendermint 201
---------------
+ABCI, Apps, Logging, Etc
+------------------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
 
-   specification.rst
-   determinism.rst
-   transactional-semantics.rst
+   abci-cli.md
+   abci-spec.md
+   app-architecture.md
+   app-development.md
+   subscribing-to-events-via-websocket.md
+   indexing-transactions.md
+   how-to-read-logs.md
+   running-in-production.md
+
+Research & Specification
+------------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   determinism.md
+   transactional-semantics.md
+
+.. specification.md ## keep this file for legacy purpose. needs to be fixed though
 
 * For a deeper dive, see `this thesis <https://atrium.lib.uoguelph.ca/xmlui/handle/10214/9769>`__.
 * There is also the `original whitepaper <https://tendermint.com/static/docs/tendermint.pdf>`__, though it is now quite outdated.

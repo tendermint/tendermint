@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -324,12 +325,17 @@ func (n *upnpNAT) getExternalIPAddress() (info statusInfo, err error) {
 	return
 }
 
+// GetExternalAddress returns an external IP. If GetExternalIPAddress action
+// fails or IP returned is invalid, GetExternalAddress returns an error.
 func (n *upnpNAT) GetExternalAddress() (addr net.IP, err error) {
 	info, err := n.getExternalIPAddress()
 	if err != nil {
 		return
 	}
 	addr = net.ParseIP(info.externalIpAddress)
+	if addr == nil {
+		err = fmt.Errorf("Failed to parse IP: %v", info.externalIpAddress)
+	}
 	return
 }
 

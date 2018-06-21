@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	wsc := rpcclient.NewWSClient("127.0.0.1:46657", "/websocket")
+	wsc := rpcclient.NewWSClient("127.0.0.1:26657", "/websocket")
 	err := wsc.Start()
 	if err != nil {
 		cmn.Exit(err.Error())

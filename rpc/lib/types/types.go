@@ -7,7 +7,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/go-amino"
+
+	amino "github.com/tendermint/go-amino"
+
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 

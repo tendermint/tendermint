@@ -1,13 +1,9 @@
-How to read logs
-================
+# How to read logs
 
-Walk through example
---------------------
+## Walkabout example
 
 We first create three connections (mempool, consensus and query) to the
-application (running ``kvstore`` locally in this case).
-
-::
+application (running `kvstore` locally in this case).
 
     I[10-04|13:54:27.364] Starting multiAppConn                        module=proxy impl=multiAppConn
     I[10-04|13:54:27.366] Starting localClient                         module=abci-client connection=query impl=localClient
@@ -16,24 +12,20 @@ application (running ``kvstore`` locally in this case).
 
 Then Tendermint Core and the application perform a handshake.
 
-::
-
     I[10-04|13:54:27.367] ABCI Handshake                               module=consensus appHeight=90 appHash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
     I[10-04|13:54:27.368] ABCI Replay Blocks                           module=consensus appHeight=90 storeHeight=90 stateHeight=90
     I[10-04|13:54:27.368] Completed ABCI Handshake - Tendermint and App are synced module=consensus appHeight=90 appHash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
 
-After that, we start a few more things like the event switch, reactors, and
-perform UPNP discover in order to detect the IP address.
-
-::
+After that, we start a few more things like the event switch, reactors,
+and perform UPNP discover in order to detect the IP address.
 
     I[10-04|13:54:27.374] Starting EventSwitch                         module=types impl=EventSwitch
     I[10-04|13:54:27.375] This node is a validator                     module=consensus
     I[10-04|13:54:27.379] Starting Node                                module=main impl=Node
-    I[10-04|13:54:27.381] Local listener                               module=p2p ip=:: port=46656
+    I[10-04|13:54:27.381] Local listener                               module=p2p ip=:: port=26656
     I[10-04|13:54:27.382] Getting UPNP external address                module=p2p
     I[10-04|13:54:30.386] Could not perform UPNP discover              module=p2p err="write udp4 0.0.0.0:38238->239.255.255.250:1900: i/o timeout"
-    I[10-04|13:54:30.386] Starting DefaultListener                     module=p2p impl=Listener(@10.0.2.15:46656)
+    I[10-04|13:54:30.386] Starting DefaultListener                     module=p2p impl=Listener(@10.0.2.15:26656)
     I[10-04|13:54:30.387] Starting P2P Switch                          module=p2p impl="P2P Switch"
     I[10-04|13:54:30.387] Starting MempoolReactor                      module=mempool impl=MempoolReactor
     I[10-04|13:54:30.387] Starting BlockchainReactor                   module=blockchain impl=BlockchainReactor
@@ -48,28 +40,21 @@ validator". It also could be just an observer (regular node).
 
 Next we replay all the messages from the WAL.
 
-::
-
     I[10-04|13:54:30.390] Catchup by replaying consensus messages      module=consensus height=91
     I[10-04|13:54:30.390] Replay: New Step                             module=consensus height=91 round=0 step=RoundStepNewHeight
     I[10-04|13:54:30.390] Replay: Done                                 module=consensus
 
 "Started node" message signals that everything is ready for work.
 
-::
+    I[10-04|13:54:30.391] Starting RPC HTTP server on tcp socket 0.0.0.0:26657 module=rpc-server
+    I[10-04|13:54:30.392] Started node                                 module=main nodeInfo="NodeInfo{id: DF22D7C92C91082324A1312F092AA1DA197FA598DBBFB6526E, moniker: anonymous, network: test-chain-3MNw2N [remote , listen 10.0.2.15:26656], version: 0.11.0-10f361fc ([wire_version=0.6.2 p2p_version=0.5.0 consensus_version=v1/0.2.2 rpc_version=0.7.0/3 tx_index=on rpc_addr=tcp://0.0.0.0:26657])}"
 
-    I[10-04|13:54:30.391] Starting RPC HTTP server on tcp socket 0.0.0.0:46657 module=rpc-server
-    I[10-04|13:54:30.392] Started node                                 module=main nodeInfo="NodeInfo{id: DF22D7C92C91082324A1312F092AA1DA197FA598DBBFB6526E, moniker: anonymous, network: test-chain-3MNw2N [remote , listen 10.0.2.15:46656], version: 0.11.0-10f361fc ([wire_version=0.6.2 p2p_version=0.5.0 consensus_version=v1/0.2.2 rpc_version=0.7.0/3 tx_index=on rpc_addr=tcp://0.0.0.0:46657])}"
-
-Next follows a standard block creation cycle, where we enter a new round,
-propose a block, receive more than 2/3 of prevotes, then precommits and finally
-have a chance to commit a block. For details, please refer to `Consensus
-Overview
-<introduction.html#consensus-overview>`__
-or `Byzantine Consensus Algorithm
-<specification.html>`__.
-
-::
+Next follows a standard block creation cycle, where we enter a new
+round, propose a block, receive more than 2/3 of prevotes, then
+precommits and finally have a chance to commit a block. For details,
+please refer to [Consensus
+Overview](introduction.html#consensus-overview) or [Byzantine Consensus
+Algorithm](specification.html).
 
     I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus
     I[10-04|13:54:30.393] enterPropose(91/0). Current: 91/0/RoundStepNewRound module=consensus
@@ -110,56 +95,36 @@ or `Byzantine Consensus Algorithm
     I[10-04|13:54:30.410] Committed state                              module=state height=91 txs=0 hash=E0FBAFBF6FCED8B9786DDFEB1A0D4FA2501BADAD
     I[10-04|13:54:30.410] Recheck txs                                  module=mempool numtxs=0 height=91
 
-List of modules
----------------
+## List of modules
 
-Here is the list of modules you may encounter in Tendermint's log and a little
-overview what they do.
+Here is the list of modules you may encounter in Tendermint's log and a
+little overview what they do.
 
-- ``abci-client`` As mentioned in `Application Development Guide
-  <app-development.html#abci-design>`__,
-  Tendermint acts as an ABCI client with respect to the application and
-  maintains 3 connections: mempool, consensus and query. The code used by
-  Tendermint Core can be found `here
-  <https://github.com/tendermint/abci/tree/master/client>`__.
-
-- ``blockchain``
-  Provides storage, pool (a group of peers), and reactor for both storing and
-  exchanging blocks between peers.
-
-- ``consensus``
-  The heart of Tendermint core, which is the implementation of the consensus
-  algorithm. Includes two "submodules": ``wal`` (write-ahead logging) for
-  ensuring data integrity and ``replay`` to replay blocks and messages on
-  recovery from a crash.
-
-- ``events``
-  Simple event notification system. The list of events can be found
-  `here
-  <https://github.com/tendermint/tendermint/blob/master/types/events.go>`__.
-  You can subscribe to them by calling ``subscribe`` RPC method.
-  Refer to `RPC docs
-  <specification/rpc.html>`__
-  for additional information.
-
-- ``mempool``
-  Mempool module handles all incoming transactions, whenever they are
-  coming from peers or the application.
-
-- ``p2p``
-  Provides an abstraction around peer-to-peer communication. For more details,
-  please check out the `README
-  <https://github.com/tendermint/tendermint/blob/56c60fba2381e4ac41d2ae38a1eb6569acfbc095/p2p/README.md>`__.
-
-- ``rpc``
-  `Tendermint's RPC <specification/rpc.html>`__.
-
-- ``rpc-server``
-  RPC server. For implementation details, please read the `README <https://github.com/tendermint/tendermint/blob/master/rpc/lib/README.md>`__.
-
-- ``state``
-  Represents the latest state and execution submodule, which executes
-  blocks against the application.
-
-- ``types``
-  A collection of the publicly exposed types and methods to work with them.
+-   `abci-client` As mentioned in [Application Development Guide](app-development.md#abci-design),    Tendermint acts as an ABCI
+    client with respect to the application and maintains 3 connections:
+    mempool, consensus and query. The code used by Tendermint Core can
+    be found [here](https://github.com/tendermint/abci/tree/master/client).
+-   `blockchain` Provides storage, pool (a group of peers), and reactor
+    for both storing and exchanging blocks between peers.
+-   `consensus` The heart of Tendermint core, which is the
+    implementation of the consensus algorithm. Includes two
+    "submodules": `wal` (write-ahead logging) for ensuring data
+    integrity and `replay` to replay blocks and messages on recovery
+    from a crash.
+-   `events` Simple event notification system. The list of events can be
+    found
+    [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
+    You can subscribe to them by calling `subscribe` RPC method. Refer
+    to [RPC docs](specification/rpc.html) for additional information.
+-   `mempool` Mempool module handles all incoming transactions, whenever
+    they are coming from peers or the application.
+-   `p2p` Provides an abstraction around peer-to-peer communication. For
+    more details, please check out the
+    [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
+-   `rpc` [Tendermint's RPC](specification/rpc.html).
+-   `rpc-server` RPC server. For implementation details, please read the
+    [README](https://github.com/tendermint/tendermint/blob/master/rpc/lib/README.md).
+-   `state` Represents the latest state and execution submodule, which
+    executes blocks against the application.
+-   `types` A collection of the publicly exposed types and methods to
+    work with them.

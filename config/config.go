@@ -151,7 +151,7 @@ func DefaultBaseConfig() BaseConfig {
 		PrivValidator:     defaultPrivValPath,
 		NodeKey:           defaultNodeKeyPath,
 		Moniker:           defaultMoniker,
-		ProxyApp:          "tcp://127.0.0.1:46658",
+		ProxyApp:          "tcp://127.0.0.1:26658",
 		ABCI:              "socket",
 		LogLevel:          DefaultPackageLogLevels(),
 		ProfListenAddress: "",
@@ -228,7 +228,7 @@ type RPCConfig struct {
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:     "tcp://0.0.0.0:46657",
+		ListenAddress:     "tcp://0.0.0.0:26657",
 		GRPCListenAddress: "",
 		Unsafe:            false,
 	}
@@ -316,7 +316,7 @@ type P2PConfig struct {
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:           "tcp://0.0.0.0:46656",
+		ListenAddress:           "tcp://0.0.0.0:26656",
 		AddrBook:                defaultAddrBookPath,
 		AddrBookStrict:          true,
 		MaxNumPeers:             50,

@@ -3,7 +3,7 @@ version: 2
 defaults: &defaults
   working_directory: /go/src/github.com/tendermint/tendermint
   docker:
-    - image: circleci/golang:1.10.0
+    - image: circleci/golang:1.10.3
   environment:
     GOBIN: /tmp/workspace/bin
 
@@ -16,7 +16,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-pkg-cache
+            - v2-pkg-cache
       - run:
           name: tools
           command: |
@@ -38,11 +38,11 @@ jobs:
             - bin
             - profiles
       - save_cache:
-          key: v1-pkg-cache
+          key: v2-pkg-cache
           paths:
             - /go/pkg
       - save_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - /go/src/github.com/tendermint/tendermint
 
@@ -52,9 +52,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v1-pkg-cache
+          key: v2-pkg-cache
       - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Checkout abci
           command: |
@@ -83,9 +83,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v1-pkg-cache
+          key: v2-pkg-cache
       - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: slate docs
           command: |
@@ -99,9 +99,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v1-pkg-cache
+          key: v2-pkg-cache
       - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: metalinter
           command: |
@@ -115,9 +115,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v1-pkg-cache
+          key: v2-pkg-cache
       - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
       - run:
           name: Run tests
@@ -130,9 +130,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v1-pkg-cache
+          key: v2-pkg-cache
       - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: mkdir -p /tmp/logs
       - run:
           name: Run tests
@@ -155,9 +155,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v1-pkg-cache
+          key: v2-pkg-cache
       - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
           command: bash test/persist/test_failure_indices.sh
@@ -180,7 +180,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v1-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: gather
           command: |

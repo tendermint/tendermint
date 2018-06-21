@@ -1,12 +1,9 @@
-Indexing Transactions
-=====================
+# Indexing Transactions
 
-Tendermint allows you to index transactions and later query or subscribe to
-their results.
+Tendermint allows you to index transactions and later query or subscribe
+to their results.
 
-Let's take a look at the ``[tx_index]`` config section:
-
-::
+Let's take a look at the `[tx_index]` config section:
 
     ##### transactions indexer configuration options #####
     [tx_index]
@@ -30,20 +27,17 @@ Let's take a look at the ``[tx_index]`` config section:
     # IndexAllTags (i.e. when given both, IndexTags will be indexed).
     index_all_tags = false
 
-By default, Tendermint will index all transactions by their respective hashes
-using an embedded simple indexer. Note, we are planning to add more options in
-the future (e.g., Postgresql indexer).
+By default, Tendermint will index all transactions by their respective
+hashes using an embedded simple indexer. Note, we are planning to add
+more options in the future (e.g., Postgresql indexer).
 
-Adding tags
------------
+## Adding tags
 
-In your application's ``DeliverTx`` method, add the ``Tags`` field with the
+In your application's `DeliverTx` method, add the `Tags` field with the
 pairs of UTF-8 encoded strings (e.g. "account.owner": "Bob", "balance":
 "100.0", "date": "2018-01-02").
 
 Example:
-
-::
 
     func (app *KVStoreApplication) DeliverTx(tx []byte) types.Result {
         ...
@@ -55,37 +49,32 @@ Example:
         return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
     }
 
-If you want Tendermint to only index transactions by "account.name" tag, in the
-config set ``tx_index.index_tags="account.name"``. If you to index all tags,
-set ``index_all_tags=true``
+If you want Tendermint to only index transactions by "account.name" tag,
+in the config set `tx_index.index_tags="account.name"`. If you to index
+all tags, set `index_all_tags=true`
 
 Note, there are a few predefined tags:
 
-- ``tm.event`` (event type)
-- ``tx.hash`` (transaction's hash)
-- ``tx.height`` (height of the block transaction was committed in)
+-   `tm.event` (event type)
+-   `tx.hash` (transaction's hash)
+-   `tx.height` (height of the block transaction was committed in)
 
 Tendermint will throw a warning if you try to use any of the above keys.
 
-Quering transactions
---------------------
+## Querying transactions
 
-You can query the transaction results by calling ``/tx_search`` RPC endpoint:
+You can query the transaction results by calling `/tx_search` RPC
+endpoint:
 
-::
+    curl "localhost:26657/tx_search?query=\"account.name='igor'\"&prove=true"
 
-    curl "localhost:46657/tx_search?query=\"account.name='igor'\"&prove=true"
+Check out [API docs](https://tendermint.github.io/slate/?shell#txsearch)
+for more information on query syntax and other options.
 
-Check out `API docs <https://tendermint.github.io/slate/?shell#txsearch>`__ for more
-information on query syntax and other options.
+## Subscribing to transactions
 
-Subscribing to transactions
----------------------------
-
-Clients can subscribe to transactions with the given tags via Websocket by
-providing a query to ``/subscribe`` RPC endpoint.
-
-::
+Clients can subscribe to transactions with the given tags via Websocket
+by providing a query to `/subscribe` RPC endpoint.
 
     {
         "jsonrpc": "2.0",
@@ -96,5 +85,5 @@ providing a query to ``/subscribe`` RPC endpoint.
         }
     }
 
-Check out `API docs <https://tendermint.github.io/slate/#subscribe>`__ for more
-information on query syntax and other options.
+Check out [API docs](https://tendermint.github.io/slate/#subscribe) for
+more information on query syntax and other options.

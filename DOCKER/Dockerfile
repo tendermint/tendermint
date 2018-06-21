@@ -28,7 +28,7 @@ VOLUME [ $TMHOME ]
 WORKDIR $TMHOME
 
 # p2p and rpc port
-EXPOSE 46656 46657
+EXPOSE 26656 26657
 
 ENTRYPOINT ["/usr/bin/tendermint"]
 CMD ["node", "--moniker=`hostname`"]
