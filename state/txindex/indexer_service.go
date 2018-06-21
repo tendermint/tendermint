@@ -3,7 +3,7 @@ package txindex
 import (
 	"context"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/types"
 )

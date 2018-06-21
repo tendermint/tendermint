@@ -16,7 +16,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 	rs "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 //////////////////////////////////////////////////////////////////////////////

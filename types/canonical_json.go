@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Canonical json is amino's json for structs with fields in alphabetical order

@@ -1,0 +1,5 @@
+vendor
+.glide
+*.sw[op]
+coverage.txt
+profile.out
