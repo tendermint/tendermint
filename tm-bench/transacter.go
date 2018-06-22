@@ -16,8 +16,8 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-
 	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
+
 	"github.com/tendermint/tmlibs/log"
 )
 
