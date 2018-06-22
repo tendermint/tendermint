@@ -57,6 +57,11 @@ var (
 	ErrMempoolIsFull = errors.New("Mempool is full")
 )
 
+// TxID is the hex encoded hash of the bytes as a types.Tx.
+func TxID(tx []byte) string {
+	return fmt.Sprintf("%X", types.Tx(tx).Hash())
+}
+
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
 // added to the pool. The Mempool uses a concurrent list structure for storing transactions that
@@ -268,11 +273,11 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.logger.Info("Added good transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
+			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r)
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("Rejected bad transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
+			mem.logger.Info("Rejected bad transaction", "tx", TxID(tx), "res", r)
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
