@@ -94,6 +94,8 @@ jobs:
             export PATH="$GOBIN:$PATH"
             bash abci/tests/test_app/test.sh
 
+# if this test fails, fix it and update the docs at:
+# https://github.com/tendermint/tendermint/blob/develop/docs/abci-cli.md
   test_abci_cli:
     <<: *defaults
     steps:
