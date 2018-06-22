@@ -3,7 +3,7 @@ package proxy
 import (
 	"net/http"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/log"
 
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
@@ -38,7 +38,8 @@ func StartProxy(c rpcclient.Client, listenAddr string, logger log.Logger) error 
 	core.SetLogger(logger)
 	mux.HandleFunc(wsEndpoint, wm.WebsocketHandler)
 
-	_, err = rpc.StartHTTPServer(listenAddr, mux, logger)
+	// TODO: limit max number of open connections rpc.Config{MaxOpenConnections: X}
+	_, err = rpc.StartHTTPServer(listenAddr, mux, logger, rpc.Config{})
 
 	return err
 }
