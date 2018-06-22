@@ -79,6 +79,36 @@ jobs:
             export PATH="$GOBIN:$PATH"
             make metalinter
 
+  test_abci_apps:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v2-pkg-cache
+      - restore_cache:
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run abci apps tests
+          command: |
+            export PATH="$GOBIN:$PATH"
+            bash abci/tests/test_app/test.sh
+
+  test_abci_cli:
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /tmp/workspace
+      - restore_cache:
+          key: v2-pkg-cache
+      - restore_cache:
+          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run abci-cli tests
+          command: |
+            export PATH="$GOBIN:$PATH"
+            bash abci/tests/test_cli/test.sh
+
   test_apps:
     <<: *defaults
     steps:
@@ -170,6 +200,12 @@ workflows:
     jobs:
       - setup_dependencies
       - lint:
+          requires:
+            - setup_dependencies
+      - test_abci_apps:
+          requires:
+            - setup_dependencies
+      - test_abci_cli:
           requires:
             - setup_dependencies
       - test_apps:
