@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"strings"
 	"time"
@@ -85,8 +86,8 @@ Examples:
 
 	client := tmrpc.NewHTTP(endpoints[0], "/websocket")
 
-	minHeight := latestBlockHeight(client)
-	logger.Info("Latest block height", "h", minHeight)
+	initialHeight := latestBlockHeight(client)
+	logger.Info("Latest block height", "h", initialHeight)
 
 	// record time start
 	timeStart := time.Now()
@@ -102,7 +103,7 @@ Examples:
 		timeStop := time.Now()
 		logger.Info("Time stopped", "t", timeStop)
 
-		stats := calculateStatistics(client, minHeight, timeStart, timeStop, duration)
+		stats := calculateStatistics(client, initialHeight, timeStart, timeStop, duration)
 
 		printStatistics(stats, outputFormat)
 
@@ -119,6 +120,8 @@ func latestBlockHeight(client tmrpc.Client) int64 {
 	return status.SyncInfo.LatestBlockHeight
 }
 
+// Calculates the tx / second, and blocks / second based off of the number the transactions
+// and number of blocks that occured from the start block, and the end time.
 func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeStop time.Time, duration int) *statistics {
 	stats := &statistics{
 		BlocksThroughput: metrics.NewHistogram(metrics.NewUniformSample(1000)),
@@ -126,20 +129,21 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 	}
 
 	// get blocks between minHeight and last height
+	// This returns max(minHeight,(last_height - 20)) to last_height
 	info, err := client.BlockchainInfo(minHeight, 0)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 
-	maxHeight := info.LastHeight
-	diff := maxHeight - minHeight
+	lastHeight := info.LastHeight
+	diff := lastHeight - minHeight
 
 	blockMetas := info.BlockMetas
 	offset := len(blockMetas)
 	for len(blockMetas) < int(diff) {
 		// get blocks between minHeight and last height
-		info, err := client.BlockchainInfo(minHeight+int64(offset), 0)
+		info, err := client.BlockchainInfo(minHeight, lastHeight-int64(offset))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
@@ -156,29 +160,23 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 		numTxsPerSec[i] = 0
 	}
 
+	// iterates from max height to min height
 	for _, blockMeta := range blockMetas {
 		// check if block was created after timeStart
 		if blockMeta.Header.Time.Before(timeStart) {
-			continue
+			break
 		}
 
 		// check if block was created before timeStop
 		if blockMeta.Header.Time.After(timeStop) {
-			break
+			continue
 		}
-
 		sec := secondsSinceTimeStart(timeStart, blockMeta.Header.Time)
 
 		// increase number of blocks for that second
-		if _, ok := numBlocksPerSec[sec]; !ok {
-			numBlocksPerSec[sec] = 0
-		}
 		numBlocksPerSec[sec]++
 
 		// increase number of txs for that second
-		if _, ok := numTxsPerSec[sec]; !ok {
-			numTxsPerSec[sec] = 0
-		}
 		numTxsPerSec[sec] += blockMeta.Header.NumTxs
 	}
 
@@ -190,14 +188,11 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 		stats.TxsThroughput.Update(n)
 	}
 
-	fmt.Println("blocks", numBlocksPerSec)
-	fmt.Println("txs", numTxsPerSec)
-
 	return stats
 }
 
 func secondsSinceTimeStart(timeStart, timePassed time.Time) int64 {
-	return int64(timePassed.Sub(timeStart).Seconds())
+	return int64(math.Round(timePassed.Sub(timeStart).Seconds()))
 }
 
 func startTransacters(endpoints []string, connections, txsRate int, broadcastTxMethod string) []*transacter {

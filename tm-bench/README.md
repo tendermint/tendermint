@@ -11,9 +11,10 @@ For example, the following:
 will output:
 
     Stats             Avg        Stdev      Max
-    Block latency     6.18ms     3.19ms     14ms
-    Blocks/sec        0.828      0.378      1
-    Txs/sec           963        493        1811
+    Txs/sec           833        427        1326     
+    Blocks/sec        0.900      0.300      1
+
+These stats are derived by sending transactions at the specified rate for the specified time. After the specified time, it iterates over all of the blocks that were created in that time. The average and stddev per second are computed based off of that, by grouping the data by second.
 
 ## Quick Start
 
