@@ -197,10 +197,3 @@ copyfile('../DOCKER/README.md', tools_dir+'/docker.md')
 
 urllib.urlretrieve(tools_repo+tools_branch+'/tm-bench/README.md', filename=tools_dir+'/benchmarking.md')
 urllib.urlretrieve(tools_repo+tools_branch+'/tm-monitor/README.md', filename=tools_dir+'/monitoring.md')
-
-#### abci spec #################################
-
-abci_repo = "https://raw.githubusercontent.com/tendermint/abci/"
-abci_branch = "develop"
-
-urllib.urlretrieve(abci_repo+abci_branch+'/specification.md', filename='abci-spec.md')
