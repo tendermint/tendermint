@@ -251,10 +251,9 @@ func DefaultRPCConfig() *RPCConfig {
 		GRPCMaxOpenConnections: 900, // no ipv4
 
 		Unsafe: false,
-		// should be < ({ulimit -Sn} - {MaxNumPeers} - {N of wal, db and other open files}) / 2
-		// divided by 2 because 1 fd for ipv4, 1 fd - ipv6
-		// 1024 - 50 - 50 = 924 / 2 = ~450
-		MaxOpenConnections: 450,
+		// should be < {ulimit -Sn} - {MaxNumPeers} - {N of wal, db and other open files}
+		// 1024 - 50 - 50 = 924 = ~900
+		MaxOpenConnections: 900,
 	}
 }
 
