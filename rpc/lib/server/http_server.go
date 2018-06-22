@@ -25,11 +25,19 @@ type Config struct {
 
 // StartHTTPServer starts an HTTP server on listenAddr with the given handler.
 // It wraps handler with RecoverAndLogHandler.
-func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger, config Config) (listener net.Listener, err error) {
+func StartHTTPServer(
+	listenAddr string,
+	handler http.Handler,
+	logger log.Logger,
+	config Config,
+) (listener net.Listener, err error) {
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
-		return nil, errors.Errorf("Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)", listenAddr)
+		return nil, errors.Errorf(
+			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			listenAddr,
+		)
 	}
 	proto, addr = parts[0], parts[1]
 
@@ -55,15 +63,31 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger,
 // StartHTTPAndTLSServer starts an HTTPS server on listenAddr with the given
 // handler.
 // It wraps handler with RecoverAndLogHandler.
-func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, keyFile string, logger log.Logger, config Config) (listener net.Listener, err error) {
+func StartHTTPAndTLSServer(
+	listenAddr string,
+	handler http.Handler,
+	certFile, keyFile string,
+	logger log.Logger,
+	config Config,
+) (listener net.Listener, err error) {
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
-		return nil, errors.Errorf("Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)", listenAddr)
+		return nil, errors.Errorf(
+			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			listenAddr,
+		)
 	}
 	proto, addr = parts[0], parts[1]
 
-	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)", listenAddr, certFile, keyFile))
+	logger.Info(
+		fmt.Sprintf(
+			"Starting RPC HTTPS server on %s (cert: %q, key: %q)",
+			listenAddr,
+			certFile,
+			keyFile,
+		),
+	)
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
 		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
@@ -84,7 +108,11 @@ func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, ke
 	return listener, nil
 }
 
-func WriteRPCResponseHTTPError(w http.ResponseWriter, httpCode int, res types.RPCResponse) {
+func WriteRPCResponseHTTPError(
+	w http.ResponseWriter,
+	httpCode int,
+	res types.RPCResponse,
+) {
 	jsonBytes, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
 		panic(err)
@@ -134,7 +162,10 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					WriteRPCResponseHTTP(rww, res)
 				} else {
 					// For the rest,
-					logger.Error("Panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
+					logger.Error(
+						"Panic in RPC HTTP handler", "err", e, "stack",
+						string(debug.Stack()),
+					)
 					rww.WriteHeader(http.StatusInternalServerError)
 					WriteRPCResponseHTTP(rww, types.RPCInternalError("", e.(error)))
 				}
