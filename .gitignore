@@ -15,7 +15,6 @@ test/logs
 coverage.txt
 docs/_build
 docs/tools
-docs/abci-spec.md
 *.log
 abci-cli
 abci/types/types.pb.go

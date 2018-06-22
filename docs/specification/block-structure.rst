@@ -58,8 +58,7 @@ validators <https://godoc.org/github.com/tendermint/tendermint/types#ValidatorSe
 to see if there have been changes.
 
 The ``AppHash`` serves as the basis for validating any merkle proofs
-that come from the `ABCI
-application <https://github.com/tendermint/abci>`__. It represents the
+that come from the ABCI application. It represents the
 state of the actual application, rather that the state of the blockchain
 itself. This means it's necessary in order to perform any business
 logic, such as verifying an account balance.
@@ -144,8 +143,7 @@ Transaction
 ~~~~~~~~~~~
 
 A transaction is any sequence of bytes. It is up to your
-`ABCI <https://github.com/tendermint/abci>`__ application to accept or
-reject transactions.
+ABCI application to accept or reject transactions.
 
 BlockID
 ~~~~~~~
