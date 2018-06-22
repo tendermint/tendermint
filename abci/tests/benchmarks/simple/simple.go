@@ -7,7 +7,7 @@ import (
 	"net"
 	"reflect"
 
-	"github.com/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 

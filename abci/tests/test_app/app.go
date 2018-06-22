@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/types"
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tmlibs/log"
 )
 

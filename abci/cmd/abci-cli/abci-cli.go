@@ -14,14 +14,14 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
-	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/example/code"
-	"github.com/tendermint/abci/example/counter"
-	"github.com/tendermint/abci/example/kvstore"
-	"github.com/tendermint/abci/server"
-	servertest "github.com/tendermint/abci/tests/server"
-	"github.com/tendermint/abci/types"
-	"github.com/tendermint/abci/version"
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/code"
+	"github.com/tendermint/tendermint/abci/example/counter"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/server"
+	servertest "github.com/tendermint/tendermint/abci/tests/server"
+	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/abci/version"
 )
 
 // client is a global variable so it can be reused by the console

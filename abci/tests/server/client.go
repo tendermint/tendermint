@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 
-	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/types"
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 

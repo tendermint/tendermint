@@ -10,7 +10,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"

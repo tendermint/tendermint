@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/client"
 )
 
 func TestSocketClientStopForErrorDeadlock(t *testing.T) {

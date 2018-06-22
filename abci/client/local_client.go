@@ -3,7 +3,7 @@ package abcicli
 import (
 	"sync"
 
-	types "github.com/tendermint/abci/types"
+	types "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
