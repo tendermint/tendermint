@@ -9,9 +9,9 @@ metadata:
     app: YOUR_APP_NAME
 spec:
   ports:
-  - port: 46656
+  - port: 26656
     name: p2p
-  - port: 46657
+  - port: 26657
     name: rpc
   clusterIP: None
   selector:
@@ -91,9 +91,9 @@ spec:
             cpu: 100m
             memory: 256Mi
         ports:
-        - containerPort: 46656
+        - containerPort: 26656
           name: p2p
-        - containerPort: 46657
+        - containerPort: 26657
           name: rpc
         env:
         - name: SEEDS
@@ -148,7 +148,7 @@ spec:
           IFS=',' read -ra SEEDS_ARR <<< "$SEEDS"
           seeds=()
           for s in "${SEEDS_ARR[@]}"; do
-            seeds+=("$s.$fqdn_suffix:46656")
+            seeds+=("$s.$fqdn_suffix:26656")
           done
           seeds=$(IFS=','; echo "${seeds[*]}")
 

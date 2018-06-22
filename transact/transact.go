@@ -51,7 +51,7 @@ func broadcastTxsToHost(wg *sync.WaitGroup, errCh chan error, valI int, valHost 
 	reconnectSleepSeconds := time.Second * 1
 
 	// thisStart := time.Now()
-	// cli := rpcclient.NewClientURI(valHost + ":46657")
+	// cli := rpcclient.NewClientURI(valHost + ":26657")
 	fmt.Println("Connecting to host to broadcast txs", valI, valHost)
 	cli := rpcclient.NewWSClient(valHost, "/websocket")
 	if _, err := cli.Start(); err != nil {

@@ -6,7 +6,7 @@ Tendermint blockchain benchmarking tool:
 
 For example, the following:
 
-    tm-bench -T 10 -r 1000 localhost:46657
+    tm-bench -T 10 -r 1000 localhost:26657
 
 will output:
 
@@ -24,7 +24,7 @@ then run:
     tendermint init
     tendermint node --proxy_app=kvstore
 
-    tm-bench localhost:46657
+    tm-bench localhost:26657
 
 with the last command being in a seperate window.
 
@@ -33,7 +33,7 @@ with the last command being in a seperate window.
     tm-bench [-c 1] [-T 10] [-r 1000] [endpoints]
 
     Examples:
-            tm-bench localhost:46657
+            tm-bench localhost:26657
     Flags:
       -T int
             Exit after the specified amount of time in seconds (default 10)

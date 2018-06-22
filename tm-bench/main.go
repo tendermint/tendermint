@@ -45,7 +45,7 @@ Usage:
 	tm-bench [-c 1] [-T 10] [-r 1000] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
 
 Examples:
-	tm-bench localhost:46657`)
+	tm-bench localhost:26657`)
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
 	}

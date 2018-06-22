@@ -57,7 +57,7 @@ finally, use our `Rest API <../specification/rpc.html>`__ to fetch the status of
 Note we are using ``kubectl exec`` because pods are not exposed (and should not be) to the
 outer network:
 
-``kubectl exec -c tm tm-0 -- curl -s http://tm-1.basecoin:46657/status | json_pp``
+``kubectl exec -c tm tm-0 -- curl -s http://tm-1.basecoin:26657/status | json_pp``
 
 **Using the dashboard:**
 
@@ -223,7 +223,7 @@ Status of the second pod's Tendermint app:
 
 ::
 
-    kubectl exec -c tm tm-0 -- curl -s http://tm-1.<YOUR_APP_NAME>:46657/status | json_pp
+    kubectl exec -c tm tm-0 -- curl -s http://tm-1.<YOUR_APP_NAME>:26657/status | json_pp
 
 Security
 --------

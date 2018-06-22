@@ -15,7 +15,7 @@ with a bit of cash....
 
 ### Tendermint Chain ID
 
-`kubectl exec -c tm tm-0 -- curl -s http://tm-1.basecoin:46657/status | json_pp | grep network`
+`kubectl exec -c tm tm-0 -- curl -s http://tm-1.basecoin:26657/status | json_pp | grep network`
 
 set TM_CHAIN with the value there
 
@@ -29,13 +29,13 @@ set BC_CHAIN with the value there
 
 We need to be able to reach the tendermint rpc interface from our shell.
 
-`kubectl port-forward tm-0 46657:46657`
+`kubectl port-forward tm-0 26657:26657`
 
 ### Start basecoin-proxy
 
 Using this info, let's connect our proxy and get going
 
-`proxy-basecoin -tmchain=$TM_CHAIN -chain=$BC_CHAIN -rpc=localhost:46657`
+`proxy-basecoin -tmchain=$TM_CHAIN -chain=$BC_CHAIN -rpc=localhost:26657`
 
 ## Basecoin accounts
 

@@ -19,7 +19,7 @@ func main() {
 	var listenAddr string
 	var noton bool
 
-	flag.StringVar(&listenAddr, "listen-addr", "tcp://0.0.0.0:46670", "HTTP and Websocket server listen address")
+	flag.StringVar(&listenAddr, "listen-addr", "tcp://0.0.0.0:26670", "HTTP and Websocket server listen address")
 	flag.BoolVar(&noton, "no-ton", false, "Do not show ton (table of nodes)")
 
 	flag.Usage = func() {
@@ -27,14 +27,14 @@ func main() {
 applications, collecting and providing various statistics to the user.
 
 Usage:
-	tm-monitor [-no-ton] [-listen-addr="tcp://0.0.0.0:46670"] [endpoints]
+	tm-monitor [-no-ton] [-listen-addr="tcp://0.0.0.0:26670"] [endpoints]
 
 Examples:
 	# monitor single instance
-	tm-monitor localhost:46657
+	tm-monitor localhost:26657
 
 	# monitor a few instances by providing comma-separated list of RPC endpoints
-	tm-monitor host1:46657,host2:46657`)
+	tm-monitor host1:26657,host2:26657`)
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
 	}

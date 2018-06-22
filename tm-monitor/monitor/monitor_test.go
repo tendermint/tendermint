@@ -67,6 +67,6 @@ func createValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter
 	rpcClientMock := &mock.RpcClient{Stubs: stubs}
 	rpcClientMock.SetCodec(cdc)
 
-	n = monitor.NewNodeWithEventMeterAndRpcClient("tcp://127.0.0.1:46657", emMock, rpcClientMock)
+	n = monitor.NewNodeWithEventMeterAndRpcClient("tcp://127.0.0.1:26657", emMock, rpcClientMock)
 	return
 }

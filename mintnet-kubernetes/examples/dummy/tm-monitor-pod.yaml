@@ -7,7 +7,7 @@ spec:
   containers:
     - name: monitor
       image: tendermint/monitor
-      args: ["-listen-addr=tcp://0.0.0.0:46670", "tm-0.dummy:46657,tm-1.dummy:46657,tm-2.dummy:46657,tm-3.dummy:46657"]
+      args: ["-listen-addr=tcp://0.0.0.0:26670", "tm-0.dummy:26657,tm-1.dummy:26657,tm-2.dummy:26657,tm-3.dummy:26657"]
       ports:
-        - containerPort: 46670
+        - containerPort: 26670
           name: rpc
