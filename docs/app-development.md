@@ -49,7 +49,7 @@ The message protocol consists of pairs of requests and responses. Some
 messages have no fields, while others may include byte-arrays, strings,
 or integers. See the `message Request` and `message Response`
 definitions in [the protobuf definition
-file](https://github.com/tendermint/abci/blob/master/types/types.proto),
+file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto),
 and the [protobuf
 documentation](https://developers.google.com/protocol-buffers/docs/overview)
 for more details.
@@ -72,9 +72,9 @@ Both can be tested using the `abci-cli` by setting the `--abci` flag
 appropriately (ie. to `socket` or `grpc`).
 
 See examples, in various stages of maintenance, in
-[Go](https://github.com/tendermint/abci/tree/master/server),
+[Go](https://github.com/tendermint/tendermint/tree/develop/abci/server),
 [JavaScript](https://github.com/tendermint/js-abci),
-[Python](https://github.com/tendermint/abci/tree/master/example/python3/abci),
+[Python](https://github.com/tendermint/tendermint/tree/develop/abci/example/python3/abci),
 [C++](https://github.com/mdyring/cpp-tmsp), and
 [Java](https://github.com/jTendermint/jabci).
 
@@ -84,7 +84,7 @@ If GRPC is available in your language, this is the easiest approach,
 though it will have significant performance overhead.
 
 To get started with GRPC, copy in the [protobuf
-file](https://github.com/tendermint/abci/blob/master/types/types.proto)
+file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto)
 and compile it using the GRPC plugin for your language. For instance,
 for golang, the command is `protoc --go_out=plugins=grpc:. types.proto`.
 See the [grpc documentation for more details](http://www.grpc.io/docs/).
@@ -125,12 +125,12 @@ received or a block is committed.
 
 It is unlikely that you will need to implement a client. For details of
 our client, see
-[here](https://github.com/tendermint/abci/tree/master/client).
+[here](https://github.com/tendermint/tendermint/tree/develop/abci/client).
 
 Most of the examples below are from [kvstore
-application](https://github.com/tendermint/abci/blob/master/example/kvstore/kvstore.go),
+application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/kvstore.go),
 which is a part of the abci repo. [persistent_kvstore
-application](https://github.com/tendermint/abci/blob/master/example/kvstore/persistent_kvstore.go)
+application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/persistent_kvstore.go)
 is used to show `BeginBlock`, `EndBlock` and `InitChain` example
 implementations.
 

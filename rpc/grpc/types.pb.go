@@ -19,7 +19,7 @@ package core_grpc
 import proto "github.com/golang/protobuf/proto"
 import fmt "fmt"
 import math "math"
-import types "github.com/tendermint/abci/types"
+import types "github.com/tendermint/tendermint/abci/types"
 
 import (
 	"context"
