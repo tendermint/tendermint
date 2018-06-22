@@ -7,7 +7,7 @@ For details on peer discovery, see the [peer exchange (PEX) reactor doc](https:/
 ## Peer Identity
 
 Tendermint peers are expected to maintain long-term persistent identities in the form of a public key.
-Each peer has an ID defined as `peer.ID == peer.PubKey.Address()`, where `Address` uses the scheme defined in go-crypto.
+Each peer has an ID defined as `peer.ID == peer.PubKey.Address()`, where `Address` uses the scheme defined in `crypto` package.
 
 A single peer ID can have multiple IP addresses associated with it, but a node
 will only ever connect to one at a time.
