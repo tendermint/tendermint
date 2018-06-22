@@ -7,14 +7,13 @@ import (
 	"math"
 	"os"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/go-kit/kit/log/term"
 	metrics "github.com/rcrowley/go-metrics"
-
-	"text/tabwriter"
-
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
+
 	"github.com/tendermint/tmlibs/log"
 )
 
@@ -77,33 +76,54 @@ Examples:
 		fmt.Printf("Running %ds test @ %s\n", duration, flag.Arg(0))
 	}
 
-	if broadcastTxMethod != "async" && broadcastTxMethod != "sync" && broadcastTxMethod != "commit" {
-		fmt.Fprintln(os.Stderr, "broadcast-tx-method should be either 'sync', 'async' or 'commit'.")
+	if broadcastTxMethod != "async" &&
+		broadcastTxMethod != "sync" &&
+		broadcastTxMethod != "commit" {
+		fmt.Fprintln(
+			os.Stderr,
+			"broadcast-tx-method should be either 'sync', 'async' or 'commit'.",
+		)
 		os.Exit(1)
 	}
 
-	endpoints := strings.Split(flag.Arg(0), ",")
-
-	client := tmrpc.NewHTTP(endpoints[0], "/websocket")
-
-	initialHeight := latestBlockHeight(client)
+	var (
+		endpoints     = strings.Split(flag.Arg(0), ",")
+		client        = tmrpc.NewHTTP(endpoints[0], "/websocket")
+		initialHeight = latestBlockHeight(client)
+	)
 	logger.Info("Latest block height", "h", initialHeight)
 
 	// record time start
 	timeStart := time.Now()
 	logger.Info("Time started", "t", timeStart)
 
-	transacters := startTransacters(endpoints, connections, txsRate, "broadcast_tx_"+broadcastTxMethod)
+	transacters := startTransacters(
+		endpoints,
+		connections,
+		txsRate,
+		"broadcast_tx_"+broadcastTxMethod,
+	)
 
 	select {
 	case <-time.After(time.Duration(duration) * time.Second):
 		for _, t := range transacters {
 			t.Stop()
 		}
+
 		timeStop := time.Now()
 		logger.Info("Time stopped", "t", timeStop)
 
-		stats := calculateStatistics(client, initialHeight, timeStart, timeStop, duration)
+		stats, err := calculateStatistics(
+			client,
+			initialHeight,
+			timeStart,
+			timeStop,
+			duration,
+		)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 
 		printStatistics(stats, outputFormat)
 
@@ -120,9 +140,15 @@ func latestBlockHeight(client tmrpc.Client) int64 {
 	return status.SyncInfo.LatestBlockHeight
 }
 
-// Calculates the tx / second, and blocks / second based off of the number the transactions
-// and number of blocks that occured from the start block, and the end time.
-func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeStop time.Time, duration int) *statistics {
+// calculateStatistics calculates the tx / second, and blocks / second based
+// off of the number the transactions and number of blocks that occurred from
+// the start block, and the end time.
+func calculateStatistics(
+	client tmrpc.Client,
+	minHeight int64,
+	timeStart, timeStop time.Time,
+	duration int,
+) (*statistics, error) {
 	stats := &statistics{
 		BlocksThroughput: metrics.NewHistogram(metrics.NewUniformSample(1000)),
 		TxsThroughput:    metrics.NewHistogram(metrics.NewUniformSample(1000)),
@@ -132,28 +158,31 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 	// This returns max(minHeight,(last_height - 20)) to last_height
 	info, err := client.BlockchainInfo(minHeight, 0)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return nil, err
 	}
 
-	lastHeight := info.LastHeight
-	diff := lastHeight - minHeight
+	var (
+		blockMetas = info.BlockMetas
+		lastHeight = info.LastHeight
+		diff       = lastHeight - minHeight
+		offset     = len(blockMetas)
+	)
 
-	blockMetas := info.BlockMetas
-	offset := len(blockMetas)
-	for len(blockMetas) < int(diff) {
+	for offset < int(diff) {
 		// get blocks between minHeight and last height
 		info, err := client.BlockchainInfo(minHeight, lastHeight-int64(offset))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
+			return nil, err
 		}
 		blockMetas = append(blockMetas, info.BlockMetas...)
 		offset = len(blockMetas)
 	}
 
-	numBlocksPerSec := make(map[int64]int64)
-	numTxsPerSec := make(map[int64]int64)
+	var (
+		numBlocksPerSec = make(map[int64]int64)
+		numTxsPerSec    = make(map[int64]int64)
+	)
+
 	// because during some seconds blocks won't be created...
 	for i := int64(0); i < int64(duration); i++ {
 		numBlocksPerSec[i] = 0
@@ -188,14 +217,19 @@ func calculateStatistics(client tmrpc.Client, minHeight int64, timeStart, timeSt
 		stats.TxsThroughput.Update(n)
 	}
 
-	return stats
+	return stats, nil
 }
 
 func secondsSinceTimeStart(timeStart, timePassed time.Time) int64 {
 	return int64(math.Round(timePassed.Sub(timeStart).Seconds()))
 }
 
-func startTransacters(endpoints []string, connections, txsRate int, broadcastTxMethod string) []*transacter {
+func startTransacters(
+	endpoints []string,
+	connections,
+	txsRate int,
+	broadcastTxMethod string,
+) []*transacter {
 	transacters := make([]*transacter, len(endpoints))
 
 	for i, e := range endpoints {
