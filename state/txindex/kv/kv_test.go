@@ -21,7 +21,7 @@ func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(db.NewMemDB())
 
 	tx := types.Tx("HELLO WORLD")
-	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
+	txResult := &types.TxResult{1, 0, tx, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Events: nil}}
 	hash := tx.Hash()
 
 	batch := txindex.NewBatch(1)
@@ -36,7 +36,7 @@ func TestTxIndex(t *testing.T) {
 	assert.Equal(t, txResult, loadedTxResult)
 
 	tx2 := types.Tx("BYE BYE WORLD")
-	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Tags: nil}}
+	txResult2 := &types.TxResult{1, 0, tx2, abci.ResponseDeliverTx{Data: []byte{0}, Code: abci.CodeTypeOK, Log: "", Events: nil}}
 	hash2 := tx2.Hash()
 
 	err = indexer.Index(txResult2)
@@ -181,11 +181,11 @@ func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
 		Index:  0,
 		Tx:     tx,
 		Result: abci.ResponseDeliverTx{
-			Data: []byte{0},
-			Code: abci.CodeTypeOK,
-			Log:  "",
-			Tags: tags,
-			Fee:  cmn.KI64Pair{Key: nil, Value: 0},
+			Data:   []byte{0},
+			Code:   abci.CodeTypeOK,
+			Log:    "",
+			Events: []abci.Event{abci.Event{tags}},
+			Fee:    cmn.KI64Pair{Key: nil, Value: 0},
 		},
 	}
 }
@@ -197,11 +197,11 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 		Index:  0,
 		Tx:     tx,
 		Result: abci.ResponseDeliverTx{
-			Data: []byte{0},
-			Code: abci.CodeTypeOK,
-			Log:  "",
-			Tags: []cmn.KVPair{},
-			Fee:  cmn.KI64Pair{Key: []uint8{}, Value: 0},
+			Data:   []byte{0},
+			Code:   abci.CodeTypeOK,
+			Log:    "",
+			Events: []abci.Event{},
+			Fee:    cmn.KI64Pair{Key: []uint8{}, Value: 0},
 		},
 	}
 

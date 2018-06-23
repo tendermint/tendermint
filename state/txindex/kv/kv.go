@@ -413,11 +413,11 @@ func startKey(c query.Condition, height int64) []byte {
 }
 
 func isTagKey(key []byte) bool {
-	return strings.Count(string(key), tagKeySeparator) == 3
+	return strings.Count(string(key), tagKeySeparator) == 4
 }
 
 func extractValueFromKey(key []byte) string {
-	parts := strings.SplitN(string(key), tagKeySeparator, 3)
+	parts := strings.SplitN(string(key), tagKeySeparator, 4)
 	return parts[1]
 }
 

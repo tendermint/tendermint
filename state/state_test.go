@@ -75,8 +75,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	// build mock responses
 	block := makeBlock(state, 2)
 	abciResponses := NewABCIResponses(block)
-	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
-	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
+	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Events: nil}
+	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Events: nil}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
 		types.TM2PB.ValidatorFromPubKeyAndPower(crypto.GenPrivKeyEd25519().PubKey(), 10),
 	}}
@@ -117,10 +117,10 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 			[]*abci.ResponseDeliverTx{
 				{Code: 383},
 				{Data: []byte("Gotcha!"),
-					Tags: []cmn.KVPair{
+					Events: []abci.Event{abci.Event{[]cmn.KVPair{
 						cmn.KVPair{[]byte("a"), []byte("1")},
 						cmn.KVPair{[]byte("build"), []byte("stuff")},
-					}},
+					}}}},
 			},
 			types.ABCIResults{
 				{383, nil},
