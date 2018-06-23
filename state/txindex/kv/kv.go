@@ -83,9 +83,11 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		hash := result.Tx.Hash()
 
 		// index tx by tags
-		for _, tag := range result.Result.Tags {
-			if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
-				storeBatch.Set(keyForTag(tag, result), hash)
+		for index, evt := range result.Result.Events {
+			for _, tag := range evt.Tags {
+				if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
+					storeBatch.Set(keyForTag(tag, result, index), hash)
+				}
 			}
 		}
 
@@ -108,9 +110,11 @@ func (txi *TxIndex) Index(result *types.TxResult) error {
 	hash := result.Tx.Hash()
 
 	// index tx by tags
-	for _, tag := range result.Result.Tags {
-		if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
-			b.Set(keyForTag(tag, result), hash)
+	for index, evt := range result.Result.Events {
+		for _, tag := range evt.Tags {
+			if txi.indexAllTags || cmn.StringInSlice(string(tag.Key), txi.tagsToIndex) {
+				b.Set(keyForTag(tag, result, index), hash)
+			}
 		}
 	}
 
@@ -417,8 +421,8 @@ func extractValueFromKey(key []byte) string {
 	return parts[1]
 }
 
-func keyForTag(tag cmn.KVPair, result *types.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%s/%d/%d", tag.Key, tag.Value, result.Height, result.Index))
+func keyForTag(tag cmn.KVPair, result *types.TxResult, index int) []byte {
+	return []byte(fmt.Sprintf("%s/%s/%d/%d/%d", tag.Key, tag.Value, result.Height, result.Index, index))
 }
 
 ///////////////////////////////////////////////////////////////////////////////

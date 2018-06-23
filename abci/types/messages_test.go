@@ -21,9 +21,9 @@ func TestMarshalJSON(t *testing.T) {
 		Code:      1,
 		Data:      []byte("hello"),
 		GasWanted: 43,
-		Tags: []cmn.KVPair{
+		Events: []Event{Event{[]cmn.KVPair{
 			{[]byte("pho"), []byte("bo")},
-		},
+		}}},
 	}
 	b, err = json.Marshal(&r1)
 	assert.Nil(t, err)
@@ -82,9 +82,9 @@ func TestWriteReadMessage2(t *testing.T) {
 			Data:      []byte(phrase),
 			Log:       phrase,
 			GasWanted: 10,
-			Tags: []cmn.KVPair{
+			Events: []Event{Event{[]cmn.KVPair{
 				cmn.KVPair{[]byte("abc"), []byte("def")},
-			},
+			}}},
 			// Fee: cmn.KI64Pair{
 		},
 		// TODO: add the rest

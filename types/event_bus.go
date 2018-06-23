@@ -85,36 +85,39 @@ func (b *EventBus) PublishEventVote(event EventDataVote) error {
 	return b.Publish(EventVote, event)
 }
 
-// PublishEventTx publishes tx event with tags from Result. Note it will add
+// PublishEventTx publishes tx events with tags from Result. Note it will add
 // predefined tags (EventTypeKey, TxHashKey). Existing tags with the same names
 // will be overwritten.
 func (b *EventBus) PublishEventTx(event EventDataTx) error {
 	// no explicit deadline for publishing events
 	ctx := context.Background()
 
-	tags := make(map[string]string)
+	for _, evt := range event.Result.Events {
+		tags := make(map[string]string)
 
-	// validate and fill tags from tx result
-	for _, tag := range event.Result.Tags {
-		// basic validation
-		if len(tag.Key) == 0 {
-			b.Logger.Info("Got tag with an empty key (skipping)", "tag", tag, "tx", event.Tx)
-			continue
+		// validate and fill tags from tx result
+		for _, tag := range evt.Tags {
+			// basic validation
+			if len(tag.Key) == 0 {
+				b.Logger.Info("Got tag with an empty key (skipping)", "tag", tag, "tx", event.Tx)
+				continue
+			}
+			tags[string(tag.Key)] = string(tag.Value)
 		}
-		tags[string(tag.Key)] = string(tag.Value)
+
+		// add predefined tags
+		logIfTagExists(EventTypeKey, tags, b.Logger)
+		tags[EventTypeKey] = EventTx
+
+		logIfTagExists(TxHashKey, tags, b.Logger)
+		tags[TxHashKey] = fmt.Sprintf("%X", event.Tx.Hash())
+
+		logIfTagExists(TxHeightKey, tags, b.Logger)
+		tags[TxHeightKey] = fmt.Sprintf("%d", event.Height)
+
+		b.pubsub.PublishWithTags(ctx, event, tmpubsub.NewTagMap(tags))
 	}
 
-	// add predefined tags
-	logIfTagExists(EventTypeKey, tags, b.Logger)
-	tags[EventTypeKey] = EventTx
-
-	logIfTagExists(TxHashKey, tags, b.Logger)
-	tags[TxHashKey] = fmt.Sprintf("%X", event.Tx.Hash())
-
-	logIfTagExists(TxHeightKey, tags, b.Logger)
-	tags[TxHeightKey] = fmt.Sprintf("%d", event.Height)
-
-	b.pubsub.PublishWithTags(ctx, event, tmpubsub.NewTagMap(tags))
 	return nil
 }
 

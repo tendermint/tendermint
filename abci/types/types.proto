@@ -148,35 +148,37 @@ message ResponseQuery {
 }
 
 message ResponseBeginBlock {
-  repeated common.KVPair tags = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  repeated Event events = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
 }
 
 message ResponseCheckTx {
   uint32 code = 1;
-  bytes data = 2;
-  string log = 3; // nondeterministic
-  string info = 4; // nondeterministic
-  int64 gas_wanted  = 5;
-  int64 gas_used = 6;
-  repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
-  common.KI64Pair fee = 8 [(gogoproto.nullable)=false];
+  string error = 2;
+  bytes data = 3;
+  string log = 4; // nondeterministic
+  string info = 5; // nondeterministic
+  int64 gas_wanted  = 6;
+  int64 gas_used = 7;
+  repeated Event events = 8 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
+  common.KI64Pair fee = 9 [(gogoproto.nullable)=false];
 }
 
 message ResponseDeliverTx {
   uint32 code = 1;
-  bytes data = 2;
-  string log = 3; // nondeterministic
-  string info = 4; // nondeterministic
-  int64 gas_wanted = 5;
-  int64 gas_used = 6;
-  repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
-  common.KI64Pair fee = 8 [(gogoproto.nullable)=false];
+  string error = 2;
+  bytes data = 3;
+  string log = 4; // nondeterministic
+  string info = 5; // nondeterministic
+  int64 gas_wanted = 6;
+  int64 gas_used = 7;
+  repeated Event events = 8 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
+  common.KI64Pair fee = 9 [(gogoproto.nullable)=false];
 }
 
 message ResponseEndBlock {
   repeated Validator validator_updates = 1 [(gogoproto.nullable)=false];
   ConsensusParams consensus_param_updates = 2;
-  repeated common.KVPair tags = 3 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  repeated Event events = 3 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
 }
 
 message ResponseCommit {
@@ -262,6 +264,10 @@ message Evidence {
   int64 height = 3;
   int64 time = 4;
   int64 total_voting_power = 5;
+}
+
+message Event {
+  repeated common.KVPair tags = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
 }
 
 //----------------------------------------
