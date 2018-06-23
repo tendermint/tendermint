@@ -16,7 +16,7 @@ The ABCI was first introduced in late 2015.  It's purpose is to be:
 This means ABCI should provide an interface for both pluggable applications and
 pluggable consensus engines.
 
-To achieve this, it uses Protocol Buffers for message types. The dominant
+To achieve this, it uses Protocol Buffers (proto3) for message types. The dominant
 implementation is in Go.
 
 After some recent discussions with the community on github, the following were
@@ -30,8 +30,10 @@ See the [references](#references) for more.
 
 ### Imports
 
-The native proto library in Go generates code that is inellegant and difficult to work with.
-The solution in the Go community is to use a fork of it called `gogoproto`.
+The native proto library in Go generates inflexible and verbose code.
+Many in the Go community have adopted a fork called
+[gogoproto](https://github.com/gogo/protobuf) that provides a
+variety of features aimed to improve the developer experience.
 While `gogoproto` is nice, it creates an additional dependency, and compiling
 the protobuf types for other languages has been reported to fail when `gogoproto` is used.
 
@@ -49,12 +51,16 @@ we want it to be easy to use.
 
 ### PubKey
 
-PubKeys were previously encoded using Amino (and before that, go-wire).
+PubKeys are encoded using Amino (and before that, go-wire).
+Ideally, PubKeys are an interface type where we don't know all the
+implementation types, so its unfitting to use `oneof` or `enum`.
 
 ### Addresses
 
-The address for an ED25519 pubkey is currently the RIPEMD160 of the Amino
-encoded pubkey.
+The address for ED25519 pubkey is the RIPEMD160 of the Amino
+encoded pubkey. This introduces an Amino dependency in the address generation,
+a functionality that is widely required and should be easy to compute as
+possible.
 
 ### Validators
 
@@ -136,8 +142,9 @@ where `type` can be:
 - "ed225519", with `data = <raw 32-byte pubkey>`
 - "secp256k1", with `data = <33-byte OpenSSL compressed pubkey>`
 
-and generated types. At the least we should use a reflection-based protobuf so
-we can just encode our own types, rather than using protobuf generated ones.
+
+As we want to retain flexibility here, and since ideally, PubKey would be an
+interface type, we do not use `enum` or `oneof`.
 
 ### Addresses
 
@@ -199,7 +206,7 @@ Since ResponseEndBlock includes Validator, it must now include their address.
 
 ### InitChain
 
-Change RequestInitChain and ResponseInitChain to
+Change RequestInitChain to give the app all the information from the genesis file:
 
 ```
 message RequestInitChain {
@@ -209,7 +216,12 @@ message RequestInitChain {
     repeated Validator validators
     bytes app_state_bytes
 }
+```
 
+Change ResponseInitChain to allow the app to specify the initial validator set
+and consensus parameters.
+
+```
 message ResponseInitChain {
     ConsensusParams consensus_params
     repeated Validator validators
@@ -218,7 +230,7 @@ message ResponseInitChain {
 
 ### Header
 
-Now that Tendermint Amino will be compatible with Proto3, the Header in ABCI
+Now that Tendermint Amino will be compatible with proto3, the Header in ABCI
 should exactly match the Tendermint header - they will then be encoded
 identically in ABCI and in Tendermint Core.
 

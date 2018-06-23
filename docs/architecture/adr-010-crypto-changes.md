@@ -8,7 +8,7 @@ After nearly 4 years of development, Tendermint has recently undergone multiple 
 
 ### Hash Functions
 
-Tendermint currently uses RIPEMD160 universally as a hash function, most notably in its Merkle tree implementation.
+Tendermint uses RIPEMD160 universally as a hash function, most notably in its Merkle tree implementation.
 
 RIPEMD160 was chosen because it provides the shortest fingerprint that is long enough to be considered secure (ie. birthday bound of 80-bits).
 It was also developed in the open academic community, unlike NSA-designed algorithms like SHA256.
@@ -24,6 +24,8 @@ It uses RIPEMD160.
 ### Addresses
 
 ED25519 addresses are computed using the RIPEMD160 of the Amino encoding of the public key.
+RIPEMD160 is generally considered an outdated hash function, and is much slower
+than more modern functions like SHA256 or Blake2.
 
 ### Authenticated Encryption
 
