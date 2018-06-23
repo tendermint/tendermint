@@ -27,13 +27,14 @@ type statistics struct {
 }
 
 func main() {
-	var duration, txsRate, connections int
+	var duration, txsRate, connections, txSize int
 	var verbose bool
 	var outputFormat, broadcastTxMethod string
 
 	flag.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
 	flag.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
 	flag.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
+	flag.IntVar(&txSize, "s", 250, "The size of a transaction in bytes.")
 	flag.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
 	flag.StringVar(&broadcastTxMethod, "broadcast-tx-method", "async", "Broadcast method: async (no guarantees; fastest), sync (ensures tx is checked) or commit (ensures tx is checked and committed; slowest)")
 	flag.BoolVar(&verbose, "v", false, "Verbose output")
@@ -101,6 +102,7 @@ Examples:
 		endpoints,
 		connections,
 		txsRate,
+		txSize,
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 
@@ -228,12 +230,13 @@ func startTransacters(
 	endpoints []string,
 	connections,
 	txsRate int,
+	txSize int,
 	broadcastTxMethod string,
 ) []*transacter {
 	transacters := make([]*transacter, len(endpoints))
 
 	for i, e := range endpoints {
-		t := newTransacter(e, connections, txsRate, broadcastTxMethod)
+		t := newTransacter(e, connections, txsRate, txSize, broadcastTxMethod)
 		t.SetLogger(logger)
 		if err := t.Start(); err != nil {
 			fmt.Fprintln(os.Stderr, err)

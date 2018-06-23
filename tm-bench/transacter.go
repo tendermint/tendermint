@@ -25,14 +25,12 @@ const (
 	sendTimeout = 10 * time.Second
 	// see https://github.com/tendermint/go-rpc/blob/develop/server/handlers.go#L313
 	pingPeriod = (30 * 9 / 10) * time.Second
-
-	// the size of a transaction in bytes.
-	txSize = 250
 )
 
 type transacter struct {
 	Target            string
 	Rate              int
+	Size              int
 	Connections       int
 	BroadcastTxMethod string
 
@@ -43,10 +41,11 @@ type transacter struct {
 	logger log.Logger
 }
 
-func newTransacter(target string, connections, rate int, broadcastTxMethod string) *transacter {
+func newTransacter(target string, connections, rate int, size int, broadcastTxMethod string) *transacter {
 	return &transacter{
 		Target:            target,
 		Rate:              rate,
+		Size:              size,
 		Connections:       connections,
 		BroadcastTxMethod: broadcastTxMethod,
 		conns:             make([]*websocket.Conn, connections),
@@ -152,7 +151,7 @@ func (t *transacter) sendLoop(connIndex int) {
 
 			for i := 0; i < t.Rate; i++ {
 				// each transaction embeds connection index, tx number and hash of the hostname
-				tx := generateTx(connIndex, txNumber, hostnameHash)
+				tx := generateTx(connIndex, txNumber, t.Size, hostnameHash)
 				paramsJSON, err := json.Marshal(map[string]interface{}{"tx": hex.EncodeToString(tx)})
 				if err != nil {
 					fmt.Printf("failed to encode params: %v\n", err)
@@ -207,7 +206,7 @@ func connect(host string) (*websocket.Conn, *http.Response, error) {
 	return websocket.DefaultDialer.Dial(u.String(), nil)
 }
 
-func generateTx(connIndex int, txNumber int, hostnameHash [md5.Size]byte) []byte {
+func generateTx(connIndex int, txNumber int, txSize int, hostnameHash [md5.Size]byte) []byte {
 	tx := make([]byte, txSize)
 
 	binary.PutUvarint(tx[:8], uint64(connIndex))
