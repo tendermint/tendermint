@@ -261,15 +261,26 @@ func printStatistics(stats *statistics, outputFormat string) {
 		fmt.Println(string(result))
 	} else {
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 5, ' ', 0)
-		fmt.Fprintln(w, "Stats\tAvg\tStdDev\tMax\t")
-		fmt.Fprintln(w, fmt.Sprintf("Txs/sec\t%.0f\t%.0f\t%d\t",
-			stats.TxsThroughput.Mean(),
-			stats.TxsThroughput.StdDev(),
-			stats.TxsThroughput.Max()))
-		fmt.Fprintln(w, fmt.Sprintf("Blocks/sec\t%.3f\t%.3f\t%d\t",
-			stats.BlocksThroughput.Mean(),
-			stats.BlocksThroughput.StdDev(),
-			stats.BlocksThroughput.Max()))
+		fmt.Fprintln(w, "Stats\tAvg\tStdDev\tMax\tTotal\t")
+		fmt.Fprintln(
+			w,
+			fmt.Sprintf(
+				"Txs/sec\t%.0f\t%.0f\t%d\t%d\t",
+				stats.TxsThroughput.Mean(),
+				stats.TxsThroughput.StdDev(),
+				stats.TxsThroughput.Max(),
+				stats.TxsThroughput.Sum(),
+			),
+		)
+		fmt.Fprintln(
+			w,
+			fmt.Sprintf("Blocks/sec\t%.3f\t%.3f\t%d\t%d\t",
+				stats.BlocksThroughput.Mean(),
+				stats.BlocksThroughput.StdDev(),
+				stats.BlocksThroughput.Max(),
+				stats.BlocksThroughput.Sum(),
+			),
+		)
 		w.Flush()
 	}
 }
