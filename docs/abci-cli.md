@@ -125,7 +125,7 @@ response.
 The server may be generic for a particular language, and we provide a
 [reference implementation in
 Golang](https://github.com/tendermint/abci/tree/master/server). See the
-[list of other ABCI implementations](./ecosystem.html) for servers in
+[list of other ABCI implementations](./ecosystem.md) for servers in
 other languages.
 
 The handler is specific to the application, and may be arbitrary, so
@@ -324,6 +324,6 @@ connects to the app using three separate connections, each with its own
 pattern of messages.
 
 For more information, see the [application developers
-guide](./app-development.html). For examples of running an ABCI app with
-Tendermint, see the [getting started guide](./getting-started.html).
+guide](./app-development.md). For examples of running an ABCI app with
+Tendermint, see the [getting started guide](./getting-started.md).
 Next is the ABCI specification.

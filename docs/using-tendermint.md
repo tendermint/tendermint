@@ -130,7 +130,7 @@ new blockchain will not make any blocks.
 ## Configuration
 
 Tendermint uses a `config.toml` for configuration. For details, see [the
-config specification](./specification/configuration.html).
+config specification](./specification/configuration.md).
 
 Notable options include the socket address of the application
 (`proxy_app`), the listening address of the Tendermint peer
@@ -261,7 +261,7 @@ but must be positive, thus the range is: 0 through 9223372036854775807.
 Because of how the current proposer selection algorithm works, we do not
 recommend having voting powers greater than 10\^12 (ie. 1 trillion) (see
 [Proposals section of Byzantine Consensus
-Algorithm](./specification/byzantine-consensus-algorithm.html#proposals)
+Algorithm](./specification/byzantine-consensus-algorithm.md#proposals)
 for details).
 
 If we want to add more nodes to the network, we have two choices: we can
@@ -399,7 +399,7 @@ failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
 explicitly programmed by the application developer. See the [application
-developers guide](./app-development.html) for more details.
+developers guide](./app-development.md) for more details.
 
 ### Local Network
 
