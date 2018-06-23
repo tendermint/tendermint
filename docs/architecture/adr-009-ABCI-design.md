@@ -2,6 +2,7 @@
 
 ## Changelog
 
+23-06-2018: Some minor fixes from review
 07-06-2018: Some updates based on discussion with Jae
 07-06-2018: Initial draft to match what was released in ABCI v0.11
 
