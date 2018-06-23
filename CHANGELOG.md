@@ -2,6 +2,12 @@
 
 ## TBD
 
+BREAKING CHANGES:
+ - [crypto] Remove xchacha20poly1305 in favor of hkdfchachapoly1305
+
+IMPROVEMENTS:
+ - [crypto] Make public key size into public constants
+
 BUG FIXES:
 
 - [rpc] limited number of HTTP/WebSocket connections
