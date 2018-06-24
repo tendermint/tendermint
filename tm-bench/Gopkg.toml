@@ -43,11 +43,11 @@
 
 [[constraint]]
   name = "github.com/tendermint/tendermint"
-  branch = "develop"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/tendermint/tmlibs"
-  branch = "develop"
+  branch = "master"
 
 [prune]
   go-tests = true

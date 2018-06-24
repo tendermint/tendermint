@@ -3,12 +3,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/beorn7/perks"
-  packages = ["quantile"]
-  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
-
-[[projects]]
-  branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   revision = "675abc5df3c5531bc741b56a765e35623459da6d"
@@ -30,11 +24,7 @@
   packages = [
     "log",
     "log/level",
-    "log/term",
-    "metrics",
-    "metrics/discard",
-    "metrics/internal/lv",
-    "metrics/prometheus"
+    "log/term"
   ]
   revision = "4dc7be5d2d12881735283bcab7352178e190fc71"
   version = "v0.6.0"
@@ -101,52 +91,10 @@
   revision = "b84e30acd515aadc4b783ad4ff83aff3299bdfe0"
 
 [[projects]]
-  name = "github.com/matttproud/golang_protobuf_extensions"
-  packages = ["pbutil"]
-  revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
-  version = "v1.0.1"
-
-[[projects]]
   name = "github.com/pkg/errors"
   packages = ["."]
   revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
   version = "v0.8.0"
-
-[[projects]]
-  name = "github.com/prometheus/client_golang"
-  packages = [
-    "prometheus",
-    "prometheus/promhttp"
-  ]
-  revision = "c5b7fccd204277076155f10851dad72b76a49317"
-  version = "v0.8.0"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/prometheus/client_model"
-  packages = ["go"]
-  revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/prometheus/common"
-  packages = [
-    "expfmt",
-    "internal/bitbucket.org/ww/goautoneg",
-    "model"
-  ]
-  revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
-
-[[projects]]
-  branch = "master"
-  name = "github.com/prometheus/procfs"
-  packages = [
-    ".",
-    "internal/util",
-    "nfs",
-    "xfs"
-  ]
-  revision = "7d6f385de8bea29190f15ba9931442a0eaef9af7"
 
 [[projects]]
   branch = "master"
@@ -174,6 +122,17 @@
   revision = "ae970a0732be3a1f5311da86118d37b9f4bd2a5a"
 
 [[projects]]
+  name = "github.com/tendermint/abci"
+  packages = [
+    "client",
+    "example/code",
+    "example/kvstore",
+    "types"
+  ]
+  revision = "198dccf0ddfd1bb176f87657e3286a05a6ed9540"
+  version = "v0.12.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/tendermint/ed25519"
   packages = [
@@ -186,23 +145,22 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "2106ca61d91029c931fd54968c2bb02dc96b1412"
-  version = "0.10.1"
+  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
+  version = "0.9.9"
 
 [[projects]]
-  branch = "develop"
+  name = "github.com/tendermint/go-crypto"
+  packages = ["."]
+  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
+  version = "v0.6.2"
+
+[[projects]]
   name = "github.com/tendermint/tendermint"
   packages = [
-    "abci/client",
-    "abci/example/code",
-    "abci/example/kvstore",
-    "abci/types",
     "blockchain",
     "config",
     "consensus",
     "consensus/types",
-    "crypto",
-    "crypto/tmhash",
     "evidence",
     "libs/events",
     "libs/pubsub",
@@ -230,7 +188,8 @@
     "types",
     "version"
   ]
-  revision = "f62d6651e3cbd5e8b17622a4bf87289d2fbe7885"
+  revision = "46369a1ab76f274ab47179c4176221842b8207b4"
+  version = "v0.21.0"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -241,11 +200,10 @@
     "db",
     "flowrate",
     "log",
-    "merkle",
-    "merkle/tmhash"
+    "merkle"
   ]
-  revision = "fb7ec62b2925f48de159aeea73b254ae8c58a738"
-  version = "v0.9.0-rc1"
+  revision = "692f1d86a6e2c0efa698fd1e4541b68c74ffaf38"
+  version = "v0.8.4"
 
 [[projects]]
   branch = "master"
@@ -273,7 +231,6 @@
     "idna",
     "internal/timeseries",
     "lex/httplex",
-    "netutil",
     "trace"
   ]
   revision = "640f4622ab692b87c2f3a94265e6f579fe38263d"
@@ -332,6 +289,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "65c380641dcebca21a6343c9ea36bab5cbebff696e27c74d0735077f63272248"
+  inputs-digest = "2c828e4ead70fce78ccb4762315619208bb86c4382e427a06857a503b1c902d4"
   solver-name = "gps-cdcl"
   solver-version = 1
