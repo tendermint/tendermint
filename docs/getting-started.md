@@ -25,15 +25,11 @@ more info.
 
 Then run
 
-    go get -u github.com/tendermint/abci/cmd/abci-cli
-
-If there is an error, install and run the
-[dep](https://github.com/golang/dep) tool to pin the dependencies:
-
-    cd $GOPATH/src/github.com/tendermint/abci
+    go get github.com/tendermint/tendermint
+    cd $GOPATH/src/github.com/tendermint/tendermint
     make get_tools
     make get_vendor_deps
-    make install
+    make install_abci
 
 Now you should have the `abci-cli` installed; you'll see a couple of
 commands (`counter` and `kvstore`) that are example applications written
@@ -132,7 +128,7 @@ of the ASCII of `abcd`. You can verify this in a python 2 shell by
 running `"61626364".decode('base64')` or in python 3 shell by running
 `import codecs; codecs.decode("61626364", 'base64').decode('ascii')`.
 Stay tuned for a future release that [makes this output more
-human-readable](https://github.com/tendermint/abci/issues/32).
+human-readable](https://github.com/tendermint/tendermint/issues/1794).
 
 Now let's try setting a different key and value:
 

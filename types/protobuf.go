@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	crypto "github.com/tendermint/tendermint/crypto"
 )
 

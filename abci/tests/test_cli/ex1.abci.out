@@ -1,0 +1,47 @@
+> echo hello
+-> code: OK
+-> data: hello
+-> data.hex: 0x68656C6C6F
+
+> info 
+-> code: OK
+-> data: {"size":0}
+-> data.hex: 0x7B2273697A65223A307D
+
+> commit 
+-> code: OK
+-> data.hex: 0x0000000000000000
+
+> deliver_tx "abc"
+-> code: OK
+
+> info 
+-> code: OK
+-> data: {"size":1}
+-> data.hex: 0x7B2273697A65223A317D
+
+> commit 
+-> code: OK
+-> data.hex: 0x0200000000000000
+
+> query "abc"
+-> code: OK
+-> log: exists
+-> height: 0
+-> value: abc
+-> value.hex: 616263
+
+> deliver_tx "def=xyz"
+-> code: OK
+
+> commit 
+-> code: OK
+-> data.hex: 0x0400000000000000
+
+> query "def"
+-> code: OK
+-> log: exists
+-> height: 0
+-> value: xyz
+-> value.hex: 78797A
+

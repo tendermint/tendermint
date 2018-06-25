@@ -47,4 +47,4 @@ See the following for more extensive documentation:
 - [Tendermint RPC Docs](https://tendermint.github.io/slate/)
 - [Tendermint in Production](https://github.com/tendermint/tendermint/pull/1618)
 - [Tendermint Basics](https://tendermint.readthedocs.io/en/master/using-tendermint.html)
-- [ABCI spec](https://github.com/tendermint/abci/blob/develop/specification.md)
+- [ABCI spec](https://github.com/tendermint/tendermint/blob/develop/abci/docs/abci-spec.md)

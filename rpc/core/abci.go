@@ -1,7 +1,7 @@
 package core
 
 import (
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/version"
 	cmn "github.com/tendermint/tmlibs/common"

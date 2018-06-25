@@ -4,14 +4,14 @@ ABCI is the interface between Tendermint (a state-machine replication engine)
 and an application (the actual state machine).
 
 The ABCI message types are defined in a [protobuf
-file](https://github.com/tendermint/abci/blob/master/types/types.proto).
+file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
 
 For full details on the ABCI message types and protocol, see the [ABCI
-specificaiton](https://github.com/tendermint/abci/blob/master/specification.rst).
+specification](https://github.com/tendermint/tendermint/blob/develop/docs/abci-spec.md).
 Be sure to read the specification if you're trying to build an ABCI app!
 
 For additional details on server implementation, see the [ABCI
-readme](https://github.com/tendermint/abci#implementation).
+readme](https://github.com/tendermint/tendermint/blob/develop/abci/README.md).
 
 Here we provide some more details around the use of ABCI by Tendermint and
 clarify common "gotchas".

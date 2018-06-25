@@ -10,7 +10,7 @@ import (
 
 	"github.com/tendermint/tmlibs/log"
 
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 
 	cfg "github.com/tendermint/tendermint/config"
