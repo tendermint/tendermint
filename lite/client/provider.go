@@ -106,28 +106,23 @@ func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.
 		return nil, lerr.ErrMissingValidators(chainID, height)
 	}
 	valset = types.NewValidatorSet(res.Validators)
-	valset.TotalVotingPower() // to test deep equality.
 	return
 }
 
 // This does no validation.
 func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.FullCommit, err error) {
-	fc.SignedHeader = signedHeader
 
 	// Get the validators.
 	valset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height)
 	if err != nil {
 		return lite.FullCommit{}, err
 	}
-	fc.Validators = valset
 
 	// Get the next validators.
 	nextValset, err := p.getValidatorSet(signedHeader.ChainID, signedHeader.Height+1)
 	if err != nil {
 		return lite.FullCommit{}, err
-	} else {
-		fc.NextValidators = nextValset
 	}
 
-	return fc, nil
+	return lite.NewFullCommit(signedHeader, valset, nextValset), nil
 }

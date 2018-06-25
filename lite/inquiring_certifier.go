@@ -101,21 +101,21 @@ func (ic *InquiringCertifier) Certify(shdr types.SignedHeader) error {
 		return nil
 	} else if err != nil {
 		return err
-	} else {
-		// Create filled FullCommit.
-		nfc := FullCommit{
-			SignedHeader:   shdr,
-			Validators:     tfc.NextValidators,
-			NextValidators: nextValset,
-		}
-		// Validate the full commit.  This checks the cryptographic
-		// signatures of Commit against Validators.
-		if err := nfc.ValidateBasic(ic.chainID); err != nil {
-			return err
-		}
-		// Trust it.
-		return ic.trusted.SaveFullCommit(nfc)
 	}
+
+	// Create filled FullCommit.
+	nfc := FullCommit{
+		SignedHeader:   shdr,
+		Validators:     tfc.NextValidators,
+		NextValidators: nextValset,
+	}
+	// Validate the full commit.  This checks the cryptographic
+	// signatures of Commit against Validators.
+	if err := nfc.ValidateFull(ic.chainID); err != nil {
+		return err
+	}
+	// Trust it.
+	return ic.trusted.SaveFullCommit(nfc)
 }
 
 // verifyAndSave will verify if this is a valid source full commit given the
@@ -139,7 +139,7 @@ func (ic *InquiringCertifier) verifyAndSave(tfc, sfc FullCommit) error {
 }
 
 // updateToHeight will use divide-and-conquer to find a path to h.
-// Returns nil iff we successfully verify and persist a full commit
+// Returns nil error iff we successfully verify and persist a full commit
 // for height h, using repeated applications of bisection if necessary.
 //
 // Returns ErrCommitNotFound if source provider doesn't have the commit for h.
@@ -153,7 +153,7 @@ func (ic *InquiringCertifier) updateToHeight(h int64) (FullCommit, error) {
 
 	// Validate the full commit.  This checks the cryptographic
 	// signatures of Commit against Validators.
-	if err := sfc.ValidateBasic(ic.chainID); err != nil {
+	if err := sfc.ValidateFull(ic.chainID); err != nil {
 		return FullCommit{}, err
 	}
 
@@ -169,9 +169,9 @@ FOR_LOOP:
 		if err != nil {
 			return FullCommit{}, err
 		}
-		// Maybe we have nothing to do.
+		// We have nothing to do.
 		if tfc.Height() == h {
-			return FullCommit{}, nil
+			return tfc, nil
 		}
 
 		// Try to update to full commit with checks.
@@ -179,24 +179,24 @@ FOR_LOOP:
 		if err == nil {
 			// All good!
 			return sfc, nil
-		} else {
-			// Handle special case when err is ErrTooMuchChange.
-			if lerr.IsErrTooMuchChange(err) {
-				// Divide and conquer.
-				start, end := tfc.Height(), sfc.Height()
-				if !(start < end) {
-					panic("should not happen")
-				}
-				mid := (start + end) / 2
-				_, err = ic.updateToHeight(mid)
-				if err != nil {
-					return FullCommit{}, err
-				}
-				// If we made it to mid, we retry.
-				continue FOR_LOOP
-			}
-			return FullCommit{}, err
 		}
+
+		// Handle special case when err is ErrTooMuchChange.
+		if lerr.IsErrTooMuchChange(err) {
+			// Divide and conquer.
+			start, end := tfc.Height(), sfc.Height()
+			if !(start < end) {
+				panic("should not happen")
+			}
+			mid := (start + end) / 2
+			_, err = ic.updateToHeight(mid)
+			if err != nil {
+				return FullCommit{}, err
+			}
+			// If we made it to mid, we retry.
+			continue FOR_LOOP
+		}
+		return FullCommit{}, err
 	}
 }
 

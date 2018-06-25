@@ -9,12 +9,6 @@
 
 [[projects]]
   branch = "master"
-  name = "github.com/brejski/hid"
-  packages = ["."]
-  revision = "06112dcfcc50a7e0e4fd06e17f9791e788fdaafc"
-
-[[projects]]
-  branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
@@ -290,17 +284,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "e2150783cd35f5b607daca48afd8c57ec54cc995"
-
-[[projects]]
-  name = "github.com/tendermint/abci"
-  packages = [
-    "example/code",
-    "example/kvstore",
-    "types"
-  ]
-  revision = "198dccf0ddfd1bb176f87657e3286a05a6ed9540"
-  version = "v0.12.0"
+  revision = "0d5a0ceb10cf9ab89fdd744cc8c50a83134f6697"
 
 [[projects]]
   branch = "master"
@@ -333,13 +317,8 @@
     "merkle/tmhash",
     "test"
   ]
-  revision = "fb7ec62b2925f48de159aeea73b254ae8c58a738"
-  version = "v0.9.0-rc1"
-
-[[projects]]
-  name = "github.com/zondax/ledger-goclient"
-  packages = ["."]
-  revision = "3e2146609cdb97894c064d59e9d00accd8c2b1dd"
+  revision = "49596e0a1f48866603813df843c9409fc19805c6"
+  version = "v0.9.0"
 
 [[projects]]
   branch = "master"
@@ -374,7 +353,7 @@
     "netutil",
     "trace"
   ]
-  revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
+  revision = "afe8f62b1d6bbd81f31868121a50b06d8188e1f9"
 
 [[projects]]
   branch = "master"
@@ -444,6 +423,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "fcc5b0344f1e328b6abefa1a937d1161e14bbaef603e6f2065e6690531bc5de1"
+  inputs-digest = "c25289282b94abc7f0c390e592e5e1636b7f26cb4773863ac39cde7fdc7b5bdf"
   solver-name = "gps-cdcl"
   solver-version = 1

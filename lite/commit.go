@@ -12,7 +12,7 @@ import (
 // the validator set which signed the commit, and the next validator set. The
 // next validator set (which is proven from the block header) allows us to
 // revert to block-by-block updating of lite certifier's latest validator set,
-// even in the face of arbitrarily power changes.
+// even in the face of arbitrarily large power changes.
 type FullCommit struct {
 	SignedHeader   types.SignedHeader  `json:"signed_header"`
 	Validators     *types.ValidatorSet `json:"validator_set"`
@@ -33,7 +33,7 @@ func NewFullCommit(signedHeader types.SignedHeader, valset, nextValset *types.Va
 // signed the SignedHeader.Commit.
 // If > 2/3 did not sign the Commit from fc.Validators, it
 // is not a valid commit!
-func (fc FullCommit) ValidateBasic(chainID string) error {
+func (fc FullCommit) ValidateFull(chainID string) error {
 	// Ensure that Validators exists and matches the header.
 	if fc.Validators.Size() == 0 {
 		return errors.New("need FullCommit.Validators")

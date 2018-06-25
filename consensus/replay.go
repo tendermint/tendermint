@@ -266,7 +266,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain.
 	if appBlockHeight == 0 {
-		nextVals := types.TM2PB.Validators(state.Validators) // state.Validators would work too.
+		nextVals := types.TM2PB.Validators(state.NextValidators) // state.Validators would work too.
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
 			Time:            h.genDoc.GenesisTime.Unix(), // TODO
