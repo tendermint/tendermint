@@ -247,7 +247,7 @@ devs, we keep all our code under the `$GOPATH`, so run:
 
 Kill the previous `counter` and `tendermint` processes. Now run the app:
 
-    node example/app.js
+    node example/counter.js
 
 In another window, reset and start `tendermint`:
 
