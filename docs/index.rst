@@ -9,3 +9,7 @@ Welcome to Tendermint!
 This location for our documentation has been deprecated, please see:
 
 - https://tendermint.com/docs
+
+The last version built by Read The Docs will still be available at:
+
+- https://tendermint.readthedocs.io/projects/tools/en/v0.21.0/
