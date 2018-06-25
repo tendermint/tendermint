@@ -6,106 +6,81 @@ import (
 )
 
 //----------------------------------------
-// Convenience methods
+// Convenience method.
 
-// ErrorWrap will just call .TraceFrom(), or create a new *cmnError.
 func ErrorWrap(cause interface{}, format string, args ...interface{}) Error {
-	msg := Fmt(format, args...)
 	if causeCmnError, ok := cause.(*cmnError); ok {
-		return causeCmnError.TraceFrom(1, msg)
+		msg := Fmt(format, args...)
+		return causeCmnError.Stacktrace().Trace(1, msg)
+	} else if cause == nil {
+		return newCmnError(FmtError{format, args}).Stacktrace()
+	} else {
+		// NOTE: causeCmnError is a typed nil here.
+		msg := Fmt(format, args...)
+		return newCmnError(cause).Stacktrace().Trace(1, msg)
 	}
-	// NOTE: cause may be nil.
-	// NOTE: do not use causeCmnError here, not the same as nil.
-	return newError(msg, cause, cause).Stacktrace()
 }
 
 //----------------------------------------
 // Error & cmnError
 
 /*
-Usage:
+
+Usage with arbitrary error data:
 
 ```go
 	// Error construction
-	var someT = errors.New("Some err type")
-	var err1 error = NewErrorWithT(someT, "my message")
+	type MyError struct{}
+	var err1 error = NewErrorWithData(MyError{}, "my message")
 	...
 	// Wrapping
 	var err2 error  = ErrorWrap(err1, "another message")
 	if (err1 != err2) { panic("should be the same")
 	...
 	// Error handling
-	switch err2.T() {
-		case someT: ...
+	switch err2.Data().(type){
+		case MyError: ...
 	    default: ...
 	}
 ```
-
 */
 type Error interface {
 	Error() string
-	Message() string
 	Stacktrace() Error
-	Trace(format string, args ...interface{}) Error
-	TraceFrom(offset int, format string, args ...interface{}) Error
-	Cause() interface{}
-	WithT(t interface{}) Error
-	T() interface{}
-	Format(s fmt.State, verb rune)
+	Trace(offset int, format string, args ...interface{}) Error
+	Data() interface{}
 }
 
-// New Error with no cause where the type is the format string of the message..
+// New Error with formatted message.
+// The Error's Data will be a FmtError type.
 func NewError(format string, args ...interface{}) Error {
-	msg := Fmt(format, args...)
-	return newError(msg, nil, format)
-
+	err := FmtError{format, args}
+	return newCmnError(err)
 }
 
-// New Error with specified type and message.
-func NewErrorWithT(t interface{}, format string, args ...interface{}) Error {
-	msg := Fmt(format, args...)
-	return newError(msg, nil, t)
-}
-
-// NOTE: The name of a function "NewErrorWithCause()" implies that you are
-// creating a new Error, yet, if the cause is an Error, creating a new Error to
-// hold a ref to the old Error is probably *not* what you want to do.
-// So, use ErrorWrap(cause, format, a...) instead, which returns the same error
-// if cause is an Error.
-// IF you must set an Error as the cause of an Error,
-// then you can use the WithCauser interface to do so manually.
-// e.g. (error).(tmlibs.WithCauser).WithCause(causeError)
-
-type WithCauser interface {
-	WithCause(cause interface{}) Error
+// New Error with specified data.
+func NewErrorWithData(data interface{}) Error {
+	return newCmnError(data)
 }
 
 type cmnError struct {
-	msg        string         // first msg which also appears in msg
-	cause      interface{}    // underlying cause (or panic object)
-	t          interface{}    // for switching on error
+	data       interface{}    // associated data
 	msgtraces  []msgtraceItem // all messages traced
 	stacktrace []uintptr      // first stack trace
 }
 
-var _ WithCauser = &cmnError{}
 var _ Error = &cmnError{}
 
 // NOTE: do not expose.
-func newError(msg string, cause interface{}, t interface{}) *cmnError {
+func newCmnError(data interface{}) *cmnError {
 	return &cmnError{
-		msg:        msg,
-		cause:      cause,
-		t:          t,
+		data:       data,
 		msgtraces:  nil,
 		stacktrace: nil,
 	}
 }
 
-func (err *cmnError) Message() string {
-	return err.msg
-}
-
+// Implements error.
 func (err *cmnError) Error() string {
 	return fmt.Sprintf("%v", err)
 }
@@ -121,42 +96,17 @@ func (err *cmnError) Stacktrace() Error {
 }
 
 // Add tracing information with msg.
-func (err *cmnError) Trace(format string, args ...interface{}) Error {
-	msg := Fmt(format, args...)
-	return err.doTrace(msg, 0)
-}
-
-// Same as Trace, but traces the line `offset` calls out.
-// If n == 0, the behavior is identical to Trace().
-func (err *cmnError) TraceFrom(offset int, format string, args ...interface{}) Error {
+// Set n=0 unless wrapped with some function, then n > 0.
+func (err *cmnError) Trace(offset int, format string, args ...interface{}) Error {
 	msg := Fmt(format, args...)
 	return err.doTrace(msg, offset)
 }
 
-// Return last known cause.
-// NOTE: The meaning of "cause" is left for the caller to define.
-// There exists no "canonical" definition of "cause".
-// Instead of blaming, try to handle it, or organize it.
-func (err *cmnError) Cause() interface{} {
-	return err.cause
-}
-
-// Overwrites the Error's cause.
-func (err *cmnError) WithCause(cause interface{}) Error {
-	err.cause = cause
-	return err
-}
-
-// Overwrites the Error's type.
-func (err *cmnError) WithT(t interface{}) Error {
-	err.t = t
-	return err
-}
-
-// Return the "type" of this message, primarily for switching
-// to handle this Error.
-func (err *cmnError) T() interface{} {
-	return err.t
+// Return the "data" of this error.
+// Data could be used for error handling/switching,
+// or for holding general error/debug information.
+func (err *cmnError) Data() interface{} {
+	return err.data
 }
 
 func (err *cmnError) doTrace(msg string, n int) Error {
@@ -177,12 +127,8 @@ func (err *cmnError) Format(s fmt.State, verb rune) {
 	default:
 		if s.Flag('#') {
 			s.Write([]byte("--= Error =--\n"))
-			// Write msg.
-			s.Write([]byte(fmt.Sprintf("Message: %s\n", err.msg)))
-			// Write cause.
-			s.Write([]byte(fmt.Sprintf("Cause: %#v\n", err.cause)))
-			// Write type.
-			s.Write([]byte(fmt.Sprintf("T: %#v\n", err.t)))
+			// Write data.
+			s.Write([]byte(fmt.Sprintf("Data: %#v\n", err.data)))
 			// Write msg trace items.
 			s.Write([]byte(fmt.Sprintf("Msg Traces:\n")))
 			for i, msgtrace := range err.msgtraces {
@@ -200,11 +146,7 @@ func (err *cmnError) Format(s fmt.State, verb rune) {
 			s.Write([]byte("--= /Error =--\n"))
 		} else {
 			// Write msg.
-			if err.cause != nil {
-				s.Write([]byte(fmt.Sprintf("Error{`%s` (cause: %v)}", err.msg, err.cause))) // TODO tick-esc?
-			} else {
-				s.Write([]byte(fmt.Sprintf("Error{`%s`}", err.msg))) // TODO tick-esc?
-			}
+			s.Write([]byte(fmt.Sprintf("Error{%v}", err.data))) // TODO tick-esc?
 		}
 	}
 }
@@ -230,6 +172,45 @@ func (mti msgtraceItem) String() string {
 		file, line,
 		mti.msg,
 	)
+}
+
+//----------------------------------------
+// fmt error
+
+/*
+
+FmtError is the data type for NewError() (e.g. NewError().Data().(FmtError))
+Theoretically it could be used to switch on the format string.
+
+```go
+	// Error construction
+	var err1 error = NewError("invalid username %v", "BOB")
+	var err2 error = NewError("another kind of error")
+	...
+	// Error handling
+	switch err1.Data().(cmn.FmtError).Format() {
+		case "invalid username %v": ...
+		case "another kind of error": ...
+	    default: ...
+	}
+```
+*/
+type FmtError struct {
+	format string
+	args   []interface{}
+}
+
+func (fe FmtError) Error() string {
+	return fmt.Sprintf(fe.format, fe.args...)
+}
+
+func (fe FmtError) String() string {
+	return fmt.Sprintf("FmtError{format:%v,args:%v}",
+		fe.format, fe.args)
+}
+
+func (fe FmtError) Format() string {
+	return fe.format
 }
 
 //----------------------------------------

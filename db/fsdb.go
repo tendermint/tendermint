@@ -151,21 +151,29 @@ func (db *FSDB) Mutex() *sync.Mutex {
 }
 
 func (db *FSDB) Iterator(start, end []byte) Iterator {
+	return db.MakeIterator(start, end, false)
+}
+
+func (db *FSDB) MakeIterator(start, end []byte, isReversed bool) Iterator {
 	db.mtx.Lock()
 	defer db.mtx.Unlock()
 
 	// We need a copy of all of the keys.
 	// Not the best, but probably not a bottleneck depending.
-	keys, err := list(db.dir, start, end)
+	keys, err := list(db.dir, start, end, isReversed)
 	if err != nil {
 		panic(errors.Wrapf(err, "Listing keys in %s", db.dir))
 	}
-	sort.Strings(keys)
+	if isReversed {
+		sort.Sort(sort.Reverse(sort.StringSlice(keys)))
+	} else {
+		sort.Strings(keys)
+	}
 	return newMemDBIterator(db, keys, start, end)
 }
 
 func (db *FSDB) ReverseIterator(start, end []byte) Iterator {
-	panic("not implemented yet") // XXX
+	return db.MakeIterator(start, end, true)
 }
 
 func (db *FSDB) nameToPath(name []byte) string {
@@ -213,7 +221,7 @@ func remove(path string) error {
 
 // List keys in a directory, stripping of escape sequences and dir portions.
 // CONTRACT: returns os errors directly without wrapping.
-func list(dirPath string, start, end []byte) ([]string, error) {
+func list(dirPath string, start, end []byte, isReversed bool) ([]string, error) {
 	dir, err := os.Open(dirPath)
 	if err != nil {
 		return nil, err
@@ -231,7 +239,7 @@ func list(dirPath string, start, end []byte) ([]string, error) {
 			return nil, fmt.Errorf("Failed to unescape %s while listing", name)
 		}
 		key := unescapeKey([]byte(n))
-		if IsKeyInDomain(key, start, end, false) {
+		if IsKeyInDomain(key, start, end, isReversed) {
 			keys = append(keys, string(key))
 		}
 	}

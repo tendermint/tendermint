@@ -1,13 +1,13 @@
 GOTOOLS = \
 	github.com/golang/dep/cmd/dep \
-	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/gogo/protobuf/gogoproto
+	github.com/golang/protobuf/protoc-gen-go \
+	github.com/square/certstrap
 	# github.com/alecthomas/gometalinter.v2 \
 
-GOTOOLS_CHECK = dep gometalinter.v2 protoc protoc-gen-gogo
-INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
+GOTOOLS_CHECK = dep gometalinter.v2 protoc protoc-gen-go
+INCLUDE = -I=. -I=${GOPATH}/src
 
-all: check get_vendor_deps protoc build test install metalinter
+all: check get_vendor_deps protoc grpc_dbserver build test install metalinter
 
 check: check_tools
 
@@ -18,7 +18,7 @@ protoc:
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) --gogo_out=plugins=grpc:. common/*.proto
+	protoc $(INCLUDE) --go_out=plugins=grpc:. common/*.proto
 	@echo "--> adding nolint declarations to protobuf generated files"
 	@awk '/package common/ { print "//nolint: gas"; print; next }1' common/types.pb.go > common/types.pb.go.new
 	@mv common/types.pb.go.new common/types.pb.go
@@ -66,8 +66,21 @@ get_vendor_deps:
 ########################################
 ### Testing
 
-test:
-	go test -tags gcc $(shell go list ./... | grep -v vendor)
+gen_certs: clean_certs
+	## Generating certificates for TLS testing...
+	certstrap init --common-name "tendermint.com" --passphrase ""
+	certstrap request-cert -ip "::" --passphrase ""
+	certstrap sign "::" --CA "tendermint.com" --passphrase ""
+	mv out/::.crt out/::.key db/remotedb
+
+clean_certs:
+	## Cleaning TLS testing certificates...
+	rm -rf out
+	rm -f db/remotedb/::.crt db/remotedb/::.key
+
+test: gen_certs
+	GOCACHE=off go test -tags gcc $(shell go list ./... | grep -v vendor)
+	make clean_certs
 
 test100:
 	@for i in {1..100}; do make test; done
@@ -118,4 +131,7 @@ metalinter_all:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check protoc build check_tools get_tools get_protoc update_tools get_vendor_deps test fmt metalinter metalinter_all
+.PHONY: check protoc build check_tools get_tools get_protoc update_tools get_vendor_deps test fmt metalinter metalinter_all gen_certs clean_certs
+
+grpc_dbserver:
+	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto

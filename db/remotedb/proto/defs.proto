@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package protodb;
+
+message Batch {
+  repeated Operation ops = 1;
+}
+
+message Operation {
+  Entity entity = 1;
+  enum Type {
+    SET = 0;
+    DELETE = 1;
+  }
+  Type type = 2;
+}
+
+message Entity {
+  int32 id	= 1;
+  bytes key	= 2;
+  bytes value	= 3;
+  bool exists	= 4;
+  bytes start	= 5;
+  bytes end	= 6;
+  string err	= 7;
+  int64 created_at = 8;
+}
+
+message Nothing {
+}
+
+message Domain {
+  bytes start = 1;
+  bytes end   = 2;
+}
+
+message Iterator {
+  Domain domain = 1;
+  bool valid	 = 2;
+  bytes key	 = 3;
+  bytes value	 = 4;
+}
+
+message Stats {
+  map<string, string> data = 1;
+  int64 time_at		   = 2;
+}
+
+message Init {
+  string Type = 1;
+  string Name = 2;
+  string Dir  = 3;
+}
+
+service DB {
+  rpc init(Init) returns (Entity) {}
+  rpc get(Entity) returns (Entity) {}
+  rpc getStream(stream Entity) returns (stream Entity) {}
+
+  rpc has(Entity) returns (Entity) {}
+  rpc set(Entity) returns (Nothing) {}
+  rpc setSync(Entity) returns (Nothing) {}
+  rpc delete(Entity) returns (Nothing) {}
+  rpc deleteSync(Entity) returns (Nothing) {}
+  rpc iterator(Entity) returns (stream Iterator) {}
+  rpc reverseIterator(Entity) returns (stream Iterator) {}
+  // rpc print(Nothing) returns (Entity) {}
+  rpc stats(Nothing) returns (Stats) {}
+  rpc batchWrite(Batch) returns (Nothing) {}
+  rpc batchWriteSync(Batch) returns (Nothing) {}
+}
