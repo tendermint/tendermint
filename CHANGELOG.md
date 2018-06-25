@@ -2,7 +2,7 @@
 
 ## 0.9.0
 
-*TBD*
+*June 24th, 2018*
 
 BREAKING:
  - [events, pubsub] Removed - moved to github.com/tendermint/tendermint
