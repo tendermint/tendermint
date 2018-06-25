@@ -38,7 +38,7 @@ func TestRemoteDB(t *testing.T) {
 
 	k1 := []byte("key-1")
 	v1 := client.Get(k1)
-	require.Equal(t, 0, len(v1), "expecting no key1 to have been stored")
+	require.Equal(t, 0, len(v1), "expecting no key1 to have been stored, got %X (%s)", v1, v1)
 	vv1 := []byte("value-1")
 	client.Set(k1, vv1)
 	gv1 := client.Get(k1)

@@ -79,7 +79,7 @@ clean_certs:
 	rm -f db/remotedb/::.crt db/remotedb/::.key
 
 test: gen_certs
-	go test -tags gcc $(shell go list ./... | grep -v vendor)
+	GOCACHE=off go test -tags gcc $(shell go list ./... | grep -v vendor)
 	make clean_certs
 
 test100:
