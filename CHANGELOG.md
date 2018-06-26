@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.21.2
+
+IMPROVEMENT
+
+- [rpc/client] Supports https and wss now
+
 ## 0.21.0
 
 *June 21th, 2018*
@@ -14,7 +20,6 @@ IMPROVEMENT
 
 - [pubsub] Set default capacity to 0
 - [docs] Various improvements
-- [rpc/client] Supports https and wss now
 
 BUG FIXES
 
