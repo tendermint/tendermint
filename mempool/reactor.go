@@ -90,7 +90,7 @@ func (memR *MempoolReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
 	case *TxMessage:
 		err := memR.Mempool.CheckTx(msg.Tx, nil)
 		if err != nil {
-			memR.Logger.Info("Could not check tx", "tx", msg.Tx, "err", err)
+			memR.Logger.Info("Could not check tx", "tx", msg.Tx.HashString(), "err", err)
 		}
 		// broadcasting happens from go routines per peer
 	default:

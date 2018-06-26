@@ -26,6 +26,11 @@ func (tx Tx) String() string {
 	return fmt.Sprintf("Tx{%X}", []byte(tx))
 }
 
+// HashString returns the hex-encoded hash as a string.
+func (tx Tx) HashString() string {
+	return fmt.Sprintf("%X", tx.Hash())
+}
+
 // Txs is a slice of Tx.
 type Txs []Tx
 
