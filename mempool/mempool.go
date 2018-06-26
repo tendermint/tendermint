@@ -273,7 +273,7 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r)
+			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r, "total", mem.Size())
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
