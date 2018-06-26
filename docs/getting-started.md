@@ -7,7 +7,7 @@ application you want to run. So, to run a complete blockchain that does
 something useful, you must start two programs: one is Tendermint Core,
 the other is your application, which can be written in any programming
 language. Recall from [the intro to
-ABCI](introduction.html#ABCI-Overview) that Tendermint Core handles all
+ABCI](./introduction.md#ABCI-Overview) that Tendermint Core handles all
 the p2p and consensus stuff, and just forwards transactions to the
 application when they need to be validated, or when they're ready to be
 committed to a block.
@@ -58,7 +58,7 @@ Tendermint before, use:
 If you have used Tendermint, you may want to reset the data for a new
 blockchain by running `tendermint unsafe_reset_all`. Then you can run
 `tendermint node` to start Tendermint, and connect to the app. For more
-details, see [the guide on using Tendermint](./using-tendermint.html).
+details, see [the guide on using Tendermint](./using-tendermint.md).
 
 You should see Tendermint making blocks! We can get the status of our
 Tendermint node as follows:
@@ -224,7 +224,7 @@ But if we send a `1`, it works again:
     }
 
 For more details on the `broadcast_tx` API, see [the guide on using
-Tendermint](./using-tendermint.html).
+Tendermint](./using-tendermint.md).
 
 ## CounterJS - Example in Another Language
 
@@ -243,7 +243,7 @@ devs, we keep all our code under the `$GOPATH`, so run:
 
 Kill the previous `counter` and `tendermint` processes. Now run the app:
 
-    node example/app.js
+    node example/counter.js
 
 In another window, reset and start `tendermint`:
 
