@@ -311,6 +311,9 @@ type P2PConfig struct {
 	// FUzz connection
 	TestFuzz       bool            `mapstructure:"test_fuzz"`
 	TestFuzzConfig *FuzzConnConfig `mapstructure:"test_fuzz_config"`
+
+	// Addresses under which the address manager will claim to need more addresses
+	NeedAddressThreshold int `mapstructure:"need_address_threshold"`
 }
 
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
@@ -332,6 +335,7 @@ func DefaultP2PConfig() *P2PConfig {
 		TestDialFail:            false,
 		TestFuzz:                false,
 		TestFuzzConfig:          DefaultFuzzConnConfig(),
+		NeedAddressThreshold:    1000,
 	}
 }
 

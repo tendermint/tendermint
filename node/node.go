@@ -271,7 +271,7 @@ func NewNode(config *cfg.Config,
 	//
 	// If PEX is on, it should handle dialing the seeds. Otherwise the switch does it.
 	// Note we currently use the addrBook regardless at least for AddOurAddress
-	addrBook := pex.NewAddrBook(config.P2P.AddrBookFile(), config.P2P.AddrBookStrict)
+	addrBook := pex.NewAddrBook(config.P2P)
 	addrBook.SetLogger(p2pLogger.With("book", config.P2P.AddrBookFile()))
 	if config.P2P.PexReactor {
 		// TODO persistent peers ? so we can have their DNS addrs saved
