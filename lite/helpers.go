@@ -3,7 +3,7 @@ package lite
 import (
 	"time"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -103,7 +103,13 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 	}
 	// Sign it
 	signBytes := vote.SignBytes(header.ChainID)
-	vote.Signature = key.Sign(signBytes)
+	// TODO Consider reworking makeVote API to return an error
+	sig, err := key.Sign(signBytes)
+	if err != nil {
+		panic(err)
+	}
+	vote.Signature = sig
+
 	return vote
 }
 

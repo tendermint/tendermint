@@ -34,13 +34,16 @@ These will be used by both `terraform` and `ansible`.
 This step will create four Digital Ocean droplets. First, go to the
 correct directory:
 
-    cd $GOPATH/src/github.com/tendermint/tendermint/networks/remote/terraform
+```
+cd $GOPATH/src/github.com/tendermint/tendermint/networks/remote/terraform
+```
 
 then:
 
-    terraform init
-    terraform apply -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"
-
+```
+terraform init
+terraform apply -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"
+```
 and you will get a list of IP addresses that belong to your droplets.
 
 With the droplets created and running, let's setup Ansible.
@@ -66,14 +69,18 @@ review [manual deployments](./deploy-testnets.md).
 
 Here's the command to run:
 
-    ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$GOPATH/src/github.com/tendermint/tendermint/build/tendermint -e CONFIGDIR=$GOPATH/src/github.com/tendermint/tendermint/docs/examples
+```
+ansible-playbook -i inventory/digital_ocean.py -l sentrynet config.yml -e BINARY=$GOPATH/src/github.com/tendermint/tendermint/build/tendermint -e CONFIGDIR=$GOPATH/src/github.com/tendermint/tendermint/docs/examples
+```
 
 Voila! All your droplets now have the `tendermint` binary and required
 configuration files to run a testnet.
 
 Next, we run the install role:
 
-    ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
+```
+ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
+```
 
 which as you'll see below, executes
 `tendermint node --proxy_app=kvstore` on all droplets. Although we'll
@@ -88,35 +95,43 @@ increasing).
 Next, open `roles/install/templates/systemd.service.j2` and look for the
 line `ExecStart` which should look something like:
 
-    ExecStart=/usr/bin/tendermint node --proxy_app=kvstore
+```
+ExecStart=/usr/bin/tendermint node --proxy_app=kvstore
+```
 
 and add the `--p2p.persistent_peers` flag with the relevant information
 for each node. The resulting file should look something like:
 
-    [Unit]
-    Description={{service}}
-    Requires=network-online.target
-    After=network-online.target
+```
+[Unit]
+Description={{service}}
+Requires=network-online.target
+After=network-online.target
 
-    [Service]
-    Restart=on-failure
-    User={{service}}
-    Group={{service}}
-    PermissionsStartOnly=true
-    ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:26656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:26656
-    ExecReload=/bin/kill -HUP $MAINPID
-    KillSignal=SIGTERM
+[Service]
+Restart=on-failure
+User={{service}}
+Group={{service}}
+PermissionsStartOnly=true
+ExecStart=/usr/bin/tendermint node --proxy_app=kvstore --p2p.persistent_peers=167b80242c300bf0ccfb3ced3dec60dc2a81776e@165.227.41.206:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@165.227.43.146:26656,303a1a4312c30525c99ba66522dd81cca56a361a@159.89.115.32:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@159.89.119.125:26656
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
 
-    [Install]
-    WantedBy=multi-user.target
+[Install]
+WantedBy=multi-user.target
+```
 
 Then, stop the nodes:
 
-    ansible-playbook -i inventory/digital_ocean.py -l sentrynet stop.yml
+```
+ansible-playbook -i inventory/digital_ocean.py -l sentrynet stop.yml
+```
 
 Finally, we run the install role again:
 
-    ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
+```
+ansible-playbook -i inventory/digital_ocean.py -l sentrynet install.yml
+```
 
 to re-run `tendermint node` with the new flag, on all droplets. The
 `latest_block_hash` should now be changing and `latest_block_height`
@@ -124,7 +139,9 @@ increasing. Your testnet is now up and running :)
 
 Peek at the logs with the status role:
 
-    ansible-playbook -i inventory/digital_ocean.py -l sentrynet status.yml
+```
+ansible-playbook -i inventory/digital_ocean.py -l sentrynet status.yml
+```
 
 ### Logging
 
@@ -134,14 +151,18 @@ service provider. You can set up your nodes to log there automatically.
 Create an account and get your API key from the notes on [this
 page](https://app.logz.io/#/dashboard/data-sources/Filebeat), then:
 
-    yum install systemd-devel || echo "This will only work on RHEL-based systems."
-    apt-get install libsystemd-dev || echo "This will only work on Debian-based systems."
-
-    go get github.com/mheese/journalbeat
-    ansible-playbook -i inventory/digital_ocean.py -l sentrynet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
+```
+yum install systemd-devel || echo "This will only work on RHEL-based systems."
+apt-get install libsystemd-dev || echo "This will only work on Debian-based systems."
+    
+go get github.com/mheese/journalbeat
+ansible-playbook -i inventory/digital_ocean.py -l sentrynet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
+```
 
 ### Cleanup
 
 To remove your droplets, run:
 
-    terraform destroy -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"
+```
+terraform destroy -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"
+```

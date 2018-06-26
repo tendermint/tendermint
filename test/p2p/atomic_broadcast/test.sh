@@ -26,11 +26,11 @@ for i in $(seq 1 "$N"); do
     echo ""
 
     # we need to wait another block to get the new app_hash
-    h1=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height)
+    h1=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height | jq fromjson)
     h2=$h1
     while [ "$h2" == "$h1" ]; do
         sleep 1
-        h2=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height)
+        h2=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height | jq fromjson)
     done
 
     # wait for all other peers to get to this height
@@ -39,10 +39,10 @@ for i in $(seq 1 "$N"); do
         if [[ "$i" != "$j" ]]; then
             addrJ=$(test/p2p/ip.sh "$j"):26657
 
-            h=$(curl -s "$addrJ/status" | jq .result.sync_info.latest_block_height)
+            h=$(curl -s "$addrJ/status" | jq .result.sync_info.latest_block_height | jq fromjson)
             while [ "$h" -lt "$minHeight" ]; do
                 sleep 1
-                h=$(curl -s "$addrJ/status" | jq .result.sync_info.latest_block_height)
+                h=$(curl -s "$addrJ/status" | jq .result.sync_info.latest_block_height | jq fromjson)
             done
         fi
     done

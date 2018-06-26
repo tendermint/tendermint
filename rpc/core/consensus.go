@@ -87,7 +87,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //           {
 //             "address": "B5B3D40BE53982AD294EF99FF5A34C0C3E5A3244",
 //             "pub_key": {
-//               "type": "AC26791624DE60",
+//               "type": "tendermint/PubKeyEd25519",
 //               "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //             },
 //             "voting_power": 10,
@@ -97,7 +97,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //         "proposer": {
 //           "address": "B5B3D40BE53982AD294EF99FF5A34C0C3E5A3244",
 //           "pub_key": {
-//             "type": "AC26791624DE60",
+//             "type": "tendermint/PubKeyEd25519",
 //             "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //           },
 //           "voting_power": 10,
@@ -133,7 +133,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //           {
 //             "address": "B5B3D40BE53982AD294EF99FF5A34C0C3E5A3244",
 //             "pub_key": {
-//               "type": "AC26791624DE60",
+//               "type": "tendermint/PubKeyEd25519",
 //               "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //             },
 //             "voting_power": 10,
@@ -143,7 +143,7 @@ func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
 //         "proposer": {
 //           "address": "B5B3D40BE53982AD294EF99FF5A34C0C3E5A3244",
 //           "pub_key": {
-//             "type": "AC26791624DE60",
+//             "type": "tendermint/PubKeyEd25519",
 //             "value": "SBctdhRBcXtBgdI/8a/alTsUhGXqGs9k5ylV1u5iKHg="
 //           },
 //           "voting_power": 10,

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"time"
 
-	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
+	abci "github.com/tendermint/tendermint/abci/types"
+	crypto "github.com/tendermint/tendermint/crypto"
 )
 
 //-------------------------------------------------------
@@ -58,7 +58,7 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 }
 
 // XXX: panics on nil or unknown pubkey type
-// TODO: add cases when new pubkey types are added to go-crypto
+// TODO: add cases when new pubkey types are added to crypto
 func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	switch pk := pubKey.(type) {
 	case crypto.PubKeyEd25519:
@@ -153,7 +153,7 @@ var PB2TM = pb2tm{}
 type pb2tm struct{}
 
 func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
-	// TODO: define these in go-crypto and use them
+	// TODO: define these in crypto and use them
 	sizeEd := 32
 	sizeSecp := 33
 	switch pubKey.Type {

@@ -20,7 +20,7 @@ import (
 	"golang.org/x/crypto/nacl/secretbox"
 	"golang.org/x/crypto/ripemd160"
 
-	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -267,7 +267,11 @@ func genChallenge(loPubKey, hiPubKey *[32]byte) (challenge *[32]byte) {
 }
 
 func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature crypto.Signature) {
-	signature = locPrivKey.Sign(challenge[:])
+	signature, err := locPrivKey.Sign(challenge[:])
+	// TODO(ismail): let signChallenge return an error instead
+	if err != nil {
+		panic(err)
+	}
 	return
 }
 

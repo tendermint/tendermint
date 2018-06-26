@@ -53,8 +53,8 @@ Next follows a standard block creation cycle, where we enter a new
 round, propose a block, receive more than 2/3 of prevotes, then
 precommits and finally have a chance to commit a block. For details,
 please refer to [Consensus
-Overview](introduction.html#consensus-overview) or [Byzantine Consensus
-Algorithm](specification.html).
+Overview](./introduction.md#consensus-overview) or [Byzantine Consensus
+Algorithm](./spec/consensus).
 
     I[10-04|13:54:30.393] enterNewRound(91/0). Current: 91/0/RoundStepNewHeight module=consensus
     I[10-04|13:54:30.393] enterPropose(91/0). Current: 91/0/RoundStepNewRound module=consensus
@@ -100,10 +100,10 @@ Algorithm](specification.html).
 Here is the list of modules you may encounter in Tendermint's log and a
 little overview what they do.
 
--   `abci-client` As mentioned in [Application Development Guide](app-development.md#abci-design),    Tendermint acts as an ABCI
+-   `abci-client` As mentioned in [Application Development Guide](./app-development.md),    Tendermint acts as an ABCI
     client with respect to the application and maintains 3 connections:
     mempool, consensus and query. The code used by Tendermint Core can
-    be found [here](https://github.com/tendermint/abci/tree/master/client).
+    be found [here](https://github.com/tendermint/tendermint/tree/develop/abci/client).
 -   `blockchain` Provides storage, pool (a group of peers), and reactor
     for both storing and exchanging blocks between peers.
 -   `consensus` The heart of Tendermint core, which is the
@@ -115,13 +115,13 @@ little overview what they do.
     found
     [here](https://github.com/tendermint/tendermint/blob/master/types/events.go).
     You can subscribe to them by calling `subscribe` RPC method. Refer
-    to [RPC docs](specification/rpc.html) for additional information.
+    to [RPC docs](./specification/rpc.md) for additional information.
 -   `mempool` Mempool module handles all incoming transactions, whenever
     they are coming from peers or the application.
 -   `p2p` Provides an abstraction around peer-to-peer communication. For
     more details, please check out the
     [README](https://github.com/tendermint/tendermint/blob/master/p2p/README.md).
--   `rpc` [Tendermint's RPC](specification/rpc.html).
+-   `rpc` [Tendermint's RPC](./specification/rpc.md).
 -   `rpc-server` RPC server. For implementation details, please read the
     [README](https://github.com/tendermint/tendermint/blob/master/rpc/lib/README.md).
 -   `state` Represents the latest state and execution submodule, which

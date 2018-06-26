@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	maxPacketMsgPayloadSizeDefault = 1024 // NOTE: Must be below 16,384 bytes for 14 below.
-	maxPacketMsgOverheadSize       = 14   // NOTE: See connection_test for derivation.
+	defaultMaxPacketMsgSize = 1024
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
@@ -96,6 +95,8 @@ type MConnection struct {
 	chStatsTimer *cmn.RepeatTimer // update channel stats periodically
 
 	created time.Time // time of creation
+
+	emptyPacketMsgSize int
 }
 
 // MConnConfig is a MConnection configuration.
@@ -104,7 +105,7 @@ type MConnConfig struct {
 	RecvRate int64 `mapstructure:"recv_rate"`
 
 	// Maximum payload size
-	MaxPacketMsgPayloadSize int `mapstructure:"max_packet_msg_payload_size"`
+	MaxPacketMsgSize int `mapstructure:"max_packet_msg_size"`
 
 	// Interval to flush writes (throttled)
 	FlushThrottle time.Duration `mapstructure:"flush_throttle"`
@@ -116,19 +117,15 @@ type MConnConfig struct {
 	PongTimeout time.Duration `mapstructure:"pong_timeout"`
 }
 
-func (cfg *MConnConfig) maxPacketMsgTotalSize() int {
-	return cfg.MaxPacketMsgPayloadSize + maxPacketMsgOverheadSize
-}
-
 // DefaultMConnConfig returns the default config.
 func DefaultMConnConfig() MConnConfig {
 	return MConnConfig{
-		SendRate:                defaultSendRate,
-		RecvRate:                defaultRecvRate,
-		MaxPacketMsgPayloadSize: maxPacketMsgPayloadSizeDefault,
-		FlushThrottle:           defaultFlushThrottle,
-		PingInterval:            defaultPingInterval,
-		PongTimeout:             defaultPongTimeout,
+		SendRate:         defaultSendRate,
+		RecvRate:         defaultRecvRate,
+		MaxPacketMsgSize: defaultMaxPacketMsgSize,
+		FlushThrottle:    defaultFlushThrottle,
+		PingInterval:     defaultPingInterval,
+		PongTimeout:      defaultPongTimeout,
 	}
 }
 
@@ -149,16 +146,17 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	}
 
 	mconn := &MConnection{
-		conn:          conn,
-		bufConnReader: bufio.NewReaderSize(conn, minReadBufferSize),
-		bufConnWriter: bufio.NewWriterSize(conn, minWriteBufferSize),
-		sendMonitor:   flow.New(0, 0),
-		recvMonitor:   flow.New(0, 0),
-		send:          make(chan struct{}, 1),
-		pong:          make(chan struct{}, 1),
-		onReceive:     onReceive,
-		onError:       onError,
-		config:        config,
+		conn:               conn,
+		bufConnReader:      bufio.NewReaderSize(conn, minReadBufferSize),
+		bufConnWriter:      bufio.NewWriterSize(conn, minWriteBufferSize),
+		sendMonitor:        flow.New(0, 0),
+		recvMonitor:        flow.New(0, 0),
+		send:               make(chan struct{}, 1),
+		pong:               make(chan struct{}, 1),
+		onReceive:          onReceive,
+		onError:            onError,
+		config:             config,
+		emptyPacketMsgSize: emptyPacketMsgSize(),
 	}
 
 	// Create channels
@@ -399,7 +397,7 @@ func (c *MConnection) sendSomePacketMsgs() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(c.config.maxPacketMsgTotalSize(), atomic.LoadInt64(&c.config.SendRate), true)
+	c.sendMonitor.Limit(c.config.MaxPacketMsgSize, atomic.LoadInt64(&c.config.SendRate), true)
 
 	// Now send some PacketMsgs.
 	for i := 0; i < numBatchPacketMsgs; i++ {
@@ -457,7 +455,7 @@ func (c *MConnection) recvRoutine() {
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(c.config.maxPacketMsgTotalSize(), atomic.LoadInt64(&c.config.RecvRate), true)
+		c.recvMonitor.Limit(c.config.MaxPacketMsgSize, atomic.LoadInt64(&c.config.RecvRate), true)
 
 		// Peek into bufConnReader for debugging
 		/*
@@ -477,7 +475,7 @@ FOR_LOOP:
 		var packet Packet
 		var _n int64
 		var err error
-		_n, err = cdc.UnmarshalBinaryReader(c.bufConnReader, &packet, int64(c.config.maxPacketMsgTotalSize()))
+		_n, err = cdc.UnmarshalBinaryReader(c.bufConnReader, &packet, int64(c.config.MaxPacketMsgSize))
 		c.recvMonitor.Update(int(_n))
 		if err != nil {
 			if c.IsRunning() {
@@ -633,7 +631,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 		desc:                    desc,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
-		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgPayloadSize,
+		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgSize,
 	}
 }
 
@@ -696,7 +694,7 @@ func (ch *Channel) isSendPending() bool {
 func (ch *Channel) nextPacketMsg() PacketMsg {
 	packet := PacketMsg{}
 	packet.ChannelID = byte(ch.desc.ID)
-	maxSize := ch.maxPacketMsgPayloadSize
+	maxSize := ch.maxPacketMsgPayloadSize - ch.conn.emptyPacketMsgSize
 	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
 		packet.EOF = byte(0x01)
@@ -781,4 +779,26 @@ type PacketMsg struct {
 
 func (mp PacketMsg) String() string {
 	return fmt.Sprintf("PacketMsg{%X:%X T:%X}", mp.ChannelID, mp.Bytes, mp.EOF)
+}
+
+// - Uvarint length of MustMarshalBinary(packet) = 1 or 2 bytes
+//   (as long as it's less than 16,384 bytes)
+// - Prefix bytes = 4 bytes
+// - ChannelID field key + byte = 2 bytes
+// - EOF field key + byte = 2 bytes
+// - Bytes field key = 1 bytes
+// - Uvarint length of MustMarshalBinary(bytes) = 1 or 2 bytes
+// - Struct terminator = 1 byte
+// = up to 14 bytes overhead for the packet.
+
+func emptyPacketMsgSize() int {
+	emptyPacketMsgSize := len(cdc.MustMarshalBinary(PacketMsg{
+		ChannelID: 0x01,
+		EOF:       1,
+		Bytes:     make([]byte, 1),
+	}))
+	// -1 byte of data
+	// +1 byte because uvarint length of MustMarshalBinary(bytes) will be 2 bytes for big packets
+	// +1 byte because uvarint length of MustMarshalBinary(packet) will be 2 bytes for big packets
+	return emptyPacketMsgSize - 1 + 1 + 1
 }

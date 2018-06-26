@@ -45,8 +45,7 @@ blocks are produced regularly, even if there are no transactions. See
 *No Empty Blocks*, below, to modify this setting.
 
 Tendermint supports in-process versions of the `counter`, `kvstore` and
-`nil` apps that ship as examples in the [ABCI
-repository](https://github.com/tendermint/abci). It's easy to compile
+`nil` apps that ship as examples with `abci-cli`. It's easy to compile
 your own app in-process with Tendermint if it's written in Go. If your
 app is not written in Go, simply run it in another process, and use the
 `--proxy_app` flag to specify the address of the socket it is listening
@@ -130,7 +129,7 @@ new blockchain will not make any blocks.
 ## Configuration
 
 Tendermint uses a `config.toml` for configuration. For details, see [the
-config specification](./specification/configuration.html).
+config specification](./specification/configuration.md).
 
 Notable options include the socket address of the application
 (`proxy_app`), the listening address of the Tendermint peer
@@ -214,7 +213,7 @@ When `tendermint init` is run, both a `genesis.json` and
         {
           "pub_key" : {
             "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-            "type" : "AC26791624DE60"
+            "type" : "tendermint/PubKeyEd25519"
           },
           "power" : 10,
           "name" : ""
@@ -229,16 +228,16 @@ And the `priv_validator.json`:
 
     {
       "last_step" : 0,
-      "last_round" : 0,
+      "last_round" : "0",
       "address" : "B788DEDE4F50AD8BC9462DE76741CCAFF87D51E2",
       "pub_key" : {
         "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-        "type" : "AC26791624DE60"
+        "type" : "tendermint/PubKeyEd25519"
       },
-      "last_height" : 0,
+      "last_height" : "0",
       "priv_key" : {
         "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
-        "type" : "954568A3288910"
+        "type" : "tendermint/PrivKeyEd25519"
       }
     }
 
@@ -261,7 +260,7 @@ but must be positive, thus the range is: 0 through 9223372036854775807.
 Because of how the current proposer selection algorithm works, we do not
 recommend having voting powers greater than 10\^12 (ie. 1 trillion) (see
 [Proposals section of Byzantine Consensus
-Algorithm](./specification/byzantine-consensus-algorithm.html#proposals)
+Algorithm](./specification/byzantine-consensus-algorithm.md#proposals)
 for details).
 
 If we want to add more nodes to the network, we have two choices: we can
@@ -348,15 +347,15 @@ Now we can update our genesis file. For instance, if the new
       "address" : "5AF49D2A2D4F5AD4C7C8C4CC2FB020131E9C4902",
       "pub_key" : {
         "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
-        "type" : "AC26791624DE60"
+        "type" : "tendermint/PubKeyEd25519"
       },
       "priv_key" : {
         "value" : "EDJY9W6zlAw+su6ITgTKg2nTZcHAH1NMTW5iwlgmNDuX1f35+OR4HMN88ZtQzsAwhETq4k3vzM3n6WTk5ii16Q==",
-        "type" : "954568A3288910"
+        "type" : "tendermint/PrivKeyEd25519"
       },
       "last_step" : 0,
-      "last_round" : 0,
-      "last_height" : 0
+      "last_round" : "0",
+      "last_height" : "0"
     }
 
 then the new `genesis.json` will be:
@@ -366,7 +365,7 @@ then the new `genesis.json` will be:
         {
           "pub_key" : {
             "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-            "type" : "AC26791624DE60"
+            "type" : "tendermint/PubKeyEd25519"
           },
           "power" : 10,
           "name" : ""
@@ -374,7 +373,7 @@ then the new `genesis.json` will be:
         {
           "pub_key" : {
             "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
-            "type" : "AC26791624DE60"
+            "type" : "tendermint/PubKeyEd25519"
           },
           "power" : 10,
           "name" : ""
@@ -399,7 +398,7 @@ failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
 explicitly programmed by the application developer. See the [application
-developers guide](./app-development.html) for more details.
+developers guide](./app-development.md) for more details.
 
 ### Local Network
 

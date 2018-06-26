@@ -3,9 +3,21 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/beorn7/perks"
+  packages = ["quantile"]
+  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
+
+[[projects]]
+  branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/btcsuite/btcutil"
+  packages = ["base58"]
+  revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -20,10 +32,10 @@
   revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
 
 [[projects]]
+  branch = "master"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
-  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
-  version = "v1.2.0"
+  revision = "b008db64ef8daabb22ff6daa557f33b41d8f6ccd"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -36,7 +48,11 @@
   packages = [
     "log",
     "log/level",
-    "log/term"
+    "log/term",
+    "metrics",
+    "metrics/discard",
+    "metrics/internal/lv",
+    "metrics/prometheus"
   ]
   revision = "4dc7be5d2d12881735283bcab7352178e190fc71"
   version = "v0.6.0"
@@ -132,6 +148,12 @@
   version = "v1.8.0"
 
 [[projects]]
+  name = "github.com/matttproud/golang_protobuf_extensions"
+  packages = ["pbutil"]
+  revision = "c12348ce28de40eed0136aa2b644d0ee0650e56c"
+  version = "v1.0.1"
+
+[[projects]]
   branch = "master"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
@@ -154,6 +176,42 @@
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
   version = "v1.0.0"
+
+[[projects]]
+  name = "github.com/prometheus/client_golang"
+  packages = [
+    "prometheus",
+    "prometheus/promhttp"
+  ]
+  revision = "c5b7fccd204277076155f10851dad72b76a49317"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/client_model"
+  packages = ["go"]
+  revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/common"
+  packages = [
+    "expfmt",
+    "internal/bitbucket.org/ww/goautoneg",
+    "model"
+  ]
+  revision = "7600349dcfe1abd18d72d3a1770870d9800a7801"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/procfs"
+  packages = [
+    ".",
+    "internal/util",
+    "nfs",
+    "xfs"
+  ]
+  revision = "94663424ae5ae9856b40a9f170762b4197024661"
 
 [[projects]]
   branch = "master"
@@ -254,14 +312,8 @@
 [[projects]]
   name = "github.com/tendermint/go-amino"
   packages = ["."]
-  revision = "ed62928576cfcaf887209dc96142cd79cdfff389"
-  version = "0.9.9"
-
-[[projects]]
-  name = "github.com/tendermint/go-crypto"
-  packages = ["."]
-  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
-  version = "v0.6.2"
+  revision = "2106ca61d91029c931fd54968c2bb02dc96b1412"
+  version = "0.10.1"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -284,7 +336,12 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
+    "bcrypt",
+    "blowfish",
+    "chacha20poly1305",
     "curve25519",
+    "hkdf",
+    "internal/chacha20",
     "nacl/box",
     "nacl/secretbox",
     "openpgp/armor",
@@ -305,6 +362,7 @@
     "http2/hpack",
     "idna",
     "internal/timeseries",
+    "netutil",
     "trace"
   ]
   revision = "db08ff08e8622530d9ed3a0e8ac279f6d4c02196"
@@ -312,7 +370,10 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "cpu",
+    "unix"
+  ]
   revision = "a9e25c09b96b8870693763211309e213c6ef299d"
 
 [[projects]]
@@ -374,6 +435,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "62d0626fa963b25411234da915fb3b8bfc7aefffd76824d27ac1647ca2b5d489"
+  inputs-digest = "d17038089dd6383ff5028229d4026bb92f5c7adc7e9c1cd52584237e2e5fd431"
   solver-name = "gps-cdcl"
   solver-version = 1

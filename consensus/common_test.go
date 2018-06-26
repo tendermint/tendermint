@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	abcicli "github.com/tendermint/abci/client"
-	abci "github.com/tendermint/abci/types"
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	abci "github.com/tendermint/tendermint/abci/types"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -26,8 +26,8 @@ import (
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
 
-	"github.com/tendermint/abci/example/counter"
-	"github.com/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/example/counter"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 
 	"github.com/go-kit/kit/log/term"
 )

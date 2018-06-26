@@ -43,7 +43,7 @@ func TestVoteSignable(t *testing.T) {
 	signBytes := vote.SignBytes("test_chain_id")
 	signStr := string(signBytes)
 
-	expected := `{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":1000000}},"height":12345,"round":2,"timestamp":"2017-12-25T03:00:01.234Z","type":2}`
+	expected := `{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}`
 	if signStr != expected {
 		// NOTE: when this fails, you probably want to fix up consensus/replay_test too
 		t.Errorf("Got unexpected sign string for Vote. Expected:\n%v\nGot:\n%v", expected, signStr)

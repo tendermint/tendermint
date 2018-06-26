@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tmlibs/clist"
 	"github.com/tendermint/tmlibs/log"
