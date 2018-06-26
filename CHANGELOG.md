@@ -1,8 +1,63 @@
 # Changelog
 
-## 0.19.10
+## TBD
 
-*TBD*
+BUG FIXES:
+
+- [rpc] limited number of HTTP/WebSocket connections
+  (`rpc.max_open_connections`) and gRPC connections
+  (`rpc.grpc_max_open_connections`). Check out [Running In
+  Production](https://tendermint.readthedocs.io/en/master/running-in-production.html)
+  guide if you want to increase them.
+
+## 0.21.0
+
+*June 21th, 2018*
+
+BREAKING CHANGES
+
+- [config] Change default ports from 4665X to 2665X. Ports over 32768 are
+  ephemeral and reserved for use by the kernel.
+- [cmd] `unsafe_reset_all` removes the addrbook.json
+
+IMPROVEMENT
+
+- [pubsub] Set default capacity to 0
+- [docs] Various improvements
+
+FEATURES
+
+- [main] added metrics (served under `/metrics` using a Prometheus client;
+  disabled by default). See the new `instrumentation` section in the config and
+  [metrics](https://tendermint.readthedocs.io/projects/tools/en/v0.21.0/metrics.html)
+  guide.
+
+BUG FIXES
+
+- [consensus] Fix an issue where we don't make blocks after `fast_sync` when `create_empty_blocks=false`
+- [mempool] Fix #1761 where we don't process txs if `cache_size=0`
+- [rpc] Fix memory leak in Websocket (when using `/subscribe` method)
+- [config] Escape paths in config - fixes config paths on Windows
+
+## 0.20.0
+
+*June 6th, 2018*
+
+This is the first in a series of breaking releases coming to Tendermint after
+soliciting developer feedback and conducting security audits.
+
+This release does not break any blockchain data structures or
+protocols other than the ABCI messages between Tendermint and the application.
+
+Applications that upgrade for ABCI v0.11.0 should be able to continue running Tendermint
+v0.20.0 on blockchains created with v0.19.X
+
+BREAKING CHANGES
+
+- [abci] Upgrade to
+  [v0.11.0](https://github.com/tendermint/abci/blob/master/CHANGELOG.md#0110)
+- [abci] Change Query path for filtering peers by node ID from
+  `p2p/filter/pubkey/<id>` to `p2p/filter/id/<id>`
 
 ## 0.19.9
 

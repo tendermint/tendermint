@@ -14,11 +14,11 @@ import (
 // hash, app hash, block height and time.
 //
 // ```shell
-// curl 'localhost:46657/status'
+// curl 'localhost:26657/status'
 // ```
 //
 // ```go
-// client := client.NewHTTP("tcp://0.0.0.0:46657", "/websocket")
+// client := client.NewHTTP("tcp://0.0.0.0:26657", "/websocket")
 // result, err := client.Status()
 // ```
 //
@@ -31,7 +31,7 @@ import (
 //  "result": {
 //    "node_info": {
 //      "id": "562dd7f579f0ecee8c94a11a3c1e378c1876f433",
-//      "listen_addr": "192.168.1.2:46656",
+//      "listen_addr": "192.168.1.2:26656",
 //      "network": "test-chain-I6zScH",
 //      "version": "0.19.0",
 //      "channels": "4020212223303800",
@@ -42,7 +42,7 @@ import (
 //        "consensus_version=v1/0.2.2",
 //        "rpc_version=0.7.0/3",
 //        "tx_index=on",
-//        "rpc_addr=tcp://0.0.0.0:46657"
+//        "rpc_addr=tcp://0.0.0.0:26657"
 //      ]
 //    },
 //    "sync_info": {
@@ -50,12 +50,12 @@ import (
 //      "latest_app_hash": "0000000000000000",
 //      "latest_block_height": 231,
 //      "latest_block_time": "2018-04-27T23:18:08.459766485-04:00",
-//      "syncing": false
+//      "catching_up": false
 //    },
 //    "validator_info": {
 //      "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
 //      "pub_key": {
-//        "type": "AC26791624DE60",
+//        "type": "tendermint/PubKeyEd25519",
 //        "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
 //      },
 //      "voting_power": 10
@@ -92,7 +92,7 @@ func Status() (*ctypes.ResultStatus, error) {
 			LatestAppHash:     latestAppHash,
 			LatestBlockHeight: latestHeight,
 			LatestBlockTime:   latestBlockTime,
-			Syncing:           consensusReactor.FastSync(),
+			CatchingUp:        consensusReactor.FastSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     pubKey.Address(),

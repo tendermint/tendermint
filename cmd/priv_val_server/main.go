@@ -4,7 +4,7 @@ import (
 	"flag"
 	"os"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -13,7 +13,7 @@ import (
 
 func main() {
 	var (
-		addr        = flag.String("addr", ":46659", "Address of client to connect to")
+		addr        = flag.String("addr", ":26659", "Address of client to connect to")
 		chainID     = flag.String("chain-id", "mychain", "chain id")
 		privValPath = flag.String("priv", "", "priv val file path")
 

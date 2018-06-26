@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
-	"github.com/tendermint/go-crypto"
 
+	"github.com/tendermint/tendermint/crypto"
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"

@@ -9,7 +9,7 @@ Or [Blockchain](https://en.wikipedia.org/wiki/Blockchain_(database)) for short.
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/tendermint/tendermint)
 [![Go version](https://img.shields.io/badge/go-1.9.2-blue.svg)](https://github.com/moovweb/gvm)
-[![Rocket.Chat](https://demo.rocket.chat/images/join-chat.svg)](https://cosmos.rocket.chat/)
+[![riot.im](https://img.shields.io/badge/riot.im-JOIN%20CHAT-green.svg)](https://riot.im/app/#/room/#tendermint:matrix.org)
 [![license](https://img.shields.io/github/license/tendermint/tendermint.svg)](https://github.com/tendermint/tendermint/blob/master/LICENSE)
 [![](https://tokei.rs/b1/github/tendermint/tendermint?category=lines)](https://github.com/tendermint/tendermint)
 
@@ -19,12 +19,21 @@ Branch    | Tests | Coverage
 master    | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/master.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/master) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/master/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
 develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/develop.svg?style=shield)](https://circleci.com/gh/tendermint/tendermint/tree/develop) | [![codecov](https://codecov.io/gh/tendermint/tendermint/branch/develop/graph/badge.svg)](https://codecov.io/gh/tendermint/tendermint)
 
-_NOTE: This is alpha software. Please contact us if you intend to run it in production._
-
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
 For protocol details, see [the specification](/docs/spec).
+
+## A Note on Production Readiness
+
+While Tendermint is being used in production in private, permissioned
+environments, we are still working actively to harden and audit it in preparation
+for use in public blockchains, such as the [Cosmos Network](https://cosmos.network/).
+We are also still making breaking changes to the protocol and the APIs.
+Thus we tag the releases as *alpha software*.
+
+In any case, if you intend to run Tendermint in production,
+please [contact us](https://riot.im/app/#/room/#tendermint:matrix.org) :)
 
 ## Security
 
@@ -54,14 +63,18 @@ See the [install instructions](/docs/install.rst)
 
 ### Tendermint Core
 
-For more, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
+For details about the blockchain data structures and the p2p protocols, see the
+the [Tendermint specification](/docs/spec).
+
+For details on using the software, [Read The Docs](https://tendermint.readthedocs.io/en/master/).
 Additional information about some - and eventually all - of the sub-projects below, can be found at Read The Docs.
+
 
 ### Sub-projects
 
 * [ABCI](http://github.com/tendermint/abci), the Application Blockchain Interface
 * [Go-Wire](http://github.com/tendermint/go-wire), a deterministic serialization library
-* [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library
+* [Go-Crypto](http://github.com/tendermint/tendermint/crypto), an elliptic curve cryptography library
 * [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries used internally
 * [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
 

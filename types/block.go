@@ -135,6 +135,15 @@ func (b *Block) HashesTo(hash []byte) bool {
 	return bytes.Equal(b.Hash(), hash)
 }
 
+// Size returns size of the block in bytes.
+func (b *Block) Size() int {
+	bz, err := cdc.MarshalBinaryBare(b)
+	if err != nil {
+		return 0
+	}
+	return len(bz)
+}
+
 // String returns a string representation of the block
 func (b *Block) String() string {
 	return b.StringIndented("")

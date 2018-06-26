@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -27,7 +27,7 @@ func TestPeerBasic(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), cfg)
+	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), cfg, tmconn.DefaultMConnConfig())
 	require.Nil(err)
 
 	err = p.Start()
@@ -53,7 +53,7 @@ func TestPeerSend(t *testing.T) {
 	rp.Start()
 	defer rp.Stop()
 
-	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config)
+	p, err := createOutboundPeerAndPerformHandshake(rp.Addr(), config, tmconn.DefaultMConnConfig())
 	require.Nil(err)
 
 	err = p.Start()
@@ -65,7 +65,11 @@ func TestPeerSend(t *testing.T) {
 	assert.True(p.Send(testCh, []byte("Asylum")))
 }
 
-func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *config.P2PConfig) (*peer, error) {
+func createOutboundPeerAndPerformHandshake(
+	addr *NetAddress,
+	config *config.P2PConfig,
+	mConfig tmconn.MConnConfig,
+) (*peer, error) {
 	chDescs := []*tmconn.ChannelDescriptor{
 		{ID: testCh, Priority: 1},
 	}
@@ -86,7 +90,7 @@ func createOutboundPeerAndPerformHandshake(addr *NetAddress, config *config.P2PC
 		return nil, err
 	}
 
-	p := newPeer(pc, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
+	p := newPeer(pc, mConfig, nodeInfo, reactorsByCh, chDescs, func(p Peer, r interface{}) {})
 	p.SetLogger(log.TestingLogger().With("peer", addr))
 	return p, nil
 }

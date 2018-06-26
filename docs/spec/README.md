@@ -20,7 +20,9 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 
 ### Consensus Protocol
 
-- TODO
+- [Consensus Algorithm](/docs/spec/consensus/consensus.md)
+- [Time](/docs/spec/consensus/bft-time.md)
+- [Light-Client](/docs/spec/consensus/light-client.md)
 
 ### P2P and Network Protocols
 
@@ -31,9 +33,12 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 - [Mempool](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/mempool): gossip transactions so they get included in blocks
 - Evidence: TODO
 
-### More
-- Light Client: TODO
-- Persistence: TODO
+### Software
+
+- [ABCI](/docs/spec/software/abci.md): Details about interactions between the
+  application and consensus engine over ABCI
+- [Write-Ahead Log](/docs/spec/software/wal.md): Details about how the consensus
+  engine preserves data and recovers from crash failures
 
 ## Overview
 
@@ -42,10 +47,9 @@ hash-linked batches of transactions. Such transaction batches are called "blocks
 Hence, Tendermint defines a "blockchain".
 
 Each block in Tendermint has a unique index - its Height.
-A block at `Height == H` can only be committed *after* the
-block at `Height == H-1`.
+Height's in the blockchain are monotonic.
 Each block is committed by a known set of weighted Validators.
-Membership and weighting within this set may change over time.
+Membership and weighting within this validator set may change over time.
 Tendermint guarantees the safety and liveness of the blockchain
 so long as less than 1/3 of the total weight of the Validator set
 is malicious or faulty.

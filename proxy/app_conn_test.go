@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/example/kvstore"
-	"github.com/tendermint/abci/server"
-	"github.com/tendermint/abci/types"
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/server"
+	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 )

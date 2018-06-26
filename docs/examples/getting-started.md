@@ -85,7 +85,7 @@ I[01-06|01:45:15.624] Committed state                              module=state 
 Check the status with:
 
 ```
-curl -s localhost:46657/status
+curl -s localhost:26657/status
 ```
 
 ### Sending Transactions
@@ -93,25 +93,25 @@ curl -s localhost:46657/status
 With the kvstore app running, we can send transactions:
 
 ```
-curl -s 'localhost:46657/broadcast_tx_commit?tx="abcd"'
+curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
 ```
 
 and check that it worked with:
 
 ```
-curl -s 'localhost:46657/abci_query?data="abcd"'
+curl -s 'localhost:26657/abci_query?data="abcd"'
 ```
 
 We can send transactions with a key and value too:
 
 ```
-curl -s 'localhost:46657/broadcast_tx_commit?tx="name=satoshi"'
+curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
 ```
 
 and query the key:
 
 ```
-curl -s 'localhost:46657/abci_query?data="name"'
+curl -s 'localhost:26657/abci_query?data="name"'
 ```
 
 where the value is returned in hex.
@@ -134,10 +134,10 @@ This will install `go` and other dependencies, get the Tendermint source code, t
 Next, `cd` into `docs/examples`. Each command below should be run from each node, in sequence:
 
 ```
-tendermint node --home ./node0 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:46656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:46656"
-tendermint node --home ./node1 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:46656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:46656"
-tendermint node --home ./node2 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:46656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:46656"
-tendermint node --home ./node3 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:46656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:46656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:46656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:46656"
+tendermint node --home ./node0 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
+tendermint node --home ./node1 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
+tendermint node --home ./node2 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
+tendermint node --home ./node3 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
 ```
 
 Note that after the third node is started, blocks will start to stream in

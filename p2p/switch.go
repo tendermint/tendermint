@@ -70,11 +70,18 @@ type Switch struct {
 	filterConnByAddr func(net.Addr) error
 	filterConnByID   func(ID) error
 
+	mConfig conn.MConnConfig
+
 	rng *cmn.Rand // seed for randomizing dial times and orders
+
+	metrics *Metrics
 }
 
+// SwitchOption sets an optional parameter on the Switch.
+type SwitchOption func(*Switch)
+
 // NewSwitch creates a new Switch with the given config.
-func NewSwitch(cfg *config.P2PConfig) *Switch {
+func NewSwitch(cfg *config.P2PConfig, options ...SwitchOption) *Switch {
 	sw := &Switch{
 		config:       cfg,
 		reactors:     make(map[string]Reactor),
@@ -83,18 +90,32 @@ func NewSwitch(cfg *config.P2PConfig) *Switch {
 		peers:        NewPeerSet(),
 		dialing:      cmn.NewCMap(),
 		reconnecting: cmn.NewCMap(),
+		metrics:      NopMetrics(),
 	}
 
 	// Ensure we have a completely undeterministic PRNG.
 	sw.rng = cmn.NewRand()
 
-	sw.config.MConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
-	sw.config.MConfig.SendRate = cfg.SendRate
-	sw.config.MConfig.RecvRate = cfg.RecvRate
-	sw.config.MConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
+	mConfig := conn.DefaultMConnConfig()
+	mConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
+	mConfig.SendRate = cfg.SendRate
+	mConfig.RecvRate = cfg.RecvRate
+	mConfig.MaxPacketMsgSize = cfg.MaxPacketMsgSize
+
+	sw.mConfig = mConfig
 
 	sw.BaseService = *cmn.NewBaseService(nil, "P2P Switch", sw)
+
+	for _, option := range options {
+		option(sw)
+	}
+
 	return sw
+}
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) SwitchOption {
+	return func(sw *Switch) { sw.metrics = metrics }
 }
 
 //---------------------------------------------------------------------
@@ -274,6 +295,7 @@ func (sw *Switch) StopPeerGracefully(peer Peer) {
 
 func (sw *Switch) stopAndRemovePeer(peer Peer, reason interface{}) {
 	sw.peers.Remove(peer)
+	sw.metrics.Peers.Add(float64(-1))
 	peer.Stop()
 	for _, reactor := range sw.reactors {
 		reactor.RemovePeer(peer, reason)
@@ -600,7 +622,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	peer := newPeer(pc, peerNodeInfo, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
+	peer := newPeer(pc, sw.mConfig, peerNodeInfo, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 	peer.SetLogger(sw.Logger.With("peer", addr))
 
 	peer.Logger.Info("Successful handshake with peer", "peerNodeInfo", peerNodeInfo)
@@ -618,6 +640,7 @@ func (sw *Switch) addPeer(pc peerConn) error {
 	if err := sw.peers.Add(peer); err != nil {
 		return err
 	}
+	sw.metrics.Peers.Add(float64(1))
 
 	sw.Logger.Info("Added peer", "peer", peer)
 	return nil

@@ -2,7 +2,6 @@ package consensus
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -11,7 +10,7 @@ import (
 	//"strings"
 	"time"
 
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	//auto "github.com/tendermint/tmlibs/autofile"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
@@ -197,20 +196,20 @@ type Handshaker struct {
 	stateDB      dbm.DB
 	initialState sm.State
 	store        sm.BlockStore
-	appState     json.RawMessage
+	genDoc       *types.GenesisDoc
 	logger       log.Logger
 
 	nBlocks int // number of blocks applied to the state
 }
 
 func NewHandshaker(stateDB dbm.DB, state sm.State,
-	store sm.BlockStore, appState json.RawMessage) *Handshaker {
+	store sm.BlockStore, genDoc *types.GenesisDoc) *Handshaker {
 
 	return &Handshaker{
 		stateDB:      stateDB,
 		initialState: state,
 		store:        store,
-		appState:     appState,
+		genDoc:       genDoc,
 		logger:       log.NewNopLogger(),
 		nBlocks:      0,
 	}
@@ -268,14 +267,33 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 	// If appBlockHeight == 0 it means that we are at genesis and hence should send InitChain
 	if appBlockHeight == 0 {
 		validators := types.TM2PB.Validators(state.Validators)
+		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
-			Validators:    validators,
-			AppStateBytes: h.appState,
+			Time:            h.genDoc.GenesisTime.Unix(), // TODO
+			ChainId:         h.genDoc.ChainID,
+			ConsensusParams: csParams,
+			Validators:      validators,
+			AppStateBytes:   h.genDoc.AppStateJSON,
 		}
-		_, err := proxyApp.Consensus().InitChainSync(req)
+		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {
 			return nil, err
 		}
+
+		// if the app returned validators
+		// or consensus params, update the state
+		// with the them
+		if len(res.Validators) > 0 {
+			vals, err := types.PB2TM.Validators(res.Validators)
+			if err != nil {
+				return nil, err
+			}
+			state.Validators = types.NewValidatorSet(vals)
+		}
+		if res.ConsensusParams != nil {
+			state.ConsensusParams = types.PB2TM.ConsensusParams(res.ConsensusParams)
+		}
+		sm.SaveState(h.stateDB, state)
 	}
 
 	// First handle edge cases and constraints on the storeBlockHeight
@@ -365,7 +383,7 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger)
+		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, state.LastValidators, h.stateDB)
 		if err != nil {
 			return nil, err
 		}

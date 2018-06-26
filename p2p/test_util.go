@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 
@@ -35,7 +35,7 @@ func CreateRandomPeer(outbound bool) *peer {
 func CreateRoutableAddr() (addr string, netAddr *NetAddress) {
 	for {
 		var err error
-		addr = cmn.Fmt("%X@%v.%v.%v.%v:46656", cmn.RandBytes(20), cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256)
+		addr = cmn.Fmt("%X@%v.%v.%v.%v:26656", cmn.RandBytes(20), cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256)
 		netAddr, err = NewNetAddressString(addr)
 		if err != nil {
 			panic(err)
