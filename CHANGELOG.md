@@ -14,6 +14,7 @@ IMPROVEMENT
 
 - [pubsub] Set default capacity to 0
 - [docs] Various improvements
+- [rpc/client] Supports https now
 
 BUG FIXES
 
