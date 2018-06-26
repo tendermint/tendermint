@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/tendermint/tendermint/p2p/upnp"
@@ -15,6 +16,7 @@ type Listener interface {
 	Connections() <-chan net.Conn
 	InternalAddress() *NetAddress
 	ExternalAddress() *NetAddress
+	ExternalAddressToString() string
 	String() string
 	Stop() error
 }
@@ -159,6 +161,15 @@ func (l *DefaultListener) ExternalAddress() *NetAddress {
 	return l.extAddr
 }
 
+func (l *DefaultListener) ExternalAddressToString() string {
+	ip := l.ExternalAddress().IP
+	if isIpv6(ip) {
+		// Means it's ipv6, so format it with brackets
+		return "[" + ip.String() + "]"
+	}
+	return ip.String()
+}
+
 // NOTE: The returned listener is already Accept()'ing.
 // So it's not suitable to pass into http.Serve().
 func (l *DefaultListener) NetListener() net.Listener {
@@ -201,6 +212,18 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 	return NewNetAddressIPPort(ext, uint16(externalPort))
 }
 
+func isIpv6(ip net.IP) bool {
+	v4 := ip.To4()
+	if v4 != nil {
+		return false
+	}
+
+	ipString := ip.String()
+
+	// Extra check just to be sure it's IPv6
+	return (strings.Contains(ipString, ":") && !strings.Contains(ipString, "."))
+}
+
 // TODO: use syscalls: see issue #712
 func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
@@ -213,10 +236,16 @@ func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *
 		if !ok {
 			continue
 		}
-		v4 := ipnet.IP.To4()
-		if v4 == nil || (!settleForLocal && v4[0] == 127) {
+		if !isIpv6(ipnet.IP) {
+			v4 := ipnet.IP.To4()
+			if v4 == nil || (!settleForLocal && v4[0] == 127) {
+				// loopback
+				continue
+			}
+		} else if !settleForLocal && ipnet.IP.IsLoopback() {
+			// IPv6, check for loopback
 			continue
-		} // loopback
+		}
 		return NewNetAddressIPPort(ipnet.IP, uint16(port))
 	}
 
