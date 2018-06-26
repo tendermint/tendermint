@@ -25,7 +25,10 @@ type HTTPClient interface {
 }
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
-func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, error)) {
+func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (net.Conn, error)) {
+	// protocol to use for http operations, to support both http and https
+	clientProtocol := "http"
+
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
 	if len(parts) == 1 {
@@ -36,18 +39,19 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 	} else {
 		// return a invalid message
 		msg := fmt.Sprintf("Invalid addr: %s", remoteAddr)
-		return msg, func(_ string, _ string) (net.Conn, error) {
+		return clientProtocol, msg, func(_ string, _ string) (net.Conn, error) {
 			return nil, errors.New(msg)
 		}
 	}
 	// accept http as an alias for tcp
-	if protocol == "http" {
+	if protocol == "http" || protocol == "https" {
+		clientProtocol = protocol
 		protocol = "tcp"
 	}
 
 	// replace / with . for http requests (kvstore domain)
 	trimmedAddress := strings.Replace(address, "/", ".", -1)
-	return trimmedAddress, func(proto, addr string) (net.Conn, error) {
+	return clientProtocol, trimmedAddress, func(proto, addr string) (net.Conn, error) {
 		return net.Dial(protocol, address)
 	}
 }
@@ -55,8 +59,8 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 // We overwrite the http.Client.Dial so we can do http over tcp or unix.
 // remoteAddr should be fully featured (eg. with tcp:// or unix://)
 func makeHTTPClient(remoteAddr string) (string, *http.Client) {
-	address, dialer := makeHTTPDialer(remoteAddr)
-	return "http://" + address, &http.Client{
+	protocol, address, dialer := makeHTTPDialer(remoteAddr)
+	return protocol + "://" + address, &http.Client{
 		Transport: &http.Transport{
 			Dial: dialer,
 		},

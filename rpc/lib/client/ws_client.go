@@ -76,7 +76,7 @@ type WSClient struct {
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
-	addr, dialer := makeHTTPDialer(remoteAddr)
+	_, addr, dialer := makeHTTPDialer(remoteAddr)
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
 		Address:              addr,
