@@ -47,6 +47,9 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 	if protocol == "http" || protocol == "https" {
 		clientProtocol = protocol
 		protocol = "tcp"
+		// this is to enable wss support
+	} else if protocol == "ws" || protocol == "wss" {
+		clientProtocol = protocol
 	}
 
 	// replace / with . for http requests (kvstore domain)
