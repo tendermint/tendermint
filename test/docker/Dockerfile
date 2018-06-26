@@ -21,13 +21,12 @@ ADD Makefile Makefile
 RUN make get_tools
 RUN make get_vendor_deps
 
-# Install the apps
-ADD scripts scripts
-RUN bash scripts/install_abci_apps.sh
-
 # Now copy in the code
 # NOTE: this will overwrite whatever is in vendor/
 COPY . $REPO
+
+# install ABCI CLI
+RUN cd abci && make install && cd -
 
 RUN go install ./cmd/tendermint
 
