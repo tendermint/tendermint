@@ -11,8 +11,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tmlibs/log"
 )
+
+func createNewAddrbook(filePath string, routabilityStrict bool) *addrBook {
+	cfg := config.DefaultP2PConfig()
+	cfg.AddrBook = filePath
+	cfg.AddrBookStrict = routabilityStrict
+	return NewAddrBook(cfg)
+}
 
 func createTempFileName(prefix string) string {
 	f, err := ioutil.TempFile("", prefix)
@@ -39,7 +47,7 @@ func TestAddrBookPickAddress(t *testing.T) {
 	defer deleteTempFile(fname)
 
 	// 0 addresses
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	assert.Zero(t, book.Size())
 
@@ -75,11 +83,11 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	defer deleteTempFile(fname)
 
 	// 0 addresses
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
+	book = createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
@@ -95,7 +103,7 @@ func TestAddrBookSaveLoad(t *testing.T) {
 	assert.Equal(t, 100, book.Size())
 	book.saveToFile(fname)
 
-	book = NewAddrBook(fname, true)
+	book = createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	book.loadFromFile(fname)
 
@@ -108,7 +116,7 @@ func TestAddrBookLookup(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		addr := addrSrc.addr
@@ -130,7 +138,7 @@ func TestAddrBookPromoteToOld(t *testing.T) {
 
 	randAddrs := randNetAddressPairs(t, 100)
 
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	for _, addrSrc := range randAddrs {
 		book.AddAddress(addrSrc.addr, addrSrc.src)
@@ -171,7 +179,7 @@ func TestAddrBookHandlesDuplicates(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 
 	randAddrs := randNetAddressPairs(t, 100)
@@ -222,7 +230,7 @@ func TestAddrBookRemoveAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 
 	addr := randIPv4Address(t)
@@ -241,7 +249,7 @@ func TestAddrBookGetSelection(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 
 	// 1) empty book
@@ -281,7 +289,7 @@ func TestAddrBookGetSelectionWithBias(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 
 	// 1) empty book
@@ -343,7 +351,7 @@ func TestAddrBookHasAddress(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
 
-	book := NewAddrBook(fname, true)
+	book := createNewAddrbook(fname, true)
 	book.SetLogger(log.TestingLogger())
 	addr := randIPv4Address(t)
 	book.AddAddress(addr, addr)

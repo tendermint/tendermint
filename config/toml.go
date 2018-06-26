@@ -168,6 +168,9 @@ seed_mode = {{ .P2P.SeedMode }}
 # Comma separated list of peer IDs to keep private (will not be gossiped to other peers)
 private_peer_ids = "{{ .P2P.PrivatePeerIDs }}"
 
+# Addresses under which the address manager will claim to need more addresses
+need_address_threshold = "{{ .P2P.NeedAddressThreshold }}"
+
 ##### mempool configuration options #####
 [mempool]
 

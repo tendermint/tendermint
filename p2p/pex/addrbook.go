@@ -15,6 +15,7 @@ import (
 	crypto "github.com/tendermint/go-crypto"
 	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/config"
 )
 
 const (
@@ -73,6 +74,8 @@ var _ AddrBook = (*addrBook)(nil)
 type addrBook struct {
 	cmn.BaseService
 
+	config     *config.P2PConfig
+
 	// immutable after creation
 	filePath          string
 	routabilityStrict bool
@@ -93,13 +96,14 @@ type addrBook struct {
 
 // NewAddrBook creates a new address book.
 // Use Start to begin processing asynchronous address updates.
-func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
+func NewAddrBook(cfg *config.P2PConfig) *addrBook {
 	am := &addrBook{
+		config: 					 cfg,
 		rand:              cmn.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
-		filePath:          filePath,
-		routabilityStrict: routabilityStrict,
+		filePath:          cfg.AddrBookFile(),
+		routabilityStrict: cfg.AddrBookStrict,
 	}
 	am.init()
 	am.BaseService = *cmn.NewBaseService(nil, "AddrBook", am)
@@ -208,7 +212,7 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
 func (a *addrBook) NeedMoreAddrs() bool {
-	return a.Size() < needAddressThreshold
+	return a.Size() < a.config.NeedAddressThreshold
 }
 
 // PickAddress implements AddrBook. It picks an address to connect to.

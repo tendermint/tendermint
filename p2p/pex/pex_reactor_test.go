@@ -84,7 +84,9 @@ func TestPEXReactorRunning(t *testing.T) {
 	// create switches
 	for i := 0; i < N; i++ {
 		switches[i] = p2p.MakeSwitch(cfg, i, "testing", "123.123.123", func(i int, sw *p2p.Switch) *p2p.Switch {
-			books[i] = NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)), false)
+			books[i] = NewAddrBook(&config.P2PConfig{
+				AddrBook: 					filepath.Join(dir, fmt.Sprintf("addrbook%d.json", i)),
+				AddrBookStrict: 	false})
 			books[i].SetLogger(logger.With("pex", i))
 			sw.SetAddrBook(books[i])
 
@@ -216,7 +218,9 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 		"127.0.0.1",
 		"123.123.123",
 		func(i int, sw *p2p.Switch) *p2p.Switch {
-			book := NewAddrBook(filepath.Join(dir, "addrbook0.json"), false)
+			book := NewAddrBook(&config.P2PConfig{
+				AddrBook: 					filepath.Join(dir, "addrbook0.json"),
+				AddrBookStrict: 	false})
 			book.SetLogger(log.TestingLogger())
 			sw.SetAddrBook(book)
 
@@ -246,7 +250,9 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 		"127.0.0.1",
 		"123.123.123",
 		func(i int, sw *p2p.Switch) *p2p.Switch {
-			book := NewAddrBook(filepath.Join(dir, "addrbook1.json"), false)
+			book := NewAddrBook(&config.P2PConfig{
+				AddrBook: 					filepath.Join(dir, "addrbook1.json"),
+				AddrBookStrict: 	false})
 			book.SetLogger(log.TestingLogger())
 			sw.SetAddrBook(book)
 
@@ -433,7 +439,9 @@ func createReactor(conf *PEXReactorConfig) (r *PEXReactor, book *addrBook) {
 	if err != nil {
 		panic(err)
 	}
-	book = NewAddrBook(filepath.Join(dir, "addrbook.json"), true)
+	book = NewAddrBook(&config.P2PConfig{
+		AddrBook: 					filepath.Join(dir, "addrbook.json"),
+		AddrBookStrict: 	true})
 	book.SetLogger(log.TestingLogger())
 
 	r = NewPEXReactor(book, conf)
