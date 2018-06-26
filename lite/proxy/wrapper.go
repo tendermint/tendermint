@@ -89,33 +89,49 @@ func (w Wrapper) BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlock
 
 // Block returns an entire block and verifies all signatures
 func (w Wrapper) Block(height *int64) (*ctypes.ResultBlock, error) {
-	r, err := w.Client.Block(height)
+	resBlock, err := w.Client.Block(height)
 	if err != nil {
 		return nil, err
 	}
 	// get a checkpoint to verify from
-	res, err := w.Commit(height)
+	resCommit, err := w.Commit(height)
 	if err != nil {
 		return nil, err
 	}
-	sh := res.SignedHeader
+	sh := resCommit.SignedHeader
 
 	// now verify
-	err = ValidateBlockMeta(r.BlockMeta, sh)
+	err = ValidateBlockMeta(resBlock.BlockMeta, sh)
 	if err != nil {
 		return nil, err
 	}
-	err = ValidateBlock(r.Block, sh)
+	err = ValidateBlock(resBlock.Block, sh)
 	if err != nil {
 		return nil, err
 	}
-	return r, nil
+	return resBlock, nil
 }
 
 // Commit downloads the Commit and certifies it with the lite.
 //
 // This is the foundation for all other verification in this module
 func (w Wrapper) Commit(height *int64) (*ctypes.ResultCommit, error) {
+	if height == nil {
+		resStatus, err := w.Client.Status()
+		if err != nil {
+			return nil, err
+		}
+		// NOTE: If resStatus.CatchingUp, there is a race
+		// condition where the validator set for the next height
+		// isn't available until some time after the blockstore
+		// has height h on the remote node.  This isn't an issue
+		// once the node has caught up, and a syncing node likely
+		// won't have this issue esp with the implementation we
+		// have here, but we may have to address this at some
+		// point.
+		height = new(int64)
+		*height = resStatus.SyncInfo.LatestBlockHeight
+	}
 	rpcclient.WaitForHeight(w.Client, *height, nil)
 	res, err := w.Client.Commit(height)
 	// if we got it, then certify it

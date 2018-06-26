@@ -92,8 +92,9 @@ type PersistentProvider interface {
 * MultiProvider - combine multiple providers.
 
 The suggested use for local light clients is client.NewHTTPProvider(...) for
-getting new data (Source), and NewMultiProvider(NewDBProvider(dbm.NewMemDB()),
-NewDBProvider(db.NewFileDB(...))) to store confirmed full commits (Trusted)
+getting new data (Source), and NewMultiProvider(NewDBProvider("label",
+dbm.NewMemDB()), NewDBProvider("label", db.NewFileDB(...))) to store confirmed
+full commits (Trusted)
 
 
 # How We Track Validators

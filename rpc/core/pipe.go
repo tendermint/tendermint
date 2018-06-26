@@ -3,8 +3,8 @@ package core
 import (
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/consensus"
+	crypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -28,6 +28,7 @@ var subscribeTimeout = 5 * time.Second
 type Consensus interface {
 	GetState() sm.State
 	GetValidators() (int64, []*types.Validator)
+	GetLastHeight() int64
 	GetRoundStateJSON() ([]byte, error)
 	GetRoundStateSimpleJSON() ([]byte, error)
 }

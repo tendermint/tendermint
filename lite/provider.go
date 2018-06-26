@@ -2,6 +2,7 @@ package lite
 
 import (
 	"github.com/tendermint/tendermint/types"
+	log "github.com/tendermint/tmlibs/log"
 )
 
 // Provider provides information for the lite client to sync validators.
@@ -16,6 +17,9 @@ type Provider interface {
 	// Get the valset that corresponds to chainID and height and return.
 	// Height must be >= 1.
 	ValidatorSet(chainID string, height int64) (*types.ValidatorSet, error)
+
+	// Set a logger.
+	SetLogger(logger log.Logger)
 }
 
 // A provider that can also persist new information.

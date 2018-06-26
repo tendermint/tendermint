@@ -64,7 +64,12 @@ import (
 //}
 // ```
 func Status() (*ctypes.ResultStatus, error) {
-	latestHeight := blockStore.Height()
+	var latestHeight int64 = -1
+	if consensusReactor.FastSync() {
+		latestHeight = blockStore.Height()
+	} else {
+		latestHeight = consensusState.GetLastHeight()
+	}
 	var (
 		latestBlockMeta     *types.BlockMeta
 		latestBlockHash     cmn.HexBytes

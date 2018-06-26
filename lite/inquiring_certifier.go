@@ -3,9 +3,9 @@ package lite
 import (
 	"bytes"
 
-	"github.com/tendermint/tendermint/types"
-
 	lerr "github.com/tendermint/tendermint/lite/errors"
+	"github.com/tendermint/tendermint/types"
+	log "github.com/tendermint/tmlibs/log"
 )
 
 var _ Certifier = (*InquiringCertifier)(nil)
@@ -15,6 +15,7 @@ var _ Certifier = (*InquiringCertifier)(nil)
 // validator set changes.  It stores properly validated data on the
 // "trusted" local system.
 type InquiringCertifier struct {
+	logger  log.Logger
 	chainID string
 	// These are only properly validated data, from local system.
 	trusted PersistentProvider
@@ -28,14 +29,20 @@ type InquiringCertifier struct {
 //
 // The trusted provider should a CacheProvider, MemProvider or
 // files.Provider.  The source provider should be a client.HTTPProvider.
-func NewInquiringCertifier(chainID string, trusted PersistentProvider, source Provider) (
-	*InquiringCertifier, error) {
-
+func NewInquiringCertifier(chainID string, trusted PersistentProvider, source Provider) *InquiringCertifier {
 	return &InquiringCertifier{
+		logger:  log.NewNopLogger(),
 		chainID: chainID,
 		trusted: trusted,
 		source:  source,
-	}, nil
+	}
+}
+
+func (ic *InquiringCertifier) SetLogger(logger log.Logger) {
+	logger = logger.With("module", "lite")
+	ic.logger = logger
+	ic.trusted.SetLogger(logger)
+	ic.source.SetLogger(logger)
 }
 
 // Implements Certifier.

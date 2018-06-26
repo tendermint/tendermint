@@ -10,6 +10,7 @@ import (
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
+	log "github.com/tendermint/tmlibs/log"
 )
 
 // missingProvider doesn't store anything, always a miss.
@@ -28,16 +29,17 @@ func (missingProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 func (missingProvider) ValidatorSet(chainID string, height int64) (*types.ValidatorSet, error) {
 	return nil, errors.New("missing validator set")
 }
+func (missingProvider) SetLogger(_ log.Logger) {}
 
 func TestMemProvider(t *testing.T) {
-	p := NewDBProvider(dbm.NewMemDB())
+	p := NewDBProvider("mem", dbm.NewMemDB())
 	checkProvider(t, p, "test-mem", "empty")
 }
 
 func TestMultiProvider(t *testing.T) {
 	p := NewMultiProvider(
 		NewMissingProvider(),
-		NewDBProvider(dbm.NewMemDB()),
+		NewDBProvider("mem", dbm.NewMemDB()),
 		NewMissingProvider(),
 	)
 	checkProvider(t, p, "test-cache", "kjfhekfhkewhgit")
@@ -105,8 +107,8 @@ func TestMultiLatestFullCommit(t *testing.T) {
 
 	// We will write data to the second level of the cache (p2), and see what
 	// gets cached/stored in.
-	p := NewDBProvider(dbm.NewMemDB())
-	p2 := NewDBProvider(dbm.NewMemDB())
+	p := NewDBProvider("mem1", dbm.NewMemDB())
+	p2 := NewDBProvider("mem2", dbm.NewMemDB())
 	cp := NewMultiProvider(p, p2)
 
 	chainID := "cache-best-height"

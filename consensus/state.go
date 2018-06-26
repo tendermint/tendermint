@@ -196,6 +196,15 @@ func (cs *ConsensusState) GetState() sm.State {
 	return cs.state.Copy()
 }
 
+// GetLastHeight returns the last height committed.
+// If there were no blocks, returns 0.
+func (cs *ConsensusState) GetLastHeight() int64 {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	return cs.RoundState.Height - 1
+}
+
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 	cs.mtx.Lock()

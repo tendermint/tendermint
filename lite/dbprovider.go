@@ -10,21 +10,32 @@ import (
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
+	log "github.com/tendermint/tmlibs/log"
 )
 
 type DBProvider struct {
-	chainID string
-	db      dbm.DB
-	cdc     *amino.Codec
-	limit   int
+	logger log.Logger
+	label  string
+	db     dbm.DB
+	cdc    *amino.Codec
+	limit  int
 }
 
-func NewDBProvider(db dbm.DB) *DBProvider {
+func NewDBProvider(label string, db dbm.DB) *DBProvider {
 	//db = dbm.NewDebugDB("db provider "+cmn.RandStr(4), db)
 	cdc := amino.NewCodec()
 	crypto.RegisterAmino(cdc)
-	dbp := &DBProvider{db: db, cdc: cdc}
+	dbp := &DBProvider{
+		logger: log.NewNopLogger(),
+		label:  label,
+		db:     db,
+		cdc:    cdc,
+	}
 	return dbp
+}
+
+func (dbp *DBProvider) SetLogger(logger log.Logger) {
+	dbp.logger = logger.With("label", dbp.label)
 }
 
 func (dbp *DBProvider) SetLimit(limit int) *DBProvider {
@@ -35,6 +46,7 @@ func (dbp *DBProvider) SetLimit(limit int) *DBProvider {
 // Implements PersistentProvider.
 func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 
+	dbp.logger.Info("DBProvider.SaveFullCommit()...", "fc", fc)
 	batch := dbp.db.NewBatch()
 
 	// Save the fc.validators.
@@ -79,6 +91,9 @@ func (dbp *DBProvider) SaveFullCommit(fc FullCommit) error {
 func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int64) (
 	FullCommit, error) {
 
+	dbp.logger.Info("DBProvider.LatestFullCommit()...",
+		"chainID", chainID, "minHeight", minHeight, "maxHeight", maxHeight)
+
 	if minHeight <= 0 {
 		minHeight = 1
 	}
@@ -107,7 +122,15 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 			if err != nil {
 				return FullCommit{}, err
 			} else {
-				return dbp.fillFullCommit(sh)
+				lfc, err := dbp.fillFullCommit(sh)
+				if err == nil {
+					dbp.logger.Info("DBProvider.LatestFullCommit() found latest.", "height", lfc.Height())
+					return lfc, nil
+				} else {
+					dbp.logger.Info("DBProvider.LatestFullCommit() got error", "lfc", lfc)
+					dbp.logger.Info(fmt.Sprintf("%+v", err))
+					return lfc, err
+				}
 			}
 		}
 	}
@@ -155,6 +178,9 @@ func (dbp *DBProvider) fillFullCommit(sh types.SignedHeader) (FullCommit, error)
 }
 
 func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
+
+	dbp.logger.Info("DBProvider.deleteAfterN()...", "chainID", chainID, "after", after)
+
 	itr := dbp.db.ReverseIterator(
 		signedHeaderKey(chainID, 1<<63-1),
 		signedHeaderKey(chainID, 0),
@@ -163,6 +189,7 @@ func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
 
 	var lastHeight int64 = 1<<63 - 1
 	var numSeen = 0
+	var numDeleted = 0
 
 	for itr.Valid() {
 		key := itr.Key()
@@ -176,9 +203,13 @@ func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
 			}
 			if numSeen > after {
 				dbp.db.Delete(key)
+				numDeleted += 1
 			}
 		}
+		itr.Next()
 	}
+
+	dbp.logger.Info(fmt.Sprintf("DBProvider.deleteAfterN() deleted %v items\n", numDeleted))
 	return nil
 }
 

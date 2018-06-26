@@ -8,12 +8,12 @@ package client
 import (
 	"fmt"
 
+	"github.com/tendermint/tendermint/lite"
+	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-
-	"github.com/tendermint/tendermint/lite"
-	lerr "github.com/tendermint/tendermint/lite/errors"
+	log "github.com/tendermint/tmlibs/log"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.
@@ -23,22 +23,30 @@ type SignStatusClient interface {
 }
 
 type provider struct {
+	logger  log.Logger
 	chainID string
 	client  SignStatusClient
 }
 
 // NewProvider implements Provider (but not PersistentProvider).
 func NewProvider(chainID string, client SignStatusClient) lite.Provider {
-	return &provider{chainID: chainID, client: client}
+	return &provider{
+		logger:  log.NewNopLogger(),
+		chainID: chainID,
+		client:  client,
+	}
 }
 
 // NewHTTPProvider can connect to a tendermint json-rpc endpoint
 // at the given url, and uses that as a read-only provider.
 func NewHTTPProvider(chainID, remote string) lite.Provider {
-	return &provider{
-		chainID: chainID,
-		client:  rpcclient.NewHTTP(remote, "/websocket"),
-	}
+	return NewProvider(chainID, rpcclient.NewHTTP(remote, "/websocket"))
+}
+
+// Implements Provider.
+func (p *provider) SetLogger(logger log.Logger) {
+	logger = logger.With("module", "lite/client")
+	p.logger = logger
 }
 
 // StatusClient returns the internal client as a StatusClient

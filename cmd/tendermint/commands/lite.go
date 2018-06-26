@@ -6,10 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmn "github.com/tendermint/tmlibs/common"
-
 	"github.com/tendermint/tendermint/lite/proxy"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // LiteCmd represents the base command when called without any subcommands
@@ -66,17 +65,21 @@ func runProxy(cmd *cobra.Command, args []string) error {
 	}
 
 	// First, connect a client
+	logger.Info("Connecting to source HTTP client...")
 	node := rpcclient.NewHTTP(nodeAddr, "/websocket")
 
-	cert, err := proxy.GetCertifier(chainID, home, node)
+	logger.Info("Constructing certifier...")
+	cert, err := proxy.NewCertifier(chainID, home, node, logger)
 	if err != nil {
-		return err
+		return cmn.ErrorWrap(err, "constructing certifier")
 	}
+	cert.SetLogger(logger)
 	sc := proxy.SecureClient(node, cert)
 
+	logger.Info("Starting proxy...")
 	err = proxy.StartProxy(sc, listenAddr, logger)
 	if err != nil {
-		return err
+		return cmn.ErrorWrap(err, "starting proxy")
 	}
 
 	cmn.TrapSignal(func() {

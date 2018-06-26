@@ -8,12 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	dbm "github.com/tendermint/tmlibs/db"
+	log "github.com/tendermint/tmlibs/log"
 )
 
 func TestInquirerValidPath(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	trust := NewDBProvider(dbm.NewMemDB())
-	source := NewDBProvider(dbm.NewMemDB())
+	trust := NewDBProvider("trust", dbm.NewMemDB())
+	source := NewDBProvider("source", dbm.NewMemDB())
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
@@ -43,8 +44,8 @@ func TestInquirerValidPath(t *testing.T) {
 	// Initialize a certifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.Nil(err)
-	cert, err := NewInquiringCertifier(chainID, trust, source)
-	require.Nil(err)
+	cert := NewInquiringCertifier(chainID, trust, source)
+	cert.SetLogger(log.TestingLogger())
 
 	// This should fail validation:
 	sh := fcz[count-1].SignedHeader
@@ -70,8 +71,8 @@ func TestInquirerValidPath(t *testing.T) {
 
 func TestInquirerVerifyHistorical(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
-	trust := NewDBProvider(dbm.NewMemDB())
-	source := NewDBProvider(dbm.NewMemDB())
+	trust := NewDBProvider("trust", dbm.NewMemDB())
+	source := NewDBProvider("source", dbm.NewMemDB())
 
 	// Set up the validators to generate test blocks.
 	var vote int64 = 10
@@ -101,8 +102,8 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 	// Initialize a certifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.Nil(err)
-	cert, err := NewInquiringCertifier(chainID, trust, source)
-	require.Nil(err)
+	cert := NewInquiringCertifier(chainID, trust, source)
+	cert.SetLogger(log.TestingLogger())
 
 	// Store a few full commits as trust.
 	for _, i := range []int{2, 5} {
