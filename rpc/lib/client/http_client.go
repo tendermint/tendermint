@@ -43,7 +43,7 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 			return nil, errors.New(msg)
 		}
 	}
-	// accept http as an alias for tcp
+	// accept http as an alias for tcp and set the client protocol
 	if protocol == "http" || protocol == "https" {
 		clientProtocol = protocol
 		protocol = "tcp"
