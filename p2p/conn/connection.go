@@ -156,7 +156,7 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 		onReceive:          onReceive,
 		onError:            onError,
 		config:             config,
-		emptyPacketMsgSize: emptyPacketMsgSize(),
+		emptyPacketMsgSize: emptyPacketMsgSize(config.MaxPacketMsgSize),
 	}
 
 	// Create channels
@@ -631,7 +631,7 @@ func newChannel(conn *MConnection, desc ChannelDescriptor) *Channel {
 		desc:                    desc,
 		sendQueue:               make(chan []byte, desc.SendQueueCapacity),
 		recving:                 make([]byte, 0, desc.RecvBufferCapacity),
-		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgSize,
+		maxPacketMsgPayloadSize: conn.config.MaxPacketMsgSize - conn.emptyPacketMsgSize,
 	}
 }
 
@@ -694,7 +694,7 @@ func (ch *Channel) isSendPending() bool {
 func (ch *Channel) nextPacketMsg() PacketMsg {
 	packet := PacketMsg{}
 	packet.ChannelID = byte(ch.desc.ID)
-	maxSize := ch.maxPacketMsgPayloadSize - ch.conn.emptyPacketMsgSize
+	maxSize := ch.maxPacketMsgPayloadSize
 	packet.Bytes = ch.sending[:cmn.MinInt(maxSize, len(ch.sending))]
 	if len(ch.sending) <= maxSize {
 		packet.EOF = byte(0x01)
@@ -788,17 +788,16 @@ func (mp PacketMsg) String() string {
 // - EOF field key + byte = 2 bytes
 // - Bytes field key = 1 bytes
 // - Uvarint length of MustMarshalBinary(bytes) = 1 or 2 bytes
-// - Struct terminator = 1 byte
-// = up to 14 bytes overhead for the packet.
+// = up to 13 bytes overhead for the packet.
 
-func emptyPacketMsgSize() int {
+func emptyPacketMsgSize(maxPayloadSize int) int {
 	emptyPacketMsgSize := len(cdc.MustMarshalBinary(PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, 1),
+		Bytes:     make([]byte, maxPayloadSize),
 	}))
 	// -1 byte of data
 	// +1 byte because uvarint length of MustMarshalBinary(bytes) will be 2 bytes for big packets
 	// +1 byte because uvarint length of MustMarshalBinary(packet) will be 2 bytes for big packets
-	return emptyPacketMsgSize - 1 + 1 + 1
+	return emptyPacketMsgSize - maxPayloadSize + 1 + 1
 }
