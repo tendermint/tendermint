@@ -56,6 +56,7 @@ for i in `seq 1 $N`; do
 	# - assert block height is greater than 1
 	BLOCK_HEIGHT=`curl -s $addr/status | jq .result.sync_info.latest_block_height | jq fromjson`
 	COUNT=0
+	echo "$$BLOCK_HEIGHT IS $BLOCK_HEIGHT"
 	while [ "$BLOCK_HEIGHT" -le 1 ]; do
 		echo "Waiting for node $i to commit a block ..."
 		sleep 1

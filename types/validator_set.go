@@ -279,11 +279,6 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
 		}
-		// NOTE: This will go away when we refactor Commit.
-		if !blockID.Equals(precommit.BlockID) {
-			return fmt.Errorf("Invalid commit -- wrong block id @ index %v: want %v got %v",
-				idx, blockID, precommit.BlockID)
-		}
 		_, val := vals.GetByIndex(idx)
 		// Validate signature.
 		precommitSignBytes := precommit.SignBytes(chainID)
@@ -291,7 +286,12 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
-		talliedVotingPower += val.VotingPower
+		if blockID.Equals(precommit.BlockID) {
+			talliedVotingPower += val.VotingPower
+		} else {
+			// It's OK that the BlockID doesn't match.  We include stray
+			// precommits to measure validator availability.
+		}
 	}
 
 	if talliedVotingPower > vals.TotalVotingPower()*2/3 {
@@ -358,11 +358,6 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		if precommit.Type != VoteTypePrecommit {
 			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
 		}
-		// NOTE: This will go away when we refactor Commit.
-		if !blockID.Equals(precommit.BlockID) {
-			return fmt.Errorf("Invalid commit -- wrong block id @ index %v: want %v got %v",
-				idx, blockID, precommit.BlockID)
-		}
 		// See if this validator is in oldVals.
 		idx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
 		if val == nil || seen[idx] {
@@ -376,7 +371,12 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
-		oldVotingPower += val.VotingPower
+		if blockID.Equals(precommit.BlockID) {
+			oldVotingPower += val.VotingPower
+		} else {
+			// It's OK that the BlockID doesn't match.  We include stray
+			// precommits to measure validator availability.
+		}
 	}
 
 	if oldVotingPower <= oldVals.TotalVotingPower()*2/3 {
