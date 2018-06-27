@@ -1021,9 +1021,11 @@ func (cs *ConsensusState) enterPrevoteWait(height int64, round int) {
 		logger.Debug(cmn.Fmt("enterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
-	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
-		cmn.PanicSanity(cmn.Fmt("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
-	}
+	/*
+		if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
+			cmn.PanicSanity(cmn.Fmt("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
+		}
+	*/
 	logger.Info(cmn.Fmt("enterPrevoteWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
