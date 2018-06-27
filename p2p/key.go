@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	crypto "github.com/tendermint/go-crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 

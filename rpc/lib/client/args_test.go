@@ -26,7 +26,7 @@ func TestArgToJSON(t *testing.T) {
 	}{
 		{[]byte("1234"), "0x31323334"},
 		{Tx("654"), "0x363534"},
-		{Foo{7, "hello"}, `{"Bar":7,"Baz":"hello"}`},
+		{Foo{7, "hello"}, `{"Bar":"7","Baz":"hello"}`},
 	}
 
 	cdc := amino.NewCodec()

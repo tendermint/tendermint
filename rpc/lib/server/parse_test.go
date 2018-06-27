@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
 
@@ -148,8 +148,8 @@ func TestParseRPC(t *testing.T) {
 		fail   bool
 	}{
 		// should parse
-		{`[7, "flew"]`, 7, "flew", false},
-		{`{"name": "john", "height": 22}`, 22, "john", false},
+		{`["7", "flew"]`, 7, "flew", false},
+		{`{"name": "john", "height": "22"}`, 22, "john", false},
 		// defaults
 		{`{"name": "solo", "unused": "stuff"}`, 0, "solo", false},
 		// should fail - wrong types/length

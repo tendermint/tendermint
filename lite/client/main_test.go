@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 
 	nm "github.com/tendermint/tendermint/node"
 	rpctest "github.com/tendermint/tendermint/rpc/test"

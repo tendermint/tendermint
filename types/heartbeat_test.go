@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 func TestHeartbeatCopy(t *testing.T) {
@@ -28,7 +28,9 @@ func TestHeartbeatString(t *testing.T) {
 	require.Equal(t, hb.String(), "Heartbeat{1:000000000000 11/02 (0) <nil>}")
 
 	var key crypto.PrivKeyEd25519
-	hb.Signature = key.Sign([]byte("Tendermint"))
+	sig, err := key.Sign([]byte("Tendermint"))
+	require.NoError(t, err)
+	hb.Signature = sig
 	require.Equal(t, hb.String(), "Heartbeat{1:000000000000 11/02 (0) /FF41E371B9BF.../}")
 }
 
@@ -37,11 +39,11 @@ func TestHeartbeatWriteSignBytes(t *testing.T) {
 	hb := &Heartbeat{ValidatorIndex: 1, Height: 10, Round: 1}
 	bz := hb.SignBytes("0xdeadbeef")
 	// XXX HMMMMMMM
-	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":10,"round":1,"sequence":0,"validator_address":"","validator_index":1}`)
+	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":"10","round":"1","sequence":"0","validator_address":"","validator_index":"1"}`)
 
 	plainHb := &Heartbeat{}
 	bz = plainHb.SignBytes("0xdeadbeef")
-	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":0,"round":0,"sequence":0,"validator_address":"","validator_index":0}`)
+	require.Equal(t, string(bz), `{"@chain_id":"0xdeadbeef","@type":"heartbeat","height":"0","round":"0","sequence":"0","validator_address":"","validator_index":"0"}`)
 
 	require.Panics(t, func() {
 		var nilHb *Heartbeat

@@ -10,7 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	auto "github.com/tendermint/tmlibs/autofile"
 	"github.com/tendermint/tmlibs/clist"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -83,10 +83,20 @@ type Mempool struct {
 	wal *auto.AutoFile
 
 	logger log.Logger
+
+	metrics *Metrics
 }
 
+// MempoolOption sets an optional parameter on the Mempool.
+type MempoolOption func(*Mempool)
+
 // NewMempool returns a new Mempool with the given configuration and connection to an application.
-func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, height int64) *Mempool {
+func NewMempool(
+	config *cfg.MempoolConfig,
+	proxyAppConn proxy.AppConnMempool,
+	height int64,
+	options ...MempoolOption,
+) *Mempool {
 	mempool := &Mempool{
 		config:        config,
 		proxyAppConn:  proxyAppConn,
@@ -97,6 +107,7 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		recheckCursor: nil,
 		recheckEnd:    nil,
 		logger:        log.NewNopLogger(),
+		metrics:       NopMetrics(),
 	}
 	if config.CacheSize > 0 {
 		mempool.cache = newMapTxCache(config.CacheSize)
@@ -104,6 +115,9 @@ func NewMempool(config *cfg.MempoolConfig, proxyAppConn proxy.AppConnMempool, he
 		mempool.cache = nopTxCache{}
 	}
 	proxyAppConn.SetResponseCallback(mempool.resCb)
+	for _, option := range options {
+		option(mempool)
+	}
 	return mempool
 }
 
@@ -117,6 +131,11 @@ func (mem *Mempool) EnableTxsAvailable() {
 // SetLogger sets the Logger.
 func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
+}
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) MempoolOption {
+	return func(mem *Mempool) { mem.metrics = metrics }
 }
 
 // CloseWAL closes and discards the underlying WAL file.
@@ -254,6 +273,7 @@ func (mem *Mempool) resCb(req *abci.Request, res *abci.Response) {
 	} else {
 		mem.resCbRecheck(req, res)
 	}
+	mem.metrics.Size.Set(float64(mem.Size()))
 }
 
 func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
@@ -397,6 +417,7 @@ func (mem *Mempool) Update(height int64, txs types.Txs) error {
 		// mem.recheckCursor re-scans mem.txs and possibly removes some txs.
 		// Before mem.Reap(), we should wait for mem.recheckCursor to be nil.
 	}
+	mem.metrics.Size.Set(float64(mem.Size()))
 	return nil
 }
 

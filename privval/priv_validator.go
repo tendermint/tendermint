@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tmlibs/common"
 )
@@ -222,7 +222,10 @@ func (pv *FilePV) signVote(chainID string, vote *types.Vote) error {
 	}
 
 	// It passed the checks. Sign the vote
-	sig := pv.PrivKey.Sign(signBytes)
+	sig, err := pv.PrivKey.Sign(signBytes)
+	if err != nil {
+		return err
+	}
 	pv.saveSigned(height, round, step, signBytes, sig)
 	vote.Signature = sig
 	return nil
@@ -258,7 +261,10 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 	}
 
 	// It passed the checks. Sign the proposal
-	sig := pv.PrivKey.Sign(signBytes)
+	sig, err := pv.PrivKey.Sign(signBytes)
+	if err != nil {
+		return err
+	}
 	pv.saveSigned(height, round, step, signBytes, sig)
 	proposal.Signature = sig
 	return nil
@@ -281,7 +287,11 @@ func (pv *FilePV) saveSigned(height int64, round int, step int8,
 func (pv *FilePV) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
-	heartbeat.Signature = pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
+	sig, err:= pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
+	if err != nil {
+		return err
+	}
+	heartbeat.Signature = sig
 	return nil
 }
 

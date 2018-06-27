@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cmn "github.com/tendermint/tmlibs/common"
 	"github.com/tendermint/tmlibs/log"
 

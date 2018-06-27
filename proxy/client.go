@@ -5,9 +5,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	abcicli "github.com/tendermint/abci/client"
-	"github.com/tendermint/abci/example/kvstore"
-	"github.com/tendermint/abci/types"
+	abcicli "github.com/tendermint/tendermint/abci/client"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/types"
 )
 
 // NewABCIClient returns newly connected client

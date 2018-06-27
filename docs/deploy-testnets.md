@@ -35,7 +35,7 @@ Here are the steps to setting up a testnet manually:
 
 After a few seconds, all the nodes should connect to each other and
 start making blocks! For more information, see the Tendermint Networks
-section of [the guide to using Tendermint](using-tendermint.html).
+section of [the guide to using Tendermint](./using-tendermint.md).
 
 But wait! Steps 3 and 4 are quite manual. Instead, use [this
 script](https://github.com/tendermint/tendermint/blob/develop/docs/examples/init_testnet.sh),

@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 
-	"github.com/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tmlibs/log"
 
 	cfg "github.com/tendermint/tendermint/config"

@@ -2,8 +2,8 @@
 
 ## Amino
 
-Tendermint uses the Protobuf3 derivative [Amino](https://github.com/tendermint/go-amino) for all data structures.
-Think of Amino as an object-oriented Protobuf3 with native JSON support.
+Tendermint uses the proto3 derivative [Amino](https://github.com/tendermint/go-amino) for all data structures.
+Think of Amino as an object-oriented proto3 with native JSON support.
 The goal of the Amino encoding protocol is to bring parity between application
 logic objects and persistence objects.
 
@@ -21,7 +21,7 @@ arbitrary object and return the Amino encoded bytes.
 ## Byte Arrays
 
 The encoding of a byte array is simply the raw-bytes prefixed with the length of
-the array as a `UVarint` (what Protobuf calls a `Varint`).
+the array as a `UVarint` (what proto calls a `Varint`).
 
 For details on varints, see the [protobuf
 spec](https://developers.google.com/protocol-buffers/docs/encoding#varints).
@@ -249,7 +249,7 @@ For instance, an ED25519 PubKey would look like:
 
 ```
 {
-  "type": "AC26791624DE60",
+  "type": "tendermint/PubKeyEd25519",
   "value": "uZ4h63OFWuQ36ZZ4Bd6NF+/w9fWUwrOncrQsackrsTk="
 }
 ```

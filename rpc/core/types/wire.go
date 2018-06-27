@@ -2,7 +2,7 @@ package core_types
 
 import (
 	"github.com/tendermint/go-amino"
-	"github.com/tendermint/go-crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
 

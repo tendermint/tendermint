@@ -115,10 +115,24 @@ type ConsensusState struct {
 	// synchronous pubsub between consensus state and reactor.
 	// state only emits EventNewRoundStep, EventVote and EventProposalHeartbeat
 	evsw tmevents.EventSwitch
+
+	// for reporting metrics
+	metrics *Metrics
 }
 
+// CSOption sets an optional parameter on the ConsensusState.
+type CSOption func(*ConsensusState)
+
 // NewConsensusState returns a new ConsensusState.
-func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *sm.BlockExecutor, blockStore sm.BlockStore, mempool sm.Mempool, evpool sm.EvidencePool) *ConsensusState {
+func NewConsensusState(
+	config *cfg.ConsensusConfig,
+	state sm.State,
+	blockExec *sm.BlockExecutor,
+	blockStore sm.BlockStore,
+	mempool sm.Mempool,
+	evpool sm.EvidencePool,
+	options ...CSOption,
+) *ConsensusState {
 	cs := &ConsensusState{
 		config:           config,
 		blockExec:        blockExec,
@@ -132,6 +146,7 @@ func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *s
 		wal:              nilWAL{},
 		evpool:           evpool,
 		evsw:             tmevents.NewEventSwitch(),
+		metrics:          NopMetrics(),
 	}
 	// set function defaults (may be overwritten before calling Start)
 	cs.decideProposal = cs.defaultDecideProposal
@@ -143,6 +158,9 @@ func NewConsensusState(config *cfg.ConsensusConfig, state sm.State, blockExec *s
 	// We do that upon Start().
 	cs.reconstructLastCommit(state)
 	cs.BaseService = *cmn.NewBaseService(nil, "ConsensusState", cs)
+	for _, option := range options {
+		option(cs)
+	}
 	return cs
 }
 
@@ -159,6 +177,11 @@ func (cs *ConsensusState) SetLogger(l log.Logger) {
 func (cs *ConsensusState) SetEventBus(b *types.EventBus) {
 	cs.eventBus = b
 	cs.blockExec.SetEventBus(b)
+}
+
+// WithMetrics sets the metrics.
+func WithMetrics(metrics *Metrics) CSOption {
+	return func(cs *ConsensusState) { cs.metrics = metrics }
 }
 
 // String returns a string.
@@ -387,6 +410,7 @@ func (cs *ConsensusState) SetProposalAndBlock(proposal *types.Proposal, block *t
 // internal functions for managing the state
 
 func (cs *ConsensusState) updateHeight(height int64) {
+	cs.metrics.Height.Set(float64(height))
 	cs.Height = height
 }
 
@@ -722,6 +746,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 
 	cs.eventBus.PublishEventNewRound(cs.RoundStateEvent())
+	cs.metrics.Rounds.Set(float64(round))
 
 	// Wait for txs to be available in the mempool
 	// before we enterPropose in round 0. If the last block changed the app hash,
@@ -1280,6 +1305,9 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
+	// must be called before we update state
+	cs.recordMetrics(height, block)
+
 	// NewHeightStep!
 	cs.updateToState(stateCopy)
 
@@ -1293,6 +1321,44 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	// * cs.Height has been increment to height+1
 	// * cs.Step is now cstypes.RoundStepNewHeight
 	// * cs.StartTime is set to when we will start round0.
+}
+
+func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
+	cs.metrics.Validators.Set(float64(cs.Validators.Size()))
+	cs.metrics.ValidatorsPower.Set(float64(cs.Validators.TotalVotingPower()))
+	missingValidators := 0
+	missingValidatorsPower := int64(0)
+	for i, val := range cs.Validators.Validators {
+		var vote *types.Vote
+		if i < len(block.LastCommit.Precommits) {
+			vote = block.LastCommit.Precommits[i]
+		}
+		if vote == nil {
+			missingValidators++
+			missingValidatorsPower += val.VotingPower
+		}
+	}
+	cs.metrics.MissingValidators.Set(float64(missingValidators))
+	cs.metrics.MissingValidatorsPower.Set(float64(missingValidatorsPower))
+	cs.metrics.ByzantineValidators.Set(float64(len(block.Evidence.Evidence)))
+	byzantineValidatorsPower := int64(0)
+	for _, ev := range block.Evidence.Evidence {
+		if _, val := cs.Validators.GetByAddress(ev.Address()); val != nil {
+			byzantineValidatorsPower += val.VotingPower
+		}
+	}
+	cs.metrics.ByzantineValidatorsPower.Set(float64(byzantineValidatorsPower))
+
+	if height > 1 {
+		lastBlockMeta := cs.blockStore.LoadBlockMeta(height - 1)
+		cs.metrics.BlockIntervalSeconds.Observe(
+			block.Time.Sub(lastBlockMeta.Header.Time).Seconds(),
+		)
+	}
+
+	cs.metrics.NumTxs.Set(float64(block.NumTxs))
+	cs.metrics.BlockSizeBytes.Set(float64(block.Size()))
+	cs.metrics.TotalTxs.Set(float64(block.TotalTxs))
 }
 
 //-----------------------------------------------------------------------------

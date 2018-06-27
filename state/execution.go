@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	fail "github.com/ebuchman/fail-test"
-	abci "github.com/tendermint/abci/types"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tmlibs/db"
