@@ -56,7 +56,7 @@ See the [install instructions](/docs/install.rst)
 
 - [Single node](/docs/using-tendermint.rst)
 - [Local cluster using docker-compose](/networks/local)
-- [Remote cluster using terraform and ansible](/docs/terraform-and-ansible.rst)
+- [Remote cluster using terraform and ansible](/docs/terraform-and-ansible.md)
 - [Join the public testnet](https://cosmos.network/testnet)
 
 ## Resources
