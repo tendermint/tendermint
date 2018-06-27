@@ -70,13 +70,21 @@ type WSClient struct {
 
 	// Send pings to server with this period. Must be less than readWait. If 0, no pings will be sent.
 	pingPeriod time.Duration
+
+	// Support both ws and wss protocols
+	protocol string
 }
 
 // NewWSClient returns a new client. See the commentary on the func(*WSClient)
 // functions for a detailed description of how to configure ping period and
 // pong wait time. The endpoint argument must begin with a `/`.
 func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSClient {
-	addr, dialer := makeHTTPDialer(remoteAddr)
+	protocol, addr, dialer := makeHTTPDialer(remoteAddr)
+	// default to ws protocol, unless wss is explicitly specified
+	if protocol != "wss" {
+		protocol = "ws"
+	}
+
 	c := &WSClient{
 		cdc:                  amino.NewCodec(),
 		Address:              addr,
@@ -88,6 +96,7 @@ func NewWSClient(remoteAddr, endpoint string, options ...func(*WSClient)) *WSCli
 		readWait:             defaultReadWait,
 		writeWait:            defaultWriteWait,
 		pingPeriod:           defaultPingPeriod,
+		protocol:             protocol,
 	}
 	c.BaseService = *cmn.NewBaseService(nil, "WSClient", c)
 	for _, option := range options {
@@ -242,7 +251,7 @@ func (c *WSClient) dial() error {
 		Proxy:   http.ProxyFromEnvironment,
 	}
 	rHeader := http.Header{}
-	conn, _, err := dialer.Dial("ws://"+c.Address+c.Endpoint, rHeader)
+	conn, _, err := dialer.Dial(c.protocol+"://"+c.Address+c.Endpoint, rHeader)
 	if err != nil {
 		return err
 	}

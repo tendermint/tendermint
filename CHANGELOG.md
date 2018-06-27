@@ -9,6 +9,12 @@ BUG FIXES:
   (`rpc.grpc_max_open_connections`). Check out [Running In
   Production](https://tendermint.readthedocs.io/en/master/running-in-production.html)
   guide if you want to increase them.
+  
+## 0.21.2
+
+IMPROVEMENT
+
+- [rpc/client] Supports https and wss now
 
 ## 0.21.0
 
