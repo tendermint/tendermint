@@ -49,10 +49,8 @@ func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (ne
 	case "http", "https":
 		clientProtocol = protocol
 		protocol = "tcp"
-		break
 	case "ws", "wss":
 		clientProtocol = protocol
-		break
 	}
 
 	// replace / with . for http requests (kvstore domain)
