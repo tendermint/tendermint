@@ -217,10 +217,6 @@ timeout_commit = {{ .Consensus.TimeoutCommit }}
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 
-# BlockSize
-max_block_size_txs = {{ .Consensus.MaxBlockSizeTxs }}
-max_block_size_bytes = {{ .Consensus.MaxBlockSizeBytes }}
-
 # EmptyBlocks mode and possible interval between empty blocks in seconds
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
 create_empty_blocks_interval = {{ .Consensus.CreateEmptyBlocksInterval }}

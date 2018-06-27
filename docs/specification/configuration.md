@@ -170,10 +170,6 @@ timeout_commit = 1000
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = false
 
-# BlockSize
-max_block_size_txs = 10000
-max_block_size_bytes = 1
-
 # EmptyBlocks mode and possible interval between empty blocks in seconds
 create_empty_blocks = true
 create_empty_blocks_interval = 0

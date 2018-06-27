@@ -932,7 +932,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	}
 
 	// Mempool validated transactions
-	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
+	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
 	evidence := cs.evpool.PendingEvidence()
 	block.AddEvidence(evidence)

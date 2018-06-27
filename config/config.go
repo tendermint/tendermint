@@ -454,10 +454,6 @@ type ConsensusConfig struct {
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
 
-	// BlockSize
-	MaxBlockSizeTxs   int `mapstructure:"max_block_size_txs"`
-	MaxBlockSizeBytes int `mapstructure:"max_block_size_bytes"`
-
 	// EmptyBlocks mode and possible interval between empty blocks in seconds
 	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
 	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
@@ -479,8 +475,6 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutPrecommitDelta:       500,
 		TimeoutCommit:               1000,
 		SkipTimeoutCommit:           false,
-		MaxBlockSizeTxs:             10000,
-		MaxBlockSizeBytes:           1, // TODO
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0,
 		PeerGossipSleepDuration:     100,
