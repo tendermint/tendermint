@@ -256,11 +256,12 @@ func (tm *TrustMetric) SetTicker(ticker MetricTicker) {
 
 // Copy returns a new trust metric with members containing the same values
 func (tm *TrustMetric) Copy() *TrustMetric {
-	tm.mtx.Lock()
-	defer tm.mtx.Unlock()
 	if tm == nil {
 		return nil
 	}
+
+	tm.mtx.Lock()
+	defer tm.mtx.Unlock()
 
 	return &TrustMetric{
 		proportionalWeight: tm.proportionalWeight,
