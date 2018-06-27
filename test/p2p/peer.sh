@@ -15,9 +15,7 @@ echo "starting tendermint peer ID=$ID"
 # NOTE: $NODE_FLAGS should be unescaped (no quotes). otherwise it will be
 # treated as one flag.
 
-
-
-if [[ "$ID" == "1" ]]; then
+if [[ "$ID" == "x" ]]; then # Set "x" to "1" to print to console.
 	docker run \
 		--net="$NETWORK_NAME" \
 		--ip=$(test/p2p/ip.sh "$ID") \

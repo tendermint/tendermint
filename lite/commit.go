@@ -65,15 +65,9 @@ func (fc FullCommit) ValidateFull(chainID string) error {
 	}
 	// Validate the signatures on the commit.
 	hdr, cmt := fc.SignedHeader.Header, fc.SignedHeader.Commit
-	err = fc.Validators.VerifyCommit(
+	return fc.Validators.VerifyCommit(
 		hdr.ChainID, cmt.BlockID,
 		hdr.Height, cmt)
-	if err != nil {
-		return err
-	}
-
-	// All good!
-	return nil
 }
 
 // Height returns the height of the header.

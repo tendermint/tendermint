@@ -241,10 +241,6 @@ func validatorSetKey(chainID string, height int64) []byte {
 	return []byte(fmt.Sprintf("%s/%010d/vs", chainID, height))
 }
 
-func chainKeyPrefix(chainID string, height int64) []byte {
-	return []byte(fmt.Sprintf("%s/%010d/", chainID, height))
-}
-
 var chainKeyPrefixPattern = regexp.MustCompile(`([^/]+)/([0-9]*)/`)
 
 func parseChainKeyPrefix(key []byte) (chainID string, height int64, ok bool) {
