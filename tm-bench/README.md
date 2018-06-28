@@ -10,18 +10,17 @@ For example, the following:
 
 will output:
 
-    Stats             Avg        Stdev      Max
-    Txs/sec           833        427        1326     
-    Blocks/sec        0.900      0.300      1
+    Stats          Avg       StdDev     Max      Total     
+    Txs/sec        818       532        1549     9000      
+    Blocks/sec     0.818     0.386      1        9
 
-These stats are derived by sending transactions at the specified rate for the
-specified time. After the specified time, it iterates over all of the blocks
-that were created in that time. The average and stddev per second are computed
-based off of that, by grouping the data by second.
 
 ## Quick Start
 
 [Install Tendermint](https://github.com/tendermint/tendermint#install)
+This currently is setup to work on tendermint's develop branch. Please ensure
+you are on that. (If not, update `tendermint` and `tmlibs` in gopkg.toml to use
+  the master branch.)
 
 then run:
 
@@ -48,6 +47,21 @@ with the last command being in a seperate window.
       -s int
             Size per tx in bytes
       -v    Verbose output
+
+## How stats are collected
+
+These stats are derived by having each connection send transactions at the
+specified rate (or as close as it can get) for the specified time. After the
+specified time, it iterates over all of the blocks that were created in that
+time. The average and stddev per second are computed based off of that, by
+grouping the data by second.
+
+To send transactions at the specified rate in each connection, we loop
+through the number of transactions. If its too slow, the loop stops at one second.
+If its too fast, we wait until the one second mark ends. The transactions per
+second stat is computed based off of what ends up in the block.
+
+Each of the connections is running via a separate goroutine. 
 
 ## Development
 

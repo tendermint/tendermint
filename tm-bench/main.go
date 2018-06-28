@@ -105,9 +105,9 @@ Examples:
 		txSize,
 		"broadcast_tx_"+broadcastTxMethod,
 	)
-
+	endTime := time.Duration(duration) * time.Second
 	select {
-	case <-time.After(time.Duration(duration) * time.Second):
+	case <-time.After(endTime):
 		for _, t := range transacters {
 			t.Stop()
 		}

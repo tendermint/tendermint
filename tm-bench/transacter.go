@@ -148,6 +148,8 @@ func (t *transacter) sendLoop(connIndex int) {
 		select {
 		case <-txsTicker.C:
 			startTime := time.Now()
+			endTime := startTime.Add(time.Second)
+			numTxSent := t.Rate
 
 			for i := 0; i < t.Rate; i++ {
 				// each transaction embeds connection index, tx number and hash of the hostname
@@ -171,6 +173,15 @@ func (t *transacter) sendLoop(connIndex int) {
 					os.Exit(1)
 				}
 
+				// Time added here is 7.13 ns/op, not significant enough to worry about
+				if i%20 == 0 {
+					if time.Now().After(endTime) {
+						// Plus one accounts for sending this tx
+						numTxSent = i + 1
+						break
+					}
+				}
+
 				txNumber++
 			}
 
@@ -178,7 +189,8 @@ func (t *transacter) sendLoop(connIndex int) {
 			if timeToSend < 1*time.Second {
 				time.Sleep(time.Second - timeToSend)
 			}
-			logger.Info(fmt.Sprintf("sent %d transactions", t.Rate), "took", timeToSend)
+
+			logger.Info(fmt.Sprintf("sent %d transactions", numTxSent), "took", timeToSend)
 		case <-pingsTicker.C:
 			// go-rpc server closes the connection in the absence of pings
 			c.SetWriteDeadline(time.Now().Add(sendTimeout))
