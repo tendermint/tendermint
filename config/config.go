@@ -285,7 +285,7 @@ type P2PConfig struct {
 	PersistentPeers string `mapstructure:"persistent_peers"`
 
 	// Skip UPNP port forwarding
-	SkipUPNP bool `mapstructure:"skip_upnp"`
+	UPNP bool `mapstructure:"upnp"`
 
 	// Path to address book
 	AddrBook string `mapstructure:"addr_book_file"`
@@ -363,7 +363,7 @@ func DefaultP2PConfig() *P2PConfig {
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://0.0.0.0:36656"
-	cfg.SkipUPNP = true
+	cfg.UPNP = true
 	cfg.FlushThrottleTimeout = 10
 	cfg.AllowDuplicateIP = true
 	return cfg

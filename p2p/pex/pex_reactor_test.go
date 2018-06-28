@@ -109,7 +109,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	addOtherNodeAddrToAddrBook(2, 1)
 
 	for i, sw := range switches {
-		sw.AddListener(p2p.NewDefaultListener("tcp", sw.NodeInfo().ListenAddr, true, logger.With("pex", i)))
+		sw.AddListener(p2p.NewDefaultListener("tcp", sw.NodeInfo().ListenAddr, false, logger.With("pex", i)))
 
 		err := sw.Start() // start switch and reactors
 		require.Nil(t, err)
@@ -232,7 +232,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 		p2p.NewDefaultListener(
 			"tcp",
 			seed.NodeInfo().ListenAddr,
-			true,
+			false,
 			log.TestingLogger(),
 		),
 	)
