@@ -284,7 +284,7 @@ type P2PConfig struct {
 	// Do not add private peers to this list if you don't want them advertised
 	PersistentPeers string `mapstructure:"persistent_peers"`
 
-	// Skip UPNP port forwarding
+	// UPNP port forwarding
 	UPNP bool `mapstructure:"upnp"`
 
 	// Path to address book
@@ -341,6 +341,7 @@ type P2PConfig struct {
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
 		ListenAddress:        "tcp://0.0.0.0:26656",
+		UPNP:                 false,
 		AddrBook:             defaultAddrBookPath,
 		AddrBookStrict:       true,
 		MaxNumPeers:          50,
@@ -363,7 +364,6 @@ func DefaultP2PConfig() *P2PConfig {
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://0.0.0.0:36656"
-	cfg.UPNP = true
 	cfg.FlushThrottleTimeout = 10
 	cfg.AllowDuplicateIP = true
 	return cfg

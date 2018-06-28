@@ -3,18 +3,17 @@
 ## TBD
 
 BUG FIXES:
-
 - [rpc] limited number of HTTP/WebSocket connections
   (`rpc.max_open_connections`) and gRPC connections
   (`rpc.grpc_max_open_connections`). Check out [Running In
   Production](https://tendermint.readthedocs.io/en/master/running-in-production.html)
   guide if you want to increase them.
 
-## 0.21.2
+BREAKING CHANGES:
+- [config] Rename `skip_upnp` to `upnp`, and turn it off by default.
 
 IMPROVEMENT
-
-- [rpc/client] Supports https and wss now
+- [rpc/client] Supports https and wss now.
 
 ## 0.21.0
 
@@ -24,7 +23,6 @@ BREAKING CHANGES
 
 - [config] Change default ports from 4665X to 2665X. Ports over 32768 are
   ephemeral and reserved for use by the kernel.
-- [config] Rename `skip_upnp` to `upnp`, and change default to enable upnp
 - [cmd] `unsafe_reset_all` removes the addrbook.json
 
 IMPROVEMENT

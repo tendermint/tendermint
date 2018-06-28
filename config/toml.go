@@ -149,6 +149,9 @@ seeds = "{{ .P2P.Seeds }}"
 # Do not add private peers to this list if you don't want them advertised
 persistent_peers = "{{ .P2P.PersistentPeers }}"
 
+# UPNP port forwarding
+upnp = {{ .P2P.UPNP }}
+
 # Path to address book
 addr_book_file = "{{ js .P2P.AddrBook }}"
 
