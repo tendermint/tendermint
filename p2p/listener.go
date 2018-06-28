@@ -187,12 +187,6 @@ func (l *DefaultListener) ExternalAddressToString() string {
 	return ip.String()
 }
 
-// NOTE: The returned listener is already Accept()'ing.
-// So it's not suitable to pass into http.Serve().
-func (l *DefaultListener) NetListener() net.Listener {
-	return l.listener
-}
-
 func (l *DefaultListener) String() string {
 	return fmt.Sprintf("Listener(@%v)", l.extAddr)
 }
