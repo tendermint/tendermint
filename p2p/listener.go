@@ -20,7 +20,7 @@ type Listener interface {
 	Connections() <-chan net.Conn
 	InternalAddress() *NetAddress
 	ExternalAddress() *NetAddress
-	ExternalAddressToString() string
+	ExternalAddressHost() string
 	String() string
 	Stop() error
 }
@@ -177,8 +177,8 @@ func (l *DefaultListener) ExternalAddress() *NetAddress {
 	return l.extAddr
 }
 
-// ExternalAddressToString returns a string representation of ExternalAddress.
-func (l *DefaultListener) ExternalAddressToString() string {
+// TODO: remove the need for this function by supporting IPv6 in NetAddress.
+func (l *DefaultListener) ExternalAddressHost() string {
 	ip := l.ExternalAddress().IP
 	if isIpv6(ip) {
 		// Means it's ipv6, so format it with brackets
