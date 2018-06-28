@@ -10,8 +10,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	amino "github.com/tendermint/go-amino"
+	abci "github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 	"github.com/tendermint/tmlibs/log"
@@ -427,7 +427,7 @@ func (n *Node) OnStart() error {
 
 	// Create & add listener
 	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
+	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.UPNP, n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
 	// Generate node PrivKey

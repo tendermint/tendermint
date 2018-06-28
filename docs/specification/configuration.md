@@ -103,6 +103,9 @@ seeds = ""
 # Do not add private peers to this list if you don't want them advertised
 persistent_peers = ""
 
+# UPNP port forwarding
+upnp = false
+
 # Path to address book
 addr_book_file = "addrbook.json"
 

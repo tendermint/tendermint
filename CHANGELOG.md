@@ -3,18 +3,17 @@
 ## TBD
 
 BUG FIXES:
-
 - [rpc] limited number of HTTP/WebSocket connections
   (`rpc.max_open_connections`) and gRPC connections
   (`rpc.grpc_max_open_connections`). Check out [Running In
   Production](https://tendermint.readthedocs.io/en/master/running-in-production.html)
   guide if you want to increase them.
-  
-## 0.21.2
+
+BREAKING CHANGES:
+- [config] Rename `skip_upnp` to `upnp`, and turn it off by default.
 
 IMPROVEMENT
-
-- [rpc/client] Supports https and wss now
+- [rpc/client] Supports https and wss now.
 
 ## 0.21.0
 
