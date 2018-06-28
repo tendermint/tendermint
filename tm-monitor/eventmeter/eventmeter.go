@@ -35,10 +35,10 @@ type EventMetric struct {
 
 	// filled in from the Meter
 	Count    int64   `json:"count"`
-	Rate1    float64 `json:"rate_1" wire:"unsafe"`
-	Rate5    float64 `json:"rate_5" wire:"unsafe"`
-	Rate15   float64 `json:"rate_15" wire:"unsafe"`
-	RateMean float64 `json:"rate_mean" wire:"unsafe"`
+	Rate1    float64 `json:"rate_1" amino:"unsafe"`
+	Rate5    float64 `json:"rate_5" amino:"unsafe"`
+	Rate15   float64 `json:"rate_15" amino:"unsafe"`
+	RateMean float64 `json:"rate_mean" amino:"unsafe"`
 
 	// so the event can have effects in the eventmeter's consumer. runs in a go
 	// routine.
@@ -80,7 +80,7 @@ type DisconnectCallbackFunc func()
 type EventMeter struct {
 	wsc *client.WSClient
 
-	mtx    sync.Mutex
+	mtx              sync.Mutex
 	queryToMetricMap map[string]*EventMetric
 
 	unmarshalEvent     EventUnmarshalFunc
@@ -95,10 +95,10 @@ type EventMeter struct {
 
 func NewEventMeter(addr string, unmarshalEvent EventUnmarshalFunc) *EventMeter {
 	return &EventMeter{
-		wsc:            client.NewWSClient(addr, "/websocket", client.PingPeriod(1*time.Second)),
-		queryToMetricMap:         make(map[string]*EventMetric),
-		unmarshalEvent: unmarshalEvent,
-		logger:         log.NewNopLogger(),
+		wsc:              client.NewWSClient(addr, "/websocket", client.PingPeriod(1*time.Second)),
+		queryToMetricMap: make(map[string]*EventMetric),
+		unmarshalEvent:   unmarshalEvent,
+		logger:           log.NewNopLogger(),
 	}
 }
 

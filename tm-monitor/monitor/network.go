@@ -11,7 +11,7 @@ import (
 // UptimeData stores data for how long network has been running.
 type UptimeData struct {
 	StartTime time.Time `json:"start_time"`
-	Uptime    float64   `json:"uptime" wire:"unsafe"` // percentage of time we've been healthy, ever
+	Uptime    float64   `json:"uptime" amino:"unsafe"` // percentage of time we've been healthy, ever
 
 	totalDownTime time.Duration // total downtime (only updated when we come back online)
 	wentDown      time.Time
@@ -35,11 +35,11 @@ const (
 type Network struct {
 	Height int64 `json:"height"`
 
-	AvgBlockTime      float64 `json:"avg_block_time" wire:"unsafe"` // ms (avg over last minute)
+	AvgBlockTime      float64 `json:"avg_block_time" amino:"unsafe"` // ms (avg over last minute)
 	blockTimeMeter    metrics.Meter
-	AvgTxThroughput   float64 `json:"avg_tx_throughput" wire:"unsafe"` // tx/s (avg over last minute)
+	AvgTxThroughput   float64 `json:"avg_tx_throughput" amino:"unsafe"` // tx/s (avg over last minute)
 	txThroughputMeter metrics.Meter
-	AvgBlockLatency   float64 `json:"avg_block_latency" wire:"unsafe"` // ms (avg over last minute)
+	AvgBlockLatency   float64 `json:"avg_block_latency" amino:"unsafe"` // ms (avg over last minute)
 	blockLatencyMeter metrics.Meter
 
 	NumValidators           int `json:"num_validators"`

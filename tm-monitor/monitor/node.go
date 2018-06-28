@@ -26,7 +26,7 @@ type Node struct {
 	Name         string  `json:"name"`
 	Online       bool    `json:"online"`
 	Height       int64   `json:"height"`
-	BlockLatency float64 `json:"block_latency" wire:"unsafe"` // ms, interval between block commits
+	BlockLatency float64 `json:"block_latency" amino:"unsafe"` // ms, interval between block commits
 
 	// em holds the ws connection. Each eventMeter callback is called in a separate go-routine.
 	em eventMeter
