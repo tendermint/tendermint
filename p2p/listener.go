@@ -177,7 +177,8 @@ func (l *DefaultListener) ExternalAddress() *NetAddress {
 	return l.extAddr
 }
 
-// TODO: remove the need for this function by supporting IPv6 in NetAddress.
+// ExternalAddressHost returns the external NetAddress IP string. If an IP is
+// IPv6, it's wrapped in brackets ("[2001:db8:1f70::999:de8:7648:6e8]").
 func (l *DefaultListener) ExternalAddressHost() string {
 	ip := l.ExternalAddress().IP
 	if isIpv6(ip) {
