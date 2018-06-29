@@ -426,7 +426,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	var packet = PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgSize-emptyPacketMsgSize(mconnClient.config.MaxPacketMsgSize)),
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
 	}
 	_, err = cdc.MarshalBinaryWriter(buf, packet)
 	assert.Nil(t, err)
@@ -440,7 +440,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	packet = PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgSize+1),
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
 	}
 	_, err = cdc.MarshalBinaryWriter(buf, packet)
 	assert.Nil(t, err)

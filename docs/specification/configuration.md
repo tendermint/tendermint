@@ -119,7 +119,7 @@ flush_throttle_timeout = 100
 max_num_peers = 50
 
 # Maximum size of a message packet payload, in bytes
-max_msg_packet_payload_size = 1024
+max_packet_msg_payload_size = 1024
 
 # Rate at which packets can be sent, in bytes/second
 send_rate = 512000

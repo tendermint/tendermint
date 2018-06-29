@@ -287,7 +287,7 @@ func (pv *FilePV) saveSigned(height int64, round int, step int8,
 func (pv *FilePV) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
-	sig, err:= pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
+	sig, err := pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
 	if err != nil {
 		return err
 	}

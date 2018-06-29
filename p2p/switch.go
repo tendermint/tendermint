@@ -100,7 +100,7 @@ func NewSwitch(cfg *config.P2PConfig, options ...SwitchOption) *Switch {
 	mConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
 	mConfig.SendRate = cfg.SendRate
 	mConfig.RecvRate = cfg.RecvRate
-	mConfig.MaxPacketMsgSize = cfg.MaxPacketMsgSize
+	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
 
 	sw.mConfig = mConfig
 

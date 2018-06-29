@@ -6,8 +6,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	. "github.com/tendermint/tmlibs/test"
 
-	"testing"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"testing"
 )
 
 type testItem []byte
