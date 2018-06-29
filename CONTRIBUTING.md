@@ -85,7 +85,7 @@ especially `go-p2p` and `go-rpc`, as their versions are referenced in tendermint
 - the latest state of development is on `develop`
 - `develop` must never fail `make test`
 - no --force onto `develop` (except when reverting a broken commit, which should seldom happen)
-- create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote git add origin`)
+- create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`)
 - before submitting a pull request, begin `git rebase` on top of `develop`
 
 ### Pull Merge Procedure:
