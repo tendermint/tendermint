@@ -40,8 +40,10 @@ type PubKey interface {
 
 var _ PubKey = PubKeyEd25519{}
 
+const PubKeyEd25519Size = 32
+
 // Implements PubKeyInner
-type PubKeyEd25519 [32]byte
+type PubKeyEd25519 [PubKeyEd25519Size]byte
 
 // Address is the SHA256-20 of the raw pubkey bytes.
 func (pubKey PubKeyEd25519) Address() Address {
@@ -62,15 +64,15 @@ func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ Signature) bool {
 	if !ok {
 		return false
 	}
-	pubKeyBytes := [32]byte(pubKey)
-	sigBytes := [64]byte(sig)
+	pubKeyBytes := [PubKeyEd25519Size]byte(pubKey)
+	sigBytes := [SignatureEd25519Size]byte(sig)
 	return ed25519.Verify(&pubKeyBytes, msg, &sigBytes)
 }
 
 // For use with golang/crypto/nacl/box
 // If error, returns nil.
-func (pubKey PubKeyEd25519) ToCurve25519() *[32]byte {
-	keyCurve25519, pubKeyBytes := new([32]byte), [32]byte(pubKey)
+func (pubKey PubKeyEd25519) ToCurve25519() *[PubKeyEd25519Size]byte {
+	keyCurve25519, pubKeyBytes := new([PubKeyEd25519Size]byte), [PubKeyEd25519Size]byte(pubKey)
 	ok := extra25519.PublicKeyToCurve25519(keyCurve25519, &pubKeyBytes)
 	if !ok {
 		return nil
@@ -94,10 +96,12 @@ func (pubKey PubKeyEd25519) Equals(other PubKey) bool {
 
 var _ PubKey = PubKeySecp256k1{}
 
+const PubKeySecp256k1Size = 33
+
 // Implements PubKey.
 // Compressed pubkey (just the x-cord),
 // prefixed with 0x02 or 0x03, depending on the y-cord.
-type PubKeySecp256k1 [33]byte
+type PubKeySecp256k1 [PubKeySecp256k1Size]byte
 
 // Implements Bitcoin style addresses: RIPEMD160(SHA256(pubkey))
 func (pubKey PubKeySecp256k1) Address() Address {

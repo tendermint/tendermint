@@ -2,6 +2,9 @@
 
 ## TBD
 
+IMPROVEMENTS:
+ - [crypto] Make public key size into public constants
+
 BUG FIXES:
 - [rpc] limited number of HTTP/WebSocket connections
   (`rpc.max_open_connections`) and gRPC connections
