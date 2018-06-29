@@ -17,6 +17,7 @@ BREAKING CHANGES:
 
 IMPROVEMENT
 - [rpc/client] Supports https and wss now.
+- [p2p] Add IPv6 support to peering.
 
 ## 0.21.0
 

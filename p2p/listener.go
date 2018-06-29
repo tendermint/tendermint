@@ -12,16 +12,22 @@ import (
 	"github.com/tendermint/tmlibs/log"
 )
 
+// Listener is a network listener for stream-oriented protocols, providing
+// convenient methods to get listener's internal and external addresses.
+// Clients are supposed to read incoming connections from a channel, returned
+// by Connections() method.
 type Listener interface {
 	Connections() <-chan net.Conn
 	InternalAddress() *NetAddress
 	ExternalAddress() *NetAddress
-	ExternalAddressToString() string
+	ExternalAddressHost() string
 	String() string
 	Stop() error
 }
 
-// Implements Listener
+// DefaultListener is a cmn.Service, running net.Listener underneath.
+// Optionally, UPnP is used upon calling NewDefaultListener to resolve external
+// address.
 type DefaultListener struct {
 	cmn.BaseService
 
@@ -30,6 +36,8 @@ type DefaultListener struct {
 	extAddr     *NetAddress
 	connections chan net.Conn
 }
+
+var _ Listener = (*DefaultListener)(nil)
 
 const (
 	numBufferedConnections = 10
@@ -49,7 +57,8 @@ func splitHostPort(addr string) (host string, port int) {
 	return host, port
 }
 
-// UPNP: If false, does not try getUPNPExternalAddress()
+// NewDefaultListener creates a new DefaultListener on lAddr, optionally trying
+// to determine external address using UPnP.
 func NewDefaultListener(protocol string, lAddr string, UPNP bool, logger log.Logger) Listener {
 	// Local listen IP & port
 	lAddrIP, lAddrPort := splitHostPort(lAddr)
@@ -109,6 +118,8 @@ func NewDefaultListener(protocol string, lAddr string, UPNP bool, logger log.Log
 	return dl
 }
 
+// OnStart implements cmn.Service by spinning a goroutine, listening for new
+// connections.
 func (l *DefaultListener) OnStart() error {
 	if err := l.BaseService.OnStart(); err != nil {
 		return err
@@ -117,6 +128,7 @@ func (l *DefaultListener) OnStart() error {
 	return nil
 }
 
+// OnStop implements cmn.Service by closing the listener.
 func (l *DefaultListener) OnStop() {
 	l.BaseService.OnStop()
 	l.listener.Close() // nolint: errcheck
@@ -147,33 +159,33 @@ func (l *DefaultListener) listenRoutine() {
 	}
 }
 
-// A channel of inbound connections.
+// Connections returns a channel of inbound connections.
 // It gets closed when the listener closes.
 func (l *DefaultListener) Connections() <-chan net.Conn {
 	return l.connections
 }
 
+// InternalAddress returns the internal NetAddress (address used for
+// listening).
 func (l *DefaultListener) InternalAddress() *NetAddress {
 	return l.intAddr
 }
 
+// ExternalAddress returns the external NetAddress (publicly available,
+// determined using either UPnP or local resolver).
 func (l *DefaultListener) ExternalAddress() *NetAddress {
 	return l.extAddr
 }
 
-func (l *DefaultListener) ExternalAddressToString() string {
+// ExternalAddressHost returns the external NetAddress IP string. If an IP is
+// IPv6, it's wrapped in brackets ("[2001:db8:1f70::999:de8:7648:6e8]").
+func (l *DefaultListener) ExternalAddressHost() string {
 	ip := l.ExternalAddress().IP
 	if isIpv6(ip) {
 		// Means it's ipv6, so format it with brackets
 		return "[" + ip.String() + "]"
 	}
 	return ip.String()
-}
-
-// NOTE: The returned listener is already Accept()'ing.
-// So it's not suitable to pass into http.Serve().
-func (l *DefaultListener) NetListener() net.Listener {
-	return l.listener
 }
 
 func (l *DefaultListener) String() string {
