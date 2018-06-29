@@ -2,22 +2,22 @@
 
 ## TBD
 
-IMPROVEMENTS:
- - [crypto] Make public key size into public constants
-
 BUG FIXES:
-- [rpc] limited number of HTTP/WebSocket connections
+- [rpc] Limit maximum number of HTTP/WebSocket connections
   (`rpc.max_open_connections`) and gRPC connections
-  (`rpc.grpc_max_open_connections`). Check out [Running In
-  Production](https://tendermint.readthedocs.io/en/master/running-in-production.html)
-  guide if you want to increase them.
+  (`rpc.grpc_max_open_connections`). Check out "Running In Production" guide if
+  you want to increase them.
+- [rpc] Limit maximum request body size to 1MB (header is limited to 1MB).
 
 BREAKING CHANGES:
 - [config] Rename `skip_upnp` to `upnp`, and turn it off by default.
+- [config] Rename `max_packet_msg_size` to `max_packet_msg_payload_size`.
 
 IMPROVEMENT
-- [rpc/client] Supports https and wss now.
+- [crypto] Make public key size into public constants
 - [p2p] Add IPv6 support to peering.
+- [rpc/client] Supports https and wss now.
+- [stdout] Txs inside blocks are now logged as hashes (plus size in bytes).
 
 ## 0.21.0
 
