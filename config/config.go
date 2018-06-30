@@ -329,6 +329,11 @@ type P2PConfig struct {
 	HandshakeTimeout time.Duration `mapstructure:"handshake_timeout"`
 	DialTimeout      time.Duration `mapstructure:"dial_timeout"`
 
+	// Minimum proof of work difficulty required from peers
+	MinIncomingDifficulty int8 `mapstructure:"min_incoming_difficulty"`
+	// Maximum proof of work difficulty that this node will send
+	MaxOutgoingDifficulty int8 `mapstructure:"max_outgoing_difficulty"`
+
 	// Testing params.
 	// Force dial to fail
 	TestDialFail bool `mapstructure:"test_dial_fail"`
@@ -340,23 +345,25 @@ type P2PConfig struct {
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:        "tcp://0.0.0.0:26656",
-		UPNP:                 false,
-		AddrBook:             defaultAddrBookPath,
-		AddrBookStrict:       true,
-		MaxNumPeers:          50,
-		FlushThrottleTimeout: 100,
-		MaxPacketMsgSize:     1024,   // 1 kB
-		SendRate:             512000, // 500 kB/s
-		RecvRate:             512000, // 500 kB/s
-		PexReactor:           true,
-		SeedMode:             false,
-		AllowDuplicateIP:     true, // so non-breaking yet
-		HandshakeTimeout:     20 * time.Second,
-		DialTimeout:          3 * time.Second,
-		TestDialFail:         false,
-		TestFuzz:             false,
-		TestFuzzConfig:       DefaultFuzzConnConfig(),
+		ListenAddress:         "tcp://0.0.0.0:26656",
+		UPNP:                  false,
+		AddrBook:              defaultAddrBookPath,
+		AddrBookStrict:        true,
+		MaxNumPeers:           50,
+		FlushThrottleTimeout:  100,
+		MaxPacketMsgSize:      1024,   // 1 kB
+		SendRate:              512000, // 500 kB/s
+		RecvRate:              512000, // 500 kB/s
+		PexReactor:            true,
+		SeedMode:              false,
+		AllowDuplicateIP:      true, // so non-breaking yet
+		HandshakeTimeout:      20 * time.Second,
+		DialTimeout:           3 * time.Second,
+		MinIncomingDifficulty: 15,
+		MaxOutgoingDifficulty: 20,
+		TestDialFail:          false,
+		TestFuzz:              false,
+		TestFuzzConfig:        DefaultFuzzConnConfig(),
 	}
 }
 
