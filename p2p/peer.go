@@ -193,7 +193,7 @@ func newPeerConn(
 	}
 
 	// Force other party to create a PoW to prevent spam
-	conn, err = tmconn.MakePoWConnection(conn, cfg.MinIncomingDifficulty, cfg.MaxOutgoingDifficulty)
+	conn, err = tmconn.MakePowConnection(conn, cfg.MinIncomingDifficulty, cfg.MaxOutgoingDifficulty)
 	if err != nil {
 		return pc, cmn.ErrorWrap(err, "Error creating peer")
 	}
