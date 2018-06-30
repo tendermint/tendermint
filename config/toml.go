@@ -174,6 +174,11 @@ send_rate = {{ .P2P.SendRate }}
 # Rate at which packets can be received, in bytes/second
 recv_rate = {{ .P2P.RecvRate }}
 
+# Minimum Proof of Work security level required for other peers to connect
+min_incoming_difficulty = {{ .P2P.MinIncomingDifficulty }}
+# Maximum Proof of Work security level that this node will create
+max_outgoing_difficulty = {{ .P2P.MaxOutgoingDifficulty }}
+
 # Set true to enable the peer-exchange reactor
 pex = {{ .P2P.PexReactor }}
 
