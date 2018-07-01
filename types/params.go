@@ -57,7 +57,7 @@ func DefaultConsensusParams() *ConsensusParams {
 func DefaultBlockSize() BlockSize {
 	return BlockSize{
 		MaxBytes: 22020096, // 21MB
-		MaxTxs:   100000,
+		MaxTxs:   10000,
 		MaxGas:   -1,
 	}
 }
