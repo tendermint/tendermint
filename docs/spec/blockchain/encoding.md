@@ -151,7 +151,15 @@ func MakeParts(obj interface{}, partSize int) []Part
 
 Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
 
-RIPEMD160 is always used as the hashing function.
+Tendermint always uses the `TMHASH` hash function, which is the first 20-bytes
+of the SHA256:
+
+```
+func TMHASH(bz []byte) []byte {
+    shasum := SHA256(bz)
+    return shasum[:20]
+}
+```
 
 ### Simple Merkle Root
 
@@ -174,7 +182,7 @@ func SimpleMerkleRoot(hashes [][]byte) []byte{
 func SimpleConcatHash(left, right []byte) []byte{
     left = encodeByteSlice(left)
     right = encodeByteSlice(right)
-    return RIPEMD160 (append(left, right))
+    return TMHASH(append(left, right))
 }
 ```
 
@@ -182,8 +190,8 @@ Note that the leaves are Amino encoded as byte-arrays (ie. simple Uvarint length
 prefix) before being concatenated together and hashed.
 
 Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
-For `struct` arguments, we compute a `[][]byte` by sorting elements of the `struct` according to
-field name and then hashing them.
+For `struct` arguments, we compute a `[][]byte` containing the hash of each
+field in the struct sorted by the hash of the field name.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
 
 ### Simple Merkle Proof
