@@ -21,15 +21,14 @@ FEATURES
   disabled by default). See the new `instrumentation` section in the config and
   [metrics](https://tendermint.readthedocs.io/projects/tools/en/develop/metrics.html)
   guide.
-- [p2p] Rudimentary IPv6 support
+- [p2p] Add IPv6 support to peering.
 
 IMPROVEMENT
-- [crypto] Make public key size into public constants
-- [p2p] Add IPv6 support to peering.
 - [rpc/client] Supports https and wss now.
 - [crypto] Make public key size into public constants
 - [mempool] Log tx hash, not entire tx
-- [abci] Merged in github.com/tendermint/abci
+- [abci] Merged in github.com/tendermint/abci and
+  github.com/tendermint/go-crypto
 - [docs] Move from .rst to .md
 
 BUG FIXES:
@@ -40,7 +39,6 @@ BUG FIXES:
 - [rpc] Limit maximum request body size to 1MB (header is limited to 1MB).
 - [consensus] Fix a halting bug where `create_empty_blocks=false`
 - [p2p] Fix panic in seed mode
-
 
 ## 0.21.0
 
