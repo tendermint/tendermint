@@ -84,14 +84,13 @@ Addresses for each public key types are computed as follows:
 
 #### Ed25519
 
-RIPEMD160 hash of the Amino encoded public key:
+First 20-bytes of the SHA256 hash of the raw 32-byte public key:
 
 ```
-address = RIPEMD160(AMINO(pubkey))
+address = SHA256(pubkey)[:20]
 ```
 
-NOTE: this will soon change to the truncated 20-bytes of the SHA256 of the raw
-public key
+NOTE: before v0.22.0, this was the RIPEMD160 of the Amino encoded public key.
 
 #### Secp256k1
 

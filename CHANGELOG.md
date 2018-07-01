@@ -1,6 +1,36 @@
 # Changelog
 
-## TBD
+## 0.22.0
+
+*July 1st, 2018*
+
+BREAKING CHANGES:
+- [config] Rename `skip_upnp` to `upnp`, and turn it off by default.
+- [types] Update Amino to v0.10.1
+    * Amino is now fully proto3 compatible for the basic types
+    * JSON-encoded types now use the type name instead of the prefix bytes
+    * Integers are encoded as strings
+- [crypto] Update go-crypto to v0.10.0 and merge into `crypto`
+    * privKey.Sign returns error.
+    * ed25519 address is the first 20-bytes of the SHA256 of the pubkey
+    * `tmlibs/merkle` -> `crypto/merkle`. Uses SHA256 instead of RIPEMD160
+- [rpc] `syncing` is now called `catching_up`.
+
+FEATURES
+- [cmd] Added metrics (served under `/metrics` using a Prometheus client;
+  disabled by default). See the new `instrumentation` section in the config and
+  [metrics](https://tendermint.readthedocs.io/projects/tools/en/develop/metrics.html)
+  guide.
+- [p2p] Rudimentary IPv6 support
+
+IMPROVEMENT
+- [crypto] Make public key size into public constants
+- [p2p] Add IPv6 support to peering.
+- [rpc/client] Supports https and wss now.
+- [crypto] Make public key size into public constants
+- [mempool] Log tx hash, not entire tx
+- [abci] Merged in github.com/tendermint/abci
+- [docs] Move from .rst to .md
 
 BUG FIXES:
 - [rpc] Limit maximum number of HTTP/WebSocket connections
@@ -8,16 +38,9 @@ BUG FIXES:
   (`rpc.grpc_max_open_connections`). Check out "Running In Production" guide if
   you want to increase them.
 - [rpc] Limit maximum request body size to 1MB (header is limited to 1MB).
+- [consensus] Fix a halting bug where `create_empty_blocks=false`
+- [p2p] Fix panic in seed mode
 
-BREAKING CHANGES:
-- [config] Rename `skip_upnp` to `upnp`, and turn it off by default.
-- [config] Rename `max_packet_msg_size` to `max_packet_msg_payload_size`.
-
-IMPROVEMENT
-- [crypto] Make public key size into public constants
-- [p2p] Add IPv6 support to peering.
-- [rpc/client] Supports https and wss now.
-- [stdout] Txs inside blocks are now logged as hashes (plus size in bytes).
 
 ## 0.21.0
 
@@ -33,13 +56,6 @@ IMPROVEMENT
 
 - [pubsub] Set default capacity to 0
 - [docs] Various improvements
-
-FEATURES
-
-- [main] added metrics (served under `/metrics` using a Prometheus client;
-  disabled by default). See the new `instrumentation` section in the config and
-  [metrics](https://tendermint.readthedocs.io/projects/tools/en/v0.21.0/metrics.html)
-  guide.
 
 BUG FIXES
 
