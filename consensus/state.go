@@ -320,10 +320,7 @@ func (cs *ConsensusState) OnStop() {
 
 	cs.timeoutTicker.Stop()
 
-	// Make BaseService.Wait() wait until cs.wal.Wait()
-	if cs.IsRunning() {
-		cs.wal.Wait()
-	}
+	cs.wal.Stop()
 }
 
 // Wait waits for the the main routine to return.
