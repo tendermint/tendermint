@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	// MaxBlockSizeBytes is the maximum permitted size of the blocks.
 	MaxBlockSizeBytes = 104857600 // 100MB
 )
 
@@ -56,7 +57,7 @@ func DefaultConsensusParams() *ConsensusParams {
 func DefaultBlockSize() BlockSize {
 	return BlockSize{
 		MaxBytes: 22020096, // 21MB
-		MaxTxs:   100000,
+		MaxTxs:   10000,
 		MaxGas:   -1,
 	}
 }

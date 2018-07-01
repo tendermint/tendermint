@@ -52,8 +52,9 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
-			ChainID:     cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
-			GenesisTime: time.Now(),
+			ChainID:         cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
+			GenesisTime:     time.Now(),
+			ConsensusParams: types.DefaultConsensusParams(),
 		}
 		genDoc.Validators = []types.GenesisValidator{{
 			PubKey: pv.GetPubKey(),

@@ -21,7 +21,7 @@ to prevent Denial-of-service attacks. You can read more about it
 ### P2P
 
 The core of the Tendermint peer-to-peer system is `MConnection`. Each
-connection has `MaxPacketMsgSize`, which is the maximum packet
+connection has `MaxPacketMsgPayloadSize`, which is the maximum packet
 size and bounded send & receive queues. One can impose restrictions on
 send & receive rate per connection (`SendRate`, `RecvRate`).
 

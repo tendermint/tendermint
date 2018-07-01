@@ -406,7 +406,13 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, cdc *amino.Codec, options ...func(*wsConnection)) *wsConnection {
+func NewWSConnection(
+	baseConn *websocket.Conn,
+	funcMap map[string]*RPCFunc,
+	cdc *amino.Codec,
+	options ...func(*wsConnection),
+) *wsConnection {
+	baseConn.SetReadLimit(maxBodyBytes)
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,

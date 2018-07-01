@@ -3,8 +3,8 @@ package core
 import (
 	"time"
 
-	crypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/consensus"
+	crypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
