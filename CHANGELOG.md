@@ -12,7 +12,7 @@ BREAKING CHANGES:
     * Integers are encoded as strings
 - [crypto] Update go-crypto to v0.10.0 and merge into `crypto`
     * privKey.Sign returns error.
-    * ed25519 address is the first 20-bytes of the SHA256 of the pubkey
+    * ed25519 address changed to the first 20-bytes of the SHA256 of the raw pubkey bytes
     * `tmlibs/merkle` -> `crypto/merkle`. Uses SHA256 instead of RIPEMD160
 - [rpc] `syncing` is now called `catching_up`.
 

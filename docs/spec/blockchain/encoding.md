@@ -54,17 +54,15 @@ familiar with amino encoding.
 You can simply use below table and concatenate Prefix || Length (of raw bytes) || raw bytes
 ( while || stands for byte concatenation here).
 
-| Type | Name | Prefix | Length |
-| ---- | ---- | ------ | ----- |
-| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE62 | 0x20 |
-| PubKeyLedgerEd25519 | tendermint/PubKeyLedgerEd25519 | 0x5C3453B2 | 0x20 |
-| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE982 | 0x21 |
-| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288912 | 0x40 |
-| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79A | 0x20 |
-| PrivKeyLedgerSecp256k1 | tendermint/PrivKeyLedgerSecp256k1 | 0x10CAB393 | variable |
-| PrivKeyLedgerEd25519 | tendermint/PrivKeyLedgerEd25519 | 0x0CFEEF9B | variable |
-| SignatureEd25519 | tendermint/SignatureKeyEd25519 | 0x3DA1DB2A | 0x40 |
-| SignatureSecp256k1 | tendermint/SignatureKeySecp256k1 | 0x16E1FEEA | variable |
+| Type | Name | Prefix | Length | Notes |
+| ---- | ---- | ------ | ----- | ------ |
+| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
+| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
+| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
+| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
+| SignatureEd25519 | tendermint/SignatureEd25519 | 0x2031EA53 | 0x40 |  |
+| SignatureSecp256k1 | tendermint/SignatureSecp256k1 | 0x7FC4A495 | variable |
+|
 
 ### Examples
 
