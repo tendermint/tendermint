@@ -13,7 +13,6 @@ import (
 )
 
 const Version = "0.0.1"
-const sleepSeconds = 1      // Every second
 const readBufferSize = 1024 // 1KB at a time
 
 // Parse command-line options

@@ -76,17 +76,15 @@ func (trs *TaskResultSet) Reap() *TaskResultSet {
 func (trs *TaskResultSet) Wait() *TaskResultSet {
 	for i := 0; i < len(trs.results); i++ {
 		var trch = trs.chz[i]
-		select {
-		case result, ok := <-trch:
-			if ok {
-				// Write result.
-				trs.results[i] = taskResultOK{
-					TaskResult: result,
-					OK:         true,
-				}
-			} else {
-				// We already wrote it.
+		result, ok := <-trch
+		if ok {
+			// Write result.
+			trs.results[i] = taskResultOK{
+				TaskResult: result,
+				OK:         true,
 			}
+		} else {
+			// We already wrote it.
 		}
 	}
 	return trs

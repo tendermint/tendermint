@@ -25,7 +25,7 @@ func TestEncodeAndDecode(t *testing.T) {
 	if hrp != "shasum" {
 		t.Error("Invalid hrp")
 	}
-	if bytes.Compare(data, sum[:]) != 0 {
+	if !bytes.Equal(data, sum[:]) {
 		t.Error("Invalid decode")
 	}
 }

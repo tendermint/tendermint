@@ -17,10 +17,8 @@ func TestErrorPanic(t *testing.T) {
 			if r := recover(); r != nil {
 				err = ErrorWrap(r, "This is the message in ErrorWrap(r, message).")
 			}
-			return
 		}()
 		panic(pnk{"something"})
-		return nil
 	}
 
 	var err = capturePanic()
