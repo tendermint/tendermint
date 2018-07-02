@@ -75,7 +75,7 @@
 
 [[override]]
   name = "github.com/tendermint/tmlibs"
-  version = "~0.8.4"
+  version = "~0.9.0"
 
 [[constraint]]
   name = "google.golang.org/grpc"
