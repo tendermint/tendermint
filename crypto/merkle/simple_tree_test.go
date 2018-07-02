@@ -3,8 +3,8 @@ package merkle
 import (
 	"bytes"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	. "github.com/tendermint/tmlibs/test"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	. "github.com/tendermint/tendermint/libs/test"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	"testing"

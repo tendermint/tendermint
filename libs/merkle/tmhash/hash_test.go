@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tmlibs/merkle/tmhash"
+	"github.com/tendermint/tendermint/libs/merkle/tmhash"
 )
 
 func TestHash(t *testing.T) {

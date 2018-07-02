@@ -7,8 +7,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tmlibs/clist"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/clist"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"

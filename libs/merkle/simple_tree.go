@@ -25,7 +25,7 @@ For larger datasets, use IAVLTree.
 package merkle
 
 import (
-	"github.com/tendermint/tmlibs/merkle/tmhash"
+	"github.com/tendermint/tendermint/libs/merkle/tmhash"
 )
 
 func SimpleHashFromTwoHashes(left []byte, right []byte) []byte {

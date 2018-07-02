@@ -5,8 +5,8 @@ import (
 	"net"
 	"time"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type UPNPCapabilities struct {

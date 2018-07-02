@@ -7,7 +7,7 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 var (

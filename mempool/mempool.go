@@ -11,10 +11,10 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	auto "github.com/tendermint/tmlibs/autofile"
-	"github.com/tendermint/tmlibs/clist"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	auto "github.com/tendermint/tendermint/libs/autofile"
+	"github.com/tendermint/tendermint/libs/clist"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"

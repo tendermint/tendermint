@@ -114,7 +114,7 @@ func (db *MemDB) Close() {
 	// database, we don't have a destination
 	// to flush contents to nor do we want
 	// any data loss on invoking Close()
-	// See the discussion in https://github.com/tendermint/tmlibs/pull/56
+	// See the discussion in https://github.com/tendermint/tendermint/libs/pull/56
 }
 
 // Implements DB.

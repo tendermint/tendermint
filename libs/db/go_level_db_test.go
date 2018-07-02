@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"testing"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func BenchmarkRandomReadsWrites(b *testing.B) {

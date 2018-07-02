@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestMaxOpenConnections(t *testing.T) {
