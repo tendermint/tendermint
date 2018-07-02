@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 
-	abci "github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
+	abci "github.com/tendermint/tendermint/abci/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
 	cfg "github.com/tendermint/tendermint/config"
 	nm "github.com/tendermint/tendermint/node"
@@ -122,7 +122,9 @@ func NewTendermint(app abci.Application) *nm.Node {
 	papp := proxy.NewLocalClientCreator(app)
 	node, err := nm.NewNode(config, pv, papp,
 		nm.DefaultGenesisDocProviderFunc(config),
-		nm.DefaultDBProvider, logger)
+		nm.DefaultDBProvider,
+		nm.DefaultMetricsProvider,
+		logger)
 	if err != nil {
 		panic(err)
 	}

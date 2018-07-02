@@ -12,7 +12,7 @@ to include your project.
 
 ## Other Tools
 
-See [deploy testnets](./deploy-testnets.html) for information about all
+See [deploy testnets](./deploy-testnets) for information about all
 the tools built by Tendermint. We have Kubernetes, Ansible, and
 Terraform integrations.
 

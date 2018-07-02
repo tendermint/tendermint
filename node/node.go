@@ -2,21 +2,24 @@ package node
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
 
-	abci "github.com/tendermint/abci/types"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	amino "github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	abci "github.com/tendermint/tendermint/abci/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -81,8 +84,23 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
+		DefaultMetricsProvider,
 		logger,
 	)
+}
+
+// MetricsProvider returns a consensus, p2p and mempool Metrics.
+type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
+
+// DefaultMetricsProvider returns consensus, p2p and mempool Metrics build
+// using Prometheus client library.
+func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
+	return cs.PrometheusMetrics(), p2p.PrometheusMetrics(), mempl.PrometheusMetrics()
+}
+
+// NopMetricsProvider returns consensus, p2p and mempool Metrics as no-op.
+func NopMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
+	return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
 }
 
 //------------------------------------------------------------------------------
@@ -114,6 +132,7 @@ type Node struct {
 	rpcListeners     []net.Listener         // rpc servers
 	txIndexer        txindex.TxIndexer
 	indexerService   *txindex.IndexerService
+	prometheusSrv    *http.Server
 }
 
 // NewNode returns a new, ready to go, Tendermint Node.
@@ -122,6 +141,7 @@ func NewNode(config *cfg.Config,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
+	metricsProvider MetricsProvider,
 	logger log.Logger) (*Node, error) {
 
 	// Get BlockStore
@@ -208,11 +228,28 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	}
 
+	// metrics
+	var (
+		csMetrics    *cs.Metrics
+		p2pMetrics   *p2p.Metrics
+		memplMetrics *mempl.Metrics
+	)
+	if config.Instrumentation.Prometheus {
+		csMetrics, p2pMetrics, memplMetrics = metricsProvider()
+	} else {
+		csMetrics, p2pMetrics, memplMetrics = NopMetricsProvider()
+	}
+
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
-	mempool := mempl.NewMempool(config.Mempool, proxyApp.Mempool(), state.LastBlockHeight)
-	mempool.InitWAL() // no need to have the mempool wal during tests
+	mempool := mempl.NewMempool(
+		config.Mempool,
+		proxyApp.Mempool(),
+		state.LastBlockHeight,
+		mempl.WithMetrics(memplMetrics),
+	)
 	mempool.SetLogger(mempoolLogger)
+	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
 
@@ -241,8 +278,15 @@ func NewNode(config *cfg.Config,
 	bcReactor.SetLogger(logger.With("module", "blockchain"))
 
 	// Make ConsensusReactor
-	consensusState := cs.NewConsensusState(config.Consensus, state.Copy(),
-		blockExec, blockStore, mempool, evidencePool)
+	consensusState := cs.NewConsensusState(
+		config.Consensus,
+		state.Copy(),
+		blockExec,
+		blockStore,
+		mempool,
+		evidencePool,
+		cs.WithMetrics(csMetrics),
+	)
 	consensusState.SetLogger(consensusLogger)
 	if privValidator != nil {
 		consensusState.SetPrivValidator(privValidator)
@@ -252,7 +296,7 @@ func NewNode(config *cfg.Config,
 
 	p2pLogger := logger.With("module", "p2p")
 
-	sw := p2p.NewSwitch(config.P2P)
+	sw := p2p.NewSwitch(config.P2P, p2p.WithMetrics(p2pMetrics))
 	sw.SetLogger(p2pLogger)
 	sw.AddReactor("MEMPOOL", mempoolReactor)
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
@@ -382,8 +426,11 @@ func (n *Node) OnStart() error {
 	}
 
 	// Create & add listener
-	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.SkipUPNP, n.Logger.With("module", "p2p"))
+	l := p2p.NewDefaultListener(
+		n.config.P2P.ListenAddress,
+		n.config.P2P.ExternalAddress,
+		n.config.P2P.UPNP,
+		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
 	// Generate node PrivKey
@@ -409,6 +456,10 @@ func (n *Node) OnStart() error {
 			return err
 		}
 		n.rpcListeners = listeners
+	}
+
+	if n.config.Instrumentation.Prometheus {
+		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
 	}
 
 	// Start the switch (the P2P server).
@@ -450,6 +501,13 @@ func (n *Node) OnStop() {
 	if pvsc, ok := n.privValidator.(*privval.SocketPV); ok {
 		if err := pvsc.Stop(); err != nil {
 			n.Logger.Error("Error stopping priv validator socket client", "err", err)
+		}
+	}
+
+	if n.prometheusSrv != nil {
+		if err := n.prometheusSrv.Shutdown(context.Background()); err != nil {
+			// Error from closing listeners, or context timeout:
+			n.Logger.Error("Prometheus HTTP server Shutdown", "err", err)
 		}
 	}
 }
@@ -507,7 +565,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 		wm.SetLogger(rpcLogger.With("protocol", "websocket"))
 		mux.HandleFunc("/websocket", wm.WebsocketHandler)
 		rpcserver.RegisterRPCFuncs(mux, rpccore.Routes, coreCodec, rpcLogger)
-		listener, err := rpcserver.StartHTTPServer(listenAddr, mux, rpcLogger)
+		listener, err := rpcserver.StartHTTPServer(
+			listenAddr,
+			mux,
+			rpcLogger,
+			rpcserver.Config{MaxOpenConnections: n.config.RPC.MaxOpenConnections},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -517,7 +580,12 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	// we expose a simplified api over grpc for convenience to app devs
 	grpcListenAddr := n.config.RPC.GRPCListenAddress
 	if grpcListenAddr != "" {
-		listener, err := grpccore.StartGRPCServer(grpcListenAddr)
+		listener, err := grpccore.StartGRPCServer(
+			grpcListenAddr,
+			grpccore.Config{
+				MaxOpenConnections: n.config.RPC.GRPCMaxOpenConnections,
+			},
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -525,6 +593,22 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 	}
 
 	return listeners, nil
+}
+
+// startPrometheusServer starts a Prometheus HTTP server, listening for metrics
+// collectors on addr.
+func (n *Node) startPrometheusServer(addr string) *http.Server {
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: promhttp.Handler(),
+	}
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			// Error starting or closing listener:
+			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+		}
+	}()
+	return srv
 }
 
 // Switch returns the Node's Switch.
@@ -615,7 +699,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	}
 
 	p2pListener := n.sw.Listeners()[0]
-	p2pHost := p2pListener.ExternalAddress().IP.String()
+	p2pHost := p2pListener.ExternalAddressHost()
 	p2pPort := p2pListener.ExternalAddress().Port
 	nodeInfo.ListenAddr = cmn.Fmt("%v:%v", p2pHost, p2pPort)
 

@@ -3,14 +3,13 @@ package types
 import (
 	"time"
 
-	"github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Canonical json is amino's json for structs with fields in alphabetical order
 
 // TimeFormat is used for generating the sigs
-const TimeFormat = amino.RFC3339Millis
+const TimeFormat = "2006-01-02T15:04:05.000Z"
 
 type CanonicalJSONBlockID struct {
 	Hash        cmn.HexBytes               `json:"hash,omitempty"`

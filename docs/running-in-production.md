@@ -78,6 +78,9 @@ We have a small tool, called `tm-monitor`, which outputs information from
 the endpoints above plus some statistics. The tool can be found
 [here](https://github.com/tendermint/tools/tree/master/tm-monitor).
 
+Tendermint also can report and serve Prometheus metrics. See
+[Metrics](./metrics.md).
+
 ## What happens when my app dies?
 
 You are supposed to run Tendermint under a [process
@@ -204,3 +207,37 @@ ranges](https://github.com/tendermint/tendermint/blob/27bd1deabe4ba6a2d9b463b8f3
 This may not be the case for private networks, where your IP range is usually
 strictly limited and private. If that case, you need to set `addr_book_strict`
 to `false` (turn off).
+
+- `rpc.max_open_connections`
+
+By default, the number of simultaneous connections is limited because most OS
+give you limited number of file descriptors.
+
+If you want to accept greater number of connections, you will need to increase
+these limits.
+
+[Sysctls to tune the system to be able to open more connections](https://github.com/satori-com/tcpkali/blob/master/doc/tcpkali.man.md#sysctls-to-tune-the-system-to-be-able-to-open-more-connections)
+
+...for N connections, such as 50k:
+
+```
+kern.maxfiles=10000+2*N         # BSD
+kern.maxfilesperproc=100+2*N    # BSD
+kern.ipc.maxsockets=10000+2*N   # BSD
+fs.file-max=10000+2*N           # Linux
+net.ipv4.tcp_max_orphans=N      # Linux
+
+# For load-generating clients.
+net.ipv4.ip_local_port_range="10000  65535"  # Linux.
+net.inet.ip.portrange.first=10000  # BSD/Mac.
+net.inet.ip.portrange.last=65535   # (Enough for N < 55535)
+net.ipv4.tcp_tw_reuse=1         # Linux
+net.inet.tcp.maxtcptw=2*N       # BSD
+
+# If using netfilter on Linux:
+net.netfilter.nf_conntrack_max=N
+echo $((N/8)) > /sys/module/nf_conntrack/parameters/hashsize
+```
+
+The similar option exists for limiting the number of gRPC connections -
+`rpc.grpc_max_open_connections`.

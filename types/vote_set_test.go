@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	crypto "github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-	tst "github.com/tendermint/tmlibs/test"
+	crypto "github.com/tendermint/tendermint/crypto"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	tst "github.com/tendermint/tendermint/libs/test"
 )
 
 // NOTE: privValidators are in order

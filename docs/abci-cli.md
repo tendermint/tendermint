@@ -10,15 +10,14 @@ Make sure you [have Go installed](https://golang.org/doc/install).
 
 Next, install the `abci-cli` tool and example applications:
 
-    go get -u github.com/tendermint/abci/cmd/abci-cli
+    go get github.com/tendermint/tendermint
 
-If this fails, you may need to use [dep](https://github.com/golang/dep)
 to get vendored dependencies:
 
-    cd $GOPATH/src/github.com/tendermint/abci
+    cd $GOPATH/src/github.com/tendermint/tendermint
     make get_tools
     make get_vendor_deps
-    make install
+    make install_abci
 
 Now run `abci-cli` to see the list of commands:
 
@@ -61,7 +60,7 @@ as `abci-cli` above. The kvstore just stores transactions in a merkle
 tree.
 
 Its code can be found
-[here](https://github.com/tendermint/abci/blob/master/cmd/abci-cli/abci-cli.go)
+[here](https://github.com/tendermint/tendermint/blob/develop/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
     func cmdKVStore(cmd *cobra.Command, args []string) error {
@@ -124,7 +123,7 @@ response.
 
 The server may be generic for a particular language, and we provide a
 [reference implementation in
-Golang](https://github.com/tendermint/abci/tree/master/server). See the
+Golang](https://github.com/tendermint/tendermint/tree/develop/abci/server). See the
 [list of other ABCI implementations](./ecosystem.html) for servers in
 other languages.
 
@@ -204,7 +203,7 @@ Now that we've got the hang of it, let's try another application, the
 "counter" app.
 
 Like the kvstore app, its code can be found
-[here](https://github.com/tendermint/abci/blob/master/cmd/abci-cli/abci-cli.go)
+[here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
     func cmdCounter(cmd *cobra.Command, args []string) error {
@@ -301,7 +300,7 @@ But the ultimate flexibility comes from being able to write the
 application easily in any language.
 
 We have implemented the counter in a number of languages [see the
-example directory](https://github.com/tendermint/abci/tree/master/example).
+example directory](https://github.com/tendermint/tendermint/tree/develop/abci/example).
 
 To run the Node JS version, `cd` to `example/js` and run
 
@@ -324,6 +323,6 @@ connects to the app using three separate connections, each with its own
 pattern of messages.
 
 For more information, see the [application developers
-guide](./app-development.html). For examples of running an ABCI app with
-Tendermint, see the [getting started guide](./getting-started.html).
+guide](./app-development.md). For examples of running an ABCI app with
+Tendermint, see the [getting started guide](./getting-started.md).
 Next is the ABCI specification.

@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	crypto "github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	crypto "github.com/tendermint/tendermint/crypto"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestCopy(t *testing.T) {
@@ -331,7 +331,9 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Type:             VoteTypePrecommit,
 		BlockID:          blockID,
 	}
-	vote.Signature = privKey.Sign(vote.SignBytes(chainID))
+	sig, err := privKey.Sign(vote.SignBytes(chainID))
+	assert.NoError(t, err)
+	vote.Signature = sig
 	commit := &Commit{
 		BlockID:    blockID,
 		Precommits: []*Vote{vote},
@@ -365,6 +367,6 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	}
 
 	// test a good one
-	err := vset.VerifyCommit(chainID, blockID, height, commit)
+	err = vset.VerifyCommit(chainID, blockID, height, commit)
 	assert.Nil(t, err)
 }

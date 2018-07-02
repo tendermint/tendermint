@@ -45,34 +45,37 @@ type Config struct {
 	BaseConfig `mapstructure:",squash"`
 
 	// Options for services
-	RPC       *RPCConfig       `mapstructure:"rpc"`
-	P2P       *P2PConfig       `mapstructure:"p2p"`
-	Mempool   *MempoolConfig   `mapstructure:"mempool"`
-	Consensus *ConsensusConfig `mapstructure:"consensus"`
-	TxIndex   *TxIndexConfig   `mapstructure:"tx_index"`
+	RPC             *RPCConfig             `mapstructure:"rpc"`
+	P2P             *P2PConfig             `mapstructure:"p2p"`
+	Mempool         *MempoolConfig         `mapstructure:"mempool"`
+	Consensus       *ConsensusConfig       `mapstructure:"consensus"`
+	TxIndex         *TxIndexConfig         `mapstructure:"tx_index"`
+	Instrumentation *InstrumentationConfig `mapstructure:"instrumentation"`
 }
 
 // DefaultConfig returns a default configuration for a Tendermint node
 func DefaultConfig() *Config {
 	return &Config{
-		BaseConfig: DefaultBaseConfig(),
-		RPC:        DefaultRPCConfig(),
-		P2P:        DefaultP2PConfig(),
-		Mempool:    DefaultMempoolConfig(),
-		Consensus:  DefaultConsensusConfig(),
-		TxIndex:    DefaultTxIndexConfig(),
+		BaseConfig:      DefaultBaseConfig(),
+		RPC:             DefaultRPCConfig(),
+		P2P:             DefaultP2PConfig(),
+		Mempool:         DefaultMempoolConfig(),
+		Consensus:       DefaultConsensusConfig(),
+		TxIndex:         DefaultTxIndexConfig(),
+		Instrumentation: DefaultInstrumentationConfig(),
 	}
 }
 
 // TestConfig returns a configuration that can be used for testing
 func TestConfig() *Config {
 	return &Config{
-		BaseConfig: TestBaseConfig(),
-		RPC:        TestRPCConfig(),
-		P2P:        TestP2PConfig(),
-		Mempool:    TestMempoolConfig(),
-		Consensus:  TestConsensusConfig(),
-		TxIndex:    TestTxIndexConfig(),
+		BaseConfig:      TestBaseConfig(),
+		RPC:             TestRPCConfig(),
+		P2P:             TestP2PConfig(),
+		Mempool:         TestMempoolConfig(),
+		Consensus:       TestConsensusConfig(),
+		TxIndex:         TestTxIndexConfig(),
+		Instrumentation: TestInstrumentationConfig(),
 	}
 }
 
@@ -221,16 +224,36 @@ type RPCConfig struct {
 	// NOTE: This server only supports /broadcast_tx_commit
 	GRPCListenAddress string `mapstructure:"grpc_laddr"`
 
+	// Maximum number of simultaneous connections.
+	// Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
+	// If you want to accept more significant number than the default, make sure
+	// you increase your OS limits.
+	// 0 - unlimited.
+	GRPCMaxOpenConnections int `mapstructure:"grpc_max_open_connections"`
+
 	// Activate unsafe RPC commands like /dial_persistent_peers and /unsafe_flush_mempool
 	Unsafe bool `mapstructure:"unsafe"`
+
+	// Maximum number of simultaneous connections (including WebSocket).
+	// Does not include gRPC connections. See grpc_max_open_connections
+	// If you want to accept more significant number than the default, make sure
+	// you increase your OS limits.
+	// 0 - unlimited.
+	MaxOpenConnections int `mapstructure:"max_open_connections"`
 }
 
 // DefaultRPCConfig returns a default configuration for the RPC server
 func DefaultRPCConfig() *RPCConfig {
 	return &RPCConfig{
-		ListenAddress:     "tcp://0.0.0.0:26657",
-		GRPCListenAddress: "",
-		Unsafe:            false,
+		ListenAddress: "tcp://0.0.0.0:26657",
+
+		GRPCListenAddress:      "",
+		GRPCMaxOpenConnections: 900, // no ipv4
+
+		Unsafe: false,
+		// should be < {ulimit -Sn} - {MaxNumPeers} - {N of wal, db and other open files}
+		// 1024 - 50 - 50 = 924 = ~900
+		MaxOpenConnections: 900,
 	}
 }
 
@@ -253,6 +276,9 @@ type P2PConfig struct {
 	// Address to listen for incoming connections
 	ListenAddress string `mapstructure:"laddr"`
 
+	// Address to advertise to peers for them to dial
+	ExternalAddress string `mapstructure:"external_address"`
+
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
@@ -261,8 +287,8 @@ type P2PConfig struct {
 	// Do not add private peers to this list if you don't want them advertised
 	PersistentPeers string `mapstructure:"persistent_peers"`
 
-	// Skip UPNP port forwarding
-	SkipUPNP bool `mapstructure:"skip_upnp"`
+	// UPNP port forwarding
+	UPNP bool `mapstructure:"upnp"`
 
 	// Path to address book
 	AddrBook string `mapstructure:"addr_book_file"`
@@ -317,6 +343,8 @@ type P2PConfig struct {
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
 		ListenAddress:           "tcp://0.0.0.0:26656",
+		ExternalAddress:         "",
+		UPNP:                    false,
 		AddrBook:                defaultAddrBookPath,
 		AddrBookStrict:          true,
 		MaxNumPeers:             50,
@@ -339,7 +367,6 @@ func DefaultP2PConfig() *P2PConfig {
 func TestP2PConfig() *P2PConfig {
 	cfg := DefaultP2PConfig()
 	cfg.ListenAddress = "tcp://0.0.0.0:36656"
-	cfg.SkipUPNP = true
 	cfg.FlushThrottleTimeout = 10
 	cfg.AllowDuplicateIP = true
 	return cfg
@@ -411,7 +438,7 @@ func (cfg *MempoolConfig) WalDir() string {
 //-----------------------------------------------------------------------------
 // ConsensusConfig
 
-// ConsensusConfig defines the confuguration for the Tendermint consensus service,
+// ConsensusConfig defines the configuration for the Tendermint consensus service,
 // including timeouts and details about the WAL and the block structure.
 type ConsensusConfig struct {
 	RootDir string `mapstructure:"home"`
@@ -429,10 +456,6 @@ type ConsensusConfig struct {
 
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
-
-	// BlockSize
-	MaxBlockSizeTxs   int `mapstructure:"max_block_size_txs"`
-	MaxBlockSizeBytes int `mapstructure:"max_block_size_bytes"`
 
 	// EmptyBlocks mode and possible interval between empty blocks in seconds
 	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
@@ -455,8 +478,6 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutPrecommitDelta:       500,
 		TimeoutCommit:               1000,
 		SkipTimeoutCommit:           false,
-		MaxBlockSizeTxs:             10000,
-		MaxBlockSizeBytes:           1, // TODO
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0,
 		PeerGossipSleepDuration:     100,
@@ -536,14 +557,14 @@ func (cfg *ConsensusConfig) SetWalFile(walFile string) {
 //-----------------------------------------------------------------------------
 // TxIndexConfig
 
-// TxIndexConfig defines the confuguration for the transaction
+// TxIndexConfig defines the configuration for the transaction
 // indexer, including tags to index.
 type TxIndexConfig struct {
 	// What indexer to use for transactions
 	//
 	// Options:
-	//   1) "null" (default)
-	//   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
+	//   1) "null"
+	//   2) "kv" (default) - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 	Indexer string `mapstructure:"indexer"`
 
 	// Comma-separated list of tags to index (by default the only tag is tx hash)
@@ -571,6 +592,35 @@ func DefaultTxIndexConfig() *TxIndexConfig {
 // TestTxIndexConfig returns a default configuration for the transaction indexer.
 func TestTxIndexConfig() *TxIndexConfig {
 	return DefaultTxIndexConfig()
+}
+
+//-----------------------------------------------------------------------------
+// InstrumentationConfig
+
+// InstrumentationConfig defines the configuration for metrics reporting.
+type InstrumentationConfig struct {
+	// When true, Prometheus metrics are served under /metrics on
+	// PrometheusListenAddr.
+	// Check out the documentation for the list of available metrics.
+	Prometheus bool `mapstructure:"prometheus"`
+
+	// Address to listen for Prometheus collector(s) connections.
+	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
+}
+
+// DefaultInstrumentationConfig returns a default configuration for metrics
+// reporting.
+func DefaultInstrumentationConfig() *InstrumentationConfig {
+	return &InstrumentationConfig{
+		Prometheus:           false,
+		PrometheusListenAddr: ":26660",
+	}
+}
+
+// TestInstrumentationConfig returns a default configuration for metrics
+// reporting.
+func TestInstrumentationConfig() *InstrumentationConfig {
+	return DefaultInstrumentationConfig()
 }
 
 //-----------------------------------------------------------------------------

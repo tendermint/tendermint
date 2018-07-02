@@ -4,22 +4,30 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p/upnp"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
+// Listener is a network listener for stream-oriented protocols, providing
+// convenient methods to get listener's internal and external addresses.
+// Clients are supposed to read incoming connections from a channel, returned
+// by Connections() method.
 type Listener interface {
 	Connections() <-chan net.Conn
 	InternalAddress() *NetAddress
 	ExternalAddress() *NetAddress
+	ExternalAddressHost() string
 	String() string
 	Stop() error
 }
 
-// Implements Listener
+// DefaultListener is a cmn.Service, running net.Listener underneath.
+// Optionally, UPnP is used upon calling NewDefaultListener to resolve external
+// address.
 type DefaultListener struct {
 	cmn.BaseService
 
@@ -28,6 +36,8 @@ type DefaultListener struct {
 	extAddr     *NetAddress
 	connections chan net.Conn
 }
+
+var _ Listener = (*DefaultListener)(nil)
 
 const (
 	numBufferedConnections = 10
@@ -47,9 +57,16 @@ func splitHostPort(addr string) (host string, port int) {
 	return host, port
 }
 
-// skipUPNP: If true, does not try getUPNPExternalAddress()
-func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log.Logger) Listener {
-	// Local listen IP & port
+// NewDefaultListener creates a new DefaultListener on lAddr, optionally trying
+// to determine external address using UPnP.
+func NewDefaultListener(
+	fullListenAddrString string,
+	externalAddrString string,
+	useUPnP bool,
+	logger log.Logger) Listener {
+
+	// Split protocol, address, and port.
+	protocol, lAddr := cmn.ProtocolAndAddress(fullListenAddrString)
 	lAddrIP, lAddrPort := splitHostPort(lAddr)
 
 	// Create listener
@@ -77,17 +94,28 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 		panic(err)
 	}
 
-	// Determine external address...
+	inAddrAny := lAddrIP == "" || lAddrIP == "0.0.0.0"
+
+	// Determine external address.
 	var extAddr *NetAddress
-	if !skipUPNP {
-		// If the lAddrIP is INADDR_ANY, try UPnP
-		if lAddrIP == "" || lAddrIP == "0.0.0.0" {
-			extAddr = getUPNPExternalAddress(lAddrPort, listenerPort, logger)
+
+	if externalAddrString != "" {
+		var err error
+		extAddr, err = NewNetAddressStringWithOptionalID(externalAddrString)
+		if err != nil {
+			panic(fmt.Sprintf("Error in ExternalAddress: %v", err))
 		}
 	}
-	// Otherwise just use the local address...
+
+	// If the lAddrIP is INADDR_ANY, try UPnP.
+	if extAddr == nil && useUPnP && inAddrAny {
+		extAddr = getUPNPExternalAddress(lAddrPort, listenerPort, logger)
+	}
+
+	// Otherwise just use the local address.
 	if extAddr == nil {
-		extAddr = getNaiveExternalAddress(listenerPort, false, logger)
+		defaultToIPv4 := inAddrAny
+		extAddr = getNaiveExternalAddress(defaultToIPv4, listenerPort, false, logger)
 	}
 	if extAddr == nil {
 		panic("Could not determine external address!")
@@ -107,6 +135,8 @@ func NewDefaultListener(protocol string, lAddr string, skipUPNP bool, logger log
 	return dl
 }
 
+// OnStart implements cmn.Service by spinning a goroutine, listening for new
+// connections.
 func (l *DefaultListener) OnStart() error {
 	if err := l.BaseService.OnStart(); err != nil {
 		return err
@@ -115,6 +145,7 @@ func (l *DefaultListener) OnStart() error {
 	return nil
 }
 
+// OnStop implements cmn.Service by closing the listener.
 func (l *DefaultListener) OnStop() {
 	l.BaseService.OnStop()
 	l.listener.Close() // nolint: errcheck
@@ -145,24 +176,33 @@ func (l *DefaultListener) listenRoutine() {
 	}
 }
 
-// A channel of inbound connections.
+// Connections returns a channel of inbound connections.
 // It gets closed when the listener closes.
 func (l *DefaultListener) Connections() <-chan net.Conn {
 	return l.connections
 }
 
+// InternalAddress returns the internal NetAddress (address used for
+// listening).
 func (l *DefaultListener) InternalAddress() *NetAddress {
 	return l.intAddr
 }
 
+// ExternalAddress returns the external NetAddress (publicly available,
+// determined using either UPnP or local resolver).
 func (l *DefaultListener) ExternalAddress() *NetAddress {
 	return l.extAddr
 }
 
-// NOTE: The returned listener is already Accept()'ing.
-// So it's not suitable to pass into http.Serve().
-func (l *DefaultListener) NetListener() net.Listener {
-	return l.listener
+// ExternalAddressHost returns the external NetAddress IP string. If an IP is
+// IPv6, it's wrapped in brackets ("[2001:db8:1f70::999:de8:7648:6e8]").
+func (l *DefaultListener) ExternalAddressHost() string {
+	ip := l.ExternalAddress().IP
+	if isIpv6(ip) {
+		// Means it's ipv6, so format it with brackets
+		return "[" + ip.String() + "]"
+	}
+	return ip.String()
 }
 
 func (l *DefaultListener) String() string {
@@ -201,8 +241,20 @@ func getUPNPExternalAddress(externalPort, internalPort int, logger log.Logger) *
 	return NewNetAddressIPPort(ext, uint16(externalPort))
 }
 
+func isIpv6(ip net.IP) bool {
+	v4 := ip.To4()
+	if v4 != nil {
+		return false
+	}
+
+	ipString := ip.String()
+
+	// Extra check just to be sure it's IPv6
+	return (strings.Contains(ipString, ":") && !strings.Contains(ipString, "."))
+}
+
 // TODO: use syscalls: see issue #712
-func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *NetAddress {
+func getNaiveExternalAddress(defaultToIPv4 bool, port int, settleForLocal bool, logger log.Logger) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
 		panic(cmn.Fmt("Could not fetch interface addresses: %v", err))
@@ -213,14 +265,20 @@ func getNaiveExternalAddress(port int, settleForLocal bool, logger log.Logger) *
 		if !ok {
 			continue
 		}
-		v4 := ipnet.IP.To4()
-		if v4 == nil || (!settleForLocal && v4[0] == 127) {
+		if defaultToIPv4 || !isIpv6(ipnet.IP) {
+			v4 := ipnet.IP.To4()
+			if v4 == nil || (!settleForLocal && v4[0] == 127) {
+				// loopback
+				continue
+			}
+		} else if !settleForLocal && ipnet.IP.IsLoopback() {
+			// IPv6, check for loopback
 			continue
-		} // loopback
+		}
 		return NewNetAddressIPPort(ipnet.IP, uint16(port))
 	}
 
 	// try again, but settle for local
 	logger.Info("Node may not be connected to internet. Settling for local address")
-	return getNaiveExternalAddress(port, true, logger)
+	return getNaiveExternalAddress(defaultToIPv4, port, true, logger)
 }

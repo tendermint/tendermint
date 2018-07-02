@@ -11,8 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/go-crypto"
-	"github.com/tendermint/tmlibs/log"
+	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"

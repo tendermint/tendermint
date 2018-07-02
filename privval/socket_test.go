@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/crypto"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
@@ -119,7 +119,7 @@ func TestSocketPVAcceptDeadline(t *testing.T) {
 
 	SocketPVAcceptDeadline(time.Millisecond)(sc)
 
-	assert.Equal(t, sc.Start().(cmn.Error).Cause(), ErrConnWaitTimeout)
+	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
 }
 
 func TestSocketPVDeadline(t *testing.T) {
@@ -165,7 +165,7 @@ func TestSocketPVDeadline(t *testing.T) {
 	time.Sleep(20 * time.Microsecond)
 
 	_, err := sc.getPubKey()
-	assert.Equal(t, err.(cmn.Error).Cause(), ErrConnTimeout)
+	assert.Equal(t, err.(cmn.Error).Data(), ErrConnTimeout)
 }
 
 func TestSocketPVWait(t *testing.T) {
@@ -178,7 +178,7 @@ func TestSocketPVWait(t *testing.T) {
 
 	SocketPVConnWait(time.Millisecond)(sc)
 
-	assert.Equal(t, sc.Start().(cmn.Error).Cause(), ErrConnWaitTimeout)
+	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
 }
 
 func TestRemoteSignerRetry(t *testing.T) {
@@ -221,7 +221,7 @@ func TestRemoteSignerRetry(t *testing.T) {
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
 	RemoteSignerConnRetries(retries)(rs)
 
-	assert.Equal(t, rs.Start().(cmn.Error).Cause(), ErrDialRetryMax)
+	assert.Equal(t, rs.Start().(cmn.Error).Data(), ErrDialRetryMax)
 
 	select {
 	case attempts := <-attemptc:

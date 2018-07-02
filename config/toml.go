@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 var configTemplate *template.Template
@@ -119,8 +119,22 @@ laddr = "{{ .RPC.ListenAddress }}"
 # NOTE: This server only supports /broadcast_tx_commit
 grpc_laddr = "{{ .RPC.GRPCListenAddress }}"
 
+# Maximum number of simultaneous connections.
+# Does not include RPC (HTTP&WebSocket) connections. See max_open_connections
+# If you want to accept more significant number than the default, make sure
+# you increase your OS limits.
+# 0 - unlimited.
+grpc_max_open_connections = {{ .RPC.GRPCMaxOpenConnections }}
+
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
 unsafe = {{ .RPC.Unsafe }}
+
+# Maximum number of simultaneous connections (including WebSocket).
+# Does not include gRPC connections. See grpc_max_open_connections
+# If you want to accept more significant number than the default, make sure
+# you increase your OS limits.
+# 0 - unlimited.
+max_open_connections = {{ .RPC.MaxOpenConnections }}
 
 ##### peer to peer configuration options #####
 [p2p]
@@ -128,12 +142,21 @@ unsafe = {{ .RPC.Unsafe }}
 # Address to listen for incoming connections
 laddr = "{{ .P2P.ListenAddress }}"
 
+# Address to advertise to peers for them to dial
+# If empty, will use the same port as the laddr,
+# and will introspect on the listener or use UPnP
+# to figure out the address.
+external_address = "{{ .P2P.ExternalAddress }}"
+
 # Comma separated list of seed nodes to connect to
 seeds = "{{ .P2P.Seeds }}"
 
 # Comma separated list of nodes to keep persistent connections to
 # Do not add private peers to this list if you don't want them advertised
 persistent_peers = "{{ .P2P.PersistentPeers }}"
+
+# UPNP port forwarding
+upnp = {{ .P2P.UPNP }}
 
 # Path to address book
 addr_book_file = "{{ js .P2P.AddrBook }}"
@@ -199,10 +222,6 @@ timeout_commit = {{ .Consensus.TimeoutCommit }}
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
 
-# BlockSize
-max_block_size_txs = {{ .Consensus.MaxBlockSizeTxs }}
-max_block_size_bytes = {{ .Consensus.MaxBlockSizeBytes }}
-
 # EmptyBlocks mode and possible interval between empty blocks in seconds
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}
 create_empty_blocks_interval = {{ .Consensus.CreateEmptyBlocksInterval }}
@@ -232,6 +251,17 @@ index_tags = "{{ .TxIndex.IndexTags }}"
 # desirable (see the comment above). IndexTags has a precedence over
 # IndexAllTags (i.e. when given both, IndexTags will be indexed).
 index_all_tags = {{ .TxIndex.IndexAllTags }}
+
+##### instrumentation configuration options #####
+[instrumentation]
+
+# When true, Prometheus metrics are served under /metrics on
+# PrometheusListenAddr.
+# Check out the documentation for the list of available metrics.
+prometheus = {{ .Instrumentation.Prometheus }}
+
+# Address to listen for Prometheus collector(s) connections
+prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
 `
 
 /****** these are for test settings ***********/
@@ -287,10 +317,10 @@ var testGenesis = `{
   "validators": [
     {
       "pub_key": {
-        "type": "AC26791624DE60",
+        "type": "tendermint/PubKeyEd25519",
         "value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
       },
-      "power": 10,
+      "power": "10",
       "name": ""
     }
   ],
@@ -298,16 +328,16 @@ var testGenesis = `{
 }`
 
 var testPrivValidator = `{
-  "address": "849CB2C877F87A20925F35D00AE6688342D25B47",
+  "address": "A3258DCBF45DCA0DF052981870F2D1441A36D145",
   "pub_key": {
-    "type": "AC26791624DE60",
+    "type": "tendermint/PubKeyEd25519",
     "value": "AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="
   },
   "priv_key": {
-    "type": "954568A3288910",
+    "type": "tendermint/PrivKeyEd25519",
     "value": "EVkqJO/jIXp3rkASXfh9YnyToYXRXhBr6g9cQVxPFnQBP/5povV4HTjvsy530kybxKHwEi85iU8YL0qQhSYVoQ=="
   },
-  "last_height": 0,
-  "last_round": 0,
+  "last_height": "0",
+  "last_round": "0",
   "last_step": 0
 }`

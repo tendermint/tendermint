@@ -17,6 +17,14 @@ import (
 	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
+const (
+	protoHTTP  = "http"
+	protoHTTPS = "https"
+	protoWSS   = "wss"
+	protoWS    = "ws"
+	protoTCP   = "tcp"
+)
+
 // HTTPClient is a common interface for JSONRPCClient and URIClient.
 type HTTPClient interface {
 	Call(method string, params map[string]interface{}, result interface{}) (interface{}, error)
@@ -25,29 +33,37 @@ type HTTPClient interface {
 }
 
 // TODO: Deprecate support for IP:PORT or /path/to/socket
-func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, error)) {
+func makeHTTPDialer(remoteAddr string) (string, string, func(string, string) (net.Conn, error)) {
+	// protocol to use for http operations, to support both http and https
+	clientProtocol := protoHTTP
+
 	parts := strings.SplitN(remoteAddr, "://", 2)
 	var protocol, address string
 	if len(parts) == 1 {
 		// default to tcp if nothing specified
-		protocol, address = "tcp", remoteAddr
+		protocol, address = protoTCP, remoteAddr
 	} else if len(parts) == 2 {
 		protocol, address = parts[0], parts[1]
 	} else {
 		// return a invalid message
 		msg := fmt.Sprintf("Invalid addr: %s", remoteAddr)
-		return msg, func(_ string, _ string) (net.Conn, error) {
+		return clientProtocol, msg, func(_ string, _ string) (net.Conn, error) {
 			return nil, errors.New(msg)
 		}
 	}
-	// accept http as an alias for tcp
-	if protocol == "http" {
-		protocol = "tcp"
+
+	// accept http as an alias for tcp and set the client protocol
+	switch protocol {
+	case protoHTTP, protoHTTPS:
+		clientProtocol = protocol
+		protocol = protoTCP
+	case protoWS, protoWSS:
+		clientProtocol = protocol
 	}
 
 	// replace / with . for http requests (kvstore domain)
 	trimmedAddress := strings.Replace(address, "/", ".", -1)
-	return trimmedAddress, func(proto, addr string) (net.Conn, error) {
+	return clientProtocol, trimmedAddress, func(proto, addr string) (net.Conn, error) {
 		return net.Dial(protocol, address)
 	}
 }
@@ -55,8 +71,8 @@ func makeHTTPDialer(remoteAddr string) (string, func(string, string) (net.Conn, 
 // We overwrite the http.Client.Dial so we can do http over tcp or unix.
 // remoteAddr should be fully featured (eg. with tcp:// or unix://)
 func makeHTTPClient(remoteAddr string) (string, *http.Client) {
-	address, dialer := makeHTTPDialer(remoteAddr)
-	return "http://" + address, &http.Client{
+	protocol, address, dialer := makeHTTPDialer(remoteAddr)
+	return protocol + "://" + address, &http.Client{
 		Transport: &http.Transport{
 			Dial: dialer,
 		},

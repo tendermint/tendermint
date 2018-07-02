@@ -7,7 +7,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Get Tendermint status including node info, pubkey, latest block
@@ -50,12 +50,12 @@ import (
 //      "latest_app_hash": "0000000000000000",
 //      "latest_block_height": 231,
 //      "latest_block_time": "2018-04-27T23:18:08.459766485-04:00",
-//      "syncing": false
+//      "catching_up": false
 //    },
 //    "validator_info": {
 //      "address": "5875562FF0FFDECC895C20E32FC14988952E99E7",
 //      "pub_key": {
-//        "type": "AC26791624DE60",
+//        "type": "tendermint/PubKeyEd25519",
 //        "value": "PpDJRUrLG2RgFqYYjawfn/AcAgacSXpLFrmfYYQnuzE="
 //      },
 //      "voting_power": 10
@@ -92,7 +92,7 @@ func Status() (*ctypes.ResultStatus, error) {
 			LatestAppHash:     latestAppHash,
 			LatestBlockHeight: latestHeight,
 			LatestBlockTime:   latestBlockTime,
-			Syncing:           consensusReactor.FastSync(),
+			CatchingUp:        consensusReactor.FastSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     pubKey.Address(),

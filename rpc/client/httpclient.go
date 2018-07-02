@@ -11,7 +11,7 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 /*
@@ -29,12 +29,13 @@ type HTTP struct {
 	*WSEvents
 }
 
-// New takes a remote endpoint in the form tcp://<host>:<port>
+// NewHTTP takes a remote endpoint in the form tcp://<host>:<port>
 // and the websocket path (which always seems to be "/websocket")
 func NewHTTP(remote, wsEndpoint string) *HTTP {
 	rc := rpcclient.NewJSONRPCClient(remote)
 	cdc := rc.Codec()
 	ctypes.RegisterAmino(cdc)
+	rc.SetCodec(cdc)
 
 	return &HTTP{
 		rpc:      rc,

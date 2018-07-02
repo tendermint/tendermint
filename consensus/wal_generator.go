@@ -10,24 +10,24 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	auto "github.com/tendermint/tmlibs/autofile"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	auto "github.com/tendermint/tendermint/libs/autofile"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // WALWithNBlocks generates a consensus WAL. It does this by spining up a
 // stripped down version of node (proxy app, event bus, consensus state) with a
 // persistent kvstore application and special consensus wal instance
 // (byteBufferWAL) and waits until numBlocks are created. Then it returns a WAL
-// content.
+// content. If the node fails to produce given numBlocks, it returns an error.
 func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	config := getConfig()
 
@@ -89,15 +89,15 @@ func WALWithNBlocks(numBlocks int) (data []byte, err error) {
 	if err := consensusState.Start(); err != nil {
 		return nil, errors.Wrap(err, "failed to start consensus state")
 	}
-	defer consensusState.Stop()
 
 	select {
 	case <-numBlocksWritten:
+		consensusState.Stop()
 		wr.Flush()
 		return b.Bytes(), nil
 	case <-time.After(1 * time.Minute):
-		wr.Flush()
-		return b.Bytes(), fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
+		consensusState.Stop()
+		return []byte{}, fmt.Errorf("waited too long for tendermint to produce %d blocks (grep logs for `wal_generator`)", numBlocks)
 	}
 }
 

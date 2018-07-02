@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/abci/example/kvstore"
+	"github.com/tendermint/tendermint/abci/example/kvstore"
 	"github.com/tendermint/tendermint/rpc/grpc"
 	"github.com/tendermint/tendermint/rpc/test"
 )

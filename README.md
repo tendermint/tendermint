@@ -50,13 +50,13 @@ Go version | Go1.9 or higher
 
 ## Install
 
-See the [install instructions](/docs/install.rst)
+See the [install instructions](/docs/install.md)
 
 ## Quick Start
 
-- [Single node](/docs/using-tendermint.rst)
+- [Single node](/docs/using-tendermint.md)
 - [Local cluster using docker-compose](/networks/local)
-- [Remote cluster using terraform and ansible](/docs/terraform-and-ansible.rst)
+- [Remote cluster using terraform and ansible](/docs/terraform-and-ansible.md)
 - [Join the public testnet](https://cosmos.network/testnet)
 
 ## Resources
@@ -72,10 +72,7 @@ Additional information about some - and eventually all - of the sub-projects bel
 
 ### Sub-projects
 
-* [ABCI](http://github.com/tendermint/abci), the Application Blockchain Interface
-* [Go-Wire](http://github.com/tendermint/go-wire), a deterministic serialization library
-* [Go-Crypto](http://github.com/tendermint/go-crypto), an elliptic curve cryptography library
-* [TmLibs](http://github.com/tendermint/tmlibs), an assortment of Go libraries used internally
+* [Amino](http://github.com/tendermint/go-amino), a reflection-based improvement on proto3
 * [IAVL](http://github.com/tendermint/iavl), Merkleized IAVL+ Tree implementation
 
 ### Tools
@@ -119,8 +116,8 @@ CHANGELOG even if they don't lead to MINOR version bumps:
 - node
 
 Exported objects in these packages that are not covered by the versioning scheme
-are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any time.
-Functions, types, and values in any other package may also change at any time.
+are explicitly marked by `// UNSTABLE` in their go doc comment and may change at any
+time without notice. Functions, types, and values in any other package may also change at any time.
 
 ### Upgrades
 

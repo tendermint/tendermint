@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -29,7 +29,7 @@ func TestLoadBlockStoreStateJSON(t *testing.T) {
 
 func TestNewBlockStore(t *testing.T) {
 	db := db.NewMemDB()
-	db.Set(blockStoreKey, []byte(`{"height": 10000}`))
+	db.Set(blockStoreKey, []byte(`{"height": "10000"}`))
 	bs := NewBlockStore(db)
 	require.Equal(t, int64(10000), bs.Height(), "failed to properly parse blockstore")
 
@@ -153,14 +153,14 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			parts:             validPartSet,
 			seenCommit:        seenCommit1,
 			corruptCommitInDB: true, // Corrupt the DB's commit entry
-			wantPanic:         "Error reading block commit",
+			wantPanic:         "unmarshal to types.Commit failed",
 		},
 
 		{
 			block:            newBlock(&header1, commitAtH10),
 			parts:            validPartSet,
 			seenCommit:       seenCommit1,
-			wantPanic:        "Error reading block",
+			wantPanic:        "unmarshal to types.BlockMeta failed",
 			corruptBlockInDB: true, // Corrupt the DB's block entry
 		},
 
@@ -179,7 +179,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 			seenCommit: seenCommit1,
 
 			corruptSeenCommitInDB: true,
-			wantPanic:             "Error reading block seen commit",
+			wantPanic:             "unmarshal to types.Commit failed",
 		},
 
 		{
@@ -287,7 +287,7 @@ func TestLoadBlockPart(t *testing.T) {
 	db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "Error reading block part")
+	require.Contains(t, panicErr.Error(), "unmarshal to types.Part failed")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
 	db.Set(calcBlockPartKey(height, index), cdc.MustMarshalBinaryBare(part1))
@@ -316,7 +316,7 @@ func TestLoadBlockMeta(t *testing.T) {
 	db.Set(calcBlockMetaKey(height), []byte("Tendermint-Meta"))
 	res, _, panicErr = doFn(loadMeta)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "Error reading block meta")
+	require.Contains(t, panicErr.Error(), "unmarshal to types.BlockMeta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{}

@@ -12,9 +12,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	crypto "github.com/tendermint/tendermint/crypto"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -109,7 +109,7 @@ func TestPEXReactorRunning(t *testing.T) {
 	addOtherNodeAddrToAddrBook(2, 1)
 
 	for i, sw := range switches {
-		sw.AddListener(p2p.NewDefaultListener("tcp", sw.NodeInfo().ListenAddr, true, logger.With("pex", i)))
+		sw.AddListener(p2p.NewDefaultListener("tcp://"+sw.NodeInfo().ListenAddr, "", false, logger.With("pex", i)))
 
 		err := sw.Start() // start switch and reactors
 		require.Nil(t, err)
@@ -229,12 +229,7 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 		},
 	)
 	seed.AddListener(
-		p2p.NewDefaultListener(
-			"tcp",
-			seed.NodeInfo().ListenAddr,
-			true,
-			log.TestingLogger(),
-		),
+		p2p.NewDefaultListener("tcp://"+seed.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
 	)
 	require.Nil(t, seed.Start())
 	defer seed.Stop()

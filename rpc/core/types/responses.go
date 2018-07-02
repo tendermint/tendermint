@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	abci "github.com/tendermint/abci/types"
-	crypto "github.com/tendermint/go-crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	abci "github.com/tendermint/tendermint/abci/types"
+	crypto "github.com/tendermint/tendermint/crypto"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/state"
@@ -65,7 +65,7 @@ type SyncInfo struct {
 	LatestAppHash     cmn.HexBytes `json:"latest_app_hash"`
 	LatestBlockHeight int64        `json:"latest_block_height"`
 	LatestBlockTime   time.Time    `json:"latest_block_time"`
-	Syncing           bool         `json:"syncing"`
+	CatchingUp        bool         `json:"catching_up"`
 }
 
 // Info about the node's validator

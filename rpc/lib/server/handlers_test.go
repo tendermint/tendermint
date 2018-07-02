@@ -16,7 +16,7 @@ import (
 	amino "github.com/tendermint/go-amino"
 	rs "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 //////////////////////////////////////////////////////////////////////////////
@@ -55,13 +55,13 @@ func TestRPCParams(t *testing.T) {
 		{`{"jsonrpc": "2.0", "method": "y", "id": "0"}`, "Method not found"},
 		{`{"method": "c", "id": "0", "params": a}`, "invalid character"},
 		{`{"method": "c", "id": "0", "params": ["a"]}`, "got 1"},
-		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "of type int"},
+		{`{"method": "c", "id": "0", "params": ["a", "b"]}`, "invalid character"},
 		{`{"method": "c", "id": "0", "params": [1, 1]}`, "of type string"},
 
 		// good
 		{`{"jsonrpc": "2.0", "method": "c", "id": "0", "params": null}`, ""},
 		{`{"method": "c", "id": "0", "params": {}}`, ""},
-		{`{"method": "c", "id": "0", "params": ["a", 10]}`, ""},
+		{`{"method": "c", "id": "0", "params": ["a", "10"]}`, ""},
 	}
 
 	for i, tt := range tests {

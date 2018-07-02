@@ -6,13 +6,21 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/netutil"
 	"google.golang.org/grpc"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// Start the grpcServer in a go routine
-func StartGRPCServer(protoAddr string) (net.Listener, error) {
+// Config is an gRPC server configuration.
+type Config struct {
+	MaxOpenConnections int
+}
+
+// StartGRPCServer starts a new gRPC BroadcastAPIServer, listening on
+// protoAddr, in a goroutine. Returns a listener and an error, if it fails to
+// parse an address.
+func StartGRPCServer(protoAddr string, config Config) (net.Listener, error) {
 	parts := strings.SplitN(protoAddr, "://", 2)
 	if len(parts) != 2 {
 		return nil, fmt.Errorf("Invalid listen address for grpc server (did you forget a tcp:// prefix?) : %s", protoAddr)
@@ -22,6 +30,9 @@ func StartGRPCServer(protoAddr string) (net.Listener, error) {
 	if err != nil {
 		return nil, err
 	}
+	if config.MaxOpenConnections > 0 {
+		ln = netutil.LimitListener(ln, config.MaxOpenConnections)
+	}
 
 	grpcServer := grpc.NewServer()
 	RegisterBroadcastAPIServer(grpcServer, &broadcastAPI{})
@@ -30,7 +41,8 @@ func StartGRPCServer(protoAddr string) (net.Listener, error) {
 	return ln, nil
 }
 
-// Start the client by dialing the server
+// StartGRPCClient dials the gRPC server using protoAddr and returns a new
+// BroadcastAPIClient.
 func StartGRPCClient(protoAddr string) BroadcastAPIClient {
 	conn, err := grpc.Dial(protoAddr, grpc.WithInsecure(), grpc.WithDialer(dialerFunc))
 	if err != nil {

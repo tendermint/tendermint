@@ -49,7 +49,7 @@ The message protocol consists of pairs of requests and responses. Some
 messages have no fields, while others may include byte-arrays, strings,
 or integers. See the `message Request` and `message Response`
 definitions in [the protobuf definition
-file](https://github.com/tendermint/abci/blob/master/types/types.proto),
+file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto),
 and the [protobuf
 documentation](https://developers.google.com/protocol-buffers/docs/overview)
 for more details.
@@ -72,9 +72,9 @@ Both can be tested using the `abci-cli` by setting the `--abci` flag
 appropriately (ie. to `socket` or `grpc`).
 
 See examples, in various stages of maintenance, in
-[Go](https://github.com/tendermint/abci/tree/master/server),
+[Go](https://github.com/tendermint/tendermint/tree/develop/abci/server),
 [JavaScript](https://github.com/tendermint/js-abci),
-[Python](https://github.com/tendermint/abci/tree/master/example/python3/abci),
+[Python](https://github.com/tendermint/tendermint/tree/develop/abci/example/python3/abci),
 [C++](https://github.com/mdyring/cpp-tmsp), and
 [Java](https://github.com/jTendermint/jabci).
 
@@ -84,7 +84,7 @@ If GRPC is available in your language, this is the easiest approach,
 though it will have significant performance overhead.
 
 To get started with GRPC, copy in the [protobuf
-file](https://github.com/tendermint/abci/blob/master/types/types.proto)
+file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto)
 and compile it using the GRPC plugin for your language. For instance,
 for golang, the command is `protoc --go_out=plugins=grpc:. types.proto`.
 See the [grpc documentation for more details](http://www.grpc.io/docs/).
@@ -99,14 +99,14 @@ performance, or otherwise enjoy programming, you may implement your own
 ABCI server using the Tendermint Socket Protocol, known affectionately
 as Teaspoon. The first step is still to auto-generate the relevant data
 types and codec in your language using `protoc`. Messages coming over
-the socket are Protobuf3 encoded, but additionally length-prefixed to
-facilitate use as a streaming protocol. Protobuf3 doesn't have an
+the socket are proto3 encoded, but additionally length-prefixed to
+facilitate use as a streaming protocol. proto3 doesn't have an
 official length-prefix standard, so we use our own. The first byte in
 the prefix represents the length of the Big Endian encoded length. The
 remaining bytes in the prefix are the Big Endian encoded length.
 
-For example, if the Protobuf3 encoded ABCI message is 0xDEADBEEF (4
-bytes), the length-prefixed message is 0x0104DEADBEEF. If the Protobuf3
+For example, if the proto3 encoded ABCI message is 0xDEADBEEF (4
+bytes), the length-prefixed message is 0x0104DEADBEEF. If the proto3
 encoded ABCI message is 65535 bytes long, the length-prefixed message
 would be like 0x02FFFF....
 
@@ -125,12 +125,12 @@ received or a block is committed.
 
 It is unlikely that you will need to implement a client. For details of
 our client, see
-[here](https://github.com/tendermint/abci/tree/master/client).
+[here](https://github.com/tendermint/tendermint/tree/develop/abci/client).
 
 Most of the examples below are from [kvstore
-application](https://github.com/tendermint/abci/blob/master/example/kvstore/kvstore.go),
+application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/kvstore.go),
 which is a part of the abci repo. [persistent_kvstore
-application](https://github.com/tendermint/abci/blob/master/example/kvstore/persistent_kvstore.go)
+application](https://github.com/tendermint/tendermint/blob/develop/abci/example/kvstore/persistent_kvstore.go)
 is used to show `BeginBlock`, `EndBlock` and `InitChain` example
 implementations.
 
@@ -188,9 +188,9 @@ In Java:
 
     ResponseCheckTx requestCheckTx(RequestCheckTx req) {
         byte[] transaction = req.getTx().toByteArray();
-    
+
         // validate transaction
-    
+
         if (notValid) {
             return ResponseCheckTx.newBuilder().setCode(CodeType.BadNonce).setLog("invalid tx").build();
         } else {
@@ -260,15 +260,15 @@ In Java:
      */
     ResponseDeliverTx deliverTx(RequestDeliverTx request) {
         byte[] transaction  = request.getTx().toByteArray();
-    
+
         // validate your transaction
-    
+
         if (notValid) {
             return ResponseDeliverTx.newBuilder().setCode(CodeType.BadNonce).setLog("transaction was invalid").build();
         } else {
             ResponseDeliverTx.newBuilder().setCode(CodeType.OK).build();
         }
-    
+
     }
 
 ### Commit
@@ -302,10 +302,10 @@ In go:
 In Java:
 
     ResponseCommit requestCommit(RequestCommit requestCommit) {
-    
+
         // update the internal app-state
         byte[] newAppState = calculateAppState();
-    
+
         // and return it to the node
         return ResponseCommit.newBuilder().setCode(CodeType.OK).setData(ByteString.copyFrom(newAppState)).build();
     }
@@ -326,7 +326,7 @@ In go:
     func (app *PersistentKVStoreApplication) BeginBlock(params types.RequestBeginBlock) {
       // update latest block info
       app.blockHeader = params.Header
-    
+
       // reset valset changes
       app.changes = make([]*types.Validator, 0)
     }
@@ -337,14 +337,14 @@ In Java:
      * all types come from protobuf definition
      */
     ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
-    
+
         Header header = req.getHeader();
         byte[] prevAppHash = header.getAppHash().toByteArray();
         long prevHeight = header.getHeight();
         long numTxs = header.getNumTxs();
-    
+
         // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
-    
+
         return ResponseBeginBlock.newBuilder().build();
     }
 
@@ -377,10 +377,10 @@ In Java:
     ResponseEndBlock requestEndBlock(RequestEndBlock req) {
         final long currentHeight = req.getHeight();
         final byte[] validatorPubKey = getValPubKey();
-    
+
         ResponseEndBlock.Builder builder = ResponseEndBlock.newBuilder();
         builder.addDiffs(1, Types.Validator.newBuilder().setPower(10L).setPubKey(ByteString.copyFrom(validatorPubKey)).build());
-    
+
         return builder.build();
     }
 
@@ -394,13 +394,13 @@ serialize each query as a single byte array. Additionally, certain
 instance about which peers to connect to.
 
 Tendermint Core currently uses the Query connection to filter peers upon
-connecting, according to IP address or public key. For instance,
+connecting, according to IP address or node ID. For instance,
 returning non-OK ABCI response to either of the following queries will
 cause Tendermint to not connect to the corresponding peer:
 
--   `p2p/filter/addr/<addr>`, where `<addr>` is an IP address.
--   `p2p/filter/pubkey/<pubkey>`, where `<pubkey>` is the hex-encoded
-    ED25519 key of the node (not it's validator key)
+-   `p2p/filter/addr/<ip addr>`, where `<ip addr>` is an IP address.
+-   `p2p/filter/id/<id>`, where `<is>` is the hex-encoded node ID (the hash of
+    the node's p2p pubkey).
 
 Note: these query formats are subject to change!
 
@@ -437,25 +437,25 @@ In Java:
     ResponseQuery requestQuery(RequestQuery req) {
         final boolean isProveQuery = req.getProve();
         final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
-    
+
         if (isProveQuery) {
             com.app.example.ProofResult proofResult = generateProof(req.getData().toByteArray());
             final byte[] proofAsByteArray = proofResult.getAsByteArray();
-    
+
             responseBuilder.setProof(ByteString.copyFrom(proofAsByteArray));
             responseBuilder.setKey(req.getData());
             responseBuilder.setValue(ByteString.copyFrom(proofResult.getData()));
             responseBuilder.setLog(result.getLogValue());
         } else {
             byte[] queryData = req.getData().toByteArray();
-    
+
             final com.app.example.QueryResult result = generateQueryResult(queryData);
-    
+
             responseBuilder.setIndex(result.getIndex());
             responseBuilder.setValue(ByteString.copyFrom(result.getValue()));
             responseBuilder.setLog(result.getLogValue());
         }
-    
+
         return responseBuilder.build();
     }
 
@@ -515,13 +515,13 @@ In Java:
     ResponseInitChain requestInitChain(RequestInitChain req) {
         final int validatorsCount = req.getValidatorsCount();
         final List<Types.Validator> validatorsList = req.getValidatorsList();
-    
+
         validatorsList.forEach((validator) -> {
             long power = validator.getPower();
             byte[] validatorPubKey = validator.getPubKey().toByteArray();
-    
+
             // do somehing for validator setup in app
         });
-    
+
         return ResponseInitChain.newBuilder().build();
     }

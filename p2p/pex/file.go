@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 /* Loading & Saving */

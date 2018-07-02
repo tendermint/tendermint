@@ -27,7 +27,11 @@ func TestProposalSignable(t *testing.T) {
 	signBytes := testProposal.SignBytes("test_chain_id")
 	signStr := string(signBytes)
 
-	expected := `{"@chain_id":"test_chain_id","@type":"proposal","block_parts_header":{"hash":"626C6F636B7061727473","total":111},"height":12345,"pol_block_id":{},"pol_round":-1,"round":23456,"timestamp":"2018-02-11T07:09:22.765Z"}`
+	expected := `{"@chain_id":"test_chain_id","@type":"proposal","block_parts_header":{"hash":"626C6F636B7061727473","total":"111"},"height":"12345","pol_block_id":{},"pol_round":"-1","round":"23456","timestamp":"2018-02-11T07:09:22.765Z"}`
+	if signStr != expected {
+		t.Errorf("Got unexpected sign string for Proposal. Expected:\n%v\nGot:\n%v", expected, signStr)
+	}
+
 	if signStr != expected {
 		t.Errorf("Got unexpected sign string for Proposal. Expected:\n%v\nGot:\n%v", expected, signStr)
 	}

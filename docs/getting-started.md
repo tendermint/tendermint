@@ -7,7 +7,7 @@ application you want to run. So, to run a complete blockchain that does
 something useful, you must start two programs: one is Tendermint Core,
 the other is your application, which can be written in any programming
 language. Recall from [the intro to
-ABCI](introduction.html#ABCI-Overview) that Tendermint Core handles all
+ABCI](./introduction.md#ABCI-Overview) that Tendermint Core handles all
 the p2p and consensus stuff, and just forwards transactions to the
 application when they need to be validated, or when they're ready to be
 committed to a block.
@@ -25,15 +25,11 @@ more info.
 
 Then run
 
-    go get -u github.com/tendermint/abci/cmd/abci-cli
-
-If there is an error, install and run the
-[dep](https://github.com/golang/dep) tool to pin the dependencies:
-
-    cd $GOPATH/src/github.com/tendermint/abci
+    go get github.com/tendermint/tendermint
+    cd $GOPATH/src/github.com/tendermint/tendermint
     make get_tools
     make get_vendor_deps
-    make install
+    make install_abci
 
 Now you should have the `abci-cli` installed; you'll see a couple of
 commands (`counter` and `kvstore`) that are example applications written
@@ -62,7 +58,7 @@ Tendermint before, use:
 If you have used Tendermint, you may want to reset the data for a new
 blockchain by running `tendermint unsafe_reset_all`. Then you can run
 `tendermint node` to start Tendermint, and connect to the app. For more
-details, see [the guide on using Tendermint](./using-tendermint.html).
+details, see [the guide on using Tendermint](./using-tendermint.md).
 
 You should see Tendermint making blocks! We can get the status of our
 Tendermint node as follows:
@@ -129,10 +125,10 @@ The result should look like:
 
 Note the `value` in the result (`YWJjZA==`); this is the base64-encoding
 of the ASCII of `abcd`. You can verify this in a python 2 shell by
-running `"61626364".decode('base64')` or in python 3 shell by running
-`import codecs; codecs.decode("61626364", 'base64').decode('ascii')`.
+running `"YWJjZA==".decode('base64')` or in python 3 shell by running
+`import codecs; codecs.decode("YWJjZA==", 'base64').decode('ascii')`.
 Stay tuned for a future release that [makes this output more
-human-readable](https://github.com/tendermint/abci/issues/32).
+human-readable](https://github.com/tendermint/tendermint/issues/1794).
 
 Now let's try setting a different key and value:
 
@@ -228,7 +224,7 @@ But if we send a `1`, it works again:
     }
 
 For more details on the `broadcast_tx` API, see [the guide on using
-Tendermint](./using-tendermint.html).
+Tendermint](./using-tendermint.md).
 
 ## CounterJS - Example in Another Language
 
@@ -247,7 +243,7 @@ devs, we keep all our code under the `$GOPATH`, so run:
 
 Kill the previous `counter` and `tendermint` processes. Now run the app:
 
-    node example/app.js
+    node example/counter.js
 
 In another window, reset and start `tendermint`:
 

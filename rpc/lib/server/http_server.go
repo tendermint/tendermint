@@ -12,16 +12,38 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/net/netutil"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
-func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger) (listener net.Listener, err error) {
+// Config is an RPC server configuration.
+type Config struct {
+	MaxOpenConnections int
+}
+
+const (
+	// maxBodyBytes controls the maximum number of bytes the
+	// server will read parsing the request body.
+	maxBodyBytes = int64(1000000) // 1MB
+)
+
+// StartHTTPServer starts an HTTP server on listenAddr with the given handler.
+// It wraps handler with RecoverAndLogHandler.
+func StartHTTPServer(
+	listenAddr string,
+	handler http.Handler,
+	logger log.Logger,
+	config Config,
+) (listener net.Listener, err error) {
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
-		return nil, errors.Errorf("Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)", listenAddr)
+		return nil, errors.Errorf(
+			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			listenAddr,
+		)
 	}
 	proto, addr = parts[0], parts[1]
 
@@ -30,35 +52,60 @@ func StartHTTPServer(listenAddr string, handler http.Handler, logger log.Logger)
 	if err != nil {
 		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
 	}
+	if config.MaxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
+	}
 
 	go func() {
 		err := http.Serve(
 			listener,
-			RecoverAndLogHandler(handler, logger),
+			RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		)
 		logger.Error("RPC HTTP server stopped", "err", err)
 	}()
 	return listener, nil
 }
 
-func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, keyFile string, logger log.Logger) (listener net.Listener, err error) {
+// StartHTTPAndTLSServer starts an HTTPS server on listenAddr with the given
+// handler.
+// It wraps handler with RecoverAndLogHandler.
+func StartHTTPAndTLSServer(
+	listenAddr string,
+	handler http.Handler,
+	certFile, keyFile string,
+	logger log.Logger,
+	config Config,
+) (listener net.Listener, err error) {
 	var proto, addr string
 	parts := strings.SplitN(listenAddr, "://", 2)
 	if len(parts) != 2 {
-		return nil, errors.Errorf("Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)", listenAddr)
+		return nil, errors.Errorf(
+			"Invalid listening address %s (use fully formed addresses, including the tcp:// or unix:// prefix)",
+			listenAddr,
+		)
 	}
 	proto, addr = parts[0], parts[1]
 
-	logger.Info(fmt.Sprintf("Starting RPC HTTPS server on %s (cert: %q, key: %q)", listenAddr, certFile, keyFile))
+	logger.Info(
+		fmt.Sprintf(
+			"Starting RPC HTTPS server on %s (cert: %q, key: %q)",
+			listenAddr,
+			certFile,
+			keyFile,
+		),
+	)
 	listener, err = net.Listen(proto, addr)
 	if err != nil {
 		return nil, errors.Errorf("Failed to listen on %v: %v", listenAddr, err)
+	}
+	if config.MaxOpenConnections > 0 {
+		listener = netutil.LimitListener(listener, config.MaxOpenConnections)
 	}
 
 	go func() {
 		err := http.ServeTLS(
 			listener,
-			RecoverAndLogHandler(handler, logger),
+			RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 			certFile,
 			keyFile,
 		)
@@ -67,7 +114,11 @@ func StartHTTPAndTLSServer(listenAddr string, handler http.Handler, certFile, ke
 	return listener, nil
 }
 
-func WriteRPCResponseHTTPError(w http.ResponseWriter, httpCode int, res types.RPCResponse) {
+func WriteRPCResponseHTTPError(
+	w http.ResponseWriter,
+	httpCode int,
+	res types.RPCResponse,
+) {
 	jsonBytes, err := json.MarshalIndent(res, "", "  ")
 	if err != nil {
 		panic(err)
@@ -117,7 +168,10 @@ func RecoverAndLogHandler(handler http.Handler, logger log.Logger) http.Handler 
 					WriteRPCResponseHTTP(rww, res)
 				} else {
 					// For the rest,
-					logger.Error("Panic in RPC HTTP handler", "err", e, "stack", string(debug.Stack()))
+					logger.Error(
+						"Panic in RPC HTTP handler", "err", e, "stack",
+						string(debug.Stack()),
+					)
 					rww.WriteHeader(http.StatusInternalServerError)
 					WriteRPCResponseHTTP(rww, types.RPCInternalError("", e.(error)))
 				}
@@ -153,4 +207,14 @@ func (w *ResponseWriterWrapper) WriteHeader(status int) {
 // implements http.Hijacker
 func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
+}
+
+type maxBytesHandler struct {
+	h http.Handler
+	n int64
+}
+
+func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, h.n)
+	h.h.ServeHTTP(w, r)
 }

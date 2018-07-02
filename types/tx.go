@@ -5,20 +5,20 @@ import (
 	"errors"
 	"fmt"
 
-	abci "github.com/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/merkle"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Tx is an arbitrary byte array.
 // NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
-// Alternatively, it may make sense to add types here and let
-// []byte be type 0x1 so we can have versioned txs if need be in the future.
+// Might we want types here ?
 type Tx []byte
 
-// Hash computes the RIPEMD160 hash of the wire encoded transaction.
+// Hash computes the TMHASH hash of the wire encoded transaction.
 func (tx Tx) Hash() []byte {
-	return aminoHasher(tx).Hash()
+	return tmhash.Sum(tx)
 }
 
 // String returns the hex-encoded transaction as a string.
@@ -32,7 +32,7 @@ type Txs []Tx
 // Hash returns the simple Merkle root hash of the transactions.
 func (txs Txs) Hash() []byte {
 	// Recursive impl.
-	// Copied from tmlibs/merkle to avoid allocations
+	// Copied from tendermint/crypto/merkle to avoid allocations
 	switch len(txs) {
 	case 0:
 		return nil

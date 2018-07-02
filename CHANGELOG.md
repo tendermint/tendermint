@@ -1,5 +1,50 @@
 # Changelog
 
+## 0.22.0
+
+*July 2nd, 2018*
+
+BREAKING CHANGES:
+- [config] Rename `skip_upnp` to `upnp`, and turn it off by default.
+- [types] Update Amino to v0.10.1
+    * Amino is now fully proto3 compatible for the basic types
+    * JSON-encoded types now use the type name instead of the prefix bytes
+    * Integers are encoded as strings
+- [crypto] Update go-crypto to v0.10.0 and merge into `crypto`
+    * privKey.Sign returns error.
+    * ed25519 address changed to the first 20-bytes of the SHA256 of the raw pubkey bytes
+    * `tmlibs/merkle` -> `crypto/merkle`. Uses SHA256 instead of RIPEMD160
+- [tmlibs] Update to v0.9.0 and merge into `libs`
+    * remove `merkle` package (moved to `crypto/merkle`)
+- [rpc] `syncing` is now called `catching_up`.
+
+FEATURES
+- [cmd] Added metrics (served under `/metrics` using a Prometheus client;
+  disabled by default). See the new `instrumentation` section in the config and
+  [metrics](https://tendermint.readthedocs.io/projects/tools/en/develop/metrics.html)
+  guide.
+- [p2p] Add IPv6 support to peering.
+- [p2p] Add `external_address` to config to allow specifying the address for
+  peers to dial
+
+IMPROVEMENT
+- [rpc/client] Supports https and wss now.
+- [crypto] Make public key size into public constants
+- [mempool] Log tx hash, not entire tx
+- [abci] Merged in github.com/tendermint/abci
+- [crypto] Merged in github.com/tendermint/go-crypto
+- [libs] Merged in github.com/tendermint/tmlibs
+- [docs] Move from .rst to .md
+
+BUG FIXES:
+- [rpc] Limit maximum number of HTTP/WebSocket connections
+  (`rpc.max_open_connections`) and gRPC connections
+  (`rpc.grpc_max_open_connections`). Check out "Running In Production" guide if
+  you want to increase them.
+- [rpc] Limit maximum request body size to 1MB (header is limited to 1MB).
+- [consensus] Fix a halting bug where `create_empty_blocks=false`
+- [p2p] Fix panic in seed mode
+
 ## 0.21.0
 
 *June 21th, 2018*

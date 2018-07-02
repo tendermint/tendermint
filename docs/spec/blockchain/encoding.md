@@ -2,8 +2,8 @@
 
 ## Amino
 
-Tendermint uses the Protobuf3 derivative [Amino](https://github.com/tendermint/go-amino) for all data structures.
-Think of Amino as an object-oriented Protobuf3 with native JSON support.
+Tendermint uses the proto3 derivative [Amino](https://github.com/tendermint/go-amino) for all data structures.
+Think of Amino as an object-oriented proto3 with native JSON support.
 The goal of the Amino encoding protocol is to bring parity between application
 logic objects and persistence objects.
 
@@ -21,7 +21,7 @@ arbitrary object and return the Amino encoded bytes.
 ## Byte Arrays
 
 The encoding of a byte array is simply the raw-bytes prefixed with the length of
-the array as a `UVarint` (what Protobuf calls a `Varint`).
+the array as a `UVarint` (what proto calls a `Varint`).
 
 For details on varints, see the [protobuf
 spec](https://developers.google.com/protocol-buffers/docs/encoding#varints).
@@ -54,17 +54,15 @@ familiar with amino encoding.
 You can simply use below table and concatenate Prefix || Length (of raw bytes) || raw bytes
 ( while || stands for byte concatenation here).
 
-| Type | Name | Prefix | Length |
-| ---- | ---- | ------ | ----- |
-| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE62 | 0x20 |
-| PubKeyLedgerEd25519 | tendermint/PubKeyLedgerEd25519 | 0x5C3453B2 | 0x20 |
-| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE982 | 0x21 |
-| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288912 | 0x40 |
-| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79A | 0x20 |
-| PrivKeyLedgerSecp256k1 | tendermint/PrivKeyLedgerSecp256k1 | 0x10CAB393 | variable |
-| PrivKeyLedgerEd25519 | tendermint/PrivKeyLedgerEd25519 | 0x0CFEEF9B | variable |
-| SignatureEd25519 | tendermint/SignatureKeyEd25519 | 0x3DA1DB2A | 0x40 |
-| SignatureSecp256k1 | tendermint/SignatureKeySecp256k1 | 0x16E1FEEA | variable |
+| Type | Name | Prefix | Length | Notes |
+| ---- | ---- | ------ | ----- | ------ |
+| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
+| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
+| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
+| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
+| SignatureEd25519 | tendermint/SignatureEd25519 | 0x2031EA53 | 0x40 |  |
+| SignatureSecp256k1 | tendermint/SignatureSecp256k1 | 0x7FC4A495 | variable |
+|
 
 ### Examples
 
@@ -84,14 +82,13 @@ Addresses for each public key types are computed as follows:
 
 #### Ed25519
 
-RIPEMD160 hash of the Amino encoded public key:
+First 20-bytes of the SHA256 hash of the raw 32-byte public key:
 
 ```
-address = RIPEMD160(AMINO(pubkey))
+address = SHA256(pubkey)[:20]
 ```
 
-NOTE: this will soon change to the truncated 20-bytes of the SHA256 of the raw
-public key
+NOTE: before v0.22.0, this was the RIPEMD160 of the Amino encoded public key.
 
 #### Secp256k1
 
@@ -154,7 +151,15 @@ func MakeParts(obj interface{}, partSize int) []Part
 
 Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
 
-RIPEMD160 is always used as the hashing function.
+Tendermint always uses the `TMHASH` hash function, which is the first 20-bytes
+of the SHA256:
+
+```
+func TMHASH(bz []byte) []byte {
+    shasum := SHA256(bz)
+    return shasum[:20]
+}
+```
 
 ### Simple Merkle Root
 
@@ -177,7 +182,7 @@ func SimpleMerkleRoot(hashes [][]byte) []byte{
 func SimpleConcatHash(left, right []byte) []byte{
     left = encodeByteSlice(left)
     right = encodeByteSlice(right)
-    return RIPEMD160 (append(left, right))
+    return TMHASH(append(left, right))
 }
 ```
 
@@ -185,8 +190,8 @@ Note that the leaves are Amino encoded as byte-arrays (ie. simple Uvarint length
 prefix) before being concatenated together and hashed.
 
 Note: we will abuse notion and invoke `SimpleMerkleRoot` with arguments of type `struct` or type `[]struct`.
-For `struct` arguments, we compute a `[][]byte` by sorting elements of the `struct` according to
-field name and then hashing them.
+For `struct` arguments, we compute a `[][]byte` containing the hash of each
+field in the struct sorted by the hash of the field name.
 For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `struct` elements.
 
 ### Simple Merkle Proof
@@ -249,7 +254,7 @@ For instance, an ED25519 PubKey would look like:
 
 ```
 {
-  "type": "AC26791624DE60",
+  "type": "tendermint/PubKeyEd25519",
   "value": "uZ4h63OFWuQ36ZZ4Bd6NF+/w9fWUwrOncrQsackrsTk="
 }
 ```

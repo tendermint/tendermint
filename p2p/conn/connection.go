@@ -12,14 +12,13 @@ import (
 	"time"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
-	flow "github.com/tendermint/tmlibs/flowrate"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	flow "github.com/tendermint/tendermint/libs/flowrate"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 const (
-	maxPacketMsgPayloadSizeDefault = 1024 // NOTE: Must be below 16,384 bytes for 14 below.
-	maxPacketMsgOverheadSize       = 14   // NOTE: See connection_test for derivation.
+	defaultMaxPacketMsgPayloadSize = 1024
 
 	numBatchPacketMsgs = 10
 	minReadBufferSize  = 1024
@@ -96,6 +95,8 @@ type MConnection struct {
 	chStatsTimer *cmn.RepeatTimer // update channel stats periodically
 
 	created time.Time // time of creation
+
+	_maxPacketMsgSize int
 }
 
 // MConnConfig is a MConnection configuration.
@@ -116,16 +117,12 @@ type MConnConfig struct {
 	PongTimeout time.Duration `mapstructure:"pong_timeout"`
 }
 
-func (cfg *MConnConfig) maxPacketMsgTotalSize() int {
-	return cfg.MaxPacketMsgPayloadSize + maxPacketMsgOverheadSize
-}
-
 // DefaultMConnConfig returns the default config.
 func DefaultMConnConfig() MConnConfig {
 	return MConnConfig{
 		SendRate:                defaultSendRate,
 		RecvRate:                defaultRecvRate,
-		MaxPacketMsgPayloadSize: maxPacketMsgPayloadSizeDefault,
+		MaxPacketMsgPayloadSize: defaultMaxPacketMsgPayloadSize,
 		FlushThrottle:           defaultFlushThrottle,
 		PingInterval:            defaultPingInterval,
 		PongTimeout:             defaultPongTimeout,
@@ -174,6 +171,9 @@ func NewMConnectionWithConfig(conn net.Conn, chDescs []*ChannelDescriptor, onRec
 	mconn.channelsIdx = channelsIdx
 
 	mconn.BaseService = *cmn.NewBaseService(nil, "MConnection", mconn)
+
+	// maxPacketMsgSize() is a bit heavy, so call just once
+	mconn._maxPacketMsgSize = mconn.maxPacketMsgSize()
 
 	return mconn
 }
@@ -399,7 +399,7 @@ func (c *MConnection) sendSomePacketMsgs() bool {
 	// Block until .sendMonitor says we can write.
 	// Once we're ready we send more than we asked for,
 	// but amortized it should even out.
-	c.sendMonitor.Limit(c.config.maxPacketMsgTotalSize(), atomic.LoadInt64(&c.config.SendRate), true)
+	c.sendMonitor.Limit(c._maxPacketMsgSize, atomic.LoadInt64(&c.config.SendRate), true)
 
 	// Now send some PacketMsgs.
 	for i := 0; i < numBatchPacketMsgs; i++ {
@@ -457,7 +457,7 @@ func (c *MConnection) recvRoutine() {
 FOR_LOOP:
 	for {
 		// Block until .recvMonitor says we can read.
-		c.recvMonitor.Limit(c.config.maxPacketMsgTotalSize(), atomic.LoadInt64(&c.config.RecvRate), true)
+		c.recvMonitor.Limit(c._maxPacketMsgSize, atomic.LoadInt64(&c.config.RecvRate), true)
 
 		// Peek into bufConnReader for debugging
 		/*
@@ -477,7 +477,7 @@ FOR_LOOP:
 		var packet Packet
 		var _n int64
 		var err error
-		_n, err = cdc.UnmarshalBinaryReader(c.bufConnReader, &packet, int64(c.config.maxPacketMsgTotalSize()))
+		_n, err = cdc.UnmarshalBinaryReader(c.bufConnReader, &packet, int64(c._maxPacketMsgSize))
 		c.recvMonitor.Update(int(_n))
 		if err != nil {
 			if c.IsRunning() {
@@ -548,6 +548,16 @@ func (c *MConnection) stopPongTimer() {
 		_ = c.pongTimer.Stop()
 		c.pongTimer = nil
 	}
+}
+
+// maxPacketMsgSize returns a maximum size of PacketMsg, including the overhead
+// of amino encoding.
+func (c *MConnection) maxPacketMsgSize() int {
+	return len(cdc.MustMarshalBinary(PacketMsg{
+		ChannelID: 0x01,
+		EOF:       1,
+		Bytes:     make([]byte, c.config.MaxPacketMsgPayloadSize),
+	})) + 10 // leave room for changes in amino
 }
 
 type ConnectionStatus struct {

@@ -17,9 +17,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	amino "github.com/tendermint/go-amino"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
@@ -123,7 +123,7 @@ func setup() {
 	wm.SetLogger(tcpLogger)
 	mux.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := server.StartHTTPServer(tcpAddr, mux, tcpLogger)
+		_, err := server.StartHTTPServer(tcpAddr, mux, tcpLogger, server.Config{})
 		if err != nil {
 			panic(err)
 		}
@@ -136,7 +136,7 @@ func setup() {
 	wm.SetLogger(unixLogger)
 	mux2.HandleFunc(websocketEndpoint, wm.WebsocketHandler)
 	go func() {
-		_, err := server.StartHTTPServer(unixAddr, mux2, unixLogger)
+		_, err := server.StartHTTPServer(unixAddr, mux2, unixLogger, server.Config{})
 		if err != nil {
 			panic(err)
 		}
@@ -274,18 +274,18 @@ func TestServersAndClientsBasic(t *testing.T) {
 	serverAddrs := [...]string{tcpAddr, unixAddr}
 	for _, addr := range serverAddrs {
 		cl1 := client.NewURIClient(addr)
-		fmt.Printf("=== testing server on %s using %v client", addr, cl1)
+		fmt.Printf("=== testing server on %s using URI client", addr)
 		testWithHTTPClient(t, cl1)
 
 		cl2 := client.NewJSONRPCClient(addr)
-		fmt.Printf("=== testing server on %s using %v client", addr, cl2)
+		fmt.Printf("=== testing server on %s using JSONRPC client", addr)
 		testWithHTTPClient(t, cl2)
 
 		cl3 := client.NewWSClient(addr, websocketEndpoint)
 		cl3.SetLogger(log.TestingLogger())
 		err := cl3.Start()
 		require.Nil(t, err)
-		fmt.Printf("=== testing server on %s using %v client", addr, cl3)
+		fmt.Printf("=== testing server on %s using WS client", addr)
 		testWithWSClient(t, cl3)
 		cl3.Stop()
 	}
