@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestListener(t *testing.T) {
 	// Create a listener
-	l := NewDefaultListener("tcp", ":8001", false, log.TestingLogger())
+	cfg := &config.P2PConfig{
+		ListenAddress: "tcp://:8001",
+	}
+	l := NewDefaultListener(cfg, log.TestingLogger())
 
 	// Dial the listener
 	lAddr := l.ExternalAddress()

@@ -142,6 +142,12 @@ max_open_connections = {{ .RPC.MaxOpenConnections }}
 # Address to listen for incoming connections
 laddr = "{{ .P2P.ListenAddress }}"
 
+# Address to advertise to peers for them to dial
+# If empty, will use the same port as the laddr,
+# and will introspect on the listener or use UPnP
+# to figure out the address.
+external_address = "{{ .P2P.ExternalAddress }}"
+
 # Comma separated list of seed nodes to connect to
 seeds = "{{ .P2P.Seeds }}"
 
