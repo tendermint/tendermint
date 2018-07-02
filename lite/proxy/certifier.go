@@ -3,9 +3,9 @@ package proxy
 import (
 	"github.com/tendermint/tendermint/lite"
 	lclient "github.com/tendermint/tendermint/lite/client"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	log "github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	log "github.com/tendermint/tendermint/libs/log"
 )
 
 func NewCertifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger) (*lite.InquiringCertifier, error) {

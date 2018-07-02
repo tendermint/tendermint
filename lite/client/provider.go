@@ -13,7 +13,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	log "github.com/tendermint/tmlibs/log"
+	log "github.com/tendermint/tendermint/libs/log"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.

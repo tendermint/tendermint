@@ -5,7 +5,7 @@ import (
 
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
-	log "github.com/tendermint/tmlibs/log"
+	log "github.com/tendermint/tendermint/libs/log"
 )
 
 var _ Certifier = (*InquiringCertifier)(nil)

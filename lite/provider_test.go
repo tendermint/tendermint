@@ -9,8 +9,8 @@ import (
 
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tmlibs/db"
-	log "github.com/tendermint/tmlibs/log"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	log "github.com/tendermint/tendermint/libs/log"
 )
 
 // missingProvider doesn't store anything, always a miss.

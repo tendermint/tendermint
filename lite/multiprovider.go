@@ -3,7 +3,7 @@ package lite
 import (
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
-	log "github.com/tendermint/tmlibs/log"
+	log "github.com/tendermint/tendermint/libs/log"
 )
 
 // multiProvider allows you to place one or more caches in front of a source
