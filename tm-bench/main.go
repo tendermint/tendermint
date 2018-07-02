@@ -108,8 +108,12 @@ Examples:
 	endTime := time.Duration(duration) * time.Second
 	select {
 	case <-time.After(endTime):
-		for _, t := range transacters {
+		for i, t := range transacters {
 			t.Stop()
+			numCrashes := countCrashes(t.connsBroken)
+			if numCrashes != 0 {
+				fmt.Printf("%d connections crashed on transacter #%d\n", numCrashes, i)
+			}
 		}
 
 		timeStop := time.Now()
@@ -140,6 +144,16 @@ func latestBlockHeight(client tmrpc.Client) int64 {
 		os.Exit(1)
 	}
 	return status.SyncInfo.LatestBlockHeight
+}
+
+func countCrashes(crashes []bool) int {
+	count := 0
+	for i := 0; i < len(crashes); i++ {
+		if crashes[i] {
+			count++
+		}
+	}
+	return count
 }
 
 // calculateStatistics calculates the tx / second, and blocks / second based

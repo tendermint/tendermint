@@ -61,7 +61,7 @@ through the number of transactions. If its too slow, the loop stops at one secon
 If its too fast, we wait until the one second mark ends. The transactions per
 second stat is computed based off of what ends up in the block.
 
-Each of the connections is running via a separate goroutine. 
+Each of the connections is handled via two separate goroutines. 
 
 ## Development
 

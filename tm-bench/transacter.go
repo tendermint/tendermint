@@ -34,9 +34,10 @@ type transacter struct {
 	Connections       int
 	BroadcastTxMethod string
 
-	conns   []*websocket.Conn
-	wg      sync.WaitGroup
-	stopped bool
+	conns       []*websocket.Conn
+	connsBroken []bool
+	wg          sync.WaitGroup
+	stopped     bool
 
 	logger log.Logger
 }
@@ -49,6 +50,7 @@ func newTransacter(target string, connections, rate int, size int, broadcastTxMe
 		Connections:       connections,
 		BroadcastTxMethod: broadcastTxMethod,
 		conns:             make([]*websocket.Conn, connections),
+		connsBroken:       make([]bool, connections),
 		logger:            log.NewNopLogger(),
 	}
 }
@@ -100,11 +102,15 @@ func (t *transacter) receiveLoop(connIndex int) {
 		_, _, err := c.ReadMessage()
 		if err != nil {
 			if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-				t.logger.Error("failed to read response", "err", err)
+				t.logger.Error(
+					fmt.Sprintf("failed to read response on conn %d", connIndex),
+					"err",
+					err,
+				)
 			}
 			return
 		}
-		if t.stopped {
+		if t.stopped || t.connsBroken[connIndex] {
 			return
 		}
 	}
@@ -169,8 +175,11 @@ func (t *transacter) sendLoop(connIndex int) {
 					Params:  rawParamsJSON,
 				})
 				if err != nil {
-					fmt.Fprintf(os.Stderr, "%v. Try reducing the connections count and increasing the rate.\n", errors.Wrap(err, "txs send failed"))
-					os.Exit(1)
+					err = errors.Wrap(err,
+						fmt.Sprintf("txs send failed on connection #%d", connIndex))
+					t.connsBroken[connIndex] = true
+					logger.Error(err.Error())
+					return
 				}
 
 				// Time added here is 7.13 ns/op, not significant enough to worry about
@@ -186,16 +195,21 @@ func (t *transacter) sendLoop(connIndex int) {
 			}
 
 			timeToSend := time.Now().Sub(startTime)
+			logger.Info(fmt.Sprintf("sent %d transactions", numTxSent), "took", timeToSend)
 			if timeToSend < 1*time.Second {
-				time.Sleep(time.Second - timeToSend)
+				sleepTime := time.Second - timeToSend
+				logger.Debug(fmt.Sprintf("connection #%d is sleeping for %f seconds", connIndex, sleepTime.Seconds()))
+				time.Sleep(sleepTime)
 			}
 
-			logger.Info(fmt.Sprintf("sent %d transactions", numTxSent), "took", timeToSend)
 		case <-pingsTicker.C:
 			// go-rpc server closes the connection in the absence of pings
 			c.SetWriteDeadline(time.Now().Add(sendTimeout))
 			if err := c.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
-				logger.Error("failed to write ping message", "err", err)
+				err = errors.Wrap(err,
+					fmt.Sprintf("failed to write ping message on conn #%d", connIndex))
+				logger.Error(err.Error())
+				t.connsBroken[connIndex] = true
 			}
 		}
 
@@ -205,7 +219,10 @@ func (t *transacter) sendLoop(connIndex int) {
 			c.SetWriteDeadline(time.Now().Add(sendTimeout))
 			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 			if err != nil {
-				logger.Error("failed to write close message", "err", err)
+				err = errors.Wrap(err,
+					fmt.Sprintf("failed to write close message on conn #%d", connIndex))
+				logger.Error(err.Error())
+				t.connsBroken[connIndex] = true
 			}
 
 			return
