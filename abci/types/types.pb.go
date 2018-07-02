@@ -50,7 +50,7 @@ import proto "github.com/gogo/protobuf/proto"
 import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
-import common "github.com/tendermint/tmlibs/common"
+import common "github.com/tendermint/tendermint/libs/common"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"

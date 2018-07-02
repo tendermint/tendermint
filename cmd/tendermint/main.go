@@ -4,7 +4,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tendermint/tmlibs/cli"
+	"github.com/tendermint/tendermint/libs/cli"
 
 	cmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
 	cfg "github.com/tendermint/tendermint/config"

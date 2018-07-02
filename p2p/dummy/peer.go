@@ -5,7 +5,7 @@ import (
 
 	p2p "github.com/tendermint/tendermint/p2p"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 type peer struct {

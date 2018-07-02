@@ -13,7 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {

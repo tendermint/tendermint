@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/netutil"
 	"google.golang.org/grpc"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Config is an gRPC server configuration.

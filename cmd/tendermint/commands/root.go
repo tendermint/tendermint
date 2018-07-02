@@ -7,9 +7,9 @@ import (
 	"github.com/spf13/viper"
 
 	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tmlibs/cli"
-	tmflags "github.com/tendermint/tmlibs/cli/flags"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/cli"
+	tmflags "github.com/tendermint/tendermint/libs/cli/flags"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 var (

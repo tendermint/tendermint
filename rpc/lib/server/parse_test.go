@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestParseJSONMap(t *testing.T) {

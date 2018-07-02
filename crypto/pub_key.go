@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/ed25519"
 	"github.com/tendermint/ed25519/extra25519"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )

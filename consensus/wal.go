@@ -12,8 +12,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/types"
-	auto "github.com/tendermint/tmlibs/autofile"
-	cmn "github.com/tendermint/tmlibs/common"
+	auto "github.com/tendermint/tendermint/libs/autofile"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const (

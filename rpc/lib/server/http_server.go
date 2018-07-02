@@ -15,7 +15,7 @@ import (
 	"golang.org/x/net/netutil"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // Config is an RPC server configuration.
