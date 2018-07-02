@@ -1,0 +1,38 @@
+package: github.com/tendermint/tmlibs
+import:
+- package: github.com/go-kit/kit
+  version: ^0.6.0
+  subpackages:
+  - log
+  - log/level
+  - log/term
+- package: github.com/go-logfmt/logfmt
+  version: ^0.3.0
+- package: github.com/gogo/protobuf
+  version: ^1.0.0
+  subpackages:
+  - gogoproto
+  - proto
+- package: github.com/jmhodges/levigo
+- package: github.com/pkg/errors
+  version: ^0.8.0
+- package: github.com/spf13/cobra
+  version: ^0.0.1
+- package: github.com/spf13/viper
+  version: ^1.0.0
+- package: github.com/syndtr/goleveldb
+  subpackages:
+  - leveldb
+  - leveldb/errors
+  - leveldb/iterator
+  - leveldb/opt
+- package: golang.org/x/crypto
+  subpackages:
+  - ripemd160
+testImport:
+- package: github.com/stretchr/testify
+  version: ^1.2.1
+  subpackages:
+  - assert
+  - require
+- package: github.com/fortytw2/leaktest
