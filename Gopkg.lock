@@ -16,7 +16,10 @@
 [[projects]]
   branch = "master"
   name = "github.com/btcsuite/btcutil"
-  packages = ["base58"]
+  packages = [
+    "base58",
+    "bech32"
+  ]
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
 [[projects]]
@@ -303,24 +306,6 @@
   version = "0.10.1"
 
 [[projects]]
-  name = "github.com/tendermint/tmlibs"
-  packages = [
-    "autofile",
-    "cli",
-    "cli/flags",
-    "clist",
-    "common",
-    "db",
-    "flowrate",
-    "log",
-    "merkle",
-    "merkle/tmhash",
-    "test"
-  ]
-  revision = "49596e0a1f48866603813df843c9409fc19805c6"
-  version = "v0.9.0"
-
-[[projects]]
   branch = "master"
   name = "golang.org/x/crypto"
   packages = [
@@ -424,6 +409,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c25289282b94abc7f0c390e592e5e1636b7f26cb4773863ac39cde7fdc7b5bdf"
+  inputs-digest = "520cd9a034e6be26dc6e0864dae3fb294b81850d8de41ca6c2c8cd6295425f28"
   solver-name = "gps-cdcl"
   solver-version = 1
