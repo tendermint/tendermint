@@ -10,8 +10,8 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -328,10 +328,7 @@ func (cs *ConsensusState) OnStop() {
 
 	cs.timeoutTicker.Stop()
 
-	// Make BaseService.Wait() wait until cs.wal.Wait()
-	if cs.IsRunning() {
-		cs.wal.Wait()
-	}
+	cs.wal.Stop()
 }
 
 // Wait waits for the the main routine to return.
@@ -632,7 +629,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		_, err = cs.addProposalBlockPart(msg.Height, msg.Part)
+		_, err = cs.addProposalBlockPart(msg, peerID)
 		if err != nil && msg.Round != cs.Round {
 			cs.Logger.Debug("Received block part from wrong round", "height", cs.Height, "csRound", cs.Round, "blockRound", msg.Round)
 			err = nil
@@ -940,7 +937,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	}
 
 	// Mempool validated transactions
-	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
+	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
 	evidence := cs.evpool.PendingEvidence()
 	block.AddEvidence(evidence)
@@ -1409,17 +1406,22 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit, once we have the full block.
-func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part) (added bool, err error) {
+func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
+	height, round, part := msg.Height, msg.Round, msg.Part
+
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
-		cs.Logger.Debug("Received block part from wrong height", "height", height)
+		cs.Logger.Debug("Received block part from wrong height", "height", height, "round", round)
 		return false, nil
 	}
 
 	// We're not expecting a block part.
 	if cs.ProposalBlockParts == nil {
-		cs.Logger.Info("Received a block part when we're not expecting any", "height", height)
-		return false, nil // TODO: bad peer? Return error?
+		// NOTE: this can happen when we've gone to a higher round and
+		// then receive parts from the previous round - not necessarily a bad peer.
+		cs.Logger.Info("Received a block part when we're not expecting any",
+			"height", height, "round", round, "index", part.Index, "peer", peerID)
+		return false, nil
 	}
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
@@ -1453,7 +1455,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part) (
 			// procedure at this point.
 		}
 
-		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
+		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
 			cs.enterPrevote(height, cs.Round)
 		} else if cs.Step == cstypes.RoundStepCommit {

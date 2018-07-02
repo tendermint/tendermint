@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tmlibs/db"
+	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
 //-----------------------------------------------------

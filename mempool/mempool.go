@@ -11,10 +11,10 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	auto "github.com/tendermint/tmlibs/autofile"
-	"github.com/tendermint/tmlibs/clist"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	auto "github.com/tendermint/tendermint/libs/autofile"
+	"github.com/tendermint/tendermint/libs/clist"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
@@ -56,6 +56,11 @@ var (
 	// ErrMempoolIsFull means Tendermint & an application can't handle that much load
 	ErrMempoolIsFull = errors.New("Mempool is full")
 )
+
+// TxID is the hex encoded hash of the bytes as a types.Tx.
+func TxID(tx []byte) string {
+	return fmt.Sprintf("%X", types.Tx(tx).Hash())
+}
 
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
@@ -288,11 +293,11 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.logger.Info("Added good transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
+			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r, "total", mem.Size())
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("Rejected bad transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
+			mem.logger.Info("Rejected bad transaction", "tx", TxID(tx), "res", r)
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)

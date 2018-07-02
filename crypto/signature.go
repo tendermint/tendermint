@@ -5,7 +5,7 @@ import (
 
 	"crypto/subtle"
 
-	. "github.com/tendermint/tmlibs/common"
+	. "github.com/tendermint/tendermint/libs/common"
 )
 
 func SignatureFromBytes(pubKeyBytes []byte) (pubKey Signature, err error) {
@@ -25,8 +25,10 @@ type Signature interface {
 
 var _ Signature = SignatureEd25519{}
 
+const SignatureEd25519Size = 64
+
 // Implements Signature
-type SignatureEd25519 [64]byte
+type SignatureEd25519 [SignatureEd25519Size]byte
 
 func (sig SignatureEd25519) Bytes() []byte {
 	bz, err := cdc.MarshalBinaryBare(sig)

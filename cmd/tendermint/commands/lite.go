@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/lite/proxy"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // LiteCmd represents the base command when called without any subcommands

@@ -17,7 +17,7 @@ Instead, we use `git remote` to add the fork as a new remote for the original re
 For instance, to create a fork and work on a branch of it, I would:
 
   * Create the fork on github, using the fork button.
-  * Go to the original repo checked out locally (ie. `$GOPATH/src/github.com/tendermint/tendermint`)
+  * Go to the original repo checked out locally (i.e. `$GOPATH/src/github.com/tendermint/tendermint`)
   * `git remote rename origin upstream`
   * `git remote add origin git@github.com:ebuchman/basecoin.git`
 
@@ -47,7 +47,7 @@ get_vendor_deps`). Even for dependencies under our control, dep helps us to
 keep multiple repos in sync as they evolve. Anything with an executable, such
 as apps, tools, and the core, should use dep.
 
-Run `dep status` to get a list of vendored dependencies that may not be
+Run `dep status` to get a list of vendor dependencies that may not be
 up-to-date.
 
 ## Vagrant
@@ -85,7 +85,7 @@ especially `go-p2p` and `go-rpc`, as their versions are referenced in tendermint
 - the latest state of development is on `develop`
 - `develop` must never fail `make test`
 - no --force onto `develop` (except when reverting a broken commit, which should seldom happen)
-- create a development branch either on github.com/tendermint/tendermint, or your fork (using `git add origin`)
+- create a development branch either on github.com/tendermint/tendermint, or your fork (using `git remote add origin`)
 - before submitting a pull request, begin `git rebase` on top of `develop`
 
 ### Pull Merge Procedure:
@@ -110,7 +110,7 @@ especially `go-p2p` and `go-rpc`, as their versions are referenced in tendermint
 - make the required changes
   - these changes should be small and an absolute necessity
   - add a note to CHANGELOG.md
-- bumb versions
+- bump versions
 - push to hotfix-vX.X.X to run the extended integration tests on the CI
 - merge hotfix-vX.X.X to master
 - merge hotfix-vX.X.X to develop

@@ -9,7 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const (
@@ -100,7 +100,7 @@ func NewSwitch(cfg *config.P2PConfig, options ...SwitchOption) *Switch {
 	mConfig.FlushThrottle = time.Duration(cfg.FlushThrottleTimeout) * time.Millisecond
 	mConfig.SendRate = cfg.SendRate
 	mConfig.RecvRate = cfg.RecvRate
-	mConfig.MaxPacketMsgSize = cfg.MaxPacketMsgSize
+	mConfig.MaxPacketMsgPayloadSize = cfg.MaxPacketMsgPayloadSize
 
 	sw.mConfig = mConfig
 
