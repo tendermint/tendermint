@@ -7,10 +7,9 @@ import (
 	"io"
 	"sync"
 
-	"golang.org/x/crypto/ripemd160"
-
+	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/merkle"
 )
 
 var (
@@ -31,7 +30,7 @@ func (part *Part) Hash() []byte {
 	if part.hash != nil {
 		return part.hash
 	}
-	hasher := ripemd160.New()
+	hasher := tmhash.New()
 	hasher.Write(part.Bytes) // nolint: errcheck, gas
 	part.hash = hasher.Sum(nil)
 	return part.hash

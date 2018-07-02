@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/merkle"
-	"golang.org/x/crypto/ripemd160"
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -552,7 +552,7 @@ type hasher struct {
 }
 
 func (h hasher) Hash() []byte {
-	hasher := ripemd160.New()
+	hasher := tmhash.New()
 	if h.item != nil && !cmn.IsTypedNil(h.item) && !cmn.IsEmpty(h.item) {
 		bz, err := cdc.MarshalBinaryBare(h.item)
 		if err != nil {
