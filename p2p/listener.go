@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tendermint/tendermint/config"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p/upnp"
@@ -60,10 +59,14 @@ func splitHostPort(addr string) (host string, port int) {
 
 // NewDefaultListener creates a new DefaultListener on lAddr, optionally trying
 // to determine external address using UPnP.
-func NewDefaultListener(cfg *config.P2PConfig, logger log.Logger) Listener {
+func NewDefaultListener(
+	fullListenAddrString string,
+	externalAddrString string,
+	useUPnP bool,
+	logger log.Logger) Listener {
 
 	// Split protocol, address, and port.
-	protocol, lAddr := cmn.ProtocolAndAddress(cfg.ListenAddress)
+	protocol, lAddr := cmn.ProtocolAndAddress(fullListenAddrString)
 	lAddrIP, lAddrPort := splitHostPort(lAddr)
 
 	// Create listener
@@ -93,24 +96,23 @@ func NewDefaultListener(cfg *config.P2PConfig, logger log.Logger) Listener {
 
 	inAddrAny := lAddrIP == "" || lAddrIP == "0.0.0.0"
 
-	// Determine external address...
+	// Determine external address.
 	var extAddr *NetAddress
-	if cfg.UPNP {
-		// If the lAddrIP is INADDR_ANY, try UPnP
-		if inAddrAny {
-			extAddr = getUPNPExternalAddress(lAddrPort, listenerPort, logger)
-		}
-	}
 
-	if cfg.ExternalAddress != "" {
+	if externalAddrString != "" {
 		var err error
-		extAddr, err = NewNetAddressStringWithOptionalID(cfg.ExternalAddress)
+		extAddr, err = NewNetAddressStringWithOptionalID(externalAddrString)
 		if err != nil {
 			panic(fmt.Sprintf("Error in ExternalAddress: %v", err))
 		}
 	}
 
-	// Otherwise just use the local address...
+	// If the lAddrIP is INADDR_ANY, try UPnP.
+	if extAddr == nil && useUPnP && inAddrAny {
+		extAddr = getUPNPExternalAddress(lAddrPort, listenerPort, logger)
+	}
+
+	// Otherwise just use the local address.
 	if extAddr == nil {
 		defaultToIPv4 := inAddrAny
 		extAddr = getNaiveExternalAddress(defaultToIPv4, listenerPort, false, logger)
