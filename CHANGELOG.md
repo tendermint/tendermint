@@ -2,7 +2,7 @@
 
 ## 0.22.0
 
-*July 1st, 2018*
+*July 2nd, 2018*
 
 BREAKING CHANGES:
 - [config] Rename `skip_upnp` to `upnp`, and turn it off by default.
@@ -14,6 +14,8 @@ BREAKING CHANGES:
     * privKey.Sign returns error.
     * ed25519 address changed to the first 20-bytes of the SHA256 of the raw pubkey bytes
     * `tmlibs/merkle` -> `crypto/merkle`. Uses SHA256 instead of RIPEMD160
+- [tmlibs] Update to v0.9.0 and merge into `libs`
+    * remove `merkle` package (moved to `crypto/merkle`)
 - [rpc] `syncing` is now called `catching_up`.
 
 FEATURES
@@ -29,8 +31,9 @@ IMPROVEMENT
 - [rpc/client] Supports https and wss now.
 - [crypto] Make public key size into public constants
 - [mempool] Log tx hash, not entire tx
-- [abci] Merged in github.com/tendermint/abci and
-  github.com/tendermint/go-crypto
+- [abci] Merged in github.com/tendermint/abci
+- [crypto] Merged in github.com/tendermint/go-crypto
+- [libs] Merged in github.com/tendermint/tmlibs
 - [docs] Move from .rst to .md
 
 BUG FIXES:
