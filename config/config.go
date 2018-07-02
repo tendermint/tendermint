@@ -276,6 +276,9 @@ type P2PConfig struct {
 	// Address to listen for incoming connections
 	ListenAddress string `mapstructure:"laddr"`
 
+	// Address to advertise to peers for them to dial
+	ExternalAddress string `mapstructure:"external_address"`
+
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
@@ -340,6 +343,7 @@ type P2PConfig struct {
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
 		ListenAddress:           "tcp://0.0.0.0:26656",
+		ExternalAddress:         "",
 		UPNP:                    false,
 		AddrBook:                defaultAddrBookPath,
 		AddrBookStrict:          true,

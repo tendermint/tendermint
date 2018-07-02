@@ -22,6 +22,8 @@ FEATURES
   [metrics](https://tendermint.readthedocs.io/projects/tools/en/develop/metrics.html)
   guide.
 - [p2p] Add IPv6 support to peering.
+- [p2p] Add `external_address` to config to allow specifying the address for
+  peers to dial
 
 IMPROVEMENT
 - [rpc/client] Supports https and wss now.

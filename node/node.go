@@ -426,8 +426,11 @@ func (n *Node) OnStart() error {
 	}
 
 	// Create & add listener
-	protocol, address := cmn.ProtocolAndAddress(n.config.P2P.ListenAddress)
-	l := p2p.NewDefaultListener(protocol, address, n.config.P2P.UPNP, n.Logger.With("module", "p2p"))
+	l := p2p.NewDefaultListener(
+		n.config.P2P.ListenAddress,
+		n.config.P2P.ExternalAddress,
+		n.config.P2P.UPNP,
+		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
 	// Generate node PrivKey
