@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 // TODO: type ?
@@ -90,6 +90,10 @@ func LoadFilePV(filePath string) *FilePV {
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
+
+	// overwrite pubkey and address for convenience
+	pv.PubKey = pv.PrivKey.PubKey()
+	pv.Address = pv.PubKey.Address()
 
 	pv.filePath = filePath
 	return pv
