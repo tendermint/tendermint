@@ -16,7 +16,9 @@ BREAKING CHANGES:
     * `tmlibs/merkle` -> `crypto/merkle`. Uses SHA256 instead of RIPEMD160
 - [tmlibs] Update to v0.9.0 and merge into `libs`
     * remove `merkle` package (moved to `crypto/merkle`)
-- [rpc] `syncing` is now called `catching_up`.
+- [rpc] 
+    * All integers are encoded as strings (part of the update for Amino v0.10.1)
+    * `syncing` is now called `catching_up`
 
 FEATURES
 - [cmd] Added metrics (served under `/metrics` using a Prometheus client;
