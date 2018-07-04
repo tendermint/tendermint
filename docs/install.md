@@ -57,7 +57,7 @@ cd $GOPATH/src/github.com/tendermint/tendermint
 make install
 ```
 
-To upgrade, run 
+To upgrade, run
 
 ```
 cd $GOPATH/src/github.com/tendermint/tendermint

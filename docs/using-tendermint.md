@@ -16,7 +16,9 @@ this by setting the `TMHOME` environment variable.
 
 Initialize the root directory by running:
 
-    tendermint init
+```
+tendermint init
+```
 
 This will create a new private key (`priv_validator.json`), and a
 genesis file (`genesis.json`) containing the associated public key, in
@@ -25,24 +27,30 @@ with one validator.
 
 For more elaborate initialization, see the tesnet command:
 
-    tendermint testnet --help
+```
+tendermint testnet --help
+```
 
 ## Run
 
 To run a Tendermint node, use
 
-    tendermint node
+```
+tendermint node
+```
 
 By default, Tendermint will try to connect to an ABCI application on
 [127.0.0.1:26658](127.0.0.1:26658). If you have the `kvstore` ABCI app
 installed, run it in another window. If you don't, kill Tendermint and
 run an in-process version of the `kvstore` app:
 
-    tendermint node --proxy_app=kvstore
+```
+tendermint node --proxy_app=kvstore
+```
 
 After a few seconds you should see blocks start streaming in. Note that
 blocks are produced regularly, even if there are no transactions. See
-*No Empty Blocks*, below, to modify this setting.
+_No Empty Blocks_, below, to modify this setting.
 
 Tendermint supports in-process versions of the `counter`, `kvstore` and
 `nil` apps that ship as examples with `abci-cli`. It's easy to compile
@@ -51,22 +59,30 @@ app is not written in Go, simply run it in another process, and use the
 `--proxy_app` flag to specify the address of the socket it is listening
 on, for instance:
 
-    tendermint node --proxy_app=/var/run/abci.sock
+```
+tendermint node --proxy_app=/var/run/abci.sock
+```
 
 ## Transactions
 
 To send a transaction, use `curl` to make requests to the Tendermint RPC
 server, for example:
 
-    curl http://localhost:26657/broadcast_tx_commit?tx=\"abcd\"
+```
+curl http://localhost:26657/broadcast_tx_commit?tx=\"abcd\"
+```
 
 We can see the chain's status at the `/status` end-point:
 
-    curl http://localhost:26657/status | json_pp
+```
+curl http://localhost:26657/status | json_pp
+```
 
 and the `latest_app_hash` in particular:
 
-    curl http://localhost:26657/status | json_pp | grep latest_app_hash
+```
+curl http://localhost:26657/status | json_pp | grep latest_app_hash
+```
 
 Visit http://localhost:26657> in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
@@ -81,30 +97,40 @@ With `GET`:
 
 To send a UTF8 string byte array, quote the value of the tx pramater:
 
-    curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
+```
+curl 'http://localhost:26657/broadcast_tx_commit?tx="hello"'
+```
 
 which sends a 5 byte transaction: "h e l l o" \[68 65 6c 6c 6f\].
 
 Note the URL must be wrapped with single quoes, else bash will ignore
 the double quotes. To avoid the single quotes, escape the double quotes:
 
-    curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
+```
+curl http://localhost:26657/broadcast_tx_commit?tx=\"hello\"
+```
 
 Using a special character:
 
-    curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
+```
+curl 'http://localhost:26657/broadcast_tx_commit?tx="€5"'
+```
 
 sends a 4 byte transaction: "€5" (UTF8) \[e2 82 ac 35\].
 
 To send as raw hex, omit quotes AND prefix the hex string with `0x`:
 
-    curl http://localhost:26657/broadcast_tx_commit?tx=0x01020304
+```
+curl http://localhost:26657/broadcast_tx_commit?tx=0x01020304
+```
 
 which sends a 4 byte transaction: \[01 02 03 04\].
 
 With `POST` (using `json`), the raw hex must be `base64` encoded:
 
-    curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:26657
+```
+curl --data-binary '{"jsonrpc":"2.0","id":"anything","method":"broadcast_tx_commit","params": {"tx": "AQIDBA=="}}' -H 'content-type:text/plain;' http://localhost:26657
+```
 
 which sends the same 4 byte transaction: \[01 02 03 04\].
 
@@ -118,7 +144,9 @@ afford to lose all blockchain data!
 To reset a blockchain, stop the node, remove the `~/.tendermint/data`
 directory and run
 
-    tendermint unsafe_reset_priv_validator
+```
+tendermint unsafe_reset_priv_validator
+```
 
 This final step is necessary to reset the `priv_validator.json`, which
 otherwise prevents you from making conflicting votes in the consensus
@@ -150,21 +178,27 @@ To configure Tendermint to not produce empty blocks unless there are
 transactions or the app hash changes, run Tendermint with this
 additional flag:
 
-    tendermint node --consensus.create_empty_blocks=false
+```
+tendermint node --consensus.create_empty_blocks=false
+```
 
 or set the configuration via the `config.toml` file:
 
-    [consensus]
-    create_empty_blocks = false
+```
+[consensus]
+create_empty_blocks = false
+```
 
-Remember: because the default is to *create empty blocks*, avoiding
+Remember: because the default is to _create empty blocks_, avoiding
 empty blocks requires the config option to be set to `false`.
 
 The block interval setting allows for a delay (in seconds) between the
 creation of each new empty block. It is set via the `config.toml`:
 
-    [consensus]
-    create_empty_blocks_interval = 5
+```
+[consensus]
+create_empty_blocks_interval = 5
+```
 
 With this setting, empty blocks will be produced every 5s if no block
 has been produced otherwise, regardless of the value of
@@ -181,9 +215,11 @@ eventually included in a block.
 Since there are multiple phases to processing a transaction, we offer
 multiple endpoints to broadcast a transaction:
 
-    /broadcast_tx_async
-    /broadcast_tx_sync
-    /broadcast_tx_commit
+```
+/broadcast_tx_async
+/broadcast_tx_sync
+/broadcast_tx_commit
+```
 
 These correspond to no-processing, processing through the mempool, and
 processing through a block, respectively. That is, `broadcast_tx_async`,
@@ -208,38 +244,42 @@ When `tendermint init` is run, both a `genesis.json` and
 `priv_validator.json` are created in `~/.tendermint/config`. The
 `genesis.json` might look like:
 
+```
+{
+  "validators" : [
     {
-      "validators" : [
-        {
-          "pub_key" : {
-            "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-            "type" : "tendermint/PubKeyEd25519"
-          },
-          "power" : 10,
-          "name" : ""
-        }
-      ],
-      "app_hash" : "",
-      "chain_id" : "test-chain-rDlYSN",
-      "genesis_time" : "0001-01-01T00:00:00Z"
-    }
-
-And the `priv_validator.json`:
-
-    {
-      "last_step" : 0,
-      "last_round" : "0",
-      "address" : "B788DEDE4F50AD8BC9462DE76741CCAFF87D51E2",
       "pub_key" : {
         "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
         "type" : "tendermint/PubKeyEd25519"
       },
-      "last_height" : "0",
-      "priv_key" : {
-        "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
-        "type" : "tendermint/PrivKeyEd25519"
-      }
+      "power" : 10,
+      "name" : ""
     }
+  ],
+  "app_hash" : "",
+  "chain_id" : "test-chain-rDlYSN",
+  "genesis_time" : "0001-01-01T00:00:00Z"
+}
+```
+
+And the `priv_validator.json`:
+
+```
+{
+  "last_step" : 0,
+  "last_round" : "0",
+  "address" : "B788DEDE4F50AD8BC9462DE76741CCAFF87D51E2",
+  "pub_key" : {
+    "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
+    "type" : "tendermint/PubKeyEd25519"
+  },
+  "last_height" : "0",
+  "priv_key" : {
+    "value" : "JPivl82x+LfVkp8i3ztoTjY6c6GJ4pBxQexErOCyhwqHeGT5ATxzpAtPJKnxNx/NyUnD8Ebv3OIYH+kgD4N88Q==",
+    "type" : "tendermint/PrivKeyEd25519"
+  }
+}
+```
 
 The `priv_validator.json` actually contains a private key, and should
 thus be kept absolutely secret; for now we work with the plain text.
@@ -272,6 +312,7 @@ with the consensus protocol.
 ### Peers
 
 #### Seed
+
 A seed node is a node who relays the addresses of other peers which they know
 of. These nodes constantly crawl the network to try to get more peers. The
 addresses which the seed node relays get saved into a local address book. Once
@@ -282,6 +323,7 @@ only need them on the first start. The seed node will immediately disconnect
 from you after sending you some addresses.
 
 #### Persistent Peer
+
 Persistent peers are people you want to be constantly connected with. If you
 disconnect you will try to connect directly back to them as opposed to using
 another address from the address book. On restarts you will always try to
@@ -302,12 +344,16 @@ persistent connections with.
 
 For example,
 
-    tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
+```
+tendermint node --p2p.seeds "f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656,0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"
+```
 
 Alternatively, you can use the `/dial_seeds` endpoint of the RPC to
 specify seeds for a running node to connect to:
 
-    curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]'
+```
+curl 'localhost:26657/dial_seeds?seeds=\["f9baeaa15fedf5e1ef7448dd60f46c01f1a9e9c4@1.2.3.4:26656","0491d373a8e0fcf1023aaf18c51d6a1d0d4f31bd@5.6.7.8:26656"\]'
+```
 
 Note, with PeX enabled, you
 should not need seeds after the first start.
@@ -318,8 +364,11 @@ maintain a persistent connection with each, you can use the
 `config.toml` or the `/dial_peers` RPC endpoint to do it without
 stopping Tendermint core instance.
 
-    tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
-    curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
+```
+tendermint node --p2p.persistent_peers "429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656,96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"
+
+curl 'localhost:26657/dial_peers?persistent=true&peers=\["429fcf25974313b95673f58d77eacdd434402665@10.11.12.13:26656","96663a3dd0d7b9d17d4c8211b191af259621c693@10.11.12.14:26656"\]'
+```
 
 ### Adding a Non-Validator
 
@@ -338,51 +387,57 @@ before starting the network. For instance, we could make a new
 
 We can generate a new `priv_validator.json` with the command:
 
-    tendermint gen_validator
+```
+tendermint gen_validator
+```
 
 Now we can update our genesis file. For instance, if the new
 `priv_validator.json` looks like:
 
+```
+{
+  "address" : "5AF49D2A2D4F5AD4C7C8C4CC2FB020131E9C4902",
+  "pub_key" : {
+    "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
+    "type" : "tendermint/PubKeyEd25519"
+  },
+  "priv_key" : {
+    "value" : "EDJY9W6zlAw+su6ITgTKg2nTZcHAH1NMTW5iwlgmNDuX1f35+OR4HMN88ZtQzsAwhETq4k3vzM3n6WTk5ii16Q==",
+    "type" : "tendermint/PrivKeyEd25519"
+  },
+  "last_step" : 0,
+  "last_round" : "0",
+  "last_height" : "0"
+}
+```
+
+then the new `genesis.json` will be:
+
+```
+{
+  "validators" : [
     {
-      "address" : "5AF49D2A2D4F5AD4C7C8C4CC2FB020131E9C4902",
+      "pub_key" : {
+        "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
+        "type" : "tendermint/PubKeyEd25519"
+      },
+      "power" : 10,
+      "name" : ""
+    },
+    {
       "pub_key" : {
         "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
         "type" : "tendermint/PubKeyEd25519"
       },
-      "priv_key" : {
-        "value" : "EDJY9W6zlAw+su6ITgTKg2nTZcHAH1NMTW5iwlgmNDuX1f35+OR4HMN88ZtQzsAwhETq4k3vzM3n6WTk5ii16Q==",
-        "type" : "tendermint/PrivKeyEd25519"
-      },
-      "last_step" : 0,
-      "last_round" : "0",
-      "last_height" : "0"
+      "power" : 10,
+      "name" : ""
     }
-
-then the new `genesis.json` will be:
-
-    {
-      "validators" : [
-        {
-          "pub_key" : {
-            "value" : "h3hk+QE8c6QLTySp8TcfzclJw/BG79ziGB/pIA+DfPE=",
-            "type" : "tendermint/PubKeyEd25519"
-          },
-          "power" : 10,
-          "name" : ""
-        },
-        {
-          "pub_key" : {
-            "value" : "l9X9+fjkeBzDfPGbUM7AMIRE6uJN78zN5+lk5OYotek=",
-            "type" : "tendermint/PubKeyEd25519"
-          },
-          "power" : 10,
-          "name" : ""
-        }
-      ],
-      "app_hash" : "",
-      "chain_id" : "test-chain-rDlYSN",
-      "genesis_time" : "0001-01-01T00:00:00Z"
-    }
+  ],
+  "app_hash" : "",
+  "chain_id" : "test-chain-rDlYSN",
+  "genesis_time" : "0001-01-01T00:00:00Z"
+}
+```
 
 Update the `genesis.json` in `~/.tendermint/config`. Copy the genesis
 file and the new `priv_validator.json` to the `~/.tendermint/config` on

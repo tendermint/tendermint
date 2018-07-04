@@ -17,7 +17,7 @@ transaction is actually processed.
 
 The ABCI application must be a deterministic result of the Tendermint
 consensus - any external influence on the application state that didn't
-come through Tendermint could cause a consensus failure. Thus *nothing*
+come through Tendermint could cause a consensus failure. Thus _nothing_
 should communicate with the application except Tendermint via ABCI.
 
 If the application is written in Go, it can be compiled into the
@@ -43,6 +43,7 @@ all transactions, and possibly all queries, should still pass through
 Tendermint.
 
 See the following for more extensive documentation:
+
 - [Interchain Standard for the Light-Client REST API](https://github.com/cosmos/cosmos-sdk/pull/1028)
 - [Tendermint RPC Docs](https://tendermint.github.io/slate/)
 - [Tendermint in Production](https://github.com/tendermint/tendermint/pull/1618)
