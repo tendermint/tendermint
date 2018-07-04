@@ -5,10 +5,10 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -278,19 +278,23 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 
 	// these are tendermint types now
 	for _, valUpdate := range updates {
+		if valUpdate.VotingPower < 0 {
+			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+		}
+
 		address := valUpdate.Address
 		_, val := currentSet.GetByAddress(address)
-		if val == nil {
-			// add val
-			added := currentSet.Add(valUpdate)
-			if !added {
-				return fmt.Errorf("Failed to add new validator %v", valUpdate)
-			}
-		} else if valUpdate.VotingPower == 0 {
+		if valUpdate.VotingPower == 0 {
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {
 				return fmt.Errorf("Failed to remove validator %X", address)
+			}
+		} else if val == nil {
+			// add val
+			added := currentSet.Add(valUpdate)
+			if !added {
+				return fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
 		} else {
 			// update val
