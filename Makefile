@@ -1,7 +1,11 @@
 GOTOOLS = \
+	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep \
-	gopkg.in/alecthomas/gometalinter.v2
+	gopkg.in/alecthomas/gometalinter.v2 \
+	github.com/gogo/protobuf/protoc-gen-gogo \
+	github.com/gogo/protobuf/gogoproto
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
+INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?=tendermint
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
@@ -11,7 +15,7 @@ check: check_tools ensure_deps
 
 
 ########################################
-### Build
+### Build Tendermint
 
 build:
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
@@ -23,9 +27,28 @@ install:
 	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
 ########################################
+### Build ABCI
+
+protoc:
+	## If you get the following error,
+	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
+	## See https://stackoverflow.com/a/25518702
+	protoc $(INCLUDE) --gogo_out=plugins=grpc:. abci/types/*.proto
+	@echo "--> adding nolint declarations to protobuf generated files"
+	@awk '/package abci/types/ { print "//nolint: gas"; print; next }1' abci/types/types.pb.go > abci/types/types.pb.go.new
+	@mv abci/types/types.pb.go.new abci/types/types.pb.go
+
+build_abci:
+	@go build -i ./abci/cmd/...
+
+install_abci:
+	@go install ./abci/cmd/...
+
+########################################
 ### Distribution
 
 # dist builds binaries for all platforms and packages them for distribution
+# TODO add abci to these scripts
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
@@ -59,6 +82,17 @@ ensure_deps:
 	@echo "--> Running dep"
 	@dep ensure
 
+#For ABCI
+get_protoc:
+	@# https://github.com/google/protobuf/releases
+	curl -L https://github.com/google/protobuf/releases/download/v3.4.1/protobuf-cpp-3.4.1.tar.gz | tar xvz && \
+		cd protobuf-3.4.1 && \
+		DIST_LANG=cpp ./configure && \
+		make && \
+		make install && \
+		cd .. && \
+		rm -rf protobuf-3.4.1
+
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
 	go get github.com/RobotsAndPencils/goviz
@@ -87,6 +121,15 @@ test_apps:
 	# requires `abci-cli` and `tendermint` binaries installed
 	bash test/app/test.sh
 
+test_abci_apps:
+	bash abci/tests/test_app/test.sh
+
+test_abci_cli:
+	# test the cli against the examples in the tutorial at:
+	# ./docs/abci-cli.md
+	# if test fails, update the docs ^
+	@ bash abci/tests/test_cli/test.sh
+
 test_persistence:
 	# run the persistence tests using bash
 	# requires `abci-cli` installed
@@ -105,17 +148,14 @@ test_p2p:
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
 
-need_abci:
-	bash scripts/install_abci_apps.sh
-
 test_integrations:
 	make build_docker_test_image
 	make get_tools
 	make get_vendor_deps
 	make install
-	make need_abci
 	make test_cover
 	make test_apps
+	make test_abci_cli
 	make test_persistence
 	make test_p2p
 
