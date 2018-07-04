@@ -278,6 +278,10 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 
 	// these are tendermint types now
 	for _, valUpdate := range updates {
+		if valUpdate.VotingPower < 0 {
+			return fmt.Errorf("Voting power can't be negative %v", valUpdate)
+		}
+
 		address := valUpdate.Address
 		_, val := currentSet.GetByAddress(address)
 		if val == nil && valUpdate.VotingPower != 0 {

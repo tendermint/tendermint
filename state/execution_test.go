@@ -201,6 +201,16 @@ func TestUpdateValidators(t *testing.T) {
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
 		},
+
+		{
+			"adding a validator with negative power results in error",
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), -100}},
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			true,
+		},
 	}
 
 	for _, tc := range testCases {
