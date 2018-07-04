@@ -284,17 +284,17 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 
 		address := valUpdate.Address
 		_, val := currentSet.GetByAddress(address)
-		if val == nil && valUpdate.VotingPower != 0 {
-			// add val
-			added := currentSet.Add(valUpdate)
-			if !added {
-				return fmt.Errorf("Failed to add new validator %v", valUpdate)
-			}
-		} else if valUpdate.VotingPower == 0 {
+		if valUpdate.VotingPower == 0 {
 			// remove val
 			_, removed := currentSet.Remove(address)
 			if !removed {
 				return fmt.Errorf("Failed to remove validator %X", address)
+			}
+		} else if val == nil {
+			// add val
+			added := currentSet.Add(valUpdate)
+			if !added {
+				return fmt.Errorf("Failed to add new validator %v", valUpdate)
 			}
 		} else {
 			// update val
