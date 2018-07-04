@@ -175,8 +175,13 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	if valInfo.ValidatorSet == nil {
 		valInfo2 := loadValidatorsInfo(db, valInfo.LastHeightChanged)
 		if valInfo2 == nil {
-			panic(fmt.Sprintf(`Couldn't find validators at height %d as
-                        last changed from height %d`, valInfo.LastHeightChanged, height))
+			panic(
+				fmt.Sprintf(
+					"Couldn't find validators at height %d as last changed from height %d",
+					valInfo.LastHeightChanged,
+					height,
+				),
+			)
 		}
 		valInfo = valInfo2
 	}
@@ -241,8 +246,13 @@ func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error)
 	if paramsInfo.ConsensusParams == empty {
 		paramsInfo2 := loadConsensusParamsInfo(db, paramsInfo.LastHeightChanged)
 		if paramsInfo2 == nil {
-			panic(fmt.Sprintf(`Couldn't find consensus params at height %d as
-                        last changed from height %d`, paramsInfo.LastHeightChanged, height))
+			panic(
+				fmt.Sprintf(
+					"Couldn't find consensus params at height %d as last changed from height %d",
+					paramsInfo.LastHeightChanged,
+					height,
+				),
+			)
 		}
 		paramsInfo = paramsInfo2
 	}
