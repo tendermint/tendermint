@@ -1,3 +1,8 @@
+YO PEACE!
+
+spec/blockchain/encoding.md and go-amino
+
+
 Wire Protocol
 =============
 

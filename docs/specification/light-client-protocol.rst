@@ -1,3 +1,12 @@
+I guess this is its own section under Tendermint Core?
+
+We should explain how `lite` is expected to be used and the distinction
+between what Tendermint can verify and what needs be verified by
+application-specific logic. Eg the LCD uses the lite pkg to verify tendermint
+headers and commits but then uses SDK code to verify merkle proofs of the state
+of accounts
+
+
 Light Client Protocol
 =====================
 

@@ -1,3 +1,8 @@
+Most of the spec is in spec/blockchain/blockchain.md
+but its useful for the docs to also have an overview of
+whats in a block and how to access blocks from the RPC.
+
+
 Block Structure
 ===============
 
