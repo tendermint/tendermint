@@ -5,10 +5,10 @@ import (
 
 	fail "github.com/ebuchman/fail-test"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------------------------------
@@ -280,7 +280,7 @@ func updateValidators(currentSet *types.ValidatorSet, abciUpdates []abci.Validat
 	for _, valUpdate := range updates {
 		address := valUpdate.Address
 		_, val := currentSet.GetByAddress(address)
-		if val == nil {
+		if val == nil && valUpdate.VotingPower != 0 {
 			// add val
 			added := currentSet.Add(valUpdate)
 			if !added {
