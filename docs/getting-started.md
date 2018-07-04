@@ -25,11 +25,13 @@ more info.
 
 Then run
 
-    go get github.com/tendermint/tendermint
-    cd $GOPATH/src/github.com/tendermint/tendermint
-    make get_tools
-    make get_vendor_deps
-    make install_abci
+```
+go get github.com/tendermint/tendermint
+cd $GOPATH/src/github.com/tendermint/tendermint
+make get_tools
+make get_vendor_deps
+make install_abci
+```
 
 Now you should have the `abci-cli` installed; you'll see a couple of
 commands (`counter` and `kvstore`) that are example applications written
@@ -47,13 +49,17 @@ full transaction bytes are stored as the key and the value.
 
 Let's start a kvstore application.
 
-    abci-cli kvstore
+```
+abci-cli kvstore
+```
 
 In another terminal, we can start Tendermint. If you have never run
 Tendermint before, use:
 
-    tendermint init
-    tendermint node
+```
+tendermint init
+tendermint node
+```
 
 If you have used Tendermint, you may want to reset the data for a new
 blockchain by running `tendermint unsafe_reset_all`. Then you can run
@@ -63,14 +69,18 @@ details, see [the guide on using Tendermint](./using-tendermint.md).
 You should see Tendermint making blocks! We can get the status of our
 Tendermint node as follows:
 
-    curl -s localhost:26657/status
+```
+curl -s localhost:26657/status
+```
 
 The `-s` just silences `curl`. For nicer output, pipe the result into a
 tool like [jq](https://stedolan.github.io/jq/) or `json_pp`.
 
 Now let's send some transactions to the kvstore.
 
-    curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
+```
+curl -s 'localhost:26657/broadcast_tx_commit?tx="abcd"'
+```
 
 Note the single quote (`'`) around the url, which ensures that the
 double quotes (`"`) are not escaped by bash. This command sent a
@@ -78,50 +88,56 @@ transaction with bytes `abcd`, so `abcd` will be stored as both the key
 and the value in the Merkle tree. The response should look something
 like:
 
-    {
-      "jsonrpc": "2.0",
-      "id": "",
-      "result": {
-        "check_tx": {
-          "fee": {}
+```
+{
+  "jsonrpc": "2.0",
+  "id": "",
+  "result": {
+    "check_tx": {
+      "fee": {}
+    },
+    "deliver_tx": {
+      "tags": [
+        {
+          "key": "YXBwLmNyZWF0b3I=",
+          "value": "amFl"
         },
-        "deliver_tx": {
-          "tags": [
-            {
-              "key": "YXBwLmNyZWF0b3I=",
-              "value": "amFl"
-            },
-            {
-              "key": "YXBwLmtleQ==",
-              "value": "YWJjZA=="
-            }
-          ],
-          "fee": {}
-        },
-        "hash": "9DF66553F98DE3C26E3C3317A3E4CED54F714E39",
-        "height": 14
-      }
-    }
+        {
+          "key": "YXBwLmtleQ==",
+          "value": "YWJjZA=="
+        }
+      ],
+      "fee": {}
+    },
+    "hash": "9DF66553F98DE3C26E3C3317A3E4CED54F714E39",
+    "height": 14
+  }
+}
+```
 
 We can confirm that our transaction worked and the value got stored by
 querying the app:
 
-    curl -s 'localhost:26657/abci_query?data="abcd"'
+```
+curl -s 'localhost:26657/abci_query?data="abcd"'
+```
 
 The result should look like:
 
-    {
-      "jsonrpc": "2.0",
-      "id": "",
-      "result": {
-        "response": {
-          "log": "exists",
-          "index": "-1",
-          "key": "YWJjZA==",
-          "value": "YWJjZA=="
-        }
-      }
+```
+{
+  "jsonrpc": "2.0",
+  "id": "",
+  "result": {
+    "response": {
+      "log": "exists",
+      "index": "-1",
+      "key": "YWJjZA==",
+      "value": "YWJjZA=="
     }
+  }
+}
+```
 
 Note the `value` in the result (`YWJjZA==`); this is the base64-encoding
 of the ASCII of `abcd`. You can verify this in a python 2 shell by
@@ -132,12 +148,16 @@ human-readable](https://github.com/tendermint/tendermint/issues/1794).
 
 Now let's try setting a different key and value:
 
-    curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
+```
+curl -s 'localhost:26657/broadcast_tx_commit?tx="name=satoshi"'
+```
 
 Now if we query for `name`, we should get `satoshi`, or `c2F0b3NoaQ==`
 in base64:
 
-    curl -s 'localhost:26657/abci_query?data="name"'
+```
+curl -s 'localhost:26657/abci_query?data="name"'
+```
 
 Try some other transactions and queries to make sure everything is
 working!
@@ -171,57 +191,67 @@ Let's kill the previous instance of `tendermint` and the `kvstore`
 application, and start the counter app. We can enable `serial=on` with a
 flag:
 
-    abci-cli counter --serial
+```
+abci-cli counter --serial
+```
 
 In another window, reset then start Tendermint:
 
-    tendermint unsafe_reset_all
-    tendermint node
+```
+tendermint unsafe_reset_all
+tendermint node
+```
 
 Once again, you can see the blocks streaming by. Let's send some
 transactions. Since we have set `serial=on`, the first transaction must
 be the number `0`:
 
-    curl localhost:26657/broadcast_tx_commit?tx=0x00
+```
+curl localhost:26657/broadcast_tx_commit?tx=0x00
+```
 
 Note the empty (hence successful) response. The next transaction must be
 the number `1`. If instead, we try to send a `5`, we get an error:
 
-    > curl localhost:26657/broadcast_tx_commit?tx=0x05
-    {
-      "jsonrpc": "2.0",
-      "id": "",
-      "result": {
-        "check_tx": {
-          "fee": {}
-        },
-        "deliver_tx": {
-          "code": 2,
-          "log": "Invalid nonce. Expected 1, got 5",
-          "fee": {}
-        },
-        "hash": "33B93DFF98749B0D6996A70F64071347060DC19C",
-        "height": 34
-      }
-    }
+```
+> curl localhost:26657/broadcast_tx_commit?tx=0x05
+{
+  "jsonrpc": "2.0",
+  "id": "",
+  "result": {
+    "check_tx": {
+      "fee": {}
+    },
+    "deliver_tx": {
+      "code": 2,
+      "log": "Invalid nonce. Expected 1, got 5",
+      "fee": {}
+    },
+    "hash": "33B93DFF98749B0D6996A70F64071347060DC19C",
+    "height": 34
+  }
+}
+```
 
 But if we send a `1`, it works again:
 
-    > curl localhost:26657/broadcast_tx_commit?tx=0x01
-    {
-      "jsonrpc": "2.0",
-      "id": "",
-      "result": {
-        "check_tx": {
-          "fee": {}
-        },
-        "deliver_tx": {
-          "fee": {}
-        },
-        "hash": "F17854A977F6FA7EEA1BD758E296710B86F72F3D",
-        "height": 60
-      }
-    }
+```
+> curl localhost:26657/broadcast_tx_commit?tx=0x01
+{
+  "jsonrpc": "2.0",
+  "id": "",
+  "result": {
+    "check_tx": {
+      "fee": {}
+    },
+    "deliver_tx": {
+      "fee": {}
+    },
+    "hash": "F17854A977F6FA7EEA1BD758E296710B86F72F3D",
+    "height": 60
+  }
+}
+```
 
 For more details on the `broadcast_tx` API, see [the guide on using
 Tendermint](./using-tendermint.md).
@@ -236,26 +266,34 @@ You'll also need to fetch the relevant repository, from
 [here](https://github.com/tendermint/js-abci) then install it. As go
 devs, we keep all our code under the `$GOPATH`, so run:
 
-    go get github.com/tendermint/js-abci &> /dev/null
-    cd $GOPATH/src/github.com/tendermint/js-abci/example
-    npm install
-    cd ..
+```
+go get github.com/tendermint/js-abci &> /dev/null
+cd $GOPATH/src/github.com/tendermint/js-abci/example
+npm install
+cd ..
+```
 
 Kill the previous `counter` and `tendermint` processes. Now run the app:
 
-    node example/counter.js
+```
+node example/counter.js
+```
 
 In another window, reset and start `tendermint`:
 
-    tendermint unsafe_reset_all
-    tendermint node
+```
+tendermint unsafe_reset_all
+tendermint node
+```
 
 Once again, you should see blocks streaming by - but now, our
 application is written in javascript! Try sending some transactions, and
 like before - the results should be the same:
 
-    curl localhost:26657/broadcast_tx_commit?tx=0x00 # ok
-    curl localhost:26657/broadcast_tx_commit?tx=0x05 # invalid nonce
-    curl localhost:26657/broadcast_tx_commit?tx=0x01 # ok
+```
+curl localhost:26657/broadcast_tx_commit?tx=0x00 # ok
+curl localhost:26657/broadcast_tx_commit?tx=0x05 # invalid nonce
+curl localhost:26657/broadcast_tx_commit?tx=0x01 # ok
+```
 
 Neat, eh?

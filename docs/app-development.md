@@ -16,28 +16,27 @@ committed in hash-linked blocks.
 
 The ABCI design has a few distinct components:
 
--   message protocol
-    -   pairs of request and response messages
-    -   consensus makes requests, application responds
-    -   defined using protobuf
--   server/client
-    -   consensus engine runs the client
-    -   application runs the server
-    -   two implementations:
-        -   async raw bytes
-        -   grpc
--   blockchain protocol
-    -   abci is connection oriented
-    -   Tendermint Core maintains three connections:
-        -   [mempool connection](#mempool-connection): for checking if
-            transactions should be relayed before they are committed;
-            only uses `CheckTx`
-        -   [consensus connection](#consensus-connection): for executing
-            transactions that have been committed. Message sequence is
-            -for every block
-            -`BeginBlock, [DeliverTx, ...], EndBlock, Commit`
-        -   [query connection](#query-connection): for querying the
-            application state; only uses Query and Info
+- message protocol
+  - pairs of request and response messages
+  - consensus makes requests, application responds
+  - defined using protobuf
+- server/client
+  - consensus engine runs the client
+  - application runs the server
+  - two implementations:
+    - async raw bytes
+    - grpc
+- blockchain protocol
+  - abci is connection oriented
+  - Tendermint Core maintains three connections:
+    - [mempool connection](#mempool-connection): for checking if
+      transactions should be relayed before they are committed;
+      only uses `CheckTx`
+    - [consensus connection](#consensus-connection): for executing
+      transactions that have been committed. Message sequence is
+      -for every block -`BeginBlock, [DeliverTx, ...], EndBlock, Commit`
+    - [query connection](#query-connection): for querying the
+      application state; only uses Query and Info
 
 The mempool and consensus logic act as clients, and each maintains an
 open ABCI connection with the application, which hosts an ABCI server.
@@ -64,9 +63,9 @@ To use ABCI in your programming language of choice, there must be a ABCI
 server in that language. Tendermint supports two kinds of implementation
 of the server:
 
--   Asynchronous, raw socket server (Tendermint Socket Protocol, also
-    known as TSP or Teaspoon)
--   GRPC
+- Asynchronous, raw socket server (Tendermint Socket Protocol, also
+  known as TSP or Teaspoon)
+- GRPC
 
 Both can be tested using the `abci-cli` by setting the `--abci` flag
 appropriately (ie. to `socket` or `grpc`).
@@ -161,7 +160,7 @@ connection, to query the local state of the app.
 
 ### Mempool Connection
 
-The mempool connection is used *only* for CheckTx requests. Transactions
+The mempool connection is used _only_ for CheckTx requests. Transactions
 are run using CheckTx in the same order they were received by the
 validator. If the CheckTx returns `OK`, the transaction is kept in
 memory and relayed to other peers in the same order it was received.
@@ -180,23 +179,27 @@ mempool state (this behaviour can be turned off with
 
 In go:
 
-    func (app *KVStoreApplication) CheckTx(tx []byte) types.Result {
-      return types.OK
-    }
+```
+func (app *KVStoreApplication) CheckTx(tx []byte) types.Result {
+  return types.OK
+}
+```
 
 In Java:
 
-    ResponseCheckTx requestCheckTx(RequestCheckTx req) {
-        byte[] transaction = req.getTx().toByteArray();
+```
+ResponseCheckTx requestCheckTx(RequestCheckTx req) {
+    byte[] transaction = req.getTx().toByteArray();
 
-        // validate transaction
+    // validate transaction
 
-        if (notValid) {
-            return ResponseCheckTx.newBuilder().setCode(CodeType.BadNonce).setLog("invalid tx").build();
-        } else {
-            return ResponseCheckTx.newBuilder().setCode(CodeType.OK).build();
-        }
+    if (notValid) {
+        return ResponseCheckTx.newBuilder().setCode(CodeType.BadNonce).setLog("invalid tx").build();
+    } else {
+        return ResponseCheckTx.newBuilder().setCode(CodeType.OK).build();
     }
+}
+```
 
 ### Replay Protection
 
@@ -242,34 +245,38 @@ merkle root of the data returned by the DeliverTx requests, or both.
 
 In go:
 
-    // tx is either "key=value" or just arbitrary bytes
-    func (app *KVStoreApplication) DeliverTx(tx []byte) types.Result {
-      parts := strings.Split(string(tx), "=")
-      if len(parts) == 2 {
-        app.state.Set([]byte(parts[0]), []byte(parts[1]))
-      } else {
-        app.state.Set(tx, tx)
-      }
-      return types.OK
-    }
+```
+// tx is either "key=value" or just arbitrary bytes
+func (app *KVStoreApplication) DeliverTx(tx []byte) types.Result {
+  parts := strings.Split(string(tx), "=")
+  if len(parts) == 2 {
+    app.state.Set([]byte(parts[0]), []byte(parts[1]))
+  } else {
+    app.state.Set(tx, tx)
+  }
+  return types.OK
+}
+```
 
 In Java:
 
-    /**
-     * Using Protobuf types from the protoc compiler, we always start with a byte[]
-     */
-    ResponseDeliverTx deliverTx(RequestDeliverTx request) {
-        byte[] transaction  = request.getTx().toByteArray();
+```
+/**
+ * Using Protobuf types from the protoc compiler, we always start with a byte[]
+ */
+ResponseDeliverTx deliverTx(RequestDeliverTx request) {
+    byte[] transaction  = request.getTx().toByteArray();
 
-        // validate your transaction
+    // validate your transaction
 
-        if (notValid) {
-            return ResponseDeliverTx.newBuilder().setCode(CodeType.BadNonce).setLog("transaction was invalid").build();
-        } else {
-            ResponseDeliverTx.newBuilder().setCode(CodeType.OK).build();
-        }
-
+    if (notValid) {
+        return ResponseDeliverTx.newBuilder().setCode(CodeType.BadNonce).setLog("transaction was invalid").build();
+    } else {
+        ResponseDeliverTx.newBuilder().setCode(CodeType.OK).build();
     }
+
+}
+```
 
 ### Commit
 
@@ -277,8 +284,8 @@ Once all processing of the block is complete, Tendermint sends the
 Commit request and blocks waiting for a response. While the mempool may
 run concurrently with block processing (the BeginBlock, DeliverTxs, and
 EndBlock), it is locked for the Commit request so that its state can be
-safely reset during Commit. This means the app *MUST NOT* do any
-blocking communication with the mempool (ie. broadcast\_tx) during
+safely reset during Commit. This means the app _MUST NOT_ do any
+blocking communication with the mempool (ie. broadcast_tx) during
 Commit, or there will be deadlock. Note also that all remaining
 transactions in the mempool are replayed on the mempool connection
 (CheckTx) following a commit.
@@ -294,21 +301,25 @@ job of the [Handshake](#handshake).
 
 In go:
 
-    func (app *KVStoreApplication) Commit() types.Result {
-      hash := app.state.Hash()
-      return types.NewResultOK(hash, "")
-    }
+```
+func (app *KVStoreApplication) Commit() types.Result {
+  hash := app.state.Hash()
+  return types.NewResultOK(hash, "")
+}
+```
 
 In Java:
 
-    ResponseCommit requestCommit(RequestCommit requestCommit) {
+```
+ResponseCommit requestCommit(RequestCommit requestCommit) {
 
-        // update the internal app-state
-        byte[] newAppState = calculateAppState();
+    // update the internal app-state
+    byte[] newAppState = calculateAppState();
 
-        // and return it to the node
-        return ResponseCommit.newBuilder().setCode(CodeType.OK).setData(ByteString.copyFrom(newAppState)).build();
-    }
+    // and return it to the node
+    return ResponseCommit.newBuilder().setCode(CodeType.OK).setData(ByteString.copyFrom(newAppState)).build();
+}
+```
 
 ### BeginBlock
 
@@ -322,31 +333,35 @@ pick up from when it restarts. See information on the Handshake, below.
 
 In go:
 
-    // Track the block hash and header information
-    func (app *PersistentKVStoreApplication) BeginBlock(params types.RequestBeginBlock) {
-      // update latest block info
-      app.blockHeader = params.Header
+```
+// Track the block hash and header information
+func (app *PersistentKVStoreApplication) BeginBlock(params types.RequestBeginBlock) {
+  // update latest block info
+  app.blockHeader = params.Header
 
-      // reset valset changes
-      app.changes = make([]*types.Validator, 0)
-    }
+  // reset valset changes
+  app.changes = make([]*types.Validator, 0)
+}
+```
 
 In Java:
 
-    /*
-     * all types come from protobuf definition
-     */
-    ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
+```
+/*
+ * all types come from protobuf definition
+ */
+ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
 
-        Header header = req.getHeader();
-        byte[] prevAppHash = header.getAppHash().toByteArray();
-        long prevHeight = header.getHeight();
-        long numTxs = header.getNumTxs();
+    Header header = req.getHeader();
+    byte[] prevAppHash = header.getAppHash().toByteArray();
+    long prevHeight = header.getHeight();
+    long numTxs = header.getNumTxs();
 
-        // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
+    // run your pre-block logic. Maybe prepare a state snapshot, message components, etc
 
-        return ResponseBeginBlock.newBuilder().build();
-    }
+    return ResponseBeginBlock.newBuilder().build();
+}
+```
 
 ### EndBlock
 
@@ -364,25 +379,29 @@ for details on how it tracks validators.
 
 In go:
 
-    // Update the validator set
-    func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
-      return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
-    }
+```
+// Update the validator set
+func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) types.ResponseEndBlock {
+  return types.ResponseEndBlock{ValidatorUpdates: app.ValUpdates}
+}
+```
 
 In Java:
 
-    /*
-     * Assume that one validator changes. The new validator has a power of 10
-     */
-    ResponseEndBlock requestEndBlock(RequestEndBlock req) {
-        final long currentHeight = req.getHeight();
-        final byte[] validatorPubKey = getValPubKey();
+```
+/*
+ * Assume that one validator changes. The new validator has a power of 10
+ */
+ResponseEndBlock requestEndBlock(RequestEndBlock req) {
+    final long currentHeight = req.getHeight();
+    final byte[] validatorPubKey = getValPubKey();
 
-        ResponseEndBlock.Builder builder = ResponseEndBlock.newBuilder();
-        builder.addDiffs(1, Types.Validator.newBuilder().setPower(10L).setPubKey(ByteString.copyFrom(validatorPubKey)).build());
+    ResponseEndBlock.Builder builder = ResponseEndBlock.newBuilder();
+    builder.addDiffs(1, Types.Validator.newBuilder().setPower(10L).setPubKey(ByteString.copyFrom(validatorPubKey)).build());
 
-        return builder.build();
-    }
+    return builder.build();
+}
+```
 
 ### Query Connection
 
@@ -398,66 +417,70 @@ connecting, according to IP address or node ID. For instance,
 returning non-OK ABCI response to either of the following queries will
 cause Tendermint to not connect to the corresponding peer:
 
--   `p2p/filter/addr/<ip addr>`, where `<ip addr>` is an IP address.
--   `p2p/filter/id/<id>`, where `<is>` is the hex-encoded node ID (the hash of
-    the node's p2p pubkey).
+- `p2p/filter/addr/<ip addr>`, where `<ip addr>` is an IP address.
+- `p2p/filter/id/<id>`, where `<is>` is the hex-encoded node ID (the hash of
+  the node's p2p pubkey).
 
 Note: these query formats are subject to change!
 
 In go:
 
-    func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-      if reqQuery.Prove {
-        value, proof, exists := app.state.Proof(reqQuery.Data)
-        resQuery.Index = -1 // TODO make Proof return index
-        resQuery.Key = reqQuery.Data
-        resQuery.Value = value
-        resQuery.Proof = proof
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
-        }
-        return
-      } else {
-        index, value, exists := app.state.Get(reqQuery.Data)
-        resQuery.Index = int64(index)
-        resQuery.Value = value
-        if exists {
-          resQuery.Log = "exists"
-        } else {
-          resQuery.Log = "does not exist"
-        }
-        return
-      }
+```
+func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+  if reqQuery.Prove {
+    value, proof, exists := app.state.Proof(reqQuery.Data)
+    resQuery.Index = -1 // TODO make Proof return index
+    resQuery.Key = reqQuery.Data
+    resQuery.Value = value
+    resQuery.Proof = proof
+    if exists {
+      resQuery.Log = "exists"
+    } else {
+      resQuery.Log = "does not exist"
     }
+    return
+  } else {
+    index, value, exists := app.state.Get(reqQuery.Data)
+    resQuery.Index = int64(index)
+    resQuery.Value = value
+    if exists {
+      resQuery.Log = "exists"
+    } else {
+      resQuery.Log = "does not exist"
+    }
+    return
+  }
+}
+```
 
 In Java:
 
-    ResponseQuery requestQuery(RequestQuery req) {
-        final boolean isProveQuery = req.getProve();
-        final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
+```
+ResponseQuery requestQuery(RequestQuery req) {
+    final boolean isProveQuery = req.getProve();
+    final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
 
-        if (isProveQuery) {
-            com.app.example.ProofResult proofResult = generateProof(req.getData().toByteArray());
-            final byte[] proofAsByteArray = proofResult.getAsByteArray();
+    if (isProveQuery) {
+        com.app.example.ProofResult proofResult = generateProof(req.getData().toByteArray());
+        final byte[] proofAsByteArray = proofResult.getAsByteArray();
 
-            responseBuilder.setProof(ByteString.copyFrom(proofAsByteArray));
-            responseBuilder.setKey(req.getData());
-            responseBuilder.setValue(ByteString.copyFrom(proofResult.getData()));
-            responseBuilder.setLog(result.getLogValue());
-        } else {
-            byte[] queryData = req.getData().toByteArray();
+        responseBuilder.setProof(ByteString.copyFrom(proofAsByteArray));
+        responseBuilder.setKey(req.getData());
+        responseBuilder.setValue(ByteString.copyFrom(proofResult.getData()));
+        responseBuilder.setLog(result.getLogValue());
+    } else {
+        byte[] queryData = req.getData().toByteArray();
 
-            final com.app.example.QueryResult result = generateQueryResult(queryData);
+        final com.app.example.QueryResult result = generateQueryResult(queryData);
 
-            responseBuilder.setIndex(result.getIndex());
-            responseBuilder.setValue(ByteString.copyFrom(result.getValue()));
-            responseBuilder.setLog(result.getLogValue());
-        }
-
-        return responseBuilder.build();
+        responseBuilder.setIndex(result.getIndex());
+        responseBuilder.setValue(ByteString.copyFrom(result.getValue()));
+        responseBuilder.setLog(result.getLogValue());
     }
+
+    return responseBuilder.build();
+}
+```
 
 ### Handshake
 
@@ -477,17 +500,21 @@ all blocks.
 
 In go:
 
-    func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-      return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
-    }
+```
+func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
+  return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
+}
+```
 
 In Java:
 
-    ResponseInfo requestInfo(RequestInfo req) {
-        final byte[] lastAppHash = getLastAppHash();
-        final long lastHeight = getLastHeight();
-        return ResponseInfo.newBuilder().setLastBlockAppHash(ByteString.copyFrom(lastAppHash)).setLastBlockHeight(lastHeight).build();
-    }
+```
+ResponseInfo requestInfo(RequestInfo req) {
+    final byte[] lastAppHash = getLastAppHash();
+    final long lastHeight = getLastHeight();
+    return ResponseInfo.newBuilder().setLastBlockAppHash(ByteString.copyFrom(lastAppHash)).setLastBlockHeight(lastHeight).build();
+}
+```
 
 ### Genesis
 
@@ -497,31 +524,35 @@ consensus params.
 
 In go:
 
-    // Save the validators in the merkle tree
-    func (app *PersistentKVStoreApplication) InitChain(params types.RequestInitChain) {
-      for _, v := range params.Validators {
-        r := app.updateValidator(v)
-        if r.IsErr() {
-          app.logger.Error("Error updating validators", "r", r)
-        }
-      }
+```
+// Save the validators in the merkle tree
+func (app *PersistentKVStoreApplication) InitChain(params types.RequestInitChain) {
+  for _, v := range params.Validators {
+    r := app.updateValidator(v)
+    if r.IsErr() {
+      app.logger.Error("Error updating validators", "r", r)
     }
+  }
+}
+```
 
 In Java:
 
-    /*
-     * all types come from protobuf definition
-     */
-    ResponseInitChain requestInitChain(RequestInitChain req) {
-        final int validatorsCount = req.getValidatorsCount();
-        final List<Types.Validator> validatorsList = req.getValidatorsList();
+```
+/*
+ * all types come from protobuf definition
+ */
+ResponseInitChain requestInitChain(RequestInitChain req) {
+    final int validatorsCount = req.getValidatorsCount();
+    final List<Types.Validator> validatorsList = req.getValidatorsList();
 
-        validatorsList.forEach((validator) -> {
-            long power = validator.getPower();
-            byte[] validatorPubKey = validator.getPubKey().toByteArray();
+    validatorsList.forEach((validator) -> {
+        long power = validator.getPower();
+        byte[] validatorPubKey = validator.getPubKey().toByteArray();
 
-            // do somehing for validator setup in app
-        });
+        // do somehing for validator setup in app
+    });
 
-        return ResponseInitChain.newBuilder().build();
-    }
+    return ResponseInitChain.newBuilder().build();
+}
+```
