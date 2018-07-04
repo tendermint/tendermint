@@ -155,6 +155,7 @@ test_integrations:
 	make install
 	make test_cover
 	make test_apps
+	make test_abci_apps
 	make test_abci_cli
 	make test_persistence
 	make test_p2p
