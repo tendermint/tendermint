@@ -314,13 +314,8 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 // OnStop implements cmn.Service. It stops all routines and waits for the WAL to finish.
 func (cs *ConsensusState) OnStop() {
-	cs.BaseService.OnStop()
-
 	cs.evsw.Stop()
-
 	cs.timeoutTicker.Stop()
-
-	cs.wal.Stop()
 }
 
 // Wait waits for the the main routine to return.
@@ -600,6 +595,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 			// close wal now that we're done writing to it
 			cs.wal.Stop()
+			cs.wal.Wait()
 
 			close(cs.done)
 			return
