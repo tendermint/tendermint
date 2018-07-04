@@ -3,7 +3,7 @@
 ## Message Types
 
 ABCI requests/responses are defined as simple Protobuf messages in [this
-schema file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
+schema file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
 TendermintCore sends the requests, and the ABCI application sends the
 responses. Here, we provide an overview of the messages types and how
 they are used by Tendermint. Then we describe each request-response pair
@@ -199,10 +199,11 @@ See below for more details on the message types and how they are used.
 
     The application should maintain a separate state to support CheckTx.
     This state can be reset to the latest committed state during
-    `Commit`, where Tendermint ensures the mempool is locked and not
-    sending new `CheckTx`. After `Commit`, the mempool will rerun
-    CheckTx on all remaining transactions, throwing out any that are no
-    longer valid.
+    `Commit`. Before calling Commit, Tendermint will lock and flush the mempool,
+    ensuring that all existing CheckTx are responded to and no new ones can
+    begin. After `Commit`, the mempool will rerun
+    CheckTx for all remaining transactions, throwing out any that are no longer valid.
+    Then the mempool will unlock and start sending CheckTx again.
 
     Keys and values in Tags must be UTF-8 encoded strings (e.g.
     "account.owner": "Bob", "balance": "100.0", "date": "2018-01-02")
