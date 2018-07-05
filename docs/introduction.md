@@ -61,13 +61,14 @@ providing basic services to distributed systems, such as dynamic
 configuration, service discovery, locking, leader-election, and so on.
 
 Tendermint is in essence similar software, but with two key differences:
+
 - It is Byzantine Fault Tolerant, meaning it can only tolerate up to a
-1/3 of failures, but those failures can include arbitrary behaviour -
-including hacking and malicious attacks. - It does not specify a
-particular application, like a fancy key-value store. Instead, it
-focuses on arbitrary state machine replication, so developers can build
-the application logic that's right for them, from key-value store to
-cryptocurrency to e-voting platform and beyond.
+  1/3 of failures, but those failures can include arbitrary behaviour -
+  including hacking and malicious attacks. - It does not specify a
+  particular application, like a fancy key-value store. Instead, it
+  focuses on arbitrary state machine replication, so developers can build
+  the application logic that's right for them, from key-value store to
+  cryptocurrency to e-voting platform and beyond.
 
 The layout of this Tendermint website content is also ripped directly
 and without shame from [consul.io](https://www.consul.io/) and the other
@@ -167,16 +168,16 @@ maintains a fully audited Unspent Transaction Output (UTXO) database. If
 one wanted to create a Bitcoin-like system on top of ABCI, Tendermint
 Core would be responsible for
 
--   Sharing blocks and transactions between nodes
--   Establishing a canonical/immutable order of transactions
-    (the blockchain)
+- Sharing blocks and transactions between nodes
+- Establishing a canonical/immutable order of transactions
+  (the blockchain)
 
 The application will be responsible for
 
--   Maintaining the UTXO database
--   Validating cryptographic signatures of transactions
--   Preventing transactions from spending non-existent transactions
--   Allowing clients to query the UTXO database.
+- Maintaining the UTXO database
+- Validating cryptographic signatures of transactions
+- Preventing transactions from spending non-existent transactions
+- Allowing clients to query the UTXO database.
 
 Tendermint is able to decompose the blockchain design by offering a very
 simple API (ie. the ABCI) between the application process and consensus
@@ -242,14 +243,14 @@ Java, C++, Python, or Go. Game programmers and blockchain developers are
 already familiar with creating deterministic programs by avoiding
 sources of non-determinism such as:
 
--   random number generators (without deterministic seeding)
--   race conditions on threads (or avoiding threads altogether)
--   the system clock
--   uninitialized memory (in unsafe programming languages like C
-    or C++)
--   [floating point
-    arithmetic](http://gafferongames.com/networking-for-game-programmers/floating-point-determinism/)
--   language features that are random (e.g. map iteration in Go)
+- random number generators (without deterministic seeding)
+- race conditions on threads (or avoiding threads altogether)
+- the system clock
+- uninitialized memory (in unsafe programming languages like C
+  or C++)
+- [floating point
+  arithmetic](http://gafferongames.com/networking-for-game-programmers/floating-point-determinism/)
+- language features that are random (e.g. map iteration in Go)
 
 While programmers can avoid non-determinism by being careful, it is also
 possible to create a special linter or static analyzer for each language
@@ -298,8 +299,8 @@ introduces a few **locking** rules which modulate which paths can be
 followed in the flow diagram. Once a validator precommits a block, it is
 locked on that block. Then,
 
-1)  it must prevote for the block it is locked on
-2)  it can only unlock, and precommit for a new block, if there is a
+1.  it must prevote for the block it is locked on
+2.  it can only unlock, and precommit for a new block, if there is a
     polka for that block in a later round
 
 ## Stake

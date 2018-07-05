@@ -49,21 +49,25 @@ second TODO is to query the /status RPC endpoint. It provides the
 necessary info: whenever the node is syncing or not, what height it is
 on, etc.
 
-    $ curl http(s)://{ip}:{rpcPort}/status
+```   
+curl http(s)://{ip}:{rpcPort}/status
+```
 
 `dump_consensus_state` will give you a detailed overview of the
 consensus state (proposer, lastest validators, peers states). From it,
 you should be able to figure out why, for example, the network had
 halted.
 
-    $ curl http(s)://{ip}:{rpcPort}/dump_consensus_state
+```
+curl http(s)://{ip}:{rpcPort}/dump_consensus_state
+```
 
 There is a reduced version of this endpoint - `consensus_state`, which
 returns just the votes seen at the current height.
 
--   [Github Issues](https://github.com/tendermint/tendermint/issues)
--   [StackOverflow
-    questions](https://stackoverflow.com/questions/tagged/tendermint)
+- [Github Issues](https://github.com/tendermint/tendermint/issues)
+- [StackOverflow
+  questions](https://stackoverflow.com/questions/tagged/tendermint)
 
 ## Monitoring Tendermint
 
@@ -107,18 +111,18 @@ programs](https://golang.org/pkg/os/signal/#hdr-Default_behavior_of_signals_in_G
 While actual specs vary depending on the load and validators count,
 minimal requirements are:
 
--   1GB RAM
--   25GB of disk space
--   1.4 GHz CPU
+- 1GB RAM
+- 25GB of disk space
+- 1.4 GHz CPU
 
 SSD disks are preferable for applications with high transaction
 throughput.
 
 Recommended:
 
--   2GB RAM
--   100GB SSD
--   x64 2.0 GHz 2v CPU
+- 2GB RAM
+- 100GB SSD
+- x64 2.0 GHz 2v CPU
 
 While for now, Tendermint stores all the history and it may require
 significant disk space over time, we are planning to implement state
@@ -145,21 +149,23 @@ Cosmos network.
 
 ## Configuration parameters
 
--   `p2p.flush_throttle_timeout` `p2p.max_packet_msg_payload_size`
-    `p2p.send_rate` `p2p.recv_rate`
+- `p2p.flush_throttle_timeout` `p2p.max_packet_msg_payload_size`
+  `p2p.send_rate` `p2p.recv_rate`
 
 If you are going to use Tendermint in a private domain and you have a
 private high-speed network among your peers, it makes sense to lower
 flush throttle timeout and increase other params.
 
-    [p2p]
+```
+[p2p]
 
-    send_rate=20000000 # 2MB/s
-    recv_rate=20000000 # 2MB/s
-    flush_throttle_timeout=10
-    max_packet_msg_payload_size=10240 # 10KB
+send_rate=20000000 # 2MB/s
+recv_rate=20000000 # 2MB/s
+flush_throttle_timeout=10
+max_packet_msg_payload_size=10240 # 10KB
+```
 
--   `mempool.recheck`
+- `mempool.recheck`
 
 After every block, Tendermint rechecks every transaction left in the
 mempool to see if transactions committed in that block affected the
@@ -167,13 +173,13 @@ application state, so some of the transactions left may become invalid.
 If that does not apply to your application, you can disable it by
 setting `mempool.recheck=false`.
 
--   `mempool.broadcast`
+- `mempool.broadcast`
 
 Setting this to false will stop the mempool from relaying transactions
 to other peers until they are included in a block. It means only the
 peer you send the tx to will see it until it is included in a block.
 
--   `consensus.skip_timeout_commit`
+- `consensus.skip_timeout_commit`
 
 We want `skip_timeout_commit=false` when there is economics on the line
 because proposers should wait to hear for more votes. But if you don't
@@ -182,22 +188,22 @@ be kept false by default for public deployments (e.g. [Cosmos
 Hub](https://cosmos.network/intro/hub)) while for enterprise
 applications, setting it to true is not a problem.
 
--   `consensus.peer_gossip_sleep_duration`
+- `consensus.peer_gossip_sleep_duration`
 
 You can try to reduce the time your node sleeps before checking if
 theres something to send its peers.
 
--   `consensus.timeout_commit`
+- `consensus.timeout_commit`
 
 You can also try lowering `timeout_commit` (time we sleep before
 proposing the next block).
 
--   `consensus.max_block_size_txs`
+- `consensus.max_block_size_txs`
 
 By default, the maximum number of transactions per a block is 10_000.
 Feel free to change it to suit your needs.
 
--   `p2p.addr_book_strict`
+- `p2p.addr_book_strict`
 
 By default, Tendermint checks whenever a peer's address is routable before
 saving it to the address book. The address is considered as routable if the IP

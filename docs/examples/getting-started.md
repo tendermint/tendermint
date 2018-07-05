@@ -24,6 +24,7 @@ The script is also used to facilitate cluster deployment below.
 ### Manual Install
 
 Requires:
+
 - `go` minimum version 1.10
 - `$GOPATH` environment variable must be set
 - `$GOPATH/bin` must be on your `$PATH` (see https://github.com/tendermint/tendermint/wiki/Setting-GOPATH)
