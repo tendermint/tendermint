@@ -100,7 +100,7 @@ type queryResponse struct {
 	Key    []byte
 	Value  []byte
 	Height int64
-	Proof  []byte
+	Proof  []types.ProofOp
 }
 
 func Execute() error {
@@ -740,7 +740,7 @@ func printResponse(cmd *cobra.Command, args []string, rsp response) {
 			fmt.Printf("-> value.hex: %X\n", rsp.Query.Value)
 		}
 		if rsp.Query.Proof != nil {
-			fmt.Printf("-> proof: %X\n", rsp.Query.Proof)
+			fmt.Printf("-> proof: %#v\n", rsp.Query.Proof)
 		}
 	}
 }

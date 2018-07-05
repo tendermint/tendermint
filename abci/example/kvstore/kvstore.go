@@ -102,6 +102,7 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 }
 
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
+	// NOTE: This isn't proving anything yet.
 	if reqQuery.Prove {
 		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Index = -1 // TODO make Proof return index

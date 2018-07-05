@@ -168,7 +168,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	}
 
 	// update
-	return app.updateValidator(types.Ed25519Validator(pubkey, int64(power)))
+	return app.updateValidator(types.Ed25519Validator(pubkey, power))
 }
 
 // add, update, or remove a validator

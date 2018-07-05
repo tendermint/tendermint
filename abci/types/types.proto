@@ -143,7 +143,7 @@ message ResponseQuery {
   int64 index = 5;
   bytes key = 6;
   bytes value = 7;
-  bytes proof = 8;
+  repeated ProofOp proof = 8 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
   int64 height = 9;
 }
 
@@ -213,6 +213,13 @@ message TxSize {
 message BlockGossip {
   // Note: must not be 0
   int32 block_part_size_bytes = 1;
+}
+
+// A single Merkle proof operation.
+message ProofOp {
+  string type = 1;
+  string key = 2;
+  bytes data = 3;
 }
 
 //----------------------------------------
