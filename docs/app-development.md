@@ -408,7 +408,7 @@ In go:
 
     func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
       if reqQuery.Prove {
-        value, proof, exists := app.state.Proof(reqQuery.Data)
+        value, proof, exists := app.state.GetWithProof(reqQuery.Data)
         resQuery.Index = -1 // TODO make Proof return index
         resQuery.Key = reqQuery.Data
         resQuery.Value = value
@@ -437,22 +437,20 @@ In Java:
     ResponseQuery requestQuery(RequestQuery req) {
         final boolean isProveQuery = req.getProve();
         final ResponseQuery.Builder responseBuilder = ResponseQuery.newBuilder();
+		byte[] queryData = req.getData().toByteArray();
 
         if (isProveQuery) {
-            com.app.example.ProofResult proofResult = generateProof(req.getData().toByteArray());
-            final byte[] proofAsByteArray = proofResult.getAsByteArray();
-
-            responseBuilder.setProof(ByteString.copyFrom(proofAsByteArray));
+            com.app.example.QueryResultWithProof result = generateQueryResultWithProof(queryData);
+            responseBuilder.setIndex(result.getLeftIndex());
             responseBuilder.setKey(req.getData());
-            responseBuilder.setValue(ByteString.copyFrom(proofResult.getData()));
+            responseBuilder.setValue(result.getValueOrNull(0));
+            responseBuilder.setHeight(result.getHeight());
+            responseBuilder.setProof(result.getProof());
             responseBuilder.setLog(result.getLogValue());
         } else {
-            byte[] queryData = req.getData().toByteArray();
-
-            final com.app.example.QueryResult result = generateQueryResult(queryData);
-
+            com.app.example.QueryResult result = generateQueryResult(queryData);
             responseBuilder.setIndex(result.getIndex());
-            responseBuilder.setValue(ByteString.copyFrom(result.getValue()));
+            responseBuilder.setValue(result.getValue());
             responseBuilder.setLog(result.getLogValue());
         }
 

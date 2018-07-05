@@ -6,8 +6,8 @@ import (
 	cmn "github.com/tendermint/tmlibs/common"
 	. "github.com/tendermint/tmlibs/test"
 
-	"testing"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	"testing"
 )
 
 type testItem []byte
@@ -39,16 +39,16 @@ func TestSimpleProof(t *testing.T) {
 		proof := proofs[i]
 
 		// Verify success
-		ok := proof.Verify(i, total, itemHash, rootHash)
-		if !ok {
-			t.Errorf("Verification failed for index %v.", i)
+		err := proof.Verify(rootHash, i, total, itemHash)
+		if err != nil {
+			t.Errorf("Verification failed: %v.", err)
 		}
 
 		// Wrong item index should make it fail
 		{
-			ok = proof.Verify((i+1)%total, total, itemHash, rootHash)
-			if ok {
-				t.Errorf("Expected verification to fail for wrong index %v.", i)
+			err = proof.Verify(rootHash, (i+1)%total, total, itemHash)
+			if err == nil {
+				t.Errorf("Expected verification to fail for wrong index %v", i)
 			}
 		}
 
@@ -56,9 +56,9 @@ func TestSimpleProof(t *testing.T) {
 		origAunts := proof.Aunts
 		proof.Aunts = append(proof.Aunts, cmn.RandBytes(32))
 		{
-			ok = proof.Verify(i, total, itemHash, rootHash)
-			if ok {
-				t.Errorf("Expected verification to fail for wrong trail length.")
+			err = proof.Verify(rootHash, i, total, itemHash)
+			if err == nil {
+				t.Errorf("Expected verification to fail for wrong trail length")
 			}
 		}
 		proof.Aunts = origAunts
@@ -66,22 +66,22 @@ func TestSimpleProof(t *testing.T) {
 		// Trail too short should make it fail
 		proof.Aunts = proof.Aunts[0 : len(proof.Aunts)-1]
 		{
-			ok = proof.Verify(i, total, itemHash, rootHash)
-			if ok {
-				t.Errorf("Expected verification to fail for wrong trail length.")
+			err = proof.Verify(rootHash, i, total, itemHash)
+			if err == nil {
+				t.Errorf("Expected verification to fail for wrong trail length")
 			}
 		}
 		proof.Aunts = origAunts
 
 		// Mutating the itemHash should make it fail.
-		ok = proof.Verify(i, total, MutateByteSlice(itemHash), rootHash)
-		if ok {
+		err = proof.Verify(rootHash, i, total, MutateByteSlice(itemHash))
+		if err == nil {
 			t.Errorf("Expected verification to fail for mutated leaf hash")
 		}
 
 		// Mutating the rootHash should make it fail.
-		ok = proof.Verify(i, total, itemHash, MutateByteSlice(rootHash))
-		if ok {
+		err = proof.Verify(MutateByteSlice(rootHash), i, total, itemHash)
+		if err == nil {
 			t.Errorf("Expected verification to fail for mutated root hash")
 		}
 	}

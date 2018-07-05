@@ -51,7 +51,7 @@ func TestABCIMock(t *testing.T) {
 	assert.Equal("foobar", err.Error())
 
 	// query always returns the response
-	_query, err := m.ABCIQueryWithOptions("/", nil, client.ABCIQueryOptions{Trusted: true})
+	_query, err := m.ABCIQueryWithOptions("/", nil, client.ABCIQueryOptions{Prove: false})
 	query := _query.Response
 	require.Nil(err)
 	require.NotNil(query)
@@ -98,7 +98,7 @@ func TestABCIRecorder(t *testing.T) {
 	_, err := r.ABCIInfo()
 	assert.Nil(err, "expected no err on info")
 
-	_, err = r.ABCIQueryWithOptions("path", cmn.HexBytes("data"), client.ABCIQueryOptions{Trusted: false})
+	_, err = r.ABCIQueryWithOptions("path", cmn.HexBytes("data"), client.ABCIQueryOptions{Prove: false})
 	assert.NotNil(err, "expected error on query")
 	require.Equal(2, len(r.Calls))
 
@@ -122,7 +122,7 @@ func TestABCIRecorder(t *testing.T) {
 	require.True(ok)
 	assert.Equal("path", qa.Path)
 	assert.EqualValues("data", qa.Data)
-	assert.False(qa.Trusted)
+	assert.False(qa.Prove)
 
 	// now add some broadcasts (should all err)
 	txs := []types.Tx{{1}, {2}, {3}}
@@ -173,9 +173,17 @@ func TestABCIApp(t *testing.T) {
 	require.NotNil(res.DeliverTx)
 	assert.True(res.DeliverTx.IsOK())
 
+	// commit
+	// TODO: This may not be necessary in the future
+	if res.Height == -1 {
+		m.App.Commit()
+	}
+
 	// check the key
-	_qres, err := m.ABCIQueryWithOptions("/key", cmn.HexBytes(key), client.ABCIQueryOptions{Trusted: true})
+	_qres, err := m.ABCIQueryWithOptions("/key", cmn.HexBytes(key), client.ABCIQueryOptions{Prove: true})
 	qres := _qres.Response
 	require.Nil(err)
 	assert.EqualValues(value, qres.Value)
+
+	// XXX Check proof
 }

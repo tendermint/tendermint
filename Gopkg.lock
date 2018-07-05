@@ -303,6 +303,15 @@
   version = "0.10.1"
 
 [[projects]]
+  name = "github.com/tendermint/iavl"
+  packages = [
+    ".",
+    "sha256truncated"
+  ]
+  revision = "866a229a90d86b07af23ffa156c3fa1396416574"
+  version = "v0.10.0-rc1"
+
+[[projects]]
   name = "github.com/tendermint/tmlibs"
   packages = [
     "autofile",
@@ -423,6 +432,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "c25289282b94abc7f0c390e592e5e1636b7f26cb4773863ac39cde7fdc7b5bdf"
+  inputs-digest = "ece6ed2d29c510b27b489c93a94e68e4aa5db840c16c6b8b7563d81fed4072fe"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -5,6 +5,7 @@ package types;
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 import "github.com/tendermint/tmlibs/common/types.proto";
+import "github.com/tendermint/tendermint/crypto/merkle/merkle.proto";
 
 // This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
@@ -143,7 +144,7 @@ message ResponseQuery {
   int64 index = 5;
   bytes key = 6;
   bytes value = 7;
-  bytes proof = 8;
+  merkle.Proof proof = 8;
   int64 height = 9;
 }
 
