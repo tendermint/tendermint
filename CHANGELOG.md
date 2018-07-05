@@ -1,8 +1,19 @@
 # Changelog
 
-## 0.23.0
+## 0.22.1
 
-*TBD*
+*July 5th, 2018*
+
+IMPROVEMENTS
+
+* Cleanup post repo-merge.
+* [docs] Various improvements.
+
+BUG FIXES
+
+* [state] Return error when EndBlock returns a 0-power validator that isn't
+  already in the validator set.
+* [consensus] Shut down WAL properly.
 
 ## 0.22.0
 
