@@ -9,12 +9,12 @@ func SimpleHashFromTwoHashes(left, right []byte) []byte {
 	var hasher = tmhash.New()
 	err := encodeByteSlice(hasher, left)
 	if err != nil {
-			panic(err)
-		}
+		panic(err)
+	}
 	err = encodeByteSlice(hasher, right)
 	if err != nil {
-			panic(err)
-		}
+		panic(err)
+	}
 	return hasher.Sum(nil)
 }
 

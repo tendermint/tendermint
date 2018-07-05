@@ -5,8 +5,9 @@ import (
 	"fmt"
 
 	"github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tmlibs/merkle"
+	"github.com/tendermint/tendermint/crypto/merkle"
 )
 
 // ErrEvidenceInvalid wraps a piece of evidence and the error denoting how or why it is invalid.
@@ -180,7 +181,7 @@ type EvidenceList []Evidence
 // Hash returns the simple merkle root hash of the EvidenceList.
 func (evl EvidenceList) Hash() []byte {
 	// Recursive impl.
-	// Copied from tmlibs/merkle to avoid allocations
+	// Copied from crypto/merkle to avoid allocations
 	switch len(evl) {
 	case 0:
 		return nil

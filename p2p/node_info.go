@@ -2,7 +2,7 @@ package p2p
 
 import (
 	"fmt"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"strings"
 )
 

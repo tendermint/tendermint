@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 var configTemplate *template.Template
@@ -142,6 +142,12 @@ max_open_connections = {{ .RPC.MaxOpenConnections }}
 # Address to listen for incoming connections
 laddr = "{{ .P2P.ListenAddress }}"
 
+# Address to advertise to peers for them to dial
+# If empty, will use the same port as the laddr,
+# and will introspect on the listener or use UPnP
+# to figure out the address.
+external_address = "{{ .P2P.ExternalAddress }}"
+
 # Comma separated list of seed nodes to connect to
 seeds = "{{ .P2P.Seeds }}"
 
@@ -164,9 +170,8 @@ flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
 # Maximum number of peers to connect to
 max_num_peers = {{ .P2P.MaxNumPeers }}
 
-# Maximum size of a message packet, in bytes
-# Includes a header, which is ~13 bytes
-max_packet_msg_size = {{ .P2P.MaxPacketMsgSize }}
+# Maximum size of a message packet payload, in bytes
+max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}
 
 # Rate at which packets can be sent, in bytes/second
 send_rate = {{ .P2P.SendRate }}
@@ -216,10 +221,6 @@ timeout_commit = {{ .Consensus.TimeoutCommit }}
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = {{ .Consensus.SkipTimeoutCommit }}
-
-# BlockSize
-max_block_size_txs = {{ .Consensus.MaxBlockSizeTxs }}
-max_block_size_bytes = {{ .Consensus.MaxBlockSizeBytes }}
 
 # EmptyBlocks mode and possible interval between empty blocks in seconds
 create_empty_blocks = {{ .Consensus.CreateEmptyBlocks }}

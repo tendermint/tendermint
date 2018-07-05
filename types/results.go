@@ -2,8 +2,8 @@ package types
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/merkle"
+	"github.com/tendermint/tendermint/crypto/merkle"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 //-----------------------------------------------------------------------------
@@ -51,6 +51,8 @@ func (a ABCIResults) Bytes() []byte {
 
 // Hash returns a merkle hash of all results
 func (a ABCIResults) Hash() []byte {
+	// NOTE: we copy the impl of the merkle tree for txs -
+	// we should be consistent and either do it for both or not.
 	return merkle.SimpleHashFromHashers(a.toHashers())
 }
 

@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 
 	crypto "github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // ID is a hex-encoded crypto.Address

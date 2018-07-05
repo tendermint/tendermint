@@ -119,7 +119,7 @@ flush_throttle_timeout = 100
 max_num_peers = 50
 
 # Maximum size of a message packet payload, in bytes
-max_msg_packet_payload_size = 1024
+max_packet_msg_payload_size = 1024
 
 # Rate at which packets can be sent, in bytes/second
 send_rate = 512000
@@ -169,10 +169,6 @@ timeout_commit = 1000
 
 # Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 skip_timeout_commit = false
-
-# BlockSize
-max_block_size_txs = 10000
-max_block_size_bytes = 1
 
 # EmptyBlocks mode and possible interval between empty blocks in seconds
 create_empty_blocks = true

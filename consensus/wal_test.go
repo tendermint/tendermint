@@ -9,7 +9,7 @@ import (
 
 	"github.com/tendermint/tendermint/consensus/types"
 	tmtypes "github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

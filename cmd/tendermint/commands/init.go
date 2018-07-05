@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // InitFilesCmd initialises a fresh Tendermint Core instance.
@@ -52,8 +52,9 @@ func initFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
-			ChainID:     cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
-			GenesisTime: time.Now(),
+			ChainID:         cmn.Fmt("test-chain-%v", cmn.RandStr(6)),
+			GenesisTime:     time.Now(),
+			ConsensusParams: types.DefaultConsensusParams(),
 		}
 		genDoc.Validators = []types.GenesisValidator{{
 			PubKey: pv.GetPubKey(),

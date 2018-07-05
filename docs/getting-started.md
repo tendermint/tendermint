@@ -125,8 +125,8 @@ The result should look like:
 
 Note the `value` in the result (`YWJjZA==`); this is the base64-encoding
 of the ASCII of `abcd`. You can verify this in a python 2 shell by
-running `"61626364".decode('base64')` or in python 3 shell by running
-`import codecs; codecs.decode("61626364", 'base64').decode('ascii')`.
+running `"YWJjZA==".decode('base64')` or in python 3 shell by running
+`import codecs; codecs.decode("YWJjZA==", 'base64').decode('ascii')`.
 Stay tuned for a future release that [makes this output more
 human-readable](https://github.com/tendermint/tendermint/issues/1794).
 

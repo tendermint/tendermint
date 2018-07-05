@@ -55,8 +55,8 @@ func (ps *PeerSet) Add(peer Peer) error {
 	return nil
 }
 
-// Has returns true iff the PeerSet contains
-// the peer referred to by this peerKey.
+// Has returns true if the set contains the peer referred to by this
+// peerKey, otherwise false.
 func (ps *PeerSet) Has(peerKey ID) bool {
 	ps.mtx.Lock()
 	_, ok := ps.lookup[peerKey]
@@ -64,8 +64,8 @@ func (ps *PeerSet) Has(peerKey ID) bool {
 	return ok
 }
 
-// HasIP returns true if the PeerSet contains the peer referred to by this IP
-// address.
+// HasIP returns true if the set contains the peer referred to by this IP
+// address, otherwise false.
 func (ps *PeerSet) HasIP(peerIP net.IP) bool {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()
@@ -85,7 +85,8 @@ func (ps *PeerSet) hasIP(peerIP net.IP) bool {
 	return false
 }
 
-// Get looks up a peer by the provided peerKey.
+// Get looks up a peer by the provided peerKey. Returns nil if peer is not
+// found.
 func (ps *PeerSet) Get(peerKey ID) Peer {
 	ps.mtx.Lock()
 	defer ps.mtx.Unlock()

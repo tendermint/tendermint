@@ -10,8 +10,8 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -320,10 +320,7 @@ func (cs *ConsensusState) OnStop() {
 
 	cs.timeoutTicker.Stop()
 
-	// Make BaseService.Wait() wait until cs.wal.Wait()
-	if cs.IsRunning() {
-		cs.wal.Wait()
-	}
+	cs.wal.Stop()
 }
 
 // Wait waits for the the main routine to return.
@@ -932,7 +929,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	}
 
 	// Mempool validated transactions
-	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
+	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
 	evidence := cs.evpool.PendingEvidence()
 	block.AddEvidence(evidence)

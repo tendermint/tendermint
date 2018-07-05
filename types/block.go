@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/merkle"
-	"golang.org/x/crypto/ripemd160"
+	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/crypto/tmhash"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -464,7 +464,7 @@ func (data *Data) StringIndented(indent string) string {
 			txStrings[i] = fmt.Sprintf("... (%v total)", len(data.Txs))
 			break
 		}
-		txStrings[i] = fmt.Sprintf("Tx:%v", tx)
+		txStrings[i] = fmt.Sprintf("%X (%d bytes)", tx.Hash(), len(tx))
 	}
 	return fmt.Sprintf(`Data{
 %s  %v
@@ -504,7 +504,7 @@ func (data *EvidenceData) StringIndented(indent string) string {
 		}
 		evStrings[i] = fmt.Sprintf("Evidence:%v", ev)
 	}
-	return fmt.Sprintf(`Data{
+	return fmt.Sprintf(`EvidenceData{
 %s  %v
 %s}#%v`,
 		indent, strings.Join(evStrings, "\n"+indent+"  "),
@@ -552,7 +552,7 @@ type hasher struct {
 }
 
 func (h hasher) Hash() []byte {
-	hasher := ripemd160.New()
+	hasher := tmhash.New()
 	if h.item != nil && !cmn.IsTypedNil(h.item) && !cmn.IsEmpty(h.item) {
 		bz, err := cdc.MarshalBinaryBare(h.item)
 		if err != nil {

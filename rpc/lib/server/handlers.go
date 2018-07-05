@@ -19,8 +19,8 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
@@ -406,7 +406,13 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, cdc *amino.Codec, options ...func(*wsConnection)) *wsConnection {
+func NewWSConnection(
+	baseConn *websocket.Conn,
+	funcMap map[string]*RPCFunc,
+	cdc *amino.Codec,
+	options ...func(*wsConnection),
+) *wsConnection {
+	baseConn.SetReadLimit(maxBodyBytes)
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,

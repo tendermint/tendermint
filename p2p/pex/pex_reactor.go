@@ -8,7 +8,7 @@ import (
 	"time"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -77,10 +77,10 @@ type PEXReactor struct {
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
 }
 
-func (pexR *PEXReactor) minReceiveRequestInterval() time.Duration {
+func (r *PEXReactor) minReceiveRequestInterval() time.Duration {
 	// NOTE: must be less than ensurePeersPeriod, otherwise we'll request
 	// peers too quickly from others and they'll think we're bad!
-	return pexR.ensurePeersPeriod / 3
+	return r.ensurePeersPeriod / 3
 }
 
 // PEXReactorConfig holds reactor specific configuration data.
@@ -628,7 +628,9 @@ func (r *PEXReactor) crawlPeers() {
 		}
 		// Ask for more addresses
 		peer := r.Switch.Peers().Get(pi.Addr.ID)
-		r.RequestAddrs(peer)
+		if peer != nil {
+			r.RequestAddrs(peer)
+		}
 	}
 }
 

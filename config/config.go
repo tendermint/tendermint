@@ -276,6 +276,9 @@ type P2PConfig struct {
 	// Address to listen for incoming connections
 	ListenAddress string `mapstructure:"laddr"`
 
+	// Address to advertise to peers for them to dial
+	ExternalAddress string `mapstructure:"external_address"`
+
 	// Comma separated list of seed nodes to connect to
 	// We only use these if we can’t connect to peers in the addrbook
 	Seeds string `mapstructure:"seeds"`
@@ -299,9 +302,8 @@ type P2PConfig struct {
 	// Time to wait before flushing messages out on the connection, in ms
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
 
-	// Maximum size of a message packet, in bytes
-	// Includes a header, which is ~13 bytes
-	MaxPacketMsgSize int `mapstructure:"max_packet_msg_size"`
+	// Maximum size of a message packet payload, in bytes
+	MaxPacketMsgPayloadSize int `mapstructure:"max_packet_msg_payload_size"`
 
 	// Rate at which packets can be sent, in bytes/second
 	SendRate int64 `mapstructure:"send_rate"`
@@ -340,23 +342,24 @@ type P2PConfig struct {
 // DefaultP2PConfig returns a default configuration for the peer-to-peer layer
 func DefaultP2PConfig() *P2PConfig {
 	return &P2PConfig{
-		ListenAddress:        "tcp://0.0.0.0:26656",
-		UPNP:                 false,
-		AddrBook:             defaultAddrBookPath,
-		AddrBookStrict:       true,
-		MaxNumPeers:          50,
-		FlushThrottleTimeout: 100,
-		MaxPacketMsgSize:     1024,   // 1 kB
-		SendRate:             512000, // 500 kB/s
-		RecvRate:             512000, // 500 kB/s
-		PexReactor:           true,
-		SeedMode:             false,
-		AllowDuplicateIP:     true, // so non-breaking yet
-		HandshakeTimeout:     20 * time.Second,
-		DialTimeout:          3 * time.Second,
-		TestDialFail:         false,
-		TestFuzz:             false,
-		TestFuzzConfig:       DefaultFuzzConnConfig(),
+		ListenAddress:           "tcp://0.0.0.0:26656",
+		ExternalAddress:         "",
+		UPNP:                    false,
+		AddrBook:                defaultAddrBookPath,
+		AddrBookStrict:          true,
+		MaxNumPeers:             50,
+		FlushThrottleTimeout:    100,
+		MaxPacketMsgPayloadSize: 1024,   // 1 kB
+		SendRate:                512000, // 500 kB/s
+		RecvRate:                512000, // 500 kB/s
+		PexReactor:              true,
+		SeedMode:                false,
+		AllowDuplicateIP:        true, // so non-breaking yet
+		HandshakeTimeout:        20 * time.Second,
+		DialTimeout:             3 * time.Second,
+		TestDialFail:            false,
+		TestFuzz:                false,
+		TestFuzzConfig:          DefaultFuzzConnConfig(),
 	}
 }
 
@@ -454,10 +457,6 @@ type ConsensusConfig struct {
 	// Make progress as soon as we have all the precommits (as if TimeoutCommit = 0)
 	SkipTimeoutCommit bool `mapstructure:"skip_timeout_commit"`
 
-	// BlockSize
-	MaxBlockSizeTxs   int `mapstructure:"max_block_size_txs"`
-	MaxBlockSizeBytes int `mapstructure:"max_block_size_bytes"`
-
 	// EmptyBlocks mode and possible interval between empty blocks in seconds
 	CreateEmptyBlocks         bool `mapstructure:"create_empty_blocks"`
 	CreateEmptyBlocksInterval int  `mapstructure:"create_empty_blocks_interval"`
@@ -479,8 +478,6 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		TimeoutPrecommitDelta:       500,
 		TimeoutCommit:               1000,
 		SkipTimeoutCommit:           false,
-		MaxBlockSizeTxs:             10000,
-		MaxBlockSizeBytes:           1, // TODO
 		CreateEmptyBlocks:           true,
 		CreateEmptyBlocksInterval:   0,
 		PeerGossipSleepDuration:     100,
