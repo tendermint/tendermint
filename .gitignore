@@ -14,7 +14,6 @@ test/p2p/data/
 test/logs
 coverage.txt
 docs/_build
-docs/tools
 *.log
 abci-cli
 abci/types/types.pb.go
