@@ -3,6 +3,7 @@ package proxy
 import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/lite"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -14,15 +15,17 @@ var _ rpcclient.Client = Wrapper{}
 // provable before passing it along. Allows you to make any rpcclient fully secure.
 type Wrapper struct {
 	rpcclient.Client
-	cert *lite.DynamicVerifier
+	cert *lite.InquiringCertifier
+	prt  *merkle.ProofRuntime
 }
 
 // SecureClient uses a given Verifier to wrap an connection to an untrusted
 // host and return a cryptographically secure rpc client.
 //
 // If it is wrapping an HTTP rpcclient, it will also wrap the websocket interface
-func SecureClient(c rpcclient.Client, cert *lite.DynamicVerifier) Wrapper {
-	wrap := Wrapper{c, cert}
+func SecureClient(c rpcclient.Client, cert *lite.InquiringCertifier) Wrapper {
+	prt := defaultProofRuntime()
+	wrap := Wrapper{c, cert, prt}
 	// TODO: no longer possible as no more such interface exposed....
 	// if we wrap http client, then we can swap out the event switch to filter
 	// if hc, ok := c.(*rpcclient.HTTP); ok {
@@ -36,7 +39,7 @@ func SecureClient(c rpcclient.Client, cert *lite.DynamicVerifier) Wrapper {
 func (w Wrapper) ABCIQueryWithOptions(path string, data cmn.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 
-	res, _, err := GetWithProofOptions(path, data, opts, w.Client, w.cert)
+	res, err := GetWithProofOptions(w.prt, path, data, opts, w.Client, w.cert)
 	return res, err
 }
 

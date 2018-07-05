@@ -137,6 +137,8 @@ grpc_dbserver:
 
 protoc_grpc: rpc/grpc/types.pb.go
 
+protoc_merkle: crypto/merkle/merkle.pb.go
+
 ########################################
 ### Testing
 
