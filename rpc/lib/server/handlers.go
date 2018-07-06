@@ -347,7 +347,7 @@ func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect
 
 	var expectingString, expectingByteSlice, expectingInt bool
 	switch rt.Kind() {
-	case reflect.Int, reflect.Uint, reflect.Int8, reflect.Uint8, reflect.Int16, reflect.Uint16, reflect.Int32, reflect.Uint32, reflect.Int64:
+	case reflect.Int, reflect.Uint, reflect.Int8, reflect.Uint8, reflect.Int16, reflect.Uint16, reflect.Int32, reflect.Uint32, reflect.Int64, reflect.Uint64:
 		expectingInt = true
 	case reflect.String:
 		expectingString = true
