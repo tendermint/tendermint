@@ -2,6 +2,8 @@ package rpcserver
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
 	"strconv"
 	"testing"
 
@@ -134,7 +136,7 @@ func TestParseJSONArray(t *testing.T) {
 	}
 }
 
-func TestParseRPC(t *testing.T) {
+func TestParseJSONRPC(t *testing.T) {
 	assert := assert.New(t)
 
 	demo := func(height int, name string) {}
@@ -172,5 +174,48 @@ func TestParseRPC(t *testing.T) {
 		}
 
 	}
+}
 
+func TestParseURI(t *testing.T) {
+
+	demo := func(height int, name string) {}
+	call := NewRPCFunc(demo, "height,name")
+	cdc := amino.NewCodec()
+
+	cases := []struct {
+		raw    []string
+		height int64
+		name   string
+		fail   bool
+	}{
+		// can parse numbers unquoted and strings quoted
+		{[]string{"7", `"flew"`}, 7, "flew", false},
+		{[]string{"22", `"john"`}, 22, "john", false},
+		{[]string{"-10", `"bob"`}, -10, "bob", false},
+		// can parse numbers quoted, too
+		{[]string{`"7"`, `"flew"`}, 7, "flew", false},
+		{[]string{`"-10"`, `"bob"`}, -10, "bob", false},
+		// cant parse strings uquoted
+		{[]string{`"-10"`, `bob`}, -10, "bob", true},
+	}
+	for idx, tc := range cases {
+		i := strconv.Itoa(idx)
+		// data := []byte(tc.raw)
+		url := fmt.Sprintf(
+			"test.com/method?height=%v&name=%v",
+			tc.raw[0], tc.raw[1])
+		req, err := http.NewRequest("GET", url, nil)
+		assert.NoError(t, err)
+		vals, err := httpParamsToArgs(call, cdc, req)
+		if tc.fail {
+			assert.NotNil(t, err, i)
+		} else {
+			assert.Nil(t, err, "%s: %+v", i, err)
+			if assert.Equal(t, 2, len(vals), i) {
+				assert.Equal(t, tc.height, vals[0].Int(), i)
+				assert.Equal(t, tc.name, vals[1].String(), i)
+			}
+		}
+
+	}
 }
