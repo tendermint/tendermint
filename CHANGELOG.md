@@ -21,6 +21,8 @@ BREAKING CHANGES:
 - [tmlibs] Update to v0.9.0 and merge into `libs`
     * remove `merkle` package (moved to `crypto/merkle`)
 - [rpc] `syncing` is now called `catching_up`.
+- [config] Remove `max_block_size_txs` and `max_block_size_bytes` in favor of
+  consensus params from the genesis file.
 
 FEATURES
 - [cmd] Added metrics (served under `/metrics` using a Prometheus client;

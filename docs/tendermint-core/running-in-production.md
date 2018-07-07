@@ -49,7 +49,7 @@ second TODO is to query the /status RPC endpoint. It provides the
 necessary info: whenever the node is syncing or not, what height it is
 on, etc.
 
-```   
+```
 curl http(s)://{ip}:{rpcPort}/status
 ```
 
@@ -197,11 +197,6 @@ theres something to send its peers.
 
 You can also try lowering `timeout_commit` (time we sleep before
 proposing the next block).
-
-- `consensus.max_block_size_txs`
-
-By default, the maximum number of transactions per a block is 10_000.
-Feel free to change it to suit your needs.
 
 - `p2p.addr_book_strict`
 
