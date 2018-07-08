@@ -91,8 +91,8 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
-  version = "v1.1.0"
+  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -423,6 +423,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8c5f7f7b1a226e774353514c70f779e97d3311598076f510258b9ddcf87ed1f7"
+  inputs-digest = "c25289282b94abc7f0c390e592e5e1636b7f26cb4773863ac39cde7fdc7b5bdf"
   solver-name = "gps-cdcl"
   solver-version = 1
