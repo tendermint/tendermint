@@ -31,7 +31,7 @@ func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 }
 
 func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	q := a.App.Query(abci.RequestQuery{data, path, opts.Height, opts.Trusted})
+	q := a.App.Query(abci.RequestQuery{data, path, opts.Height, opts.Prove})
 	return &ctypes.ResultABCIQuery{q}, nil
 }
 
@@ -86,7 +86,7 @@ func (m ABCIMock) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQ
 }
 
 func (m ABCIMock) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	res, err := m.Query.GetResponse(QueryArgs{path, data, opts.Height, opts.Trusted})
+	res, err := m.Query.GetResponse(QueryArgs{path, data, opts.Height, opts.Prove})
 	if err != nil {
 		return nil, err
 	}
@@ -133,10 +133,10 @@ func NewABCIRecorder(client client.ABCIClient) *ABCIRecorder {
 }
 
 type QueryArgs struct {
-	Path    string
-	Data    cmn.HexBytes
-	Height  int64
-	Trusted bool
+	Path   string
+	Data   cmn.HexBytes
+	Height int64
+	Prove  bool
 }
 
 func (r *ABCIRecorder) addCall(call Call) {
@@ -161,7 +161,7 @@ func (r *ABCIRecorder) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts
 	res, err := r.Client.ABCIQueryWithOptions(path, data, opts)
 	r.addCall(Call{
 		Name:     "abci_query",
-		Args:     QueryArgs{path, data, opts.Height, opts.Trusted},
+		Args:     QueryArgs{path, data, opts.Height, opts.Prove},
 		Response: res,
 		Error:    err,
 	})

@@ -252,7 +252,7 @@ func TestClientServer(t *testing.T) {
 	// set up socket app
 	kvstore := NewKVStoreApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
-	require.Nil(t, err)
+	require.Nil(t, err, "%+v", err)
 	defer server.Stop()
 	defer client.Stop()
 

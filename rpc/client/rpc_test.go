@@ -166,10 +166,10 @@ func TestAppCalls(t *testing.T) {
 		if err := client.WaitForHeight(c, apph, nil); err != nil {
 			t.Error(err)
 		}
-		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: true})
+		_qres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: false})
 		qres := _qres.Response
 		if assert.Nil(err) && assert.True(qres.IsOK()) {
-			// assert.Equal(k, data.GetKey())  // only returned for proofs
+			assert.Equal(k, qres.Key)
 			assert.EqualValues(v, qres.Value)
 		}
 
@@ -221,10 +221,12 @@ func TestAppCalls(t *testing.T) {
 		assert.Equal(block.Block.LastCommit, commit2.Commit)
 
 		// and we got a proof that works!
-		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Trusted: false})
+		_pres, err := c.ABCIQueryWithOptions("/key", k, client.ABCIQueryOptions{Prove: true})
 		pres := _pres.Response
 		assert.Nil(err)
 		assert.True(pres.IsOK())
+
+		// XXX Test proof
 	}
 }
 
