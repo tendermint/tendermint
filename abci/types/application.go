@@ -18,11 +18,12 @@ type Application interface {
 	CheckTx(tx []byte) ResponseCheckTx // Validate a tx for the mempool
 
 	// Consensus Connection
-	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
-	BeginBlock(RequestBeginBlock) ResponseBeginBlock // Signals the beginning of a block
-	DeliverTx(tx []byte) ResponseDeliverTx           // Deliver a tx for full processing
-	EndBlock(RequestEndBlock) ResponseEndBlock       // Signals the end of a block, returns changes to the validator set
-	Commit() ResponseCommit                          // Commit the state and return the application Merkle root hash
+	InitChain(RequestInitChain) ResponseInitChain       // Initialize blockchain with validators and other info from TendermintCore
+	BeginBlock(RequestBeginBlock) ResponseBeginBlock    // Signals the beginning of a block
+	DeliverTx(tx []byte) ResponseDeliverTx              // Deliver a tx for full processing
+	EndBlock(RequestEndBlock) ResponseEndBlock          // Signals the end of a block, returns changes to the validator set
+	Commit() ResponseCommit                             // Commit the state and return the application Merkle root hash
+	CheckBridge(RequestCheckBridge) ResponseCheckBridge // Check status of previous period in bridge
 }
 
 //-------------------------------------------------------
@@ -71,6 +72,10 @@ func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
 
 func (BaseApplication) EndBlock(req RequestEndBlock) ResponseEndBlock {
 	return ResponseEndBlock{}
+}
+
+func (BaseApplication) CheckBridge(req RequestCheckBridge) ResponseCheckBridge {
+	return ResponseCheckBridge{}
 }
 
 //-------------------------------------------------------
@@ -134,5 +139,10 @@ func (app *GRPCApplication) BeginBlock(ctx context.Context, req *RequestBeginBlo
 
 func (app *GRPCApplication) EndBlock(ctx context.Context, req *RequestEndBlock) (*ResponseEndBlock, error) {
 	res := app.app.EndBlock(*req)
+	return &res, nil
+}
+
+func (app *GRPCApplication) CheckBridge(ctx context.Context, req *RequestCheckBridge) (*ResponseCheckBridge, error) {
+	res := app.app.CheckBridge(*req)
 	return &res, nil
 }

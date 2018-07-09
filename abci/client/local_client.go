@@ -142,10 +142,27 @@ func (app *localClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	)
 }
 
+func (app *localClient) CheckBridgeAsync(req types.RequestCheckBridge) *ReqRes {
+	app.mtx.Lock()
+	res := app.Application.CheckBridge(req)
+	app.mtx.Unlock()
+	return app.callback(
+		types.ToRequestCheckBridge(req),
+		types.ToResponseCheckBridge(res),
+	)
+}
+
 //-------------------------------------------------------
 
 func (app *localClient) FlushSync() error {
 	return nil
+}
+
+func (app *localClient) CheckBridgeSync(req types.RequestCheckBridge) (*types.ResponseCheckBridge, error) {
+	app.mtx.Lock()
+	res := app.Application.CheckBridge(req)
+	app.mtx.Unlock()
+	return &res, nil
 }
 
 func (app *localClient) EchoSync(msg string) (*types.ResponseEcho, error) {

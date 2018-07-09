@@ -135,6 +135,12 @@ func ToRequestEndBlock(req RequestEndBlock) *Request {
 	}
 }
 
+func ToRequestCheckBridge(req RequestCheckBridge) *Request {
+	return &Request{
+		Value: &Request_CheckBridge{&req},
+	}
+}
+
 //----------------------------------------
 
 func ToResponseException(errStr string) *Response {
@@ -206,5 +212,11 @@ func ToResponseBeginBlock(res ResponseBeginBlock) *Response {
 func ToResponseEndBlock(res ResponseEndBlock) *Response {
 	return &Response{
 		Value: &Response_EndBlock{&res},
+	}
+}
+
+func ToResponseCheckBridge(res ResponseCheckBridge) *Response {
+	return &Response{
+		Value: &Response_CheckBridge{&res},
 	}
 }

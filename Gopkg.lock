@@ -358,6 +358,7 @@
   revision = "c4c61651e9e37fa117f53c5a906d3b63090d8445"
 
 [[projects]]
+<<<<<<< HEAD
   digest = "1:605b6546f3f43745695298ec2d342d3e952b6d91cdf9f349bea9315f677d759f"
   name = "github.com/tendermint/btcd"
   packages = ["btcec"]
@@ -365,6 +366,8 @@
   revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
 
 [[projects]]
+=======
+>>>>>>> 019a9f3c... reapplied abci
   branch = "master"
   digest = "1:087aaa7920e5d0bf79586feb57ce01c35c830396ab4392798112e8aae8c47722"
   name = "github.com/tendermint/ed25519"
@@ -380,9 +383,14 @@
   digest = "1:e0a2a4be1e20c305badc2b0a7a9ab7fef6da500763bec23ab81df3b5f9eec9ee"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
+<<<<<<< HEAD
   pruneopts = "UT"
   revision = "a8328986c1608950fa5d3d1c0472cccc4f8fc02c"
   version = "v0.12.0-rc0"
+=======
+  revision = "2106ca61d91029c931fd54968c2bb02dc96b1412"
+  version = "0.10.1"
+>>>>>>> 019a9f3c... reapplied abci
 
 [[projects]]
   branch = "master"

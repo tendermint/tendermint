@@ -35,6 +35,7 @@ type Client interface {
 	InitChainAsync(types.RequestInitChain) *ReqRes
 	BeginBlockAsync(types.RequestBeginBlock) *ReqRes
 	EndBlockAsync(types.RequestEndBlock) *ReqRes
+	CheckBridgeAsync(types.RequestCheckBridge) *ReqRes
 
 	FlushSync() error
 	EchoSync(msg string) (*types.ResponseEcho, error)
@@ -47,6 +48,7 @@ type Client interface {
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)
 	BeginBlockSync(types.RequestBeginBlock) (*types.ResponseBeginBlock, error)
 	EndBlockSync(types.RequestEndBlock) (*types.ResponseEndBlock, error)
+	CheckBridgeSync(types.RequestCheckBridge) (*types.ResponseCheckBridge, error)
 }
 
 //----------------------------------------

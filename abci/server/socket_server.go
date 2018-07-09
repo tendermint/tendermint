@@ -198,6 +198,9 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 	case *types.Request_EndBlock:
 		res := s.app.EndBlock(*r.EndBlock)
 		responses <- types.ToResponseEndBlock(res)
+	case *types.Request_CheckBridge:
+		res := s.app.CheckBridge(*r.CheckBridge)
+		responses <- types.ToResponseCheckBridge(res)
 	default:
 		responses <- types.ToResponseException("Unknown request")
 	}

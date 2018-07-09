@@ -222,6 +222,15 @@ func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{res}})
 }
 
+func (cli *grpcClient) CheckBridgeAsync(params types.RequestCheckBridge) *ReqRes {
+	req := types.ToRequestCheckBridge(params)
+	res, err := cli.client.CheckBridge(context.Background(), req.GetCheckBridge(), grpc.FailFast(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckBridge{res}})
+}
+
 func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {
 	reqres := NewReqRes(req)
 	reqres.Response = res // Set response
@@ -241,6 +250,11 @@ func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) 
 		}
 	}()
 	return reqres
+}
+
+func (cli *grpcClient) CheckBridgeSync(params types.RequestCheckBridge) (*types.ResponseCheckBridge, error) {
+	reqres := cli.CheckBridgeAsync(params)
+	return reqres.Response.GetCheckBridge(), cli.Error()
 }
 
 //----------------------------------------

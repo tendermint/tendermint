@@ -266,6 +266,10 @@ func (cli *socketClient) EndBlockAsync(req types.RequestEndBlock) *ReqRes {
 	return cli.queueRequest(types.ToRequestEndBlock(req))
 }
 
+func (cli *socketClient) CheckBridgeAsync(req types.RequestCheckBridge) *ReqRes {
+	return cli.queueRequest(types.ToRequestCheckBridge(req))
+}
+
 //----------------------------------------
 
 func (cli *socketClient) FlushSync() error {
@@ -275,6 +279,12 @@ func (cli *socketClient) FlushSync() error {
 	}
 	reqRes.Wait() // NOTE: if we don't flush the queue, its possible to get stuck here
 	return cli.Error()
+}
+
+func (cli *socketClient) CheckBridgeSync(req types.RequestCheckBridge) (*types.ResponseCheckBridge, error) {
+	reqres := cli.queueRequest(types.ToRequestCheckBridge(req))
+	cli.FlushSync()
+	return reqres.Response.GetCheckBridge(), cli.Error()
 }
 
 func (cli *socketClient) EchoSync(msg string) (*types.ResponseEcho, error) {
@@ -401,6 +411,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_BeginBlock)
 	case *types.Request_EndBlock:
 		_, ok = res.Value.(*types.Response_EndBlock)
+	case *types.Request_CheckBridge:
+		_, ok = res.Value.(*types.Response_CheckBridge)
 	}
 	return ok
 }
