@@ -5,12 +5,13 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
+
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 const (
@@ -174,7 +175,7 @@ func (bcR *BlockchainReactor) respondToPeer(msg *bcBlockRequestMessage,
 
 // Receive implements Reactor by handling 4 types of messages (look below).
 func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := DecodeMessage(msgBytes)
+	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		bcR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		bcR.Switch.StopPeerForError(src, err)
@@ -342,17 +343,11 @@ func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/mempool/StatusRequest", nil)
 }
 
-// DecodeMessage decodes BlockchainMessage.
-// TODO: ensure that bz is completely read.
-func DecodeMessage(bz []byte) (msg BlockchainMessage, err error) {
+func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
-			len(bz), maxMsgSize)
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
-	if err != nil {
-		err = cmn.ErrorWrap(err, "DecodeMessage() had bytes left over")
-	}
 	return
 }
 
