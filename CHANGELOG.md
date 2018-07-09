@@ -24,6 +24,7 @@ BREAKING CHANGES:
 - [rpc] `syncing` is now called `catching_up`.
 - [config] Remove `max_block_size_txs` and `max_block_size_bytes` in favor of
   consensus params from the genesis file.
+- [config] Change `max_packet_msg_size` back to `max_packet_msg_payload_size`
 
 FEATURES
 - [cmd] Added metrics (served under `/metrics` using a Prometheus client;
