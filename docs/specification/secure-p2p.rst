@@ -1,3 +1,7 @@
+Most of this should be explained in specs/p2p/peer.md
+but we should have a quick summary here and an explanation of
+the node_key.json file and the peer IDs.
+
 Secure P2P
 ==========
 

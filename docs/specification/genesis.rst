@@ -1,3 +1,9 @@
+Think numbers are strings now.
+
+This should be under Using Tendermint, probably after Initialize.
+
+
+
 Genesis
 =======
 

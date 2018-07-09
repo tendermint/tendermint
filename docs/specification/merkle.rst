@@ -1,3 +1,11 @@
+IAVL can be removed since it's not used in Tendermint.
+Though we should outline here that only Simple merkle tree is used
+in Tendermint and app devs are expected to use their own Merkle tree
+in their apps, and then point them to multistore/IAVL in the SDK as an example.
+
+Otherwise, the merkle spec is in spec/blockchain/blockchain.md so we can/should consolidate
+this there (ie. bring the pictures over and any missing info - sync with @liamsi on it).
+
 Merkle
 ======
 
@@ -63,20 +71,20 @@ greater.
 
 ::
 
-        Simple Tree with 6 items           Simple Tree with 7 items 
-                                                             
-                   *                                  *             
-                  / \                                / \            
-                /     \                            /     \          
-              /         \                        /         \        
-            /             \                    /             \      
-           *               *                  *               *     
-          / \             / \                / \             / \    
-         /   \           /   \              /   \           /   \   
-        /     \         /     \            /     \         /     \  
+        Simple Tree with 6 items           Simple Tree with 7 items
+
+                   *                                  *
+                  / \                                / \
+                /     \                            /     \
+              /         \                        /         \
+            /             \                    /             \
+           *               *                  *               *
+          / \             / \                / \             / \
+         /   \           /   \              /   \           /   \
+        /     \         /     \            /     \         /     \
        *       h2      *       h5         *       *       *       h6
-      / \             / \                / \     / \     / \        
-     h0  h1          h3  h4             h0  h1  h2  h3  h4  h5      
+      / \             / \                / \     / \     / \
+     h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
 
 Simple Tree with Dictionaries
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

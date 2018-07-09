@@ -1,3 +1,9 @@
+Seems this can probably be compressed somewhat but otherwise is worth keeping in the docs
+as an overview of how validators work, how to set them in genesis, and how to change them
+in the app. We can link to persistent-kvstore for one example and to x/stake in the SDK as
+a more advanced one ...
+
+
 Validators
 ==========
 

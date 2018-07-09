@@ -1,3 +1,5 @@
+Move to spec/consensus/consensus.md
+
 Byzantine Consensus Algorithm
 =============================
 
