@@ -56,6 +56,48 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 #### Sample genesis.json
 
+```
+{
+  "genesis_time": "2018-07-09T22:43:06.255718641Z",
+  "chain_id": "chain-IAkWsK",
+  "validators": [
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "oX8HhKsErMluxI0QWNSR8djQMSupDvHdAYrHwP7n73k="
+      },
+      "power": "1",
+      "name": "node0"
+    },
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "UZNSJA9zmeFQj36Rs296lY+WFQ4Rt6s7snPpuKypl5I="
+      },
+      "power": "1",
+      "name": "node1"
+    },
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "i9GrM6/MHB4zjCelMZBUYHNXYIzl4n0RkDCVmmLhS/o="
+      },
+      "power": "1",
+      "name": "node2"
+    },
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "0qq7954l87trEqbQV9c7d1gurnjTGMxreXc848ZZ5aw="
+      },
+      "power": "1",
+      "name": "node3"
+    }
+  ],
+  "app_hash": ""
+}
+```
+
 ## Run
 
 To run a Tendermint node, use
