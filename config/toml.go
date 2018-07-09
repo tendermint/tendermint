@@ -262,6 +262,12 @@ prometheus = {{ .Instrumentation.Prometheus }}
 
 # Address to listen for Prometheus collector(s) connections
 prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
+
+# Maximum number of simultaneous connections.
+# If you want to accept more significant number than the default, make sure
+# you increase your OS limits.
+# 0 - unlimited.
+max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 `
 
 /****** these are for test settings ***********/

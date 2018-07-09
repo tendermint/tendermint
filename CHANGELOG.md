@@ -4,6 +4,10 @@
 
 *TBD*
 
+IMPROVEMENTS:
+- [config] Add `instrumentation.max_open_connections`, which limits the number
+  of requests in flight to Prometheus server (if enabled). Default: 1.
+
 ## 0.22.0
 
 *July 2nd, 2018*
