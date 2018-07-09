@@ -16,7 +16,7 @@ logging level, you can do so by running tendermint with
 Validators are supposed to setup [Sentry Node
 Architecture](https://blog.cosmos.network/tendermint-explained-bringing-bft-based-pos-to-the-public-blockchain-domain-f22e274a0fdb)
 to prevent Denial-of-service attacks. You can read more about it
-[here](https://github.com/tendermint/aib-data/blob/develop/medium/TendermintBFT.md).
+[here](../interviews/tendermint-bft.md).
 
 ### P2P
 

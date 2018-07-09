@@ -3,7 +3,7 @@
 ## 0.23.0
 
 IMPROVEMENT
-- [docs] Include `ecosystem.json` from deprecated `aib-data` repository.
+- [docs] Include `ecosystem.json` and `tendermint-bft.md` from deprecated `aib-data` repository.
 
 ## 0.22.0
 
