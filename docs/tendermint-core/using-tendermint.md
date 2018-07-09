@@ -31,6 +31,31 @@ For more elaborate initialization, see the tesnet command:
 tendermint testnet --help
 ```
 
+### Genesis
+
+The `genesis.json` file in `$TMHOME/config/` defines the initial
+TendermintCore state upon genesis of the blockchain ([see
+definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.go)).
+
+#### Fields
+
+-   `genesis_time`: Official time of blockchain start.
+-   `chain_id`: ID of the blockchain. This must be unique for
+    every blockchain. If your testnet blockchains do not have unique
+    chain IDs, you will have a bad time.
+-   `validators`:
+-   `pub_key`: The first element specifies the `pub_key` type. 1
+    == Ed25519. The second element are the pubkey bytes.
+-   `power`: The validator's voting power.
+-   `name`: Name of the validator (optional).
+-   `app_hash`: The expected application hash (as returned by the
+    `ResponseInfo` ABCI message) upon genesis. If the app's hash does
+    not match, Tendermint will panic.
+-   `app_state`: The application state (e.g. initial distribution
+    of tokens).
+
+#### Sample genesis.json
+
 ## Run
 
 To run a Tendermint node, use
