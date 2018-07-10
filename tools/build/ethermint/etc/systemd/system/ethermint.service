@@ -1,0 +1,17 @@
+[Unit]
+Description=Ethermint
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Restart=on-failure
+User=ethermint
+Group=ethermint
+PermissionsStartOnly=true
+ExecStart=/usr/bin/ethermint --datadir /etc/ethermint
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target
+
