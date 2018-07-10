@@ -1,0 +1,39 @@
+{
+  "genesis_time": "2016-06-24T20:01:19.322Z",
+  "chain_id": "chain-9ujDWI",
+  "validators": [
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "vokz3/FgDAJuNHGPF4Wkzeq5DDVpizlOOLaUeukd4RY="
+      },
+      "power": "1",
+      "name": "mach1"
+    },
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "bcU0RlMjEmWH0qKpO1nWibcXBzsd6WiiWm7xPVlTGK0="
+      },
+      "power": "1",
+      "name": "mach2"
+    },
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "rmesaX0TWqC0YB6lfqqz/r9Lqk8inEWlmMKYWxL80aE="
+      },
+      "power": "1",
+      "name": "mach3"
+    },
+    {
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "nryPWM7UtG3NWrirpZHdJTzXy1A3Jz/aMrwLZGHE79k="
+      },
+      "power": "1",
+      "name": "mach4"
+    }
+  ],
+  "app_hash": ""
+}
