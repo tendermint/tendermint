@@ -4,9 +4,9 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/tendermint/tendermint/libs/log"
 	rpc "github.com/tendermint/tendermint/rpc/lib/server"
-	"github.com/tendermint/tmlibs/log"
-	monitor "github.com/tendermint/tools/tm-monitor/monitor"
+	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
 
 func startRPC(listenAddr string, m *monitor.Monitor, logger log.Logger) {

@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tendermint/go-rpc/client"
-	rpctypes "github.com/tendermint/go-rpc/types"
+	"github.com/tendermint/tendermint/rpc/client"
+	rpctypes "github.com/tendermint/tendermint/rpc/types"
 )
 
 func main() {

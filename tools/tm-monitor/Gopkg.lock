@@ -137,17 +137,6 @@
   revision = "714f901b98fdb3aa954b4193d8cbd64a28d80cad"
 
 [[projects]]
-  name = "github.com/tendermint/abci"
-  packages = [
-    "client",
-    "example/code",
-    "example/kvstore",
-    "types"
-  ]
-  revision = "78a8905690ef54f9d57e3b2b0ee7ad3a04ef3f1f"
-  version = "v0.10.3"
-
-[[projects]]
   branch = "master"
   name = "github.com/tendermint/ed25519"
   packages = [
@@ -162,12 +151,6 @@
   packages = ["."]
   revision = "42246108ff925a457fb709475070a03dfd3e2b5c"
   version = "0.9.6"
-
-[[projects]]
-  name = "github.com/tendermint/go-crypto"
-  packages = ["."]
-  revision = "915416979bf70efa4bcbf1c6cd5d64c5fff9fc19"
-  version = "v0.6.2"
 
 [[projects]]
   name = "github.com/tendermint/tendermint"
@@ -185,22 +168,7 @@
     "types"
   ]
   revision = "d0beaba7e8a5652506a34b5fab299cc2dc274c02"
-  version = "v0.19.0"
-
-[[projects]]
-  name = "github.com/tendermint/tmlibs"
-  packages = [
-    "common",
-    "db",
-    "events",
-    "flowrate",
-    "log",
-    "merkle",
-    "pubsub",
-    "pubsub/query"
-  ]
-  revision = "737154202faf75c70437f59ba5303f2eb09f5636"
-  version = "0.8.2-rc1"
+  version = "v0.22.2"
 
 [[projects]]
   branch = "master"

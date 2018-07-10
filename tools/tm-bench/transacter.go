@@ -23,7 +23,7 @@ import (
 
 const (
 	sendTimeout = 10 * time.Second
-	// see https://github.com/tendermint/go-rpc/blob/develop/server/handlers.go#L313
+	// see https://github.com/tendermint/tendermint/blob/master/rpc/lib/server/handlers.go
 	pingPeriod = (30 * 9 / 10) * time.Second
 )
 
