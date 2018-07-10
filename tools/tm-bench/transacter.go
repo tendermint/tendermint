@@ -16,14 +16,14 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
-	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
+	rpctypes "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 const (
 	sendTimeout = 10 * time.Second
-	// see https://github.com/tendermint/go-rpc/blob/develop/server/handlers.go#L313
+	// see https://github.com/tendermint/tendermint/blob/master/rpc/lib/server/handlers.go
 	pingPeriod = (30 * 9 / 10) * time.Second
 )
 
@@ -194,7 +194,7 @@ func (t *transacter) sendLoop(connIndex int) {
 				txNumber++
 			}
 
-			timeToSend := time.Now().Sub(startTime)
+			timeToSend := time.Since(startTime)
 			logger.Info(fmt.Sprintf("sent %d transactions", numTxSent), "took", timeToSend)
 			if timeToSend < 1*time.Second {
 				sleepTime := time.Second - timeToSend

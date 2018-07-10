@@ -12,12 +12,10 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 	metrics "github.com/rcrowley/go-metrics"
+
+	"github.com/tendermint/tendermint/libs/log"
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
-
-	"github.com/tendermint/tmlibs/log"
 )
-
-var version = "0.3.0"
 
 var logger = log.NewNopLogger()
 
@@ -106,35 +104,32 @@ Examples:
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 	endTime := time.Duration(duration) * time.Second
-	select {
-	case <-time.After(endTime):
-		for i, t := range transacters {
-			t.Stop()
-			numCrashes := countCrashes(t.connsBroken)
-			if numCrashes != 0 {
-				fmt.Printf("%d connections crashed on transacter #%d\n", numCrashes, i)
-			}
+
+	<-time.After(endTime)
+	for i, t := range transacters {
+		t.Stop()
+		numCrashes := countCrashes(t.connsBroken)
+		if numCrashes != 0 {
+			fmt.Printf("%d connections crashed on transacter #%d\n", numCrashes, i)
 		}
-
-		timeStop := time.Now()
-		logger.Info("Time stopped", "t", timeStop)
-
-		stats, err := calculateStatistics(
-			client,
-			initialHeight,
-			timeStart,
-			timeStop,
-			duration,
-		)
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-
-		printStatistics(stats, outputFormat)
-
-		return
 	}
+
+	timeStop := time.Now()
+	logger.Info("Time stopped", "t", timeStop)
+
+	stats, err := calculateStatistics(
+		client,
+		initialHeight,
+		timeStart,
+		timeStop,
+		duration,
+	)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	printStatistics(stats, outputFormat)
 }
 
 func latestBlockHeight(client tmrpc.Client) int64 {

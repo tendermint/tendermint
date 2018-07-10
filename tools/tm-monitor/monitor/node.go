@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	crypto "github.com/tendermint/go-crypto"
+
+	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/events"
+	"github.com/tendermint/tendermint/libs/log"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpc_client "github.com/tendermint/tendermint/rpc/lib/client"
+	em "github.com/tendermint/tendermint/tools/tm-monitor/eventmeter"
 	tmtypes "github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/tmlibs/log"
-	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 )
 
 const maxRestarts = 25

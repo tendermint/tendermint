@@ -9,9 +9,10 @@ import (
 	"time"
 
 	metrics "github.com/rcrowley/go-metrics"
+
+	"github.com/tendermint/tendermint/libs/events"
+	"github.com/tendermint/tendermint/libs/log"
 	client "github.com/tendermint/tendermint/rpc/lib/client"
-	"github.com/tendermint/tmlibs/events"
-	"github.com/tendermint/tmlibs/log"
 )
 
 const (
@@ -162,11 +163,8 @@ func (em *EventMeter) Subscribe(query string, cb EventCallbackFunc) error {
 func (em *EventMeter) Unsubscribe(query string) error {
 	em.mtx.Lock()
 	defer em.mtx.Unlock()
-	if err := em.wsc.Unsubscribe(context.TODO(), query); err != nil {
-		return err
-	}
 
-	return nil
+	return em.wsc.Unsubscribe(context.TODO(), query)
 }
 
 // GetMetric fills in the latest data for an query and return a copy.

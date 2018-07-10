@@ -4,9 +4,9 @@ import (
 	stdlog "log"
 	"reflect"
 
-	"github.com/tendermint/tmlibs/log"
-	em "github.com/tendermint/tools/tm-monitor/eventmeter"
 	"github.com/tendermint/go-amino"
+	"github.com/tendermint/tendermint/libs/log"
+	em "github.com/tendermint/tendermint/tools/tm-monitor/eventmeter"
 )
 
 type EventMeter struct {
@@ -44,7 +44,7 @@ func (e *EventMeter) Call(callback string, args ...interface{}) {
 
 type RpcClient struct {
 	Stubs map[string]interface{}
-	cdc     *amino.Codec
+	cdc   *amino.Codec
 }
 
 func (c *RpcClient) Call(method string, params map[string]interface{}, result interface{}) (interface{}, error) {

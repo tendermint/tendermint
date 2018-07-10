@@ -45,10 +45,6 @@
   name = "github.com/tendermint/tendermint"
   branch = "develop"
 
-[[constraint]]
-  name = "github.com/tendermint/tmlibs"
-  branch = "develop"
-
 [prune]
   go-tests = true
   unused-packages = true

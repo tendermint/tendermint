@@ -6,12 +6,10 @@ import (
 	"os"
 	"strings"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
-	monitor "github.com/tendermint/tools/tm-monitor/monitor"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
+	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
-
-var version = "0.4.0"
 
 var logger = log.NewNopLogger()
 
