@@ -1,6 +1,10 @@
 # Changelog
 
-IMPROVEMENTs
+## 0.22.2
+
+*July 10th, 2018*
+
+IMPROVEMENTS
 - [docs] Include `ecosystem.json` and `tendermint-bft.md` from deprecated `aib-data` repository.
 - [config] Add `instrumentation.max_open_connections`, which limits the number
   of requests in flight to Prometheus server (if enabled). Default: 3.
