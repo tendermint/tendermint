@@ -247,12 +247,11 @@ func (mem *Mempool) CheckTx(tx types.Tx, cb func(*abci.Response)) (err error) {
 
 	// WAL
 	if mem.wal != nil {
+		var buf bytes.Buffer
+		buf.Write([]byte(tx))
+		buf.Write([]byte("\n"))
 		// TODO: Notify administrators when WAL fails
-		_, err := mem.wal.Write([]byte(tx))
-		if err != nil {
-			mem.logger.Error("Error writing to WAL", "err", err)
-		}
-		_, err = mem.wal.Write([]byte("\n"))
+		_, err := mem.wal.Write(buf.Bytes())
 		if err != nil {
 			mem.logger.Error("Error writing to WAL", "err", err)
 		}
