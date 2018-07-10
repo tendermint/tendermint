@@ -606,6 +606,12 @@ type InstrumentationConfig struct {
 
 	// Address to listen for Prometheus collector(s) connections.
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
+
+	// Maximum number of simultaneous connections.
+	// If you want to accept more significant number than the default, make sure
+	// you increase your OS limits.
+	// 0 - unlimited.
+	MaxOpenConnections int `mapstructure:"max_open_connections"`
 }
 
 // DefaultInstrumentationConfig returns a default configuration for metrics
@@ -614,6 +620,7 @@ func DefaultInstrumentationConfig() *InstrumentationConfig {
 	return &InstrumentationConfig{
 		Prometheus:           false,
 		PrometheusListenAddr: ":26660",
+		MaxOpenConnections:   3,
 	}
 }
 
