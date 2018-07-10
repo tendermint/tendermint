@@ -1,7 +1,12 @@
 GOTOOLS = \
+	github.com/mitchellh/gox \
 	github.com/golang/dep/cmd/dep \
-	gopkg.in/alecthomas/gometalinter.v2
+	gopkg.in/alecthomas/gometalinter.v2 \
+	github.com/gogo/protobuf/protoc-gen-gogo \
+	github.com/gogo/protobuf/gogoproto \
+	github.com/square/certstrap
 PACKAGES=$(shell go list ./... | grep -v '/vendor/')
+INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?=tendermint
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
@@ -11,7 +16,7 @@ check: check_tools ensure_deps
 
 
 ########################################
-### Build
+### Build Tendermint
 
 build:
 	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
@@ -23,9 +28,28 @@ install:
 	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
 ########################################
+### Build ABCI
+
+protoc_abci:
+	## If you get the following error,
+	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
+	## See https://stackoverflow.com/a/25518702
+	protoc $(INCLUDE) --gogo_out=plugins=grpc:. abci/types/*.proto
+	@echo "--> adding nolint declarations to protobuf generated files"
+	@awk '/package abci/types/ { print "//nolint: gas"; print; next }1' abci/types/types.pb.go > abci/types/types.pb.go.new
+	@mv abci/types/types.pb.go.new abci/types/types.pb.go
+
+build_abci:
+	@go build -i ./abci/cmd/...
+
+install_abci:
+	@go install ./abci/cmd/...
+
+########################################
 ### Distribution
 
 # dist builds binaries for all platforms and packages them for distribution
+# TODO add abci to these scripts
 dist:
 	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
 
@@ -59,6 +83,17 @@ ensure_deps:
 	@echo "--> Running dep"
 	@dep ensure
 
+#For ABCI and libs
+get_protoc:
+	@# https://github.com/google/protobuf/releases
+	curl -L https://github.com/google/protobuf/releases/download/v3.4.1/protobuf-cpp-3.4.1.tar.gz | tar xvz && \
+		cd protobuf-3.4.1 && \
+		DIST_LANG=cpp ./configure && \
+		make && \
+		make install && \
+		cd .. && \
+		rm -rf protobuf-3.4.1
+
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
 	go get github.com/RobotsAndPencils/goviz
@@ -69,6 +104,37 @@ get_deps_bin_size:
 	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/ 2>&1))
 	@find $(WORK) -type f -name "*.a" | xargs -I{} du -hxs "{}" | sort -rh | sed -e s:${WORK}/::g > deps_bin_size.log
 	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
+
+########################################
+### Libs
+
+protoc_libs:
+	## If you get the following error,
+	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
+	## See https://stackoverflow.com/a/25518702
+	protoc $(INCLUDE) --go_out=plugins=grpc:. libs/common/*.proto
+	@echo "--> adding nolint declarations to protobuf generated files"
+	@awk '/package libs/common/ { print "//nolint: gas"; print; next }1' libs/common/types.pb.go > libs/common/types.pb.go.new
+	@mv libs/common/types.pb.go.new libs/common/types.pb.go
+
+gen_certs: clean_certs
+	## Generating certificates for TLS testing...
+	certstrap init --common-name "tendermint.com" --passphrase ""
+	certstrap request-cert -ip "::" --passphrase ""
+	certstrap sign "::" --CA "tendermint.com" --passphrase ""
+	mv out/::.crt out/::.key db/remotedb
+
+clean_certs:
+	## Cleaning TLS testing certificates...
+	rm -rf out
+	rm -f db/remotedb/::.crt db/remotedb/::.key
+
+test_libs: gen_certs
+	GOCACHE=off go test -tags gcc $(shell go list ./... | grep -v vendor)
+	make clean_certs
+
+grpc_dbserver:
+	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto
 
 ########################################
 ### Testing
@@ -86,6 +152,15 @@ test_apps:
 	# run the app tests using bash
 	# requires `abci-cli` and `tendermint` binaries installed
 	bash test/app/test.sh
+
+test_abci_apps:
+	bash abci/tests/test_app/test.sh
+
+test_abci_cli:
+	# test the cli against the examples in the tutorial at:
+	# ./docs/abci-cli.md
+	# if test fails, update the docs ^
+	@ bash abci/tests/test_cli/test.sh
 
 test_persistence:
 	# run the persistence tests using bash
@@ -105,17 +180,16 @@ test_p2p:
 	# requires 'tester' the image from above
 	bash test/p2p/test.sh tester
 
-need_abci:
-	bash scripts/install_abci_apps.sh
-
 test_integrations:
 	make build_docker_test_image
 	make get_tools
 	make get_vendor_deps
 	make install
-	make need_abci
 	make test_cover
 	make test_apps
+	make test_abci_apps
+	make test_abci_cli
+	make test_libs
 	make test_persistence
 	make test_p2p
 
@@ -233,4 +307,4 @@ build-slate:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race dist install check_tools get_tools update_tools get_vendor_deps draw_deps test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate
+.PHONY: check build build_race build_abci dist install install_abci check_tools get_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate

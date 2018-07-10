@@ -15,6 +15,7 @@ var (
 	dotAtom = atom + `(?:\.` + atom + `)*`
 	domain  = `[A-Z0-9.-]+\.[A-Z]{2,4}`
 
+	RE_INT     = regexp.MustCompile(`^-?[0-9]+$`)
 	RE_HEX     = regexp.MustCompile(`^(?i)[a-f0-9]+$`)
 	RE_EMAIL   = regexp.MustCompile(`^(?i)(` + dotAtom + `)@(` + dotAtom + `)$`)
 	RE_ADDRESS = regexp.MustCompile(`^(?i)[a-z0-9]{25,34}$`)

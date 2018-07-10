@@ -31,8 +31,7 @@ jobs:
           name: binaries
           command: |
             export PATH="$GOBIN:$PATH"
-            make install
-            cd abci && make install
+            make install install_abci
       - persist_to_workspace:
           root: /tmp/workspace
           paths:

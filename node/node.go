@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	amino "github.com/tendermint/go-amino"
@@ -599,8 +600,13 @@ func (n *Node) startRPC() ([]net.Listener, error) {
 // collectors on addr.
 func (n *Node) startPrometheusServer(addr string) *http.Server {
 	srv := &http.Server{
-		Addr:    addr,
-		Handler: promhttp.Handler(),
+		Addr: addr,
+		Handler: promhttp.InstrumentMetricHandler(
+			prometheus.DefaultRegisterer, promhttp.HandlerFor(
+				prometheus.DefaultGatherer,
+				promhttp.HandlerOpts{MaxRequestsInFlight: n.config.Instrumentation.MaxOpenConnections},
+			),
+		),
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != http.ErrServerClosed {

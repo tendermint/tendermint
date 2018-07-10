@@ -3,8 +3,7 @@
 ## Overview
 
 This is a quick start guide. If you have a vague idea about how Tendermint
-works and want to get started right away, continue. Otherwise, [review the
-documentation](http://tendermint.readthedocs.io/en/master/).
+works and want to get started right away, continue.
 
 ## Install
 
@@ -135,10 +134,10 @@ This will install `go` and other dependencies, get the Tendermint source code, t
 Next, use the `tendermint testnet` command to create four directories of config files (found in `./mytestnet`) and copy each directory to the relevant machine in the cloud, so that each machine has `$HOME/mytestnet/node[0-3]` directory. Then from each machine, run:
 
 ```
-tendermint node --home ./mytestnet/node0 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
-tendermint node --home ./mytestnet/node1 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
-tendermint node --home ./mytestnet/node2 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
-tendermint node --home ./mytestnet/node3 --proxy_app=kvstore --p2p.persistent_peers="167b80242c300bf0ccfb3ced3dec60dc2a81776e@IP1:26656,3c7a5920811550c04bf7a0b2f1e02ab52317b5e6@IP2:26656,303a1a4312c30525c99ba66522dd81cca56a361a@IP3:26656,b686c2a7f4b1b46dca96af3a0f31a6a7beae0be4@IP4:26656"
+tendermint node --home ./mytestnet/node0 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
+tendermint node --home ./mytestnet/node1 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
+tendermint node --home ./mytestnet/node2 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
+tendermint node --home ./mytestnet/node3 --proxy_app=kvstore --p2p.persistent_peers="ID1@IP1:26656,ID2@IP2:26656,ID3@IP3:26656,ID4@IP4:26656"
 ```
 
 Note that after the third node is started, blocks will start to stream in

@@ -209,4 +209,10 @@ prometheus = false
 
 # Address to listen for Prometheus collector(s) connections
 prometheus_listen_addr = ":26660"
+
+# Maximum number of simultaneous connections.
+# If you want to accept a more significant number than the default, make sure
+# you increase your OS limits.
+# 0 - unlimited.
+max_open_connections = 3
 ```
