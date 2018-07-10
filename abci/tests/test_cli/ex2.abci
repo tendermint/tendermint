@@ -1,8 +1,0 @@
-set_option serial on
-check_tx 0x00
-check_tx 0xff
-deliver_tx 0x00
-check_tx 0x00
-deliver_tx 0x01
-deliver_tx 0x04
-info
