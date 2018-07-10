@@ -163,11 +163,8 @@ func (em *EventMeter) Subscribe(query string, cb EventCallbackFunc) error {
 func (em *EventMeter) Unsubscribe(query string) error {
 	em.mtx.Lock()
 	defer em.mtx.Unlock()
-	if err := em.wsc.Unsubscribe(context.TODO(), query); err != nil {
-		return err
-	}
 
-	return nil
+	return em.wsc.Unsubscribe(context.TODO(), query)
 }
 
 // GetMetric fills in the latest data for an query and return a copy.

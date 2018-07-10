@@ -194,7 +194,7 @@ func (t *transacter) sendLoop(connIndex int) {
 				txNumber++
 			}
 
-			timeToSend := time.Now().Sub(startTime)
+			timeToSend := time.Since(startTime)
 			logger.Info(fmt.Sprintf("sent %d transactions", numTxSent), "took", timeToSend)
 			if timeToSend < 1*time.Second {
 				sleepTime := time.Second - timeToSend
