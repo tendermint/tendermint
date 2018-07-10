@@ -3,9 +3,6 @@
 # XXX: this script is intended to be run from
 # an MacOS machine
 
-# upon its completion, you must either reset
-# your terminal or run `source ~/.profile`
-
 # as written, this script will install
 # tendermint core from master branch
 REPO=github.com/tendermint/tendermint
@@ -22,7 +19,7 @@ fi
 if ! [ -x "$(command -v go)" ]; then
   echo 'Error: go is not installed, to install go follow' >&2
   echo 'the instructions here: https://golang.org/doc/install#tarball' >&2
-  echo 'ALSO MAKE SURE TO SETUP YOUR $GOPATH: https://github.com/golang/go/wiki/SettingGOPATH' >&2
+  echo 'ALSO MAKE SURE TO SETUP YOUR $GOPATH and $GOBIN in your ~/.profile: https://github.com/golang/go/wiki/SettingGOPATH' >&2
   exit 1
 fi
 
@@ -42,7 +39,3 @@ git checkout $BRANCH
 make get_tools
 make get_vendor_deps
 make install
-
-# the binary is located in $GOPATH/bin
-# run `source ~/.profile` or reset your terminal
-# to persist the changes
