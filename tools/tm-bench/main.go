@@ -12,9 +12,9 @@ import (
 
 	"github.com/go-kit/kit/log/term"
 	metrics "github.com/rcrowley/go-metrics"
-	tmrpc "github.com/tendermint/tendermint/rpc/client"
 
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
+	tmrpc "github.com/tendermint/tendermint/rpc/client"
 )
 
 var version = "0.3.0"
