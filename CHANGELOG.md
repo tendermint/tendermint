@@ -6,7 +6,7 @@
 
 IMPROVEMENTS:
 - [config] Add `instrumentation.max_open_connections`, which limits the number
-  of requests in flight to Prometheus server (if enabled). Default: 1.
+  of requests in flight to Prometheus server (if enabled). Default: 3.
 
 ## 0.22.0
 

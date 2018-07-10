@@ -211,8 +211,8 @@ prometheus = false
 prometheus_listen_addr = ":26660"
 
 # Maximum number of simultaneous connections.
-# If you want to accept more significant number than the default, make sure
+# If you want to accept a more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
-max_open_connections = 1
+max_open_connections = 3
 ```

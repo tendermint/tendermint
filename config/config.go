@@ -620,7 +620,7 @@ func DefaultInstrumentationConfig() *InstrumentationConfig {
 	return &InstrumentationConfig{
 		Prometheus:           false,
 		PrometheusListenAddr: ":26660",
-		MaxOpenConnections:   1,
+		MaxOpenConnections:   3,
 	}
 }
 
