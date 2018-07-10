@@ -206,7 +206,7 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	msg, err := DecodeMessage(msgBytes)
+	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		r.Switch.StopPeerForError(src, err)
@@ -287,7 +287,7 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 		return
 	}
 	r.requestsSent.Set(id, struct{}{})
-	p.Send(PexChannel, cdc.MustMarshalBinary(&pexRequestMessage{}))
+	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexRequestMessage{}))
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -324,7 +324,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *PEXReactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, cdc.MustMarshalBinary(&pexAddrsMessage{Addrs: netAddrs}))
+	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: netAddrs}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -670,13 +670,11 @@ func RegisterPexMessage(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&pexAddrsMessage{}, "tendermint/p2p/PexAddrsMessage", nil)
 }
 
-// DecodeMessage implements interface registered above.
-func DecodeMessage(bz []byte) (msg PexMessage, err error) {
+func decodeMsg(bz []byte) (msg PexMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
-			len(bz), maxMsgSize)
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
-	err = cdc.UnmarshalBinary(bz, &msg)
+	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
 
