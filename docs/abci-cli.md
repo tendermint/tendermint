@@ -10,41 +10,47 @@ Make sure you [have Go installed](https://golang.org/doc/install).
 
 Next, install the `abci-cli` tool and example applications:
 
-    go get github.com/tendermint/tendermint
+```
+go get github.com/tendermint/tendermint
+```
 
 to get vendored dependencies:
 
-    cd $GOPATH/src/github.com/tendermint/tendermint
-    make get_tools
-    make get_vendor_deps
-    make install_abci
+```
+cd $GOPATH/src/github.com/tendermint/tendermint
+make get_tools
+make get_vendor_deps
+make install_abci
+```
 
 Now run `abci-cli` to see the list of commands:
 
-    Usage:
-      abci-cli [command]
+```
+Usage:
+  abci-cli [command]
 
-    Available Commands:
-      batch       Run a batch of abci commands against an application
-      check_tx    Validate a tx
-      commit      Commit the application state and return the Merkle root hash
-      console     Start an interactive abci console for multiple commands
-      counter     ABCI demo example
-      deliver_tx  Deliver a new tx to the application
-      kvstore       ABCI demo example
-      echo        Have the application echo a message
-      help        Help about any command
-      info        Get some info about the application
-      query       Query the application state
-      set_option  Set an options on the application
+Available Commands:
+  batch       Run a batch of abci commands against an application
+  check_tx    Validate a tx
+  commit      Commit the application state and return the Merkle root hash
+  console     Start an interactive abci console for multiple commands
+  counter     ABCI demo example
+  deliver_tx  Deliver a new tx to the application
+  kvstore       ABCI demo example
+  echo        Have the application echo a message
+  help        Help about any command
+  info        Get some info about the application
+  query       Query the application state
+  set_option  Set an options on the application
 
-    Flags:
-          --abci string      socket or grpc (default "socket")
-          --address string   address of application socket (default "tcp://127.0.0.1:26658")
-      -h, --help             help for abci-cli
-      -v, --verbose          print the command and results as if it were a console session
+Flags:
+      --abci string      socket or grpc (default "socket")
+      --address string   address of application socket (default "tcp://127.0.0.1:26658")
+  -h, --help             help for abci-cli
+  -v, --verbose          print the command and results as if it were a console session
 
-    Use "abci-cli [command] --help" for more information about a command.
+Use "abci-cli [command] --help" for more information about a command.
+```
 
 ## KVStore - First Example
 
@@ -63,59 +69,69 @@ Its code can be found
 [here](https://github.com/tendermint/tendermint/blob/develop/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
-    func cmdKVStore(cmd *cobra.Command, args []string) error {
-        logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-    
-        // Create the application - in memory or persisted to disk
-        var app types.Application
-        if flagPersist == "" {
-            app = kvstore.NewKVStoreApplication()
-        } else {
-            app = kvstore.NewPersistentKVStoreApplication(flagPersist)
-            app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
-        }
-    
-        // Start the listener
-        srv, err := server.NewServer(flagAddrD, flagAbci, app)
-        if err != nil {
-            return err
-        }
-        srv.SetLogger(logger.With("module", "abci-server"))
-        if err := srv.Start(); err != nil {
-            return err
-        }
-    
-        // Wait forever
-        cmn.TrapSignal(func() {
-            // Cleanup
-            srv.Stop()
-        })
-        return nil
+```
+func cmdKVStore(cmd *cobra.Command, args []string) error {
+    logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+
+    // Create the application - in memory or persisted to disk
+    var app types.Application
+    if flagPersist == "" {
+        app = kvstore.NewKVStoreApplication()
+    } else {
+        app = kvstore.NewPersistentKVStoreApplication(flagPersist)
+        app.(*kvstore.PersistentKVStoreApplication).SetLogger(logger.With("module", "kvstore"))
     }
+
+    // Start the listener
+    srv, err := server.NewServer(flagAddrD, flagAbci, app)
+    if err != nil {
+        return err
+    }
+    srv.SetLogger(logger.With("module", "abci-server"))
+    if err := srv.Start(); err != nil {
+        return err
+    }
+
+    // Wait forever
+    cmn.TrapSignal(func() {
+        // Cleanup
+        srv.Stop()
+    })
+    return nil
+}
+```
 
 Start by running:
 
-    abci-cli kvstore
+```
+abci-cli kvstore
+```
 
 And in another terminal, run
 
-    abci-cli echo hello
-    abci-cli info
+```
+abci-cli echo hello
+abci-cli info
+```
 
 You'll see something like:
 
-    -> data: hello
-    -> data.hex: 68656C6C6F
+```
+-> data: hello
+-> data.hex: 68656C6C6F
+```
 
 and:
 
-    -> data: {"size":0}
-    -> data.hex: 7B2273697A65223A307D
+```
+-> data: {"size":0}
+-> data.hex: 7B2273697A65223A307D
+```
 
 An ABCI application must provide two things:
 
--   a socket server
--   a handler for ABCI messages
+- a socket server
+- a handler for ABCI messages
 
 When we run the `abci-cli` tool we open a new connection to the
 application's socket server, send the given ABCI message, and wait for a
@@ -144,52 +160,54 @@ speaking ABCI messages to your application.
 
 Try running these commands:
 
-    > echo hello
-    -> code: OK
-    -> data: hello
-    -> data.hex: 0x68656C6C6F
+```
+> echo hello
+-> code: OK
+-> data: hello
+-> data.hex: 0x68656C6C6F
 
-    > info
-    -> code: OK
-    -> data: {"size":0}
-    -> data.hex: 0x7B2273697A65223A307D
+> info
+-> code: OK
+-> data: {"size":0}
+-> data.hex: 0x7B2273697A65223A307D
 
-    > commit
-    -> code: OK
-    -> data.hex: 0x0000000000000000
+> commit
+-> code: OK
+-> data.hex: 0x0000000000000000
 
-    > deliver_tx "abc"
-    -> code: OK
+> deliver_tx "abc"
+-> code: OK
 
-    > info
-    -> code: OK
-    -> data: {"size":1}
-    -> data.hex: 0x7B2273697A65223A317D
+> info
+-> code: OK
+-> data: {"size":1}
+-> data.hex: 0x7B2273697A65223A317D
 
-    > commit
-    -> code: OK
-    -> data.hex: 0x0200000000000000
+> commit
+-> code: OK
+-> data.hex: 0x0200000000000000
 
-    > query "abc"
-    -> code: OK
-    -> log: exists
-    -> height: 0
-    -> value: abc
-    -> value.hex: 616263
+> query "abc"
+-> code: OK
+-> log: exists
+-> height: 0
+-> value: abc
+-> value.hex: 616263
 
-    > deliver_tx "def=xyz"
-    -> code: OK
+> deliver_tx "def=xyz"
+-> code: OK
 
-    > commit
-    -> code: OK
-    -> data.hex: 0x0400000000000000
+> commit
+-> code: OK
+-> data.hex: 0x0400000000000000
 
-    > query "def"
-    -> code: OK
-    -> log: exists
-    -> height: 0
-    -> value: xyz
-    -> value.hex: 78797A
+> query "def"
+-> code: OK
+-> log: exists
+-> height: 0
+-> value: xyz
+-> value.hex: 78797A
+```
 
 Note that if we do `deliver_tx "abc"` it will store `(abc, abc)`, but if
 we do `deliver_tx "abc=efg"` it will store `(abc, efg)`.
@@ -206,29 +224,31 @@ Like the kvstore app, its code can be found
 [here](https://github.com/tendermint/tendermint/blob/master/abci/cmd/abci-cli/abci-cli.go)
 and looks like:
 
-    func cmdCounter(cmd *cobra.Command, args []string) error {
-    
-        app := counter.NewCounterApplication(flagSerial)
-    
-        logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-    
-        // Start the listener
-        srv, err := server.NewServer(flagAddrC, flagAbci, app)
-        if err != nil {
-            return err
-        }
-        srv.SetLogger(logger.With("module", "abci-server"))
-        if err := srv.Start(); err != nil {
-            return err
-        }
-    
-        // Wait forever
-        cmn.TrapSignal(func() {
-            // Cleanup
-            srv.Stop()
-        })
-        return nil
+```
+func cmdCounter(cmd *cobra.Command, args []string) error {
+
+    app := counter.NewCounterApplication(flagSerial)
+
+    logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+
+    // Start the listener
+    srv, err := server.NewServer(flagAddrC, flagAbci, app)
+    if err != nil {
+        return err
     }
+    srv.SetLogger(logger.With("module", "abci-server"))
+    if err := srv.Start(); err != nil {
+        return err
+    }
+
+    // Wait forever
+    cmn.TrapSignal(func() {
+        // Cleanup
+        srv.Stop()
+    })
+    return nil
+}
+```
 
 The counter app doesn't use a Merkle tree, it just counts how many times
 we've sent a transaction, asked for a hash, or committed the state. The
@@ -256,38 +276,42 @@ whose integer is greater than the last committed one.
 Let's kill the console and the kvstore application, and start the
 counter app:
 
-    abci-cli counter
+```
+abci-cli counter
+```
 
 In another window, start the `abci-cli console`:
 
-    > set_option serial on
-    -> code: OK
-    -> log: OK (SetOption doesn't return anything.)
+```
+> set_option serial on
+-> code: OK
+-> log: OK (SetOption doesn't return anything.)
 
-    > check_tx 0x00
-    -> code: OK
+> check_tx 0x00
+-> code: OK
 
-    > check_tx 0xff
-    -> code: OK
+> check_tx 0xff
+-> code: OK
 
-    > deliver_tx 0x00
-    -> code: OK
+> deliver_tx 0x00
+-> code: OK
 
-    > check_tx 0x00
-    -> code: BadNonce
-    -> log: Invalid nonce. Expected >= 1, got 0
+> check_tx 0x00
+-> code: BadNonce
+-> log: Invalid nonce. Expected >= 1, got 0
 
-    > deliver_tx 0x01
-    -> code: OK
+> deliver_tx 0x01
+-> code: OK
 
-    > deliver_tx 0x04
-    -> code: BadNonce
-    -> log: Invalid nonce. Expected 2, got 4
+> deliver_tx 0x04
+-> code: BadNonce
+-> log: Invalid nonce. Expected 2, got 4
 
-    > info
-    -> code: OK
-    -> data: {"hashes":0,"txs":2}
-    -> data.hex: 0x7B22686173686573223A302C22747873223A327D
+> info
+-> code: OK
+-> data: {"hashes":0,"txs":2}
+-> data.hex: 0x7B22686173686573223A302C22747873223A327D
+```
 
 This is a very simple application, but between `counter` and `kvstore`,
 its easy to see how you can build out arbitrary application states on
@@ -304,7 +328,9 @@ example directory](https://github.com/tendermint/tendermint/tree/develop/abci/ex
 
 To run the Node JS version, `cd` to `example/js` and run
 
-    node app.js
+```
+node app.js
+```
 
 (you'll have to kill the other counter application process). In another
 window, run the console and those previous ABCI commands. You should get

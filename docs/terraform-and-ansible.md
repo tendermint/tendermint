@@ -12,17 +12,17 @@ script](https://github.com/tendermint/tendermint/blob/develop/networks/remote/in
 that can be run on a fresh DO droplet and will automatically spin up a 4
 node testnet. The script more or less does everything described below.
 
--   Install [Terraform](https://www.terraform.io/downloads.html) and
-    [Ansible](http://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
-    on a Linux machine.
--   Create a [DigitalOcean API
-    token](https://cloud.digitalocean.com/settings/api/tokens) with read
-    and write capability.
--   Install the python dopy package (`pip install dopy`)
--   Create SSH keys (`ssh-keygen`)
--   Set environment variables:
+- Install [Terraform](https://www.terraform.io/downloads.html) and
+  [Ansible](http://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
+  on a Linux machine.
+- Create a [DigitalOcean API
+  token](https://cloud.digitalocean.com/settings/api/tokens) with read
+  and write capability.
+- Install the python dopy package (`pip install dopy`)
+- Create SSH keys (`ssh-keygen`)
+- Set environment variables:
 
-```    
+```
 export DO_API_TOKEN="abcdef01234567890abcdef01234567890"
 export SSH_KEY_FILE="$HOME/.ssh/id_rsa.pub"
 ```
@@ -44,6 +44,7 @@ then:
 terraform init
 terraform apply -var DO_API_TOKEN="$DO_API_TOKEN" -var SSH_KEY_FILE="$SSH_KEY_FILE"
 ```
+
 and you will get a list of IP addresses that belong to your droplets.
 
 With the droplets created and running, let's setup Ansible.
@@ -154,7 +155,7 @@ page](https://app.logz.io/#/dashboard/data-sources/Filebeat), then:
 ```
 yum install systemd-devel || echo "This will only work on RHEL-based systems."
 apt-get install libsystemd-dev || echo "This will only work on Debian-based systems."
-    
+
 go get github.com/mheese/journalbeat
 ansible-playbook -i inventory/digital_ocean.py -l sentrynet logzio.yml -e LOGZIO_TOKEN=ABCDEFGHIJKLMNOPQRSTUVWXYZ012345
 ```
