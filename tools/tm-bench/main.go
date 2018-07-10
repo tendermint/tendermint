@@ -130,8 +130,6 @@ Examples:
 	}
 
 	printStatistics(stats, outputFormat)
-
-	return
 }
 
 func latestBlockHeight(client tmrpc.Client) int64 {
