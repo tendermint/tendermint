@@ -1,13 +1,24 @@
 # Changelog
 
-## 0.23.0
-
-IMPROVEMENT
+IMPROVEMENTs
 - [docs] Include `ecosystem.json` and `tendermint-bft.md` from deprecated `aib-data` repository.
-
-IMPROVEMENTS:
 - [config] Add `instrumentation.max_open_connections`, which limits the number
   of requests in flight to Prometheus server (if enabled). Default: 3.
+
+## 0.22.1
+
+*July 5th, 2018*
+
+IMPROVEMENTS
+
+* Cleanup post repo-merge.
+* [docs] Various improvements.
+
+BUG FIXES
+
+* [state] Return error when EndBlock returns a 0-power validator that isn't
+  already in the validator set.
+* [consensus] Shut down WAL properly.
 
 ## 0.22.0
 
@@ -25,10 +36,12 @@ BREAKING CHANGES:
     * `tmlibs/merkle` -> `crypto/merkle`. Uses SHA256 instead of RIPEMD160
 - [tmlibs] Update to v0.9.0 and merge into `libs`
     * remove `merkle` package (moved to `crypto/merkle`)
-- [rpc] `syncing` is now called `catching_up`.
 - [config] Remove `max_block_size_txs` and `max_block_size_bytes` in favor of
   consensus params from the genesis file.
 - [config] Change `max_packet_msg_size` back to `max_packet_msg_payload_size`
+- [rpc]
+    * All integers are encoded as strings (part of the update for Amino v0.10.1)
+    * `syncing` is now called `catching_up`
 
 FEATURES
 - [cmd] Added metrics (served under `/metrics` using a Prometheus client;
