@@ -114,10 +114,14 @@ func (prt *ProofRuntime) DecodeProof(proof *Proof) (poz ProofOperators, err erro
 	return
 }
 
+// XXX Reorder value/keys, and figure out how to merge keys into a single string
+// after figuring out encoding between bytes/string.
 func (prt *ProofRuntime) VerifyValue(proof *Proof, root []byte, value []byte, keys ...string) (err error) {
 	return prt.Verify(proof, root, [][]byte{value}, keys...)
 }
 
+// XXX Reorder value/keys, and figure out how to merge keys into a single string
+// after figuring out encoding between bytes/string.
 func (prt *ProofRuntime) Verify(proof *Proof, root []byte, args [][]byte, keys ...string) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {

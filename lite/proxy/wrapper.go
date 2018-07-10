@@ -36,7 +36,7 @@ func SecureClient(c rpcclient.Client, cert *lite.InquiringCertifier) Wrapper {
 func (w Wrapper) ABCIQueryWithOptions(path string, data cmn.HexBytes,
 	opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 
-	res, _, err := GetWithProofOptions(path, data, opts, w.Client, w.cert)
+	res, err := GetWithProofOptions(path, data, opts, w.Client, w.cert)
 	return res, err
 }
 

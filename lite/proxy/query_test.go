@@ -10,6 +10,7 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 
+	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/lite"
 	certclient "github.com/tendermint/tendermint/lite/client"
 	nm "github.com/tendermint/tendermint/node"
@@ -38,7 +39,7 @@ func kvstoreTx(k, v []byte) []byte {
 	return []byte(fmt.Sprintf("%s=%s", k, v))
 }
 
-func _TestAppProofs(t *testing.T) {
+func TestAppProofs(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	cl := client.NewLocal(node)
@@ -64,11 +65,13 @@ func _TestAppProofs(t *testing.T) {
 	latest, err := source.LatestFullCommit(chainID, 1, 1<<63-1)
 	require.NoError(err, "%+v", err)
 	rootHash := latest.SignedHeader.AppHash
+	require.NotNil(rootHash)
 
 	// verify a query before the tx block has no data (and valid non-exist proof)
 	bs, height, proof, err := GetWithProof(k, brh-1, cl, cert)
-	fmt.Println(bs, height, proof, err)
 	require.NotNil(err)
+	require.NotNil(proof)
+	// XXX test proof
 	require.True(IsErrNoData(err), err.Error())
 	require.Nil(bs)
 
@@ -78,15 +81,10 @@ func _TestAppProofs(t *testing.T) {
 	require.NotNil(proof)
 	require.True(height >= int64(latest.Height()))
 
-	// Alexis there is a bug here, somehow the above code gives us rootHash = nil
-	// and proof.Verify doesn't care, while proofNotExists.Verify fails.
-	// I am hacking this in to make it pass, but please investigate further.
-	rootHash = proof.Root()
+	prt := merkle.NewProofRuntime()
 
-	//err = wire.ReadBinaryBytes(bs, &data)
-	//require.NoError(err, "%+v", err)
 	assert.EqualValues(v, bs)
-	err = proof.Verify(k, bs, rootHash)
+	err = prt.VerifyValue(proof, rootHash, k, string(bs))
 	assert.NoError(err, "%+v", err)
 
 	// Test non-existing key.
@@ -95,9 +93,9 @@ func _TestAppProofs(t *testing.T) {
 	require.True(IsErrNoData(err))
 	require.Nil(bs)
 	require.NotNil(proof)
-	err = proof.Verify(missing, nil, rootHash)
+	err = prt.VerifyValue(proof, rootHash, missing, "") // XXX VerifyAbsence()
 	assert.NoError(err, "%+v", err)
-	err = proof.Verify(k, nil, rootHash)
+	err = prt.VerifyValue(proof, rootHash, k, "") // XXX VerifyAbsence()
 	assert.Error(err)
 }
 

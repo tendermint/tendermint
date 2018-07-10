@@ -2,10 +2,10 @@ package kvstore
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 
+	"github.com/tendermint/iavl"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -13,20 +13,21 @@ import (
 )
 
 var (
-	stateKey        = []byte("stateKey")
-	kvPairPrefixKey = []byte("kvPairKey:")
+	stateKey = []byte("stateKey")
 )
 
 type State struct {
-	db      dbm.DB
+	db   dbm.DB
+	tree *iavl.VersionedTree
+
 	Size    int64  `json:"size"`
 	Height  int64  `json:"height"`
 	AppHash []byte `json:"app_hash"`
 }
 
-func loadState(db dbm.DB) State {
+func loadState(db dbm.DB) *State {
 	stateBytes := db.Get(stateKey)
-	var state State
+	var state = new(State)
 	if len(stateBytes) != 0 {
 		err := json.Unmarshal(stateBytes, &state)
 		if err != nil {
@@ -34,19 +35,27 @@ func loadState(db dbm.DB) State {
 		}
 	}
 	state.db = db
+	state.tree = iavl.NewVersionedTree(db, 0)
+	state.tree.LoadVersion(state.Height)
 	return state
 }
 
-func saveState(state State) {
+func saveState(state *State) {
+	hash, version, err := state.tree.SaveVersion()
+	if err != nil {
+		panic(err)
+	}
+	state.AppHash = hash
+	if state.Height+1 != version {
+		panic("should not happen, expected version to be 1+state.Height.")
+	}
+	state.Height = version
+
 	stateBytes, err := json.Marshal(state)
 	if err != nil {
 		panic(err)
 	}
 	state.db.Set(stateKey, stateBytes)
-}
-
-func prefixKey(key []byte) []byte {
-	return append(kvPairPrefixKey, key...)
 }
 
 //---------------------------------------------------
@@ -56,7 +65,7 @@ var _ types.Application = (*KVStoreApplication)(nil)
 type KVStoreApplication struct {
 	types.BaseApplication
 
-	state State
+	state *State
 }
 
 func NewKVStoreApplication() *KVStoreApplication {
@@ -77,11 +86,11 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	} else {
 		key, value = tx, tx
 	}
-	app.state.db.Set(prefixKey(key), value)
+	app.state.tree.Set(key, value)
 	app.state.Size += 1
 
 	tags := []cmn.KVPair{
-		{[]byte("app.creator"), []byte("jae")},
+		{[]byte("app.creator"), []byte("Cosmoshi Netowoko")},
 		{[]byte("app.key"), key},
 	}
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
@@ -92,20 +101,20 @@ func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 }
 
 func (app *KVStoreApplication) Commit() types.ResponseCommit {
-	// Using a memdb - just return the big endian size of the db
-	appHash := make([]byte, 8)
-	binary.PutVarint(appHash, app.state.Size)
-	app.state.AppHash = appHash
-	app.state.Height += 1
 	saveState(app.state)
-	return types.ResponseCommit{Data: appHash}
+	return types.ResponseCommit{Data: app.state.AppHash}
 }
 
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-	// NOTE: This isn't proving anything yet.
+	key := reqQuery.Data
 	if reqQuery.Prove {
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
-		resQuery.Index = -1 // TODO make Proof return index
+		value, proof, err := app.state.tree.GetWithProof(key)
+		if err != nil {
+			resQuery.Code = code.CodeTypeUnknownError
+			resQuery.Log = err.Error()
+			return
+		}
+		resQuery.Index = proof.LeftIndex() // TODO make Proof return index
 		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
 		if value != nil {
@@ -115,7 +124,9 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 		}
 		return
 	} else {
-		value := app.state.db.Get(prefixKey(reqQuery.Data))
+		index, value := app.state.tree.Get64(key)
+		resQuery.Index = index
+		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
 		if value != nil {
 			resQuery.Log = "exists"
