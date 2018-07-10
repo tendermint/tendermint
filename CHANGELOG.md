@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.22.3
+
+IMPROVEMENTS
+- Update dependencies
+    * pin all values in Gopkg.toml to version or commit
+    * update golang/protobuf to v1.1.0
+
 ## 0.22.2
 
 *July 10th, 2018*
