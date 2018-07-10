@@ -11,8 +11,6 @@ import (
 	monitor "github.com/tendermint/tendermint/tools/tm-monitor/monitor"
 )
 
-var version = "0.4.0"
-
 var logger = log.NewNopLogger()
 
 func main() {

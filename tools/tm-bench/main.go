@@ -17,8 +17,6 @@ import (
 	tmrpc "github.com/tendermint/tendermint/rpc/client"
 )
 
-var version = "0.3.0"
-
 var logger = log.NewNopLogger()
 
 type statistics struct {
