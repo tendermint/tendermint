@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/abci/client"
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/server"
 	"github.com/tendermint/tendermint/abci/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -79,13 +79,8 @@ func TestHangingSyncCalls(t *testing.T) {
 		s.Stop()
 
 		// wait for the response from BeginBlock
-		fmt.Println("waiting for begin block")
 		reqres.Wait()
-		fmt.Println("waiting for flush")
 		flush.Wait()
-		fmt.Println("got all responses")
-		// res := reqres.Response.GetBeginBlock()
-		// require.NotNil(t, res)
 		resp <- c.Error()
 	}()
 
