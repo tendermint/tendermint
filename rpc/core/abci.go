@@ -2,9 +2,9 @@ package core
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/version"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Query the application for some information.

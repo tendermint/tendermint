@@ -8,10 +8,10 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {

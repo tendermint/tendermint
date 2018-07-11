@@ -24,11 +24,11 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 var consensusReplayConfig *cfg.Config
