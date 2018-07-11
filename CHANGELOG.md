@@ -1,5 +1,10 @@
 # Changelog
 
+## TBD
+
+IMPROVEMENTS:
+- [genesis] removed deprecated `app_options` field.
+
 ## 0.22.2
 
 *July 10th, 2018*
