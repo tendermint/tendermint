@@ -126,11 +126,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	}
 }
 
-var events = []string{EventBond,
-	EventUnbond,
-	EventRebond,
-	EventDupeout,
-	EventFork,
+var events = []string{
 	EventNewBlock,
 	EventNewBlockHeader,
 	EventNewRound,
@@ -148,11 +144,7 @@ func randEvent() string {
 	return events[rand.Intn(len(events))]
 }
 
-var queries = []tmpubsub.Query{EventQueryBond,
-	EventQueryUnbond,
-	EventQueryRebond,
-	EventQueryDupeout,
-	EventQueryFork,
+var queries = []tmpubsub.Query{
 	EventQueryNewBlock,
 	EventQueryNewBlockHeader,
 	EventQueryNewRound,
