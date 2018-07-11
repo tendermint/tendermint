@@ -57,12 +57,13 @@ func TestMemStoreProvidergetByHeightBinaryAndLinearSameResult(t *testing.T) {
 
 func createAndStoreCommits(t *testing.T, p Provider, heights []int64) {
 	chainID := "cache-best-height-binary-and-linear"
+	appdata := []byte("0xda2a")
 	appHash := []byte("0xdeadbeef")
 	keys := GenValKeys(len(heights) / 2)
 
 	for _, h := range heights {
 		vals := keys.ToValidators(10, int64(len(heights)/2))
-		fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		fc := keys.GenFullCommit(chainID, h, nil, vals, appdata, appHash, []byte("params"), []byte("results"), 0, 5)
 		err := p.StoreCommit(fc)
 		require.NoError(t, err, "StoreCommit height=%d", h)
 	}
@@ -128,9 +129,10 @@ func benchmarkGenCommit(b *testing.B, keys ValKeys) {
 	vals := keys.ToValidators(20, 10)
 	for i := 0; i < b.N; i++ {
 		h := int64(1 + i)
+		appData := []byte(fmt.Sprintf("d=%d", h))
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		resHash := []byte(fmt.Sprintf("res=%d", h))
-		keys.GenCommit(chainID, h, nil, vals, appHash, []byte("params"), resHash, 0, len(keys))
+		keys.GenCommit(chainID, h, nil, vals, appData, appHash, []byte("params"), resHash, 0, len(keys))
 	}
 }
 
@@ -202,7 +204,7 @@ func benchmarkCertifyCommit(b *testing.B, keys ValKeys) {
 	chainID := "bench-certify"
 	vals := keys.ToValidators(20, 10)
 	cert := NewStaticCertifier(chainID, vals)
-	check := keys.GenCommit(chainID, 123, nil, vals, []byte("foo"), []byte("params"), []byte("res"), 0, len(keys))
+	check := keys.GenCommit(chainID, 123, nil, vals, []byte("foo"), []byte("bar"), []byte("params"), []byte("res"), 0, len(keys))
 	for i := 0; i < b.N; i++ {
 		err := cert.Certify(check)
 		if err != nil {
@@ -322,6 +324,7 @@ func genFullCommits(prevFC []FullCommit, prevH []int64, want int) ([]FullCommit,
 	heights := make([]int64, len(prevH))
 	copy(heights, prevH)
 
+	appData := []byte("data")
 	appHash := []byte("benchmarks")
 	chainID := "benchmarks-gen-full-commits"
 	n := want
@@ -329,7 +332,7 @@ func genFullCommits(prevFC []FullCommit, prevH []int64, want int) ([]FullCommit,
 	for i := 0; i < n; i++ {
 		vals := keys.ToValidators(10, int64(n/2))
 		h := int64(20 + 10*i)
-		fcs = append(fcs, keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5))
+		fcs = append(fcs, keys.GenFullCommit(chainID, h, nil, vals, appData, appHash, []byte("params"), []byte("results"), 0, 5))
 		heights = append(heights, h)
 	}
 	return fcs, heights
@@ -352,13 +355,14 @@ func TestMemStoreProviderLatestCommitAlwaysUsesSorted(t *testing.T) {
 
 func genAndStoreCommitsOfHeight(t *testing.T, p Provider, heights ...int64) {
 	n := len(heights)
+	appData := []byte("data")
 	appHash := []byte("tests")
 	chainID := "tests-gen-full-commits"
 	keys := GenValKeys(2 + (n / 3))
 	for i := 0; i < n; i++ {
 		h := heights[i]
 		vals := keys.ToValidators(10, int64(n/2))
-		fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		fc := keys.GenFullCommit(chainID, h, nil, vals, appData, appHash, []byte("params"), []byte("results"), 0, 5)
 		err := p.StoreCommit(fc)
 		require.NoError(t, err, "StoreCommit height=%d", h)
 	}

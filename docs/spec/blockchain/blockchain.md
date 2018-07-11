@@ -51,6 +51,7 @@ type Header struct {
 
     // application
     ResultsHash         []byte  // SimpleMerkle of []abci.Result from prevBlock
+    AppData             []byte  // Custom app data
     AppHash             []byte  // Arbitrary state digest
     ValidatorsHash      []byte  // SimpleMerkle of the ValidatorSet
     ConsensusParamsHash []byte  // SimpleMerkle of the ConsensusParams
@@ -269,6 +270,16 @@ block.AppHash == state.AppHash
 Arbitrary byte array returned by the application after executing and commiting the previous block.
 
 The first block has `block.Header.AppHash == []byte{}`.
+
+### AppData
+
+```go
+block.AppData == state.AppData
+```
+
+Application custom data related that specific block height
+
+The first block has `block.Header.AppData == []byte{}`.
 
 ### ValidatorsHash
 

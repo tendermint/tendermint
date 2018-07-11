@@ -254,6 +254,7 @@ func state(nVals, height int) (State, dbm.DB) {
 	s, _ := MakeGenesisState(&types.GenesisDoc{
 		ChainID:    chainID,
 		Validators: vals,
+		AppData:    nil,
 		AppHash:    nil,
 	})
 

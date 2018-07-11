@@ -6,8 +6,8 @@ import (
 
 	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 func BenchmarkRoundStateDeepCopy(b *testing.B) {
@@ -46,6 +46,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 			DataHash:        cmn.RandBytes(20),
 			ValidatorsHash:  cmn.RandBytes(20),
 			ConsensusHash:   cmn.RandBytes(20),
+			AppData:         cmn.RandBytes(20),
 			AppHash:         cmn.RandBytes(20),
 			LastResultsHash: cmn.RandBytes(20),
 			EvidenceHash:    cmn.RandBytes(20),

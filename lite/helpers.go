@@ -116,7 +116,7 @@ func makeVote(header *types.Header, vals *types.ValidatorSet, key crypto.PrivKey
 // Silences warning that vals can also be merkle.Hashable
 // nolint: interfacer
 func genHeader(chainID string, height int64, txs types.Txs,
-	vals *types.ValidatorSet, appHash, consHash, resHash []byte) *types.Header {
+	vals *types.ValidatorSet, appData, appHash, consHash, resHash []byte) *types.Header {
 
 	return &types.Header{
 		ChainID:  chainID,
@@ -128,6 +128,7 @@ func genHeader(chainID string, height int64, txs types.Txs,
 		// LastCommitHash
 		ValidatorsHash:  vals.Hash(),
 		DataHash:        txs.Hash(),
+		AppData:         appData,
 		AppHash:         appHash,
 		ConsensusHash:   consHash,
 		LastResultsHash: resHash,
@@ -136,9 +137,9 @@ func genHeader(chainID string, height int64, txs types.Txs,
 
 // GenCommit calls genHeader and signHeader and combines them into a Commit.
 func (v ValKeys) GenCommit(chainID string, height int64, txs types.Txs,
-	vals *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) Commit {
+	vals *types.ValidatorSet, appData, appHash, consHash, resHash []byte, first, last int) Commit {
 
-	header := genHeader(chainID, height, txs, vals, appHash, consHash, resHash)
+	header := genHeader(chainID, height, txs, vals, appData, appHash, consHash, resHash)
 	check := Commit{
 		Header: header,
 		Commit: v.signHeader(header, first, last),
@@ -148,9 +149,9 @@ func (v ValKeys) GenCommit(chainID string, height int64, txs types.Txs,
 
 // GenFullCommit calls genHeader and signHeader and combines them into a Commit.
 func (v ValKeys) GenFullCommit(chainID string, height int64, txs types.Txs,
-	vals *types.ValidatorSet, appHash, consHash, resHash []byte, first, last int) FullCommit {
+	vals *types.ValidatorSet, appData, appHash, consHash, resHash []byte, first, last int) FullCommit {
 
-	header := genHeader(chainID, height, txs, vals, appHash, consHash, resHash)
+	header := genHeader(chainID, height, txs, vals, appData, appHash, consHash, resHash)
 	commit := Commit{
 		Header: header,
 		Commit: v.signHeader(header, first, last),

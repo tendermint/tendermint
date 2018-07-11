@@ -4,7 +4,7 @@ package types;
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/tendermint/tmlibs/common/types.proto";
+import "github.com/tendermint/tendermint/libs/common/types.proto";
 
 // This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
@@ -119,7 +119,8 @@ message ResponseInfo {
   string data = 1;
   string version = 2;
   int64 last_block_height = 3;
-  bytes last_block_app_hash = 4;
+  bytes last_block_app_data = 4;
+  bytes last_block_app_hash = 5;
 }
 
 // nondeterministic
@@ -180,8 +181,8 @@ message ResponseEndBlock {
 }
 
 message ResponseCommit {
-  // reserve 1
-  bytes data = 2;
+  bytes app_data = 1;
+  bytes app_hash = 2;
 }
 
 //----------------------------------------
@@ -232,10 +233,11 @@ message Header {
   // hashes
   bytes last_block_hash = 6;
   bytes validators_hash = 7;
-  bytes app_hash = 8;
+  bytes app_data = 8;
+  bytes app_hash = 9;
 
   // consensus
-  Validator proposer = 9 [(gogoproto.nullable)=false];
+  Validator proposer = 10 [(gogoproto.nullable)=false];
 }
 
 // Validator

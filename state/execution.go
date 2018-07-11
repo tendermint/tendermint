@@ -92,7 +92,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	// lock mempool, commit app state, update mempoool
-	appHash, err := blockExec.Commit(block)
+	res, err := blockExec.Commit(block)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -103,7 +103,8 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	fail.Fail() // XXX
 
 	// update the app hash and save the state
-	state.AppHash = appHash
+	state.AppData = res.AppData
+	state.AppHash = res.AppHash
 	SaveState(blockExec.db, state)
 
 	fail.Fail() // XXX
@@ -119,7 +120,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 // It returns the result of calling abci.Commit (the AppHash), and an error.
 // The Mempool must be locked during commit and update because state is typically reset on Commit and old txs must be replayed
 // against committed state before new txs are run in the mempool, lest they be invalid.
-func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
+func (blockExec *BlockExecutor) Commit(block *types.Block) (*abci.ResponseCommit, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -142,14 +143,14 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 	blockExec.logger.Info("Committed state",
 		"height", block.Height,
 		"txs", block.NumTxs,
-		"appHash", fmt.Sprintf("%X", res.Data))
+		"appHash", fmt.Sprintf("%X", res.AppHash))
 
 	// Update mempool.
 	if err := blockExec.mempool.Update(block.Height, block.Txs); err != nil {
 		return nil, err
 	}
 
-	return res.Data, nil
+	return res, nil
 }
 
 //---------------------------------------------------------
@@ -358,6 +359,7 @@ func updateState(state State, blockID types.BlockID, header *types.Header,
 		ConsensusParams:                  nextParams,
 		LastHeightConsensusParamsChanged: lastHeightParamsChanged,
 		LastResultsHash:                  abciResponses.ResultsHash(),
+		AppData:                          nil,
 		AppHash:                          nil,
 	}, nil
 }
@@ -385,7 +387,7 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 // ExecCommitBlock executes and commits a block on the proxyApp without validating or mutating the state.
 // It returns the application root hash (result of abci.Commit).
 func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block,
-	logger log.Logger, lastValSet *types.ValidatorSet, stateDB dbm.DB) ([]byte, error) {
+	logger log.Logger, lastValSet *types.ValidatorSet, stateDB dbm.DB) (*abci.ResponseCommit, error) {
 	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, lastValSet, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
@@ -398,5 +400,5 @@ func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block
 		return nil, err
 	}
 	// ResponseCommit has no error or log, just data
-	return res.Data, nil
+	return res, nil
 }

@@ -274,6 +274,8 @@ See below for more details on the message types and how they are used.
   - `AppHash ([]byte)`: Data returned by the last call to `Commit` - typically the
     Merkle root of the application state after executing the previous block's
     transactions
+  - `AppData ([]byte)`: Data returned by the last call to `Commit` - typically the
+    application customized data
   - `Proposer (Validator)`: Original proposer for the block
 - **Usage**:
   - Provided in RequestBeginBlock

@@ -8,10 +8,10 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -201,6 +201,8 @@ func TestStateBadProposal(t *testing.T) {
 		stateHash = make([]byte, 32)
 	}
 	stateHash[0] = byte((stateHash[0] + 1) % 255)
+	stateData := []byte{0x55}
+	propBlock.AppData = stateData
 	propBlock.AppHash = stateHash
 	propBlockParts := propBlock.MakePartSet(partSize)
 	proposal := types.NewProposal(vs2.Height, round, propBlockParts.Header(), -1, types.BlockID{})

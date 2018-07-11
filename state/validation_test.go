@@ -42,6 +42,12 @@ func TestValidateBlock(t *testing.T) {
 	err = blockExec.ValidateBlock(state, block)
 	require.Error(t, err)
 
+	// wrong app data fails
+	block = makeBlock(state, 1)
+	block.AppData = []byte("wrong app data")
+	err = blockExec.ValidateBlock(state, block)
+	require.Error(t, err)
+
 	// wrong app hash fails
 	block = makeBlock(state, 1)
 	block.AppHash = []byte("wrong app hash")

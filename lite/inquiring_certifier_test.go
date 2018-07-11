@@ -31,8 +31,9 @@ func TestInquirerValidPath(t *testing.T) {
 		keys = keys.Extend(1)
 		vals := keys.ToValidators(vote, 0)
 		h := int64(20 + 10*i)
+		appData := []byte(fmt.Sprintf("d=%d", h))
 		appHash := []byte(fmt.Sprintf("h=%d", h))
-		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, consHash, resHash, 0,
+		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appData, appHash, consHash, resHash, 0,
 			len(keys))
 	}
 
@@ -81,9 +82,10 @@ func TestInquirerMinimalPath(t *testing.T) {
 		keys = keys.Extend(len(keys)/2 - 1)
 		vals := keys.ToValidators(vote, 0)
 		h := int64(5 + 10*i)
+		appData := []byte(fmt.Sprintf("d=%d", h))
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		resHash := []byte(fmt.Sprintf("res=%d", h))
-		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, consHash, resHash, 0,
+		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appData, appHash, consHash, resHash, 0,
 			len(keys))
 	}
 
@@ -131,9 +133,10 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 		keys = keys.Extend(1)
 		vals := keys.ToValidators(vote, 0)
 		h := int64(20 + 10*i)
+		appData := []byte(fmt.Sprintf("d=%d", h))
 		appHash := []byte(fmt.Sprintf("h=%d", h))
 		resHash := []byte(fmt.Sprintf("res=%d", h))
-		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, consHash, resHash, 0,
+		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appData, appHash, consHash, resHash, 0,
 			len(keys))
 	}
 

@@ -24,11 +24,11 @@ import (
 	dbm "github.com/tendermint/tendermint/libs/db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 var consensusReplayConfig *cfg.Config
@@ -354,6 +354,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	// run the chain through state.ApplyBlock to build up the tendermint state
 	state = buildTMStateFromChain(config, stateDB, state, chain, mode)
 	latestAppHash := state.AppHash
+	latestAppData := state.AppData
 
 	// make a new client creator
 	kvstoreApp := kvstore.NewPersistentKVStoreApplication(path.Join(config.DBDir(), "2"))
@@ -381,9 +382,19 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatal(err)
 	}
 
+	// the app data should be synced up
+	if !bytes.Equal(latestAppData, res.LastBlockAppData) {
+		t.Fatalf("Expected app data to match after handshake/replay. got %X, expected %X", res.LastBlockAppData, latestAppData)
+	}
+
 	// the app hash should be synced up
 	if !bytes.Equal(latestAppHash, res.LastBlockAppHash) {
 		t.Fatalf("Expected app hashes to match after handshake/replay. got %X, expected %X", res.LastBlockAppHash, latestAppHash)
+	}
+
+	// the app data should be synced up
+	if !bytes.Equal(latestAppData, res.LastBlockAppData) {
+		t.Fatalf("Expected app data to match after handshake/replay. got %X, expected %X", res.LastBlockAppData, latestAppData)
 	}
 
 	expectedBlocksToSync := NUM_BLOCKS - nBlocks
