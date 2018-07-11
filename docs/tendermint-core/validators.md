@@ -1,5 +1,4 @@
-Validators
-==========
+# Validators
 
 Validators are responsible for committing new blocks in the blockchain.
 These validators participate in the consensus protocol by broadcasting
@@ -19,25 +18,22 @@ to post any collateral at all.
 Validators have a cryptographic key-pair and an associated amount of
 "voting power". Voting power need not be the same.
 
-Becoming a Validator
---------------------
+## Becoming a Validator
 
 There are two ways to become validator.
 
-1. They can be pre-established in the `genesis
-   state <./genesis.html>`__
-2. The ABCI app responds to the EndBlock message with changes to the
-   existing validator set.
+1.  They can be pre-established in the [genesis state](../../tendermint-core/using-tendermint.md#genesis)
+2.  The ABCI app responds to the EndBlock message with changes to the
+    existing validator set.
 
-Committing a Block
-------------------
+## Committing a Block
 
 *+2/3 is short for "more than 2/3"*
 
-A block is committed when +2/3 of the validator set sign `precommit
-votes <./block-structure.html#vote>`__ for that block at the same
-``round``. The +2/3 set of precommit votes is
-called a `*commit* <./block-structure.html#commit>`__. While any
-+2/3 set of precommits for the same block at the same height&round can
-serve as validation, the canonical commit is included in the next block
-(see `LastCommit <./block-structure.html>`__).
+A block is committed when +2/3 of the validator set sign [precommit
+votes](../spec/blockchain/blockchain.md#vote) for that block at the same `round`.
+The +2/3 set of precommit votes is called a
+[*commit*](../spec/blockchain/blockchain.md#commit). While any +2/3 set of
+precommits for the same block at the same height&round can serve as
+validation, the canonical commit is included in the next block (see
+[LastCommit](../spec/blockchain/blockchain.md#last-commit)).
