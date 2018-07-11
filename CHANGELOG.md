@@ -16,6 +16,7 @@ BUG FIXES
     - NOTE: this is only for URI requests. JSONRPC requests and all responses
       will use quoted integers (the proto3 JSON standard).
 - [consensus] Fix halt on shutdown
+- [tm_bench] Ignore the first block if we didn't start sending txs by then
 
 ## 0.22.1
 
