@@ -86,6 +86,22 @@ func (t *transacter) Start() error {
 	return nil
 }
 
+// WaitUntilAllConnectionsStartedFiringTxs waits until all of this
+// transacters connections have begun sending txs at the specified rate
+func (t *transacter) WaitUntilAllConnectionsStartedFiringTxs() {
+	for {
+		started := true
+		for i := 0; i < t.Connections; i++ {
+			if !t.connsStarted[i] && !t.connsBroken[i] {
+				started = false
+			}
+		}
+		if started {
+			break
+		}
+	}
+}
+
 // Stop closes the connections.
 func (t *transacter) Stop() {
 	t.stopped = true

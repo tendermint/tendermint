@@ -102,19 +102,6 @@ Examples:
 	)
 
 	// Wait until transacters have begun until we get the start time
-	for {
-		started := true
-		for _, t := range transacters {
-			for i := 0; i < t.Connections; i++ {
-				if !t.connsStarted[i] && !t.connsBroken[i] {
-					started = false
-				}
-			}
-		}
-		if started {
-			break
-		}
-	}
 	timeStart := time.Now()
 	logger.Info("Time last transacter started", "t", timeStart)
 
@@ -268,6 +255,11 @@ func startTransacters(
 			os.Exit(1)
 		}
 		transacters[i] = t
+	}
+
+	// Wait until all transacters have started firing txs
+	for _, t := range transacters {
+		t.WaitUntilAllConnectionsStartedFiringTxs()
 	}
 
 	return transacters
