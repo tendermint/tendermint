@@ -39,7 +39,7 @@ const (
 
 // genesis, chain_id, priv_val
 var config *cfg.Config              // NOTE: must be reset for each _test.go file
-var ensureTimeout = time.Second * 1 // must be in seconds because CreateEmptyBlocksInterval is
+var ensureTimeout = time.Second * 5 // must be in seconds because CreateEmptyBlocksInterval is
 
 func ensureDir(dir string, mode os.FileMode) {
 	if err := cmn.EnsureDir(dir, mode); err != nil {

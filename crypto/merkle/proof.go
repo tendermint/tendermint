@@ -2,7 +2,6 @@ package merkle
 
 import (
 	"bytes"
-	"reflect"
 
 	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
@@ -72,20 +71,6 @@ func NewProofRuntime() *ProofRuntime {
 	}
 }
 
-func (prt *ProofRuntime) RegisterAminoOpDecoder(typ string, opType reflect.Type) {
-	prt.RegisterOpDecoder(
-		typ,
-		func(pop ProofOp) (ProofOperator, error) {
-			newOp := reflect.New(opType).Elem().Interface()
-			err := cdc.UnmarshalBinary(pop.Data, &newOp)
-			if err != nil {
-				return nil, cmn.ErrorWrap(err, "decoding ProofOp.Data")
-			}
-			return newOp.(ProofOperator), nil
-		},
-	)
-}
-
 func (prt *ProofRuntime) RegisterOpDecoder(typ string, dec OpDecoder) {
 	_, ok := prt.decoders[typ]
 	if ok {
@@ -122,6 +107,14 @@ func (prt *ProofRuntime) VerifyValue(proof *Proof, root []byte, value []byte, ke
 
 // XXX Reorder value/keys, and figure out how to merge keys into a single string
 // after figuring out encoding between bytes/string.
+// TODO In the long run we'll need a method of classifcation of ops,
+// whether existence or absence or perhaps a third?
+func (prt *ProofRuntime) VerifyAbsence(proof *Proof, root []byte, keys ...string) (err error) {
+	return prt.Verify(proof, root, nil, keys...)
+}
+
+// XXX Reorder value/keys, and figure out how to merge keys into a single string
+// after figuring out encoding between bytes/string.
 func (prt *ProofRuntime) Verify(proof *Proof, root []byte, args [][]byte, keys ...string) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {
@@ -136,9 +129,6 @@ func (prt *ProofRuntime) Verify(proof *Proof, root []byte, args [][]byte, keys .
 // defined in the IAVL package.
 func DefaultProofRuntime() (prt *ProofRuntime) {
 	prt = NewProofRuntime()
-	prt.RegisterAminoOpDecoder(
-		ProofOpSimpleValue,
-		reflect.TypeOf(SimpleValueOp{}),
-	)
+	prt.RegisterOpDecoder(ProofOpSimpleValue, SimpleValueOpDecoder)
 	return
 }

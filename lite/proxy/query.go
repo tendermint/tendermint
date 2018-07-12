@@ -7,6 +7,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/lite"
+	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
@@ -16,7 +17,7 @@ import (
 // a valid proof, as defined by the certifier.
 //
 // If there is any error in checking, returns an error.
-func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
+func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
 	cert lite.Certifier) (
 	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
 
@@ -25,7 +26,7 @@ func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 		return
 	}
 
-	res, err := GetWithProofOptions("/key", key,
+	res, err := GetWithProofOptions(prt, "/key", key,
 		rpcclient.ABCIQueryOptions{Height: int64(reqHeight), Prove: true},
 		node, cert)
 	if err != nil {
@@ -38,7 +39,8 @@ func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 }
 
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
-func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOptions,
+// XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
+func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
 	node rpcclient.Client, cert lite.Certifier) (
 	*ctypes.ResultABCIQuery, error) {
 
@@ -57,8 +59,9 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 		err = cmn.NewError("Query error for key %d: %d", key, resp.Code)
 		return nil, err
 	}
+
 	if len(resp.Key) == 0 || resp.Proof == nil {
-		return nil, ErrNoData()
+		return nil, lerr.ErrEmptyTree()
 	}
 	if resp.Height == 0 {
 		return nil, cmn.NewError("Height returned is zero")
@@ -70,21 +73,25 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 		return nil, err
 	}
 
-	if len(resp.Value) > 0 {
-		// Validate the proof against the certified header to ensure data integrity.
-		// XXX Pass this in somehow so iavl can be registered.
+	// Validate the proof against the certified header to ensure data integrity.
+	if resp.Value != nil {
+		// Value exists
 		// XXX How do we encode the key into a string...
-		prt := merkle.NewProofRuntime()
 		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, resp.Value, string(resp.Key))
 		if err != nil {
-			return nil, cmn.ErrorWrap(err, "Couldn't verify proof")
+			return nil, cmn.ErrorWrap(err, "Couldn't verify value proof")
 		}
 		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	} else {
-		return nil, cmn.NewError("proof of absence not yet supported")
+		// Value absent
+		// Validate the proof against the certified header to ensure data integrity.
+		// XXX How do we encode the key into a string...
+		err = prt.VerifyAbsence(resp.Proof, signedHeader.AppHash, string(resp.Key))
+		if err != nil {
+			return nil, cmn.ErrorWrap(err, "Couldn't verify absence proof")
+		}
+		return &ctypes.ResultABCIQuery{Response: resp}, nil
 	}
-
-	return &ctypes.ResultABCIQuery{Response: resp}, ErrNoData()
 }
 
 // GetCertifiedCommit gets the signed header for a given height and certifies

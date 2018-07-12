@@ -308,8 +308,8 @@
     ".",
     "sha256truncated"
   ]
-  revision = "8ca620e7e401976d0324938c9a361cf78bca9770"
-  version = "v0.9.3-rc0"
+  revision = "866a229a90d86b07af23ffa156c3fa1396416574"
+  version = "v0.10.0-rc1"
 
 [[projects]]
   name = "github.com/tendermint/tmlibs"
@@ -432,6 +432,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e473d5da80b2f997f7b1e42ff6eb0fff055fa0ff9ab1a9f0bd01ed239b479fe3"
+  inputs-digest = "ece6ed2d29c510b27b489c93a94e68e4aa5db840c16c6b8b7563d81fed4072fe"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -21,7 +21,7 @@ const ProofOpSimpleValue = "simple:v"
 // If the produced root hash matches the expected hash, the
 // proof is good.
 type SimpleValueOp struct {
-	// encoded in ProofOp.Key, not .Data
+	// Encoded in ProofOp.Key.
 	key string
 
 	// To encode in ProofOp.Data
@@ -34,6 +34,27 @@ func NewSimpleValueOp(key string, proof *SimpleProof) SimpleValueOp {
 	return SimpleValueOp{
 		key:   key,
 		Proof: proof,
+	}
+}
+
+func SimpleValueOpDecoder(pop ProofOp) (ProofOperator, error) {
+	if pop.Type != ProofOpSimpleValue {
+		return nil, cmn.NewError("unexpected ProofOp.Type; got %v, want %v", pop.Type, ProofOpSimpleValue)
+	}
+	var op SimpleValueOp // a bit strange as we'll discard this, but it works.
+	err := cdc.UnmarshalBinary(pop.Data, &op)
+	if err != nil {
+		return nil, cmn.ErrorWrap(err, "decoding ProofOp.Data into SimpleValueOp")
+	}
+	return NewSimpleValueOp(pop.Key, op.Proof), nil
+}
+
+func (op SimpleValueOp) ProofOp() ProofOp {
+	bz := cdc.MustMarshalBinary(op)
+	return ProofOp{
+		Type: ProofOpSimpleValue,
+		Key:  op.key,
+		Data: bz,
 	}
 }
 
@@ -50,7 +71,7 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	hasher.Write(value) // does not error
 	vhash := hasher.Sum(nil)
 
-	// Wrap <op.key, vhash> to hash the KVPair.
+	// Wrap <op.Key, vhash> to hash the KVPair.
 	hasher = tmhash.New()
 	encodeByteSlice(hasher, []byte(op.key)) // does not error
 	encodeByteSlice(hasher, []byte(vhash))  // does not error
@@ -67,13 +88,4 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 
 func (op SimpleValueOp) GetKey() string {
 	return op.key
-}
-
-func (op SimpleValueOp) ProofOp() ProofOp {
-	bz := cdc.MustMarshalBinary(op)
-	return ProofOp{
-		Type: ProofOpSimpleValue,
-		Key:  op.key,
-		Data: bz,
-	}
 }

@@ -359,7 +359,7 @@ func TestTxSearch(t *testing.T) {
 		require.Len(t, result.Txs, 0)
 
 		// we query using a tag (see kvstore application)
-		result, err = c.TxSearch("app.creator='jae'", false, 1, 30)
+		result, err = c.TxSearch("app.creator='Cosmoshi Netowoko'", false, 1, 30)
 		require.Nil(t, err, "%+v", err)
 		if len(result.Txs) == 0 {
 			t.Fatal("expected a lot of transactions")

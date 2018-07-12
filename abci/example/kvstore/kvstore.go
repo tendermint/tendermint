@@ -8,6 +8,7 @@ import (
 	"github.com/tendermint/iavl"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tmlibs/common"
 	dbm "github.com/tendermint/tmlibs/db"
 )
@@ -107,27 +108,42 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
 	key := reqQuery.Data
+	height := app.state.Height
+	if reqQuery.Height != 0 {
+		height = reqQuery.Height
+	}
 	if reqQuery.Prove {
-		value, proof, err := app.state.tree.GetWithProof(key)
+		value, proof, err := app.state.tree.GetVersionedWithProof(key, height)
 		if err != nil {
 			resQuery.Code = code.CodeTypeUnknownError
 			resQuery.Log = err.Error()
 			return
 		}
+		resQuery.Height = height
 		resQuery.Index = proof.LeftIndex() // TODO make Proof return index
-		resQuery.Key = reqQuery.Data
+		resQuery.Key = key
 		resQuery.Value = value
 		if value != nil {
+			resQuery.Proof = &merkle.Proof{
+				// XXX key encoding
+				Ops: []merkle.ProofOp{iavl.NewIAVLValueOp(string(key), proof).ProofOp()},
+			}
 			resQuery.Log = "exists"
 		} else {
+			resQuery.Proof = &merkle.Proof{
+				// XXX key encoding
+				Ops: []merkle.ProofOp{iavl.NewIAVLAbsenceOp(string(key), proof).ProofOp()},
+			}
 			resQuery.Log = "does not exist"
 		}
 		return
 	} else {
-		index, value := app.state.tree.Get64(key)
-		resQuery.Index = index
-		resQuery.Key = reqQuery.Data
+		index, value := app.state.tree.GetVersioned(key, height)
+		resQuery.Height = height
+		resQuery.Index = int64(index) // TODO GetVersioned64?
+		resQuery.Key = key
 		resQuery.Value = value
+		resQuery.Proof = nil
 		if value != nil {
 			resQuery.Log = "exists"
 		} else {

@@ -173,6 +173,12 @@ func TestABCIApp(t *testing.T) {
 	require.NotNil(res.DeliverTx)
 	assert.True(res.DeliverTx.IsOK())
 
+	// commit
+	// TODO: This may not be necessary in the future
+	if res.Height == -1 {
+		m.App.Commit()
+	}
+
 	// check the key
 	_qres, err := m.ABCIQueryWithOptions("/key", cmn.HexBytes(key), client.ABCIQueryOptions{Prove: true})
 	qres := _qres.Response

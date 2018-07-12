@@ -35,6 +35,9 @@ func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts clien
 	return &ctypes.ResultABCIQuery{q}, nil
 }
 
+// NOTE: Caller should call a.App.Commit() separately,
+// this function does not actually wait for a commit.
+// TODO: Make it wait for a commit and set res.Height appropriately.
 func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	res := ctypes.ResultBroadcastTxCommit{}
 	res.CheckTx = a.App.CheckTx(tx)
@@ -42,6 +45,7 @@ func (a ABCIApp) BroadcastTxCommit(tx types.Tx) (*ctypes.ResultBroadcastTxCommit
 		return &res, nil
 	}
 	res.DeliverTx = a.App.DeliverTx(tx)
+	res.Height = -1 // TODO
 	return &res, nil
 }
 
