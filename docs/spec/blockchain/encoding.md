@@ -149,7 +149,33 @@ func MakeParts(obj interface{}, partSize int) []Part
 
 ## Merkle Trees
 
-Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure.
+For an overview of Merkle trees, see
+[wikipedia](https://en.wikipedia.org/wiki/Merkle_tree)
+
+
+A Simple Tree is a simple compact binary tree for a static list of items. Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure. In a Simple Tree, the transactions and validation signatures of a block are hashed using this simple merkle tree logic.
+
+If the number of items is not a power of two, the tree will not be full
+and some leaf nodes will be at different levels. Simple Tree tries to
+keep both sides of the tree the same size, but the left side may be one
+greater, for example: 
+
+```
+   Simple Tree with 6 items           Simple Tree with 7 items 
+                                                        
+              *                                  *             
+             / \                                / \            
+           /     \                            /     \          
+         /         \                        /         \        
+       /             \                    /             \      
+      *               *                  *               *     
+     / \             / \                / \             / \    
+    /   \           /   \              /   \           /   \   
+   /     \         /     \            /     \         /     \  
+  *       h2      *       h5         *       *       *       h6
+ / \             / \                / \     / \     / \        
+h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
+```
 
 Tendermint always uses the `TMHASH` hash function, which is the first 20-bytes
 of the SHA256:
@@ -234,6 +260,18 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 	return SimpleHashFromTwoHashes(innerHashes[len(innerHashes)-1], rightHash)
 }
 ```
+
+### Simple Tree with Dictionaries
+
+The Simple Tree is used to merkelize a list of items, so to merkelize a
+(short) dictionary of key-value pairs, encode the dictionary as an
+ordered list of ``KVPair`` structs. The block hash is such a hash
+derived from all the fields of the block ``Header``. The state hash is
+similarly derived.
+
+### IAVL+ Tree
+
+Because Tendermint only uses a Simple Merkle Tree, application developers are expect to use their own Merkle tree in their applications. For example, the IAVL+ Tree - an immutable self-balancing binary tree for persisting application state is used by the [Cosmos SDK](https://github.com/cosmos/cosmos-sdk/blob/develop/docs/core/multistore.md)
 
 ## JSON
 

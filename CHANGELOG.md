@@ -33,6 +33,9 @@ BUG FIXES
   already in the validator set.
 * [consensus] Shut down WAL properly.
 
+BUG FIXES:
+- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
+
 ## 0.22.0
 
 *July 2nd, 2018*

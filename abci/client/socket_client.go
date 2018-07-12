@@ -357,6 +357,13 @@ func (cli *socketClient) queueRequest(req *types.Request) *ReqRes {
 }
 
 func (cli *socketClient) flushQueue() {
+	// mark all in-flight messages as resolved (they will get cli.Error())
+	for req := cli.reqSent.Front(); req != nil; req = req.Next() {
+		reqres := req.Value.(*ReqRes)
+		reqres.Done()
+	}
+
+	// mark all queued messages as resolved
 LOOP:
 	for {
 		select {
