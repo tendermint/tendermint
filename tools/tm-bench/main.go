@@ -101,7 +101,20 @@ Examples:
 		"broadcast_tx_"+broadcastTxMethod,
 	)
 
-	// record time start
+	// Wait until transacters have begun until we get the start time
+	for {
+		started := true
+		for _, t := range transacters {
+			for i := 0; i < t.Connections; i++ {
+				if !t.connsStarted[i] && !t.connsBroken[i] {
+					started = false
+				}
+			}
+		}
+		if started {
+			break
+		}
+	}
 	timeStart := time.Now()
 	logger.Info("Time last transacter started", "t", timeStart)
 

@@ -34,10 +34,11 @@ type transacter struct {
 	Connections       int
 	BroadcastTxMethod string
 
-	conns       []*websocket.Conn
-	connsBroken []bool
-	wg          sync.WaitGroup
-	stopped     bool
+	conns        []*websocket.Conn
+	connsStarted []bool
+	connsBroken  []bool
+	wg           sync.WaitGroup
+	stopped      bool
 
 	logger log.Logger
 }
@@ -50,6 +51,7 @@ func newTransacter(target string, connections, rate int, size int, broadcastTxMe
 		Connections:       connections,
 		BroadcastTxMethod: broadcastTxMethod,
 		conns:             make([]*websocket.Conn, connections),
+		connsStarted:      make([]bool, connections),
 		connsBroken:       make([]bool, connections),
 		logger:            log.NewNopLogger(),
 	}
@@ -156,6 +158,7 @@ func (t *transacter) sendLoop(connIndex int) {
 			startTime := time.Now()
 			endTime := startTime.Add(time.Second)
 			numTxSent := t.Rate
+			t.connsStarted[connIndex] = true
 
 			for i := 0; i < t.Rate; i++ {
 				// each transaction embeds connection index, tx number and hash of the hostname
