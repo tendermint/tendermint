@@ -39,7 +39,7 @@ func NewValidatorSet(vals []*Validator) *ValidatorSet {
 		Validators: validators,
 	}
 
-	if vals != nil && len(vals) > 0 {
+	if len(vals) > 0 {
 		vs.IncrementAccum(1)
 	}
 
