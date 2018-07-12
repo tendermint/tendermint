@@ -1,4 +1,4 @@
-# ADR 012: Multisignatures
+# ADR 012: Encoding standard for Multisignatures
 
 ## Context
 
