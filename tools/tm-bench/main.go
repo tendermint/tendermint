@@ -25,13 +25,13 @@ type statistics struct {
 }
 
 func main() {
-	var duration, txsRate, connections, txSize int
+	var durationInt, txsRate, connections, txSize int
 	var verbose bool
 	var outputFormat, broadcastTxMethod string
 
 	flagSet := flag.NewFlagSet("tm-bench", flag.ExitOnError)
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
-	flagSet.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
+	flagSet.IntVar(&durationInt, "T", 10, "Exit after the specified amount of time in seconds")
 	flagSet.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
 	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
@@ -73,7 +73,7 @@ Examples:
 		}
 		logger = log.NewTMLoggerWithColorFn(log.NewSyncWriter(os.Stdout), colorFn)
 
-		fmt.Printf("Running %ds test @ %s\n", duration, flagSet.Arg(0))
+		fmt.Printf("Running %ds test @ %s\n", durationInt, flagSet.Arg(0))
 	}
 
 	if broadcastTxMethod != "async" &&
@@ -105,9 +105,12 @@ Examples:
 	timeStart := time.Now()
 	logger.Info("Time last transacter started", "t", timeStart)
 
-	endTime := time.Duration(duration) * time.Second
+	duration := time.Duration(durationInt) * time.Second
 
-	<-time.After(endTime)
+	timeEnd := timeStart.Add(duration)
+	logger.Info("End time for calculation", "t", timeEnd)
+
+	<-time.After(duration)
 	for i, t := range transacters {
 		t.Stop()
 		numCrashes := countCrashes(t.connsBroken)
@@ -116,15 +119,14 @@ Examples:
 		}
 	}
 
-	timeStop := time.Now()
-	logger.Info("Time stopped", "t", timeStop)
+	logger.Debug("Time all transacters stopped", "t", time.Now())
 
 	stats, err := calculateStatistics(
 		client,
 		initialHeight,
 		timeStart,
-		timeStop,
-		duration,
+		timeEnd,
+		durationInt,
 	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
