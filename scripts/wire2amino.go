@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 
@@ -84,8 +84,8 @@ func convertPrivVal(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 	copy(pubKey[:], privVal.PubKey.Data)
 
 	privValNew := privval.FilePV{
-		Address:    pubKey.Address(),
-		PubKey:     pubKey,
+		Address_:   pubKey.Address(),
+		PubKey_:    pubKey,
 		LastHeight: privVal.LastHeight,
 		LastRound:  privVal.LastRound,
 		LastStep:   privVal.LastStep,

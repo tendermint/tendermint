@@ -72,7 +72,7 @@ func TestVoteString(t *testing.T) {
 
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubKey := privVal.GetPubKey()
+	pubKey := privVal.PubKey()
 
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")

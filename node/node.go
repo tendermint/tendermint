@@ -217,16 +217,16 @@ func NewNode(config *cfg.Config,
 	fastSync := config.FastSync
 	if state.Validators.Size() == 1 {
 		addr, _ := state.Validators.GetByIndex(0)
-		if bytes.Equal(privValidator.GetAddress(), addr) {
+		if bytes.Equal(privValidator.Address(), addr) {
 			fastSync = false
 		}
 	}
 
 	// Log whether this node is a validator or an observer
-	if state.Validators.HasAddress(privValidator.GetAddress()) {
-		consensusLogger.Info("This node is a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
+	if state.Validators.HasAddress(privValidator.Address()) {
+		consensusLogger.Info("This node is a validator", "addr", privValidator.Address(), "pubKey", privValidator.PubKey())
 	} else {
-		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
+		consensusLogger.Info("This node is not a validator", "addr", privValidator.Address(), "pubKey", privValidator.PubKey())
 	}
 
 	// metrics
@@ -537,7 +537,7 @@ func (n *Node) ConfigureRPC() {
 	rpccore.SetMempool(n.mempoolReactor.Mempool)
 	rpccore.SetEvidencePool(n.evidencePool)
 	rpccore.SetSwitch(n.sw)
-	rpccore.SetPubKey(n.privValidator.GetPubKey())
+	rpccore.SetPubKey(n.privValidator.PubKey())
 	rpccore.SetGenesisDoc(n.genesisDoc)
 	rpccore.SetAddrBook(n.addrBook)
 	rpccore.SetProxyAppQuery(n.proxyApp.Query())

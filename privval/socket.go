@@ -103,8 +103,8 @@ func NewSocketPV(
 	return sc
 }
 
-// GetAddress implements PrivValidator.
-func (sc *SocketPV) GetAddress() types.Address {
+// Address implements PrivValidator.
+func (sc *SocketPV) Address() types.Address {
 	addr, err := sc.getAddress()
 	if err != nil {
 		panic(err)
@@ -123,8 +123,8 @@ func (sc *SocketPV) getAddress() (cmn.HexBytes, error) {
 	return p.Address(), nil
 }
 
-// GetPubKey implements PrivValidator.
-func (sc *SocketPV) GetPubKey() crypto.PubKey {
+// PubKey implements PrivValidator.
+func (sc *SocketPV) PubKey() crypto.PubKey {
 	pubKey, err := sc.getPubKey()
 	if err != nil {
 		panic(err)
@@ -459,7 +459,7 @@ func (rs *RemoteSigner) handleConnection(conn net.Conn) {
 		switch r := req.(type) {
 		case *PubKeyMsg:
 			var p crypto.PubKey
-			p = rs.privVal.GetPubKey()
+			p = rs.privVal.PubKey()
 			res = &PubKeyMsg{p}
 		case *SignVoteMsg:
 			err = rs.privVal.SignVote(rs.chainID, r.Vote)

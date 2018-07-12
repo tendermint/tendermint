@@ -37,8 +37,8 @@ func voteToStep(vote *types.Vote) int8 {
 // to prevent double signing.
 // NOTE: the directory containing the pv.filePath must already exist.
 type FilePV struct {
-	Address       types.Address    `json:"address"`
-	PubKey        crypto.PubKey    `json:"pub_key"`
+	Address_      types.Address    `json:"address"`
+	PubKey_       crypto.PubKey    `json:"pub_key"`
 	LastHeight    int64            `json:"last_height"`
 	LastRound     int              `json:"last_round"`
 	LastStep      int8             `json:"last_step"`
@@ -52,16 +52,16 @@ type FilePV struct {
 	mtx      sync.Mutex
 }
 
-// GetAddress returns the address of the validator.
+// Address returns the address of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetAddress() types.Address {
-	return pv.Address
+func (pv *FilePV) Address() types.Address {
+	return pv.Address_
 }
 
-// GetPubKey returns the public key of the validator.
+// PubKey returns the public key of the validator.
 // Implements PrivValidator.
-func (pv *FilePV) GetPubKey() crypto.PubKey {
-	return pv.PubKey
+func (pv *FilePV) PubKey() crypto.PubKey {
+	return pv.PubKey_
 }
 
 // GenFilePV generates a new validator with randomly generated private key
@@ -69,8 +69,8 @@ func (pv *FilePV) GetPubKey() crypto.PubKey {
 func GenFilePV(filePath string) *FilePV {
 	privKey := crypto.GenPrivKeyEd25519()
 	return &FilePV{
-		Address:  privKey.PubKey().Address(),
-		PubKey:   privKey.PubKey(),
+		Address_: privKey.PubKey().Address(),
+		PubKey_:  privKey.PubKey(),
 		PrivKey:  privKey,
 		LastStep: stepNone,
 		filePath: filePath,
@@ -92,8 +92,8 @@ func LoadFilePV(filePath string) *FilePV {
 	}
 
 	// overwrite pubkey and address for convenience
-	pv.PubKey = pv.PrivKey.PubKey()
-	pv.Address = pv.PubKey.Address()
+	pv.PubKey_ = pv.PrivKey.PubKey()
+	pv.Address_ = pv.PubKey_.Address()
 
 	pv.filePath = filePath
 	return pv
@@ -301,7 +301,7 @@ func (pv *FilePV) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) erro
 
 // String returns a string representation of the FilePV.
 func (pv *FilePV) String() string {
-	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", pv.GetAddress(), pv.LastHeight, pv.LastRound, pv.LastStep)
+	return fmt.Sprintf("PrivValidator{%v LH:%v, LR:%v, LS:%v}", pv.Address(), pv.LastHeight, pv.LastRound, pv.LastStep)
 }
 
 //-------------------------------------

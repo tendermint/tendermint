@@ -14,7 +14,7 @@ type voteData struct {
 
 func makeVote(val PrivValidator, chainID string, valIndex int, height int64, round, step int, blockID BlockID) *Vote {
 	v := &Vote{
-		ValidatorAddress: val.GetAddress(),
+		ValidatorAddress: val.Address(),
 		ValidatorIndex:   valIndex,
 		Height:           height,
 		Round:            round,
@@ -59,7 +59,7 @@ func TestEvidence(t *testing.T) {
 		{vote1, badVote, false},                                          // signed by wrong key
 	}
 
-	pubKey := val.GetPubKey()
+	pubKey := val.PubKey()
 	for _, c := range cases {
 		ev := &DuplicateVoteEvidence{
 			VoteA: c.vote1,
