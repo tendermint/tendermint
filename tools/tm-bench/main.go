@@ -42,7 +42,7 @@ func main() {
 		fmt.Println(`Tendermint blockchain benchmarking tool.
 
 Usage:
-	tm-bench [-c 1] [-T 10] [-r 1000] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
+	tm-bench [-c 1] [-T 10] [-r 1000] [-s 250] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
 
 Examples:
 	tm-bench localhost:26657`)
@@ -93,10 +93,6 @@ Examples:
 	)
 	logger.Info("Latest block height", "h", initialHeight)
 
-	// record time start
-	timeStart := time.Now()
-	logger.Info("Time started", "t", timeStart)
-
 	transacters := startTransacters(
 		endpoints,
 		connections,
@@ -104,6 +100,11 @@ Examples:
 		txSize,
 		"broadcast_tx_"+broadcastTxMethod,
 	)
+
+	// record time start
+	timeStart := time.Now()
+	logger.Info("Time last transacter started", "t", timeStart)
+
 	endTime := time.Duration(duration) * time.Second
 
 	<-time.After(endTime)
@@ -188,16 +189,6 @@ func calculateStatistics(
 		}
 		blockMetas = append(blockMetas, info.BlockMetas...)
 		offset = len(blockMetas)
-	}
-
-	// Ignore the first block created if there were no txs in it, since we likely didn't begin
-	// sending txs by then. The last index is the block that was already present when we started
-	// this process
-	if blockMetas[len(blockMetas)-2].Header.NumTxs == 0 {
-		if timeStart.Before(blockMetas[len(blockMetas)-2].Header.Time) {
-			timeStart = blockMetas[len(blockMetas)-2].Header.Time
-		}
-		blockMetas = blockMetas[:len(blockMetas)-2]
 	}
 
 	var (
