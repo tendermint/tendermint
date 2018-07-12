@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"sync"
 	"text/tabwriter"
 	"time"
 
@@ -249,20 +250,21 @@ func startTransacters(
 ) []*transacter {
 	transacters := make([]*transacter, len(endpoints))
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(endpoints))
 	for i, e := range endpoints {
 		t := newTransacter(e, connections, txsRate, txSize, broadcastTxMethod)
 		t.SetLogger(logger)
-		if err := t.Start(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		transacters[i] = t
+		go func(i int) {
+			defer wg.Done()
+			if err := t.Start(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			transacters[i] = t
+		}(i)
 	}
-
-	// Wait until all transacters have started firing txs
-	for _, t := range transacters {
-		t.WaitUntilAllConnectionsStartedFiringTxs()
-	}
+	wg.Wait()
 
 	return transacters
 }
