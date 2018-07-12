@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestGenLoadValidator(t *testing.T) {
@@ -23,10 +23,10 @@ func TestGenLoadValidator(t *testing.T) {
 	height := int64(100)
 	privVal.LastHeight = height
 	privVal.Save()
-	addr := privVal.Address()
+	addr := privVal.GetAddress()
 
 	privVal = LoadFilePV(tempFilePath)
-	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
+	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
 	assert.Equal(height, privVal.LastHeight, "expected privval.LastHeight to have been saved")
 }
 
@@ -38,9 +38,9 @@ func TestLoadOrGenValidator(t *testing.T) {
 		t.Error(err)
 	}
 	privVal := LoadOrGenFilePV(tempFilePath)
-	addr := privVal.Address()
+	addr := privVal.GetAddress()
 	privVal = LoadOrGenFilePV(tempFilePath)
-	assert.Equal(addr, privVal.Address(), "expected privval addr to be the same")
+	assert.Equal(addr, privVal.GetAddress(), "expected privval addr to be the same")
 }
 
 func TestUnmarshalValidator(t *testing.T) {
@@ -77,8 +77,8 @@ func TestUnmarshalValidator(t *testing.T) {
 	require.Nil(err, "%+v", err)
 
 	// make sure the values match
-	assert.EqualValues(addr, val.Address())
-	assert.EqualValues(pubKey, val.PubKey())
+	assert.EqualValues(addr, val.GetAddress())
+	assert.EqualValues(pubKey, val.GetPubKey())
 	assert.EqualValues(privKey, val.PrivKey)
 
 	// export it and make sure it is the same
@@ -99,7 +99,7 @@ func TestSignVote(t *testing.T) {
 	voteType := types.VoteTypePrevote
 
 	// sign a vote for first time
-	vote := newVote(privVal.Address(), 0, height, round, voteType, block1)
+	vote := newVote(privVal.Address, 0, height, round, voteType, block1)
 	err := privVal.SignVote("mychainid", vote)
 	assert.NoError(err, "expected no error signing vote")
 
@@ -109,10 +109,10 @@ func TestSignVote(t *testing.T) {
 
 	// now try some bad votes
 	cases := []*types.Vote{
-		newVote(privVal.Address(), 0, height, round-1, voteType, block1),   // round regression
-		newVote(privVal.Address(), 0, height-1, round, voteType, block1),   // height regression
-		newVote(privVal.Address(), 0, height-2, round+4, voteType, block1), // height regression and different round
-		newVote(privVal.Address(), 0, height, round, voteType, block2),     // different block
+		newVote(privVal.Address, 0, height, round-1, voteType, block1),   // round regression
+		newVote(privVal.Address, 0, height-1, round, voteType, block1),   // height regression
+		newVote(privVal.Address, 0, height-2, round+4, voteType, block1), // height regression and different round
+		newVote(privVal.Address, 0, height, round, voteType, block2),     // different block
 	}
 
 	for _, c := range cases {
@@ -201,7 +201,7 @@ func TestDifferByTimestamp(t *testing.T) {
 	{
 		voteType := types.VoteTypePrevote
 		blockID := types.BlockID{[]byte{1, 2, 3}, types.PartSetHeader{}}
-		vote := newVote(privVal.Address(), 0, height, round, voteType, blockID)
+		vote := newVote(privVal.Address, 0, height, round, voteType, blockID)
 		err := privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error signing vote")
 

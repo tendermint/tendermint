@@ -25,7 +25,7 @@ func TestSocketPVAddress(t *testing.T) {
 	defer sc.Stop()
 	defer rs.Stop()
 
-	serverAddr := rs.privVal.Address()
+	serverAddr := rs.privVal.GetAddress()
 
 	clientAddr, err := sc.getAddress()
 	require.NoError(t, err)
@@ -33,7 +33,7 @@ func TestSocketPVAddress(t *testing.T) {
 	assert.Equal(t, serverAddr, clientAddr)
 
 	// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-	assert.Equal(t, serverAddr, sc.Address())
+	assert.Equal(t, serverAddr, sc.GetAddress())
 
 }
 
@@ -48,12 +48,12 @@ func TestSocketPVPubKey(t *testing.T) {
 	clientKey, err := sc.getPubKey()
 	require.NoError(t, err)
 
-	privKey := rs.privVal.PubKey()
+	privKey := rs.privVal.GetPubKey()
 
 	assert.Equal(t, privKey, clientKey)
 
 	// TODO(xla): Remove when PrivValidator2 replaced PrivValidator.
-	assert.Equal(t, privKey, sc.PubKey())
+	assert.Equal(t, privKey, sc.GetPubKey())
 }
 
 func TestSocketPVProposal(t *testing.T) {

@@ -347,7 +347,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		t.Fatalf(err.Error())
 	}
 
-	stateDB, state, store := stateAndStore(config, privVal.PubKey())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
 	store.chain = chain
 	store.commits = commits
 
@@ -362,7 +362,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 		// run nBlocks against a new client to build up the app state.
 		// use a throwaway tendermint state
 		proxyApp := proxy.NewAppConns(clientCreator2, nil)
-		stateDB, state, _ := stateAndStore(config, privVal.PubKey())
+		stateDB, state, _ := stateAndStore(config, privVal.GetPubKey())
 		buildAppStateFromChain(proxyApp, stateDB, state, chain, nBlocks, mode)
 	}
 
@@ -646,7 +646,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 
 	config := ResetConfig("proxy_test_")
 	privVal := privval.LoadFilePV(config.PrivValidatorFile())
-	stateDB, state, store := stateAndStore(config, privVal.PubKey())
+	stateDB, state, store := stateAndStore(config, privVal.GetPubKey())
 
 	oldValAddr := state.Validators.Validators[0].Address
 

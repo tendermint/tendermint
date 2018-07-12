@@ -89,13 +89,13 @@ func TestABCIEvidence(t *testing.T) {
 	blockID2 := makeBlockID("blockhash2", 1000, "partshash")
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
-		PubKey: val.PubKey(),
+		PubKey: val.GetPubKey(),
 		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),
 		VoteB:  makeVote(val, chainID, 0, 10, 2, 1, blockID2),
 	}
 	abciEv := TM2PB.Evidence(
 		ev,
-		NewValidatorSet([]*Validator{NewValidator(val.PubKey(), 10)}),
+		NewValidatorSet([]*Validator{NewValidator(val.GetPubKey(), 10)}),
 		time.Now(),
 	)
 

@@ -69,7 +69,7 @@ func TestStateProposerSelection0(t *testing.T) {
 
 	// lets commit a block and ensure proposer for the next height is correct
 	prop := cs1.GetRoundState().Validators.GetProposer()
-	if !bytes.Equal(prop.Address, cs1.privValidator.Address()) {
+	if !bytes.Equal(prop.Address, cs1.privValidator.GetAddress()) {
 		t.Fatalf("expected proposer to be validator %d. Got %X", 0, prop.Address)
 	}
 
@@ -83,7 +83,7 @@ func TestStateProposerSelection0(t *testing.T) {
 	<-newRoundCh
 
 	prop = cs1.GetRoundState().Validators.GetProposer()
-	if !bytes.Equal(prop.Address, vss[1].Address()) {
+	if !bytes.Equal(prop.Address, vss[1].GetAddress()) {
 		panic(cmn.Fmt("expected proposer to be validator %d. Got %X", 1, prop.Address))
 	}
 }
@@ -104,7 +104,7 @@ func TestStateProposerSelection2(t *testing.T) {
 	// everyone just votes nil. we get a new proposer each round
 	for i := 0; i < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].Address()) {
+		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].GetAddress()) {
 			panic(cmn.Fmt("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
 		}
 
@@ -629,7 +629,7 @@ func TestStateLockPOLUnlock(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
-	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address())
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// everything done from perspective of cs1
 
@@ -725,7 +725,7 @@ func TestStateLockPOLSafety1(t *testing.T) {
 	timeoutProposeCh := subscribe(cs1.eventBus, types.EventQueryTimeoutPropose)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address())
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, cs1.Height, 0)
@@ -849,7 +849,7 @@ func TestStateLockPOLSafety2(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	unlockCh := subscribe(cs1.eventBus, types.EventQueryUnlock)
-	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address())
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// the block for R0: gets polkad but we miss it
 	// (even though we signed it, shhh)
@@ -945,7 +945,7 @@ func TestStateSlashingPrevotes(t *testing.T) {
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address())
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, cs1.Height, 0)
@@ -980,7 +980,7 @@ func TestStateSlashingPrecommits(t *testing.T) {
 	proposalCh := subscribe(cs1.eventBus, types.EventQueryCompleteProposal)
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
-	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address())
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, cs1.Height, 0)
@@ -1027,7 +1027,7 @@ func TestStateHalt1(t *testing.T) {
 	timeoutWaitCh := subscribe(cs1.eventBus, types.EventQueryTimeoutWait)
 	newRoundCh := subscribe(cs1.eventBus, types.EventQueryNewRound)
 	newBlockCh := subscribe(cs1.eventBus, types.EventQueryNewBlock)
-	voteCh := subscribeToVoter(cs1, cs1.privValidator.Address())
+	voteCh := subscribeToVoter(cs1, cs1.privValidator.GetAddress())
 
 	// start round and wait for propose and prevote
 	startTestRound(cs1, cs1.Height, 0)
