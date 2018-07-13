@@ -53,6 +53,7 @@ func (app *PersistentKVStoreApplication) SetLogger(l log.Logger) {
 func (app *PersistentKVStoreApplication) Info(req types.RequestInfo) types.ResponseInfo {
 	res := app.app.Info(req)
 	res.LastBlockHeight = app.app.state.Height
+	res.LastBlockAppData = app.app.state.AppData
 	res.LastBlockAppHash = app.app.state.AppHash
 	return res
 }

@@ -182,6 +182,7 @@ func TestAppCalls(t *testing.T) {
 		// and we can even check the block is added
 		block, err := c.Block(&apph)
 		require.Nil(err, "%d: %+v", i, err)
+		appData := block.BlockMeta.Header.AppData
 		appHash := block.BlockMeta.Header.AppHash
 		assert.True(len(appHash) > 0)
 		assert.EqualValues(apph, block.BlockMeta.Header.Height)
@@ -203,14 +204,17 @@ func TestAppCalls(t *testing.T) {
 			lastMeta := info.BlockMetas[0]
 			assert.EqualValues(apph, lastMeta.Header.Height)
 			bMeta := block.BlockMeta
+			assert.Equal(bMeta.Header.AppData, lastMeta.Header.AppData)
 			assert.Equal(bMeta.Header.AppHash, lastMeta.Header.AppHash)
 			assert.Equal(bMeta.BlockID, lastMeta.BlockID)
 		}
 
-		// and get the corresponding commit with the same apphash
+		// and get the corresponding commit with the same appHash and appData
 		commit, err := c.Commit(&apph)
 		require.Nil(err, "%d: %+v", i, err)
+		cappData := commit.Header.AppData
 		cappHash := commit.Header.AppHash
+		assert.Equal(appData, cappData)
 		assert.Equal(appHash, cappHash)
 		assert.NotNil(commit.Commit)
 

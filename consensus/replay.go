@@ -383,11 +383,12 @@ func (h *Handshaker) replayBlocks(state sm.State, proxyApp proxy.AppConns, appBl
 	for i := appBlockHeight + 1; i <= finalBlock; i++ {
 		h.logger.Info("Applying block", "height", i)
 		block := h.store.LoadBlock(i)
-		appHash, err = sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, state.LastValidators, h.stateDB)
+		res, err := sm.ExecCommitBlock(proxyApp.Consensus(), block, h.logger, state.LastValidators, h.stateDB)
 		if err != nil {
 			return nil, err
 		}
 
+		appHash = res.AppHash
 		h.nBlocks++
 	}
 
@@ -448,6 +449,7 @@ func newMockProxyApp(appHash []byte, abciResponses *sm.ABCIResponses) proxy.AppC
 type mockProxyApp struct {
 	abci.BaseApplication
 
+	appData       []byte
 	appHash       []byte
 	txCount       int
 	abciResponses *sm.ABCIResponses
@@ -465,5 +467,5 @@ func (mock *mockProxyApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlo
 }
 
 func (mock *mockProxyApp) Commit() abci.ResponseCommit {
-	return abci.ResponseCommit{Data: mock.appHash}
+	return abci.ResponseCommit{AppData: mock.appData, AppHash: mock.appHash}
 }

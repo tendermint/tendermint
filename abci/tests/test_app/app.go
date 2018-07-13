@@ -32,13 +32,16 @@ func setOption(client abcicli.Client, key, value string) {
 	}
 }
 
-func commit(client abcicli.Client, hashExp []byte) {
+func commit(client abcicli.Client, dataExp, hashExp []byte) {
 	res, err := client.CommitSync()
 	if err != nil {
 		panicf("client error: %v", err)
 	}
-	if !bytes.Equal(res.Data, hashExp) {
-		panicf("Commit hash was unexpected. Got %X expected %X", res.Data, hashExp)
+	if !bytes.Equal(res.AppData, dataExp) {
+		panicf("Commit hash was unexpected. Got %X expected %X", res.AppData, dataExp)
+	}
+	if !bytes.Equal(res.AppHash, hashExp) {
+		panicf("Commit hash was unexpected. Got %X expected %X", res.AppHash, hashExp)
 	}
 }
 

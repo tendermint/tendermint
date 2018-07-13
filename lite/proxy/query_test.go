@@ -63,7 +63,6 @@ func _TestAppProofs(t *testing.T) {
 	client.WaitForHeight(cl, 3, nil)
 	latest, err := source.LatestCommit()
 	require.NoError(err, "%+v", err)
-	rootHash := latest.Header.AppHash
 
 	// verify a query before the tx block has no data (and valid non-exist proof)
 	bs, height, proof, err := GetWithProof(k, brh-1, cl, cert)
@@ -81,7 +80,7 @@ func _TestAppProofs(t *testing.T) {
 	// Alexis there is a bug here, somehow the above code gives us rootHash = nil
 	// and proof.Verify doesn't care, while proofNotExists.Verify fails.
 	// I am hacking this in to make it pass, but please investigate further.
-	rootHash = proof.Root()
+	rootHash := proof.Root()
 
 	//err = wire.ReadBinaryBytes(bs, &data)
 	//require.NoError(err, "%+v", err)

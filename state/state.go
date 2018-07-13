@@ -50,6 +50,7 @@ type State struct {
 	// Merkle root of the results from executing prev block
 	LastResultsHash []byte
 
+	AppData []byte
 	// The latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
 }
@@ -71,6 +72,7 @@ func (state State) Copy() State {
 		ConsensusParams:                  state.ConsensusParams,
 		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
 
+		AppData: state.AppData,
 		AppHash: state.AppHash,
 
 		LastResultsHash: state.LastResultsHash,
@@ -111,6 +113,7 @@ func (state State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit)
 	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
 	block.LastBlockID = state.LastBlockID
 	block.ValidatorsHash = state.Validators.Hash()
+	block.AppData = state.AppData
 	block.AppHash = state.AppHash
 	block.ConsensusHash = state.ConsensusParams.Hash()
 	block.LastResultsHash = state.LastResultsHash
@@ -182,6 +185,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: 1,
 
+		AppData: genDoc.AppData,
 		AppHash: genDoc.AppHash,
 	}, nil
 }

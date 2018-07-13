@@ -356,11 +356,11 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 		[]func() error{
 			func() error { return servertest.InitChain(client) },
 			func() error { return servertest.SetOption(client, "serial", "on") },
-			func() error { return servertest.Commit(client, nil) },
+			func() error { return servertest.Commit(client, nil, nil) },
 			func() error { return servertest.DeliverTx(client, []byte("abc"), code.CodeTypeBadNonce, nil) },
-			func() error { return servertest.Commit(client, nil) },
+			func() error { return servertest.Commit(client, nil, nil) },
 			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeOK, nil) },
-			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
+			func() error { return servertest.Commit(client, []byte{1, 2, 3, 4}, []byte{0, 0, 0, 0, 0, 0, 0, 1}) },
 			func() error { return servertest.DeliverTx(client, []byte{0x00}, code.CodeTypeBadNonce, nil) },
 			func() error { return servertest.DeliverTx(client, []byte{0x01}, code.CodeTypeOK, nil) },
 			func() error { return servertest.DeliverTx(client, []byte{0x00, 0x02}, code.CodeTypeOK, nil) },
@@ -369,7 +369,7 @@ func cmdTest(cmd *cobra.Command, args []string) error {
 			func() error {
 				return servertest.DeliverTx(client, []byte{0x00, 0x00, 0x06}, code.CodeTypeBadNonce, nil)
 			},
-			func() error { return servertest.Commit(client, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
+			func() error { return servertest.Commit(client, []byte{1, 2, 3, 4}, []byte{0, 0, 0, 0, 0, 0, 0, 5}) },
 		})
 }
 
@@ -604,7 +604,7 @@ func cmdCommit(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	printResponse(cmd, args, response{
-		Data: res.Data,
+		Data: res.AppHash,
 	})
 	return nil
 }

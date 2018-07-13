@@ -21,6 +21,7 @@ type State struct {
 	db      dbm.DB
 	Size    int64  `json:"size"`
 	Height  int64  `json:"height"`
+	AppData []byte `json:"app_data"`
 	AppHash []byte `json:"app_hash"`
 }
 
@@ -98,7 +99,10 @@ func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	app.state.AppHash = appHash
 	app.state.Height += 1
 	saveState(app.state)
-	return types.ResponseCommit{Data: appHash}
+	return types.ResponseCommit{
+		AppData: nil,
+		AppHash: appHash,
+	}
 }
 
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {

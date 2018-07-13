@@ -42,6 +42,7 @@ func (tm2pb) Header(header *Header) abci.Header {
 
 		LastBlockHash:  header.LastBlockID.Hash,
 		ValidatorsHash: header.ValidatorsHash,
+		AppData:        header.AppData,
 		AppHash:        header.AppHash,
 
 		// Proposer: TODO

@@ -40,17 +40,23 @@ func SetOption(client abcicli.Client, key, value string) error {
 	return nil
 }
 
-func Commit(client abcicli.Client, hashExp []byte) error {
+func Commit(client abcicli.Client, dataExp, hashExp []byte) error {
 	res, err := client.CommitSync()
-	data := res.Data
+	data := res.AppData
+	hash := res.AppHash
 	if err != nil {
 		fmt.Println("Failed test: Commit")
 		fmt.Printf("error while committing: %v\n", err)
 		return err
 	}
-	if !bytes.Equal(data, hashExp) {
+	if !bytes.Equal(data, dataExp) {
 		fmt.Println("Failed test: Commit")
-		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n", data, hashExp)
+		fmt.Printf("Commit data was unexpected. Got %X expected %X\n", data, dataExp)
+		return errors.New("CommitTx failed")
+	}
+	if !bytes.Equal(hash, hashExp) {
+		fmt.Println("Failed test: Commit")
+		fmt.Printf("Commit hash was unexpected. Got %X expected %X\n", hash, hashExp)
 		return errors.New("CommitTx failed")
 	}
 	fmt.Println("Passed test: Commit")

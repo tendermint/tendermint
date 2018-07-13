@@ -35,7 +35,8 @@ func TestFileProvider(t *testing.T) {
 	p := files.NewProvider(dir)
 
 	chainID := "test-files"
-	appHash := []byte("some-data")
+	appData := []byte("some-data")
+	appHash := []byte("some-hash")
 	keys := lite.GenValKeys(5)
 	count := 10
 
@@ -46,7 +47,7 @@ func TestFileProvider(t *testing.T) {
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(20 + 10*i)
-		check := keys.GenCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		check := keys.GenCommit(chainID, h, nil, vals, appData, appHash, []byte("params"), []byte("results"), 0, 5)
 		seeds[i] = lite.NewFullCommit(check, vals)
 	}
 

@@ -87,9 +87,10 @@ func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
 	if app.txCount == 0 {
 		return types.ResponseCommit{}
 	}
+	data := []byte{1, 2, 3, 4}
 	hash := make([]byte, 8)
 	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return types.ResponseCommit{Data: hash}
+	return types.ResponseCommit{AppData: data, AppHash: hash}
 }
 
 func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {

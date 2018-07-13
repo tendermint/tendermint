@@ -33,7 +33,7 @@ func (missingProvider) LatestCommit() (lite.FullCommit, error) {
 
 func TestMemProvider(t *testing.T) {
 	p := lite.NewMemStoreProvider()
-	checkProvider(t, p, "test-mem", "empty")
+	checkProvider(t, p, "test-mem", "data", "hash")
 }
 
 func TestCacheProvider(t *testing.T) {
@@ -42,12 +42,13 @@ func TestCacheProvider(t *testing.T) {
 		lite.NewMemStoreProvider(),
 		NewMissingProvider(),
 	)
-	checkProvider(t, p, "test-cache", "kjfhekfhkewhgit")
+	checkProvider(t, p, "test-cache", "asdfghjkl", "kjfhekfhkewhgit")
 }
 
-func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
+func checkProvider(t *testing.T, p lite.Provider, chainID, data, hash string) {
 	assert, require := assert.New(t), require.New(t)
-	appHash := []byte(app)
+	appData := []byte(data)
+	appHash := []byte(hash)
 	keys := lite.GenValKeys(5)
 	count := 10
 
@@ -58,7 +59,7 @@ func checkProvider(t *testing.T, p lite.Provider, chainID, app string) {
 		// (10, 0), (10, 1), (10, 1), (10, 2), (10, 2), ...
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(20 + 10*i)
-		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		commits[i] = keys.GenFullCommit(chainID, h, nil, vals, appData, appHash, []byte("params"), []byte("results"), 0, 5)
 	}
 
 	// check provider is empty
@@ -121,6 +122,7 @@ func TestCacheGetsBestHeight(t *testing.T) {
 	cp := lite.NewCacheProvider(p, p2)
 
 	chainID := "cache-best-height"
+	appData := []byte("76543210")
 	appHash := []byte("01234567")
 	keys := lite.GenValKeys(5)
 	count := 10
@@ -129,7 +131,7 @@ func TestCacheGetsBestHeight(t *testing.T) {
 	for i := 0; i < count; i++ {
 		vals := keys.ToValidators(10, int64(count/2))
 		h := int64(10 * (i + 1))
-		fc := keys.GenFullCommit(chainID, h, nil, vals, appHash, []byte("params"), []byte("results"), 0, 5)
+		fc := keys.GenFullCommit(chainID, h, nil, vals, appData, appHash, []byte("params"), []byte("results"), 0, 5)
 		err := p2.StoreCommit(fc)
 		require.NoError(err)
 	}

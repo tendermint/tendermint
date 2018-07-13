@@ -129,7 +129,8 @@ func TestMempoolRmBadTx(t *testing.T) {
 	assert.False(t, resDeliver.IsErr(), cmn.Fmt("expected no error. got %v", resDeliver))
 
 	resCommit := app.Commit()
-	assert.True(t, len(resCommit.Data) > 0)
+	assert.True(t, len(resCommit.AppData) > 0)
+	assert.True(t, len(resCommit.AppHash) > 0)
 
 	emptyMempoolCh := make(chan struct{})
 	checkTxRespCh := make(chan struct{})
@@ -226,7 +227,9 @@ func (app *CounterApplication) Commit() abci.ResponseCommit {
 	if app.txCount == 0 {
 		return abci.ResponseCommit{}
 	}
+	data := make([]byte, 8)
+	binary.BigEndian.PutUint64(data, uint64(app.txCount))
 	hash := make([]byte, 8)
-	binary.BigEndian.PutUint64(hash, uint64(app.txCount))
-	return abci.ResponseCommit{Data: hash}
+	binary.BigEndian.PutUint64(hash, uint64(app.txCount/2))
+	return abci.ResponseCommit{AppData: data, AppHash: hash}
 }
