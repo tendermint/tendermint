@@ -45,6 +45,11 @@
   name = "github.com/tendermint/tendermint"
   branch = "develop"
 
+# this got updated and broke, so locked to an old working commit ...
+[[override]]
+  name = "google.golang.org/genproto"
+  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
+
 [prune]
   go-tests = true
   unused-packages = true
