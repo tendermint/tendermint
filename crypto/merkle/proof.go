@@ -32,10 +32,13 @@ type ProofOperator interface {
 
 type ProofOperators []ProofOperator
 
+// XXX Reorder value/keys.
+// XXX Replace keys with keyString (the result of KeyPath.String())
 func (poz ProofOperators) VerifyValue(root []byte, value []byte, keys ...string) (err error) {
 	return poz.Verify(root, [][]byte{value}, keys...)
 }
 
+// XXX Replace keys with keyString (the result of KeyPath.String())
 func (poz ProofOperators) Verify(root []byte, args [][]byte, keys ...string) (err error) {
 	for i, op := range poz {
 		key := op.GetKey()
@@ -99,22 +102,22 @@ func (prt *ProofRuntime) DecodeProof(proof *Proof) (poz ProofOperators, err erro
 	return
 }
 
-// XXX Reorder value/keys, and figure out how to merge keys into a single string
-// after figuring out encoding between bytes/string.
+// XXX Reorder value/keys.
+// XXX Replace keys with keyString (the result of KeyPath.String()).
 func (prt *ProofRuntime) VerifyValue(proof *Proof, root []byte, value []byte, keys ...string) (err error) {
 	return prt.Verify(proof, root, [][]byte{value}, keys...)
 }
 
-// XXX Reorder value/keys, and figure out how to merge keys into a single string
-// after figuring out encoding between bytes/string.
+// XXX Reorder value/keys.
+// XXX Replace keys with keyString (the result of KeyPath.String()).
 // TODO In the long run we'll need a method of classifcation of ops,
 // whether existence or absence or perhaps a third?
 func (prt *ProofRuntime) VerifyAbsence(proof *Proof, root []byte, keys ...string) (err error) {
 	return prt.Verify(proof, root, nil, keys...)
 }
 
-// XXX Reorder value/keys, and figure out how to merge keys into a single string
-// after figuring out encoding between bytes/string.
+// XXX Reorder value/keys.
+// XXX Replace keys with keyString (the result of KeyPath.String()).
 func (prt *ProofRuntime) Verify(proof *Proof, root []byte, args [][]byte, keys ...string) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {
