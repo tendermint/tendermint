@@ -52,27 +52,28 @@ type keyEncoding int
 const (
 	KeyEncodingURL keyEncoding = iota
 	KeyEncodingHex
+	KeyEncodingMax
 )
 
-type KeyPath struct {
-	keys [][]byte
-	encs []keyEncoding
+type Key struct {
+	name []byte
+	enc  keyEncoding
 }
 
-func (pth *KeyPath) AppendKey(key []byte, enc keyEncoding) {
-	pth.keys = append(pth.keys, key)
-	pth.encs = append(pth.encs, enc)
+type KeyPath []Key
+
+func (pth KeyPath) AppendKey(key []byte, enc keyEncoding) KeyPath {
+	return append(pth, Key{key, enc})
 }
 
-func (pth *KeyPath) String() string {
+func (pth KeyPath) String() string {
 	res := ""
-	for i := 0; i < len(pth.keys); i++ {
-		key, enc := pth.keys[i], pth.encs[i]
-		switch enc {
+	for _, key := range pth {
+		switch key.enc {
 		case KeyEncodingURL:
-			res += "/" + url.PathEscape(string(key))
+			res += "/" + url.PathEscape(string(key.name))
 		case KeyEncodingHex:
-			res += "/x:" + fmt.Sprintf("%X", key)
+			res += "/x:" + fmt.Sprintf("%X", key.name)
 		default:
 			panic("unexpected key encoding type")
 		}

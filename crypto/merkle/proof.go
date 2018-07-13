@@ -3,27 +3,15 @@ package merkle
 import (
 	"bytes"
 
-	"github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tmlibs/common"
 )
-
-//----------------------------------------
-// Extension of ProofOp (defined in merkle.proto)
-
-func (po ProofOp) Bytes() []byte {
-	bz, err := amino.MarshalBinary(po)
-	if err != nil {
-		panic(err)
-	}
-	return bz
-}
 
 //----------------------------------------
 // ProofOp gets converted to an instance of ProofOperator:
 
 type ProofOperator interface {
 	Run([][]byte) ([][]byte, error)
-	GetKey() string
+	GetKey() []byte
 	ProofOp() ProofOp
 }
 
@@ -32,18 +20,20 @@ type ProofOperator interface {
 
 type ProofOperators []ProofOperator
 
-// XXX Reorder value/keys.
-// XXX Replace keys with keyString (the result of KeyPath.String())
-func (poz ProofOperators) VerifyValue(root []byte, value []byte, keys ...string) (err error) {
-	return poz.Verify(root, [][]byte{value}, keys...)
+func (poz ProofOperators) VerifyValue(root []byte, keypath string, value []byte) (err error) {
+	return poz.Verify(root, keypath, [][]byte{value})
 }
 
-// XXX Replace keys with keyString (the result of KeyPath.String())
-func (poz ProofOperators) Verify(root []byte, args [][]byte, keys ...string) (err error) {
+func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (err error) {
+	keys, err := KeyPathToKeys(keypath)
+	if err != nil {
+		return
+	}
+
 	for i, op := range poz {
 		key := op.GetKey()
-		if key != "" {
-			if keys[0] != key {
+		if len(key) != 0 {
+			if !bytes.Equal(keys[0], key) {
 				return cmn.NewError("Key mismatch on operation #%d: expected %+v but %+v", i, []byte(keys[0]), []byte(key))
 			}
 			keys = keys[1:]
@@ -93,7 +83,7 @@ func (prt *ProofRuntime) Decode(pop ProofOp) (ProofOperator, error) {
 func (prt *ProofRuntime) DecodeProof(proof *Proof) (poz ProofOperators, err error) {
 	poz = ProofOperators(nil)
 	for _, pop := range proof.Ops {
-		operator, err := prt.Decode(pop)
+		operator, err := prt.Decode(*pop)
 		if err != nil {
 			return nil, cmn.ErrorWrap(err, "decoding a proof operator")
 		}
@@ -104,26 +94,26 @@ func (prt *ProofRuntime) DecodeProof(proof *Proof) (poz ProofOperators, err erro
 
 // XXX Reorder value/keys.
 // XXX Replace keys with keyString (the result of KeyPath.String()).
-func (prt *ProofRuntime) VerifyValue(proof *Proof, root []byte, value []byte, keys ...string) (err error) {
-	return prt.Verify(proof, root, [][]byte{value}, keys...)
+func (prt *ProofRuntime) VerifyValue(proof *Proof, root []byte, keypath string, value []byte) (err error) {
+	return prt.Verify(proof, root, keypath, [][]byte{value})
 }
 
 // XXX Reorder value/keys.
 // XXX Replace keys with keyString (the result of KeyPath.String()).
 // TODO In the long run we'll need a method of classifcation of ops,
 // whether existence or absence or perhaps a third?
-func (prt *ProofRuntime) VerifyAbsence(proof *Proof, root []byte, keys ...string) (err error) {
-	return prt.Verify(proof, root, nil, keys...)
+func (prt *ProofRuntime) VerifyAbsence(proof *Proof, keypath string, root []byte) (err error) {
+	return prt.Verify(proof, root, keypath, nil)
 }
 
 // XXX Reorder value/keys.
 // XXX Replace keys with keyString (the result of KeyPath.String()).
-func (prt *ProofRuntime) Verify(proof *Proof, root []byte, args [][]byte, keys ...string) (err error) {
+func (prt *ProofRuntime) Verify(proof *Proof, root []byte, keypath string, args [][]byte) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {
 		return cmn.ErrorWrap(err, "decoding proof")
 	}
-	return poz.Verify(root, args, keys...)
+	return poz.Verify(root, keypath, args)
 }
 
 // DefaultProofRuntime only knows about Simple value

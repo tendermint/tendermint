@@ -22,7 +22,7 @@ const ProofOpSimpleValue = "simple:v"
 // proof is good.
 type SimpleValueOp struct {
 	// Encoded in ProofOp.Key.
-	key string
+	key []byte
 
 	// To encode in ProofOp.Data
 	Proof *SimpleProof `json:"simple-proof"`
@@ -30,7 +30,7 @@ type SimpleValueOp struct {
 
 var _ ProofOperator = SimpleValueOp{}
 
-func NewSimpleValueOp(key string, proof *SimpleProof) SimpleValueOp {
+func NewSimpleValueOp(key []byte, proof *SimpleProof) SimpleValueOp {
 	return SimpleValueOp{
 		key:   key,
 		Proof: proof,
@@ -86,6 +86,6 @@ func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	}, nil
 }
 
-func (op SimpleValueOp) GetKey() string {
+func (op SimpleValueOp) GetKey() []byte {
 	return op.key
 }

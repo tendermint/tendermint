@@ -10,7 +10,7 @@ import "github.com/gogo/protobuf/gogoproto/gogo.proto";
 
 message ProofOp {
   string type = 1;
-  string key = 2;
+  bytes key = 2;
   bytes data = 3;
 }
 
