@@ -219,7 +219,7 @@ func TestOneValidatorChangesSaveLoad(t *testing.T) {
 			power++
 		}
 		header, blockID, responses := makeHeaderPartsResponsesValPowerChange(state, i, power)
-		state, err = updateState(state, blockID, header, responses)
+		state, err = updateState(state, blockID, &header, responses)
 		assert.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
 		saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
@@ -264,7 +264,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	// swap the first validator with a new one ^^^ (validator set size stays the same)
 	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
 	var err error
-	state, err = updateState(state, blockID, header, responses)
+	state, err = updateState(state, blockID, &header, responses)
 	require.Nil(t, err)
 	nextHeight := state.LastBlockHeight + 1
 	saveValidatorsInfo(stateDB, nextHeight, state.LastHeightValidatorsChanged, state.Validators)
@@ -321,7 +321,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 			cp = params[changeIndex]
 		}
 		header, blockID, responses := makeHeaderPartsResponsesParams(state, i, cp)
-		state, err = updateState(state, blockID, header, responses)
+		state, err = updateState(state, blockID, &header, responses)
 
 		require.Nil(t, err)
 		nextHeight := state.LastBlockHeight + 1
@@ -420,7 +420,7 @@ func TestApplyUpdates(t *testing.T) {
 }
 
 func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
-	pubkey crypto.PubKey) (*types.Header, types.BlockID, *ABCIResponses) {
+	pubkey crypto.PubKey) (types.Header, types.BlockID, *ABCIResponses) {
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
@@ -442,7 +442,7 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 }
 
 func makeHeaderPartsResponsesValPowerChange(state State, height int64,
-	power int64) (*types.Header, types.BlockID, *ABCIResponses) {
+	power int64) (types.Header, types.BlockID, *ABCIResponses) {
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
@@ -463,7 +463,7 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 }
 
 func makeHeaderPartsResponsesParams(state State, height int64,
-	params types.ConsensusParams) (*types.Header, types.BlockID, *ABCIResponses) {
+	params types.ConsensusParams) (types.Header, types.BlockID, *ABCIResponses) {
 
 	block := makeBlock(state, height)
 	abciResponses := &ABCIResponses{
@@ -475,15 +475,4 @@ func makeHeaderPartsResponsesParams(state State, height int64,
 type paramsChangeTestCase struct {
 	height int64
 	params types.ConsensusParams
-}
-
-func makeHeaderPartsResults(state State, height int64,
-	results []*abci.ResponseDeliverTx) (*types.Header, types.BlockID, *ABCIResponses) {
-
-	block := makeBlock(state, height)
-	abciResponses := &ABCIResponses{
-		DeliverTx: results,
-		EndBlock:  &abci.ResponseEndBlock{},
-	}
-	return block.Header, types.BlockID{block.Hash(), types.PartSetHeader{}}, abciResponses
 }

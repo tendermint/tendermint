@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
 	crypto "github.com/tendermint/tendermint/crypto"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	em "github.com/tendermint/tendermint/tools/tm-monitor/eventmeter"
@@ -33,11 +33,11 @@ func TestNodeNewBlockReceived(t *testing.T) {
 	defer n.Stop()
 	n.SendBlocksTo(blockCh)
 
-	blockHeader := &tmtypes.Header{Height: 5}
+	blockHeader := tmtypes.Header{Height: 5}
 	emMock.Call("eventCallback", &em.EventMetric{}, tmtypes.EventDataNewBlockHeader{blockHeader})
 
 	assert.Equal(t, int64(5), n.Height)
-	assert.Equal(t, *blockHeader, <-blockCh)
+	assert.Equal(t, blockHeader, <-blockCh)
 }
 
 func TestNodeNewBlockLatencyReceived(t *testing.T) {
