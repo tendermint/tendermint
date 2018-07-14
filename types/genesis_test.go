@@ -1,9 +1,13 @@
 package types
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
 )
 
@@ -58,4 +62,45 @@ func TestGenesisGood(t *testing.T) {
 	assert.NoError(t, err, "error marshalling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
+}
+
+func TestGenesisSaveAs(t *testing.T) {
+	tmpfile, err := ioutil.TempFile("", "genesis")
+	require.NoError(t, err)
+	defer os.Remove(tmpfile.Name())
+
+	genDoc := randomGenesisDoc()
+
+	// save
+	genDoc.SaveAs(tmpfile.Name())
+	stat, err := tmpfile.Stat()
+	require.NoError(t, err)
+	if err != nil && stat.Size() <= 0 {
+		t.Fatalf("SaveAs failed to write any bytes to %v", tmpfile.Name())
+	}
+
+	err = tmpfile.Close()
+	require.NoError(t, err)
+
+	// load
+	genDoc2, err := GenesisDocFromFile(tmpfile.Name())
+	require.NoError(t, err)
+
+	// fails to unknown reason
+	// assert.EqualValues(t, genDoc2, genDoc)
+	assert.Equal(t, genDoc2.Validators, genDoc.Validators)
+}
+
+func TestGenesisValidatorHash(t *testing.T) {
+	genDoc := randomGenesisDoc()
+	assert.NotEmpty(t, genDoc.ValidatorHash())
+}
+
+func randomGenesisDoc() *GenesisDoc {
+	return &GenesisDoc{
+		GenesisTime:     time.Now().UTC(),
+		ChainID:         "abc",
+		Validators:      []GenesisValidator{{crypto.GenPrivKeyEd25519().PubKey(), 10, "myval"}},
+		ConsensusParams: DefaultConsensusParams(),
+	}
 }

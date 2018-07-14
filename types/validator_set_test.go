@@ -14,6 +14,60 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+func TestValidatorSetBasic(t *testing.T) {
+	for _, vset := range []*ValidatorSet{NewValidatorSet([]*Validator{}), NewValidatorSet(nil)} {
+		assert.Panics(t, func() { vset.IncrementAccum(1) })
+
+		assert.EqualValues(t, vset, vset.Copy())
+		assert.False(t, vset.HasAddress([]byte("some val")))
+		idx, val := vset.GetByAddress([]byte("some val"))
+		assert.Equal(t, -1, idx)
+		assert.Nil(t, val)
+		addr, val := vset.GetByIndex(-100)
+		assert.Nil(t, addr)
+		assert.Nil(t, val)
+		addr, val = vset.GetByIndex(0)
+		assert.Nil(t, addr)
+		assert.Nil(t, val)
+		addr, val = vset.GetByIndex(100)
+		assert.Nil(t, addr)
+		assert.Nil(t, val)
+		assert.Zero(t, vset.Size())
+		assert.Equal(t, int64(0), vset.TotalVotingPower())
+		assert.Nil(t, vset.GetProposer())
+		assert.Nil(t, vset.Hash())
+
+		// add
+		val = randValidator_()
+		assert.True(t, vset.Add(val))
+		assert.True(t, vset.HasAddress(val.Address))
+		idx, val2 := vset.GetByAddress(val.Address)
+		assert.Equal(t, 0, idx)
+		assert.Equal(t, val, val2)
+		addr, val2 = vset.GetByIndex(0)
+		assert.Equal(t, []byte(val.Address), addr)
+		assert.Equal(t, val, val2)
+		assert.Equal(t, 1, vset.Size())
+		assert.Equal(t, val.VotingPower, vset.TotalVotingPower())
+		assert.Equal(t, val, vset.GetProposer())
+		assert.NotNil(t, vset.Hash())
+		assert.NotPanics(t, func() { vset.IncrementAccum(1) })
+
+		// update
+		assert.False(t, vset.Update(randValidator_()))
+		val.VotingPower = 100
+		assert.True(t, vset.Update(val))
+
+		// remove
+		val2, removed := vset.Remove(randValidator_().Address)
+		assert.Nil(t, val2)
+		assert.False(t, removed)
+		val2, removed = vset.Remove(val.Address)
+		assert.Equal(t, val.Address, val2.Address)
+		assert.True(t, removed)
+	}
+}
+
 func TestCopy(t *testing.T) {
 	vset := randValidatorSet(10)
 	vsetHash := vset.Hash()

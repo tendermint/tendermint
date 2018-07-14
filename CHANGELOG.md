@@ -1,6 +1,24 @@
 # Changelog
 
+## 0.22.4
+
+*July 14th, 2018*
+
+BREAKING CHANGES:
+- [genesis] removed deprecated `app_options` field.
+- [types] Genesis.AppStateJSON -> Genesis.AppState
+
+FEATURES:
+- [tools] Merged in from github.com/tendermint/tools
+
+BUG FIXES:
+- [tools/tm-bench] Various fixes
+- [consensus] Wait for WAL to stop on shutdown
+- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
+
 ## 0.22.3
+
+*July 10th, 2018*
 
 IMPROVEMENTS
 - Update dependencies
@@ -38,6 +56,7 @@ BUG FIXES
 * [state] Return error when EndBlock returns a 0-power validator that isn't
   already in the validator set.
 * [consensus] Shut down WAL properly.
+
 
 ## 0.22.0
 
