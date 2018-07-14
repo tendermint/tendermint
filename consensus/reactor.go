@@ -80,6 +80,9 @@ func (conR *ConsensusReactor) OnStop() {
 	conR.BaseReactor.OnStop()
 	conR.unsubscribeFromBroadcastEvents()
 	conR.conS.Stop()
+	if !conR.FastSync() {
+		conR.conS.Wait()
+	}
 }
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
