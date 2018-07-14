@@ -4,12 +4,12 @@
 
 *July 14th, 2018*
 
-FEATURES:
-- [tools] Merged in from github.com/tendermint/tools
-
-IMPROVEMENTS:
+BREAKING CHANGES:
 - [genesis] removed deprecated `app_options` field.
 - [types] Genesis.AppStateJSON -> Genesis.AppState
+
+FEATURES:
+- [tools] Merged in from github.com/tendermint/tools
 
 BUG FIXES:
 - [tools/tm-bench] Various fixes
