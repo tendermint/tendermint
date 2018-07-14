@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestEventBusPublishEventTx(t *testing.T) {
@@ -56,6 +56,64 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	case <-done:
 	case <-time.After(1 * time.Second):
 		t.Fatal("did not receive a transaction after 1 sec.")
+	}
+}
+
+func TestEventBusPublish(t *testing.T) {
+	eventBus := NewEventBus()
+	err := eventBus.Start()
+	require.NoError(t, err)
+	defer eventBus.Stop()
+
+	eventsCh := make(chan interface{})
+	err = eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, eventsCh)
+	require.NoError(t, err)
+
+	const numEventsExpected = 14
+	done := make(chan struct{})
+	go func() {
+		numEvents := 0
+		for range eventsCh {
+			numEvents++
+			if numEvents >= numEventsExpected {
+				close(done)
+			}
+		}
+	}()
+
+	err = eventBus.Publish(EventNewBlockHeader, EventDataNewBlockHeader{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventNewBlock(EventDataNewBlock{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventNewBlockHeader(EventDataNewBlockHeader{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventVote(EventDataVote{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventProposalHeartbeat(EventDataProposalHeartbeat{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventNewRoundStep(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventTimeoutPropose(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventTimeoutWait(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventNewRound(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventCompleteProposal(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventPolka(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventUnlock(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventRelock(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventLock(EventDataRoundState{})
+	require.NoError(t, err)
+
+	select {
+	case <-done:
+	case <-time.After(1 * time.Second):
+		t.Fatalf("expected to receive %d events after 1 sec.", numEventsExpected)
 	}
 }
 
@@ -126,11 +184,7 @@ func benchmarkEventBus(numClients int, randQueries bool, randEvents bool, b *tes
 	}
 }
 
-var events = []string{EventBond,
-	EventUnbond,
-	EventRebond,
-	EventDupeout,
-	EventFork,
+var events = []string{
 	EventNewBlock,
 	EventNewBlockHeader,
 	EventNewRound,
@@ -148,11 +202,7 @@ func randEvent() string {
 	return events[rand.Intn(len(events))]
 }
 
-var queries = []tmpubsub.Query{EventQueryBond,
-	EventQueryUnbond,
-	EventQueryRebond,
-	EventQueryDupeout,
-	EventQueryFork,
+var queries = []tmpubsub.Query{
 	EventQueryNewBlock,
 	EventQueryNewBlockHeader,
 	EventQueryNewRound,

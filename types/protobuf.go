@@ -78,7 +78,7 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 
 // XXX: panics on nil or unknown pubkey type
 func (tm2pb) Validators(vals *ValidatorSet) []abci.Validator {
-	validators := make([]abci.Validator, len(vals.Validators))
+	validators := make([]abci.Validator, vals.Size())
 	for i, val := range vals.Validators {
 		validators[i] = TM2PB.Validator(val)
 	}

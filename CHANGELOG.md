@@ -1,5 +1,11 @@
 # Changelog
 
+## TBD
+
+IMPROVEMENTS:
+- [genesis] removed deprecated `app_options` field.
+- [types] Genesis.AppStateJSON -> Genesis.AppState
+
 ## 0.22.3
 
 IMPROVEMENTS

@@ -24,15 +24,16 @@ func (a ABCIResult) Hash() []byte {
 // ABCIResults wraps the deliver tx results to return a proof
 type ABCIResults []ABCIResult
 
-// NewResults creates ABCIResults from ResponseDeliverTx
-func NewResults(del []*abci.ResponseDeliverTx) ABCIResults {
-	res := make(ABCIResults, len(del))
-	for i, d := range del {
+// NewResults creates ABCIResults from the list of ResponseDeliverTx.
+func NewResults(responses []*abci.ResponseDeliverTx) ABCIResults {
+	res := make(ABCIResults, len(responses))
+	for i, d := range responses {
 		res[i] = NewResultFromResponse(d)
 	}
 	return res
 }
 
+// NewResultFromResponse creates ABCIResult from ResponseDeliverTx.
 func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
 	return ABCIResult{
 		Code: response.Code,

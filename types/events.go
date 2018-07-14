@@ -10,22 +10,17 @@ import (
 
 // Reserved event types
 const (
-	EventBond              = "Bond"
 	EventCompleteProposal  = "CompleteProposal"
-	EventDupeout           = "Dupeout"
-	EventFork              = "Fork"
 	EventLock              = "Lock"
 	EventNewBlock          = "NewBlock"
 	EventNewBlockHeader    = "NewBlockHeader"
 	EventNewRound          = "NewRound"
 	EventNewRoundStep      = "NewRoundStep"
 	EventPolka             = "Polka"
-	EventRebond            = "Rebond"
 	EventRelock            = "Relock"
 	EventTimeoutPropose    = "TimeoutPropose"
 	EventTimeoutWait       = "TimeoutWait"
 	EventTx                = "Tx"
-	EventUnbond            = "Unbond"
 	EventUnlock            = "Unlock"
 	EventVote              = "Vote"
 	EventProposalHeartbeat = "ProposalHeartbeat"
@@ -113,11 +108,6 @@ const (
 )
 
 var (
-	EventQueryBond              = QueryForEvent(EventBond)
-	EventQueryUnbond            = QueryForEvent(EventUnbond)
-	EventQueryRebond            = QueryForEvent(EventRebond)
-	EventQueryDupeout           = QueryForEvent(EventDupeout)
-	EventQueryFork              = QueryForEvent(EventFork)
 	EventQueryNewBlock          = QueryForEvent(EventNewBlock)
 	EventQueryNewBlockHeader    = QueryForEvent(EventNewBlockHeader)
 	EventQueryNewRound          = QueryForEvent(EventNewRound)

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 func newConsensusParams(blockSize, partSize int) ConsensusParams {
@@ -84,5 +85,61 @@ func TestConsensusParamsHash(t *testing.T) {
 	})
 	for i := 0; i < len(hashes)-1; i++ {
 		assert.NotEqual(t, hashes[i], hashes[i+1])
+	}
+}
+
+func TestConsensusParamsUpdate(t *testing.T) {
+	testCases := []struct {
+		params        ConsensusParams
+		updates       *abci.ConsensusParams
+		updatedParams ConsensusParams
+	}{
+		// empty updates
+		{
+			makeParams(1, 2, 3, 4, 5, 6),
+			&abci.ConsensusParams{},
+			makeParams(1, 2, 3, 4, 5, 6),
+		},
+		// negative BlockPartSizeBytes
+		{
+			makeParams(1, 2, 3, 4, 5, 6),
+			&abci.ConsensusParams{
+				BlockSize: &abci.BlockSize{
+					MaxBytes: -100,
+					MaxTxs:   -200,
+					MaxGas:   -300,
+				},
+				TxSize: &abci.TxSize{
+					MaxBytes: -400,
+					MaxGas:   -500,
+				},
+				BlockGossip: &abci.BlockGossip{
+					BlockPartSizeBytes: -600,
+				},
+			},
+			makeParams(1, 2, 3, 4, 5, 6),
+		},
+		// fine updates
+		{
+			makeParams(1, 2, 3, 4, 5, 6),
+			&abci.ConsensusParams{
+				BlockSize: &abci.BlockSize{
+					MaxBytes: 100,
+					MaxTxs:   200,
+					MaxGas:   300,
+				},
+				TxSize: &abci.TxSize{
+					MaxBytes: 400,
+					MaxGas:   500,
+				},
+				BlockGossip: &abci.BlockGossip{
+					BlockPartSizeBytes: 600,
+				},
+			},
+			makeParams(100, 200, 300, 400, 500, 600),
+		},
+	}
+	for _, tc := range testCases {
+		assert.Equal(t, tc.updatedParams, tc.params.Update(tc.updates))
 	}
 }

@@ -4,7 +4,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
 )
 
 func examplePrevote() *Vote {
@@ -50,29 +52,9 @@ func TestVoteSignable(t *testing.T) {
 	}
 }
 
-func TestVoteString(t *testing.T) {
-	tc := []struct {
-		name string
-		in   string
-		out  string
-	}{
-		{"Precommit", examplePrecommit().String(), `Vote{56789:616464720000 12345/02/2(Precommit) 686173680000 <nil> @ 2017-12-25T03:00:01.234Z}`},
-		{"Prevote", examplePrevote().String(), `Vote{56789:616464720000 12345/02/1(Prevote) 686173680000 <nil> @ 2017-12-25T03:00:01.234Z}`},
-	}
-
-	for _, tt := range tc {
-		tt := tt
-		t.Run(tt.name, func(st *testing.T) {
-			if tt.in != tt.out {
-				t.Errorf("Got unexpected string for Proposal. Expected:\n%v\nGot:\n%v", tt.in, tt.out)
-			}
-		})
-	}
-}
-
 func TestVoteVerifySignature(t *testing.T) {
 	privVal := NewMockPV()
-	pubKey := privVal.GetPubKey()
+	pubkey := privVal.GetPubKey()
 
 	vote := examplePrecommit()
 	signBytes := vote.SignBytes("test_chain_id")
@@ -82,7 +64,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	require.NoError(t, err)
 
 	// verify the same vote
-	valid := pubKey.VerifyBytes(vote.SignBytes("test_chain_id"), vote.Signature)
+	valid := pubkey.VerifyBytes(vote.SignBytes("test_chain_id"), vote.Signature)
 	require.True(t, valid)
 
 	// serialize, deserialize and verify again....
@@ -95,7 +77,7 @@ func TestVoteVerifySignature(t *testing.T) {
 	// verify the transmitted vote
 	newSignBytes := precommit.SignBytes("test_chain_id")
 	require.Equal(t, string(signBytes), string(newSignBytes))
-	valid = pubKey.VerifyBytes(newSignBytes, precommit.Signature)
+	valid = pubkey.VerifyBytes(newSignBytes, precommit.Signature)
 	require.True(t, valid)
 }
 
@@ -117,5 +99,23 @@ func TestIsVoteTypeValid(t *testing.T) {
 				t.Errorf("Got unexpected Vote type. Expected:\n%v\nGot:\n%v", rs, tt.out)
 			}
 		})
+	}
+}
+
+func TestVoteVerify(t *testing.T) {
+	privVal := NewMockPV()
+	pubkey := privVal.GetPubKey()
+
+	vote := examplePrevote()
+	vote.ValidatorAddress = pubkey.Address()
+
+	err := vote.Verify("test_chain_id", crypto.GenPrivKeyEd25519().PubKey())
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrVoteInvalidValidatorAddress, err)
+	}
+
+	err = vote.Verify("test_chain_id", pubkey)
+	if assert.Error(t, err) {
+		assert.Equal(t, ErrVoteInvalidSignature, err)
 	}
 }

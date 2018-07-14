@@ -29,9 +29,8 @@ type Genesis struct {
 	ConsensusParams *types.ConsensusParams `json:"consensus_params,omitempty"`
 	Validators      []GenesisValidator     `json:"validators"`
 	AppHash         cmn.HexBytes           `json:"app_hash"`
-	AppStateJSON    json.RawMessage        `json:"app_state,omitempty"`
+	AppState        json.RawMessage        `json:"app_state,omitempty"`
 	AppOptions      json.RawMessage        `json:"app_options,omitempty"` // DEPRECATED
-
 }
 
 type NodeKey struct {
@@ -112,12 +111,12 @@ func convertGenesis(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 		ChainID:         genesis.ChainID,
 		ConsensusParams: genesis.ConsensusParams,
 		// Validators
-		AppHash:      genesis.AppHash,
-		AppStateJSON: genesis.AppStateJSON,
+		AppHash:  genesis.AppHash,
+		AppState: genesis.AppState,
 	}
 
 	if genesis.AppOptions != nil {
-		genesisNew.AppStateJSON = genesis.AppOptions
+		genesisNew.AppState = genesis.AppOptions
 	}
 
 	for _, v := range genesis.Validators {
