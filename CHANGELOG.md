@@ -1,12 +1,24 @@
 # Changelog
 
-## TBD
+## 0.22.4
 
-IMPROVEMENTS:
+*July 14th, 2018*
+
+BREAKING CHANGES:
 - [genesis] removed deprecated `app_options` field.
 - [types] Genesis.AppStateJSON -> Genesis.AppState
 
+FEATURES:
+- [tools] Merged in from github.com/tendermint/tools
+
+BUG FIXES:
+- [tools/tm-bench] Various fixes
+- [consensus] Wait for WAL to stop on shutdown
+- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
+
 ## 0.22.3
+
+*July 10th, 2018*
 
 IMPROVEMENTS
 - Update dependencies
@@ -29,7 +41,6 @@ BUG FIXES
     - NOTE: this is only for URI requests. JSONRPC requests and all responses
       will use quoted integers (the proto3 JSON standard).
 - [consensus] Fix halt on shutdown
-- [tm_bench] Fix method of computing start time, and end time
 
 ## 0.22.1
 
@@ -46,8 +57,6 @@ BUG FIXES
   already in the validator set.
 * [consensus] Shut down WAL properly.
 
-BUG FIXES:
-- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
 
 ## 0.22.0
 
