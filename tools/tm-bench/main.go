@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"strings"
+	"sync"
 	"text/tabwriter"
 	"time"
 
@@ -25,13 +26,13 @@ type statistics struct {
 }
 
 func main() {
-	var duration, txsRate, connections, txSize int
+	var durationInt, txsRate, connections, txSize int
 	var verbose bool
 	var outputFormat, broadcastTxMethod string
 
 	flagSet := flag.NewFlagSet("tm-bench", flag.ExitOnError)
 	flagSet.IntVar(&connections, "c", 1, "Connections to keep open per endpoint")
-	flagSet.IntVar(&duration, "T", 10, "Exit after the specified amount of time in seconds")
+	flagSet.IntVar(&durationInt, "T", 10, "Exit after the specified amount of time in seconds")
 	flagSet.IntVar(&txsRate, "r", 1000, "Txs per second to send in a connection")
 	flagSet.IntVar(&txSize, "s", 250, "The size of a transaction in bytes.")
 	flagSet.StringVar(&outputFormat, "output-format", "plain", "Output format: plain or json")
@@ -42,7 +43,7 @@ func main() {
 		fmt.Println(`Tendermint blockchain benchmarking tool.
 
 Usage:
-	tm-bench [-c 1] [-T 10] [-r 1000] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
+	tm-bench [-c 1] [-T 10] [-r 1000] [-s 250] [endpoints] [-output-format <plain|json> [-broadcast-tx-method <async|sync|commit>]]
 
 Examples:
 	tm-bench localhost:26657`)
@@ -73,7 +74,7 @@ Examples:
 		}
 		logger = log.NewTMLoggerWithColorFn(log.NewSyncWriter(os.Stdout), colorFn)
 
-		fmt.Printf("Running %ds test @ %s\n", duration, flagSet.Arg(0))
+		fmt.Printf("Running %ds test @ %s\n", durationInt, flagSet.Arg(0))
 	}
 
 	if broadcastTxMethod != "async" &&
@@ -93,10 +94,6 @@ Examples:
 	)
 	logger.Info("Latest block height", "h", initialHeight)
 
-	// record time start
-	timeStart := time.Now()
-	logger.Info("Time started", "t", timeStart)
-
 	transacters := startTransacters(
 		endpoints,
 		connections,
@@ -104,9 +101,17 @@ Examples:
 		txSize,
 		"broadcast_tx_"+broadcastTxMethod,
 	)
-	endTime := time.Duration(duration) * time.Second
 
-	<-time.After(endTime)
+	// Wait until transacters have begun until we get the start time
+	timeStart := time.Now()
+	logger.Info("Time last transacter started", "t", timeStart)
+
+	duration := time.Duration(durationInt) * time.Second
+
+	timeEnd := timeStart.Add(duration)
+	logger.Info("End time for calculation", "t", timeEnd)
+
+	<-time.After(duration)
 	for i, t := range transacters {
 		t.Stop()
 		numCrashes := countCrashes(t.connsBroken)
@@ -115,15 +120,14 @@ Examples:
 		}
 	}
 
-	timeStop := time.Now()
-	logger.Info("Time stopped", "t", timeStop)
+	logger.Debug("Time all transacters stopped", "t", time.Now())
 
 	stats, err := calculateStatistics(
 		client,
 		initialHeight,
 		timeStart,
-		timeStop,
-		duration,
+		timeEnd,
+		durationInt,
 	)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -202,7 +206,7 @@ func calculateStatistics(
 	}
 
 	// iterates from max height to min height
-	for _, blockMeta := range blockMetas {
+	for i, blockMeta := range blockMetas {
 		// check if block was created after timeStart
 		if blockMeta.Header.Time.Before(timeStart) {
 			break
@@ -219,6 +223,7 @@ func calculateStatistics(
 
 		// increase number of txs for that second
 		numTxsPerSec[sec] += blockMeta.Header.NumTxs
+		logger.Debug(fmt.Sprintf("%d txs in block %d, height %d", blockMeta.Header.NumTxs, i, blockMeta.Header.Height))
 	}
 
 	for _, n := range numBlocksPerSec {
@@ -245,15 +250,21 @@ func startTransacters(
 ) []*transacter {
 	transacters := make([]*transacter, len(endpoints))
 
+	wg := sync.WaitGroup{}
+	wg.Add(len(endpoints))
 	for i, e := range endpoints {
 		t := newTransacter(e, connections, txsRate, txSize, broadcastTxMethod)
 		t.SetLogger(logger)
-		if err := t.Start(); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			os.Exit(1)
-		}
-		transacters[i] = t
+		go func(i int) {
+			defer wg.Done()
+			if err := t.Start(); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				os.Exit(1)
+			}
+			transacters[i] = t
+		}(i)
 	}
+	wg.Wait()
 
 	return transacters
 }

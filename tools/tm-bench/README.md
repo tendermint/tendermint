@@ -51,15 +51,26 @@ with the last command being in a seperate window.
 ## How stats are collected
 
 These stats are derived by having each connection send transactions at the
-specified rate (or as close as it can get) for the specified time. After the
-specified time, it iterates over all of the blocks that were created in that
-time. The average and stddev per second are computed based off of that, by
+specified rate (or as close as it can get) for the specified time.
+After the specified time, it iterates over all of the blocks that were created
+in that time.
+The average and stddev per second are computed based off of that, by
 grouping the data by second.
 
 To send transactions at the specified rate in each connection, we loop
-through the number of transactions. If its too slow, the loop stops at one second.
-If its too fast, we wait until the one second mark ends. The transactions per
-second stat is computed based off of what ends up in the block.
+through the number of transactions.
+If its too slow, the loop stops at one second.
+If its too fast, we wait until the one second mark ends.
+The transactions per second stat is computed based off of what ends up in the
+block.
+
+Note that there will be edge effects on the number of transactions in the first
+and last blocks.
+This is because transactions may start sending midway through when tendermint
+starts building the next block, so it only has half as much time to gather txs
+that tm-bench sends.
+Similarly the end of the duration will likely end mid-way through tendermint
+trying to build the next block.
 
 Each of the connections is handled via two separate goroutines. 
 

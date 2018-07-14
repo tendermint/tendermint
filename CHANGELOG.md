@@ -4,6 +4,14 @@
 
 IMPROVEMENTS:
 - [genesis] removed deprecated `app_options` field.
+- [types] Genesis.AppStateJSON -> Genesis.AppState
+
+## 0.22.3
+
+IMPROVEMENTS
+- Update dependencies
+    * pin all values in Gopkg.toml to version or commit
+    * update golang/protobuf to v1.1.0
 
 ## 0.22.2
 
@@ -21,6 +29,7 @@ BUG FIXES
     - NOTE: this is only for URI requests. JSONRPC requests and all responses
       will use quoted integers (the proto3 JSON standard).
 - [consensus] Fix halt on shutdown
+- [tm_bench] Fix method of computing start time, and end time
 
 ## 0.22.1
 

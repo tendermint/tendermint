@@ -119,7 +119,7 @@
     "prometheus",
     "prometheus/promhttp"
   ]
-  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
+  revision = "ee1c9d7e23df7f011bdf6f12a5c9e7f0ae10a1fe"
 
 [[projects]]
   branch = "master"
@@ -237,7 +237,7 @@
     "types",
     "version"
   ]
-  revision = "9d81a74429e093f3167875e0145ad957874c77d1"
+  revision = "f5ad8ef8600c33532a16de0879ff6b9745bb394d"
 
 [[projects]]
   branch = "master"
@@ -268,7 +268,7 @@
     "netutil",
     "trace"
   ]
-  revision = "292b43bbf7cb8d35ddf40f8d5100ef3837cced3f"
+  revision = "039a4258aec0ad3c79b905677cceeab13b296a77"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -292,10 +292,9 @@
   version = "v0.3.0"
 
 [[projects]]
-  branch = "master"
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
-  revision = "e92b116572682a5b432ddd840aeaba2a559eeff1"
+  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
 
 [[projects]]
   name = "google.golang.org/grpc"
@@ -330,6 +329,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "bc54a74ffdfc09872726fcf5c72b5df882269dc1cd949ac3fbeac9a554fc25c6"
+  inputs-digest = "5c21a60b80ac7d60f7be693de13f9fadb62226b502431bdb38fb9794a98c5b02"
   solver-name = "gps-cdcl"
   solver-version = 1
