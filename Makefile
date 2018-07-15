@@ -114,7 +114,7 @@ protoc_libs:
 	## See https://stackoverflow.com/a/25518702
 	protoc $(INCLUDE) --go_out=plugins=grpc:. libs/common/*.proto
 	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk '/package libs/common/ { print "//nolint: gas"; print; next }1' libs/common/types.pb.go > libs/common/types.pb.go.new
+	@awk '/package common/ { print "//nolint: gas"; print; next }1' libs/common/types.pb.go > libs/common/types.pb.go.new
 	@mv libs/common/types.pb.go.new libs/common/types.pb.go
 
 gen_certs: clean_certs
