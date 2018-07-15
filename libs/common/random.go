@@ -109,18 +109,6 @@ func RandInt63n(n int64) int64 {
 	return grand.Int63n(n)
 }
 
-func RandUint16Exp() uint16 {
-	return grand.Uint16Exp()
-}
-
-func RandUint32Exp() uint32 {
-	return grand.Uint32Exp()
-}
-
-func RandUint64Exp() uint64 {
-	return grand.Uint64Exp()
-}
-
 func RandFloat32() float32 {
 	return grand.Float32()
 }
@@ -247,39 +235,6 @@ func (r *Rand) Int63n(n int64) int64 {
 	return i63n
 }
 
-// Distributed pseudo-exponentially to test for various cases
-func (r *Rand) Uint16Exp() uint16 {
-	bits := r.Uint32() % 16
-	if bits == 0 {
-		return 0
-	}
-	n := uint16(1 << (bits - 1))
-	n += uint16(r.Int31()) & ((1 << (bits - 1)) - 1)
-	return n
-}
-
-// Distributed pseudo-exponentially to test for various cases
-func (r *Rand) Uint32Exp() uint32 {
-	bits := r.Uint32() % 32
-	if bits == 0 {
-		return 0
-	}
-	n := uint32(1 << (bits - 1))
-	n += uint32(r.Int31()) & ((1 << (bits - 1)) - 1)
-	return n
-}
-
-// Distributed pseudo-exponentially to test for various cases
-func (r *Rand) Uint64Exp() uint64 {
-	bits := r.Uint32() % 64
-	if bits == 0 {
-		return 0
-	}
-	n := uint64(1 << (bits - 1))
-	n += uint64(r.Int63()) & ((1 << (bits - 1)) - 1)
-	return n
-}
-
 func (r *Rand) Float32() float32 {
 	r.Lock()
 	f32 := r.rand.Float32()
@@ -295,7 +250,7 @@ func (r *Rand) Float64() float64 {
 }
 
 func (r *Rand) Time() time.Time {
-	return time.Unix(int64(r.Uint64Exp()), 0)
+	return time.Unix(int64(r.Uint64()), 0)
 }
 
 // Bytes returns n random bytes generated from the internal

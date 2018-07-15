@@ -7,6 +7,7 @@
 BREAKING CHANGES:
 - [genesis] removed deprecated `app_options` field.
 - [types] Genesis.AppStateJSON -> Genesis.AppState
+- [libs/common] remove exponentially distributed random numbers
 
 FEATURES:
 - [tools] Merged in from github.com/tendermint/tools
