@@ -3,7 +3,7 @@
 ## PENDING
 
 IMPROVEMENTS:
-- [config] Increase default send/recv rates to to 5 mB/s 
+- [config] Increase default send/recv rates to 5 mB/s
 
 ## 0.22.4
 
