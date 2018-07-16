@@ -3,17 +3,14 @@ package common
 import (
 	"bytes"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"testing"
-	"time"
 )
 
 func TestWriteFileAtomic(t *testing.T) {
 	var (
-		seed             = rand.New(rand.NewSource(time.Now().UnixNano()))
-		data             = []byte(RandStr(seed.Intn(2048)))
-		old              = RandBytes(seed.Intn(2048))
+		data             = []byte(RandStr(RandIntn(2048)))
+		old              = RandBytes(RandIntn(2048))
 		perm os.FileMode = 0600
 	)
 
