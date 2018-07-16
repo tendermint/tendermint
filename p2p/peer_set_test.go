@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"math/rand"
 	"net"
 	"sync"
 	"testing"
@@ -22,7 +21,7 @@ func randPeer(ip net.IP) *peer {
 	p := &peer{
 		nodeInfo: NodeInfo{
 			ID:         nodeKey.ID(),
-			ListenAddr: cmn.Fmt("%v.%v.%v.%v:26656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			ListenAddr: cmn.Fmt("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
 		},
 	}
 
