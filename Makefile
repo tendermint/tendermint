@@ -36,7 +36,7 @@ protoc_abci:
 	## See https://stackoverflow.com/a/25518702
 	protoc $(INCLUDE) --gogo_out=plugins=grpc:. abci/types/*.proto
 	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk '/package abci/types/ { print "//nolint: gas"; print; next }1' abci/types/types.pb.go > abci/types/types.pb.go.new
+	@awk '/package types/ { print "//nolint: gas"; print; next }1' abci/types/types.pb.go > abci/types/types.pb.go.new
 	@mv abci/types/types.pb.go.new abci/types/types.pb.go
 
 build_abci:
@@ -112,7 +112,7 @@ protoc_libs:
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) --go_out=plugins=grpc:. libs/common/*.proto
+	protoc $(INCLUDE) --gogo_out=plugins=grpc:. libs/common/*.proto
 	@echo "--> adding nolint declarations to protobuf generated files"
 	@awk '/package common/ { print "//nolint: gas"; print; next }1' libs/common/types.pb.go > libs/common/types.pb.go.new
 	@mv libs/common/types.pb.go.new libs/common/types.pb.go
