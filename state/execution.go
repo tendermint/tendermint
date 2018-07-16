@@ -250,7 +250,7 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 	if block.Height > 1 {
 		precommitLen := len(block.LastCommit.Precommits)
 		valSetLen := len(lastValSet.Validators)
-		if precommitLen != valSetLen {
+		if valSetLen > 0 && precommitLen != valSetLen {
 			// sanity check
 			panic(fmt.Sprintf("precommit length (%d) doesn't match valset length (%d) at height %d\n\n%v\n\n%v",
 				precommitLen, valSetLen, block.Height, block.LastCommit.Precommits, lastValSet.Validators))
@@ -419,7 +419,11 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 // It returns the application root hash (result of abci.Commit).
 func ExecCommitBlock(appConnConsensus proxy.AppConnConsensus, block *types.Block,
 	logger log.Logger, lastValSet *types.ValidatorSet, stateDB dbm.DB) ([]byte, error) {
-	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, lastValSet, stateDB)
+
+	vs := &types.ValidatorSet{
+		Validators: []*types.Validator{},
+	}
+	_, err := execBlockOnProxyApp(logger, appConnConsensus, block, vs, stateDB)
 	if err != nil {
 		logger.Error("Error executing block on proxy app", "height", block.Height, "err", err)
 		return nil, err
