@@ -99,7 +99,6 @@ laddr = "tcp://0.0.0.0:26656"
 seeds = ""
 
 # Comma separated list of nodes to keep persistent connections to
-# Do not add private peers to this list if you don't want them advertised
 persistent_peers = ""
 
 # UPNP port forwarding
