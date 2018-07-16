@@ -39,8 +39,6 @@ curl 'localhost:26657/broadcast_tx_sync?tx="abc"'
 }
 ```
 
-The first entry in the result-array (`96`) is the method this response correlates with. `96` refers to "ResultTypeBroadcastTx", see [responses.go](https://github.com/tendermint/tendermint/blob/master/rpc/core/types/responses.go) for a complete overview.
-
 ## JSONRPC/HTTP
 
 JSONRPC requests can be POST'd to the root RPC endpoint via HTTP (e.g. `http://localhost:26657/`).
