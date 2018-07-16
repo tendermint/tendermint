@@ -877,7 +877,7 @@ func (cs *ConsensusState) enterPropose(height int64, round int) {
 	if cs.isProposer() {
 		logger.Info("enterPropose: Our turn to propose", "proposer", cs.Validators.GetProposer().Address, "privValidator", cs.privValidator)
 		if height%32 == 0 {
-			rsp, err := cs.proxyApp.CheckBridgeSync(abci.RequestCheckBridge{0})
+			rsp, err := cs.proxyApp.CheckBridgeSync(abci.RequestCheckBridge{int32(round)})
 			if err != nil {
 				logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 				return
