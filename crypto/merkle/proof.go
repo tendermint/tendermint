@@ -46,6 +46,9 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 	if !bytes.Equal(root, args[0]) {
 		return cmn.NewError("Calculated root hash is invalid: expected %+v but %+v", root, args[0])
 	}
+	if len(keys) != 0 {
+		return cmn.NewError("Keypath not consumed all")
+	}
 	return nil
 }
 
@@ -92,22 +95,16 @@ func (prt *ProofRuntime) DecodeProof(proof *Proof) (poz ProofOperators, err erro
 	return
 }
 
-// XXX Reorder value/keys.
-// XXX Replace keys with keyString (the result of KeyPath.String()).
 func (prt *ProofRuntime) VerifyValue(proof *Proof, root []byte, keypath string, value []byte) (err error) {
 	return prt.Verify(proof, root, keypath, [][]byte{value})
 }
 
-// XXX Reorder value/keys.
-// XXX Replace keys with keyString (the result of KeyPath.String()).
 // TODO In the long run we'll need a method of classifcation of ops,
 // whether existence or absence or perhaps a third?
 func (prt *ProofRuntime) VerifyAbsence(proof *Proof, keypath string, root []byte) (err error) {
 	return prt.Verify(proof, root, keypath, nil)
 }
 
-// XXX Reorder value/keys.
-// XXX Replace keys with keyString (the result of KeyPath.String()).
 func (prt *ProofRuntime) Verify(proof *Proof, root []byte, keypath string, args [][]byte) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {
