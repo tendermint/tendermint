@@ -4,12 +4,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+  
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -203,12 +203,12 @@ func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
 func randIPv4Address(t *testing.T) *p2p.NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
-			rand.Intn(254)+1,
-			rand.Intn(255),
-			rand.Intn(255),
-			rand.Intn(255),
+			cmn.RandIntn(254)+1,
+			cmn.RandIntn(255),
+			cmn.RandIntn(255),
+			cmn.RandIntn(255),
 		)
-		port := rand.Intn(65535-1) + 1
+		port := cmn.RandIntn(65535-1) + 1
 		id := p2p.ID(hex.EncodeToString(cmn.RandBytes(p2p.IDByteLength)))
 		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
 		addr, err := p2p.NewNetAddressString(idAddr)

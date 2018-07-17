@@ -120,10 +120,10 @@ max_num_peers = 50
 max_packet_msg_payload_size = 1024
 
 # Rate at which packets can be sent, in bytes/second
-send_rate = 512000
+send_rate = 5120000
 
 # Rate at which packets can be received, in bytes/second
-recv_rate = 512000
+recv_rate = 5120000
 
 # Set true to enable the peer-exchange reactor
 pex = true

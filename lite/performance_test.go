@@ -2,13 +2,12 @@ package lite
 
 import (
 	"fmt"
-	"math/rand"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
+	cmn "github.com/tendermint/tendermint/libs/common"
 	liteErr "github.com/tendermint/tendermint/lite/errors"
 )
 
@@ -280,7 +279,11 @@ func BenchmarkMemStoreProviderGetByHeightBinarySearch1000(b *testing.B) {
 	benchmarkMemStoreProvidergetByHeight(b, fcs1000, h1000, binarySearch)
 }
 
-var rng = rand.New(rand.NewSource(10))
+var rng = cmn.NewRand()
+
+func init() {
+	rng.Seed(10)
+}
 
 func benchmarkMemStoreProvidergetByHeight(b *testing.B, fcs []FullCommit, fHeights []int64, algo algo) {
 	lazyGenerateFullCommits(b)

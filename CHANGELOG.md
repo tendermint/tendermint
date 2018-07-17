@@ -1,5 +1,13 @@
 # Changelog
 
+## TBA
+
+BREAKING CHANGES:
+- [libs/common] remove exponentially distributed random numbers
+
+IMPROVEMENTS:
+- [config] Increase default send/recv rates to 5 mB/s
+
 ## 0.22.4
 
 *July 14th, 2018*
