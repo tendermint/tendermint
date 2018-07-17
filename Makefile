@@ -5,7 +5,7 @@ GOTOOLS = \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/gogo/protobuf/gogoproto \
 	github.com/square/certstrap
-PACKAGES=$(shell go list ./... | grep -v '/vendor/')
+PACKAGES=$(shell go list ./...')
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?=tendermint
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
@@ -130,7 +130,7 @@ clean_certs:
 	rm -f db/remotedb/::.crt db/remotedb/::.key
 
 test_libs: gen_certs
-	GOCACHE=off go test -tags gcc $(shell go list ./... | grep -v vendor)
+	GOCACHE=off go test -tags gcc $(PACKAGES)
 	make clean_certs
 
 grpc_dbserver:
