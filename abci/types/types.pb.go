@@ -43,7 +43,7 @@
 		PubKey
 		Evidence
 */
-//nolint: gas
+//nolint
 package types
 
 import proto "github.com/gogo/protobuf/proto"

@@ -11,7 +11,7 @@
 		KVPair
 		KI64Pair
 */
-//nolint: gas
+//nolint
 package common
 
 import proto "github.com/gogo/protobuf/proto"
