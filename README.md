@@ -50,7 +50,7 @@ Go version | Go1.9 or higher
 
 ## Install
 
-See the [install instructions](/docs/install.md)
+See the [install instructions](/docs/introduction/install.md)
 
 ## Quick Start
 
