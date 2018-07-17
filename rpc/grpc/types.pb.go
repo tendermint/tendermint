@@ -23,6 +23,8 @@ import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 import types "github.com/tendermint/tendermint/abci/types"
 
+import bytes "bytes"
+
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
 
@@ -105,6 +107,99 @@ func init() {
 	golang_proto.RegisterType((*ResponsePing)(nil), "core_grpc.ResponsePing")
 	proto.RegisterType((*ResponseBroadcastTx)(nil), "core_grpc.ResponseBroadcastTx")
 	golang_proto.RegisterType((*ResponseBroadcastTx)(nil), "core_grpc.ResponseBroadcastTx")
+}
+func (this *RequestPing) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*RequestPing)
+	if !ok {
+		that2, ok := that.(RequestPing)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	return true
+}
+func (this *RequestBroadcastTx) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*RequestBroadcastTx)
+	if !ok {
+		that2, ok := that.(RequestBroadcastTx)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Tx, that1.Tx) {
+		return false
+	}
+	return true
+}
+func (this *ResponsePing) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*ResponsePing)
+	if !ok {
+		that2, ok := that.(ResponsePing)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	return true
+}
+func (this *ResponseBroadcastTx) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*ResponseBroadcastTx)
+	if !ok {
+		that2, ok := that.(ResponseBroadcastTx)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !this.CheckTx.Equal(that1.CheckTx) {
+		return false
+	}
+	if !this.DeliverTx.Equal(that1.DeliverTx) {
+		return false
+	}
+	return true
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -318,6 +413,117 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	}
 	dAtA[offset] = uint8(v)
 	return offset + 1
+}
+func NewPopulatedRequestPing(r randyTypes, easy bool) *RequestPing {
+	this := &RequestPing{}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedRequestBroadcastTx(r randyTypes, easy bool) *RequestBroadcastTx {
+	this := &RequestBroadcastTx{}
+	v1 := r.Intn(100)
+	this.Tx = make([]byte, v1)
+	for i := 0; i < v1; i++ {
+		this.Tx[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedResponsePing(r randyTypes, easy bool) *ResponsePing {
+	this := &ResponsePing{}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedResponseBroadcastTx(r randyTypes, easy bool) *ResponseBroadcastTx {
+	this := &ResponseBroadcastTx{}
+	if r.Intn(10) != 0 {
+		this.CheckTx = types.NewPopulatedResponseCheckTx(r, easy)
+	}
+	if r.Intn(10) != 0 {
+		this.DeliverTx = types.NewPopulatedResponseDeliverTx(r, easy)
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyTypes interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneTypes(r randyTypes) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringTypes(r randyTypes) string {
+	v2 := r.Intn(100)
+	tmps := make([]rune, v2)
+	for i := 0; i < v2; i++ {
+		tmps[i] = randUTF8RuneTypes(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedTypes(r randyTypes, maxFieldNumber int) (dAtA []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		dAtA = randFieldTypes(dAtA, r, fieldNumber, wire)
+	}
+	return dAtA
+}
+func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		v3 := r.Int63()
+		if r.Intn(2) == 0 {
+			v3 *= -1
+		}
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v3))
+	case 1:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		ll := r.Intn(100)
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(ll))
+		for j := 0; j < ll; j++ {
+			dAtA = append(dAtA, byte(r.Intn(256)))
+		}
+	default:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return dAtA
+}
+func encodeVarintPopulateTypes(dAtA []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (m *RequestPing) Size() (n int) {
 	var l int
@@ -774,7 +980,7 @@ func init() { proto.RegisterFile("rpc/grpc/types.proto", fileDescriptorTypes) }
 func init() { golang_proto.RegisterFile("rpc/grpc/types.proto", fileDescriptorTypes) }
 
 var fileDescriptorTypes = []byte{
-	// 308 bytes of a gzipped FileDescriptorProto
+	// 321 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0x29, 0x2a, 0x48, 0xd6,
 	0x4f, 0x07, 0x11, 0x25, 0x95, 0x05, 0xa9, 0xc5, 0x7a, 0x05, 0x45, 0xf9, 0x25, 0xf9, 0x42, 0x9c,
 	0xc9, 0xf9, 0x45, 0xa9, 0xf1, 0x20, 0x61, 0x29, 0xdd, 0xf4, 0xcc, 0x92, 0x8c, 0xd2, 0x24, 0xbd,
@@ -791,8 +997,9 @@ var fileDescriptorTypes = []byte{
 	0x12, 0x68, 0x9a, 0x5c, 0x20, 0x0a, 0x42, 0x2a, 0x82, 0x38, 0x53, 0x60, 0x4c, 0xa3, 0xa9, 0x8c,
 	0x5c, 0x3c, 0x70, 0xbb, 0x1d, 0x03, 0x3c, 0x85, 0xcc, 0xb9, 0x58, 0x40, 0x8e, 0x13, 0x12, 0xd3,
 	0x83, 0x87, 0xaa, 0x1e, 0x92, 0x57, 0xa5, 0xc4, 0x51, 0xc4, 0x11, 0xbe, 0x11, 0xf2, 0xe1, 0xe2,
-	0x46, 0xf6, 0x84, 0x2c, 0xa6, 0x7e, 0x24, 0x69, 0x29, 0x39, 0x2c, 0xc6, 0x20, 0xc9, 0x3b, 0x09,
-	0x9c, 0x78, 0x24, 0xc7, 0x78, 0xe1, 0x91, 0x1c, 0xe3, 0x83, 0x47, 0x72, 0x8c, 0x07, 0x1e, 0xcb,
-	0x31, 0x26, 0xb1, 0x81, 0x43, 0xde, 0x18, 0x10, 0x00, 0x00, 0xff, 0xff, 0x4a, 0xd5, 0xe6, 0xa2,
-	0x04, 0x02, 0x00, 0x00,
+	0x46, 0xf6, 0x84, 0x2c, 0xa6, 0x7e, 0x24, 0x69, 0x29, 0x39, 0x2c, 0xc6, 0x20, 0xc9, 0x3b, 0xc9,
+	0xfc, 0x78, 0x28, 0xc7, 0xb8, 0xe2, 0x91, 0x1c, 0xe3, 0x8e, 0x47, 0x72, 0x8c, 0x27, 0x1e, 0xc9,
+	0x31, 0x5e, 0x78, 0x24, 0xc7, 0xf8, 0xe0, 0x91, 0x1c, 0xe3, 0x81, 0xc7, 0x72, 0x8c, 0x49, 0x6c,
+	0xe0, 0x58, 0x30, 0x06, 0x04, 0x00, 0x00, 0xff, 0xff, 0xd5, 0xa8, 0xe4, 0xd9, 0x10, 0x02, 0x00,
+	0x00,
 }

@@ -20,6 +20,8 @@ import fmt "fmt"
 import math "math"
 import _ "github.com/gogo/protobuf/gogoproto"
 
+import bytes "bytes"
+
 import io "io"
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -90,6 +92,60 @@ func init() {
 	proto.RegisterType((*KI64Pair)(nil), "common.KI64Pair")
 	golang_proto.RegisterType((*KI64Pair)(nil), "common.KI64Pair")
 }
+func (this *KVPair) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*KVPair)
+	if !ok {
+		that2, ok := that.(KVPair)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Key, that1.Key) {
+		return false
+	}
+	if !bytes.Equal(this.Value, that1.Value) {
+		return false
+	}
+	return true
+}
+func (this *KI64Pair) Equal(that interface{}) bool {
+	if that == nil {
+		return this == nil
+	}
+
+	that1, ok := that.(*KI64Pair)
+	if !ok {
+		that2, ok := that.(KI64Pair)
+		if ok {
+			that1 = &that2
+		} else {
+			return false
+		}
+	}
+	if that1 == nil {
+		return this == nil
+	} else if this == nil {
+		return false
+	}
+	if !bytes.Equal(this.Key, that1.Key) {
+		return false
+	}
+	if this.Value != that1.Value {
+		return false
+	}
+	return true
+}
 func (m *KVPair) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -157,6 +213,111 @@ func encodeVarintTypes(dAtA []byte, offset int, v uint64) int {
 	}
 	dAtA[offset] = uint8(v)
 	return offset + 1
+}
+func NewPopulatedKVPair(r randyTypes, easy bool) *KVPair {
+	this := &KVPair{}
+	v1 := r.Intn(100)
+	this.Key = make([]byte, v1)
+	for i := 0; i < v1; i++ {
+		this.Key[i] = byte(r.Intn(256))
+	}
+	v2 := r.Intn(100)
+	this.Value = make([]byte, v2)
+	for i := 0; i < v2; i++ {
+		this.Value[i] = byte(r.Intn(256))
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+func NewPopulatedKI64Pair(r randyTypes, easy bool) *KI64Pair {
+	this := &KI64Pair{}
+	v3 := r.Intn(100)
+	this.Key = make([]byte, v3)
+	for i := 0; i < v3; i++ {
+		this.Key[i] = byte(r.Intn(256))
+	}
+	this.Value = int64(r.Int63())
+	if r.Intn(2) == 0 {
+		this.Value *= -1
+	}
+	if !easy && r.Intn(10) != 0 {
+	}
+	return this
+}
+
+type randyTypes interface {
+	Float32() float32
+	Float64() float64
+	Int63() int64
+	Int31() int32
+	Uint32() uint32
+	Intn(n int) int
+}
+
+func randUTF8RuneTypes(r randyTypes) rune {
+	ru := r.Intn(62)
+	if ru < 10 {
+		return rune(ru + 48)
+	} else if ru < 36 {
+		return rune(ru + 55)
+	}
+	return rune(ru + 61)
+}
+func randStringTypes(r randyTypes) string {
+	v4 := r.Intn(100)
+	tmps := make([]rune, v4)
+	for i := 0; i < v4; i++ {
+		tmps[i] = randUTF8RuneTypes(r)
+	}
+	return string(tmps)
+}
+func randUnrecognizedTypes(r randyTypes, maxFieldNumber int) (dAtA []byte) {
+	l := r.Intn(5)
+	for i := 0; i < l; i++ {
+		wire := r.Intn(4)
+		if wire == 3 {
+			wire = 5
+		}
+		fieldNumber := maxFieldNumber + r.Intn(100)
+		dAtA = randFieldTypes(dAtA, r, fieldNumber, wire)
+	}
+	return dAtA
+}
+func randFieldTypes(dAtA []byte, r randyTypes, fieldNumber int, wire int) []byte {
+	key := uint32(fieldNumber)<<3 | uint32(wire)
+	switch wire {
+	case 0:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		v5 := r.Int63()
+		if r.Intn(2) == 0 {
+			v5 *= -1
+		}
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(v5))
+	case 1:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	case 2:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		ll := r.Intn(100)
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(ll))
+		for j := 0; j < ll; j++ {
+			dAtA = append(dAtA, byte(r.Intn(256)))
+		}
+	default:
+		dAtA = encodeVarintPopulateTypes(dAtA, uint64(key))
+		dAtA = append(dAtA, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
+	}
+	return dAtA
+}
+func encodeVarintPopulateTypes(dAtA []byte, v uint64) []byte {
+	for v >= 1<<7 {
+		dAtA = append(dAtA, uint8(uint64(v)&0x7f|0x80))
+		v >>= 7
+	}
+	dAtA = append(dAtA, uint8(v))
+	return dAtA
 }
 func (m *KVPair) Size() (n int) {
 	var l int
@@ -519,7 +680,7 @@ func init() { proto.RegisterFile("libs/common/types.proto", fileDescriptorTypes)
 func init() { golang_proto.RegisterFile("libs/common/types.proto", fileDescriptorTypes) }
 
 var fileDescriptorTypes = []byte{
-	// 161 bytes of a gzipped FileDescriptorProto
+	// 174 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0xcf, 0xc9, 0x4c, 0x2a,
 	0xd6, 0x4f, 0xce, 0xcf, 0xcd, 0xcd, 0xcf, 0xd3, 0x2f, 0xa9, 0x2c, 0x48, 0x2d, 0xd6, 0x2b, 0x28,
 	0xca, 0x2f, 0xc9, 0x17, 0x62, 0x83, 0x88, 0x49, 0xe9, 0xa6, 0x67, 0x96, 0x64, 0x94, 0x26, 0xe9,
@@ -527,8 +688,8 @@ var fileDescriptorTypes = []byte{
 	0x30, 0x07, 0xcc, 0x82, 0x68, 0x53, 0x32, 0xe0, 0x62, 0xf3, 0x0e, 0x0b, 0x48, 0xcc, 0x2c, 0x12,
 	0x12, 0xe0, 0x62, 0xce, 0x4e, 0xad, 0x94, 0x60, 0x54, 0x60, 0xd4, 0xe0, 0x09, 0x02, 0x31, 0x85,
 	0x44, 0xb8, 0x58, 0xcb, 0x12, 0x73, 0x4a, 0x53, 0x25, 0x98, 0xc0, 0x62, 0x10, 0x8e, 0x92, 0x11,
-	0x17, 0x87, 0xb7, 0xa7, 0x99, 0x09, 0x31, 0x7a, 0x98, 0xa1, 0x7a, 0x9c, 0x04, 0x4e, 0x3c, 0x92,
-	0x63, 0xbc, 0xf0, 0x48, 0x8e, 0xf1, 0xc1, 0x23, 0x39, 0xc6, 0x03, 0x8f, 0xe5, 0x18, 0x93, 0xd8,
-	0xc0, 0xd6, 0x1b, 0x03, 0x02, 0x00, 0x00, 0xff, 0xff, 0x75, 0xed, 0xed, 0x70, 0xd0, 0x00, 0x00,
-	0x00,
+	0x17, 0x87, 0xb7, 0xa7, 0x99, 0x09, 0x31, 0x7a, 0x98, 0xa1, 0x7a, 0x9c, 0x64, 0x7e, 0x3c, 0x94,
+	0x63, 0x5c, 0xf1, 0x48, 0x8e, 0x71, 0xc7, 0x23, 0x39, 0xc6, 0x13, 0x8f, 0xe4, 0x18, 0x2f, 0x3c,
+	0x92, 0x63, 0x7c, 0xf0, 0x48, 0x8e, 0xf1, 0xc0, 0x63, 0x39, 0xc6, 0x24, 0x36, 0xb0, 0x53, 0x8c,
+	0x01, 0x01, 0x00, 0x00, 0xff, 0xff, 0xb1, 0x39, 0xe1, 0xef, 0xdc, 0x00, 0x00, 0x00,
 }
