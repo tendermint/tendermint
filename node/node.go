@@ -322,9 +322,9 @@ func NewNode(config *cfg.Config,
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:          cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
-				SeedMode:       config.P2P.SeedMode,
-				PrivatePeerIDs: cmn.SplitAndTrim(config.P2P.PrivatePeerIDs, ",", " ")})
+				Seeds:    cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
+				SeedMode: config.P2P.SeedMode,
+			})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
