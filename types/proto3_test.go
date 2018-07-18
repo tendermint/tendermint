@@ -13,8 +13,13 @@ import (
 func TestProto3Compatibility(t *testing.T) {
 	tm, err := time.Parse("Mon Jan 2 15:04:05 -0700 MST 2006", "Mon Jan 2 15:04:05 -0700 MST 2006")
 	assert.NoError(t, err)
+	// add some nanos, otherwise protobuf will skip over this while amino (still) won't!
+	tm = tm.Add(50000 * time.Nanosecond)
 	seconds := tm.Unix()
 	nanos := int32(tm.Nanosecond())
+	t.Log("seconds", seconds)
+	t.Log("nanos", nanos)
+
 	pbHeader := proto3.Header{
 		ChainID: "cosmos",
 		Height:  150,
@@ -62,6 +67,11 @@ func TestProto3Compatibility(t *testing.T) {
 		Height:  150,
 		Time:    &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
 		NumTxs:  7,
+		// This is not fully skipped in amino (yet) although it is empty:
+		LastBlockID: &proto3.BlockID{
+			PartsHeader: &proto3.PartSetHeader{
+			},
+		},
 		TotalTxs:       100,
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),
@@ -89,6 +99,8 @@ func TestProto3Compatibility(t *testing.T) {
 	pb, err = proto.Marshal(&proto3.Header{})
 	assert.NoError(t, err, "unexpected error")
 	t.Log(pb)
+
+	// While in protobuf Header{} encodes to an empty byte slice it does not in amino:
 	ab, err = cdc.MarshalBinaryBare(Header{})
 	assert.NoError(t, err, "unexpected error")
 	t.Log(ab)
@@ -97,4 +109,7 @@ func TestProto3Compatibility(t *testing.T) {
 	assert.NoError(t, err, "unexpected error")
 	t.Log(pb)
 
+	ab, err = cdc.MarshalBinaryBare(time.Time{})
+	assert.NoError(t, err, "unexpected error")
+	t.Log(ab)
 }

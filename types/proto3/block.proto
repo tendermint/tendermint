@@ -38,7 +38,11 @@ message Header {
   bytes EvidenceHash = 13; // evidence included in the block
 }
 
+// Timestamp wraps how amino encodes time. Note that this is different from the protobuf well-known type
+// protobuf/timestamp.proto in the sense that there seconds and nanos are varint encoded. See:
+// https://github.com/google/protobuf/blob/d2980062c859649523d5fd51d6b55ab310e47482/src/google/protobuf/timestamp.proto#L123-L135
+// Also nanos do not get skipped if they are zero in amino.
 message Timestamp {
-  int64 seconds = 1;
-  int32 nanos = 2;
+  sfixed64 seconds = 1;
+  sfixed32 nanos = 2;
 }
