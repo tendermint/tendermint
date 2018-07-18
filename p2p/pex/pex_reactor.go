@@ -179,12 +179,10 @@ func (r *PEXReactor) AddPeer(p Peer) {
 func (r *PEXReactor) logErrAddrBook(err error) {
 	if err != nil {
 		switch err.(type) {
-		case ErrAddrBookPrivate:
-			r.Logger.Error("Failed to add private peer to book", "err", err)
 		case ErrAddrBookNilAddr:
 			r.Logger.Error("Failed to add new address", "err", err)
 		default:
-			// non-routable, self, full book, etc.
+			// non-routable, self, full book, private, etc.
 			r.Logger.Debug("Failed to add new address", "err", err)
 		}
 	}
