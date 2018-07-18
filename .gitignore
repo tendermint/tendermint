@@ -16,7 +16,6 @@ coverage.txt
 docs/_build
 *.log
 abci-cli
-abci/types/types.pb.go
 docs/node_modules/
 
 scripts/wal2json/wal2json

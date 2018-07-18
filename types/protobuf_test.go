@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 )

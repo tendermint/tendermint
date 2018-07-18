@@ -3,9 +3,9 @@ package dummy
 import (
 	"net"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	p2p "github.com/tendermint/tendermint/p2p"
 	tmconn "github.com/tendermint/tendermint/p2p/conn"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 type peer struct {
@@ -76,5 +76,10 @@ func (p *peer) Get(key string) interface{} {
 	if value, ok := p.kv[key]; ok {
 		return value
 	}
+	return nil
+}
+
+// OriginalAddr always returns nil.
+func (p *peer) OriginalAddr() *p2p.NetAddress {
 	return nil
 }

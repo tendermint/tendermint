@@ -22,6 +22,14 @@ func (err ErrAddrBookSelf) Error() string {
 	return fmt.Sprintf("Cannot add ourselves with address %v", err.Addr)
 }
 
+type ErrAddrBookPrivate struct {
+	Addr *p2p.NetAddress
+}
+
+func (err ErrAddrBookPrivate) Error() string {
+	return fmt.Sprintf("Cannot add private peer with address %v", err.Addr)
+}
+
 type ErrAddrBookNilAddr struct {
 	Addr *p2p.NetAddress
 	Src  *p2p.NetAddress

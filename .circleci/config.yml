@@ -138,7 +138,7 @@ jobs:
       - run:
           name: Run tests
           command: |
-            for pkg in $(go list github.com/tendermint/tendermint/... | grep -v /vendor/ | circleci tests split --split-by=timings); do
+            for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
               GOCACHE=off go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
