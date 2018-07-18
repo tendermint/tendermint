@@ -11,14 +11,13 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4dd9b3b904b512f0d6ab14e62e3f2d9c5682a0421c5b56ac5a912a8c2efb8387"
+  digest = "1:6aabc1566d6351115d561d038da82a4c19b46c3b6e17f4a0a2fa60260663dc79"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   pruneopts = "UT"
-  revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
+  revision = "fdfc19097e7ac6b57035062056f5b7b4638b8898"
 
 [[projects]]
-  branch = "master"
   digest = "1:df684ed7fed3fb406ec421424aaf5fc9c63ccc2f428b25b842da78e634482e4b"
   name = "github.com/btcsuite/btcutil"
   packages = [
@@ -37,7 +36,6 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   digest = "1:c7644c73a3d23741fdba8a99b1464e021a224b7e205be497271a8003a15ca41b"
   name = "github.com/ebuchman/fail-test"
   packages = ["."]
@@ -45,12 +43,12 @@
   revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
 
 [[projects]]
-  branch = "master"
-  digest = "1:76ff0ffe922455a476e59dd7cb04f584a0e5c5b40094e2e19e6c706ab1657a3f"
+  digest = "1:544229a3ca0fb2dd5ebc2896d3d2ff7ce096d9751635301e44e37e761349ee70"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
   pruneopts = "UT"
-  revision = "b008db64ef8daabb22ff6daa557f33b41d8f6ccd"
+  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:abeb38ade3f32a92943e5be54f55ed6d6e3b6602761d74b4aab4c9dd45c18abd"
@@ -93,7 +91,7 @@
   version = "v1.7.0"
 
 [[projects]]
-  digest = "1:af1306bff89268721ea2550d504413c9487ebfca11e2ff8f39ae79b99a720ff5"
+  digest = "1:212285efb97b9ec2e20550d81f0446cb7897e57cbdfd7301b1363ab113d8be45"
   name = "github.com/gogo/protobuf"
   packages = [
     "gogoproto",
@@ -104,11 +102,11 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
-  version = "v1.0.0"
+  revision = "7d68e886eac4f7e34d0d82241a6273d6c304c5cf"
+  version = "v1.1.0"
 
 [[projects]]
-  digest = "1:02bd5d6d7a03b3585d1ab11b40a885c40e7b751e6409a48a881838fdd8d25e65"
+  digest = "1:cb22af0ed7c72d495d8be1106233ee553898950f15fd3f5404406d44c2e86888"
   name = "github.com/golang/protobuf"
   packages = [
     "proto",
@@ -118,8 +116,8 @@
     "ptypes/timestamp",
   ]
   pruneopts = "UT"
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -228,15 +226,14 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b22277f3d8a1639a2a5b168703e3212c03be448e41d4fc798a819638b8a0ebb1"
+  digest = "1:98225904b7abff96c052b669b25788f18225a36673fba022fb93514bb9a2a64e"
   name = "github.com/prometheus/client_golang"
   packages = [
     "prometheus",
     "prometheus/promhttp",
   ]
   pruneopts = "UT"
-  revision = "d6a9817c4afc94d51115e4a30d449056a3fbf547"
+  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
 
 [[projects]]
   branch = "master"
@@ -260,7 +257,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4fc9a1a52a187f84d4673d3fb76982842edc205ba45822808318c242a8d73fe0"
+  digest = "1:55d7449d6987dabf272b4e81b2f9c449f05b17415c939b68d1e82f57e3374b7f"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -269,10 +266,9 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "40f013a808ec4fa79def444a1a56de4d1727efcb"
+  revision = "ae68e2d4c00fed4943b5f6698d504a5fe083da8a"
 
 [[projects]]
-  branch = "master"
   digest = "1:c4556a44e350b50a490544d9b06e9fba9c286c21d6c0e47f54f3a9214597298c"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
@@ -331,19 +327,19 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:befd7181c2f92c9f05abf17cd7e15538919f19cf7871d794cacc45a4fb99c135"
+  digest = "1:73697231b93fb74a73ebd8384b68b9a60c57ea6b13c56d2425414566a72c8e6d"
   name = "github.com/stretchr/testify"
   packages = [
     "assert",
     "require",
   ]
   pruneopts = "UT"
-  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
-  version = "v1.2.2"
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:767e515343b5187afa4424032dc4b6670f963bbe98f5793b9934ce8c6a621bec"
+  digest = "1:922191411ad8f61bcd8018ac127589bb489712c1d1a0ab2497aca4b16de417d2"
   name = "github.com/syndtr/goleveldb"
   packages = [
     "leveldb",
@@ -360,7 +356,7 @@
     "leveldb/util",
   ]
   pruneopts = "UT"
-  revision = "e2150783cd35f5b607daca48afd8c57ec54cc995"
+  revision = "c4c61651e9e37fa117f53c5a906d3b63090d8445"
 
 [[projects]]
   branch = "master"
@@ -406,8 +402,7 @@
   revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
-  branch = "master"
-  digest = "1:b122e8f6b9fecbc50b9590df5934f667b53479ba585cf9c2d7420e748dd49d4e"
+  digest = "1:04dda8391c3e2397daf254ac68003f30141c069b228d06baec8324a5f81dc1e9"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -420,18 +415,18 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "4cb1c02c05b0e749b0365f61ae859a8e0cfceed9"
+  revision = "292b43bbf7cb8d35ddf40f8d5100ef3837cced3f"
 
 [[projects]]
   branch = "master"
-  digest = "1:86ae6a46956bb9bb9a9d25c9d99f16e57d320da6d18b22263f53e9a56853d695"
+  digest = "1:0470500d9a2c5c653f89fc369cdf2fece01996432d42ef87e03ebc3e5b5f8717"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
+  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
 
 [[projects]]
   digest = "1:7509ba4347d1f8de6ae9be8818b0cd1abc3deeffe28aeaf4be6d4b6b5178d9ca"

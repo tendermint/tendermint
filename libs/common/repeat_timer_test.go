@@ -1,7 +1,6 @@
 package common
 
 import (
-	"math/rand"
 	"sync"
 	"testing"
 	"time"
@@ -131,7 +130,7 @@ func TestRepeatTimerReset(t *testing.T) {
 
 	// just random calls
 	for i := 0; i < 100; i++ {
-		time.Sleep(time.Duration(rand.Intn(40)) * time.Millisecond)
+		time.Sleep(time.Duration(RandIntn(40)) * time.Millisecond)
 		timer.Reset()
 	}
 }

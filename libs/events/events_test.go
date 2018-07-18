@@ -2,11 +2,11 @@ package events
 
 import (
 	"fmt"
-	"math/rand"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // TestAddListenerForEventFireOnce sets up an EventSwitch, subscribes a single
@@ -306,8 +306,8 @@ func TestRemoveListenersAsync(t *testing.T) {
 	// collect received events for event2
 	go sumReceivedNumbers(numbers2, doneSum2)
 	addListenersStress := func() {
-		s1 := rand.NewSource(time.Now().UnixNano())
-		r1 := rand.New(s1)
+		r1 := cmn.NewRand()
+		r1.Seed(time.Now().UnixNano())
 		for k := uint16(0); k < 400; k++ {
 			listenerNumber := r1.Intn(100) + 3
 			eventNumber := r1.Intn(3) + 1
@@ -317,8 +317,8 @@ func TestRemoveListenersAsync(t *testing.T) {
 		}
 	}
 	removeListenersStress := func() {
-		s2 := rand.NewSource(time.Now().UnixNano())
-		r2 := rand.New(s2)
+		r2 := cmn.NewRand()
+		r2.Seed(time.Now().UnixNano())
 		for k := uint16(0); k < 80; k++ {
 			listenerNumber := r2.Intn(100) + 3
 			go evsw.RemoveListener(fmt.Sprintf("listener%v", listenerNumber))

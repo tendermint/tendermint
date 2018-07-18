@@ -91,10 +91,6 @@ type PEXReactorConfig struct {
 	// Seeds is a list of addresses reactor may use
 	// if it can't connect to peers in the addrbook.
 	Seeds []string
-
-	// PrivatePeerIDs is a list of peer IDs, which must not be gossiped to other
-	// peers.
-	PrivatePeerIDs []string
 }
 
 type _attemptsToDial struct {
@@ -173,11 +169,6 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		addr := p.NodeInfo().NetAddress()
 		src := addr
 
-		// ignore private addrs
-		if isAddrPrivate(addr, r.config.PrivatePeerIDs) {
-			return
-		}
-
 		// add to book. dont RequestAddrs right away because
 		// we don't trust inbound as much - let ensurePeersRoutine handle it.
 		err := r.book.AddAddress(addr, src)
@@ -191,7 +182,7 @@ func (r *PEXReactor) logErrAddrBook(err error) {
 		case ErrAddrBookNilAddr:
 			r.Logger.Error("Failed to add new address", "err", err)
 		default:
-			// non-routable, self, full book, etc.
+			// non-routable, self, full book, private, etc.
 			r.Logger.Debug("Failed to add new address", "err", err)
 		}
 	}
@@ -306,14 +297,6 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		// NOTE: GetSelection methods should never return nil addrs
 		if netAddr == nil {
 			return cmn.NewError("received nil addr")
-		}
-
-		// ignore private peers
-		// TODO: give private peers to AddrBook so it can enforce this on AddAddress.
-		// We'd then have to check for ErrPrivatePeer on AddAddress here, which is
-		// an error we just ignore (maybe peer is probing us for our private peers :P)
-		if isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
-			continue
 		}
 
 		err := r.book.AddAddress(netAddr, srcAddr)
@@ -645,16 +628,6 @@ func (r *PEXReactor) attemptDisconnects() {
 		}
 		r.Switch.StopPeerGracefully(peer)
 	}
-}
-
-// isAddrPrivate returns true if addr.ID is a private ID.
-func isAddrPrivate(addr *p2p.NetAddress, privatePeerIDs []string) bool {
-	for _, id := range privatePeerIDs {
-		if string(addr.ID) == id {
-			return true
-		}
-	}
-	return false
 }
 
 //-----------------------------------------------------------------------------

@@ -49,7 +49,7 @@ func (b *EventBus) OnStart() error {
 }
 
 func (b *EventBus) OnStop() {
-	b.pubsub.OnStop()
+	b.pubsub.Stop()
 }
 
 func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {

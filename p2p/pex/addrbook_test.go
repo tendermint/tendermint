@@ -4,11 +4,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -202,12 +203,12 @@ func randNetAddressPairs(t *testing.T, n int) []netAddressPair {
 func randIPv4Address(t *testing.T) *p2p.NetAddress {
 	for {
 		ip := fmt.Sprintf("%v.%v.%v.%v",
-			rand.Intn(254)+1,
-			rand.Intn(255),
-			rand.Intn(255),
-			rand.Intn(255),
+			cmn.RandIntn(254)+1,
+			cmn.RandIntn(255),
+			cmn.RandIntn(255),
+			cmn.RandIntn(255),
 		)
-		port := rand.Intn(65535-1) + 1
+		port := cmn.RandIntn(65535-1) + 1
 		id := p2p.ID(hex.EncodeToString(cmn.RandBytes(p2p.IDByteLength)))
 		idAddr := p2p.IDAddressString(id, fmt.Sprintf("%v:%v", ip, port))
 		addr, err := p2p.NewNetAddressString(idAddr)
@@ -353,4 +354,30 @@ func TestAddrBookHasAddress(t *testing.T) {
 	book.RemoveAddress(addr)
 
 	assert.False(t, book.HasAddress(addr))
+}
+
+func TestPrivatePeers(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	addrs := make([]*p2p.NetAddress, 10)
+	for i := 0; i < 10; i++ {
+		addrs[i] = randIPv4Address(t)
+	}
+
+	private := make([]string, 10)
+	for i, addr := range addrs {
+		private[i] = string(addr.ID)
+	}
+	book.AddPrivateIDs(private)
+
+	for _, addr := range addrs {
+		err := book.AddAddress(addr, addr)
+		require.Error(t, err, "AddAddress should have failed with private peer %s", addr)
+		_, ok := err.(ErrAddrBookPrivate)
+		require.True(t, ok, "Wrong error type, wanted ErrAddrBookPrivate, got error: %s", err)
+	}
 }

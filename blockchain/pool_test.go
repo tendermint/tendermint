@@ -1,7 +1,6 @@
 package blockchain
 
 import (
-	"math/rand"
 	"testing"
 	"time"
 
@@ -25,7 +24,7 @@ func makePeers(numPeers int, minHeight, maxHeight int64) map[p2p.ID]testPeer {
 	peers := make(map[p2p.ID]testPeer, numPeers)
 	for i := 0; i < numPeers; i++ {
 		peerID := p2p.ID(cmn.RandStr(12))
-		height := minHeight + rand.Int63n(maxHeight-minHeight)
+		height := minHeight + cmn.RandInt63n(maxHeight-minHeight)
 		peers[peerID] = testPeer{peerID, height}
 	}
 	return peers

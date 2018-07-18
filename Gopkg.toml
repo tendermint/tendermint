@@ -23,15 +23,11 @@
 #   non-go = false
 #   go-tests = true
 #   unused-packages = true
+#
+###########################################################
+# NOTE: All packages should be pinned to specific versions.
+# Packages without releases must pin to a commit.
 
-
-[[constraint]]
-  name = "github.com/ebuchman/fail-test"
-  branch = "master"
-
-[[constraint]]
-  name = "github.com/fortytw2/leaktest"
-  branch = "master"
 
 [[constraint]]
   name = "github.com/go-kit/kit"
@@ -39,23 +35,19 @@
 
 [[constraint]]
   name = "github.com/gogo/protobuf"
-  version = "=1.0.0"
+  version = "=1.1.0"
 
 [[constraint]]
   name = "github.com/golang/protobuf"
-  version = "=1.0.0"
+  version = "=1.1.0"
 
 [[constraint]]
   name = "github.com/gorilla/websocket"
-  version = "~1.2.0"
+  version = "=1.2.0"
 
 [[constraint]]
   name = "github.com/pkg/errors"
   version = "=0.8.0"
-
-[[constraint]]
-  name = "github.com/rcrowley/go-metrics"
-  branch = "master"
 
 [[constraint]]
   name = "github.com/spf13/cobra"
@@ -67,29 +59,60 @@
 
 [[constraint]]
   name = "github.com/stretchr/testify"
-  version = "~1.2.1"
+  version = "=1.2.1"
 
 [[constraint]]
   name = "github.com/tendermint/go-amino"
-  version = "~0.10.1"
+  version = "=0.10.1"
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "~1.11.3"
+  version = "=1.11.3"
 
-# this got updated and broke, so locked to an old working commit ...
+[[constraint]]
+  name = "github.com/fortytw2/leaktest"
+  version = "=1.2.0"
+
+###################################
+## Some repos dont have releases.
+## Pin to revision
+
+## We can remove this one by updating protobuf to v1.1.0
+## but then the grpc tests break with
+#--- FAIL: TestBroadcastTx (0.01s)
+#panic: message/group field common.KVPair:bytes without pointer [recovered]
+#        panic: message/group field common.KVPair:bytes without pointer
+#
+# ...
+#
+# github.com/tendermint/tendermint/rpc/grpc_test.TestBroadcastTx(0xc420a5ab40)
+#         /go/src/github.com/tendermint/tendermint/rpc/grpc/grpc_test.go:29 +0x141
 [[override]]
   name = "google.golang.org/genproto"
   revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
 
+[[constraint]]
+  name = "github.com/ebuchman/fail-test"
+  revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
+
+# last revision used by go-crypto
+[[constraint]]
+  name = "github.com/btcsuite/btcutil"
+  revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
+
+# Haven't made a release since 2016.
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
+
+[[constraint]]
+  name = "github.com/rcrowley/go-metrics"
+  revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
+
+[[constraint]]
+  name = "golang.org/x/net"
+  revision = "292b43bbf7cb8d35ddf40f8d5100ef3837cced3f"
+
 [prune]
   go-tests = true
   unused-packages = true
-
-[[constraint]]
-  name = "github.com/prometheus/client_golang"
-  branch = "master"
-
-[[constraint]]
-  branch = "master"
-  name = "golang.org/x/net"

@@ -322,9 +322,9 @@ func NewNode(config *cfg.Config,
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:          cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
-				SeedMode:       config.P2P.SeedMode,
-				PrivatePeerIDs: cmn.SplitAndTrim(config.P2P.PrivatePeerIDs, ",", " ")})
+				Seeds:    cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
+				SeedMode: config.P2P.SeedMode,
+			})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -449,6 +449,9 @@ func (n *Node) OnStart() error {
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
 
+	// Add private IDs to addrbook to block those peers being added
+	n.addrBook.AddPrivateIDs(cmn.SplitAndTrim(n.config.P2P.PrivatePeerIDs, ",", " "))
+
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
 	if n.config.RPC.ListenAddress != "" {
@@ -486,18 +489,22 @@ func (n *Node) OnStop() {
 	n.BaseService.OnStop()
 
 	n.Logger.Info("Stopping Node")
+
+	// first stop the non-reactor services
+	n.eventBus.Stop()
+	n.indexerService.Stop()
+
+	// now stop the reactors
 	// TODO: gracefully disconnect from peers.
 	n.sw.Stop()
 
+	// finally stop the listeners / external services
 	for _, l := range n.rpcListeners {
 		n.Logger.Info("Closing rpc listener", "listener", l)
 		if err := l.Close(); err != nil {
 			n.Logger.Error("Error closing listener", "listener", l, "err", err)
 		}
 	}
-
-	n.eventBus.Stop()
-	n.indexerService.Stop()
 
 	if pvsc, ok := n.privValidator.(*privval.SocketPV); ok {
 		if err := pvsc.Stop(); err != nil {

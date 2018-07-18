@@ -5,7 +5,7 @@ GOTOOLS = \
 	github.com/gogo/protobuf/protoc-gen-gogo \
 	github.com/gogo/protobuf/gogoproto \
 	github.com/square/certstrap
-PACKAGES=$(shell go list ./... | grep -v '/vendor/')
+PACKAGES=$(shell go list ./...)
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?=tendermint
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
@@ -28,16 +28,22 @@ install:
 	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
 
 ########################################
-### Build ABCI
+### Protobuf
 
-protoc_abci:
+protoc_all: protoc_libs protoc_abci protoc_grpc
+
+%.pb.go: %.proto
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) --gogo_out=plugins=grpc:. abci/types/*.proto
+	protoc $(INCLUDE) $< --gogo_out=plugins=grpc:.
 	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk '/package abci/types/ { print "//nolint: gas"; print; next }1' abci/types/types.pb.go > abci/types/types.pb.go.new
-	@mv abci/types/types.pb.go.new abci/types/types.pb.go
+	@awk -i inplace '/^\s*package \w+/ { print "//nolint" }1' $@
+
+########################################
+### Build ABCI
+
+protoc_abci: abci/types/types.pb.go
 
 build_abci:
 	@go build -i ./abci/cmd/...
@@ -108,14 +114,7 @@ get_deps_bin_size:
 ########################################
 ### Libs
 
-protoc_libs:
-	## If you get the following error,
-	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
-	## See https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) --go_out=plugins=grpc:. libs/common/*.proto
-	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk '/package libs/common/ { print "//nolint: gas"; print; next }1' libs/common/types.pb.go > libs/common/types.pb.go.new
-	@mv libs/common/types.pb.go.new libs/common/types.pb.go
+protoc_libs: libs/common/types.pb.go
 
 gen_certs: clean_certs
 	## Generating certificates for TLS testing...
@@ -130,11 +129,13 @@ clean_certs:
 	rm -f db/remotedb/::.crt db/remotedb/::.key
 
 test_libs: gen_certs
-	GOCACHE=off go test -tags gcc $(shell go list ./... | grep -v vendor)
+	GOCACHE=off go test -tags gcc $(PACKAGES)
 	make clean_certs
 
 grpc_dbserver:
 	protoc -I db/remotedb/proto/ db/remotedb/proto/defs.proto --go_out=plugins=grpc:db/remotedb/proto
+
+protoc_grpc: rpc/grpc/types.pb.go
 
 ########################################
 ### Testing

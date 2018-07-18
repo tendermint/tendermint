@@ -1,5 +1,45 @@
 # Changelog
 
+## TBA
+
+BREAKING CHANGES:
+- [libs/common] remove exponentially distributed random numbers
+- [abci]
+   - \#272 ResponseCheckTx and ResponseDeliverTx now include an error string
+   - \#273 ResponseCheckTx, ResponseDeliverTx, ResponseBeginBlock, and ResponseEndBlock
+           now include a list of events instead of a list of tags. Each event is itself
+           a list of tags, allowing for inclusion of multiple distinct events in each response.
+
+IMPROVEMENTS:
+- [config] Increase default send/recv rates to 5 mB/s
+- [abci] Generated gogoproto static marshaller methods
+= [libs/common] Generated gogoproto static marshaller methods
+
+## 0.22.4
+
+*July 14th, 2018*
+
+BREAKING CHANGES:
+- [genesis] removed deprecated `app_options` field.
+- [types] Genesis.AppStateJSON -> Genesis.AppState
+
+FEATURES:
+- [tools] Merged in from github.com/tendermint/tools
+
+BUG FIXES:
+- [tools/tm-bench] Various fixes
+- [consensus] Wait for WAL to stop on shutdown
+- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
+
+## 0.22.3
+
+*July 10th, 2018*
+
+IMPROVEMENTS
+- Update dependencies
+    * pin all values in Gopkg.toml to version or commit
+    * update golang/protobuf to v1.1.0
+
 ## 0.22.2
 
 *July 10th, 2018*
@@ -31,13 +71,6 @@ BUG FIXES
 * [state] Return error when EndBlock returns a 0-power validator that isn't
   already in the validator set.
 * [consensus] Shut down WAL properly.
-
-BREAKING CHANGES:
-- [abci]
-   - \#272 ResponseCheckTx and ResponseDeliverTx now include an error string
-   - \#273 ResponseCheckTx, ResponseDeliverTx, ResponseBeginBlock, and ResponseEndBlock
-           now include a list of events instead of a list of tags. Each event is itself
-           a list of tags, allowing for inclusion of multiple distinct events in each response.
 
 BUG FIXES:
 - [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.

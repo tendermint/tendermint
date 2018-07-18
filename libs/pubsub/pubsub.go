@@ -163,6 +163,8 @@ func (s *Server) Subscribe(ctx context.Context, clientID string, query Query, ou
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-s.Quit():
+		return nil
 	}
 }
 
@@ -190,6 +192,8 @@ func (s *Server) Unsubscribe(ctx context.Context, clientID string, query Query) 
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-s.Quit():
+		return nil
 	}
 }
 
@@ -211,6 +215,8 @@ func (s *Server) UnsubscribeAll(ctx context.Context, clientID string) error {
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-s.Quit():
+		return nil
 	}
 }
 
@@ -229,6 +235,8 @@ func (s *Server) PublishWithTags(ctx context.Context, msg interface{}, tags TagM
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-s.Quit():
+		return nil
 	}
 }
 
