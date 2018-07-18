@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+  
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
@@ -352,4 +354,30 @@ func TestAddrBookHasAddress(t *testing.T) {
 	book.RemoveAddress(addr)
 
 	assert.False(t, book.HasAddress(addr))
+}
+
+func TestPrivatePeers(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+
+	addrs := make([]*p2p.NetAddress, 10)
+	for i := 0; i < 10; i++ {
+		addrs[i] = randIPv4Address(t)
+	}
+
+	private := make([]string, 10)
+	for i, addr := range addrs {
+		private[i] = string(addr.ID)
+	}
+	book.AddPrivateIDs(private)
+
+	for _, addr := range addrs {
+		err := book.AddAddress(addr, addr)
+		require.Error(t, err, "AddAddress should have failed with private peer %s", addr)
+		_, ok := err.(ErrAddrBookPrivate)
+		require.True(t, ok, "Wrong error type, wanted ErrAddrBookPrivate, got error: %s", err)
+	}
 }

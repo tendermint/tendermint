@@ -13,8 +13,8 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/p2p"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/p2p"
 )
 
 const (
@@ -33,6 +33,8 @@ type AddrBook interface {
 	AddOurAddress(*p2p.NetAddress)
 	// Check if it is our address
 	OurAddress(*p2p.NetAddress) bool
+
+	AddPrivateIDs([]string)
 
 	// Add and remove an address
 	AddAddress(addr *p2p.NetAddress, src *p2p.NetAddress) error
@@ -82,6 +84,7 @@ type addrBook struct {
 	mtx        sync.Mutex
 	rand       *cmn.Rand
 	ourAddrs   map[string]struct{}
+	privateIDs map[p2p.ID]struct{}
 	addrLookup map[p2p.ID]*knownAddress // new & old
 	bucketsOld []map[string]*knownAddress
 	bucketsNew []map[string]*knownAddress
@@ -97,6 +100,7 @@ func NewAddrBook(filePath string, routabilityStrict bool) *addrBook {
 	am := &addrBook{
 		rand:              cmn.NewRand(),
 		ourAddrs:          make(map[string]struct{}),
+		privateIDs:        make(map[p2p.ID]struct{}),
 		addrLookup:        make(map[p2p.ID]*knownAddress),
 		filePath:          filePath,
 		routabilityStrict: routabilityStrict,
@@ -166,6 +170,14 @@ func (a *addrBook) OurAddress(addr *p2p.NetAddress) bool {
 	_, ok := a.ourAddrs[addr.String()]
 	a.mtx.Unlock()
 	return ok
+}
+
+func (a *addrBook) AddPrivateIDs(IDs []string) {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+	for _, id := range IDs {
+		a.privateIDs[p2p.ID(id)] = struct{}{}
+	}
 }
 
 // AddAddress implements AddrBook
@@ -629,6 +641,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
 	if _, ok := a.ourAddrs[addr.String()]; ok {
 		return ErrAddrBookSelf{addr}
+	}
+
+	if _, ok := a.privateIDs[addr.ID]; ok {
+		return ErrAddrBookPrivate{addr}
 	}
 
 	ka := a.addrLookup[addr.ID]

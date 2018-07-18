@@ -322,9 +322,9 @@ func NewNode(config *cfg.Config,
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:          cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
-				SeedMode:       config.P2P.SeedMode,
-				PrivatePeerIDs: cmn.SplitAndTrim(config.P2P.PrivatePeerIDs, ",", " ")})
+				Seeds:    cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
+				SeedMode: config.P2P.SeedMode,
+			})
 		pexReactor.SetLogger(p2pLogger)
 		sw.AddReactor("PEX", pexReactor)
 	}
@@ -448,6 +448,9 @@ func (n *Node) OnStart() error {
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
+
+	// Add private IDs to addrbook to block those peers being added
+	n.addrBook.AddPrivateIDs(cmn.SplitAndTrim(n.config.P2P.PrivatePeerIDs, ",", " "))
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
