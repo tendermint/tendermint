@@ -2,8 +2,9 @@ package p2p
 
 import (
 	"fmt"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"strings"
+
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 const (
@@ -81,8 +82,8 @@ func (info NodeInfo) Validate() error {
 // CONTRACT: two nodes are compatible if the major version matches and network match
 // and they have at least one channel in common.
 func (info NodeInfo) CompatibleWith(other NodeInfo) error {
-	iMajor, iMinor, _, iErr := splitVersion(info.Version)
-	oMajor, oMinor, _, oErr := splitVersion(other.Version)
+	iMajor, _, _, iErr := splitVersion(info.Version)
+	oMajor, _, _, oErr := splitVersion(other.Version)
 
 	// if our own version number is not formatted right, we messed up
 	if iErr != nil {
@@ -97,11 +98,6 @@ func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	// major version must match
 	if iMajor != oMajor {
 		return fmt.Errorf("Peer is on a different major version. Got %v, expected %v", oMajor, iMajor)
-	}
-
-	// minor version can differ
-	if iMinor != oMinor {
-		// ok
 	}
 
 	// nodes must be on the same network
