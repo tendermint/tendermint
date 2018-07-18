@@ -2,6 +2,9 @@ package node
 
 import (
 	"context"
+	"fmt"
+	"os"
+	"syscall"
 	"testing"
 	"time"
 
@@ -43,6 +46,13 @@ func TestNodeStartStop(t *testing.T) {
 	select {
 	case <-n.Quit():
 	case <-time.After(5 * time.Second):
+		pid := os.Getpid()
+		p, err := os.FindProcess(pid)
+		if err != nil {
+			panic(err)
+		}
+		err = p.Signal(syscall.SIGABRT)
+		fmt.Println(err)
 		t.Fatal("timed out waiting for shutdown")
 	}
 }

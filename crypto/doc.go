@@ -22,7 +22,7 @@
 //     pubKey := key.PubKey()
 
 // For example:
-//     privKey, err := crypto.GenPrivKeyEd25519()
+//     privKey, err := ed25519.GenPrivKeyEd25519()
 //     if err != nil {
 // 	...
 //     }

@@ -1,5 +1,37 @@
 # Changelog
 
+BREAKING CHANGES:
+- [crypto]  Refactor `tendermint/crypto` into many subpackages
+- [libs/common] remove exponentially distributed random numbers
+
+IMPROVEMENTS:
+- [config] Increase default send/recv rates to 5 mB/s
+
+## 0.22.4
+
+*July 14th, 2018*
+
+BREAKING CHANGES:
+- [genesis] removed deprecated `app_options` field.
+- [types] Genesis.AppStateJSON -> Genesis.AppState
+
+FEATURES:
+- [tools] Merged in from github.com/tendermint/tools
+
+BUG FIXES:
+- [tools/tm-bench] Various fixes
+- [consensus] Wait for WAL to stop on shutdown
+- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
+
+## 0.22.3
+
+*July 10th, 2018*
+
+IMPROVEMENTS
+- Update dependencies
+    * pin all values in Gopkg.toml to version or commit
+    * update golang/protobuf to v1.1.0
+
 ## 0.22.2
 
 *July 10th, 2018*
@@ -32,8 +64,6 @@ BUG FIXES
   already in the validator set.
 * [consensus] Shut down WAL properly.
 
-BUG FIXES:
-- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
 
 ## 0.22.0
 

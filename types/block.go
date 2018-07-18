@@ -107,6 +107,7 @@ func (b *Block) Hash() cmn.HexBytes {
 
 // MakePartSet returns a PartSet containing parts of a serialized block.
 // This is the form in which the block is gossipped to peers.
+// CONTRACT: partSize is greater than zero.
 func (b *Block) MakePartSet(partSize int) *PartSet {
 	if b == nil {
 		return nil
@@ -208,7 +209,7 @@ type Header struct {
 // Hash returns the hash of the header.
 // Returns nil if ValidatorHash is missing,
 // since a Header is not valid unless there is
-// a ValidaotrsHash (corresponding to the validator set).
+// a ValidatorsHash (corresponding to the validator set).
 func (h *Header) Hash() cmn.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
@@ -392,6 +393,9 @@ func (commit *Commit) ValidateBasic() error {
 
 // Hash returns the hash of the commit
 func (commit *Commit) Hash() cmn.HexBytes {
+	if commit == nil {
+		return nil
+	}
 	if commit.hash == nil {
 		bs := make([]merkle.Hasher, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {

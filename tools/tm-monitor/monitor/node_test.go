@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	em "github.com/tendermint/tendermint/tools/tm-monitor/eventmeter"
 	mock "github.com/tendermint/tendermint/tools/tm-monitor/mock"
@@ -78,7 +78,7 @@ func startValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter)
 	emMock = &mock.EventMeter{}
 
 	stubs := make(map[string]interface{})
-	pubKey := crypto.GenPrivKeyEd25519().PubKey()
+	pubKey := ed25519.GenPrivKeyEd25519().PubKey()
 	stubs["validators"] = ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
 	stubs["status"] = ctypes.ResultStatus{ValidatorInfo: ctypes.ValidatorInfo{PubKey: pubKey}}
 	cdc := amino.NewCodec()

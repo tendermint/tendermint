@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
 	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 
@@ -78,7 +79,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
 	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
-		types.TM2PB.ValidatorFromPubKeyAndPower(crypto.GenPrivKeyEd25519().PubKey(), 10),
+		types.TM2PB.ValidatorFromPubKeyAndPower(ed25519.GenPrivKeyEd25519().PubKey(), 10),
 	}}
 
 	saveABCIResponses(stateDB, block.Height, abciResponses)
@@ -260,7 +261,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 	defer tearDown(t)
 
 	const height = 1
-	pubkey := crypto.GenPrivKeyEd25519().PubKey()
+	pubkey := ed25519.GenPrivKeyEd25519().PubKey()
 	// swap the first validator with a new one ^^^ (validator set size stays the same)
 	header, blockID, responses := makeHeaderPartsResponsesValPubKeyChange(state, height, pubkey)
 	var err error
@@ -283,7 +284,7 @@ func TestManyValidatorChangesSaveLoad(t *testing.T) {
 func genValSet(size int) *types.ValidatorSet {
 	vals := make([]*types.Validator, size)
 	for i := 0; i < size; i++ {
-		vals[i] = types.NewValidator(crypto.GenPrivKeyEd25519().PubKey(), 10)
+		vals[i] = types.NewValidator(ed25519.GenPrivKeyEd25519().PubKey(), 10)
 	}
 	return types.NewValidatorSet(vals)
 }
@@ -370,7 +371,7 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 }
 
 func pk() []byte {
-	return crypto.GenPrivKeyEd25519().PubKey().Bytes()
+	return ed25519.GenPrivKeyEd25519().PubKey().Bytes()
 }
 
 func TestApplyUpdates(t *testing.T) {

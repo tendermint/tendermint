@@ -24,21 +24,32 @@ func randInt(low, high int) int {
 }
 
 func TestTxIndex(t *testing.T) {
-	assert := assert.New(t)
 	for i := 0; i < 20; i++ {
 		txs := makeTxs(15, 60)
 		for j := 0; j < len(txs); j++ {
 			tx := txs[j]
 			idx := txs.Index(tx)
-			assert.Equal(j, idx)
+			assert.Equal(t, j, idx)
 		}
-		assert.Equal(-1, txs.Index(nil))
-		assert.Equal(-1, txs.Index(Tx("foodnwkf")))
+		assert.Equal(t, -1, txs.Index(nil))
+		assert.Equal(t, -1, txs.Index(Tx("foodnwkf")))
+	}
+}
+
+func TestTxIndexByHash(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		txs := makeTxs(15, 60)
+		for j := 0; j < len(txs); j++ {
+			tx := txs[j]
+			idx := txs.IndexByHash(tx.Hash())
+			assert.Equal(t, j, idx)
+		}
+		assert.Equal(t, -1, txs.IndexByHash(nil))
+		assert.Equal(t, -1, txs.IndexByHash(Tx("foodnwkf").Hash()))
 	}
 }
 
 func TestValidTxProof(t *testing.T) {
-	assert := assert.New(t)
 	cases := []struct {
 		txs Txs
 	}{
@@ -58,21 +69,21 @@ func TestValidTxProof(t *testing.T) {
 			leaf := txs[i]
 			leafHash := leaf.Hash()
 			proof := txs.Proof(i)
-			assert.Equal(i, proof.Index, "%d: %d", h, i)
-			assert.Equal(len(txs), proof.Total, "%d: %d", h, i)
-			assert.EqualValues(root, proof.RootHash, "%d: %d", h, i)
-			assert.EqualValues(leaf, proof.Data, "%d: %d", h, i)
-			assert.EqualValues(leafHash, proof.LeafHash(), "%d: %d", h, i)
-			assert.Nil(proof.Validate(root), "%d: %d", h, i)
-			assert.NotNil(proof.Validate([]byte("foobar")), "%d: %d", h, i)
+			assert.Equal(t, i, proof.Index, "%d: %d", h, i)
+			assert.Equal(t, len(txs), proof.Total, "%d: %d", h, i)
+			assert.EqualValues(t, root, proof.RootHash, "%d: %d", h, i)
+			assert.EqualValues(t, leaf, proof.Data, "%d: %d", h, i)
+			assert.EqualValues(t, leafHash, proof.LeafHash(), "%d: %d", h, i)
+			assert.Nil(t, proof.Validate(root), "%d: %d", h, i)
+			assert.NotNil(t, proof.Validate([]byte("foobar")), "%d: %d", h, i)
 
 			// read-write must also work
 			var p2 TxProof
 			bin, err := cdc.MarshalBinary(proof)
-			assert.Nil(err)
+			assert.Nil(t, err)
 			err = cdc.UnmarshalBinary(bin, &p2)
-			if assert.Nil(err, "%d: %d: %+v", h, i, err) {
-				assert.Nil(p2.Validate(root), "%d: %d", h, i)
+			if assert.Nil(t, err, "%d: %d: %+v", h, i, err) {
+				assert.Nil(t, p2.Validate(root), "%d: %d", h, i)
 			}
 		}
 	}
@@ -86,8 +97,6 @@ func TestTxProofUnchangable(t *testing.T) {
 }
 
 func testTxProofUnchangable(t *testing.T) {
-	assert := assert.New(t)
-
 	// make some proof
 	txs := makeTxs(randInt(2, 100), randInt(16, 128))
 	root := txs.Hash()
@@ -95,9 +104,9 @@ func testTxProofUnchangable(t *testing.T) {
 	proof := txs.Proof(i)
 
 	// make sure it is valid to start with
-	assert.Nil(proof.Validate(root))
+	assert.Nil(t, proof.Validate(root))
 	bin, err := cdc.MarshalBinary(proof)
-	assert.Nil(err)
+	assert.Nil(t, err)
 
 	// try mutating the data and make sure nothing breaks
 	for j := 0; j < 500; j++ {

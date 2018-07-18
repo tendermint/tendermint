@@ -2,15 +2,18 @@ package types
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	abci "github.com/tendermint/tendermint/abci/types"
 	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
 func TestABCIPubKey(t *testing.T) {
-	pkEd := crypto.GenPrivKeyEd25519().PubKey()
-	pkSecp := crypto.GenPrivKeySecp256k1().PubKey()
+	pkEd := ed25519.GenPrivKeyEd25519().PubKey()
+	pkSecp := secp256k1.GenPrivKeySecp256k1().PubKey()
 	testABCIPubKey(t, pkEd, ABCIPubKeyTypeEd25519)
 	testABCIPubKey(t, pkSecp, ABCIPubKeyTypeSecp256k1)
 }
@@ -23,7 +26,7 @@ func testABCIPubKey(t *testing.T, pk crypto.PubKey, typeStr string) {
 }
 
 func TestABCIValidators(t *testing.T) {
-	pkEd := crypto.GenPrivKeyEd25519().PubKey()
+	pkEd := ed25519.GenPrivKeyEd25519().PubKey()
 
 	// correct validator
 	tmValExpected := &Validator{
@@ -42,6 +45,9 @@ func TestABCIValidators(t *testing.T) {
 	tmVals, err := PB2TM.Validators([]abci.Validator{abciVal})
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
+
+	abciVals := TM2PB.Validators(NewValidatorSet(tmVals))
+	assert.Equal(t, []abci.Validator{abciVal}, abciVals)
 
 	// val with address
 	tmVal.Address = pkEd.Address()
@@ -66,4 +72,51 @@ func TestABCIConsensusParams(t *testing.T) {
 	cp2 := PB2TM.ConsensusParams(abciCP)
 
 	assert.Equal(t, *cp, cp2)
+}
+
+func TestABCIHeader(t *testing.T) {
+	header := &Header{
+		Height: int64(3),
+		Time:   time.Now(),
+		NumTxs: int64(10),
+	}
+	abciHeader := TM2PB.Header(header)
+
+	assert.Equal(t, int64(3), abciHeader.Height)
+}
+
+func TestABCIEvidence(t *testing.T) {
+	val := NewMockPV()
+	blockID := makeBlockID("blockhash", 1000, "partshash")
+	blockID2 := makeBlockID("blockhash2", 1000, "partshash")
+	const chainID = "mychain"
+	ev := &DuplicateVoteEvidence{
+		PubKey: val.GetPubKey(),
+		VoteA:  makeVote(val, chainID, 0, 10, 2, 1, blockID),
+		VoteB:  makeVote(val, chainID, 0, 10, 2, 1, blockID2),
+	}
+	abciEv := TM2PB.Evidence(
+		ev,
+		NewValidatorSet([]*Validator{NewValidator(val.GetPubKey(), 10)}),
+		time.Now(),
+	)
+
+	assert.Equal(t, "duplicate/vote", abciEv.Type)
+}
+
+type pubKeyEddie struct{}
+
+func (pubKeyEddie) Address() Address                                  { return []byte{} }
+func (pubKeyEddie) Bytes() []byte                                     { return []byte{} }
+func (pubKeyEddie) VerifyBytes(msg []byte, sig crypto.Signature) bool { return false }
+func (pubKeyEddie) Equals(crypto.PubKey) bool                         { return false }
+
+func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {
+	pubkey := ed25519.GenPrivKeyEd25519().PubKey()
+
+	abciVal := TM2PB.ValidatorFromPubKeyAndPower(pubkey, 10)
+	assert.Equal(t, int64(10), abciVal.Power)
+
+	assert.Panics(t, func() { TM2PB.ValidatorFromPubKeyAndPower(nil, 10) })
+	assert.Panics(t, func() { TM2PB.ValidatorFromPubKeyAndPower(pubKeyEddie{}, 10) })
 }

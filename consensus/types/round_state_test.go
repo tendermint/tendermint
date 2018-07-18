@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 func BenchmarkRoundStateDeepCopy(b *testing.B) {
@@ -23,7 +23,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 			Hash: cmn.RandBytes(20),
 		},
 	}
-	sig := crypto.SignatureEd25519{}
+	sig := ed25519.SignatureEd25519{}
 	for i := 0; i < nval; i++ {
 		precommits[i] = &types.Vote{
 			ValidatorAddress: types.Address(cmn.RandBytes(20)),
