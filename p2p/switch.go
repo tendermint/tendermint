@@ -617,11 +617,6 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		return err
 	}
 
-	// Check version, chain id
-	if err := sw.nodeInfo.CompatibleWith(peerNodeInfo); err != nil {
-		return err
-	}
-
 	peer := newPeer(pc, sw.mConfig, peerNodeInfo, sw.reactorsByCh, sw.chDescs, sw.StopPeerForError)
 	peer.SetLogger(sw.Logger.With("peer", addr))
 
