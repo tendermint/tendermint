@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"time"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Get Tendermint status including node info, pubkey, latest block
@@ -105,7 +105,11 @@ func Status() (*ctypes.ResultStatus, error) {
 }
 
 func validatorAtHeight(h int64) *types.Validator {
-	lastBlockHeight, vals := consensusState.GetValidators()
+	lastBlockHeight, vals := getValidatorsWithTimeout(1 * time.Second)
+
+	if lastBlockHeight == -1 {
+		return nil
+	}
 
 	privValAddress := pubKey.Address()
 
@@ -130,4 +134,26 @@ func validatorAtHeight(h int64) *types.Validator {
 	}
 
 	return nil
+}
+
+// NOTE: Consensus might halt, but we still need to process RPC requests (at
+// least for endpoints whole output does not depend on consensus state).
+func getValidatorsWithTimeout(t time.Duration) (int64, []*types.Validator) {
+	resultCh := make(chan struct {
+		lastBlockHeight int64
+		vals            []*types.Validator
+	})
+	go func() {
+		h, v := consensusState.GetValidators()
+		resultCh <- struct {
+			lastBlockHeight int64
+			vals            []*types.Validator
+		}{h, v}
+	}()
+	select {
+	case res := <-resultCh:
+		return res.lastBlockHeight, res.vals
+	case <-time.After(t):
+		return -1, []*types.Validator{}
+	}
 }
