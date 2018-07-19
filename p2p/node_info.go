@@ -82,8 +82,8 @@ func (info NodeInfo) Validate() error {
 // CONTRACT: two nodes are compatible if the major version matches and network match
 // and they have at least one channel in common.
 func (info NodeInfo) CompatibleWith(other NodeInfo) error {
-	iMajor, _, _, iErr := splitVersion(info.Version)
-	oMajor, _, _, oErr := splitVersion(other.Version)
+	_, _, _, iErr := splitVersion(info.Version)
+	_, _, _, oErr := splitVersion(other.Version)
 
 	// if our own version number is not formatted right, we messed up
 	if iErr != nil {
@@ -93,11 +93,6 @@ func (info NodeInfo) CompatibleWith(other NodeInfo) error {
 	// version number must be formatted correctly ("x.x.x")
 	if oErr != nil {
 		return oErr
-	}
-
-	// major version must match
-	if iMajor != oMajor {
-		return fmt.Errorf("Peer is on a different major version. Got %v, expected %v", oMajor, iMajor)
 	}
 
 	// nodes must be on the same network
