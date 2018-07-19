@@ -104,8 +104,13 @@ func Status() (*ctypes.ResultStatus, error) {
 	return result, nil
 }
 
+const consensusTimeout = time.Second
+
 func validatorAtHeight(h int64) *types.Validator {
-	lastBlockHeight, vals := getValidatorsWithTimeout(1 * time.Second)
+	lastBlockHeight, vals := getValidatorsWithTimeout(
+		consensusState,
+		consensusTimeout,
+	)
 
 	if lastBlockHeight == -1 {
 		return nil
@@ -136,15 +141,22 @@ func validatorAtHeight(h int64) *types.Validator {
 	return nil
 }
 
+type validatorRetriever interface {
+	GetValidators() (int64, []*types.Validator)
+}
+
 // NOTE: Consensus might halt, but we still need to process RPC requests (at
 // least for endpoints whole output does not depend on consensus state).
-func getValidatorsWithTimeout(t time.Duration) (int64, []*types.Validator) {
+func getValidatorsWithTimeout(
+	vr validatorRetriever,
+	t time.Duration,
+) (int64, []*types.Validator) {
 	resultCh := make(chan struct {
 		lastBlockHeight int64
 		vals            []*types.Validator
 	})
 	go func() {
-		h, v := consensusState.GetValidators()
+		h, v := vr.GetValidators()
 		resultCh <- struct {
 			lastBlockHeight int64
 			vals            []*types.Validator
