@@ -126,7 +126,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		eraseSeenCommitInDB   bool
 	}{
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 		},
@@ -137,19 +137,19 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:     newBlock(&header2, commitAtH10),
+			block:     newBlock(header2, commitAtH10),
 			parts:     uncontiguousPartSet,
 			wantPanic: "only save contiguous blocks", // and incomplete and uncontiguous parts
 		},
 
 		{
-			block:     newBlock(&header1, commitAtH10),
+			block:     newBlock(header1, commitAtH10),
 			parts:     incompletePartSet,
 			wantPanic: "only save complete block", // incomplete parts
 		},
 
 		{
-			block:             newBlock(&header1, commitAtH10),
+			block:             newBlock(header1, commitAtH10),
 			parts:             validPartSet,
 			seenCommit:        seenCommit1,
 			corruptCommitInDB: true, // Corrupt the DB's commit entry
@@ -157,7 +157,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:            newBlock(&header1, commitAtH10),
+			block:            newBlock(header1, commitAtH10),
 			parts:            validPartSet,
 			seenCommit:       seenCommit1,
 			wantPanic:        "unmarshal to types.BlockMeta failed",
@@ -165,7 +165,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -174,7 +174,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -183,7 +183,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -375,7 +375,7 @@ func doFn(fn func() (interface{}, error)) (res interface{}, err error, panicErr 
 	return res, err, panicErr
 }
 
-func newBlock(hdr *types.Header, lastCommit *types.Commit) *types.Block {
+func newBlock(hdr types.Header, lastCommit *types.Commit) *types.Block {
 	return &types.Block{
 		Header:     hdr,
 		LastCommit: lastCommit,

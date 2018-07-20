@@ -79,7 +79,7 @@ func TestBasic(t *testing.T) {
 			}
 			// Request desired, pretend like we got the block immediately.
 			go func() {
-				block := &types.Block{Header: &types.Header{Height: request.Height}}
+				block := &types.Block{Header: types.Header{Height: request.Height}}
 				pool.AddBlock(request.PeerID, block, 123)
 				t.Logf("Added block from peer %v (height: %v)", request.PeerID, request.Height)
 			}()
