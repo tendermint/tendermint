@@ -54,6 +54,7 @@ import common "github.com/tendermint/tendermint/libs/common"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
+import "strconv"
 
 // Reference imports to suppress errors if they are not otherwise used.
 var _ = proto.Marshal
