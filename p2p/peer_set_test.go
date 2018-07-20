@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -17,7 +17,7 @@ func randPeer(ip net.IP) *peer {
 		ip = net.IP{127, 0, 0, 1}
 	}
 
-	nodeKey := NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeKey := NodeKey{PrivKey: ed25519.GenPrivKey()}
 	p := &peer{
 		nodeInfo: NodeInfo{
 			ID:         nodeKey.ID(),

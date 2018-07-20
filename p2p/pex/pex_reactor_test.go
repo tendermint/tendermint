@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -356,7 +357,7 @@ func newMockPeer() mockPeer {
 	_, netAddr := p2p.CreateRoutableAddr()
 	mp := mockPeer{
 		addr:   netAddr,
-		pubKey: crypto.GenPrivKeyEd25519().PubKey(),
+		pubKey: ed25519.GenPrivKey().PubKey(),
 	}
 	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
 	mp.Start()

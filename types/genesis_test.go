@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 func TestGenesisBad(t *testing.T) {
@@ -40,7 +40,7 @@ func TestGenesisGood(t *testing.T) {
 	// create a base gendoc from struct
 	baseGenDoc := &GenesisDoc{
 		ChainID:    "abc",
-		Validators: []GenesisValidator{{crypto.GenPrivKeyEd25519().PubKey(), 10, "myval"}},
+		Validators: []GenesisValidator{{ed25519.GenPrivKey().PubKey(), 10, "myval"}},
 	}
 	genDocBytes, err = cdc.MarshalJSON(baseGenDoc)
 	assert.NoError(t, err, "error marshalling genDoc")
@@ -100,7 +100,7 @@ func randomGenesisDoc() *GenesisDoc {
 	return &GenesisDoc{
 		GenesisTime:     time.Now().UTC(),
 		ChainID:         "abc",
-		Validators:      []GenesisValidator{{crypto.GenPrivKeyEd25519().PubKey(), 10, "myval"}},
+		Validators:      []GenesisValidator{{ed25519.GenPrivKey().PubKey(), 10, "myval"}},
 		ConsensusParams: DefaultConsensusParams(),
 	}
 }

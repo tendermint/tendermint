@@ -1,4 +1,4 @@
-package crypto
+package secp256k1_test
 
 import (
 	"encoding/hex"
@@ -7,6 +7,9 @@ import (
 	"github.com/btcsuite/btcutil/base58"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
 type keyData struct {
@@ -28,13 +31,13 @@ func TestPubKeySecp256k1Address(t *testing.T) {
 		privB, _ := hex.DecodeString(d.priv)
 		pubB, _ := hex.DecodeString(d.pub)
 		addrBbz, _, _ := base58.CheckDecode(d.addr)
-		addrB := Address(addrBbz)
+		addrB := crypto.Address(addrBbz)
 
-		var priv PrivKeySecp256k1
+		var priv secp256k1.PrivKeySecp256k1
 		copy(priv[:], privB)
 
 		pubKey := priv.PubKey()
-		pubT, _ := pubKey.(PubKeySecp256k1)
+		pubT, _ := pubKey.(secp256k1.PubKeySecp256k1)
 		pub := pubT[:]
 		addr := pubKey.Address()
 
@@ -43,8 +46,20 @@ func TestPubKeySecp256k1Address(t *testing.T) {
 	}
 }
 
-func TestPubKeyInvalidDataProperReturnsEmpty(t *testing.T) {
-	pk, err := PubKeyFromBytes([]byte("foo"))
-	require.NotNil(t, err, "expecting a non-nil error")
-	require.Nil(t, pk, "expecting an empty public key on error")
+func TestSignAndValidateSecp256k1(t *testing.T) {
+	privKey := secp256k1.GenPrivKey()
+	pubKey := privKey.PubKey()
+
+	msg := crypto.CRandBytes(128)
+	sig, err := privKey.Sign(msg)
+	require.Nil(t, err)
+
+	assert.True(t, pubKey.VerifyBytes(msg, sig))
+
+	// Mutate the signature, just one bit.
+	sigEd := sig.(secp256k1.SignatureSecp256k1)
+	sigEd[3] ^= byte(0x01)
+	sig = sigEd
+
+	assert.False(t, pubKey.VerifyBytes(msg, sig))
 }
