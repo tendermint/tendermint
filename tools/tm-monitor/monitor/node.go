@@ -134,7 +134,7 @@ func newBlockCallback(n *Node) em.EventCallbackFunc {
 		n.logger.Info("new block", "height", block.Height, "numTxs", block.NumTxs)
 
 		if n.blockCh != nil {
-			n.blockCh <- *block
+			n.blockCh <- block
 		}
 	}
 }

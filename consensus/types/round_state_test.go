@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 func BenchmarkRoundStateDeepCopy(b *testing.B) {
@@ -38,7 +39,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 	}
 	// Random block
 	block := &types.Block{
-		Header: &types.Header{
+		Header: types.Header{
 			ChainID:         cmn.RandStr(12),
 			Time:            time.Now(),
 			LastBlockID:     blockID,
@@ -50,7 +51,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 			LastResultsHash: cmn.RandBytes(20),
 			EvidenceHash:    cmn.RandBytes(20),
 		},
-		Data: &types.Data{
+		Data: types.Data{
 			Txs: txs,
 		},
 		Evidence: types.EvidenceData{},
