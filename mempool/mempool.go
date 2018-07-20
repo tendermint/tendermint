@@ -78,7 +78,7 @@ type Mempool struct {
 	recheckCursor        *clist.CElement // next expected response
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool
-	txsAvailable         chan int64 // fires the next height once for each height, when the mempool is not empty
+	txsAvailable         chan bool // fires once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -126,21 +126,11 @@ func NewMempool(
 	return mempool
 }
 
-func (mem *Mempool) Height() int64 {
-	// not sure about this lock.
-	// It seems as each caller is responsible for the lock but the only caller would now be the rcv routine
-	// And the only lock on the mempool is set during Update(..)
-	mem.proxyMtx.Lock()
-	defer mem.proxyMtx.Unlock()
-
-	return mem.height
-}
-
 // EnableTxsAvailable initializes the TxsAvailable channel,
 // ensuring it will trigger once every height when transactions are available.
 // NOTE: not thread safe - should only be called once, on startup
 func (mem *Mempool) EnableTxsAvailable() {
-	mem.txsAvailable = make(chan int64, 1)
+	mem.txsAvailable = make(chan bool, 1)
 }
 
 // SetLogger sets the Logger.
@@ -358,7 +348,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 // TxsAvailable returns a channel which fires once for every height,
 // and only when transactions are available in the mempool.
 // NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
-func (mem *Mempool) TxsAvailable() <-chan int64 {
+func (mem *Mempool) TxsAvailable() <-chan bool {
 	return mem.txsAvailable
 }
 
@@ -370,7 +360,7 @@ func (mem *Mempool) notifyTxsAvailable() {
 		// channel cap is 1, so this will send once
 		mem.notifiedTxsAvailable = true
 		select {
-		case mem.txsAvailable <- mem.height + 1:
+		case mem.txsAvailable <- true:
 		default:
 		}
 	}

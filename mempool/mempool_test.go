@@ -38,7 +38,7 @@ func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 	return mempool
 }
 
-func ensureNoFire(t *testing.T, ch <-chan int64, timeoutMS int) {
+func ensureNoFire(t *testing.T, ch <-chan bool, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -47,7 +47,7 @@ func ensureNoFire(t *testing.T, ch <-chan int64, timeoutMS int) {
 	}
 }
 
-func ensureFire(t *testing.T, ch <-chan int64, timeoutMS int) {
+func ensureFire(t *testing.T, ch <-chan bool, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -70,22 +70,6 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 		}
 	}
 	return txs
-}
-
-func TestHeightReturnsActualHeight(t *testing.T) {
-	app := kvstore.NewKVStoreApplication()
-	cc := proxy.NewLocalClientCreator(app)
-	mempool := newMempoolWithApp(cc)
-
-	const expectedHeight = 1000
-
-	mempool.height = expectedHeight
-
-	actualHeight := mempool.Height()
-
-	if actualHeight != expectedHeight {
-		t.Errorf("Height() didn't return expected value: expected=%v, actual=%v", expectedHeight, actualHeight)
-	}
 }
 
 func TestTxsAvailable(t *testing.T) {

@@ -17,7 +17,6 @@ import (
 // Updates to the mempool need to be synchronized with committing a block
 // so apps can reset their transient state on Commit
 type Mempool interface {
-	Height() int64
 	Lock()
 	Unlock()
 
@@ -28,7 +27,7 @@ type Mempool interface {
 	Flush()
 	FlushAppConn() error
 
-	TxsAvailable() <-chan int64
+	TxsAvailable() <-chan bool
 	EnableTxsAvailable()
 }
 
@@ -39,13 +38,12 @@ type MockMempool struct {
 func (m MockMempool) Lock()                                              {}
 func (m MockMempool) Unlock()                                            {}
 func (m MockMempool) Size() int                                          { return 0 }
-func (m MockMempool) Height() int64                                          { return 0 }
 func (m MockMempool) CheckTx(tx types.Tx, cb func(*abci.Response)) error { return nil }
 func (m MockMempool) Reap(n int) types.Txs                               { return types.Txs{} }
 func (m MockMempool) Update(height int64, txs types.Txs) error           { return nil }
 func (m MockMempool) Flush()                                             {}
 func (m MockMempool) FlushAppConn() error                                { return nil }
-func (m MockMempool) TxsAvailable() <-chan int64                         { return make(chan int64) }
+func (m MockMempool) TxsAvailable() <-chan bool                          { return make(chan bool) }
 func (m MockMempool) EnableTxsAvailable()                                {}
 
 //------------------------------------------------------

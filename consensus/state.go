@@ -571,10 +571,12 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case height := <-cs.mempool.TxsAvailable():
-			actualHeight := cs.mempool.Height() + 1
-			cs.Logger.Debug("handling available txs", "proposed channel height", height, "using actual mempool height", actualHeight)
-			cs.handleTxsAvailable(actualHeight)
+		case txAvailable := <-cs.mempool.TxsAvailable():
+			if txAvailable {
+				heightToPropose := cs.Height
+				cs.Logger.Debug("handling available txs", "height to propose", heightToPropose)
+				cs.handleTxsAvailable(heightToPropose)
+			}
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
 			// handles proposals, block parts, votes
