@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package proto3;
+
+
+message PartSetHeader {
+  sint32 Total = 1;
+  bytes Hash = 2;
+}
+
+message BlockID {
+  bytes Hash = 1;
+  PartSetHeader PartsHeader = 2;
+}
+
+message Header {
+  // basic block info
+  string ChainID = 1;
+  sint64 Height = 2;
+  Timestamp Time = 3;
+  sint64 NumTxs = 4;
+
+  // prev block info
+  BlockID LastBlockID = 5;
+  sint64 TotalTxs = 6;
+
+  // hashes of block data
+  bytes LastCommitHash = 7; // commit from validators from the last block
+  bytes DataHash = 8; // transactions
+
+  // hashes from the app output from the prev block
+  bytes ValidatorsHash = 9; // validators for the current block
+  bytes ConsensusHash = 10; // consensus params for current block
+  bytes AppHash = 11; // state after txs from the previous block
+  bytes LastResultsHash = 12; // root hash of all results from the txs from the previous block
+
+  // consensus info
+  bytes EvidenceHash = 13; // evidence included in the block
+}
+
+// Timestamp wraps how amino encodes time. Note that this is different from the protobuf well-known type
+// protobuf/timestamp.proto in the sense that there seconds and nanos are varint encoded. See:
+// https://github.com/google/protobuf/blob/d2980062c859649523d5fd51d6b55ab310e47482/src/google/protobuf/timestamp.proto#L123-L135
+// Also nanos do not get skipped if they are zero in amino.
+message Timestamp {
+  sfixed64 seconds = 1;
+  sfixed32 nanos = 2;
+}
