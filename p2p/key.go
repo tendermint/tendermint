@@ -71,7 +71,7 @@ func LoadNodeKey(filePath string) (*NodeKey, error) {
 }
 
 func genNodeKey(filePath string) (*NodeKey, error) {
-	privKey := ed25519.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}

@@ -357,7 +357,7 @@ func newMockPeer() mockPeer {
 	_, netAddr := p2p.CreateRoutableAddr()
 	mp := mockPeer{
 		addr:   netAddr,
-		pubKey: ed25519.GenPrivKeyEd25519().PubKey(),
+		pubKey: ed25519.GenPrivKey().PubKey(),
 	}
 	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
 	mp.Start()

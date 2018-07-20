@@ -10,7 +10,7 @@ import (
 )
 
 func TestGeneratePrivKey(t *testing.T) {
-	testPriv := ed25519.GenPrivKeyEd25519()
+	testPriv := ed25519.GenPrivKey()
 	testGenerate := testPriv.Generate(1)
 	signBytes := []byte("something to sign")
 	pub := testGenerate.PubKey()
@@ -21,7 +21,7 @@ func TestGeneratePrivKey(t *testing.T) {
 
 func TestSignAndValidateEd25519(t *testing.T) {
 
-	privKey := ed25519.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 
 	msg := crypto.CRandBytes(128)
@@ -32,6 +32,7 @@ func TestSignAndValidateEd25519(t *testing.T) {
 	assert.True(t, pubKey.VerifyBytes(msg, sig))
 
 	// Mutate the signature, just one bit.
+	// TODO: Replace this with a much better fuzzer, tendermint/ed25519/issues/10
 	sigEd := sig.(ed25519.SignatureEd25519)
 	sigEd[7] ^= byte(0x01)
 	sig = sigEd

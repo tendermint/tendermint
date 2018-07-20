@@ -48,7 +48,7 @@ type MockPV struct {
 }
 
 func NewMockPV() *MockPV {
-	return &MockPV{ed25519.GenPrivKeyEd25519()}
+	return &MockPV{ed25519.GenPrivKey()}
 }
 
 // Implements PrivValidator.

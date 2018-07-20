@@ -37,7 +37,7 @@ func main() {
 		*chainID,
 		*addr,
 		pv,
-		ed25519.GenPrivKeyEd25519(),
+		ed25519.GenPrivKey(),
 	)
 	err := rs.Start()
 	if err != nil {

@@ -17,7 +17,7 @@ func randPeer(ip net.IP) *peer {
 		ip = net.IP{127, 0, 0, 1}
 	}
 
-	nodeKey := NodeKey{PrivKey: ed25519.GenPrivKeyEd25519()}
+	nodeKey := NodeKey{PrivKey: ed25519.GenPrivKey()}
 	p := &peer{
 		nodeInfo: NodeInfo{
 			ID:         nodeKey.ID(),

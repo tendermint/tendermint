@@ -49,7 +49,7 @@ func TestPubKeySecp256k1Address(t *testing.T) {
 }
 
 func TestSignAndValidateSecp256k1(t *testing.T) {
-	privKey := secp256k1.GenPrivKeySecp256k1()
+	privKey := secp256k1.GenPrivKey()
 	pubKey := privKey.PubKey()
 
 	msg := crypto.CRandBytes(128)

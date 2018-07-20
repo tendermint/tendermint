@@ -81,10 +81,10 @@ func (privKey PrivKeySecp256k1) Equals(other crypto.PrivKey) bool {
 	return false
 }
 
-// GenPrivKeySecp256k1 generates a new secp256k1 private key.
+// GenPrivKey generates a new ECDSA private key on curve secp256k1 private key.
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
-func GenPrivKeySecp256k1() PrivKeySecp256k1 {
+func GenPrivKey() PrivKeySecp256k1 {
 	privKeyBytes := [32]byte{}
 	copy(privKeyBytes[:], crypto.CRandBytes(32))
 	// crypto.CRandBytes is guaranteed to be 32 bytes long, so it can be
@@ -92,11 +92,11 @@ func GenPrivKeySecp256k1() PrivKeySecp256k1 {
 	return PrivKeySecp256k1(privKeyBytes)
 }
 
-// GenPrivKeySecp256k1FromSecret hashes the secret with SHA2, and uses
+// GenPrivKeySecp256k1 hashes the secret with SHA2, and uses
 // that 32 byte output to create the private key.
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
-func GenPrivKeySecp256k1FromSecret(secret []byte) PrivKeySecp256k1 {
+func GenPrivKeySecp256k1(secret []byte) PrivKeySecp256k1 {
 	privKey32 := sha256.Sum256(secret)
 	// sha256.Sum256() is guaranteed to be 32 bytes long, so it can be
 	// casted to PrivKeySecp256k1.

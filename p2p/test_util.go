@@ -135,7 +135,7 @@ func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitc
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{
-		PrivKey: ed25519.GenPrivKeyEd25519(),
+		PrivKey: ed25519.GenPrivKey(),
 	}
 	sw := NewSwitch(cfg)
 	sw.SetLogger(log.TestingLogger())
