@@ -72,6 +72,22 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 	return txs
 }
 
+func TestHeightReturnsActualHeight(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+
+	const expectedHeight = 1000
+
+	mempool.height = expectedHeight
+
+	actualHeight := mempool.Height()
+
+	if actualHeight != expectedHeight {
+		t.Errorf("Height() didn't return expected value: expected=%v, actual=%v", expectedHeight, actualHeight)
+	}
+}
+
 func TestTxsAvailable(t *testing.T) {
 	app := kvstore.NewKVStoreApplication()
 	cc := proxy.NewLocalClientCreator(app)
