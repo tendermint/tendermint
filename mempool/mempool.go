@@ -126,6 +126,16 @@ func NewMempool(
 	return mempool
 }
 
+func (mem *Mempool) Height() int64 {
+	// not sure about this lock.
+	// It seems as each caller is responsible for the lock but the only caller would now be the rcv routine
+	// And the only lock on the mempool is set during Update(..)
+	mem.proxyMtx.Lock()
+	defer mem.proxyMtx.Unlock()
+
+	return mem.height
+}
+
 // EnableTxsAvailable initializes the TxsAvailable channel,
 // ensuring it will trigger once every height when transactions are available.
 // NOTE: not thread safe - should only be called once, on startup
@@ -358,11 +368,11 @@ func (mem *Mempool) notifyTxsAvailable() {
 	}
 	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
 		// channel cap is 1, so this will send once
+		mem.notifiedTxsAvailable = true
 		select {
 		case mem.txsAvailable <- mem.height + 1:
 		default:
 		}
-		mem.notifiedTxsAvailable = true
 	}
 }
 
