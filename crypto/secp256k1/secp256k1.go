@@ -66,10 +66,10 @@ func (privKey PrivKeySecp256k1) Sign(msg []byte) (crypto.Signature, error) {
 // PubKey performs the point-scalar multiplication from the privKey on the
 // generator point to get the pubkey.
 func (privKey PrivKeySecp256k1) PubKey() crypto.PubKey {
-	_, _pub := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey[:])
-	var pub PubKeySecp256k1
-	copy(pub[:], _pub.SerializeCompressed())
-	return pub
+	_, pubkeyObject := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey[:])
+	var pubkeyBytes PubKeySecp256k1
+	copy(pubkeyBytes[:], pubkeyObject.SerializeCompressed())
+	return pubkeyBytes
 }
 
 // Equals - you probably don't need to use this.
@@ -112,8 +112,10 @@ var _ crypto.PubKey = PubKeySecp256k1{}
 const PubKeySecp256k1Size = 33
 
 // PubKeySecp256k1 implements crypto.PubKey.
-// Compressed pubkey (just the x-coordinate),
-// prefixed with 0x02 or 0x03, depending on the y-coordinate.
+// It is the compressed form of the pubkey. The first byte depends is a 0x02 byte
+// if the y-coordinate is the lexicographically largest of the two associated with
+// the x-coordinate. Otherwise the first byte is a 0x03.
+// This prefix is followed with the x-coordinate.
 type PubKeySecp256k1 [PubKeySecp256k1Size]byte
 
 // Address returns a Bitcoin style addresses: RIPEMD160(SHA256(pubkey))
@@ -136,9 +138,9 @@ func (pubKey PubKeySecp256k1) Bytes() []byte {
 	return bz
 }
 
-func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, _sig crypto.Signature) bool {
+func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, interfaceSig crypto.Signature) bool {
 	// and assert same algorithm to sign and verify
-	sig, ok := _sig.(SignatureSecp256k1)
+	sig, ok := interfaceSig.(SignatureSecp256k1)
 	if !ok {
 		return false
 	}
