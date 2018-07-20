@@ -48,7 +48,7 @@ func TestUnmarshalValidator(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// create some fixed values
-	privKey := ed25519.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
 	pubArray := [32]byte(pubKey.(ed25519.PubKeyEd25519))

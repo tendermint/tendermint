@@ -91,7 +91,7 @@ func (key PrivKeySecp256k1) Generate(index int) PrivKeySecp256k1 {
 }
 */
 
-func GenPrivKeySecp256k1() PrivKeySecp256k1 {
+func GenPrivKey() PrivKeySecp256k1 {
 	privKeyBytes := [32]byte{}
 	copy(privKeyBytes[:], crypto.CRandBytes(32))
 	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKeyBytes[:])
@@ -101,7 +101,7 @@ func GenPrivKeySecp256k1() PrivKeySecp256k1 {
 
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
-func GenPrivKeySecp256k1FromSecret(secret []byte) PrivKeySecp256k1 {
+func GenPrivKeyFromSecret(secret []byte) PrivKeySecp256k1 {
 	privKey32 := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey32)
 	privKeyBytes := [32]byte{}

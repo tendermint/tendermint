@@ -10,7 +10,7 @@ import (
 )
 
 func TestGeneratePrivKey(t *testing.T) {
-	testPriv := ed25519.GenPrivKeyEd25519()
+	testPriv := ed25519.GenPrivKey()
 	testGenerate := testPriv.Generate(1)
 	signBytes := []byte("something to sign")
 	pub := testGenerate.PubKey()
@@ -21,7 +21,7 @@ func TestGeneratePrivKey(t *testing.T) {
 
 func TestSignAndValidateEd25519(t *testing.T) {
 
-	privKey := ed25519.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 
 	msg := crypto.CRandBytes(128)

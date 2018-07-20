@@ -197,7 +197,7 @@ func NewNode(config *cfg.Config,
 		var (
 			// TODO: persist this key so external signer
 			// can actually authenticate us
-			privKey = ed25519.GenPrivKeyEd25519()
+			privKey = ed25519.GenPrivKey()
 			pvsc    = privval.NewSocketPV(
 				logger.With("module", "privval"),
 				config.PrivValidatorListenAddr,

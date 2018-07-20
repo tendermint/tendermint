@@ -124,10 +124,10 @@ func (privKey PrivKeyEd25519) Generate(index int) PrivKeyEd25519 {
 	return PrivKeyEd25519(*newKey)
 }
 
-// GenPrivKeyEd25519 generates a new ed25519 private key.
+// GenPrivKey generates a new ed25519 private key.
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
-func GenPrivKeyEd25519() PrivKeyEd25519 {
+func GenPrivKey() PrivKeyEd25519 {
 	privKey := new([64]byte)
 	copy(privKey[:32], crypto.CRandBytes(32))
 	// ed25519.MakePublicKey(privKey) alters the last 32 bytes of privKey.
@@ -137,11 +137,11 @@ func GenPrivKeyEd25519() PrivKeyEd25519 {
 	return PrivKeyEd25519(*privKey)
 }
 
-// GenPrivKeyEd25519FromSecret hashes the secret with SHA2, and uses
+// GenPrivKeyFromSecret hashes the secret with SHA2, and uses
 // that 32 byte output to create the private key.
 // NOTE: secret should be the output of a KDF like bcrypt,
 // if it's derived from user input.
-func GenPrivKeyEd25519FromSecret(secret []byte) PrivKeyEd25519 {
+func GenPrivKeyFromSecret(secret []byte) PrivKeyEd25519 {
 	privKey32 := crypto.Sha256(secret) // Not Ripemd160 because we want 32 bytes.
 	privKey := new([64]byte)
 	copy(privKey[:32], privKey32)

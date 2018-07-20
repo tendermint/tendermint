@@ -78,7 +78,7 @@ func startValidatorNode(t *testing.T) (n *monitor.Node, emMock *mock.EventMeter)
 	emMock = &mock.EventMeter{}
 
 	stubs := make(map[string]interface{})
-	pubKey := ed25519.GenPrivKeyEd25519().PubKey()
+	pubKey := ed25519.GenPrivKey().PubKey()
 	stubs["validators"] = ctypes.ResultValidators{BlockHeight: blockHeight, Validators: []*tmtypes.Validator{tmtypes.NewValidator(pubKey, 0)}}
 	stubs["status"] = ctypes.ResultStatus{ValidatorInfo: ctypes.ValidatorInfo{PubKey: pubKey}}
 	cdc := amino.NewCodec()

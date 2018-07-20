@@ -88,7 +88,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
-		privKey := ed25519.GenPrivKeyEd25519()
+		privKey := ed25519.GenPrivKey()
 		pubKey := privKey.PubKey()
 		val := NewValidator(pubKey, 0)
 		if !vset.Add(val) {
@@ -369,7 +369,7 @@ func TestSafeSubClip(t *testing.T) {
 //-------------------------------------------------------------------
 
 func TestValidatorSetVerifyCommit(t *testing.T) {
-	privKey := ed25519.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	v1 := NewValidator(pubKey, 1000)
 	vset := NewValidatorSet([]*Validator{v1})

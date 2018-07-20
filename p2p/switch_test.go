@@ -259,7 +259,7 @@ func TestSwitchStopsNonPersistentPeerOnError(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: ed25519.GenPrivKeyEd25519(), Config: cfg}
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 	rp.Start()
 	defer rp.Stop()
 
@@ -289,7 +289,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 	defer sw.Stop()
 
 	// simulate remote peer
-	rp := &remotePeer{PrivKey: ed25519.GenPrivKeyEd25519(), Config: cfg}
+	rp := &remotePeer{PrivKey: ed25519.GenPrivKey(), Config: cfg}
 	rp.Start()
 	defer rp.Stop()
 
@@ -319,7 +319,7 @@ func TestSwitchReconnectsToPersistentPeer(t *testing.T) {
 
 	// simulate another remote peer
 	rp = &remotePeer{
-		PrivKey: ed25519.GenPrivKeyEd25519(),
+		PrivKey: ed25519.GenPrivKey(),
 		Config:  cfg,
 		// Use different interface to prevent duplicate IP filter, this will break
 		// beyond two peers.

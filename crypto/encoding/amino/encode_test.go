@@ -63,12 +63,12 @@ func TestKeyEncodings(t *testing.T) {
 		privSize, pubSize int // binary sizes
 	}{
 		{
-			privKey:  ed25519.GenPrivKeyEd25519(),
+			privKey:  ed25519.GenPrivKey(),
 			privSize: 69,
 			pubSize:  37,
 		},
 		{
-			privKey:  secp256k1.GenPrivKeySecp256k1(),
+			privKey:  secp256k1.GenPrivKey(),
 			privSize: 37,
 			pubSize:  38,
 		},
