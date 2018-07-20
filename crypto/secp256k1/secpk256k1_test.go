@@ -10,6 +10,8 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+
+	underlyingSecp256k1 "github.com/btcsuite/btcd/btcec"
 )
 
 type keyData struct {
@@ -62,4 +64,16 @@ func TestSignAndValidateSecp256k1(t *testing.T) {
 	sig = sigEd
 
 	assert.False(t, pubKey.VerifyBytes(msg, sig))
+}
+
+func TestSecp256k1LoadPrivkeyAndSerializeIsIdentity(t *testing.T) {
+	numberOfTests := 256
+	for i := 0; i < numberOfTests; i++ {
+		privKeyBytes := [32]byte{}
+		copy(privKeyBytes[:], crypto.CRandBytes(32))
+
+		priv, _ := underlyingSecp256k1.PrivKeyFromBytes(underlyingSecp256k1.S256(), privKeyBytes[:])
+		serializedBytes := priv.Serialize()
+		require.Equal(t, privKeyBytes[:], serializedBytes)
+	}
 }
