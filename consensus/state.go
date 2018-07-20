@@ -572,10 +572,9 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 		select {
 		case txAvailable := <-cs.mempool.TxsAvailable():
+			// TODO why don't we have a "default" branch for this drain? Similar to the publish, wouldn't this lock otherwise?
 			if txAvailable {
-				heightToPropose := cs.Height
-				cs.Logger.Debug("handling available txs", "height to propose", heightToPropose)
-				cs.handleTxsAvailable(heightToPropose)
+				cs.handleTxsAvailable()
 			}
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
@@ -687,11 +686,13 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 
 }
 
-func (cs *ConsensusState) handleTxsAvailable(height int64) {
+func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	cs.enterPropose(height, 0)
+	heightToPropose := cs.Height
+	cs.Logger.Debug("handling available txs", "height to propose", heightToPropose)
+	cs.enterPropose(heightToPropose, 0)
 }
 
 //-----------------------------------------------------------------------------
