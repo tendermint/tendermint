@@ -26,11 +26,6 @@ const (
 var cdc = amino.NewCodec()
 
 func init() {
-	// NOTE: It's important that there be no conflicts here,
-	// as that would change the canonical representations,
-	// and therefore change the address.
-	// TODO: Add feature to go-amino to ensure that there
-	// are no conflicts.
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
 	cdc.RegisterConcrete(PubKeyEd25519{},
 		Ed25519PubKeyAminoRoute, nil)
