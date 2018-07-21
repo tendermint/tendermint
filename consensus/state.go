@@ -572,7 +572,6 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 		select {
 		case txAvailable := <-cs.mempool.TxsAvailable():
-			// TODO why don't we have a "default" branch for this drain? Similar to the publish, wouldn't this lock otherwise?
 			if txAvailable {
 				cs.handleTxsAvailable()
 			}
@@ -690,9 +689,8 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	heightToPropose := cs.Height
-	cs.Logger.Debug("handling available txs", "height to propose", heightToPropose)
-	cs.enterPropose(heightToPropose, 0)
+	cs.Logger.Debug("handling available txs", "height to propose", cs.Height)
+	cs.enterPropose(cs.Height, 0)
 }
 
 //-----------------------------------------------------------------------------
