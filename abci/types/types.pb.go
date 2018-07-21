@@ -57,6 +57,7 @@ import bytes "bytes"
 
 import context "golang.org/x/net/context"
 import grpc "google.golang.org/grpc"
+import "strconv"
 
 import io "io"
 
@@ -1386,6 +1387,21 @@ func (m *ResponseBeginBlock) GetTags() []common.KVPair {
 	return nil
 }
 
+//make response can be read by humans
+func (m *ResponseBeginBlock) GetReadableString() string{
+
+	readableStr := "\n"
+
+	readableStr +="{\n"
+
+	for _,x :=range m.Tags{
+		readableStr += "    "+string(x.Key)+":"+string(x.Value)+"\n"
+	}
+	readableStr +="}"
+
+	return  readableStr
+}
+
 type ResponseCheckTx struct {
 	Code      uint32          `protobuf:"varint,1,opt,name=code,proto3" json:"code,omitempty"`
 	Data      []byte          `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
@@ -1456,6 +1472,28 @@ func (m *ResponseCheckTx) GetFee() common.KI64Pair {
 		return m.Fee
 	}
 	return common.KI64Pair{}
+}
+
+//make response can be read by humans
+func (m *ResponseCheckTx) GetReadableString() string{
+
+	readableStr := "\n"
+	readableStr += "Code: " + strconv.Itoa(int(m.Code)) + "\n"
+	readableStr += "Data: " + string(m.Data) + "\n"
+	readableStr += "Log: "   + m.Log + "\n"
+	readableStr += "Info: "  + m.Info + "\n"
+	readableStr += "GasWanted: " + strconv.Itoa(int(m.GasWanted)) +"\n"
+	readableStr += "GasUsed: " + strconv.Itoa(int(m.GasUsed))+"\n"
+	readableStr += "Fee: {"+ string(m.Fee.Key) + ":"+strconv.Itoa(int(m.Fee.Value))+"}\n"
+
+	readableStr +="{\n"
+
+	for _,x :=range m.Tags{
+		readableStr += "    "+string(x.Key)+":"+string(x.Value)+"\n"
+	}
+	readableStr +="}"
+
+	return  readableStr
 }
 
 type ResponseDeliverTx struct {
@@ -1530,11 +1568,36 @@ func (m *ResponseDeliverTx) GetFee() common.KI64Pair {
 	return common.KI64Pair{}
 }
 
+//make response can be read by humans
+func (m *ResponseDeliverTx) GetReadableString() string{
+
+	readableStr := "\n"
+	readableStr += "Code: " + strconv.Itoa(int(m.Code)) + "\n"
+	readableStr += "Data: " + string(m.Data) + "\n"
+	readableStr += "Log: "   + m.Log + "\n"
+	readableStr += "Info: "  + m.Info + "\n"
+	readableStr += "GasWanted: " + strconv.Itoa(int(m.GasWanted)) +"\n"
+	readableStr += "GasUsed: " + strconv.Itoa(int(m.GasUsed))+"\n"
+	readableStr += "Fee: {"+ string(m.Fee.Key) + ":"+strconv.Itoa(int(m.Fee.Value))+"}\n"
+
+	readableStr +="{\n"
+
+	for _,x :=range m.Tags{
+		readableStr += "    "+string(x.Key)+":"+string(x.Value)+"\n"
+	}
+	readableStr +="}"
+
+	return  readableStr
+}
+
+
 type ResponseEndBlock struct {
 	ValidatorUpdates      []Validator      `protobuf:"bytes,1,rep,name=validator_updates,json=validatorUpdates" json:"validator_updates"`
 	ConsensusParamUpdates *ConsensusParams `protobuf:"bytes,2,opt,name=consensus_param_updates,json=consensusParamUpdates" json:"consensus_param_updates,omitempty"`
 	Tags                  []common.KVPair  `protobuf:"bytes,3,rep,name=tags" json:"tags,omitempty"`
 }
+
+
 
 func (m *ResponseEndBlock) Reset()                    { *m = ResponseEndBlock{} }
 func (m *ResponseEndBlock) String() string            { return proto.CompactTextString(m) }
