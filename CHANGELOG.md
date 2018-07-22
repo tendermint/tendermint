@@ -11,6 +11,9 @@ IMPROVEMENTS:
 - [config] Increase default send/recv rates to 5 mB/s
 - [libs/common] Generated gogoproto static marshaller methods
 
+BUG FIXES
+- [mempool] fixed a race condition when create_empty_blocks=false where a transaction is published at an old height
+
 
 ## 0.22.4
 
