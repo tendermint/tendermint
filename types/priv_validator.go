@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 // PrivValidator defines the functionality of a local Tendermint validator
@@ -47,7 +48,7 @@ type MockPV struct {
 }
 
 func NewMockPV() *MockPV {
-	return &MockPV{crypto.GenPrivKeyEd25519()}
+	return &MockPV{ed25519.GenPrivKey()}
 }
 
 // Implements PrivValidator.

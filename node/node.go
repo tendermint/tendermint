@@ -13,6 +13,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -20,7 +21,6 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -197,7 +197,7 @@ func NewNode(config *cfg.Config,
 		var (
 			// TODO: persist this key so external signer
 			// can actually authenticate us
-			privKey = crypto.GenPrivKeyEd25519()
+			privKey = ed25519.GenPrivKey()
 			pvsc    = privval.NewSocketPV(
 				logger.With("module", "privval"),
 				config.PrivValidatorListenAddr,

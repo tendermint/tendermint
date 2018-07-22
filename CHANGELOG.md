@@ -3,12 +3,13 @@
 ## TBA
 
 BREAKING CHANGES:
+- [crypto]  Refactor `tendermint/crypto` into many subpackages
 - [libs/common] remove exponentially distributed random numbers
 
 IMPROVEMENTS:
-- [config] Increase default send/recv rates to 5 mB/s
 - [abci] Generated gogoproto static marshaller methods
-= [libs/common] Generated gogoproto static marshaller methods
+- [config] Increase default send/recv rates to 5 mB/s
+- [libs/common] Generated gogoproto static marshaller methods
 
 
 ## 0.22.4

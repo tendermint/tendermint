@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -87,7 +88,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
-		privKey := crypto.GenPrivKeyEd25519()
+		privKey := ed25519.GenPrivKey()
 		pubKey := privKey.PubKey()
 		val := NewValidator(pubKey, 0)
 		if !vset.Add(val) {
@@ -251,7 +252,7 @@ func newValidator(address []byte, power int64) *Validator {
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey)
+	return ed25519.PubKeyEd25519(pubKey)
 }
 
 func randValidator_() *Validator {
@@ -368,7 +369,7 @@ func TestSafeSubClip(t *testing.T) {
 //-------------------------------------------------------------------
 
 func TestValidatorSetVerifyCommit(t *testing.T) {
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	v1 := NewValidator(pubKey, 1000)
 	vset := NewValidatorSet([]*Validator{v1})
