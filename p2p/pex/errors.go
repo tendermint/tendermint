@@ -30,6 +30,14 @@ func (err ErrAddrBookPrivate) Error() string {
 	return fmt.Sprintf("Cannot add private peer with address %v", err.Addr)
 }
 
+type ErrAddrBookPrivateSrc struct {
+	Src *p2p.NetAddress
+}
+
+func (err ErrAddrBookPrivateSrc) Error() string {
+	return fmt.Sprintf("Cannot add peer coming from private peer with address %v", err.Src)
+}
+
 type ErrAddrBookNilAddr struct {
 	Addr *p2p.NetAddress
 	Src  *p2p.NetAddress

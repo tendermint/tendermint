@@ -9,6 +9,7 @@ BREAKING CHANGES:
 IMPROVEMENTS:
 - [abci, libs/common] Generated gogoproto static marshaller methods
 - [config] Increase default send/recv rates to 5 mB/s
+- [p2p] reject addresses coming from private peers
 
 BUG FIXES
 - [mempool] fixed a race condition when `create_empty_blocks=false` where a
