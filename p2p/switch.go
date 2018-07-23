@@ -283,6 +283,7 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	if peer.IsPersistent() {
 		addr := peer.OriginalAddr()
 		if addr == nil {
+			// FIXME: persistent peers can't be inbound right now.
 			// self-reported address for inbound persistent peers
 			addr = peer.NodeInfo().NetAddress()
 		}
