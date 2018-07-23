@@ -98,27 +98,6 @@ func (privKey PrivKeyEd25519) ToCurve25519() *[PubKeyEd25519Size]byte {
 	return keyCurve25519
 }
 
-// Generate deterministically derives a new priv-key bytes from key.
-// The privkey is generated as Sha256(amino_encode({privkey, index}))
-// Note that we append the public key to the private key, the same way
-// that golang/x/crypto/ed25519 does. See
-// https://github.com/tendermint/ed25519/blob/master/ed25519.go#L39 for
-// further details.
-func (privKey PrivKeyEd25519) Generate(index int) PrivKeyEd25519 {
-	bz := cdc.MustMarshalBinaryBare(struct {
-		PrivKey [64]byte
-		Index   int
-	}{privKey, index})
-	newBytes := crypto.Sha256(bz)
-	newKey := new([64]byte)
-	copy(newKey[:32], newBytes)
-	// ed25519.MakePublicKey(newKey) alters the last 32 bytes of newKey.
-	// It places the pubkey in the last 32 bytes of newKey, and returns the
-	// public key.
-	ed25519.MakePublicKey(newKey)
-	return PrivKeyEd25519(*newKey)
-}
-
 // GenPrivKey generates a new ed25519 private key.
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.

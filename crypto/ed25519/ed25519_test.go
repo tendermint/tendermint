@@ -9,16 +9,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
-func TestGeneratePrivKey(t *testing.T) {
-	testPriv := ed25519.GenPrivKey()
-	testGenerate := testPriv.Generate(1)
-	signBytes := []byte("something to sign")
-	pub := testGenerate.PubKey()
-	sig, err := testGenerate.Sign(signBytes)
-	assert.NoError(t, err)
-	assert.True(t, pub.VerifyBytes(signBytes, sig))
-}
-
 func TestSignAndValidateEd25519(t *testing.T) {
 
 	privKey := ed25519.GenPrivKey()
