@@ -687,7 +687,6 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	cs.Logger.Debug("handling available txs", "height to propose", cs.Height)
 	cs.enterPropose(cs.Height, 0)
 }
 
