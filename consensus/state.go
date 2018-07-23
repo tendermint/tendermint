@@ -571,10 +571,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case txAvailable := <-cs.mempool.TxsAvailable():
-			if txAvailable {
-				cs.handleTxsAvailable()
-			}
+		case <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable()
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
 			// handles proposals, block parts, votes
