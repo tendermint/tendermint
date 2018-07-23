@@ -2,6 +2,10 @@
 
 ## TBA
 
+## 0.22.5
+
+*July 23th, 2018*
+
 BREAKING CHANGES:
 - [crypto] Refactor `tendermint/crypto` into many subpackages
 - [libs/common] remove exponentially distributed random numbers
