@@ -3,17 +3,16 @@
 ## TBA
 
 BREAKING CHANGES:
-- [crypto]  Refactor `tendermint/crypto` into many subpackages
+- [crypto] Refactor `tendermint/crypto` into many subpackages
 - [libs/common] remove exponentially distributed random numbers
 
 IMPROVEMENTS:
-- [abci] Generated gogoproto static marshaller methods
+- [abci, libs/common] Generated gogoproto static marshaller methods
 - [config] Increase default send/recv rates to 5 mB/s
-- [libs/common] Generated gogoproto static marshaller methods
 
 BUG FIXES
-- [mempool] fixed a race condition when create_empty_blocks=false where a transaction is published at an old height
-
+- [mempool] fixed a race condition when `create_empty_blocks=false` where a
+  transaction is published at an old height.
 
 ## 0.22.4
 

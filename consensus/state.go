@@ -571,10 +571,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case txAvailable := <-cs.mempool.TxsAvailable():
-			if txAvailable {
-				cs.handleTxsAvailable()
-			}
+		case <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable()
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
 			// handles proposals, block parts, votes
@@ -689,7 +687,6 @@ func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	cs.Logger.Debug("handling available txs", "height to propose", cs.Height)
 	cs.enterPropose(cs.Height, 0)
 }
 
