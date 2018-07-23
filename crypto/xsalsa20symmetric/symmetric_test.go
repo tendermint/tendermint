@@ -1,4 +1,4 @@
-package crypto
+package xsalsa20symmetric
 
 import (
 	"testing"

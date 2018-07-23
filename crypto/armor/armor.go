@@ -1,4 +1,4 @@
-package crypto
+package armor
 
 import (
 	"bytes"
