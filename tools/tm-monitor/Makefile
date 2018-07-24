@@ -1,7 +1,7 @@
 DIST_DIRS := find * -type d -exec
 VERSION := $(shell perl -ne '/^var version.*"([^"]+)".*$$/ && print "v$$1\n"' main.go)
 
-all: build test install metalinter
+all: build test install
 
 ########################################
 ###  Build
