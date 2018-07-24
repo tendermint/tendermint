@@ -52,7 +52,7 @@ then query the Tendermint app logs from the first pod:
 
 ``kubectl logs -c tm -f tm-0``
 
-finally, use our `Rest API <../specification/rpc.html>`__ to fetch the status of the second pod's Tendermint app.
+finally, use our `Rest API <https://tendermint.com/docs/tendermint-core/rpc.html>`__ to fetch the status of the second pod's Tendermint app.
 
 Note we are using ``kubectl exec`` because pods are not exposed (and should not be) to the
 outer network:
