@@ -95,10 +95,6 @@
   name = "github.com/jmhodges/levigo"
   revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
 
-[prune]
-  go-tests = true
-  unused-packages = true
-
 [[constraint]]
   name = "github.com/ebuchman/fail-test"
   revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
