@@ -2,7 +2,7 @@
 
 The Software Version is covered by SemVer and described elsewhere.
 It is not relevant to the protocol description, suffice to say that if any protocol version
-changes, the software version changes. Software version is included in NodeInfo for convenience/diagnostics.
+changes, the software version changes, but not necessarily vice versa. Software version is included in NodeInfo for convenience/diagnostics.
 
 Here we focus on protocol and chain versions.
 
@@ -11,7 +11,8 @@ Here we focus on protocol and chain versions.
 We need to version blockchains across protocols, networks, forks, etc.
 We need to do it in a way that is scalable and maintainable - we can't just litter
 the code with conditionals.
-We need chain identifiers and descriptions so we can talk about a multitude of chains in a meaningful way.
+We need chain identifiers and descriptions so we can talk about a multitude of chains,
+and especially the differences between them, in a meaningful way.
 
 Let's start with versions.
 
@@ -22,6 +23,17 @@ BlockVersion, P2PVersion, AppVersion. These versions reflect the major sub-compo
 of the software that are likely to evolve together, at different rates, and in different ways,
 as described below.
 
+Note the BlockVersion defines the core of the blockchain data structures and
+should change infrequently.
+
+The P2PVersion defines how peers connect and communicate with eachother - it's
+not part of the blockchain data structures, but defines the protocols used to build the
+blockchain. It may change gradually.
+
+The AppVersion ensures we only connect to peers that will compute the same App
+state root. Tendermint otherwise doesn't care about the AppVersion, but it helps
+to make it a native field for observability sake.
+
 #### BlockVersion
 
 - All tendermint hashed data-structures (headers, votes, txs, responses, etc.).
@@ -30,7 +42,8 @@ as described below.
 - It should be the least frequent/likely to change.
 	- Tendermint should be stabilizing - it's just Atomic Broadcast.
 	- We can start considering for Tendermint v2.0 in a year
-- For now, assume that BlockVersion will not change in the life of a given chain, except by critical emergency.
+- For now, assume that BlockVersion will not need to be upgraded while preserving the chain history,
+    except in cases of critical emergency.
 - To effectively change it, dump state and start a new blockchain with the new BlockVersion.
 - It's easy to determine the version of a block from its serialized form
 
@@ -60,7 +73,9 @@ even possibly starting from the same initial state.
 They must have distinct identifiers so that peers know which one they are joining and so
 validators and users can prevent replay attacks.
 
-Call this the `NetworkName`. It represents both the application being run and the community or intention
+Call this the `NetworkName` (note we currently call this `ChainID` in the software. In this
+ADR, ChainID has a different meaning).
+It represents both the application being run and the community or intention
 of running it.
 
 Peers only connect to other peers with the same NetworkName.
@@ -68,6 +83,7 @@ Peers only connect to other peers with the same NetworkName.
 ### Forks
 
 We need to support existing networks upgrading and forking, wherein they may do any of:
+
 	- revert back to some height, continue with the same versions but new blocks
 	- arbitrarily mutate state at some height, continue with the same versions (eg. Dao Fork)
 	- change the AppVersion at some height
@@ -76,6 +92,8 @@ Note because of Tendermint's voting power threshold rules, a chain can only be e
 if 1/3 or more is double signing, which is expressly prohibited, and is supposed to result in their punishment on both chains. Since they can censor
 the punishment, the chain is expected to be hardforked to remove the validators. Thus, if both branches are to continue after a fork,
 they will each require a new identifier, and the old chain identifier will be retired (ie. only useful for syncing history, not for new blocks)..
+
+ TODO: explain how to handle slashing when chain id changed!
 
 We need a consistent way to describe forks.
 
@@ -118,12 +136,14 @@ P2PVersion is not included in the block Header.
 
 P2PVersion is the first field in the NodeInfo. NodeInfo is also proto3 so this is easy to read out.
 
-For each P2PVersion, we keep a list of previous versions that this one is compatible with so we can connect to
-peers of any of those versions or higher.
+Each P2PVersion must be compatible with at least one previous version. For each P2PVersion, we keep a list of the previous
+versions it is compatible with.
 
 Note we need the peer/reactor protocols to take the versions of peers into account when sending messages:
+
     - don't send messages they don't understand
     - don't send messages they don't expect
+
 Doing this will be specific to the upgrades being made.
 
 Note we also include the list of reactor channels in the NodeInfo and already don't send messages for channels the peer doesn't understand.
@@ -140,11 +160,13 @@ this is the first byte of a 32-byte ed25519 pubkey.
 
 AppVersion is also included in the block Header and the NodeInfo.
 
-We only maintain connections to peers with the correct AppVersion for the height they're at.
+AppVersion essentially defines how the AppHash is computed. Since peers with
+different AppVersion will likely compute different AppHash for blocks,
+we only maintain connections to peers with the correct AppVersion for the height they're at.
 That is, we only connect to current peers with the same AppVersion, and to old peers that have the right AppVersion for where they
 are in the syncing process.
 
-Note this requires all consensus nodes to upgrade their versions at exactly the required height.
+Note this requires all validators to upgrade their versions at exactly the required height.
 Effectively doing so requires an external manager process that knows when the version should be updated and can co-ordinate shutting down,
 upgrading and restarting at the correct height.
 
@@ -167,7 +189,13 @@ and ConsensusParamsHash is the merkle root of the initial Tendermint consensus p
 The `genesis.json` file must contain enough information to compute this value. It need not contain the StateHash or ValHash itself,
 but contain the state from which they can be computed with the given protocol versions.
 
-XXX: should we split NetworkName into NetworkName and AppName?
+NOTE: consider splitting NetworkName into NetworkName and AppName - this allows
+folks to independently use the same application for different networks (ie we
+could imagine multiple communities of validators wanting to put up a Hub using
+the same app but having a distinct network name. Arguably not needed if
+differences will come via different initial state / validators).
+is speci
+XXX: should we split
 
 #### ChainID
 
