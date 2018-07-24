@@ -26,10 +26,10 @@ RUN make get_vendor_deps
 COPY . $REPO
 
 # install ABCI CLI
-RUN cd abci && make install && cd -
+RUN make install_abci
 
-RUN go install ./cmd/tendermint
-RUN go install ./abci/cmd/abci-cli
+# install Tendermint
+RUN make install
 
 # expose the volume for debugging
 VOLUME $REPO
