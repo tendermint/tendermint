@@ -185,7 +185,6 @@ func txResultWithTags(tags []cmn.KVPair) *types.TxResult {
 			Code: abci.CodeTypeOK,
 			Log:  "",
 			Tags: tags,
-			Fee:  cmn.KI64Pair{Key: nil, Value: 0},
 		},
 	}
 }
@@ -201,7 +200,6 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 			Code: abci.CodeTypeOK,
 			Log:  "",
 			Tags: []cmn.KVPair{},
-			Fee:  cmn.KI64Pair{Key: []uint8{}, Value: 0},
 		},
 	}
 
