@@ -10,7 +10,25 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-func TestValidateBlock(t *testing.T) {
+func TestBlockAddEvidence(t *testing.T) {
+	txs := []Tx{Tx("foo"), Tx("bar")}
+	lastID := makeBlockIDRandom()
+	h := int64(3)
+
+	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	require.NoError(t, err)
+
+	block := MakeBlock(h, txs, commit)
+	require.NotNil(t, block)
+
+	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	block.AddEvidence([]Evidence{ev})
+}
+
+func TestBlockValidateBasic(t *testing.T) {
+	require.Error(t, (*Block)(nil).ValidateBasic())
+
 	txs := []Tx{Tx("foo"), Tx("bar")}
 	lastID := makeBlockIDRandom()
 	h := int64(3)
@@ -57,6 +75,59 @@ func TestValidateBlock(t *testing.T) {
 	block.DataHash = cmn.RandBytes(len(block.DataHash))
 	err = block.ValidateBasic()
 	require.Error(t, err)
+
+	// tamper with evidence
+	block = MakeBlock(h, txs, commit)
+	block.EvidenceHash = []byte("something else")
+	err = block.ValidateBasic()
+	require.Error(t, err)
+}
+
+func TestBlockHash(t *testing.T) {
+	assert.Nil(t, (*Block)(nil).Hash())
+	assert.Nil(t, MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil).Hash())
+}
+
+func TestBlockMakePartSet(t *testing.T) {
+	assert.Nil(t, (*Block)(nil).MakePartSet(2))
+
+	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil).MakePartSet(1024)
+	assert.NotNil(t, partSet)
+	assert.Equal(t, 1, partSet.Total())
+}
+
+func TestBlockHashesTo(t *testing.T) {
+	assert.False(t, (*Block)(nil).HashesTo(nil))
+
+	lastID := makeBlockIDRandom()
+	h := int64(3)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	require.NoError(t, err)
+
+	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit)
+	block.ValidatorsHash = valSet.Hash()
+	assert.False(t, block.HashesTo([]byte{}))
+	assert.False(t, block.HashesTo([]byte("something else")))
+	assert.True(t, block.HashesTo(block.Hash()))
+}
+
+func TestBlockSize(t *testing.T) {
+	size := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil).Size()
+	if size <= 0 {
+		t.Fatal("Size of the block is zero or negative")
+	}
+}
+
+func TestBlockString(t *testing.T) {
+	assert.Equal(t, "nil-Block", (*Block)(nil).String())
+	assert.Equal(t, "nil-Block", (*Block)(nil).StringIndented(""))
+	assert.Equal(t, "nil-Block", (*Block)(nil).StringShort())
+
+	block := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil)
+	assert.NotEqual(t, "nil-Block", block.String())
+	assert.NotEqual(t, "nil-Block", block.StringIndented(""))
+	assert.NotEqual(t, "nil-Block", block.StringShort())
 }
 
 func makeBlockIDRandom() BlockID {
@@ -85,4 +156,62 @@ func TestNilHeaderHashDoesntCrash(t *testing.T) {
 func TestNilDataHashDoesntCrash(t *testing.T) {
 	assert.Equal(t, []byte((*Data)(nil).Hash()), nilBytes)
 	assert.Equal(t, []byte(new(Data).Hash()), nilBytes)
+}
+
+func TestCommit(t *testing.T) {
+	lastID := makeBlockIDRandom()
+	h := int64(3)
+	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	require.NoError(t, err)
+
+	assert.NotNil(t, commit.FirstPrecommit())
+	assert.Equal(t, h-1, commit.Height())
+	assert.Equal(t, 1, commit.Round())
+	assert.Equal(t, VoteTypePrecommit, commit.Type())
+	if commit.Size() <= 0 {
+		t.Fatalf("commit %v has a zero or negative size: %d", commit, commit.Size())
+	}
+
+	require.NotNil(t, commit.BitArray())
+	assert.Equal(t, cmn.NewBitArray(10).Size(), commit.BitArray().Size())
+
+	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
+	assert.True(t, commit.IsCommit())
+}
+
+func TestCommitValidateBasic(t *testing.T) {
+	commit := randCommit()
+	assert.NoError(t, commit.ValidateBasic())
+
+	// nil precommit is OK
+	commit = randCommit()
+	commit.Precommits[0] = nil
+	assert.NoError(t, commit.ValidateBasic())
+
+	// tamper with types
+	commit = randCommit()
+	commit.Precommits[0].Type = VoteTypePrevote
+	assert.Error(t, commit.ValidateBasic())
+
+	// tamper with height
+	commit = randCommit()
+	commit.Precommits[0].Height = int64(100)
+	assert.Error(t, commit.ValidateBasic())
+
+	// tamper with round
+	commit = randCommit()
+	commit.Precommits[0].Round = 100
+	assert.Error(t, commit.ValidateBasic())
+}
+
+func randCommit() *Commit {
+	lastID := makeBlockIDRandom()
+	h := int64(3)
+	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	if err != nil {
+		panic(err)
+	}
+	return commit
 }

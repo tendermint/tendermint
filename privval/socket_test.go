@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -112,7 +112,7 @@ func TestSocketPVAcceptDeadline(t *testing.T) {
 		sc = NewSocketPV(
 			log.TestingLogger(),
 			"127.0.0.1:0",
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 	)
 	defer sc.Stop()
@@ -129,7 +129,7 @@ func TestSocketPVDeadline(t *testing.T) {
 		sc      = NewSocketPV(
 			log.TestingLogger(),
 			addr,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 	)
 
@@ -152,7 +152,7 @@ func TestSocketPVDeadline(t *testing.T) {
 
 		_, err = p2pconn.MakeSecretConnection(
 			conn,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 		if err == nil {
 			break
@@ -172,7 +172,7 @@ func TestSocketPVWait(t *testing.T) {
 	sc := NewSocketPV(
 		log.TestingLogger(),
 		"127.0.0.1:0",
-		crypto.GenPrivKeyEd25519(),
+		ed25519.GenPrivKey(),
 	)
 	defer sc.Stop()
 
@@ -214,7 +214,7 @@ func TestRemoteSignerRetry(t *testing.T) {
 		cmn.RandStr(12),
 		ln.Addr().String(),
 		types.NewMockPV(),
-		crypto.GenPrivKeyEd25519(),
+		ed25519.GenPrivKey(),
 	)
 	defer rs.Stop()
 
@@ -245,12 +245,12 @@ func testSetupSocketPair(
 			chainID,
 			addr,
 			privVal,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 		sc = NewSocketPV(
 			logger,
 			addr,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 	)
 

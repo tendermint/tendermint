@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -29,9 +31,8 @@ type Genesis struct {
 	ConsensusParams *types.ConsensusParams `json:"consensus_params,omitempty"`
 	Validators      []GenesisValidator     `json:"validators"`
 	AppHash         cmn.HexBytes           `json:"app_hash"`
-	AppStateJSON    json.RawMessage        `json:"app_state,omitempty"`
+	AppState        json.RawMessage        `json:"app_state,omitempty"`
 	AppOptions      json.RawMessage        `json:"app_options,omitempty"` // DEPRECATED
-
 }
 
 type NodeKey struct {
@@ -59,7 +60,7 @@ func convertNodeKey(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var privKey crypto.PrivKeyEd25519
+	var privKey ed25519.PrivKeyEd25519
 	copy(privKey[:], nodeKey.PrivKey.Data)
 
 	nodeKeyNew := p2p.NodeKey{privKey}
@@ -78,10 +79,10 @@ func convertPrivVal(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var privKey crypto.PrivKeyEd25519
+	var privKey ed25519.PrivKeyEd25519
 	copy(privKey[:], privVal.PrivKey.Data)
 
-	var pubKey crypto.PubKeyEd25519
+	var pubKey ed25519.PubKeyEd25519
 	copy(pubKey[:], privVal.PubKey.Data)
 
 	privValNew := privval.FilePV{
@@ -112,16 +113,16 @@ func convertGenesis(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 		ChainID:         genesis.ChainID,
 		ConsensusParams: genesis.ConsensusParams,
 		// Validators
-		AppHash:      genesis.AppHash,
-		AppStateJSON: genesis.AppStateJSON,
+		AppHash:  genesis.AppHash,
+		AppState: genesis.AppState,
 	}
 
 	if genesis.AppOptions != nil {
-		genesisNew.AppStateJSON = genesis.AppOptions
+		genesisNew.AppState = genesis.AppOptions
 	}
 
 	for _, v := range genesis.Validators {
-		var pubKey crypto.PubKeyEd25519
+		var pubKey ed25519.PubKeyEd25519
 		copy(pubKey[:], v.PubKey.Data)
 		genesisNew.Validators = append(
 			genesisNew.Validators,
@@ -143,7 +144,7 @@ func convertGenesis(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 
 func main() {
 	cdc := amino.NewCodec()
-	crypto.RegisterAmino(cdc)
+	cryptoAmino.RegisterAmino(cdc)
 
 	args := os.Args[1:]
 	if len(args) != 1 {

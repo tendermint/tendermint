@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
 )
 
 func TestABCIResults(t *testing.T) {
@@ -40,4 +41,15 @@ func TestABCIResults(t *testing.T) {
 		valid := proof.Verify(i, len(results), res.Hash(), root)
 		assert.True(t, valid, "%d", i)
 	}
+}
+
+func TestABCIBytes(t *testing.T) {
+	results := NewResults([]*abci.ResponseDeliverTx{
+		{Code: 0, Data: []byte{}},
+		{Code: 0, Data: []byte("one")},
+		{Code: 14, Data: nil},
+		{Code: 14, Data: []byte("foo")},
+		{Code: 14, Data: []byte("bar")},
+	})
+	assert.NotNil(t, results.Bytes())
 }

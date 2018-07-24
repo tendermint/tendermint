@@ -4,11 +4,20 @@ package types;
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
-import "github.com/tendermint/tmlibs/common/types.proto";
+import "github.com/tendermint/tendermint/libs/common/types.proto";
 
 // This file is copied from http://github.com/tendermint/abci
 // NOTE: When using custom types, mind the warnings.
 // https://github.com/gogo/protobuf/blob/master/custom_types.md#warnings-and-issues
+
+option (gogoproto.marshaler_all) = true;
+option (gogoproto.unmarshaler_all) = true;
+option (gogoproto.sizer_all) = true;
+option (gogoproto.goproto_registration) = true;
+// Generate tests
+option (gogoproto.populate_all) = true;
+option (gogoproto.equal_all) = true;
+option (gogoproto.testgen_all) = true;
 
 //----------------------------------------
 // Request types

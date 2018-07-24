@@ -1,14 +1,13 @@
 package p2p
 
 import (
-	"math/rand"
 	"net"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -18,11 +17,11 @@ func randPeer(ip net.IP) *peer {
 		ip = net.IP{127, 0, 0, 1}
 	}
 
-	nodeKey := NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeKey := NodeKey{PrivKey: ed25519.GenPrivKey()}
 	p := &peer{
 		nodeInfo: NodeInfo{
 			ID:         nodeKey.ID(),
-			ListenAddr: cmn.Fmt("%v.%v.%v.%v:26656", rand.Int()%256, rand.Int()%256, rand.Int()%256, rand.Int()%256),
+			ListenAddr: cmn.Fmt("%v.%v.%v.%v:26656", cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256, cmn.RandInt()%256),
 		},
 	}
 

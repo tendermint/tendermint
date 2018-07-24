@@ -11,10 +11,10 @@
   branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
-  revision = "86fed781132ac890ee03e906e4ecd5d6fa180c64"
+  pruneopts = "UT"
+  revision = "f673a4b563b57b9a95832545c878669a7fa801d9"
 
 [[projects]]
-  branch = "master"
   name = "github.com/btcsuite/btcutil"
   packages = [
     "base58",
@@ -29,16 +29,15 @@
   version = "v1.1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/ebuchman/fail-test"
   packages = ["."]
   revision = "95f809107225be108efcf10a3509e4ea6ceef3c4"
 
 [[projects]]
-  branch = "master"
   name = "github.com/fortytw2/leaktest"
   packages = ["."]
-  revision = "b008db64ef8daabb22ff6daa557f33b41d8f6ccd"
+  revision = "a5ef70473c97b71626b9abeda80ee92ba2a7de9e"
+  version = "v1.2.0"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -82,8 +81,8 @@
     "sortkeys",
     "types"
   ]
-  revision = "1adfc126b41513cc696b209667c8656ea7aac67c"
-  version = "v1.0.0"
+  revision = "7d68e886eac4f7e34d0d82241a6273d6c304c5cf"
+  version = "v1.1.0"
 
 [[projects]]
   name = "github.com/golang/protobuf"
@@ -94,8 +93,8 @@
     "ptypes/duration",
     "ptypes/timestamp"
   ]
-  revision = "925541529c1fa6821df4e44ce2723319eb2be768"
-  version = "v1.0.0"
+  revision = "b4deda0973fb4c70b50d226b1af49f3da59f5265"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -132,7 +131,6 @@
   version = "v1.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/jmhodges/levigo"
   packages = ["."]
   revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
@@ -157,9 +155,11 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:5ab79470a1d0fb19b041a624415612f8236b3c06070161a910562f2b2d064355"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
-  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
+  pruneopts = "UT"
+  revision = "f15292f7a699fcc1a38a80977f80a046874ba8ac"
 
 [[projects]]
   name = "github.com/pelletier/go-toml"
@@ -185,14 +185,15 @@
     "prometheus",
     "prometheus/promhttp"
   ]
-  revision = "c5b7fccd204277076155f10851dad72b76a49317"
-  version = "v0.8.0"
+  revision = "ae27198cdd90bf12cd134ad79d1366a6cf49f632"
 
 [[projects]]
   branch = "master"
+  digest = "1:0f37e09b3e92aaeda5991581311f8dbf38944b36a3edec61cc2d1991f527554a"
   name = "github.com/prometheus/client_model"
   packages = ["go"]
-  revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
+  pruneopts = "UT"
+  revision = "5c3871d89910bfb32f5fcab2aa4b9ec68e65a99f"
 
 [[projects]]
   branch = "master"
@@ -213,10 +214,9 @@
     "nfs",
     "xfs"
   ]
-  revision = "40f013a808ec4fa79def444a1a56de4d1727efcb"
+  revision = "ae68e2d4c00fed4943b5f6698d504a5fe083da8a"
 
 [[projects]]
-  branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
   revision = "e2704e165165ec55d062f5919b4b29494e9fa790"
@@ -266,8 +266,8 @@
     "assert",
     "require"
   ]
-  revision = "f35b8ab0b5a2cef36673838d662e249dd9c94686"
-  version = "v1.2.2"
+  revision = "12b6f73e6084dad08a7c6e575284b177ecafbc71"
+  version = "v1.2.1"
 
 [[projects]]
   branch = "master"
@@ -286,7 +286,7 @@
     "leveldb/table",
     "leveldb/util"
   ]
-  revision = "0d5a0ceb10cf9ab89fdd744cc8c50a83134f6697"
+  revision = "c4c61651e9e37fa117f53c5a906d3b63090d8445"
 
 [[projects]]
   branch = "master"
@@ -333,10 +333,9 @@
     "ripemd160",
     "salsa20/salsa"
   ]
-  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+  revision = "a2144134853fc9a27a7b1e3eb4f19f1a76df13c9"
 
 [[projects]]
-  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -348,7 +347,7 @@
     "netutil",
     "trace"
   ]
-  revision = "afe8f62b1d6bbd81f31868121a50b06d8188e1f9"
+  revision = "292b43bbf7cb8d35ddf40f8d5100ef3837cced3f"
 
 [[projects]]
   branch = "master"
@@ -357,7 +356,8 @@
     "cpu",
     "unix"
   ]
-  revision = "7138fd3d9dc8335c567ca206f4333fb75eb05d56"
+  pruneopts = "UT"
+  revision = "ac767d655b305d4e9612f5f6e33120b9176c4ad4"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -397,9 +397,11 @@
     "credentials",
     "encoding",
     "encoding/proto",
-    "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
+    "internal/backoff",
+    "internal/channelz",
+    "internal/grpcrand",
     "keepalive",
     "metadata",
     "naming",
@@ -412,8 +414,8 @@
     "tap",
     "transport"
   ]
-  revision = "d11072e7ca9811b1100b80ca0269ac831f06d024"
-  version = "v1.11.3"
+  revision = "168a6198bcb0ef175f7dacec0b8691fc141dc9b8"
+  version = "v1.13.0"
 
 [[projects]]
   name = "gopkg.in/yaml.v2"
@@ -424,6 +426,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "304d47a4914b47a821cc79c2186e198a98321a52d5932a2df988f02849f1924d"
+  inputs-digest = "9beb2d27dc19e3f9e2c7f416f312f7129f5441b1b53def42503fc6f7d3a54b16"
   solver-name = "gps-cdcl"
   solver-version = 1

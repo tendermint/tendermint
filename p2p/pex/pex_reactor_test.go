@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -134,11 +135,11 @@ func TestPEXReactorReceive(t *testing.T) {
 
 	size := book.Size()
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
-	msg := cdc.MustMarshalBinary(&pexAddrsMessage{Addrs: addrs})
+	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
 	r.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size+1, book.Size())
 
-	msg = cdc.MustMarshalBinary(&pexRequestMessage{})
+	msg = cdc.MustMarshalBinaryBare(&pexRequestMessage{})
 	r.Receive(PexChannel, peer, msg) // should not panic.
 }
 
@@ -154,7 +155,7 @@ func TestPEXReactorRequestMessageAbuse(t *testing.T) {
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	id := string(peer.ID())
-	msg := cdc.MustMarshalBinary(&pexRequestMessage{})
+	msg := cdc.MustMarshalBinaryBare(&pexRequestMessage{})
 
 	// first time creates the entry
 	r.Receive(PexChannel, peer, msg)
@@ -191,7 +192,7 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.True(t, sw.Peers().Has(peer.ID()))
 
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
-	msg := cdc.MustMarshalBinary(&pexAddrsMessage{Addrs: addrs})
+	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
 
 	// receive some addrs. should clear the request
 	r.Receive(PexChannel, peer, msg)
@@ -295,7 +296,8 @@ func TestPEXReactorCrawlStatus(t *testing.T) {
 func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 	peer := p2p.CreateRandomPeer(false)
 
-	pexR, book := createReactor(&PEXReactorConfig{PrivatePeerIDs: []string{string(peer.NodeInfo().ID)}})
+	pexR, book := createReactor(&PEXReactorConfig{})
+	book.AddPrivateIDs([]string{string(peer.NodeInfo().ID)})
 	defer teardownReactor(book)
 
 	// we have to send a request to receive responses
@@ -303,7 +305,7 @@ func TestPEXReactorDoesNotAddPrivatePeersToAddrBook(t *testing.T) {
 
 	size := book.Size()
 	addrs := []*p2p.NetAddress{peer.NodeInfo().NetAddress()}
-	msg := cdc.MustMarshalBinary(&pexAddrsMessage{Addrs: addrs})
+	msg := cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: addrs})
 	pexR.Receive(PexChannel, peer, msg)
 	assert.Equal(t, size, book.Size())
 
@@ -355,7 +357,7 @@ func newMockPeer() mockPeer {
 	_, netAddr := p2p.CreateRoutableAddr()
 	mp := mockPeer{
 		addr:   netAddr,
-		pubKey: crypto.GenPrivKeyEd25519().PubKey(),
+		pubKey: ed25519.GenPrivKey().PubKey(),
 	}
 	mp.BaseService = cmn.NewBaseService(nil, "MockPeer", mp)
 	mp.Start()
@@ -371,12 +373,13 @@ func (mp mockPeer) NodeInfo() p2p.NodeInfo {
 		ListenAddr: mp.addr.DialString(),
 	}
 }
-func (mp mockPeer) RemoteIP() net.IP              { return net.ParseIP("127.0.0.1") }
-func (mp mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
-func (mp mockPeer) Send(byte, []byte) bool        { return false }
-func (mp mockPeer) TrySend(byte, []byte) bool     { return false }
-func (mp mockPeer) Set(string, interface{})       {}
-func (mp mockPeer) Get(string) interface{}        { return nil }
+func (mockPeer) RemoteIP() net.IP              { return net.ParseIP("127.0.0.1") }
+func (mockPeer) Status() conn.ConnectionStatus { return conn.ConnectionStatus{} }
+func (mockPeer) Send(byte, []byte) bool        { return false }
+func (mockPeer) TrySend(byte, []byte) bool     { return false }
+func (mockPeer) Set(string, interface{})       {}
+func (mockPeer) Get(string) interface{}        { return nil }
+func (mockPeer) OriginalAddr() *p2p.NetAddress { return nil }
 
 func assertPeersWithTimeout(
 	t *testing.T,

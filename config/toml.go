@@ -152,7 +152,6 @@ external_address = "{{ .P2P.ExternalAddress }}"
 seeds = "{{ .P2P.Seeds }}"
 
 # Comma separated list of nodes to keep persistent connections to
-# Do not add private peers to this list if you don't want them advertised
 persistent_peers = "{{ .P2P.PersistentPeers }}"
 
 # UPNP port forwarding
@@ -262,6 +261,12 @@ prometheus = {{ .Instrumentation.Prometheus }}
 
 # Address to listen for Prometheus collector(s) connections
 prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
+
+# Maximum number of simultaneous connections.
+# If you want to accept more significant number than the default, make sure
+# you increase your OS limits.
+# 0 - unlimited.
+max_open_connections = {{ .Instrumentation.MaxOpenConnections }}
 `
 
 /****** these are for test settings ***********/

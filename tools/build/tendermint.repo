@@ -1,0 +1,12 @@
+#This is the .repo file for the Tendermint CentOS repositories.
+#Although it has only been tested under CentOS 7, it should work under Fedora and RedHat 7 too.
+#Currently only 64-bit packages are built.
+
+[tendermint]
+name=Tendermint stable releases repository
+baseurl=https://do9rmxapsag1v.cloudfront.net/centos/7/os/x86_64
+gpgcheck=1
+gpgkey=https://do9rmxapsag1v.cloudfront.net/centos/7/os/x86_64/RPM-GPG-KEY-Tendermint
+enabled=1
+#sslverify = 1
+

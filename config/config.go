@@ -284,7 +284,6 @@ type P2PConfig struct {
 	Seeds string `mapstructure:"seeds"`
 
 	// Comma separated list of nodes to keep persistent connections to
-	// Do not add private peers to this list if you don't want them advertised
 	PersistentPeers string `mapstructure:"persistent_peers"`
 
 	// UPNP port forwarding
@@ -349,9 +348,9 @@ func DefaultP2PConfig() *P2PConfig {
 		AddrBookStrict:          true,
 		MaxNumPeers:             50,
 		FlushThrottleTimeout:    100,
-		MaxPacketMsgPayloadSize: 1024,   // 1 kB
-		SendRate:                512000, // 500 kB/s
-		RecvRate:                512000, // 500 kB/s
+		MaxPacketMsgPayloadSize: 1024,    // 1 kB
+		SendRate:                5120000, // 5 mB/s
+		RecvRate:                5120000, // 5 mB/s
 		PexReactor:              true,
 		SeedMode:                false,
 		AllowDuplicateIP:        true, // so non-breaking yet
@@ -606,6 +605,12 @@ type InstrumentationConfig struct {
 
 	// Address to listen for Prometheus collector(s) connections.
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
+
+	// Maximum number of simultaneous connections.
+	// If you want to accept more significant number than the default, make sure
+	// you increase your OS limits.
+	// 0 - unlimited.
+	MaxOpenConnections int `mapstructure:"max_open_connections"`
 }
 
 // DefaultInstrumentationConfig returns a default configuration for metrics
@@ -614,6 +619,7 @@ func DefaultInstrumentationConfig() *InstrumentationConfig {
 	return &InstrumentationConfig{
 		Prometheus:           false,
 		PrometheusListenAddr: ":26660",
+		MaxOpenConnections:   3,
 	}
 }
 

@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/types"
 )
 
 //------------------------------------------------------------------------
@@ -80,6 +80,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 }
 
 // SaveState persists the State, the ValidatorsInfo, and the ConsensusParamsInfo to the database.
+// This flushes the writes (e.g. calls SetSync).
 func SaveState(db dbm.DB, state State) {
 	saveState(db, state, stateKey)
 }
@@ -182,8 +183,13 @@ func LoadValidators(db dbm.DB, height int64) (*types.ValidatorSet, error) {
 	if valInfo.ValidatorSet == nil {
 		valInfo2 := loadValidatorsInfo(db, valInfo.LastHeightChanged)
 		if valInfo2 == nil {
-			cmn.PanicSanity(fmt.Sprintf(`Couldn't find validators at height %d as
-                        last changed from height %d`, valInfo.LastHeightChanged, height))
+			panic(
+				fmt.Sprintf(
+					"Couldn't find validators at height %d as last changed from height %d",
+					valInfo.LastHeightChanged,
+					height,
+				),
+			)
 		}
 		valInfo = valInfo2
 	}
@@ -220,7 +226,7 @@ func saveValidatorsInfo(db dbm.DB, nextHeight, changeHeight int64, valSet *types
 	if changeHeight == nextHeight {
 		valInfo.ValidatorSet = valSet
 	}
-	db.SetSync(calcValidatorsKey(nextHeight), valInfo.Bytes())
+	db.Set(calcValidatorsKey(nextHeight), valInfo.Bytes())
 }
 
 //-----------------------------------------------------------------------------
@@ -246,11 +252,17 @@ func LoadConsensusParams(db dbm.DB, height int64) (types.ConsensusParams, error)
 	}
 
 	if paramsInfo.ConsensusParams == empty {
-		paramsInfo = loadConsensusParamsInfo(db, paramsInfo.LastHeightChanged)
-		if paramsInfo == nil {
-			cmn.PanicSanity(fmt.Sprintf(`Couldn't find consensus params at height %d as
-                        last changed from height %d`, paramsInfo.LastHeightChanged, height))
+		paramsInfo2 := loadConsensusParamsInfo(db, paramsInfo.LastHeightChanged)
+		if paramsInfo2 == nil {
+			panic(
+				fmt.Sprintf(
+					"Couldn't find consensus params at height %d as last changed from height %d",
+					paramsInfo.LastHeightChanged,
+					height,
+				),
+			)
 		}
+		paramsInfo = paramsInfo2
 	}
 
 	return paramsInfo.ConsensusParams, nil
@@ -285,5 +297,5 @@ func saveConsensusParamsInfo(db dbm.DB, nextHeight, changeHeight int64, params t
 	if changeHeight == nextHeight {
 		paramsInfo.ConsensusParams = params
 	}
-	db.SetSync(calcConsensusParamsKey(nextHeight), paramsInfo.Bytes())
+	db.Set(calcConsensusParamsKey(nextHeight), paramsInfo.Bytes())
 }

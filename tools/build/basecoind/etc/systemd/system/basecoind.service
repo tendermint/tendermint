@@ -1,0 +1,18 @@
+[Unit]
+Description=Basecoind
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Environment="BCHOME=/etc/basecoind"
+Restart=on-failure
+User=basecoind
+Group=basecoind
+PermissionsStartOnly=true
+ExecStart=/usr/bin/basecoind start
+ExecReload=/bin/kill -HUP $MAINPID
+KillSignal=SIGTERM
+
+[Install]
+WantedBy=multi-user.target
+

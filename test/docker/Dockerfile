@@ -29,6 +29,7 @@ COPY . $REPO
 RUN cd abci && make install && cd -
 
 RUN go install ./cmd/tendermint
+RUN go install ./abci/cmd/abci-cli
 
 # expose the volume for debugging
 VOLUME $REPO

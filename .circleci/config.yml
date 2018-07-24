@@ -16,7 +16,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v2-pkg-cache
+            - v3-pkg-cache
       - run:
           name: tools
           command: |
@@ -31,19 +31,18 @@ jobs:
           name: binaries
           command: |
             export PATH="$GOBIN:$PATH"
-            make install
-            cd abci && make install
+            make install install_abci
       - persist_to_workspace:
           root: /tmp/workspace
           paths:
             - bin
             - profiles
       - save_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
           paths:
             - /go/pkg
       - save_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - /go/src/github.com/tendermint/tendermint
 
@@ -53,9 +52,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: slate docs
           command: |
@@ -69,9 +68,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: metalinter
           command: |
@@ -85,9 +84,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run abci apps tests
           command: |
@@ -102,9 +101,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run abci-cli tests
           command: |
@@ -117,9 +116,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
       - run:
           name: Run tests
@@ -132,14 +131,14 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: mkdir -p /tmp/logs
       - run:
           name: Run tests
           command: |
-            for pkg in $(go list github.com/tendermint/tendermint/... | grep -v /vendor/ | circleci tests split --split-by=timings); do
+            for pkg in $(go list github.com/tendermint/tendermint/... | circleci tests split --split-by=timings); do
               id=$(basename "$pkg")
 
               GOCACHE=off go test -v -timeout 5m -race -coverprofile=/tmp/workspace/profiles/$id.out -covermode=atomic "$pkg" | tee "/tmp/logs/$id-$RANDOM.log"
@@ -157,9 +156,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
           command: bash test/persist/test_failure_indices.sh
@@ -182,7 +181,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: gather
           command: |

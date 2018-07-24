@@ -9,6 +9,7 @@ import (
 
 	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -74,7 +75,7 @@ type SocketPV struct {
 	connDeadline    time.Duration
 	connHeartbeat   time.Duration
 	connWaitTimeout time.Duration
-	privKey         crypto.PrivKeyEd25519
+	privKey         ed25519.PrivKeyEd25519
 
 	conn     net.Conn
 	listener net.Listener
@@ -87,7 +88,7 @@ var _ types.PrivValidator = (*SocketPV)(nil)
 func NewSocketPV(
 	logger log.Logger,
 	socketAddr string,
-	privKey crypto.PrivKeyEd25519,
+	privKey ed25519.PrivKeyEd25519,
 ) *SocketPV {
 	sc := &SocketPV{
 		addr:            socketAddr,
@@ -343,7 +344,7 @@ type RemoteSigner struct {
 	chainID      string
 	connDeadline time.Duration
 	connRetries  int
-	privKey      crypto.PrivKeyEd25519
+	privKey      ed25519.PrivKeyEd25519
 	privVal      types.PrivValidator
 
 	conn net.Conn
@@ -354,7 +355,7 @@ func NewRemoteSigner(
 	logger log.Logger,
 	chainID, socketAddr string,
 	privVal types.PrivValidator,
-	privKey crypto.PrivKeyEd25519,
+	privKey ed25519.PrivKeyEd25519,
 ) *RemoteSigner {
 	rs := &RemoteSigner{
 		addr:         socketAddr,

@@ -206,3 +206,4 @@ func (tp *bcrTestPeer) IsPersistent() bool                   { return true }
 func (tp *bcrTestPeer) Get(s string) interface{}             { return s }
 func (tp *bcrTestPeer) Set(string, interface{})              {}
 func (tp *bcrTestPeer) RemoteIP() net.IP                     { return []byte{127, 0, 0, 1} }
+func (tp *bcrTestPeer) OriginalAddr() *p2p.NetAddress        { return nil }

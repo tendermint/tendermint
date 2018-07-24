@@ -91,10 +91,6 @@ type PEXReactorConfig struct {
 	// Seeds is a list of addresses reactor may use
 	// if it can't connect to peers in the addrbook.
 	Seeds []string
-
-	// PrivatePeerIDs is a list of peer IDs, which must not be gossiped to other
-	// peers.
-	PrivatePeerIDs []string
 }
 
 type _attemptsToDial struct {
@@ -173,11 +169,6 @@ func (r *PEXReactor) AddPeer(p Peer) {
 		addr := p.NodeInfo().NetAddress()
 		src := addr
 
-		// ignore private addrs
-		if isAddrPrivate(addr, r.config.PrivatePeerIDs) {
-			return
-		}
-
 		// add to book. dont RequestAddrs right away because
 		// we don't trust inbound as much - let ensurePeersRoutine handle it.
 		err := r.book.AddAddress(addr, src)
@@ -191,7 +182,7 @@ func (r *PEXReactor) logErrAddrBook(err error) {
 		case ErrAddrBookNilAddr:
 			r.Logger.Error("Failed to add new address", "err", err)
 		default:
-			// non-routable, self, full book, etc.
+			// non-routable, self, full book, private, etc.
 			r.Logger.Debug("Failed to add new address", "err", err)
 		}
 	}
@@ -206,7 +197,7 @@ func (r *PEXReactor) RemovePeer(p Peer, reason interface{}) {
 
 // Receive implements Reactor by handling incoming PEX messages.
 func (r *PEXReactor) Receive(chID byte, src Peer, msgBytes []byte) {
-	msg, err := DecodeMessage(msgBytes)
+	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		r.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		r.Switch.StopPeerForError(src, err)
@@ -287,7 +278,7 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 		return
 	}
 	r.requestsSent.Set(id, struct{}{})
-	p.Send(PexChannel, cdc.MustMarshalBinary(&pexRequestMessage{}))
+	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexRequestMessage{}))
 }
 
 // ReceiveAddrs adds the given addrs to the addrbook if theres an open
@@ -308,14 +299,6 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 			return cmn.NewError("received nil addr")
 		}
 
-		// ignore private peers
-		// TODO: give private peers to AddrBook so it can enforce this on AddAddress.
-		// We'd then have to check for ErrPrivatePeer on AddAddress here, which is
-		// an error we just ignore (maybe peer is probing us for our private peers :P)
-		if isAddrPrivate(netAddr, r.config.PrivatePeerIDs) {
-			continue
-		}
-
 		err := r.book.AddAddress(netAddr, srcAddr)
 		r.logErrAddrBook(err)
 	}
@@ -324,7 +307,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 // SendAddrs sends addrs to the peer.
 func (r *PEXReactor) SendAddrs(p Peer, netAddrs []*p2p.NetAddress) {
-	p.Send(PexChannel, cdc.MustMarshalBinary(&pexAddrsMessage{Addrs: netAddrs}))
+	p.Send(PexChannel, cdc.MustMarshalBinaryBare(&pexAddrsMessage{Addrs: netAddrs}))
 }
 
 // SetEnsurePeersPeriod sets period to ensure peers connected.
@@ -647,16 +630,6 @@ func (r *PEXReactor) attemptDisconnects() {
 	}
 }
 
-// isAddrPrivate returns true if addr.ID is a private ID.
-func isAddrPrivate(addr *p2p.NetAddress, privatePeerIDs []string) bool {
-	for _, id := range privatePeerIDs {
-		if string(addr.ID) == id {
-			return true
-		}
-	}
-	return false
-}
-
 //-----------------------------------------------------------------------------
 // Messages
 
@@ -670,13 +643,11 @@ func RegisterPexMessage(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&pexAddrsMessage{}, "tendermint/p2p/PexAddrsMessage", nil)
 }
 
-// DecodeMessage implements interface registered above.
-func DecodeMessage(bz []byte) (msg PexMessage, err error) {
+func decodeMsg(bz []byte) (msg PexMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
-			len(bz), maxMsgSize)
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
-	err = cdc.UnmarshalBinary(bz, &msg)
+	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return
 }
 

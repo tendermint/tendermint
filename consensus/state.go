@@ -80,7 +80,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.Mutex
+	mtx sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -191,8 +191,8 @@ func (cs *ConsensusState) String() string {
 
 // GetState returns a copy of the chain state.
 func (cs *ConsensusState) GetState() sm.State {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.state.Copy()
 }
 
@@ -207,8 +207,8 @@ func (cs *ConsensusState) GetLastHeight() int64 {
 
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	rs := cs.RoundState // copy
 	return &rs
@@ -216,24 +216,24 @@ func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 
 // GetRoundStateJSON returns a json of RoundState, marshalled using go-amino.
 func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	return cdc.MarshalJSON(cs.RoundState)
 }
 
 // GetRoundStateSimpleJSON returns a json of RoundStateSimple, marshalled using go-amino.
 func (cs *ConsensusState) GetRoundStateSimpleJSON() ([]byte, error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
 }
 
 // GetValidators returns a copy of the current validators.
 func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
@@ -253,8 +253,8 @@ func (cs *ConsensusState) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 
 // LoadCommit loads the commit for a given height.
 func (cs *ConsensusState) LoadCommit(height int64) *types.Commit {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	if height == cs.blockStore.Height() {
 		return cs.blockStore.LoadSeenCommit(height)
 	}
@@ -322,13 +322,8 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 // OnStop implements cmn.Service. It stops all routines and waits for the WAL to finish.
 func (cs *ConsensusState) OnStop() {
-	cs.BaseService.OnStop()
-
 	cs.evsw.Stop()
-
 	cs.timeoutTicker.Stop()
-
-	cs.wal.Stop()
 }
 
 // Wait waits for the the main routine to return.
@@ -584,8 +579,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case height := <-cs.mempool.TxsAvailable():
-			cs.handleTxsAvailable(height)
+		case <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable()
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
 			// handles proposals, block parts, votes
@@ -608,6 +603,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 			// close wal now that we're done writing to it
 			cs.wal.Stop()
+			cs.wal.Wait()
 
 			close(cs.done)
 			return
@@ -695,11 +691,11 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 
 }
 
-func (cs *ConsensusState) handleTxsAvailable(height int64) {
+func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	cs.enterPropose(height, 0)
+	cs.enterPropose(cs.Height, 0)
 }
 
 //-----------------------------------------------------------------------------

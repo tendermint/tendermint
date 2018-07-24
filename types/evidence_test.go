@@ -36,7 +36,7 @@ func TestEvidence(t *testing.T) {
 	blockID3 := makeBlockID("blockhash", 10000, "partshash")
 	blockID4 := makeBlockID("blockhash", 10000, "partshash2")
 
-	chainID := "mychain"
+	const chainID = "mychain"
 
 	vote1 := makeVote(val, chainID, 0, 10, 2, 1, blockID)
 	badVote := makeVote(val, chainID, 0, 10, 2, 1, blockID)
@@ -70,5 +70,32 @@ func TestEvidence(t *testing.T) {
 		} else {
 			assert.NotNil(t, ev.Verify(chainID, pubKey), "evidence should be invalid")
 		}
+	}
+}
+
+func TestDuplicatedVoteEvidence(t *testing.T) {
+	ev := randomDuplicatedVoteEvidence()
+
+	assert.True(t, ev.Equal(ev))
+	assert.False(t, ev.Equal(&DuplicateVoteEvidence{}))
+}
+
+func TestEvidenceList(t *testing.T) {
+	ev := randomDuplicatedVoteEvidence()
+	evl := EvidenceList([]Evidence{ev})
+
+	assert.NotNil(t, evl.Hash())
+	assert.True(t, evl.Has(ev))
+	assert.False(t, evl.Has(&DuplicateVoteEvidence{}))
+}
+
+func randomDuplicatedVoteEvidence() *DuplicateVoteEvidence {
+	val := NewMockPV()
+	blockID := makeBlockID("blockhash", 1000, "partshash")
+	blockID2 := makeBlockID("blockhash2", 1000, "partshash")
+	const chainID = "mychain"
+	return &DuplicateVoteEvidence{
+		VoteA: makeVote(val, chainID, 0, 10, 2, 1, blockID),
+		VoteB: makeVote(val, chainID, 0, 10, 2, 1, blockID2),
 	}
 }

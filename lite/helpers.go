@@ -4,6 +4,9 @@ import (
 	"time"
 
 	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
+
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -20,7 +23,7 @@ type privKeys []crypto.PrivKey
 func genPrivKeys(n int) privKeys {
 	res := make(privKeys, n)
 	for i := range res {
-		res[i] = crypto.GenPrivKeyEd25519()
+		res[i] = ed25519.GenPrivKey()
 	}
 	return res
 }
@@ -29,7 +32,7 @@ func genPrivKeys(n int) privKeys {
 func (pkz privKeys) Change(i int) privKeys {
 	res := make(privKeys, len(pkz))
 	copy(res, pkz)
-	res[i] = crypto.GenPrivKeyEd25519()
+	res[i] = ed25519.GenPrivKey()
 	return res
 }
 
@@ -37,6 +40,21 @@ func (pkz privKeys) Change(i int) privKeys {
 func (pkz privKeys) Extend(n int) privKeys {
 	extra := genPrivKeys(n)
 	return append(pkz, extra...)
+}
+
+// GenSecpPrivKeys produces an array of secp256k1 private keys to generate commits.
+func GenSecpPrivKeys(n int) privKeys {
+	res := make(privKey, n)
+	for i := range res {
+		res[i] = secp256k1.GenPrivKey()
+	}
+	return res
+}
+
+// ExtendSecp adds n more secp256k1 keys (to remove, just take a slice).
+func (pkz privKeys) ExtendSecp(n int) privKeys {
+	extra := GenSecpPrivKeys(n)
+	return append(v, extra...)
 }
 
 // ToValidators produces a valset from the set of keys.

@@ -98,6 +98,6 @@ Each route is available as a GET request, as a JSONRPCv2 POST request, and via J
 # Examples
 
 * [Tendermint](https://github.com/tendermint/tendermint/blob/master/rpc/core/routes.go)
-* [tm-monitor](https://github.com/tendermint/tools/blob/master/tm-monitor/rpc.go)
+* [tm-monitor](https://github.com/tendermint/tendermint/blob/master/tools/tm-monitor/rpc.go)
 */
 package rpc
