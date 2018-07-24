@@ -186,7 +186,6 @@ See below for more details on the message types and how they are used.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
-  - `Fee (cmn.KI64Pair)`: Fee paid for the transaction.
 - **Usage**: Validate a mempool transaction, prior to broadcasting
   or proposing. CheckTx should perform stateful but light-weight
   checks of the validity of the transaction (like checking signatures
@@ -223,7 +222,6 @@ See below for more details on the message types and how they are used.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
-  - `Fee (cmn.KI64Pair)`: Fee paid for the transaction.
 - **Usage**:
   - Deliver a transaction to be executed in full by the application.
     If the transaction is valid, returns CodeType.OK.
