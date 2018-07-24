@@ -1,4 +1,4 @@
-package crypto
+package cryptoAmino
 
 import (
 	amino "github.com/tendermint/go-amino"
