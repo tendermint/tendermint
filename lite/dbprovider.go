@@ -6,11 +6,11 @@ import (
 	"strconv"
 
 	amino "github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/tendermint/crypto"
-	lerr "github.com/tendermint/tendermint/lite/errors"
-	"github.com/tendermint/tendermint/types"
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	log "github.com/tendermint/tendermint/libs/log"
+	lerr "github.com/tendermint/tendermint/lite/errors"
+	"github.com/tendermint/tendermint/types"
 )
 
 type DBProvider struct {
@@ -24,7 +24,7 @@ type DBProvider struct {
 func NewDBProvider(label string, db dbm.DB) *DBProvider {
 	//db = dbm.NewDebugDB("db provider "+cmn.RandStr(4), db)
 	cdc := amino.NewCodec()
-	crypto.RegisterAmino(cdc)
+	cryptoAmino.RegisterAmino(cdc)
 	dbp := &DBProvider{
 		logger: log.NewNopLogger(),
 		label:  label,

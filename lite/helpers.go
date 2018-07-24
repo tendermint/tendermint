@@ -44,7 +44,7 @@ func (pkz privKeys) Extend(n int) privKeys {
 
 // GenSecpPrivKeys produces an array of secp256k1 private keys to generate commits.
 func GenSecpPrivKeys(n int) privKeys {
-	res := make(privKey, n)
+	res := make(privKeys, n)
 	for i := range res {
 		res[i] = secp256k1.GenPrivKey()
 	}
@@ -54,7 +54,7 @@ func GenSecpPrivKeys(n int) privKeys {
 // ExtendSecp adds n more secp256k1 keys (to remove, just take a slice).
 func (pkz privKeys) ExtendSecp(n int) privKeys {
 	extra := GenSecpPrivKeys(n)
-	return append(v, extra...)
+	return append(pkz, extra...)
 }
 
 // ToValidators produces a valset from the set of keys.
