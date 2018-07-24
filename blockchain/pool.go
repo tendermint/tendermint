@@ -8,9 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	flow "github.com/tendermint/tmlibs/flowrate"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	flow "github.com/tendermint/tendermint/libs/flowrate"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"

@@ -3,10 +3,10 @@ package core
 import (
 	"fmt"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // Get block headers for minHeight <= height <= maxHeight.
@@ -288,12 +288,12 @@ func Commit(heightPtr *int64) (*ctypes.ResultCommit, error) {
 	// use a non-canonical commit
 	if height == storeHeight {
 		commit := blockStore.LoadSeenCommit(height)
-		return ctypes.NewResultCommit(header, commit, false), nil
+		return ctypes.NewResultCommit(&header, commit, false), nil
 	}
 
 	// Return the canonical commit (comes from the block at height+1)
 	commit := blockStore.LoadBlockCommit(height)
-	return ctypes.NewResultCommit(header, commit, true), nil
+	return ctypes.NewResultCommit(&header, commit, true), nil
 }
 
 // BlockResults gets ABCIResults at a given height.

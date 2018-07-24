@@ -2,11 +2,11 @@ package p2p
 
 import (
 	"github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/crypto"
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 )
 
 var cdc = amino.NewCodec()
 
 func init() {
-	crypto.RegisterAmino(cdc)
+	cryptoAmino.RegisterAmino(cdc)
 }

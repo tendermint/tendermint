@@ -6,7 +6,6 @@ import (
 	crand "crypto/rand"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -18,8 +17,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	client "github.com/tendermint/tendermint/rpc/lib/client"
 	server "github.com/tendermint/tendermint/rpc/lib/server"
@@ -206,7 +205,7 @@ func testWithHTTPClient(t *testing.T, cl client.HTTPClient) {
 	require.Nil(t, err)
 	assert.Equal(t, got3, val3)
 
-	val4 := rand.Intn(10000)
+	val4 := cmn.RandIntn(10000)
 	got4, err := echoIntViaHTTP(cl, val4)
 	require.Nil(t, err)
 	assert.Equal(t, got4, val4)
@@ -370,7 +369,7 @@ func TestWSClientPingPong(t *testing.T) {
 }
 
 func randBytes(t *testing.T) []byte {
-	n := rand.Intn(10) + 2
+	n := cmn.RandIntn(10) + 2
 	buf := make([]byte, n)
 	_, err := crand.Read(buf)
 	require.Nil(t, err)

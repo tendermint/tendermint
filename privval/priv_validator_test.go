@@ -9,9 +9,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/types"
 	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/types"
 )
 
 func TestGenLoadValidator(t *testing.T) {
@@ -47,10 +48,10 @@ func TestUnmarshalValidator(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// create some fixed values
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
-	pubArray := [32]byte(pubKey.(crypto.PubKeyEd25519))
+	pubArray := [32]byte(pubKey.(ed25519.PubKeyEd25519))
 	pubBytes := pubArray[:]
 	privArray := [64]byte(privKey)
 	privBytes := privArray[:]

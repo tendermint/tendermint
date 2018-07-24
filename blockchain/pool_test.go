@@ -1,12 +1,11 @@
 package blockchain
 
 import (
-	"math/rand"
 	"testing"
 	"time"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
@@ -25,7 +24,7 @@ func makePeers(numPeers int, minHeight, maxHeight int64) map[p2p.ID]testPeer {
 	peers := make(map[p2p.ID]testPeer, numPeers)
 	for i := 0; i < numPeers; i++ {
 		peerID := p2p.ID(cmn.RandStr(12))
-		height := minHeight + rand.Int63n(maxHeight-minHeight)
+		height := minHeight + cmn.RandInt63n(maxHeight-minHeight)
 		peers[peerID] = testPeer{peerID, height}
 	}
 	return peers
@@ -80,7 +79,7 @@ func TestBasic(t *testing.T) {
 			}
 			// Request desired, pretend like we got the block immediately.
 			go func() {
-				block := &types.Block{Header: &types.Header{Height: request.Height}}
+				block := &types.Block{Header: types.Header{Height: request.Height}}
 				pool.AddBlock(request.PeerID, block, 123)
 				t.Logf("Added block from peer %v (height: %v)", request.PeerID, request.Height)
 			}()

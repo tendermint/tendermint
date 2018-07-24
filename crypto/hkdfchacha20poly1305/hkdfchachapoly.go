@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
+// Implements crypto.AEAD
 type hkdfchacha20poly1305 struct {
 	key [KeySize]byte
 }

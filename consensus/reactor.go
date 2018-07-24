@@ -9,11 +9,11 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	tmevents "github.com/tendermint/tendermint/libs/events"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
@@ -80,6 +80,9 @@ func (conR *ConsensusReactor) OnStop() {
 	conR.BaseReactor.OnStop()
 	conR.unsubscribeFromBroadcastEvents()
 	conR.conS.Stop()
+	if !conR.FastSync() {
+		conR.conS.Wait()
+	}
 }
 
 // SwitchToConsensus switches from fast_sync mode to consensus mode.
@@ -183,7 +186,7 @@ func (conR *ConsensusReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		return
 	}
 
-	msg, err := DecodeMessage(msgBytes)
+	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		conR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		conR.Switch.StopPeerForError(src, err)
@@ -1306,11 +1309,9 @@ func RegisterConsensusMessages(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&ProposalHeartbeatMessage{}, "tendermint/ProposalHeartbeat", nil)
 }
 
-// DecodeMessage decodes the given bytes into a ConsensusMessage.
-func DecodeMessage(bz []byte) (msg ConsensusMessage, err error) {
+func decodeMsg(bz []byte) (msg ConsensusMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
-			len(bz), maxMsgSize)
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return

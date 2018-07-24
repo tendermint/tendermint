@@ -1,0 +1,265 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "true"
+  name: YOUR_APP_NAME
+  labels:
+    app: YOUR_APP_NAME
+spec:
+  ports:
+  - port: 26656
+    name: p2p
+  - port: 26657
+    name: rpc
+  clusterIP: None
+  selector:
+    app: tm
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tm-config
+data:
+  seeds: "tm-0,tm-1,tm-2,tm-3"
+  validators: "tm-0,tm-1,tm-2,tm-3"
+  validator.power: "10"
+  genesis.json: |-
+    {
+      "genesis_time": "2017-01-02T10:10:10.164Z",
+      "chain_id": "chain-B5XXm5",
+      "validators": [],
+      "app_hash": ""
+    }
+  pub_key_nginx.conf: |-
+    server {
+      listen 80 default_server;
+      listen [::]:80 default_server ipv6only=on;
+      location /pub_key.json { root /usr/share/nginx/; }
+    }
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: tm-budget
+spec:
+  selector:
+    matchLabels:
+      app: tm
+  minAvailable: 2
+---
+apiVersion: apps/v1beta1
+kind: StatefulSet
+metadata:
+  name: tm
+spec:
+  serviceName: YOUR_APP_NAME
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: tm
+        version: v1
+      annotations:
+        pod.beta.kubernetes.io/init-containers: '[{
+          "name": "tm-gen-validator",
+          "image": "tendermint/tendermint:0.10.0",
+          "imagePullPolicy": "IfNotPresent",
+          "command": ["bash", "-c", "
+            set -ex\n
+            if [ ! -f /tendermint/priv_validator.json ]; then\n
+              tendermint gen_validator > /tendermint/priv_validator.json\n
+              # pub_key.json will be served by pub-key container\n
+              cat /tendermint/priv_validator.json | jq \".pub_key\" > /tendermint/pub_key.json\n
+            fi\n
+          "],
+          "volumeMounts": [
+            {"name": "tmdir", "mountPath": "/tendermint"}
+          ]
+        }]'
+    spec:
+      containers:
+      - name: tm
+        imagePullPolicy: IfNotPresent
+        image: tendermint/tendermint:0.10.0
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 100m
+            memory: 256Mi
+        ports:
+        - containerPort: 26656
+          name: p2p
+        - containerPort: 26657
+          name: rpc
+        env:
+        - name: SEEDS
+          valueFrom:
+            configMapKeyRef:
+              name: tm-config
+              key: seeds
+        - name: VALIDATOR_POWER
+          valueFrom:
+            configMapKeyRef:
+              name: tm-config
+              key: validator.power
+        - name: VALIDATORS
+          valueFrom:
+            configMapKeyRef:
+              name: tm-config
+              key: validators
+        - name: TMHOME
+          value: /tendermint
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+
+          # copy template
+          cp /etc/tendermint/genesis.json /tendermint/genesis.json
+
+          # fill genesis file with validators
+          IFS=',' read -ra VALS_ARR <<< "$VALIDATORS"
+          fqdn_suffix=$(hostname -f | sed 's#[^.]*\.\(\)#\1#')
+          for v in "${VALS_ARR[@]}"; do
+            # wait until validator generates priv/pub key pair
+            set +e
+
+            curl -s --fail "http://$v.$fqdn_suffix/pub_key.json" > /dev/null
+            ERR=$?
+            while [ "$ERR" != 0 ]; do
+              sleep 5
+              curl -s --fail "http://$v.$fqdn_suffix/pub_key.json" > /dev/null
+              ERR=$?
+            done
+            set -e
+
+            # add validator to genesis file along with its pub_key
+            curl -s "http://$v.$fqdn_suffix/pub_key.json" | jq ". as \$k | {pub_key: \$k, amount: $VALIDATOR_POWER, name: \"$v\"}" > pub_validator.json
+            cat /tendermint/genesis.json | jq ".validators |= .+ [$(cat pub_validator.json)]" > tmpgenesis && mv tmpgenesis /tendermint/genesis.json
+            rm pub_validator.json
+          done
+
+          # construct seeds
+          IFS=',' read -ra SEEDS_ARR <<< "$SEEDS"
+          seeds=()
+          for s in "${SEEDS_ARR[@]}"; do
+            seeds+=("$s.$fqdn_suffix:26656")
+          done
+          seeds=$(IFS=','; echo "${seeds[*]}")
+
+          tendermint node --p2p.seeds="$seeds" --moniker="`hostname`" --proxy_app="unix:///socks/app.sock"
+        volumeMounts:
+        - name: tmdir
+          mountPath: /tendermint
+        - mountPath: /etc/tendermint/genesis.json
+          name: configdir
+          subPath: genesis.json
+        - name: socksdir
+          mountPath: /socks
+
+      - name: app
+        imagePullPolicy: IfNotPresent
+        image: YOUR_APP_IMAGE
+        args: ["--addr=\"unix:///socks/app.sock\""]
+        volumeMounts:
+        - name: socksdir
+          mountPath: /socks
+
+      ######## OR ########
+      #
+      # - name: app
+      #   imagePullPolicy: IfNotPresent
+      #   image: golang:1.7.5
+      #   resources:
+      #     requests:
+      #       cpu: YOUR_APP_CPU_REQ
+      #       memory: YOUR_APP_MEM_REQ
+      #     limits:
+      #       cpu: YOUR_APP_CPU_LIMIT
+      #       memory: YOUR_APP_MEM_LIMIT
+      #   command:
+      #   - bash
+      #   - "-c"
+      #   - |
+      #     set -ex
+
+      #     go get -d YOUR_APP_PACKAGE
+      #     cd $GOPATH/YOUR_APP_PACKAGE
+      #     make install
+      #
+      #     rm -f /socks/app.sock # remove old socket
+
+      #     YOUR_APP_EXEC --addr="unix:///socks/app.sock"
+      #   volumeMounts:
+      #   - name: socksdir
+      #     mountPath: /socks
+
+      ######## OPTIONALLY ########
+      #
+      # - name: data
+      #   imagePullPolicy: IfNotPresent
+      #   image: golang:1.7.5
+      #   command:
+      #   - bash
+      #   - "-c"
+      #   - |
+      #     set -ex
+      #     go get github.com/tendermint/merkleeyes/cmd/merkleeyes
+      #     rm -f /socks/data.sock # remove old socket
+      #     merkleeyes server --address="unix:///socks/data.sock"
+      #   volumeMounts:
+      #   - name: socksdir
+      #     mountPath: /socks
+
+      - name: pub-key
+        imagePullPolicy: IfNotPresent
+        image: nginx:1.11.9
+        resources:
+          requests:
+            cpu: 10m
+            memory: 12Mi
+          limits:
+            cpu: 20m
+            memory: 24Mi
+        ports:
+        - containerPort: 80
+          name: pub-key
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+          # fixes 403 Permission Denied (open() "/tendermint/pub_key.json" failed (13: Permission denied))
+          # => we cannot serve from /tendermint, so we copy the file
+          mkdir -p /usr/share/nginx
+          cp /tendermint/pub_key.json /usr/share/nginx/pub_key.json
+          nginx -g "daemon off;"
+        volumeMounts:
+        - name: tmdir
+          mountPath: /tendermint
+        - mountPath: /etc/nginx/conf.d/pub_key.conf
+          name: configdir
+          subPath: pub_key_nginx.conf
+
+      volumes:
+      - name: configdir
+        configMap:
+          name: tm-config
+      - name: socksdir
+        emptyDir: {}
+
+  volumeClaimTemplates:
+  - metadata:
+      name: tmdir
+      annotations:
+        volume.alpha.kubernetes.io/storage-class: anything
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 2Gi

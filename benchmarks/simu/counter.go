@@ -7,7 +7,7 @@ import (
 	"time"
 
 	rpcclient "github.com/tendermint/tendermint/rpc/lib/client"
-	cmn "github.com/tendermint/tmlibs/common"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func main() {

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 const maxPingPongPacketSize = 1024 // bytes
@@ -426,7 +426,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	var packet = PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgSize-emptyPacketMsgSize()),
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize),
 	}
 	_, err = cdc.MarshalBinaryWriter(buf, packet)
 	assert.Nil(t, err)
@@ -440,7 +440,7 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	packet = PacketMsg{
 		ChannelID: 0x01,
 		EOF:       1,
-		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgSize+1),
+		Bytes:     make([]byte, mconnClient.config.MaxPacketMsgPayloadSize+100),
 	}
 	_, err = cdc.MarshalBinaryWriter(buf, packet)
 	assert.Nil(t, err)

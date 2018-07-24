@@ -9,9 +9,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
@@ -112,14 +112,14 @@ func TestSocketPVAcceptDeadline(t *testing.T) {
 		sc = NewSocketPV(
 			log.TestingLogger(),
 			"127.0.0.1:0",
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 	)
 	defer sc.Stop()
 
 	SocketPVAcceptDeadline(time.Millisecond)(sc)
 
-	assert.Equal(t, sc.Start().(cmn.Error).Cause(), ErrConnWaitTimeout)
+	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
 }
 
 func TestSocketPVDeadline(t *testing.T) {
@@ -129,7 +129,7 @@ func TestSocketPVDeadline(t *testing.T) {
 		sc      = NewSocketPV(
 			log.TestingLogger(),
 			addr,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 	)
 
@@ -152,7 +152,7 @@ func TestSocketPVDeadline(t *testing.T) {
 
 		_, err = p2pconn.MakeSecretConnection(
 			conn,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 		if err == nil {
 			break
@@ -165,20 +165,20 @@ func TestSocketPVDeadline(t *testing.T) {
 	time.Sleep(20 * time.Microsecond)
 
 	_, err := sc.getPubKey()
-	assert.Equal(t, err.(cmn.Error).Cause(), ErrConnTimeout)
+	assert.Equal(t, err.(cmn.Error).Data(), ErrConnTimeout)
 }
 
 func TestSocketPVWait(t *testing.T) {
 	sc := NewSocketPV(
 		log.TestingLogger(),
 		"127.0.0.1:0",
-		crypto.GenPrivKeyEd25519(),
+		ed25519.GenPrivKey(),
 	)
 	defer sc.Stop()
 
 	SocketPVConnWait(time.Millisecond)(sc)
 
-	assert.Equal(t, sc.Start().(cmn.Error).Cause(), ErrConnWaitTimeout)
+	assert.Equal(t, sc.Start().(cmn.Error).Data(), ErrConnWaitTimeout)
 }
 
 func TestRemoteSignerRetry(t *testing.T) {
@@ -214,14 +214,14 @@ func TestRemoteSignerRetry(t *testing.T) {
 		cmn.RandStr(12),
 		ln.Addr().String(),
 		types.NewMockPV(),
-		crypto.GenPrivKeyEd25519(),
+		ed25519.GenPrivKey(),
 	)
 	defer rs.Stop()
 
 	RemoteSignerConnDeadline(time.Millisecond)(rs)
 	RemoteSignerConnRetries(retries)(rs)
 
-	assert.Equal(t, rs.Start().(cmn.Error).Cause(), ErrDialRetryMax)
+	assert.Equal(t, rs.Start().(cmn.Error).Data(), ErrDialRetryMax)
 
 	select {
 	case attempts := <-attemptc:
@@ -245,12 +245,12 @@ func testSetupSocketPair(
 			chainID,
 			addr,
 			privVal,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 		sc = NewSocketPV(
 			logger,
 			addr,
-			crypto.GenPrivKeyEd25519(),
+			ed25519.GenPrivKey(),
 		)
 	)
 

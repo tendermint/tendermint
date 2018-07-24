@@ -7,7 +7,8 @@ import (
 	"io/ioutil"
 
 	crypto "github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // ID is a hex-encoded crypto.Address
@@ -70,7 +71,7 @@ func LoadNodeKey(filePath string) (*NodeKey, error) {
 }
 
 func genNodeKey(filePath string) (*NodeKey, error) {
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	nodeKey := &NodeKey{
 		PrivKey: privKey,
 	}

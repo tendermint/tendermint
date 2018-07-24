@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 const defaultCapacity = 0
@@ -49,7 +49,7 @@ func (b *EventBus) OnStart() error {
 }
 
 func (b *EventBus) OnStop() {
-	b.pubsub.OnStop()
+	b.pubsub.Stop()
 }
 
 func (b *EventBus) Subscribe(ctx context.Context, subscriber string, query tmpubsub.Query, out chan<- interface{}) error {

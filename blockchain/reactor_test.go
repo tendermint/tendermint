@@ -4,9 +4,9 @@ import (
 	"net"
 	"testing"
 
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -206,3 +206,4 @@ func (tp *bcrTestPeer) IsPersistent() bool                   { return true }
 func (tp *bcrTestPeer) Get(s string) interface{}             { return s }
 func (tp *bcrTestPeer) Set(string, interface{})              {}
 func (tp *bcrTestPeer) RemoteIP() net.IP                     { return []byte{127, 0, 0, 1} }
+func (tp *bcrTestPeer) OriginalAddr() *p2p.NetAddress        { return nil }

@@ -14,8 +14,8 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
@@ -38,7 +38,7 @@ func newMempoolWithApp(cc proxy.ClientCreator) *Mempool {
 	return mempool
 }
 
-func ensureNoFire(t *testing.T, ch <-chan int64, timeoutMS int) {
+func ensureNoFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:
@@ -47,7 +47,7 @@ func ensureNoFire(t *testing.T, ch <-chan int64, timeoutMS int) {
 	}
 }
 
-func ensureFire(t *testing.T, ch <-chan int64, timeoutMS int) {
+func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	timer := time.NewTimer(time.Duration(timeoutMS) * time.Millisecond)
 	select {
 	case <-ch:

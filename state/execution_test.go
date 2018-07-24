@@ -10,10 +10,10 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -149,6 +149,89 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	}
 }
 
+func TestUpdateValidators(t *testing.T) {
+	pubkey1 := ed25519.GenPrivKey().PubKey()
+	val1 := types.NewValidator(pubkey1, 10)
+	pubkey2 := ed25519.GenPrivKey().PubKey()
+	val2 := types.NewValidator(pubkey2, 20)
+
+	testCases := []struct {
+		name string
+
+		currentSet  *types.ValidatorSet
+		abciUpdates []abci.Validator
+
+		resultingSet *types.ValidatorSet
+		shouldErr    bool
+	}{
+		{
+			"adding a validator is OK",
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), 20}},
+
+			types.NewValidatorSet([]*types.Validator{val1, val2}),
+			false,
+		},
+		{
+			"updating a validator is OK",
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey1), 20}},
+
+			types.NewValidatorSet([]*types.Validator{types.NewValidator(pubkey1, 20)}),
+			false,
+		},
+		{
+			"removing a validator is OK",
+
+			types.NewValidatorSet([]*types.Validator{val1, val2}),
+			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), 0}},
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			false,
+		},
+
+		{
+			"removing a non-existing validator results in error",
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), 0}},
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			true,
+		},
+
+		{
+			"adding a validator with negative power results in error",
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), -100}},
+
+			types.NewValidatorSet([]*types.Validator{val1}),
+			true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := updateValidators(tc.currentSet, tc.abciUpdates)
+			if tc.shouldErr {
+				assert.Error(t, err)
+			} else {
+				require.Equal(t, tc.resultingSet.Size(), tc.currentSet.Size())
+
+				assert.Equal(t, tc.resultingSet.TotalVotingPower(), tc.currentSet.TotalVotingPower())
+
+				assert.Equal(t, tc.resultingSet.Validators[0].Address, tc.currentSet.Validators[0].Address)
+				if tc.resultingSet.Size() > 1 {
+					assert.Equal(t, tc.resultingSet.Validators[1].Address, tc.currentSet.Validators[1].Address)
+				}
+			}
+		})
+	}
+}
+
 //----------------------------------------------------------------------------
 
 // make some bogus txs
@@ -163,7 +246,7 @@ func state(nVals, height int) (State, dbm.DB) {
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
 		secret := []byte(fmt.Sprintf("test%d", i))
-		pk := crypto.GenPrivKeyEd25519FromSecret(secret)
+		pk := ed25519.GenPrivKeyFromSecret(secret)
 		vals[i] = types.GenesisValidator{
 			pk.PubKey(), 1000, fmt.Sprintf("test%d", i),
 		}

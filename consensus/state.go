@@ -10,8 +10,8 @@ import (
 	"time"
 
 	fail "github.com/ebuchman/fail-test"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -81,7 +81,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.Mutex
+	mtx sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -192,15 +192,15 @@ func (cs *ConsensusState) String() string {
 
 // GetState returns a copy of the chain state.
 func (cs *ConsensusState) GetState() sm.State {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.state.Copy()
 }
 
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	rs := cs.RoundState // copy
 	return &rs
@@ -208,24 +208,24 @@ func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 
 // GetRoundStateJSON returns a json of RoundState, marshalled using go-amino.
 func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	return cdc.MarshalJSON(cs.RoundState)
 }
 
 // GetRoundStateSimpleJSON returns a json of RoundStateSimple, marshalled using go-amino.
 func (cs *ConsensusState) GetRoundStateSimpleJSON() ([]byte, error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
 }
 
 // GetValidators returns a copy of the current validators.
 func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
@@ -245,8 +245,8 @@ func (cs *ConsensusState) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 
 // LoadCommit loads the commit for a given height.
 func (cs *ConsensusState) LoadCommit(height int64) *types.Commit {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	if height == cs.blockStore.Height() {
 		return cs.blockStore.LoadSeenCommit(height)
 	}
@@ -314,16 +314,8 @@ func (cs *ConsensusState) startRoutines(maxSteps int) {
 
 // OnStop implements cmn.Service. It stops all routines and waits for the WAL to finish.
 func (cs *ConsensusState) OnStop() {
-	cs.BaseService.OnStop()
-
 	cs.evsw.Stop()
-
 	cs.timeoutTicker.Stop()
-
-	// Make BaseService.Wait() wait until cs.wal.Wait()
-	if cs.IsRunning() {
-		cs.wal.Wait()
-	}
 }
 
 // Wait waits for the the main routine to return.
@@ -579,8 +571,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case height := <-cs.mempool.TxsAvailable():
-			cs.handleTxsAvailable(height)
+		case <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable()
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
 			// handles proposals, block parts, votes
@@ -603,6 +595,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 
 			// close wal now that we're done writing to it
 			cs.wal.Stop()
+			cs.wal.Wait()
 
 			close(cs.done)
 			return
@@ -624,7 +617,7 @@ func (cs *ConsensusState) handleMsg(mi msgInfo) {
 		err = cs.setProposal(msg.Proposal)
 	case *BlockPartMessage:
 		// if the proposal is complete, we'll enterPrevote or tryFinalizeCommit
-		_, err = cs.addProposalBlockPart(msg.Height, msg.Part)
+		_, err = cs.addProposalBlockPart(msg, peerID)
 		if err != nil && msg.Round != cs.Round {
 			cs.Logger.Debug("Received block part from wrong round", "height", cs.Height, "csRound", cs.Round, "blockRound", msg.Round)
 			err = nil
@@ -690,11 +683,11 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 
 }
 
-func (cs *ConsensusState) handleTxsAvailable(height int64) {
+func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	cs.enterPropose(height, 0)
+	cs.enterPropose(cs.Height, 0)
 }
 
 //-----------------------------------------------------------------------------
@@ -932,7 +925,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	}
 
 	// Mempool validated transactions
-	txs := cs.mempool.Reap(cs.config.MaxBlockSizeTxs)
+	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
 	evidence := cs.evpool.PendingEvidence()
 	block.AddEvidence(evidence)
@@ -1399,17 +1392,22 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 
 // NOTE: block is not necessarily valid.
 // Asynchronously triggers either enterPrevote (before we timeout of propose) or tryFinalizeCommit, once we have the full block.
-func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part) (added bool, err error) {
+func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p.ID) (added bool, err error) {
+	height, round, part := msg.Height, msg.Round, msg.Part
+
 	// Blocks might be reused, so round mismatch is OK
 	if cs.Height != height {
-		cs.Logger.Debug("Received block part from wrong height", "height", height)
+		cs.Logger.Debug("Received block part from wrong height", "height", height, "round", round)
 		return false, nil
 	}
 
 	// We're not expecting a block part.
 	if cs.ProposalBlockParts == nil {
-		cs.Logger.Info("Received a block part when we're not expecting any", "height", height)
-		return false, nil // TODO: bad peer? Return error?
+		// NOTE: this can happen when we've gone to a higher round and
+		// then receive parts from the previous round - not necessarily a bad peer.
+		cs.Logger.Info("Received a block part when we're not expecting any",
+			"height", height, "round", round, "index", part.Index, "peer", peerID)
+		return false, nil
 	}
 
 	added, err = cs.ProposalBlockParts.AddPart(part)
@@ -1443,7 +1441,7 @@ func (cs *ConsensusState) addProposalBlockPart(height int64, part *types.Part) (
 			// procedure at this point.
 		}
 
-		if cs.Step == cstypes.RoundStepPropose && cs.isProposalComplete() {
+		if cs.Step <= cstypes.RoundStepPropose && cs.isProposalComplete() {
 			// Move onto the next step
 			cs.enterPrevote(height, cs.Round)
 		} else if cs.Step == cstypes.RoundStepCommit {

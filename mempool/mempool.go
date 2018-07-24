@@ -11,10 +11,10 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	auto "github.com/tendermint/tmlibs/autofile"
-	"github.com/tendermint/tmlibs/clist"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	auto "github.com/tendermint/tendermint/libs/autofile"
+	"github.com/tendermint/tendermint/libs/clist"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/proxy"
@@ -57,6 +57,11 @@ var (
 	ErrMempoolIsFull = errors.New("Mempool is full")
 )
 
+// TxID is the hex encoded hash of the bytes as a types.Tx.
+func TxID(tx []byte) string {
+	return fmt.Sprintf("%X", types.Tx(tx).Hash())
+}
+
 // Mempool is an ordered in-memory pool for transactions before they are proposed in a consensus
 // round. Transaction validity is checked using the CheckTx abci message before the transaction is
 // added to the pool. The Mempool uses a concurrent list structure for storing transactions that
@@ -73,7 +78,7 @@ type Mempool struct {
 	recheckCursor        *clist.CElement // next expected response
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool
-	txsAvailable         chan int64 // fires the next height once for each height, when the mempool is not empty
+	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -125,7 +130,7 @@ func NewMempool(
 // ensuring it will trigger once every height when transactions are available.
 // NOTE: not thread safe - should only be called once, on startup
 func (mem *Mempool) EnableTxsAvailable() {
-	mem.txsAvailable = make(chan int64, 1)
+	mem.txsAvailable = make(chan struct{}, 1)
 }
 
 // SetLogger sets the Logger.
@@ -288,11 +293,11 @@ func (mem *Mempool) resCbNormal(req *abci.Request, res *abci.Response) {
 				tx:      tx,
 			}
 			mem.txs.PushBack(memTx)
-			mem.logger.Info("Added good transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
+			mem.logger.Info("Added good transaction", "tx", TxID(tx), "res", r, "total", mem.Size())
 			mem.notifyTxsAvailable()
 		} else {
 			// ignore bad transaction
-			mem.logger.Info("Rejected bad transaction", "tx", fmt.Sprintf("%X", types.Tx(tx).Hash()), "res", r)
+			mem.logger.Info("Rejected bad transaction", "tx", TxID(tx), "res", r)
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(tx)
@@ -343,7 +348,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 // TxsAvailable returns a channel which fires once for every height,
 // and only when transactions are available in the mempool.
 // NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
-func (mem *Mempool) TxsAvailable() <-chan int64 {
+func (mem *Mempool) TxsAvailable() <-chan struct{} {
 	return mem.txsAvailable
 }
 
@@ -353,11 +358,11 @@ func (mem *Mempool) notifyTxsAvailable() {
 	}
 	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
 		// channel cap is 1, so this will send once
+		mem.notifiedTxsAvailable = true
 		select {
-		case mem.txsAvailable <- mem.height + 1:
+		case mem.txsAvailable <- struct{}{}:
 		default:
 		}
-		mem.notifiedTxsAvailable = true
 	}
 }
 

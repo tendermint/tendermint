@@ -15,13 +15,19 @@ import (
 	"golang.org/x/net/netutil"
 
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 // Config is an RPC server configuration.
 type Config struct {
 	MaxOpenConnections int
 }
+
+const (
+	// maxBodyBytes controls the maximum number of bytes the
+	// server will read parsing the request body.
+	maxBodyBytes = int64(1000000) // 1MB
+)
 
 // StartHTTPServer starts an HTTP server on listenAddr with the given handler.
 // It wraps handler with RecoverAndLogHandler.
@@ -53,7 +59,7 @@ func StartHTTPServer(
 	go func() {
 		err := http.Serve(
 			listener,
-			RecoverAndLogHandler(handler, logger),
+			RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		)
 		logger.Error("RPC HTTP server stopped", "err", err)
 	}()
@@ -99,7 +105,7 @@ func StartHTTPAndTLSServer(
 	go func() {
 		err := http.ServeTLS(
 			listener,
-			RecoverAndLogHandler(handler, logger),
+			RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 			certFile,
 			keyFile,
 		)
@@ -201,4 +207,14 @@ func (w *ResponseWriterWrapper) WriteHeader(status int) {
 // implements http.Hijacker
 func (w *ResponseWriterWrapper) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return w.ResponseWriter.(http.Hijacker).Hijack()
+}
+
+type maxBytesHandler struct {
+	h http.Handler
+	n int64
+}
+
+func (h maxBytesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, h.n)
+	h.h.ServeHTTP(w, r)
 }

@@ -14,10 +14,9 @@ test/p2p/data/
 test/logs
 coverage.txt
 docs/_build
-docs/tools
 *.log
 abci-cli
-abci/types/types.pb.go
+docs/node_modules/
 
 scripts/wal2json/wal2json
 scripts/cutWALUntil/cutWALUntil
@@ -27,3 +26,10 @@ scripts/cutWALUntil/cutWALUntil
 
 libs/pubsub/query/fuzz_test/output
 shunit2
+
+*/vendor
+*/.glide
+.terraform
+terraform.tfstate
+terraform.tfstate.backup
+terraform.tfstate.d

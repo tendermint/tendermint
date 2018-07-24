@@ -18,9 +18,9 @@ import (
 	"github.com/pkg/errors"
 
 	amino "github.com/tendermint/go-amino"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
 )
 
 // RegisterRPCFuncs adds a route for each function in the funcMap, as well as general jsonrpc and websocket handlers for all functions.
@@ -294,7 +294,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 			continue
 		}
 
-		v, err, ok := nonJSONToArg(cdc, argType, arg)
+		v, err, ok := nonJSONStringToArg(cdc, argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +303,7 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 			continue
 		}
 
-		values[i], err = _jsonStringToArg(cdc, argType, arg)
+		values[i], err = jsonStringToArg(cdc, argType, arg)
 		if err != nil {
 			return nil, err
 		}
@@ -312,26 +312,64 @@ func httpParamsToArgs(rpcFunc *RPCFunc, cdc *amino.Codec, r *http.Request) ([]re
 	return values, nil
 }
 
-func _jsonStringToArg(cdc *amino.Codec, ty reflect.Type, arg string) (reflect.Value, error) {
-	v := reflect.New(ty)
-	err := cdc.UnmarshalJSON([]byte(arg), v.Interface())
+func jsonStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error) {
+	rv := reflect.New(rt)
+	err := cdc.UnmarshalJSON([]byte(arg), rv.Interface())
 	if err != nil {
-		return v, err
+		return rv, err
 	}
-	v = v.Elem()
-	return v, nil
+	rv = rv.Elem()
+	return rv, nil
 }
 
-func nonJSONToArg(cdc *amino.Codec, ty reflect.Type, arg string) (reflect.Value, error, bool) {
+func nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
+	if rt.Kind() == reflect.Ptr {
+		rv_, err, ok := nonJSONStringToArg(cdc, rt.Elem(), arg)
+		if err != nil {
+			return reflect.Value{}, err, false
+		} else if ok {
+			rv := reflect.New(rt.Elem())
+			rv.Elem().Set(rv_)
+			return rv, nil, true
+		} else {
+			return reflect.Value{}, nil, false
+		}
+	} else {
+		return _nonJSONStringToArg(cdc, rt, arg)
+	}
+}
+
+// NOTE: rt.Kind() isn't a pointer.
+func _nonJSONStringToArg(cdc *amino.Codec, rt reflect.Type, arg string) (reflect.Value, error, bool) {
+	isIntString := RE_INT.Match([]byte(arg))
 	isQuotedString := strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)
 	isHexString := strings.HasPrefix(strings.ToLower(arg), "0x")
-	expectingString := ty.Kind() == reflect.String
-	expectingByteSlice := ty.Kind() == reflect.Slice && ty.Elem().Kind() == reflect.Uint8
+
+	var expectingString, expectingByteSlice, expectingInt bool
+	switch rt.Kind() {
+	case reflect.Int, reflect.Uint, reflect.Int8, reflect.Uint8, reflect.Int16, reflect.Uint16, reflect.Int32, reflect.Uint32, reflect.Int64, reflect.Uint64:
+		expectingInt = true
+	case reflect.String:
+		expectingString = true
+	case reflect.Slice:
+		expectingByteSlice = rt.Elem().Kind() == reflect.Uint8
+	}
+
+	if isIntString && expectingInt {
+		qarg := `"` + arg + `"`
+		// jsonStringToArg
+		rv, err := jsonStringToArg(cdc, rt, qarg)
+		if err != nil {
+			return rv, err, false
+		} else {
+			return rv, nil, true
+		}
+	}
 
 	if isHexString {
 		if !expectingString && !expectingByteSlice {
 			err := errors.Errorf("Got a hex string arg, but expected '%s'",
-				ty.Kind().String())
+				rt.Kind().String())
 			return reflect.ValueOf(nil), err, false
 		}
 
@@ -340,7 +378,7 @@ func nonJSONToArg(cdc *amino.Codec, ty reflect.Type, arg string) (reflect.Value,
 		if err != nil {
 			return reflect.ValueOf(nil), err, false
 		}
-		if ty.Kind() == reflect.String {
+		if rt.Kind() == reflect.String {
 			return reflect.ValueOf(string(value)), nil, true
 		}
 		return reflect.ValueOf([]byte(value)), nil, true
@@ -406,7 +444,13 @@ type wsConnection struct {
 // description of how to configure ping period and pong wait time. NOTE: if the
 // write buffer is full, pongs may be dropped, which may cause clients to
 // disconnect. see https://github.com/gorilla/websocket/issues/97
-func NewWSConnection(baseConn *websocket.Conn, funcMap map[string]*RPCFunc, cdc *amino.Codec, options ...func(*wsConnection)) *wsConnection {
+func NewWSConnection(
+	baseConn *websocket.Conn,
+	funcMap map[string]*RPCFunc,
+	cdc *amino.Codec,
+	options ...func(*wsConnection),
+) *wsConnection {
+	baseConn.SetReadLimit(maxBodyBytes)
 	wsc := &wsConnection{
 		remoteAddr:        baseConn.RemoteAddr().String(),
 		baseConn:          baseConn,

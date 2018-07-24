@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- [Install tendermint](/docs/install.rst)
+- [Install tendermint](/docs/install.md)
 - [Install docker](https://docs.docker.com/engine/installation/)
 - [Install docker-compose](https://docs.docker.com/compose/install/)
 

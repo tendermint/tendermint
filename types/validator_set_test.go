@@ -11,8 +11,63 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	crypto "github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+func TestValidatorSetBasic(t *testing.T) {
+	for _, vset := range []*ValidatorSet{NewValidatorSet([]*Validator{}), NewValidatorSet(nil)} {
+		assert.Panics(t, func() { vset.IncrementAccum(1) })
+
+		assert.EqualValues(t, vset, vset.Copy())
+		assert.False(t, vset.HasAddress([]byte("some val")))
+		idx, val := vset.GetByAddress([]byte("some val"))
+		assert.Equal(t, -1, idx)
+		assert.Nil(t, val)
+		addr, val := vset.GetByIndex(-100)
+		assert.Nil(t, addr)
+		assert.Nil(t, val)
+		addr, val = vset.GetByIndex(0)
+		assert.Nil(t, addr)
+		assert.Nil(t, val)
+		addr, val = vset.GetByIndex(100)
+		assert.Nil(t, addr)
+		assert.Nil(t, val)
+		assert.Zero(t, vset.Size())
+		assert.Equal(t, int64(0), vset.TotalVotingPower())
+		assert.Nil(t, vset.GetProposer())
+		assert.Nil(t, vset.Hash())
+
+		// add
+		val = randValidator_()
+		assert.True(t, vset.Add(val))
+		assert.True(t, vset.HasAddress(val.Address))
+		idx, val2 := vset.GetByAddress(val.Address)
+		assert.Equal(t, 0, idx)
+		assert.Equal(t, val, val2)
+		addr, val2 = vset.GetByIndex(0)
+		assert.Equal(t, []byte(val.Address), addr)
+		assert.Equal(t, val, val2)
+		assert.Equal(t, 1, vset.Size())
+		assert.Equal(t, val.VotingPower, vset.TotalVotingPower())
+		assert.Equal(t, val, vset.GetProposer())
+		assert.NotNil(t, vset.Hash())
+		assert.NotPanics(t, func() { vset.IncrementAccum(1) })
+
+		// update
+		assert.False(t, vset.Update(randValidator_()))
+		val.VotingPower = 100
+		assert.True(t, vset.Update(val))
+
+		// remove
+		val2, removed := vset.Remove(randValidator_().Address)
+		assert.Nil(t, val2)
+		assert.False(t, removed)
+		val2, removed = vset.Remove(val.Address)
+		assert.Equal(t, val.Address, val2.Address)
+		assert.True(t, removed)
+	}
+}
 
 func TestCopy(t *testing.T) {
 	vset := randValidatorSet(10)
@@ -33,7 +88,7 @@ func BenchmarkValidatorSetCopy(b *testing.B) {
 	b.StopTimer()
 	vset := NewValidatorSet([]*Validator{})
 	for i := 0; i < 1000; i++ {
-		privKey := crypto.GenPrivKeyEd25519()
+		privKey := ed25519.GenPrivKey()
 		pubKey := privKey.PubKey()
 		val := NewValidator(pubKey, 0)
 		if !vset.Add(val) {
@@ -197,7 +252,7 @@ func newValidator(address []byte, power int64) *Validator {
 func randPubKey() crypto.PubKey {
 	var pubKey [32]byte
 	copy(pubKey[:], cmn.RandBytes(32))
-	return crypto.PubKeyEd25519(pubKey)
+	return ed25519.PubKeyEd25519(pubKey)
 }
 
 func randValidator_() *Validator {
@@ -314,7 +369,7 @@ func TestSafeSubClip(t *testing.T) {
 //-------------------------------------------------------------------
 
 func TestValidatorSetVerifyCommit(t *testing.T) {
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	v1 := NewValidator(pubKey, 1000)
 	vset := NewValidatorSet([]*Validator{v1})

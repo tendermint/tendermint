@@ -11,10 +11,10 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	//auto "github.com/tendermint/tmlibs/autofile"
-	cmn "github.com/tendermint/tmlibs/common"
-	dbm "github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	//auto "github.com/tendermint/tendermint/libs/autofile"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -273,7 +273,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 			ChainId:         h.genDoc.ChainID,
 			ConsensusParams: csParams,
 			Validators:      validators,
-			AppStateBytes:   h.genDoc.AppStateJSON,
+			AppStateBytes:   h.genDoc.AppState,
 		}
 		res, err := proxyApp.Consensus().InitChainSync(req)
 		if err != nil {

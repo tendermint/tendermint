@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"net"
 
-	crypto "github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p/conn"
@@ -135,7 +135,7 @@ func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitc
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{
-		PrivKey: crypto.GenPrivKeyEd25519(),
+		PrivKey: ed25519.GenPrivKey(),
 	}
 	sw := NewSwitch(cfg)
 	sw.SetLogger(log.TestingLogger())

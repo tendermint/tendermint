@@ -56,6 +56,14 @@ func TestTrustMetricConfig(t *testing.T) {
 	tm.Wait()
 }
 
+func TestTrustMetricCopyNilPointer(t *testing.T) {
+	var tm *TrustMetric
+
+	ctm := tm.Copy()
+
+	assert.Nil(t, ctm)
+}
+
 // XXX: This test fails non-deterministically
 func _TestTrustMetricStopPause(t *testing.T) {
 	// The TestTicker will provide manual control over

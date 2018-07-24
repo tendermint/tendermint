@@ -2,8 +2,8 @@ package types
 
 import (
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tmlibs/common"
-	"github.com/tendermint/tmlibs/merkle"
+	"github.com/tendermint/tendermint/crypto/merkle"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 //-----------------------------------------------------------------------------
@@ -24,15 +24,16 @@ func (a ABCIResult) Hash() []byte {
 // ABCIResults wraps the deliver tx results to return a proof
 type ABCIResults []ABCIResult
 
-// NewResults creates ABCIResults from ResponseDeliverTx
-func NewResults(del []*abci.ResponseDeliverTx) ABCIResults {
-	res := make(ABCIResults, len(del))
-	for i, d := range del {
+// NewResults creates ABCIResults from the list of ResponseDeliverTx.
+func NewResults(responses []*abci.ResponseDeliverTx) ABCIResults {
+	res := make(ABCIResults, len(responses))
+	for i, d := range responses {
 		res[i] = NewResultFromResponse(d)
 	}
 	return res
 }
 
+// NewResultFromResponse creates ABCIResult from ResponseDeliverTx.
 func NewResultFromResponse(response *abci.ResponseDeliverTx) ABCIResult {
 	return ABCIResult{
 		Code: response.Code,
@@ -51,6 +52,8 @@ func (a ABCIResults) Bytes() []byte {
 
 // Hash returns a merkle hash of all results
 func (a ABCIResults) Hash() []byte {
+	// NOTE: we copy the impl of the merkle tree for txs -
+	// we should be consistent and either do it for both or not.
 	return merkle.SimpleHashFromHashers(a.toHashers())
 }
 

@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tmlibs/common"
 )
 
 // TODO: type ?
@@ -67,7 +68,7 @@ func (pv *FilePV) GetPubKey() crypto.PubKey {
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
 func GenFilePV(filePath string) *FilePV {
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	return &FilePV{
 		Address:  privKey.PubKey().Address(),
 		PubKey:   privKey.PubKey(),
@@ -90,6 +91,10 @@ func LoadFilePV(filePath string) *FilePV {
 	if err != nil {
 		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
+
+	// overwrite pubkey and address for convenience
+	pv.PubKey = pv.PrivKey.PubKey()
+	pv.Address = pv.PubKey.Address()
 
 	pv.filePath = filePath
 	return pv
@@ -287,7 +292,7 @@ func (pv *FilePV) saveSigned(height int64, round int, step int8,
 func (pv *FilePV) SignHeartbeat(chainID string, heartbeat *types.Heartbeat) error {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
-	sig, err:= pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
+	sig, err := pv.PrivKey.Sign(heartbeat.SignBytes(chainID))
 	if err != nil {
 		return err
 	}

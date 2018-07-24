@@ -7,8 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	crypto "github.com/tendermint/tendermint/crypto"
-	cmn "github.com/tendermint/tmlibs/common"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 type kvstoreConn struct {
@@ -35,9 +35,9 @@ func makeKVStoreConnPair() (fooConn, barConn kvstoreConn) {
 func makeSecretConnPair(tb testing.TB) (fooSecConn, barSecConn *SecretConnection) {
 
 	var fooConn, barConn = makeKVStoreConnPair()
-	var fooPrvKey = crypto.GenPrivKeyEd25519()
+	var fooPrvKey = ed25519.GenPrivKey()
 	var fooPubKey = fooPrvKey.PubKey()
-	var barPrvKey = crypto.GenPrivKeyEd25519()
+	var barPrvKey = ed25519.GenPrivKey()
 	var barPubKey = barPrvKey.PubKey()
 
 	// Make connections from both sides in parallel.
@@ -105,7 +105,7 @@ func TestSecretConnectionReadWrite(t *testing.T) {
 	genNodeRunner := func(id string, nodeConn kvstoreConn, nodeWrites []string, nodeReads *[]string) cmn.Task {
 		return func(_ int) (interface{}, error, bool) {
 			// Initiate cryptographic private key and secret connection trhough nodeConn.
-			nodePrvKey := crypto.GenPrivKeyEd25519()
+			nodePrvKey := ed25519.GenPrivKey()
 			nodeSecretConn, err := MakeSecretConnection(nodeConn, nodePrvKey)
 			if err != nil {
 				t.Errorf("Failed to establish SecretConnection for node: %v", err)

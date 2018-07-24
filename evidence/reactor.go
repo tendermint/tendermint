@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/tendermint/go-amino"
-	clist "github.com/tendermint/tmlibs/clist"
-	"github.com/tendermint/tmlibs/log"
+	amino "github.com/tendermint/go-amino"
 
+	clist "github.com/tendermint/tendermint/libs/clist"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
 )
@@ -73,7 +73,7 @@ func (evR *EvidenceReactor) RemovePeer(peer p2p.Peer, reason interface{}) {
 // Receive implements Reactor.
 // It adds any received evidence to the evpool.
 func (evR *EvidenceReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) {
-	msg, err := DecodeMessage(msgBytes)
+	msg, err := decodeMsg(msgBytes)
 	if err != nil {
 		evR.Logger.Error("Error decoding message", "src", src, "chId", chID, "msg", msg, "err", err, "bytes", msgBytes)
 		evR.Switch.StopPeerForError(src, err)
@@ -204,11 +204,9 @@ func RegisterEvidenceMessages(cdc *amino.Codec) {
 		"tendermint/evidence/EvidenceListMessage", nil)
 }
 
-// DecodeMessage decodes a byte-array into a EvidenceMessage.
-func DecodeMessage(bz []byte) (msg EvidenceMessage, err error) {
+func decodeMsg(bz []byte) (msg EvidenceMessage, err error) {
 	if len(bz) > maxMsgSize {
-		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)",
-			len(bz), maxMsgSize)
+		return msg, fmt.Errorf("Msg exceeds max size (%d > %d)", len(bz), maxMsgSize)
 	}
 	err = cdc.UnmarshalBinaryBare(bz, &msg)
 	return

@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tmlibs/db"
-	"github.com/tendermint/tmlibs/log"
+	"github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/types"
 )
@@ -126,7 +126,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		eraseSeenCommitInDB   bool
 	}{
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 		},
@@ -137,35 +137,35 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:     newBlock(&header2, commitAtH10),
+			block:     newBlock(header2, commitAtH10),
 			parts:     uncontiguousPartSet,
 			wantPanic: "only save contiguous blocks", // and incomplete and uncontiguous parts
 		},
 
 		{
-			block:     newBlock(&header1, commitAtH10),
+			block:     newBlock(header1, commitAtH10),
 			parts:     incompletePartSet,
 			wantPanic: "only save complete block", // incomplete parts
 		},
 
 		{
-			block:             newBlock(&header1, commitAtH10),
+			block:             newBlock(header1, commitAtH10),
 			parts:             validPartSet,
 			seenCommit:        seenCommit1,
 			corruptCommitInDB: true, // Corrupt the DB's commit entry
-			wantPanic:         "Error reading block commit",
+			wantPanic:         "unmarshal to types.Commit failed",
 		},
 
 		{
-			block:            newBlock(&header1, commitAtH10),
+			block:            newBlock(header1, commitAtH10),
 			parts:            validPartSet,
 			seenCommit:       seenCommit1,
-			wantPanic:        "Error reading block",
+			wantPanic:        "unmarshal to types.BlockMeta failed",
 			corruptBlockInDB: true, // Corrupt the DB's block entry
 		},
 
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -174,16 +174,16 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		},
 
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
 			corruptSeenCommitInDB: true,
-			wantPanic:             "Error reading block seen commit",
+			wantPanic:             "unmarshal to types.Commit failed",
 		},
 
 		{
-			block:      newBlock(&header1, commitAtH10),
+			block:      newBlock(header1, commitAtH10),
 			parts:      validPartSet,
 			seenCommit: seenCommit1,
 
@@ -287,7 +287,7 @@ func TestLoadBlockPart(t *testing.T) {
 	db.Set(calcBlockPartKey(height, index), []byte("Tendermint"))
 	res, _, panicErr = doFn(loadPart)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "Error reading block part")
+	require.Contains(t, panicErr.Error(), "unmarshal to types.Part failed")
 
 	// 3. A good block serialized and saved to the DB should be retrievable
 	db.Set(calcBlockPartKey(height, index), cdc.MustMarshalBinaryBare(part1))
@@ -316,7 +316,7 @@ func TestLoadBlockMeta(t *testing.T) {
 	db.Set(calcBlockMetaKey(height), []byte("Tendermint-Meta"))
 	res, _, panicErr = doFn(loadMeta)
 	require.NotNil(t, panicErr, "expecting a non-nil panic")
-	require.Contains(t, panicErr.Error(), "Error reading block meta")
+	require.Contains(t, panicErr.Error(), "unmarshal to types.BlockMeta")
 
 	// 3. A good blockMeta serialized and saved to the DB should be retrievable
 	meta := &types.BlockMeta{}
@@ -375,7 +375,7 @@ func doFn(fn func() (interface{}, error)) (res interface{}, err error, panicErr 
 	return res, err, panicErr
 }
 
-func newBlock(hdr *types.Header, lastCommit *types.Commit) *types.Block {
+func newBlock(hdr types.Header, lastCommit *types.Commit) *types.Block {
 	return &types.Block{
 		Header:     hdr,
 		LastCommit: lastCommit,
