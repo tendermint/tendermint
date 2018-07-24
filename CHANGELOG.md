@@ -1,7 +1,5 @@
 # Changelog
 
-## TBA
-
 ## 0.22.5
 
 *July 23th, 2018*
@@ -15,7 +13,7 @@ IMPROVEMENTS:
 - [config] Increase default send/recv rates to 5 mB/s
 - [p2p] allow persistent peers to be private
 
-BUG FIXES
+BUG FIXES:
 - [mempool] fixed a race condition when `create_empty_blocks=false` where a
   transaction is published at an old height.
 - [p2p] dial external IP setup by `persistent_peers`, not internal NAT IP
