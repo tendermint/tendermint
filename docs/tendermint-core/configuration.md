@@ -99,7 +99,6 @@ laddr = "tcp://0.0.0.0:26656"
 seeds = ""
 
 # Comma separated list of nodes to keep persistent connections to
-# Do not add private peers to this list if you don't want them advertised
 persistent_peers = ""
 
 # UPNP port forwarding
@@ -121,10 +120,10 @@ max_num_peers = 50
 max_packet_msg_payload_size = 1024
 
 # Rate at which packets can be sent, in bytes/second
-send_rate = 512000
+send_rate = 5120000
 
 # Rate at which packets can be received, in bytes/second
-recv_rate = 512000
+recv_rate = 5120000
 
 # Set true to enable the peer-exchange reactor
 pex = true

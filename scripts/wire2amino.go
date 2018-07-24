@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/tendermint/go-amino"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/p2p"
@@ -58,7 +60,7 @@ func convertNodeKey(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var privKey crypto.PrivKeyEd25519
+	var privKey ed25519.PrivKeyEd25519
 	copy(privKey[:], nodeKey.PrivKey.Data)
 
 	nodeKeyNew := p2p.NodeKey{privKey}
@@ -77,10 +79,10 @@ func convertPrivVal(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var privKey crypto.PrivKeyEd25519
+	var privKey ed25519.PrivKeyEd25519
 	copy(privKey[:], privVal.PrivKey.Data)
 
-	var pubKey crypto.PubKeyEd25519
+	var pubKey ed25519.PubKeyEd25519
 	copy(pubKey[:], privVal.PubKey.Data)
 
 	privValNew := privval.FilePV{
@@ -120,7 +122,7 @@ func convertGenesis(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 	}
 
 	for _, v := range genesis.Validators {
-		var pubKey crypto.PubKeyEd25519
+		var pubKey ed25519.PubKeyEd25519
 		copy(pubKey[:], v.PubKey.Data)
 		genesisNew.Validators = append(
 			genesisNew.Validators,
@@ -142,7 +144,7 @@ func convertGenesis(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
 
 func main() {
 	cdc := amino.NewCodec()
-	crypto.RegisterAmino(cdc)
+	cryptoAmino.RegisterAmino(cdc)
 
 	args := os.Args[1:]
 	if len(args) != 1 {

@@ -2,11 +2,12 @@ package clist
 
 import (
 	"fmt"
-	"math/rand"
 	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func TestSmall(t *testing.T) {
@@ -131,7 +132,7 @@ func _TestGCRandom(t *testing.T) {
 		els = append(els, el)
 	}
 
-	for _, i := range rand.Perm(numElements) {
+	for _, i := range cmn.RandPerm(numElements) {
 		el := els[i]
 		l.Remove(el)
 		_ = el.Next()
@@ -189,7 +190,7 @@ func TestScanRightDeleteRandom(t *testing.T) {
 	// Remove an element, push back an element.
 	for i := 0; i < numTimes; i++ {
 		// Pick an element to remove
-		rmElIdx := rand.Intn(len(els))
+		rmElIdx := cmn.RandIntn(len(els))
 		rmEl := els[rmElIdx]
 
 		// Remove it
@@ -243,7 +244,7 @@ func TestWaitChan(t *testing.T) {
 		for i := 1; i < 100; i++ {
 			l.PushBack(i)
 			pushed++
-			time.Sleep(time.Duration(rand.Intn(100)) * time.Millisecond)
+			time.Sleep(time.Duration(cmn.RandIntn(100)) * time.Millisecond)
 		}
 		close(done)
 	}()

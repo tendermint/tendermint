@@ -1,5 +1,26 @@
 # Changelog
 
+## TBA
+
+## 0.22.5
+
+*July 23th, 2018*
+
+BREAKING CHANGES:
+- [crypto] Refactor `tendermint/crypto` into many subpackages
+- [libs/common] remove exponentially distributed random numbers
+
+IMPROVEMENTS:
+- [abci, libs/common] Generated gogoproto static marshaller methods
+- [config] Increase default send/recv rates to 5 mB/s
+- [p2p] allow persistent peers to be private
+
+BUG FIXES
+- [mempool] fixed a race condition when `create_empty_blocks=false` where a
+  transaction is published at an old height.
+- [p2p] dial external IP setup by `persistent_peers`, not internal NAT IP
+- [rpc] make `/status` RPC endpoint resistant to consensus halt
+
 ## 0.22.4
 
 *July 14th, 2018*
@@ -14,7 +35,8 @@ FEATURES:
 BUG FIXES:
 - [tools/tm-bench] Various fixes
 - [consensus] Wait for WAL to stop on shutdown
-- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
+- [abci] Fix #1891, pending requests cannot hang when abci server dies.
+  Previously a crash in BeginBlock could leave tendermint in broken state.
 
 ## 0.22.3
 

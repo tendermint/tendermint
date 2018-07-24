@@ -26,6 +26,7 @@ type Peer interface {
 	IsPersistent() bool // do we redial this peer when we disconnect
 	NodeInfo() NodeInfo // peer's info
 	Status() tmconn.ConnectionStatus
+	OriginalAddr() *NetAddress
 
 	Send(byte, []byte) bool
 	TrySend(byte, []byte) bool
@@ -38,11 +39,12 @@ type Peer interface {
 
 // peerConn contains the raw connection and its config.
 type peerConn struct {
-	outbound   bool
-	persistent bool
-	config     *config.P2PConfig
-	conn       net.Conn // source connection
-	ip         net.IP
+	outbound     bool
+	persistent   bool
+	config       *config.P2PConfig
+	conn         net.Conn // source connection
+	ip           net.IP
+	originalAddr *NetAddress // nil for inbound connections
 }
 
 // ID only exists for SecretConnection.
@@ -139,7 +141,7 @@ func newOutboundPeerConn(
 		return peerConn{}, cmn.ErrorWrap(err, "Error creating peer")
 	}
 
-	pc, err := newPeerConn(conn, config, true, persistent, ourNodePrivKey)
+	pc, err := newPeerConn(conn, config, true, persistent, ourNodePrivKey, addr)
 	if err != nil {
 		if cerr := conn.Close(); cerr != nil {
 			return peerConn{}, cmn.ErrorWrap(err, cerr.Error())
@@ -166,7 +168,7 @@ func newInboundPeerConn(
 
 	// TODO: issue PoW challenge
 
-	return newPeerConn(conn, config, false, false, ourNodePrivKey)
+	return newPeerConn(conn, config, false, false, ourNodePrivKey, nil)
 }
 
 func newPeerConn(
@@ -174,6 +176,7 @@ func newPeerConn(
 	cfg *config.P2PConfig,
 	outbound, persistent bool,
 	ourNodePrivKey crypto.PrivKey,
+	originalAddr *NetAddress,
 ) (pc peerConn, err error) {
 	conn := rawConn
 
@@ -200,10 +203,11 @@ func newPeerConn(
 
 	// Only the information we already have
 	return peerConn{
-		config:     cfg,
-		outbound:   outbound,
-		persistent: persistent,
-		conn:       conn,
+		config:       cfg,
+		outbound:     outbound,
+		persistent:   persistent,
+		conn:         conn,
+		originalAddr: originalAddr,
 	}, nil
 }
 
@@ -252,6 +256,15 @@ func (p *peer) IsPersistent() bool {
 // NodeInfo returns a copy of the peer's NodeInfo.
 func (p *peer) NodeInfo() NodeInfo {
 	return p.nodeInfo
+}
+
+// OriginalAddr returns the original address, which was used to connect with
+// the peer. Returns nil for inbound peers.
+func (p *peer) OriginalAddr() *NetAddress {
+	if p.peerConn.outbound {
+		return p.peerConn.originalAddr
+	}
+	return nil
 }
 
 // Status returns the peer's ConnectionStatus.

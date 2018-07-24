@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
 )
@@ -67,7 +68,7 @@ func (pv *FilePV) GetPubKey() crypto.PubKey {
 // GenFilePV generates a new validator with randomly generated private key
 // and sets the filePath, but does not call Save().
 func GenFilePV(filePath string) *FilePV {
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	return &FilePV{
 		Address:  privKey.PubKey().Address(),
 		PubKey:   privKey.PubKey(),

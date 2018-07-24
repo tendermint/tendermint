@@ -152,7 +152,6 @@ external_address = "{{ .P2P.ExternalAddress }}"
 seeds = "{{ .P2P.Seeds }}"
 
 # Comma separated list of nodes to keep persistent connections to
-# Do not add private peers to this list if you don't want them advertised
 persistent_peers = "{{ .P2P.PersistentPeers }}"
 
 # UPNP port forwarding

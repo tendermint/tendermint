@@ -7,7 +7,9 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
 //-------------------------------------------------------
@@ -61,12 +63,12 @@ func (tm2pb) Validator(val *Validator) abci.Validator {
 // TODO: add cases when new pubkey types are added to crypto
 func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 	switch pk := pubKey.(type) {
-	case crypto.PubKeyEd25519:
+	case ed25519.PubKeyEd25519:
 		return abci.PubKey{
 			Type: ABCIPubKeyTypeEd25519,
 			Data: pk[:],
 		}
-	case crypto.PubKeySecp256k1:
+	case secp256k1.PubKeySecp256k1:
 		return abci.PubKey{
 			Type: ABCIPubKeyTypeSecp256k1,
 			Data: pk[:],
@@ -161,14 +163,14 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 		if len(pubKey.Data) != sizeEd {
 			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeEd)
 		}
-		var pk crypto.PubKeyEd25519
+		var pk ed25519.PubKeyEd25519
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	case ABCIPubKeyTypeSecp256k1:
 		if len(pubKey.Data) != sizeSecp {
 			return nil, fmt.Errorf("Invalid size for PubKeyEd25519. Got %d, expected %d", len(pubKey.Data), sizeSecp)
 		}
-		var pk crypto.PubKeySecp256k1
+		var pk secp256k1.PubKeySecp256k1
 		copy(pk[:], pubKey.Data)
 		return pk, nil
 	default:

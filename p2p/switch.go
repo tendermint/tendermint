@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/p2p/conn"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/p2p/conn"
 )
 
 const (
@@ -281,8 +281,13 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	sw.stopAndRemovePeer(peer, reason)
 
 	if peer.IsPersistent() {
-		// NOTE: this is the self-reported addr, not the original we dialed
-		go sw.reconnectToPeer(peer.NodeInfo().NetAddress())
+		addr := peer.OriginalAddr()
+		if addr == nil {
+			// FIXME: persistent peers can't be inbound right now.
+			// self-reported address for inbound persistent peers
+			addr = peer.NodeInfo().NetAddress()
+		}
+		go sw.reconnectToPeer(addr)
 	}
 }
 

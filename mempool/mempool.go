@@ -78,7 +78,7 @@ type Mempool struct {
 	recheckCursor        *clist.CElement // next expected response
 	recheckEnd           *clist.CElement // re-checking stops here
 	notifiedTxsAvailable bool
-	txsAvailable         chan int64 // fires the next height once for each height, when the mempool is not empty
+	txsAvailable         chan struct{} // fires once for each height, when the mempool is not empty
 
 	// Keep a cache of already-seen txs.
 	// This reduces the pressure on the proxyApp.
@@ -130,7 +130,7 @@ func NewMempool(
 // ensuring it will trigger once every height when transactions are available.
 // NOTE: not thread safe - should only be called once, on startup
 func (mem *Mempool) EnableTxsAvailable() {
-	mem.txsAvailable = make(chan int64, 1)
+	mem.txsAvailable = make(chan struct{}, 1)
 }
 
 // SetLogger sets the Logger.
@@ -348,7 +348,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 // TxsAvailable returns a channel which fires once for every height,
 // and only when transactions are available in the mempool.
 // NOTE: the returned channel may be nil if EnableTxsAvailable was not called.
-func (mem *Mempool) TxsAvailable() <-chan int64 {
+func (mem *Mempool) TxsAvailable() <-chan struct{} {
 	return mem.txsAvailable
 }
 
@@ -358,11 +358,11 @@ func (mem *Mempool) notifyTxsAvailable() {
 	}
 	if mem.txsAvailable != nil && !mem.notifiedTxsAvailable {
 		// channel cap is 1, so this will send once
+		mem.notifiedTxsAvailable = true
 		select {
-		case mem.txsAvailable <- mem.height + 1:
+		case mem.txsAvailable <- struct{}{}:
 		default:
 		}
-		mem.notifiedTxsAvailable = true
 	}
 }
 
