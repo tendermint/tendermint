@@ -7,12 +7,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/tendermint/go-amino"
+	amino "github.com/tendermint/go-amino"
+
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
-
 	p2pconn "github.com/tendermint/tendermint/p2p/conn"
 	"github.com/tendermint/tendermint/types"
 )
@@ -33,7 +33,7 @@ var (
 )
 
 var (
-	acceptDeadline = time.Second + defaultAcceptDeadlineSeconds
+	acceptDeadline = time.Second * defaultAcceptDeadlineSeconds
 	connDeadline   = time.Second * defaultConnDeadlineSeconds
 	connHeartbeat  = time.Second * defaultConnHeartBeatSeconds
 )
