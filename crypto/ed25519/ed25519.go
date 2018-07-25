@@ -107,9 +107,12 @@ func GenPrivKey() PrivKeyEd25519 {
 }
 
 // genPrivKey generates a new ed25519 private key using the provided reader.
-func genPrivKey(reader io.Reader) PrivKeyEd25519 {
+func genPrivKey(rand io.Reader) PrivKeyEd25519 {
 	privKey := new([64]byte)
-	io.ReadFull(reader, privKey[:32])
+	_, err := io.ReadFull(rand, privKey[:32])
+	if err != nil {
+		panic(err)
+	}
 	// ed25519.MakePublicKey(privKey) alters the last 32 bytes of privKey.
 	// It places the pubkey in the last 32 bytes of privKey, and returns the
 	// public key.

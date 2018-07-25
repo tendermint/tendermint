@@ -85,9 +85,12 @@ func GenPrivKey() PrivKeySecp256k1 {
 }
 
 // genPrivKey generates a new secp256k1 private key using the provided reader.
-func genPrivKey(reader io.Reader) PrivKeySecp256k1 {
+func genPrivKey(rand io.Reader) PrivKeySecp256k1 {
 	privKeyBytes := [32]byte{}
-	io.ReadFull(reader, privKeyBytes[:])
+	_, err := io.ReadFull(rand, privKeyBytes[:])
+	if err != nil {
+		panic(err)
+	}
 	// crypto.CRandBytes is guaranteed to be 32 bytes long, so it can be
 	// casted to PrivKeySecp256k1.
 	return PrivKeySecp256k1(privKeyBytes)
