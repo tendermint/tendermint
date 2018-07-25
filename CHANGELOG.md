@@ -1,6 +1,16 @@
 # Changelog
 
-## TBA
+## 0.22.6
+
+*July 24th, 2018*
+
+BUG FIXES
+
+- [rpc] Fix `/blockchain` endpoint
+    - (#2049) Fix OOM attack by returning error on negative input
+    - Fix result length to have max 20 (instead of 21) block metas
+- [rpc] Validate height is non-negative in `/abci_query`
+- [Gopkg] Fix versions in the toml
 
 ## 0.22.5
 
