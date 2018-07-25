@@ -13,17 +13,13 @@ ENV REPO $GOPATH/src/github.com/tendermint/tendermint
 ENV GOBIN $GOPATH/bin
 WORKDIR $REPO
 
-# Install the vendored dependencies before copying code
+# Copy in the code
+COPY . $REPO
+
+# Install the vendored dependencies
 # docker caching prevents reinstall on code change!
-ADD Gopkg.toml Gopkg.toml
-ADD Gopkg.lock Gopkg.lock
-ADD Makefile Makefile
 RUN make get_tools
 RUN make get_vendor_deps
-
-# Now copy in the code
-# NOTE: this will overwrite whatever is in vendor/
-COPY . $REPO
 
 RUN go install ./cmd/tendermint
 RUN go install ./abci/cmd/abci-cli

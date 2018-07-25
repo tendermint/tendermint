@@ -77,6 +77,12 @@ jobs:
             set -ex
             export PATH="$GOBIN:$PATH"
             make metalinter
+      - run:
+          name: check_dep
+          command: |
+            set -ex
+            export PATH="$GOBIN:$PATH"
+            make check_dep
 
   test_abci_apps:
     <<: *defaults
