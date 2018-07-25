@@ -24,8 +24,13 @@ this new component accept new `Peer`s and dial them based on `NetAddress`.
 Responsible for emitting and connecting to Peers. The implementation of `Peer`
 is left to the transport, which implies that the chosen transport dictates the
 characteristics of the implementation handed back to the `Switch`. It is the
-place where we enforce low-level guards, like dropping connections from our own
-node.
+place where we enforce low-level guards[0]:
+
+* connections from our own node
+* handshake fails
+* upgrade to secret connection fails
+* protocol/app/... version doesn't match
+
 
 ``` go
 // PeerTransport proxies incoming and outgoing peer connections.
@@ -97,3 +102,7 @@ In Review.
 ### Neutral
 
 * multiplexed will be the default implementation
+
+[0] These guards could be potentially extended to be pluggable much like
+middlewares to express different concerns required by differentally configured
+environments.
