@@ -10,7 +10,11 @@ BUG FIXES
     - (#2049) Fix OOM attack by returning error on negative input
     - Fix result length to have max 20 (instead of 21) block metas
 - [rpc] Validate height is non-negative in `/abci_query`
-- [Gopkg] Fix versions in the toml
+- [consensus] (#2050) Include evidence in proposal block parts (previously evidence was
+  not being included in blocks!)
+- [p2p] (#2046) Close rejected inbound connections so file descriptor doesn't
+  leak
+- [Gopkg] (#2053) Fix versions in the toml
 
 ## 0.22.5
 
