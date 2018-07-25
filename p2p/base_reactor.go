@@ -1,8 +1,8 @@
 package p2p
 
 import (
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p/conn"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 type Reactor interface {
