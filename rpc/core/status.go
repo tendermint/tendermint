@@ -166,6 +166,9 @@ func getValidatorsWithTimeout(
 	case res := <-resultCh:
 		return res.lastBlockHeight, res.vals
 	case <-time.After(t):
+		if logger != nil {
+			logger.Error("Timed out querying validators from consensus", "timeout", t)
+		}
 		return -1, []*types.Validator{}
 	}
 }
