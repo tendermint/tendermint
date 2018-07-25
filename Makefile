@@ -246,8 +246,7 @@ metalinter_all:
 	@echo "--> Running linter (all)"
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
 
-
-DESTINATION = $(GOPATH)/src/github.com/tendermint/tendermint.com/slate/source/index.html.md
+DESTINATION = ./index.html.md
 
 rpc-docs:
 	cat rpc/core/slate_header.txt > $(DESTINATION)
