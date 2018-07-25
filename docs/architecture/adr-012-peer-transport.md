@@ -23,13 +23,15 @@ this new component accept new `Peer`s and dial them based on `NetAddress`.
 
 Responsible for emitting and connecting to Peers. The implementation of `Peer`
 is left to the transport, which implies that the chosen transport dictates the
-characteristics of the implementation handed back to the `Switch`. It is the
-place where we enforce low-level guards[0]:
+characteristics of the implementation handed back to the `Switch`. Each
+transport implementation is responsible to filter establishing peers specific
+to its domain, for the default multiplexed implementation the following will
+apply:
 
 * connections from our own node
 * handshake fails
 * upgrade to secret connection fails
-* protocol/app/... version doesn't match
+* prevent duplicate ip
 
 
 ``` go
