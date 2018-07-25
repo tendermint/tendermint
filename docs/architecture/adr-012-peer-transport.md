@@ -76,7 +76,7 @@ func NewSwitch(transport PeerTransport, opts ...SwitchOption) *Switch
 
 ## Status
 
-Proposed.
+In Review.
 
 ## Consequences
 
