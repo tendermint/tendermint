@@ -15,6 +15,10 @@ First iteraton in [#2067](https://github.com/tendermint/tendermint/issues/2067)
 
 ## Decision
 
+Transport concerns will be handled by a new component (`PeerTransport`) which
+will provide Peers at its boundary to the caller. In turn `Switch` will use
+this new component accept new `Peer`s and dial them based on `NetAddress`.
+
 ### PeerTransport
 
 Responsible for emitting and connecting to Peers. The implementation of `Peer`
@@ -82,10 +86,9 @@ In Review.
 
 ### Positive
 
-* free Switch from transport concerns
-* remove Switch dependency on P2PConfig
-* pluggable Peer implementation
-* dependency injection during tests
+* free Switch from transport concerns - simpler implementation
+* pluggable transport implementation - simpler test setup
+* remove Switch dependency on P2PConfig - easier to test
 
 ### Negative
 
