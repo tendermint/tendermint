@@ -3,4 +3,4 @@
 * [ ] Updated all relevant documentation in docs
 * [ ] Updated all code comments where relevant
 * [ ] Wrote tests
-* [ ] Updated CHANGELOG.md
+* [ ] Updated CHANGELOG_PENDING.md
