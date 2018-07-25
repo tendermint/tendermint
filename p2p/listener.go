@@ -151,7 +151,7 @@ func (l *DefaultListener) OnStop() {
 	l.listener.Close() // nolint: errcheck
 }
 
-// Accept connections and pass on the channel
+// Accept connections and pass on the channel.
 func (l *DefaultListener) listenRoutine() {
 	for {
 		conn, err := l.listener.Accept()
@@ -178,6 +178,8 @@ func (l *DefaultListener) listenRoutine() {
 
 // Connections returns a channel of inbound connections.
 // It gets closed when the listener closes.
+// It is the callers responsibility to close any connections received
+// over this channel.
 func (l *DefaultListener) Connections() <-chan net.Conn {
 	return l.connections
 }

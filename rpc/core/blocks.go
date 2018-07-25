@@ -64,25 +64,15 @@ import (
 //
 // <aside class="notice">Returns at most 20 items.</aside>
 func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
-	if minHeight == 0 {
-		minHeight = 1
-	}
-
-	if maxHeight == 0 {
-		maxHeight = blockStore.Height()
-	} else {
-		maxHeight = cmn.MinInt64(blockStore.Height(), maxHeight)
-	}
 
 	// maximum 20 block metas
 	const limit int64 = 20
-	minHeight = cmn.MaxInt64(minHeight, maxHeight-limit)
-
-	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
-
-	if minHeight > maxHeight {
-		return nil, fmt.Errorf("min height %d can't be greater than max height %d", minHeight, maxHeight)
+	var err error
+	minHeight, maxHeight, err = filterMinMax(blockStore.Height(), minHeight, maxHeight, limit)
+	if err != nil {
+		return nil, err
 	}
+	logger.Debug("BlockchainInfoHandler", "maxHeight", maxHeight, "minHeight", minHeight)
 
 	blockMetas := []*types.BlockMeta{}
 	for height := maxHeight; height >= minHeight; height-- {
@@ -91,6 +81,37 @@ func BlockchainInfo(minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, e
 	}
 
 	return &ctypes.ResultBlockchainInfo{blockStore.Height(), blockMetas}, nil
+}
+
+// error if either min or max are negative or min < max
+// if 0, use 1 for min, latest block height for max
+// enforce limit.
+// error if min > max
+func filterMinMax(height, min, max, limit int64) (int64, int64, error) {
+	// filter negatives
+	if min < 0 || max < 0 {
+		return min, max, fmt.Errorf("heights must be non-negative")
+	}
+
+	// adjust for default values
+	if min == 0 {
+		min = 1
+	}
+	if max == 0 {
+		max = height
+	}
+
+	// limit max to the height
+	max = cmn.MinInt64(height, max)
+
+	// limit min to within `limit` of max
+	// so the total number of blocks returned will be `limit`
+	min = cmn.MaxInt64(min, max-limit+1)
+
+	if min > max {
+		return min, max, fmt.Errorf("min height %d can't be greater than max height %d", min, max)
+	}
+	return min, max, nil
 }
 
 // Get block at a given height.
