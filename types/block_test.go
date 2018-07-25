@@ -19,11 +19,13 @@ func TestBlockAddEvidence(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	block := MakeBlock(h, txs, commit)
-	require.NotNil(t, block)
-
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
-	block.AddEvidence([]Evidence{ev})
+	evList := []Evidence{ev}
+
+	block := MakeBlock(h, txs, commit, evList)
+	require.NotNil(t, block)
+	require.Equal(t, 1, len(block.Evidence.Evidence))
+	require.NotNil(t, block.EvidenceHash)
 }
 
 func TestBlockValidateBasic(t *testing.T) {
@@ -33,11 +35,14 @@ func TestBlockValidateBasic(t *testing.T) {
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
-	voteSet, _, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	block := MakeBlock(h, txs, commit)
+	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	evList := []Evidence{ev}
+
+	block := MakeBlock(h, txs, commit, evList)
 	require.NotNil(t, block)
 
 	// proper block must pass
@@ -45,39 +50,39 @@ func TestBlockValidateBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	// tamper with NumTxs
-	block = MakeBlock(h, txs, commit)
+	block = MakeBlock(h, txs, commit, evList)
 	block.NumTxs++
 	err = block.ValidateBasic()
 	require.Error(t, err)
 
 	// remove 1/2 the commits
-	block = MakeBlock(h, txs, commit)
+	block = MakeBlock(h, txs, commit, evList)
 	block.LastCommit.Precommits = commit.Precommits[:commit.Size()/2]
 	block.LastCommit.hash = nil // clear hash or change wont be noticed
 	err = block.ValidateBasic()
 	require.Error(t, err)
 
 	// tamper with LastCommitHash
-	block = MakeBlock(h, txs, commit)
+	block = MakeBlock(h, txs, commit, evList)
 	block.LastCommitHash = []byte("something else")
 	err = block.ValidateBasic()
 	require.Error(t, err)
 
 	// tamper with data
-	block = MakeBlock(h, txs, commit)
+	block = MakeBlock(h, txs, commit, evList)
 	block.Data.Txs[0] = Tx("something else")
 	block.Data.hash = nil // clear hash or change wont be noticed
 	err = block.ValidateBasic()
 	require.Error(t, err)
 
 	// tamper with DataHash
-	block = MakeBlock(h, txs, commit)
+	block = MakeBlock(h, txs, commit, evList)
 	block.DataHash = cmn.RandBytes(len(block.DataHash))
 	err = block.ValidateBasic()
 	require.Error(t, err)
 
 	// tamper with evidence
-	block = MakeBlock(h, txs, commit)
+	block = MakeBlock(h, txs, commit, evList)
 	block.EvidenceHash = []byte("something else")
 	err = block.ValidateBasic()
 	require.Error(t, err)
@@ -85,13 +90,13 @@ func TestBlockValidateBasic(t *testing.T) {
 
 func TestBlockHash(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).Hash())
-	assert.Nil(t, MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil).Hash())
+	assert.Nil(t, MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Hash())
 }
 
 func TestBlockMakePartSet(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).MakePartSet(2))
 
-	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil).MakePartSet(1024)
+	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
 	assert.Equal(t, 1, partSet.Total())
 }
@@ -105,7 +110,10 @@ func TestBlockHashesTo(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit)
+	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	evList := []Evidence{ev}
+
+	block := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList)
 	block.ValidatorsHash = valSet.Hash()
 	assert.False(t, block.HashesTo([]byte{}))
 	assert.False(t, block.HashesTo([]byte("something else")))
@@ -113,7 +121,7 @@ func TestBlockHashesTo(t *testing.T) {
 }
 
 func TestBlockSize(t *testing.T) {
-	size := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil).Size()
+	size := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).Size()
 	if size <= 0 {
 		t.Fatal("Size of the block is zero or negative")
 	}
@@ -124,7 +132,7 @@ func TestBlockString(t *testing.T) {
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringIndented(""))
 	assert.Equal(t, "nil-Block", (*Block)(nil).StringShort())
 
-	block := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil)
+	block := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil)
 	assert.NotEqual(t, "nil-Block", block.String())
 	assert.NotEqual(t, "nil-Block", block.StringIndented(""))
 	assert.NotEqual(t, "nil-Block", block.StringShort())

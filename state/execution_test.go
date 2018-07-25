@@ -79,7 +79,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
+		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil)
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
 
@@ -138,7 +138,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
 
-		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
+		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
@@ -269,7 +269,7 @@ func state(nVals, height int) (State, dbm.DB) {
 }
 
 func makeBlock(state State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit))
+	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil)
 	return block
 }
 
