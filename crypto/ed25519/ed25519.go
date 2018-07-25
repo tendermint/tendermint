@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/subtle"
 	"fmt"
+	"io"
 
 	"github.com/tendermint/ed25519"
 	"github.com/tendermint/ed25519/extra25519"
@@ -102,8 +103,13 @@ func (privKey PrivKeyEd25519) ToCurve25519() *[PubKeyEd25519Size]byte {
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
 func GenPrivKey() PrivKeyEd25519 {
+	return genPrivKey(crypto.CReader())
+}
+
+// genPrivKey generates a new ed25519 private key using the provided reader.
+func genPrivKey(reader io.Reader) PrivKeyEd25519 {
 	privKey := new([64]byte)
-	copy(privKey[:32], crypto.CRandBytes(32))
+	io.ReadFull(reader, privKey[:32])
 	// ed25519.MakePublicKey(privKey) alters the last 32 bytes of privKey.
 	// It places the pubkey in the last 32 bytes of privKey, and returns the
 	// public key.
