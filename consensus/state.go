@@ -907,6 +907,8 @@ func (cs *ConsensusState) isProposalComplete() bool {
 }
 
 // Create the next block to propose and return it.
+// We really only need to return the parts, but the block
+// is returned for convenience so we can log the proposal block.
 // Returns nil block upon error.
 // NOTE: keep it side-effect free for clarity.
 func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
@@ -926,9 +928,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
-	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
 	evidence := cs.evpool.PendingEvidence()
-	block.AddEvidence(evidence)
+	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence)
 	return block, parts
 }
 

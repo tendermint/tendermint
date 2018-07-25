@@ -496,6 +496,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		maxPeers := sw.config.MaxNumPeers - DefaultMinNumOutboundPeers
 		if maxPeers <= sw.peers.Size() {
 			sw.Logger.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
+			inConn.Close()
 			continue
 		}
 
@@ -510,6 +511,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 	// cleanup
 }
 
+// closes conn if err is returned
 func (sw *Switch) addInboundPeerWithConfig(
 	conn net.Conn,
 	config *config.P2PConfig,

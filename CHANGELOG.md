@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.22.6
+
+*July 24th, 2018*
+
+BUG FIXES
+
+- [rpc] Fix `/blockchain` endpoint
+    - (#2049) Fix OOM attack by returning error on negative input
+    - Fix result length to have max 20 (instead of 21) block metas
+- [rpc] Validate height is non-negative in `/abci_query`
+- [consensus] (#2050) Include evidence in proposal block parts (previously evidence was
+  not being included in blocks!)
+- [p2p] (#2046) Close rejected inbound connections so file descriptor doesn't
+  leak
+- [Gopkg] (#2053) Fix versions in the toml
+
 ## 0.22.5
 
 *July 23th, 2018*
