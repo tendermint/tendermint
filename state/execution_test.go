@@ -168,7 +168,7 @@ func TestUpdateValidators(t *testing.T) {
 			"adding a validator is OK",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), 20}},
+			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: 20}},
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
 			false,
@@ -177,7 +177,7 @@ func TestUpdateValidators(t *testing.T) {
 			"updating a validator is OK",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey1), 20}},
+			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey1), Power: 20}},
 
 			types.NewValidatorSet([]*types.Validator{types.NewValidator(pubkey1, 20)}),
 			false,
@@ -186,7 +186,7 @@ func TestUpdateValidators(t *testing.T) {
 			"removing a validator is OK",
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
-			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), 0}},
+			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			false,
@@ -196,7 +196,7 @@ func TestUpdateValidators(t *testing.T) {
 			"removing a non-existing validator results in error",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), 0}},
+			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
@@ -206,7 +206,7 @@ func TestUpdateValidators(t *testing.T) {
 			"adding a validator with negative power results in error",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{[]byte{}, types.TM2PB.PubKey(pubkey2), -100}},
+			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
@@ -262,7 +262,7 @@ func state(nVals, height int) (State, dbm.DB) {
 	SaveState(stateDB, s)
 
 	for i := 1; i < height; i++ {
-		s.LastBlockHeight += 1
+		s.LastBlockHeight++
 		SaveState(stateDB, s)
 	}
 	return s, stateDB

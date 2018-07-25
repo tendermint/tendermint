@@ -376,7 +376,7 @@ func testHandshakeReplay(t *testing.T, nBlocks int, mode uint) {
 	defer proxyApp.Stop()
 
 	// get the latest app hash from the app
-	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{""})
+	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: ""})
 	if err != nil {
 		t.Fatal(err)
 	}

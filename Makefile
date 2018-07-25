@@ -37,7 +37,7 @@ protoc_all: protoc_libs protoc_abci protoc_grpc
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) $< --gogo_out=plugins=grpc:.
+	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:.
 	@echo "--> adding nolint declarations to protobuf generated files"
 	@awk -i inplace '/^\s*package \w+/ { print "//nolint" }1' $@
 

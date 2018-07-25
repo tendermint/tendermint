@@ -4,6 +4,7 @@ package types;
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
 import "github.com/tendermint/tendermint/libs/common/types.proto";
 
 // This file is copied from http://github.com/tendermint/abci
@@ -56,7 +57,7 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  int64 time = 1;
+  google.protobuf.Timestamp time = 1  [(gogoproto.stdtime)=true];
   string chain_id = 2;
   ConsensusParams consensus_params = 3;
   repeated Validator validators = 4  [(gogoproto.nullable)=false];
@@ -230,7 +231,7 @@ message Header {
   // basics
   string chain_id = 1 [(gogoproto.customname)="ChainID"];
   int64 height = 2;
-  int64 time = 3;
+  google.protobuf.Timestamp time = 3  [(gogoproto.stdtime)=true];
 
   // txs
   int32 num_txs = 4;
@@ -267,7 +268,7 @@ message Evidence {
   string type = 1;
   Validator validator = 2 [(gogoproto.nullable)=false];
   int64 height = 3;
-  int64 time = 4;
+  google.protobuf.Timestamp time = 4  [(gogoproto.stdtime)=true];
   int64 total_voting_power = 5;
 }
 

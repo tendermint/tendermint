@@ -108,8 +108,11 @@ See below for more details on the message types and how they are used.
 ### InitChain
 
 - **Request**:
-  - `Validators ([]Validator)`: Initial genesis validators
-  - `AppStateBytes ([]byte)`: Serialized initial application state
+  - `Time (google.protobuf.Timestamp)`: Genesis time.
+  - `ChainID (string)`: ID of the blockchain.
+  - `ConsensusParams (ConsensusParams)`: Initial consensus-critical parameters.
+  - `Validators ([]Validator)`: Initial genesis validators.
+  - `AppStateBytes ([]byte)`: Serialized initial application state.
 - **Response**:
   - `ConsensusParams (ConsensusParams)`: Initial
     consensus-critical parameters.
@@ -263,7 +266,8 @@ See below for more details on the message types and how they are used.
 - **Fields**:
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
-  - `Time (int64)`: Unix time of the block
+  - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
+    local time when block was created.
   - `NumTxs (int32)`: Number of transactions in the block
   - `TotalTxs (int64)`: Total number of transactions in the blockchain until
     now
@@ -318,6 +322,7 @@ See below for more details on the message types and how they are used.
     "duplicate/vote".
   - `Validator (Validator`: The offending validator
   - `Height (int64)`: Height when the offense was committed
-  - `Time (int64)`: Unix time of the block at height `Height`
+  - `Time (google.protobuf.Timestamp)`: Time of the block at height `Height`.
+    It is the proposer's local time when block was created.
   - `TotalVotingPower (int64)`: Total voting power of the validator set at
     height `Height`

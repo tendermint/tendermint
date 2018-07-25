@@ -142,7 +142,7 @@ func TestInfo(t *testing.T) {
 	proxy := NewAppConnTest(cli)
 	t.Log("Connected")
 
-	resInfo, err := proxy.InfoSync(types.RequestInfo{""})
+	resInfo, err := proxy.InfoSync(types.RequestInfo{Version: ""})
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
