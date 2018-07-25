@@ -16,7 +16,7 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v2-pkg-cache
+            - v3-pkg-cache
       - run:
           name: tools
           command: |
@@ -38,11 +38,11 @@ jobs:
             - bin
             - profiles
       - save_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
           paths:
             - /go/pkg
       - save_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - /go/src/github.com/tendermint/tendermint
 
@@ -52,9 +52,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: slate docs
           command: |
@@ -68,15 +68,21 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: metalinter
           command: |
             set -ex
             export PATH="$GOBIN:$PATH"
             make metalinter
+      - run:
+          name: check_dep
+          command: |
+            set -ex
+            export PATH="$GOBIN:$PATH"
+            make check_dep
 
   test_abci_apps:
     <<: *defaults
@@ -84,9 +90,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run abci apps tests
           command: |
@@ -101,9 +107,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run abci-cli tests
           command: |
@@ -116,9 +122,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bsdmainutils
       - run:
           name: Run tests
@@ -131,9 +137,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run: mkdir -p /tmp/logs
       - run:
           name: Run tests
@@ -156,9 +162,9 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-pkg-cache
+          key: v3-pkg-cache
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
           command: bash test/persist/test_failure_indices.sh
@@ -181,7 +187,7 @@ jobs:
       - attach_workspace:
           at: /tmp/workspace
       - restore_cache:
-          key: v2-tree-{{ .Environment.CIRCLE_SHA1 }}
+          key: v3-tree-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: gather
           command: |

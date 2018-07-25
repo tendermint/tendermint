@@ -81,7 +81,7 @@ type ConsensusState struct {
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.Mutex
+	mtx sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -192,15 +192,15 @@ func (cs *ConsensusState) String() string {
 
 // GetState returns a copy of the chain state.
 func (cs *ConsensusState) GetState() sm.State {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.state.Copy()
 }
 
 // GetRoundState returns a shallow copy of the internal consensus state.
 func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	rs := cs.RoundState // copy
 	return &rs
@@ -208,24 +208,24 @@ func (cs *ConsensusState) GetRoundState() *cstypes.RoundState {
 
 // GetRoundStateJSON returns a json of RoundState, marshalled using go-amino.
 func (cs *ConsensusState) GetRoundStateJSON() ([]byte, error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	return cdc.MarshalJSON(cs.RoundState)
 }
 
 // GetRoundStateSimpleJSON returns a json of RoundStateSimple, marshalled using go-amino.
 func (cs *ConsensusState) GetRoundStateSimpleJSON() ([]byte, error) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 
 	return cdc.MarshalJSON(cs.RoundState.RoundStateSimple())
 }
 
 // GetValidators returns a copy of the current validators.
 func (cs *ConsensusState) GetValidators() (int64, []*types.Validator) {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	return cs.state.LastBlockHeight, cs.state.Validators.Copy().Validators
 }
 
@@ -245,8 +245,8 @@ func (cs *ConsensusState) SetTimeoutTicker(timeoutTicker TimeoutTicker) {
 
 // LoadCommit loads the commit for a given height.
 func (cs *ConsensusState) LoadCommit(height int64) *types.Commit {
-	cs.mtx.Lock()
-	defer cs.mtx.Unlock()
+	cs.mtx.RLock()
+	defer cs.mtx.RUnlock()
 	if height == cs.blockStore.Height() {
 		return cs.blockStore.LoadSeenCommit(height)
 	}
@@ -571,8 +571,8 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 		var mi msgInfo
 
 		select {
-		case height := <-cs.mempool.TxsAvailable():
-			cs.handleTxsAvailable(height)
+		case <-cs.mempool.TxsAvailable():
+			cs.handleTxsAvailable()
 		case mi = <-cs.peerMsgQueue:
 			cs.wal.Write(mi)
 			// handles proposals, block parts, votes
@@ -683,11 +683,11 @@ func (cs *ConsensusState) handleTimeout(ti timeoutInfo, rs cstypes.RoundState) {
 
 }
 
-func (cs *ConsensusState) handleTxsAvailable(height int64) {
+func (cs *ConsensusState) handleTxsAvailable() {
 	cs.mtx.Lock()
 	defer cs.mtx.Unlock()
 	// we only need to do this for round 0
-	cs.enterPropose(height, 0)
+	cs.enterPropose(cs.Height, 0)
 }
 
 //-----------------------------------------------------------------------------
@@ -907,6 +907,8 @@ func (cs *ConsensusState) isProposalComplete() bool {
 }
 
 // Create the next block to propose and return it.
+// We really only need to return the parts, but the block
+// is returned for convenience so we can log the proposal block.
 // Returns nil block upon error.
 // NOTE: keep it side-effect free for clarity.
 func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts *types.PartSet) {
@@ -926,9 +928,8 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
-	block, parts := cs.state.MakeBlock(cs.Height, txs, commit)
 	evidence := cs.evpool.PendingEvidence()
-	block.AddEvidence(evidence)
+	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence)
 	return block, parts
 }
 

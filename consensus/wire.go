@@ -2,7 +2,7 @@ package consensus
 
 import (
 	"github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/crypto"
+	cryptoAmino "github.com/tendermint/tendermint/crypto/encoding/amino"
 )
 
 var cdc = amino.NewCodec()
@@ -10,5 +10,5 @@ var cdc = amino.NewCodec()
 func init() {
 	RegisterConsensusMessages(cdc)
 	RegisterWALMessages(cdc)
-	crypto.RegisterAmino(cdc)
+	cryptoAmino.RegisterAmino(cdc)
 }

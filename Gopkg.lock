@@ -15,7 +15,7 @@
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
   pruneopts = "UT"
-  revision = "fdfc19097e7ac6b57035062056f5b7b4638b8898"
+  revision = "9a2f9524024889e129a5422aca2cff73cb3eabf6"
 
 [[projects]]
   digest = "1:df684ed7fed3fb406ec421424aaf5fc9c63ccc2f428b25b842da78e634482e4b"
@@ -102,8 +102,8 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "7d68e886eac4f7e34d0d82241a6273d6c304c5cf"
-  version = "v1.1.0"
+  revision = "636bf0302bc95575d69441b25a2603156ffdddf1"
+  version = "v1.1.1"
 
 [[projects]]
   digest = "1:cb22af0ed7c72d495d8be1106233ee553898950f15fd3f5404406d44c2e86888"
@@ -162,7 +162,6 @@
   version = "v1.0"
 
 [[projects]]
-  branch = "master"
   digest = "1:39b27d1381a30421f9813967a5866fba35dc1d4df43a6eefe3b7a5444cb07214"
   name = "github.com/jmhodges/levigo"
   packages = ["."]
@@ -195,11 +194,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e730597b38a4d56e2361e0b6236cb800e52c73cace2ff91396f4ff35792ddfa7"
+  digest = "1:5ab79470a1d0fb19b041a624415612f8236b3c06070161a910562f2b2d064355"
   name = "github.com/mitchellh/mapstructure"
   packages = ["."]
   pruneopts = "UT"
-  revision = "bb74f1db0675b241733089d5a1faa5dd8b0ef57b"
+  revision = "f15292f7a699fcc1a38a80977f80a046874ba8ac"
 
 [[projects]]
   digest = "1:95741de3af260a92cc5c7f3f3061e85273f5a81b5db20d4bd68da74bd521675e"
@@ -237,11 +236,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:53a76eb11bdc815fcf0c757a9648fda0ab6887da13f07587181ff2223b67956c"
+  digest = "1:0f37e09b3e92aaeda5991581311f8dbf38944b36a3edec61cc2d1991f527554a"
   name = "github.com/prometheus/client_model"
   packages = ["go"]
   pruneopts = "UT"
-  revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
+  revision = "5c3871d89910bfb32f5fcab2aa4b9ec68e65a99f"
 
 [[projects]]
   branch = "master"
@@ -257,7 +256,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:55d7449d6987dabf272b4e81b2f9c449f05b17415c939b68d1e82f57e3374b7f"
+  digest = "1:a37c98f4b7a66bb5c539c0539f0915a74ef1c8e0b3b6f45735289d94cae92bfd"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -266,7 +265,7 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "ae68e2d4c00fed4943b5f6698d504a5fe083da8a"
+  revision = "05ee40e3a273f7245e8777337fc7b46e533a9a92"
 
 [[projects]]
   digest = "1:c4556a44e350b50a490544d9b06e9fba9c286c21d6c0e47f54f3a9214597298c"
@@ -399,7 +398,7 @@
     "salsa20/salsa",
   ]
   pruneopts = "UT"
-  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+  revision = "c126467f60eb25f8f27e5a981f32a87e3965053f"
 
 [[projects]]
   digest = "1:04dda8391c3e2397daf254ac68003f30141c069b228d06baec8324a5f81dc1e9"
@@ -419,14 +418,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0470500d9a2c5c653f89fc369cdf2fece01996432d42ef87e03ebc3e5b5f8717"
+  digest = "1:bff8bf6fa46b4d638d61b48320e3c6da8f8ba190672a82cdb8cedafb1f9501b0"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
+  revision = "e072cadbbdc8dd3d3ffa82b8b4b9304c261d9311"
 
 [[projects]]
   digest = "1:7509ba4347d1f8de6ae9be8818b0cd1abc3deeffe28aeaf4be6d4b6b5178d9ca"
@@ -459,7 +458,7 @@
   revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
 
 [[projects]]
-  digest = "1:4d7b5d9746840266938cdb21a40f8eba7137d9153c4ed404d6bb2a450d06f690"
+  digest = "1:4515e3030c440845b046354fd5d57671238428b820deebce2e9dabb5cd3c51ac"
   name = "google.golang.org/grpc"
   packages = [
     ".",
@@ -471,9 +470,11 @@
     "credentials",
     "encoding",
     "encoding/proto",
-    "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
+    "internal/backoff",
+    "internal/channelz",
+    "internal/grpcrand",
     "keepalive",
     "metadata",
     "naming",
@@ -487,8 +488,8 @@
     "transport",
   ]
   pruneopts = "UT"
-  revision = "d11072e7ca9811b1100b80ca0269ac831f06d024"
-  version = "v1.11.3"
+  revision = "168a6198bcb0ef175f7dacec0b8691fc141dc9b8"
+  version = "v1.13.0"
 
 [[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"

@@ -156,7 +156,7 @@ func makeTxs(height int64) (txs []types.Tx) {
 }
 
 func makeBlock(height int64, state sm.State) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(height), new(types.Commit))
+	block, _ := state.MakeBlock(height, makeTxs(height), new(types.Commit), nil)
 	return block
 }
 

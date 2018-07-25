@@ -7,7 +7,7 @@ import (
 	"github.com/tendermint/go-amino"
 
 	proto "github.com/tendermint/tendermint/benchmarks/proto"
-	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/p2p"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -16,7 +16,7 @@ func BenchmarkEncodeStatusWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	status := &ctypes.ResultStatus{
 		NodeInfo: p2p.NodeInfo{
 			ID:         nodeKey.ID(),
@@ -52,7 +52,7 @@ func BenchmarkEncodeNodeInfoWire(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	nodeInfo := p2p.NodeInfo{
 		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
@@ -77,7 +77,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 	b.StopTimer()
 	cdc := amino.NewCodec()
 	ctypes.RegisterAmino(cdc)
-	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	nodeInfo := p2p.NodeInfo{
 		ID:         nodeKey.ID(),
 		Moniker:    "SOMENAME",
@@ -98,7 +98,7 @@ func BenchmarkEncodeNodeInfoBinary(b *testing.B) {
 
 func BenchmarkEncodeNodeInfoProto(b *testing.B) {
 	b.StopTimer()
-	nodeKey := p2p.NodeKey{PrivKey: crypto.GenPrivKeyEd25519()}
+	nodeKey := p2p.NodeKey{PrivKey: ed25519.GenPrivKey()}
 	nodeID := string(nodeKey.ID())
 	someName := "SOMENAME"
 	someAddr := "SOMEADDR"

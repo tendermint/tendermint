@@ -638,6 +638,7 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	if a.routabilityStrict && !addr.Routable() {
 		return ErrAddrBookNonRoutable{addr}
 	}
+
 	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
 	if _, ok := a.ourAddrs[addr.String()]; ok {
 		return ErrAddrBookSelf{addr}
@@ -645,6 +646,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
 		return ErrAddrBookPrivate{addr}
+	}
+
+	if _, ok := a.privateIDs[src.ID]; ok {
+		return ErrAddrBookPrivateSrc{src}
 	}
 
 	ka := a.addrLookup[addr.ID]

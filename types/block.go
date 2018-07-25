@@ -17,33 +17,29 @@ import (
 // TODO: add Version byte
 type Block struct {
 	mtx        sync.Mutex
-	*Header    `json:"header"`
-	*Data      `json:"data"`
+	Header     `json:"header"`
+	Data       `json:"data"`
 	Evidence   EvidenceData `json:"evidence"`
 	LastCommit *Commit      `json:"last_commit"`
 }
 
 // MakeBlock returns a new block with an empty header, except what can be computed from itself.
 // It populates the same set of fields validated by ValidateBasic
-func MakeBlock(height int64, txs []Tx, commit *Commit) *Block {
+func MakeBlock(height int64, txs []Tx, commit *Commit, evidence []Evidence) *Block {
 	block := &Block{
-		Header: &Header{
+		Header: Header{
 			Height: height,
 			Time:   time.Now(),
 			NumTxs: int64(len(txs)),
 		},
-		LastCommit: commit,
-		Data: &Data{
+		Data: Data{
 			Txs: txs,
 		},
+		Evidence:   EvidenceData{Evidence: evidence},
+		LastCommit: commit,
 	}
 	block.fillHeader()
 	return block
-}
-
-// AddEvidence appends the given evidence to the block
-func (b *Block) AddEvidence(evidence []Evidence) {
-	b.Evidence.Evidence = append(b.Evidence.Evidence, evidence...)
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
@@ -98,7 +94,7 @@ func (b *Block) Hash() cmn.HexBytes {
 	b.mtx.Lock()
 	defer b.mtx.Unlock()
 
-	if b == nil || b.Header == nil || b.Data == nil || b.LastCommit == nil {
+	if b == nil || b.LastCommit == nil {
 		return nil
 	}
 	b.fillHeader()

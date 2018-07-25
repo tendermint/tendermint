@@ -10,7 +10,8 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -78,7 +79,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit)
+		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil)
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
 
@@ -137,7 +138,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
 
-		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit)
+		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
@@ -149,9 +150,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 }
 
 func TestUpdateValidators(t *testing.T) {
-	pubkey1 := crypto.GenPrivKeyEd25519().PubKey()
+	pubkey1 := ed25519.GenPrivKey().PubKey()
 	val1 := types.NewValidator(pubkey1, 10)
-	pubkey2 := crypto.GenPrivKeyEd25519().PubKey()
+	pubkey2 := ed25519.GenPrivKey().PubKey()
 	val2 := types.NewValidator(pubkey2, 20)
 
 	testCases := []struct {
@@ -245,7 +246,7 @@ func state(nVals, height int) (State, dbm.DB) {
 	vals := make([]types.GenesisValidator, nVals)
 	for i := 0; i < nVals; i++ {
 		secret := []byte(fmt.Sprintf("test%d", i))
-		pk := crypto.GenPrivKeyEd25519FromSecret(secret)
+		pk := ed25519.GenPrivKeyFromSecret(secret)
 		vals[i] = types.GenesisValidator{
 			pk.PubKey(), 1000, fmt.Sprintf("test%d", i),
 		}
@@ -268,7 +269,7 @@ func state(nVals, height int) (State, dbm.DB) {
 }
 
 func makeBlock(state State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit))
+	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil)
 	return block
 }
 

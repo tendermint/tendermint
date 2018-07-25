@@ -1,19 +1,50 @@
 # Changelog
 
-## TBA
+## PENDING
 
-BREAKING CHANGES:
-- [libs/common] remove exponentially distributed random numbers
+BREAKING CHANGES
+
 - [abci]
    - \#272 ResponseCheckTx and ResponseDeliverTx now include an error string
    - \#273 ResponseCheckTx, ResponseDeliverTx, ResponseBeginBlock, and ResponseEndBlock
            now include a list of events instead of a list of tags. Each event is itself
            a list of tags, allowing for inclusion of multiple distinct events in each response.
 
+## 0.22.6
+
+*July 24th, 2018*
+
+BUG FIXES
+
+- [rpc] Fix `/blockchain` endpoint
+    - (#2049) Fix OOM attack by returning error on negative input
+    - Fix result length to have max 20 (instead of 21) block metas
+- [rpc] Validate height is non-negative in `/abci_query`
+- [consensus] (#2050) Include evidence in proposal block parts (previously evidence was
+  not being included in blocks!)
+- [p2p] (#2046) Close rejected inbound connections so file descriptor doesn't
+  leak
+- [Gopkg] (#2053) Fix versions in the toml
+
+## 0.22.5
+
+*July 23th, 2018*
+
+BREAKING CHANGES:
+- [crypto] Refactor `tendermint/crypto` into many subpackages
+- [libs/common] remove exponentially distributed random numbers
+
 IMPROVEMENTS:
+- [abci, libs/common] Generated gogoproto static marshaller methods
 - [config] Increase default send/recv rates to 5 mB/s
-- [abci] Generated gogoproto static marshaller methods
-= [libs/common] Generated gogoproto static marshaller methods
+- [p2p] reject addresses coming from private peers
+- [p2p] allow persistent peers to be private
+
+BUG FIXES:
+- [mempool] fixed a race condition when `create_empty_blocks=false` where a
+  transaction is published at an old height.
+- [p2p] dial external IP setup by `persistent_peers`, not internal NAT IP
+- [rpc] make `/status` RPC endpoint resistant to consensus halt
 
 ## 0.22.4
 
@@ -29,7 +60,8 @@ FEATURES:
 BUG FIXES:
 - [tools/tm-bench] Various fixes
 - [consensus] Wait for WAL to stop on shutdown
-- [abci] Fix #1891, pending requests cannot hang when abci server dies. Previously a crash in BeginBlock could leave tendermint in broken state.
+- [abci] Fix #1891, pending requests cannot hang when abci server dies.
+  Previously a crash in BeginBlock could leave tendermint in broken state.
 
 ## 0.22.3
 

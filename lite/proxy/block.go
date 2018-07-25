@@ -15,14 +15,14 @@ func ValidateBlockMeta(meta *types.BlockMeta, check lite.Commit) error {
 		return errors.New("expecting a non-nil BlockMeta")
 	}
 	// TODO: check the BlockID??
-	return ValidateHeader(meta.Header, check)
+	return ValidateHeader(&meta.Header, check)
 }
 
 func ValidateBlock(meta *types.Block, check lite.Commit) error {
 	if meta == nil {
 		return errors.New("expecting a non-nil Block")
 	}
-	err := ValidateHeader(meta.Header, check)
+	err := ValidateHeader(&meta.Header, check)
 	if err != nil {
 		return err
 	}

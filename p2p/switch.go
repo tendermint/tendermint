@@ -283,7 +283,9 @@ func (sw *Switch) StopPeerForError(peer Peer, reason interface{}) {
 	if peer.IsPersistent() {
 		addr := peer.OriginalAddr()
 		if addr == nil {
-			panic(fmt.Sprintf("persistent peer %v with no original address", peer))
+			// FIXME: persistent peers can't be inbound right now.
+			// self-reported address for inbound persistent peers
+			addr = peer.NodeInfo().NetAddress()
 		}
 		go sw.reconnectToPeer(addr)
 	}
@@ -494,6 +496,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		maxPeers := sw.config.MaxNumPeers - DefaultMinNumOutboundPeers
 		if maxPeers <= sw.peers.Size() {
 			sw.Logger.Info("Ignoring inbound connection: already have enough peers", "address", inConn.RemoteAddr().String(), "numPeers", sw.peers.Size(), "max", maxPeers)
+			inConn.Close()
 			continue
 		}
 
@@ -508,6 +511,7 @@ func (sw *Switch) listenerRoutine(l Listener) {
 	// cleanup
 }
 
+// closes conn if err is returned
 func (sw *Switch) addInboundPeerWithConfig(
 	conn net.Conn,
 	config *config.P2PConfig,

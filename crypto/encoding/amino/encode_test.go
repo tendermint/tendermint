@@ -1,4 +1,4 @@
-package crypto
+package cryptoAmino
 
 import (
 	"os"
@@ -6,6 +6,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/secp256k1"
 )
 
 type byter interface {
@@ -56,64 +59,70 @@ func ExamplePrintRegisteredTypes() {
 
 func TestKeyEncodings(t *testing.T) {
 	cases := []struct {
-		privKey           PrivKey
+		privKey           crypto.PrivKey
 		privSize, pubSize int // binary sizes
 	}{
 		{
-			privKey:  GenPrivKeyEd25519(),
+			privKey:  ed25519.GenPrivKey(),
 			privSize: 69,
 			pubSize:  37,
 		},
 		{
-			privKey:  GenPrivKeySecp256k1(),
+			privKey:  secp256k1.GenPrivKey(),
 			privSize: 37,
 			pubSize:  38,
 		},
 	}
 
-	for _, tc := range cases {
+	for tcIndex, tc := range cases {
 
 		// Check (de/en)codings of PrivKeys.
-		var priv2, priv3 PrivKey
+		var priv2, priv3 crypto.PrivKey
 		checkAminoBinary(t, tc.privKey, &priv2, tc.privSize)
-		assert.EqualValues(t, tc.privKey, priv2)
+		assert.EqualValues(t, tc.privKey, priv2, "tc #%d", tcIndex)
 		checkAminoJSON(t, tc.privKey, &priv3, false) // TODO also check Prefix bytes.
-		assert.EqualValues(t, tc.privKey, priv3)
+		assert.EqualValues(t, tc.privKey, priv3, "tc #%d", tcIndex)
 
 		// Check (de/en)codings of Signatures.
-		var sig1, sig2, sig3 Signature
+		var sig1, sig2, sig3 crypto.Signature
 		sig1, err := tc.privKey.Sign([]byte("something"))
-		assert.NoError(t, err)
+		assert.NoError(t, err, "tc #%d", tcIndex)
 		checkAminoBinary(t, sig1, &sig2, -1) // Signature size changes for Secp anyways.
-		assert.EqualValues(t, sig1, sig2)
+		assert.EqualValues(t, sig1, sig2, "tc #%d", tcIndex)
 		checkAminoJSON(t, sig1, &sig3, false) // TODO also check Prefix bytes.
-		assert.EqualValues(t, sig1, sig3)
+		assert.EqualValues(t, sig1, sig3, "tc #%d", tcIndex)
 
 		// Check (de/en)codings of PubKeys.
 		pubKey := tc.privKey.PubKey()
-		var pub2, pub3 PubKey
+		var pub2, pub3 crypto.PubKey
 		checkAminoBinary(t, pubKey, &pub2, tc.pubSize)
-		assert.EqualValues(t, pubKey, pub2)
+		assert.EqualValues(t, pubKey, pub2, "tc #%d", tcIndex)
 		checkAminoJSON(t, pubKey, &pub3, false) // TODO also check Prefix bytes.
-		assert.EqualValues(t, pubKey, pub3)
+		assert.EqualValues(t, pubKey, pub3, "tc #%d", tcIndex)
 	}
 }
 
 func TestNilEncodings(t *testing.T) {
 
 	// Check nil Signature.
-	var a, b Signature
+	var a, b crypto.Signature
 	checkAminoJSON(t, &a, &b, true)
 	assert.EqualValues(t, a, b)
 
 	// Check nil PubKey.
-	var c, d PubKey
+	var c, d crypto.PubKey
 	checkAminoJSON(t, &c, &d, true)
 	assert.EqualValues(t, c, d)
 
 	// Check nil PrivKey.
-	var e, f PrivKey
+	var e, f crypto.PrivKey
 	checkAminoJSON(t, &e, &f, true)
 	assert.EqualValues(t, e, f)
 
+}
+
+func TestPubKeyInvalidDataProperReturnsEmpty(t *testing.T) {
+	pk, err := PubKeyFromBytes([]byte("foo"))
+	require.NotNil(t, err, "expecting a non-nil error")
+	require.Nil(t, pk, "expecting an empty public key on error")
 }

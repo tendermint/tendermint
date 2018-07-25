@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
 )
@@ -47,10 +48,10 @@ func TestUnmarshalValidator(t *testing.T) {
 	assert, require := assert.New(t), require.New(t)
 
 	// create some fixed values
-	privKey := crypto.GenPrivKeyEd25519()
+	privKey := ed25519.GenPrivKey()
 	pubKey := privKey.PubKey()
 	addr := pubKey.Address()
-	pubArray := [32]byte(pubKey.(crypto.PubKeyEd25519))
+	pubArray := [32]byte(pubKey.(ed25519.PubKeyEd25519))
 	pubBytes := pubArray[:]
 	privArray := [64]byte(privKey)
 	privBytes := privArray[:]
@@ -183,7 +184,7 @@ func TestDifferByTimestamp(t *testing.T) {
 		assert.NoError(t, err, "expected no error signing proposal")
 		signBytes := proposal.SignBytes(chainID)
 		sig := proposal.Signature
-		timeStamp := clipToMS(proposal.Timestamp)
+		timeStamp := proposal.Timestamp
 
 		// manipulate the timestamp. should get changed back
 		proposal.Timestamp = proposal.Timestamp.Add(time.Millisecond)
@@ -207,7 +208,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 		signBytes := vote.SignBytes(chainID)
 		sig := vote.Signature
-		timeStamp := clipToMS(vote.Timestamp)
+		timeStamp := vote.Timestamp
 
 		// manipulate the timestamp. should get changed back
 		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
@@ -241,11 +242,4 @@ func newProposal(height int64, round int, partsHeader types.PartSetHeader) *type
 		BlockPartsHeader: partsHeader,
 		Timestamp:        time.Now().UTC(),
 	}
-}
-
-func clipToMS(t time.Time) time.Time {
-	nano := t.UnixNano()
-	million := int64(1000000)
-	nano = (nano / million) * million
-	return time.Unix(0, nano).UTC()
 }

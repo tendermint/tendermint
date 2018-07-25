@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 )
 
 func examplePrevote() *Vote {
@@ -109,7 +109,7 @@ func TestVoteVerify(t *testing.T) {
 	vote := examplePrevote()
 	vote.ValidatorAddress = pubkey.Address()
 
-	err := vote.Verify("test_chain_id", crypto.GenPrivKeyEd25519().PubKey())
+	err := vote.Verify("test_chain_id", ed25519.GenPrivKey().PubKey())
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidValidatorAddress, err)
 	}

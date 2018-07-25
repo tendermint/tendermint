@@ -13,6 +13,7 @@ import (
 
 	amino "github.com/tendermint/go-amino"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
@@ -20,7 +21,6 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/evidence"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
@@ -85,7 +85,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
-		DefaultMetricsProvider,
+		DefaultMetricsProvider(config.Instrumentation),
 		logger,
 	)
 }
@@ -93,15 +93,15 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 // MetricsProvider returns a consensus, p2p and mempool Metrics.
 type MetricsProvider func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics)
 
-// DefaultMetricsProvider returns consensus, p2p and mempool Metrics build
-// using Prometheus client library.
-func DefaultMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
-	return cs.PrometheusMetrics(), p2p.PrometheusMetrics(), mempl.PrometheusMetrics()
-}
-
-// NopMetricsProvider returns consensus, p2p and mempool Metrics as no-op.
-func NopMetricsProvider() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
-	return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
+// DefaultMetricsProvider returns Metrics build using Prometheus client library
+// if Prometheus is enabled. Otherwise, it returns no-op Metrics.
+func DefaultMetricsProvider(config *cfg.InstrumentationConfig) MetricsProvider {
+	return func() (*cs.Metrics, *p2p.Metrics, *mempl.Metrics) {
+		if config.Prometheus {
+			return cs.PrometheusMetrics(), p2p.PrometheusMetrics(), mempl.PrometheusMetrics()
+		}
+		return cs.NopMetrics(), p2p.NopMetrics(), mempl.NopMetrics()
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -197,7 +197,7 @@ func NewNode(config *cfg.Config,
 		var (
 			// TODO: persist this key so external signer
 			// can actually authenticate us
-			privKey = crypto.GenPrivKeyEd25519()
+			privKey = ed25519.GenPrivKey()
 			pvsc    = privval.NewSocketPV(
 				logger.With("module", "privval"),
 				config.PrivValidatorListenAddr,
@@ -229,17 +229,7 @@ func NewNode(config *cfg.Config,
 		consensusLogger.Info("This node is not a validator", "addr", privValidator.GetAddress(), "pubKey", privValidator.GetPubKey())
 	}
 
-	// metrics
-	var (
-		csMetrics    *cs.Metrics
-		p2pMetrics   *p2p.Metrics
-		memplMetrics *mempl.Metrics
-	)
-	if config.Instrumentation.Prometheus {
-		csMetrics, p2pMetrics, memplMetrics = metricsProvider()
-	} else {
-		csMetrics, p2pMetrics, memplMetrics = NopMetricsProvider()
-	}
+	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
 
 	// Make MempoolReactor
 	mempoolLogger := logger.With("module", "mempool")
@@ -462,7 +452,8 @@ func (n *Node) OnStart() error {
 		n.rpcListeners = listeners
 	}
 
-	if n.config.Instrumentation.Prometheus {
+	if n.config.Instrumentation.Prometheus &&
+		n.config.Instrumentation.PrometheusListenAddr != "" {
 		n.prometheusSrv = n.startPrometheusServer(n.config.Instrumentation.PrometheusListenAddr)
 	}
 
