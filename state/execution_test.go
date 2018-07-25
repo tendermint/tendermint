@@ -299,7 +299,7 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 }
 
 func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {
-	return abci.ResponseDeliverTx{Tags: []cmn.KVPair{}}
+	return abci.ResponseDeliverTx{Events: []abci.Event{}}
 }
 
 func (app *testApp) CheckTx(tx []byte) abci.ResponseCheckTx {

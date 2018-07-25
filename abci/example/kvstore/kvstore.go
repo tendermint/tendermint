@@ -84,7 +84,7 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 		{[]byte("app.creator"), []byte("jae")},
 		{[]byte("app.key"), key},
 	}
-	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
+	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Events: []types.Event{types.Event{Tags: tags}}}
 }
 
 func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {

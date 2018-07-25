@@ -1,5 +1,15 @@
 # Changelog
 
+## PENDING
+
+BREAKING CHANGES
+
+- [abci]
+   - \#272 ResponseCheckTx and ResponseDeliverTx now include an error string
+   - \#273 ResponseCheckTx, ResponseDeliverTx, ResponseBeginBlock, and ResponseEndBlock
+           now include a list of events instead of a list of tags. Each event is itself
+           a list of tags, allowing for inclusion of multiple distinct events in each response.
+
 ## 0.22.6
 
 *July 24th, 2018*

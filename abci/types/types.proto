@@ -157,7 +157,7 @@ message ResponseQuery {
 }
 
 message ResponseBeginBlock {
-  repeated common.KVPair tags = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  repeated Event events = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
 }
 
 message ResponseCheckTx {
@@ -168,6 +168,7 @@ message ResponseCheckTx {
   int64 gas_wanted  = 5;
   int64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  repeated Event events = 8 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
 }
 
 message ResponseDeliverTx {
@@ -177,13 +178,13 @@ message ResponseDeliverTx {
   string info = 4; // nondeterministic
   int64 gas_wanted = 5;
   int64 gas_used = 6;
-  repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  repeated Event events = 8 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
 }
 
 message ResponseEndBlock {
   repeated Validator validator_updates = 1 [(gogoproto.nullable)=false];
   ConsensusParams consensus_param_updates = 2;
-  repeated common.KVPair tags = 3 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
+  repeated Event events = 3 [(gogoproto.nullable)=false, (gogoproto.jsontag)="events,omitempty"];
 }
 
 message ResponseCommit {
@@ -269,6 +270,10 @@ message Evidence {
   int64 height = 3;
   int64 time = 4;
   int64 total_voting_power = 5;
+}
+
+message Event {
+  repeated common.KVPair tags = 1 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
 }
 
 //----------------------------------------
