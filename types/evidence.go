@@ -43,8 +43,8 @@ func RegisterEvidences(cdc *amino.Codec) {
 	cdc.RegisterConcrete(&DuplicateVoteEvidence{}, "tendermint/DuplicateVoteEvidence", nil)
 
 	// mocks
-	cdc.RegisterConcrete(&MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
-	cdc.RegisterConcrete(&MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
+	cdc.RegisterConcrete(MockGoodEvidence{}, "tendermint/MockGoodEvidence", nil)
+	cdc.RegisterConcrete(MockBadEvidence{}, "tendermint/MockBadEvidence", nil)
 }
 
 //-------------------------------------------
