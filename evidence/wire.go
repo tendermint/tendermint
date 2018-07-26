@@ -12,14 +12,5 @@ func init() {
 	RegisterEvidenceMessages(cdc)
 	cryptoAmino.RegisterAmino(cdc)
 	types.RegisterEvidences(cdc)
-	RegisterMockEvidences(cdc) // For testing
-}
-
-//-------------------------------------------
-
-func RegisterMockEvidences(cdc *amino.Codec) {
-	cdc.RegisterConcrete(types.MockGoodEvidence{},
-		"tendermint/MockGoodEvidence", nil)
-	cdc.RegisterConcrete(types.MockBadEvidence{},
-		"tendermint/MockBadEvidence", nil)
+	types.RegisterMockEvidences(cdc) // For testing
 }
