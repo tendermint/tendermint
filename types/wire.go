@@ -9,4 +9,5 @@ var cdc = amino.NewCodec()
 
 func init() {
 	cryptoAmino.RegisterAmino(cdc)
+	RegisterEvidences(cdc)
 }
