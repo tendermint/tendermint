@@ -55,9 +55,9 @@ type multiplexTransport struct {
 	closec  <-chan struct{}
 	listenc <-chan struct{}
 
-	addr             NetAddress
 	dialTimeout      time.Duration
 	handshakeTimeout time.Duration
+	nodeAddr         NetAddress
 	nodeInfo         NodeInfo
 	nodeKey          NodeKey
 
