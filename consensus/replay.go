@@ -269,7 +269,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 		validators := types.TM2PB.Validators(state.Validators)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
-			Time:            &h.genDoc.GenesisTime,
+			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			ConsensusParams: csParams,
 			Validators:      validators,

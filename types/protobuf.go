@@ -38,7 +38,7 @@ func (tm2pb) Header(header *Header) abci.Header {
 		ChainID: header.ChainID,
 		Height:  header.Height,
 
-		Time:     &header.Time,
+		Time:     header.Time,
 		NumTxs:   int32(header.NumTxs), // XXX: overflow
 		TotalTxs: header.TotalTxs,
 
@@ -131,7 +131,7 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 		Type:             evType,
 		Validator:        TM2PB.Validator(val),
 		Height:           ev.Height(),
-		Time:             &evTime,
+		Time:             evTime,
 		TotalVotingPower: valSet.TotalVotingPower(),
 	}
 }

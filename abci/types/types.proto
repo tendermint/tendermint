@@ -57,7 +57,7 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  google.protobuf.Timestamp time = 1  [(gogoproto.stdtime)=true];
+  google.protobuf.Timestamp time = 1  [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
   string chain_id = 2;
   ConsensusParams consensus_params = 3;
   repeated Validator validators = 4  [(gogoproto.nullable)=false];
@@ -231,7 +231,7 @@ message Header {
   // basics
   string chain_id = 1 [(gogoproto.customname)="ChainID"];
   int64 height = 2;
-  google.protobuf.Timestamp time = 3  [(gogoproto.stdtime)=true];
+  google.protobuf.Timestamp time = 3 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
 
   // txs
   int32 num_txs = 4;
@@ -268,7 +268,7 @@ message Evidence {
   string type = 1;
   Validator validator = 2 [(gogoproto.nullable)=false];
   int64 height = 3;
-  google.protobuf.Timestamp time = 4  [(gogoproto.stdtime)=true];
+  google.protobuf.Timestamp time = 4 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
   int64 total_voting_power = 5;
 }
 
