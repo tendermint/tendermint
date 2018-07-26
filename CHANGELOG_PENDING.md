@@ -7,6 +7,7 @@ BREAKING CHANGES:
 - [tools] Removed `make ensure_deps` in favor of `make get_vendor_deps`
 - [p2p] Remove salsa and ripemd primitives, in favor of using chacha as a stream cipher, and hkdf
 - [abci] Changed time format from int64 to google.protobuf.Timestamp
+- [abci] Changed Validators to LastCommitInfo in RequestBeginBlock
 
 FEATURES:
 - [tools] Added `make check_dep`

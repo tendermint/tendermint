@@ -188,9 +188,12 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:                block.Hash(),
-		Header:              types.TM2PB.Header(&block.Header),
-		Validators:          signVals,
+		Hash:   block.Hash(),
+		Header: types.TM2PB.Header(&block.Header),
+		LastCommitInfo: abci.LastCommitInfo{
+			CommitRound: int32(block.LastCommit.Round()),
+			Validators:  signVals,
+		},
 		ByzantineValidators: byzVals,
 	})
 	if err != nil {
