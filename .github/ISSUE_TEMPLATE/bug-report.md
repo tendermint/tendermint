@@ -1,3 +1,8 @@
+---
+name: Bug Report 
+about: Create a report to help us squash bugs!
+
+---
 <!-- 
 Please fill in as much of the template below as you can.
 

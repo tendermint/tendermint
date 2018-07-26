@@ -1,3 +1,8 @@
+---
+name: Feature Request
+about: Create a proposal to request a feature
+
+---
 <!--
 Please describe *in detail* the feature/behavior/change you'd like to see.
 
