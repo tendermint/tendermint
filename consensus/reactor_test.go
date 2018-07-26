@@ -13,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	sm "github.com/tendermint/tendermint/state"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -89,6 +90,51 @@ func TestReactorBasic(t *testing.T) {
 	timeoutWaitGroup(t, N, func(j int) {
 		<-eventChans[j]
 	}, css)
+}
+
+// Ensure we can process blocks with evidence
+func TestReactorWithEvidence(t *testing.T) {
+	N := 4
+	css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+	evpool := mockEvidencePool{
+		t:  t,
+		ev: []types.Evidence{types.NewMockGoodEvidence(1, 1, []byte("somone"))},
+	}
+	for i := 0; i < N; i++ {
+		css[i].evpool = evpool
+	}
+	reactors, eventChans, eventBuses := startConsensusNet(t, css, N)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+	// wait till everyone makes the first new block
+	timeoutWaitGroup(t, N, func(j int) {
+		<-eventChans[j]
+	}, css)
+
+	// second block should have evidence
+	timeoutWaitGroup(t, N, func(j int) {
+		<-eventChans[j]
+	}, css)
+}
+
+type mockEvidencePool struct {
+	height int
+	ev     []types.Evidence
+	t      *testing.T
+}
+
+func (m mockEvidencePool) PendingEvidence() []types.Evidence {
+	if m.height > 0 {
+		return m.ev
+	}
+	return nil
+}
+func (m mockEvidencePool) AddEvidence(types.Evidence) error { return nil }
+func (m mockEvidencePool) Update(block *types.Block, state sm.State) {
+	m.height += 1
+
+	if m.height > 0 {
+		require.True(m.t, len(block.Evidence.Evidence) > 0)
+	}
 }
 
 // Ensure a testnet sends proposal heartbeats and makes blocks when there are txs

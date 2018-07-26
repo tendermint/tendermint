@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.22.7
+
+*July 26th, 2018*
+
+BUG FIXES
+
+- [consensus, blockchain] Register the Evidence interface so it can be
+  marshalled/unmarshalled by the blockchain and consensus reactors
+
 ## 0.22.6
 
 *July 24th, 2018*

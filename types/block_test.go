@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -99,6 +99,25 @@ func TestBlockMakePartSet(t *testing.T) {
 	partSet := MakeBlock(int64(3), []Tx{Tx("Hello World")}, nil, nil).MakePartSet(1024)
 	assert.NotNil(t, partSet)
 	assert.Equal(t, 1, partSet.Total())
+}
+
+func TestBlockMakePartSetWithEvidence(t *testing.T) {
+	assert.Nil(t, (*Block)(nil).MakePartSet(2))
+
+	txs := []Tx{Tx("foo"), Tx("bar")}
+	lastID := makeBlockIDRandom()
+	h := int64(3)
+
+	voteSet, valSet, vals := randVoteSet(h-1, 1, VoteTypePrecommit, 10, 1)
+	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
+	require.NoError(t, err)
+
+	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
+	evList := []Evidence{ev}
+
+	partSet := MakeBlock(h, txs, commit, evList).MakePartSet(1024)
+	assert.NotNil(t, partSet)
+	assert.Equal(t, 3, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
