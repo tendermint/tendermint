@@ -112,7 +112,7 @@ See below for more details on the message types and how they are used.
   - `ChainID (string)`: ID of the blockchain.
   - `ConsensusParams (ConsensusParams)`: Initial consensus-critical parameters.
   - `Validators ([]Validator)`: Initial genesis validators.
-  - `AppStateBytes ([]byte)`: Serialized initial application state.
+  - `AppStateBytes ([]byte)`: Serialized initial application state. Amino-encoded JSON bytes.
 - **Response**:
   - `ConsensusParams (ConsensusParams)`: Initial
     consensus-critical parameters.
