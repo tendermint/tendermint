@@ -5,7 +5,8 @@
 One of the more apparent problems with the current architecture in the p2p
 package is that there is no clear separation of concerns between different
 components. Most notably the `Switch` is currently doing physical connection
-handling. An artifact is the dependency of the Switch on `config.P2PConfig`.
+handling. An artifact is the dependency of the Switch on
+`[config.P2PConfig`](https://github.com/tendermint/tendermint/blob/05a76fb517f50da27b4bfcdc7b4cf185fc61eff6/config/config.go#L272-L339).
 
 Addresses:
 * [#2046](https://github.com/tendermint/tendermint/issues/2046)
@@ -32,6 +33,8 @@ apply:
 * handshake fails
 * upgrade to secret connection fails
 * prevent duplicate ip
+* prevent duplicate id
+* nodeinfo incompatibility
 
 
 ``` go
