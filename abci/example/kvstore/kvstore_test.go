@@ -90,8 +90,8 @@ func TestPersistentKVStoreInfo(t *testing.T) {
 	header := types.Header{
 		Height: int64(height),
 	}
-	kvstore.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
-	kvstore.EndBlock(types.RequestEndBlock{header.Height})
+	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
+	kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
 	kvstore.Commit()
 
 	resInfo = kvstore.Info(types.RequestInfo{})
@@ -176,13 +176,13 @@ func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff
 		Height: height,
 	}
 
-	kvstore.BeginBlock(types.RequestBeginBlock{hash, header, nil, nil})
+	kvstore.BeginBlock(types.RequestBeginBlock{Hash: hash, Header: header})
 	for _, tx := range txs {
 		if r := kvstore.DeliverTx(tx); r.IsErr() {
 			t.Fatal(r)
 		}
 	}
-	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{header.Height})
+	resEndBlock := kvstore.EndBlock(types.RequestEndBlock{Height: header.Height})
 	kvstore.Commit()
 
 	valsEqual(t, diff, resEndBlock.ValidatorUpdates)

@@ -85,7 +85,7 @@ func NewGRPCApplication(app Application) *GRPCApplication {
 }
 
 func (app *GRPCApplication) Echo(ctx context.Context, req *RequestEcho) (*ResponseEcho, error) {
-	return &ResponseEcho{req.Message}, nil
+	return &ResponseEcho{Message: req.Message}, nil
 }
 
 func (app *GRPCApplication) Flush(ctx context.Context, req *RequestFlush) (*ResponseFlush, error) {

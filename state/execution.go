@@ -207,7 +207,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 
 	// End block
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{block.Height})
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err

@@ -63,7 +63,7 @@ RETRY_LOOP:
 
 	ENSURE_CONNECTED:
 		for {
-			_, err := client.Echo(context.Background(), &types.RequestEcho{"hello"}, grpc.FailFast(true))
+			_, err := client.Echo(context.Background(), &types.RequestEcho{Message: "hello"}, grpc.FailFast(true))
 			if err == nil {
 				break ENSURE_CONNECTED
 			}
@@ -129,7 +129,7 @@ func (cli *grpcClient) EchoAsync(msg string) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_Echo{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Echo{res}})
 }
 
 func (cli *grpcClient) FlushAsync() *ReqRes {
@@ -138,7 +138,7 @@ func (cli *grpcClient) FlushAsync() *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_Flush{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Flush{res}})
 }
 
 func (cli *grpcClient) InfoAsync(params types.RequestInfo) *ReqRes {
@@ -147,7 +147,7 @@ func (cli *grpcClient) InfoAsync(params types.RequestInfo) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_Info{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Info{res}})
 }
 
 func (cli *grpcClient) SetOptionAsync(params types.RequestSetOption) *ReqRes {
@@ -156,7 +156,7 @@ func (cli *grpcClient) SetOptionAsync(params types.RequestSetOption) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_SetOption{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_SetOption{res}})
 }
 
 func (cli *grpcClient) DeliverTxAsync(tx []byte) *ReqRes {
@@ -165,7 +165,7 @@ func (cli *grpcClient) DeliverTxAsync(tx []byte) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_DeliverTx{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_DeliverTx{res}})
 }
 
 func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
@@ -174,7 +174,7 @@ func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_CheckTx{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckTx{res}})
 }
 
 func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
@@ -183,7 +183,7 @@ func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_Query{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Query{res}})
 }
 
 func (cli *grpcClient) CommitAsync() *ReqRes {
@@ -192,7 +192,7 @@ func (cli *grpcClient) CommitAsync() *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_Commit{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_Commit{res}})
 }
 
 func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
@@ -201,7 +201,7 @@ func (cli *grpcClient) InitChainAsync(params types.RequestInitChain) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_InitChain{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_InitChain{res}})
 }
 
 func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
@@ -210,7 +210,7 @@ func (cli *grpcClient) BeginBlockAsync(params types.RequestBeginBlock) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_BeginBlock{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_BeginBlock{res}})
 }
 
 func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
@@ -219,7 +219,7 @@ func (cli *grpcClient) EndBlockAsync(params types.RequestEndBlock) *ReqRes {
 	if err != nil {
 		cli.StopForError(err)
 	}
-	return cli.finishAsyncCall(req, &types.Response{&types.Response_EndBlock{res}})
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_EndBlock{res}})
 }
 
 func (cli *grpcClient) finishAsyncCall(req *types.Request, res *types.Response) *ReqRes {

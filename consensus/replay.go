@@ -227,7 +227,7 @@ func (h *Handshaker) NBlocks() int {
 func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// Handshake is done via ABCI Info on the query conn.
-	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{version.Version})
+	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: version.Version})
 	if err != nil {
 		return fmt.Errorf("Error calling Info: %v", err)
 	}
@@ -269,7 +269,7 @@ func (h *Handshaker) ReplayBlocks(state sm.State, appHash []byte, appBlockHeight
 		validators := types.TM2PB.Validators(state.Validators)
 		csParams := types.TM2PB.ConsensusParams(h.genDoc.ConsensusParams)
 		req := abci.RequestInitChain{
-			Time:            h.genDoc.GenesisTime.Unix(), // TODO
+			Time:            h.genDoc.GenesisTime,
 			ChainId:         h.genDoc.ChainID,
 			ConsensusParams: csParams,
 			Validators:      validators,
