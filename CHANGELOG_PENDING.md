@@ -17,6 +17,7 @@ IMPROVEMENTS:
     - tweak params
     - only process one block at a time to avoid starving
 - [crypto] Switch hkdfchachapoly1305 to xchachapoly1305
+- [common] bit array functions which take in another parameter are now thread safe
 
 BUG FIXES:
 - [privval] fix a deadline for accepting new connections in socket private

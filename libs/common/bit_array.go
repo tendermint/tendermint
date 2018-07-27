@@ -118,7 +118,11 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 		return bA.Copy()
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 	c := bA.copyBits(MaxInt(bA.Bits, o.Bits))
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] |= o.Elems[i]
@@ -134,7 +138,11 @@ func (bA *BitArray) And(o *BitArray) *BitArray {
 		return nil
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 	return bA.and(o)
 }
 
@@ -153,6 +161,10 @@ func (bA *BitArray) Not() *BitArray {
 	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
+	return bA.not()
+}
+
+func (bA *BitArray) not() *BitArray {
 	c := bA.copy()
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] = ^c.Elems[i]
@@ -169,7 +181,11 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 		return nil
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 	if bA.Bits > o.Bits {
 		c := bA.copy()
 		for i := 0; i < len(o.Elems)-1; i++ {
@@ -178,13 +194,12 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 		i := len(o.Elems) - 1
 		if i >= 0 {
 			for idx := i * 64; idx < o.Bits; idx++ {
-				// NOTE: each individual GetIndex() call to o is safe.
-				c.setIndex(idx, c.getIndex(idx) && !o.GetIndex(idx))
+				c.setIndex(idx, c.getIndex(idx) && !o.getIndex(idx))
 			}
 		}
 		return c
 	}
-	return bA.and(o.Not()) // Note degenerate case where o == nil
+	return bA.and(o.not()) // Note degenerate case where o == nil
 }
 
 // IsEmpty returns true iff all bits in the bit array are 0
@@ -332,15 +347,16 @@ func (bA *BitArray) Bytes() []byte {
 
 // Update sets the bA's bits to be that of the other bit array.
 // The copying begins from the begin of both bit arrays.
-// Note, the other bitarray o is not locked when reading,
-// so if necessary, caller must copy or lock o prior to calling Update.
-// If bA is nil, does nothing.
 func (bA *BitArray) Update(o *BitArray) {
 	if bA == nil || o == nil {
 		return
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 
 	copy(bA.Elems, o.Elems)
 }
