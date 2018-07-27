@@ -50,6 +50,13 @@ func (tm2pb) Header(header *Header) abci.Header {
 	}
 }
 
+func (tm2pb) ValidatorWithoutPubKey(val *Validator) abci.Validator {
+	return abci.Validator{
+		Address: val.PubKey.Address(),
+		Power:   val.VotingPower,
+	}
+}
+
 // XXX: panics on unknown pubkey type
 func (tm2pb) Validator(val *Validator) abci.Validator {
 	return abci.Validator{
@@ -129,7 +136,7 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 
 	return abci.Evidence{
 		Type:             evType,
-		Validator:        TM2PB.Validator(val),
+		Validator:        TM2PB.ValidatorWithoutPubKey(val),
 		Height:           ev.Height(),
 		Time:             evTime,
 		TotalVotingPower: valSet.TotalVotingPower(),

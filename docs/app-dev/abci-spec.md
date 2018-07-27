@@ -170,8 +170,9 @@ See below for more details on the message types and how they are used.
   - Signals the beginning of a new block. Called prior to
     any DeliverTxs.
   - The header is expected to at least contain the Height.
-  - The `Validators` and `ByzantineValidators` can be used to
-    determine rewards and punishments for the validators.
+  - The `LastCommitInfo` and `ByzantineValidators` can be used to determine
+    rewards and punishments for the validators. NOTE validators here do not
+    include pubkeys.
 
 ### CheckTx
 

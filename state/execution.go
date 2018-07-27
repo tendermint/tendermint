@@ -248,7 +248,7 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 			vote = block.LastCommit.Precommits[i]
 		}
 		val := abci.SigningValidator{
-			Validator:       types.TM2PB.Validator(val),
+			Validator:       types.TM2PB.ValidatorWithoutPubKey(val),
 			SignedLastBlock: vote != nil,
 		}
 		signVals[i] = val
