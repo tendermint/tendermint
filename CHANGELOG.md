@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.22.8
+
+*July 26th, 2018*
+
+BUG FIXES
+
+- [consensus, blockchain] Fix 0.22.7 below.
+
 ## 0.22.7
 
 *July 26th, 2018*
