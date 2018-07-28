@@ -44,7 +44,10 @@ One downside is that for the encrypt function you must have already initialized 
 but I don't really see this as an issue. 
 
 If there is no error in encryption, EncryptSymmetric will return `algo_name || nonce || aead_ciphertext`. 
-This requires a mapping from aead type to name. 
+`algo_name` should be length prefixed, using standard varuint encoding.
+This will be binary data, but thats not a problem considering the nonce and ciphertext are also binary.
+
+This solution requires a mapping from aead type to name. 
 We can achieve this via reflection. 
 ```golang
 func getType(myvar interface{}) string {
