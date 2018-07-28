@@ -64,6 +64,8 @@ In decryption, we read the `algo_name`, and then instantiate a new AEAD with the
 Then we call the AEAD's decrypt method on the provided nonce/ciphertext.
 
 `RegisterSymmetric` allows a downstream user to add their own desired AEAD to the symmetric package.
+It will error if the AEAD name is already registered.
+This prevents a malicious import from modifying / nullifying an AEAD at runtime.
 
 ## Implementation strategy
 
