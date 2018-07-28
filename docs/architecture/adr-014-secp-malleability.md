@@ -14,7 +14,9 @@ Note that in many downstream applications, signatures will appear in a transacti
 This means that if someone broadcasts a transaction with secp256k1 signature, the signature can be altered into the other form by anyone in the p2p network.
 Thus the tx hash will change, and this altered tx hash may be committed instead.
 This breaks the assumption that you can broadcast a valid transaction and just wait for its hash to be included on chain.
-You may not even know to increment your sequence number for example.
+One example is if you are broadcasting a tx in cosmos,
+and you wait for it to appear on chain before incrementing your sequence number.
+You may never increment your sequence number if a different tx hash got committed.
 Removing this second layer of signature malleability concerns could ease downstream development.
 
 ### ECDSA context
@@ -27,9 +29,9 @@ Note that anyone can negate a group element, and therefore can get this second s
 ## Decision
 
 We can just distinguish a canonical form for the ECDSA signatures. 
-Then we require that all ECDSA signatures be in the canonical form between the two.
+Then we require that all ECDSA signatures be in the form which we defined as canonical.
 
-The canonical form is rather easy to define and check. 
+A canonical form is rather easy to define and check. 
 It would just be the smaller of the two y coordinates for the given x coordinate, defined lexicographically.
 Example of other systems using this: https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#serialization.
 
