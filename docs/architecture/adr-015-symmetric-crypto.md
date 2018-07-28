@@ -65,6 +65,13 @@ Then we call the AEAD's decrypt method on the provided nonce/ciphertext.
 
 `RegisterSymmetric` allows a downstream user to add their own desired AEAD to the symmetric package.
 
+## Implementation strategy
+
+The golang implementation of what is proposed is rather straight forward.
+The concern is that we will break existing private keys if we just switch to this.
+If this is concerning, we can make a simple script which doesn't require decoding privkeys,
+for converting from the old format to the new one.
+
 ## Status
 
 Proposed.
@@ -76,6 +83,8 @@ Proposed.
 * Allows downstream users to add their own AEAD
 
 ### Negative
+* We will have to break all private keys stored on disk.
+They can be recovered using seed words, and upgrade scripts are simple.
 
 ### Neutral
 * Caller has to instantiate the AEAD with the private key.
