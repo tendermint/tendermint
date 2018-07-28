@@ -121,7 +121,6 @@ func (bcR *BlockchainReactor) OnStart() error {
 
 // OnStop implements cmn.Service.
 func (bcR *BlockchainReactor) OnStop() {
-	bcR.BaseReactor.OnStop()
 	bcR.pool.Stop()
 }
 

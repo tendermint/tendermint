@@ -113,9 +113,6 @@ func NewPEXReactor(b AddrBook, config *PEXReactorConfig) *PEXReactor {
 
 // OnStart implements BaseService
 func (r *PEXReactor) OnStart() error {
-	if err := r.BaseReactor.OnStart(); err != nil {
-		return err
-	}
 	err := r.book.Start()
 	if err != nil && err != cmn.ErrAlreadyStarted {
 		return err
@@ -139,7 +136,6 @@ func (r *PEXReactor) OnStart() error {
 
 // OnStop implements BaseService
 func (r *PEXReactor) OnStop() {
-	r.BaseReactor.OnStop()
 	r.book.Stop()
 }
 
