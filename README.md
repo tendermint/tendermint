@@ -22,7 +22,7 @@ develop   | [![CircleCI](https://circleci.com/gh/tendermint/tendermint/tree/deve
 Tendermint Core is Byzantine Fault Tolerant (BFT) middleware that takes a state transition machine - written in any programming language -
 and securely replicates it on many machines.
 
-For protocol details, see [the specification](/docs/spec).
+For protocol details, see [the specification](/docs/spec). For a consensus proof and detailed protocol analysis checkout our recent paper, "[The latest gossip on BFT consensus](https://arxiv.org/abs/1807.04938)".
 
 ## A Note on Production Readiness
 
