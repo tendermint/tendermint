@@ -22,7 +22,8 @@ Removing this second layer of signature malleability concerns could ease downstr
 ### ECDSA context
 
 Secp256k1 is ECDSA over a particular curve.
-The signature is of the form `(r, s)`, where `s` is an elliptic curve group element.
+The signature is of the form `(r, s)`, where `s` is a field element. 
+(The particular field is the `Z_n`, where the elliptic curve has order `n`)
 However `(r, -s)` is also another valid solution.
 Note that anyone can negate a group element, and therefore can get this second signature.
 
@@ -30,10 +31,13 @@ Note that anyone can negate a group element, and therefore can get this second s
 
 We can just distinguish a canonical form for the ECDSA signatures. 
 Then we require that all ECDSA signatures be in the form which we defined as canonical.
+We reject signatures in non-canonical form.
 
 A canonical form is rather easy to define and check. 
-It would just be the smaller of the two y coordinates for the given x coordinate, defined lexicographically.
-Example of other systems using this: https://github.com/zkcrypto/pairing/tree/master/src/bls12_381#serialization.
+It would just be the smaller of the two values for `s`, defined lexicographically.
+This is a simple check, instead of checking if `s < n`, instead check `s <= (n - 1)/2`.
+An example of another cryptosystem using this 
+is the parity definition here https://github.com/zkcrypto/pairing/pull/30#issuecomment-372910663.
 
 ## Proposed Implementation
 
