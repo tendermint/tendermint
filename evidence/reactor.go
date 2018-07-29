@@ -44,11 +44,6 @@ func (evR *EvidenceReactor) SetLogger(l log.Logger) {
 	evR.evpool.SetLogger(l)
 }
 
-// OnStart implements cmn.Service
-func (evR *EvidenceReactor) OnStart() error {
-	return evR.BaseReactor.OnStart()
-}
-
 // GetChannels implements Reactor.
 // It returns the list of channels for this reactor.
 func (evR *EvidenceReactor) GetChannels() []*p2p.ChannelDescriptor {
