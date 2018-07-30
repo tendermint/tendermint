@@ -1,6 +1,7 @@
 package autofile
 
 import (
+	"io/ioutil"
 	"os"
 	"sync/atomic"
 	"syscall"
@@ -13,10 +14,14 @@ import (
 func TestSIGHUP(t *testing.T) {
 
 	// First, create an AutoFile writing to a tempfile dir
-	file, name := cmn.Tempfile("sighup_test")
-	if err := file.Close(); err != nil {
+	file, err := ioutil.TempFile("", "sighup_test")
+	if err != nil {
 		t.Fatalf("Error creating tempfile: %v", err)
 	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("Error closing tempfile: %v", err)
+	}
+	name := file.Name()
 	// Here is the actual AutoFile
 	af, err := OpenAutoFile(name)
 	if err != nil {
