@@ -71,10 +71,11 @@ message RequestQuery {
   bool prove = 4;
 }
 
+// NOTE: validators here have empty pubkeys.
 message RequestBeginBlock {
   bytes hash = 1;
   Header header = 2 [(gogoproto.nullable)=false];
-  repeated SigningValidator validators = 3  [(gogoproto.nullable)=false];
+  LastCommitInfo last_commit_info = 3 [(gogoproto.nullable)=false];
   repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
 }
 
@@ -203,14 +204,14 @@ message ConsensusParams {
   BlockGossip block_gossip = 3;
 }
 
-// BlockSize contain limits on the block size.
+// BlockSize contains limits on the block size.
 message BlockSize {
   int32 max_bytes = 1;
   int32 max_txs = 2;
   int64 max_gas = 3;
 }
 
-// TxSize contain limits on the tx size.
+// TxSize contains limits on the tx size.
 message TxSize {
   int32 max_bytes = 1;
   int64 max_gas = 2;
@@ -221,6 +222,11 @@ message TxSize {
 message BlockGossip {
   // Note: must not be 0
   int32 block_part_size_bytes = 1;
+}
+
+message LastCommitInfo {
+  int32 commit_round = 1;
+  repeated SigningValidator validators = 2 [(gogoproto.nullable)=false];
 }
 
 //----------------------------------------
