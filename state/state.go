@@ -98,7 +98,8 @@ func (state State) IsEmpty() bool {
 //------------------------------------------------------------------------
 // Create a block from the latest state
 
-// MakeBlock builds a block from the current state with the given txs, commit, and evidence.
+// MakeBlock builds a block from the current state with the given txs, commit,
+// and evidence.
 func (state State) MakeBlock(
 	height int64,
 	txs []types.Tx,
@@ -120,6 +121,8 @@ func (state State) MakeBlock(
 	block.ConsensusHash = state.ConsensusParams.Hash()
 	block.AppHash = state.AppHash
 	block.LastResultsHash = state.LastResultsHash
+
+	block.ProposerAddress = state.Validators.GetProposer().Address
 
 	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
