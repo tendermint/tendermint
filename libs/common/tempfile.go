@@ -86,16 +86,14 @@ func WriteFileAtomic(filename string, data []byte, perm os.FileMode) (err error)
 	// Limit the number of attempts to create a file. Something is seriously
 	// wrong if it didn't get created after 1000 attempts, and we don't want
 	// an infinite loop
-	// (Perhaps permission error)
 	i := 0
 	for ; i < atomicWriteFileMaxNumWriteAttempts; i++ {
 		name := filepath.Join(dir, atomicWriteFilePrefix+randWriteFileSuffix())
 		f, err = os.OpenFile(name, atomicWriteFileFlag, perm)
 		// If the file already exists, try a new file
 		if os.IsExist(err) {
-			// If the files already exist too many times,
-			// reseed as this indicates we likely hit another instances
-			// seed, and that instance hasn't handled its deletions correctly.
+			// If the files exists too many times, start reseeding as we've
+			// likely hit another instances seed.
 			if nconflict++; nconflict > atomicWriteFileMaxNumConflicts {
 				atomicWriteFileRandMu.Lock()
 				atomicWriteFileRand = writeFileRandReseed()
