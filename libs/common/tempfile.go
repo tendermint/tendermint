@@ -11,6 +11,19 @@ import (
 	"time"
 )
 
+const (
+	atomicWriteFilePrefix = "write-file-atomic-"
+	maxNumConflicts       = 5
+	// LCG constants from Donald Knuth MMIX
+	// This LCG's has a period equal to 2**64
+	lcgA = 6364136223846793005
+	lcgC = 1442695040888963407
+	// Create in case it doesn't exist and force kernel
+	// flush, which still leaves the potential of lingering disk cache.
+	// Never overwrites files
+	atomicWriteFileFlag = os.O_WRONLY | os.O_CREATE | os.O_SYNC | os.O_TRUNC | os.O_EXCL
+)
+
 var (
 	atomicWriteFileRand   uint64
 	atomicWriteFileRandMu sync.Mutex
@@ -36,16 +49,17 @@ func randWriteFileSuffix() string {
 	if r == 0 {
 		r = writeFileRandReseed()
 	}
-	// constants from Donald Knuth MMIX
-	// This LCG's has a period equal to 2**64
-	r = r*6364136223846793005 + 1442695040888963407
+
+	// Update randomness according to lcg
+	r = r*lcgA + lcgC
 
 	atomicWriteFileRand = r
 	atomicWriteFileRandMu.Unlock()
 	// Can have a negative name, replace this in the following
 	suffix := strconv.Itoa(int(r))
 	if string(suffix[0]) == "-" {
-		// Replace first "-" with "0". This is purely for UI clarity
+		// Replace first "-" with "0". This is purely for UI clarity,
+		// as otherwhise there would be two `-` in a row.
 		suffix = strings.Replace(suffix, "-", "0", 1)
 	}
 	return suffix
@@ -53,23 +67,20 @@ func randWriteFileSuffix() string {
 
 // WriteFileAtomic creates a temporary file with data and the perm given and
 // swaps it atomically with filename if successful.
-// This implementation is inspired by the golang stdlibs method of creating
-// tempfiles. Notable differences are that we use different flags, a 64 bit LCG
-// and handle negatives differently.
 func WriteFileAtomic(filename string, data []byte, perm os.FileMode) (err error) {
+	// This implementation is inspired by the golang stdlibs method of creating
+	// tempfiles. Notable differences are that we use different flags, a 64 bit LCG
+	// and handle negatives differently.
 	var (
 		dir = filepath.Dir(filename)
-		// Create in case it doesn't exist and force kernel
-		// flush, which still leaves the potential of lingering disk cache.
-		// Never overwrites files
-		flag = os.O_WRONLY | os.O_CREATE | os.O_SYNC | os.O_TRUNC | os.O_EXCL
-		f    *os.File
+
+		f *os.File
 	)
 
 	nconflict := 0
 	for i := 0; i < 10000; i++ {
-		name := filepath.Join(dir, "write-file-atomic-"+randWriteFileSuffix())
-		f, err = os.OpenFile(name, flag, perm)
+		name := filepath.Join(dir, atomicWriteFilePrefix+randWriteFileSuffix())
+		f, err = os.OpenFile(name, atomicWriteFileFlag, perm)
 		// If the file already exists, try a new file
 		if os.IsExist(err) {
 			// If the files already exist too many times,
