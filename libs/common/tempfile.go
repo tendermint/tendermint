@@ -1,6 +1,7 @@
 package common
 
 import (
+	fmt "fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -13,7 +14,12 @@ import (
 
 const (
 	atomicWriteFilePrefix = "write-file-atomic-"
-	maxNumConflicts       = 5
+	// Maximum number of atomic write file conflicts before we start reseeding
+	// (reduced from golang's default 10)
+	atomicWriteFileMaxNumConflicts = 5
+	// Maximum number of attempts to make at writing the write file before giving up
+	// (reduced from golang's default 10000)
+	atomicWriteFileMaxNumWriteAttempts = 1000
 	// LCG constants from Donald Knuth MMIX
 	// This LCG's has a period equal to 2**64
 	lcgA = 6364136223846793005
@@ -73,12 +79,16 @@ func WriteFileAtomic(filename string, data []byte, perm os.FileMode) (err error)
 	// and handle negatives differently.
 	var (
 		dir = filepath.Dir(filename)
-
-		f *os.File
+		f   *os.File
 	)
 
 	nconflict := 0
-	for i := 0; i < 10000; i++ {
+	// Limit the number of attempts to create a file. Something is seriously
+	// wrong if it didn't get created after 1000 attempts, and we don't want
+	// an infinite loop
+	// (Perhaps permission error)
+	i := 0
+	for ; i < atomicWriteFileMaxNumWriteAttempts; i++ {
 		name := filepath.Join(dir, atomicWriteFilePrefix+randWriteFileSuffix())
 		f, err = os.OpenFile(name, atomicWriteFileFlag, perm)
 		// If the file already exists, try a new file
@@ -86,7 +96,7 @@ func WriteFileAtomic(filename string, data []byte, perm os.FileMode) (err error)
 			// If the files already exist too many times,
 			// reseed as this indicates we likely hit another instances
 			// seed, and that instance hasn't handled its deletions correctly.
-			if nconflict++; nconflict > 5 {
+			if nconflict++; nconflict > atomicWriteFileMaxNumConflicts {
 				atomicWriteFileRandMu.Lock()
 				atomicWriteFileRand = writeFileRandReseed()
 				atomicWriteFileRandMu.Unlock()
@@ -96,6 +106,9 @@ func WriteFileAtomic(filename string, data []byte, perm os.FileMode) (err error)
 			return err
 		}
 		break
+	}
+	if i == atomicWriteFileMaxNumWriteAttempts {
+		return fmt.Errorf("Could not create atomic write file after %d attempts", i)
 	}
 
 	// Clean up in any case. Defer stacking order is last-in-first-out.
