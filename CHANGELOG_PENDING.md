@@ -22,5 +22,6 @@ IMPROVEMENTS:
 - [common] bit array functions which take in another parameter are now thread safe
 
 BUG FIXES:
+- [common] \#2109 Safely handle cases where atomic write files already exist
 - [privval] fix a deadline for accepting new connections in socket private
   validator.
