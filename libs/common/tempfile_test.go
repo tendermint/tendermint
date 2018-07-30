@@ -120,7 +120,7 @@ func TestWriteFileAtomicManyDuplicates(t *testing.T) {
 	defer os.Remove(fileToWrite)
 
 	WriteFileAtomic(fileToWrite, []byte(expectedString), 0777)
-	// Check that all intermittient atomic file were untouched
+	// Check that all intermittent atomic file were untouched
 	atomicWriteFileRand = defaultSeed
 	for i := 0; i < atomicWriteFileMaxNumConflicts+2; i++ {
 		fileRand := randWriteFileSuffix()
