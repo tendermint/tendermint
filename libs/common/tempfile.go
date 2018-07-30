@@ -3,7 +3,6 @@ package common
 import (
 	fmt "fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -126,27 +125,4 @@ func WriteFileAtomic(filename string, data []byte, perm os.FileMode) (err error)
 	f.Close()
 
 	return os.Rename(f.Name(), filename)
-}
-
-//--------------------------------------------------------------------------------
-
-func Tempfile(prefix string) (*os.File, string) {
-	file, err := ioutil.TempFile("", prefix)
-	if err != nil {
-		PanicCrisis(err)
-	}
-	return file, file.Name()
-}
-
-func Tempdir(prefix string) (*os.File, string) {
-	tempDir := os.TempDir() + "/" + prefix + RandStr(12)
-	err := EnsureDir(tempDir, 0700)
-	if err != nil {
-		panic(Fmt("Error creating temp dir: %v", err))
-	}
-	dir, err := os.Open(tempDir)
-	if err != nil {
-		panic(Fmt("Error opening temp dir: %v", err))
-	}
-	return dir, tempDir
 }

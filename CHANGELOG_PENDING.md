@@ -22,6 +22,6 @@ IMPROVEMENTS:
 - [common] bit array functions which take in another parameter are now thread safe
 
 BUG FIXES:
-- [common] \#2109 Safely handle cases where atomic write files already exist
+- [common] Safely handle cases where atomic write files already exist [#2109](https://github.com/tendermint/tendermint/issues/2109)
 - [privval] fix a deadline for accepting new connections in socket private
   validator.
