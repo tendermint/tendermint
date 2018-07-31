@@ -19,10 +19,10 @@ message Header {
   sint64 Height = 2;
   Timestamp Time = 3;
   sint64 NumTxs = 4;
+  sint64 TotalTxs = 5;
 
   // prev block info
-  BlockID LastBlockID = 5;
-  sint64 TotalTxs = 6;
+  BlockID LastBlockID = 6;
 
   // hashes of block data
   bytes LastCommitHash = 7; // commit from validators from the last block
@@ -36,6 +36,7 @@ message Header {
 
   // consensus info
   bytes EvidenceHash = 13; // evidence included in the block
+  bytes ProposerAddress = 14; // original proposer of the block
 }
 
 // Timestamp wraps how amino encodes time. Note that this is different from the protobuf well-known type

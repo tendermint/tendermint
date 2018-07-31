@@ -8,6 +8,7 @@ BREAKING CHANGES:
 - [rpc] `/commit` returns a `signed_header` field instead of everything being
   top-level
 - [abci] Added address of the original proposer of the block to Header.
+- [abci] Change ABCI Header to match Tendermint exactly
 
 FEATURES:
 

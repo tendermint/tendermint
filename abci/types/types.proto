@@ -232,24 +232,40 @@ message LastCommitInfo {
 //----------------------------------------
 // Blockchain Types
 
-// just the minimum the app might need
 message Header {
-  // basics
+  // basic block info
   string chain_id = 1 [(gogoproto.customname)="ChainID"];
   int64 height = 2;
   google.protobuf.Timestamp time = 3 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
-
-  // txs
-  int32 num_txs = 4;
+  int64 num_txs = 4;
   int64 total_txs = 5;
 
-  // hashes
-  bytes last_block_hash = 6;
-  bytes validators_hash = 7;
-  bytes app_hash = 8;
+  // prev block info
+  BlockID last_block_id = 6 [(gogoproto.nullable)=false];
 
-  // consensus
-  bytes proposer_address = 9;
+  // hashes of block data
+  bytes last_commit_hash = 7; // commit from validators from the last block
+  bytes data_hash = 8;        // transactions
+
+  // hashes from the app output from the prev block
+  bytes validators_hash = 9;   // validators for the current block
+  bytes consensus_hash = 10;   // consensus params for current block
+  bytes app_hash = 11;         // state after txs from the previous block
+  bytes last_results_hash = 12;// root hash of all results from the txs from the previous block
+
+  // consensus info
+  bytes evidence_hash = 13;    // evidence included in the block
+  bytes proposer_address = 14; // original proposer of the block
+}
+
+message BlockID {
+  bytes hash = 1;
+  PartSetHeader parts_header = 2 [(gogoproto.nullable)=false];
+}
+
+message PartSetHeader {
+  int32 total = 1;
+  bytes hash = 2;
 }
 
 // Validator
