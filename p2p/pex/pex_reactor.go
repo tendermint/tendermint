@@ -74,6 +74,8 @@ type PEXReactor struct {
 	requestsSent         *cmn.CMap // ID->struct{}: unanswered send requests
 	lastReceivedRequests *cmn.CMap // ID->time.Time: last time peer requested from us
 
+	seedAddrs []*p2p.NetAddress
+
 	attemptsToDial sync.Map // address (string) -> {number of attempts (int), last time dialed (time.Time)}
 }
 
@@ -120,9 +122,12 @@ func (r *PEXReactor) OnStart() error {
 
 	// return err if user provided a bad seed address
 	// or a host name that we cant resolve
-	if err := r.checkSeeds(); err != nil {
+	seedAddrs, err := r.checkSeeds()
+	if err != nil {
 		return err
 	}
+
+	r.seedAddrs = seedAddrs
 
 	// Check if this node should run
 	// in seed/crawler mode
@@ -298,10 +303,8 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 		r.logErrAddrBook(err)
 
 		// If this address came from a seed node, try to connect to it without waiting.
-		// TODO: Change this to an O(log(N)) check on a sorted seedAddr list
-		seedAddrs, _ := p2p.NewNetAddressStrings(r.config.Seeds)
-		for i := 0; i < len(seedAddrs); i++ {
-			if seedAddrs[i].Equals(srcAddr) {
+		for _, seedAddr := range r.seedAddrs {
+			if seedAddr == srcAddr {
 				r.ensurePeers()
 			}
 		}
@@ -476,18 +479,18 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 }
 
 // check seed addresses are well formed
-func (r *PEXReactor) checkSeeds() error {
+func (r *PEXReactor) checkSeeds() ([]*p2p.NetAddress, error) {
 	lSeeds := len(r.config.Seeds)
 	if lSeeds == 0 {
-		return nil
+		return nil, nil
 	}
-	_, errs := p2p.NewNetAddressStrings(r.config.Seeds)
+	netAddrs, errs := p2p.NewNetAddressStrings(r.config.Seeds)
 	for _, err := range errs {
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return netAddrs, nil
 }
 
 // randomly dial seeds until we connect to one or exhaust them
@@ -496,13 +499,12 @@ func (r *PEXReactor) dialSeeds() {
 	if lSeeds == 0 {
 		return
 	}
-	seedAddrs, _ := p2p.NewNetAddressStrings(r.config.Seeds)
 
 	perm := cmn.RandPerm(lSeeds)
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
-		seedAddr := seedAddrs[i]
+		seedAddr := r.seedAddrs[i]
 		err := r.Switch.DialPeerWithAddress(seedAddr, false)
 		if err == nil {
 			return

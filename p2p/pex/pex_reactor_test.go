@@ -211,12 +211,12 @@ func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	defer os.RemoveAll(dir) // nolint: errcheck
 
 	// 1. create seed
-	seed := createSeed(dir, 0, []*p2p.NetAddress{}, []*p2p.NetAddress{})
+	seed := testCreateSeed(dir, 0, []*p2p.NetAddress{}, []*p2p.NetAddress{})
 	require.Nil(t, seed.Start())
 	defer seed.Stop()
 
 	// 2. create usual peer with only seed configured.
-	peer := createPeerWithSeed(dir, 1, seed)
+	peer := testCreatePeerWithSeed(dir, 1, seed)
 	require.Nil(t, peer.Start())
 	defer peer.Stop()
 
@@ -259,12 +259,12 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	defer peer.Stop()
 
 	// 2. Create seed which knows about the peer
-	seed := createSeed(dir, 2, []*p2p.NetAddress{peer.NodeInfo().NetAddress()}, []*p2p.NetAddress{peer.NodeInfo().NetAddress()})
+	seed := testCreateSeed(dir, 2, []*p2p.NetAddress{peer.NodeInfo().NetAddress()}, []*p2p.NetAddress{peer.NodeInfo().NetAddress()})
 	require.Nil(t, seed.Start())
 	defer seed.Stop()
 
 	// 3. create another peer with only seed configured.
-	secondPeer := createPeerWithSeed(dir, 3, seed)
+	secondPeer := testCreatePeerWithSeed(dir, 3, seed)
 	require.Nil(t, secondPeer.Start())
 	defer secondPeer.Stop()
 
@@ -437,7 +437,7 @@ func assertPeersWithTimeout(
 
 // Creates a seed which knows about the provided addresses / source address pairs.
 // Starting and stopping the seed is left to the caller
-func createSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) *p2p.Switch {
+func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) *p2p.Switch {
 	seed := p2p.MakeSwitch(
 		cfg,
 		id,
@@ -468,7 +468,7 @@ func createSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) *p2p
 
 // Creates a peer which knows about the provided seed.
 // Starting and stopping the peer is left to the caller
-func createPeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
+func testCreatePeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
 	peer := p2p.MakeSwitch(
 		cfg,
 		id,
