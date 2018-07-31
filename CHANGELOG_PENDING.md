@@ -20,6 +20,7 @@ IMPROVEMENTS:
     - only process one block at a time to avoid starving
 - [crypto] Switch hkdfchachapoly1305 to xchachapoly1305
 - [common] bit array functions which take in another parameter are now thread safe
+- [p2p] \#2093 begin connecting to peers as soon a seed node provides them to you
 
 BUG FIXES:
 - [privval] fix a deadline for accepting new connections in socket private

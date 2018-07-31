@@ -281,7 +281,6 @@ func (r *PEXReactor) RequestAddrs(p Peer) {
 // request for this peer and deletes the open request.
 // If there's no open request for the src peer, it returns an error.
 func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
-
 	id := string(src.ID())
 	if !r.requestsSent.Has(id) {
 		return cmn.NewError("Received unsolicited pexAddrsMessage")
@@ -297,6 +296,15 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 		err := r.book.AddAddress(netAddr, srcAddr)
 		r.logErrAddrBook(err)
+
+		// If this address came from a seed node, try to connect to it without waiting.
+		// TODO: Change this to an O(log(N)) check on a sorted seedAddr list
+		seedAddrs, _ := p2p.NewNetAddressStrings(r.config.Seeds)
+		for i := 0; i < len(seedAddrs); i++ {
+			if seedAddrs[i].Equals(srcAddr) {
+				r.ensurePeers()
+			}
+		}
 	}
 	return nil
 }
