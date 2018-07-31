@@ -365,14 +365,14 @@ ResponseBeginBlock requestBeginBlock(RequestBeginBlock req) {
 
 ### EndBlock
 
-The EndBlock request can be used to run some code at the end of every
-block. Additionally, the response may contain a list of validators,
-which can be used to update the validator set. To add a new validator or
-update an existing one, simply include them in the list returned in the
-EndBlock response. To remove one, include it in the list with a `power`
-equal to `0`. Tendermint core will take care of updating the validator
-set. Note the change in voting power must be strictly less than 1/3 per
-block if you want a light client to be able to prove the transition
+The EndBlock request can be used to run some code at the end of every block.
+Additionally, the response may contain a list of validators, which can be used
+to update the validator set. To add a new validator or update an existing one,
+simply include them in the list returned in the EndBlock response. To remove
+one, include it in the list with a `power` equal to `0`. Validator's `address`
+field can be left empty. Tendermint core will take care of updating the
+validator set. Note the change in voting power must be strictly less than 1/3
+per block if you want a light client to be able to prove the transition
 externally. See the [light client
 docs](https://godoc.org/github.com/tendermint/tendermint/lite#hdr-How_We_Track_Validators)
 for details on how it tracks validators.
