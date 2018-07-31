@@ -304,7 +304,7 @@ func (r *PEXReactor) ReceiveAddrs(addrs []*p2p.NetAddress, src Peer) error {
 
 		// If this address came from a seed node, try to connect to it without waiting.
 		for _, seedAddr := range r.seedAddrs {
-			if seedAddr == srcAddr {
+			if seedAddr.Equals(srcAddr) {
 				r.ensurePeers()
 			}
 		}
