@@ -115,7 +115,7 @@ func TestReactorBroadcastTxMessage(t *testing.T) {
 
 	// send a bunch of txs to the first reactor's mempool
 	// and wait for them all to be received in the others
-	txs := checkTxs(t, reactors[0].Mempool, NUM_TXS)
+	txs, _ := checkTxs(t, reactors[0].Mempool, NUM_TXS)
 	waitForTxs(t, txs, reactors)
 }
 
