@@ -351,7 +351,7 @@ func TestConsensusParamsChangesSaveLoad(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockTx, blockGas, txBytes,
+func makeParams(blockBytes, blockGas, txBytes,
 	txGas, partSize int) types.ConsensusParams {
 
 	return types.ConsensusParams{
@@ -374,7 +374,7 @@ func pk() []byte {
 }
 
 func TestApplyUpdates(t *testing.T) {
-	initParams := makeParams(1, 2, 3, 4, 5, 6)
+	initParams := makeParams(1, 2, 3, 4, 5)
 
 	cases := [...]struct {
 		init     types.ConsensusParams
@@ -389,19 +389,18 @@ func TestApplyUpdates(t *testing.T) {
 					MaxBytes: 123,
 				},
 			},
-			makeParams(1, 2, 3, 123, 5, 6)},
+			makeParams(1, 2, 123, 4, 5)},
 		3: {initParams,
 			abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
-					MaxTxs: 44,
 					MaxGas: 55,
 				},
 			},
-			makeParams(1, 44, 55, 4, 5, 6)},
+			makeParams(1, 55, 3, 4, 5)},
 		4: {initParams,
 			abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
-					MaxTxs: 789,
+					MaxBytes: 789,
 				},
 				TxSize: &abci.TxSize{
 					MaxGas: 888,
@@ -410,7 +409,7 @@ func TestApplyUpdates(t *testing.T) {
 					BlockPartSizeBytes: 2002,
 				},
 			},
-			makeParams(1, 789, 3, 4, 888, 2002)},
+			makeParams(789, 2, 3, 888, 2002)},
 	}
 
 	for i, tc := range cases {
