@@ -42,6 +42,12 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", state.LastBlockTotalTx+newTxs, block.TotalTxs)
 	}
 
+	// Don't risk recomputing, since marshalling may be slow.
+	blockSize := block.Size()
+	if blockSize > state.ConsensusParams.BlockSize.MaxBytes {
+		return fmt.Errorf("Block is too large. Got %d, maximum is %d", blockSize, state.ConsensusParams.BlockSize.MaxBytes)
+	}
+
 	// validate app info
 	if !bytes.Equal(block.AppHash, state.AppHash) {
 		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", state.AppHash, block.AppHash)
