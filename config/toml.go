@@ -94,6 +94,10 @@ genesis_file = "{{ js .BaseConfig.Genesis }}"
 # Path to the JSON file containing the private key to use as a validator in the consensus protocol
 priv_validator_file = "{{ js .BaseConfig.PrivValidator }}"
 
+# TCP or UNIX socket address for Tendermint to listen on for
+# connections from an external PrivValidator process
+priv_validator_laddr = "{{ .BaseConfig.PrivValidatorListenAddr }}"
+
 # Path to the JSON file containing the private key to use for node authentication in the p2p protocol
 node_key_file = "{{ js .BaseConfig.NodeKey}}"
 

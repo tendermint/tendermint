@@ -94,7 +94,6 @@ func (cfg *Config) SetRoot(root string) *Config {
 
 // BaseConfig defines the base configuration for a Tendermint node
 type BaseConfig struct {
-
 	// chainID is unexposed and immutable but here for convenience
 	chainID string
 
@@ -102,49 +101,49 @@ type BaseConfig struct {
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir string `mapstructure:"home"`
 
-	// Path to the JSON file containing the initial validator set and other meta data
-	Genesis string `mapstructure:"genesis_file"`
-
-	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
-	PrivValidator string `mapstructure:"priv_validator_file"`
-
-	// A JSON file containing the private key to use for p2p authenticated encryption
-	NodeKey string `mapstructure:"node_key_file"`
-
-	// A custom human readable name for this node
-	Moniker string `mapstructure:"moniker"`
-
-	// TCP or UNIX socket address for Tendermint to listen on for
-	// connections from an external PrivValidator process
-	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
-
 	// TCP or UNIX socket address of the ABCI application,
 	// or the name of an ABCI application compiled in with the Tendermint binary
 	ProxyApp string `mapstructure:"proxy_app"`
 
-	// Mechanism to connect to the ABCI application: socket | grpc
-	ABCI string `mapstructure:"abci"`
-
-	// Output level for logging
-	LogLevel string `mapstructure:"log_level"`
-
-	// TCP or UNIX socket address for the profiling server to listen on
-	ProfListenAddress string `mapstructure:"prof_laddr"`
+	// A custom human readable name for this node
+	Moniker string `mapstructure:"moniker"`
 
 	// If this node is many blocks behind the tip of the chain, FastSync
 	// allows them to catchup quickly by downloading blocks in parallel
 	// and verifying their commits
 	FastSync bool `mapstructure:"fast_sync"`
 
-	// If true, query the ABCI app on connecting to a new peer
-	// so the app can decide if we should keep the connection or not
-	FilterPeers bool `mapstructure:"filter_peers"` // false
-
 	// Database backend: leveldb | memdb
 	DBBackend string `mapstructure:"db_backend"`
 
 	// Database directory
 	DBPath string `mapstructure:"db_dir"`
+
+	// Output level for logging
+	LogLevel string `mapstructure:"log_level"`
+
+	// Path to the JSON file containing the initial validator set and other meta data
+	Genesis string `mapstructure:"genesis_file"`
+
+	// Path to the JSON file containing the private key to use as a validator in the consensus protocol
+	PrivValidator string `mapstructure:"priv_validator_file"`
+
+	// TCP or UNIX socket address for Tendermint to listen on for
+	// connections from an external PrivValidator process
+	PrivValidatorListenAddr string `mapstructure:"priv_validator_laddr"`
+
+	// A JSON file containing the private key to use for p2p authenticated encryption
+	NodeKey string `mapstructure:"node_key_file"`
+
+	// Mechanism to connect to the ABCI application: socket | grpc
+	ABCI string `mapstructure:"abci"`
+
+	// TCP or UNIX socket address for the profiling server to listen on
+	ProfListenAddress string `mapstructure:"prof_laddr"`
+
+	// If true, query the ABCI app on connecting to a new peer
+	// so the app can decide if we should keep the connection or not
+	FilterPeers bool `mapstructure:"filter_peers"` // false
 }
 
 // DefaultBaseConfig returns a default base configuration for a Tendermint node
