@@ -48,7 +48,6 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 	return ConsensusParams{
 		BlockSize: BlockSize{
 			MaxBytes: blockBytes,
-			MaxTxs:   blockTx,
 			MaxGas:   int64(blockGas),
 		},
 		TxSize: TxSize{
