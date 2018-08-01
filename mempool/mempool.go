@@ -367,8 +367,9 @@ func (mem *Mempool) notifyTxsAvailable() {
 }
 
 // Reap returns a list of transactions currently in the mempool.
-// If maxBytes is -1, there is no cap on the number of bytes returend.
-func (mem *Mempool) Reap(maxBytes int) types.Txs {
+// The returned list will have less than maxTotalSize bytes.
+// If maxTotalSize is -1, there is no cap on the number of bytes returend.
+func (mem *Mempool) Reap(maxTotalSize int) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -377,24 +378,24 @@ func (mem *Mempool) Reap(maxBytes int) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	return mem.collectTxs(maxBytes)
+	return mem.collectTxs(maxTotalSize)
 }
 
-// maxTxs: -1 means uncapped, 0 means none
-func (mem *Mempool) collectTxs(maxBytes int) types.Txs {
-	if maxBytes == 0 {
+// maxTotalSize: -1 means uncapped, 0 means none
+func (mem *Mempool) collectTxs(maxTotalSize int) types.Txs {
+	if maxTotalSize == 0 {
 		return []types.Tx{}
-	} else if maxBytes < 0 {
+	} else if maxTotalSize < 0 {
 		return mem.getAllTxs()
 	}
-	curBytes := maxBytes
-	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), maxBytes/mem.config.AverageTxSize))
+	remainingBytes := maxTotalSize
+	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), maxTotalSize/mem.config.AverageTxSize))
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		tx := e.Value.(*mempoolTx).tx
-		if len(tx) > curBytes {
+		if len(tx) > remainingBytes {
 			break
 		}
-		curBytes -= len(tx)
+		remainingBytes -= len(tx)
 		txs = append(txs, tx)
 	}
 	return txs
