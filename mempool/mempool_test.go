@@ -56,10 +56,11 @@ func ensureFire(t *testing.T, ch <-chan struct{}, timeoutMS int) {
 	}
 }
 
-func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
+func checkTxs(t *testing.T, mempool *Mempool, count int) (types.Txs, int) {
 	txs := make(types.Txs, count)
+	bytesPerTx := 20
 	for i := 0; i < count; i++ {
-		txBytes := make([]byte, 20)
+		txBytes := make([]byte, bytesPerTx)
 		txs[i] = txBytes
 		_, err := rand.Read(txBytes)
 		if err != nil {
@@ -69,7 +70,19 @@ func checkTxs(t *testing.T, mempool *Mempool, count int) types.Txs {
 			t.Fatalf("Error after CheckTx: %v", err)
 		}
 	}
-	return txs
+	return txs, count * bytesPerTx
+}
+
+func TestReapMaxBytesFollowed(t *testing.T) {
+	app := kvstore.NewKVStoreApplication()
+	cc := proxy.NewLocalClientCreator(app)
+	mempool := newMempoolWithApp(cc)
+	mempool.EnableTxsAvailable()
+
+	txs, totalBytes := checkTxs(t, mempool, 100)
+	reapedTxs := mempool.Reap(totalBytes - 1)
+	require.Equal(t, len(txs)-1, len(reapedTxs), "mempool reaped too many txs")
+	require.Equal(t, txs[:len(reapedTxs)], reapedTxs, "reaped txs weren't the first txs of the mempool")
 }
 
 func TestTxsAvailable(t *testing.T) {
@@ -84,7 +97,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch of txs, it should only fire once
-	txs := checkTxs(t, mempool, 100)
+	txs, _ := checkTxs(t, mempool, 100)
 	ensureFire(t, mempool.TxsAvailable(), timeoutMS)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
@@ -99,7 +112,7 @@ func TestTxsAvailable(t *testing.T) {
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// send a bunch more txs. we already fired for this height so it shouldnt fire again
-	moreTxs := checkTxs(t, mempool, 50)
+	moreTxs, _ := checkTxs(t, mempool, 50)
 	ensureNoFire(t, mempool.TxsAvailable(), timeoutMS)
 
 	// now call update with all the txs. it should not fire as there are no txs left

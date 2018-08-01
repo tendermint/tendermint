@@ -8,9 +8,9 @@ import (
 	"github.com/pkg/errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 //-----------------------------------------------------------------------------
@@ -243,7 +243,8 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
 	limit = validatePerPage(limit)
 
-	txs := mempool.Reap(limit)
+	// TODO: Add a better API to Reap N Txs.
+	txs := mempool.Reap(-1)[:limit]
 	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
 }
 

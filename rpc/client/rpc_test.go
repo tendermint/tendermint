@@ -242,7 +242,7 @@ func TestBroadcastTxSync(t *testing.T) {
 
 		require.Equal(initMempoolSize+1, mempool.Size())
 
-		txs := mempool.Reap(1)
+		txs := mempool.Reap(len(tx))
 		require.EqualValues(tx, txs[0])
 		mempool.Flush()
 	}

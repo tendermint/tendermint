@@ -21,7 +21,6 @@ func TestConsensusParams(t *testing.T) {
 
 	// get values with real fields
 	assert.NotNil(params.GetBlockSize())
-	assert.EqualValues(params.GetBlockSize().GetMaxTxs(), 0)
 	assert.EqualValues(params.GetBlockSize().GetMaxGas(), 12345)
 	assert.NotNil(params.GetBlockGossip())
 	assert.EqualValues(params.GetBlockGossip().GetBlockPartSizeBytes(), 54321)

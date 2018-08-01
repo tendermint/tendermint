@@ -42,13 +42,12 @@ func TestConsensusParamsValidation(t *testing.T) {
 	}
 }
 
-func makeParams(blockBytes, blockTx, blockGas, txBytes,
+func makeParams(blockBytes, blockGas, txBytes,
 	txGas, partSize int) ConsensusParams {
 
 	return ConsensusParams{
 		BlockSize: BlockSize{
 			MaxBytes: blockBytes,
-			MaxTxs:   blockTx,
 			MaxGas:   int64(blockGas),
 		},
 		TxSize: TxSize{
@@ -63,14 +62,14 @@ func makeParams(blockBytes, blockTx, blockGas, txBytes,
 
 func TestConsensusParamsHash(t *testing.T) {
 	params := []ConsensusParams{
-		makeParams(1, 2, 3, 4, 5, 6),
-		makeParams(7, 2, 3, 4, 5, 6),
-		makeParams(1, 7, 3, 4, 5, 6),
-		makeParams(1, 2, 7, 4, 5, 6),
-		makeParams(1, 2, 3, 7, 5, 6),
-		makeParams(1, 2, 3, 4, 7, 6),
-		makeParams(1, 2, 3, 4, 5, 7),
-		makeParams(6, 5, 4, 3, 2, 1),
+		makeParams(1, 2, 3, 4, 5),
+		makeParams(7, 2, 3, 4, 5),
+		makeParams(1, 7, 3, 4, 5),
+		makeParams(1, 2, 7, 4, 5),
+		makeParams(1, 2, 3, 7, 5),
+		makeParams(1, 2, 3, 4, 7),
+		makeParams(1, 2, 3, 4, 6),
+		makeParams(5, 4, 3, 2, 1),
 	}
 
 	hashes := make([][]byte, len(params))
@@ -96,47 +95,45 @@ func TestConsensusParamsUpdate(t *testing.T) {
 	}{
 		// empty updates
 		{
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3, 4, 5),
 			&abci.ConsensusParams{},
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3, 4, 5),
 		},
 		// negative BlockPartSizeBytes
 		{
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3, 4, 5),
 			&abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
 					MaxBytes: -100,
-					MaxTxs:   -200,
-					MaxGas:   -300,
+					MaxGas:   -200,
 				},
 				TxSize: &abci.TxSize{
-					MaxBytes: -400,
-					MaxGas:   -500,
+					MaxBytes: -300,
+					MaxGas:   -400,
 				},
 				BlockGossip: &abci.BlockGossip{
-					BlockPartSizeBytes: -600,
+					BlockPartSizeBytes: -500,
 				},
 			},
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3, 4, 5),
 		},
 		// fine updates
 		{
-			makeParams(1, 2, 3, 4, 5, 6),
+			makeParams(1, 2, 3, 4, 5),
 			&abci.ConsensusParams{
 				BlockSize: &abci.BlockSize{
 					MaxBytes: 100,
-					MaxTxs:   200,
-					MaxGas:   300,
+					MaxGas:   200,
 				},
 				TxSize: &abci.TxSize{
-					MaxBytes: 400,
-					MaxGas:   500,
+					MaxBytes: 300,
+					MaxGas:   400,
 				},
 				BlockGossip: &abci.BlockGossip{
-					BlockPartSizeBytes: 600,
+					BlockPartSizeBytes: 500,
 				},
 			},
-			makeParams(100, 200, 300, 400, 500, 600),
+			makeParams(100, 200, 300, 400, 500),
 		},
 	}
 	for _, tc := range testCases {
