@@ -204,6 +204,9 @@ size = {{ .Mempool.Size }}
 # size of the cache (used to filter transactions we saw earlier)
 cache_size = {{ .Mempool.CacheSize }}
 
+# expected average size per tx (used to fine tune the mempool memory usage)
+expected_avg_tx_size = {{ .Mempool.AverageTxSize }}
+
 ##### consensus configuration options #####
 [consensus]
 

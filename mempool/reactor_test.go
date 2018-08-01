@@ -8,7 +8,7 @@ import (
 
 	"github.com/fortytw2/leaktest"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-kit/kit/log/term"
 
@@ -86,9 +86,14 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	reapedTxs := mempool.Reap(len(txs))
+	// test both code paths for reap
+	// Reap all txs since mempool size is the same as tx length
+	reapedTxs1 := mempool.Reap(-1)
+	reapedTxs2 := mempool.Reap(types.MaxBlockSizeBytes) // 100MB, max possible max block size
+
 	for i, tx := range txs {
-		assert.Equal(t, tx, reapedTxs[i], fmt.Sprintf("txs at index %d on reactor %d don't match: %v vs %v", i, reactorIdx, tx, reapedTxs[i]))
+		require.Equal(t, tx, reapedTxs1[i], fmt.Sprintf("txs at index %d on reactor %d on method 1 don't match: %v vs %v", i, reactorIdx, tx, reapedTxs1[i]))
+		require.Equal(t, tx, reapedTxs2[i], fmt.Sprintf("txs at index %d on reactor %d on method 2 don't match: %v vs %v", i, reactorIdx, tx, reapedTxs2[i]))
 	}
 	wg.Done()
 }

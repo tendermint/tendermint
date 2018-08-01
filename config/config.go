@@ -401,13 +401,14 @@ func DefaultFuzzConnConfig() *FuzzConnConfig {
 
 // MempoolConfig defines the configuration options for the Tendermint mempool
 type MempoolConfig struct {
-	RootDir      string `mapstructure:"home"`
-	Recheck      bool   `mapstructure:"recheck"`
-	RecheckEmpty bool   `mapstructure:"recheck_empty"`
-	Broadcast    bool   `mapstructure:"broadcast"`
-	WalPath      string `mapstructure:"wal_dir"`
-	Size         int    `mapstructure:"size"`
-	CacheSize    int    `mapstructure:"cache_size"`
+	RootDir       string `mapstructure:"home"`
+	Recheck       bool   `mapstructure:"recheck"`
+	RecheckEmpty  bool   `mapstructure:"recheck_empty"`
+	Broadcast     bool   `mapstructure:"broadcast"`
+	WalPath       string `mapstructure:"wal_dir"`
+	Size          int    `mapstructure:"size"`
+	CacheSize     int    `mapstructure:"cache_size"`
+	AverageTxSize int    `mapstructure:"expected_avg_tx_size"`
 }
 
 // DefaultMempoolConfig returns a default configuration for the Tendermint mempool
@@ -419,6 +420,9 @@ func DefaultMempoolConfig() *MempoolConfig {
 		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
 		Size:         100000,
 		CacheSize:    100000,
+		// default chosen as 75 bytes per secp sig + 20 byte addr + misc. other SDK overhead
+		// TODO: Replace with properly benchmarked average tx size
+		AverageTxSize: 128,
 	}
 }
 

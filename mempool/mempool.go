@@ -367,8 +367,8 @@ func (mem *Mempool) notifyTxsAvailable() {
 }
 
 // Reap returns a list of transactions currently in the mempool.
-// If maxTxs is -1, there is no cap on the number of returned transactions.
-func (mem *Mempool) Reap(maxTxs int) types.Txs {
+// If maxBytes is -1, there is no cap on the number of bytes returend.
+func (mem *Mempool) Reap(maxBytes int) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -377,21 +377,39 @@ func (mem *Mempool) Reap(maxTxs int) types.Txs {
 		time.Sleep(time.Millisecond * 10)
 	}
 
-	txs := mem.collectTxs(maxTxs)
-	return txs
+	return mem.collectTxs(maxBytes)
 }
 
 // maxTxs: -1 means uncapped, 0 means none
-func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
-	if maxTxs == 0 {
+func (mem *Mempool) collectTxs(maxBytes int) types.Txs {
+	if maxBytes == 0 {
 		return []types.Tx{}
-	} else if maxTxs < 0 {
-		maxTxs = mem.txs.Len()
+	} else if maxBytes < 0 {
+		return mem.getAllTxs()
 	}
-	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), maxTxs))
-	for e := mem.txs.Front(); e != nil && len(txs) < maxTxs; e = e.Next() {
-		memTx := e.Value.(*mempoolTx)
-		txs = append(txs, memTx.tx)
+	curBytes := maxBytes
+	txs := make([]types.Tx, 0, cmn.MinInt(mem.txs.Len(), maxBytes/mem.config.AverageTxSize))
+	for e := mem.txs.Front(); e != nil; e = e.Next() {
+		tx := e.Value.(*mempoolTx).tx
+		if len(tx) > curBytes {
+			break
+		}
+		curBytes -= len(tx)
+		txs = append(txs, tx)
+	}
+	return txs
+}
+
+func (mem *Mempool) getAllTxs() types.Txs {
+	txs := make([]types.Tx, mem.txs.Len())
+	e := mem.txs.Front()
+	for i := 0; i < len(txs); i++ {
+		// Concurrency got to us somehow
+		if e == nil {
+			return txs[:i]
+		}
+		txs[i] = e.Value.(*mempoolTx).tx
+		e = e.Next()
 	}
 	return txs
 }
@@ -430,7 +448,7 @@ func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
 	goodTxs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		// Remove the tx if it's alredy in a block.
+		// Remove the tx if it's already in a block.
 		if _, ok := blockTxsMap[string(memTx.tx)]; ok {
 			// remove from clist
 			mem.txs.Remove(e)
