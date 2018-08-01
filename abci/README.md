@@ -29,7 +29,7 @@ The two guides to focus on are the `Application Development Guide` and `Using AB
 To compile the protobuf file, run:
 
 ```
-make protoc
+cd $GOPATH/src/github.com/tendermint/tendermint/; make protoc_abci
 ```
 
 See `protoc --help` and [the Protocol Buffers site](https://developers.google.com/protocol-buffers)
