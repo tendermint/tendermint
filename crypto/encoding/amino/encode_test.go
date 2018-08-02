@@ -59,20 +59,18 @@ func ExamplePrintRegisteredTypes() {
 
 func TestKeyEncodings(t *testing.T) {
 	cases := []struct {
-		privKey                    crypto.PrivKey
-		privSize, pubSize, sigSize int // binary sizes
+		privKey           crypto.PrivKey
+		privSize, pubSize int // binary sizes
 	}{
 		{
 			privKey:  ed25519.GenPrivKey(),
 			privSize: 69,
 			pubSize:  37,
-			sigSize:  65,
 		},
 		{
 			privKey:  secp256k1.GenPrivKey(),
 			privSize: 37,
 			pubSize:  38,
-			sigSize:  71, // can also be 72
 		},
 	}
 
