@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"reflect"
 	"sort"
 	"sync"
 	"testing"
@@ -18,14 +17,14 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -323,30 +322,6 @@ func ensureNewStep(stepCh <-chan interface{}) {
 		panic("We shouldnt be stuck waiting")
 	case <-stepCh:
 		break
-	}
-}
-
-func ensureVote(voteCh chan interface{}, height int64, round int, voteType byte) {
-	timer := time.NewTimer(ensureTimeout)
-	select {
-	case <-timer.C:
-		break
-	case v := <-voteCh:
-		edv, ok := v.(types.EventDataVote)
-		if !ok {
-			panic(fmt.Sprintf("expected a *types.Vote, got %v. wrong subscription channel?",
-				reflect.TypeOf(v)))
-		}
-		vote := edv.Vote
-		if vote.Height != height {
-			panic(fmt.Sprintf("expected height %v, got %v", height, vote.Height))
-		}
-		if vote.Round != round {
-			panic(fmt.Sprintf("expected round %v, got %v", round, vote.Round))
-		}
-		if vote.Type != voteType {
-			panic(fmt.Sprintf("expected type %v, got %v", voteType, vote.Type))
-		}
 	}
 }
 

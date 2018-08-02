@@ -1014,11 +1014,9 @@ func (cs *ConsensusState) enterPrevoteWait(height int64, round int) {
 		logger.Debug(cmn.Fmt("enterPrevoteWait(%v/%v): Invalid args. Current step: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 		return
 	}
-	/*
-		if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
-			cmn.PanicSanity(cmn.Fmt("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
-		}
-	*/
+	if !cs.Votes.Prevotes(round).HasTwoThirdsAny() {
+		cmn.PanicSanity(cmn.Fmt("enterPrevoteWait(%v/%v), but Prevotes does not have any +2/3 votes", height, round))
+	}
 	logger.Info(cmn.Fmt("enterPrevoteWait(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
 	defer func() {
@@ -1587,7 +1585,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			if prevotes.HasTwoThirdsMajority() {
 				cs.enterPrecommit(height, vote.Round)
 			} else {
-				cs.enterPropose(height, vote.Round) // we can't prevote until we wait for the proposal.
+				cs.enterPrevote(height, vote.Round) // if the vote is ahead of us
 				cs.enterPrevoteWait(height, vote.Round)
 			}
 		} else if cs.Proposal != nil && 0 <= cs.Proposal.POLRound && cs.Proposal.POLRound == vote.Round {
@@ -1603,9 +1601,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {
 			if len(blockID.Hash) == 0 {
-				cs.enterNewRound(height, vote.Round)
-				cs.enterPrecommit(height, vote.Round)
-				cs.enterPrecommitWait(height, vote.Round)
+				cs.enterNewRound(height, vote.Round+1)
 			} else {
 				cs.enterNewRound(height, vote.Round)
 				cs.enterPrecommit(height, vote.Round)
@@ -1621,8 +1617,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 			}
 		} else if cs.Round <= vote.Round && precommits.HasTwoThirdsAny() {
 			cs.enterNewRound(height, vote.Round)
-			cs.enterPrevote(height, vote.Round)
-			cs.enterPrevoteWait(height, vote.Round)
+			cs.enterPrecommit(height, vote.Round)
 			cs.enterPrecommitWait(height, vote.Round)
 		}
 	default:
