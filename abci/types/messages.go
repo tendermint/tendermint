@@ -71,7 +71,7 @@ func encodeVarint(w io.Writer, i int64) (err error) {
 
 func ToRequestEcho(message string) *Request {
 	return &Request{
-		Value: &Request_Echo{&RequestEcho{message}},
+		Value: &Request_Echo{&RequestEcho{Message: message}},
 	}
 }
 
@@ -95,13 +95,13 @@ func ToRequestSetOption(req RequestSetOption) *Request {
 
 func ToRequestDeliverTx(tx []byte) *Request {
 	return &Request{
-		Value: &Request_DeliverTx{&RequestDeliverTx{tx}},
+		Value: &Request_DeliverTx{&RequestDeliverTx{Tx: tx}},
 	}
 }
 
 func ToRequestCheckTx(tx []byte) *Request {
 	return &Request{
-		Value: &Request_CheckTx{&RequestCheckTx{tx}},
+		Value: &Request_CheckTx{&RequestCheckTx{Tx: tx}},
 	}
 }
 
@@ -139,13 +139,13 @@ func ToRequestEndBlock(req RequestEndBlock) *Request {
 
 func ToResponseException(errStr string) *Response {
 	return &Response{
-		Value: &Response_Exception{&ResponseException{errStr}},
+		Value: &Response_Exception{&ResponseException{Error: errStr}},
 	}
 }
 
 func ToResponseEcho(message string) *Response {
 	return &Response{
-		Value: &Response_Echo{&ResponseEcho{message}},
+		Value: &Response_Echo{&ResponseEcho{Message: message}},
 	}
 }
 

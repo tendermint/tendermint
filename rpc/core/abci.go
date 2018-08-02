@@ -1,10 +1,12 @@
 package core
 
 import (
+	"fmt"
+
 	abci "github.com/tendermint/tendermint/abci/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/version"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 // Query the application for some information.
@@ -48,6 +50,10 @@ import (
 // | height    | int64 | 0       | false    | Height (0 means latest)                        |
 // | trusted   | bool   | false   | false    | Does not include a proof of the data inclusion |
 func ABCIQuery(path string, data cmn.HexBytes, height int64, trusted bool) (*ctypes.ResultABCIQuery, error) {
+	if height < 0 {
+		return nil, fmt.Errorf("height must be non-negative")
+	}
+
 	resQuery, err := proxyAppQuery.QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
@@ -87,7 +93,7 @@ func ABCIQuery(path string, data cmn.HexBytes, height int64, trusted bool) (*cty
 // }
 // ```
 func ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	resInfo, err := proxyAppQuery.InfoSync(abci.RequestInfo{version.Version})
+	resInfo, err := proxyAppQuery.InfoSync(abci.RequestInfo{Version: version.Version})
 	if err != nil {
 		return nil, err
 	}

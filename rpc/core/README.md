@@ -1,17 +1,14 @@
 # Tendermint RPC
 
-## Generate markdown for [Slate](https://github.com/tendermint/slate)
-
-We are using [Slate](https://github.com/tendermint/slate) to power our RPC
+We are using [Slate](https://github.com/lord/slate) to power our RPC
 documentation. For generating markdown use:
 
 ```shell
 go get github.com/davecheney/godoc2md
 
-godoc2md -template rpc/core/doc_template.txt github.com/tendermint/tendermint/rpc/core | grep -v -e "pipe.go" -e "routes.go" -e "dev.go" | sed 's$/src/target$https://github.com/tendermint/tendermint/tree/master/rpc/core$'
+# from root of this repo
+make rpc-docs
 ```
-
-For more information see the [CI script for building the Slate docs](/scripts/slate.sh)
 
 ## Pagination
 

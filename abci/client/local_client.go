@@ -149,7 +149,7 @@ func (app *localClient) FlushSync() error {
 }
 
 func (app *localClient) EchoSync(msg string) (*types.ResponseEcho, error) {
-	return &types.ResponseEcho{msg}, nil
+	return &types.ResponseEcho{Message: msg}, nil
 }
 
 func (app *localClient) InfoSync(req types.RequestInfo) (*types.ResponseInfo, error) {

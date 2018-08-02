@@ -15,7 +15,7 @@ install:
 test:
 	@go test -race
 
-build-all: check_tools
+build-all:
 	rm -rf ./dist
 	gox -verbose \
 		-ldflags "-s -w" \
@@ -47,4 +47,4 @@ clean:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check check_tools get_tools update_tools get_vendor_deps build install test build-all dist fmt metalinter metalinter_all build-docker clean
+.PHONY: build install test build-all dist build-docker clean

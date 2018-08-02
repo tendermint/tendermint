@@ -85,7 +85,6 @@ func TestWriteReadMessage2(t *testing.T) {
 			Tags: []cmn.KVPair{
 				cmn.KVPair{[]byte("abc"), []byte("def")},
 			},
-			// Fee: cmn.KI64Pair{
 		},
 		// TODO: add the rest
 	}

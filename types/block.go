@@ -25,7 +25,7 @@ type Block struct {
 
 // MakeBlock returns a new block with an empty header, except what can be computed from itself.
 // It populates the same set of fields validated by ValidateBasic
-func MakeBlock(height int64, txs []Tx, commit *Commit) *Block {
+func MakeBlock(height int64, txs []Tx, commit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Header: Header{
 			Height: height,
@@ -35,18 +35,11 @@ func MakeBlock(height int64, txs []Tx, commit *Commit) *Block {
 		Data: Data{
 			Txs: txs,
 		},
+		Evidence:   EvidenceData{Evidence: evidence},
 		LastCommit: commit,
 	}
 	block.fillHeader()
 	return block
-}
-
-// AddEvidence appends the given evidence to the block
-func (b *Block) AddEvidence(evidence []Evidence) {
-	if b == nil {
-		return
-	}
-	b.Evidence.Evidence = append(b.Evidence.Evidence, evidence...)
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.

@@ -12,7 +12,8 @@ them.
 Some peers can be marked as `private`, which means
 we will not put them in the address book or gossip them to others.
 
-All peers except private peers are tracked using the address book.
+All peers except private peers and peers coming from them are tracked using the
+address book.
 
 ## Discovery
 

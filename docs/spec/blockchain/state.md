@@ -3,7 +3,7 @@
 ## State
 
 The state contains information whose cryptographic digest is included in block headers, and thus is
-necessary for validating new blocks. For instance, the set of validators and the results of
+necessary for validating new blocks. For instance, the validators set and the results of
 transactions are never included in blocks, but their Merkle roots are - the state keeps track of them.
 
 Note that the `State` object itself is an implementation detail, since it is never
@@ -18,8 +18,9 @@ type State struct {
     LastResults []Result
     AppHash []byte
 
-    Validators []Validator
     LastValidators []Validator
+    Validators []Validator
+    NextValidators []Validator
 
     ConsensusParams ConsensusParams
 }

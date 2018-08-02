@@ -93,9 +93,7 @@ like:
   "jsonrpc": "2.0",
   "id": "",
   "result": {
-    "check_tx": {
-      "fee": {}
-    },
+    "check_tx": {},
     "deliver_tx": {
       "tags": [
         {
@@ -106,8 +104,7 @@ like:
           "key": "YXBwLmtleQ==",
           "value": "YWJjZA=="
         }
-      ],
-      "fee": {}
+      ]
     },
     "hash": "9DF66553F98DE3C26E3C3317A3E4CED54F714E39",
     "height": 14
@@ -219,13 +216,10 @@ the number `1`. If instead, we try to send a `5`, we get an error:
   "jsonrpc": "2.0",
   "id": "",
   "result": {
-    "check_tx": {
-      "fee": {}
-    },
+    "check_tx": {},
     "deliver_tx": {
       "code": 2,
-      "log": "Invalid nonce. Expected 1, got 5",
-      "fee": {}
+      "log": "Invalid nonce. Expected 1, got 5"
     },
     "hash": "33B93DFF98749B0D6996A70F64071347060DC19C",
     "height": 34
@@ -241,12 +235,8 @@ But if we send a `1`, it works again:
   "jsonrpc": "2.0",
   "id": "",
   "result": {
-    "check_tx": {
-      "fee": {}
-    },
-    "deliver_tx": {
-      "fee": {}
-    },
+    "check_tx": {},
+    "deliver_tx": {},
     "hash": "F17854A977F6FA7EEA1BD758E296710B86F72F3D",
     "height": 60
   }

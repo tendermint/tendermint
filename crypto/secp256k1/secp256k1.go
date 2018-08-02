@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"fmt"
+	"io"
 
 	secp256k1 "github.com/btcsuite/btcd/btcec"
 	amino "github.com/tendermint/go-amino"
@@ -80,8 +81,16 @@ func (privKey PrivKeySecp256k1) Equals(other crypto.PrivKey) bool {
 // It uses OS randomness in conjunction with the current global random seed
 // in tendermint/libs/common to generate the private key.
 func GenPrivKey() PrivKeySecp256k1 {
+	return genPrivKey(crypto.CReader())
+}
+
+// genPrivKey generates a new secp256k1 private key using the provided reader.
+func genPrivKey(rand io.Reader) PrivKeySecp256k1 {
 	privKeyBytes := [32]byte{}
-	copy(privKeyBytes[:], crypto.CRandBytes(32))
+	_, err := io.ReadFull(rand, privKeyBytes[:])
+	if err != nil {
+		panic(err)
+	}
 	// crypto.CRandBytes is guaranteed to be 32 bytes long, so it can be
 	// casted to PrivKeySecp256k1.
 	return PrivKeySecp256k1(privKeyBytes)

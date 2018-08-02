@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
@@ -374,10 +373,19 @@ func TestPrivatePeers(t *testing.T) {
 	}
 	book.AddPrivateIDs(private)
 
+	// private addrs must not be added
 	for _, addr := range addrs {
 		err := book.AddAddress(addr, addr)
-		require.Error(t, err, "AddAddress should have failed with private peer %s", addr)
-		_, ok := err.(ErrAddrBookPrivate)
-		require.True(t, ok, "Wrong error type, wanted ErrAddrBookPrivate, got error: %s", err)
+		if assert.Error(t, err) {
+			_, ok := err.(ErrAddrBookPrivate)
+			assert.True(t, ok)
+		}
+	}
+
+	// addrs coming from private peers must not be added
+	err := book.AddAddress(randIPv4Address(t), addrs[0])
+	if assert.Error(t, err) {
+		_, ok := err.(ErrAddrBookPrivateSrc)
+		assert.True(t, ok)
 	}
 }

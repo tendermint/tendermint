@@ -8,13 +8,15 @@ import (
 	"sync"
 )
 
+// BitArray is a thread-safe implementation of a bit array.
 type BitArray struct {
 	mtx   sync.Mutex
 	Bits  int      `json:"bits"`  // NOTE: persisted via reflect, must be exported
 	Elems []uint64 `json:"elems"` // NOTE: persisted via reflect, must be exported
 }
 
-// There is no BitArray whose Size is 0.  Use nil instead.
+// NewBitArray returns a new bit array.
+// It returns nil if the number of bits is zero.
 func NewBitArray(bits int) *BitArray {
 	if bits <= 0 {
 		return nil
@@ -25,6 +27,7 @@ func NewBitArray(bits int) *BitArray {
 	}
 }
 
+// Size returns the number of bits in the bitarray
 func (bA *BitArray) Size() int {
 	if bA == nil {
 		return 0
@@ -32,7 +35,8 @@ func (bA *BitArray) Size() int {
 	return bA.Bits
 }
 
-// NOTE: behavior is undefined if i >= bA.Bits
+// GetIndex returns the bit at index i within the bit array.
+// The behavior is undefined if i >= bA.Bits
 func (bA *BitArray) GetIndex(i int) bool {
 	if bA == nil {
 		return false
@@ -49,7 +53,8 @@ func (bA *BitArray) getIndex(i int) bool {
 	return bA.Elems[i/64]&(uint64(1)<<uint(i%64)) > 0
 }
 
-// NOTE: behavior is undefined if i >= bA.Bits
+// SetIndex sets the bit at index i within the bit array.
+// The behavior is undefined if i >= bA.Bits
 func (bA *BitArray) SetIndex(i int, v bool) bool {
 	if bA == nil {
 		return false
@@ -71,6 +76,7 @@ func (bA *BitArray) setIndex(i int, v bool) bool {
 	return true
 }
 
+// Copy returns a copy of the provided bit array.
 func (bA *BitArray) Copy() *BitArray {
 	if bA == nil {
 		return nil
@@ -98,7 +104,9 @@ func (bA *BitArray) copyBits(bits int) *BitArray {
 	}
 }
 
-// Returns a BitArray of larger bits size.
+// Or returns a bit array resulting from a bitwise OR of the two bit arrays.
+// If the two bit-arrys have different lengths, Or right-pads the smaller of the two bit-arrays with zeroes.
+// Thus the size of the return value is the maximum of the two provided bit arrays.
 func (bA *BitArray) Or(o *BitArray) *BitArray {
 	if bA == nil && o == nil {
 		return nil
@@ -110,7 +118,11 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 		return bA.Copy()
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 	c := bA.copyBits(MaxInt(bA.Bits, o.Bits))
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] |= o.Elems[i]
@@ -118,13 +130,19 @@ func (bA *BitArray) Or(o *BitArray) *BitArray {
 	return c
 }
 
-// Returns a BitArray of smaller bit size.
+// And returns a bit array resulting from a bitwise AND of the two bit arrays.
+// If the two bit-arrys have different lengths, this truncates the larger of the two bit-arrays from the right.
+// Thus the size of the return value is the minimum of the two provided bit arrays.
 func (bA *BitArray) And(o *BitArray) *BitArray {
 	if bA == nil || o == nil {
 		return nil
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 	return bA.and(o)
 }
 
@@ -136,12 +154,17 @@ func (bA *BitArray) and(o *BitArray) *BitArray {
 	return c
 }
 
+// Not returns a bit array resulting from a bitwise Not of the provided bit array.
 func (bA *BitArray) Not() *BitArray {
 	if bA == nil {
 		return nil // Degenerate
 	}
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
+	return bA.not()
+}
+
+func (bA *BitArray) not() *BitArray {
 	c := bA.copy()
 	for i := 0; i < len(c.Elems); i++ {
 		c.Elems[i] = ^c.Elems[i]
@@ -149,13 +172,20 @@ func (bA *BitArray) Not() *BitArray {
 	return c
 }
 
+// Sub subtracts the two bit-arrays bitwise, without carrying the bits.
+// This is essentially bA.And(o.Not()).
+// If bA is longer than o, o is right padded with zeroes.
 func (bA *BitArray) Sub(o *BitArray) *BitArray {
 	if bA == nil || o == nil {
 		// TODO: Decide if we should do 1's complement here?
 		return nil
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 	if bA.Bits > o.Bits {
 		c := bA.copy()
 		for i := 0; i < len(o.Elems)-1; i++ {
@@ -164,15 +194,15 @@ func (bA *BitArray) Sub(o *BitArray) *BitArray {
 		i := len(o.Elems) - 1
 		if i >= 0 {
 			for idx := i * 64; idx < o.Bits; idx++ {
-				// NOTE: each individual GetIndex() call to o is safe.
-				c.setIndex(idx, c.getIndex(idx) && !o.GetIndex(idx))
+				c.setIndex(idx, c.getIndex(idx) && !o.getIndex(idx))
 			}
 		}
 		return c
 	}
-	return bA.and(o.Not()) // Note degenerate case where o == nil
+	return bA.and(o.not()) // Note degenerate case where o == nil
 }
 
+// IsEmpty returns true iff all bits in the bit array are 0
 func (bA *BitArray) IsEmpty() bool {
 	if bA == nil {
 		return true // should this be opposite?
@@ -187,6 +217,7 @@ func (bA *BitArray) IsEmpty() bool {
 	return true
 }
 
+// IsFull returns true iff all bits in the bit array are 1.
 func (bA *BitArray) IsFull() bool {
 	if bA == nil {
 		return true
@@ -207,6 +238,8 @@ func (bA *BitArray) IsFull() bool {
 	return (lastElem+1)&((uint64(1)<<uint(lastElemBits))-1) == 0
 }
 
+// PickRandom returns a random index in the bit array, and its value.
+// It uses the global randomness in `random.go` to get this index.
 func (bA *BitArray) PickRandom() (int, bool) {
 	if bA == nil {
 		return 0, false
@@ -260,6 +293,8 @@ func (bA *BitArray) String() string {
 	return bA.StringIndented("")
 }
 
+// StringIndented returns the same thing as String(), but applies the indent
+// at every 10th bit, and twice at every 50th bit.
 func (bA *BitArray) StringIndented(indent string) string {
 	if bA == nil {
 		return "nil-BitArray"
@@ -295,6 +330,7 @@ func (bA *BitArray) stringIndented(indent string) string {
 	return fmt.Sprintf("BA{%v:%v}", bA.Bits, strings.Join(lines, indent))
 }
 
+// Bytes returns the byte representation of the bits within the bitarray.
 func (bA *BitArray) Bytes() []byte {
 	bA.mtx.Lock()
 	defer bA.mtx.Unlock()
@@ -309,15 +345,18 @@ func (bA *BitArray) Bytes() []byte {
 	return bytes
 }
 
-// NOTE: other bitarray o is not locked when reading,
-// so if necessary, caller must copy or lock o prior to calling Update.
-// If bA is nil, does nothing.
+// Update sets the bA's bits to be that of the other bit array.
+// The copying begins from the begin of both bit arrays.
 func (bA *BitArray) Update(o *BitArray) {
 	if bA == nil || o == nil {
 		return
 	}
 	bA.mtx.Lock()
-	defer bA.mtx.Unlock()
+	o.mtx.Lock()
+	defer func() {
+		bA.mtx.Unlock()
+		o.mtx.Unlock()
+	}()
 
 	copy(bA.Elems, o.Elems)
 }

@@ -98,19 +98,27 @@ func (state State) IsEmpty() bool {
 //------------------------------------------------------------------------
 // Create a block from the latest state
 
-// MakeBlock builds a block with the given txs and commit from the current state.
-func (state State) MakeBlock(height int64, txs []types.Tx, commit *types.Commit) (*types.Block, *types.PartSet) {
-	// Build base block.
-	block := types.MakeBlock(height, txs, commit)
+// MakeBlock builds a block from the current state with the given txs, commit, and evidence.
+func (state State) MakeBlock(
+	height int64,
+	txs []types.Tx,
+	commit *types.Commit,
+	evidence []types.Evidence,
+) (*types.Block, *types.PartSet) {
 
-	// Fill header with state data.
+	// Build base block with block data.
+	block := types.MakeBlock(height, txs, commit, evidence)
+
+	// Fill rest of header with state data.
 	block.ChainID = state.ChainID
-	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
+
 	block.LastBlockID = state.LastBlockID
+	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
+
 	block.ValidatorsHash = state.Validators.Hash()
 	block.NextValidatorsHash = state.NextValidators.Hash()
-	block.AppHash = state.AppHash
 	block.ConsensusHash = state.ConsensusParams.Hash()
+	block.AppHash = state.AppHash
 	block.LastResultsHash = state.LastResultsHash
 
 	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)

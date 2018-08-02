@@ -4,6 +4,7 @@ package types;
 // For more information on gogo.proto, see:
 // https://github.com/gogo/protobuf/blob/master/extensions.md
 import "github.com/gogo/protobuf/gogoproto/gogo.proto";
+import "google/protobuf/timestamp.proto";
 import "github.com/tendermint/tendermint/libs/common/types.proto";
 
 // This file is copied from http://github.com/tendermint/abci
@@ -56,7 +57,7 @@ message RequestSetOption {
 }
 
 message RequestInitChain {
-  int64 time = 1;
+  google.protobuf.Timestamp time = 1  [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
   string chain_id = 2;
   ConsensusParams consensus_params = 3;
   repeated Validator validators = 4  [(gogoproto.nullable)=false];
@@ -70,10 +71,11 @@ message RequestQuery {
   bool prove = 4;
 }
 
+// NOTE: validators here have empty pubkeys.
 message RequestBeginBlock {
   bytes hash = 1;
   Header header = 2 [(gogoproto.nullable)=false];
-  repeated SigningValidator validators = 3  [(gogoproto.nullable)=false];
+  LastCommitInfo last_commit_info = 3 [(gogoproto.nullable)=false];
   repeated Evidence byzantine_validators = 4 [(gogoproto.nullable)=false];
 }
 
@@ -168,7 +170,6 @@ message ResponseCheckTx {
   int64 gas_wanted  = 5;
   int64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
-  common.KI64Pair fee = 8 [(gogoproto.nullable)=false];
 }
 
 message ResponseDeliverTx {
@@ -179,7 +180,6 @@ message ResponseDeliverTx {
   int64 gas_wanted = 5;
   int64 gas_used = 6;
   repeated common.KVPair tags = 7 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
-  common.KI64Pair fee = 8 [(gogoproto.nullable)=false];
 }
 
 message ResponseEndBlock {
@@ -204,14 +204,14 @@ message ConsensusParams {
   BlockGossip block_gossip = 3;
 }
 
-// BlockSize contain limits on the block size.
+// BlockSize contains limits on the block size.
 message BlockSize {
   int32 max_bytes = 1;
   int32 max_txs = 2;
   int64 max_gas = 3;
 }
 
-// TxSize contain limits on the tx size.
+// TxSize contains limits on the tx size.
 message TxSize {
   int32 max_bytes = 1;
   int64 max_gas = 2;
@@ -224,6 +224,11 @@ message BlockGossip {
   int32 block_part_size_bytes = 1;
 }
 
+message LastCommitInfo {
+  int32 commit_round = 1;
+  repeated SigningValidator validators = 2 [(gogoproto.nullable)=false];
+}
+
 //----------------------------------------
 // Blockchain Types
 
@@ -232,7 +237,7 @@ message Header {
   // basics
   string chain_id = 1 [(gogoproto.customname)="ChainID"];
   int64 height = 2;
-  int64 time = 3;
+  google.protobuf.Timestamp time = 3 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
 
   // txs
   int32 num_txs = 4;
@@ -269,7 +274,7 @@ message Evidence {
   string type = 1;
   Validator validator = 2 [(gogoproto.nullable)=false];
   int64 height = 3;
-  int64 time = 4;
+  google.protobuf.Timestamp time = 4 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
   int64 total_voting_power = 5;
 }
 

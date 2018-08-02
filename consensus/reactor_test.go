@@ -4,15 +4,22 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path"
 	"runtime"
 	"runtime/pprof"
 	"sync"
 	"testing"
 	"time"
 
+	abcicli "github.com/tendermint/tendermint/abci/client"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
+	abci "github.com/tendermint/tendermint/abci/types"
+	bc "github.com/tendermint/tendermint/blockchain"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	mempl "github.com/tendermint/tendermint/mempool"
+	sm "github.com/tendermint/tendermint/state"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -90,6 +97,120 @@ func TestReactorBasic(t *testing.T) {
 		<-eventChans[j]
 	}, css)
 }
+
+// Ensure we can process blocks with evidence
+func TestReactorWithEvidence(t *testing.T) {
+	nValidators := 4
+	testName := "consensus_reactor_test"
+	tickerFunc := newMockTickerFunc(true)
+	appFunc := newCounter
+
+	// heed the advice from https://www.sandimetz.com/blog/2016/1/20/the-wrong-abstraction
+	// to unroll unwieldy abstractions. Here we duplicate the code from:
+	// css := randConsensusNet(N, "consensus_reactor_test", newMockTickerFunc(true), newCounter)
+
+	genDoc, privVals := randGenesisDoc(nValidators, false, 30)
+	css := make([]*ConsensusState, nValidators)
+	logger := consensusLogger()
+	for i := 0; i < nValidators; i++ {
+		stateDB := dbm.NewMemDB() // each state needs its own db
+		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
+		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
+		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
+		app := appFunc()
+		vals := types.TM2PB.Validators(state.Validators)
+		app.InitChain(abci.RequestInitChain{Validators: vals})
+
+		pv := privVals[i]
+		// duplicate code from:
+		// css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
+
+		blockDB := dbm.NewMemDB()
+		blockStore := bc.NewBlockStore(blockDB)
+
+		// one for mempool, one for consensus
+		mtx := new(sync.Mutex)
+		proxyAppConnMem := abcicli.NewLocalClient(mtx, app)
+		proxyAppConnCon := abcicli.NewLocalClient(mtx, app)
+
+		// Make Mempool
+		mempool := mempl.NewMempool(thisConfig.Mempool, proxyAppConnMem, 0)
+		mempool.SetLogger(log.TestingLogger().With("module", "mempool"))
+		if thisConfig.Consensus.WaitForTxs() {
+			mempool.EnableTxsAvailable()
+		}
+
+		// mock the evidence pool
+		// everyone includes evidence of another double signing
+		vIdx := (i + 1) % nValidators
+		evpool := newMockEvidencePool(privVals[vIdx].GetAddress())
+
+		// Make ConsensusState
+		blockExec := sm.NewBlockExecutor(stateDB, log.TestingLogger(), proxyAppConnCon, mempool, evpool)
+		cs := NewConsensusState(thisConfig.Consensus, state, blockExec, blockStore, mempool, evpool)
+		cs.SetLogger(log.TestingLogger().With("module", "consensus"))
+		cs.SetPrivValidator(pv)
+
+		eventBus := types.NewEventBus()
+		eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+		eventBus.Start()
+		cs.SetEventBus(eventBus)
+
+		cs.SetTimeoutTicker(tickerFunc())
+		cs.SetLogger(logger.With("validator", i, "module", "consensus"))
+
+		css[i] = cs
+	}
+
+	reactors, eventChans, eventBuses := startConsensusNet(t, css, nValidators)
+	defer stopConsensusNet(log.TestingLogger(), reactors, eventBuses)
+
+	// wait till everyone makes the first new block with no evidence
+	timeoutWaitGroup(t, nValidators, func(j int) {
+		blockI := <-eventChans[j]
+		block := blockI.(types.EventDataNewBlock).Block
+		assert.True(t, len(block.Evidence.Evidence) == 0)
+	}, css)
+
+	// second block should have evidence
+	timeoutWaitGroup(t, nValidators, func(j int) {
+		blockI := <-eventChans[j]
+		block := blockI.(types.EventDataNewBlock).Block
+		assert.True(t, len(block.Evidence.Evidence) > 0)
+	}, css)
+}
+
+// mock evidence pool returns no evidence for block 1,
+// and returnes one piece for all higher blocks. The one piece
+// is for a given validator at block 1.
+type mockEvidencePool struct {
+	height int
+	ev     []types.Evidence
+}
+
+func newMockEvidencePool(val []byte) *mockEvidencePool {
+	return &mockEvidencePool{
+		ev: []types.Evidence{types.NewMockGoodEvidence(1, 1, val)},
+	}
+}
+
+func (m *mockEvidencePool) PendingEvidence() []types.Evidence {
+	if m.height > 0 {
+		return m.ev
+	}
+	return nil
+}
+func (m *mockEvidencePool) AddEvidence(types.Evidence) error { return nil }
+func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
+	if m.height > 0 {
+		if len(block.Evidence.Evidence) == 0 {
+			panic("block has no evidence")
+		}
+	}
+	m.height += 1
+}
+
+//------------------------------------
 
 // Ensure a testnet sends proposal heartbeats and makes blocks when there are txs
 func TestReactorProposalHeartbeats(t *testing.T) {
