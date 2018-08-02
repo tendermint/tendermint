@@ -229,7 +229,6 @@ func (a *addrBook) NeedMoreAddrs() bool {
 // Empty implements AddrBook - returns true if there are no addresses in the address book.
 // Does not count the peer appearing in its own address book, or private peers.
 func (a *addrBook) Empty() bool {
-	// Size doesn't include self address or private address
 	return a.Size() == 0
 }
 
