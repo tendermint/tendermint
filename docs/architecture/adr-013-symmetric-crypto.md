@@ -1,4 +1,4 @@
-# ADR 015: Need for symmetric cryptography
+# ADR 013: Need for symmetric cryptography
 
 ## Context
 
@@ -31,9 +31,9 @@ Consequently decryption with multiple algoritms is sub-optimal.
 
 We should create the following two methods in a new `crypto/encoding/symmetric` package: 
 ```golang
-func EncryptSymmetric(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, err error)
-func DecryptSymmetric(key []byte, ciphertext []byte) (plaintext []byte, err error)
-func RegisterSymmetric(aead cipher.AEAD, algo_name string, NewAead func(key []byte) (cipher.Aead, error)) error
+func Encrypt(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, err error)
+func Decrypt(key []byte, ciphertext []byte) (plaintext []byte, err error)
+func Register(aead cipher.AEAD, algo_name string, NewAead func(key []byte) (cipher.Aead, error)) error
 ```
 
 This allows you to specify the algorithm in encryption, but not have to specify
@@ -43,7 +43,7 @@ looking at the file directly.
 One downside is that for the encrypt function you must have already initialized an AEAD,
 but I don't really see this as an issue. 
 
-If there is no error in encryption, EncryptSymmetric will return `algo_name || nonce || aead_ciphertext`. 
+If there is no error in encryption, Encrypt will return `algo_name || nonce || aead_ciphertext`. 
 `algo_name` should be length prefixed, using standard varuint encoding.
 This will be binary data, but thats not a problem considering the nonce and ciphertext are also binary.
 
@@ -63,7 +63,7 @@ Then we maintain a map from the name returned from `getType(aead)` to `algo_name
 In decryption, we read the `algo_name`, and then instantiate a new AEAD with the key.
 Then we call the AEAD's decrypt method on the provided nonce/ciphertext.
 
-`RegisterSymmetric` allows a downstream user to add their own desired AEAD to the symmetric package.
+`Register` allows a downstream user to add their own desired AEAD to the symmetric package.
 It will error if the AEAD name is already registered.
 This prevents a malicious import from modifying / nullifying an AEAD at runtime.
 
