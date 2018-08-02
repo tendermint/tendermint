@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"google.golang.org/grpc"
 
 	"golang.org/x/net/context"
@@ -43,7 +45,7 @@ func testStream(t *testing.T, app types.Application) {
 	server := abciserver.NewSocketServer("unix://test.sock", app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if err := server.Start(); err != nil {
-		t.Fatalf("Error starting socket server: %v", err.Error())
+		require.NoError(t, err, "Error starting socket server")
 	}
 	defer server.Stop()
 

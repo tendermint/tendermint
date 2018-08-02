@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"time"
-
-	"github.com/tendermint/tendermint/crypto"
 )
 
 var (
@@ -19,13 +17,13 @@ var (
 // to be considered valid. It may depend on votes from a previous round,
 // a so-called Proof-of-Lock (POL) round, as noted in the POLRound and POLBlockID.
 type Proposal struct {
-	Height           int64            `json:"height"`
-	Round            int              `json:"round"`
-	Timestamp        time.Time        `json:"timestamp"`
-	BlockPartsHeader PartSetHeader    `json:"block_parts_header"`
-	POLRound         int              `json:"pol_round"`    // -1 if null.
-	POLBlockID       BlockID          `json:"pol_block_id"` // zero if null.
-	Signature        crypto.Signature `json:"signature"`
+	Height           int64         `json:"height"`
+	Round            int           `json:"round"`
+	Timestamp        time.Time     `json:"timestamp"`
+	BlockPartsHeader PartSetHeader `json:"block_parts_header"`
+	POLRound         int           `json:"pol_round"`    // -1 if null.
+	POLBlockID       BlockID       `json:"pol_block_id"` // zero if null.
+	Signature        []byte        `json:"signature"`
 }
 
 // NewProposal returns a new Proposal.
