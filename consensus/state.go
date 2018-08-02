@@ -556,6 +556,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 	defer func() {
 		if r := recover(); r != nil {
 			cs.Logger.Error("CONSENSUS FAILURE!!!", "err", r, "stack", string(debug.Stack()))
+			go cs.receiveRoutine(0)
 		}
 	}()
 
@@ -588,7 +589,6 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// go to the next step
 			cs.handleTimeout(ti, rs)
 		case <-cs.Quit():
-
 			// NOTE: the internalMsgQueue may have signed messages from our
 			// priv_val that haven't hit the WAL, but its ok because
 			// priv_val tracks LastSig
