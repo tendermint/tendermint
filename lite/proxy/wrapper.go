@@ -10,18 +10,18 @@ import (
 
 var _ rpcclient.Client = Wrapper{}
 
-// Wrapper wraps a rpcclient with a Certifier and double-checks any input that is
+// Wrapper wraps a rpcclient with a Verifier and double-checks any input that is
 // provable before passing it along. Allows you to make any rpcclient fully secure.
 type Wrapper struct {
 	rpcclient.Client
-	cert *lite.InquiringCertifier
+	cert *lite.DynamicVerifier
 }
 
-// SecureClient uses a given certifier to wrap an connection to an untrusted
+// SecureClient uses a given Verifier to wrap an connection to an untrusted
 // host and return a cryptographically secure rpc client.
 //
 // If it is wrapping an HTTP rpcclient, it will also wrap the websocket interface
-func SecureClient(c rpcclient.Client, cert *lite.InquiringCertifier) Wrapper {
+func SecureClient(c rpcclient.Client, cert *lite.DynamicVerifier) Wrapper {
 	wrap := Wrapper{c, cert}
 	// TODO: no longer possible as no more such interface exposed....
 	// if we wrap http client, then we can swap out the event switch to filter

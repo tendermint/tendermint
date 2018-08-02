@@ -48,6 +48,11 @@ func NewValidatorSet(valz []*Validator) *ValidatorSet {
 	return vals
 }
 
+// Nil or empty validator sets are invalid.
+func (vals *ValidatorSet) IsNilOrEmpty() bool {
+	return vals == nil || len(vals.Validators) == 0
+}
+
 // Increment Accum and update the proposer on a copy, and return it.
 func (vals *ValidatorSet) CopyIncrementAccum(times int) *ValidatorSet {
 	copy := vals.Copy()

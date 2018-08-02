@@ -41,10 +41,10 @@ func TestInquirerValidPath(t *testing.T) {
 		nkeys = nkeys.Extend(1)
 	}
 
-	// Initialize a certifier with the initial state.
+	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.Nil(err)
-	cert := NewInquiringCertifier(chainID, trust, source)
+	cert := NewDynamicVerifier(chainID, trust, source)
 	cert.SetLogger(log.TestingLogger())
 
 	// This should fail validation:
@@ -99,10 +99,10 @@ func TestInquirerVerifyHistorical(t *testing.T) {
 		nkeys = nkeys.Extend(1)
 	}
 
-	// Initialize a certifier with the initial state.
+	// Initialize a Verifier with the initial state.
 	err := trust.SaveFullCommit(fcz[0])
 	require.Nil(err)
-	cert := NewInquiringCertifier(chainID, trust, source)
+	cert := NewDynamicVerifier(chainID, trust, source)
 	cert.SetLogger(log.TestingLogger())
 
 	// Store a few full commits as trust.

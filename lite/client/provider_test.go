@@ -13,7 +13,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// TODO fix tests!!
 func TestMain(m *testing.M) {
 	app := kvstore.NewKVStoreApplication()
 	node := rpctest.StartTendermint(app)
@@ -59,15 +58,4 @@ func TestProvider(t *testing.T) {
 	assert.Nil(err, "%+v", err)
 	assert.Equal(lower, fc.Height())
 
-	/*
-		// also get by hash (given the match)
-		fc, err = p.GetByHash(vhash)
-		require.Nil(err, "%+v", err)
-		require.Equal(vhash, fc.Header.ValidatorsHash)
-
-		// get by hash fails without match
-		fc, err = p.GetByHash([]byte("foobar"))
-		assert.NotNil(err)
-		assert.True(liteErr.IsCommitNotFoundErr(err))
-	*/
 }

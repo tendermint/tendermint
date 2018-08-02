@@ -11,7 +11,7 @@
   branch = "master"
   name = "github.com/btcsuite/btcd"
   packages = ["btcec"]
-  revision = "9a2f9524024889e129a5422aca2cff73cb3eabf6"
+  revision = "f5e261fc9ec3437697fb31d8b38453c293204b29"
 
 [[projects]]
   name = "github.com/btcsuite/btcutil"
@@ -342,7 +342,7 @@
     "cpu",
     "unix"
   ]
-  revision = "bd9dbc187b6e1dacfdd2722a87e83093c2d7bd6e"
+  revision = "3dc4335d56c789b04b0ba99b7a37249d9b614314"
 
 [[projects]]
   name = "golang.org/x/text"

@@ -8,10 +8,10 @@ import (
 	log "github.com/tendermint/tendermint/libs/log"
 )
 
-func NewCertifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger) (*lite.InquiringCertifier, error) {
+func NewVerifier(chainID, rootDir string, client lclient.SignStatusClient, logger log.Logger) (*lite.DynamicVerifier, error) {
 
 	logger = logger.With("module", "lite/proxy")
-	logger.Info("lite/proxy/NewCertifier()...", "chainID", chainID, "rootDir", rootDir, "client", client)
+	logger.Info("lite/proxy/NewVerifier()...", "chainID", chainID, "rootDir", rootDir, "client", client)
 
 	memProvider := lite.NewDBProvider("trusted.mem", dbm.NewMemDB()).SetLimit(10)
 	lvlProvider := lite.NewDBProvider("trusted.lvl", dbm.NewDB("trust-base", dbm.LevelDBBackend, rootDir))
@@ -20,13 +20,13 @@ func NewCertifier(chainID, rootDir string, client lclient.SignStatusClient, logg
 		lvlProvider,
 	)
 	source := lclient.NewProvider(chainID, client)
-	cert := lite.NewInquiringCertifier(chainID, trust, source)
+	cert := lite.NewDynamicVerifier(chainID, trust, source)
 	cert.SetLogger(logger) // Sets logger recursively.
 
 	// TODO: Make this more secure, e.g. make it interactive in the console?
 	_, err := trust.LatestFullCommit(chainID, 1, 1<<63-1)
 	if err != nil {
-		logger.Info("lite/proxy/NewCertifier found no trusted full commit, initializing from source from height 1...")
+		logger.Info("lite/proxy/NewVerifier found no trusted full commit, initializing from source from height 1...")
 		fc, err := source.LatestFullCommit(chainID, 1, 1)
 		if err != nil {
 			return nil, cmn.ErrorWrap(err, "fetching source full commit @ height 1")

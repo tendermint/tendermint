@@ -22,7 +22,10 @@ type DBProvider struct {
 }
 
 func NewDBProvider(label string, db dbm.DB) *DBProvider {
+
+	// NOTE: when debugging, this type of construction might be useful.
 	//db = dbm.NewDebugDB("db provider "+cmn.RandStr(4), db)
+
 	cdc := amino.NewCodec()
 	cryptoAmino.RegisterAmino(cdc)
 	dbp := &DBProvider{
@@ -127,8 +130,8 @@ func (dbp *DBProvider) LatestFullCommit(chainID string, minHeight, maxHeight int
 					dbp.logger.Info("DBProvider.LatestFullCommit() found latest.", "height", lfc.Height())
 					return lfc, nil
 				} else {
-					dbp.logger.Info("DBProvider.LatestFullCommit() got error", "lfc", lfc)
-					dbp.logger.Info(fmt.Sprintf("%+v", err))
+					dbp.logger.Error("DBProvider.LatestFullCommit() got error", "lfc", lfc)
+					dbp.logger.Error(fmt.Sprintf("%+v", err))
 					return lfc, err
 				}
 			}
@@ -144,14 +147,19 @@ func (dbp *DBProvider) ValidatorSet(chainID string, height int64) (valset *types
 func (dbp *DBProvider) getValidatorSet(chainID string, height int64) (valset *types.ValidatorSet, err error) {
 	vsBz := dbp.db.Get(validatorSetKey(chainID, height))
 	if vsBz == nil {
-		err = lerr.ErrMissingValidators(chainID, height)
+		err = lerr.ErrUnknownValidators(chainID, height)
 		return
 	}
 	err = dbp.cdc.UnmarshalBinary(vsBz, &valset)
 	if err != nil {
 		return
 	}
-	valset.TotalVotingPower() // to test deep equality.
+
+	// To test deep equality.  This makes it easier to test for e.g. valset
+	// equivalence using assert.Equal (tests for deep equality) in our tests,
+	// which also tests for unexported/private field equivalence.
+	valset.TotalVotingPower()
+
 	return
 }
 
@@ -209,52 +217,52 @@ func (dbp *DBProvider) deleteAfterN(chainID string, after int) error {
 		itr.Next()
 	}
 
-	dbp.logger.Info(fmt.Sprintf("DBProvider.deleteAfterN() deleted %v items\n", numDeleted))
+	dbp.logger.Info(fmt.Sprintf("DBProvider.deleteAfterN() deleted %v items", numDeleted))
 	return nil
 }
 
 //----------------------------------------
+// key encoding
 
 func signedHeaderKey(chainID string, height int64) []byte {
 	return []byte(fmt.Sprintf("%s/%010d/sh", chainID, height))
-}
-
-var signedHeaderKeyPattern = regexp.MustCompile(`([^/]+)/([0-9]*)/sh`)
-
-func parseSignedHeaderKey(key []byte) (chainID string, height int64, ok bool) {
-	submatch := signedHeaderKeyPattern.FindSubmatch(key)
-	if submatch == nil {
-		return "", 0, false
-	}
-	chainID = string(submatch[1])
-	heightStr := string(submatch[2])
-	heightInt, err := strconv.Atoi(heightStr)
-	if err != nil {
-		return "", 0, false
-	}
-	height = int64(heightInt)
-	ok = true // good!
-	return
 }
 
 func validatorSetKey(chainID string, height int64) []byte {
 	return []byte(fmt.Sprintf("%s/%010d/vs", chainID, height))
 }
 
-var chainKeyPrefixPattern = regexp.MustCompile(`([^/]+)/([0-9]*)/`)
+//----------------------------------------
+// key parsing
 
-func parseChainKeyPrefix(key []byte) (chainID string, height int64, ok bool) {
-	submatch := chainKeyPrefixPattern.FindSubmatch(key)
+var keyPattern = regexp.MustCompile(`^([^/]+)/([0-9]*)/(.*)$`)
+
+func parseKey(key []byte) (chainID string, height int64, part string, ok bool) {
+	submatch := keyPattern.FindSubmatch(key)
 	if submatch == nil {
-		return "", 0, false
+		return "", 0, "", false
 	}
 	chainID = string(submatch[1])
 	heightStr := string(submatch[2])
 	heightInt, err := strconv.Atoi(heightStr)
 	if err != nil {
-		return "", 0, false
+		return "", 0, "", false
 	}
 	height = int64(heightInt)
+	part = string(submatch[3])
 	ok = true // good!
 	return
+}
+
+func parseSignedHeaderKey(key []byte) (chainID string, height int64, ok bool) {
+	chainID, height, part, ok := parseKey(key)
+	if part != "sh" {
+		return "", 0, false
+	}
+	return chainID, height, true
+}
+
+func parseChainKeyPrefix(key []byte) (chainID string, height int64, ok bool) {
+	chainID, height, _, ok = parseKey(key)
+	return chainID, height, true
 }

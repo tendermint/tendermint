@@ -10,16 +10,14 @@ import (
 )
 
 func TestBaseCert(t *testing.T) {
-	// assert, require := assert.New(t), require.New(t)
 	assert := assert.New(t)
-	// require := require.New(t)
 
 	keys := genPrivKeys(4)
 	// 20, 30, 40, 50 - the first 3 don't have 2/3, the last 3 do!
 	vals := keys.ToValidators(20, 10)
-	// and a certifier based on our known set
+	// and a Verifier based on our known set
 	chainID := "test-static"
-	cert := NewBaseCertifier(chainID, 2, vals)
+	cert := NewBaseVerifier(chainID, 2, vals)
 
 	cases := []struct {
 		keys        privKeys

@@ -8,12 +8,12 @@ package client
 import (
 	"fmt"
 
+	log "github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/lite"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	log "github.com/tendermint/tendermint/libs/log"
 )
 
 // SignStatusClient combines a SignClient and StatusClient.
@@ -106,12 +106,10 @@ func (p *provider) getValidatorSet(chainID string, height int64) (valset *types.
 		err = fmt.Errorf("expected height >= 1, got height %v", height)
 		return
 	}
-	heightPtr := new(int64)
-	*heightPtr = height
-	res, err := p.client.Validators(heightPtr)
+	res, err := p.client.Validators(&height)
 	if err != nil {
 		// TODO pass through other types of errors.
-		return nil, lerr.ErrMissingValidators(chainID, height)
+		return nil, lerr.ErrUnknownValidators(chainID, height)
 	}
 	valset = types.NewValidatorSet(res.Validators)
 	return

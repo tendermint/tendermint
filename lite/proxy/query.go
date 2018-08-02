@@ -28,13 +28,13 @@ type KeyProof interface {
 }
 
 // GetWithProof will query the key on the given node, and verify it has
-// a valid proof, as defined by the certifier.
+// a valid proof, as defined by the Verifier.
 //
 // If there is any error in checking, returns an error.
 // If val is non-empty, proof should be KeyExistsProof
 // If val is empty, proof should be KeyMissingProof
 func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
-	cert lite.Certifier) (
+	cert lite.Verifier) (
 	val cmn.HexBytes, height int64, proof KeyProof, err error) {
 
 	if reqHeight < 0 {
@@ -54,7 +54,7 @@ func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions
 func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOptions,
-	node rpcclient.Client, cert lite.Certifier) (
+	node rpcclient.Client, cert lite.Verifier) (
 	*ctypes.ResultABCIQuery, KeyProof, error) {
 
 	_resp, err := node.ABCIQueryWithOptions(path, key, opts)
@@ -128,7 +128,7 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 
 // GetCertifiedCommit gets the signed header for a given height and certifies
 // it. Returns error if unable to get a proven header.
-func GetCertifiedCommit(h int64, client rpcclient.Client, cert lite.Certifier) (types.SignedHeader, error) {
+func GetCertifiedCommit(h int64, client rpcclient.Client, cert lite.Verifier) (types.SignedHeader, error) {
 
 	// FIXME: cannot use cert.GetByHeight for now, as it also requires
 	// Validators and will fail on querying tendermint for non-current height.

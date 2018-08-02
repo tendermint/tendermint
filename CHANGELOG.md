@@ -556,7 +556,7 @@ BREAKING CHANGES:
     - use scripts/wal2json to convert to json for debugging
 
 FEATURES:
- - new `certifiers` pkg contains the tendermint light-client library (name subject to change)!
+ - new `Verifiers` pkg contains the tendermint light-client library (name subject to change)!
  - rpc: `/genesis` includes the `app_options` .
  - rpc: `/abci_query` takes an additional `height` parameter to support historical queries.
  - rpc/client: new ABCIQueryWithOptions supports options like `trusted` (set false to get a proof) and `height` to query a historical height.

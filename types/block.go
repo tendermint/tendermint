@@ -446,7 +446,7 @@ type SignedHeader struct {
 // and commit are consistent.
 //
 // NOTE: This does not actually check the cryptographic signatures.  Make
-// sure to use a Certifier to validate the signatures actually provide a
+// sure to use a Verifier to validate the signatures actually provide a
 // significantly strong proof for this header's validity.
 func (sh SignedHeader) ValidateBasic(chainID string) error {
 

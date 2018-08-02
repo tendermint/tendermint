@@ -1,9 +1,9 @@
 package lite
 
 import (
+	log "github.com/tendermint/tendermint/libs/log"
 	lerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
-	log "github.com/tendermint/tendermint/libs/log"
 )
 
 // multiProvider allows you to place one or more caches in front of a source
@@ -79,5 +79,5 @@ func (mc *multiProvider) ValidatorSet(chainID string, height int64) (valset *typ
 			return valset, nil
 		}
 	}
-	return nil, lerr.ErrMissingValidators(chainID, height)
+	return nil, lerr.ErrUnknownValidators(chainID, height)
 }

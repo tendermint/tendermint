@@ -35,29 +35,29 @@ change on the chain. In practice, most applications will not have frequent
 drastic updates to the validator set, so the logic defined in this package for
 lite client syncing is optimized to use intelligent bisection and
 block-skipping for efficient sourcing and verification of these data structures
-and updates to the validator set (see the InquiringCertifier for more
+and updates to the validator set (see the DynamicVerifier for more
 information).
 
 The FullCommit is also declared in this package as a convenience structure,
 which includes the SignedHeader along with the full current and next
 ValidatorSets.
 
-## Certifier
+## Verifier
 
-A Certifier validates a new SignedHeader given the currently known state. There
-are two different types of Certifiers provided.
+A Verifier validates a new SignedHeader given the currently known state. There
+are two different types of Verifiers provided.
 
-BaseCertifier - given a validator set and a height, this Certifier verifies
+BaseVerifier - given a validator set and a height, this Verifier verifies
 that > 2/3 of the voting power of the given validator set had signed the
 SignedHeader, and that the SignedHeader was to be signed by the exact given
 validator set, and that the height of the commit is at least height (or
 greater).
 
 SignedHeader.Commit may be signed by a different validator set, it can get
-certified with a BaseCertifier as long as sufficient signatures from the
+certified with a BaseVerifier as long as sufficient signatures from the
 previous validator set are present in the commit.
 
-InquiringCertifier - this certifier implements an auto-update and persistence
+DynamicVerifier - this Verifier implements an auto-update and persistence
 strategy to certify any SignedHeader of the blockchain.
 
 ## Provider and PersistentProvider
@@ -77,7 +77,7 @@ type Provider interface {
 * client.NewHTTPProvider - query Tendermint rpc.
 
 A PersistentProvider is a Provider that also allows for saving state.  This is
-used by the InquiringCertifier for persistence.
+used by the DynamicVerifier for persistence.
 
 ```go
 type PersistentProvider interface {
@@ -131,7 +131,7 @@ important to verify that you have the proper validator set when initializing
 the client, as that is the root of all trust.
 
 The software currently assumes that the unbonding period is infinite in
-duration.  If the InquiringCertifier hasn't been updated in a while, you should
+duration.  If the DynamicVerifier hasn't been updated in a while, you should
 manually verify the block headers using other sources.
 
 TODO: Update the software to handle cases around the unbonding period.

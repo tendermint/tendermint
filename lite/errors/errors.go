@@ -31,12 +31,12 @@ func (e errTooMuchChange) Error() string {
 	return "Insufficient signatures to validate due to valset changes"
 }
 
-type errMissingValidators struct {
+type errUnknownValidators struct {
 	chainID string
 	height  int64
 }
 
-func (e errMissingValidators) Error() string {
+func (e errUnknownValidators) Error() string {
 	return fmt.Sprintf("Validators are unknown or missing for chain %s and height %d",
 		e.chainID, e.height)
 }
@@ -96,16 +96,16 @@ func IsErrTooMuchChange(err error) bool {
 }
 
 //-----------------
-// ErrMissingValidators
+// ErrUnknownValidators
 
-// ErrMissingValidators indicates that some validator set was missing or unknown.
-func ErrMissingValidators(chainID string, height int64) error {
-	return cmn.ErrorWrap(errMissingValidators{chainID, height}, "")
+// ErrUnknownValidators indicates that some validator set was missing or unknown.
+func ErrUnknownValidators(chainID string, height int64) error {
+	return cmn.ErrorWrap(errUnknownValidators{chainID, height}, "")
 }
 
-func IsErrMissingValidators(err error) bool {
+func IsErrUnknownValidators(err error) bool {
 	if err_, ok := err.(cmn.Error); ok {
-		_, ok := err_.Data().(errMissingValidators)
+		_, ok := err_.Data().(errUnknownValidators)
 		return ok
 	}
 	return false
