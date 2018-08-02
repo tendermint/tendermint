@@ -26,3 +26,4 @@ BUG FIXES:
 - [common] Safely handle cases where atomic write files already exist [#2109](https://github.com/tendermint/tendermint/issues/2109)
 - [privval] fix a deadline for accepting new connections in socket private
   validator.
+- [p2p] Allow startup if a configured seed node is down ([#1716](https://github.com/tendermint/tendermint/issues/1716))
