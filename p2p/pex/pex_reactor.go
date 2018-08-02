@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
-
-	"github.com/pkg/errors"
 )
 
 type Peer = p2p.Peer
@@ -121,14 +121,10 @@ func (r *PEXReactor) OnStart() error {
 		return err
 	}
 
-	// error if any of the seeds are formatted incorrectly.
 	numOnline, seedAddrs, err := r.checkSeeds()
 	if err != nil {
 		return err
-	}
-	// error if seeds are in the config, they are all offline,
-	// and the address book is empty
-	if numOnline == 0 && r.book.Empty() {
+	} else if numOnline == 0 && r.book.Empty() {
 		return errors.New("Address book is empty, and could not connect to any seed nodes")
 	}
 
