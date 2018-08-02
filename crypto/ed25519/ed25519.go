@@ -11,7 +11,6 @@ import (
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/tmhash"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 //-------------------------------------
@@ -19,9 +18,11 @@ import (
 var _ crypto.PrivKey = PrivKeyEd25519{}
 
 const (
-	Ed25519PrivKeyAminoRoute   = "tendermint/PrivKeyEd25519"
-	Ed25519PubKeyAminoRoute    = "tendermint/PubKeyEd25519"
-	Ed25519SignatureAminoRoute = "tendermint/SignatureEd25519"
+	Ed25519PrivKeyAminoRoute = "tendermint/PrivKeyEd25519"
+	Ed25519PubKeyAminoRoute  = "tendermint/PubKeyEd25519"
+	// Size of an Edwards25519 signature. Namely the size of a compressed
+	// Edwards25519 point, and a field element. Both of which are 32 bytes.
+	SignatureEd25519Size = 64
 )
 
 var cdc = amino.NewCodec()
@@ -34,10 +35,6 @@ func init() {
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeyEd25519{},
 		Ed25519PrivKeyAminoRoute, nil)
-
-	cdc.RegisterInterface((*crypto.Signature)(nil), nil)
-	cdc.RegisterConcrete(SignatureEd25519{},
-		Ed25519SignatureAminoRoute, nil)
 }
 
 // PrivKeyEd25519 implements crypto.PrivKey.
@@ -49,10 +46,10 @@ func (privKey PrivKeyEd25519) Bytes() []byte {
 }
 
 // Sign produces a signature on the provided message.
-func (privKey PrivKeyEd25519) Sign(msg []byte) (crypto.Signature, error) {
+func (privKey PrivKeyEd25519) Sign(msg []byte) ([]byte, error) {
 	privKeyBytes := [64]byte(privKey)
 	signatureBytes := ed25519.Sign(&privKeyBytes, msg)
-	return SignatureEd25519(*signatureBytes), nil
+	return signatureBytes[:], nil
 }
 
 // PubKey gets the corresponding public key from the private key.
@@ -159,15 +156,15 @@ func (pubKey PubKeyEd25519) Bytes() []byte {
 	return bz
 }
 
-func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ crypto.Signature) bool {
+func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ []byte) bool {
 	// make sure we use the same algorithm to sign
-	sig, ok := sig_.(SignatureEd25519)
-	if !ok {
+	if len(sig_) != SignatureEd25519Size {
 		return false
 	}
+	sig := new([SignatureEd25519Size]byte)
+	copy(sig[:], sig_)
 	pubKeyBytes := [PubKeyEd25519Size]byte(pubKey)
-	sigBytes := [SignatureEd25519Size]byte(sig)
-	return ed25519.Verify(&pubKeyBytes, msg, &sigBytes)
+	return ed25519.Verify(&pubKeyBytes, msg, sig)
 }
 
 // ToCurve25519 takes a public key and returns its representation on
@@ -196,41 +193,4 @@ func (pubKey PubKeyEd25519) Equals(other crypto.PubKey) bool {
 	} else {
 		return false
 	}
-}
-
-//-------------------------------------
-
-var _ crypto.Signature = SignatureEd25519{}
-
-// Size of an Edwards25519 signature. Namely the size of a compressed
-// Edwards25519 point, and a field element. Both of which are 32 bytes.
-const SignatureEd25519Size = 64
-
-// SignatureEd25519 implements crypto.Signature
-type SignatureEd25519 [SignatureEd25519Size]byte
-
-func (sig SignatureEd25519) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(sig)
-	if err != nil {
-		panic(err)
-	}
-	return bz
-}
-
-func (sig SignatureEd25519) IsZero() bool { return len(sig) == 0 }
-
-func (sig SignatureEd25519) String() string { return fmt.Sprintf("/%X.../", cmn.Fingerprint(sig[:])) }
-
-func (sig SignatureEd25519) Equals(other crypto.Signature) bool {
-	if otherEd, ok := other.(SignatureEd25519); ok {
-		return subtle.ConstantTimeCompare(sig[:], otherEd[:]) == 1
-	} else {
-		return false
-	}
-}
-
-func SignatureEd25519FromBytes(data []byte) crypto.Signature {
-	var sig SignatureEd25519
-	copy(sig[:], data)
-	return sig
 }

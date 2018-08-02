@@ -285,7 +285,7 @@ func sort32(foo, bar *[32]byte) (lo, hi *[32]byte) {
 	return
 }
 
-func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature crypto.Signature) {
+func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature []byte) {
 	signature, err := locPrivKey.Sign(challenge[:])
 	// TODO(ismail): let signChallenge return an error instead
 	if err != nil {
@@ -296,10 +296,10 @@ func signChallenge(challenge *[32]byte, locPrivKey crypto.PrivKey) (signature cr
 
 type authSigMessage struct {
 	Key crypto.PubKey
-	Sig crypto.Signature
+	Sig []byte
 }
 
-func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature crypto.Signature) (recvMsg authSigMessage, err error) {
+func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []byte) (recvMsg authSigMessage, err error) {
 
 	// Send our info and receive theirs in tandem.
 	var trs, _ = cmn.Parallel(
