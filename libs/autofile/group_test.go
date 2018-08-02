@@ -26,7 +26,7 @@ func createTestGroup(t *testing.T, headSizeLimit int64) *Group {
 	g, err := OpenGroup(headPath)
 	require.NoError(t, err, "Error opening Group")
 	g.SetHeadSizeLimit(headSizeLimit)
-	g.stopTicker()
+	g.ticker.Stop()
 	require.NotEqual(t, nil, g, "Failed to create Group")
 	return g
 }

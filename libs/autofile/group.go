@@ -199,19 +199,13 @@ func (g *Group) Flush() error {
 }
 
 func (g *Group) processTicks() {
-	for {
-		_, ok := <-g.ticker.C
-		if !ok {
-			return // Done.
-		}
+	select {
+	case <-g.ticker.C:
 		g.checkHeadSizeLimit()
 		g.checkTotalSizeLimit()
+	case <-g.Quit():
+		return
 	}
-}
-
-// NOTE: for testing
-func (g *Group) stopTicker() {
-	g.ticker.Stop()
 }
 
 // NOTE: this function is called manually in tests.
