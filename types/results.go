@@ -59,6 +59,7 @@ func (a ABCIResults) Hash() []byte {
 
 // ProveResult returns a merkle proof of one result from the set
 func (a ABCIResults) ProveResult(i int) merkle.SimpleProof {
+	// TODO: Change to SimpleProofsFromByters
 	_, proofs := merkle.SimpleProofsFromHashers(a.toHashers())
 	return *proofs[i]
 }

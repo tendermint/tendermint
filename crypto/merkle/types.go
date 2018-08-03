@@ -25,6 +25,7 @@ type Tree interface {
 	IterateRange(start []byte, end []byte, ascending bool, fx func(key []byte, value []byte) (stop bool)) (stopped bool)
 }
 
+// TODO: Change this to Byter, which has a Bytes() method.
 // Hasher represents a hashable piece of data which can be hashed in the Tree.
 type Hasher interface {
 	Hash() []byte
