@@ -1,51 +1,9 @@
 package common
 
 import (
-	"bytes"
-	"io/ioutil"
 	"os"
 	"testing"
 )
-
-func TestWriteFileAtomic(t *testing.T) {
-	var (
-		data             = []byte(RandStr(RandIntn(2048)))
-		old              = RandBytes(RandIntn(2048))
-		perm os.FileMode = 0600
-	)
-
-	f, err := ioutil.TempFile("/tmp", "write-atomic-test-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(f.Name())
-
-	if err = ioutil.WriteFile(f.Name(), old, 0664); err != nil {
-		t.Fatal(err)
-	}
-
-	if err = WriteFileAtomic(f.Name(), data, perm); err != nil {
-		t.Fatal(err)
-	}
-
-	rData, err := ioutil.ReadFile(f.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if !bytes.Equal(data, rData) {
-		t.Fatalf("data mismatch: %v != %v", data, rData)
-	}
-
-	stat, err := os.Stat(f.Name())
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if have, want := stat.Mode().Perm(), perm; have != want {
-		t.Errorf("have %v, want %v", have, want)
-	}
-}
 
 func TestGoPath(t *testing.T) {
 	// restore original gopath upon exit

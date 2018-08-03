@@ -52,7 +52,8 @@ type Header struct {
     // application
     ResultsHash         []byte  // SimpleMerkle of []abci.Result from prevBlock
     AppHash             []byte  // Arbitrary state digest
-    ValidatorsHash      []byte  // SimpleMerkle of the ValidatorSet
+    ValidatorsHash      []byte  // SimpleMerkle of the current ValidatorSet
+    NextValidatorsHash  []byte  // SimpleMerkle of the next ValidatorSet
     ConsensusParamsHash []byte  // SimpleMerkle of the ConsensusParams
 
     // consensus
@@ -160,9 +161,12 @@ We refer to certain globally available objects:
 `block` is the block under consideration,
 `prevBlock` is the `block` at the previous height,
 and `state` keeps track of the validator set, the consensus parameters
-and other results from the application.
+and other results from the application. At the point when `block` is the block under consideration,
+the current version of the `state` corresponds to the state 
+after executing transactions from the `prevBlock`. 
 Elements of an object are accessed as expected,
-ie. `block.Header`. See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/state.md) for the definition of `state`.
+ie. `block.Header`. 
+See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/state.md) for the definition of `state`.
 
 ### Header
 
@@ -278,7 +282,14 @@ block.ValidatorsHash == SimpleMerkleRoot(state.Validators)
 
 Simple Merkle root of the current validator set that is committing the block.
 This can be used to validate the `LastCommit` included in the next block.
-May be updated by the application.
+
+### NextValidatorsHash
+
+```go
+block.NextValidatorsHash == SimpleMerkleRoot(state.NextValidators)
+```
+Simple Merkle root of the next validator set that will be the validator set that commits the next block.
+Modifications to the validator set are defined by the application.
 
 ### ConsensusParamsHash
 
@@ -407,25 +418,20 @@ set (TODO). Execute is defined as:
 
 ```go
 Execute(s State, app ABCIApp, block Block) State {
-    TODO: just spell out ApplyBlock here
-    and remove ABCIResponses struct.
-    abciResponses := app.ApplyBlock(block)
+    // Fuction ApplyBlock executes block of transactions against the app and returns the new root hash of the app state,
+    // modifications to the validator set and the changes of the consensus parameters.
+    AppHash, ValidatorChanges, ConsensusParamChanges := app.ApplyBlock(block)
 
     return State{
         LastResults: abciResponses.DeliverTxResults,
-        AppHash: abciResponses.AppHash,
-        Validators: UpdateValidators(state.Validators, abciResponses.ValidatorChanges),
+        AppHash: AppHash,
         LastValidators: state.Validators,
-        ConsensusParams: UpdateConsensusParams(state.ConsensusParams, abci.Responses.ConsensusParamChanges),
+        Validators: state.NextValidators,
+        NextValidators: UpdateValidators(state.NextValidators, ValidatorChanges), 
+        ConsensusParams: UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges),
     }
 }
 
-type ABCIResponses struct {
-    DeliverTxResults        []Result
-    ValidatorChanges        []Validator
-    ConsensusParamChanges   ConsensusParams
-    AppHash                 []byte
-}
 ```
 
 

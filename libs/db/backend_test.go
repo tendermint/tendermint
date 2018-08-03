@@ -2,6 +2,7 @@ package db
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,8 +18,8 @@ func cleanupDBDir(dir, name string) {
 
 func testBackendGetSetDelete(t *testing.T, backend DBBackendType) {
 	// Default
-	dir, dirname := cmn.Tempdir(fmt.Sprintf("test_backend_%s_", backend))
-	defer dir.Close()
+	dirname, err := ioutil.TempDir("", fmt.Sprintf("test_backend_%s_", backend))
+	require.Nil(t, err)
 	db := NewDB("testdb", backend, dirname)
 
 	// A nonexistent key should return nil, even if the key is empty

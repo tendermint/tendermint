@@ -17,14 +17,14 @@ import (
 	bc "github.com/tendermint/tendermint/blockchain"
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	cmn "github.com/tendermint/tendermint/libs/common"
+	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/privval"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
-	dbm "github.com/tendermint/tendermint/libs/db"
-	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -378,8 +378,11 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		if i < nValidators {
 			privVal = privVals[i]
 		} else {
-			_, tempFilePath := cmn.Tempfile("priv_validator_")
-			privVal = privval.GenFilePV(tempFilePath)
+			tempFile, err := ioutil.TempFile("", "priv_validator_")
+			if err != nil {
+				panic(err)
+			}
+			privVal = privval.GenFilePV(tempFile.Name())
 		}
 
 		app := appFunc()
@@ -429,7 +432,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 func randGenesisState(numValidators int, randPower bool, minPower int64) (sm.State, []types.PrivValidator) {
 	genDoc, privValidators := randGenesisDoc(numValidators, randPower, minPower)
 	s0, _ := sm.MakeGenesisState(genDoc)
-	db := dbm.NewMemDB()
+	db := dbm.NewMemDB() // remove this ?
 	sm.SaveState(db, s0)
 	return s0, privValidators
 }

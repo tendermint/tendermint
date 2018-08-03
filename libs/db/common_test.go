@@ -2,12 +2,12 @@ package db
 
 import (
 	"fmt"
+	"io/ioutil"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 //----------------------------------------
@@ -61,9 +61,9 @@ func checkValuePanics(t *testing.T, itr Iterator) {
 }
 
 func newTempDB(t *testing.T, backend DBBackendType) (db DB) {
-	dir, dirname := cmn.Tempdir("db_common_test")
+	dirname, err := ioutil.TempDir("", "db_common_test")
+	require.Nil(t, err)
 	db = NewDB("testdb", backend, dirname)
-	dir.Close()
 	return db
 }
 

@@ -160,9 +160,8 @@ See below for more details on the message types and how they are used.
 - **Request**:
   - `Hash ([]byte)`: The block's hash. This can be derived from the
     block header.
-  - `Header (struct{})`: The block header
-  - `Validators ([]SigningValidator)`: List of validators in the current validator
-    set and whether or not they signed a vote in the LastCommit
+  - `Header (struct{})`: The block header.
+  - `LastCommitInfo (LastCommitInfo)`: Info about the last commit.
   - `ByzantineValidators ([]Evidence)`: List of evidence of
     validators that acted maliciously
 - **Response**:
@@ -171,8 +170,9 @@ See below for more details on the message types and how they are used.
   - Signals the beginning of a new block. Called prior to
     any DeliverTxs.
   - The header is expected to at least contain the Height.
-  - The `Validators` and `ByzantineValidators` can be used to
-    determine rewards and punishments for the validators.
+  - The `LastCommitInfo` and `ByzantineValidators` can be used to determine
+    rewards and punishments for the validators. NOTE validators here do not
+    include pubkeys.
 
 ### CheckTx
 
@@ -326,3 +326,10 @@ See below for more details on the message types and how they are used.
     It is the proposer's local time when block was created.
   - `TotalVotingPower (int64)`: Total voting power of the validator set at
     height `Height`
+
+### LastCommitInfo
+
+- **Fields**:
+  - `CommitRound (int32)`: Commit round.
+  - `Validators ([]SigningValidator)`: List of validators in the current
+    validator set and whether or not they signed a vote.
