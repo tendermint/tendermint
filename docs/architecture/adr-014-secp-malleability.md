@@ -39,6 +39,8 @@ This is a simple check, instead of checking if `s < n`, instead check `s <= (n -
 An example of another cryptosystem using this 
 is the parity definition here https://github.com/zkcrypto/pairing/pull/30#issuecomment-372910663.
 
+This is the same solution Ethereum has chosen for solving secp malleability.
+
 ## Proposed Implementation
 
 Fork https://github.com/btcsuite/btcd, and just update the [parse sig method](https://github.com/btcsuite/btcd/blob/master/btcec/signature.go#195) and serialize functions to enforce our canonical form.
