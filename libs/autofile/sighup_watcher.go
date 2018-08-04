@@ -18,13 +18,19 @@ var sighupCounter int32 // For testing
 func initSighupWatcher() {
 	sighupWatchers = newSighupWatcher()
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGHUP)
+	hup := make(chan os.Signal, 1)
+	signal.Notify(hup, syscall.SIGHUP)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
 	go func() {
-		for range c {
+		select {
+		case <-hup:
 			sighupWatchers.closeAll()
 			atomic.AddInt32(&sighupCounter, 1)
+		case <-quit:
+			return
 		}
 	}()
 }

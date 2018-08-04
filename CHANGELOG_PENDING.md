@@ -26,3 +26,4 @@ BUG FIXES:
 - [common] Safely handle cases where atomic write files already exist [#2109](https://github.com/tendermint/tendermint/issues/2109)
 - [privval] fix a deadline for accepting new connections in socket private
   validator.
+- [node] Fully exit when CTRL-C is pressed even if consensus state panics [#2072]

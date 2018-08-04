@@ -496,7 +496,6 @@ out:
 	}
 	saveFileTicker.Stop()
 	a.saveToFile(a.filePath)
-	a.Logger.Info("Address handler done")
 }
 
 //----------------------------------------------------------
