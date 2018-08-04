@@ -27,3 +27,4 @@ BUG FIXES:
 - [privval] fix a deadline for accepting new connections in socket private
   validator.
 - [p2p] Allow startup if a configured seed node is down ([#1716](https://github.com/tendermint/tendermint/issues/1716))
+- [node] Fully exit when CTRL-C is pressed even if consensus state panics [#2072](https://github.com/tendermint/tendermint/issues/2072)
