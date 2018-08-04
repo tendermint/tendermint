@@ -482,7 +482,7 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 // checkSeeds checks that addresses are well formed.
 // Returns number of seeds we can connect to, along with all seeds addrs.
 // return err if user provided any badly formatted seed addresses.
-// Its fine if we can't resolve a host name that we cant resolve.
+// Doesn't error if the seed node can't be reached.
 // numOnline returns -1 if no seed nodes were in the initial configuration.
 func (r *PEXReactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err error) {
 	lSeeds := len(r.config.Seeds)
