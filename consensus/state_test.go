@@ -8,10 +8,10 @@ import (
 	"time"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/types"
 )
 
 func init() {
@@ -104,8 +104,13 @@ func TestStateProposerSelection2(t *testing.T) {
 	// everyone just votes nil. we get a new proposer each round
 	for i := 0; i < len(vss); i++ {
 		prop := cs1.GetRoundState().Validators.GetProposer()
-		if !bytes.Equal(prop.Address, vss[(i+2)%len(vss)].GetAddress()) {
-			panic(cmn.Fmt("expected proposer to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
+		correctProposer := vss[(i+2)%len(vss)].GetAddress()
+		if !bytes.Equal(prop.Address, correctProposer) {
+			panic(cmn.Fmt("expected RoundState.Validators.GetProposer() to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
+		}
+		block, _ := cs1.createProposalBlock()
+		if !bytes.Equal(block.ProposerAddress, correctProposer) {
+			panic(cmn.Fmt("expected block.ProposerAddress to be validator %d. Got %X", (i+2)%len(vss), block.ProposerAddress))
 		}
 
 		rs := cs1.GetRoundState()
