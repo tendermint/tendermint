@@ -59,8 +59,8 @@ Use the canonical representation for signatures.
 #### Secp256k1
 There isn't a clear canonical representation here.
 Signatures have two elements `r,s`.
-We should encode these bytes as `r || s`, where `r` and `s` are both exactly
-32 bytes long.
+These bytes are encoded as `r || s`, where `r` and `s` are both exactly
+32 bytes long, encoded big-endian.
 This is basically Ethereum's encoding, but without the leading recovery bit.
 
 ## Status
