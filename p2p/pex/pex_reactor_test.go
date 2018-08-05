@@ -204,6 +204,45 @@ func TestPEXReactorAddrsMessageAbuse(t *testing.T) {
 	assert.False(t, sw.Peers().Has(peer.ID()))
 }
 
+func TestCheckSeeds(t *testing.T) {
+	// directory to store address books
+	dir, err := ioutil.TempDir("", "pex_reactor")
+	require.Nil(t, err)
+	defer os.RemoveAll(dir) // nolint: errcheck
+
+	// 1. test creating peer with no seeds works
+	peer := testCreateDefaultPeer(dir, 0)
+	require.Nil(t, peer.Start())
+	peer.Stop()
+
+	// 2. create seed
+	seed := testCreateSeed(dir, 1, []*p2p.NetAddress{}, []*p2p.NetAddress{})
+
+	// 3. test create peer with online seed works
+	peer = testCreatePeerWithSeed(dir, 2, seed)
+	require.Nil(t, peer.Start())
+	peer.Stop()
+
+	// 4. test create peer with all seeds having unresolvable DNS fails
+	badPeerConfig := &PEXReactorConfig{
+		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
+			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657"},
+	}
+	peer = testCreatePeerWithConfig(dir, 2, badPeerConfig)
+	require.Error(t, peer.Start())
+	peer.Stop()
+
+	// 5. test create peer with one good seed address succeeds
+	badPeerConfig = &PEXReactorConfig{
+		Seeds: []string{"ed3dfd27bfc4af18f67a49862f04cc100696e84d@bad.network.addr:26657",
+			"d824b13cb5d40fa1d8a614e089357c7eff31b670@anotherbad.network.addr:26657",
+			seed.NodeInfo().NetAddress().String()},
+	}
+	peer = testCreatePeerWithConfig(dir, 2, badPeerConfig)
+	require.Nil(t, peer.Start())
+	peer.Stop()
+}
+
 func TestPEXReactorUsesSeedsIfNeeded(t *testing.T) {
 	// directory to store address books
 	dir, err := ioutil.TempDir("", "pex_reactor")
@@ -231,30 +270,7 @@ func TestConnectionSpeedForPeerReceivedFromSeed(t *testing.T) {
 	defer os.RemoveAll(dir) // nolint: errcheck
 
 	// 1. create peer
-	peer := p2p.MakeSwitch(
-		cfg,
-		1,
-		"127.0.0.1",
-		"123.123.123",
-		func(i int, sw *p2p.Switch) *p2p.Switch {
-			book := NewAddrBook(filepath.Join(dir, "addrbook1.json"), false)
-			book.SetLogger(log.TestingLogger())
-			sw.SetAddrBook(book)
-
-			sw.SetLogger(log.TestingLogger())
-
-			r := NewPEXReactor(
-				book,
-				&PEXReactorConfig{},
-			)
-			r.SetLogger(log.TestingLogger())
-			sw.AddReactor("pex", r)
-			return sw
-		},
-	)
-	peer.AddListener(
-		p2p.NewDefaultListener("tcp://"+peer.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
-	)
+	peer := testCreateDefaultPeer(dir, 1)
 	require.Nil(t, peer.Start())
 	defer peer.Stop()
 
@@ -435,6 +451,40 @@ func assertPeersWithTimeout(
 	}
 }
 
+// Creates a peer with the provided config
+func testCreatePeerWithConfig(dir string, id int, config *PEXReactorConfig) *p2p.Switch {
+	peer := p2p.MakeSwitch(
+		cfg,
+		id,
+		"127.0.0.1",
+		"123.123.123",
+		func(i int, sw *p2p.Switch) *p2p.Switch {
+			book := NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", id)), false)
+			book.SetLogger(log.TestingLogger())
+			sw.SetAddrBook(book)
+
+			sw.SetLogger(log.TestingLogger())
+
+			r := NewPEXReactor(
+				book,
+				config,
+			)
+			r.SetLogger(log.TestingLogger())
+			sw.AddReactor("pex", r)
+			return sw
+		},
+	)
+	peer.AddListener(
+		p2p.NewDefaultListener("tcp://"+peer.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
+	)
+	return peer
+}
+
+// Creates a peer with the default config
+func testCreateDefaultPeer(dir string, id int) *p2p.Switch {
+	return testCreatePeerWithConfig(dir, id, &PEXReactorConfig{})
+}
+
 // Creates a seed which knows about the provided addresses / source address pairs.
 // Starting and stopping the seed is left to the caller
 func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) *p2p.Switch {
@@ -469,33 +519,10 @@ func testCreateSeed(dir string, id int, knownAddrs, srcAddrs []*p2p.NetAddress) 
 // Creates a peer which knows about the provided seed.
 // Starting and stopping the peer is left to the caller
 func testCreatePeerWithSeed(dir string, id int, seed *p2p.Switch) *p2p.Switch {
-	peer := p2p.MakeSwitch(
-		cfg,
-		id,
-		"127.0.0.1",
-		"123.123.123",
-		func(i int, sw *p2p.Switch) *p2p.Switch {
-			book := NewAddrBook(filepath.Join(dir, fmt.Sprintf("addrbook%d.json", id)), false)
-			book.SetLogger(log.TestingLogger())
-			sw.SetAddrBook(book)
-
-			sw.SetLogger(log.TestingLogger())
-
-			r := NewPEXReactor(
-				book,
-				&PEXReactorConfig{
-					Seeds: []string{seed.NodeInfo().NetAddress().String()},
-				},
-			)
-			r.SetLogger(log.TestingLogger())
-			sw.AddReactor("pex", r)
-			return sw
-		},
-	)
-	peer.AddListener(
-		p2p.NewDefaultListener("tcp://"+peer.NodeInfo().ListenAddr, "", false, log.TestingLogger()),
-	)
-	return peer
+	conf := &PEXReactorConfig{
+		Seeds: []string{seed.NodeInfo().NetAddress().String()},
+	}
+	return testCreatePeerWithConfig(dir, id, conf)
 }
 
 func createReactor(conf *PEXReactorConfig) (r *PEXReactor, book *addrBook) {

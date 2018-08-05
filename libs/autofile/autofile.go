@@ -35,18 +35,20 @@ const autoFileOpenDuration = 1000 * time.Millisecond
 // Automatically closes and re-opens file for writing.
 // This is useful for using a log file with the logrotate tool.
 type AutoFile struct {
-	ID     string
-	Path   string
-	ticker *time.Ticker
-	mtx    sync.Mutex
-	file   *os.File
+	ID            string
+	Path          string
+	ticker        *time.Ticker
+	tickerStopped chan struct{} // closed when ticker is stopped
+	mtx           sync.Mutex
+	file          *os.File
 }
 
 func OpenAutoFile(path string) (af *AutoFile, err error) {
 	af = &AutoFile{
-		ID:     cmn.RandStr(12) + ":" + path,
-		Path:   path,
-		ticker: time.NewTicker(autoFileOpenDuration),
+		ID:            cmn.RandStr(12) + ":" + path,
+		Path:          path,
+		ticker:        time.NewTicker(autoFileOpenDuration),
+		tickerStopped: make(chan struct{}),
 	}
 	if err = af.openFile(); err != nil {
 		return
@@ -58,18 +60,18 @@ func OpenAutoFile(path string) (af *AutoFile, err error) {
 
 func (af *AutoFile) Close() error {
 	af.ticker.Stop()
+	close(af.tickerStopped)
 	err := af.closeFile()
 	sighupWatchers.removeAutoFile(af)
 	return err
 }
 
 func (af *AutoFile) processTicks() {
-	for {
-		_, ok := <-af.ticker.C
-		if !ok {
-			return // Done.
-		}
+	select {
+	case <-af.ticker.C:
 		af.closeFile()
+	case <-af.tickerStopped:
+		return
 	}
 }
 
