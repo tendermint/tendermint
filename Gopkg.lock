@@ -370,12 +370,12 @@
   revision = "d8387025d2b9d158cf4efb07e7ebf814bcce2057"
 
 [[projects]]
-  branch = "jae/writeemptyptr"
-  digest = "1:2851f999161ce484d09df830edace38654b711228155d476680577f47f2a5bff"
+  digest = "1:e0a2a4be1e20c305badc2b0a7a9ab7fef6da500763bec23ab81df3b5f9eec9ee"
   name = "github.com/tendermint/go-amino"
   packages = ["."]
   pruneopts = "UT"
-  revision = "8202139066d340b77084a583e176e29fb28b42e9"
+  revision = "a8328986c1608950fa5d3d1c0472cccc4f8fc02c"
+  version = "v0.12.0-rc0"
 
 [[projects]]
   branch = "master"
