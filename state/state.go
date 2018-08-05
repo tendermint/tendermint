@@ -99,12 +99,14 @@ func (state State) IsEmpty() bool {
 // Create a block from the latest state
 
 // MakeBlock builds a block from the current state with the given txs, commit,
-// and evidence.
+// and evidence. Note it also takes a proposerAddress because the state does not
+// track rounds, and hence doesn't know the correct proposer. TODO: alleviate this!
 func (state State) MakeBlock(
 	height int64,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
+	proposerAddress []byte,
 ) (*types.Block, *types.PartSet) {
 
 	// Build base block with block data.
@@ -122,7 +124,9 @@ func (state State) MakeBlock(
 	block.AppHash = state.AppHash
 	block.LastResultsHash = state.LastResultsHash
 
-	block.ProposerAddress = state.Validators.GetProposer().Address
+	// NOTE: we can't use the state.Validators because we don't
+	// IncrementAccum for rounds there.
+	block.ProposerAddress = proposerAddress
 
 	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }

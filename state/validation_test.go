@@ -72,4 +72,7 @@ func TestValidateBlock(t *testing.T) {
 	block.ProposerAddress = ed25519.GenPrivKey().PubKey().Address()
 	err = blockExec.ValidateBlock(state, block)
 	require.Error(t, err)
+	block.ProposerAddress = []byte("wrong size")
+	err = blockExec.ValidateBlock(state, block)
+	require.Error(t, err)
 }

@@ -108,10 +108,6 @@ func TestStateProposerSelection2(t *testing.T) {
 		if !bytes.Equal(prop.Address, correctProposer) {
 			panic(cmn.Fmt("expected RoundState.Validators.GetProposer() to be validator %d. Got %X", (i+2)%len(vss), prop.Address))
 		}
-		block, _ := cs1.createProposalBlock()
-		if !bytes.Equal(block.ProposerAddress, correctProposer) {
-			panic(cmn.Fmt("expected block.ProposerAddress to be validator %d. Got %X", (i+2)%len(vss), block.ProposerAddress))
-		}
 
 		rs := cs1.GetRoundState()
 		signAddVotes(cs1, types.VoteTypePrecommit, nil, rs.ProposalBlockParts.Header(), vss[1:]...)

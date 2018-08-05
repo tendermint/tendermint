@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tendermint/go-crypto/tmhash"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/types"
 )
@@ -121,10 +122,13 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		}
 	}
 
-	if !bytes.Equal(block.ProposerAddress, state.Validators.GetProposer().Address) {
+	// NOTE: We can't actually verify it's the right proposer because we dont
+	// know what round the block was first proposed. So just check that it's
+	// a legit address and a known validator.
+	if len(block.ProposerAddress) != tmhash.Size ||
+		!state.Validators.HasAddress(block.ProposerAddress) {
 		return fmt.Errorf(
-			"Wrong Block.Header.ProposerAddress.  Expected %X, got %v",
-			state.Validators.GetProposer().Address,
+			"Block.Header.ProposerAddress, %X, is not a validator",
 			block.ProposerAddress,
 		)
 	}
