@@ -3,7 +3,6 @@ GOTOOLS = \
 	github.com/golang/dep/cmd/dep \
 	gopkg.in/alecthomas/gometalinter.v2 \
 	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/gogo/protobuf/gogoproto \
 	github.com/square/certstrap
 PACKAGES=$(shell go list ./...)
 
@@ -13,7 +12,7 @@ BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`g
 
 all: check build test install
 
-check: check_tools ensure_deps
+check: check_tools get_vendor_deps
 
 
 ########################################
