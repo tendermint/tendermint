@@ -16,23 +16,25 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-// NOTE: Returned group has ticker stopped
-func createTestGroup(t *testing.T, headSizeLimit int64) *Group {
+func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group {
 	testID := cmn.RandStr(12)
 	testDir := "_test_" + testID
 	err := cmn.EnsureDir(testDir, 0700)
 	require.NoError(t, err, "Error creating dir")
+
 	headPath := testDir + "/myfile"
 	g, err := OpenGroup(headPath)
 	require.NoError(t, err, "Error opening Group")
-	g.SetHeadSizeLimit(headSizeLimit)
-	g.stopTicker()
 	require.NotEqual(t, nil, g, "Failed to create Group")
+
+	g.SetHeadSizeLimit(headSizeLimit)
+
 	return g
 }
 
 func destroyTestGroup(t *testing.T, g *Group) {
 	g.Close()
+
 	err := os.RemoveAll(g.Dir)
 	require.NoError(t, err, "Error removing test Group directory")
 }
@@ -45,7 +47,7 @@ func assertGroupInfo(t *testing.T, gInfo GroupInfo, minIndex, maxIndex int, tota
 }
 
 func TestCheckHeadSizeLimit(t *testing.T) {
-	g := createTestGroup(t, 1000*1000)
+	g := createTestGroupWithHeadSizeLimit(t, 1000*1000)
 
 	// At first, there are no files.
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 0, 0)
@@ -107,7 +109,7 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	g := createTestGroup(t, 10*1000)
+	g := createTestGroupWithHeadSizeLimit(t, 10*1000)
 
 	// Create some files in the group that have several INFO lines in them.
 	// Try to put the INFO lines in various spots.
@@ -147,14 +149,13 @@ func TestSearch(t *testing.T) {
 
 	// Now search for each number
 	for i := 0; i < 100; i++ {
-		t.Log("Testing for i", i)
 		gr, match, err := g.Search("INFO", makeSearchFunc(i))
-		require.NoError(t, err, "Failed to search for line")
-		assert.True(t, match, "Expected Search to return exact match")
+		require.NoError(t, err, "Failed to search for line, tc #%d", i)
+		assert.True(t, match, "Expected Search to return exact match, tc #%d", i)
 		line, err := gr.ReadLine()
-		require.NoError(t, err, "Failed to read line after search")
+		require.NoError(t, err, "Failed to read line after search, tc #%d", i)
 		if !strings.HasPrefix(line, fmt.Sprintf("INFO %v ", i)) {
-			t.Fatal("Failed to get correct line")
+			t.Fatalf("Failed to get correct line, tc #%d", i)
 		}
 		// Make sure we can continue to read from there.
 		cur := i + 1
@@ -165,16 +166,16 @@ func TestSearch(t *testing.T) {
 					// OK!
 					break
 				} else {
-					t.Fatal("Got EOF after the wrong INFO #")
+					t.Fatalf("Got EOF after the wrong INFO #, tc #%d", i)
 				}
 			} else if err != nil {
-				t.Fatal("Error reading line", err)
+				t.Fatalf("Error reading line, tc #%d, err:\n%s", i, err)
 			}
 			if !strings.HasPrefix(line, "INFO ") {
 				continue
 			}
 			if !strings.HasPrefix(line, fmt.Sprintf("INFO %v ", cur)) {
-				t.Fatalf("Unexpected INFO #. Expected %v got:\n%v", cur, line)
+				t.Fatalf("Unexpected INFO #. Expected %v got:\n%v, tc #%d", cur, line, i)
 			}
 			cur++
 		}
@@ -209,7 +210,7 @@ func TestSearch(t *testing.T) {
 }
 
 func TestRotateFile(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
 	g.WriteLine("Line 3")
@@ -239,7 +240,7 @@ func TestRotateFile(t *testing.T) {
 }
 
 func TestFindLast1(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
@@ -263,7 +264,7 @@ func TestFindLast1(t *testing.T) {
 }
 
 func TestFindLast2(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
@@ -287,7 +288,7 @@ func TestFindLast2(t *testing.T) {
 }
 
 func TestFindLast3(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	g.WriteLine("Line 1")
 	g.WriteLine("# a")
@@ -311,7 +312,7 @@ func TestFindLast3(t *testing.T) {
 }
 
 func TestFindLast4(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	g.WriteLine("Line 1")
 	g.WriteLine("Line 2")
@@ -333,7 +334,7 @@ func TestFindLast4(t *testing.T) {
 }
 
 func TestWrite(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	written := []byte("Medusa")
 	g.Write(written)
@@ -354,7 +355,7 @@ func TestWrite(t *testing.T) {
 // test that Read reads the required amount of bytes from all the files in the
 // group and returns no error if n == size of the given slice.
 func TestGroupReaderRead(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	professor := []byte("Professor Monster")
 	g.Write(professor)
@@ -383,7 +384,7 @@ func TestGroupReaderRead(t *testing.T) {
 // test that Read returns an error if number of bytes read < size of
 // the given slice. Subsequent call should return 0, io.EOF.
 func TestGroupReaderRead2(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	professor := []byte("Professor Monster")
 	g.Write(professor)
@@ -414,7 +415,7 @@ func TestGroupReaderRead2(t *testing.T) {
 }
 
 func TestMinIndex(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	assert.Zero(t, g.MinIndex(), "MinIndex should be zero at the beginning")
 
@@ -423,7 +424,7 @@ func TestMinIndex(t *testing.T) {
 }
 
 func TestMaxIndex(t *testing.T) {
-	g := createTestGroup(t, 0)
+	g := createTestGroupWithHeadSizeLimit(t, 0)
 
 	assert.Zero(t, g.MaxIndex(), "MaxIndex should be zero at the beginning")
 

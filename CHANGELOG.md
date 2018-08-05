@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.23.0
+
+*August 5th, 2018*
+
+This release includes breaking upgrades in our P2P encryption,
+some ABCI messages, and how we encode time and signatures.
+
+A few more changes are still coming to the Header, ABCI,
+and validator set handling to better support light clients, BFT time, and
+upgrades. Most notably, validator set changes will be delayed by one block (see
+[#1815][i1815]).
+
+We also removed `make ensure_deps` in favour of `make get_vendor_deps`.
+
+BREAKING CHANGES:
+- [abci] Changed time format from int64 to google.protobuf.Timestamp
+- [abci] Changed Validators to LastCommitInfo in RequestBeginBlock
+- [abci] Removed Fee from ResponseDeliverTx and ResponseCheckTx
+- [crypto] Switch crypto.Signature from interface to []byte for space efficiency
+  [#2128](https://github.com/tendermint/tendermint/pull/2128)
+    - NOTE: this means signatures no longer have the prefix bytes in Amino
+      binary nor the `type` field in Amino JSON. They're just bytes.
+- [p2p] Remove salsa and ripemd primitives, in favor of using chacha as a stream cipher, and hkdf [#2054](https://github.com/tendermint/tendermint/pull/2054)
+- [tools] Removed `make ensure_deps` in favor of `make get_vendor_deps`
+- [types] CanonicalTime uses nanoseconds instead of clipping to ms
+    - breaks serialization/signing of all messages with a timestamp
+
+FEATURES:
+- [tools] Added `make check_dep`
+    - ensures gopkg.lock is synced with gopkg.toml
+    - ensures no branches are used in the gopkg.toml
+
+IMPROVEMENTS:
+- [blockchain] Improve fast-sync logic
+  [#1805](https://github.com/tendermint/tendermint/pull/1805)
+    - tweak params
+    - only process one block at a time to avoid starving
+- [common] bit array functions which take in another parameter are now thread safe
+- [crypto] Switch hkdfchachapoly1305 to xchachapoly1305
+- [p2p] begin connecting to peers as soon a seed node provides them to you ([#2093](https://github.com/tendermint/tendermint/issues/2093))
+
+BUG FIXES:
+- [common] Safely handle cases where atomic write files already exist [#2109](https://github.com/tendermint/tendermint/issues/2109)
+- [privval] fix a deadline for accepting new connections in socket private
+  validator.
+- [p2p] Allow startup if a configured seed node's IP can't be resolved ([#1716](https://github.com/tendermint/tendermint/issues/1716))
+- [node] Fully exit when CTRL-C is pressed even if consensus state panics [#2072](https://github.com/tendermint/tendermint/issues/2072)
+
+[i1815]: https://github.com/tendermint/tendermint/pull/1815
+
 ## 0.22.8
 
 *July 26th, 2018*
@@ -44,9 +94,10 @@ BREAKING CHANGES:
 IMPROVEMENTS:
 - [abci, libs/common] Generated gogoproto static marshaller methods
 - [config] Increase default send/recv rates to 5 mB/s
+- [p2p] reject addresses coming from private peers
 - [p2p] allow persistent peers to be private
 
-BUG FIXES
+BUG FIXES:
 - [mempool] fixed a race condition when `create_empty_blocks=false` where a
   transaction is published at an old height.
 - [p2p] dial external IP setup by `persistent_peers`, not internal NAT IP

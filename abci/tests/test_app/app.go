@@ -26,7 +26,7 @@ func startClient(abciType string) abcicli.Client {
 }
 
 func setOption(client abcicli.Client, key, value string) {
-	_, err := client.SetOptionSync(types.RequestSetOption{key, value})
+	_, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: value})
 	if err != nil {
 		panicf("setting %v=%v: \nerr: %v", key, value, err)
 	}

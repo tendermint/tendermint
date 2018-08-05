@@ -10,11 +10,6 @@
 #   name = "github.com/user/project"
 #   version = "1.0.0"
 #
-# [[constraint]]
-#   name = "github.com/user/project2"
-#   branch = "dev"
-#   source = "github.com/myfork/project2"
-#
 # [[override]]
 #   name = "github.com/x/y"
 #   version = "2.4.0"
@@ -77,19 +72,9 @@
 ## Some repos dont have releases.
 ## Pin to revision
 
-## We can remove this one by updating protobuf to v1.1.0
-## but then the grpc tests break with
-#--- FAIL: TestBroadcastTx (0.01s)
-#panic: message/group field common.KVPair:bytes without pointer [recovered]
-#        panic: message/group field common.KVPair:bytes without pointer
-#
-# ...
-#
-# github.com/tendermint/tendermint/rpc/grpc_test.TestBroadcastTx(0xc420a5ab40)
-#         /go/src/github.com/tendermint/tendermint/rpc/grpc/grpc_test.go:29 +0x141
 [[override]]
-  name = "google.golang.org/genproto"
-  revision = "7fd901a49ba6a7f87732eb344f6e3c5b19d1b200"
+  name = "github.com/jmhodges/levigo"
+  revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
 
 [[constraint]]
   name = "github.com/ebuchman/fail-test"

@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"google.golang.org/grpc"
 
 	"golang.org/x/net/context"
@@ -43,7 +45,7 @@ func testStream(t *testing.T, app types.Application) {
 	server := abciserver.NewSocketServer("unix://test.sock", app)
 	server.SetLogger(log.TestingLogger().With("module", "abci-server"))
 	if err := server.Start(); err != nil {
-		t.Fatalf("Error starting socket server: %v", err.Error())
+		require.NoError(t, err, "Error starting socket server")
 	}
 	defer server.Stop()
 
@@ -132,7 +134,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 	// Write requests
 	for counter := 0; counter < numDeliverTxs; counter++ {
 		// Send request
-		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{[]byte("test")})
+		response, err := client.DeliverTx(context.Background(), &types.RequestDeliverTx{Tx: []byte("test")})
 		if err != nil {
 			t.Fatalf("Error in GRPC DeliverTx: %v", err.Error())
 		}

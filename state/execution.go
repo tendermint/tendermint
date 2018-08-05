@@ -188,9 +188,12 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 
 	// Begin block
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:                block.Hash(),
-		Header:              types.TM2PB.Header(&block.Header),
-		Validators:          signVals,
+		Hash:   block.Hash(),
+		Header: types.TM2PB.Header(&block.Header),
+		LastCommitInfo: abci.LastCommitInfo{
+			CommitRound: int32(block.LastCommit.Round()),
+			Validators:  signVals,
+		},
 		ByzantineValidators: byzVals,
 	})
 	if err != nil {
@@ -207,7 +210,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 
 	// End block
-	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{block.Height})
+	abciResponses.EndBlock, err = proxyAppConn.EndBlockSync(abci.RequestEndBlock{Height: block.Height})
 	if err != nil {
 		logger.Error("Error in proxyAppConn.EndBlock", "err", err)
 		return nil, err
@@ -245,7 +248,7 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 			vote = block.LastCommit.Precommits[i]
 		}
 		val := abci.SigningValidator{
-			Validator:       types.TM2PB.Validator(val),
+			Validator:       types.TM2PB.ValidatorWithoutPubKey(val),
 			SignedLastBlock: vote != nil,
 		}
 		signVals[i] = val

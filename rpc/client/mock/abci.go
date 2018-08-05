@@ -23,7 +23,7 @@ var (
 )
 
 func (a ABCIApp) ABCIInfo() (*ctypes.ResultABCIInfo, error) {
-	return &ctypes.ResultABCIInfo{a.App.Info(abci.RequestInfo{version.Version})}, nil
+	return &ctypes.ResultABCIInfo{a.App.Info(abci.RequestInfo{Version: version.Version})}, nil
 }
 
 func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQuery, error) {
@@ -31,7 +31,7 @@ func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 }
 
 func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	q := a.App.Query(abci.RequestQuery{data, path, opts.Height, opts.Trusted})
+	q := a.App.Query(abci.RequestQuery{Data: data, Path: path, Height: opts.Height, Prove: opts.Trusted})
 	return &ctypes.ResultABCIQuery{q}, nil
 }
 

@@ -6,26 +6,27 @@ GOTOOLS = \
 	github.com/gogo/protobuf/gogoproto \
 	github.com/square/certstrap
 PACKAGES=$(shell go list ./...)
+
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
-BUILD_TAGS?=tendermint
+BUILD_TAGS?='tendermint'
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
 all: check build test install
 
-check: check_tools ensure_deps
+check: check_tools get_vendor_deps
 
 
 ########################################
 ### Build Tendermint
 
 build:
-	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/
+	CGO_ENABLED=0 go build $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o build/tendermint ./cmd/tendermint/
 
 build_race:
-	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint
+	CGO_ENABLED=0 go build -race $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o build/tendermint ./cmd/tendermint
 
 install:
-	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' ./cmd/tendermint
+	CGO_ENABLED=0 go install $(BUILD_FLAGS) -tags $(BUILD_TAGS) ./cmd/tendermint
 
 ########################################
 ### Protobuf
@@ -36,7 +37,7 @@ protoc_all: protoc_libs protoc_abci protoc_grpc
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
-	protoc $(INCLUDE) $< --gogo_out=plugins=grpc:.
+	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:.
 	@echo "--> adding nolint declarations to protobuf generated files"
 	@awk -i inplace '/^\s*package \w+/ { print "//nolint" }1' $@
 
@@ -57,7 +58,7 @@ install_abci:
 # dist builds binaries for all platforms and packages them for distribution
 # TODO add abci to these scripts
 dist:
-	@BUILD_TAGS='$(BUILD_TAGS)' sh -c "'$(CURDIR)/scripts/dist.sh'"
+	@BUILD_TAGS=$(BUILD_TAGS) sh -c "'$(CURDIR)/scripts/dist.sh'"
 
 ########################################
 ### Tools & dependencies
@@ -76,16 +77,8 @@ update_tools:
 	@echo "--> Updating tools"
 	@go get -u $(GOTOOLS)
 
-#Run this from CI
+#Update dependencies
 get_vendor_deps:
-	@rm -rf vendor/
-	@echo "--> Running dep"
-	@dep ensure -vendor-only
-
-
-#Run this locally.
-ensure_deps:
-	@rm -rf vendor/
 	@echo "--> Running dep"
 	@dep ensure
 
@@ -107,7 +100,7 @@ draw_deps:
 
 get_deps_bin_size:
 	@# Copy of build recipe with additional flags to perform binary size analysis
-	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags '$(BUILD_TAGS)' -o build/tendermint ./cmd/tendermint/ 2>&1))
+	$(eval $(shell go build -work -a $(BUILD_FLAGS) -tags $(BUILD_TAGS) -o build/tendermint ./cmd/tendermint/ 2>&1))
 	@find $(WORK) -type f -name "*.a" | xargs -I{} du -hxs "{}" | sort -rh | sed -e s:${WORK}/::g > deps_bin_size.log
 	@echo "Results can be found here: $(CURDIR)/deps_bin_size.log"
 
@@ -207,7 +200,7 @@ vagrant_test:
 ### go tests
 test:
 	@echo "--> Running go test"
-	@go test $(PACKAGES)
+	@GOCACHE=off go test $(PACKAGES)
 
 test_race:
 	@echo "--> Running go test --race"
@@ -252,6 +245,16 @@ metalinter:
 metalinter_all:
 	@echo "--> Running linter (all)"
 	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
+
+DESTINATION = ./index.html.md
+
+rpc-docs:
+	cat rpc/core/slate_header.txt > $(DESTINATION)
+	godoc2md -template rpc/core/doc_template.txt github.com/tendermint/tendermint/rpc/core | grep -v -e "pipe.go" -e "routes.go" -e "dev.go" | sed 's,/src/target,https://github.com/tendermint/tendermint/tree/master/rpc/core,' >> $(DESTINATION)
+
+check_dep:
+	dep status >> /dev/null
+	!(grep -n branch Gopkg.toml)
 
 ###########################################################
 ### Docker image
@@ -308,4 +311,4 @@ build-slate:
 # To avoid unintended conflicts with file names, always add to .PHONY
 # unless there is a reason not to.
 # https://www.gnu.org/software/make/manual/html_node/Phony-Targets.html
-.PHONY: check build build_race build_abci dist install install_abci check_tools get_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all
+.PHONY: check build build_race build_abci dist install install_abci check_dep check_tools get_tools update_tools get_vendor_deps draw_deps get_protoc protoc_abci protoc_libs gen_certs clean_certs grpc_dbserver test_cover test_apps test_persistence test_p2p test test_race test_integrations test_release test100 vagrant_test fmt rpc-docs build-linux localnet-start localnet-stop build-docker build-docker-localnode sentry-start sentry-config sentry-stop build-slate protoc_grpc protoc_all

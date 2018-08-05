@@ -27,27 +27,24 @@ Both handshakes have configurable timeouts (they should complete quickly).
 ### Authenticated Encryption Handshake
 
 Tendermint implements the Station-to-Station protocol
-using ED25519 keys for Diffie-Helman key-exchange and NACL SecretBox for encryption.
+using X25519 keys for Diffie-Helman key-exchange and chacha20poly1305 for encryption.
 It goes as follows:
-- generate an emphemeral ED25519 keypair
+- generate an ephemeral X25519 keypair
 - send the ephemeral public key to the peer
 - wait to receive the peer's ephemeral public key
 - compute the Diffie-Hellman shared secret using the peers ephemeral public key and our ephemeral private key
-- generate two nonces to use for encryption (sending and receiving) as follows:
-    - sort the ephemeral public keys in ascending order and concatenate them
-    - RIPEMD160 the result
-    - append 4 empty bytes (extending the hash to 24-bytes)
-    - the result is nonce1
-    - flip the last bit of nonce1 to get nonce2
-    - if we had the smaller ephemeral pubkey, use nonce1 for receiving, nonce2 for sending;
-        else the opposite
-- all communications from now on are encrypted using the shared secret and the nonces, where each nonce
-increments by 2 every time it is used
+- generate two keys to use for encryption (sending and receiving) and a challenge for authentication as follows:
+    - create a hkdf-sha256 instance with the key being the diffie hellman shared secret, and info parameter as
+      `TENDERMINT_SECRET_CONNECTION_KEY_AND_CHALLENGE_GEN`
+    - get 96 bytes of output from hkdf-sha256
+    - if we had the smaller ephemeral pubkey, use the first 32 bytes for the key for receiving, the second 32 bytes for sending; else the opposite
+    - use the last 32 bytes of output for the challenge
+- use a seperate nonce for receiving and sending. Both nonces start at 0, and should support the full 96 bit nonce range
+- all communications from now on are encrypted in 1024 byte frames,
+using the respective secret and nonce. Each nonce is incremented by one after each use. 
 - we now have an encrypted channel, but still need to authenticate
-- generate a common challenge to sign:
-    - SHA256 of the sorted (lowest first) and concatenated ephemeral pub keys
-- sign the common challenge with our persistent private key
-- send the go-wire encoded persistent pubkey and signature to the peer
+- sign the common challenge obtained from the hkdf with our persistent private key
+- send the amino encoded persistent pubkey and signature to the peer
 - wait to receive the persistent public key and signature from the peer
 - verify the signature on the challenge using the peer's persistent public key
 

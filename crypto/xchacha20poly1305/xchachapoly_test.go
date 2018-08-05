@@ -1,53 +1,11 @@
-package hkdfchacha20poly1305
+package xchacha20poly1305
 
 import (
 	"bytes"
 	cr "crypto/rand"
-	"encoding/hex"
 	mr "math/rand"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
-
-// Test that a test vector we generated is valid. (Ensures backwards
-// compatibility)
-func TestVector(t *testing.T) {
-	key, _ := hex.DecodeString("56f8de45d3c294c7675bcaf457bdd4b71c380b9b2408ce9412b348d0f08b69ee")
-	aead, err := New(key[:])
-	if err != nil {
-		t.Fatal(err)
-	}
-	cts := []string{"e20a8bf42c535ac30125cfc52031577f0b",
-		"657695b37ba30f67b25860d90a6f1d00d8",
-		"e9aa6f3b7f625d957fd50f05bcdf20d014",
-		"8a00b3b5a6014e0d2033bebc5935086245",
-		"aadd74867b923879e6866ea9e03c009039",
-		"fc59773c2c864ee3b4cc971876b3c7bed4",
-		"caec14e3a9a52ce1a2682c6737defa4752",
-		"0b89511ffe490d2049d6950494ee51f919",
-		"7de854ea71f43ca35167a07566c769083d",
-		"cd477327f4ea4765c71e311c5fec1edbfb"}
-
-	for i := 0; i < 10; i++ {
-		ct, _ := hex.DecodeString(cts[i])
-
-		byteArr := []byte{byte(i)}
-		nonce := make([]byte, 24)
-		nonce[0] = byteArr[0]
-
-		// Test that we get the expected plaintext on open
-		plaintext, err := aead.Open(nil, nonce, ct, byteArr)
-		if err != nil {
-			t.Errorf("%dth Open failed", i)
-			continue
-		}
-		assert.Equal(t, byteArr, plaintext)
-		// Test that sealing yields the expected ciphertext
-		ciphertext := aead.Seal(nil, nonce, plaintext, byteArr)
-		assert.Equal(t, ct, ciphertext)
-	}
-}
 
 // The following test is taken from
 // https://github.com/golang/crypto/blob/master/chacha20poly1305/chacha20poly1305_test.go#L69

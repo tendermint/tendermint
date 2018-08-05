@@ -59,9 +59,7 @@ func TestSignAndValidateSecp256k1(t *testing.T) {
 	assert.True(t, pubKey.VerifyBytes(msg, sig))
 
 	// Mutate the signature, just one bit.
-	sigEd := sig.(secp256k1.SignatureSecp256k1)
-	sigEd[3] ^= byte(0x01)
-	sig = sigEd
+	sig[3] ^= byte(0x01)
 
 	assert.False(t, pubKey.VerifyBytes(msg, sig))
 }

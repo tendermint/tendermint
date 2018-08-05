@@ -45,6 +45,9 @@ type AddrBook interface {
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
+	// Is Address Book Empty? Answer should not depend on being in your own
+	// address book, or private peers
+	Empty() bool
 
 	// Pick an address to dial
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
@@ -221,6 +224,12 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
 func (a *addrBook) NeedMoreAddrs() bool {
 	return a.Size() < needAddressThreshold
+}
+
+// Empty implements AddrBook - returns true if there are no addresses in the address book.
+// Does not count the peer appearing in its own address book, or private peers.
+func (a *addrBook) Empty() bool {
+	return a.Size() == 0
 }
 
 // PickAddress implements AddrBook. It picks an address to connect to.
@@ -496,7 +505,6 @@ out:
 	}
 	saveFileTicker.Stop()
 	a.saveToFile(a.filePath)
-	a.Logger.Info("Address handler done")
 }
 
 //----------------------------------------------------------
@@ -638,6 +646,7 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 	if a.routabilityStrict && !addr.Routable() {
 		return ErrAddrBookNonRoutable{addr}
 	}
+
 	// TODO: we should track ourAddrs by ID and by IP:PORT and refuse both.
 	if _, ok := a.ourAddrs[addr.String()]; ok {
 		return ErrAddrBookSelf{addr}
@@ -645,6 +654,10 @@ func (a *addrBook) addAddress(addr, src *p2p.NetAddress) error {
 
 	if _, ok := a.privateIDs[addr.ID]; ok {
 		return ErrAddrBookPrivate{addr}
+	}
+
+	if _, ok := a.privateIDs[src.ID]; ok {
+		return ErrAddrBookPrivateSrc{src}
 	}
 
 	ka := a.addrLookup[addr.ID]

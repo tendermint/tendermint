@@ -514,7 +514,7 @@ func cmdInfo(cmd *cobra.Command, args []string) error {
 	if len(args) == 1 {
 		version = args[0]
 	}
-	res, err := client.InfoSync(types.RequestInfo{version})
+	res, err := client.InfoSync(types.RequestInfo{Version: version})
 	if err != nil {
 		return err
 	}
@@ -537,7 +537,7 @@ func cmdSetOption(cmd *cobra.Command, args []string) error {
 	}
 
 	key, val := args[0], args[1]
-	_, err := client.SetOptionSync(types.RequestSetOption{key, val})
+	_, err := client.SetOptionSync(types.RequestSetOption{Key: key, Value: val})
 	if err != nil {
 		return err
 	}

@@ -24,13 +24,13 @@ func TestHeartbeatString(t *testing.T) {
 	require.Contains(t, nilHb.String(), "nil", "expecting a string and no panic")
 
 	hb := &Heartbeat{ValidatorIndex: 1, Height: 11, Round: 2}
-	require.Equal(t, hb.String(), "Heartbeat{1:000000000000 11/02 (0) <nil>}")
+	require.Equal(t, "Heartbeat{1:000000000000 11/02 (0) /000000000000.../}", hb.String())
 
 	var key ed25519.PrivKeyEd25519
 	sig, err := key.Sign([]byte("Tendermint"))
 	require.NoError(t, err)
 	hb.Signature = sig
-	require.Equal(t, hb.String(), "Heartbeat{1:000000000000 11/02 (0) /FF41E371B9BF.../}")
+	require.Equal(t, "Heartbeat{1:000000000000 11/02 (0) /FF41E371B9BF.../}", hb.String())
 }
 
 func TestHeartbeatWriteSignBytes(t *testing.T) {

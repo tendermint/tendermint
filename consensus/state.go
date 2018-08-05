@@ -553,9 +553,30 @@ func (cs *ConsensusState) newStep() {
 // Updates (state transitions) happen on timeouts, complete proposals, and 2/3 majorities.
 // ConsensusState must be locked before any internal state is updated.
 func (cs *ConsensusState) receiveRoutine(maxSteps int) {
+	onExit := func(cs *ConsensusState) {
+		// NOTE: the internalMsgQueue may have signed messages from our
+		// priv_val that haven't hit the WAL, but its ok because
+		// priv_val tracks LastSig
+
+		// close wal now that we're done writing to it
+		cs.wal.Stop()
+		cs.wal.Wait()
+
+		close(cs.done)
+	}
+
 	defer func() {
 		if r := recover(); r != nil {
 			cs.Logger.Error("CONSENSUS FAILURE!!!", "err", r, "stack", string(debug.Stack()))
+			// stop gracefully
+			//
+			// NOTE: We most probably shouldn't be running any further when there is
+			// some unexpected panic. Some unknown error happened, and so we don't
+			// know if that will result in the validator signing an invalid thing. It
+			// might be worthwhile to explore a mechanism for manual resuming via
+			// some console or secure RPC system, but for now, halting the chain upon
+			// unexpected consensus bugs sounds like the better option.
+			onExit(cs)
 		}
 	}()
 
@@ -588,16 +609,7 @@ func (cs *ConsensusState) receiveRoutine(maxSteps int) {
 			// go to the next step
 			cs.handleTimeout(ti, rs)
 		case <-cs.Quit():
-
-			// NOTE: the internalMsgQueue may have signed messages from our
-			// priv_val that haven't hit the WAL, but its ok because
-			// priv_val tracks LastSig
-
-			// close wal now that we're done writing to it
-			cs.wal.Stop()
-			cs.wal.Wait()
-
-			close(cs.done)
+			onExit(cs)
 			return
 		}
 	}

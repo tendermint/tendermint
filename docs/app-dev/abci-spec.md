@@ -108,8 +108,11 @@ See below for more details on the message types and how they are used.
 ### InitChain
 
 - **Request**:
-  - `Validators ([]Validator)`: Initial genesis validators
-  - `AppStateBytes ([]byte)`: Serialized initial application state
+  - `Time (google.protobuf.Timestamp)`: Genesis time.
+  - `ChainID (string)`: ID of the blockchain.
+  - `ConsensusParams (ConsensusParams)`: Initial consensus-critical parameters.
+  - `Validators ([]Validator)`: Initial genesis validators.
+  - `AppStateBytes ([]byte)`: Serialized initial application state. Amino-encoded JSON bytes.
 - **Response**:
   - `ConsensusParams (ConsensusParams)`: Initial
     consensus-critical parameters.
@@ -157,9 +160,8 @@ See below for more details on the message types and how they are used.
 - **Request**:
   - `Hash ([]byte)`: The block's hash. This can be derived from the
     block header.
-  - `Header (struct{})`: The block header
-  - `Validators ([]SigningValidator)`: List of validators in the current validator
-    set and whether or not they signed a vote in the LastCommit
+  - `Header (struct{})`: The block header.
+  - `LastCommitInfo (LastCommitInfo)`: Info about the last commit.
   - `ByzantineValidators ([]Evidence)`: List of evidence of
     validators that acted maliciously
 - **Response**:
@@ -168,8 +170,9 @@ See below for more details on the message types and how they are used.
   - Signals the beginning of a new block. Called prior to
     any DeliverTxs.
   - The header is expected to at least contain the Height.
-  - The `Validators` and `ByzantineValidators` can be used to
-    determine rewards and punishments for the validators.
+  - The `LastCommitInfo` and `ByzantineValidators` can be used to determine
+    rewards and punishments for the validators. NOTE validators here do not
+    include pubkeys.
 
 ### CheckTx
 
@@ -186,7 +189,6 @@ See below for more details on the message types and how they are used.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
-  - `Fee (cmn.KI64Pair)`: Fee paid for the transaction.
 - **Usage**: Validate a mempool transaction, prior to broadcasting
   or proposing. CheckTx should perform stateful but light-weight
   checks of the validity of the transaction (like checking signatures
@@ -223,7 +225,6 @@ See below for more details on the message types and how they are used.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
-  - `Fee (cmn.KI64Pair)`: Fee paid for the transaction.
 - **Usage**:
   - Deliver a transaction to be executed in full by the application.
     If the transaction is valid, returns CodeType.OK.
@@ -265,7 +266,8 @@ See below for more details on the message types and how they are used.
 - **Fields**:
   - `ChainID (string)`: ID of the blockchain
   - `Height (int64)`: Height of the block in the chain
-  - `Time (int64)`: Unix time of the block
+  - `Time (google.protobuf.Timestamp)`: Time of the block. It is the proposer's
+    local time when block was created.
   - `NumTxs (int32)`: Number of transactions in the block
   - `TotalTxs (int64)`: Total number of transactions in the blockchain until
     now
@@ -320,6 +322,14 @@ See below for more details on the message types and how they are used.
     "duplicate/vote".
   - `Validator (Validator`: The offending validator
   - `Height (int64)`: Height when the offense was committed
-  - `Time (int64)`: Unix time of the block at height `Height`
+  - `Time (google.protobuf.Timestamp)`: Time of the block at height `Height`.
+    It is the proposer's local time when block was created.
   - `TotalVotingPower (int64)`: Total voting power of the validator set at
     height `Height`
+
+### LastCommitInfo
+
+- **Fields**:
+  - `CommitRound (int32)`: Commit round.
+  - `Validators ([]SigningValidator)`: List of validators in the current
+    validator set and whether or not they signed a vote.

@@ -17,6 +17,7 @@ docs/_build
 *.log
 abci-cli
 docs/node_modules/
+index.html.md
 
 scripts/wal2json/wal2json
 scripts/cutWALUntil/cutWALUntil
