@@ -68,7 +68,7 @@ type Vote struct {
 	Timestamp        time.Time        `json:"timestamp"`
 	Type             byte             `json:"type"`
 	BlockID          BlockID          `json:"block_id"` // zero if vote is nil.
-	Signature        crypto.Signature `json:"signature"`
+	Signature        []byte `json:"signature"`
 }
 
 func (vote *Vote) SignBytes(chainID string) []byte {
