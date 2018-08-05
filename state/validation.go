@@ -13,12 +13,12 @@ import (
 // Validate block
 
 func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
-	// validate internal consistency
+	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
 	}
 
-	// validate basic info
+	// Validate basic info.
 	if block.ChainID != state.ChainID {
 		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", state.ChainID, block.ChainID)
 	}
@@ -33,7 +33,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		}
 	*/
 
-	// validate prev block info
+	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
 		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", state.LastBlockID, block.LastBlockID)
 	}
@@ -42,7 +42,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", state.LastBlockTotalTx+newTxs, block.TotalTxs)
 	}
 
-	// validate app info
+	// Validate app info
 	if !bytes.Equal(block.AppHash, state.AppHash) {
 		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", state.AppHash, block.AppHash)
 	}
@@ -54,6 +54,9 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 	}
 	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
 		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v", state.Validators.Hash(), block.ValidatorsHash)
+	}
+	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v", state.NextValidators.Hash(), block.NextValidatorsHash)
 	}
 
 	// Validate block LastCommit.
@@ -73,6 +76,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		}
 	}
 
+	// Validate all evidence.
 	// TODO: Each check requires loading an old validator set.
 	// We should cap the amount of evidence per block
 	// to prevent potential proposer DoS.
