@@ -210,6 +210,7 @@ func (h *Header) Hash() cmn.HexBytes {
 	if h == nil || len(h.ValidatorsHash) == 0 {
 		return nil
 	}
+	// Change this merkle.Byter
 	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
 		"ChainID":     aminoHasher(h.ChainID),
 		"Height":      aminoHasher(h.Height),
@@ -393,6 +394,7 @@ func (commit *Commit) Hash() cmn.HexBytes {
 		return nil
 	}
 	if commit.hash == nil {
+		// TODO: Change this to byter equivalent
 		bs := make([]merkle.Hasher, len(commit.Precommits))
 		for i, precommit := range commit.Precommits {
 			bs[i] = aminoHasher(precommit)
@@ -547,6 +549,7 @@ func (blockID BlockID) String() string {
 
 //-------------------------------------------------------
 
+// TODO: Convert this code to byter, which just entails not doing the final hash step.
 type hasher struct {
 	item interface{}
 }
@@ -572,6 +575,7 @@ func aminoHash(item interface{}) []byte {
 	return h.Hash()
 }
 
+// TODO: Convert this code into byter equivalent
 func aminoHasher(item interface{}) merkle.Hasher {
 	return hasher{item}
 }

@@ -7,6 +7,7 @@ import (
 // SimpleHashFromTwoHashes is the basic operation of the Merkle tree: Hash(left | right).
 func SimpleHashFromTwoHashes(left, right []byte) []byte {
 	var hasher = tmhash.New()
+	// TODO: Change this to H(0x01 || left || right)
 	err := encodeByteSlice(hasher, left)
 	if err != nil {
 		panic(err)
@@ -18,6 +19,7 @@ func SimpleHashFromTwoHashes(left, right []byte) []byte {
 	return hasher.Sum(nil)
 }
 
+// Change this to SimpleHashFromByters
 // SimpleHashFromHashers computes a Merkle tree from items that can be hashed.
 func SimpleHashFromHashers(items []Hasher) []byte {
 	hashes := make([][]byte, len(items))
@@ -27,6 +29,9 @@ func SimpleHashFromHashers(items []Hasher) []byte {
 	}
 	return simpleHashFromHashes(hashes)
 }
+
+// Create SimpleHashFromBytes, for things that don't need a seperate .Bytes() method
+// func SimpleHashFromHashers(items [][]byte]) []byte {
 
 // SimpleHashFromMap computes a Merkle tree from sorted map.
 // Like calling SimpleHashFromHashers with
@@ -51,6 +56,7 @@ func simpleHashFromHashes(hashes [][]byte) []byte {
 	case 1:
 		return hashes[0]
 	default:
+		// TODO: Change how we split the left and right nodes
 		left := simpleHashFromHashes(hashes[:(len(hashes)+1)/2])
 		right := simpleHashFromHashes(hashes[(len(hashes)+1)/2:])
 		return SimpleHashFromTwoHashes(left, right)

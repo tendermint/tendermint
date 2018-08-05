@@ -27,6 +27,7 @@ func (sm *simpleMap) Set(key string, value Hasher) {
 	// The value is hashed, so you can
 	// check for equality with a cached value (say)
 	// and make a determination to fetch or not.
+	// TODO: Change this to tmhash(0x00 || value.Bytes())
 	vhash := value.Hash()
 
 	sm.kvs = append(sm.kvs, cmn.KVPair{
@@ -66,6 +67,7 @@ func (sm *simpleMap) KVPairs() cmn.KVPairs {
 // then hashed.
 type KVPair cmn.KVPair
 
+// TODO: Change this to Bytes()
 func (kv KVPair) Hash() []byte {
 	hasher := tmhash.New()
 	err := encodeByteSlice(hasher, kv.Key)

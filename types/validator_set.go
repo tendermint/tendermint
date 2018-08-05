@@ -161,6 +161,7 @@ func (valSet *ValidatorSet) Hash() []byte {
 	if len(valSet.Validators) == 0 {
 		return nil
 	}
+	// TODO: Change this to Byters
 	hashers := make([]merkle.Hasher, len(valSet.Validators))
 	for i, val := range valSet.Validators {
 		hashers[i] = val

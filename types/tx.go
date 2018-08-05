@@ -74,6 +74,7 @@ func (txs Txs) Proof(i int) TxProof {
 	for i := 0; i < l; i++ {
 		hashers[i] = txs[i]
 	}
+	// change to SimpleProofsFromBytes
 	root, proofs := merkle.SimpleProofsFromHashers(hashers)
 
 	return TxProof{
