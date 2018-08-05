@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/pkg/errors"
+
 	amino "github.com/tendermint/go-amino"
 	cmn "github.com/tendermint/tendermint/libs/common"
-
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/p2p/conn"
 )
@@ -120,11 +121,11 @@ func (r *PEXReactor) OnStart() error {
 		return err
 	}
 
-	// return err if user provided a bad seed address
-	// or a host name that we cant resolve
-	seedAddrs, err := r.checkSeeds()
+	numOnline, seedAddrs, err := r.checkSeeds()
 	if err != nil {
 		return err
+	} else if numOnline == 0 && r.book.Empty() {
+		return errors.New("Address book is empty, and could not connect to any seed nodes")
 	}
 
 	r.seedAddrs = seedAddrs
@@ -478,19 +479,27 @@ func (r *PEXReactor) dialPeer(addr *p2p.NetAddress) {
 	}
 }
 
-// check seed addresses are well formed
-func (r *PEXReactor) checkSeeds() ([]*p2p.NetAddress, error) {
+// checkSeeds checks that addresses are well formed.
+// Returns number of seeds we can connect to, along with all seeds addrs.
+// return err if user provided any badly formatted seed addresses.
+// Doesn't error if the seed node can't be reached.
+// numOnline returns -1 if no seed nodes were in the initial configuration.
+func (r *PEXReactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, err error) {
 	lSeeds := len(r.config.Seeds)
 	if lSeeds == 0 {
-		return nil, nil
+		return -1, nil, nil
 	}
 	netAddrs, errs := p2p.NewNetAddressStrings(r.config.Seeds)
+	numOnline = lSeeds - len(errs)
 	for _, err := range errs {
-		if err != nil {
-			return nil, err
+		switch e := err.(type) {
+		case p2p.ErrNetAddressLookup:
+			r.Logger.Error("Connecting to seed failed", "err", e)
+		default:
+			return 0, nil, errors.Wrap(e, "seed node configuration has error")
 		}
 	}
-	return netAddrs, nil
+	return
 }
 
 // randomly dial seeds until we connect to one or exhaust them

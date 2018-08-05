@@ -7,6 +7,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -355,6 +357,40 @@ func TestAddrBookHasAddress(t *testing.T) {
 	assert.False(t, book.HasAddress(addr))
 }
 
+func testCreatePrivateAddrs(t *testing.T, numAddrs int) ([]*p2p.NetAddress, []string) {
+	addrs := make([]*p2p.NetAddress, numAddrs)
+	for i := 0; i < numAddrs; i++ {
+		addrs[i] = randIPv4Address(t)
+	}
+
+	private := make([]string, numAddrs)
+	for i, addr := range addrs {
+		private[i] = string(addr.ID)
+	}
+	return addrs, private
+}
+
+func TestAddrBookEmpty(t *testing.T) {
+	fname := createTempFileName("addrbook_test")
+	defer deleteTempFile(fname)
+
+	book := NewAddrBook(fname, true)
+	book.SetLogger(log.TestingLogger())
+	// Check that empty book is empty
+	require.True(t, book.Empty())
+	// Check that book with our address is empty
+	book.AddOurAddress(randIPv4Address(t))
+	require.True(t, book.Empty())
+	// Check that book with private addrs is empty
+	_, privateIds := testCreatePrivateAddrs(t, 5)
+	book.AddPrivateIDs(privateIds)
+	require.True(t, book.Empty())
+
+	// Check that book with address is not empty
+	book.AddAddress(randIPv4Address(t), randIPv4Address(t))
+	require.False(t, book.Empty())
+}
+
 func TestPrivatePeers(t *testing.T) {
 	fname := createTempFileName("addrbook_test")
 	defer deleteTempFile(fname)
@@ -362,15 +398,7 @@ func TestPrivatePeers(t *testing.T) {
 	book := NewAddrBook(fname, true)
 	book.SetLogger(log.TestingLogger())
 
-	addrs := make([]*p2p.NetAddress, 10)
-	for i := 0; i < 10; i++ {
-		addrs[i] = randIPv4Address(t)
-	}
-
-	private := make([]string, 10)
-	for i, addr := range addrs {
-		private[i] = string(addr.ID)
-	}
+	addrs, private := testCreatePrivateAddrs(t, 10)
 	book.AddPrivateIDs(private)
 
 	// private addrs must not be added

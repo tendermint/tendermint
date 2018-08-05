@@ -45,6 +45,9 @@ type AddrBook interface {
 
 	// Do we need more peers?
 	NeedMoreAddrs() bool
+	// Is Address Book Empty? Answer should not depend on being in your own
+	// address book, or private peers
+	Empty() bool
 
 	// Pick an address to dial
 	PickAddress(biasTowardsNewAddrs int) *p2p.NetAddress
@@ -221,6 +224,12 @@ func (a *addrBook) HasAddress(addr *p2p.NetAddress) bool {
 // NeedMoreAddrs implements AddrBook - returns true if there are not have enough addresses in the book.
 func (a *addrBook) NeedMoreAddrs() bool {
 	return a.Size() < needAddressThreshold
+}
+
+// Empty implements AddrBook - returns true if there are no addresses in the address book.
+// Does not count the peer appearing in its own address book, or private peers.
+func (a *addrBook) Empty() bool {
+	return a.Size() == 0
 }
 
 // PickAddress implements AddrBook. It picks an address to connect to.
