@@ -196,14 +196,14 @@ func (b *Block) StringShort() string {
 // NOTE: changes to the Header should be duplicated in the abci Header
 type Header struct {
 	// basic block info
-	ChainID string    `json:"chain_id"`
-	Height  int64     `json:"height"`
-	Time    time.Time `json:"time"`
-	NumTxs  int64     `json:"num_txs"`
+	ChainID  string    `json:"chain_id"`
+	Height   int64     `json:"height"`
+	Time     time.Time `json:"time"`
+	NumTxs   int64     `json:"num_txs"`
+	TotalTxs int64     `json:"total_txs"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
-	TotalTxs    int64   `json:"total_txs"`
 
 	// hashes of block data
 	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block

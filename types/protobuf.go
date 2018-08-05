@@ -35,17 +35,23 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
-		ChainID: header.ChainID,
-		Height:  header.Height,
-
+		ChainID:  header.ChainID,
+		Height:   header.Height,
 		Time:     header.Time,
-		NumTxs:   int32(header.NumTxs), // XXX: overflow
+		NumTxs:   header.NumTxs,
 		TotalTxs: header.TotalTxs,
 
-		LastBlockHash:  header.LastBlockID.Hash,
-		ValidatorsHash: header.ValidatorsHash,
-		AppHash:        header.AppHash,
+		LastBlockId: TM2PB.BlockID(header.LastBlockID),
 
+		LastCommitHash: header.LastCommitHash,
+		DataHash:       header.DataHash,
+
+		ValidatorsHash:  header.ValidatorsHash,
+		ConsensusHash:   header.ConsensusHash,
+		AppHash:         header.AppHash,
+		LastResultsHash: header.LastResultsHash,
+
+		EvidenceHash:    header.EvidenceHash,
 		ProposerAddress: header.ProposerAddress,
 	}
 }
@@ -54,6 +60,20 @@ func (tm2pb) ValidatorWithoutPubKey(val *Validator) abci.Validator {
 	return abci.Validator{
 		Address: val.PubKey.Address(),
 		Power:   val.VotingPower,
+	}
+}
+
+func (tm2pb) BlockID(blockID BlockID) abci.BlockID {
+	return abci.BlockID{
+		Hash:        blockID.Hash,
+		PartsHeader: TM2PB.PartSetHeader(blockID.PartsHeader),
+	}
+}
+
+func (tm2pb) PartSetHeader(header PartSetHeader) abci.PartSetHeader {
+	return abci.PartSetHeader{
+		Total: int32(header.Total),
+		Hash:  header.Hash,
 	}
 }
 
