@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/types"
 )
@@ -194,7 +193,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 		// manipulate the timestamp. should get changed back
 		proposal.Timestamp = proposal.Timestamp.Add(time.Millisecond)
-		var emptySig crypto.Signature
+		var emptySig []byte
 		proposal.Signature = emptySig
 		err = privVal.SignProposal("mychainid", proposal)
 		assert.NoError(t, err, "expected no error on signing same proposal")
@@ -218,7 +217,7 @@ func TestDifferByTimestamp(t *testing.T) {
 
 		// manipulate the timestamp. should get changed back
 		vote.Timestamp = vote.Timestamp.Add(time.Millisecond)
-		var emptySig crypto.Signature
+		var emptySig []byte
 		vote.Signature = emptySig
 		err = privVal.SignVote("mychainid", vote)
 		assert.NoError(t, err, "expected no error on signing same vote")

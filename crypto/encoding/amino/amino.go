@@ -33,12 +33,6 @@ func RegisterAmino(cdc *amino.Codec) {
 		"tendermint/PrivKeyEd25519", nil)
 	cdc.RegisterConcrete(secp256k1.PrivKeySecp256k1{},
 		"tendermint/PrivKeySecp256k1", nil)
-
-	cdc.RegisterInterface((*crypto.Signature)(nil), nil)
-	cdc.RegisterConcrete(ed25519.SignatureEd25519{},
-		"tendermint/SignatureEd25519", nil)
-	cdc.RegisterConcrete(secp256k1.SignatureSecp256k1{},
-		"tendermint/SignatureSecp256k1", nil)
 }
 
 func PrivKeyFromBytes(privKeyBytes []byte) (privKey crypto.PrivKey, err error) {
@@ -47,11 +41,6 @@ func PrivKeyFromBytes(privKeyBytes []byte) (privKey crypto.PrivKey, err error) {
 }
 
 func PubKeyFromBytes(pubKeyBytes []byte) (pubKey crypto.PubKey, err error) {
-	err = cdc.UnmarshalBinaryBare(pubKeyBytes, &pubKey)
-	return
-}
-
-func SignatureFromBytes(pubKeyBytes []byte) (pubKey crypto.Signature, err error) {
 	err = cdc.UnmarshalBinaryBare(pubKeyBytes, &pubKey)
 	return
 }

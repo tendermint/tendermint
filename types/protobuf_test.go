@@ -113,7 +113,7 @@ type pubKeyEddie struct{}
 
 func (pubKeyEddie) Address() Address                                  { return []byte{} }
 func (pubKeyEddie) Bytes() []byte                                     { return []byte{} }
-func (pubKeyEddie) VerifyBytes(msg []byte, sig crypto.Signature) bool { return false }
+func (pubKeyEddie) VerifyBytes(msg []byte, sig []byte) bool { return false }
 func (pubKeyEddie) Equals(crypto.PubKey) bool                         { return false }
 
 func TestABCIValidatorFromPubKeyAndPower(t *testing.T) {

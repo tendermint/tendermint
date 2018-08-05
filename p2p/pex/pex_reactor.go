@@ -504,12 +504,7 @@ func (r *PEXReactor) checkSeeds() (numOnline int, netAddrs []*p2p.NetAddress, er
 
 // randomly dial seeds until we connect to one or exhaust them
 func (r *PEXReactor) dialSeeds() {
-	lSeeds := len(r.config.Seeds)
-	if lSeeds == 0 {
-		return
-	}
-
-	perm := cmn.RandPerm(lSeeds)
+	perm := cmn.RandPerm(len(r.seedAddrs))
 	// perm := r.Switch.rng.Perm(lSeeds)
 	for _, i := range perm {
 		// dial a random seed
