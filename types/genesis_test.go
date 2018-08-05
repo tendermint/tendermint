@@ -14,14 +14,10 @@ import (
 func TestGenesisBad(t *testing.T) {
 	// test some bad ones from raw json
 	testCases := [][]byte{
-		[]byte{},                                           // empty
-		[]byte{1, 1, 1, 1, 1},                              // junk
-		[]byte(`{}`),                                       // empty
-		[]byte(`{"chain_id":"mychain"}`),                   // missing validators
-		[]byte(`{"chain_id":"mychain","validators":[]}`),   // missing validators
-		[]byte(`{"chain_id":"mychain","validators":[{}]}`), // missing validators
-		[]byte(`{"chain_id":"mychain","validators":null}`), // missing validators
-		[]byte(`{"chain_id":"mychain"}`),                   // missing validators
+		[]byte{},              // empty
+		[]byte{1, 1, 1, 1, 1}, // junk
+		[]byte(`{}`),          // empty
+		[]byte(`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),                                   // missing pub_key type
 		[]byte(`{"validators":[{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`), // missing chain_id
 	}
 

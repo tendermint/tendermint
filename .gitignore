@@ -37,3 +37,5 @@ addrbook.json
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
+
+.vscode

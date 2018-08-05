@@ -25,7 +25,7 @@ type GenesisDoc struct {
 	GenesisTime     time.Time          `json:"genesis_time"`
 	ChainID         string             `json:"chain_id"`
 	ConsensusParams *ConsensusParams   `json:"consensus_params,omitempty"`
-	Validators      []GenesisValidator `json:"validators"`
+	Validators      []GenesisValidator `json:"validators,omitempty"`
 	AppHash         cmn.HexBytes       `json:"app_hash"`
 	AppState        json.RawMessage    `json:"app_state,omitempty"`
 }
@@ -63,10 +63,6 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 		if err := genDoc.ConsensusParams.Validate(); err != nil {
 			return err
 		}
-	}
-
-	if len(genDoc.Validators) == 0 {
-		return cmn.NewError("The genesis file must have at least one validator")
 	}
 
 	for _, v := range genDoc.Validators {
