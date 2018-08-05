@@ -14,6 +14,7 @@ BREAKING CHANGES:
 - [p2p] Remove salsa and ripemd primitives, in favor of using chacha as a stream cipher, and hkdf
 - [abci] Changed time format from int64 to google.protobuf.Timestamp
 - [abci] Changed Validators to LastCommitInfo in RequestBeginBlock
+- [abci] Added address of the original proposer of the block to Header.
 
 FEATURES:
 - [tools] Added `make check_dep`

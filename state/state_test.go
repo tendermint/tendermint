@@ -301,6 +301,17 @@ func genValSet(size int) *types.ValidatorSet {
 	return types.NewValidatorSet(vals)
 }
 
+func TestStateMakeBlock(t *testing.T) {
+	tearDown, _, state := setupTestCase(t)
+	defer tearDown(t)
+
+	proposerAddress := state.Validators.GetProposer().Address
+	block := makeBlock(state, 2)
+
+	// test we set proposer address
+	assert.Equal(t, proposerAddress, block.ProposerAddress)
+}
+
 // TestConsensusParamsChangesSaveLoad tests saving and loading consensus params
 // with changes.
 func TestConsensusParamsChangesSaveLoad(t *testing.T) {

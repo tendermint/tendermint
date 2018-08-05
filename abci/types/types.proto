@@ -249,7 +249,7 @@ message Header {
   bytes app_hash = 8;
 
   // consensus
-  Validator proposer = 9 [(gogoproto.nullable)=false];
+  bytes proposer_address = 9;
 }
 
 // Validator

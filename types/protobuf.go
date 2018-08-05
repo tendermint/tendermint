@@ -46,7 +46,7 @@ func (tm2pb) Header(header *Header) abci.Header {
 		ValidatorsHash: header.ValidatorsHash,
 		AppHash:        header.AppHash,
 
-		// Proposer: TODO
+		ProposerAddress: header.ProposerAddress,
 	}
 }
 

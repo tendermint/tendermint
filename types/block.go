@@ -23,9 +23,10 @@ type Block struct {
 	LastCommit *Commit      `json:"last_commit"`
 }
 
-// MakeBlock returns a new block with an empty header, except what can be computed from itself.
-// It populates the same set of fields validated by ValidateBasic
-func MakeBlock(height int64, txs []Tx, commit *Commit, evidence []Evidence) *Block {
+// MakeBlock returns a new block with an empty header, except what can be
+// computed from itself.
+// It populates the same set of fields validated by ValidateBasic.
+func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Header: Header{
 			Height: height,
@@ -36,7 +37,7 @@ func MakeBlock(height int64, txs []Tx, commit *Commit, evidence []Evidence) *Blo
 			Txs: txs,
 		},
 		Evidence:   EvidenceData{Evidence: evidence},
-		LastCommit: commit,
+		LastCommit: lastCommit,
 	}
 	block.fillHeader()
 	return block
@@ -53,10 +54,18 @@ func (b *Block) ValidateBasic() error {
 
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
-		return fmt.Errorf("Wrong Block.Header.NumTxs. Expected %v, got %v", newTxs, b.NumTxs)
+		return fmt.Errorf(
+			"Wrong Block.Header.NumTxs. Expected %v, got %v",
+			newTxs,
+			b.NumTxs,
+		)
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.LastCommitHash.  Expected %v, got %v", b.LastCommitHash, b.LastCommit.Hash())
+		return fmt.Errorf(
+			"Wrong Block.Header.LastCommitHash.  Expected %v, got %v",
+			b.LastCommitHash,
+			b.LastCommit.Hash(),
+		)
 	}
 	if b.Header.Height != 1 {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
@@ -64,10 +73,18 @@ func (b *Block) ValidateBasic() error {
 		}
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.DataHash.  Expected %v, got %v", b.DataHash, b.Data.Hash())
+		return fmt.Errorf(
+			"Wrong Block.Header.DataHash.  Expected %v, got %v",
+			b.DataHash,
+			b.Data.Hash(),
+		)
 	}
 	if !bytes.Equal(b.EvidenceHash, b.Evidence.Hash()) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.EvidenceHash.  Expected %v, got %v", b.EvidenceHash, b.Evidence.Hash()))
+		return fmt.Errorf(
+			"Wrong Block.Header.EvidenceHash.  Expected %v, got %v",
+			b.EvidenceHash,
+			b.Evidence.Hash(),
+		)
 	}
 	return nil
 }
@@ -200,7 +217,8 @@ type Header struct {
 	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
 
 	// consensus info
-	EvidenceHash cmn.HexBytes `json:"evidence_hash"` // evidence included in the block
+	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
+	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
 }
 
 // Hash returns the hash of the header.
@@ -226,6 +244,7 @@ func (h *Header) Hash() cmn.HexBytes {
 		"Consensus":      aminoHasher(h.ConsensusHash),
 		"Results":        aminoHasher(h.LastResultsHash),
 		"Evidence":       aminoHasher(h.EvidenceHash),
+		"Proposer":       aminoHasher(h.ProposerAddress),
 	})
 }
 
@@ -249,6 +268,7 @@ func (h *Header) StringIndented(indent string) string {
 %s  Consensus:       %v
 %s  Results:        %v
 %s  Evidence:       %v
+%s  Proposer:       %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
@@ -264,6 +284,7 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.ConsensusHash,
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
+		indent, h.ProposerAddress,
 		indent, h.Hash())
 }
 
