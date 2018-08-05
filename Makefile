@@ -13,7 +13,7 @@ BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`g
 
 all: check build test install
 
-check: check_tools ensure_deps
+check: check_tools get_vendor_deps
 
 
 ########################################

@@ -10,15 +10,13 @@ import (
 	secp256k1 "github.com/btcsuite/btcd/btcec"
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/libs/common"
 	"golang.org/x/crypto/ripemd160"
 )
 
 //-------------------------------------
 const (
-	Secp256k1PrivKeyAminoRoute   = "tendermint/PrivKeySecp256k1"
-	Secp256k1PubKeyAminoRoute    = "tendermint/PubKeySecp256k1"
-	Secp256k1SignatureAminoRoute = "tendermint/SignatureSecp256k1"
+	Secp256k1PrivKeyAminoRoute = "tendermint/PrivKeySecp256k1"
+	Secp256k1PubKeyAminoRoute  = "tendermint/PubKeySecp256k1"
 )
 
 var cdc = amino.NewCodec()
@@ -31,10 +29,6 @@ func init() {
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeySecp256k1{},
 		Secp256k1PrivKeyAminoRoute, nil)
-
-	cdc.RegisterInterface((*crypto.Signature)(nil), nil)
-	cdc.RegisterConcrete(SignatureSecp256k1{},
-		Secp256k1SignatureAminoRoute, nil)
 }
 
 //-------------------------------------
@@ -50,13 +44,13 @@ func (privKey PrivKeySecp256k1) Bytes() []byte {
 }
 
 // Sign creates an ECDSA signature on curve Secp256k1, using SHA256 on the msg.
-func (privKey PrivKeySecp256k1) Sign(msg []byte) (crypto.Signature, error) {
+func (privKey PrivKeySecp256k1) Sign(msg []byte) ([]byte, error) {
 	priv, _ := secp256k1.PrivKeyFromBytes(secp256k1.S256(), privKey[:])
 	sig, err := priv.Sign(crypto.Sha256(msg))
 	if err != nil {
 		return nil, err
 	}
-	return SignatureSecp256k1(sig.Serialize()), nil
+	return sig.Serialize(), nil
 }
 
 // PubKey performs the point-scalar multiplication from the privKey on the
@@ -142,13 +136,7 @@ func (pubKey PubKeySecp256k1) Bytes() []byte {
 	return bz
 }
 
-func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, interfaceSig crypto.Signature) bool {
-	// and assert same algorithm to sign and verify
-	sig, ok := interfaceSig.(SignatureSecp256k1)
-	if !ok {
-		return false
-	}
-
+func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sig []byte) bool {
 	pub, err := secp256k1.ParsePubKey(pubKey[:], secp256k1.S256())
 	if err != nil {
 		return false
@@ -169,39 +157,4 @@ func (pubKey PubKeySecp256k1) Equals(other crypto.PubKey) bool {
 		return bytes.Equal(pubKey[:], otherSecp[:])
 	}
 	return false
-}
-
-//-------------------------------------
-
-var _ crypto.Signature = SignatureSecp256k1{}
-
-// SignatureSecp256k1 implements crypto.Signature
-type SignatureSecp256k1 []byte
-
-func (sig SignatureSecp256k1) Bytes() []byte {
-	bz, err := cdc.MarshalBinaryBare(sig)
-	if err != nil {
-		panic(err)
-	}
-	return bz
-}
-
-func (sig SignatureSecp256k1) IsZero() bool { return len(sig) == 0 }
-
-func (sig SignatureSecp256k1) String() string {
-	return fmt.Sprintf("/%X.../", common.Fingerprint(sig[:]))
-}
-
-func (sig SignatureSecp256k1) Equals(other crypto.Signature) bool {
-	if otherSecp, ok := other.(SignatureSecp256k1); ok {
-		return subtle.ConstantTimeCompare(sig[:], otherSecp[:]) == 1
-	} else {
-		return false
-	}
-}
-
-func SignatureSecp256k1FromBytes(data []byte) crypto.Signature {
-	sig := make(SignatureSecp256k1, len(data))
-	copy(sig[:], data)
-	return sig
 }

@@ -15,12 +15,14 @@ type byter interface {
 	Bytes() []byte
 }
 
-func checkAminoBinary(t *testing.T, src byter, dst interface{}, size int) {
+func checkAminoBinary(t *testing.T, src, dst interface{}, size int) {
 	// Marshal to binary bytes.
 	bz, err := cdc.MarshalBinaryBare(src)
 	require.Nil(t, err, "%+v", err)
-	// Make sure this is compatible with current (Bytes()) encoding.
-	assert.Equal(t, src.Bytes(), bz, "Amino binary vs Bytes() mismatch")
+	if byterSrc, ok := src.(byter); ok {
+		// Make sure this is compatible with current (Bytes()) encoding.
+		assert.Equal(t, byterSrc.Bytes(), bz, "Amino binary vs Bytes() mismatch")
+	}
 	// Make sure we have the expected length.
 	if size != -1 {
 		assert.Equal(t, size, len(bz), "Amino binary size mismatch")
@@ -53,8 +55,6 @@ func ExamplePrintRegisteredTypes() {
 	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
 	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
 	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
-	//| SignatureEd25519 | tendermint/SignatureEd25519 | 0x2031EA53 | 0x40 |  |
-	//| SignatureSecp256k1 | tendermint/SignatureSecp256k1 | 0x7FC4A495 | variable |  |
 }
 
 func TestKeyEncodings(t *testing.T) {
@@ -84,13 +84,11 @@ func TestKeyEncodings(t *testing.T) {
 		assert.EqualValues(t, tc.privKey, priv3, "tc #%d", tcIndex)
 
 		// Check (de/en)codings of Signatures.
-		var sig1, sig2, sig3 crypto.Signature
+		var sig1, sig2 []byte
 		sig1, err := tc.privKey.Sign([]byte("something"))
 		assert.NoError(t, err, "tc #%d", tcIndex)
 		checkAminoBinary(t, sig1, &sig2, -1) // Signature size changes for Secp anyways.
 		assert.EqualValues(t, sig1, sig2, "tc #%d", tcIndex)
-		checkAminoJSON(t, sig1, &sig3, false) // TODO also check Prefix bytes.
-		assert.EqualValues(t, sig1, sig3, "tc #%d", tcIndex)
 
 		// Check (de/en)codings of PubKeys.
 		pubKey := tc.privKey.PubKey()
@@ -105,7 +103,7 @@ func TestKeyEncodings(t *testing.T) {
 func TestNilEncodings(t *testing.T) {
 
 	// Check nil Signature.
-	var a, b crypto.Signature
+	var a, b []byte
 	checkAminoJSON(t, &a, &b, true)
 	assert.EqualValues(t, a, b)
 
