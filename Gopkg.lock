@@ -244,7 +244,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:dad2e5a2153ee7a6c9ab8fc13673a16ee4fb64434a7da980965a3741b0c981a3"
+  digest = "1:63b68062b8968092eb86bedc4e68894bd096ea6b24920faca8b9dcf451f54bb5"
   name = "github.com/prometheus/common"
   packages = [
     "expfmt",
@@ -378,14 +378,6 @@
   version = "v0.12.0-rc0"
 
 [[projects]]
-  digest = "1:cefd237469d443fe56cbeadf68a1baf46cef293f071dc0e317f8b8062c3ffe72"
-  name = "github.com/tendermint/go-crypto"
-  packages = ["tmhash"]
-  pruneopts = "UT"
-  revision = "6a6b591a3d7592a04b46af95451cb5be3b114f76"
-  version = "v0.9.0"
-
-[[projects]]
   branch = "master"
   digest = "1:c31a37cafc12315b8bd745c8ad6a006ac25350472488162a821e557b3e739d67"
   name = "golang.org/x/crypto"
@@ -426,7 +418,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:70656e26ab4a96e683a21d677630edb5239a3d60b2d54bdc861c808ab5aa42c7"
+  digest = "1:bb0fe59917bdd5b89f49b9a8b26e5f465e325d9223b3a8e32254314bdf51e0f1"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -547,7 +539,6 @@
     "github.com/tendermint/ed25519",
     "github.com/tendermint/ed25519/extra25519",
     "github.com/tendermint/go-amino",
-    "github.com/tendermint/go-crypto/tmhash",
     "golang.org/x/crypto/bcrypt",
     "golang.org/x/crypto/chacha20poly1305",
     "golang.org/x/crypto/curve25519",

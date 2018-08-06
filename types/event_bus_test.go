@@ -68,7 +68,7 @@ func TestEventBusPublish(t *testing.T) {
 	err = eventBus.Subscribe(context.Background(), "test", tmquery.Empty{}, eventsCh)
 	require.NoError(t, err)
 
-	const numEventsExpected = 14
+	const numEventsExpected = 15
 	done := make(chan struct{})
 	go func() {
 		numEvents := 0
@@ -107,6 +107,8 @@ func TestEventBusPublish(t *testing.T) {
 	err = eventBus.PublishEventRelock(EventDataRoundState{})
 	require.NoError(t, err)
 	err = eventBus.PublishEventLock(EventDataRoundState{})
+	require.NoError(t, err)
+	err = eventBus.PublishEventValidatorSetUpdates(EventDataValidatorSetUpdates{})
 	require.NoError(t, err)
 
 	select {
