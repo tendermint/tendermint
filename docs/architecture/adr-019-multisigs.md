@@ -1,6 +1,8 @@
-# ADR 013: Encoding standard for Multisignatures
+# ADR 019: Encoding standard for Multisignatures
 
 ## Changelog 
+
+06-08-2018: Minor updates
 
 27-07-2018: Update draft to use amino encoding
 
@@ -26,7 +28,7 @@ In the future, we can also allow for more complex conditionals on the accountabl
 
 ### New structs
 
-Every ASM will then have its own struct, implementing the crypto.pubkey interface.
+Every ASM will then have its own struct, implementing the crypto.Pubkey interface.
 
 This ADR assumes that [replacing crypto.Signature with []bytes](https://github.com/tendermint/tendermint/issues/1957) has been accepted.
 
@@ -35,19 +37,23 @@ This ADR assumes that [replacing crypto.Signature with []bytes](https://github.c
 The pubkey is the following struct:
 
 ```golang
-type ThresholdMultisignatureKey struct { // K of N threshold multisig
+type ThresholdMultiSignaturePubKey struct { // K of N threshold multisig
 	K       uint               `json:"threshold"`
 	Pubkeys []crypto.Pubkey    `json:"pubkeys"`
 }
 ```
 We will derive N from the length of pubkeys. (For spatial efficiency in encoding)
 
-It will expect to verify an `[]byte` encoded version of the Multisignature.
+`Verify` will expect an `[]byte` encoded version of the Multisignature.
 (Multisignature is described in the next section)
 The multisignature will be rejected if the bitmap has less than k indices,
 or if any signature at any of the k indices is not a valid signature from
 the kth public key on the message.
 (If more than k signatures are included, all must be valid)
+
+`Bytes` will be the amino encoded version of the pubkey.
+
+Address will be `Hash(amino_encoded_pubkey)`
 
 The reason this doesn't use `log_8(n)` bytes per signer is because that heavily optimizes for the case where a very small number of signers are required.
 e.g. for `n` of size `24`, that would only be more space efficient for `k < 3`. 
@@ -58,7 +64,7 @@ This seems less likely, and that it should not be the case optimized for.
 The pubkey is the following struct:
 
 ```golang
-type WeightedThresholdMultisignatureKey struct {
+type WeightedThresholdMultiSignaturePubKey struct {
 	Weights []uint             `json:"weights"`
 	Threshold uint             `json:"threshold"`
 	Pubkeys []crypto.Pubkey    `json:"pubkeys"`
@@ -74,8 +80,7 @@ The inter-mediate phase of the signatures (as it accrues more signatures) will b
 ```golang
 type Multisignature struct {
 	BitArray    CryptoBitArray // Documented later
-	Sigs        [][]byte       // []byte instead of crypto.Signature per https://github.com/tendermint/tendermint/issues/1957
-}
+	Sigs        [][]byte       
 ```
 
 It is important to recall that each private key will output a signature on the provided message itself.
@@ -84,8 +89,8 @@ The UI will take a signature, cast into a multisignature, and then keep adding
 new signatures into it, and when done marshal into `[]byte`.
 This will require the following helper methods:
 ```golang
-func SigToMultisig(sig Signature, n int)
-func GetIndex(pk crypto.Pubkey, []crypto.Pubkey])
+func SigToMultisig(sig []byte, n int)
+func GetIndex(pk crypto.Pubkey, []crypto.Pubkey)
 func AddSignature(sig Signature, index int, multiSig *Multisignature)
 ```
 The multisignature will be converted to an `[]byte` using amino.MarshalBinaryBare. \*
@@ -119,9 +124,6 @@ Again the implementation of this space saving feature is straight forward.
 
 We will use straight forward amino encoding. This is chosen for ease of compatibility in other languages. 
 
-#### Footnotes
-\* I advocate that we should actually include the fields from CryptoBitArray into the multisignature directly. This saves space in encoding, despite breaking abstractions slightly. I think it is worth the space savings, however I've put this into a footnote since this is quite minor. 
-
 ### Future points of discussion
 
 If desired, we can use ed25519 batch verification for all ed25519 keys.
@@ -131,7 +133,7 @@ Aggregation of pubkeys / sigs in Schnorr sigs / BLS sigs is not backwards compat
 
 ## Status
 
-Proposed. Needs a decision on the item mentioned in the footnote, and the ADR as a whole. 
+Proposed. 
 
 ## Consequences
 
