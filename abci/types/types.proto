@@ -249,13 +249,14 @@ message Header {
 
   // hashes from the app output from the prev block
   bytes validators_hash = 9;   // validators for the current block
-  bytes consensus_hash = 10;   // consensus params for current block
-  bytes app_hash = 11;         // state after txs from the previous block
-  bytes last_results_hash = 12;// root hash of all results from the txs from the previous block
+  bytes next_validators_hash = 10;   // validators for the next block
+  bytes consensus_hash = 11;   // consensus params for current block
+  bytes app_hash = 12;         // state after txs from the previous block
+  bytes last_results_hash = 13;// root hash of all results from the txs from the previous block
 
   // consensus info
-  bytes evidence_hash = 13;    // evidence included in the block
-  bytes proposer_address = 14; // original proposer of the block
+  bytes evidence_hash = 14;    // evidence included in the block
+  bytes proposer_address = 15; // original proposer of the block
 }
 
 message BlockID {
