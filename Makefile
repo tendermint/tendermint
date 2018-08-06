@@ -36,13 +36,17 @@ protoc_all: protoc_libs protoc_abci protoc_grpc
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
+	## Note the $< here is substituted for the %.proto
+	## Note the $@ here is substituted for the %.pb.go
 	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:.
+	## Note we don't use inplace since it's not natively available on mac
 	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk -i inplace '/^\s*package \w+/ { print "//nolint" }1' $@
+	@awk '/^\s*package \w+/ { print "//nolint" }1' $@ > $@.tmp && mv $@.tmp $@
 
 ########################################
 ### Build ABCI
 
+# see protobuf section above
 protoc_abci: abci/types/types.pb.go
 
 build_abci:
