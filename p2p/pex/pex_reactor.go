@@ -31,8 +31,7 @@ const (
 	maxMsgSize = maxAddressSize * maxGetSelection
 
 	// ensure we have enough peers
-	defaultEnsurePeersPeriod   = 30 * time.Second
-	defaultMinNumOutboundPeers = p2p.DefaultMinNumOutboundPeers
+	defaultEnsurePeersPeriod = 30 * time.Second
 
 	// Seed/Crawler constants
 
@@ -362,7 +361,7 @@ func (r *PEXReactor) ensurePeersRoutine() {
 func (r *PEXReactor) ensurePeers() {
 	var (
 		out, in, dial = r.Switch.NumPeers()
-		numToDial     = defaultMinNumOutboundPeers - (out + dial)
+		numToDial     = r.Switch.MaxNumPeers() - (out + dial)
 	)
 	r.Logger.Info(
 		"Ensure peers",
