@@ -401,7 +401,7 @@ func (mem *Mempool) collectTxs(maxTxs int) types.Txs {
 // NOTE: unsafe; Lock/Unlock must be managed by caller
 func (mem *Mempool) Update(height int64, txs types.Txs) error {
 	// First, create a lookup map of txns in new txs.
-	txsMap := make(map[string]struct{})
+	txsMap := make(map[string]struct{}, len(txs))
 	for _, tx := range txs {
 		txsMap[string(tx)] = struct{}{}
 	}
