@@ -16,6 +16,7 @@ type Application interface {
 
 	// Mempool Connection
 	CheckTx(tx []byte) ResponseCheckTx // Validate a tx for the mempool
+	RecheckTx(tx []byte) ResponseRecheckTx // Validate a existed tx for the mempool
 
 	// Consensus Connection
 	InitChain(RequestInitChain) ResponseInitChain    // Initialize blockchain with validators and other info from TendermintCore
@@ -51,6 +52,10 @@ func (BaseApplication) DeliverTx(tx []byte) ResponseDeliverTx {
 
 func (BaseApplication) CheckTx(tx []byte) ResponseCheckTx {
 	return ResponseCheckTx{Code: CodeTypeOK}
+}
+
+func (BaseApplication) RecheckTx(tx []byte) ResponseRecheckTx {
+	return ResponseRecheckTx{Code: CodeTypeOK}
 }
 
 func (BaseApplication) Commit() ResponseCommit {
@@ -109,6 +114,11 @@ func (app *GRPCApplication) DeliverTx(ctx context.Context, req *RequestDeliverTx
 
 func (app *GRPCApplication) CheckTx(ctx context.Context, req *RequestCheckTx) (*ResponseCheckTx, error) {
 	res := app.app.CheckTx(req.Tx)
+	return &res, nil
+}
+
+func (app *GRPCApplication) RecheckTx(ctx context.Context, req *RequestRecheckTx) (*ResponseRecheckTx, error) {
+	res := app.app.RecheckTx(req.Tx)
 	return &res, nil
 }
 
