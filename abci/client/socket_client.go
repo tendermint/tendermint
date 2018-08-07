@@ -246,6 +246,10 @@ func (cli *socketClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.queueRequest(types.ToRequestCheckTx(tx))
 }
 
+func (cli *socketClient) RecheckTxAsync(tx []byte) *ReqRes {
+	return cli.queueRequest(types.ToRequestRecheckTx(tx))
+}
+
 func (cli *socketClient) QueryAsync(req types.RequestQuery) *ReqRes {
 	return cli.queueRequest(types.ToRequestQuery(req))
 }
@@ -305,6 +309,12 @@ func (cli *socketClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) 
 	reqres := cli.queueRequest(types.ToRequestCheckTx(tx))
 	cli.FlushSync()
 	return reqres.Response.GetCheckTx(), cli.Error()
+}
+
+func (cli *socketClient) RecheckTxSync(tx []byte) (*types.ResponseRecheckTx, error) {
+	reqres := cli.queueRequest(types.ToRequestRecheckTx(tx))
+	cli.FlushSync()
+	return reqres.Response.GetRecheckTx(), cli.Error()
 }
 
 func (cli *socketClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {
@@ -391,6 +401,8 @@ func resMatchesReq(req *types.Request, res *types.Response) (ok bool) {
 		_, ok = res.Value.(*types.Response_DeliverTx)
 	case *types.Request_CheckTx:
 		_, ok = res.Value.(*types.Response_CheckTx)
+	case *types.Request_RecheckTx:
+		_, ok = res.Value.(*types.Response_RecheckTx)
 	case *types.Request_Commit:
 		_, ok = res.Value.(*types.Response_Commit)
 	case *types.Request_Query:

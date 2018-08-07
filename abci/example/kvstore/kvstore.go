@@ -91,6 +91,10 @@ func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 	return types.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
+func (app *KVStoreApplication) RecheckTx(tx []byte) types.ResponseRecheckTx {
+	return types.ResponseRecheckTx{Code: code.CodeTypeOK}
+}
+
 func (app *KVStoreApplication) Commit() types.ResponseCommit {
 	// Using a memdb - just return the big endian size of the db
 	appHash := make([]byte, 8)
