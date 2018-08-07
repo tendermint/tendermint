@@ -69,6 +69,21 @@ func (bA *CompactBitArray) SetIndex(i int, v bool) bool {
 	return true
 }
 
+// trueIndex returns the location of the given index, among the
+// values in the bit array that are set to true.
+// e.g. if bA = _XX_X_X, trueIndex(4) = 2, since
+// the value at index 4 of the bit array is the third
+// value that is true. (And it is 0-indexed)
+func (bA *CompactBitArray) trueIndex(index int) int {
+	numTrueValues := 0
+	for i := 0; i < index; i++ {
+		if bA.GetIndex(i) {
+			numTrueValues++
+		}
+	}
+	return numTrueValues
+}
+
 // Copy returns a copy of the provided bit array.
 func (bA *CompactBitArray) Copy() *CompactBitArray {
 	if bA == nil {
