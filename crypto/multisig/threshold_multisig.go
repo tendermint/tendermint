@@ -34,7 +34,7 @@ func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig [
 		return false
 	}
 	size := sig.BitArray.Size()
-	if len(sig.Sigs) < int(pk.K) || len(pk.Pubkeys) != size {
+	if len(sig.Sigs) < int(pk.K) || len(pk.Pubkeys) != size || sig.BitArray.NumOfTrueBitsBefore(size) < int(pk.K) {
 		return false
 	}
 	// index in the list of signatures which we are concerned with.

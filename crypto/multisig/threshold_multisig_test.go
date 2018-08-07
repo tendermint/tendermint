@@ -19,9 +19,9 @@ func TestThresholdMultisig(t *testing.T) {
 	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
 	multisignature.AddSignatureFromPubkey(sigs[0], pubkeys[0], pubkeys)
 	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
-	// Make sure adding the same signature twice doesn't make the signature pass
+	// Make sure adding the same signature twice doesn't increase number of signatures
 	multisignature.AddSignatureFromPubkey(sigs[0], pubkeys[0], pubkeys)
-	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
+	require.Equal(t, 1, len(multisignature.Sigs))
 
 	// Adding two signatures should make it pass, as k = 2
 	multisignature.AddSignatureFromPubkey(sigs[3], pubkeys[3], pubkeys)
@@ -36,6 +36,18 @@ func TestThresholdMultisig(t *testing.T) {
 	multisignature.BitArray.SetIndex(4, false)
 	multisignature.Sigs = multisignature.Sigs[:2]
 	multisignature.AddSignatureFromPubkey(sigs[0], pubkeys[2], pubkeys)
+	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
+}
+
+func TestThresholdMultisigDuplicateSignatures(t *testing.T) {
+	msg := []byte{1, 2, 3, 4, 5}
+	pubkeys, sigs := generatePubKeysAndSignatures(5, msg)
+	multisigKey := NewThresholdMultiSignaturePubKey(2, pubkeys)
+	multisignature := NewMultisig(5)
+	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
+	multisignature.AddSignatureFromPubkey(sigs[0], pubkeys[0], pubkeys)
+	// Add second signature manually
+	multisignature.Sigs = append(multisignature.Sigs, sigs[0])
 	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
 }
 
