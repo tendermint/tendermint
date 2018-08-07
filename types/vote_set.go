@@ -543,9 +543,20 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	// For every validator, get the precommit
 	votesCopy := make([]*Vote, len(voteSet.votes))
 	copy(votesCopy, voteSet.votes)
+	precommits := make([]*CommitSig, len(voteSet.votes))
+	for i, v := range votesCopy {
+		if v != nil {
+			precommits[i] = &CommitSig{
+				Signature: v.Signature,
+				Timestamp: v.Timestamp,
+			}
+		}
+	}
 	return &Commit{
 		BlockID:    *voteSet.maj23,
-		Precommits: votesCopy,
+		Precommits: precommits,
+		RoundNum:   voteSet.round,
+		HeightNum:  voteSet.height,
 	}
 }
 

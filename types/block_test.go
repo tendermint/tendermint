@@ -118,7 +118,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 
 	partSet := MakeBlock(h, txs, commit, evList).MakePartSet(1024)
 	assert.NotNil(t, partSet)
-	assert.Equal(t, 3, partSet.Total())
+	assert.Equal(t, 2, partSet.Total())
 }
 
 func TestBlockHashesTo(t *testing.T) {
@@ -193,7 +193,6 @@ func TestCommit(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	assert.NotNil(t, commit.FirstPrecommit())
 	assert.Equal(t, h-1, commit.Height())
 	assert.Equal(t, 1, commit.Round())
 	assert.Equal(t, VoteTypePrecommit, commit.Type())
@@ -204,7 +203,9 @@ func TestCommit(t *testing.T) {
 	require.NotNil(t, commit.BitArray())
 	assert.Equal(t, cmn.NewBitArray(10).Size(), commit.BitArray().Size())
 
-	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
+	cv := commit.GetByIndex(0)
+	cv.ValidatorAddress = voteSet.GetByIndex(0).ValidatorAddress
+	assert.Equal(t, voteSet.GetByIndex(0), cv)
 	assert.True(t, commit.IsCommit())
 }
 
@@ -216,21 +217,6 @@ func TestCommitValidateBasic(t *testing.T) {
 	commit = randCommit()
 	commit.Precommits[0] = nil
 	assert.NoError(t, commit.ValidateBasic())
-
-	// tamper with types
-	commit = randCommit()
-	commit.Precommits[0].Type = VoteTypePrevote
-	assert.Error(t, commit.ValidateBasic())
-
-	// tamper with height
-	commit = randCommit()
-	commit.Precommits[0].Height = int64(100)
-	assert.Error(t, commit.ValidateBasic())
-
-	// tamper with round
-	commit = randCommit()
-	commit.Precommits[0].Round = 100
-	assert.Error(t, commit.ValidateBasic())
 }
 
 func randCommit() *Commit {

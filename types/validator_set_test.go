@@ -392,8 +392,15 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	assert.NoError(t, err)
 	vote.Signature = sig
 	commit := &Commit{
-		BlockID:    blockID,
-		Precommits: []*Vote{vote},
+		BlockID: blockID,
+		Precommits: []*CommitSig{
+			&CommitSig{
+				Signature: sig,
+				Timestamp: vote.Timestamp,
+			},
+		},
+		HeightNum: height,
+		RoundNum:  0,
 	}
 
 	badChainID := "notmychainID"
@@ -401,7 +408,9 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	badHeight := height + 1
 	badCommit := &Commit{
 		BlockID:    blockID,
-		Precommits: []*Vote{nil},
+		Precommits: []*CommitSig{nil},
+		HeightNum:  height,
+		RoundNum:   0,
 	}
 
 	// test some error cases

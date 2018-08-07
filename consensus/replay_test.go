@@ -531,7 +531,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 				if block.Height != height+1 {
 					panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", block.Height, height+1))
 				}
-				commitHeight := thisBlockCommit.Precommits[0].Height
+				commitHeight := thisBlockCommit.Height()
 				if commitHeight != height+1 {
 					panic(fmt.Sprintf("commit doesnt match. got height %d, expected %d", commitHeight, height+1))
 				}
@@ -549,8 +549,15 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		case *types.Vote:
 			if p.Type == types.VoteTypePrecommit {
 				thisBlockCommit = &types.Commit{
-					BlockID:    p.BlockID,
-					Precommits: []*types.Vote{p},
+					BlockID: p.BlockID,
+					Precommits: []*types.CommitSig{
+						&types.CommitSig{
+							Signature: p.Signature,
+							Timestamp: p.Timestamp,
+						},
+					},
+					HeightNum: p.Height,
+					RoundNum:  p.Round,
 				}
 			}
 		}
@@ -564,7 +571,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 	if block.Height != height+1 {
 		panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", block.Height, height+1))
 	}
-	commitHeight := thisBlockCommit.Precommits[0].Height
+	commitHeight := thisBlockCommit.Height()
 	if commitHeight != height+1 {
 		panic(fmt.Sprintf("commit doesnt match. got height %d, expected %d", commitHeight, height+1))
 	}
