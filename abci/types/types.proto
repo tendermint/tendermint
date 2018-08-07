@@ -81,6 +81,7 @@ message RequestBeginBlock {
 
 message RequestCheckTx {
   bytes tx = 1;
+  bool recheck = 2;
 }
 
 message RequestDeliverTx {
