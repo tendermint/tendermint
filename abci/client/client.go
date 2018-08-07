@@ -30,6 +30,7 @@ type Client interface {
 	SetOptionAsync(types.RequestSetOption) *ReqRes
 	DeliverTxAsync(tx []byte) *ReqRes
 	CheckTxAsync(tx []byte) *ReqRes
+	RecheckTxAsync(tx []byte) *ReqRes
 	QueryAsync(types.RequestQuery) *ReqRes
 	CommitAsync() *ReqRes
 	InitChainAsync(types.RequestInitChain) *ReqRes
@@ -42,6 +43,7 @@ type Client interface {
 	SetOptionSync(types.RequestSetOption) (*types.ResponseSetOption, error)
 	DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error)
 	CheckTxSync(tx []byte) (*types.ResponseCheckTx, error)
+	RecheckTxSync(tx []byte) (*types.ResponseRecheckTx, error)
 	QuerySync(types.RequestQuery) (*types.ResponseQuery, error)
 	CommitSync() (*types.ResponseCommit, error)
 	InitChainSync(types.RequestInitChain) (*types.ResponseInitChain, error)

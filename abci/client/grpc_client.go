@@ -177,6 +177,15 @@ func (cli *grpcClient) CheckTxAsync(tx []byte) *ReqRes {
 	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_CheckTx{res}})
 }
 
+func (cli *grpcClient) RecheckTxAsync(tx []byte) *ReqRes {
+	req := types.ToRequestRecheckTx(tx)
+	res, err := cli.client.RecheckTx(context.Background(), req.GetRecheckTx(), grpc.FailFast(true))
+	if err != nil {
+		cli.StopForError(err)
+	}
+	return cli.finishAsyncCall(req, &types.Response{Value: &types.Response_RecheckTx{res}})
+}
+
 func (cli *grpcClient) QueryAsync(params types.RequestQuery) *ReqRes {
 	req := types.ToRequestQuery(params)
 	res, err := cli.client.Query(context.Background(), req.GetQuery(), grpc.FailFast(true))
@@ -273,6 +282,11 @@ func (cli *grpcClient) DeliverTxSync(tx []byte) (*types.ResponseDeliverTx, error
 func (cli *grpcClient) CheckTxSync(tx []byte) (*types.ResponseCheckTx, error) {
 	reqres := cli.CheckTxAsync(tx)
 	return reqres.Response.GetCheckTx(), cli.Error()
+}
+
+func (cli *grpcClient) RecheckTxSync(tx []byte) (*types.ResponseRecheckTx, error) {
+	reqres := cli.RecheckTxAsync(tx)
+	return reqres.Response.GetRecheckTx(), cli.Error()
 }
 
 func (cli *grpcClient) QuerySync(req types.RequestQuery) (*types.ResponseQuery, error) {

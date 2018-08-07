@@ -105,6 +105,12 @@ func ToRequestCheckTx(tx []byte) *Request {
 	}
 }
 
+func ToRequestRecheckTx(tx []byte) *Request {
+	return &Request{
+		Value: &Request_RecheckTx{&RequestRecheckTx{Tx: tx}},
+	}
+}
+
 func ToRequestCommit() *Request {
 	return &Request{
 		Value: &Request_Commit{&RequestCommit{}},
@@ -176,6 +182,12 @@ func ToResponseDeliverTx(res ResponseDeliverTx) *Response {
 func ToResponseCheckTx(res ResponseCheckTx) *Response {
 	return &Response{
 		Value: &Response_CheckTx{&res},
+	}
+}
+
+func ToResponseRecheckTx(res ResponseRecheckTx) *Response {
+	return &Response{
+		Value: &Response_RecheckTx{&res},
 	}
 }
 

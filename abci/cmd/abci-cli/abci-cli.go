@@ -142,6 +142,7 @@ func addCommands() {
 	RootCmd.AddCommand(setOptionCmd)
 	RootCmd.AddCommand(deliverTxCmd)
 	RootCmd.AddCommand(checkTxCmd)
+	RootCmd.AddCommand(recheckTxCmd)
 	RootCmd.AddCommand(commitCmd)
 	RootCmd.AddCommand(versionCmd)
 	RootCmd.AddCommand(testCmd)
@@ -246,6 +247,16 @@ var checkTxCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdCheckTx(cmd, args)
+	},
+}
+
+var recheckTxCmd = &cobra.Command{
+	Use:   "recheck_tx",
+	Short: "validate a existed transaction",
+	Long:  "validate a existed transaction",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmdRecheckTx(cmd, args)
 	},
 }
 
@@ -459,6 +470,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 	switch strings.ToLower(subCommand) {
 	case "check_tx":
 		return cmdCheckTx(cmd, actualArgs)
+	case "recheck_tx":
+		return cmdRecheckTx(cmd, actualArgs)
 	case "commit":
 		return cmdCommit(cmd, actualArgs)
 	case "deliver_tx":
@@ -585,6 +598,32 @@ func cmdCheckTx(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	res, err := client.CheckTxSync(txBytes)
+	if err != nil {
+		return err
+	}
+	printResponse(cmd, args, response{
+		Code: res.Code,
+		Data: res.Data,
+		Info: res.Info,
+		Log:  res.Log,
+	})
+	return nil
+}
+
+// Validate a existed tx
+func cmdRecheckTx(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		printResponse(cmd, args, response{
+			Code: codeBad,
+			Info: "want the tx",
+		})
+		return nil
+	}
+	txBytes, err := stringOrHexToBytes(args[0])
+	if err != nil {
+		return err
+	}
+	res, err := client.RecheckTxSync(txBytes)
 	if err != nil {
 		return err
 	}
