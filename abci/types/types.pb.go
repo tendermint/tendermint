@@ -44,6 +44,7 @@
 		PubKey
 		Evidence
 */
+//nolint
 package types
 
 import proto "github.com/gogo/protobuf/proto"
