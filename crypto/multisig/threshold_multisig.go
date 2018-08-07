@@ -5,7 +5,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
-// ThresholdMultiSignaturePubKey implements a K of N threshold multisig
+// ThresholdMultiSignaturePubKey implements a K of N threshold multisig.
 type ThresholdMultiSignaturePubKey struct {
 	K       uint            `json:"threshold"`
 	Pubkeys []crypto.PubKey `json:"pubkeys"`
@@ -64,10 +64,10 @@ func (pk *ThresholdMultiSignaturePubKey) Address() crypto.Address {
 // all constituent keys are the same, and in the same order.
 func (pk *ThresholdMultiSignaturePubKey) Equals(other crypto.PubKey) bool {
 	if otherKey, ok := other.(*ThresholdMultiSignaturePubKey); ok {
-		if pk.K != otherKey.K {
+		if pk.K != otherKey.K || len(pk.Pubkeys) != len(otherKey.Pubkeys) {
 			return false
 		}
-		for i := uint(0); i < pk.K; i++ {
+		for i := 0; i < len(pk.Pubkeys); i++ {
 			if !pk.Pubkeys[i].Equals(otherKey.Pubkeys[i]) {
 				return false
 			}

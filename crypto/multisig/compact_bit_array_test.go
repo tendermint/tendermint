@@ -150,7 +150,7 @@ func TestCompactMarshalUnmarshal(t *testing.T) {
 	}
 }
 
-func TestCompactBitArrayTrueIndex(t *testing.T) {
+func TestCompactBitArrayNumOfTrueBitsBefore(t *testing.T) {
 	testCases := []struct {
 		marshalledBA   string
 		bAIndex        []int
@@ -170,7 +170,7 @@ func TestCompactBitArrayTrueIndex(t *testing.T) {
 			require.NoError(t, err)
 
 			for i := 0; i < len(tc.bAIndex); i++ {
-				require.Equal(t, tc.trueValueIndex[i], bA.trueIndex(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
+				require.Equal(t, tc.trueValueIndex[i], bA.NumOfTrueBitsBefore(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
 			}
 		})
 	}
