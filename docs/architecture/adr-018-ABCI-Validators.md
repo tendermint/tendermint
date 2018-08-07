@@ -25,6 +25,7 @@ Validator (with just the address) and a ValidatorUpdate (with the pubkey):
 ```
 message Validator {
     bytes address
+    
     int64 power
 }
 
