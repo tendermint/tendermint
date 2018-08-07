@@ -25,6 +25,7 @@ type AppConnMempool interface {
 	Error() error
 
 	CheckTxAsync(tx []byte) *abcicli.ReqRes
+	RecheckTxAsync(tx []byte) *abcicli.ReqRes
 
 	FlushAsync() *abcicli.ReqRes
 	FlushSync() error
