@@ -81,6 +81,7 @@ message RequestBeginBlock {
 
 message RequestCheckTx {
   bytes tx = 1;
+  bool recheck = 2;
 }
 
 message RequestDeliverTx {
@@ -288,6 +289,7 @@ service ABCIApplication {
   rpc SetOption(RequestSetOption) returns (ResponseSetOption);
   rpc DeliverTx(RequestDeliverTx) returns (ResponseDeliverTx);
   rpc CheckTx(RequestCheckTx) returns (ResponseCheckTx);
+  rpc RecheckTx(RequestCheckTx) returns (ResponseCheckTx);
   rpc Query(RequestQuery) returns (ResponseQuery);
   rpc Commit(RequestCommit) returns (ResponseCommit);
   rpc InitChain(RequestInitChain) returns (ResponseInitChain);

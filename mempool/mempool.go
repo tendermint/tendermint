@@ -457,7 +457,7 @@ func (mem *Mempool) recheckTxs(goodTxs []types.Tx) {
 	// Push txs to proxyAppConn
 	// NOTE: resCb() may be called concurrently.
 	for _, tx := range goodTxs {
-		mem.proxyAppConn.CheckTxAsync(tx)
+		mem.proxyAppConn.RecheckTxAsync(tx)
 	}
 	mem.proxyAppConn.FlushAsync()
 }
