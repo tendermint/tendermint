@@ -2,7 +2,6 @@ package mempool
 
 import (
 	"bytes"
-	"container/list"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -488,8 +487,8 @@ type txCache interface {
 type mapTxCache struct {
 	mtx  sync.Mutex
 	size int
-	map_ map[string]struct{}
-	list *list.List // to remove oldest tx when cache gets too big
+	map_ map[string]*clist.CElement
+	list *clist.CList // to remove oldest tx when cache gets too big
 }
 
 var _ txCache = (*mapTxCache)(nil)
@@ -498,15 +497,15 @@ var _ txCache = (*mapTxCache)(nil)
 func newMapTxCache(cacheSize int) *mapTxCache {
 	return &mapTxCache{
 		size: cacheSize,
-		map_: make(map[string]struct{}, cacheSize),
-		list: list.New(),
+		map_: make(map[string]*clist.CElement, cacheSize),
+		list: clist.New(),
 	}
 }
 
 // Reset resets the cache to an empty state.
 func (cache *mapTxCache) Reset() {
 	cache.mtx.Lock()
-	cache.map_ = make(map[string]struct{}, cache.size)
+	cache.map_ = make(map[string]*clist.CElement, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }
@@ -528,16 +527,26 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 		// but deleting a non-existent element is fine
 		delete(cache.map_, string(poppedTx))
 		cache.list.Remove(popped)
+		popped.DetachPrev()
+		popped.DetachNext()
 	}
-	cache.map_[string(tx)] = struct{}{}
 	cache.list.PushBack(tx)
+	cache.map_[string(tx)] = cache.list.Back()
 	return true
 }
 
 // Remove removes the given tx from the cache.
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
-	delete(cache.map_, string(tx))
+	stx := string(tx)
+	// TODO: Can we get value and index at the same time?
+	// If not, consider making a hashmap with prehashed inputs.
+	popped := cache.map_[stx]
+	delete(cache.map_, stx)
+	cache.list.Remove(popped)
+	popped.DetachPrev()
+	popped.DetachNext()
+
 	cache.mtx.Unlock()
 }
 

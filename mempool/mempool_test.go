@@ -224,6 +224,28 @@ func TestSerialReap(t *testing.T) {
 	reapCheck(600)
 }
 
+func TestCacheRemove(t *testing.T) {
+	cache := newMapTxCache(100)
+	numTxs := 10
+	txs := make([][]byte, numTxs)
+	for i := 0; i < numTxs; i++ {
+		// probability of collision is 2**-256
+		txBytes := make([]byte, 32)
+		rand.Read(txBytes)
+		txs[i] = txBytes
+		cache.Push(txBytes)
+		// make sure its added to both the linked list and the map
+		require.Equal(t, i+1, len(cache.map_))
+		require.Equal(t, i+1, cache.list.Len())
+	}
+	for i := 0; i < numTxs; i++ {
+		cache.Remove(txs[i])
+		// make sure its removed from both the map and the linked list
+		require.Equal(t, numTxs-(i+1), len(cache.map_))
+		require.Equal(t, numTxs-(i+1), cache.list.Len())
+	}
+}
+
 func TestMempoolCloseWAL(t *testing.T) {
 	// 1. Create the temporary directory for mempool and WAL testing.
 	rootDir, err := ioutil.TempDir("", "mempool-test")
