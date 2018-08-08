@@ -89,8 +89,8 @@ func TestABCIHeader(t *testing.T) {
 
 func TestABCIEvidence(t *testing.T) {
 	val := NewMockPV()
-	blockID := makeBlockID("blockhash", 1000, "partshash")
-	blockID2 := makeBlockID("blockhash2", 1000, "partshash")
+	blockID := makeBlockID([]byte("blockhash"), 1000, []byte("partshash"))
+	blockID2 := makeBlockID([]byte("blockhash2"), 1000, []byte("partshash"))
 	const chainID = "mychain"
 	ev := &DuplicateVoteEvidence{
 		PubKey: val.GetPubKey(),

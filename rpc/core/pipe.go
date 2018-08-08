@@ -7,6 +7,7 @@ import (
 	crypto "github.com/tendermint/tendermint/crypto"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	mempl "github.com/tendermint/tendermint/mempool"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
@@ -53,7 +54,6 @@ var (
 	// interfaces defined in types and above
 	stateDB        dbm.DB
 	blockStore     sm.BlockStore
-	mempool        sm.Mempool
 	evidencePool   sm.EvidencePool
 	consensusState Consensus
 	p2pSwitch      P2P
@@ -65,6 +65,7 @@ var (
 	txIndexer        txindex.TxIndexer
 	consensusReactor *consensus.ConsensusReactor
 	eventBus         *types.EventBus // thread safe
+	mempool          *mempl.Mempool
 
 	logger log.Logger
 )
@@ -77,7 +78,7 @@ func SetBlockStore(bs sm.BlockStore) {
 	blockStore = bs
 }
 
-func SetMempool(mem sm.Mempool) {
+func SetMempool(mem *mempl.Mempool) {
 	mempool = mem
 }
 

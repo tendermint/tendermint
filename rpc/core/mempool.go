@@ -243,7 +243,7 @@ func UnconfirmedTxs(limit int) (*ctypes.ResultUnconfirmedTxs, error) {
 	// reuse per_page validator
 	limit = validatePerPage(limit)
 
-	txs := mempool.Reap(limit)
+	txs := mempool.ReapMaxTxs(limit)
 	return &ctypes.ResultUnconfirmedTxs{len(txs), txs}, nil
 }
 

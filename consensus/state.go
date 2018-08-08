@@ -153,6 +153,7 @@ func NewConsensusState(
 	cs.setProposal = cs.defaultSetProposal
 
 	cs.updateToState(state)
+
 	// Don't call scheduleRound0 yet.
 	// We do that upon Start().
 	cs.reconstructLastCommit(state)
@@ -946,12 +947,23 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 		return
 	}
 
+	maxBytes := cs.state.ConsensusParams.BlockSize.MaxBytes
+	// bound evidence to 1/10th of the block
+	evidence := cs.evpool.PendingEvidence(maxBytes / 10)
 	// Mempool validated transactions
-	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
-	evidence := cs.evpool.PendingEvidence()
+	txs := cs.mempool.ReapMaxBytes(maxDataBytes(maxBytes, cs.state.Validators.Size(), len(evidence)))
 	proposerAddr := cs.privValidator.GetAddress()
 	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
+
 	return block, parts
+}
+
+func maxDataBytes(maxBytes, valsCount, evidenceCount int) int {
+	return maxBytes -
+		types.MaxAminoOverheadForBlock -
+		types.MaxHeaderBytes -
+		(valsCount * types.MaxVoteBytes) -
+		(evidenceCount * types.MaxEvidenceBytes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -1438,7 +1450,11 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 	}
 	if added && cs.ProposalBlockParts.IsComplete() {
 		// Added and completed!
-		_, err = cdc.UnmarshalBinaryReader(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, int64(cs.state.ConsensusParams.BlockSize.MaxBytes))
+		_, err = cdc.UnmarshalBinaryReader(
+			cs.ProposalBlockParts.GetReader(),
+			&cs.ProposalBlock,
+			int64(cs.state.ConsensusParams.BlockSize.MaxBytes),
+		)
 		if err != nil {
 			return true, err
 		}

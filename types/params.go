@@ -22,9 +22,8 @@ type ConsensusParams struct {
 
 // BlockSize contain limits on the block size.
 type BlockSize struct {
-	MaxBytes int   `json:"max_bytes"` // NOTE: must not be 0 nor greater than 100MB
-	MaxTxs   int   `json:"max_txs"`
-	MaxGas   int64 `json:"max_gas"`
+	MaxBytes        int   `json:"max_txs_bytes"` // NOTE: must not be 0 nor greater than 100MB
+	MaxGas          int64 `json:"max_gas"`
 }
 
 // TxSize contain limits on the tx size.
@@ -56,9 +55,8 @@ func DefaultConsensusParams() *ConsensusParams {
 // DefaultBlockSize returns a default BlockSize.
 func DefaultBlockSize() BlockSize {
 	return BlockSize{
-		MaxBytes: 22020096, // 21MB
-		MaxTxs:   10000,
-		MaxGas:   -1,
+		MaxBytes:        22020096, // 21MB
+		MaxGas:          -1,
 	}
 }
 
@@ -110,7 +108,6 @@ func (params *ConsensusParams) Hash() []byte {
 		"block_gossip_part_size_bytes": aminoHasher(params.BlockGossip.BlockPartSizeBytes),
 		"block_size_max_bytes":         aminoHasher(params.BlockSize.MaxBytes),
 		"block_size_max_gas":           aminoHasher(params.BlockSize.MaxGas),
-		"block_size_max_txs":           aminoHasher(params.BlockSize.MaxTxs),
 		"tx_size_max_bytes":            aminoHasher(params.TxSize.MaxBytes),
 		"tx_size_max_gas":              aminoHasher(params.TxSize.MaxGas),
 	})
@@ -131,9 +128,6 @@ func (params ConsensusParams) Update(params2 *abci.ConsensusParams) ConsensusPar
 	if params2.BlockSize != nil {
 		if params2.BlockSize.MaxBytes > 0 {
 			res.BlockSize.MaxBytes = int(params2.BlockSize.MaxBytes)
-		}
-		if params2.BlockSize.MaxTxs > 0 {
-			res.BlockSize.MaxTxs = int(params2.BlockSize.MaxTxs)
 		}
 		if params2.BlockSize.MaxGas > 0 {
 			res.BlockSize.MaxGas = params2.BlockSize.MaxGas

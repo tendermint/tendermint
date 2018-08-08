@@ -86,7 +86,7 @@ func _waitForTxs(t *testing.T, wg *sync.WaitGroup, txs types.Txs, reactorIdx int
 		time.Sleep(time.Millisecond * 100)
 	}
 
-	reapedTxs := mempool.Reap(len(txs))
+	reapedTxs := mempool.ReapMaxTxs(len(txs))
 	for i, tx := range txs {
 		assert.Equal(t, tx, reapedTxs[i], fmt.Sprintf("txs at index %d on reactor %d don't match: %v vs %v", i, reactorIdx, tx, reapedTxs[i]))
 	}
