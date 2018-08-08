@@ -215,6 +215,18 @@ func (app *CounterApplication) CheckTx(tx []byte) abci.ResponseCheckTx {
 	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
 }
 
+func (app *CounterApplication) RecheckTx(req abci.RequestCheckTx) abci.ResponseCheckTx {
+	tx := req.Tx
+	txValue := txAsUint64(tx)
+	if txValue != uint64(app.mempoolTxCount) {
+		return abci.ResponseCheckTx{
+			Code: code.CodeTypeBadNonce,
+			Log:  fmt.Sprintf("Invalid nonce. Expected %v, got %v", app.mempoolTxCount, txValue)}
+	}
+	app.mempoolTxCount++
+	return abci.ResponseCheckTx{Code: code.CodeTypeOK}
+}
+
 func txAsUint64(tx []byte) uint64 {
 	tx8 := make([]byte, 8)
 	copy(tx8[len(tx8)-len(tx):], tx)
