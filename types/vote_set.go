@@ -539,13 +539,14 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	if voteSet.maj23 == nil {
 		cmn.PanicSanity("Cannot MakeCommit() unless a blockhash has +2/3")
 	}
+	blockID := *voteSet.maj23
 
 	// For every validator, get the precommit
 	votesCopy := make([]*Vote, len(voteSet.votes))
 	copy(votesCopy, voteSet.votes)
 	precommits := make([]*CommitSig, len(voteSet.votes))
 	for i, v := range votesCopy {
-		if v != nil {
+		if v != nil && v.BlockID.Equals(blockID) {
 			precommits[i] = &CommitSig{
 				Signature: v.Signature,
 				Timestamp: v.Timestamp,
@@ -553,7 +554,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 		}
 	}
 	return &Commit{
-		BlockID:    *voteSet.maj23,
+		BlockID:    blockID,
 		Precommits: precommits,
 		RoundNum:   voteSet.round,
 		HeightNum:  voteSet.height,
