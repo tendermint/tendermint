@@ -71,4 +71,4 @@ local testnet. Review the target in the Makefile to debug any problems.
 
 ### Cloud
 
-See the [next section](./terraform-and-ansible.html) for details.
+See the [next section](./terraform-and-ansible.md) for details.
