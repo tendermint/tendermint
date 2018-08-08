@@ -181,8 +181,14 @@ func (s *SocketServer) handleRequest(req *types.Request, responses chan<- *types
 		res := s.app.DeliverTx(r.DeliverTx.Tx)
 		responses <- types.ToResponseDeliverTx(res)
 	case *types.Request_CheckTx:
-		res := s.app.CheckTx(r.CheckTx.Tx)
-		responses <- types.ToResponseCheckTx(res)
+		if(r.CheckTx.Recheck){
+			//existed tx in the mempool
+			res := s.app.RecheckTx(*r.CheckTx)
+			responses <- types.ToResponseCheckTx(res)
+		}else{
+			res := s.app.CheckTx(r.CheckTx.Tx)
+			responses <- types.ToResponseCheckTx(res)
+		}
 	case *types.Request_Commit:
 		res := s.app.Commit()
 		responses <- types.ToResponseCommit(res)
