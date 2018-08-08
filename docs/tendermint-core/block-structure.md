@@ -73,7 +73,7 @@ they are commited to the chain.
 
 The
 [Commit](https://godoc.org/github.com/tendermint/tendermint/types#Commit)
-contains a set of
+contains the information needed to reconstruct the set of
 [Votes](https://godoc.org/github.com/tendermint/tendermint/types#Vote)
 that were made by the validator set to reach consensus on this block.
 This is the key to the security in any PoS system, and actually no data

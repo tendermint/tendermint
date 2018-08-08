@@ -10,6 +10,7 @@ The Tendermint blockchains consists of a short list of basic data types:
 - `Header`
 - `Vote`
 - `BlockID`
+- `Commit`
 - `Signature`
 - `Evidence`
 
@@ -22,7 +23,7 @@ and a list of evidence of malfeasance (ie. signing conflicting votes).
 type Block struct {
     Header      Header
     Txs         [][]byte
-    LastCommit  []Vote
+    LastCommit  Commit
     Evidence    []Evidence
 }
 ```
@@ -106,6 +107,29 @@ type Vote struct {
 There are two types of votes:
 a *prevote* has `vote.Type == 1` and
 a *precommit* has `vote.Type == 2`.
+
+## Commit
+
+A Commit contains enough data to verify that a BlockID was committed to at a certain
+height and round by a sufficient set of validators.
+
+```go
+type Commit struct {
+	BlockID    BlockID
+	Precommits []*CommitSig
+	RoundNum   int
+	HeightNum  int64
+}
+```
+
+The `CommitSig` values of the `Precommits` array contain the data for each validator needed to reconstruct and verify their precommit vote. For each entry, if the validator did not vote for the committed `BlockID`, their `CommitSig` value is `nil`. The only data unique to each vote is the `Timestamp` and `Signature`, all other data can be stored once in the `Commit` struct.
+
+```go
+type CommitSig struct {
+	Signature []byte
+	Timestamp time.Time
+}
+```
 
 ## Signature
 
