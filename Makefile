@@ -84,13 +84,15 @@ get_vendor_deps:
 #For ABCI and libs
 get_protoc:
 	@# https://github.com/google/protobuf/releases
-	curl -L https://github.com/google/protobuf/releases/download/v3.4.1/protobuf-cpp-3.4.1.tar.gz | tar xvz && \
-		cd protobuf-3.4.1 && \
+	curl -L https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz | tar xvz && \
+		cd protobuf-3.6.1 && \
 		DIST_LANG=cpp ./configure && \
 		make && \
-		make install && \
+		make check && \
+		sudo make install && \
+		sudo ldconfig && \
 		cd .. && \
-		rm -rf protobuf-3.4.1
+		rm -rf protobuf-3.6.1
 
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
