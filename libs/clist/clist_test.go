@@ -149,8 +149,8 @@ func _TestGCRandom(t *testing.T) {
 
 func TestScanRightDeleteRandom(t *testing.T) {
 
-	const numElements = 10000
-	const numTimes = 1000
+	const numElements = 1000
+	const numTimes = 100
 	const numScanners = 10
 
 	l := New()
@@ -209,7 +209,7 @@ func TestScanRightDeleteRandom(t *testing.T) {
 
 	// Stop scanners
 	close(stop)
-	time.Sleep(time.Second * 1)
+	// time.Sleep(time.Second * 1)
 
 	// And remove all the elements.
 	for el := l.Front(); el != nil; el = el.Next() {
@@ -244,7 +244,7 @@ func TestWaitChan(t *testing.T) {
 		for i := 1; i < 100; i++ {
 			l.PushBack(i)
 			pushed++
-			time.Sleep(time.Duration(cmn.RandIntn(100)) * time.Millisecond)
+			time.Sleep(time.Duration(cmn.RandIntn(25)) * time.Millisecond)
 		}
 		close(done)
 	}()
@@ -283,7 +283,7 @@ FOR_LOOP2:
 			if prev == nil {
 				t.Fatal("expected PrevWaitChan to block forever on nil when reached first elem")
 			}
-		case <-time.After(5 * time.Second):
+		case <-time.After(3 * time.Second):
 			break FOR_LOOP2
 		}
 	}

@@ -38,7 +38,7 @@ type msgPacket struct {
 }
 ```
 
-The `msgPacket` is serialized using [go-wire](https://github.com/tendermint/go-wire) and prefixed with 0x3.
+The `msgPacket` is serialized using [go-amino](https://github.com/tendermint/go-amino) and prefixed with 0x3.
 The received `Bytes` of a sequential set of packets are appended together
 until a packet with `EOF=1` is received, then the complete serialized message
 is returned for processing by the `onReceive` function of the corresponding channel.
