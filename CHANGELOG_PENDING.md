@@ -9,6 +9,7 @@ BREAKING CHANGES:
   top-level
 - [abci] Added address of the original proposer of the block to Header.
 - [abci] Change ABCI Header to match Tendermint exactly
+- [libs] Remove cmn.Fmt, in favor of fmt.Sprintf
 
 FEATURES:
 

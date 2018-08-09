@@ -257,7 +257,7 @@ func (c *MConnection) Send(chID byte, msgBytes []byte) bool {
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		c.Logger.Error(cmn.Fmt("Cannot send bytes, unknown channel %X", chID))
+		c.Logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -286,7 +286,7 @@ func (c *MConnection) TrySend(chID byte, msgBytes []byte) bool {
 	// Send message to channel.
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		c.Logger.Error(cmn.Fmt("Cannot send bytes, unknown channel %X", chID))
+		c.Logger.Error(fmt.Sprintf("Cannot send bytes, unknown channel %X", chID))
 		return false
 	}
 
@@ -311,7 +311,7 @@ func (c *MConnection) CanSend(chID byte) bool {
 
 	channel, ok := c.channelsIdx[chID]
 	if !ok {
-		c.Logger.Error(cmn.Fmt("Unknown channel %X", chID))
+		c.Logger.Error(fmt.Sprintf("Unknown channel %X", chID))
 		return false
 	}
 	return channel.canSend()

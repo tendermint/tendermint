@@ -44,7 +44,7 @@ func NewNetAddress(id ID, addr net.Addr) *NetAddress {
 	tcpAddr, ok := addr.(*net.TCPAddr)
 	if !ok {
 		if flag.Lookup("test.v") == nil { // normal run
-			cmn.PanicSanity(cmn.Fmt("Only TCPAddrs are supported. Got: %v", addr))
+			cmn.PanicSanity(fmt.Sprintf("Only TCPAddrs are supported. Got: %v", addr))
 		} else { // in testing
 			netAddr := NewNetAddressIPPort(net.IP("0.0.0.0"), 0)
 			netAddr.ID = id

@@ -9,7 +9,6 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -130,7 +129,7 @@ func (app *PersistentKVStoreApplication) Validators() (validators []types.Valida
 }
 
 func MakeValSetChangeTx(pubkey types.PubKey, power int64) []byte {
-	return []byte(cmn.Fmt("val:%X/%d", pubkey.Data, power))
+	return []byte(fmt.Sprintf("val:%X/%d", pubkey.Data, power))
 }
 
 func isValidatorTx(tx []byte) bool {

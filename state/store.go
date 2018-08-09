@@ -12,15 +12,15 @@ import (
 //------------------------------------------------------------------------
 
 func calcValidatorsKey(height int64) []byte {
-	return []byte(cmn.Fmt("validatorsKey:%v", height))
+	return []byte(fmt.Sprintf("validatorsKey:%v", height))
 }
 
 func calcConsensusParamsKey(height int64) []byte {
-	return []byte(cmn.Fmt("consensusParamsKey:%v", height))
+	return []byte(fmt.Sprintf("consensusParamsKey:%v", height))
 }
 
 func calcABCIResponsesKey(height int64) []byte {
-	return []byte(cmn.Fmt("abciResponsesKey:%v", height))
+	return []byte(fmt.Sprintf("abciResponsesKey:%v", height))
 }
 
 // LoadStateFromDBOrGenesisFile loads the most recent state from the database,
@@ -71,7 +71,7 @@ func loadState(db dbm.DB, key []byte) (state State) {
 	err := cdc.UnmarshalBinaryBare(buf, &state)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.Exit(cmn.Fmt(`LoadState: Data has been corrupted or its spec has changed:
+		cmn.Exit(fmt.Sprintf(`LoadState: Data has been corrupted or its spec has changed:
                 %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
@@ -144,7 +144,7 @@ func LoadABCIResponses(db dbm.DB, height int64) (*ABCIResponses, error) {
 	err := cdc.UnmarshalBinaryBare(buf, abciResponses)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.Exit(cmn.Fmt(`LoadABCIResponses: Data has been corrupted or its spec has
+		cmn.Exit(fmt.Sprintf(`LoadABCIResponses: Data has been corrupted or its spec has
                 changed: %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
@@ -207,7 +207,7 @@ func loadValidatorsInfo(db dbm.DB, height int64) *ValidatorsInfo {
 	err := cdc.UnmarshalBinaryBare(buf, v)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.Exit(cmn.Fmt(`LoadValidators: Data has been corrupted or its spec has changed:
+		cmn.Exit(fmt.Sprintf(`LoadValidators: Data has been corrupted or its spec has changed:
                 %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
@@ -278,7 +278,7 @@ func loadConsensusParamsInfo(db dbm.DB, height int64) *ConsensusParamsInfo {
 	err := cdc.UnmarshalBinaryBare(buf, paramsInfo)
 	if err != nil {
 		// DATA HAS BEEN CORRUPTED OR THE SPEC HAS CHANGED
-		cmn.Exit(cmn.Fmt(`LoadConsensusParams: Data has been corrupted or its spec has changed:
+		cmn.Exit(fmt.Sprintf(`LoadConsensusParams: Data has been corrupted or its spec has changed:
                 %v\n`, err))
 	}
 	// TODO: ensure that buf is completely read.
