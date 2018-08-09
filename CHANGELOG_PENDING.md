@@ -1,6 +1,7 @@
 # Pending
 
 BREAKING CHANGES:
+- [types] Reduce Commit votes to signatures and timestamps
 - [types] Header ...
 - [state] Add NextValidatorSet, changes on-disk representation of state
 - [state] Validator set changes are delayed by one block (!)
