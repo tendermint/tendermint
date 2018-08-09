@@ -21,8 +21,15 @@ COPY . $REPO
 RUN make get_tools
 RUN make get_vendor_deps
 
-RUN go install ./cmd/tendermint
-RUN go install ./abci/cmd/abci-cli
+# Now copy in the code
+# NOTE: this will overwrite whatever is in vendor/
+COPY . $REPO
+
+# install ABCI CLI
+RUN make install_abci
+
+# install Tendermint
+RUN make install
 
 # expose the volume for debugging
 VOLUME $REPO

@@ -39,20 +39,20 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 
 #### Fields
 
--   `genesis_time`: Official time of blockchain start.
--   `chain_id`: ID of the blockchain. This must be unique for
-    every blockchain. If your testnet blockchains do not have unique
-    chain IDs, you will have a bad time.
--   `validators`:
--   `pub_key`: The first element specifies the `pub_key` type. 1
-    == Ed25519. The second element are the pubkey bytes.
--   `power`: The validator's voting power.
--   `name`: Name of the validator (optional).
--   `app_hash`: The expected application hash (as returned by the
-    `ResponseInfo` ABCI message) upon genesis. If the app's hash does
-    not match, Tendermint will panic.
--   `app_state`: The application state (e.g. initial distribution
-    of tokens).
+- `genesis_time`: Official time of blockchain start.
+- `chain_id`: ID of the blockchain. This must be unique for
+  every blockchain. If your testnet blockchains do not have unique
+  chain IDs, you will have a bad time.
+- `validators`:
+- `pub_key`: The first element specifies the `pub_key` type. 1
+  == Ed25519. The second element are the pubkey bytes.
+- `power`: The validator's voting power.
+- `name`: Name of the validator (optional).
+- `app_hash`: The expected application hash (as returned by the
+  `ResponseInfo` ABCI message) upon genesis. If the app's hash does
+  not match, Tendermint will panic.
+- `app_state`: The application state (e.g. initial distribution
+  of tokens).
 
 #### Sample genesis.json
 
@@ -151,7 +151,7 @@ and the `latest_app_hash` in particular:
 curl http://localhost:26657/status | json_pp | grep latest_app_hash
 ```
 
-Visit http://localhost:26657> in your browser to see the list of other
+Visit http://localhost:26657 in your browser to see the list of other
 endpoints. Some take no arguments (like `/status`), while others specify
 the argument name and use `_` as a placeholder.
 
@@ -224,7 +224,7 @@ new blockchain will not make any blocks.
 ## Configuration
 
 Tendermint uses a `config.toml` for configuration. For details, see [the
-config specification](./specification/configuration.md).
+config specification](./tendermint-core/configuration.md).
 
 Notable options include the socket address of the application
 (`proxy_app`), the listening address of the Tendermint peer
@@ -235,8 +235,7 @@ Some fields from the config file can be overwritten with flags.
 
 ## No Empty Blocks
 
-This much requested feature was implemented in version 0.10.3. While the
-default behaviour of `tendermint` is still to create blocks
+While the default behaviour of `tendermint` is still to create blocks
 approximately once per second, it is possible to disable empty blocks or
 set a block creation interval. In the former case, blocks will be
 created when there are new transactions or when the AppHash changes.
@@ -365,10 +364,7 @@ case, the genesis file contains the public key of our
 root directory will be able to make progress. Voting power uses an int64
 but must be positive, thus the range is: 0 through 9223372036854775807.
 Because of how the current proposer selection algorithm works, we do not
-recommend having voting powers greater than 10\^12 (ie. 1 trillion) (see
-[Proposals section of Byzantine Consensus
-Algorithm](./specification/byzantine-consensus-algorithm.md#proposals)
-for details).
+recommend having voting powers greater than 10\^12 (ie. 1 trillion).
 
 If we want to add more nodes to the network, we have two choices: we can
 add a new validator node, who will also participate in the consensus by
@@ -520,7 +516,7 @@ failing, you need at least four validator nodes (e.g., 2/3).
 
 Updating validators in a live network is supported but must be
 explicitly programmed by the application developer. See the [application
-developers guide](./app-development.md) for more details.
+developers guide](../app-dev/app-development.md) for more details.
 
 ### Local Network
 

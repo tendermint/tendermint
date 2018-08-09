@@ -2,27 +2,24 @@ package proxy
 
 import (
 	"bytes"
+	"errors"
 
-	"github.com/pkg/errors"
-
-	"github.com/tendermint/tendermint/lite"
-	certerr "github.com/tendermint/tendermint/lite/errors"
 	"github.com/tendermint/tendermint/types"
 )
 
-func ValidateBlockMeta(meta *types.BlockMeta, check lite.Commit) error {
+func ValidateBlockMeta(meta *types.BlockMeta, sh types.SignedHeader) error {
 	if meta == nil {
 		return errors.New("expecting a non-nil BlockMeta")
 	}
 	// TODO: check the BlockID??
-	return ValidateHeader(&meta.Header, check)
+	return ValidateHeader(&meta.Header, sh)
 }
 
-func ValidateBlock(meta *types.Block, check lite.Commit) error {
+func ValidateBlock(meta *types.Block, sh types.SignedHeader) error {
 	if meta == nil {
 		return errors.New("expecting a non-nil Block")
 	}
-	err := ValidateHeader(&meta.Header, check)
+	err := ValidateHeader(&meta.Header, sh)
 	if err != nil {
 		return err
 	}
@@ -32,17 +29,19 @@ func ValidateBlock(meta *types.Block, check lite.Commit) error {
 	return nil
 }
 
-func ValidateHeader(head *types.Header, check lite.Commit) error {
+func ValidateHeader(head *types.Header, sh types.SignedHeader) error {
 	if head == nil {
 		return errors.New("expecting a non-nil Header")
 	}
-	// make sure they are for the same height (obvious fail)
-	if head.Height != check.Height() {
-		return certerr.ErrHeightMismatch(head.Height, check.Height())
+	if sh.Header == nil {
+		return errors.New("unexpected empty SignedHeader")
 	}
-	// check if they are equal by using hashes
-	chead := check.Header
-	if !bytes.Equal(head.Hash(), chead.Hash()) {
+	// Make sure they are for the same height (obvious fail).
+	if head.Height != sh.Height {
+		return errors.New("Header heights mismatched")
+	}
+	// Check if they are equal by using hashes.
+	if !bytes.Equal(head.Hash(), sh.Hash()) {
 		return errors.New("Headers don't match")
 	}
 	return nil

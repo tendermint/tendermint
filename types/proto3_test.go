@@ -67,11 +67,6 @@ func TestProto3Compatibility(t *testing.T) {
 		Height:  150,
 		Time:    &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
 		NumTxs:  7,
-		// This is not fully skipped in amino (yet) although it is empty:
-		LastBlockID: &proto3.BlockID{
-			PartsHeader: &proto3.PartSetHeader{
-			},
-		},
 		TotalTxs:       100,
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),

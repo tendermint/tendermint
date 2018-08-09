@@ -2,12 +2,12 @@ package main
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"context"
 
+	"github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/rpc/grpc"
 )
 
@@ -33,7 +33,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	bz, err := json.Marshal(res)
+	bz, err := amino.NewCodec().MarshalJSON(res)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

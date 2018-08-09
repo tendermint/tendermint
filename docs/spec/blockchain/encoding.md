@@ -48,33 +48,33 @@ spec](https://github.com/tendermint/go-amino#computing-the-prefix-and-disambigua
 
 In what follows, we provide the type names and prefix bytes directly.
 Notice that when encoding byte-arrays, the length of the byte-array is appended
-to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes>
-<Length> <ByteArray>`. In other words, to encode any type listed below you do not need to be
+to the PrefixBytes. Thus the encoding of a byte array becomes `<PrefixBytes> <Length> <ByteArray>`. In other words, to encode any type listed below you do not need to be
 familiar with amino encoding.
 You can simply use below table and concatenate Prefix || Length (of raw bytes) || raw bytes
 ( while || stands for byte concatenation here).
 
-| Type | Name | Prefix | Length | Notes |
-| ---- | ---- | ------ | ----- | ------ |
-| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
-| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
-| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
-| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
-| SignatureEd25519 | tendermint/SignatureEd25519 | 0x2031EA53 | 0x40 |  |
+| Type               | Name                          | Prefix     | Length   | Notes |
+| ------------------ | ----------------------------- | ---------- | -------- | ----- |
+| PubKeyEd25519      | tendermint/PubKeyEd25519      | 0x1624DE64 | 0x20     |       |
+| PubKeySecp256k1    | tendermint/PubKeySecp256k1    | 0xEB5AE987 | 0x21     |       |
+| PrivKeyEd25519     | tendermint/PrivKeyEd25519     | 0xA3288910 | 0x40     |       |
+| PrivKeySecp256k1   | tendermint/PrivKeySecp256k1   | 0xE1B0F79B | 0x20     |       |
+| SignatureEd25519   | tendermint/SignatureEd25519   | 0x2031EA53 | 0x40     |       |
 | SignatureSecp256k1 | tendermint/SignatureSecp256k1 | 0x7FC4A495 | variable |
+
 |
 
 ### Examples
 
 1. For example, the 33-byte (or 0x21-byte in hex) Secp256k1 pubkey
-`020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
-would be encoded as
-`EB5AE98221020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
+   `020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
+   would be encoded as
+   `EB5AE98221020BD40F225A57ED383B440CF073BC5539D0341F5767D2BF2D78406D00475A2EE9`
 
 2. For example, the variable size Secp256k1 signature (in this particular example 70 or 0x46 bytes)
-`304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
-would be encoded as
-`16E1FEEA46304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
+   `304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
+   would be encoded as
+   `16E1FEEA46304402201CD4B8C764D2FD8AF23ECFE6666CA8A53886D47754D951295D2D311E1FEA33BF02201E0F906BB1CF2C30EAACFFB032A7129358AFF96B9F79B06ACFFB18AC90C2ADD7`
 
 ### Addresses
 
@@ -152,28 +152,27 @@ func MakeParts(obj interface{}, partSize int) []Part
 For an overview of Merkle trees, see
 [wikipedia](https://en.wikipedia.org/wiki/Merkle_tree)
 
-
 A Simple Tree is a simple compact binary tree for a static list of items. Simple Merkle trees are used in numerous places in Tendermint to compute a cryptographic digest of a data structure. In a Simple Tree, the transactions and validation signatures of a block are hashed using this simple merkle tree logic.
 
 If the number of items is not a power of two, the tree will not be full
 and some leaf nodes will be at different levels. Simple Tree tries to
 keep both sides of the tree the same size, but the left side may be one
-greater, for example: 
+greater, for example:
 
 ```
-   Simple Tree with 6 items           Simple Tree with 7 items 
-                                                        
-              *                                  *             
-             / \                                / \            
-           /     \                            /     \          
-         /         \                        /         \        
-       /             \                    /             \      
-      *               *                  *               *     
-     / \             / \                / \             / \    
-    /   \           /   \              /   \           /   \   
-   /     \         /     \            /     \         /     \  
+   Simple Tree with 6 items           Simple Tree with 7 items
+
+              *                                  *
+             / \                                / \
+           /     \                            /     \
+         /         \                        /         \
+       /             \                    /             \
+      *               *                  *               *
+     / \             / \                / \             / \
+    /   \           /   \              /   \           /   \
+   /     \         /     \            /     \         /     \
   *       h2      *       h5         *       *       *       h6
- / \             / \                / \     / \     / \        
+ / \             / \                / \     / \     / \
 h0  h1          h3  h4             h0  h1  h2  h3  h4  h5
 ```
 
@@ -224,7 +223,6 @@ For `[]struct` arguments, we compute a `[][]byte` by hashing the individual `str
 
 Proof that a leaf is in a Merkle tree consists of a simple structure:
 
-
 ```
 type SimpleProof struct {
         Aunts [][]byte
@@ -265,8 +263,8 @@ func computeHashFromAunts(index, total int, leafHash []byte, innerHashes [][]byt
 
 The Simple Tree is used to merkelize a list of items, so to merkelize a
 (short) dictionary of key-value pairs, encode the dictionary as an
-ordered list of ``KVPair`` structs. The block hash is such a hash
-derived from all the fields of the block ``Header``. The state hash is
+ordered list of `KVPair` structs. The block hash is such a hash
+derived from all the fields of the block `Header`. The state hash is
 similarly derived.
 
 ### IAVL+ Tree
@@ -299,7 +297,6 @@ For instance, an ED25519 PubKey would look like:
 
 Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
 `"type"` is the full disfix bytes for Ed25519 pubkeys.
-
 
 ### Signed Messages
 
