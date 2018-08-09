@@ -8,14 +8,14 @@
 ## Changelog
 
 - 03-08-2018: Updates from discussion with Jae:
-    - ProtocolVersion contains Block/AppVersion, not Current/Next
-    - signal upgrades to Tendermint using EndBlock fields
-    - dont restrict peer compatibilty by version to simplify syncing old nodes
+  - ProtocolVersion contains Block/AppVersion, not Current/Next
+  - signal upgrades to Tendermint using EndBlock fields
+  - dont restrict peer compatibilty by version to simplify syncing old nodes
 - 28-07-2018: Updates from review
-    - split into two ADRs - one for protocol, one for chains
-    - include signalling for upgrades in header
+  - split into two ADRs - one for protocol, one for chains
+  - include signalling for upgrades in header
 - 16-07-2018: Initial draft - was originally joint ADR for protocol and chain
-versions
+  versions
 
 ## Context
 
@@ -58,19 +58,15 @@ to connect to peers with older version.
 
 ### BlockVersion
 
-- All tendermint hashed data-structures (headers, votes, txs, responses, etc.).
-	- Note the semantic meaning of a transaction may change according to the AppVersion,
-		but the way txs are merklized into the header is part of the BlockVersion
-- It should be the least frequent/likely to change.
-	- Tendermint should be stabilizing - it's just Atomic Broadcast.
-	- We can start considering for Tendermint v2.0 in a year
+- All tendermint hashed data-structures (headers, votes, txs, responses, etc.). - Note the semantic meaning of a transaction may change according to the AppVersion,
+  but the way txs are merklized into the header is part of the BlockVersion
+- It should be the least frequent/likely to change. - Tendermint should be stabilizing - it's just Atomic Broadcast. - We can start considering for Tendermint v2.0 in a year
 - It's easy to determine the version of a block from its serialized form
 
 ### P2PVersion
 
 - All p2p and reactor messaging (messages, detectable behaviour)
-- Will change gradually as reactors evolve to improve performance and support new features
-	- eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
+- Will change gradually as reactors evolve to improve performance and support new features - eg proposed new message types BatchTx in the mempool and HasBlockPart in the consensus
 - It's easy to determine the version of a peer from its first serialized message/s
 - New versions must be compatible with at least one old version to allow gradual upgrades
 
@@ -79,10 +75,10 @@ to connect to peers with older version.
 - The ABCI state machine (txs, begin/endblock behaviour, commit hashing)
 - Behaviour and message types will change abruptly in the course of the life of a chain
 - Need to minimize complexity of the code for supporting different AppVersions at different heights
-- Ideally, each version of the software supports only a *single* AppVersion at one time
-    - this means we checkout different versions of the software at different heights instead of littering the code
-          with conditionals
-    - minimize the number of data migrations required across AppVersion (ie. most AppVersion should be able to read the same state from disk as previous AppVersion).
+- Ideally, each version of the software supports only a _single_ AppVersion at one time
+  - this means we checkout different versions of the software at different heights instead of littering the code
+    with conditionals
+  - minimize the number of data migrations required across AppVersion (ie. most AppVersion should be able to read the same state from disk as previous AppVersion).
 
 ## Ideal
 
@@ -125,7 +121,6 @@ serve as a complete description of the consensus-critical protocol.
 Using the `NextVersion` field, proposer's can signal their readiness to upgrade
 to a new Block and/or App version.
 
-
 ### NodeInfo
 
 NodeInfo should include a Version struct as its first field like:
@@ -149,7 +144,6 @@ it's SemVer version - this is for convenience only. Eg.
 `tendermint-core/v0.22.8`.
 
 The other versions and ChainID will determine peer compatibility (described below).
-
 
 ### ABCI
 
@@ -279,7 +273,6 @@ This could be use by an external manager process that oversees upgrades by
 checking out and installing new software versions and restarting the process. It
 would subscribe to the relevant upgrade event (needs to be implemented) and call `/unsafe_stop` at
 the correct height (of course only after getting approval from its user!)
-
 
 ## Consequences
 

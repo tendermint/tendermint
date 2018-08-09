@@ -26,6 +26,7 @@ use `kvstore`:
 docker run -it --rm -v "/tmp:/tendermint" tendermint/tendermint init
 docker run -it --rm -v "/tmp:/tendermint" -p "26657:26657" --name=tm tendermint/tendermint node --proxy_app=kvstore
 ```
+
 ```
 docker run -it --rm -p "26670:26670" --link=tm tendermint/monitor tm:26657
 ```
@@ -71,7 +72,7 @@ Flags:
 Run `tm-monitor` and visit http://localhost:26670 You should see the
 list of the available RPC endpoints:
 
-```   
+```
 http://localhost:26670/status
 http://localhost:26670/status/network
 http://localhost:26670/monitor?endpoint=_

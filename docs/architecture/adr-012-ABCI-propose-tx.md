@@ -33,7 +33,7 @@ Due to the requirements of [Minimal Viable Plasma (MVP)](https://ethresear.ch/t/
    special treatment.
 
 2. Other "internal" transactions on the child chain, which may be initiated
-   unilaterally.  The most basic example of is a coinbase transaction
+   unilaterally. The most basic example of is a coinbase transaction
    implementing validator node incentives, but may also be app-specific. In
    these cases, it may be favourable for such transactions to
    be ordered in a specific manner, e.g., coinbase transactions will always be
@@ -86,14 +86,14 @@ current proposer is passed to `BeginBlock`.
 It is much easier to relay these transactions directly to the Root
 Chain smart contract and/or maintain a "compressed" auxiliary chain comprised
 of Plasma-friendly blocks that 100% reflect the canonical (Tendermint)
-blockchain.  Unfortunately, this approach not idiomatic (i.e., utilises the
+blockchain. Unfortunately, this approach not idiomatic (i.e., utilises the
 Tendermint consensus engine in unintended ways). Additionally, it does not
 allow the application developer to:
 
 - Control the _ordering_ of transactions in the proposed block (e.g., index 0,
-or 0 to `n` for coinbase transactions)
+  or 0 to `n` for coinbase transactions)
 - Control the _number_ of transactions in the block (e.g., when a `deposit`
-block is required)
+  block is required)
 
 Since determinism is of utmost importance in blockchain engineering, this approach,
 while more viable, should also not be considered as fit for production.
@@ -163,9 +163,9 @@ Pending
 
 - Tendermint ABCI apps will be able to function as minimally viable Plasma chains.
 - It will thereby become possible to add an extension to `cosmos-sdk` to enable
-	ABCI apps to support both IBC and Plasma, maximising interop.
+  ABCI apps to support both IBC and Plasma, maximising interop.
 - ABCI apps will have great control and flexibility in managing blockchain state,
-	without having to resort to non-deterministic hacks and/or unsafe workarounds
+  without having to resort to non-deterministic hacks and/or unsafe workarounds
 
 ### Negative
 

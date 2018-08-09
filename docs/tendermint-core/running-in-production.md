@@ -135,33 +135,34 @@ Tendermint, replay will fail with panic.
 
 Recovering from data corruption can be hard and time-consuming. Here are two approaches you can take:
 
-1) Delete the WAL file and restart Tendermint. It will attempt to sync with other peers.
-2) Try to repair the WAL file manually:
+1. Delete the WAL file and restart Tendermint. It will attempt to sync with other peers.
+2. Try to repair the WAL file manually:
 
-  1. Create a backup of the corrupted WAL file:
+1) Create a backup of the corrupted WAL file:
 
 ```
 cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
 ```
 
-  2. Use `./scripts/wal2json` to create a human-readable version
+2. Use `./scripts/wal2json` to create a human-readable version
 
 ```
 ./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
 ```
 
-  3. Search for a "CORRUPTED MESSAGE" line.
-  4. By looking at the previous message and the message after the corrupted one
-       and looking at the logs, try to rebuild the message. If the consequent
-       messages are marked as corrupted too (this may happen if length header
-       got corrupted or some writes did not make it to the WAL ~ truncation),
-       then remove all the lines starting from the corrupted one and restart
-       Tendermint.
+3. Search for a "CORRUPTED MESSAGE" line.
+4. By looking at the previous message and the message after the corrupted one
+   and looking at the logs, try to rebuild the message. If the consequent
+   messages are marked as corrupted too (this may happen if length header
+   got corrupted or some writes did not make it to the WAL ~ truncation),
+   then remove all the lines starting from the corrupted one and restart
+   Tendermint.
 
 ```
 $EDITOR /tmp/corrupted_wal
 ```
-  5. After editing, convert this file back into binary form by running:
+
+5. After editing, convert this file back into binary form by running:
 
 ```
 ./scripts/json2wal/json2wal /tmp/corrupted_wal > "$TMHOME/data/cs.wal/wal"

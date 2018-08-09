@@ -11,11 +11,11 @@ Flag: `--mempool.recheck_empty=false`
 Environment: `TM_MEMPOOL_RECHECK_EMPTY=false`
 
 Config:
+
 ```
 [mempool]
 recheck_empty = false
 ```
-
 
 ## Recheck
 

@@ -61,9 +61,9 @@ Authenticated encryption is enabled by default.
 
 ## Additional Reading
 
--   [Implementation](https://github.com/tendermint/tendermint/blob/64bae01d007b5bee0d0827ab53259ffd5910b4e6/p2p/conn/secret_connection.go#L47)
--   [Original STS paper by Whitfield Diffie, Paul C. van Oorschot and
-    Michael J.
-    Wiener](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.216.6107&rep=rep1&type=pdf)
--   [Further work on secret
-    handshakes](https://dominictarr.github.io/secret-handshake-paper/shs.pdf)
+- [Implementation](https://github.com/tendermint/tendermint/blob/64bae01d007b5bee0d0827ab53259ffd5910b4e6/p2p/conn/secret_connection.go#L47)
+- [Original STS paper by Whitfield Diffie, Paul C. van Oorschot and
+  Michael J.
+  Wiener](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.216.6107&rep=rep1&type=pdf)
+- [Further work on secret
+  handshakes](https://dominictarr.github.io/secret-handshake-paper/shs.pdf)
