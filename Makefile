@@ -3,7 +3,6 @@ GOTOOLS = \
 	github.com/golang/dep/cmd/dep \
 	gopkg.in/alecthomas/gometalinter.v2 \
 	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/gogo/protobuf/gogoproto \
 	github.com/square/certstrap
 PACKAGES=$(shell go list ./...)
 
@@ -75,7 +74,7 @@ get_tools:
 
 update_tools:
 	@echo "--> Updating tools"
-	@go get -u $(GOTOOLS)
+	go get -u -v $(GOTOOLS)
 
 #Update dependencies
 get_vendor_deps:
