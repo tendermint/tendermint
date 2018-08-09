@@ -13,5 +13,6 @@ BREAKING CHANGES:
 FEATURES:
 
 IMPROVEMENTS:
+- [docs] Lint documentation with `write-good` and `stop-words`.
 
 BUG FIXES:
