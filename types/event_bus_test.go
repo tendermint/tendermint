@@ -22,7 +22,7 @@ func TestEventBusPublishEventTx(t *testing.T) {
 	defer eventBus.Stop()
 
 	tx := Tx("foo")
-	result := abci.ResponseDeliverTx{Data: []byte("bar"), Tags: []cmn.KVPair{{[]byte("baz"), []byte("1")}}}
+	result := abci.ResponseDeliverTx{Data: []byte("bar"), Tags: []cmn.KVPair{{Key: []byte("baz"), Value: []byte("1")}}}
 
 	txEventsCh := make(chan interface{})
 
