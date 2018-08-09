@@ -7,7 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/abci/example/counter"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
+	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/types"
@@ -289,6 +292,50 @@ func TestStateFullRoundNil(t *testing.T) {
 
 	// should prevote and precommit nil
 	validatePrevoteAndPrecommit(t, cs, round, 0, vss[0], nil, nil)
+}
+
+func TestStateFullRound1Reload(t *testing.T) {
+	blockDB := dbm.NewMemDB()
+	state, privVals := randGenesisState(1, false, 10)
+	vss := make([]*validatorStub, 1)
+	cs := newConsensusStateWithConfigAndBlockStore(config, state, privVals[0], counter.NewCounterApplication(true), blockDB)
+	vss[0] = NewValidatorStub(privVals[0], 0)
+	incrementHeight(vss[1:]...)
+	height, round := cs.Height, cs.Round
+
+	// NOTE: buffer capacity of 0 ensures we can validate prevote and last commit
+	// before consensus can move to the next height (and cause a race condition)
+	cs.eventBus.Stop()
+	eventBus := types.NewEventBusWithBufferCapacity(0)
+	eventBus.SetLogger(log.TestingLogger().With("module", "events"))
+	cs.SetEventBus(eventBus)
+	eventBus.Start()
+
+	voteCh := subscribe(cs.eventBus, types.EventQueryVote)
+	propCh := subscribe(cs.eventBus, types.EventQueryCompleteProposal)
+	newRoundCh := subscribe(cs.eventBus, types.EventQueryNewRound)
+
+	startTestRound(cs, height, round)
+
+	<-newRoundCh
+
+	// grab proposal
+	re := <-propCh
+	propBlockHash := re.(types.EventDataRoundState).RoundState.(*cstypes.RoundState).ProposalBlock.Hash()
+
+	<-voteCh // wait for prevote
+	validatePrevote(t, cs, round, vss[0], propBlockHash)
+
+	<-voteCh // wait for precommit
+
+	// we're going to roll right into new height
+	<-newRoundCh
+
+	validateLastPrecommit(t, cs, vss[0], propBlockHash)
+
+	// try reloading the consensus state from the DB
+	ncs := newConsensusStateWithConfigAndBlockStore(config, cs.state, nil, counter.NewCounterApplication(true), blockDB)
+	require.NotNil(t, ncs, "newConsensusState should not fail")
 }
 
 // run through propose, prevote, precommit commit with two validators
