@@ -311,13 +311,13 @@ type CommitSig struct {
 	Timestamp time.Time
 }
 
-func (cs *CommitSig) String(index int, address Address, height int64, round int, blockID BlockID) string {
+func (commitSig *CommitSig) String(index int, address Address, height int64, round int, blockID BlockID) string {
 	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
 		index, cmn.Fingerprint(address),
 		height, round, VoteTypePrecommit, "Precommit",
 		cmn.Fingerprint(blockID.Hash),
-		cmn.Fingerprint(cs.Signature),
-		CanonicalTime(cs.Timestamp))
+		cmn.Fingerprint(commitSig.Signature),
+		CanonicalTime(commitSig.Timestamp))
 }
 
 // Height returns the height of the commit
@@ -357,15 +357,15 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 }
 
 // GetByIndex returns the vote corresponding to a given validator index
-func (com *Commit) GetByIndex(index int) *Vote {
+func (commit *Commit) GetByIndex(index int) *Vote {
 	return &Vote{
 		ValidatorIndex: index,
-		Height:         com.HeightNum,
-		Round:          com.RoundNum,
-		Timestamp:      com.Precommits[index].Timestamp,
+		Height:         commit.HeightNum,
+		Round:          commit.RoundNum,
+		Timestamp:      commit.Precommits[index].Timestamp,
 		Type:           VoteTypePrecommit,
-		BlockID:        com.BlockID,
-		Signature:      com.Precommits[index].Signature,
+		BlockID:        commit.BlockID,
+		Signature:      commit.Precommits[index].Signature,
 	}
 }
 
