@@ -30,7 +30,6 @@ func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) 
 	block := &Block{
 		Header: Header{
 			Height: height,
-			Time:   time.Now(),
 			NumTxs: int64(len(txs)),
 		},
 		Data: Data{

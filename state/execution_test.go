@@ -15,6 +15,7 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
@@ -62,7 +63,7 @@ func TestBeginBlockValidators(t *testing.T) {
 	prevParts := types.PartSetHeader{}
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
-	now := time.Now().UTC()
+	now := tmtime.Now()
 	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
 	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
 
@@ -80,7 +81,8 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block, _ := state.createBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
 
@@ -97,6 +99,31 @@ func TestBeginBlockValidators(t *testing.T) {
 			}
 		}
 	}
+}
+
+func (state State) createBlock(
+	height int64,
+	txs []types.Tx,
+	commit *types.Commit,
+	evidence []types.Evidence,
+	proposerAddress []byte,
+) (*types.Block, *types.PartSet) {
+
+	block := types.MakeBlock(height, txs, commit, evidence)
+
+	block.ChainID = state.ChainID
+	block.Time = tmtime.Now()
+	block.LastBlockID = state.LastBlockID
+	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
+
+	block.ValidatorsHash = state.Validators.Hash()
+	block.NextValidatorsHash = state.NextValidators.Hash()
+	block.ConsensusHash = state.ConsensusParams.Hash()
+	block.AppHash = state.AppHash
+	block.LastResultsHash = state.LastResultsHash
+	block.ProposerAddress = proposerAddress
+
+	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
 // TestBeginBlockByzantineValidators ensures we send byzantine validators list.
@@ -119,7 +146,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	ev1 := types.NewMockGoodEvidence(height1, idx1, val1)
 	ev2 := types.NewMockGoodEvidence(height2, idx2, val2)
 
-	now := time.Now()
+	now := tmtime.Now()
 	valSet := state.Validators
 	testCases := []struct {
 		desc                        string
@@ -139,7 +166,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
 
-		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block, _ := state.createBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)

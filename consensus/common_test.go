@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -75,7 +76,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 		ValidatorAddress: vs.PrivValidator.GetAddress(),
 		Height:           vs.Height,
 		Round:            vs.Round,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             voteType,
 		BlockID:          types.BlockID{hash, header},
 	}
@@ -423,7 +424,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
 	return &types.GenesisDoc{
-		GenesisTime: time.Now(),
+		GenesisTime: tmtime.Now(),
 		ChainID:     config.ChainID(),
 		Validators:  validators,
 	}, privValidators

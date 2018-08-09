@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -320,7 +321,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 		ValidatorAddress: val.Address,
 		Height:           2,
 		Round:            0,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             types.VoteTypePrevote,
 		BlockID:          types.BlockID{},
 	}

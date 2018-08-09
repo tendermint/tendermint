@@ -14,6 +14,7 @@ import (
 	auto "github.com/tendermint/tendermint/libs/autofile"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -119,7 +120,7 @@ func (wal *baseWAL) Write(msg WALMessage) {
 	}
 
 	// Write the wal message
-	if err := wal.enc.Encode(&TimedWALMessage{time.Now(), msg}); err != nil {
+	if err := wal.enc.Encode(&TimedWALMessage{tmtime.Now(), msg}); err != nil {
 		panic(fmt.Sprintf("Error writing msg to consensus wal: %v \n\nMessage: %v", err, msg))
 	}
 }

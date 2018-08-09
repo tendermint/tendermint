@@ -12,6 +12,7 @@ import (
 	fail "github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	cstypes "github.com/tendermint/tendermint/consensus/types"
@@ -421,8 +422,8 @@ func (cs *ConsensusState) updateRoundStep(round int, step cstypes.RoundStepType)
 
 // enterNewRound(height, 0) at cs.StartTime.
 func (cs *ConsensusState) scheduleRound0(rs *cstypes.RoundState) {
-	//cs.Logger.Info("scheduleRound0", "now", time.Now(), "startTime", cs.StartTime)
-	sleepDuration := rs.StartTime.Sub(time.Now()) // nolint: gotype, gosimple
+	//cs.Logger.Info("scheduleRound0", "now", tmtime.Now(), "startTime", cs.StartTime)
+	sleepDuration := rs.StartTime.Sub(tmtime.Now()) // nolint: gotype, gosimple
 	cs.scheduleTimeout(sleepDuration, rs.Height, 0, cstypes.RoundStepNewHeight)
 }
 
@@ -515,7 +516,7 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 		// to be gathered for the first block.
 		// And alternative solution that relies on clocks:
 		//  cs.StartTime = state.LastBlockTime.Add(timeoutCommit)
-		cs.StartTime = cs.config.Commit(time.Now())
+		cs.StartTime = cs.config.Commit(tmtime.Now())
 	} else {
 		cs.StartTime = cs.config.Commit(cs.CommitTime)
 	}
@@ -728,7 +729,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		return
 	}
 
-	if now := time.Now(); cs.StartTime.After(now) {
+	if now := tmtime.Now(); cs.StartTime.After(now) {
 		logger.Info("Need to set a buffer and log message here for sanity.", "startTime", cs.StartTime, "now", now)
 	}
 
@@ -1183,7 +1184,7 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 		// keep cs.Round the same, commitRound points to the right Precommits set.
 		cs.updateRoundStep(cs.Round, cstypes.RoundStepCommit)
 		cs.CommitRound = commitRound
-		cs.CommitTime = time.Now()
+		cs.CommitTime = tmtime.Now()
 		cs.newStep()
 
 		// Maybe finalize immediately.
@@ -1644,17 +1645,35 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
+
 	vote := &types.Vote{
 		ValidatorAddress: addr,
 		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        cs.voteTime(),
 		Type:             type_,
 		BlockID:          types.BlockID{hash, header},
 	}
 	err := cs.privValidator.SignVote(cs.state.ChainID, vote)
 	return vote, err
+}
+
+func (cs *ConsensusState) voteTime() time.Time {
+	now := tmtime.Now()
+	minVoteTime := now
+	// TODO: We should remove next line in case we don't vote for v in case cs.ProposalBlock == nil,
+	// even if cs.LockedBlock != nil. See https://github.com/tendermint/spec.
+	if cs.LockedBlock != nil {
+		minVoteTime = cs.config.MinValidVoteTime(cs.LockedBlock.Time)
+	} else if cs.ProposalBlock != nil {
+		minVoteTime = cs.config.MinValidVoteTime(cs.ProposalBlock.Time)
+	}
+
+	if now.After(minVoteTime) {
+		return now
+	}
+	return minVoteTime
 }
 
 // sign the vote and publish on internalMsgQueue

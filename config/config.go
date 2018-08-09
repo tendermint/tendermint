@@ -467,6 +467,9 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters are in milliseconds
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	// Block time parameters in milliseconds. Corresponds to the minimum time increment between consecutive blocks.
+	BlockTimeIota int `mapstructure:"blocktime_iota"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -485,6 +488,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0,
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
+		BlockTimeIota:               1000,
 	}
 }
 
@@ -501,7 +505,15 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5
 	cfg.PeerQueryMaj23SleepDuration = 250
+	cfg.BlockTimeIota = 10
 	return cfg
+}
+
+// MinValidVoteTime returns the minimum acceptable block time.
+// See the [BFT time spec](https://godoc.org/github.com/tendermint/tendermint/docs/spec/consensus/bft-time.md).
+func (cfg *ConsensusConfig) MinValidVoteTime(lastBlockTime time.Time) time.Time {
+	return lastBlockTime.
+		Add(time.Duration(cfg.BlockTimeIota) * time.Millisecond)
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step

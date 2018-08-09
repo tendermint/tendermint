@@ -4,11 +4,11 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestGenesisBad(t *testing.T) {
@@ -110,7 +110,7 @@ func TestGenesisValidatorHash(t *testing.T) {
 
 func randomGenesisDoc() *GenesisDoc {
 	return &GenesisDoc{
-		GenesisTime:     time.Now().UTC(),
+		GenesisTime:     tmtime.Now(),
 		ChainID:         "abc",
 		Validators:      []GenesisValidator{{ed25519.GenPrivKey().PubKey(), 10, "myval"}},
 		ConsensusParams: DefaultConsensusParams(),
