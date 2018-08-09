@@ -29,7 +29,7 @@ func init() {
 
 func main() {
 	if len(os.Args) < 3 {
-		fmt.Println("missing arguments: Usage:json2wal <path-to-JSON>  <path-to-wal>")
+		fmt.Fprintln(os.Stderr, "missing arguments: Usage:json2wal <path-to-JSON>  <path-to-wal>")
 		os.Exit(1)
 	}
 
@@ -39,7 +39,7 @@ func main() {
 	}
 	defer f.Close()
 
-	walFile, err := os.OpenFile(os.Args[2],os.O_APPEND|os.O_WRONLY|os.O_CREATE,0666)
+	walFile, err := os.OpenFile(os.Args[2],os.O_EXCL|os.O_WRONLY,0666)
 	if err != nil {
 		panic(fmt.Errorf("failed to open WAL file: %v", err))
 	}
