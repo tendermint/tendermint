@@ -523,8 +523,6 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
 		poppedTx := popped.Value.(types.Tx)
-		// NOTE: the tx may have already been removed from the map
-		// but deleting a non-existent element is fine
 		delete(cache.map_, string(poppedTx))
 		cache.list.Remove(popped)
 		popped.DetachPrev()
@@ -539,8 +537,6 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
 	stx := string(tx)
-	// TODO: Can we get value and index at the same time?
-	// If not, consider making a hashmap with prehashed inputs.
 	popped := cache.map_[stx]
 	delete(cache.map_, stx)
 	cache.list.Remove(popped)
