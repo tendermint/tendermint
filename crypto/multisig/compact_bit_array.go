@@ -37,6 +37,8 @@ func (bA *CompactBitArray) Size() int {
 	} else if bA.ExtraBitsStored == byte(0) {
 		return len(bA.Elems) * 8
 	}
+	// num_bits = 8*num_full_bytes + overflow_in_last_byte
+	// num_full_bytes = (len(bA.Elems)-1)
 	return (len(bA.Elems)-1)*8 + int(bA.ExtraBitsStored)
 }
 
