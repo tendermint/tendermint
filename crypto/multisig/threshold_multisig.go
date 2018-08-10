@@ -65,7 +65,7 @@ func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig [
 
 // Bytes returns the amino encoded version of the ThresholdMultiSignaturePubKey
 func (pk *ThresholdMultiSignaturePubKey) Bytes() []byte {
-	return cdc.MustMarshalBinary(pk)
+	return cdc.MustMarshalBinaryBare(pk)
 }
 
 // Address returns tmhash(ThresholdMultiSignaturePubKey.Bytes())

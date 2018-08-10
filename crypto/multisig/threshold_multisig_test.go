@@ -83,7 +83,7 @@ func TestMultiSigPubkeyEquality(t *testing.T) {
 	pubkeys, _ := generatePubKeysAndSignatures(5, msg)
 	multisigKey := NewThresholdMultiSignaturePubKey(2, pubkeys)
 	var unmarshalledMultisig *ThresholdMultiSignaturePubKey
-	cdc.MustUnmarshalBinary(multisigKey.Bytes(), &unmarshalledMultisig)
+	cdc.MustUnmarshalBinaryBare(multisigKey.Bytes(), &unmarshalledMultisig)
 	require.True(t, multisigKey.Equals(unmarshalledMultisig))
 
 	// Ensure that reordering pubkeys is treated as a different pubkey
