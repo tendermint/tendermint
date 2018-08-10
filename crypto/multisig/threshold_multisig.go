@@ -14,7 +14,11 @@ type ThresholdMultiSignaturePubKey struct {
 var _ crypto.PubKey = &ThresholdMultiSignaturePubKey{}
 
 // NewThresholdMultiSignaturePubKey returns a new ThresholdMultiSignaturePubKey.
+// Panics if len(pubkeys) < k or 0 >= k.
 func NewThresholdMultiSignaturePubKey(k int, pubkeys []crypto.PubKey) crypto.PubKey {
+	if k <= 0 {
+		panic("threshold k of n multisignature: k <= 0")
+	}
 	if len(pubkeys) < k {
 		panic("threshold k of n multisignature: len(pubkeys) < k")
 	}
@@ -29,12 +33,21 @@ func NewThresholdMultiSignaturePubKey(k int, pubkeys []crypto.PubKey) crypto.Pub
 // a concern.
 func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig []byte) bool {
 	var sig *Multisignature
-	err := cdc.UnmarshalBinary(marshalledSig, &sig)
+	err := cdc.UnmarshalBinaryBare(marshalledSig, &sig)
 	if err != nil {
 		return false
 	}
 	size := sig.BitArray.Size()
-	if len(sig.Sigs) < int(pk.K) || len(pk.Pubkeys) != size || sig.BitArray.NumOfTrueBitsBefore(size) < int(pk.K) {
+	// ensure bit array is the correct size
+	if len(pk.Pubkeys) != size {
+		return false
+	}
+	// ensure size of signature list
+	if len(sig.Sigs) < int(pk.K) || len(sig.Sigs) > size {
+		return false
+	}
+	// ensure at least k signatures are set
+	if sig.BitArray.NumOfTrueBitsBefore(size) < int(pk.K) {
 		return false
 	}
 	// index in the list of signatures which we are concerned with.
@@ -63,16 +76,17 @@ func (pk *ThresholdMultiSignaturePubKey) Address() crypto.Address {
 // Equals returns true iff pk and other both have the same number of keys, and
 // all constituent keys are the same, and in the same order.
 func (pk *ThresholdMultiSignaturePubKey) Equals(other crypto.PubKey) bool {
-	if otherKey, ok := other.(*ThresholdMultiSignaturePubKey); ok {
-		if pk.K != otherKey.K || len(pk.Pubkeys) != len(otherKey.Pubkeys) {
+	otherKey, sameType := other.(*ThresholdMultiSignaturePubKey)
+	if !sameType {
+		return false
+	}
+	if pk.K != otherKey.K || len(pk.Pubkeys) != len(otherKey.Pubkeys) {
+		return false
+	}
+	for i := 0; i < len(pk.Pubkeys); i++ {
+		if !pk.Pubkeys[i].Equals(otherKey.Pubkeys[i]) {
 			return false
 		}
-		for i := 0; i < len(pk.Pubkeys); i++ {
-			if !pk.Pubkeys[i].Equals(otherKey.Pubkeys[i]) {
-				return false
-			}
-		}
-		return true
 	}
-	return false
+	return true
 }

@@ -31,6 +31,7 @@ func getIndex(pk crypto.PubKey, keys []crypto.PubKey) int {
 }
 
 // AddSignature adds a signature to the multisig, at the corresponding index.
+// If the signature already exists, replace it.
 func (mSig *Multisignature) AddSignature(sig []byte, index int) {
 	newSigIndex := mSig.BitArray.NumOfTrueBitsBefore(index)
 	// Signature already exists, just replace the value there
@@ -64,5 +65,5 @@ func (mSig *Multisignature) AddSignatureFromPubkey(sig []byte, pubkey crypto.Pub
 
 // Marshal the multisignature with amino
 func (mSig *Multisignature) Marshal() []byte {
-	return cdc.MustMarshalBinary(mSig)
+	return cdc.MustMarshalBinaryBare(mSig)
 }
