@@ -119,8 +119,8 @@ func TestABCIResponsesSaveLoad2(t *testing.T) {
 				{Code: 383},
 				{Data: []byte("Gotcha!"),
 					Tags: []cmn.KVPair{
-						cmn.KVPair{[]byte("a"), []byte("1")},
-						cmn.KVPair{[]byte("build"), []byte("stuff")},
+						cmn.KVPair{Key: []byte("a"), Value: []byte("1")},
+						cmn.KVPair{Key: []byte("build"), Value: []byte("stuff")},
 					}},
 			},
 			types.ABCIResults{
