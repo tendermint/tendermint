@@ -14,5 +14,7 @@ BREAKING CHANGES:
 FEATURES:
 
 IMPROVEMENTS:
+- [scripts] Added json2wal tool, which is supposed to help our users restore
+  corrupted WAL files and compose test WAL files (@bradyjoestar)
 
 BUG FIXES:
