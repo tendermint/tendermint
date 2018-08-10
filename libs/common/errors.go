@@ -10,13 +10,13 @@ import (
 
 func ErrorWrap(cause interface{}, format string, args ...interface{}) Error {
 	if causeCmnError, ok := cause.(*cmnError); ok {
-		msg := Fmt(format, args...)
+		msg := fmt.Sprintf(format, args...)
 		return causeCmnError.Stacktrace().Trace(1, msg)
 	} else if cause == nil {
 		return newCmnError(FmtError{format, args}).Stacktrace()
 	} else {
 		// NOTE: causeCmnError is a typed nil here.
-		msg := Fmt(format, args...)
+		msg := fmt.Sprintf(format, args...)
 		return newCmnError(cause).Stacktrace().Trace(1, msg)
 	}
 }
@@ -98,7 +98,7 @@ func (err *cmnError) Stacktrace() Error {
 // Add tracing information with msg.
 // Set n=0 unless wrapped with some function, then n > 0.
 func (err *cmnError) Trace(offset int, format string, args ...interface{}) Error {
-	msg := Fmt(format, args...)
+	msg := fmt.Sprintf(format, args...)
 	return err.doTrace(msg, offset)
 }
 
@@ -221,7 +221,7 @@ func (fe FmtError) Format() string {
 // and some guarantee is not satisfied.
 // XXX DEPRECATED
 func PanicSanity(v interface{}) {
-	panic(Fmt("Panicked on a Sanity Check: %v", v))
+	panic(fmt.Sprintf("Panicked on a Sanity Check: %v", v))
 }
 
 // A panic here means something has gone horribly wrong, in the form of data corruption or
@@ -229,18 +229,18 @@ func PanicSanity(v interface{}) {
 // If they do, it's indicative of a much more serious problem.
 // XXX DEPRECATED
 func PanicCrisis(v interface{}) {
-	panic(Fmt("Panicked on a Crisis: %v", v))
+	panic(fmt.Sprintf("Panicked on a Crisis: %v", v))
 }
 
 // Indicates a failure of consensus. Someone was malicious or something has
 // gone horribly wrong. These should really boot us into an "emergency-recover" mode
 // XXX DEPRECATED
 func PanicConsensus(v interface{}) {
-	panic(Fmt("Panicked on a Consensus Failure: %v", v))
+	panic(fmt.Sprintf("Panicked on a Consensus Failure: %v", v))
 }
 
 // For those times when we're not sure if we should panic
 // XXX DEPRECATED
 func PanicQ(v interface{}) {
-	panic(Fmt("Panicked questionably: %v", v))
+	panic(fmt.Sprintf("Panicked questionably: %v", v))
 }

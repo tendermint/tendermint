@@ -63,10 +63,10 @@ func TestProto3Compatibility(t *testing.T) {
 	assert.Equal(t, ab, pb, "encoding doesn't match")
 
 	emptyLastBlockPb := proto3.Header{
-		ChainID: "cosmos",
-		Height:  150,
-		Time:    &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
-		NumTxs:  7,
+		ChainID:        "cosmos",
+		Height:         150,
+		Time:           &proto3.Timestamp{Seconds: seconds, Nanos: nanos},
+		NumTxs:         7,
 		TotalTxs:       100,
 		LastCommitHash: []byte("commit hash"),
 		DataHash:       []byte("data hash"),

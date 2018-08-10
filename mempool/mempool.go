@@ -312,7 +312,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 	case *abci.Response_CheckTx:
 		memTx := mem.recheckCursor.Value.(*mempoolTx)
 		if !bytes.Equal(req.GetCheckTx().Tx, memTx.tx) {
-			cmn.PanicSanity(cmn.Fmt("Unexpected tx response from proxy during recheck\n"+
+			cmn.PanicSanity(fmt.Sprintf("Unexpected tx response from proxy during recheck\n"+
 				"Expected %X, got %X", r.CheckTx.Data, memTx.tx))
 		}
 		if r.CheckTx.Code == abci.CodeTypeOK {

@@ -3,13 +3,13 @@ package consensus
 import (
 	"bytes"
 	"crypto/rand"
+	"fmt"
 	// "sync"
 	"testing"
 	"time"
 
 	"github.com/tendermint/tendermint/consensus/types"
 	tmtypes "github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,8 +54,8 @@ func TestWALSearchForEndHeight(t *testing.T) {
 
 	h := int64(3)
 	gr, found, err := wal.SearchForEndHeight(h, &WALSearchOptions{})
-	assert.NoError(t, err, cmn.Fmt("expected not to err on height %d", h))
-	assert.True(t, found, cmn.Fmt("expected to find end height for %d", h))
+	assert.NoError(t, err, fmt.Sprintf("expected not to err on height %d", h))
+	assert.True(t, found, fmt.Sprintf("expected to find end height for %d", h))
 	assert.NotNil(t, gr, "expected group not to be nil")
 	defer gr.Close()
 
@@ -64,7 +64,7 @@ func TestWALSearchForEndHeight(t *testing.T) {
 	assert.NoError(t, err, "expected to decode a message")
 	rs, ok := msg.Msg.(tmtypes.EventDataRoundState)
 	assert.True(t, ok, "expected message of type EventDataRoundState")
-	assert.Equal(t, rs.Height, h+1, cmn.Fmt("wrong height"))
+	assert.Equal(t, rs.Height, h+1, fmt.Sprintf("wrong height"))
 }
 
 /*

@@ -40,11 +40,11 @@ func TestStateCopy(t *testing.T) {
 	stateCopy := state.Copy()
 
 	assert.True(state.Equals(stateCopy),
-		cmn.Fmt("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
+		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			stateCopy, state))
 
 	stateCopy.LastBlockHeight++
-	assert.False(state.Equals(stateCopy), cmn.Fmt(`expected states to be different. got same
+	assert.False(state.Equals(stateCopy), fmt.Sprintf(`expected states to be different. got same
         %v`, state))
 }
 
@@ -60,7 +60,7 @@ func TestStateSaveLoad(t *testing.T) {
 
 	loadedState := LoadState(stateDB)
 	assert.True(state.Equals(loadedState),
-		cmn.Fmt("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
+		fmt.Sprintf("expected state and its copy to be identical.\ngot: %v\nexpected: %v\n",
 			loadedState, state))
 }
 
@@ -86,7 +86,7 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	loadedABCIResponses, err := LoadABCIResponses(stateDB, block.Height)
 	assert.Nil(err)
 	assert.Equal(abciResponses, loadedABCIResponses,
-		cmn.Fmt("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
+		fmt.Sprintf("ABCIResponses don't match:\ngot:       %v\nexpected: %v\n",
 			loadedABCIResponses, abciResponses))
 }
 

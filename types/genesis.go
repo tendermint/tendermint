@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"time"
 
@@ -107,7 +108,7 @@ func GenesisDocFromFile(genDocFile string) (*GenesisDoc, error) {
 	}
 	genDoc, err := GenesisDocFromJSON(jsonBlob)
 	if err != nil {
-		return nil, cmn.ErrorWrap(err, cmn.Fmt("Error reading GenesisDoc at %v", genDocFile))
+		return nil, cmn.ErrorWrap(err, fmt.Sprintf("Error reading GenesisDoc at %v", genDocFile))
 	}
 	return genDoc, nil
 }
