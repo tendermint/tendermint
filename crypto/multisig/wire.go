@@ -10,7 +10,7 @@ import (
 // TODO: Figure out API for others to either add their own pubkey types, or
 // to make verify / marshal accept a cdc.
 const (
-	ThresholdPubkeyAminoRoute = "tendermint/ThresholdMultisigPubkey"
+	ThresholdPubkeyAminoRoute = "tendermint/PubkeyThresholdMultisig"
 )
 
 var cdc = amino.NewCodec()
