@@ -115,36 +115,36 @@ func (e *CElement) Next() *CElement {
 // Nonblocking, may return nil if at the end.
 func (e *CElement) Prev() *CElement {
 	e.mtx.RLock()
-	defer e.mtx.RUnlock()
-
-	return e.prev
+	prev := e.prev
+	e.mtx.RUnlock()
+	return prev
 }
 
 func (e *CElement) Removed() bool {
 	e.mtx.RLock()
-	defer e.mtx.RUnlock()
-
-	return e.removed
+	isRemoved := e.removed
+	e.mtx.RUnlock()
+	return isRemoved
 }
 
 func (e *CElement) DetachNext() {
-	if !e.Removed() {
+	e.mtx.Lock()
+	if !e.removed {
+		e.mtx.Unlock()
 		panic("DetachNext() must be called after Remove(e)")
 	}
-	e.mtx.Lock()
-	defer e.mtx.Unlock()
-
 	e.next = nil
+	e.mtx.Unlock()
 }
 
 func (e *CElement) DetachPrev() {
-	if !e.Removed() {
+	e.mtx.Lock()
+	if !e.removed {
+		e.mtx.Unlock()
 		panic("DetachPrev() must be called after Remove(e)")
 	}
-	e.mtx.Lock()
-	defer e.mtx.Unlock()
-
 	e.prev = nil
+	e.mtx.Unlock()
 }
 
 // NOTE: This function needs to be safe for
