@@ -361,7 +361,7 @@ func (r *PEXReactor) ensurePeersRoutine() {
 func (r *PEXReactor) ensurePeers() {
 	var (
 		out, in, dial = r.Switch.NumPeers()
-		numToDial     = r.Switch.MaxNumPeers() - (out + dial)
+		numToDial     = r.Switch.MaxNumOutboundPeers() - (out + dial)
 	)
 	r.Logger.Info(
 		"Ensure peers",

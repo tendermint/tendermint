@@ -113,8 +113,11 @@ addr_book_strict = true
 # Time to wait before flushing messages out on the connection, in ms
 flush_throttle_timeout = 100
 
-# Maximum number of peers to connect to
-max_num_peers = 50
+# Maximum number of inbound peers
+max_num_inbound_peers = 40
+
+# Maximum number of outbound peers to connect to
+max_num_outbound_peers = 10
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = 1024

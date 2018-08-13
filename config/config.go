@@ -295,8 +295,11 @@ type P2PConfig struct {
 	// Set true for strict address routability rules
 	AddrBookStrict bool `mapstructure:"addr_book_strict"`
 
-	// Maximum number of peers to connect to
-	MaxNumPeers int `mapstructure:"max_num_peers"`
+	// Maximum number of inbound peers
+	MaxNumInboundPeers int `mapstructure:"max_num_inbound_peers"`
+
+	// Maximum number of outbound peers to connect to
+	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
 
 	// Time to wait before flushing messages out on the connection, in ms
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
@@ -346,7 +349,8 @@ func DefaultP2PConfig() *P2PConfig {
 		UPNP:                    false,
 		AddrBook:                defaultAddrBookPath,
 		AddrBookStrict:          true,
-		MaxNumPeers:             50,
+		MaxNumInboundPeers:      40,
+		MaxNumOutboundPeers:     10,
 		FlushThrottleTimeout:    100,
 		MaxPacketMsgPayloadSize: 1024,    // 1 kB
 		SendRate:                5120000, // 5 mB/s

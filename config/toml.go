@@ -166,8 +166,11 @@ addr_book_strict = {{ .P2P.AddrBookStrict }}
 # Time to wait before flushing messages out on the connection, in ms
 flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
 
-# Maximum number of peers to connect to
-max_num_peers = {{ .P2P.MaxNumPeers }}
+# Maximum number of inbound peers
+max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
+
+# Maximum number of outbound peers to connect to
+max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}

@@ -264,9 +264,9 @@ func (sw *Switch) NumPeers() (outbound, inbound, dialing int) {
 	return
 }
 
-// MaxNumPeers returns a maximum number of peers.
-func (sw *Switch) MaxNumPeers() int {
-	return sw.config.MaxNumPeers
+// MaxNumOutboundPeers returns a maximum number of outbound peers.
+func (sw *Switch) MaxNumOutboundPeers() int {
+	return sw.config.MaxNumOutboundPeers
 }
 
 // Peers returns the set of peers that are connected to the switch.
@@ -493,12 +493,13 @@ func (sw *Switch) listenerRoutine(l Listener) {
 		}
 
 		// Ignore connection if we already have enough peers.
-		if sw.config.MaxNumPeers <= sw.peers.Size() {
+		_, in, _ := sw.NumPeers()
+		if in >= sw.config.MaxNumInboundPeers {
 			sw.Logger.Info(
-				"Ignoring inbound connection: already have enough peers",
+				"Ignoring inbound connection: already have enough inbound peers",
 				"address", inConn.RemoteAddr().String(),
-				"numPeers", sw.peers.Size(),
-				"max", sw.config.MaxNumPeers,
+				"have", in,
+				"max", sw.config.MaxNumInboundPeers,
 			)
 			inConn.Close()
 			continue

@@ -73,11 +73,11 @@ a trust metric (see below), but it's best to start with something simple.
 
 ## Select Peers to Dial
 
-When we connected to less than `p2p.max_num_peers` peers, we pick addresses
-randomly from the addrbook with some configurable bias for unvetted peers. The
-bias should be lower when we have fewer peers and can increase as we obtain
-more, ensuring that our first peers are more trustworthy, but always giving us
-the chance to discover new good peers.
+When we connected to less than `p2p.max_num_outbound_peers` peers, we pick
+addresses randomly from the addrbook with some configurable bias for unvetted
+peers. The bias should be lower when we have fewer peers and can increase as we
+obtain more, ensuring that our first peers are more trustworthy, but always
+giving us the chance to discover new good peers.
 
 We track the last time we dialed a peer and the number of unsuccessful attempts
 we've made. If too many attempts are made, we mark the peer as bad.
