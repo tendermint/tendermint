@@ -58,9 +58,11 @@ to connect to peers with older version.
 
 ### BlockVersion
 
-- All tendermint hashed data-structures (headers, votes, txs, responses, etc.). - Note the semantic meaning of a transaction may change according to the AppVersion,
-  but the way txs are merklized into the header is part of the BlockVersion
-- It should be the least frequent/likely to change. - Tendermint should be stabilizing - it's just Atomic Broadcast. - We can start considering for Tendermint v2.0 in a year
+- All tendermint hashed data-structures (headers, votes, txs, responses, etc.).
+  - Note the semantic meaning of a transaction may change according to the AppVersion, but the way txs are merklized into the header is part of the BlockVersion
+- It should be the least frequent/likely to change.
+  - Tendermint should be stabilizing - it's just Atomic Broadcast.
+  - We can start considering for Tendermint v2.0 in a year
 - It's easy to determine the version of a block from its serialized form
 
 ### P2PVersion

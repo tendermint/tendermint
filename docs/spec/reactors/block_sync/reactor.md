@@ -46,7 +46,11 @@ type bcStatusResponseMessage struct {
 
 ## Architecture and algorithm
 
-The Blockchain reactor is organised as a set of concurrent tasks: - Receive routine of Blockchain Reactor - Task for creating Requesters - Set of Requesters tasks and - Controller task.
+The Blockchain reactor is organised as a set of concurrent tasks:
+
+- Receive routine of Blockchain Reactor
+- Task for creating Requesters
+- Set of Requesters tasks and - Controller task.
 
 ![Blockchain Reactor Architecture Diagram](img/bc-reactor.png)
 
@@ -54,38 +58,35 @@ The Blockchain reactor is organised as a set of concurrent tasks: - Receive rout
 
 These are the core data structures necessarily to provide the Blockchain Reactor logic.
 
-Requester data structure is used to track assignment of request for `block` at position `height` to a
-peer with id equals to `peerID`.
+Requester data structure is used to track assignment of request for `block` at position `height` to a peer with id equals to `peerID`.
 
 ```go
 type Requester {
   mtx          Mutex
   block        Block
   height       int64
-   peerID       p2p.ID
+  peerID       p2p.ID
   redoChannel  chan struct{}
 }
 ```
 
-Pool is core data structure that stores last executed block (`height`), assignment of requests to peers (`requesters`),
-current height for each peer and number of pending requests for each peer (`peers`), maximum peer height, etc.
+Pool is core data structure that stores last executed block (`height`), assignment of requests to peers (`requesters`), current height for each peer and number of pending requests for each peer (`peers`), maximum peer height, etc.
 
 ```go
 type Pool {
   mtx Mutex
   requesters       map[int64]*Requester
-   height           int64
+  height           int64
   peers            map[p2p.ID]*Peer
-   maxPeerHeight    int64
-   numPending       int32
+  maxPeerHeight    int64
+  numPending       int32
   store            BlockStore
-   requestsChannel  chan<- BlockRequest
-   errorsChannel    chan<- peerError
+  requestsChannel  chan<- BlockRequest
+  errorsChannel    chan<- peerError
 }
 ```
 
-Peer data structure stores for each peer current `height` and number of pending requests sent to
-the peer (`numPending`), etc.
+Peer data structure stores for each peer current `height` and number of pending requests sent to the peer (`numPending`), etc.
 
 ```go
 type Peer struct {
@@ -97,8 +98,7 @@ type Peer struct {
 }
 ```
 
-BlockRequest is internal data structure used to denote current mapping of request for a block at some `height` to
-a peer (`PeerID`).
+BlockRequest is internal data structure used to denote current mapping of request for a block at some `height` to a peer (`PeerID`).
 
 ```go
 type BlockRequest {
@@ -109,9 +109,7 @@ type BlockRequest {
 
 ### Receive routine of Blockchain Reactor
 
-It is executed upon message reception on the BlockchainChannel inside p2p receive routine. There is a separate p2p
-receive routine (and therefore receive routine of the Blockchain Reactor) executed for each peer. Note that
-try to send will not block (returns immediately) if outgoing buffer is full.
+It is executed upon message reception on the BlockchainChannel inside p2p receive routine. There is a separate p2p receive routine (and therefore receive routine of the Blockchain Reactor) executed for each peer. Note that try to send will not block (returns immediately) if outgoing buffer is full.
 
 ```go
 handleMsg(pool, m):
