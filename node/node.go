@@ -119,6 +119,7 @@ type Node struct {
 	// network
 	sw       *p2p.Switch  // p2p connections
 	addrBook pex.AddrBook // known peers
+	nodeKey  *p2p.NodeKey // our node privkey
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
@@ -294,6 +295,13 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
 
+	// Generate node PrivKey
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil,err
+	}
+	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
+
 	// Optionally, start the pex reactor
 	//
 	// TODO:
@@ -392,6 +400,7 @@ func NewNode(config *cfg.Config,
 
 		sw:       sw,
 		addrBook: addrBook,
+		nodeKey: nodeKey,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,
@@ -424,17 +433,10 @@ func (n *Node) OnStart() error {
 		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
-	// Generate node PrivKey
-	// TODO: pass in like privValidator
-	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
-	if err != nil {
-		return err
-	}
-	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+	nodeInfo := n.makeNodeInfo(n.nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
-	n.sw.SetNodeKey(nodeKey)
+	n.sw.SetNodeKey(n.nodeKey)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
