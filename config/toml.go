@@ -124,6 +124,8 @@ grpc_laddr = "{{ .RPC.GRPCListenAddress }}"
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
 grpc_max_open_connections = {{ .RPC.GRPCMaxOpenConnections }}
 
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
@@ -134,6 +136,8 @@ unsafe = {{ .RPC.Unsafe }}
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = {{ .RPC.MaxOpenConnections }}
 
 ##### peer to peer configuration options #####

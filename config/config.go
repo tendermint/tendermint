@@ -239,6 +239,8 @@ type RPCConfig struct {
 	// If you want to accept more significant number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
+	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+	// 1024 - 40 - 10 - 50 = 924 = ~900
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
 }
 
@@ -248,11 +250,9 @@ func DefaultRPCConfig() *RPCConfig {
 		ListenAddress: "tcp://0.0.0.0:26657",
 
 		GRPCListenAddress:      "",
-		GRPCMaxOpenConnections: 900, // no ipv4
+		GRPCMaxOpenConnections: 900,
 
-		Unsafe: false,
-		// should be < {ulimit -Sn} - {MaxNumPeers} - {N of wal, db and other open files}
-		// 1024 - 50 - 50 = 924 = ~900
+		Unsafe:             false,
 		MaxOpenConnections: 900,
 	}
 }
