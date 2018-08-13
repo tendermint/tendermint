@@ -6,7 +6,6 @@ import (
 
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 type CounterApplication struct {
@@ -22,7 +21,7 @@ func NewCounterApplication(serial bool) *CounterApplication {
 }
 
 func (app *CounterApplication) Info(req types.RequestInfo) types.ResponseInfo {
-	return types.ResponseInfo{Data: cmn.Fmt("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
+	return types.ResponseInfo{Data: fmt.Sprintf("{\"hashes\":%v,\"txs\":%v}", app.hashCount, app.txCount)}
 }
 
 func (app *CounterApplication) SetOption(req types.RequestSetOption) types.ResponseSetOption {
@@ -34,7 +33,7 @@ func (app *CounterApplication) SetOption(req types.RequestSetOption) types.Respo
 			TODO Panic and have the ABCI server pass an exception.
 			The client can call SetOptionSync() and get an `error`.
 			return types.ResponseSetOption{
-				Error: cmn.Fmt("Unknown key (%s) or value (%s)", key, value),
+				Error: fmt.Sprintf("Unknown key (%s) or value (%s)", key, value),
 			}
 		*/
 		return types.ResponseSetOption{}
@@ -95,10 +94,10 @@ func (app *CounterApplication) Commit() (resp types.ResponseCommit) {
 func (app *CounterApplication) Query(reqQuery types.RequestQuery) types.ResponseQuery {
 	switch reqQuery.Path {
 	case "hash":
-		return types.ResponseQuery{Value: []byte(cmn.Fmt("%v", app.hashCount))}
+		return types.ResponseQuery{Value: []byte(fmt.Sprintf("%v", app.hashCount))}
 	case "tx":
-		return types.ResponseQuery{Value: []byte(cmn.Fmt("%v", app.txCount))}
+		return types.ResponseQuery{Value: []byte(fmt.Sprintf("%v", app.txCount))}
 	default:
-		return types.ResponseQuery{Log: cmn.Fmt("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
+		return types.ResponseQuery{Log: fmt.Sprintf("Invalid query path. Expected hash or tx, got %v", reqQuery.Path)}
 	}
 }

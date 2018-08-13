@@ -81,8 +81,8 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	app.state.Size += 1
 
 	tags := []cmn.KVPair{
-		{[]byte("app.creator"), []byte("jae")},
-		{[]byte("app.key"), key},
+		{Key: []byte("app.creator"), Value: []byte("jae")},
+		{Key: []byte("app.key"), Value: key},
 	}
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
 }

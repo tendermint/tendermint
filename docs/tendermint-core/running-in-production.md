@@ -165,7 +165,7 @@ $EDITOR /tmp/corrupted_wal
 5. After editing, convert this file back into binary form by running:
 
 ```
-./scripts/json2wal/json2wal /tmp/corrupted_wal > "$TMHOME/data/cs.wal/wal"
+./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
 ```
 
 ## Hardware

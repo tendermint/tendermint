@@ -6,14 +6,6 @@ import (
 	"strings"
 )
 
-// Like fmt.Sprintf, but skips formatting if args are empty.
-var Fmt = func(format string, a ...interface{}) string {
-	if len(a) == 0 {
-		return format
-	}
-	return fmt.Sprintf(format, a...)
-}
-
 // IsHex returns true for non-empty hex-string prefixed with "0x"
 func IsHex(s string) bool {
 	if len(s) > 2 && strings.EqualFold(s[:2], "0x") {

@@ -9,10 +9,13 @@ BREAKING CHANGES:
   top-level
 - [abci] Added address of the original proposer of the block to Header.
 - [abci] Change ABCI Header to match Tendermint exactly
+- [libs] Remove cmn.Fmt, in favor of fmt.Sprintf
 
 FEATURES:
 
 IMPROVEMENTS:
 - [docs] Lint documentation with `write-good` and `stop-words`.
+- [scripts] Added json2wal tool, which is supposed to help our users restore
+  corrupted WAL files and compose test WAL files (@bradyjoestar)
 
 BUG FIXES:

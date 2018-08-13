@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -151,7 +150,7 @@ func TestSerialReap(t *testing.T) {
 
 	reapCheck := func(exp int) {
 		txs := mempool.Reap(-1)
-		require.Equal(t, len(txs), exp, cmn.Fmt("Expected to reap %v txs but got %v", exp, len(txs)))
+		require.Equal(t, len(txs), exp, fmt.Sprintf("Expected to reap %v txs but got %v", exp, len(txs)))
 	}
 
 	updateRange := func(start, end int) {

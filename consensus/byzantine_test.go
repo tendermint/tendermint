@@ -2,14 +2,15 @@ package consensus
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 func init() {
@@ -156,8 +157,8 @@ func TestByzantine(t *testing.T) {
 	case <-done:
 	case <-tick.C:
 		for i, reactor := range reactors {
-			t.Log(cmn.Fmt("Consensus Reactor %v", i))
-			t.Log(cmn.Fmt("%v", reactor))
+			t.Log(fmt.Sprintf("Consensus Reactor %v", i))
+			t.Log(fmt.Sprintf("%v", reactor))
 		}
 		t.Fatalf("Timed out waiting for all validators to commit first block")
 	}
