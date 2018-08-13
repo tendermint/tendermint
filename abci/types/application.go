@@ -63,26 +63,6 @@ func (BaseApplication) Query(req RequestQuery) ResponseQuery {
 
 func (BaseApplication) InitChain(req RequestInitChain) ResponseInitChain {
 	return ResponseInitChain{}
-	/*
-		This part is for code review. How I update validator list?
-		///
-		var vals []Validator
-
-		//test1:
-		//  3 vals, should fail
-		//err := json.Unmarshal([]byte("[{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"slwynMSR1dfUG+gSniy9byVq9MipYOH3IGysvURwAIE=\"},\"power\":10,\"name\":\"validator_2\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"60azWyk4YzJF4Eiuyz9nh3KLQR1g8z5M+9t63bUXuiU=\"},\"power\":10,\"name\":\"validator_3\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"825sPf9cslugMqCQqzmuhZqVUVbVXpbd/ou8xqaS4HA=\"},\"power\":10,\"name\":\"validator_4\"}]"), &vals)
-
-		// tes2:
-		// wrong pb_key, should fail
-		//err := json.Unmarshal([]byte("[{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"D/WtBD3nhF+xICQOoI8uvIeE376Ra00aUG1ARL1rIxM=\"},\"power\":10,\"name\":\"validator_1\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"slwynMSR1dfUG+gSniy9byVq9MipYOH3IGysvURwAIE=\"},\"power\":10,\"name\":\"validator_2\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"60azWyk4YzJF4Eiuyz9nh3KLQR1g8z5M+9t63bUXuiU=\"},\"power\":10,\"name\":\"validator_3\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"825sPf9cslugMqCQqzmuhZqVUVbVXpbd/ou8xqaS4HA=\"},\"power\":10,\"name\":\"validator_4\"}]"), &vals)
-
-		// ok! should pass
-		err := json.Unmarshal([]byte("[{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"d/WtBD3nhF+xICQOoI8uvIeE376Ra00aUG1ARL1rIxM=\"},\"power\":10,\"name\":\"validator_1\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"slwynMSR1dfUG+gSniy9byVq9MipYOH3IGysvURwAIE=\"},\"power\":10,\"name\":\"validator_2\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"60azWyk4YzJF4Eiuyz9nh3KLQR1g8z5M+9t63bUXuiU=\"},\"power\":10,\"name\":\"validator_3\"},{\"pub_key\":{\"type\":\"ed25519\",\"data\":\"825sPf9cslugMqCQqzmuhZqVUVbVXpbd/ou8xqaS4HA=\"},\"power\":10,\"name\":\"validator_4\"}]"), &vals)
-		if err != nil {
-			fmt.Println(err)
-		}
-		return ResponseInitChain{Validators: vals}
-	*/
 }
 
 func (BaseApplication) BeginBlock(req RequestBeginBlock) ResponseBeginBlock {
