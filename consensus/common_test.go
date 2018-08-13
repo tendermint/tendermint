@@ -348,7 +348,7 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
@@ -372,7 +372,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal types.PrivValidator
 		if i < nValidators {

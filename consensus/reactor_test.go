@@ -115,7 +115,7 @@ func TestReactorWithEvidence(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
 		vals := types.TM2PB.Validators(state.Validators)

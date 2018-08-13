@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"sort"
 	"testing"
@@ -207,7 +208,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.Validator) {
 
 func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
-	socket := cmn.Fmt("unix://%s.sock", name)
+	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
 
 	server := abciserver.NewSocketServer(socket, app)
@@ -229,7 +230,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 
 func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
-	socket := cmn.Fmt("unix://%s.sock", name)
+	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
 
 	gapp := types.NewGRPCApplication(app)
