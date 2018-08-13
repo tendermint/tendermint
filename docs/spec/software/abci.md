@@ -65,7 +65,7 @@ message PubKey {
 The `pub_key` currently supports two types:
 
 - `type = "ed25519" and`data = <raw 32-byte public key>`
--`type = "secp256k1" and `data = <33-byte OpenSSL compressed public key>`
+- `type = "secp256k1" and `data = <33-byte OpenSSL compressed public key>`
 
 If the address is provided, it must match the address of the pubkey, as
 specified [here](/docs/spec/blockchain/encoding.md#Addresses)
