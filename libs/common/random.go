@@ -295,7 +295,7 @@ func (r *Rand) Perm(n int) []int {
 
 // NOTE: This relies on the os's random number generator.
 // For real security, we should salt that with some seed.
-// See github.com/tendermint/go-crypto for a more secure reader.
+// See github.com/tendermint/tendermint/crypto for a more secure reader.
 func cRandBytes(numBytes int) []byte {
 	b := make([]byte, numBytes)
 	_, err := crand.Read(b)

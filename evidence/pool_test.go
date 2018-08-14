@@ -7,9 +7,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	dbm "github.com/tendermint/tendermint/libs/db"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
 var mockState = sm.State{}
@@ -27,6 +27,7 @@ func initializeValidatorState(valAddr []byte, height int64) dbm.DB {
 		LastBlockHeight:             0,
 		LastBlockTime:               time.Now(),
 		Validators:                  valSet,
+		NextValidators:              valSet.CopyIncrementAccum(1),
 		LastHeightValidatorsChanged: 1,
 		ConsensusParams: types.ConsensusParams{
 			EvidenceParams: types.EvidenceParams{

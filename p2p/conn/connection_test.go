@@ -433,7 +433,6 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	_, err = client.Write(buf.Bytes())
 	assert.Nil(t, err)
 	assert.True(t, expectSend(chOnRcv), "msg just right")
-	assert.False(t, expectSend(chOnErr), "msg just right")
 
 	// send msg thats too long
 	buf = new(bytes.Buffer)
@@ -446,7 +445,6 @@ func TestMConnectionReadErrorLongMessage(t *testing.T) {
 	assert.Nil(t, err)
 	_, err = client.Write(buf.Bytes())
 	assert.NotNil(t, err)
-	assert.False(t, expectSend(chOnRcv), "msg too long")
 	assert.True(t, expectSend(chOnErr), "msg too long")
 }
 

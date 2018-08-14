@@ -14,8 +14,8 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/netutil"
 
-	types "github.com/tendermint/tendermint/rpc/lib/types"
 	"github.com/tendermint/tendermint/libs/log"
+	types "github.com/tendermint/tendermint/rpc/lib/types"
 )
 
 // Config is an RPC server configuration.
@@ -61,7 +61,7 @@ func StartHTTPServer(
 			listener,
 			RecoverAndLogHandler(maxBytesHandler{h: handler, n: maxBodyBytes}, logger),
 		)
-		logger.Error("RPC HTTP server stopped", "err", err)
+		logger.Info("RPC HTTP server stopped", "err", err)
 	}()
 	return listener, nil
 }

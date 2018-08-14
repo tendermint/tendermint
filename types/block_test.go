@@ -44,6 +44,7 @@ func TestBlockValidateBasic(t *testing.T) {
 
 	block := MakeBlock(h, txs, commit, evList)
 	require.NotNil(t, block)
+	block.ProposerAddress = valSet.GetProposer().Address
 
 	// proper block must pass
 	err = block.ValidateBasic()

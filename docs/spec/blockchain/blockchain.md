@@ -57,8 +57,8 @@ type Header struct {
     ConsensusParamsHash []byte  // SimpleMerkle of the ConsensusParams
 
     // consensus
-    Proposer            []byte  // Address of the block proposer
     EvidenceHash        []byte  // SimpleMerkle of []Evidence
+    ProposerAddress     []byte  // Address of the original proposer of the block
 }
 ```
 
@@ -300,13 +300,13 @@ block.ConsensusParamsHash == SimpleMerkleRoot(state.ConsensusParams)
 Simple Merkle root of the consensus parameters.
 May be updated by the application.
 
-### Proposer
+### ProposerAddress
 
 ```go
-block.Header.Proposer in state.Validators
+block.Header.ProposerAddress in state.Validators
 ```
 
-Original proposer of the block. Must be a current validator.
+Address of the original proposer of the block. Must be a current validator.
 
 NOTE: we also need to track the round.
 
