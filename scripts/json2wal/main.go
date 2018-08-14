@@ -8,13 +8,13 @@
 package main
 
 import (
-	"github.com/tendermint/go-amino"
-	"github.com/tendermint/tendermint/types"
-	cs "github.com/tendermint/tendermint/consensus"
-	"fmt"
-	"os"
-	"io"
 	"bufio"
+	"fmt"
+	"github.com/tendermint/go-amino"
+	cs "github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/types"
+	"io"
+	"os"
 	"strings"
 )
 
@@ -25,7 +25,6 @@ func init() {
 	cs.RegisterWALMessages(cdc)
 	types.RegisterBlockAmino(cdc)
 }
-
 
 func main() {
 	if len(os.Args) < 3 {
@@ -39,7 +38,7 @@ func main() {
 	}
 	defer f.Close()
 
-	walFile, err := os.OpenFile(os.Args[2],os.O_EXCL|os.O_WRONLY|os.O_CREATE,0666)
+	walFile, err := os.OpenFile(os.Args[2], os.O_EXCL|os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
 		panic(fmt.Errorf("failed to open WAL file: %v", err))
 	}
@@ -50,26 +49,25 @@ func main() {
 
 	for {
 		msgJson, _, err := br.ReadLine()
-		if err == io.EOF{
+		if err == io.EOF {
 			break
-		}else if err != nil {
+		} else if err != nil {
 			panic(fmt.Errorf("failed to read file: %v", err))
 		}
 		// ignore the ENDHEIGHT in json.File
-		if strings.HasPrefix(string(msgJson),"ENDHEIGHT"){
+		if strings.HasPrefix(string(msgJson), "ENDHEIGHT") {
 			continue
 		}
 
 		var msg cs.TimedWALMessage
-		err = cdc.UnmarshalJSON(msgJson,&msg)
-		if err != nil{
+		err = cdc.UnmarshalJSON(msgJson, &msg)
+		if err != nil {
 			panic(fmt.Errorf("failed to unmarshal json: %v", err))
 		}
 
 		err = dec.Encode(&msg)
-		if err != nil{
+		if err != nil {
 			panic(fmt.Errorf("failed to encode msg: %v", err))
 		}
 	}
 }
-
