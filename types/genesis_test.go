@@ -17,8 +17,11 @@ func TestGenesisBad(t *testing.T) {
 		[]byte{},              // empty
 		[]byte{1, 1, 1, 1, 1}, // junk
 		[]byte(`{}`),          // empty
-		[]byte(`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),                                   // missing pub_key type
-		[]byte(`{"validators":[{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`), // missing chain_id
+		[]byte(`{"chain_id":"mychain","validators":[{}]}`), // invalid validator
+		// missing pub_key type
+		[]byte(`{"validators":[{"pub_key":{"value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
+		// missing chain_id
+		[]byte(`{"validators":[{"pub_key":{"type":"tendermint/PubKeyEd25519","value":"AT/+aaL1eB0477Mud9JMm8Sh8BIvOYlPGC9KkIUmFaE="},"power":"10","name":""}]}`),
 	}
 
 	for _, testCase := range testCases {
@@ -58,6 +61,19 @@ func TestGenesisGood(t *testing.T) {
 	assert.NoError(t, err, "error marshalling genDoc")
 	genDoc, err = GenesisDocFromJSON(genDocBytes)
 	assert.Error(t, err, "expected error for genDoc json with block size of 0")
+
+	// Genesis doc from raw json
+	missingValidatorsTestCases := [][]byte{
+		[]byte(`{"chain_id":"mychain"}`),                 // missing validators
+		[]byte(`{"chain_id":"mychain","validators":[]}`), // missing validators
+		[]byte(`{"chain_id":"mychain","validators":null}`), // nil validator
+		[]byte(`{"chain_id":"mychain"}`), // missing validators
+	}
+
+	for _, tc := range missingValidatorsTestCases {
+		_, err := GenesisDocFromJSON(tc)
+		assert.NoError(t, err)
+	}
 }
 
 func TestGenesisSaveAs(t *testing.T) {
