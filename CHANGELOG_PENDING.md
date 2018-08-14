@@ -11,6 +11,7 @@ BREAKING CHANGES:
 - [abci] Change ABCI Header to match Tendermint exactly
 - [libs] Remove cmn.Fmt, in favor of fmt.Sprintf
 - [crypto] Rename AminoRoute variables to no longer be prefixed by signature type.
+- [config] Replace MaxNumPeers with MaxNumInboundPeers and MaxNumOutboundPeers
 
 FEATURES:
 
