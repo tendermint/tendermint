@@ -173,7 +173,7 @@ flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
 # Maximum number of inbound peers
 max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
 
-# Maximum number of outbound peers to connect to
+# Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
 
 # Maximum size of a message packet payload, in bytes

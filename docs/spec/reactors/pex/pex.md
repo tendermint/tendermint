@@ -15,6 +15,9 @@ we will not put them in the address book or gossip them to others.
 All peers except private peers and peers coming from them are tracked using the
 address book.
 
+The rest of our peers are only distinguished by being either
+inbound (they dialed our public address) or outbound (we dialed them).
+
 ## Discovery
 
 Peer discovery begins with a list of seeds.

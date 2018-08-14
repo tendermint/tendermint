@@ -298,7 +298,7 @@ type P2PConfig struct {
 	// Maximum number of inbound peers
 	MaxNumInboundPeers int `mapstructure:"max_num_inbound_peers"`
 
-	// Maximum number of outbound peers to connect to
+	// Maximum number of outbound peers to connect to, excluding persistent peers
 	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
 
 	// Time to wait before flushing messages out on the connection, in ms
