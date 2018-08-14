@@ -64,10 +64,10 @@ func TestGenesisGood(t *testing.T) {
 
 	// Genesis doc from raw json
 	missingValidatorsTestCases := [][]byte{
-		[]byte(`{"chain_id":"mychain"}`),                 // missing validators
-		[]byte(`{"chain_id":"mychain","validators":[]}`), // missing validators
+		[]byte(`{"chain_id":"mychain"}`),                   // missing validators
+		[]byte(`{"chain_id":"mychain","validators":[]}`),   // missing validators
 		[]byte(`{"chain_id":"mychain","validators":null}`), // nil validator
-		[]byte(`{"chain_id":"mychain"}`), // missing validators
+		[]byte(`{"chain_id":"mychain"}`),                   // missing validators
 	}
 
 	for _, tc := range missingValidatorsTestCases {
