@@ -210,8 +210,8 @@ without opening a new connection each time
 }
 
 var muxonCmd = &cobra.Command{
-	Short: "have the application echo a message",
-	Long:  "have the application echo a message",
+	Short: "print subcommand for unimplement command of console/batch mode",
+	Long:  "print subcommand for unimplement command of console/batch mode",
 }
 
 var echoCmd = &cobra.Command{
