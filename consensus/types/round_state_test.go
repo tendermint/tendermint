@@ -23,7 +23,7 @@ func BenchmarkRoundStateDeepCopy(b *testing.B) {
 			Hash: cmn.RandBytes(20),
 		},
 	}
-	sig := make([]byte, ed25519.SignatureEd25519Size)
+	sig := make([]byte, ed25519.SignatureSize)
 	for i := 0; i < nval; i++ {
 		precommits[i] = &types.Vote{
 			ValidatorAddress: types.Address(cmn.RandBytes(20)),

@@ -30,7 +30,8 @@ func randCompactBitArray(bits int) (*CompactBitArray, []byte) {
 func TestNewBitArrayNeverCrashesOnNegatives(t *testing.T) {
 	bitList := []int{-127, -128, -1 << 31}
 	for _, bits := range bitList {
-		_ = NewCompactBitArray(bits)
+		bA := NewCompactBitArray(bits)
+		require.Nil(t, bA)
 	}
 }
 
@@ -145,6 +146,32 @@ func TestCompactMarshalUnmarshal(t *testing.T) {
 				if assert.EqualValues(t, tc.bA.String(), unmarshalledBA.String()) {
 					assert.EqualValues(t, tc.bA.Elems, unmarshalledBA.Elems)
 				}
+			}
+		})
+	}
+}
+
+func TestCompactBitArrayNumOfTrueBitsBefore(t *testing.T) {
+	testCases := []struct {
+		marshalledBA   string
+		bAIndex        []int
+		trueValueIndex []int
+	}{
+		{`"_____"`, []int{0, 1, 2, 3, 4}, []int{0, 0, 0, 0, 0}},
+		{`"x"`, []int{0}, []int{0}},
+		{`"_x"`, []int{1}, []int{0}},
+		{`"x___xxxx"`, []int{0, 4, 5, 6, 7}, []int{0, 1, 2, 3, 4}},
+		{`"__x_xx_x__x_x___"`, []int{2, 4, 5, 7, 10, 12}, []int{0, 1, 2, 3, 4, 5}},
+		{`"______________xx"`, []int{14, 15}, []int{0, 1}},
+	}
+	for tcIndex, tc := range testCases {
+		t.Run(tc.marshalledBA, func(t *testing.T) {
+			var bA *CompactBitArray
+			err := json.Unmarshal([]byte(tc.marshalledBA), &bA)
+			require.NoError(t, err)
+
+			for i := 0; i < len(tc.bAIndex); i++ {
+				require.Equal(t, tc.trueValueIndex[i], bA.NumTrueBitsBefore(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
 			}
 		})
 	}
