@@ -1,6 +1,6 @@
 # Transactional Semantics
 
-In [Using Tendermint](./using-tendermint.md#broadcast-api) we
+In [Using Tendermint](./../tendermint-core/using-tendermint.md#broadcast-api) we
 discussed different API endpoints for sending transactions and
 differences between them.
 
