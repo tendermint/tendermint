@@ -157,6 +157,14 @@ func addCommands() {
 	// replaces dummy, see issue #196
 	addKVStoreFlags()
 	RootCmd.AddCommand(kvstoreCmd)
+
+	muxonCmd.AddCommand(echoCmd)
+	muxonCmd.AddCommand(checkTxCmd)
+	muxonCmd.AddCommand(deliverTxCmd)
+	muxonCmd.AddCommand(queryCmd)
+	muxonCmd.AddCommand(setOptionCmd)
+	muxonCmd.AddCommand(infoCmd)
+	muxonCmd.AddCommand(commitCmd)
 }
 
 var batchCmd = &cobra.Command{
@@ -199,6 +207,11 @@ without opening a new connection each time
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdConsole(cmd, args)
 	},
+}
+
+var muxonCmd = &cobra.Command{
+	Short: "have the application echo a message",
+	Long:  "have the application echo a message",
 }
 
 var echoCmd = &cobra.Command{
@@ -477,9 +490,8 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 }
 
 func cmdUnimplemented(cmd *cobra.Command, args []string) error {
-	// TODO: Print out all the sub-commands available
 	msg := "unimplemented command"
-	if err := cmd.Help(); err != nil {
+	if err := muxonCmd.Help(); err != nil {
 		msg = err.Error()
 	}
 	if len(args) > 0 {
