@@ -33,7 +33,7 @@ func getIndex(pk crypto.PubKey, keys []crypto.PubKey) int {
 // AddSignature adds a signature to the multisig, at the corresponding index.
 // If the signature already exists, replace it.
 func (mSig *Multisignature) AddSignature(sig []byte, index int) {
-	newSigIndex := mSig.BitArray.NumOfTrueBitsBefore(index)
+	newSigIndex := mSig.BitArray.NumTrueBitsBefore(index)
 	// Signature already exists, just replace the value there
 	if mSig.BitArray.GetIndex(index) {
 		mSig.Sigs[newSigIndex] = sig

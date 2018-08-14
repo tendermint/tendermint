@@ -47,7 +47,7 @@ func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig [
 		return false
 	}
 	// ensure at least k signatures are set
-	if sig.BitArray.NumOfTrueBitsBefore(size) < int(pk.K) {
+	if sig.BitArray.NumTrueBitsBefore(size) < int(pk.K) {
 		return false
 	}
 	// index in the list of signatures which we are concerned with.

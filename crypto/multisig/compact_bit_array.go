@@ -71,12 +71,10 @@ func (bA *CompactBitArray) SetIndex(i int, v bool) bool {
 	return true
 }
 
-// NumOfTrueBitsBefore returns the location of the given index, among the
-// values in the bit array that are set to true.
-// e.g. if bA = _XX_X_X, NumOfTrueBitsBefore(4) = 2, since
-// the value at index 4 of the bit array is the third
-// value that is true. (And it is 0-indexed)
-func (bA *CompactBitArray) NumOfTrueBitsBefore(index int) int {
+// NumTrueBitsBefore returns the number of bits set to true before the
+// given index. e.g. if bA = _XX__XX, NumOfTrueBitsBefore(4) = 2, since
+// there are two bits set to true before index 4.
+func (bA *CompactBitArray) NumTrueBitsBefore(index int) int {
 	numTrueValues := 0
 	for i := 0; i < index; i++ {
 		if bA.GetIndex(i) {
