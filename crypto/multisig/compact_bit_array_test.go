@@ -30,7 +30,8 @@ func randCompactBitArray(bits int) (*CompactBitArray, []byte) {
 func TestNewBitArrayNeverCrashesOnNegatives(t *testing.T) {
 	bitList := []int{-127, -128, -1 << 31}
 	for _, bits := range bitList {
-		_ = NewCompactBitArray(bits)
+		bA = NewCompactBitArray(bits)
+		require.Nil(t, bA)
 	}
 }
 
