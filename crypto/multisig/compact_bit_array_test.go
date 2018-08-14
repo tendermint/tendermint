@@ -170,7 +170,7 @@ func TestCompactBitArrayNumOfTrueBitsBefore(t *testing.T) {
 			require.NoError(t, err)
 
 			for i := 0; i < len(tc.bAIndex); i++ {
-				require.Equal(t, tc.trueValueIndex[i], bA.NumOfTrueBitsBefore(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
+				require.Equal(t, tc.trueValueIndex[i], bA.NumTrueBitsBefore(tc.bAIndex[i]), "tc %d, i %d", tcIndex, i)
 			}
 		})
 	}
