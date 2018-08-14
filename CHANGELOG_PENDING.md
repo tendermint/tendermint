@@ -10,6 +10,7 @@ BREAKING CHANGES:
 - [abci] Added address of the original proposer of the block to Header.
 - [abci] Change ABCI Header to match Tendermint exactly
 - [libs] Remove cmn.Fmt, in favor of fmt.Sprintf
+- [config] Replace MaxNumPeers with MaxNumInboundPeers and MaxNumOutboundPeers
 
 FEATURES:
 
