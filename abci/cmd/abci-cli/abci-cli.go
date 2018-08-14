@@ -134,6 +134,24 @@ func addKVStoreFlags() {
 	kvstoreCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
 
+func addMuxonCommand(){
+	//cobra doesn't support for adding command twice.
+	echoCmdCopy := *echoCmd
+	muxonCmd.AddCommand(&echoCmdCopy)
+	checkTxCmdCopy := *checkTxCmd
+	muxonCmd.AddCommand(&checkTxCmdCopy)
+	deliverTxCmdCopy := *deliverTxCmd
+	muxonCmd.AddCommand(&deliverTxCmdCopy)
+	queryCmdCopy := *queryCmd
+	muxonCmd.AddCommand(&queryCmdCopy)
+	setOptionCmdCopy := *setOptionCmd
+	muxonCmd.AddCommand(&setOptionCmdCopy)
+	infoCmdCopy := *infoCmd
+	muxonCmd.AddCommand(&infoCmdCopy)
+	commitCmdCopy := *commitCmd
+	muxonCmd.AddCommand(&commitCmdCopy)
+}
+
 func addCommands() {
 	RootCmd.AddCommand(batchCmd)
 	RootCmd.AddCommand(consoleCmd)
@@ -158,13 +176,8 @@ func addCommands() {
 	addKVStoreFlags()
 	RootCmd.AddCommand(kvstoreCmd)
 
-	muxonCmd.AddCommand(echoCmd)
-	muxonCmd.AddCommand(checkTxCmd)
-	muxonCmd.AddCommand(deliverTxCmd)
-	muxonCmd.AddCommand(queryCmd)
-	muxonCmd.AddCommand(setOptionCmd)
-	muxonCmd.AddCommand(infoCmd)
-	muxonCmd.AddCommand(commitCmd)
+	//add subcommand copy into muxonCommand
+	addMuxonCommand()
 }
 
 var batchCmd = &cobra.Command{
