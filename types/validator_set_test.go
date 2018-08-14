@@ -392,15 +392,10 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	assert.NoError(t, err)
 	vote.Signature = sig
 	commit := &Commit{
-		BlockID: blockID,
-		Precommits: []*CommitSig{
-			&CommitSig{
-				Signature: sig,
-				Timestamp: vote.Timestamp,
-			},
-		},
-		HeightNum: height,
-		RoundNum:  0,
+		BlockID:    blockID,
+		Precommits: []*CommitSig{NewCommitSig(sig, vote.Timestamp)},
+		HeightNum:  height,
+		RoundNum:   0,
 	}
 
 	badChainID := "notmychainID"

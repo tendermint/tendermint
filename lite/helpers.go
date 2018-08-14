@@ -79,19 +79,11 @@ func (pkz privKeys) signHeader(header *types.Header, first, last int) *types.Com
 	// Fill in the votes we want.
 	for i := first; i < last && i < len(pkz); i++ {
 		vote := makeVote(header, vset, pkz[i])
-		commitSigs[vote.ValidatorIndex] = &types.CommitSig{
-			Signature: vote.Signature,
-			Timestamp: vote.Timestamp,
-		}
+		commitSigs[vote.ValidatorIndex] = vote.ToCommitSig()
 	}
 
-	res := &types.Commit{
-		BlockID:    types.BlockID{Hash: header.Hash()},
-		Precommits: commitSigs,
-		RoundNum:   1,
-		HeightNum:  header.Height,
-	}
-	return res
+	blockID := types.BlockID{Hash: header.Hash()}
+	return types.NewCommit(header.Height, 1, blockID, commitSigs)
 }
 
 func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivKey) *types.Vote {

@@ -116,3 +116,7 @@ func (vote *Vote) Verify(chainID string, pubKey crypto.PubKey) error {
 	}
 	return nil
 }
+
+func (vote *Vote) ToCommitSig() *CommitSig {
+	return NewCommitSig(vote.Signature, vote.Timestamp)
+}

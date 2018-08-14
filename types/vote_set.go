@@ -547,18 +547,10 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 	precommits := make([]*CommitSig, len(voteSet.votes))
 	for i, v := range votesCopy {
 		if v != nil && v.BlockID.Equals(blockID) {
-			precommits[i] = &CommitSig{
-				Signature: v.Signature,
-				Timestamp: v.Timestamp,
-			}
+			precommits[i] = v.ToCommitSig()
 		}
 	}
-	return &Commit{
-		BlockID:    blockID,
-		Precommits: precommits,
-		RoundNum:   voteSet.round,
-		HeightNum:  voteSet.height,
-	}
+	return NewCommit(voteSet.height, voteSet.round, blockID, precommits)
 }
 
 //--------------------------------------------------------------------------------

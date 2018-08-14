@@ -296,19 +296,35 @@ type Commit struct {
 	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
 	// Any peer with a block can gossip precommits by index with a peer without recalculating the
 	// active ValidatorSet.
+	HeightNum  int64
+	RoundNum   int
 	BlockID    BlockID      `json:"block_id"`
 	Precommits []*CommitSig `json:"precommits"`
-	RoundNum   int
-	HeightNum  int64
 
 	// Volatile
 	hash     cmn.HexBytes
 	bitArray *cmn.BitArray
 }
 
+func NewCommit(height int64, round int, blockID BlockID, precommits []*CommitSig) *Commit {
+	return &Commit{
+		HeightNum:  height,
+		RoundNum:   round,
+		BlockID:    blockID,
+		Precommits: precommits,
+	}
+}
+
 type CommitSig struct {
 	Signature []byte
 	Timestamp time.Time
+}
+
+func NewCommitSig(signature []byte, timestamp time.Time) *CommitSig {
+	return &CommitSig{
+		signature,
+		timestamp,
+	}
 }
 
 func (commitSig *CommitSig) String(index int, address Address, height int64, round int, blockID BlockID) string {
@@ -318,6 +334,18 @@ func (commitSig *CommitSig) String(index int, address Address, height int64, rou
 		cmn.Fingerprint(blockID.Hash),
 		cmn.Fingerprint(commitSig.Signature),
 		CanonicalTime(commitSig.Timestamp))
+}
+
+func (commitSig *CommitSig) ToVote(index int, height int64, round int, blockID BlockID) *Vote {
+	return &Vote{
+		ValidatorIndex: index,
+		Height:         height,
+		Round:          round,
+		Timestamp:      commitSig.Timestamp,
+		Type:           VoteTypePrecommit,
+		BlockID:        blockID,
+		Signature:      commitSig.Signature,
+	}
 }
 
 // Height returns the height of the commit
@@ -358,15 +386,7 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 
 // GetByIndex returns the vote corresponding to a given validator index
 func (commit *Commit) GetByIndex(index int) *Vote {
-	return &Vote{
-		ValidatorIndex: index,
-		Height:         commit.HeightNum,
-		Round:          commit.RoundNum,
-		Timestamp:      commit.Precommits[index].Timestamp,
-		Type:           VoteTypePrecommit,
-		BlockID:        commit.BlockID,
-		Signature:      commit.Precommits[index].Signature,
-	}
+	return commit.Precommits[index].ToVote(index, commit.Height(), commit.Round(), commit.BlockID)
 }
 
 // IsCommit returns true if there is at least one vote
