@@ -13,6 +13,7 @@ BREAKING CHANGES:
 - [blockchain] fix go-amino routes for blockchain messages
 - [crypto] Rename AminoRoute variables to no longer be prefixed by signature type.
 - [config] Replace MaxNumPeers with MaxNumInboundPeers and MaxNumOutboundPeers
+- [node] NewNode now accepts a `*p2p.NodeKey`
 
 FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))
