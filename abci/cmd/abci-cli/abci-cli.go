@@ -134,24 +134,6 @@ func addKVStoreFlags() {
 	kvstoreCmd.PersistentFlags().StringVarP(&flagPersist, "persist", "", "", "directory to use for a database")
 }
 
-func addMuxonCommand(){
-	//cobra doesn't support for adding command twice.
-	echoCmdCopy := *echoCmd
-	muxonCmd.AddCommand(&echoCmdCopy)
-	checkTxCmdCopy := *checkTxCmd
-	muxonCmd.AddCommand(&checkTxCmdCopy)
-	deliverTxCmdCopy := *deliverTxCmd
-	muxonCmd.AddCommand(&deliverTxCmdCopy)
-	queryCmdCopy := *queryCmd
-	muxonCmd.AddCommand(&queryCmdCopy)
-	setOptionCmdCopy := *setOptionCmd
-	muxonCmd.AddCommand(&setOptionCmdCopy)
-	infoCmdCopy := *infoCmd
-	muxonCmd.AddCommand(&infoCmdCopy)
-	commitCmdCopy := *commitCmd
-	muxonCmd.AddCommand(&commitCmdCopy)
-}
-
 func addCommands() {
 	RootCmd.AddCommand(batchCmd)
 	RootCmd.AddCommand(consoleCmd)
@@ -175,9 +157,6 @@ func addCommands() {
 	// replaces dummy, see issue #196
 	addKVStoreFlags()
 	RootCmd.AddCommand(kvstoreCmd)
-
-	//add subcommand copy into muxonCommand
-	addMuxonCommand()
 }
 
 var batchCmd = &cobra.Command{
@@ -220,11 +199,6 @@ without opening a new connection each time
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return cmdConsole(cmd, args)
 	},
-}
-
-var muxonCmd = &cobra.Command{
-	Short: "print subcommand for unimplement command of console/batch mode",
-	Long:  "print subcommand for unimplement command of console/batch mode",
 }
 
 var echoCmd = &cobra.Command{
@@ -504,11 +478,18 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 
 func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	msg := "unimplemented command"
-	if err := muxonCmd.Help(); err != nil {
-		msg = err.Error()
-	}
+
+	fmt.Println("Available commands:")
+	fmt.Printf("%s: %s\n", echoCmd.Use, echoCmd.Short)
+	fmt.Printf("%s: %s\n", infoCmd.Use, infoCmd.Short)
+	fmt.Printf("%s: %s\n", checkTxCmd.Use, checkTxCmd.Short)
+	fmt.Printf("%s: %s\n", deliverTxCmd.Use, deliverTxCmd.Short)
+	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
+	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
+	fmt.Printf("%s: %s\n", setOptionCmd.Use, setOptionCmd.Short)
+
 	if len(args) > 0 {
-		msg += fmt.Sprintf(" args: [%s]", strings.Join(args, " "))
+		msg += fmt.Sprintf(" args:cd ab [%s]", strings.Join(args, " "))
 	}
 	printResponse(cmd, args, response{
 		Code: codeBad,
