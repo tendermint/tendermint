@@ -489,7 +489,7 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s: %s\n", setOptionCmd.Use, setOptionCmd.Short)
 
 	if len(args) > 0 {
-		msg += fmt.Sprintf(" args:cd ab [%s]", strings.Join(args, " "))
+		msg += fmt.Sprintf(" args: [%s]", strings.Join(args, " "))
 	}
 	printResponse(cmd, args, response{
 		Code: codeBad,
