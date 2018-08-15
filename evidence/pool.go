@@ -143,6 +143,7 @@ func (evpool *EvidencePool) removeEvidence(height, maxAge int64, blockEvidenceMa
 			// remove from clist
 			evpool.evidenceList.Remove(e)
 			e.DetachPrev()
+			e.DetachNext()
 		}
 	}
 }

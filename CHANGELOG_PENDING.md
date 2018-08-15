@@ -24,4 +24,5 @@ IMPROVEMENTS:
 
 BUG FIXES:
 - [mempool] No longer possible to fill up linked list without getting caching
-  benefits [#2180](https://github.com/tendermint/tendermint/issues/2180)
+benefits [#2180](https://github.com/tendermint/tendermint/issues/2180)
+- [evidence, mempool] Fix potential memory leaks from not detaching pointers from removed elements
