@@ -479,6 +479,14 @@ func muxOnCommands(cmd *cobra.Command, pArgs []string) error {
 func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	msg := "unimplemented command"
 
+	if len(args) > 0 {
+		msg += fmt.Sprintf(" args: [%s]", strings.Join(args, " "))
+	}
+	printResponse(cmd, args, response{
+		Code: codeBad,
+		Log:  msg,
+	})
+
 	fmt.Println("Available commands:")
 	fmt.Printf("%s: %s\n", echoCmd.Use, echoCmd.Short)
 	fmt.Printf("%s: %s\n", infoCmd.Use, infoCmd.Short)
@@ -487,14 +495,8 @@ func cmdUnimplemented(cmd *cobra.Command, args []string) error {
 	fmt.Printf("%s: %s\n", queryCmd.Use, queryCmd.Short)
 	fmt.Printf("%s: %s\n", commitCmd.Use, commitCmd.Short)
 	fmt.Printf("%s: %s\n", setOptionCmd.Use, setOptionCmd.Short)
+	fmt.Println("Use \"[command] --help\" for more information about a command.")
 
-	if len(args) > 0 {
-		msg += fmt.Sprintf(" args: [%s]", strings.Join(args, " "))
-	}
-	printResponse(cmd, args, response{
-		Code: codeBad,
-		Log:  msg,
-	})
 	return nil
 }
 
