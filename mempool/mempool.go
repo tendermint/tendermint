@@ -209,6 +209,7 @@ func (mem *Mempool) Flush() {
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		mem.txs.Remove(e)
 		e.DetachPrev()
+		e.DetachNext()
 	}
 }
 
@@ -321,6 +322,7 @@ func (mem *Mempool) resCbRecheck(req *abci.Request, res *abci.Response) {
 			// Tx became invalidated due to newly committed block.
 			mem.txs.Remove(mem.recheckCursor)
 			mem.recheckCursor.DetachPrev()
+			mem.recheckCursor.DetachNext()
 
 			// remove from cache (it might be good later)
 			mem.cache.Remove(req.GetCheckTx().Tx)
@@ -435,6 +437,7 @@ func (mem *Mempool) filterTxs(blockTxsMap map[string]struct{}) []types.Tx {
 			// remove from clist
 			mem.txs.Remove(e)
 			e.DetachPrev()
+			e.DetachNext()
 
 			// NOTE: we don't remove committed txs from the cache.
 			continue
