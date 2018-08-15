@@ -17,6 +17,7 @@ FEATURES:
 IMPROVEMENTS:
 - [scripts] Added json2wal tool, which is supposed to help our users restore
   corrupted WAL files and compose test WAL files (@bradyjoestar)
+- [mempool] Now stores txs by hash inside of the cache, to mitigate memory leakage
 
 BUG FIXES:
 - [mempool] No longer possible to fill up linked list without getting caching 
