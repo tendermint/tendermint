@@ -215,9 +215,10 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 
 	logger.Info("Executed block", "height", block.Height, "validTxs", validTxs, "invalidTxs", invalidTxs)
 
-	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
+	valUpdates := abciResponses.EndBlock.ValidatorUpdates
+	if len(valUpdates) > 0 {
 		// TODO: cleanup the formatting
-		logger.Info("Updates to validators", "updates", abciResponses.EndBlock.ValidatorUpdates)
+		logger.Info("Updates to validators", "updates", valUpdates)
 	}
 
 	return abciResponses, nil

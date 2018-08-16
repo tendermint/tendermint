@@ -57,7 +57,7 @@ func TestABCIValidators(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, tmValExpected, tmVals[0])
 
-	// val with incorrect pubkey daya
+	// val with incorrect pubkey data
 	abciVal = TM2PB.ValidatorUpdate(tmVal)
 	abciVal.PubKey.Data = []byte("incorrect!")
 	tmVals, err = PB2TM.ValidatorUpdates([]abci.ValidatorUpdate{abciVal})
