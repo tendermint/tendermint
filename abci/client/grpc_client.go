@@ -80,8 +80,6 @@ RETRY_LOOP:
 
 func (cli *grpcClient) OnStop() {
 	cli.BaseService.OnStop()
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
 
 	if cli.conn != nil {
 		cli.conn.Close()
