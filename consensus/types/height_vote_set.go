@@ -6,9 +6,9 @@ import (
 	"strings"
 	"sync"
 
+	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
 type RoundVoteSet struct {
@@ -169,7 +169,7 @@ func (hvs *HeightVoteSet) getVoteSet(round int, type_ byte) *types.VoteSet {
 	case types.VoteTypePrecommit:
 		return rvs.Precommits
 	default:
-		cmn.PanicSanity(cmn.Fmt("Unexpected vote type %X", type_))
+		cmn.PanicSanity(fmt.Sprintf("Unexpected vote type %X", type_))
 		return nil
 	}
 }
@@ -219,7 +219,7 @@ func (hvs *HeightVoteSet) StringIndented(indent string) string {
 		voteSetString = roundVoteSet.Precommits.StringShort()
 		vsStrings = append(vsStrings, voteSetString)
 	}
-	return cmn.Fmt(`HeightVoteSet{H:%v R:0~%v
+	return fmt.Sprintf(`HeightVoteSet{H:%v R:0~%v
 %s  %v
 %s}`,
 		hvs.height, hvs.round,

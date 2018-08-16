@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -79,7 +80,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		// block for height 2
-		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil)
+		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
 
@@ -138,7 +139,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
 
-		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil)
+		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
@@ -232,6 +233,62 @@ func TestUpdateValidators(t *testing.T) {
 	}
 }
 
+// TestEndBlockValidatorUpdates ensures we update validator set and send an event.
+func TestEndBlockValidatorUpdates(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc, nil)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state, stateDB := state(1, 1)
+
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
+		MockMempool{}, MockEvidencePool{})
+	eventBus := types.NewEventBus()
+	err = eventBus.Start()
+	require.NoError(t, err)
+	defer eventBus.Stop()
+	blockExec.SetEventBus(eventBus)
+
+	updatesCh := make(chan interface{}, 1)
+	err = eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates, updatesCh)
+	require.NoError(t, err)
+
+	block := makeBlock(state, 1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+
+	pubkey := ed25519.GenPrivKey().PubKey()
+	app.ValidatorUpdates = []abci.Validator{
+		{PubKey: types.TM2PB.PubKey(pubkey), Power: 10},
+	}
+
+	state, err = blockExec.ApplyBlock(state, blockID, block)
+	require.Nil(t, err)
+
+	// test new validator was added to NextValidators
+	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
+		idx, _ := state.NextValidators.GetByAddress(pubkey.Address())
+		if idx < 0 {
+			t.Fatalf("can't find address %v in the set %v", pubkey.Address(), state.NextValidators)
+		}
+	}
+
+	// test we threw an event
+	select {
+	case e := <-updatesCh:
+		event, ok := e.(types.EventDataValidatorSetUpdates)
+		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", e)
+		if assert.NotEmpty(t, event.ValidatorUpdates) {
+			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
+			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
+	}
+}
+
 //----------------------------------------------------------------------------
 
 // make some bogus txs
@@ -269,24 +326,21 @@ func state(nVals, height int) (State, dbm.DB) {
 }
 
 func makeBlock(state State, height int64) *types.Block {
-	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil)
+	block, _ := state.MakeBlock(height, makeTxs(state.LastBlockHeight), new(types.Commit), nil, state.Validators.GetProposer().Address)
 	return block
 }
 
 //----------------------------------------------------------------------------
-
-var _ abci.Application = (*testApp)(nil)
 
 type testApp struct {
 	abci.BaseApplication
 
 	Validators          []abci.SigningValidator
 	ByzantineValidators []abci.Evidence
+	ValidatorUpdates    []abci.Validator
 }
 
-func NewKVStoreApplication() *testApp {
-	return &testApp{}
-}
+var _ abci.Application = (*testApp)(nil)
 
 func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 	return abci.ResponseInfo{}
@@ -296,6 +350,10 @@ func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlo
 	app.Validators = req.LastCommitInfo.Validators
 	app.ByzantineValidators = req.ByzantineValidators
 	return abci.ResponseBeginBlock{}
+}
+
+func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
+	return abci.ResponseEndBlock{ValidatorUpdates: app.ValidatorUpdates}
 }
 
 func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {

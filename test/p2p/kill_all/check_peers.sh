@@ -23,7 +23,7 @@ set -e
 
 # get the first peer's height
 addr=$(test/p2p/ip.sh 1):26657
-h1=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height)
+h1=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height | sed -e "s/^\"\(.*\)\"$/\1/g")
 echo "1st peer is on height $h1"
 
 echo "Waiting until other peers reporting a height higher than the 1st one"
@@ -33,7 +33,7 @@ for i in $(seq 2 "$NUM_OF_PEERS"); do
 
 	while [[ $hi -le $h1 ]] ; do
 		addr=$(test/p2p/ip.sh "$i"):26657
-		hi=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height)
+		hi=$(curl -s "$addr/status" | jq .result.sync_info.latest_block_height | sed -e "s/^\"\(.*\)\"$/\1/g")
 
 		echo "... peer $i is on height $hi"
 
