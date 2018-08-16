@@ -1,28 +1,35 @@
 package merkle
 
 import (
+	"fmt"
+	"math/bits"
+
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // SimpleHashFromTwoHashes is the basic operation of the Merkle tree: Hash(left | right).
 func SimpleHashFromTwoHashes(left, right []byte) []byte {
 	var hasher = tmhash.New()
-	err := encodeByteSlice(hasher, left)
+	_, err := hasher.Write([]byte{1})
 	if err != nil {
 		panic(err)
 	}
-	err = encodeByteSlice(hasher, right)
+	_, err = hasher.Write(left)
+	if err != nil {
+		panic(err)
+	}
+	_, err = hasher.Write(right)
 	if err != nil {
 		panic(err)
 	}
 	return hasher.Sum(nil)
 }
 
-// SimpleHashFromHashers computes a Merkle tree from items that can be hashed.
-func SimpleHashFromHashers(items []Hasher) []byte {
+// SimpleHashFromByteSlices computes a Merkle tree from items that are byte slices.
+func SimpleHashFromByteSlices(items [][]byte) []byte {
 	hashes := make([][]byte, len(items))
 	for i, item := range items {
-		hash := item.Hash()
+		hash := tmhash.Sum(append([]byte{0}, item...))
 		hashes[i] = hash
 	}
 	return simpleHashFromHashes(hashes)
@@ -51,8 +58,23 @@ func simpleHashFromHashes(hashes [][]byte) []byte {
 	case 1:
 		return hashes[0]
 	default:
-		left := simpleHashFromHashes(hashes[:(len(hashes)+1)/2])
-		right := simpleHashFromHashes(hashes[(len(hashes)+1)/2:])
+		k := getSplitPoint(len(hashes))
+		left := simpleHashFromHashes(hashes[:k])
+		right := simpleHashFromHashes(hashes[k:])
 		return SimpleHashFromTwoHashes(left, right)
 	}
+}
+
+func getSplitPoint(length int) int {
+	if length < 1 {
+		panic("Trying to split a tree with size < 1")
+	}
+	uLength := uint(length)
+	bitlen := bits.Len(uLength)
+	k := 1 << uint(bitlen-1)
+	if k == length {
+		k >>= 1
+	}
+	fmt.Println(length, k)
+	return k
 }

@@ -3,6 +3,8 @@ package merkle
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 // SimpleProof represents a simple merkle proof.
@@ -12,8 +14,8 @@ type SimpleProof struct {
 
 // SimpleProofsFromHashers computes inclusion proof for given items.
 // proofs[0] is the proof for items[0].
-func SimpleProofsFromHashers(items []Hasher) (rootHash []byte, proofs []*SimpleProof) {
-	trails, rootSPN := trailsFromHashers(items)
+func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*SimpleProof) {
+	trails, rootSPN := trailsFromByteSlices(items)
 	rootHash = rootSPN.Hash
 	proofs = make([]*SimpleProof, len(items))
 	for i, trail := range trails {
@@ -34,12 +36,12 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[strin
 	}
 	sm.Sort()
 	kvs := sm.kvs
-	kvsH := make([]Hasher, 0, len(kvs))
+	kvsB := make([][]byte, 0, len(kvs))
 	for _, kvp := range kvs {
-		kvsH = append(kvsH, KVPair(kvp))
+		kvsB = append(kvsB, KVPair(kvp).Bytes())
 	}
 
-	rootHash, proofList := SimpleProofsFromHashers(kvsH)
+	rootHash, proofList := SimpleProofsFromByteSlices(kvsB)
 	proofs = make(map[string]*SimpleProof)
 	keys = make([]string, len(proofList))
 	for i, kvp := range kvs {
@@ -49,9 +51,16 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[strin
 	return
 }
 
-// Verify that leafHash is a leaf hash of the simple-merkle-tree
+// Verify that leaf is a leaf hash of the simple-merkle-tree
 // which hashes to rootHash.
-func (sp *SimpleProof) Verify(index int, total int, leafHash []byte, rootHash []byte) bool {
+func (sp *SimpleProof) Verify(index int, total int, leaf []byte, rootHash []byte) bool {
+	leafHash := tmhash.Sum(append([]byte{0}, leaf...))
+	return sp.VerifyHash(index, total, leafHash, rootHash)
+}
+
+// VerifyHash that leafHash is a leaf hash of the simple-merkle-tree
+// which hashes to rootHash.
+func (sp *SimpleProof) VerifyHash(index int, total int, leafHash []byte, rootHash []byte) bool {
 	computedHash := computeHashFromAunts(index, total, leafHash, sp.Aunts)
 	return computedHash != nil && bytes.Equal(computedHash, rootHash)
 }
@@ -138,17 +147,19 @@ func (spn *SimpleProofNode) FlattenAunts() [][]byte {
 
 // trails[0].Hash is the leaf hash for items[0].
 // trails[i].Parent.Parent....Parent == root for all i.
-func trailsFromHashers(items []Hasher) (trails []*SimpleProofNode, root *SimpleProofNode) {
+func trailsFromByteSlices(items [][]byte) (trails []*SimpleProofNode, root *SimpleProofNode) {
 	// Recursive impl.
 	switch len(items) {
 	case 0:
 		return nil, nil
 	case 1:
-		trail := &SimpleProofNode{items[0].Hash(), nil, nil, nil}
+		hash0 := tmhash.Sum(append(LeafHashPrefix, items[0]...))
+		trail := &SimpleProofNode{hash0, nil, nil, nil}
 		return []*SimpleProofNode{trail}, trail
 	default:
-		lefts, leftRoot := trailsFromHashers(items[:(len(items)+1)/2])
-		rights, rightRoot := trailsFromHashers(items[(len(items)+1)/2:])
+		k := getSplitPoint(len(items))
+		lefts, leftRoot := trailsFromByteSlices(items[:k])
+		rights, rightRoot := trailsFromByteSlices(items[k:])
 		rootHash := SimpleHashFromTwoHashes(leftRoot.Hash, rightRoot.Hash)
 		root := &SimpleProofNode{rootHash, nil, nil, nil}
 		leftRoot.Parent = root

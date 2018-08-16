@@ -6,6 +6,11 @@ import (
 	amino "github.com/tendermint/go-amino"
 )
 
+var (
+	LeafHashPrefix  = []byte{0}
+	InnerHashPrefix = []byte{1}
+)
+
 // Tree is a Merkle tree interface.
 type Tree interface {
 	Size() (size int)
