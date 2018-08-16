@@ -22,7 +22,7 @@ type grpcClient struct {
 	mustConnect bool
 
 	client types.ABCIApplicationClient
-	conn *grpc.ClientConn
+	conn   *grpc.ClientConn
 
 	mtx   sync.Mutex
 	addr  string
@@ -83,7 +83,7 @@ func (cli *grpcClient) OnStop() {
 	cli.mtx.Lock()
 	defer cli.mtx.Unlock()
 
-	if cli.conn != nil{
+	if cli.conn != nil {
 		cli.conn.Close()
 	}
 }
