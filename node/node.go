@@ -83,7 +83,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	// Generate node PrivKey
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
@@ -401,7 +401,7 @@ func NewNode(config *cfg.Config,
 
 		sw:       sw,
 		addrBook: addrBook,
-		nodeKey: nodeKey,
+		nodeKey:  nodeKey,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,
@@ -433,7 +433,6 @@ func (n *Node) OnStart() error {
 		n.config.P2P.UPNP,
 		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
-
 
 	nodeInfo := n.makeNodeInfo(n.nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
@@ -687,8 +686,6 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 		Moniker: n.config.Moniker,
 		Other: []string{
 			fmt.Sprintf("amino_version=%v", amino.Version),
-			fmt.Sprintf("p2p_version=%v", p2p.Version),
-			fmt.Sprintf("consensus_version=%v", cs.Version),
 			fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version),
 			fmt.Sprintf("tx_index=%v", txIndexerStatus),
 		},
