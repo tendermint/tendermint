@@ -84,7 +84,7 @@ func createOutboundPeerAndPerformHandshake(
 		ID:       addr.ID,
 		Moniker:  "host_peer",
 		Network:  "testing",
-		Version:  "123.123.123",
+		Version:  mockVersion,
 		Channels: []byte{testCh},
 	}, 1*time.Second)
 	if err != nil {
@@ -152,7 +152,7 @@ func (rp *remotePeer) accept(l net.Listener) {
 			ID:         rp.Addr().ID,
 			Moniker:    "remote_peer",
 			Network:    "testing",
-			Version:    "123.123.123",
+			Version:    mockVersion,
 			ListenAddr: l.Addr().String(),
 			Channels:   rp.channels,
 		}, 1*time.Second)

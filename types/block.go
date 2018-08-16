@@ -195,8 +195,8 @@ func (b *Block) StringShort() string {
 // including all blockchain data structures and the rules of the application's
 // state transition machine.
 type Version struct {
-	Block version.ProtocolVersion `json:"block"`
-	App   version.ProtocolVersion `json:"app"`
+	Block version.Protocol `json:"block"`
+	App   version.Protocol `json:"app"`
 }
 
 // Header defines the structure of a Tendermint block header

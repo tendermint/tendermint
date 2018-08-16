@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -37,11 +38,17 @@ type NodeInfo struct {
 }
 
 type Version struct {
-	P2P   int64 `json:"p2p"`
-	Block int64 `json:"block"`
-	App   int64 `json:"app"`
+	P2P   version.Protocol `json:"p2p"`
+	Block version.Protocol `json:"block"`
+	App   version.Protocol `json:"app"`
 
 	Other []string
+}
+
+var mockVersion = Version{
+	P2P:   version.P2PProtocol,
+	Block: version.BlockProtocol,
+	App:   0,
 }
 
 // Validate checks the self-reported NodeInfo is safe.
@@ -87,26 +94,10 @@ func (info NodeInfo) Validate() error {
 }
 
 // CompatibleWith checks if two NodeInfo are compatible with eachother.
-// CONTRACT: two nodes are compatible if the major version matches and network match
+// CONTRACT: two nodes are compatible if the networks match
 // and they have at least one channel in common.
+// Note we do not enforce any rules around version compatibility yet!
 func (info NodeInfo) CompatibleWith(other NodeInfo) error {
-	iMajor, _, _, iErr := splitVersion(info.Version)
-	oMajor, _, _, oErr := splitVersion(other.Version)
-
-	// if our own version number is not formatted right, we messed up
-	if iErr != nil {
-		return iErr
-	}
-
-	// version number must be formatted correctly ("x.x.x")
-	if oErr != nil {
-		return oErr
-	}
-
-	// major version must match
-	if iMajor != oMajor {
-		return fmt.Errorf("Peer is on a different major version. Got %v, expected %v", oMajor, iMajor)
-	}
 
 	// nodes must be on the same network
 	if info.Network != other.Network {

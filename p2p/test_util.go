@@ -59,7 +59,7 @@ const TEST_HOST = "localhost"
 func MakeConnectedSwitches(cfg *config.P2PConfig, n int, initSwitch func(int, *Switch) *Switch, connect func([]*Switch, int, int)) []*Switch {
 	switches := make([]*Switch, n)
 	for i := 0; i < n; i++ {
-		switches[i] = MakeSwitch(cfg, i, TEST_HOST, "123.123.123", initSwitch)
+		switches[i] = MakeSwitch(cfg, i, TEST_HOST, initSwitch)
 	}
 
 	if err := StartSwitches(switches); err != nil {
@@ -131,7 +131,7 @@ func StartSwitches(switches []*Switch) error {
 	return nil
 }
 
-func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitch func(int, *Switch) *Switch) *Switch {
+func MakeSwitch(cfg *config.P2PConfig, i int, network string, initSwitch func(int, *Switch) *Switch) *Switch {
 	// new switch, add reactors
 	// TODO: let the config be passed in?
 	nodeKey := &NodeKey{
@@ -144,7 +144,7 @@ func MakeSwitch(cfg *config.P2PConfig, i int, network, version string, initSwitc
 		ID:         nodeKey.ID(),
 		Moniker:    fmt.Sprintf("switch%d", i),
 		Network:    network,
-		Version:    version,
+		Version:    mockVersion,
 		ListenAddr: fmt.Sprintf("127.0.0.1:%d", cmn.RandIntn(64512)+1023),
 	}
 	for ch := range sw.reactorsByCh {

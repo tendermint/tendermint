@@ -676,7 +676,7 @@ type appInfo struct {
 	SoftwareVersion int64
 }
 
-func (n *Node) makeNodeInfo(nodeID p2p.ID, appInfo appInfo) p2p.NodeInfo {
+func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
@@ -685,12 +685,12 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID, appInfo appInfo) p2p.NodeInfo {
 		ID:      nodeID,
 		Network: n.genesisDoc.ChainID,
 		Version: p2p.Version{
-			P2P:   version.P2P,
-			Block: version.Block,
-			App:   appInfo.ProtocolVersion,
+			P2P:   version.P2PProtocol,
+			Block: version.BlockProtocol,
+			// App:   appInfo.ProtocolVersion, TODO
 			Other: []string{
 				fmt.Sprintf("tmcore_version=%v", version.TMCore),
-				fmt.Sprintf("app_version=%v", appInfo.SoftwareVersion),
+				// fmt.Sprintf("app_version=%v", appInfo.SoftwareVersion), TODO
 				fmt.Sprintf("amino_version=%v", amino.Version),
 				fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version), // TODO
 			},
