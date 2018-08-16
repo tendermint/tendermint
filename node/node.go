@@ -184,17 +184,20 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Create the proxyApp, which manages connections (consensus, mempool, query)
-	// and sync tendermint and the app by performing a handshake
-	// and replaying any necessary blocks
+	// Create the proxyApp, which manages connections (consensus, mempool, query),
+	// and the handshaker, which syncs tendermint with the app using ABCI.Info
 	consensusLogger := logger.With("module", "consensus")
 	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
 	handshaker.SetLogger(consensusLogger)
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
+
+	// Establish connections with the ABCI app and perform the Info handshake
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
+
+	// ... get the app info
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
@@ -668,7 +671,12 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
-func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
+type appInfo struct {
+	ProtocolVersion int64
+	SoftwareVersion int64
+}
+
+func (n *Node) makeNodeInfo(nodeID p2p.ID, appInfo appInfo) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
 		txIndexerStatus = "off"
@@ -676,7 +684,17 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	nodeInfo := p2p.NodeInfo{
 		ID:      nodeID,
 		Network: n.genesisDoc.ChainID,
-		Version: version.Version,
+		Version: p2p.Version{
+			P2P:   version.P2P,
+			Block: version.Block,
+			App:   appInfo.ProtocolVersion,
+			Other: []string{
+				fmt.Sprintf("tmcore_version=%v", version.TMCore),
+				fmt.Sprintf("app_version=%v", appInfo.SoftwareVersion),
+				fmt.Sprintf("amino_version=%v", amino.Version),
+				fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version), // TODO
+			},
+		},
 		Channels: []byte{
 			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
@@ -685,8 +703,6 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 		},
 		Moniker: n.config.Moniker,
 		Other: []string{
-			fmt.Sprintf("amino_version=%v", amino.Version),
-			fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version),
 			fmt.Sprintf("tx_index=%v", txIndexerStatus),
 		},
 	}

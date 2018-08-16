@@ -11,6 +11,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/version"
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
@@ -203,6 +204,7 @@ type Version struct {
 // NOTE: changes to the Header should be duplicated in the abci Header
 type Header struct {
 	// basic block info
+	Version  Version   `json:"version"`
 	ChainID  string    `json:"chain_id"`
 	Height   int64     `json:"height"`
 	Time     time.Time `json:"time"`
