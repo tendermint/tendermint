@@ -47,7 +47,7 @@ Fork https://github.com/btcsuite/btcd, and just update the [parse sig method](ht
 
 ## Status
 
-Proposed.
+Implemented
 
 ## Consequences
 

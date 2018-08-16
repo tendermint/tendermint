@@ -14,6 +14,8 @@ BREAKING CHANGES:
 - [crypto] Rename AminoRoute variables to no longer be prefixed by signature type.
 - [config] Replace MaxNumPeers with MaxNumInboundPeers and MaxNumOutboundPeers
 - [node] NewNode now accepts a `*p2p.NodeKey`
+- [crypto] Secp256k1 signature format changed from DER to `r || s`, both little endian encoded as 32 bytes.
+- [crypto] Secp256k1 signature malleability removed by requiring s to be in canonical form. (See ADR 14)
 
 FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))
