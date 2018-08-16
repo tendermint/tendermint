@@ -225,7 +225,8 @@ message BlockGossip {
 }
 
 message LastCommitInfo {
-  repeated VoteInfo commit_votes = 1 [(gogoproto.nullable)=false];
+  int32 round = 1;
+  repeated VoteInfo votes = 2 [(gogoproto.nullable)=false];
 }
 
 //----------------------------------------
@@ -271,6 +272,7 @@ message PartSetHeader {
 // Validator
 message Validator {
   bytes address = 1;
+  //PubKey pub_key = 2 [(gogoproto.nullable)=false];
   int64 power = 3;
 }
 
@@ -284,7 +286,6 @@ message ValidatorUpdate {
 message VoteInfo {
   Validator validator = 1 [(gogoproto.nullable)=false];
   bool signed_last_block = 2;
-  int64 commit_round = 3;
 }
 
 message PubKey {

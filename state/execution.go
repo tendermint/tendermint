@@ -184,15 +184,13 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	}
 	proxyAppConn.SetResponseCallback(proxyCb)
 
-	voteInfos, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
+	commitInfo, byzVals := getBeginBlockValidatorInfo(block, lastValSet, stateDB)
 
 	// Begin block.
 	_, err := proxyAppConn.BeginBlockSync(abci.RequestBeginBlock{
-		Hash:   block.Hash(),
-		Header: types.TM2PB.Header(&block.Header),
-		LastCommitInfo: abci.LastCommitInfo{
-			CommitVotes: voteInfos,
-		},
+		Hash:                block.Hash(),
+		Header:              types.TM2PB.Header(&block.Header),
+		LastCommitInfo:      commitInfo,
 		ByzantineValidators: byzVals,
 	})
 	if err != nil {
@@ -225,7 +223,7 @@ func execBlockOnProxyApp(logger log.Logger, proxyAppConn proxy.AppConnConsensus,
 	return abciResponses, nil
 }
 
-func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) ([]abci.VoteInfo, []abci.Evidence) {
+func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorSet, stateDB dbm.DB) (abci.LastCommitInfo, []abci.Evidence) {
 
 	// Sanity check that commit length matches validator set size -
 	// only applies after first block
@@ -239,23 +237,23 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 		}
 	}
 
-	// determine which validators did not sign last block.
+	// Collect the vote info (list of validators and whether or not they signed).
 	voteInfos := make([]abci.VoteInfo, len(lastValSet.Validators))
 	for i, val := range lastValSet.Validators {
 		var vote *types.Vote
-		var commitRound = -1
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
-			if vote != nil {
-				commitRound = vote.Round
-			}
 		}
 		voteInfo := abci.VoteInfo{
 			Validator:       types.TM2PB.Validator(val),
-			SignedLastBlock: vote != nil,        // XXX: should we replace with commitRound == -1 ?
-			CommitRound:     int64(commitRound), //XXX: why is round an int?
+			SignedLastBlock: vote != nil,
 		}
 		voteInfos[i] = voteInfo
+	}
+
+	commitInfo := abci.LastCommitInfo{
+		Round: int32(block.LastCommit.Round()),
+		Votes: voteInfos,
 	}
 
 	byzVals := make([]abci.Evidence, len(block.Evidence.Evidence))
@@ -270,7 +268,7 @@ func getBeginBlockValidatorInfo(block *types.Block, lastValSet *types.ValidatorS
 		byzVals[i] = types.TM2PB.Evidence(ev, valset, block.Time)
 	}
 
-	return voteInfos, byzVals
+	return commitInfo, byzVals
 
 }
 
