@@ -184,20 +184,22 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Create the proxyApp, which manages connections (consensus, mempool, query),
-	// and the handshaker, which syncs tendermint with the app using ABCI.Info
-	consensusLogger := logger.With("module", "consensus")
-	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
+	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
-
-	// Establish connections with the ABCI app and perform the Info handshake
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
 	}
 
-	// ... get the app info
+	// Create the handshaker, which calls RequestInfo and replays any blocks
+	// as necessary to sync tendermint with the app.
+	consensusLogger := logger.With("module", "consensus")
+	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
+	handshaker.SetLogger(consensusLogger)
+	appVersion, err := handshaker.Handshake(proxyApp)
+	if err != nil {
+		return nil, fmt.Errorf("Error during handshake: %v", err)
+	}
 
 	// reload the state (it may have been updated by the handshake)
 	state = sm.LoadState(stateDB)
