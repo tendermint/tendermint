@@ -520,30 +520,30 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	defer cache.mtx.Unlock()
 
 	// Use the tx hash in the cache
-	hashedTx := sha256.Sum256(tx)
-	if _, exists := cache.map_[hashedTx]; exists {
+	txHash := sha256.Sum256(tx)
+	if _, exists := cache.map_[txHash]; exists {
 		return false
 	}
 
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
-		poppedTx := popped.Value.([sha256.Size]byte)
-		delete(cache.map_, poppedTx)
+		poppedTxHash := popped.Value.([sha256.Size]byte)
+		delete(cache.map_, poppedTxHash)
 		if popped != nil {
 			cache.list.Remove(popped)
 		}
 	}
-	cache.list.PushBack(hashedTx)
-	cache.map_[hashedTx] = cache.list.Back()
+	cache.list.PushBack(txHash)
+	cache.map_[txHash] = cache.list.Back()
 	return true
 }
 
 // Remove removes the given tx from the cache.
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
-	stx := sha256.Sum256(tx)
-	popped := cache.map_[stx]
-	delete(cache.map_, stx)
+	txHash := sha256.Sum256(tx)
+	popped := cache.map_[txHash]
+	delete(cache.map_, txHash)
 	if popped != nil {
 		cache.list.Remove(popped)
 	}
