@@ -384,9 +384,10 @@ func fireEvents(logger log.Logger, eventBus types.BlockEventPublisher, block *ty
 		}})
 	}
 
-	if len(abciResponses.EndBlock.ValidatorUpdates) > 0 {
+	abciValUpdates := abciResponses.EndBlock.ValidatorUpdates
+	if len(abciValUpdates) > 0 {
 		// if there were an error, we would've stopped in updateValidators
-		updates, _ := types.PB2TM.Validators(abciResponses.EndBlock.ValidatorUpdates)
+		updates, _ := types.PB2TM.ValidatorUpdates(abciValUpdates)
 		eventBus.PublishEventValidatorSetUpdates(
 			types.EventDataValidatorSetUpdates{ValidatorUpdates: updates})
 	}

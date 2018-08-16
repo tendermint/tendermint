@@ -260,7 +260,7 @@ func TestEndBlockValidatorUpdates(t *testing.T) {
 	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
 
 	pubkey := ed25519.GenPrivKey().PubKey()
-	app.ValidatorUpdates = []abci.Validator{
+	app.ValidatorUpdates = []abci.ValidatorUpdate{
 		{PubKey: types.TM2PB.PubKey(pubkey), Power: 10},
 	}
 
@@ -337,7 +337,7 @@ type testApp struct {
 
 	CommitVotes         []abci.VoteInfo
 	ByzantineValidators []abci.Evidence
-	ValidatorUpdates    []abci.Validator
+	ValidatorUpdates    []abci.ValidatorUpdate
 }
 
 var _ abci.Application = (*testApp)(nil)
