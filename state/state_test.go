@@ -78,8 +78,8 @@ func TestABCIResponsesSaveLoad1(t *testing.T) {
 	abciResponses := NewABCIResponses(block)
 	abciResponses.DeliverTx[0] = &abci.ResponseDeliverTx{Data: []byte("foo"), Tags: nil}
 	abciResponses.DeliverTx[1] = &abci.ResponseDeliverTx{Data: []byte("bar"), Log: "ok", Tags: nil}
-	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.Validator{
-		types.TM2PB.ValidatorFromPubKeyAndPower(ed25519.GenPrivKey().PubKey(), 10),
+	abciResponses.EndBlock = &abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{
+		types.TM2PB.NewValidatorUpdate(ed25519.GenPrivKey().PubKey(), 10),
 	}}
 
 	saveABCIResponses(stateDB, block.Height, abciResponses)
@@ -454,9 +454,9 @@ func makeHeaderPartsResponsesValPubKeyChange(state State, height int64,
 	_, val := state.NextValidators.GetByIndex(0)
 	if !bytes.Equal(pubkey.Bytes(), val.PubKey.Bytes()) {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.Validator{
-				types.TM2PB.ValidatorFromPubKeyAndPower(val.PubKey, 0),
-				types.TM2PB.ValidatorFromPubKeyAndPower(pubkey, 10),
+			ValidatorUpdates: []abci.ValidatorUpdate{
+				types.TM2PB.NewValidatorUpdate(val.PubKey, 0),
+				types.TM2PB.NewValidatorUpdate(pubkey, 10),
 			},
 		}
 	}
@@ -476,8 +476,8 @@ func makeHeaderPartsResponsesValPowerChange(state State, height int64,
 	_, val := state.NextValidators.GetByIndex(0)
 	if val.VotingPower != power {
 		abciResponses.EndBlock = &abci.ResponseEndBlock{
-			ValidatorUpdates: []abci.Validator{
-				types.TM2PB.ValidatorFromPubKeyAndPower(val.PubKey, power),
+			ValidatorUpdates: []abci.ValidatorUpdate{
+				types.TM2PB.NewValidatorUpdate(val.PubKey, power),
 			},
 		}
 	}

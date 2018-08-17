@@ -25,7 +25,7 @@ type PersistentKVStoreApplication struct {
 	app *KVStoreApplication
 
 	// validator set
-	ValUpdates []types.Validator
+	ValUpdates []types.ValidatorUpdate
 
 	logger log.Logger
 }
@@ -101,7 +101,7 @@ func (app *PersistentKVStoreApplication) InitChain(req types.RequestInitChain) t
 // Track the block hash and header information
 func (app *PersistentKVStoreApplication) BeginBlock(req types.RequestBeginBlock) types.ResponseBeginBlock {
 	// reset valset changes
-	app.ValUpdates = make([]types.Validator, 0)
+	app.ValUpdates = make([]types.ValidatorUpdate, 0)
 	return types.ResponseBeginBlock{}
 }
 
@@ -113,11 +113,11 @@ func (app *PersistentKVStoreApplication) EndBlock(req types.RequestEndBlock) typ
 //---------------------------------------------
 // update validators
 
-func (app *PersistentKVStoreApplication) Validators() (validators []types.Validator) {
+func (app *PersistentKVStoreApplication) Validators() (validators []types.ValidatorUpdate) {
 	itr := app.app.state.db.Iterator(nil, nil)
 	for ; itr.Valid(); itr.Next() {
 		if isValidatorTx(itr.Key()) {
-			validator := new(types.Validator)
+			validator := new(types.ValidatorUpdate)
 			err := types.ReadMessage(bytes.NewBuffer(itr.Value()), validator)
 			if err != nil {
 				panic(err)
@@ -167,11 +167,11 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	}
 
 	// update
-	return app.updateValidator(types.Ed25519Validator(pubkey, int64(power)))
+	return app.updateValidator(types.Ed25519ValidatorUpdate(pubkey, int64(power)))
 }
 
 // add, update, or remove a validator
-func (app *PersistentKVStoreApplication) updateValidator(v types.Validator) types.ResponseDeliverTx {
+func (app *PersistentKVStoreApplication) updateValidator(v types.ValidatorUpdate) types.ResponseDeliverTx {
 	key := []byte("val:" + string(v.PubKey.Data))
 	if v.Power == 0 {
 		// remove validator
