@@ -39,24 +39,16 @@ func TestSimpleProof(t *testing.T) {
 		proof := proofs[i]
 
 		// Verify success
-		err := proof.Verify(rootHash, i, total, itemHash)
+		err := proof.Verify(rootHash, itemHash)
 		if err != nil {
 			t.Errorf("Verification failed: %v.", err)
-		}
-
-		// Wrong item index should make it fail
-		{
-			err = proof.Verify(rootHash, (i+1)%total, total, itemHash)
-			if err == nil {
-				t.Errorf("Expected verification to fail for wrong index %v", i)
-			}
 		}
 
 		// Trail too long should make it fail
 		origAunts := proof.Aunts
 		proof.Aunts = append(proof.Aunts, cmn.RandBytes(32))
 		{
-			err = proof.Verify(rootHash, i, total, itemHash)
+			err = proof.Verify(rootHash, itemHash)
 			if err == nil {
 				t.Errorf("Expected verification to fail for wrong trail length")
 			}
@@ -66,7 +58,7 @@ func TestSimpleProof(t *testing.T) {
 		// Trail too short should make it fail
 		proof.Aunts = proof.Aunts[0 : len(proof.Aunts)-1]
 		{
-			err = proof.Verify(rootHash, i, total, itemHash)
+			err = proof.Verify(rootHash, itemHash)
 			if err == nil {
 				t.Errorf("Expected verification to fail for wrong trail length")
 			}
@@ -74,13 +66,13 @@ func TestSimpleProof(t *testing.T) {
 		proof.Aunts = origAunts
 
 		// Mutating the itemHash should make it fail.
-		err = proof.Verify(rootHash, i, total, MutateByteSlice(itemHash))
+		err = proof.Verify(rootHash, MutateByteSlice(itemHash))
 		if err == nil {
 			t.Errorf("Expected verification to fail for mutated leaf hash")
 		}
 
 		// Mutating the rootHash should make it fail.
-		err = proof.Verify(MutateByteSlice(rootHash), i, total, itemHash)
+		err = proof.Verify(MutateByteSlice(rootHash), itemHash)
 		if err == nil {
 			t.Errorf("Expected verification to fail for mutated root hash")
 		}
