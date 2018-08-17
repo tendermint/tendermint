@@ -116,11 +116,16 @@ See below for more details on the message types and how they are used.
 - **Response**:
   - `ConsensusParams (ConsensusParams)`: Initial
     consensus-critical parameters.
-  - `Validators ([]ValidatorUpdate)`: Initial validator set.
+  - `Validators ([]ValidatorUpdate)`: Initial validator set (if non empty).
 - **Usage**:
   - Called once upon genesis.
-  - List of validators in the response will be used as the initial validator set
-    (regardless of what was sent in the request).
+  - If ResponseInitChain.Validators is empty, the initial validator set will be the RequestInitChain.Validators
+  - If ResponseInitChain.Validators is not empty, the initial validator set will be the
+    ResponseInitChain.Validators (regardless of what is in RequestInitChain.Validators).
+  - This allows the app to decide if it wants to accept the initial validator
+    set proposed by tendermint (ie. in the genesis file), or if it wants to use
+    a different one (perhaps computed based on some application specific
+    information in the genesis file).
 
 ### Query
 
