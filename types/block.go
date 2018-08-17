@@ -11,10 +11,10 @@ import (
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/crypto/tmhash"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"github.com/tendermint/tendermint/version"
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
-// TODO: add Version byte
 type Block struct {
 	mtx        sync.Mutex
 	Header     `json:"header"`
@@ -191,11 +191,20 @@ func (b *Block) StringShort() string {
 
 //-----------------------------------------------------------------------------
 
+// Version captures the consensus rules for processing a block in the blockchain,
+// including all blockchain data structures and the rules of the application's
+// state transition machine.
+type Version struct {
+	Block version.Protocol `json:"block"`
+	App   version.Protocol `json:"app"`
+}
+
 // Header defines the structure of a Tendermint block header
 // TODO: limit header size
 // NOTE: changes to the Header should be duplicated in the abci Header
 type Header struct {
 	// basic block info
+	Version  Version   `json:"version"`
 	ChainID  string    `json:"chain_id"`
 	Height   int64     `json:"height"`
 	Time     time.Time `json:"time"`

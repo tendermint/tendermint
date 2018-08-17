@@ -83,7 +83,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	// Generate node PrivKey
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
@@ -184,16 +184,21 @@ func NewNode(config *cfg.Config,
 		return nil, err
 	}
 
-	// Create the proxyApp, which manages connections (consensus, mempool, query)
-	// and sync tendermint and the app by performing a handshake
-	// and replaying any necessary blocks
-	consensusLogger := logger.With("module", "consensus")
-	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
-	handshaker.SetLogger(consensusLogger)
+	// Create the proxyApp and establish connections to the ABCI app (consensus, mempool, query).
 	proxyApp := proxy.NewAppConns(clientCreator, handshaker)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("Error starting proxy app connections: %v", err)
+	}
+
+	// Create the handshaker, which calls RequestInfo and replays any blocks
+	// as necessary to sync tendermint with the app.
+	consensusLogger := logger.With("module", "consensus")
+	handshaker := cs.NewHandshaker(stateDB, state, blockStore, genDoc)
+	handshaker.SetLogger(consensusLogger)
+	appVersion, err := handshaker.Handshake(proxyApp)
+	if err != nil {
+		return nil, fmt.Errorf("Error during handshake: %v", err)
 	}
 
 	// reload the state (it may have been updated by the handshake)
@@ -401,7 +406,7 @@ func NewNode(config *cfg.Config,
 
 		sw:       sw,
 		addrBook: addrBook,
-		nodeKey: nodeKey,
+		nodeKey:  nodeKey,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,
@@ -433,7 +438,6 @@ func (n *Node) OnStart() error {
 		n.config.P2P.UPNP,
 		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
-
 
 	nodeInfo := n.makeNodeInfo(n.nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
@@ -669,6 +673,11 @@ func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }
 
+type appInfo struct {
+	ProtocolVersion int64
+	SoftwareVersion int64
+}
+
 func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	txIndexerStatus := "on"
 	if _, ok := n.txIndexer.(*null.TxIndex); ok {
@@ -677,7 +686,17 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	nodeInfo := p2p.NodeInfo{
 		ID:      nodeID,
 		Network: n.genesisDoc.ChainID,
-		Version: version.Version,
+		Version: p2p.Version{
+			P2P:   version.P2PProtocol,
+			Block: version.BlockProtocol,
+			// App:   appInfo.ProtocolVersion, TODO
+			Other: []string{
+				fmt.Sprintf("tmcore_version=%v", version.TMCore),
+				// fmt.Sprintf("app_version=%v", appInfo.SoftwareVersion), TODO
+				fmt.Sprintf("amino_version=%v", amino.Version),
+				fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version), // TODO
+			},
+		},
 		Channels: []byte{
 			bc.BlockchainChannel,
 			cs.StateChannel, cs.DataChannel, cs.VoteChannel, cs.VoteSetBitsChannel,
@@ -686,10 +705,6 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 		},
 		Moniker: n.config.Moniker,
 		Other: []string{
-			fmt.Sprintf("amino_version=%v", amino.Version),
-			fmt.Sprintf("p2p_version=%v", p2p.Version),
-			fmt.Sprintf("consensus_version=%v", cs.Version),
-			fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version),
 			fmt.Sprintf("tx_index=%v", txIndexerStatus),
 		},
 	}

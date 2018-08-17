@@ -224,17 +224,22 @@ func (h *Handshaker) NBlocks() int {
 }
 
 // TODO: retry the handshake/replay if it fails ?
-func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
+func (h *Handshaker) Handshake(proxyApp proxy.AppConns) (version.App, error) {
 
 	// Handshake is done via ABCI Info on the query conn.
 	res, err := proxyApp.Query().InfoSync(abci.RequestInfo{Version: version.Version})
 	if err != nil {
-		return fmt.Errorf("Error calling Info: %v", err)
+		return version.App{}, fmt.Errorf("Error calling Info: %v", err)
+	}
+
+	appVersion := version.App{
+		Protocol: res.AppVersion,
+		Software: res.SoftwareVersion,
 	}
 
 	blockHeight := int64(res.LastBlockHeight)
 	if blockHeight < 0 {
-		return fmt.Errorf("Got a negative last block height (%d) from the app", blockHeight)
+		return appVersion, fmt.Errorf("Got a negative last block height (%d) from the app", blockHeight)
 	}
 	appHash := res.LastBlockAppHash
 
@@ -245,7 +250,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 	// Replay blocks up to the latest in the blockstore.
 	_, err = h.ReplayBlocks(h.initialState, appHash, blockHeight, proxyApp)
 	if err != nil {
-		return fmt.Errorf("Error on replay: %v", err)
+		return appVersion, fmt.Errorf("Error on replay: %v", err)
 	}
 
 	h.logger.Info("Completed ABCI Handshake - Tendermint and App are synced",
@@ -253,7 +258,7 @@ func (h *Handshaker) Handshake(proxyApp proxy.AppConns) error {
 
 	// TODO: (on restart) replay mempool
 
-	return nil
+	return appVersion, nil
 }
 
 // Replay all blocks since appBlockHeight and ensure the result matches the current state.
