@@ -72,9 +72,10 @@ func (af *AutoFile) processTicks() {
 		case <-af.ticker.C:
 			af.closeFile()
 		case <-af.tickerStopped:
-			return
+			break
 		}
 	}
+	return
 
 }
 

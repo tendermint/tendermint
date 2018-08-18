@@ -205,9 +205,10 @@ func (g *Group) processTicks() {
 			g.checkHeadSizeLimit()
 			g.checkTotalSizeLimit()
 		case <-g.Quit():
-			return
+			break
 		}
 	}
+	return
 
 }
 
