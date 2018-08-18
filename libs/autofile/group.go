@@ -208,8 +208,6 @@ func (g *Group) processTicks() {
 			break
 		}
 	}
-	return
-
 }
 
 // NOTE: this function is called manually in tests.

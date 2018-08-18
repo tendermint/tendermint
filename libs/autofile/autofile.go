@@ -75,8 +75,6 @@ func (af *AutoFile) processTicks() {
 			break
 		}
 	}
-	return
-
 }
 
 func (af *AutoFile) closeFile() (err error) {
