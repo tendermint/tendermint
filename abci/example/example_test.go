@@ -39,7 +39,7 @@ func TestGRPC(t *testing.T) {
 }
 
 func testStream(t *testing.T, app types.Application) {
-	numDeliverTxs := 200000
+	numDeliverTxs := 20000
 
 	// Start the listener
 	server := abciserver.NewSocketServer("unix://test.sock", app)
@@ -72,7 +72,7 @@ func testStream(t *testing.T, app types.Application) {
 			}
 			if counter == numDeliverTxs {
 				go func() {
-					time.Sleep(time.Second * 2) // Wait for a bit to allow counter overflow
+					time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
 					close(done)
 				}()
 				return
@@ -148,7 +148,7 @@ func testGRPCSync(t *testing.T, app *types.GRPCApplication) {
 		t.Log("response", counter)
 		if counter == numDeliverTxs {
 			go func() {
-				time.Sleep(time.Second * 2) // Wait for a bit to allow counter overflow
+				time.Sleep(time.Second * 1) // Wait for a bit to allow counter overflow
 			}()
 		}
 

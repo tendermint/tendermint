@@ -36,7 +36,7 @@ Available Commands:
   console     Start an interactive abci console for multiple commands
   counter     ABCI demo example
   deliver_tx  Deliver a new tx to the application
-  kvstore       ABCI demo example
+  kvstore     ABCI demo example
   echo        Have the application echo a message
   help        Help about any command
   info        Get some info about the application
@@ -140,7 +140,7 @@ response.
 The server may be generic for a particular language, and we provide a
 [reference implementation in
 Golang](https://github.com/tendermint/tendermint/tree/develop/abci/server). See the
-[list of other ABCI implementations](./ecosystem.html) for servers in
+[list of other ABCI implementations](./ecosystem.md) for servers in
 other languages.
 
 The handler is specific to the application, and may be arbitrary, so

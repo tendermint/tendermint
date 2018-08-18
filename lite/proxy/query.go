@@ -1,15 +1,16 @@
 package proxy
 
 import (
+	"fmt"
+
 	"github.com/pkg/errors"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 
 	"github.com/tendermint/tendermint/lite"
-	"github.com/tendermint/tendermint/lite/client"
-	certerr "github.com/tendermint/tendermint/lite/errors"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	"github.com/tendermint/tendermint/types"
 )
 
 // KeyProof represents a proof of existence or absence of a single key.
@@ -27,13 +28,13 @@ type KeyProof interface {
 }
 
 // GetWithProof will query the key on the given node, and verify it has
-// a valid proof, as defined by the certifier.
+// a valid proof, as defined by the Verifier.
 //
 // If there is any error in checking, returns an error.
 // If val is non-empty, proof should be KeyExistsProof
 // If val is empty, proof should be KeyMissingProof
 func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
-	cert lite.Certifier) (
+	cert lite.Verifier) (
 	val cmn.HexBytes, height int64, proof KeyProof, err error) {
 
 	if reqHeight < 0 {
@@ -53,7 +54,7 @@ func GetWithProof(key []byte, reqHeight int64, node rpcclient.Client,
 
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions
 func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOptions,
-	node rpcclient.Client, cert lite.Certifier) (
+	node rpcclient.Client, cert lite.Verifier) (
 	*ctypes.ResultABCIQuery, KeyProof, error) {
 
 	_resp, err := node.ABCIQueryWithOptions(path, key, opts)
@@ -75,12 +76,12 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 	}
 
 	// AppHash for height H is in header H+1
-	commit, err := GetCertifiedCommit(resp.Height+1, node, cert)
+	signedHeader, err := GetCertifiedCommit(resp.Height+1, node, cert)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	_ = commit
+	_ = signedHeader
 	return &ctypes.ResultABCIQuery{Response: resp}, nil, nil
 
 	/* // TODO refactor so iavl stuff is not in tendermint core
@@ -98,7 +99,7 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 		}
 
 		// Validate the proof against the certified header to ensure data integrity.
-		err = eproof.Verify(resp.Key, resp.Value, commit.Header.AppHash)
+		err = eproof.Verify(resp.Key, resp.Value, signedHeader.AppHash)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "Couldn't verify proof")
 		}
@@ -117,7 +118,7 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 	}
 
 	// Validate the proof against the certified header to ensure data integrity.
-	err = aproof.Verify(resp.Key, nil, commit.Header.AppHash)
+	err = aproof.Verify(resp.Key, nil, signedHeader.AppHash)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "Couldn't verify proof")
 	}
@@ -125,28 +126,29 @@ func GetWithProofOptions(path string, key []byte, opts rpcclient.ABCIQueryOption
 	*/
 }
 
-// GetCertifiedCommit gets the signed header for a given height
-// and certifies it.  Returns error if unable to get a proven header.
-func GetCertifiedCommit(h int64, node rpcclient.Client, cert lite.Certifier) (lite.Commit, error) {
+// GetCertifiedCommit gets the signed header for a given height and certifies
+// it. Returns error if unable to get a proven header.
+func GetCertifiedCommit(h int64, client rpcclient.Client, cert lite.Verifier) (types.SignedHeader, error) {
 
 	// FIXME: cannot use cert.GetByHeight for now, as it also requires
 	// Validators and will fail on querying tendermint for non-current height.
 	// When this is supported, we should use it instead...
-	rpcclient.WaitForHeight(node, h, nil)
-	cresp, err := node.Commit(&h)
+	rpcclient.WaitForHeight(client, h, nil)
+	cresp, err := client.Commit(&h)
 	if err != nil {
-		return lite.Commit{}, err
+		return types.SignedHeader{}, err
 	}
 
-	commit := client.CommitFromResult(cresp)
-	// validate downloaded checkpoint with our request and trust store.
-	if commit.Height() != h {
-		return lite.Commit{}, certerr.ErrHeightMismatch(h, commit.Height())
+	// Validate downloaded checkpoint with our request and trust store.
+	sh := cresp.SignedHeader
+	if sh.Height != h {
+		return types.SignedHeader{}, fmt.Errorf("height mismatch: want %v got %v",
+			h, sh.Height)
 	}
 
-	if err = cert.Certify(commit); err != nil {
-		return lite.Commit{}, err
+	if err = cert.Certify(sh); err != nil {
+		return types.SignedHeader{}, err
 	}
 
-	return commit, nil
+	return sh, nil
 }

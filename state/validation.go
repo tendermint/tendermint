@@ -5,25 +5,34 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/types"
 )
 
 //-----------------------------------------------------
 // Validate block
 
 func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
-	// validate internal consistency
+	// Validate internal consistency.
 	if err := block.ValidateBasic(); err != nil {
 		return err
 	}
 
-	// validate basic info
+	// Validate basic info.
 	if block.ChainID != state.ChainID {
-		return fmt.Errorf("Wrong Block.Header.ChainID. Expected %v, got %v", state.ChainID, block.ChainID)
+		return fmt.Errorf(
+			"Wrong Block.Header.ChainID. Expected %v, got %v",
+			state.ChainID,
+			block.ChainID,
+		)
 	}
 	if block.Height != state.LastBlockHeight+1 {
-		return fmt.Errorf("Wrong Block.Header.Height. Expected %v, got %v", state.LastBlockHeight+1, block.Height)
+		return fmt.Errorf(
+			"Wrong Block.Header.Height. Expected %v, got %v",
+			state.LastBlockHeight+1,
+			block.Height,
+		)
 	}
 	/*	TODO: Determine bounds for Time
 		See blockchain/reactor "stopSyncingDurationMinutes"
@@ -33,27 +42,54 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		}
 	*/
 
-	// validate prev block info
+	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
-		return fmt.Errorf("Wrong Block.Header.LastBlockID.  Expected %v, got %v", state.LastBlockID, block.LastBlockID)
+		return fmt.Errorf(
+			"Wrong Block.Header.LastBlockID.  Expected %v, got %v",
+			state.LastBlockID,
+			block.LastBlockID,
+		)
 	}
 	newTxs := int64(len(block.Data.Txs))
 	if block.TotalTxs != state.LastBlockTotalTx+newTxs {
-		return fmt.Errorf("Wrong Block.Header.TotalTxs. Expected %v, got %v", state.LastBlockTotalTx+newTxs, block.TotalTxs)
+		return fmt.Errorf(
+			"Wrong Block.Header.TotalTxs. Expected %v, got %v",
+			state.LastBlockTotalTx+newTxs,
+			block.TotalTxs,
+		)
 	}
 
-	// validate app info
+	// Validate app info
 	if !bytes.Equal(block.AppHash, state.AppHash) {
-		return fmt.Errorf("Wrong Block.Header.AppHash.  Expected %X, got %v", state.AppHash, block.AppHash)
+		return fmt.Errorf(
+			"Wrong Block.Header.AppHash.  Expected %X, got %v",
+			state.AppHash,
+			block.AppHash,
+		)
 	}
 	if !bytes.Equal(block.ConsensusHash, state.ConsensusParams.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.ConsensusHash.  Expected %X, got %v", state.ConsensusParams.Hash(), block.ConsensusHash)
+		return fmt.Errorf(
+			"Wrong Block.Header.ConsensusHash.  Expected %X, got %v",
+			state.ConsensusParams.Hash(),
+			block.ConsensusHash,
+		)
 	}
 	if !bytes.Equal(block.LastResultsHash, state.LastResultsHash) {
-		return fmt.Errorf("Wrong Block.Header.LastResultsHash.  Expected %X, got %v", state.LastResultsHash, block.LastResultsHash)
+		return fmt.Errorf(
+			"Wrong Block.Header.LastResultsHash.  Expected %X, got %v",
+			state.LastResultsHash,
+			block.LastResultsHash,
+		)
 	}
 	if !bytes.Equal(block.ValidatorsHash, state.Validators.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.ValidatorsHash.  Expected %X, got %v", state.Validators.Hash(), block.ValidatorsHash)
+		return fmt.Errorf(
+			"Wrong Block.Header.ValidatorsHash.  Expected %X, got %v",
+			state.Validators.Hash(),
+			block.ValidatorsHash,
+		)
+	}
+	if !bytes.Equal(block.NextValidatorsHash, state.NextValidators.Hash()) {
+		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v", state.NextValidators.Hash(), block.NextValidatorsHash)
 	}
 
 	// Validate block LastCommit.
@@ -63,8 +99,11 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		}
 	} else {
 		if len(block.LastCommit.Precommits) != state.LastValidators.Size() {
-			return fmt.Errorf("Invalid block commit size. Expected %v, got %v",
-				state.LastValidators.Size(), len(block.LastCommit.Precommits))
+			return fmt.Errorf(
+				"Invalid block commit size. Expected %v, got %v",
+				state.LastValidators.Size(),
+				len(block.LastCommit.Precommits),
+			)
 		}
 		err := state.LastValidators.VerifyCommit(
 			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
@@ -73,6 +112,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		}
 	}
 
+	// Validate all evidence.
 	// TODO: Each check requires loading an old validator set.
 	// We should cap the amount of evidence per block
 	// to prevent potential proposer DoS.
@@ -80,6 +120,17 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		if err := VerifyEvidence(stateDB, state, ev); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
 		}
+	}
+
+	// NOTE: We can't actually verify it's the right proposer because we dont
+	// know what round the block was first proposed. So just check that it's
+	// a legit address and a known validator.
+	if len(block.ProposerAddress) != tmhash.Size ||
+		!state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf(
+			"Block.Header.ProposerAddress, %X, is not a validator",
+			block.ProposerAddress,
+		)
 	}
 
 	return nil

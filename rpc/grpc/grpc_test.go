@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 
 func TestBroadcastTx(t *testing.T) {
 	require := require.New(t)
-	res, err := rpctest.GetGRPCClient().BroadcastTx(context.Background(), &core_grpc.RequestBroadcastTx{[]byte("this is a tx")})
+	res, err := rpctest.GetGRPCClient().BroadcastTx(context.Background(), &core_grpc.RequestBroadcastTx{Tx: []byte("this is a tx")})
 	require.Nil(err, "%+v", err)
 	require.EqualValues(0, res.CheckTx.Code)
 	require.EqualValues(0, res.DeliverTx.Code)

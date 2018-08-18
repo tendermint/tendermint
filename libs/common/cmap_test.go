@@ -51,3 +51,14 @@ func TestContains(t *testing.T) {
 	assert.False(t, cmap.Has("key2"))
 	assert.Nil(t, cmap.Get("key2"))
 }
+
+func BenchmarkCMapHas(b *testing.B) {
+	m := NewCMap()
+	for i := 0; i < 1000; i++ {
+		m.Set(string(i), i)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		m.Has(string(i))
+	}
+}

@@ -89,7 +89,7 @@ func LoadFilePV(filePath string) *FilePV {
 	pv := &FilePV{}
 	err = cdc.UnmarshalJSON(pvJSONBytes, &pv)
 	if err != nil {
-		cmn.Exit(cmn.Fmt("Error reading PrivValidator from %v: %v\n", filePath, err))
+		cmn.Exit(fmt.Sprintf("Error reading PrivValidator from %v: %v\n", filePath, err))
 	}
 
 	// overwrite pubkey and address for convenience
@@ -153,7 +153,7 @@ func (pv *FilePV) SignVote(chainID string, vote *types.Vote) error {
 	pv.mtx.Lock()
 	defer pv.mtx.Unlock()
 	if err := pv.signVote(chainID, vote); err != nil {
-		return errors.New(cmn.Fmt("Error signing vote: %v", err))
+		return fmt.Errorf("Error signing vote: %v", err)
 	}
 	return nil
 }
