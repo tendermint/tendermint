@@ -49,7 +49,7 @@ func TestNewBlockStore(t *testing.T) {
 			return nil, nil
 		})
 		require.NotNil(t, panicErr, "#%d panicCauser: %q expected a panic", i, tt.data)
-		assert.Contains(t, panicErr.Error(), tt.wantErr, "#%d data: %q", i, tt.data)
+		assert.Contains(t, fmt.Sprintf("%#v", panicErr), tt.wantErr, "#%d data: %q", i, tt.data)
 	}
 
 	db.Set(blockStoreKey, nil)
@@ -238,7 +238,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		if subStr := tuple.wantPanic; subStr != "" {
 			if panicErr == nil {
 				t.Errorf("#%d: want a non-nil panic", i)
-			} else if got := panicErr.Error(); !strings.Contains(got, subStr) {
+			} else if got := fmt.Sprintf("%#v", panicErr); !strings.Contains(got, subStr) {
 				t.Errorf("#%d:\n\tgotErr: %q\nwant substring: %q", i, got, subStr)
 			}
 			continue

@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -45,7 +46,7 @@ func (app *appConnTest) InfoSync(req types.RequestInfo) (*types.ResponseInfo, er
 var SOCKET = "socket"
 
 func TestEcho(t *testing.T) {
-	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
@@ -70,7 +71,7 @@ func TestEcho(t *testing.T) {
 	t.Log("Connected")
 
 	for i := 0; i < 1000; i++ {
-		proxy.EchoAsync(cmn.Fmt("echo-%v", i))
+		proxy.EchoAsync(fmt.Sprintf("echo-%v", i))
 	}
 	if err := proxy.FlushSync(); err != nil {
 		t.Error(err)
@@ -79,7 +80,7 @@ func TestEcho(t *testing.T) {
 
 func BenchmarkEcho(b *testing.B) {
 	b.StopTimer() // Initialize
-	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server
@@ -118,7 +119,7 @@ func BenchmarkEcho(b *testing.B) {
 }
 
 func TestInfo(t *testing.T) {
-	sockPath := cmn.Fmt("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
+	sockPath := fmt.Sprintf("unix:///tmp/echo_%v.sock", cmn.RandStr(6))
 	clientCreator := NewRemoteClientCreator(sockPath, SOCKET, true)
 
 	// Start server

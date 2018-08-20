@@ -80,8 +80,14 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+	// Generate node PrivKey
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil,err
+	}
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
+		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -119,6 +125,7 @@ type Node struct {
 	// network
 	sw       *p2p.Switch  // p2p connections
 	addrBook pex.AddrBook // known peers
+	nodeKey  *p2p.NodeKey // our node privkey
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
@@ -139,6 +146,7 @@ type Node struct {
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
+	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
@@ -293,6 +301,7 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
 
 	// Optionally, start the pex reactor
 	//
@@ -327,7 +336,7 @@ func NewNode(config *cfg.Config,
 	if config.FilterPeers {
 		// NOTE: addr is ip:port
 		sw.SetAddrFilter(func(addr net.Addr) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/addr/%s", addr.String())})
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: fmt.Sprintf("/p2p/filter/addr/%s", addr.String())})
 			if err != nil {
 				return err
 			}
@@ -337,7 +346,7 @@ func NewNode(config *cfg.Config,
 			return nil
 		})
 		sw.SetIDFilter(func(id p2p.ID) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/id/%s", id)})
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: fmt.Sprintf("/p2p/filter/id/%s", id)})
 			if err != nil {
 				return err
 			}
@@ -392,6 +401,7 @@ func NewNode(config *cfg.Config,
 
 		sw:       sw,
 		addrBook: addrBook,
+		nodeKey: nodeKey,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,
@@ -424,17 +434,10 @@ func (n *Node) OnStart() error {
 		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
-	// Generate node PrivKey
-	// TODO: pass in like privValidator
-	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
-	if err != nil {
-		return err
-	}
-	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+	nodeInfo := n.makeNodeInfo(n.nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
-	n.sw.SetNodeKey(nodeKey)
+	n.sw.SetNodeKey(n.nodeKey)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
@@ -683,11 +686,11 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 		},
 		Moniker: n.config.Moniker,
 		Other: []string{
-			cmn.Fmt("amino_version=%v", amino.Version),
-			cmn.Fmt("p2p_version=%v", p2p.Version),
-			cmn.Fmt("consensus_version=%v", cs.Version),
-			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
-			cmn.Fmt("tx_index=%v", txIndexerStatus),
+			fmt.Sprintf("amino_version=%v", amino.Version),
+			fmt.Sprintf("p2p_version=%v", p2p.Version),
+			fmt.Sprintf("consensus_version=%v", cs.Version),
+			fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version),
+			fmt.Sprintf("tx_index=%v", txIndexerStatus),
 		},
 	}
 
@@ -696,7 +699,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	}
 
 	rpcListenAddr := n.config.RPC.ListenAddress
-	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
+	nodeInfo.Other = append(nodeInfo.Other, fmt.Sprintf("rpc_addr=%v", rpcListenAddr))
 
 	if !n.sw.IsListening() {
 		return nodeInfo
@@ -705,7 +708,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddressHost()
 	p2pPort := p2pListener.ExternalAddress().Port
-	nodeInfo.ListenAddr = cmn.Fmt("%v:%v", p2pHost, p2pPort)
+	nodeInfo.ListenAddr = fmt.Sprintf("%v:%v", p2pHost, p2pPort)
 
 	return nodeInfo
 }

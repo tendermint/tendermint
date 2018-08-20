@@ -201,7 +201,7 @@ func (bcR *BlockchainReactor) Receive(chID byte, src p2p.Peer, msgBytes []byte) 
 		// Got a peer status. Unverified.
 		bcR.pool.SetPeerHeight(src.ID(), msg.Height)
 	default:
-		bcR.Logger.Error(cmn.Fmt("Unknown message type %v", reflect.TypeOf(msg)))
+		bcR.Logger.Error(fmt.Sprintf("Unknown message type %v", reflect.TypeOf(msg)))
 	}
 }
 
@@ -321,7 +321,7 @@ FOR_LOOP:
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
-					cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v",
+					cmn.PanicQ(fmt.Sprintf("Failed to process committed block (%d:%X): %v",
 						first.Height, first.Hash(), err))
 				}
 				blocksSynced++
@@ -356,11 +356,11 @@ type BlockchainMessage interface{}
 
 func RegisterBlockchainMessages(cdc *amino.Codec) {
 	cdc.RegisterInterface((*BlockchainMessage)(nil), nil)
-	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/mempool/BlockRequest", nil)
-	cdc.RegisterConcrete(&bcBlockResponseMessage{}, "tendermint/mempool/BlockResponse", nil)
-	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/mempool/NoBlockResponse", nil)
-	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/mempool/StatusResponse", nil)
-	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/mempool/StatusRequest", nil)
+	cdc.RegisterConcrete(&bcBlockRequestMessage{}, "tendermint/blockchain/BlockRequest", nil)
+	cdc.RegisterConcrete(&bcBlockResponseMessage{}, "tendermint/blockchain/BlockResponse", nil)
+	cdc.RegisterConcrete(&bcNoBlockResponseMessage{}, "tendermint/blockchain/NoBlockResponse", nil)
+	cdc.RegisterConcrete(&bcStatusResponseMessage{}, "tendermint/blockchain/StatusResponse", nil)
+	cdc.RegisterConcrete(&bcStatusRequestMessage{}, "tendermint/blockchain/StatusRequest", nil)
 }
 
 func decodeMsg(bz []byte) (msg BlockchainMessage, err error) {
@@ -378,7 +378,7 @@ type bcBlockRequestMessage struct {
 }
 
 func (m *bcBlockRequestMessage) String() string {
-	return cmn.Fmt("[bcBlockRequestMessage %v]", m.Height)
+	return fmt.Sprintf("[bcBlockRequestMessage %v]", m.Height)
 }
 
 type bcNoBlockResponseMessage struct {
@@ -386,7 +386,7 @@ type bcNoBlockResponseMessage struct {
 }
 
 func (brm *bcNoBlockResponseMessage) String() string {
-	return cmn.Fmt("[bcNoBlockResponseMessage %d]", brm.Height)
+	return fmt.Sprintf("[bcNoBlockResponseMessage %d]", brm.Height)
 }
 
 //-------------------------------------
@@ -396,7 +396,7 @@ type bcBlockResponseMessage struct {
 }
 
 func (m *bcBlockResponseMessage) String() string {
-	return cmn.Fmt("[bcBlockResponseMessage %v]", m.Block.Height)
+	return fmt.Sprintf("[bcBlockResponseMessage %v]", m.Block.Height)
 }
 
 //-------------------------------------
@@ -406,7 +406,7 @@ type bcStatusRequestMessage struct {
 }
 
 func (m *bcStatusRequestMessage) String() string {
-	return cmn.Fmt("[bcStatusRequestMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusRequestMessage %v]", m.Height)
 }
 
 //-------------------------------------
@@ -416,5 +416,5 @@ type bcStatusResponseMessage struct {
 }
 
 func (m *bcStatusResponseMessage) String() string {
-	return cmn.Fmt("[bcStatusResponseMessage %v]", m.Height)
+	return fmt.Sprintf("[bcStatusResponseMessage %v]", m.Height)
 }

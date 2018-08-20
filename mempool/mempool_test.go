@@ -14,7 +14,6 @@ import (
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
 	abci "github.com/tendermint/tendermint/abci/types"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -151,7 +150,7 @@ func TestSerialReap(t *testing.T) {
 
 	reapCheck := func(exp int) {
 		txs := mempool.Reap(-1)
-		require.Equal(t, len(txs), exp, cmn.Fmt("Expected to reap %v txs but got %v", exp, len(txs)))
+		require.Equal(t, len(txs), exp, fmt.Sprintf("Expected to reap %v txs but got %v", exp, len(txs)))
 	}
 
 	updateRange := func(start, end int) {
@@ -224,6 +223,28 @@ func TestSerialReap(t *testing.T) {
 	reapCheck(600)
 }
 
+func TestCacheRemove(t *testing.T) {
+	cache := newMapTxCache(100)
+	numTxs := 10
+	txs := make([][]byte, numTxs)
+	for i := 0; i < numTxs; i++ {
+		// probability of collision is 2**-256
+		txBytes := make([]byte, 32)
+		rand.Read(txBytes)
+		txs[i] = txBytes
+		cache.Push(txBytes)
+		// make sure its added to both the linked list and the map
+		require.Equal(t, i+1, len(cache.map_))
+		require.Equal(t, i+1, cache.list.Len())
+	}
+	for i := 0; i < numTxs; i++ {
+		cache.Remove(txs[i])
+		// make sure its removed from both the map and the linked list
+		require.Equal(t, numTxs-(i+1), len(cache.map_))
+		require.Equal(t, numTxs-(i+1), cache.list.Len())
+	}
+}
+
 func TestMempoolCloseWAL(t *testing.T) {
 	// 1. Create the temporary directory for mempool and WAL testing.
 	rootDir, err := ioutil.TempDir("", "mempool-test")
@@ -271,6 +292,35 @@ func TestMempoolCloseWAL(t *testing.T) {
 	m3, err := filepath.Glob(filepath.Join(rootDir, "*"))
 	require.Nil(t, err, "successful globbing expected")
 	require.Equal(t, 1, len(m3), "expecting the wal match in")
+}
+
+func BenchmarkCacheInsertTime(b *testing.B) {
+	cache := newMapTxCache(b.N)
+	txs := make([][]byte, b.N)
+	for i := 0; i < b.N; i++ {
+		txs[i] = make([]byte, 8)
+		binary.BigEndian.PutUint64(txs[i], uint64(i))
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cache.Push(txs[i])
+	}
+}
+
+// This benchmark is probably skewed, since we actually will be removing
+// txs in parallel, which may cause some overhead due to mutex locking.
+func BenchmarkCacheRemoveTime(b *testing.B) {
+	cache := newMapTxCache(b.N)
+	txs := make([][]byte, b.N)
+	for i := 0; i < b.N; i++ {
+		txs[i] = make([]byte, 8)
+		binary.BigEndian.PutUint64(txs[i], uint64(i))
+		cache.Push(txs[i])
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cache.Remove(txs[i])
+	}
 }
 
 func checksumIt(data []byte) string {

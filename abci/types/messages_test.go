@@ -22,7 +22,7 @@ func TestMarshalJSON(t *testing.T) {
 		Data:      []byte("hello"),
 		GasWanted: 43,
 		Tags: []cmn.KVPair{
-			{[]byte("pho"), []byte("bo")},
+			{Key: []byte("pho"), Value: []byte("bo")},
 		},
 	}
 	b, err = json.Marshal(&r1)
@@ -83,7 +83,7 @@ func TestWriteReadMessage2(t *testing.T) {
 			Log:       phrase,
 			GasWanted: 10,
 			Tags: []cmn.KVPair{
-				cmn.KVPair{[]byte("abc"), []byte("def")},
+				cmn.KVPair{Key: []byte("abc"), Value: []byte("def")},
 			},
 		},
 		// TODO: add the rest

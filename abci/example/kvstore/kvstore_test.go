@@ -2,6 +2,7 @@ package kvstore
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"sort"
 	"testing"
@@ -121,11 +122,11 @@ func TestValUpdates(t *testing.T) {
 	vals1, vals2 := vals[:nInit], kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
-	var v1, v2, v3 types.Validator
+	var v1, v2, v3 types.ValidatorUpdate
 
 	// add some validators
 	v1, v2 = vals[nInit], vals[nInit+1]
-	diff := []types.Validator{v1, v2}
+	diff := []types.ValidatorUpdate{v1, v2}
 	tx1 := MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 := MakeValSetChangeTx(v2.PubKey, v2.Power)
 
@@ -139,7 +140,7 @@ func TestValUpdates(t *testing.T) {
 	v1.Power = 0
 	v2.Power = 0
 	v3.Power = 0
-	diff = []types.Validator{v1, v2, v3}
+	diff = []types.ValidatorUpdate{v1, v2, v3}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 	tx2 = MakeValSetChangeTx(v2.PubKey, v2.Power)
 	tx3 := MakeValSetChangeTx(v3.PubKey, v3.Power)
@@ -157,18 +158,18 @@ func TestValUpdates(t *testing.T) {
 	} else {
 		v1.Power = 5
 	}
-	diff = []types.Validator{v1}
+	diff = []types.ValidatorUpdate{v1}
 	tx1 = MakeValSetChangeTx(v1.PubKey, v1.Power)
 
 	makeApplyBlock(t, kvstore, 3, diff, tx1)
 
-	vals1 = append([]types.Validator{v1}, vals1[1:]...)
+	vals1 = append([]types.ValidatorUpdate{v1}, vals1[1:]...)
 	vals2 = kvstore.Validators()
 	valsEqual(t, vals1, vals2)
 
 }
 
-func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff []types.Validator, txs ...[]byte) {
+func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff []types.ValidatorUpdate, txs ...[]byte) {
 	// make and apply block
 	height := int64(heightInt)
 	hash := []byte("foo")
@@ -190,12 +191,12 @@ func makeApplyBlock(t *testing.T, kvstore types.Application, heightInt int, diff
 }
 
 // order doesn't matter
-func valsEqual(t *testing.T, vals1, vals2 []types.Validator) {
+func valsEqual(t *testing.T, vals1, vals2 []types.ValidatorUpdate) {
 	if len(vals1) != len(vals2) {
 		t.Fatalf("vals dont match in len. got %d, expected %d", len(vals2), len(vals1))
 	}
-	sort.Sort(types.Validators(vals1))
-	sort.Sort(types.Validators(vals2))
+	sort.Sort(types.ValidatorUpdates(vals1))
+	sort.Sort(types.ValidatorUpdates(vals2))
 	for i, v1 := range vals1 {
 		v2 := vals2[i]
 		if !bytes.Equal(v1.PubKey.Data, v2.PubKey.Data) ||
@@ -207,7 +208,7 @@ func valsEqual(t *testing.T, vals1, vals2 []types.Validator) {
 
 func makeSocketClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
-	socket := cmn.Fmt("unix://%s.sock", name)
+	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
 
 	server := abciserver.NewSocketServer(socket, app)
@@ -229,7 +230,7 @@ func makeSocketClientServer(app types.Application, name string) (abcicli.Client,
 
 func makeGRPCClientServer(app types.Application, name string) (abcicli.Client, cmn.Service, error) {
 	// Start the listener
-	socket := cmn.Fmt("unix://%s.sock", name)
+	socket := fmt.Sprintf("unix://%s.sock", name)
 	logger := log.TestingLogger()
 
 	gapp := types.NewGRPCApplication(app)

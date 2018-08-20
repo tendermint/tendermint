@@ -5,6 +5,7 @@ package trust
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -155,7 +156,7 @@ func (tms *TrustMetricStore) loadFromDB() bool {
 	peers := make(map[string]MetricHistoryJSON)
 	err := json.Unmarshal(bytes, &peers)
 	if err != nil {
-		cmn.PanicCrisis(cmn.Fmt("Could not unmarshal Trust Metric Store DB data: %v", err))
+		cmn.PanicCrisis(fmt.Sprintf("Could not unmarshal Trust Metric Store DB data: %v", err))
 	}
 
 	// If history data exists in the file,
