@@ -300,18 +300,20 @@ type Commit struct {
 	RoundNum   int
 	BlockID    BlockID      `json:"block_id"`
 	Precommits []*CommitSig `json:"precommits"`
+	addresses  []Address
 
 	// Volatile
 	hash     cmn.HexBytes
 	bitArray *cmn.BitArray
 }
 
-func NewCommit(height int64, round int, blockID BlockID, precommits []*CommitSig) *Commit {
+func NewCommit(height int64, round int, blockID BlockID, precommits []*CommitSig, addresses []Address) *Commit {
 	return &Commit{
 		HeightNum:  height,
 		RoundNum:   round,
 		BlockID:    blockID,
 		Precommits: precommits,
+		addresses:  addresses,
 	}
 }
 
@@ -327,24 +329,22 @@ func NewCommitSig(signature []byte, timestamp time.Time) *CommitSig {
 	}
 }
 
-func (commitSig *CommitSig) String(index int, address Address, height int64, round int, blockID BlockID) string {
-	return fmt.Sprintf("Vote{%v:%X %v/%02d/%v(%v) %X %X @ %s}",
-		index, cmn.Fingerprint(address),
-		height, round, VoteTypePrecommit, "Precommit",
-		cmn.Fingerprint(blockID.Hash),
+func (commitSig *CommitSig) String() string {
+	return fmt.Sprintf("CommitSig{%X @ %s}",
 		cmn.Fingerprint(commitSig.Signature),
 		CanonicalTime(commitSig.Timestamp))
 }
 
-func (commitSig *CommitSig) ToVote(index int, height int64, round int, blockID BlockID) *Vote {
+func (commitSig *CommitSig) ToVote(index int, address Address, height int64, round int, blockID BlockID) *Vote {
 	return &Vote{
-		ValidatorIndex: index,
-		Height:         height,
-		Round:          round,
-		Timestamp:      commitSig.Timestamp,
-		Type:           VoteTypePrecommit,
-		BlockID:        blockID,
-		Signature:      commitSig.Signature,
+		ValidatorIndex:   index,
+		ValidatorAddress: address,
+		Height:           height,
+		Round:            round,
+		Timestamp:        commitSig.Timestamp,
+		Type:             VoteTypePrecommit,
+		BlockID:          blockID,
+		Signature:        commitSig.Signature,
 	}
 }
 
@@ -384,9 +384,13 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 	return commit.bitArray
 }
 
+func (commit *Commit) AddAddresses(addresses []Address) {
+	commit.addresses = addresses
+}
+
 // GetByIndex returns the vote corresponding to a given validator index
 func (commit *Commit) GetByIndex(index int) *Vote {
-	return commit.Precommits[index].ToVote(index, commit.Height(), commit.Round(), commit.BlockID)
+	return commit.Precommits[index].ToVote(index, commit.addresses[index], commit.Height(), commit.Round(), commit.BlockID)
 }
 
 // IsCommit returns true if there is at least one vote
@@ -427,9 +431,8 @@ func (commit *Commit) StringIndented(indent string) string {
 		return "nil-Commit"
 	}
 	precommitStrings := make([]string, len(commit.Precommits))
-	for i, precommit := range commit.Precommits {
-		precommitStrings[i] = precommit.String(i, []byte("---"),
-			commit.HeightNum, commit.RoundNum, commit.BlockID)
+	for i := 0; i < len(commit.Precommits); i++ {
+		precommitStrings[i] = commit.GetByIndex(i).String()
 	}
 	return fmt.Sprintf(`Commit{
 %s  BlockID:    %v

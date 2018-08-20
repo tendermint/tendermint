@@ -550,7 +550,7 @@ func (voteSet *VoteSet) MakeCommit() *Commit {
 			precommits[i] = v.ToCommitSig()
 		}
 	}
-	return NewCommit(voteSet.height, voteSet.round, blockID, precommits)
+	return NewCommit(voteSet.height, voteSet.round, blockID, precommits, voteSet.valSet.GetAddresses())
 }
 
 //--------------------------------------------------------------------------------

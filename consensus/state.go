@@ -452,14 +452,13 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
+	seenCommit.AddAddresses(cs.Validators.GetAddresses())
 	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for idx := 0; idx < len(seenCommit.Precommits); idx++ {
 		if seenCommit.Precommits[idx] == nil {
 			continue
 		}
-		addr, _ := state.LastValidators.GetByIndex(idx)
 		vote := seenCommit.GetByIndex(idx)
-		vote.ValidatorAddress = addr
 		added, err := lastPrecommits.AddVote(vote)
 		if !added || err != nil {
 			cmn.PanicCrisis(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))

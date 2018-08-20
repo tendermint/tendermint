@@ -121,6 +121,14 @@ func (vals *ValidatorSet) GetByAddress(address []byte) (index int, val *Validato
 	return -1, nil
 }
 
+func (vals *ValidatorSet) GetAddresses() []Address {
+	addresses := make([]Address, len(vals.Validators))
+	for i := 0; i < len(vals.Validators); i++ {
+		addresses[i] = vals.Validators[i].Address
+	}
+	return addresses
+}
+
 // GetByIndex returns the validator's address and validator itself by index.
 // It returns nil values if index is less than 0 or greater or equal to
 // len(ValidatorSet.Validators).
@@ -270,22 +278,16 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 	}
 
 	talliedVotingPower := int64(0)
-
-	baseVote := Vote{
-		Height:  height,
-		Round:   commit.Round(),
-		Type:    VoteTypePrecommit,
-		BlockID: blockID,
-	}
+	commit.AddAddresses(vals.GetAddresses())
 
 	for idx, precommit := range commit.Precommits {
 		if precommit == nil {
 			continue // OK, some precommits can be missing.
 		}
 		_, val := vals.GetByIndex(idx)
-		baseVote.Timestamp = precommit.Timestamp
+		vote := commit.GetByIndex(idx)
 		// Validate signature.
-		precommitSignBytes := baseVote.SignBytes(chainID)
+		precommitSignBytes := vote.SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
@@ -342,17 +344,12 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 	// Check old voting power.
 	oldVotingPower := int64(0)
 	seen := map[int]bool{}
-	baseVote := Vote{
-		Height:  height,
-		Round:   commit.Round(),
-		Type:    VoteTypePrecommit,
-		BlockID: blockID,
-	}
 
 	for idx, precommit := range commit.Precommits {
 		if precommit == nil {
 			continue
 		}
+		vote := commit.GetByIndex(idx)
 		// See if this validator is in oldVals.
 		adr, _ := newSet.GetByIndex(idx)
 		idx, val := oldVals.GetByAddress(adr)
@@ -362,8 +359,7 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		seen[idx] = true
 
 		// Validate signature.
-		baseVote.Timestamp = precommit.Timestamp
-		precommitSignBytes := baseVote.SignBytes(chainID)
+		precommitSignBytes := vote.SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
 			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
 		}

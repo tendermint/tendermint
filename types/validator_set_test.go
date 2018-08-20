@@ -396,6 +396,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		Precommits: []*CommitSig{NewCommitSig(sig, vote.Timestamp)},
 		HeightNum:  height,
 		RoundNum:   0,
+		addresses:  []Address{v1.Address},
 	}
 
 	badChainID := "notmychainID"

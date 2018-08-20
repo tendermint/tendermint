@@ -129,6 +129,7 @@ func (p *provider) fillFullCommit(signedHeader types.SignedHeader) (fc lite.Full
 	if err != nil {
 		return lite.FullCommit{}, err
 	}
+	signedHeader.Commit.AddAddresses(valset.GetAddresses())
 
 	return lite.NewFullCommit(signedHeader, valset, nextValset), nil
 }

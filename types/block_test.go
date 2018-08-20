@@ -203,9 +203,7 @@ func TestCommit(t *testing.T) {
 	require.NotNil(t, commit.BitArray())
 	assert.Equal(t, cmn.NewBitArray(10).Size(), commit.BitArray().Size())
 
-	cv := commit.GetByIndex(0)
-	cv.ValidatorAddress = voteSet.GetByIndex(0).ValidatorAddress
-	assert.Equal(t, voteSet.GetByIndex(0), cv)
+	assert.Equal(t, voteSet.GetByIndex(0), commit.GetByIndex(0))
 	assert.True(t, commit.IsCommit())
 }
 

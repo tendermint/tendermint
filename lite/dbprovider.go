@@ -177,6 +177,7 @@ func (dbp *DBProvider) fillFullCommit(sh types.SignedHeader) (FullCommit, error)
 	if err != nil {
 		return FullCommit{}, err
 	}
+	sh.Commit.AddAddresses(valset.GetAddresses())
 	// Return filled FullCommit.
 	return FullCommit{
 		SignedHeader:   sh,
