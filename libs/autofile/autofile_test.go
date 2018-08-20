@@ -74,3 +74,35 @@ func TestSIGHUP(t *testing.T) {
 		t.Errorf("Unexpected body %s", body)
 	}
 }
+
+func TestAutoFile_Close(t *testing.T) {
+	// First, create an AutoFile writing to a tempfile dir
+	file, err := ioutil.TempFile("", "autoclose_test")
+	if err != nil {
+		t.Fatalf("Error creating tempfile: %v", err)
+	}
+
+	name := file.Name()
+	af, err := OpenAutoFile(name)
+	if err != nil {
+		t.Fatalf("Error creating autofile: %v", err)
+	}
+
+	time.Sleep(2 * autoFileOpenDuration)
+	// After 2 * autoFileOpenDuration , as.file should be nil.
+	if af.file != nil {
+		t.Fatalf("Error writing to autofile: %v", err)
+	}
+
+	// reopen the file and write to the file
+	_, err = af.Write([]byte("auto-closed\n"))
+	if err != nil {
+		t.Fatalf("Error writing to autofile: %v", err)
+	}
+
+	// After 2 * autoFileOpenDuration , as.file should be nil.
+	time.Sleep(2 * autoFileOpenDuration)
+	if af.file != nil {
+		t.Fatalf("Error writing to autofile: %v", err)
+	}
+}
