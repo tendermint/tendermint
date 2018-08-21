@@ -115,10 +115,10 @@ height and round by a sufficient set of validators.
 
 ```go
 type Commit struct {
+    HeightNum  int64
+    RoundNum   int
 	BlockID    BlockID
 	Precommits []*CommitSig
-	RoundNum   int
-	HeightNum  int64
 }
 ```
 
