@@ -5,24 +5,24 @@ import (
 	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
-// ThresholdMultiSignaturePubKey implements a K of N threshold multisig.
-type ThresholdMultiSignaturePubKey struct {
+// PubKeyMultisigThreshold implements a K of N threshold multisig.
+type PubKeyMultisigThreshold struct {
 	K       uint            `json:"threshold"`
 	PubKeys []crypto.PubKey `json:"pubkeys"`
 }
 
-var _ crypto.PubKey = &ThresholdMultiSignaturePubKey{}
+var _ crypto.PubKey = &PubKeyMultisigThreshold{}
 
-// NewThresholdMultiSignaturePubKey returns a new ThresholdMultiSignaturePubKey.
+// NewPubKeyMultisigThreshold returns a new PubKeyMultisigThreshold.
 // Panics if len(pubkeys) < k or 0 >= k.
-func NewThresholdMultiSignaturePubKey(k int, pubkeys []crypto.PubKey) crypto.PubKey {
+func NewPubKeyMultisigThreshold(k int, pubkeys []crypto.PubKey) crypto.PubKey {
 	if k <= 0 {
 		panic("threshold k of n multisignature: k <= 0")
 	}
 	if len(pubkeys) < k {
 		panic("threshold k of n multisignature: len(pubkeys) < k")
 	}
-	return &ThresholdMultiSignaturePubKey{uint(k), pubkeys}
+	return &PubKeyMultisigThreshold{uint(k), pubkeys}
 }
 
 // VerifyBytes expects sig to be an amino encoded version of a MultiSignature.
@@ -31,7 +31,7 @@ func NewThresholdMultiSignaturePubKey(k int, pubkeys []crypto.PubKey) crypto.Pub
 // and all signatures are valid. (Not just k of the signatures)
 // The multisig uses a bitarray, so multiple signatures for the same key is not
 // a concern.
-func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig []byte) bool {
+func (pk *PubKeyMultisigThreshold) VerifyBytes(msg []byte, marshalledSig []byte) bool {
 	var sig *Multisignature
 	err := cdc.UnmarshalBinaryBare(marshalledSig, &sig)
 	if err != nil {
@@ -63,20 +63,20 @@ func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig [
 	return true
 }
 
-// Bytes returns the amino encoded version of the ThresholdMultiSignaturePubKey
-func (pk *ThresholdMultiSignaturePubKey) Bytes() []byte {
+// Bytes returns the amino encoded version of the PubKeyMultisigThreshold
+func (pk *PubKeyMultisigThreshold) Bytes() []byte {
 	return cdc.MustMarshalBinaryBare(pk)
 }
 
-// Address returns tmhash(ThresholdMultiSignaturePubKey.Bytes())
-func (pk *ThresholdMultiSignaturePubKey) Address() crypto.Address {
+// Address returns tmhash(PubKeyMultisigThreshold.Bytes())
+func (pk *PubKeyMultisigThreshold) Address() crypto.Address {
 	return crypto.Address(tmhash.Sum(pk.Bytes()))
 }
 
 // Equals returns true iff pk and other both have the same number of keys, and
 // all constituent keys are the same, and in the same order.
-func (pk *ThresholdMultiSignaturePubKey) Equals(other crypto.PubKey) bool {
-	otherKey, sameType := other.(*ThresholdMultiSignaturePubKey)
+func (pk *PubKeyMultisigThreshold) Equals(other crypto.PubKey) bool {
+	otherKey, sameType := other.(*PubKeyMultisigThreshold)
 	if !sameType {
 		return false
 	}

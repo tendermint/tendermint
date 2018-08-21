@@ -29,7 +29,7 @@ func RegisterAmino(cdc *amino.Codec) {
 		ed25519.PubKeyAminoRoute, nil)
 	cdc.RegisterConcrete(secp256k1.PubKeySecp256k1{},
 		secp256k1.PubKeyAminoRoute, nil)
-	cdc.RegisterConcrete(multisig.ThresholdMultiSignaturePubKey{},
+	cdc.RegisterConcrete(multisig.PubKeyMultisigThreshold{},
 		multisig.ThresholdPubKeyAminoRoute, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
