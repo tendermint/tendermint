@@ -8,7 +8,7 @@ import (
 // ThresholdMultiSignaturePubKey implements a K of N threshold multisig.
 type ThresholdMultiSignaturePubKey struct {
 	K       uint            `json:"threshold"`
-	Pubkeys []crypto.PubKey `json:"pubkeys"`
+	PubKeys []crypto.PubKey `json:"pubkeys"`
 }
 
 var _ crypto.PubKey = &ThresholdMultiSignaturePubKey{}
@@ -39,7 +39,7 @@ func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig [
 	}
 	size := sig.BitArray.Size()
 	// ensure bit array is the correct size
-	if len(pk.Pubkeys) != size {
+	if len(pk.PubKeys) != size {
 		return false
 	}
 	// ensure size of signature list
@@ -54,7 +54,7 @@ func (pk *ThresholdMultiSignaturePubKey) VerifyBytes(msg []byte, marshalledSig [
 	sigIndex := 0
 	for i := 0; i < size; i++ {
 		if sig.BitArray.GetIndex(i) {
-			if !pk.Pubkeys[i].VerifyBytes(msg, sig.Sigs[sigIndex]) {
+			if !pk.PubKeys[i].VerifyBytes(msg, sig.Sigs[sigIndex]) {
 				return false
 			}
 			sigIndex++
@@ -80,11 +80,11 @@ func (pk *ThresholdMultiSignaturePubKey) Equals(other crypto.PubKey) bool {
 	if !sameType {
 		return false
 	}
-	if pk.K != otherKey.K || len(pk.Pubkeys) != len(otherKey.Pubkeys) {
+	if pk.K != otherKey.K || len(pk.PubKeys) != len(otherKey.PubKeys) {
 		return false
 	}
-	for i := 0; i < len(pk.Pubkeys); i++ {
-		if !pk.Pubkeys[i].Equals(otherKey.Pubkeys[i]) {
+	for i := 0; i < len(pk.PubKeys); i++ {
+		if !pk.PubKeys[i].Equals(otherKey.PubKeys[i]) {
 			return false
 		}
 	}

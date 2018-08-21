@@ -52,9 +52,9 @@ func (mSig *Multisignature) AddSignature(sig []byte, index int) {
 	mSig.Sigs[newSigIndex] = sig
 }
 
-// AddSignatureFromPubkey adds a signature to the multisig,
+// AddSignatureFromPubKey adds a signature to the multisig,
 // at the index in keys corresponding to the provided pubkey.
-func (mSig *Multisignature) AddSignatureFromPubkey(sig []byte, pubkey crypto.PubKey, keys []crypto.PubKey) error {
+func (mSig *Multisignature) AddSignatureFromPubKey(sig []byte, pubkey crypto.PubKey, keys []crypto.PubKey) error {
 	index := getIndex(pubkey, keys)
 	if index == -1 {
 		return errors.New("provided key didn't exist in pubkeys")

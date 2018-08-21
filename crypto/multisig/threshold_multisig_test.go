@@ -38,26 +38,26 @@ func TestThresholdMultisigValidCases(t *testing.T) {
 		multisignature := NewMultisig(len(tc.pubkeys))
 		for i := 0; i < tc.k-1; i++ {
 			signingIndex := tc.signingIndices[i]
-			multisignature.AddSignatureFromPubkey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
 			require.False(t, multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
 				"multisig passed when i < k, tc %d, i %d", tcIndex, i)
-			multisignature.AddSignatureFromPubkey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
 			require.Equal(t, i+1, len(multisignature.Sigs),
 				"adding a signature for the same pubkey twice increased signature count by 2, tc %d", tcIndex)
 		}
 		require.False(t, multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
 			"multisig passed with k - 1 sigs, tc %d", tcIndex)
-		multisignature.AddSignatureFromPubkey(tc.signatures[tc.signingIndices[tc.k]], tc.pubkeys[tc.signingIndices[tc.k]], tc.pubkeys)
+		multisignature.AddSignatureFromPubKey(tc.signatures[tc.signingIndices[tc.k]], tc.pubkeys[tc.signingIndices[tc.k]], tc.pubkeys)
 		require.True(t, multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
 			"multisig failed after k good signatures, tc %d", tcIndex)
 		for i := tc.k + 1; i < len(tc.signingIndices); i++ {
 			signingIndex := tc.signingIndices[i]
-			multisignature.AddSignatureFromPubkey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
 			require.Equal(t, tc.passAfterKSignatures[i-tc.k-1],
 				multisigKey.VerifyBytes(tc.msg, multisignature.Marshal()),
 				"multisig didn't verify as expected after k sigs, tc %d, i %d", tcIndex, i)
 
-			multisignature.AddSignatureFromPubkey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
+			multisignature.AddSignatureFromPubKey(tc.signatures[signingIndex], tc.pubkeys[signingIndex], tc.pubkeys)
 			require.Equal(t, i+1, len(multisignature.Sigs),
 				"adding a signature for the same pubkey twice increased signature count by 2, tc %d", tcIndex)
 		}
@@ -71,14 +71,14 @@ func TestThresholdMultisigDuplicateSignatures(t *testing.T) {
 	multisigKey := NewThresholdMultiSignaturePubKey(2, pubkeys)
 	multisignature := NewMultisig(5)
 	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
-	multisignature.AddSignatureFromPubkey(sigs[0], pubkeys[0], pubkeys)
+	multisignature.AddSignatureFromPubKey(sigs[0], pubkeys[0], pubkeys)
 	// Add second signature manually
 	multisignature.Sigs = append(multisignature.Sigs, sigs[0])
 	require.False(t, multisigKey.VerifyBytes(msg, multisignature.Marshal()))
 }
 
 // TODO: Fully replace this test with table driven tests
-func TestMultiSigPubkeyEquality(t *testing.T) {
+func TestMultiSigPubKeyEquality(t *testing.T) {
 	msg := []byte{1, 2, 3, 4}
 	pubkeys, _ := generatePubKeysAndSignatures(5, msg)
 	multisigKey := NewThresholdMultiSignaturePubKey(2, pubkeys)
