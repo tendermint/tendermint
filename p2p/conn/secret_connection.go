@@ -334,11 +334,7 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []
 
 // increment nonce big-endian by 1 with wraparound.
 func incrNonce(nonce *[aeadNonceSize]byte) {
-	for i := aeadNonceSize - 1; 0 <= i; i-- {
-		nonce[i]++
-		// if this byte wrapped around to zero, we need to increment the next byte
-		if nonce[i] != 0 {
-			return
-		}
-	}
+	counter := binary.LittleEndian.Uint64(nonce[4:])
+	counter++
+	binary.LittleEndian.PutUint64(nonce[4:], counter)
 }
