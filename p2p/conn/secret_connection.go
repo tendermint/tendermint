@@ -123,7 +123,7 @@ func (sc *SecretConnection) Write(data []byte) (n int, err error) {
 			data = nil
 		}
 		chunkLength := len(chunk)
-		binary.BigEndian.PutUint32(frame, uint32(chunkLength))
+		binary.LittleEndian.PutUint32(frame, uint32(chunkLength))
 		copy(frame[dataLenSize:], chunk)
 
 		aead, err := chacha20poly1305.New(sc.sendSecret[:])
@@ -172,7 +172,7 @@ func (sc *SecretConnection) Read(data []byte) (n int, err error) {
 	incrNonce(sc.recvNonce)
 	// end decryption
 
-	var chunkLength = binary.BigEndian.Uint32(frame) // read the first two bytes
+	var chunkLength = binary.LittleEndian.Uint32(frame) // read the first four bytes
 	if chunkLength > dataMaxSize {
 		return 0, errors.New("chunkLength is greater than dataMaxSize")
 	}
