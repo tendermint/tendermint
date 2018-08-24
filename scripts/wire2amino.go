@@ -49,8 +49,8 @@ type PrivVal struct {
 }
 
 type Data struct {
-	Type string       `json:"type"`
-	Data cmn.HexBytes `json:"data"`
+	Type string `json:"type"`
+	Data []byte `json:"value"`
 }
 
 func convertNodeKey(cdc *amino.Codec, jsonBytes []byte) ([]byte, error) {
