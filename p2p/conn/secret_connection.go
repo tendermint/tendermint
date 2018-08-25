@@ -332,7 +332,10 @@ func shareAuthSignature(sc *SecretConnection, pubKey crypto.PubKey, signature []
 
 //--------------------------------------------------------------------------------
 
-// increment nonce big-endian by 1 with wraparound.
+// Increment nonce little-endian by 1 with wraparound.
+// Due to chacha20poly1305 expecting a 12 byte nonce we do not use the first four
+// bytes and only increment a 64 bit unsigned int in the remaining 8 bytes
+// (little-endian in nonce[4:]).
 func incrNonce(nonce *[aeadNonceSize]byte) {
 	counter := binary.LittleEndian.Uint64(nonce[4:])
 	counter++
