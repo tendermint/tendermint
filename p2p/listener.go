@@ -259,7 +259,7 @@ func isIpv6(ip net.IP) bool {
 func getNaiveExternalAddress(defaultToIPv4 bool, port int, settleForLocal bool, logger log.Logger) *NetAddress {
 	addrs, err := net.InterfaceAddrs()
 	if err != nil {
-		panic(cmn.Fmt("Could not fetch interface addresses: %v", err))
+		panic(fmt.Sprintf("Could not fetch interface addresses: %v", err))
 	}
 
 	for _, a := range addrs {

@@ -16,58 +16,60 @@ func NewCMap() *CMap {
 
 func (cm *CMap) Set(key string, value interface{}) {
 	cm.l.Lock()
-	defer cm.l.Unlock()
 	cm.m[key] = value
+	cm.l.Unlock()
 }
 
 func (cm *CMap) Get(key string) interface{} {
 	cm.l.Lock()
-	defer cm.l.Unlock()
-	return cm.m[key]
+	val := cm.m[key]
+	cm.l.Unlock()
+	return val
 }
 
 func (cm *CMap) Has(key string) bool {
 	cm.l.Lock()
-	defer cm.l.Unlock()
 	_, ok := cm.m[key]
+	cm.l.Unlock()
 	return ok
 }
 
 func (cm *CMap) Delete(key string) {
 	cm.l.Lock()
-	defer cm.l.Unlock()
 	delete(cm.m, key)
+	cm.l.Unlock()
 }
 
 func (cm *CMap) Size() int {
 	cm.l.Lock()
-	defer cm.l.Unlock()
-	return len(cm.m)
+	size := len(cm.m)
+	cm.l.Unlock()
+	return size
 }
 
 func (cm *CMap) Clear() {
 	cm.l.Lock()
-	defer cm.l.Unlock()
 	cm.m = make(map[string]interface{})
+	cm.l.Unlock()
 }
 
 func (cm *CMap) Keys() []string {
 	cm.l.Lock()
-	defer cm.l.Unlock()
 
 	keys := []string{}
 	for k := range cm.m {
 		keys = append(keys, k)
 	}
+	cm.l.Unlock()
 	return keys
 }
 
 func (cm *CMap) Values() []interface{} {
 	cm.l.Lock()
-	defer cm.l.Unlock()
 	items := []interface{}{}
 	for _, v := range cm.m {
 		items = append(items, v)
 	}
+	cm.l.Unlock()
 	return items
 }

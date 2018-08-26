@@ -3,10 +3,6 @@
 The Tendermint p2p protocol uses an authenticated encryption scheme
 based on the [Station-to-Station
 Protocol](https://en.wikipedia.org/wiki/Station-to-Station_protocol).
-The implementation uses
-[golang's](https://godoc.org/golang.org/x/crypto/nacl/box) [nacl
-box](http://nacl.cr.yp.to/box.html) for the actual authenticated
-encryption algorithm.
 
 Each peer generates an ED25519 key-pair to use as a persistent
 (long-term) id.

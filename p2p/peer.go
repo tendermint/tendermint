@@ -425,7 +425,7 @@ func createMConnection(
 		if reactor == nil {
 			// Note that its ok to panic here as it's caught in the conn._recover,
 			// which does onPeerError.
-			panic(cmn.Fmt("Unknown channel %X", chID))
+			panic(fmt.Sprintf("Unknown channel %X", chID))
 		}
 		reactor.Receive(chID, p, msgBytes)
 	}

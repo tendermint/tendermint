@@ -44,8 +44,10 @@ import (
 // }
 // ```
 func Validators(heightPtr *int64) (*ctypes.ResultValidators, error) {
-	storeHeight := blockStore.Height()
-	height, err := getHeight(storeHeight, heightPtr)
+	// The latest validator that we know is the
+	// NextValidator of the last block.
+	height := consensusState.GetState().LastBlockHeight + 1
+	height, err := getHeight(height, heightPtr)
 	if err != nil {
 		return nil, err
 	}

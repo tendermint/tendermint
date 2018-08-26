@@ -124,6 +124,8 @@ grpc_laddr = "{{ .RPC.GRPCListenAddress }}"
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
 grpc_max_open_connections = {{ .RPC.GRPCMaxOpenConnections }}
 
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
@@ -134,6 +136,8 @@ unsafe = {{ .RPC.Unsafe }}
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
 max_open_connections = {{ .RPC.MaxOpenConnections }}
 
 ##### peer to peer configuration options #####
@@ -166,8 +170,11 @@ addr_book_strict = {{ .P2P.AddrBookStrict }}
 # Time to wait before flushing messages out on the connection, in ms
 flush_throttle_timeout = {{ .P2P.FlushThrottleTimeout }}
 
-# Maximum number of peers to connect to
-max_num_peers = {{ .P2P.MaxNumPeers }}
+# Maximum number of inbound peers
+max_num_inbound_peers = {{ .P2P.MaxNumInboundPeers }}
+
+# Maximum number of outbound peers to connect to, excluding persistent peers
+max_num_outbound_peers = {{ .P2P.MaxNumOutboundPeers }}
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = {{ .P2P.MaxPacketMsgPayloadSize }}

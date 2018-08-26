@@ -1,22 +1,24 @@
 package proxy
 
 import (
-	"fmt"
-
-	"github.com/pkg/errors"
+	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-//--------------------------------------------
+type errNoData struct{}
 
-var errNoData = fmt.Errorf("No data returned for query")
+func (e errNoData) Error() string {
+	return "No data returned for query"
+}
 
-// IsNoDataErr checks whether an error is due to a query returning empty data
-func IsNoDataErr(err error) bool {
-	return errors.Cause(err) == errNoData
+// IsErrNoData checks whether an error is due to a query returning empty data
+func IsErrNoData(err error) bool {
+	if err_, ok := err.(cmn.Error); ok {
+		_, ok := err_.Data().(errNoData)
+		return ok
+	}
+	return false
 }
 
 func ErrNoData() error {
-	return errors.WithStack(errNoData)
+	return cmn.ErrorWrap(errNoData{}, "")
 }
-
-//--------------------------------------------

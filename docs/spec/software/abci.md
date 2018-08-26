@@ -6,8 +6,7 @@ and an application (the actual state machine).
 The ABCI message types are defined in a [protobuf
 file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
 
-For full details on the ABCI message types and protocol, see the [ABCI
-specification](https://github.com/tendermint/tendermint/blob/master/docs/app-dev/abci-spec.md).
+For full details on the ABCI message types and protocol, see the [ABCI specification](https://github.com/tendermint/tendermint/blob/master/docs/app-dev/abci-spec.md).
 Be sure to read the specification if you're trying to build an ABCI app!
 
 For additional details on server implementation, see the [ABCI
@@ -52,14 +51,13 @@ objects in the `ResponseBeginBlock`:
 
 ```
 message Validator {
-  bytes address = 1;
-  PubKey pub_key = 2;
-  int64 power = 3;
+  PubKey pub_key
+  int64 power
 }
 
 message PubKey {
-  string type = 1;
-  bytes  data = 2;
+  string type
+  bytes  data
 }
 
 ```
@@ -98,9 +96,6 @@ ResponseInitChain has the option to return a list of validators.
 If the list is not empty, Tendermint will adopt it for the validator set.
 This way the application can determine the initial validator set for the
 blockchain.
-
-Note that if addressses are included in the returned validators, they must match
-the address of the public key.
 
 ResponseInitChain also includes ConsensusParams, but these are presently
 ignored.

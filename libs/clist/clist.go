@@ -115,43 +115,42 @@ func (e *CElement) Next() *CElement {
 // Nonblocking, may return nil if at the end.
 func (e *CElement) Prev() *CElement {
 	e.mtx.RLock()
-	defer e.mtx.RUnlock()
-
-	return e.prev
+	prev := e.prev
+	e.mtx.RUnlock()
+	return prev
 }
 
 func (e *CElement) Removed() bool {
 	e.mtx.RLock()
-	defer e.mtx.RUnlock()
-
-	return e.removed
+	isRemoved := e.removed
+	e.mtx.RUnlock()
+	return isRemoved
 }
 
 func (e *CElement) DetachNext() {
-	if !e.Removed() {
+	e.mtx.Lock()
+	if !e.removed {
+		e.mtx.Unlock()
 		panic("DetachNext() must be called after Remove(e)")
 	}
-	e.mtx.Lock()
-	defer e.mtx.Unlock()
-
 	e.next = nil
+	e.mtx.Unlock()
 }
 
 func (e *CElement) DetachPrev() {
-	if !e.Removed() {
+	e.mtx.Lock()
+	if !e.removed {
+		e.mtx.Unlock()
 		panic("DetachPrev() must be called after Remove(e)")
 	}
-	e.mtx.Lock()
-	defer e.mtx.Unlock()
-
 	e.prev = nil
+	e.mtx.Unlock()
 }
 
 // NOTE: This function needs to be safe for
 // concurrent goroutines waiting on nextWg.
 func (e *CElement) SetNext(newNext *CElement) {
 	e.mtx.Lock()
-	defer e.mtx.Unlock()
 
 	oldNext := e.next
 	e.next = newNext
@@ -168,13 +167,13 @@ func (e *CElement) SetNext(newNext *CElement) {
 		e.nextWg.Done()
 		close(e.nextWaitCh)
 	}
+	e.mtx.Unlock()
 }
 
 // NOTE: This function needs to be safe for
 // concurrent goroutines waiting on prevWg
 func (e *CElement) SetPrev(newPrev *CElement) {
 	e.mtx.Lock()
-	defer e.mtx.Unlock()
 
 	oldPrev := e.prev
 	e.prev = newPrev
@@ -186,11 +185,11 @@ func (e *CElement) SetPrev(newPrev *CElement) {
 		e.prevWg.Done()
 		close(e.prevWaitCh)
 	}
+	e.mtx.Unlock()
 }
 
 func (e *CElement) SetRemoved() {
 	e.mtx.Lock()
-	defer e.mtx.Unlock()
 
 	e.removed = true
 
@@ -203,6 +202,7 @@ func (e *CElement) SetRemoved() {
 		e.nextWg.Done()
 		close(e.nextWaitCh)
 	}
+	e.mtx.Unlock()
 }
 
 //--------------------------------------------------------------------------------
@@ -221,13 +221,13 @@ type CList struct {
 
 func (l *CList) Init() *CList {
 	l.mtx.Lock()
-	defer l.mtx.Unlock()
 
 	l.wg = waitGroup1()
 	l.waitCh = make(chan struct{})
 	l.head = nil
 	l.tail = nil
 	l.len = 0
+	l.mtx.Unlock()
 	return l
 }
 
@@ -235,16 +235,16 @@ func New() *CList { return new(CList).Init() }
 
 func (l *CList) Len() int {
 	l.mtx.RLock()
-	defer l.mtx.RUnlock()
-
-	return l.len
+	len := l.len
+	l.mtx.RUnlock()
+	return len
 }
 
 func (l *CList) Front() *CElement {
 	l.mtx.RLock()
-	defer l.mtx.RUnlock()
-
-	return l.head
+	head := l.head
+	l.mtx.RUnlock()
+	return head
 }
 
 func (l *CList) FrontWait() *CElement {
@@ -265,9 +265,9 @@ func (l *CList) FrontWait() *CElement {
 
 func (l *CList) Back() *CElement {
 	l.mtx.RLock()
-	defer l.mtx.RUnlock()
-
-	return l.tail
+	back := l.tail
+	l.mtx.RUnlock()
+	return back
 }
 
 func (l *CList) BackWait() *CElement {
@@ -297,7 +297,6 @@ func (l *CList) WaitChan() <-chan struct{} {
 
 func (l *CList) PushBack(v interface{}) *CElement {
 	l.mtx.Lock()
-	defer l.mtx.Unlock()
 
 	// Construct a new element
 	e := &CElement{
@@ -327,7 +326,7 @@ func (l *CList) PushBack(v interface{}) *CElement {
 		l.tail.SetNext(e) // This will make e accessible.
 		l.tail = e        // Update the list.
 	}
-
+	l.mtx.Unlock()
 	return e
 }
 
@@ -335,18 +334,20 @@ func (l *CList) PushBack(v interface{}) *CElement {
 // NOTE: As per the contract of CList, removed elements cannot be added back.
 func (l *CList) Remove(e *CElement) interface{} {
 	l.mtx.Lock()
-	defer l.mtx.Unlock()
 
 	prev := e.Prev()
 	next := e.Next()
 
 	if l.head == nil || l.tail == nil {
+		l.mtx.Unlock()
 		panic("Remove(e) on empty CList")
 	}
 	if prev == nil && l.head != e {
+		l.mtx.Unlock()
 		panic("Remove(e) with false head")
 	}
 	if next == nil && l.tail != e {
+		l.mtx.Unlock()
 		panic("Remove(e) with false tail")
 	}
 
@@ -374,6 +375,7 @@ func (l *CList) Remove(e *CElement) interface{} {
 	// Set .Done() on e, otherwise waiters will wait forever.
 	e.SetRemoved()
 
+	l.mtx.Unlock()
 	return e.Value
 }
 

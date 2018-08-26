@@ -28,9 +28,14 @@ scripts/cutWALUntil/cutWALUntil
 libs/pubsub/query/fuzz_test/output
 shunit2
 
+.tendermint-lite
+addrbook.json
+
 */vendor
 */.glide
 .terraform
 terraform.tfstate
 terraform.tfstate.backup
 terraform.tfstate.d
+
+.vscode

@@ -18,11 +18,11 @@ import (
 var _ crypto.PrivKey = PrivKeyEd25519{}
 
 const (
-	Ed25519PrivKeyAminoRoute = "tendermint/PrivKeyEd25519"
-	Ed25519PubKeyAminoRoute  = "tendermint/PubKeyEd25519"
+	PrivKeyAminoRoute = "tendermint/PrivKeyEd25519"
+	PubKeyAminoRoute  = "tendermint/PubKeyEd25519"
 	// Size of an Edwards25519 signature. Namely the size of a compressed
 	// Edwards25519 point, and a field element. Both of which are 32 bytes.
-	SignatureEd25519Size = 64
+	SignatureSize = 64
 )
 
 var cdc = amino.NewCodec()
@@ -30,11 +30,11 @@ var cdc = amino.NewCodec()
 func init() {
 	cdc.RegisterInterface((*crypto.PubKey)(nil), nil)
 	cdc.RegisterConcrete(PubKeyEd25519{},
-		Ed25519PubKeyAminoRoute, nil)
+		PubKeyAminoRoute, nil)
 
 	cdc.RegisterInterface((*crypto.PrivKey)(nil), nil)
 	cdc.RegisterConcrete(PrivKeyEd25519{},
-		Ed25519PrivKeyAminoRoute, nil)
+		PrivKeyAminoRoute, nil)
 }
 
 // PrivKeyEd25519 implements crypto.PrivKey.
@@ -158,10 +158,10 @@ func (pubKey PubKeyEd25519) Bytes() []byte {
 
 func (pubKey PubKeyEd25519) VerifyBytes(msg []byte, sig_ []byte) bool {
 	// make sure we use the same algorithm to sign
-	if len(sig_) != SignatureEd25519Size {
+	if len(sig_) != SignatureSize {
 		return false
 	}
-	sig := new([SignatureEd25519Size]byte)
+	sig := new([SignatureSize]byte)
 	copy(sig[:], sig_)
 	pubKeyBytes := [PubKeyEd25519Size]byte(pubKey)
 	return ed25519.Verify(&pubKeyBytes, msg, sig)

@@ -19,7 +19,7 @@ func BenchmarkRandomReadsWrites2(b *testing.B) {
 	for i := 0; i < int(numItems); i++ {
 		internal[int64(i)] = int64(0)
 	}
-	db, err := NewCLevelDB(cmn.Fmt("test_%x", cmn.RandStr(12)), "")
+	db, err := NewCLevelDB(fmt.Sprintf("test_%x", cmn.RandStr(12)), "")
 	if err != nil {
 		b.Fatal(err.Error())
 		return
@@ -87,7 +87,7 @@ func bytes2Int64(buf []byte) int64 {
 */
 
 func TestCLevelDBBackend(t *testing.T) {
-	name := cmn.Fmt("test_%x", cmn.RandStr(12))
+	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
 	db := NewDB(name, LevelDBBackend, "")
 	defer cleanupDBDir("", name)
 

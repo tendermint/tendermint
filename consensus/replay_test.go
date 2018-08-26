@@ -3,7 +3,6 @@ package consensus
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,15 +19,14 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	crypto "github.com/tendermint/tendermint/crypto"
 	auto "github.com/tendermint/tendermint/libs/autofile"
-	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 
 	cfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/proxy"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 var consensusReplayConfig *cfg.Config
@@ -418,7 +416,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	}
 	defer proxyApp.Stop()
 
-	validators := types.TM2PB.Validators(state.Validators)
+	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
@@ -455,7 +453,7 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 	}
 	defer proxyApp.Stop()
 
-	validators := types.TM2PB.Validators(state.Validators)
+	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
@@ -494,7 +492,7 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		return nil, nil, err
 	}
 	if !found {
-		return nil, nil, errors.New(cmn.Fmt("WAL does not contain height %d.", 1))
+		return nil, nil, fmt.Errorf("WAL does not contain height %d.", 1)
 	}
 	defer gr.Close() // nolint: errcheck
 
@@ -531,11 +529,11 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 					panic(err)
 				}
 				if block.Height != height+1 {
-					panic(cmn.Fmt("read bad block from wal. got height %d, expected %d", block.Height, height+1))
+					panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", block.Height, height+1))
 				}
 				commitHeight := thisBlockCommit.Precommits[0].Height
 				if commitHeight != height+1 {
-					panic(cmn.Fmt("commit doesnt match. got height %d, expected %d", commitHeight, height+1))
+					panic(fmt.Sprintf("commit doesnt match. got height %d, expected %d", commitHeight, height+1))
 				}
 				blocks = append(blocks, block)
 				commits = append(commits, thisBlockCommit)
@@ -564,11 +562,11 @@ func makeBlockchainFromWAL(wal WAL) ([]*types.Block, []*types.Commit, error) {
 		panic(err)
 	}
 	if block.Height != height+1 {
-		panic(cmn.Fmt("read bad block from wal. got height %d, expected %d", block.Height, height+1))
+		panic(fmt.Sprintf("read bad block from wal. got height %d, expected %d", block.Height, height+1))
 	}
 	commitHeight := thisBlockCommit.Precommits[0].Height
 	if commitHeight != height+1 {
-		panic(cmn.Fmt("commit doesnt match. got height %d, expected %d", commitHeight, height+1))
+		panic(fmt.Sprintf("commit doesnt match. got height %d, expected %d", commitHeight, height+1))
 	}
 	blocks = append(blocks, block)
 	commits = append(commits, thisBlockCommit)
@@ -641,7 +639,7 @@ func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
 func TestInitChainUpdateValidators(t *testing.T) {
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
-	app := &initChainApp{vals: types.TM2PB.Validators(vals)}
+	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("proxy_test_")
@@ -668,7 +666,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	assert.Equal(t, newValAddr, expectValAddr)
 }
 
-func newInitChainApp(vals []abci.Validator) *initChainApp {
+func newInitChainApp(vals []abci.ValidatorUpdate) *initChainApp {
 	return &initChainApp{
 		vals: vals,
 	}
@@ -677,7 +675,7 @@ func newInitChainApp(vals []abci.Validator) *initChainApp {
 // returns the vals on InitChain
 type initChainApp struct {
 	abci.BaseApplication
-	vals []abci.Validator
+	vals []abci.ValidatorUpdate
 }
 
 func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {

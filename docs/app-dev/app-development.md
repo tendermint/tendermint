@@ -502,7 +502,7 @@ In go:
 
 ```
 func (app *KVStoreApplication) Info(req types.RequestInfo) (resInfo types.ResponseInfo) {
-  return types.ResponseInfo{Data: cmn.Fmt("{\"size\":%v}", app.state.Size())}
+  return types.ResponseInfo{Data: fmt.Sprintf("{\"size\":%v}", app.state.Size())}
 }
 ```
 
