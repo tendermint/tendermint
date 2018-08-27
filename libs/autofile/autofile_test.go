@@ -105,4 +105,8 @@ func TestAutoFile_Close(t *testing.T) {
 	if af.file != nil {
 		t.Fatalf("Error writing to autofile: %v", err)
 	}
+
+	if err := af.Close(); err != nil {
+		t.Fatalf("Error closing autofile")
+	}
 }
