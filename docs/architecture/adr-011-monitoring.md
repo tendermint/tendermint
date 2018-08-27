@@ -15,11 +15,11 @@ https://github.com/tendermint/tendermint/issues/986.
 A few solutions were considered:
 
 1. [Prometheus](https://prometheus.io)
-  a) Prometheus API
-  b) [go-kit metrics package](https://github.com/go-kit/kit/tree/master/metrics) as an interface plus Prometheus
-  c) [telegraf](https://github.com/influxdata/telegraf)
-  d) new service, which will listen to events emitted by pubsub and report metrics
-5. [OpenCensus](https://opencensus.io/go/index.html)
+   a) Prometheus API
+   b) [go-kit metrics package](https://github.com/go-kit/kit/tree/master/metrics) as an interface plus Prometheus
+   c) [telegraf](https://github.com/influxdata/telegraf)
+   d) new service, which will listen to events emitted by pubsub and report metrics
+2. [OpenCensus](https://opencensus.io/go/index.html)
 
 ### 1. Prometheus
 
@@ -70,30 +70,30 @@ will need to write interfaces ourselves.
 
 ### List of metrics
 
-|   | Name                                    | Type    | Description                                                                   |
-| - | --------------------------------------- | ------- | ----------------------------------------------------------------------------- |
-| A | consensus_height                        | Gauge   |                                                                               |
-| A | consensus_validators                    | Gauge   | Number of validators who signed                                               |
-| A | consensus_validators_power              | Gauge   | Total voting power of all validators                                          |
-| A | consensus_missing_validators            | Gauge   | Number of validators who did not sign                                         |
-| A | consensus_missing_validators_power      | Gauge   | Total voting power of the missing validators                                  |
-| A | consensus_byzantine_validators          | Gauge   | Number of validators who tried to double sign                                 |
-| A | consensus_byzantine_validators_power    | Gauge   | Total voting power of the byzantine validators                                |
-| A | consensus_block_interval                | Timing  | Time between this and last block (Block.Header.Time)                          |
-|   | consensus_block_time                    | Timing  | Time to create a block (from creating a proposal to commit)                   |
-|   | consensus_time_between_blocks           | Timing  | Time between committing last block and (receiving proposal creating proposal) |
-| A | consensus_rounds                        | Gauge   | Number of rounds                                                              |
-|   | consensus_prevotes                      | Gauge   |                                                                               |
-|   | consensus_precommits                    | Gauge   |                                                                               |
-|   | consensus_prevotes_total_power          | Gauge   |                                                                               |
-|   | consensus_precommits_total_power        | Gauge   |                                                                               |
-| A | consensus_num_txs                       | Gauge   |                                                                               |
-| A | mempool_size                            | Gauge   |                                                                               |
-| A | consensus_total_txs                     | Gauge   |                                                                               |
-| A | consensus_block_size                    | Gauge   | In bytes                                                                      |
-| A | p2p_peers                               | Gauge   | Number of peers node's connected to                                           |
+|     | Name                                 | Type   | Description                                                                   |
+| --- | ------------------------------------ | ------ | ----------------------------------------------------------------------------- |
+| A   | consensus_height                     | Gauge  |                                                                               |
+| A   | consensus_validators                 | Gauge  | Number of validators who signed                                               |
+| A   | consensus_validators_power           | Gauge  | Total voting power of all validators                                          |
+| A   | consensus_missing_validators         | Gauge  | Number of validators who did not sign                                         |
+| A   | consensus_missing_validators_power   | Gauge  | Total voting power of the missing validators                                  |
+| A   | consensus_byzantine_validators       | Gauge  | Number of validators who tried to double sign                                 |
+| A   | consensus_byzantine_validators_power | Gauge  | Total voting power of the byzantine validators                                |
+| A   | consensus_block_interval             | Timing | Time between this and last block (Block.Header.Time)                          |
+|     | consensus_block_time                 | Timing | Time to create a block (from creating a proposal to commit)                   |
+|     | consensus_time_between_blocks        | Timing | Time between committing last block and (receiving proposal creating proposal) |
+| A   | consensus_rounds                     | Gauge  | Number of rounds                                                              |
+|     | consensus_prevotes                   | Gauge  |                                                                               |
+|     | consensus_precommits                 | Gauge  |                                                                               |
+|     | consensus_prevotes_total_power       | Gauge  |                                                                               |
+|     | consensus_precommits_total_power     | Gauge  |                                                                               |
+| A   | consensus_num_txs                    | Gauge  |                                                                               |
+| A   | mempool_size                         | Gauge  |                                                                               |
+| A   | consensus_total_txs                  | Gauge  |                                                                               |
+| A   | consensus_block_size                 | Gauge  | In bytes                                                                      |
+| A   | p2p_peers                            | Gauge  | Number of peers node's connected to                                           |
 
-`A`	- will be implemented in the fist place.
+`A` - will be implemented in the fist place.
 
 **Proposed solution**
 

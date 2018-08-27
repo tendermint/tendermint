@@ -17,8 +17,9 @@ See [the peer-exchange docs](https://github.com/tendermint/tendermint/blob/maste
 ## New Full Node
 
 A new node needs a few things to connect to the network:
+
 - a list of seeds, which can be provided to Tendermint via config file or flags,
-or hardcoded into the software by in-process apps
+  or hardcoded into the software by in-process apps
 - a `ChainID`, also called `Network` at the p2p layer
 - a recent block height, H, and hash, HASH for the blockchain.
 

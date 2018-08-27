@@ -13,11 +13,11 @@ A
 [Block](https://godoc.org/github.com/tendermint/tendermint/types#Block)
 contains:
 
--   a [Header](#header) contains merkle hashes for various chain states
--   the
-    [Data](https://godoc.org/github.com/tendermint/tendermint/types#Data)
-    is all transactions which are to be processed
--   the [LastCommit](#commit) &gt; 2/3 signatures for the last block
+- a [Header](#header) contains merkle hashes for various chain states
+- the
+  [Data](https://godoc.org/github.com/tendermint/tendermint/types#Data)
+  is all transactions which are to be processed
+- the [LastCommit](#commit) &gt; 2/3 signatures for the last block
 
 The signatures returned along with block `H` are those validating block
 `H-1`. This can be a little confusing, but we must also consider that
@@ -66,7 +66,7 @@ effects of running that transaction will be first visible in the
 `AppHash` from the block header at height `H+1`.
 
 Like the `LastCommit` issue, this is a requirement of the immutability
-of the block chain, as the application only applies transactions *after*
+of the block chain, as the application only applies transactions _after_
 they are commited to the chain.
 
 ## Commit
@@ -90,7 +90,7 @@ you look at the code, you will notice that we need to provide the
 `chainID` of the blockchain in order to properly calculate the votes.
 This is to protect anyone from swapping votes between chains to fake (or
 frame) a validator. Also note that this `chainID` is in the
-`genesis.json` from *Tendermint*, not the `genesis.json` from the
+`genesis.json` from _Tendermint_, not the `genesis.json` from the
 basecoin app ([that is a different
 chainID...](https://github.com/cosmos/cosmos-sdk/issues/32)).
 

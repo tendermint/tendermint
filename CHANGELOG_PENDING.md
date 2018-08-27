@@ -23,6 +23,7 @@ FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))
 
 IMPROVEMENTS:
+- [docs] Lint documentation with `write-good` and `stop-words`.
 - [scripts] Added json2wal tool, which is supposed to help our users restore
   corrupted WAL files and compose test WAL files (@bradyjoestar)
 

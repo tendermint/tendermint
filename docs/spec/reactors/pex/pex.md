@@ -95,6 +95,7 @@ remove from address book completely.
 ## Select Peers to Exchange
 
 When we’re asked for peers, we select them as follows:
+
 - select at most `maxGetSelection` peers
 - try to select at least `minGetSelection` peers - if we have less than that, select them all.
 - select a random, unbiased `getSelectionPercent` of the peers
@@ -126,4 +127,3 @@ to use it in the PEX.
 See the [trustmetric](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-006-trust-metric.md)
 and [trustmetric useage](https://github.com/tendermint/tendermint/blob/master/docs/architecture/adr-007-trust-metric-usage.md)
 architecture docs for more details.
-
