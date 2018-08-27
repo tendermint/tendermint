@@ -66,13 +66,10 @@ Make the following changes:
 
 - More modern and standard cryptographic functions with wider adoption and hardware acceleration
 
-
 ### Negative
 
 - Exact authenticated encryption construction isn't already provided in a well-used library
 
-
 ### Neutral
 
 ## References
-
