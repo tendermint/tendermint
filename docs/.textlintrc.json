@@ -1,0 +1,9 @@
+{
+  "rules": {
+    "stop-words": {
+      "severity": "warning",
+      "defaultWords": false,
+      "words": "stop-words.txt"
+    }
+  }
+}

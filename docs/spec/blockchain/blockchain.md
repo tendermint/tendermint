@@ -104,8 +104,8 @@ type Vote struct {
 ```
 
 There are two types of votes:
-a *prevote* has `vote.Type == 1` and
-a *precommit* has `vote.Type == 2`.
+a _prevote_ has `vote.Type == 1` and
+a _precommit_ has `vote.Type == 2`.
 
 ## Signature
 
@@ -162,10 +162,10 @@ We refer to certain globally available objects:
 `prevBlock` is the `block` at the previous height,
 and `state` keeps track of the validator set, the consensus parameters
 and other results from the application. At the point when `block` is the block under consideration,
-the current version of the `state` corresponds to the state 
-after executing transactions from the `prevBlock`. 
+the current version of the `state` corresponds to the state
+after executing transactions from the `prevBlock`.
 Elements of an object are accessed as expected,
-ie. `block.Header`. 
+ie. `block.Header`.
 See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/state.md) for the definition of `state`.
 
 ### Header
@@ -288,6 +288,7 @@ This can be used to validate the `LastCommit` included in the next block.
 ```go
 block.NextValidatorsHash == SimpleMerkleRoot(state.NextValidators)
 ```
+
 Simple Merkle root of the next validator set that will be the validator set that commits the next block.
 Modifications to the validator set are defined by the application.
 
@@ -427,11 +428,8 @@ Execute(s State, app ABCIApp, block Block) State {
         AppHash: AppHash,
         LastValidators: state.Validators,
         Validators: state.NextValidators,
-        NextValidators: UpdateValidators(state.NextValidators, ValidatorChanges), 
+        NextValidators: UpdateValidators(state.NextValidators, ValidatorChanges),
         ConsensusParams: UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges),
     }
 }
-
 ```
-
-

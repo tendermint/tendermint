@@ -7,7 +7,7 @@ Since they may be need to be different in different networks, and potentially to
 networks, we seek to initialize them in a genesis file, and expose them through the ABCI.
 
 While we have some specific parameters now, like maximum block and transaction size, we expect to have more in the future,
-such as a period over which evidence is valid, or the frequency of checkpoints. 
+such as a period over which evidence is valid, or the frequency of checkpoints.
 
 ## Decision
 
@@ -45,7 +45,7 @@ type BlockGossip struct {
 
 The `ConsensusParams` can evolve over time by adding new structs that cover different aspects of the consensus rules.
 
-The `BlockPartSizeBytes` and the `BlockSize.MaxBytes` are enforced to be greater than 0. 
+The `BlockPartSizeBytes` and the `BlockSize.MaxBytes` are enforced to be greater than 0.
 The former because we need a part size, the latter so that we always have at least some sanity check over the size of blocks.
 
 ### ABCI
@@ -53,14 +53,14 @@ The former because we need a part size, the latter so that we always have at lea
 #### InitChain
 
 InitChain currently takes the initial validator set. It should be extended to also take parts of the ConsensusParams.
-There is some case to be made for it to take the entire Genesis, except there may be things in the genesis, 
+There is some case to be made for it to take the entire Genesis, except there may be things in the genesis,
 like the BlockPartSize, that the app shouldn't really know about.
 
 #### EndBlock
 
 The EndBlock response includes a `ConsensusParams`, which includes BlockSize and TxSize, but not BlockGossip.
 Other param struct can be added to `ConsensusParams` in the future.
-The `0` value is used to denote no change. 
+The `0` value is used to denote no change.
 Any other value will update that parameter in the `State.ConsensusParams`, to be applied for the next block.
 Tendermint should have hard-coded upper limits as sanity checks.
 
@@ -83,4 +83,3 @@ Proposed.
 ### Neutral
 
 - The TxSize, which checks validity, may be in conflict with the config's `max_block_size_tx`, which determines proposal sizes
-

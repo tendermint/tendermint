@@ -44,7 +44,6 @@ Thus, during Commit, it is safe to reset the QueryState and the CheckTxState to 
 Note, however, that it is not possible to send transactions to Tendermint during Commit - if your app
 tries to send a `/broadcast_tx` to Tendermint during Commit, it will deadlock.
 
-
 ## EndBlock Validator Updates
 
 Updates to the Tendermint validator set can be made by returning `Validator`
@@ -60,12 +59,12 @@ message PubKey {
   string type
   bytes  data
 }
-
 ```
 
 The `pub_key` currently supports two types:
-    - `type = "ed25519" and `data = <raw 32-byte public key>`
-    - `type = "secp256k1" and `data = <33-byte OpenSSL compressed public key>`
+
+- `type = "ed25519" and`data = <raw 32-byte public key>`
+- `type = "secp256k1" and `data = <33-byte OpenSSL compressed public key>`
 
 If the address is provided, it must match the address of the pubkey, as
 specified [here](/docs/spec/blockchain/encoding.md#Addresses)
@@ -87,9 +86,9 @@ following rules:
 - if power is 0, the validator must already exist, and will be removed from the
   validator set
 - if power is non-0:
-    - if the validator does not already exist, it will be added to the validator
-      set with the given power
-    - if the validator does already exist, its power will be adjusted to the given power
+  - if the validator does not already exist, it will be added to the validator
+    set with the given power
+  - if the validator does already exist, its power will be adjusted to the given power
 
 ## InitChain Validator Updates
 
@@ -114,10 +113,10 @@ features. These are:
 When Tendermint connects to a peer, it sends two queries to the ABCI application
 using the following paths, with no additional data:
 
- - `/p2p/filter/addr/<IP:PORT>`, where `<IP:PORT>` denote the IP address and
-   the port of the connection
- - `p2p/filter/id/<ID>`, where `<ID>` is the peer node ID (ie. the
-   pubkey.Address() for the peer's PubKey)
+- `/p2p/filter/addr/<IP:PORT>`, where `<IP:PORT>` denote the IP address and
+  the port of the connection
+- `p2p/filter/id/<ID>`, where `<ID>` is the peer node ID (ie. the
+  pubkey.Address() for the peer's PubKey)
 
 If either of these queries return a non-zero ABCI code, Tendermint will refuse
 to connect to the peer.
@@ -128,11 +127,9 @@ On startup, Tendermint calls Info on the Query connection to get the latest
 committed state of the app. The app MUST return information consistent with the
 last block it succesfully completed Commit for.
 
-If the app succesfully committed block H but not H+1, then `last_block_height =
-H` and `last_block_app_hash = <hash returned by Commit for block H>`. If the app
+If the app succesfully committed block H but not H+1, then `last_block_height = H` and `last_block_app_hash = <hash returned by Commit for block H>`. If the app
 failed during the Commit of block H, then `last_block_height = H-1` and
-`last_block_app_hash = <hash returned by Commit for block H-1, which is the hash
-in the header of block H>`.
+`last_block_app_hash = <hash returned by Commit for block H-1, which is the hash in the header of block H>`.
 
 We now distinguish three heights, and describe how Tendermint syncs itself with
 the app.
@@ -165,24 +162,24 @@ If `storeBlockHeight > stateBlockHeight+1`, panic
 Now, the meat:
 
 If `storeBlockHeight == stateBlockHeight && appBlockHeight < storeBlockHeight`,
-	replay all blocks in full from `appBlockHeight` to `storeBlockHeight`.
-	This happens if we completed processing the block, but the app forgot its height.
+replay all blocks in full from `appBlockHeight` to `storeBlockHeight`.
+This happens if we completed processing the block, but the app forgot its height.
 
 If `storeBlockHeight == stateBlockHeight && appBlockHeight == storeBlockHeight`, we're done
-	This happens if we crashed at an opportune spot.
+This happens if we crashed at an opportune spot.
 
 If `storeBlockHeight == stateBlockHeight+1`
-	This happens if we started processing the block but didn't finish.
+This happens if we started processing the block but didn't finish.
 
-	If `appBlockHeight < stateBlockHeight`
-		replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
-		and replay the block at `storeBlockHeight` using the WAL.
-	This happens if the app forgot the last block it committed.
+    If `appBlockHeight < stateBlockHeight`
+    	replay all blocks in full from `appBlockHeight` to `storeBlockHeight-1`,
+    	and replay the block at `storeBlockHeight` using the WAL.
+    This happens if the app forgot the last block it committed.
 
-	If `appBlockHeight == stateBlockHeight`,
-		replay the last block (storeBlockHeight) in full.
-	This happens if we crashed before the app finished Commit
+    If `appBlockHeight == stateBlockHeight`,
+    	replay the last block (storeBlockHeight) in full.
+    This happens if we crashed before the app finished Commit
 
-	If appBlockHeight == storeBlockHeight {
-		update the state using the saved ABCI responses but dont run the block against the real app.
-	This happens if we crashed after the app finished Commit but before Tendermint saved the state.
+    If appBlockHeight == storeBlockHeight {
+    	update the state using the saved ABCI responses but dont run the block against the real app.
+    This happens if we crashed after the app finished Commit but before Tendermint saved the state.
