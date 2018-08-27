@@ -6,8 +6,7 @@ and an application (the actual state machine).
 The ABCI message types are defined in a [protobuf
 file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
 
-For full details on the ABCI message types and protocol, see the [ABCI
-specification](https://github.com/tendermint/tendermint/blob/develop/docs/app-dev/abci-spec.md).
+For full details on the ABCI message types and protocol, see the [ABCI specification](https://github.com/tendermint/tendermint/blob/master/docs/app-dev/abci-spec.md).
 Be sure to read the specification if you're trying to build an ABCI app!
 
 For additional details on server implementation, see the [ABCI
