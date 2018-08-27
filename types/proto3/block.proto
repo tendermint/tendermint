@@ -30,13 +30,14 @@ message Header {
 
   // hashes from the app output from the prev block
   bytes ValidatorsHash = 9; // validators for the current block
-  bytes ConsensusHash = 10; // consensus params for current block
-  bytes AppHash = 11; // state after txs from the previous block
-  bytes LastResultsHash = 12; // root hash of all results from the txs from the previous block
+  bytes NextValidatorsHash = 10; // validators for the next block
+  bytes ConsensusHash = 11; // consensus params for current block
+  bytes AppHash = 12; // state after txs from the previous block
+  bytes LastResultsHash = 13; // root hash of all results from the txs from the previous block
 
   // consensus info
-  bytes EvidenceHash = 13; // evidence included in the block
-  bytes ProposerAddress = 14; // original proposer of the block
+  bytes EvidenceHash = 14; // evidence included in the block
+  bytes ProposerAddress = 15; // original proposer of the block
 }
 
 // Timestamp wraps how amino encodes time. Note that this is different from the protobuf well-known type

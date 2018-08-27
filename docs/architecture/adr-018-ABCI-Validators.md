@@ -2,6 +2,10 @@
 
 ## Changelog
 
+016-08-2018: Follow up from review:
+    - Revert changes to commit round
+    - Remind about justification for removing pubkey
+    - Update pros/cons
 05-08-2018: Initial draft
 
 ## Context
@@ -10,17 +14,14 @@ ADR 009 introduced major improvements to the ABCI around validators and the use
 of Amino. Here we follow up with some additional changes to improve the naming
 and expected use of Validator messages.
 
-We also fix how we communicate the commit round - there is no defined commit
-round, as validators can commit the same block in different rounds, so we
-should communicate the round each validator committed in.
-
 ## Decision
 
 ### Validator
 
-Currently a Validator contains address and `pub_key`, and one or the other is
+Currently a Validator contains `address` and `pub_key`, and one or the other is
 optional/not-sent depending on the use case. Instead, we should have a
-Validator (with just the address) and a ValidatorUpdate (with the pubkey):
+`Validator` (with just the address, used for RequestBeginBlock)
+and a `ValidatorUpdate` (with the pubkey, used for ResponseEndBlock):
 
 ```
 message Validator {
@@ -34,6 +35,13 @@ message ValidatorUpdate {
 }
 ```
 
+As noted in ADR-009[https://github.com/tendermint/tendermint/blob/develop/docs/architecture/adr-009-ABCI-design.md],
+the `Validator` does not contain a pubkey because quantum public keys are
+quite large and it would be wasteful to send them all over ABCI with every block.
+Thus, applications that want to take advantage of the information in BeginBlock
+are *required* to store pubkeys in state (or use much less efficient lazy means
+of verifying BeginBlock data).
+
 ### RequestBeginBlock
 
 LastCommitInfo currently has an array of `SigningValidator` that contains
@@ -41,19 +49,17 @@ information for each validator in the entire validator set.
 Instead, this should be called `VoteInfo`, since it is information about the
 validator votes.
 
-Additionally, we have a single CommitRound in the LastCommitInfo,
-but such a round does not exist. Instead, we
-should include the round associated with each commit vote:
+Note that all votes in a commit must be from the same round.
 
 ```
 message LastCommitInfo {
+  int64 round
   repeated VoteInfo commit_votes
 }
 
 message VoteInfo {
     Validator validator
     bool signed_last_block
-    int64 round
 }
 ```
 
@@ -61,6 +67,9 @@ message VoteInfo {
 
 Use ValidatorUpdates instead of Validators. Then it's clear we don't need an
 address, and we do need a pubkey.
+
+We could require the address here as well as a sanity check, but it doesn't seem
+necessary.
 
 ### InitChain
 
@@ -76,16 +85,15 @@ Proposal.
 
 ### Positive
 
-- Easier for developers to build on and understand the ABCI
-- Apps get more information about the votes (ie. the round they're from)
+- Clarifies the distinction between the different uses of validator information
 
 ### Negative
 
-- There are two validator types
+- Apps must still store the public keys in state to utilize the RequestBeginBlock info
 
 ### Neutral
 
--
+- ResponseEndBlock does not require an address
 
 ## References
 

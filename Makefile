@@ -10,6 +10,8 @@ INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protob
 BUILD_TAGS?='tendermint'
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
 
+LINT_FLAGS = --exclude '.*\.pb\.go' --vendor --deadline=600s
+
 all: check build test install
 
 check: check_tools get_vendor_deps
@@ -36,13 +38,14 @@ protoc_all: protoc_libs protoc_abci protoc_grpc
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
+	## Note the $< here is substituted for the %.proto
+	## Note the $@ here is substituted for the %.pb.go
 	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:.
-	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk -i inplace '/^\s*package \w+/ { print "//nolint" }1' $@
 
 ########################################
 ### Build ABCI
 
+# see protobuf section above
 protoc_abci: abci/types/types.pb.go
 
 build_abci:
@@ -216,7 +219,7 @@ fmt:
 
 metalinter:
 	@echo "--> Running linter"
-	@gometalinter.v2 --vendor --deadline=600s --disable-all  \
+	@gometalinter.v2 $(LINT_FLAGS) --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \
@@ -245,7 +248,7 @@ metalinter:
 
 metalinter_all:
 	@echo "--> Running linter (all)"
-	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
+	gometalinter.v2 $(LINT_FLAGS) --enable-all --disable=lll ./...
 
 DESTINATION = ./index.html.md
 
