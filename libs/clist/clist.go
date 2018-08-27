@@ -15,6 +15,11 @@ import (
 	"sync"
 )
 
+// MaxLength is the max allowed number of elements a linked list is
+// allowed to contain.
+// If more elements are pushed to the list it will panic.
+const MaxLength = int(^uint(0) >> 1)
+
 /*
 
 CElement is an element of a linked-list
@@ -47,6 +52,8 @@ type CElement struct {
 
 	Value interface{} // immutable
 }
+
+
 
 // Blocking implementation of Next().
 // May return nil iff CElement was tail and got removed.
@@ -314,6 +321,9 @@ func (l *CList) PushBack(v interface{}) *CElement {
 	if l.len == 0 {
 		l.wg.Done()
 		close(l.waitCh)
+	}
+	if l.len == MaxLength {
+		panic("clist: maximum length list reached")
 	}
 	l.len++
 
