@@ -74,3 +74,46 @@ func TestSIGHUP(t *testing.T) {
 		t.Errorf("Unexpected body %s", body)
 	}
 }
+
+func TestOpenAutoFilePerms(t *testing.T) {
+	// Manually modify file permissions, close, and reopen using autofile:
+	// We expect the file permissions to be changed back to the intended perms.
+	file, err := ioutil.TempFile("", "permission_test")
+	if err != nil {
+		t.Fatalf("Error creating tempfile: %v", err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatalf("Error closing tempfile: %v", err)
+	}
+	name := file.Name()
+	af, err := OpenAutoFile(name)
+	if err != nil {
+		t.Fatalf("Error creating autofile: %v", err)
+	}
+	if err = af.file.Chmod(0755); err != nil {
+		t.Fatalf("Error changing underlying file permissions: %v", err)
+	}
+	if err = af.Close(); err != nil {
+		t.Fatalf("Could not close autofile: %v", err)
+	}
+	af, err = OpenAutoFile(name)
+	if err != nil {
+		t.Fatalf("Error re-opening autofile: %v", err)
+	}
+	if err = af.Close(); err != nil {
+		t.Fatalf("Error closing autofile: %v", err)
+	}
+
+	f, err := os.Open(name)
+	if err != nil {
+		t.Fatalf("Error opening file: %v", err)
+	}
+	fi, err := f.Stat()
+	if err != nil {
+		t.Fatalf("Error reading fileinfo: %v", err)
+	}
+	if fi.Mode() != autoFilePerms {
+		t.Fatalf("File permissions were not changed to expected. got: %v, want %v",
+			fi.Mode(), autoFilePerms)
+	}
+}
