@@ -1,7 +1,7 @@
 module.exports = {
   title: "Tendermint Core",
   description: "Documentation for Tendermint Core",
-  dest: "./site-docs",
+  dest: "./dist/docs",
   base: "/",
   markdown: {
     lineNumbers: true
