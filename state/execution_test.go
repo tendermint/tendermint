@@ -1,6 +1,7 @@
 package state
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -85,7 +86,7 @@ func TestBeginBlockValidators(t *testing.T) {
 
 		// -> app receives a list of validators with a bool indicating if they signed
 		ctr := 0
-		for i, v := range app.Validators {
+		for i, v := range app.CommitVotes {
 			if ctr < len(tc.expectedAbsentValidators) &&
 				tc.expectedAbsentValidators[ctr] == i {
 
@@ -159,7 +160,7 @@ func TestUpdateValidators(t *testing.T) {
 		name string
 
 		currentSet  *types.ValidatorSet
-		abciUpdates []abci.Validator
+		abciUpdates []abci.ValidatorUpdate
 
 		resultingSet *types.ValidatorSet
 		shouldErr    bool
@@ -168,7 +169,7 @@ func TestUpdateValidators(t *testing.T) {
 			"adding a validator is OK",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: 20}},
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 20}},
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
 			false,
@@ -177,7 +178,7 @@ func TestUpdateValidators(t *testing.T) {
 			"updating a validator is OK",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey1), Power: 20}},
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey1), Power: 20}},
 
 			types.NewValidatorSet([]*types.Validator{types.NewValidator(pubkey1, 20)}),
 			false,
@@ -186,7 +187,7 @@ func TestUpdateValidators(t *testing.T) {
 			"removing a validator is OK",
 
 			types.NewValidatorSet([]*types.Validator{val1, val2}),
-			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			false,
@@ -196,7 +197,7 @@ func TestUpdateValidators(t *testing.T) {
 			"removing a non-existing validator results in error",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: 0}},
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
@@ -206,7 +207,7 @@ func TestUpdateValidators(t *testing.T) {
 			"adding a validator with negative power results in error",
 
 			types.NewValidatorSet([]*types.Validator{val1}),
-			[]abci.Validator{{Address: []byte{}, PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
+			[]abci.ValidatorUpdate{{PubKey: types.TM2PB.PubKey(pubkey2), Power: -100}},
 
 			types.NewValidatorSet([]*types.Validator{val1}),
 			true,
@@ -229,6 +230,62 @@ func TestUpdateValidators(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// TestEndBlockValidatorUpdates ensures we update validator set and send an event.
+func TestEndBlockValidatorUpdates(t *testing.T) {
+	app := &testApp{}
+	cc := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(cc, nil)
+	err := proxyApp.Start()
+	require.Nil(t, err)
+	defer proxyApp.Stop()
+
+	state, stateDB := state(1, 1)
+
+	blockExec := NewBlockExecutor(stateDB, log.TestingLogger(), proxyApp.Consensus(),
+		MockMempool{}, MockEvidencePool{})
+	eventBus := types.NewEventBus()
+	err = eventBus.Start()
+	require.NoError(t, err)
+	defer eventBus.Stop()
+	blockExec.SetEventBus(eventBus)
+
+	updatesCh := make(chan interface{}, 1)
+	err = eventBus.Subscribe(context.Background(), "TestEndBlockValidatorUpdates", types.EventQueryValidatorSetUpdates, updatesCh)
+	require.NoError(t, err)
+
+	block := makeBlock(state, 1)
+	blockID := types.BlockID{block.Hash(), block.MakePartSet(testPartSize).Header()}
+
+	pubkey := ed25519.GenPrivKey().PubKey()
+	app.ValidatorUpdates = []abci.ValidatorUpdate{
+		{PubKey: types.TM2PB.PubKey(pubkey), Power: 10},
+	}
+
+	state, err = blockExec.ApplyBlock(state, blockID, block)
+	require.Nil(t, err)
+
+	// test new validator was added to NextValidators
+	if assert.Equal(t, state.Validators.Size()+1, state.NextValidators.Size()) {
+		idx, _ := state.NextValidators.GetByAddress(pubkey.Address())
+		if idx < 0 {
+			t.Fatalf("can't find address %v in the set %v", pubkey.Address(), state.NextValidators)
+		}
+	}
+
+	// test we threw an event
+	select {
+	case e := <-updatesCh:
+		event, ok := e.(types.EventDataValidatorSetUpdates)
+		require.True(t, ok, "Expected event of type EventDataValidatorSetUpdates, got %T", e)
+		if assert.NotEmpty(t, event.ValidatorUpdates) {
+			assert.Equal(t, pubkey, event.ValidatorUpdates[0].PubKey)
+			assert.EqualValues(t, 10, event.ValidatorUpdates[0].VotingPower)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("Did not receive EventValidatorSetUpdates within 1 sec.")
 	}
 }
 
@@ -275,27 +332,28 @@ func makeBlock(state State, height int64) *types.Block {
 
 //----------------------------------------------------------------------------
 
-var _ abci.Application = (*testApp)(nil)
-
 type testApp struct {
 	abci.BaseApplication
 
-	Validators          []abci.SigningValidator
+	CommitVotes         []abci.VoteInfo
 	ByzantineValidators []abci.Evidence
+	ValidatorUpdates    []abci.ValidatorUpdate
 }
 
-func NewKVStoreApplication() *testApp {
-	return &testApp{}
-}
+var _ abci.Application = (*testApp)(nil)
 
 func (app *testApp) Info(req abci.RequestInfo) (resInfo abci.ResponseInfo) {
 	return abci.ResponseInfo{}
 }
 
 func (app *testApp) BeginBlock(req abci.RequestBeginBlock) abci.ResponseBeginBlock {
-	app.Validators = req.LastCommitInfo.Validators
+	app.CommitVotes = req.LastCommitInfo.Votes
 	app.ByzantineValidators = req.ByzantineValidators
 	return abci.ResponseBeginBlock{}
+}
+
+func (app *testApp) EndBlock(req abci.RequestEndBlock) abci.ResponseEndBlock {
+	return abci.ResponseEndBlock{ValidatorUpdates: app.ValidatorUpdates}
 }
 
 func (app *testApp) DeliverTx(tx []byte) abci.ResponseDeliverTx {

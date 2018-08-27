@@ -416,7 +416,7 @@ func buildAppStateFromChain(proxyApp proxy.AppConns, stateDB dbm.DB,
 	}
 	defer proxyApp.Stop()
 
-	validators := types.TM2PB.Validators(state.Validators)
+	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
@@ -453,7 +453,7 @@ func buildTMStateFromChain(config *cfg.Config, stateDB dbm.DB, state sm.State, c
 	}
 	defer proxyApp.Stop()
 
-	validators := types.TM2PB.Validators(state.Validators)
+	validators := types.TM2PB.ValidatorUpdates(state.Validators)
 	if _, err := proxyApp.Consensus().InitChainSync(abci.RequestInitChain{
 		Validators: validators,
 	}); err != nil {
@@ -639,7 +639,7 @@ func (bs *mockBlockStore) LoadSeenCommit(height int64) *types.Commit {
 func TestInitChainUpdateValidators(t *testing.T) {
 	val, _ := types.RandValidator(true, 10)
 	vals := types.NewValidatorSet([]*types.Validator{val})
-	app := &initChainApp{vals: types.TM2PB.Validators(vals)}
+	app := &initChainApp{vals: types.TM2PB.ValidatorUpdates(vals)}
 	clientCreator := proxy.NewLocalClientCreator(app)
 
 	config := ResetConfig("proxy_test_")
@@ -666,7 +666,7 @@ func TestInitChainUpdateValidators(t *testing.T) {
 	assert.Equal(t, newValAddr, expectValAddr)
 }
 
-func newInitChainApp(vals []abci.Validator) *initChainApp {
+func newInitChainApp(vals []abci.ValidatorUpdate) *initChainApp {
 	return &initChainApp{
 		vals: vals,
 	}
@@ -675,7 +675,7 @@ func newInitChainApp(vals []abci.Validator) *initChainApp {
 // returns the vals on InitChain
 type initChainApp struct {
 	abci.BaseApplication
-	vals []abci.Validator
+	vals []abci.ValidatorUpdate
 }
 
 func (ica *initChainApp) InitChain(req abci.RequestInitChain) abci.ResponseInitChain {

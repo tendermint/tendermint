@@ -523,7 +523,7 @@ developers guide](../app-dev/app-development.md) for more details.
 To run a network locally, say on a single machine, you must change the
 `_laddr` fields in the `config.toml` (or using the flags) so that the
 listening addresses of the various sockets don't conflict. Additionally,
-you must set `addrbook_strict=false` in the `config.toml`, otherwise
+you must set `addr_book_strict=false` in the `config.toml`, otherwise
 Tendermint's p2p library will deny making connections to peers with the
 same IP address.
 

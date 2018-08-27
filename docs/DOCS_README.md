@@ -8,14 +8,10 @@ and built using [VuePress](https://vuepress.vuejs.org/) from the tendermint webs
 
 - https://github.com/tendermint/tendermint.com
 
-which has a [configuration file](https://github.com/tendermint/tendermint.com/blob/develop/docs/.vuepress/config.js) for displaying
-the Table of Contents that lists all the documentation.
+Under the hood, Jenkins listens for changes (on develop or master) in ./docs then rebuilds
+either the staging or production site depending on which branch the changes were made.
 
-Under the hood, Jenkins listens for changes in ./docs then pushes a `docs-staging` branch to the tendermint.com repo with the latest documentation. That branch must be manually PR'd to `develop` then `master` for staging then production. This process should happen in synchrony with a release.
+To update the Table of Contents (layout of the documentation sidebar), edit the
+`config.js` in this directory, while the `README.md` is the landing page for the
+website documentation.
 
-The `README.md` in this directory is the landing page for
-website documentation and the following folders are intentionally
-ommitted:
-
-- `architecture/` ==> contains Architecture Design Records
-- `spec/` ==> contains the detailed specification
