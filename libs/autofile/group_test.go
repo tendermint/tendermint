@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	"time"
 )
 
 func createTestGroupWithHeadSizeLimit(t *testing.T, headSizeLimit int64) *Group {
@@ -102,6 +103,44 @@ func TestCheckHeadSizeLimit(t *testing.T) {
 
 	// Calling checkHeadSizeLimit does nothing.
 	g.checkHeadSizeLimit()
+	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
+
+	// Cleanup
+	destroyTestGroup(t, g)
+}
+
+func TestAutoHeadSizeCheckLimit(t *testing.T) {
+	g := createTestGroupWithHeadSizeLimit(t, 1000*1000)
+	// should start group for autoCheck
+	g.Start()
+
+	// At first, there are no files.
+	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 0, 0)
+
+	// Write 1000 bytes 1000 times.
+	for i := 0; i < 1000; i++ {
+		err := g.WriteLine(cmn.RandStr(999))
+		require.NoError(t, err, "Error appending to head")
+	}
+	g.Flush()
+	assertGroupInfo(t, g.ReadGroupInfo(), 0, 0, 1000000, 1000000)
+
+	//sleep 2 * groupCheckDuration
+	time.Sleep(2 * groupCheckDuration)
+	// Write 1000 bytes 1000 times.
+	for i := 0; i < 1000; i++ {
+		err := g.WriteLine(cmn.RandStr(999))
+		require.NoError(t, err, "Error appending to head")
+	}
+	g.Flush()
+	assertGroupInfo(t, g.ReadGroupInfo(), 0, 1, 2000000, 1000000)
+
+	//sleep 2 * groupCheckDuration
+	time.Sleep(2 * groupCheckDuration)
+
+	// re-write more 1000 bytes for autoCheck
+	_, err := g.Head.Write([]byte(cmn.RandStr(999) + "\n"))
+	require.NoError(t, err, "Error appending to head")
 	assertGroupInfo(t, g.ReadGroupInfo(), 0, 2, 2001000, 1000)
 
 	// Cleanup
