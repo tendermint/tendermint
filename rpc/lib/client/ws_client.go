@@ -175,7 +175,9 @@ func (c *WSClient) OnStart() error {
 }
 
 // OnStop implements cmn.Service.
-func (c *WSClient) OnStop() {}
+func (c *WSClient) OnStop() {
+	_ = c.conn.Close()
+}
 
 // Stop overrides cmn.Service#Stop. There is no other way to wait until Quit
 // channel is closed.
