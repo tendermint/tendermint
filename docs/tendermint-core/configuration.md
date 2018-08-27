@@ -34,7 +34,7 @@ fast_sync = true
 db_backend = "leveldb"
 
 # Database directory
-db_path = "data"
+db_dir = "data"
 
 # Output level for logging
 log_level = "state:info,*:error"

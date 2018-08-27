@@ -81,7 +81,7 @@ fast_sync = {{ .BaseConfig.FastSync }}
 db_backend = "{{ .BaseConfig.DBBackend }}"
 
 # Database directory
-db_path = "{{ js .BaseConfig.DBPath }}"
+db_dir = "{{ js .BaseConfig.DBPath }}"
 
 # Output level for logging, including package level options
 log_level = "{{ .BaseConfig.LogLevel }}"
