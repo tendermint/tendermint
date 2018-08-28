@@ -384,7 +384,7 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 	return commit.bitArray
 }
 
-func (commit *Commit) AddAddresses(addresses []Address) {
+func (commit *Commit) SetAddresses(addresses []Address) {
 	commit.addresses = addresses
 }
 

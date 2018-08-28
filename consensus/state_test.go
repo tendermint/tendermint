@@ -294,6 +294,7 @@ func TestStateFullRoundNil(t *testing.T) {
 	validatePrevoteAndPrecommit(t, cs, round, 0, vss[0], nil, nil)
 }
 
+// Tests that consensus state can be saved and reloaded from DB after committing a block.
 func TestStateFullRound1Reload(t *testing.T) {
 	blockDB := dbm.NewMemDB()
 	state, privVals := randGenesisState(1, false, 10)

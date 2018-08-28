@@ -117,8 +117,8 @@ height and round by a sufficient set of validators.
 type Commit struct {
     HeightNum  int64
     RoundNum   int
-	BlockID    BlockID
-	Precommits []*CommitSig
+    BlockID    BlockID
+    Precommits []*CommitSig
 }
 ```
 

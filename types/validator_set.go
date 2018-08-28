@@ -278,7 +278,7 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 	}
 
 	talliedVotingPower := int64(0)
-	commit.AddAddresses(vals.GetAddresses())
+	commit.SetAddresses(vals.GetAddresses())
 
 	for idx, precommit := range commit.Precommits {
 		if precommit == nil {

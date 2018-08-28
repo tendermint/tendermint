@@ -452,7 +452,7 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	seenCommit.AddAddresses(cs.Validators.GetAddresses())
+	seenCommit.SetAddresses(cs.Validators.GetAddresses())
 	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
 	for idx := 0; idx < len(seenCommit.Precommits); idx++ {
 		if seenCommit.Precommits[idx] == nil {
