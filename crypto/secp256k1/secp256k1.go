@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	secp256k1 "github.com/btcsuite/btcd/btcec"
+	secp256k1 "github.com/tendermint/btcd/btcec"
 	amino "github.com/tendermint/go-amino"
 	"github.com/tendermint/tendermint/crypto"
 	"golang.org/x/crypto/ripemd160"
@@ -141,10 +141,12 @@ func (pubKey PubKeySecp256k1) VerifyBytes(msg []byte, sig []byte) bool {
 	if err != nil {
 		return false
 	}
-	parsedSig, err := secp256k1.ParseDERSignature(sig[:], secp256k1.S256())
+	parsedSig, err := secp256k1.ParseSignature(sig[:], secp256k1.S256())
 	if err != nil {
 		return false
 	}
+	// Underlying library ensures that this signature is in canonical form, to
+	// prevent Secp256k1 malleability from altering the sign of the s term.
 	return parsedSig.Verify(crypto.Sha256(msg), pub)
 }
 

@@ -67,8 +67,7 @@ This is basically Ethereum's encoding, but without the leading recovery bit.
 
 ## Status
 
-Proposed. The signature section seems to be agreed upon for the most part.
-Needs decision on Enum types.
+Implemented
 
 ## Consequences
 
