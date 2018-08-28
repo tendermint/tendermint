@@ -205,11 +205,11 @@ func write(path string, d []byte) error {
 		return err
 	}
 	defer f.Close()
-	fInf, err := f.Stat()
+	fInfo, err := f.Stat()
 	if err != nil {
 		return err
 	}
-	if fInf.Mode() != keyPerm {
+	if fInfo.Mode() != keyPerm {
 		// reset file permissions:
 		if err := f.Chmod(keyPerm); err != nil {
 			return err

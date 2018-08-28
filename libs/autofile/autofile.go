@@ -121,11 +121,11 @@ func (af *AutoFile) openFile() error {
 	if err != nil {
 		return err
 	}
-	fInf, err := file.Stat()
+	fileInfo, err := file.Stat()
 	if err != nil {
 		return err
 	}
-	if fInf.Mode() != autoFilePerms {
+	if fileInfo.Mode() != autoFilePerms {
 		// reset file permissions:
 		if err := file.Chmod(autoFilePerms); err != nil {
 			return err
