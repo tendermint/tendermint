@@ -312,7 +312,7 @@ jobs:
             done
       - run:
           name: upload
-          command: bash <(curl -s https://codecov.io/bash) -f coverage.txt
+          command: bash .circleci/codecov.sh -f coverage.txt
 
 workflows:
   version: 2
