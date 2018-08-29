@@ -28,6 +28,7 @@ IMPROVEMENTS:
 - [docs] Lint documentation with `write-good` and `stop-words`.
 - [scripts] Added json2wal tool, which is supposed to help our users restore
   corrupted WAL files and compose test WAL files (@bradyjoestar)
+- [mempool] Now stores txs by hash inside of the cache, to mitigate memory leakage
 - [config] Replace db_path with db_dir from automatically generated configuration files.
   Issue reported to Cosmos SDK ([#1712](https://github.com/cosmos/cosmos-sdk/issues/1712))
 

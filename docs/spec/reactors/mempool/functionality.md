@@ -32,5 +32,11 @@ What guarantees does it need from the ABCI app?
 
 ## Optimizations
 
-Talk about the LRU cache to make sure we don't process any
-tx that we have seen before
+The implementation within this library also implements a tx cache.
+This is so that signatures don't have to be reverified if the tx has
+already been seen before. 
+However, we only store valid txs in the cache, not invalid ones.
+This is because invalid txs could become good later.
+Txs that are included in a block aren't removed from the cache,
+as they still may be getting received over the p2p network.
+These txs are stored in the cache by their hash, to mitigate memory concerns.

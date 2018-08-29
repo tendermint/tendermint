@@ -3,6 +3,7 @@ package mempool
 import (
 	"bytes"
 	"container/list"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -484,11 +485,12 @@ type txCache interface {
 	Remove(tx types.Tx)
 }
 
-// mapTxCache maintains a cache of transactions.
+// mapTxCache maintains a cache of transactions. This only stores
+// the hash of the tx, due to memory concerns.
 type mapTxCache struct {
 	mtx  sync.Mutex
 	size int
-	map_ map[string]*list.Element
+	map_ map[[sha256.Size]byte]*list.Element
 	list *list.List // to remove oldest tx when cache gets too big
 }
 
@@ -498,7 +500,7 @@ var _ txCache = (*mapTxCache)(nil)
 func newMapTxCache(cacheSize int) *mapTxCache {
 	return &mapTxCache{
 		size: cacheSize,
-		map_: make(map[string]*list.Element, cacheSize),
+		map_: make(map[[sha256.Size]byte]*list.Element, cacheSize),
 		list: list.New(),
 	}
 }
@@ -506,7 +508,7 @@ func newMapTxCache(cacheSize int) *mapTxCache {
 // Reset resets the cache to an empty state.
 func (cache *mapTxCache) Reset() {
 	cache.mtx.Lock()
-	cache.map_ = make(map[string]*list.Element, cache.size)
+	cache.map_ = make(map[[sha256.Size]byte]*list.Element, cache.size)
 	cache.list.Init()
 	cache.mtx.Unlock()
 }
@@ -517,29 +519,31 @@ func (cache *mapTxCache) Push(tx types.Tx) bool {
 	cache.mtx.Lock()
 	defer cache.mtx.Unlock()
 
-	if _, exists := cache.map_[string(tx)]; exists {
+	// Use the tx hash in the cache
+	txHash := sha256.Sum256(tx)
+	if _, exists := cache.map_[txHash]; exists {
 		return false
 	}
 
 	if cache.list.Len() >= cache.size {
 		popped := cache.list.Front()
-		poppedTx := popped.Value.(types.Tx)
-		delete(cache.map_, string(poppedTx))
+		poppedTxHash := popped.Value.([sha256.Size]byte)
+		delete(cache.map_, poppedTxHash)
 		if popped != nil {
 			cache.list.Remove(popped)
 		}
 	}
-	cache.list.PushBack(tx)
-	cache.map_[string(tx)] = cache.list.Back()
+	cache.list.PushBack(txHash)
+	cache.map_[txHash] = cache.list.Back()
 	return true
 }
 
 // Remove removes the given tx from the cache.
 func (cache *mapTxCache) Remove(tx types.Tx) {
 	cache.mtx.Lock()
-	stx := string(tx)
-	popped := cache.map_[stx]
-	delete(cache.map_, stx)
+	txHash := sha256.Sum256(tx)
+	popped := cache.map_[txHash]
+	delete(cache.map_, txHash)
 	if popped != nil {
 		cache.list.Remove(popped)
 	}
