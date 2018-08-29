@@ -62,7 +62,7 @@ func (op SimpleValueOp) String() string {
 	return fmt.Sprintf("SimpleValueOp{%v}", op.GetKey())
 }
 
-func (op SimpleValueOp) Apply(args [][]byte) ([][]byte, error) {
+func (op SimpleValueOp) Run(args [][]byte) ([][]byte, error) {
 	if len(args) != 1 {
 		return nil, cmn.NewError("expected 1 arg, got %v", len(args))
 	}

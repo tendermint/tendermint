@@ -10,7 +10,7 @@ import (
 // ProofOp gets converted to an instance of ProofOperator:
 
 type ProofOperator interface {
-	Apply([][]byte) ([][]byte, error)
+	Run([][]byte) ([][]byte, error)
 	GetKey() []byte
 	ProofOp() ProofOp
 }
@@ -38,7 +38,7 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 			}
 			keys = keys[1:]
 		}
-		args, err = op.Apply(args)
+		args, err = op.Run(args)
 		if err != nil {
 			return
 		}
@@ -53,21 +53,21 @@ func (poz ProofOperators) Verify(root []byte, keypath string, args [][]byte) (er
 }
 
 //----------------------------------------
-// ProofApplytime - main entrypoint
+// ProofRuntime - main entrypoint
 
 type OpDecoder func(ProofOp) (ProofOperator, error)
 
-type ProofApplytime struct {
+type ProofRuntime struct {
 	decoders map[string]OpDecoder
 }
 
-func NewProofApplytime() *ProofApplytime {
-	return &ProofApplytime{
+func NewProofRuntime() *ProofRuntime {
+	return &ProofRuntime{
 		decoders: make(map[string]OpDecoder),
 	}
 }
 
-func (prt *ProofApplytime) RegisterOpDecoder(typ string, dec OpDecoder) {
+func (prt *ProofRuntime) RegisterOpDecoder(typ string, dec OpDecoder) {
 	_, ok := prt.decoders[typ]
 	if ok {
 		panic("already registered for type " + typ)
@@ -75,7 +75,7 @@ func (prt *ProofApplytime) RegisterOpDecoder(typ string, dec OpDecoder) {
 	prt.decoders[typ] = dec
 }
 
-func (prt *ProofApplytime) Decode(pop ProofOp) (ProofOperator, error) {
+func (prt *ProofRuntime) Decode(pop ProofOp) (ProofOperator, error) {
 	decoder := prt.decoders[pop.Type]
 	if decoder == nil {
 		return nil, cmn.NewError("unrecognized proof type %v", pop.Type)
@@ -83,7 +83,7 @@ func (prt *ProofApplytime) Decode(pop ProofOp) (ProofOperator, error) {
 	return decoder(pop)
 }
 
-func (prt *ProofApplytime) DecodeProof(proof *Proof) (poz ProofOperators, err error) {
+func (prt *ProofRuntime) DecodeProof(proof *Proof) (poz ProofOperators, err error) {
 	poz = ProofOperators(nil)
 	for _, pop := range proof.Ops {
 		operator, err := prt.Decode(*pop)
@@ -95,17 +95,17 @@ func (prt *ProofApplytime) DecodeProof(proof *Proof) (poz ProofOperators, err er
 	return
 }
 
-func (prt *ProofApplytime) VerifyValue(proof *Proof, root []byte, keypath string, value []byte) (err error) {
+func (prt *ProofRuntime) VerifyValue(proof *Proof, root []byte, keypath string, value []byte) (err error) {
 	return prt.Verify(proof, root, keypath, [][]byte{value})
 }
 
 // TODO In the long run we'll need a method of classifcation of ops,
 // whether existence or absence or perhaps a third?
-func (prt *ProofApplytime) VerifyAbsence(proof *Proof, keypath string, root []byte) (err error) {
+func (prt *ProofRuntime) VerifyAbsence(proof *Proof, keypath string, root []byte) (err error) {
 	return prt.Verify(proof, root, keypath, nil)
 }
 
-func (prt *ProofApplytime) Verify(proof *Proof, root []byte, keypath string, args [][]byte) (err error) {
+func (prt *ProofRuntime) Verify(proof *Proof, root []byte, keypath string, args [][]byte) (err error) {
 	poz, err := prt.DecodeProof(proof)
 	if err != nil {
 		return cmn.ErrorWrap(err, "decoding proof")
@@ -113,12 +113,12 @@ func (prt *ProofApplytime) Verify(proof *Proof, root []byte, keypath string, arg
 	return poz.Verify(root, keypath, args)
 }
 
-// DefaultProofApplytime only knows about Simple value
+// DefaultProofRuntime only knows about Simple value
 // proofs.
 // To use e.g. IAVL proofs, register op-decoders as
 // defined in the IAVL package.
-func DefaultProofApplytime() (prt *ProofApplytime) {
-	prt = NewProofApplytime()
+func DefaultProofRuntime() (prt *ProofRuntime) {
+	prt = NewProofRuntime()
 	prt.RegisterOpDecoder(ProofOpSimpleValue, SimpleValueOpDecoder)
 	return
 }
