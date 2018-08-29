@@ -12,6 +12,7 @@ to ensure garbage collection of removed elements.
 */
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -322,8 +323,8 @@ func (l *CList) PushBack(v interface{}) *CElement {
 		l.wg.Done()
 		close(l.waitCh)
 	}
-	if l.len == MaxLength {
-		panic("clist: maximum length list reached")
+	if l.len >= MaxLength {
+		panic(fmt.Sprintf("clist: maximum length list reached %d", MaxLength))
 	}
 	l.len++
 
