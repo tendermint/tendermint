@@ -23,6 +23,7 @@ BREAKING CHANGES:
 
 FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))
+- [libs] allow passing options through when creating instances of leveldb dbs ([#2292](https://github.com/tendermint/tendermint/issues/2292))
 
 IMPROVEMENTS:
 - [docs] Lint documentation with `write-good` and `stop-words`.
