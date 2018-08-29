@@ -7,9 +7,9 @@
 ## Changelog
 
 - 28-07-2018: Updates from review
-    - split into two ADRs - one for protocol, one for chains
+  - split into two ADRs - one for protocol, one for chains
 - 16-07-2018: Initial draft - was originally joint ADR for protocol and chain
-versions
+  versions
 
 ## Context
 
@@ -41,19 +41,18 @@ Peers only connect to other peers with the same NetworkName.
 
 We need to support existing networks upgrading and forking, wherein they may do any of:
 
-	- revert back to some height, continue with the same versions but new blocks
-	- arbitrarily mutate state at some height, continue with the same versions (eg. Dao Fork)
-	- change the AppVersion at some height
+    - revert back to some height, continue with the same versions but new blocks
+    - arbitrarily mutate state at some height, continue with the same versions (eg. Dao Fork)
+    - change the AppVersion at some height
 
 Note because of Tendermint's voting power threshold rules, a chain can only be extended under the "original" rules and under the new rules
 if 1/3 or more is double signing, which is expressly prohibited, and is supposed to result in their punishment on both chains. Since they can censor
 the punishment, the chain is expected to be hardforked to remove the validators. Thus, if both branches are to continue after a fork,
 they will each require a new identifier, and the old chain identifier will be retired (ie. only useful for syncing history, not for new blocks)..
 
- TODO: explain how to handle slashing when chain id changed!
+TODO: explain how to handle slashing when chain id changed!
 
 We need a consistent way to describe forks.
-
 
 ## Proposal
 
@@ -92,9 +91,9 @@ ChainDescription = <ChainID>/x/<Height>/<ForkDescription>
 ```
 
 Where
-    - ChainID is the ChainID from the previous ChainDescription (ie. its hash)
-    - `x` denotes that a change occured
-    - `Height` is the height the change occured
-    - ForkDescription has the same form as ChainDescription but for the fork
-        - this allows forks to specify new versions for tendermint or the app, as well as arbitrary changes to the state or validator set
 
+- ChainID is the ChainID from the previous ChainDescription (ie. its hash)
+- `x` denotes that a change occured
+- `Height` is the height the change occured
+- ForkDescription has the same form as ChainDescription but for the fork
+- this allows forks to specify new versions for tendermint or the app, as well as arbitrary changes to the state or validator set

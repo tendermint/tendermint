@@ -80,8 +80,14 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+	// Generate node PrivKey
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil,err
+	}
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
+		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -119,6 +125,7 @@ type Node struct {
 	// network
 	sw       *p2p.Switch  // p2p connections
 	addrBook pex.AddrBook // known peers
+	nodeKey  *p2p.NodeKey // our node privkey
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
@@ -139,6 +146,7 @@ type Node struct {
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
+	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
@@ -293,6 +301,7 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
 
 	// Optionally, start the pex reactor
 	//
@@ -392,6 +401,7 @@ func NewNode(config *cfg.Config,
 
 		sw:       sw,
 		addrBook: addrBook,
+		nodeKey: nodeKey,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,
@@ -424,17 +434,10 @@ func (n *Node) OnStart() error {
 		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
-	// Generate node PrivKey
-	// TODO: pass in like privValidator
-	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
-	if err != nil {
-		return err
-	}
-	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
 
-	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+	nodeInfo := n.makeNodeInfo(n.nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
-	n.sw.SetNodeKey(nodeKey)
+	n.sw.SetNodeKey(n.nodeKey)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())

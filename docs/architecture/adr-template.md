@@ -6,7 +6,6 @@
 
 ## Status
 
-
 ## Consequences
 
 ### Positive

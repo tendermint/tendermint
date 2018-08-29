@@ -34,7 +34,7 @@ fast_sync = true
 db_backend = "leveldb"
 
 # Database directory
-db_path = "data"
+db_dir = "data"
 
 # Output level for logging
 log_level = "state:info,*:error"
@@ -120,7 +120,7 @@ flush_throttle_timeout = 100
 # Maximum number of inbound peers
 max_num_inbound_peers = 40
 
-# Maximum number of outbound peers to connect to
+# Maximum number of outbound peers to connect to, excluding persistent peers
 max_num_outbound_peers = 10
 
 # Maximum size of a message packet payload, in bytes

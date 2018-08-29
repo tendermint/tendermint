@@ -1,6 +1,6 @@
 # ADR 019: Encoding standard for Multisignatures
 
-## Changelog 
+## Changelog
 
 06-08-2018: Minor updates
 
@@ -10,9 +10,9 @@
 
 ## Context
 
-Multisignatures, or technically _Accountable Subgroup Multisignatures_ (ASM), 
-are signature schemes which enable any subgroup of a set of signers to sign any message, 
-and reveal to the verifier exactly who the signers were. 
+Multisignatures, or technically _Accountable Subgroup Multisignatures_ (ASM),
+are signature schemes which enable any subgroup of a set of signers to sign any message,
+and reveal to the verifier exactly who the signers were.
 This allows for complex conditionals of when to validate a signature.
 
 Suppose the set of signers is of size _n_.
@@ -22,7 +22,7 @@ this becomes what is commonly reffered to as a _k of n multisig_ in Bitcoin.
 This ADR specifies the encoding standard for general accountable subgroup multisignatures,
 k of n accountable subgroup multisignatures, and its weighted variant.
 
-In the future, we can also allow for more complex conditionals on the accountable subgroup. 
+In the future, we can also allow for more complex conditionals on the accountable subgroup.
 
 ## Proposed Solution
 
@@ -42,6 +42,7 @@ type ThresholdMultiSignaturePubKey struct { // K of N threshold multisig
 	Pubkeys []crypto.Pubkey    `json:"pubkeys"`
 }
 ```
+
 We will derive N from the length of pubkeys. (For spatial efficiency in encoding)
 
 `Verify` will expect an `[]byte` encoded version of the Multisignature.
@@ -56,7 +57,7 @@ the kth public key on the message.
 Address will be `Hash(amino_encoded_pubkey)`
 
 The reason this doesn't use `log_8(n)` bytes per signer is because that heavily optimizes for the case where a very small number of signers are required.
-e.g. for `n` of size `24`, that would only be more space efficient for `k < 3`. 
+e.g. for `n` of size `24`, that would only be more space efficient for `k < 3`.
 This seems less likely, and that it should not be the case optimized for.
 
 #### Weighted threshold signature
@@ -70,17 +71,19 @@ type WeightedThresholdMultiSignaturePubKey struct {
 	Pubkeys []crypto.Pubkey    `json:"pubkeys"`
 }
 ```
+
 Weights and Pubkeys must be of the same length.
-Everything else proceeds identically to the K of N multisig, 
+Everything else proceeds identically to the K of N multisig,
 except the multisig fails if the sum of the weights is less than the threshold.
 
 #### Multisignature
 
 The inter-mediate phase of the signatures (as it accrues more signatures) will be the following struct:
+
 ```golang
 type Multisignature struct {
 	BitArray    CryptoBitArray // Documented later
-	Sigs        [][]byte       
+	Sigs        [][]byte
 ```
 
 It is important to recall that each private key will output a signature on the provided message itself.
@@ -88,24 +91,29 @@ So no signing algorithm ever outputs the multisignature.
 The UI will take a signature, cast into a multisignature, and then keep adding
 new signatures into it, and when done marshal into `[]byte`.
 This will require the following helper methods:
+
 ```golang
 func SigToMultisig(sig []byte, n int)
 func GetIndex(pk crypto.Pubkey, []crypto.Pubkey)
 func AddSignature(sig Signature, index int, multiSig *Multisignature)
 ```
+
 The multisignature will be converted to an `[]byte` using amino.MarshalBinaryBare. \*
 
 #### Bit Array
-We would be using a new implementation of a bitarray. The struct it would be encoded/decoded from is 
+
+We would be using a new implementation of a bitarray. The struct it would be encoded/decoded from is
+
 ```golang
 type CryptoBitArray struct {
-	ExtraBitsStored  byte      `json:"extra_bits"` // The number of extra bits in elems. 
+	ExtraBitsStored  byte      `json:"extra_bits"` // The number of extra bits in elems.
 	Elems            []byte    `json:"elems"`
 }
 ```
+
 The reason for not using the BitArray currently implemented in `libs/common/bit_array.go`
 is that it is less space efficient, due to a space / time trade-off.
-Evidence for this is outlined in [this issue](https://github.com/tendermint/tendermint/issues/2077). 
+Evidence for this is outlined in [this issue](https://github.com/tendermint/tendermint/issues/2077).
 
 In the multisig, we will not be performing arithmetic operations,
 so there is no performance increase with the current implementation,
@@ -122,7 +130,7 @@ Again the implementation of this space saving feature is straight forward.
 
 ### Encoding the structs
 
-We will use straight forward amino encoding. This is chosen for ease of compatibility in other languages. 
+We will use straight forward amino encoding. This is chosen for ease of compatibility in other languages.
 
 ### Future points of discussion
 
@@ -133,18 +141,20 @@ Aggregation of pubkeys / sigs in Schnorr sigs / BLS sigs is not backwards compat
 
 ## Status
 
-Proposed. 
+Proposed.
 
 ## Consequences
 
 ### Positive
-* Supports multisignatures, in a way that won't require any special cases in our downstream verification code. 
-* Easy to serialize / deserialize
-* Unbounded number of signers
+
+- Supports multisignatures, in a way that won't require any special cases in our downstream verification code.
+- Easy to serialize / deserialize
+- Unbounded number of signers
 
 ### Negative
-* Larger codebase, however this should reside in a subfolder of tendermint/crypto, as it provides no new interfaces. (Ref #https://github.com/tendermint/go-crypto/issues/136)
-* Space inefficient due to utilization of amino encoding
-* Suggested implementation requires a new struct for every ASM. 
+
+- Larger codebase, however this should reside in a subfolder of tendermint/crypto, as it provides no new interfaces. (Ref #https://github.com/tendermint/go-crypto/issues/136)
+- Space inefficient due to utilization of amino encoding
+- Suggested implementation requires a new struct for every ASM.
 
 ### Neutral

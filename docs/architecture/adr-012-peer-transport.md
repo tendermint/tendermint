@@ -9,8 +9,9 @@ handling. An artifact is the dependency of the Switch on
 `[config.P2PConfig`](https://github.com/tendermint/tendermint/blob/05a76fb517f50da27b4bfcdc7b4cf185fc61eff6/config/config.go#L272-L339).
 
 Addresses:
-* [#2046](https://github.com/tendermint/tendermint/issues/2046)
-* [#2047](https://github.com/tendermint/tendermint/issues/2047)
+
+- [#2046](https://github.com/tendermint/tendermint/issues/2046)
+- [#2047](https://github.com/tendermint/tendermint/issues/2047)
 
 First iteraton in [#2067](https://github.com/tendermint/tendermint/issues/2067)
 
@@ -29,15 +30,14 @@ transport implementation is responsible to filter establishing peers specific
 to its domain, for the default multiplexed implementation the following will
 apply:
 
-* connections from our own node
-* handshake fails
-* upgrade to secret connection fails
-* prevent duplicate ip
-* prevent duplicate id
-* nodeinfo incompatibility
+- connections from our own node
+- handshake fails
+- upgrade to secret connection fails
+- prevent duplicate ip
+- prevent duplicate id
+- nodeinfo incompatibility
 
-
-``` go
+```go
 // PeerTransport proxies incoming and outgoing peer connections.
 type PeerTransport interface {
 	// Accept returns a newly connected Peer.
@@ -75,7 +75,7 @@ func NewMTransport(
 	nodeAddr NetAddress,
 	nodeInfo NodeInfo,
 	nodeKey NodeKey,
-) *multiplexTransport 
+) *multiplexTransport
 ```
 
 ### Switch
@@ -84,7 +84,7 @@ From now the Switch will depend on a fully setup `PeerTransport` to
 retrieve/reach out to its peers. As the more low-level concerns are pushed to
 the transport, we can omit passing the `config.P2PConfig` to the Switch.
 
-``` go
+```go
 func NewSwitch(transport PeerTransport, opts ...SwitchOption) *Switch
 ```
 
@@ -96,17 +96,17 @@ In Review.
 
 ### Positive
 
-* free Switch from transport concerns - simpler implementation
-* pluggable transport implementation - simpler test setup
-* remove Switch dependency on P2PConfig - easier to test
+- free Switch from transport concerns - simpler implementation
+- pluggable transport implementation - simpler test setup
+- remove Switch dependency on P2PConfig - easier to test
 
 ### Negative
 
-* more setup for tests which depend on Switches
+- more setup for tests which depend on Switches
 
 ### Neutral
 
-* multiplexed will be the default implementation
+- multiplexed will be the default implementation
 
 [0] These guards could be potentially extended to be pluggable much like
 middlewares to express different concerns required by differentally configured

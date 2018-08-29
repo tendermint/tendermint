@@ -3,7 +3,9 @@
     "prettier": "^1.13.7",
     "remark-cli": "^5.0.0",
     "remark-lint-no-dead-urls": "^0.3.0",
-    "textlint": "^10.2.1"
+    "remark-lint-write-good": "^1.0.3",
+    "textlint": "^10.2.1",
+    "textlint-rule-stop-words": "^1.0.3"
   },
   "name": "tendermint",
   "description": "Tendermint Core Documentation",
@@ -31,7 +33,8 @@
   "homepage": "https://tendermint.com/docs/",
   "remarkConfig": {
     "plugins": [
-      "remark-lint-no-dead-urls"
+      "remark-lint-no-dead-urls",
+      "remark-lint-write-good"
     ]
   }
 }

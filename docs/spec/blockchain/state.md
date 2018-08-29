@@ -75,7 +75,6 @@ func TotalVotingPower(vals []Validators) int64{
 }
 ```
 
-
 ### ConsensusParams
 
 TODO

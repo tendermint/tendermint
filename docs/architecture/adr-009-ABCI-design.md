@@ -8,7 +8,7 @@
 
 ## Context
 
-The ABCI was first introduced in late 2015.  It's purpose is to be:
+The ABCI was first introduced in late 2015. It's purpose is to be:
 
 - a generic interface between state machines and their replication engines
 - agnostic to the language the state machine is written in
@@ -66,8 +66,8 @@ possible.
 ### Validators
 
 To change the validator set, applications can return a list of validator updates
-with ResponseEndBlock. In these updates, the public key *must* be included,
-because Tendermint requires the public key to verify validator signatures.  This
+with ResponseEndBlock. In these updates, the public key _must_ be included,
+because Tendermint requires the public key to verify validator signatures. This
 means ABCI developers have to work with PubKeys. That said, it would also be
 convenient to work with address information, and for it to be simple to do so.
 
@@ -80,7 +80,7 @@ in commits.
 
 ### InitChain
 
-Tendermint passes in a list of validators here, and nothing else.  It would
+Tendermint passes in a list of validators here, and nothing else. It would
 benefit the application to be able to control the initial validator set. For
 instance the genesis file could include application-based information about the
 initial validator set that the application could process to determine the
@@ -120,7 +120,6 @@ v1 will:
 That said, an Amino v2 will be worked on to improve the performance of the
 format and its useability in cryptographic applications.
 
-
 ### PubKey
 
 Encoding schemes infect software. As a generic middleware, ABCI aims to have
@@ -142,7 +141,6 @@ where `type` can be:
 
 - "ed225519", with `data = <raw 32-byte pubkey>`
 - "secp256k1", with `data = <33-byte OpenSSL compressed pubkey>`
-
 
 As we want to retain flexibility here, and since ideally, PubKey would be an
 interface type, we do not use `enum` or `oneof`.

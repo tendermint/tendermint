@@ -1,4 +1,4 @@
-package multisig
+package bitarray
 
 import (
 	"bytes"

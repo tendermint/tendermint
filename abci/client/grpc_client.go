@@ -22,6 +22,7 @@ type grpcClient struct {
 	mustConnect bool
 
 	client types.ABCIApplicationClient
+	conn   *grpc.ClientConn
 
 	mtx   sync.Mutex
 	addr  string
@@ -60,6 +61,7 @@ RETRY_LOOP:
 
 		cli.Logger.Info("Dialed server. Waiting for echo.", "addr", cli.addr)
 		client := types.NewABCIApplicationClient(conn)
+		cli.conn = conn
 
 	ENSURE_CONNECTED:
 		for {
@@ -78,12 +80,10 @@ RETRY_LOOP:
 
 func (cli *grpcClient) OnStop() {
 	cli.BaseService.OnStop()
-	cli.mtx.Lock()
-	defer cli.mtx.Unlock()
-	// TODO: how to close conn? its not a net.Conn and grpc doesn't expose a Close()
-	/*if cli.client.conn != nil {
-		cli.client.conn.Close()
-	}*/
+
+	if cli.conn != nil {
+		cli.conn.Close()
+	}
 }
 
 func (cli *grpcClient) StopForError(err error) {
