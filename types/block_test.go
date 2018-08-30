@@ -107,7 +107,6 @@ func TestBlockMakePartSet(t *testing.T) {
 func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	assert.Nil(t, (*Block)(nil).MakePartSet(2))
 
-	txs := []Tx{Tx("foo"), Tx("bar")}
 	lastID := makeBlockIDRandom()
 	h := int64(3)
 
@@ -118,7 +117,7 @@ func TestBlockMakePartSetWithEvidence(t *testing.T) {
 	ev := NewMockGoodEvidence(h, 0, valSet.Validators[0].Address)
 	evList := []Evidence{ev}
 
-	partSet := MakeBlock(h, txs, commit, evList).MakePartSet(1024)
+	partSet := MakeBlock(h, []Tx{Tx("Hello World")}, commit, evList).MakePartSet(1024)
 	assert.NotNil(t, partSet)
 	assert.Equal(t, 2, partSet.Total())
 }

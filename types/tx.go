@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	// MaxAminoOverheadForTx - amino overhead to encode a transaction.
+	// MaxAminoOverheadForTx - maximum amino overhead to encode a transaction
+	// (ranges from 1 to 4 bytes).
 	MaxAminoOverheadForTx = 4
 )
 
