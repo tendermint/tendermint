@@ -32,6 +32,7 @@ IMPROVEMENTS:
 - [mempool] Now stores txs by hash inside of the cache, to mitigate memory leakage
 - [config] Replace db_path with db_dir from automatically generated configuration files.
   Issue reported to Cosmos SDK ([#1712](https://github.com/cosmos/cosmos-sdk/issues/1712))
+- [config] Reduce default mempool size from 100k to 5k, until ABCI rechecking is implemented.
 
 BUG FIXES:
 - [mempool] No longer possible to fill up linked list without getting caching
