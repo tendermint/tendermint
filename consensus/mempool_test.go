@@ -99,7 +99,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 
-	NTxs := 10000
+	NTxs := 3000
 	go deliverTxsRange(cs, 0, NTxs)
 
 	startTestRound(cs, height, round)
