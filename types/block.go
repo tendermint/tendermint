@@ -19,9 +19,6 @@ const (
 
 	// MaxAminoOverheadForBlock - amino overhead to encode the block.
 	MaxAminoOverheadForBlock = 4
-
-	// MaxChainIDLen is a maximum length of the chain ID.
-	MaxChainIDLen = 50
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
