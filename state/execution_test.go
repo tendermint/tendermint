@@ -81,7 +81,7 @@ func TestBeginBlockValidators(t *testing.T) {
 		lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: tc.lastCommitPrecommits}
 
 		// block for height 2
-		block, _ := state.createBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block, _ := state.MakeBlock(2, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
 		require.Nil(t, err, tc.desc)
@@ -99,31 +99,6 @@ func TestBeginBlockValidators(t *testing.T) {
 			}
 		}
 	}
-}
-
-func (state State) createBlock(
-	height int64,
-	txs []types.Tx,
-	commit *types.Commit,
-	evidence []types.Evidence,
-	proposerAddress []byte,
-) (*types.Block, *types.PartSet) {
-
-	block := types.MakeBlock(height, txs, commit, evidence)
-
-	block.ChainID = state.ChainID
-	block.Time = tmtime.Now()
-	block.LastBlockID = state.LastBlockID
-	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
-
-	block.ValidatorsHash = state.Validators.Hash()
-	block.NextValidatorsHash = state.NextValidators.Hash()
-	block.ConsensusHash = state.ConsensusParams.Hash()
-	block.AppHash = state.AppHash
-	block.LastResultsHash = state.LastResultsHash
-	block.ProposerAddress = proposerAddress
-
-	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
 // TestBeginBlockByzantineValidators ensures we send byzantine validators list.
@@ -166,7 +141,7 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
 
-		block, _ := state.createBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
+		block, _ := state.MakeBlock(10, makeTxs(2), lastCommit, nil, state.Validators.GetProposer().Address)
 		block.Time = now
 		block.Evidence.Evidence = tc.evidence
 		_, err = ExecCommitBlock(proxyApp.Consensus(), block, log.TestingLogger(), state.Validators, stateDB)
@@ -347,6 +322,7 @@ func state(nVals, height int) (State, dbm.DB) {
 
 	for i := 1; i < height; i++ {
 		s.LastBlockHeight++
+		s.LastValidators = s.Validators.Copy()
 		SaveState(stateDB, s)
 	}
 	return s, stateDB
