@@ -110,8 +110,8 @@ func (tp TxProof) Validate(dataHash []byte) error {
 	if tp.Total <= 0 {
 		return errors.New("Proof total must be positive")
 	}
-	valid := tp.Proof.Verify(tp.Index, tp.Total, tp.LeafHash(), tp.RootHash)
-	if !valid {
+	valid := tp.Proof.Verify(tp.RootHash, tp.LeafHash())
+	if valid != nil {
 		return errors.New("Proof is not internally consistent")
 	}
 	return nil

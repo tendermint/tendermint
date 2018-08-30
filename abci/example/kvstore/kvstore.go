@@ -113,7 +113,13 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 		height = reqQuery.Height
 	}
 	if reqQuery.Prove {
-		value, proof, err := app.state.tree.GetMutableWithProof(key, height)
+		t, err := app.state.tree.GetImmutable(height)
+		if err != nil {
+			resQuery.Code = code.CodeTypeUnknownError
+			resQuery.Log = err.Error()
+			return
+		}
+		value, proof, err := t.GetWithProof(key)
 		if err != nil {
 			resQuery.Code = code.CodeTypeUnknownError
 			resQuery.Log = err.Error()
@@ -126,19 +132,19 @@ func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery type
 		if value != nil {
 			resQuery.Proof = &merkle.Proof{
 				// XXX key encoding
-				Ops: []merkle.ProofOp{iavl.NewIAVLValueOp(string(key), proof).ProofOp()},
+				Ops: []merkle.ProofOp{iavl.NewIAVLValueOp(key, proof).ProofOp()},
 			}
 			resQuery.Log = "exists"
 		} else {
 			resQuery.Proof = &merkle.Proof{
 				// XXX key encoding
-				Ops: []merkle.ProofOp{iavl.NewIAVLAbsenceOp(string(key), proof).ProofOp()},
+				Ops: []merkle.ProofOp{iavl.NewIAVLAbsenceOp(key, proof).ProofOp()},
 			}
 			resQuery.Log = "does not exist"
 		}
 		return
 	} else {
-		index, value := app.state.tree.GetMutable(key, height)
+		index, value := app.state.tree.GetVersioned(key, height)
 		resQuery.Height = height
 		resQuery.Index = int64(index) // TODO GetMutable64?
 		resQuery.Key = key

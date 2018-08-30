@@ -18,7 +18,7 @@ import (
 //
 // If there is any error in checking, returns an error.
 func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rpcclient.Client,
-	cert lite.Certifier) (
+	cert lite.Verifier) (
 	val cmn.HexBytes, height int64, proof *merkle.Proof, err error) {
 
 	if reqHeight < 0 {
@@ -41,7 +41,7 @@ func GetWithProof(prt *merkle.ProofRuntime, key []byte, reqHeight int64, node rp
 // GetWithProofOptions is useful if you want full access to the ABCIQueryOptions.
 // XXX Usage of path?  It's not used, and sometimes it's /, sometimes /key, sometimes /store.
 func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts rpcclient.ABCIQueryOptions,
-	node rpcclient.Client, cert lite.Certifier) (
+	node rpcclient.Client, cert lite.Verifier) (
 	*ctypes.ResultABCIQuery, error) {
 
 	if !opts.Prove {
@@ -77,7 +77,7 @@ func GetWithProofOptions(prt *merkle.ProofRuntime, path string, key []byte, opts
 	if resp.Value != nil {
 		// Value exists
 		// XXX How do we encode the key into a string...
-		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, resp.Value, string(resp.Key))
+		err = prt.VerifyValue(resp.Proof, signedHeader.AppHash, string(resp.Key), resp.Value)
 		if err != nil {
 			return nil, cmn.ErrorWrap(err, "Couldn't verify value proof")
 		}

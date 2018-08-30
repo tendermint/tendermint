@@ -50,7 +50,7 @@ func TestAppProofs(t *testing.T) {
 	source := certclient.NewProvider(chainID, cl)
 	seed, err := source.LatestFullCommit(chainID, 1, 1)
 	require.NoError(err, "%#v", err)
-	cert := lite.NewBaseCertifier(chainID, seed.Height(), seed.Validators)
+	cert := lite.NewBaseVerifier(chainID, seed.Height(), seed.Validators)
 
 	// Wait for tx confirmation.
 	done := make(chan int64)
@@ -102,7 +102,7 @@ func TestAppProofs(t *testing.T) {
 	require.Equal(height, brh)
 
 	assert.EqualValues(v, bs)
-	err = prt.VerifyValue(proof, rootHash, bs, string(k)) // XXX key encoding
+	err = prt.VerifyValue(proof, rootHash, string(k), bs) // XXX key encoding
 	assert.NoError(err, "%#v", err)
 
 	// Test non-existing key.
@@ -111,9 +111,9 @@ func TestAppProofs(t *testing.T) {
 	require.NoError(err)
 	require.Nil(bs)
 	require.NotNil(proof)
-	err = prt.Verify(proof, rootHash, nil, string(missing)) // XXX VerifyAbsence(), keyencoding
+	err = prt.VerifyAbsence(proof, rootHash, string(missing)) // XXX VerifyAbsence(), keyencoding
 	assert.NoError(err, "%#v", err)
-	err = prt.Verify(proof, rootHash, nil, string(k)) // XXX VerifyAbsence(), keyencoding
+	err = prt.VerifyAbsence(proof, rootHash, string(k)) // XXX VerifyAbsence(), keyencoding
 	assert.Error(err, "%#v", err)
 }
 
@@ -133,7 +133,7 @@ func TestTxProofs(t *testing.T) {
 	source := certclient.NewProvider(chainID, cl)
 	seed, err := source.LatestFullCommit(chainID, brh-2, brh-2)
 	require.NoError(err, "%#v", err)
-	cert := lite.NewBaseCertifier(chainID, seed.Height(), seed.Validators)
+	cert := lite.NewBaseVerifier(chainID, seed.Height(), seed.Validators)
 
 	// First let's make sure a bogus transaction hash returns a valid non-existence proof.
 	key := types.Tx([]byte("bogus")).Hash()

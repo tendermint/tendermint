@@ -15,7 +15,7 @@ var _ rpcclient.Client = Wrapper{}
 // provable before passing it along. Allows you to make any rpcclient fully secure.
 type Wrapper struct {
 	rpcclient.Client
-	cert *lite.InquiringCertifier
+	cert *lite.DynamicVerifier
 	prt  *merkle.ProofRuntime
 }
 
@@ -23,7 +23,7 @@ type Wrapper struct {
 // host and return a cryptographically secure rpc client.
 //
 // If it is wrapping an HTTP rpcclient, it will also wrap the websocket interface
-func SecureClient(c rpcclient.Client, cert *lite.InquiringCertifier) Wrapper {
+func SecureClient(c rpcclient.Client, cert *lite.DynamicVerifier) Wrapper {
 	prt := defaultProofRuntime()
 	wrap := Wrapper{c, cert, prt}
 	// TODO: no longer possible as no more such interface exposed....

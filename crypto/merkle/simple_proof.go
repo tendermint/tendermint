@@ -64,13 +64,8 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[strin
 }
 
 // Verify that the SimpleProof proves the root hash.
-func (sp *SimpleProof) Verify(rootHash []byte, index int, total int, leafHash []byte) error {
-	if sp.Index != index {
-		return cmn.NewError("invalid index: wanted %v got %v", index, sp.Index)
-	}
-	if sp.Total != total {
-		return cmn.NewError("invalid total: wanted %v got %v", total, sp.Total)
-	}
+// Check sp.Index/sp.Total manually if needed
+func (sp *SimpleProof) Verify(rootHash []byte, leafHash []byte) error {
 	if !bytes.Equal(sp.LeafHash, leafHash) {
 		return cmn.NewError("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
 	}

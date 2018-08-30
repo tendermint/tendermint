@@ -25,7 +25,7 @@ type PersistentKVStoreApplication struct {
 	app *KVStoreApplication
 
 	// validator set
-	ValUpdates []types.Validator
+	ValUpdates []types.ValidatorUpdate
 
 	logger log.Logger
 }
@@ -167,7 +167,7 @@ func (app *PersistentKVStoreApplication) execValidatorTx(tx []byte) types.Respon
 	}
 
 	// update
-	return app.updateValidator(types.Ed25519Validator(pubkey, power))
+	return app.updateValidator(types.Ed25519ValidatorUpdate(pubkey, int64(power)))
 }
 
 // add, update, or remove a validator
