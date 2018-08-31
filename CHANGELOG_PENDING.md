@@ -20,6 +20,7 @@ BREAKING CHANGES:
     - Remove PubKey from `Validator` and introduce `ValidatorUpdate`
     - InitChain and EndBlock use ValidatorUpdate
     - Update field names and types in BeginBlock
+- [state] Implement BFT time    
 - [p2p] update secret connection to use a little endian encoded nonce
 
 FEATURES:

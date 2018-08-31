@@ -10,12 +10,13 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"github.com/tendermint/go-amino"
-	cs "github.com/tendermint/tendermint/consensus"
-	"github.com/tendermint/tendermint/types"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/tendermint/go-amino"
+	cs "github.com/tendermint/tendermint/consensus"
+	"github.com/tendermint/tendermint/types"
 )
 
 var cdc = amino.NewCodec()

@@ -34,13 +34,6 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 			block.Height,
 		)
 	}
-	/*	TODO: Determine bounds for Time
-		See blockchain/reactor "stopSyncingDurationMinutes"
-
-		if !block.Time.After(lastBlockTime) {
-			return errors.New("Invalid Block.Header.Time")
-		}
-	*/
 
 	// Validate prev block info.
 	if !block.LastBlockID.Equals(state.LastBlockID) {
@@ -109,6 +102,26 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
 		if err != nil {
 			return err
+		}
+	}
+
+	// Validate block Time
+	if block.Height > 1 {
+		if !block.Time.After(state.LastBlockTime) {
+			return fmt.Errorf(
+				"Block time %v not greater than last block time %v",
+				block.Time,
+				state.LastBlockTime,
+			)
+		}
+
+		medianTime := MedianTime(block.LastCommit, state.LastValidators)
+		if !block.Time.Equal(medianTime) {
+			return fmt.Errorf(
+				"Invalid block time. Expected %v, got %v",
+				medianTime,
+				block.Time,
+			)
 		}
 	}
 

@@ -10,13 +10,14 @@ import (
 
 	"github.com/tendermint/tendermint/consensus/types"
 	tmtypes "github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWALEncoderDecoder(t *testing.T) {
-	now := time.Now()
+	now := tmtime.Now()
 	msgs := []TimedWALMessage{
 		TimedWALMessage{Time: now, Msg: EndHeightMessage{0}},
 		TimedWALMessage{Time: now, Msg: timeoutInfo{Duration: time.Second, Height: 1, Round: 1, Step: types.RoundStepPropose}},
@@ -93,7 +94,7 @@ func benchmarkWalDecode(b *testing.B, n int) {
 	enc := NewWALEncoder(buf)
 
 	data := nBytes(n)
-	enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second)})
+	enc.Encode(&TimedWALMessage{Msg: data, Time: time.Now().Round(time.Second).UTC()})
 
 	encoded := buf.Bytes()
 
