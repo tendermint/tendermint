@@ -88,7 +88,7 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 	// divide data into 4kb parts.
 	total := (len(data) + partSize - 1) / partSize
 	parts := make([]*Part, total)
-	parts_ := make([]merkle.Hasher, total)
+	parts_ := make([][]byte, total)
 	partsBitArray := cmn.NewBitArray(total)
 	for i := 0; i < total; i++ {
 		part := &Part{
@@ -96,11 +96,11 @@ func NewPartSetFromData(data []byte, partSize int) *PartSet {
 			Bytes: data[i*partSize : cmn.MinInt(len(data), (i+1)*partSize)],
 		}
 		parts[i] = part
-		parts_[i] = part
+		parts_[i] = part.Bytes
 		partsBitArray.SetIndex(i, true)
 	}
 	// Compute merkle proofs
-	root, proofs := merkle.SimpleProofsFromHashers(parts_)
+	root, proofs := merkle.SimpleProofsFromByteSlices(parts_)
 	for i := 0; i < total; i++ {
 		parts[i].Proof = *proofs[i]
 	}

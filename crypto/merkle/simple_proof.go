@@ -99,7 +99,7 @@ func computeHashFromAunts(index int, total int, leafHash []byte, innerHashes [][
 		if len(innerHashes) == 0 {
 			return nil
 		}
-		numLeft := (total + 1) / 2
+		numLeft := getSplitPoint(total)
 		if index < numLeft {
 			leftHash := computeHashFromAunts(index, numLeft, leafHash, innerHashes[:len(innerHashes)-1])
 			if leftHash == nil {

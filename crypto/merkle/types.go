@@ -1,11 +1,5 @@
 package merkle
 
-import (
-	"io"
-
-	amino "github.com/tendermint/go-amino"
-)
-
 var (
 	LeafHashPrefix  = []byte{0}
 	InnerHashPrefix = []byte{1}
@@ -33,11 +27,4 @@ type Tree interface {
 // Hasher represents a hashable piece of data which can be hashed in the Tree.
 type Hasher interface {
 	Hash() []byte
-}
-
-//-----------------------------------------------------------------------
-
-// Uvarint length prefixed byteslice
-func encodeByteSlice(w io.Writer, bz []byte) (err error) {
-	return amino.EncodeByteSlice(w, bz)
 }

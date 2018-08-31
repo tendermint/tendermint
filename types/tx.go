@@ -70,11 +70,11 @@ func (txs Txs) IndexByHash(hash []byte) int {
 // TODO: optimize this!
 func (txs Txs) Proof(i int) TxProof {
 	l := len(txs)
-	hashers := make([]merkle.Hasher, l)
+	bzs := make([][]byte, l)
 	for i := 0; i < l; i++ {
-		hashers[i] = txs[i]
+		bzs[i] = txs[i]
 	}
-	root, proofs := merkle.SimpleProofsFromHashers(hashers)
+	root, proofs := merkle.SimpleProofsFromByteSlices(bzs)
 
 	return TxProof{
 		Index:    i,

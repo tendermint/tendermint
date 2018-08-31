@@ -176,11 +176,11 @@ func (vals *ValidatorSet) Hash() []byte {
 	if len(vals.Validators) == 0 {
 		return nil
 	}
-	hashers := make([]merkle.Hasher, len(vals.Validators))
+	bzs := make([][]byte, len(vals.Validators))
 	for i, val := range vals.Validators {
-		hashers[i] = val
+		bzs[i] = val.hashBytes()
 	}
-	return merkle.SimpleHashFromHashers(hashers)
+	return merkle.SimpleHashFromByteSlices(bzs)
 }
 
 // Add adds val to the validator set and returns true. It returns false if val

@@ -1,7 +1,6 @@
 package merkle
 
 import (
-	"fmt"
 	"math/bits"
 
 	"github.com/tendermint/tendermint/crypto/tmhash"
@@ -75,6 +74,5 @@ func getSplitPoint(length int) int {
 	if k == length {
 		k >>= 1
 	}
-	fmt.Println(length, k)
 	return k
 }
