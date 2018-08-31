@@ -63,17 +63,17 @@ func TestBeginBlockValidators(t *testing.T) {
 	prevBlockID := types.BlockID{prevHash, prevParts}
 
 	now := time.Now().UTC()
-	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
-	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
+	vote0 := &types.CommitSig{Timestamp: now}
+	vote1 := &types.CommitSig{Timestamp: now}
 
 	testCases := []struct {
 		desc                     string
-		lastCommitPrecommits     []*types.Vote
+		lastCommitPrecommits     []*types.CommitSig
 		expectedAbsentValidators []int
 	}{
-		{"none absent", []*types.Vote{vote0, vote1}, []int{}},
-		{"one absent", []*types.Vote{vote0, nil}, []int{1}},
-		{"multiple absent", []*types.Vote{nil, nil}, []int{0, 1}},
+		{"none absent", []*types.CommitSig{vote0, vote1}, []int{}},
+		{"one absent", []*types.CommitSig{vote0, nil}, []int{1}},
+		{"multiple absent", []*types.CommitSig{nil, nil}, []int{0, 1}},
 	}
 
 	for _, tc := range testCases {
@@ -133,9 +133,9 @@ func TestBeginBlockByzantineValidators(t *testing.T) {
 			types.TM2PB.Evidence(ev2, valSet, now)}},
 	}
 
-	vote0 := &types.Vote{ValidatorIndex: 0, Timestamp: now, Type: types.VoteTypePrecommit}
-	vote1 := &types.Vote{ValidatorIndex: 1, Timestamp: now}
-	votes := []*types.Vote{vote0, vote1}
+	vote0 := &types.CommitSig{Timestamp: now}
+	vote1 := &types.CommitSig{Timestamp: now}
+	votes := []*types.CommitSig{vote0, vote1}
 	lastCommit := &types.Commit{BlockID: prevBlockID, Precommits: votes}
 	for _, tc := range testCases {
 

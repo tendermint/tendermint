@@ -453,12 +453,14 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
+	seenCommit.SetAddresses(cs.Validators.GetAddresses())
 	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
-	for _, precommit := range seenCommit.Precommits {
-		if precommit == nil {
+	for idx := 0; idx < len(seenCommit.Precommits); idx++ {
+		if seenCommit.Precommits[idx] == nil {
 			continue
 		}
-		added, err := lastPrecommits.AddVote(precommit)
+		vote := seenCommit.GetByIndex(idx)
+		added, err := lastPrecommits.AddVote(vote)
 		if !added || err != nil {
 			cmn.PanicCrisis(fmt.Sprintf("Failed to reconstruct LastCommit: %v", err))
 		}
@@ -1356,7 +1358,7 @@ func (cs *ConsensusState) recordMetrics(height int64, block *types.Block) {
 	missingValidators := 0
 	missingValidatorsPower := int64(0)
 	for i, val := range cs.Validators.Validators {
-		var vote *types.Vote
+		var vote *types.CommitSig
 		if i < len(block.LastCommit.Precommits) {
 			vote = block.LastCommit.Precommits[i]
 		}

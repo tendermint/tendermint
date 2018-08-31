@@ -447,7 +447,7 @@ func TestConflicts(t *testing.T) {
 
 func TestMakeCommit(t *testing.T) {
 	height, round := int64(1), 0
-	voteSet, _, privValidators := randVoteSet(height, round, VoteTypePrecommit, 10, 1)
+	voteSet, valz, privValidators := randVoteSet(height, round, VoteTypePrecommit, 10, 1)
 	blockHash, blockPartsHeader := crypto.CRandBytes(32), PartSetHeader{123, crypto.CRandBytes(32)}
 
 	voteProto := &Vote{
@@ -493,6 +493,20 @@ func TestMakeCommit(t *testing.T) {
 		}
 	}
 
+	// The 9th voted for a different BlockID
+	{
+		voteProtoDiff := voteProto.Copy()
+		voteProtoDiff.BlockID = BlockID{
+			crypto.CRandBytes(32),
+			PartSetHeader{123, crypto.CRandBytes(32)},
+		}
+		vote := withValidator(voteProtoDiff, privValidators[8].GetAddress(), 8)
+		_, err := signAddVote(privValidators[8], vote, voteSet)
+		if err != nil {
+			t.Error(err)
+		}
+	}
+
 	commit := voteSet.MakeCommit()
 
 	// Commit should have 10 elements
@@ -505,4 +519,8 @@ func TestMakeCommit(t *testing.T) {
 		t.Errorf("Error in Commit.ValidateBasic(): %v", err)
 	}
 
+	err := valz.VerifyCommit("test_chain_id", BlockID{blockHash, blockPartsHeader}, int64(1), commit)
+	if err != nil {
+		t.Errorf("Error in VerifyCommit: %v", err)
+	}
 }

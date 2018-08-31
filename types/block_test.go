@@ -194,7 +194,6 @@ func TestCommit(t *testing.T) {
 	commit, err := MakeCommit(lastID, h-1, 1, voteSet, vals)
 	require.NoError(t, err)
 
-	assert.NotNil(t, commit.FirstPrecommit())
 	assert.Equal(t, h-1, commit.Height())
 	assert.Equal(t, 1, commit.Round())
 	assert.Equal(t, VoteTypePrecommit, commit.Type())
@@ -217,21 +216,6 @@ func TestCommitValidateBasic(t *testing.T) {
 	commit = randCommit()
 	commit.Precommits[0] = nil
 	assert.NoError(t, commit.ValidateBasic())
-
-	// tamper with types
-	commit = randCommit()
-	commit.Precommits[0].Type = VoteTypePrevote
-	assert.Error(t, commit.ValidateBasic())
-
-	// tamper with height
-	commit = randCommit()
-	commit.Precommits[0].Height = int64(100)
-	assert.Error(t, commit.ValidateBasic())
-
-	// tamper with round
-	commit = randCommit()
-	commit.Precommits[0].Round = 100
-	assert.Error(t, commit.ValidateBasic())
 }
 
 func TestMaxHeaderBytes(t *testing.T) {

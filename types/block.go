@@ -309,49 +309,66 @@ type Commit struct {
 	// NOTE: The Precommits are in order of address to preserve the bonded ValidatorSet order.
 	// Any peer with a block can gossip precommits by index with a peer without recalculating the
 	// active ValidatorSet.
-	BlockID    BlockID `json:"block_id"`
-	Precommits []*Vote `json:"precommits"`
+	HeightNum  int64
+	RoundNum   int
+	BlockID    BlockID      `json:"block_id"`
+	Precommits []*CommitSig `json:"precommits"`
+	addresses  []Address
 
 	// Volatile
-	firstPrecommit *Vote
-	hash           cmn.HexBytes
-	bitArray       *cmn.BitArray
+	hash     cmn.HexBytes
+	bitArray *cmn.BitArray
 }
 
-// FirstPrecommit returns the first non-nil precommit in the commit.
-// If all precommits are nil, it returns an empty precommit with height 0.
-func (commit *Commit) FirstPrecommit() *Vote {
-	if len(commit.Precommits) == 0 {
-		return nil
+func NewCommit(height int64, round int, blockID BlockID, precommits []*CommitSig, addresses []Address) *Commit {
+	return &Commit{
+		HeightNum:  height,
+		RoundNum:   round,
+		BlockID:    blockID,
+		Precommits: precommits,
+		addresses:  addresses,
 	}
-	if commit.firstPrecommit != nil {
-		return commit.firstPrecommit
+}
+
+type CommitSig struct {
+	Signature []byte
+	Timestamp time.Time
+}
+
+func NewCommitSig(signature []byte, timestamp time.Time) *CommitSig {
+	return &CommitSig{
+		signature,
+		timestamp,
 	}
-	for _, precommit := range commit.Precommits {
-		if precommit != nil {
-			commit.firstPrecommit = precommit
-			return precommit
-		}
-	}
+}
+
+func (commitSig *CommitSig) String() string {
+	return fmt.Sprintf("CommitSig{%X @ %s}",
+		cmn.Fingerprint(commitSig.Signature),
+		CanonicalTime(commitSig.Timestamp))
+}
+
+func (commitSig *CommitSig) ToVote(index int, address Address, height int64, round int, blockID BlockID) *Vote {
 	return &Vote{
-		Type: VoteTypePrecommit,
+		ValidatorIndex:   index,
+		ValidatorAddress: address,
+		Height:           height,
+		Round:            round,
+		Timestamp:        commitSig.Timestamp,
+		Type:             VoteTypePrecommit,
+		BlockID:          blockID,
+		Signature:        commitSig.Signature,
 	}
 }
 
 // Height returns the height of the commit
 func (commit *Commit) Height() int64 {
-	if len(commit.Precommits) == 0 {
-		return 0
-	}
-	return commit.FirstPrecommit().Height
+	return commit.HeightNum
 }
 
 // Round returns the round of the commit
 func (commit *Commit) Round() int {
-	if len(commit.Precommits) == 0 {
-		return 0
-	}
-	return commit.FirstPrecommit().Round
+	return commit.RoundNum
 }
 
 // Type returns the vote type of the commit, which is always VoteTypePrecommit
@@ -380,9 +397,13 @@ func (commit *Commit) BitArray() *cmn.BitArray {
 	return commit.bitArray
 }
 
+func (commit *Commit) SetAddresses(addresses []Address) {
+	commit.addresses = addresses
+}
+
 // GetByIndex returns the vote corresponding to a given validator index
 func (commit *Commit) GetByIndex(index int) *Vote {
-	return commit.Precommits[index]
+	return commit.Precommits[index].ToVote(index, commit.addresses[index], commit.Height(), commit.Round(), commit.BlockID)
 }
 
 // IsCommit returns true if there is at least one vote
@@ -398,30 +419,6 @@ func (commit *Commit) ValidateBasic() error {
 	}
 	if len(commit.Precommits) == 0 {
 		return errors.New("No precommits in commit")
-	}
-	height, round := commit.Height(), commit.Round()
-
-	// Validate the precommits.
-	for _, precommit := range commit.Precommits {
-		// It's OK for precommits to be missing.
-		if precommit == nil {
-			continue
-		}
-		// Ensure that all votes are precommits.
-		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
-				precommit.Type)
-		}
-		// Ensure that all heights are the same.
-		if precommit.Height != height {
-			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
-				height, precommit.Height)
-		}
-		// Ensure that all rounds are the same.
-		if precommit.Round != round {
-			return fmt.Errorf("Invalid commit precommit round. Expected %v, got %v",
-				round, precommit.Round)
-		}
 	}
 	return nil
 }
@@ -447,8 +444,8 @@ func (commit *Commit) StringIndented(indent string) string {
 		return "nil-Commit"
 	}
 	precommitStrings := make([]string, len(commit.Precommits))
-	for i, precommit := range commit.Precommits {
-		precommitStrings[i] = precommit.String()
+	for i := 0; i < len(commit.Precommits); i++ {
+		precommitStrings[i] = commit.GetByIndex(i).String()
 	}
 	return fmt.Sprintf(`Commit{
 %s  BlockID:    %v
