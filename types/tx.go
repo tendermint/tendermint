@@ -11,12 +11,6 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
-const (
-	// MaxAminoOverheadForTx - maximum amino overhead to encode a transaction
-	// (ranges from 1 to 4 bytes).
-	MaxAminoOverheadForTx = 4
-)
-
 // Tx is an arbitrary byte array.
 // NOTE: Tx has no types at this level, so when wire encoded it's just length-prefixed.
 // Might we want types here ?

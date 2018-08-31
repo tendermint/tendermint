@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"container/list"
 	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -385,6 +386,8 @@ func (mem *Mempool) notifyTxsAvailable() {
 // If max is negative, there is no cap on the size of all returned
 // transactions (~ all available transactions).
 func (mem *Mempool) ReapMaxBytes(max int) types.Txs {
+	var buf [binary.MaxVarintLen64]byte
+
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
@@ -400,10 +403,12 @@ func (mem *Mempool) ReapMaxBytes(max int) types.Txs {
 	txs := make([]types.Tx, 0, mem.txs.Len())
 	for e := mem.txs.Front(); e != nil; e = e.Next() {
 		memTx := e.Value.(*mempoolTx)
-		if max > 0 && cur+len(memTx.tx)+types.MaxAminoOverheadForTx > max {
+		// amino.UvarintSize is not used here because it won't be possible to reuse buf
+		aminoOverhead := binary.PutUvarint(buf[:], uint64(len(memTx.tx)))
+		if max > 0 && cur+len(memTx.tx)+aminoOverhead > max {
 			return txs
 		}
-		cur += len(memTx.tx) + types.MaxAminoOverheadForTx
+		cur += len(memTx.tx) + aminoOverhead
 		txs = append(txs, memTx.tx)
 	}
 	return txs
