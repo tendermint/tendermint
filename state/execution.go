@@ -92,7 +92,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 	}
 
 	// Lock mempool, commit app state, update mempoool.
-	appHash, err := blockExec.Commit(block)
+	appHash, err := blockExec.Commit(state, block)
 	if err != nil {
 		return state, fmt.Errorf("Commit failed for application: %v", err)
 	}
@@ -119,7 +119,7 @@ func (blockExec *BlockExecutor) ApplyBlock(state State, blockID types.BlockID, b
 // It returns the result of calling abci.Commit (the AppHash), and an error.
 // The Mempool must be locked during commit and update because state is typically reset on Commit and old txs must be replayed
 // against committed state before new txs are run in the mempool, lest they be invalid.
-func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
+func (blockExec *BlockExecutor) Commit(state State, block *types.Block) ([]byte, error) {
 	blockExec.mempool.Lock()
 	defer blockExec.mempool.Unlock()
 
@@ -145,7 +145,9 @@ func (blockExec *BlockExecutor) Commit(block *types.Block) ([]byte, error) {
 		"appHash", fmt.Sprintf("%X", res.Data))
 
 	// Update mempool.
-	if err := blockExec.mempool.Update(block.Height, block.Txs); err != nil {
+	maxBytes := state.ConsensusParams.TxSize.MaxBytes
+	filter := func(tx types.Tx) bool { return len(tx) <= maxBytes }
+	if err := blockExec.mempool.Update(block.Height, block.Txs, filter); err != nil {
 		return nil, err
 	}
 

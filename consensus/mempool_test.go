@@ -99,7 +99,7 @@ func TestMempoolTxConcurrentWithCommit(t *testing.T) {
 	height, round := cs.Height, cs.Round
 	newBlockCh := subscribe(cs.eventBus, types.EventQueryNewBlock)
 
-	NTxs := 10000
+	NTxs := 3000
 	go deliverTxsRange(cs, 0, NTxs)
 
 	startTestRound(cs, height, round)
@@ -148,7 +148,7 @@ func TestMempoolRmBadTx(t *testing.T) {
 
 		// check for the tx
 		for {
-			txs := cs.mempool.Reap(1)
+			txs := cs.mempool.ReapMaxBytes(len(txBytes))
 			if len(txs) == 0 {
 				emptyMempoolCh <- struct{}{}
 				return

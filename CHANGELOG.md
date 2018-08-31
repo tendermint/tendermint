@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.1
+
+*August 22nd, 2018*
+
+BUG FIXES:
+- [libs/autofile] \#2261 Fix log rotation so it actually happens.
+    - Fixes issues with consensus WAL growing unbounded ala \#2259
+
 ## 0.23.0
 
 *August 5th, 2018*

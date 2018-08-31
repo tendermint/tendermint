@@ -21,6 +21,7 @@ BREAKING CHANGES:
     - InitChain and EndBlock use ValidatorUpdate
     - Update field names and types in BeginBlock
 - [state] Implement BFT time    
+- [p2p] update secret connection to use a little endian encoded nonce
 
 FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))
@@ -33,6 +34,7 @@ IMPROVEMENTS:
 - [mempool] Now stores txs by hash inside of the cache, to mitigate memory leakage
 - [config] Replace db_path with db_dir from automatically generated configuration files.
   Issue reported to Cosmos SDK ([#1712](https://github.com/cosmos/cosmos-sdk/issues/1712))
+- [config] Reduce default mempool size from 100k to 5k, until ABCI rechecking is implemented.
 
 BUG FIXES:
 - [mempool] No longer possible to fill up linked list without getting caching

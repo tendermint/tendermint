@@ -195,7 +195,8 @@ func newMockEvidencePool(val []byte) *mockEvidencePool {
 	}
 }
 
-func (m *mockEvidencePool) PendingEvidence() []types.Evidence {
+// NOTE: maxBytes is ignored
+func (m *mockEvidencePool) PendingEvidence(maxBytes int) []types.Evidence {
 	if m.height > 0 {
 		return m.ev
 	}
@@ -208,7 +209,7 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 			panic("block has no evidence")
 		}
 	}
-	m.height += 1
+	m.height++
 }
 
 //------------------------------------

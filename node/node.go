@@ -248,6 +248,8 @@ func NewNode(config *cfg.Config,
 		mempl.WithMetrics(memplMetrics),
 	)
 	mempool.SetLogger(mempoolLogger)
+	maxBytes := state.ConsensusParams.TxSize.MaxBytes
+	mempool.SetFilter(func(tx types.Tx) bool { return len(tx) <= maxBytes })
 	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
