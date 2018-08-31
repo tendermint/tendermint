@@ -3,11 +3,12 @@ package merkle
 import (
 	"bytes"
 	"crypto/rand"
+	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
 	. "github.com/tendermint/tendermint/libs/test"
-
-	"testing"
 )
 
 func TestSimpleProof(t *testing.T) {
@@ -79,5 +80,28 @@ func TestSimpleProof(t *testing.T) {
 		if ok {
 			t.Errorf("Expected verification to fail for mutated root hash")
 		}
+	}
+}
+
+func Test_getSplitPoint(t *testing.T) {
+	tests := []struct {
+		length int
+		want   int
+	}{
+		{1, 0},
+		{2, 1},
+		{3, 2},
+		{4, 2},
+		{5, 4},
+		{10, 8},
+		{20, 16},
+		{100, 64},
+		{255, 128},
+		{256, 128},
+		{257, 256},
+	}
+	for _, tt := range tests {
+		got := getSplitPoint(tt.length)
+		require.Equal(t, tt.want, got, "getSplitPoint(%d) = %v, want %v", tt.length, got, tt.want)
 	}
 }

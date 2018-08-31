@@ -10,7 +10,7 @@ import (
 // SimpleHashFromTwoHashes is the basic operation of the Merkle tree: Hash(left | right).
 func SimpleHashFromTwoHashes(left, right []byte) []byte {
 	var hasher = tmhash.New()
-	_, err := hasher.Write([]byte{1})
+	_, err := hasher.Write(InnerHashPrefix)
 	if err != nil {
 		panic(err)
 	}

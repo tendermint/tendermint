@@ -12,7 +12,7 @@ type SimpleProof struct {
 	Aunts [][]byte `json:"aunts"` // Hashes from leaf's sibling to a root's child.
 }
 
-// SimpleProofsFromHashers computes inclusion proof for given items.
+// SimpleProofsFromByteSlices computes inclusion proof for given items.
 // proofs[0] is the proof for items[0].
 func SimpleProofsFromByteSlices(items [][]byte) (rootHash []byte, proofs []*SimpleProof) {
 	trails, rootSPN := trailsFromByteSlices(items)
