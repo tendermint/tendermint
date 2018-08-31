@@ -207,8 +207,7 @@ message ConsensusParams {
 // BlockSize contains limits on the block size.
 message BlockSize {
   int32 max_bytes = 1;
-  int32 max_txs = 2;
-  int64 max_gas = 3;
+  int64 max_gas = 2;
 }
 
 // TxSize contains limits on the tx size.

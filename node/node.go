@@ -83,7 +83,7 @@ func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
 	// Generate node PrivKey
 	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
@@ -248,6 +248,8 @@ func NewNode(config *cfg.Config,
 		mempl.WithMetrics(memplMetrics),
 	)
 	mempool.SetLogger(mempoolLogger)
+	maxBytes := state.ConsensusParams.TxSize.MaxBytes
+	mempool.SetFilter(func(tx types.Tx) bool { return len(tx) <= maxBytes })
 	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
@@ -401,7 +403,7 @@ func NewNode(config *cfg.Config,
 
 		sw:       sw,
 		addrBook: addrBook,
-		nodeKey: nodeKey,
+		nodeKey:  nodeKey,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,
@@ -433,7 +435,6 @@ func (n *Node) OnStart() error {
 		n.config.P2P.UPNP,
 		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
-
 
 	nodeInfo := n.makeNodeInfo(n.nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
