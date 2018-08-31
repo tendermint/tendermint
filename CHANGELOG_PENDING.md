@@ -20,6 +20,7 @@ BREAKING CHANGES:
     - Remove PubKey from `Validator` and introduce `ValidatorUpdate`
     - InitChain and EndBlock use ValidatorUpdate
     - Update field names and types in BeginBlock
+- [p2p] update secret connection to use a little endian encoded nonce
 
 FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))
