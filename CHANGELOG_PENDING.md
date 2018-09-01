@@ -18,6 +18,7 @@ BREAKING CHANGES:
     - Remove PubKey from `Validator` and introduce `ValidatorUpdate`
     - InitChain and EndBlock use ValidatorUpdate
     - Update field names and types in BeginBlock
+- [libs/clist] Panics if list extends beyond MaxLength
 
 FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))

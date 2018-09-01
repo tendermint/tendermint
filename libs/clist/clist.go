@@ -54,8 +54,6 @@ type CElement struct {
 	Value interface{} // immutable
 }
 
-
-
 // Blocking implementation of Next().
 // May return nil iff CElement was tail and got removed.
 func (e *CElement) NextWait() *CElement {
@@ -218,6 +216,7 @@ func (e *CElement) SetRemoved() {
 // CList represents a linked list.
 // The zero value for CList is an empty list ready to use.
 // Operations are goroutine-safe.
+// Panics if length grows beyond the max.
 type CList struct {
 	mtx    sync.RWMutex
 	wg     *sync.WaitGroup
@@ -225,6 +224,7 @@ type CList struct {
 	head   *CElement // first element
 	tail   *CElement // last element
 	len    int       // list length
+	maxLen int       // max list length
 }
 
 func (l *CList) Init() *CList {
@@ -239,7 +239,16 @@ func (l *CList) Init() *CList {
 	return l
 }
 
-func New() *CList { return new(CList).Init() }
+// Return CList with MaxLength. CList will panic if it goes beyond MaxLength.
+func New() *CList { return newWithMax(MaxLength) }
+
+// Return CList with given maxLength.
+// Will panic if list exceeds given maxLength.
+func newWithMax(maxLength int) *CList {
+	l := new(CList)
+	l.maxLen = maxLength
+	return l.Init()
+}
 
 func (l *CList) Len() int {
 	l.mtx.RLock()
@@ -303,6 +312,7 @@ func (l *CList) WaitChan() <-chan struct{} {
 	return l.waitCh
 }
 
+// Panics if list grows beyond its max length.
 func (l *CList) PushBack(v interface{}) *CElement {
 	l.mtx.Lock()
 
@@ -323,8 +333,8 @@ func (l *CList) PushBack(v interface{}) *CElement {
 		l.wg.Done()
 		close(l.waitCh)
 	}
-	if l.len >= MaxLength {
-		panic(fmt.Sprintf("clist: maximum length list reached %d", MaxLength))
+	if l.len >= l.maxLen {
+		panic(fmt.Sprintf("clist: maximum length list reached %d", l.maxLen))
 	}
 	l.len++
 
