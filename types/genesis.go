@@ -10,6 +10,11 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+const (
+	// MaxChainIDLen is a maximum length of the chain ID.
+	MaxChainIDLen = 50
+)
+
 //------------------------------------------------------------
 // core types for a genesis definition
 
@@ -52,9 +57,11 @@ func (genDoc *GenesisDoc) ValidatorHash() []byte {
 // ValidateAndComplete checks that all necessary fields are present
 // and fills in defaults for optional fields left empty
 func (genDoc *GenesisDoc) ValidateAndComplete() error {
-
 	if genDoc.ChainID == "" {
 		return cmn.NewError("Genesis doc must include non-empty chain_id")
+	}
+	if len(genDoc.ChainID) > MaxChainIDLen {
+		return cmn.NewError(fmt.Sprintf("chain_id in genesis doc is too long (max: %d)", MaxChainIDLen))
 	}
 
 	if genDoc.ConsensusParams == nil {

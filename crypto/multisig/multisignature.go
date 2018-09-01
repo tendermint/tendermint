@@ -4,12 +4,13 @@ import (
 	"errors"
 
 	"github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto/multisig/bitarray"
 )
 
 // Multisignature is used to represent the signature object used in the multisigs.
 // Sigs is a list of signatures, sorted by corresponding index.
 type Multisignature struct {
-	BitArray *CompactBitArray
+	BitArray *bitarray.CompactBitArray
 	Sigs     [][]byte
 }
 
@@ -17,7 +18,7 @@ type Multisignature struct {
 func NewMultisig(n int) *Multisignature {
 	// Default the signature list to have a capacity of two, since we can
 	// expect that most multisigs will require multiple signers.
-	return &Multisignature{NewCompactBitArray(n), make([][]byte, 0, 2)}
+	return &Multisignature{bitarray.NewCompactBitArray(n), make([][]byte, 0, 2)}
 }
 
 // GetIndex returns the index of pk in keys. Returns -1 if not found
@@ -52,9 +53,9 @@ func (mSig *Multisignature) AddSignature(sig []byte, index int) {
 	mSig.Sigs[newSigIndex] = sig
 }
 
-// AddSignatureFromPubkey adds a signature to the multisig,
+// AddSignatureFromPubKey adds a signature to the multisig,
 // at the index in keys corresponding to the provided pubkey.
-func (mSig *Multisignature) AddSignatureFromPubkey(sig []byte, pubkey crypto.PubKey, keys []crypto.PubKey) error {
+func (mSig *Multisignature) AddSignatureFromPubKey(sig []byte, pubkey crypto.PubKey, keys []crypto.PubKey) error {
 	index := getIndex(pubkey, keys)
 	if index == -1 {
 		return errors.New("provided key didn't exist in pubkeys")

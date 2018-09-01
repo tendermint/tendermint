@@ -6,8 +6,29 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/syndtr/goleveldb/leveldb/opt"
+
+	"github.com/stretchr/testify/require"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+func TestNewGoLevelDB(t *testing.T) {
+	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
+	// Test write locks
+	db, err := NewGoLevelDB(name, "")
+	require.Nil(t, err)
+	_, err = NewGoLevelDB(name, "")
+	require.NotNil(t, err)
+	db.Close() // Close the db to release the lock
+
+	// Open the db twice in a row to test read-only locks
+	ro1, err := NewGoLevelDBWithOpts(name, "", &opt.Options{ReadOnly: true})
+	defer ro1.Close()
+	require.Nil(t, err)
+	ro2, err := NewGoLevelDBWithOpts(name, "", &opt.Options{ReadOnly: true})
+	defer ro2.Close()
+	require.Nil(t, err)
+}
 
 func BenchmarkRandomReadsWrites(b *testing.B) {
 	b.StopTimer()

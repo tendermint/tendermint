@@ -13,6 +13,19 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+const (
+	// MaxHeaderBytes is a maximum header size (including amino overhead).
+	MaxHeaderBytes = 478
+
+	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
+	// MaxBlockSizeBytes in size) not including it's parts (only varint len +
+	// fields without data).
+	//
+	// Uvarint length of MaxBlockSizeBytes: 4 bytes
+	//														4 fields: 4 bytes
+	MaxAminoOverheadForBlock = 8
+)
+
 // Block defines the atomic unit of a Tendermint blockchain.
 // TODO: add Version byte
 type Block struct {
@@ -30,7 +43,6 @@ func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) 
 	block := &Block{
 		Header: Header{
 			Height: height,
-			Time:   time.Now(),
 			NumTxs: int64(len(txs)),
 		},
 		Data: Data{
