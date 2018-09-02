@@ -312,7 +312,7 @@ func TestTx(t *testing.T) {
 				// time to verify the proof
 				proof := ptx.Proof
 				if tc.prove && assert.EqualValues(t, tx, proof.Data) {
-					assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+					assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
 				}
 			}
 		}
@@ -350,7 +350,7 @@ func TestTxSearch(t *testing.T) {
 		// time to verify the proof
 		proof := ptx.Proof
 		if assert.EqualValues(t, tx, proof.Data) {
-			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
+			assert.NoError(t, proof.Proof.Verify(proof.RootHash, txHash))
 		}
 
 		// query by height

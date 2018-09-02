@@ -31,7 +31,12 @@ func (a ABCIApp) ABCIQuery(path string, data cmn.HexBytes) (*ctypes.ResultABCIQu
 }
 
 func (a ABCIApp) ABCIQueryWithOptions(path string, data cmn.HexBytes, opts client.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	q := a.App.Query(abci.RequestQuery{data, path, opts.Height, opts.Prove})
+	q := a.App.Query(abci.RequestQuery{
+		Data:   data,
+		Path:   path,
+		Height: opts.Height,
+		Prove:  opts.Prove,
+	})
 	return &ctypes.ResultABCIQuery{q}, nil
 }
 
