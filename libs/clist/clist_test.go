@@ -7,8 +7,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
+
+func TestPanicOnMaxLength(t *testing.T) {
+	maxLength := 1000
+
+	l := newWithMax(maxLength)
+	for i := 0; i < maxLength; i++ {
+		l.PushBack(1)
+	}
+	assert.Panics(t, func() {
+		l.PushBack(1)
+	})
+}
 
 func TestSmall(t *testing.T) {
 	l := New()
