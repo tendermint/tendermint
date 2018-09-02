@@ -19,13 +19,11 @@ import (
 )
 
 func testKVStore(t *testing.T, app types.Application, tx []byte, key, value string) {
-	rdtx := app.DeliverTx(tx)
-	require.False(t, rdtx.IsErr(), rdtx)
+	ar := app.DeliverTx(tx)
+	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	rdtx = app.DeliverTx(tx)
-	require.False(t, rdtx.IsErr(), rdtx)
-	rc := app.Commit()
-	require.NotNil(t, rc.Data)
+	ar = app.DeliverTx(tx)
+	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine
 	resQuery := app.Query(types.RequestQuery{
@@ -255,7 +253,7 @@ func TestClientServer(t *testing.T) {
 	// set up socket app
 	kvstore := NewKVStoreApplication()
 	client, server, err := makeSocketClientServer(kvstore, "kvstore-socket")
-	require.Nil(t, err, "%+v", err)
+	require.Nil(t, err)
 	defer server.Stop()
 	defer client.Stop()
 
@@ -284,16 +282,13 @@ func runClientTests(t *testing.T, client abcicli.Client) {
 }
 
 func testClient(t *testing.T, app abcicli.Client, tx []byte, key, value string) {
-	rdtx, err := app.DeliverTxSync(tx)
+	ar, err := app.DeliverTxSync(tx)
 	require.NoError(t, err)
-	require.False(t, rdtx.IsErr(), rdtx)
+	require.False(t, ar.IsErr(), ar)
 	// repeating tx doesn't raise error
-	rdtx, err = app.DeliverTxSync(tx)
+	ar, err = app.DeliverTxSync(tx)
 	require.NoError(t, err)
-	require.False(t, rdtx.IsErr(), rdtx)
-	rc, err := app.CommitSync()
-	require.NoError(t, err)
-	require.NotNil(t, rc.Data)
+	require.False(t, ar.IsErr(), ar)
 
 	// make sure query is fine
 	resQuery, err := app.QuerySync(types.RequestQuery{

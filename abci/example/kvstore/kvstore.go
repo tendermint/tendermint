@@ -2,33 +2,31 @@ package kvstore
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 
-	"github.com/tendermint/iavl"
 	"github.com/tendermint/tendermint/abci/example/code"
 	"github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/merkle"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	dbm "github.com/tendermint/tendermint/libs/db"
 )
 
 var (
-	stateKey = []byte("stateKey")
+	stateKey        = []byte("stateKey")
+	kvPairPrefixKey = []byte("kvPairKey:")
 )
 
 type State struct {
-	db   dbm.DB
-	tree *iavl.MutableTree
-
+	db      dbm.DB
 	Size    int64  `json:"size"`
 	Height  int64  `json:"height"`
 	AppHash []byte `json:"app_hash"`
 }
 
-func loadState(db dbm.DB) *State {
+func loadState(db dbm.DB) State {
 	stateBytes := db.Get(stateKey)
-	var state = new(State)
+	var state State
 	if len(stateBytes) != 0 {
 		err := json.Unmarshal(stateBytes, &state)
 		if err != nil {
@@ -36,27 +34,19 @@ func loadState(db dbm.DB) *State {
 		}
 	}
 	state.db = db
-	state.tree = iavl.NewMutableTree(db, 0)
-	state.tree.LoadVersion(state.Height)
 	return state
 }
 
-func saveState(state *State) {
-	hash, version, err := state.tree.SaveVersion()
-	if err != nil {
-		panic(err)
-	}
-	state.AppHash = hash
-	if state.Height+1 != version {
-		panic("should not happen, expected version to be 1+state.Height.")
-	}
-	state.Height = version
-
+func saveState(state State) {
 	stateBytes, err := json.Marshal(state)
 	if err != nil {
 		panic(err)
 	}
 	state.db.Set(stateKey, stateBytes)
+}
+
+func prefixKey(key []byte) []byte {
+	return append(kvPairPrefixKey, key...)
 }
 
 //---------------------------------------------------
@@ -66,7 +56,7 @@ var _ types.Application = (*KVStoreApplication)(nil)
 type KVStoreApplication struct {
 	types.BaseApplication
 
-	state *State
+	state State
 }
 
 func NewKVStoreApplication() *KVStoreApplication {
@@ -87,11 +77,11 @@ func (app *KVStoreApplication) DeliverTx(tx []byte) types.ResponseDeliverTx {
 	} else {
 		key, value = tx, tx
 	}
-	app.state.tree.Set(key, value)
+	app.state.db.Set(prefixKey(key), value)
 	app.state.Size += 1
 
 	tags := []cmn.KVPair{
-		{Key: []byte("app.creator"), Value: []byte("Cosmoshi Netowoko")},
+		{Key: []byte("app.creator"), Value: []byte("jae")},
 		{Key: []byte("app.key"), Value: key},
 	}
 	return types.ResponseDeliverTx{Code: code.CodeTypeOK, Tags: tags}
@@ -102,54 +92,30 @@ func (app *KVStoreApplication) CheckTx(tx []byte) types.ResponseCheckTx {
 }
 
 func (app *KVStoreApplication) Commit() types.ResponseCommit {
+	// Using a memdb - just return the big endian size of the db
+	appHash := make([]byte, 8)
+	binary.PutVarint(appHash, app.state.Size)
+	app.state.AppHash = appHash
+	app.state.Height += 1
 	saveState(app.state)
-	return types.ResponseCommit{Data: app.state.AppHash}
+	return types.ResponseCommit{Data: appHash}
 }
 
 func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
-	key := reqQuery.Data
-	height := app.state.Height
-	if reqQuery.Height != 0 {
-		height = reqQuery.Height
-	}
 	if reqQuery.Prove {
-		t, err := app.state.tree.GetImmutable(height)
-		if err != nil {
-			resQuery.Code = code.CodeTypeUnknownError
-			resQuery.Log = err.Error()
-			return
-		}
-		value, proof, err := t.GetWithProof(key)
-		if err != nil {
-			resQuery.Code = code.CodeTypeUnknownError
-			resQuery.Log = err.Error()
-			return
-		}
-		resQuery.Height = height
-		resQuery.Index = proof.LeftIndex() // TODO make Proof return index
-		resQuery.Key = key
+		value := app.state.db.Get(prefixKey(reqQuery.Data))
+		resQuery.Index = -1 // TODO make Proof return index
+		resQuery.Key = reqQuery.Data
 		resQuery.Value = value
 		if value != nil {
-			resQuery.Proof = &merkle.Proof{
-				// XXX key encoding
-				Ops: []merkle.ProofOp{iavl.NewIAVLValueOp(key, proof).ProofOp()},
-			}
 			resQuery.Log = "exists"
 		} else {
-			resQuery.Proof = &merkle.Proof{
-				// XXX key encoding
-				Ops: []merkle.ProofOp{iavl.NewIAVLAbsenceOp(key, proof).ProofOp()},
-			}
 			resQuery.Log = "does not exist"
 		}
 		return
 	} else {
-		index, value := app.state.tree.GetVersioned(key, height)
-		resQuery.Height = height
-		resQuery.Index = int64(index) // TODO GetMutable64?
-		resQuery.Key = key
+		value := app.state.db.Get(prefixKey(reqQuery.Data))
 		resQuery.Value = value
-		resQuery.Proof = nil
 		if value != nil {
 			resQuery.Log = "exists"
 		} else {
