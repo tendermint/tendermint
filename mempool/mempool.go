@@ -142,12 +142,10 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
 
-// SetFilter sets a filter for mempool to only accept txs for which f(tx)
-// returns true.
-func (mem *Mempool) SetFilter(f func(types.Tx) bool) {
-	mem.proxyMtx.Lock()
-	mem.filter = f
-	mem.proxyMtx.Unlock()
+// Filter sets a filter for mempool to only accept txs for which f(tx) returns
+// true.
+func Filter(f func(types.Tx) bool) MempoolOption {
+	return func(mem *Mempool) { mem.filter = f }
 }
 
 // WithMetrics sets the metrics.
