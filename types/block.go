@@ -18,12 +18,13 @@ const (
 	MaxHeaderBytes = 478
 
 	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
-	// MaxBlockSizeBytes in size) not including it's parts (only varint len +
-	// fields without data).
+	// MaxBlockSizeBytes in size) not including it's parts except Data.
 	//
 	// Uvarint length of MaxBlockSizeBytes: 4 bytes
-	//														4 fields: 4 bytes
-	MaxAminoOverheadForBlock = 8
+	// 2 fields (2 embedded):               2 bytes
+	// Uvarint length of Data.Txs:          4 bytes
+	// Data.Txs field:                      1 byte
+	MaxAminoOverheadForBlock = 11
 )
 
 // Block defines the atomic unit of a Tendermint blockchain.
