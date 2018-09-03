@@ -14,9 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/tendermint/libs/log"
 	rs "github.com/tendermint/tendermint/rpc/lib/server"
 	types "github.com/tendermint/tendermint/rpc/lib/types"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 //////////////////////////////////////////////////////////////////////////////

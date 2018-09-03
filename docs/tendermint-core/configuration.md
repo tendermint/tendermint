@@ -34,7 +34,7 @@ fast_sync = true
 db_backend = "leveldb"
 
 # Database directory
-db_path = "data"
+db_dir = "data"
 
 # Output level for logging
 log_level = "state:info,*:error"
@@ -77,6 +77,8 @@ grpc_laddr = ""
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
 grpc_max_open_connections = 900
 
 # Activate unsafe RPC commands like /dial_seeds and /unsafe_flush_mempool
@@ -87,7 +89,9 @@ unsafe = false
 # If you want to accept more significant number than the default, make sure
 # you increase your OS limits.
 # 0 - unlimited.
-max_open_connections = 450
+# Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+# 1024 - 40 - 10 - 50 = 924 = ~900
+max_open_connections = 900
 
 ##### peer to peer configuration options #####
 [p2p]
@@ -113,8 +117,11 @@ addr_book_strict = true
 # Time to wait before flushing messages out on the connection, in ms
 flush_throttle_timeout = 100
 
-# Maximum number of peers to connect to
-max_num_peers = 50
+# Maximum number of inbound peers
+max_num_inbound_peers = 40
+
+# Maximum number of outbound peers to connect to, excluding persistent peers
+max_num_outbound_peers = 10
 
 # Maximum size of a message packet payload, in bytes
 max_packet_msg_payload_size = 1024

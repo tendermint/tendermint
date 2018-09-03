@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestGenLoadValidator(t *testing.T) {
@@ -235,7 +236,7 @@ func newVote(addr types.Address, idx int, height int64, round int, typ byte, blo
 		Height:           height,
 		Round:            round,
 		Type:             typ,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		BlockID:          blockID,
 	}
 }
@@ -245,6 +246,6 @@ func newProposal(height int64, round int, partsHeader types.PartSetHeader) *type
 		Height:           height,
 		Round:            round,
 		BlockPartsHeader: partsHeader,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 	}
 }

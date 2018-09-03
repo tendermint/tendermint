@@ -4,10 +4,10 @@
 
 `MConnection` is a multiplex connection that supports multiple independent streams
 with distinct quality of service guarantees atop a single TCP connection.
-Each stream is known as a `Channel` and each `Channel` has a globally unique *byte id*.
+Each stream is known as a `Channel` and each `Channel` has a globally unique _byte id_.
 Each `Channel` also has a relative priority that determines the quality of service
 of the `Channel` compared to other `Channel`s.
-The *byte id* and the relative priorities of each `Channel` are configured upon
+The _byte id_ and the relative priorities of each `Channel` are configured upon
 initialization of the connection.
 
 The `MConnection` supports three packet types:
@@ -38,7 +38,7 @@ type msgPacket struct {
 }
 ```
 
-The `msgPacket` is serialized using [go-wire](https://github.com/tendermint/go-wire) and prefixed with 0x3.
+The `msgPacket` is serialized using [go-amino](https://github.com/tendermint/go-amino) and prefixed with 0x3.
 The received `Bytes` of a sequential set of packets are appended together
 until a packet with `EOF=1` is received, then the complete serialized message
 is returned for processing by the `onReceive` function of the corresponding channel.
@@ -53,13 +53,14 @@ Messages are chosen for a batch one at a time from the channel with the lowest r
 ## Sending Messages
 
 There are two methods for sending messages:
+
 ```go
 func (m MConnection) Send(chID byte, msg interface{}) bool {}
 func (m MConnection) TrySend(chID byte, msg interface{}) bool {}
 ```
 
 `Send(chID, msg)` is a blocking call that waits until `msg` is successfully queued
-for the channel with the given id byte `chID`.  The message `msg` is serialized
+for the channel with the given id byte `chID`. The message `msg` is serialized
 using the `tendermint/wire` submodule's `WriteBinary()` reflection routine.
 
 `TrySend(chID, msg)` is a nonblocking call that queues the message msg in the channel
@@ -76,8 +77,8 @@ and other higher level thread-safe data used by the reactors.
 ## Switch/Reactor
 
 The `Switch` handles peer connections and exposes an API to receive incoming messages
-on `Reactors`.  Each `Reactor` is responsible for handling incoming messages of one
-or more `Channels`.  So while sending outgoing messages is typically performed on the peer,
+on `Reactors`. Each `Reactor` is responsible for handling incoming messages of one
+or more `Channels`. So while sending outgoing messages is typically performed on the peer,
 incoming messages are received on the reactor.
 
 ```go

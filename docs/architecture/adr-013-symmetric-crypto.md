@@ -14,22 +14,23 @@ to easily swap these out.
 
 ### How do we encrypt with AEAD's
 
-AEAD's typically require a nonce in addition to the key. 
+AEAD's typically require a nonce in addition to the key.
 For the purposes we require symmetric cryptography for,
 we need encryption to be stateless.
-Because of this we use random nonces. 
+Because of this we use random nonces.
 (Thus the AEAD must support random nonces)
 
-We currently construct a random nonce, and encrypt the data with it. 
+We currently construct a random nonce, and encrypt the data with it.
 The returned value is `nonce || encrypted data`.
 The limitation of this is that does not provide a way to identify
 which algorithm was used in encryption.
-Consequently decryption with multiple algoritms is sub-optimal. 
+Consequently decryption with multiple algoritms is sub-optimal.
 (You have to try them all)
 
 ## Decision
 
-We should create the following two methods in a new `crypto/encoding/symmetric` package: 
+We should create the following two methods in a new `crypto/encoding/symmetric` package:
+
 ```golang
 func Encrypt(aead cipher.AEAD, plaintext []byte) (ciphertext []byte, err error)
 func Decrypt(key []byte, ciphertext []byte) (plaintext []byte, err error)
@@ -37,18 +38,19 @@ func Register(aead cipher.AEAD, algo_name string, NewAead func(key []byte) (ciph
 ```
 
 This allows you to specify the algorithm in encryption, but not have to specify
-it in decryption. 
+it in decryption.
 This is intended for ease of use in downstream applications, in addition to people
 looking at the file directly.
 One downside is that for the encrypt function you must have already initialized an AEAD,
-but I don't really see this as an issue. 
+but I don't really see this as an issue.
 
-If there is no error in encryption, Encrypt will return `algo_name || nonce || aead_ciphertext`. 
+If there is no error in encryption, Encrypt will return `algo_name || nonce || aead_ciphertext`.
 `algo_name` should be length prefixed, using standard varuint encoding.
 This will be binary data, but thats not a problem considering the nonce and ciphertext are also binary.
 
-This solution requires a mapping from aead type to name. 
-We can achieve this via reflection. 
+This solution requires a mapping from aead type to name.
+We can achieve this via reflection.
+
 ```golang
 func getType(myvar interface{}) string {
     if t := reflect.TypeOf(myvar); t.Kind() == reflect.Ptr {
@@ -58,7 +60,8 @@ func getType(myvar interface{}) string {
     }
 }
 ```
-Then we maintain a map from the name returned from `getType(aead)` to `algo_name`. 
+
+Then we maintain a map from the name returned from `getType(aead)` to `algo_name`.
 
 In decryption, we read the `algo_name`, and then instantiate a new AEAD with the key.
 Then we call the AEAD's decrypt method on the provided nonce/ciphertext.
@@ -81,13 +84,16 @@ Proposed.
 ## Consequences
 
 ### Positive
-* Allows us to support new AEAD's, in a way that makes decryption easier
-* Allows downstream users to add their own AEAD
+
+- Allows us to support new AEAD's, in a way that makes decryption easier
+- Allows downstream users to add their own AEAD
 
 ### Negative
-* We will have to break all private keys stored on disk.
-They can be recovered using seed words, and upgrade scripts are simple.
+
+- We will have to break all private keys stored on disk.
+  They can be recovered using seed words, and upgrade scripts are simple.
 
 ### Neutral
-* Caller has to instantiate the AEAD with the private key.
-However it forces them to be aware of what signing algorithm they are using, which is a positive.
+
+- Caller has to instantiate the AEAD with the private key.
+  However it forces them to be aware of what signing algorithm they are using, which is a positive.

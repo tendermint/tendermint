@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/tmhash"
 )
 
 func examplePrevote() *Vote {
@@ -24,17 +25,17 @@ func exampleVote(t byte) *Vote {
 	}
 
 	return &Vote{
-		ValidatorAddress: []byte("addr"),
+		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
 		ValidatorIndex:   56789,
 		Height:           12345,
 		Round:            2,
 		Timestamp:        stamp,
 		Type:             t,
 		BlockID: BlockID{
-			Hash: []byte("hash"),
+			Hash: tmhash.Sum([]byte("blockID_hash")),
 			PartsHeader: PartSetHeader{
 				Total: 1000000,
-				Hash:  []byte("parts_hash"),
+				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
 			},
 		},
 	}
@@ -45,7 +46,7 @@ func TestVoteSignable(t *testing.T) {
 	signBytes := vote.SignBytes("test_chain_id")
 	signStr := string(signBytes)
 
-	expected := `{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"68617368","parts":{"hash":"70617274735F68617368","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}`
+	expected := `{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"8B01023386C371778ECB6368573E539AFC3CC860","parts":{"hash":"72DB3D959635DFF1BB567BEDAA70573392C51596","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}`
 	if signStr != expected {
 		// NOTE: when this fails, you probably want to fix up consensus/replay_test too
 		t.Errorf("Got unexpected sign string for Vote. Expected:\n%v\nGot:\n%v", expected, signStr)
@@ -118,4 +119,17 @@ func TestVoteVerify(t *testing.T) {
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrVoteInvalidSignature, err)
 	}
+}
+
+func TestMaxVoteBytes(t *testing.T) {
+	vote := examplePrevote()
+
+	privVal := NewMockPV()
+	err := privVal.SignVote("test_chain_id", vote)
+	require.NoError(t, err)
+
+	bz, err := cdc.MarshalBinary(vote)
+	require.NoError(t, err)
+
+	assert.Equal(t, MaxVoteBytes, len(bz))
 }

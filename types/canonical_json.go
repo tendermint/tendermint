@@ -110,5 +110,5 @@ func CanonicalTime(t time.Time) string {
 	// Note that sending time over amino resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
-	return t.UTC().Format(TimeFormat)
+	return t.Round(0).UTC().Format(TimeFormat)
 }

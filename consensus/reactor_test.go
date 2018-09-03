@@ -20,6 +20,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	mempl "github.com/tendermint/tendermint/mempool"
 	sm "github.com/tendermint/tendermint/state"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	cfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/p2p"
@@ -115,10 +116,10 @@ func TestReactorWithEvidence(t *testing.T) {
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
-		vals := types.TM2PB.Validators(state.Validators)
+		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		pv := privVals[i]
@@ -194,7 +195,8 @@ func newMockEvidencePool(val []byte) *mockEvidencePool {
 	}
 }
 
-func (m *mockEvidencePool) PendingEvidence() []types.Evidence {
+// NOTE: maxBytes is ignored
+func (m *mockEvidencePool) PendingEvidence(maxBytes int) []types.Evidence {
 	if m.height > 0 {
 		return m.ev
 	}
@@ -207,7 +209,7 @@ func (m *mockEvidencePool) Update(block *types.Block, state sm.State) {
 			panic("block has no evidence")
 		}
 	}
-	m.height += 1
+	m.height++
 }
 
 //------------------------------------
@@ -295,14 +297,14 @@ func TestReactorRecordsBlockParts(t *testing.T) {
 	require.Equal(t, 1, ps.BlockPartsSent(), "number of block parts sent should stay the same")
 }
 
-// Test we record votes from other peers
+// Test we record votes from other peers.
 func TestReactorRecordsVotes(t *testing.T) {
-	// create dummy peer
+	// Create dummy peer.
 	peer := p2pdummy.NewPeer()
 	ps := NewPeerState(peer).SetLogger(log.TestingLogger())
 	peer.Set(types.PeerStateKey, ps)
 
-	// create reactor
+	// Create reactor.
 	css := randConsensusNet(1, "consensus_reactor_records_votes_test", newMockTickerFunc(true), newPersistentKVStore)
 	reactor := NewConsensusReactor(css[0], false) // so we dont start the consensus states
 	reactor.SetEventBus(css[0].eventBus)
@@ -320,7 +322,7 @@ func TestReactorRecordsVotes(t *testing.T) {
 		ValidatorAddress: val.Address,
 		Height:           2,
 		Round:            0,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             types.VoteTypePrevote,
 		BlockID:          types.BlockID{},
 	}
@@ -540,7 +542,7 @@ func waitForAndValidateBlock(t *testing.T, n int, activeVals map[string]struct{}
 		err := validateBlock(newBlock, activeVals)
 		assert.Nil(t, err)
 		for _, tx := range txs {
-			css[j].mempool.CheckTx(tx, nil)
+			err := css[j].mempool.CheckTx(tx, nil)
 			assert.Nil(t, err)
 		}
 	}, css)
