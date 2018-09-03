@@ -77,8 +77,6 @@ func (txs Txs) Proof(i int) TxProof {
 	root, proofs := merkle.SimpleProofsFromHashers(hashers)
 
 	return TxProof{
-		Index:    i,
-		Total:    l,
 		RootHash: root,
 		Data:     txs[i],
 		Proof:    *proofs[i],
@@ -87,10 +85,9 @@ func (txs Txs) Proof(i int) TxProof {
 
 // TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
-	Index, Total int
-	RootHash     cmn.HexBytes
-	Data         Tx
-	Proof        merkle.SimpleProof
+	RootHash cmn.HexBytes
+	Data     Tx
+	Proof    merkle.SimpleProof
 }
 
 // LeadHash returns the hash of the this proof refers to.
@@ -104,10 +101,10 @@ func (tp TxProof) Validate(dataHash []byte) error {
 	if !bytes.Equal(dataHash, tp.RootHash) {
 		return errors.New("Proof matches different data hash")
 	}
-	if tp.Index < 0 {
+	if tp.Proof.Index < 0 {
 		return errors.New("Proof index cannot be negative")
 	}
-	if tp.Total <= 0 {
+	if tp.Proof.Total <= 0 {
 		return errors.New("Proof total must be positive")
 	}
 	valid := tp.Proof.Verify(tp.RootHash, tp.LeafHash())

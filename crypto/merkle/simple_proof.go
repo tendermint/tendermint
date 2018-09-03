@@ -2,6 +2,7 @@ package merkle
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	cmn "github.com/tendermint/tmlibs/common"
@@ -66,6 +67,12 @@ func SimpleProofsFromMap(m map[string]Hasher) (rootHash []byte, proofs map[strin
 // Verify that the SimpleProof proves the root hash.
 // Check sp.Index/sp.Total manually if needed
 func (sp *SimpleProof) Verify(rootHash []byte, leafHash []byte) error {
+	if sp.Total < 0 {
+		return errors.New("Proof total must be positive")
+	}
+	if sp.Index < 0 {
+		return errors.New("Proof index cannot be negative")
+	}
 	if !bytes.Equal(sp.LeafHash, leafHash) {
 		return cmn.NewError("invalid leaf hash: wanted %X got %X", leafHash, sp.LeafHash)
 	}
