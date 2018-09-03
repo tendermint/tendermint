@@ -1,6 +1,7 @@
 package types
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/tmhash"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func examplePrevote() *Vote {
@@ -122,7 +124,21 @@ func TestVoteVerify(t *testing.T) {
 }
 
 func TestMaxVoteBytes(t *testing.T) {
-	vote := examplePrevote()
+	vote := &Vote{
+		ValidatorAddress: tmhash.Sum([]byte("validator_address")),
+		ValidatorIndex:   math.MaxInt64,
+		Height:           math.MaxInt64,
+		Round:            math.MaxInt64,
+		Timestamp:        tmtime.Now(),
+		Type:             VoteTypePrevote,
+		BlockID: BlockID{
+			Hash: tmhash.Sum([]byte("blockID_hash")),
+			PartsHeader: PartSetHeader{
+				Total: math.MaxInt64,
+				Hash:  tmhash.Sum([]byte("blockID_part_set_header_hash")),
+			},
+		},
+	}
 
 	privVal := NewMockPV()
 	err := privVal.SignVote("test_chain_id", vote)
