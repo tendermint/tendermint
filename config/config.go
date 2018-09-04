@@ -293,6 +293,7 @@ type P2PConfig struct {
 	AddrBook string `mapstructure:"addr_book_file"`
 
 	// Set true for strict address routability rules
+	// Set false for local networks
 	AddrBookStrict bool `mapstructure:"addr_book_strict"`
 
 	// Maximum number of inbound peers
