@@ -59,6 +59,10 @@ are connected to at least one validator.
 
 Authenticated encryption is enabled by default.
 
+## Specification
+
+The full p2p specification can be found [here](https://github.com/tendermint/tendermint/tree/master/docs/spec/p2p).
+
 ## Additional Reading
 
 - [Implementation](https://github.com/tendermint/tendermint/blob/64bae01d007b5bee0d0827ab53259ffd5910b4e6/p2p/conn/secret_connection.go#L47)
