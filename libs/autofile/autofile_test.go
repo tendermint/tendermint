@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -78,19 +79,12 @@ func TestOpenAutoFilePerms(t *testing.T) {
 	err = af.Close()
 	require.NoError(t, err)
 
-	// reopen
+	// reopen and expect an PermissionsChangedErr as Cause
 	af, err = OpenAutoFile(name)
-	require.NoError(t, err)
+	require.Error(t, err)
+	t.Log(err)
+	require.Equal(t, errors.Cause(err), PermissionsChangedErr)
+
 	err = af.Close()
 	require.NoError(t, err)
-
-	// check that permissions got reset
-	f, err := os.Open(name)
-	require.NoError(t, err)
-	fileInfo, err := f.Stat()
-	require.NoError(t, err)
-	if fileInfo.Mode() != autoFilePerms {
-		t.Errorf("File permissions were not changed to expected. got: %v, want %v",
-			fileInfo.Mode(), autoFilePerms)
-	}
 }

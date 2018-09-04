@@ -18,6 +18,8 @@ const (
 	dirPerm = os.FileMode(0700)
 )
 
+var PermissionsChangedErr = cmn.NewError("file permissions changed")
+
 func init() {
 	registerDBCreator(FSDBBackend, func(name string, dir string) (DB, error) {
 		dbPath := filepath.Join(dir, name+".db")
@@ -210,10 +212,8 @@ func write(path string, d []byte) error {
 		return err
 	}
 	if fInfo.Mode() != keyPerm {
-		// reset file permissions:
-		if err := f.Chmod(keyPerm); err != nil {
-			return err
-		}
+		return cmn.ErrorWrap(PermissionsChangedErr,
+			"expected file permissions: %v, got: %v", keyPerm, fInfo.Mode())
 	}
 	_, err = f.Write(d)
 	if err != nil {
