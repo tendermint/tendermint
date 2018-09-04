@@ -5,16 +5,23 @@ import (
 	"time"
 )
 
-// Now returns UTC time rounded since the zero time.
+// Now returns the current time in UTC with no monotonic component.
 func Now() time.Time {
-	return time.Now().Round(0).UTC()
+	return Canonical(time.Now())
 }
 
+// Canonical returns UTC time with no monotonic component.
+func Canonical(t time.Time) time.Time {
+	return t.Round(0).UTC()
+}
+
+// WeightedTime for computing a median.
 type WeightedTime struct {
 	Time   time.Time
 	Weight int64
 }
 
+// NewWeightedTime with time and weight.
 func NewWeightedTime(time time.Time, weight int64) *WeightedTime {
 	return &WeightedTime{
 		Time:   time,

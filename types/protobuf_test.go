@@ -9,6 +9,7 @@ import (
 	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestABCIPubKey(t *testing.T) {
@@ -77,7 +78,7 @@ func TestABCIConsensusParams(t *testing.T) {
 func TestABCIHeader(t *testing.T) {
 	header := &Header{
 		Height:          int64(3),
-		Time:            time.Now(),
+		Time:            tmtime.Now(),
 		NumTxs:          int64(10),
 		ProposerAddress: []byte("cloak"),
 	}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 const (
@@ -79,7 +80,7 @@ func (genDoc *GenesisDoc) ValidateAndComplete() error {
 	}
 
 	if genDoc.GenesisTime.IsZero() {
-		genDoc.GenesisTime = time.Now()
+		genDoc.GenesisTime = tmtime.Now()
 	}
 
 	return nil
