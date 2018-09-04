@@ -31,7 +31,7 @@ please submit them to our [bug bounty](https://tendermint.com/security)!
 - [Block Sync](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/block_sync): gossip blocks so peers can catch up quickly
 - [Consensus](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/consensus): gossip votes and block parts so new blocks can be committed
 - [Mempool](https://github.com/tendermint/tendermint/tree/master/docs/spec/reactors/mempool): gossip transactions so they get included in blocks
-- Evidence: TODO
+- Evidence: Forthcoming, see [this issue](https://github.com/tendermint/tendermint/issues/2329).
 
 ### Software
 

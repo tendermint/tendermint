@@ -147,7 +147,7 @@ where `Signature` is the DER encoded signature, ie:
 
 ## Evidence
 
-TODO
+Forthcoming, see [this issue](https://github.com/tendermint/tendermint/issues/2329)
 
 ## Validation
 

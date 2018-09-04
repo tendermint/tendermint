@@ -11,7 +11,7 @@ included in a block or gossipped over the network, and we never compute
 its hash. However, the types it contains are part of the specification, since
 their Merkle roots are included in blocks.
 
-For details on an implementation of `State` with persistence, see TODO
+Details on an implementation of `State` with persistence is forthcoming, see [this issue](https://github.com/tendermint/tendermint/issues/1152)
 
 ```go
 type State struct {
@@ -77,4 +77,4 @@ func TotalVotingPower(vals []Validators) int64{
 
 ### ConsensusParams
 
-TODO
+This section is forthcoming. See [this issue](https://github.com/tendermint/tendermint/issues/1152).
