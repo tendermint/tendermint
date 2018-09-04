@@ -38,6 +38,7 @@ IMPROVEMENTS:
     - tweak params
     - only process one block at a time to avoid starving
 - [common] bit array functions which take in another parameter are now thread safe
+- [common] SplitAndTrim was deleted
 - [crypto] Switch hkdfchachapoly1305 to xchachapoly1305
 - [p2p] begin connecting to peers as soon a seed node provides them to you ([#2093](https://github.com/tendermint/tendermint/issues/2093))
 
