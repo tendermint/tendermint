@@ -27,6 +27,13 @@ type Block struct {
 }
 ```
 
+The signatures returned along with block `X` are those validating block
+`X-1`. This can be a little confusing, but consider that
+the `Header` also contains the `LastCommitHash`. It would be impossible
+for a Header to include the commits that sign it, as it would cause an
+infinite loop here. But when we get block `X`, we find
+`Header.LastCommitHash`, which must match the hash of `LastCommit`.
+
 ## Header
 
 A block header contains metadata about the block and about the consensus, as well as commitments to
@@ -34,32 +41,30 @@ the data in the current block, the previous block, and the results returned by t
 
 ```go
 type Header struct {
-    // block metadata
-    Version             string  // Version string
-    ChainID             string  // ID of the chain
-    Height              int64   // Current block height
-    Time                int64   // UNIX time, in millisconds
+	// basic block info
+	ChainID  string    `json:"chain_id"`
+	Height   int64     `json:"height"`
+	Time     time.Time `json:"time"`
+	NumTxs   int64     `json:"num_txs"`
+	TotalTxs int64     `json:"total_txs"`
 
-    // current block
-    NumTxs              int64   // Number of txs in this block
-    TxHash              []byte  // SimpleMerkle of the block.Txs
-    LastCommitHash      []byte  // SimpleMerkle of the block.LastCommit
+	// prev block info
+	LastBlockID BlockID `json:"last_block_id"`
 
-    // previous block
-    TotalTxs            int64   // prevBlock.TotalTxs + block.NumTxs
-    LastBlockID         BlockID // BlockID of prevBlock
+	// hashes of block data
+	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
+	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
 
-    // application
-    ResultsHash         []byte  // SimpleMerkle of []abci.Result from prevBlock
-    AppHash             []byte  // Arbitrary state digest
-    ValidatorsHash      []byte  // SimpleMerkle of the current ValidatorSet
-    NextValidatorsHash  []byte  // SimpleMerkle of the next ValidatorSet
-    ConsensusParamsHash []byte  // SimpleMerkle of the ConsensusParams
+	// hashes from the app output from the prev block
+	ValidatorsHash     cmn.HexBytes `json:"validators_hash"`      // validators for the current block
+	NextValidatorsHash cmn.HexBytes `json:"next_validators_hash"` // validators for the next block
+	ConsensusHash      cmn.HexBytes `json:"consensus_hash"`       // consensus params for current block
+	AppHash            cmn.HexBytes `json:"app_hash"`             // state after txs from the previous block
+	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
 
-    // consensus
-    EvidenceHash        []byte  // SimpleMerkle of []Evidence
-    ProposerAddress     []byte  // Address of the original proposer of the block
-}
+	// consensus info
+	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
+	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
 ```
 
 Further details on each of these fields is described below.
@@ -224,6 +229,17 @@ These are the votes that committed the previous block.
 
 The first block has `block.Header.LastCommitHash == []byte{}`
 
+### DataHash
+
+The `DataHash` can provide a nice check on the
+[Data](https://godoc.org/github.com/tendermint/tendermint/types#Data)
+returned in this same block. If you are subscribed to new blocks, via
+tendermint RPC, in order to display or process the new transactions you
+should at least validate that the `DataHash` is valid. If it is
+important to verify autheniticity, you must wait for the `LastCommit`
+from the next block to make sure the block header (including `DataHash`)
+was properly signed.
+
 ### TotalTxs
 
 ```go
@@ -270,7 +286,7 @@ The first block has `block.Header.ResultsHash == []byte{}`.
 block.AppHash == state.AppHash
 ```
 
-Arbitrary byte array returned by the application after executing and commiting the previous block.
+Arbitrary byte array returned by the application after executing and commiting the previous block. It serves as the basis for validating any merkle proofs that comes from the ABCI application and represents the state of the actual application rather than the state of the blockchain itself.
 
 The first block has `block.Header.AppHash == []byte{}`.
 

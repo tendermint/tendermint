@@ -207,6 +207,7 @@ func (b *Block) StringShort() string {
 // Header defines the structure of a Tendermint block header
 // TODO: limit header size
 // NOTE: changes to the Header should be duplicated in the abci Header
+// and in /docs/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
 	ChainID  string    `json:"chain_id"`
