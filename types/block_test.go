@@ -1,6 +1,7 @@
 package types
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -246,11 +247,11 @@ func TestMaxHeaderBytes(t *testing.T) {
 
 	h := Header{
 		ChainID:            maxChainID,
-		Height:             10,
+		Height:             math.MaxInt64,
 		Time:               time.Now().UTC(),
-		NumTxs:             100,
-		TotalTxs:           200,
-		LastBlockID:        makeBlockID(make([]byte, 20), 300, make([]byte, 20)),
+		NumTxs:             math.MaxInt64,
+		TotalTxs:           math.MaxInt64,
+		LastBlockID:        makeBlockID(make([]byte, tmhash.Size), math.MaxInt64, make([]byte, tmhash.Size)),
 		LastCommitHash:     tmhash.Sum([]byte("last_commit_hash")),
 		DataHash:           tmhash.Sum([]byte("data_hash")),
 		ValidatorsHash:     tmhash.Sum([]byte("validators_hash")),

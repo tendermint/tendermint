@@ -142,12 +142,10 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
 
-// SetFilter sets a filter for mempool to only accept txs for which f(tx)
+// WithFilter sets a filter for mempool to only accept txs for which f(tx)
 // returns true.
-func (mem *Mempool) SetFilter(f func(types.Tx) bool) {
-	mem.proxyMtx.Lock()
-	mem.filter = f
-	mem.proxyMtx.Unlock()
+func WithFilter(f func(types.Tx) bool) MempoolOption {
+	return func(mem *Mempool) { mem.filter = f }
 }
 
 // WithMetrics sets the metrics.
@@ -415,13 +413,14 @@ func (mem *Mempool) ReapMaxBytes(max int) types.Txs {
 }
 
 // ReapMaxTxs reaps up to max transactions from the mempool.
-// If max is negative, function panics.
+// If max is negative, there is no cap on the size of all returned
+// transactions (~ all available transactions).
 func (mem *Mempool) ReapMaxTxs(max int) types.Txs {
 	mem.proxyMtx.Lock()
 	defer mem.proxyMtx.Unlock()
 
 	if max < 0 {
-		panic("Called ReapMaxTxs with negative max")
+		max = mem.txs.Len()
 	}
 
 	for atomic.LoadInt32(&mem.rechecking) > 0 {

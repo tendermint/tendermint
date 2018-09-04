@@ -240,16 +240,16 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
 
 	// Make MempoolReactor
-	mempoolLogger := logger.With("module", "mempool")
+	maxBytes := state.ConsensusParams.TxSize.MaxBytes
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
+		mempl.WithFilter(func(tx types.Tx) bool { return len(tx) <= maxBytes }),
 	)
+	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)
-	maxBytes := state.ConsensusParams.TxSize.MaxBytes
-	mempool.SetFilter(func(tx types.Tx) bool { return len(tx) <= maxBytes })
 	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
 	mempoolReactor.SetLogger(mempoolLogger)
