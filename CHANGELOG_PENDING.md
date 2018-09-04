@@ -20,7 +20,7 @@ BREAKING CHANGES:
     - Remove PubKey from `Validator` and introduce `ValidatorUpdate`
     - InitChain and EndBlock use ValidatorUpdate
     - Update field names and types in BeginBlock
-- [state] Implement BFT time    
+- [state] Implement BFT time
 - [p2p] update secret connection to use a little endian encoded nonce
 - [libs/clist] Panics if list extends beyond MaxLength
 - [common] SplitAndTrim was deleted
@@ -42,3 +42,4 @@ BUG FIXES:
 - [mempool] No longer possible to fill up linked list without getting caching
   benefits [#2180](https://github.com/tendermint/tendermint/issues/2180)
 - [state] kv store index tx.height to support search
+- [rpc] /dial_peers does not try to dial existing peers

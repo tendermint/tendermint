@@ -417,10 +417,10 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
 			j := perm[i]
-
 			addr := netAddrs[j]
-			// do not dial ourselves
-			if addr.Same(ourAddr) {
+
+			if addr.Same(ourAddr) || sw.HasPeerWithAddress(addr) {
+				sw.Logger.Debug("Ignore attempt to connect to an existing peer", "addr", addr)
 				return
 			}
 
@@ -451,6 +451,13 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 func (sw *Switch) randomSleep(interval time.Duration) {
 	r := time.Duration(sw.rng.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
 	time.Sleep(r + interval)
+}
+
+// HasPeerWithAddress returns true if switch has a peer with the given address.
+func (sw *Switch) HasPeerWithAddress(addr *NetAddress) bool {
+	return sw.IsDialing(addr.ID) ||
+		sw.peers.Has(addr.ID) ||
+		(!sw.config.AllowDuplicateIP && sw.peers.HasIP(addr.IP))
 }
 
 //------------------------------------------------------------------------------------
