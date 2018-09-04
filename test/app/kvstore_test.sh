@@ -19,8 +19,6 @@ curl -s 127.0.0.1:26657/broadcast_tx_commit?tx=$(toHex $KEY=$VALUE)
 echo $?
 echo ""
 
-# unexisting key
-NOKEY="nokey"
 
 ###########################
 # test using the abci-cli
@@ -40,12 +38,12 @@ if [[ $? != 0 ]]; then
 fi
 set -e
 
-# we should not be able to look up an unexsisting key
-RESPONSE=`abci-cli query \"$NOKEY\"`
+# we should not be able to look up the value
+RESPONSE=`abci-cli query \"$VALUE\"`
 set +e
-A=`echo $RESPONSE | grep $NOKEY`
+A=`echo $RESPONSE | grep \"value: $VALUE\"`
 if [[ $? == 0 ]]; then
-    echo "Found '$NOKEY' for $NOKEY when we should not have. Response:"
+    echo "Found '$VALUE' for $VALUE when we should not have. Response:"
     echo "$RESPONSE"
     exit 1
 fi
