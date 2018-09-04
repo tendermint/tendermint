@@ -24,7 +24,7 @@ For more background information on ABCI, motivations, and tendermint, please vis
 The two guides to focus on are the `Application Development Guide` and `Using ABCI-CLI`.
 
 
-## Protocl Buffers
+## Protocol Buffers
 
 To compile the protobuf file, run:
 
@@ -42,10 +42,13 @@ The `abci-cli` is a simple tool for debugging ABCI servers and running some
 example apps. To install it:
 
 ```
-go get github.com/tendermint/abci
-cd $GOPATH/src/github.com/tendermint/abci
+mkdir -p $GOPATH/src/github.com/tendermint
+cd $GOPATH/src/github.com/tendermint
+git clone https://github.com/tendermint/tendermint.git
+cd tendermint
+make get_tools
 make get_vendor_deps
-make install
+make install_abci
 ```
 
 ## Implementation
