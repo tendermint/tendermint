@@ -43,9 +43,9 @@ example apps. To install it:
 
 ```
 go get github.com/tendermint/abci
-cd $GOPATH/src/github.com/tendermint/abci
+cd $GOPATH/src/github.com/tendermint
 make get_vendor_deps
-make install
+make install_abci
 ```
 
 ## Implementation
