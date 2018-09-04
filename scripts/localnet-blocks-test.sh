@@ -1,7 +1,6 @@
 #!/bin/bash
 
-CNT=0
-ITER=$1
+ITERATIONS=$1
 SLEEP=$2
 NUMBLOCKS=$3
 NODEADDR=$4
@@ -26,15 +25,16 @@ if [ -z "$4" ]; then
   exit 1
 fi
 
-while [ ${CNT} -lt $ITER ]; do
-  var=$(curl -s $NODEADDR:26657/status | jq -r '.result.sync_info.latest_block_height')
+I=0
+while [ ${I} -lt "$ITERATIONS" ]; do
+  var=$(curl -s "$NODEADDR:26657/status" | jq -r ".result.sync_info.latest_block_height")
   echo "Number of Blocks: ${var}"
-  if [ ! -z ${var} ] && [ ${var} -gt ${NUMBLOCKS} ]; then
+  if [ ! -z "${var}" ] && [ "${var}" -gt "${NUMBLOCKS}" ]; then
     echo "Number of blocks reached, exiting success..."
     exit 0
   fi
-  let CNT=CNT+1
-  sleep $SLEEP
+	I=$((I+1))
+  sleep "$SLEEP"
 done
 
 echo "Timeout reached, exiting failure..."
