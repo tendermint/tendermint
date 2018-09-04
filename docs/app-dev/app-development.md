@@ -430,7 +430,6 @@ Note: these query formats are subject to change!
 
 In go:
 
-<<<<<<< HEAD:docs/app-dev/app-development.md
 ```
     func (app *KVStoreApplication) Query(reqQuery types.RequestQuery) (resQuery types.ResponseQuery) {
       if reqQuery.Prove {
