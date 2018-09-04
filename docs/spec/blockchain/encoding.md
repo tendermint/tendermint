@@ -275,7 +275,7 @@ Because Tendermint only uses a Simple Merkle Tree, application developers are ex
 
 ### Amino
 
-TODO: improve this
+This section is pending an update, see [this issue](https://github.com/tendermint/tendermint/issues/1749).
 
 Amino also supports JSON encoding - registered types are simply encoded as:
 
