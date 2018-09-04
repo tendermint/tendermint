@@ -748,8 +748,12 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 }
 
 
-// SplitAndTrimEmpty returns only non-empty strings
-func SplitAndTrimEmpty(s, sep, cutset string) []string {
+// splitAndTrimEmpty slices s into all subslices separated by sep and returns a
+// slice of the string s with all leading and trailing Unicode code points
+// contained in cutset removed. If sep is empty, SplitAndTrim splits after each
+// UTF-8 sequence. First part is equivalent to strings.SplitN with a count of
+// -1.  also filter out empty strings, only return non-empty strings.
+func splitAndTrimEmpty(s, sep, cutset string) []string {
 	if s == "" {
 		return []string{}
 	}
