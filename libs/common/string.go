@@ -58,6 +58,23 @@ func SplitAndTrim(s, sep, cutset string) []string {
 	return spl
 }
 
+// SplitAndTrimEmpty only returns non-empty strings
+func SplitAndTrimEmpty(s, sep, cutset string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	spl := strings.Split(s, sep)
+	nonEmptyStrings := make([]string, 0, len(spl))
+	for i := 0; i < len(spl); i++ {
+		element := strings.Trim(spl[i], cutset)
+		if element != "" {
+			nonEmptyStrings = append(nonEmptyStrings, element)
+		}
+	}
+	return nonEmptyStrings
+}
+
 // Returns true if s is a non-empty printable non-tab ascii character.
 func IsASCIIText(s string) bool {
 	if len(s) == 0 {
