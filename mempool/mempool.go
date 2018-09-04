@@ -142,9 +142,9 @@ func (mem *Mempool) SetLogger(l log.Logger) {
 	mem.logger = l
 }
 
-// Filter sets a filter for mempool to only accept txs for which f(tx) returns
-// true.
-func Filter(f func(types.Tx) bool) MempoolOption {
+// WithFilter sets a filter for mempool to only accept txs for which f(tx)
+// returns true.
+func WithFilter(f func(types.Tx) bool) MempoolOption {
 	return func(mem *Mempool) { mem.filter = f }
 }
 

@@ -246,7 +246,7 @@ func NewNode(config *cfg.Config,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
-		mempl.Filter(func(tx types.Tx) bool { return len(tx) <= maxBytes }),
+		mempl.WithFilter(func(tx types.Tx) bool { return len(tx) <= maxBytes }),
 	)
 	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)
