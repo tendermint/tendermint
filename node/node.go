@@ -312,7 +312,7 @@ func NewNode(config *cfg.Config,
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:    cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
+				Seeds:    SplitAndTrim(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
 			})
 		pexReactor.SetLogger(p2pLogger)
@@ -364,7 +364,7 @@ func NewNode(config *cfg.Config,
 			return nil, err
 		}
 		if config.TxIndex.IndexTags != "" {
-			txIndexer = kv.NewTxIndex(store, kv.IndexTags(cmn.SplitAndTrim(config.TxIndex.IndexTags, ",", " ")))
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(SplitAndTrim(config.TxIndex.IndexTags, ",", " ")))
 		} else if config.TxIndex.IndexAllTags {
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
 		} else {
@@ -440,7 +440,7 @@ func (n *Node) OnStart() error {
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
 
 	// Add private IDs to addrbook to block those peers being added
-	n.addrBook.AddPrivateIDs(cmn.SplitAndTrim(n.config.P2P.PrivatePeerIDs, ",", " "))
+	n.addrBook.AddPrivateIDs(SplitAndTrim(n.config.P2P.PrivatePeerIDs, ",", " "))
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
@@ -465,7 +465,7 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, cmn.SplitAndTrim(n.config.P2P.PersistentPeers, ",", " "), true)
+		err = n.sw.DialPeersAsync(n.addrBook, SplitAndTrim(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
@@ -547,7 +547,7 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := cmn.SplitAndTrim(n.config.RPC.ListenAddress, ",", " ")
+	listenAddrs := SplitAndTrim(n.config.RPC.ListenAddress, ",", " ")
 	coreCodec := amino.NewCodec()
 	ctypes.RegisterAmino(coreCodec)
 
