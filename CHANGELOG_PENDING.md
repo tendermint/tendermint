@@ -12,6 +12,7 @@ program](https://hackerone.com/tendermint).
 ### BREAKING CHANGES:
 
 * CLI/RPC/Config
+  * [state] [\#2747](https://github.com/tendermint/tendermint/pull/2747) Add `BeginBlock` response to `ABCIResponses` (BREAKING).
 
 * Apps
 
@@ -31,6 +32,8 @@ program](https://hackerone.com/tendermint).
   text or 'json' for JSON output
 
 - [types] \#2767 New event types EventDataNewRound (with ProposerInfo) and EventDataCompleteProposal (with BlockID). (@kevlubkcm)
+
+- [types] [\#1571](https://github.com/tendermint/tendermint/issues/1571) Enable subscription to tags emitted from `BeginBlock`/`EndBlock` (@kostko)
 
 ### IMPROVEMENTS:
 
