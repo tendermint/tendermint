@@ -414,7 +414,10 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 			j := perm[i]
 			addr := netAddrs[j]
 
-			if addr.Same(ourAddr) || sw.IsDialingOrExistingAddress(addr) {
+			if addr.Same(ourAddr) {
+				sw.Logger.Debug("Ignore attempt to connect to ourselves", "addr", addr, "ourAddr", ourAddr)
+				return
+			} else if sw.IsDialingOrExistingAddress(addr) {
 				sw.Logger.Debug("Ignore attempt to connect to an existing peer", "addr", addr)
 				return
 			}
