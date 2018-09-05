@@ -8,9 +8,9 @@ The Tendermint blockchains consists of a short list of basic data types:
 
 - `Block`
 - `Header`
-- `Vote`
 - `BlockID`
-- `Signature`
+- `Time`
+- `Vote`
 - `Evidence`
 
 ## Block
@@ -90,6 +90,16 @@ type PartsHeader struct {
 }
 ```
 
+## Time
+
+Tendermint uses the
+[Google.Protobuf.WellKnownTypes.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/timestamp)
+format, which uses two integers, one for Seconds and for Nanoseconds.
+
+TODO: clarify exact format and reconcile [this
+comment](https://github.com/tendermint/tendermint/blob/892b170818cd3be4cd3f919d72dde1ad60c28bbb/types/proto3/block.proto#L43).
+
+
 ## Vote
 
 A vote is a signed message from a validator for a particular block.
@@ -97,14 +107,14 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
-    Timestamp   int64
-    Address     []byte
-    Index       int
-    Height      int64
-    Round       int
-    Type        int8
-    BlockID     BlockID
-    Signature   Signature
+    ValidatorAddress    []byte
+    ValidatorIndex      int
+    Height              int64
+    Round               int
+    Timestamp           Time
+    Type                int8
+    BlockID             BlockID
+    Signature           []byte
 }
 ```
 
@@ -114,41 +124,9 @@ a _precommit_ has `vote.Type == 2`.
 
 ## Signature
 
-Tendermint allows for multiple signature schemes to be used by prepending a single type-byte
-to the signature bytes. Different signatures may also come with fixed or variable lengths.
-Currently, Tendermint supports Ed25519 and Secp256k1.
-
-### ED25519
-
-An ED25519 signature has `Type == 0x1`. It looks like:
-
-```go
-// Implements Signature
-type Ed25519Signature struct {
-    Type        int8        = 0x1
-    Signature   [64]byte
-}
-```
-
-where `Signature` is the 64 byte signature.
-
-### Secp256k1
-
-A `Secp256k1` signature has `Type == 0x2`. It looks like:
-
-```go
-// Implements Signature
-type Secp256k1Signature struct {
-    Type        int8        = 0x2
-    Signature   []byte
-}
-```
-
-where `Signature` is the DER encoded signature, ie:
-
-```hex
-0x30 <length of whole message> <0x02> <length of R> <R> 0x2 <length of S> <S>.
-```
+Signatures in Tendermint are raw bytes representing the underlying signature.
+The only signature scheme currently supported for Tendermint validators is
+ED25519. The signature is the raw 64-byte ED25519 signature.
 
 ## Evidence
 
