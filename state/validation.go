@@ -92,6 +92,17 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		return fmt.Errorf("Wrong Block.Header.NextValidatorsHash.  Expected %X, got %v", state.NextValidators.Hash(), block.NextValidatorsHash)
 	}
 
+	// NOTE: We can't actually verify it's the right proposer because we dont
+	// know what round the block was first proposed. So just check that it's
+	// a legit address and a known validator.
+	if len(block.ProposerAddress) != tmhash.Size ||
+		!state.Validators.HasAddress(block.ProposerAddress) {
+		return fmt.Errorf(
+			"Block.Header.ProposerAddress, %X, is not a validator",
+			block.ProposerAddress,
+		)
+	}
+
 	// Validate block LastCommit.
 	if block.Height == 1 {
 		if len(block.LastCommit.Precommits) != 0 {
@@ -120,17 +131,6 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 		if err := VerifyEvidence(stateDB, state, ev); err != nil {
 			return types.NewEvidenceInvalidErr(ev, err)
 		}
-	}
-
-	// NOTE: We can't actually verify it's the right proposer because we dont
-	// know what round the block was first proposed. So just check that it's
-	// a legit address and a known validator.
-	if len(block.ProposerAddress) != tmhash.Size ||
-		!state.Validators.HasAddress(block.ProposerAddress) {
-		return fmt.Errorf(
-			"Block.Header.ProposerAddress, %X, is not a validator",
-			block.ProposerAddress,
-		)
 	}
 
 	return nil

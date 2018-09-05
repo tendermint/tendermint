@@ -22,8 +22,9 @@ import (
 // NOTE: All get/set to validators should copy the value for safety.
 type ValidatorSet struct {
 	// NOTE: persisted via reflect, must be exported.
-	Validators []*Validator `json:"validators"`
-	Proposer   *Validator   `json:"proposer"`
+	Validators       []*Validator `json:"validators"`
+	Proposer         *Validator   `json:"proposer"`
+	ProposerOfHeight *Validator   `json:"height_proposer"`
 
 	// cached (unexported)
 	totalVotingPower int64
@@ -96,6 +97,7 @@ func (vals *ValidatorSet) Copy() *ValidatorSet {
 	return &ValidatorSet{
 		Validators:       validators,
 		Proposer:         vals.Proposer,
+		ProposerOfHeight: vals.ProposerOfHeight,
 		totalVotingPower: vals.totalVotingPower,
 	}
 }
@@ -283,7 +285,14 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
 		}
 		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid commit -- not precommit @ index %v", idx)
+			if precommit.Type == VoteTypePrevote {
+				if !bytes.Equal(vals.ProposerOfHeight.Address, precommit.ProposerAddress) {
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed from last round 0 proposer, want %v got %v", vals.ProposerOfHeight.Address, precommit.ProposerAddress)
+
+				}
+			} else {
+				return fmt.Errorf("Invalid commit -- invalid vote type @ index %v", idx)
+			}
 		}
 		_, val := vals.GetByIndex(idx)
 		// Validate signature.
@@ -353,28 +362,33 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 
 	for idx, precommit := range commit.Precommits {
 		if precommit == nil {
-			continue
+			continue // OK, some precommits can be missing.
 		}
 		if precommit.Height != height {
-			return cmn.NewError("Blocks don't match - %d vs %d", round, precommit.Round)
+			return fmt.Errorf("Invalid commit -- wrong height: want %v got %v", height, precommit.Height)
 		}
 		if precommit.Round != round {
-			return cmn.NewError("Invalid commit -- wrong round: %v vs %v", round, precommit.Round)
+			return fmt.Errorf("Invalid commit -- wrong round: want %v got %v", round, precommit.Round)
 		}
 		if precommit.Type != VoteTypePrecommit {
-			return cmn.NewError("Invalid commit -- not precommit @ index %v", idx)
+			if precommit.Type == VoteTypePrevote {
+				if !bytes.Equal(vals.ProposerOfHeight.Address, precommit.ProposerAddress) {
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed from last round 0 proposer, want %v got %v", vals.ProposerOfHeight.Address, precommit.ProposerAddress)
+
+				}
+			} else {
+				return fmt.Errorf("Invalid commit -- invalid vote type @ index %v", idx)
+			}
 		}
-		// See if this validator is in oldVals.
-		idx, val := oldVals.GetByAddress(precommit.ValidatorAddress)
+		_, val := vals.GetByIndex(idx)
 		if val == nil || seen[idx] {
 			continue // missing or double vote...
 		}
 		seen[idx] = true
-
 		// Validate signature.
 		precommitSignBytes := precommit.SignBytes(chainID)
 		if !val.PubKey.VerifyBytes(precommitSignBytes, precommit.Signature) {
-			return cmn.NewError("Invalid commit -- invalid signature: %v", precommit)
+			return fmt.Errorf("Invalid commit -- invalid signature: %v", precommit)
 		}
 		// Good precommit!
 		if blockID.Equals(precommit.BlockID) {

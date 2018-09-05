@@ -17,8 +17,8 @@ import (
 // TODO: add Version byte
 type Block struct {
 	mtx        sync.Mutex
-	Header     `json:"header"`
-	Data       `json:"data"`
+	Header                  `json:"header"`
+	Data                    `json:"data"`
 	Evidence   EvidenceData `json:"evidence"`
 	LastCommit *Commit      `json:"last_commit"`
 }
@@ -217,8 +217,8 @@ type Header struct {
 	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
 
 	// consensus info
-	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+	EvidenceHash      cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
+	ProposerAddress   Address      `json:"proposer_address"` // original proposer of the block
 }
 
 // Hash returns the hash of the header.
@@ -395,10 +395,11 @@ func (commit *Commit) ValidateBasic() error {
 			continue
 		}
 		// Ensure that all votes are precommits.
-		if precommit.Type != VoteTypePrecommit {
+/*		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
 				precommit.Type)
 		}
+*/
 		// Ensure that all heights are the same.
 		if precommit.Height != height {
 			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
@@ -410,6 +411,7 @@ func (commit *Commit) ValidateBasic() error {
 				round, precommit.Round)
 		}
 	}
+
 	return nil
 }
 
@@ -452,8 +454,8 @@ func (commit *Commit) StringIndented(indent string) string {
 
 // SignedHeader is a header along with the commits that prove it.
 type SignedHeader struct {
-	*Header `json:"header"`
-	Commit  *Commit `json:"commit"`
+	*Header        `json:"header"`
+	Commit *Commit `json:"commit"`
 }
 
 // ValidateBasic does basic consistency checks and makes sure the header
@@ -516,7 +518,6 @@ func (sh SignedHeader) StringIndented(indent string) string {
 
 // Data contains the set of transactions included in the block
 type Data struct {
-
 	// Txs that will be applied by state @ block.Height+1.
 	// NOTE: not all txs here are valid.  We're just agreeing on the order first.
 	// This means that block.AppHash does not include these txs.

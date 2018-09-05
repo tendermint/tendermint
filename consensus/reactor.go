@@ -8,7 +8,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	amino "github.com/tendermint/go-amino"
+	"github.com/tendermint/go-amino"
 
 	cstypes "github.com/tendermint/tendermint/consensus/types"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -417,9 +417,9 @@ func (conR *ConsensusReactor) broadcastHasVoteMessage(vote *types.Vote) {
 
 func makeRoundStepMessages(rs *cstypes.RoundState) (nrsMsg *NewRoundStepMessage, csMsg *CommitStepMessage) {
 	nrsMsg = &NewRoundStepMessage{
-		Height: rs.Height,
-		Round:  rs.Round,
-		Step:   rs.Step,
+		Height:                rs.Height,
+		Round:                 rs.Round,
+		Step:                  rs.Step,
 		SecondsSinceStartTime: int(time.Since(rs.StartTime).Seconds()),
 		LastCommitRound:       rs.LastCommit.Round(),
 	}
@@ -723,7 +723,7 @@ OUTER_LOOP:
 			rs := conR.conS.GetRoundState()
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
-				if maj23, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
+				if maj23, _, ok := rs.Votes.Prevotes(prs.Round).TwoThirdsMajority(); ok {
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
@@ -740,7 +740,7 @@ OUTER_LOOP:
 			rs := conR.conS.GetRoundState()
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height {
-				if maj23, ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
+				if maj23, _,ok := rs.Votes.Precommits(prs.Round).TwoThirdsMajority(); ok {
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.Round,
@@ -757,7 +757,7 @@ OUTER_LOOP:
 			rs := conR.conS.GetRoundState()
 			prs := ps.GetRoundState()
 			if rs.Height == prs.Height && prs.ProposalPOLRound >= 0 {
-				if maj23, ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
+				if maj23, _,ok := rs.Votes.Prevotes(prs.ProposalPOLRound).TwoThirdsMajority(); ok {
 					peer.TrySend(StateChannel, cdc.MustMarshalBinaryBare(&VoteSetMaj23Message{
 						Height:  prs.Height,
 						Round:   prs.ProposalPOLRound,

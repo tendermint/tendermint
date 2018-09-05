@@ -58,13 +58,14 @@ type VoteSet struct {
 	type_   byte
 	valSet  *ValidatorSet
 
-	mtx           sync.Mutex
-	votesBitArray *cmn.BitArray
-	votes         []*Vote                // Primary votes to share
-	sum           int64                  // Sum of voting power for seen votes, discounting conflicts
-	maj23         *BlockID               // First 2/3 majority seen
-	votesByBlock  map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
-	peerMaj23s    map[P2PID]BlockID      // Maj23 for each peer
+	mtx                  sync.Mutex
+	votesBitArray        *cmn.BitArray
+	votes                []*Vote  // Primary votes to share
+	sum                  int64    // Sum of voting power for seen votes, discounting conflicts
+	maj23                *BlockID // First 2/3 majority seen
+	maj23ProposalAddress Address
+	votesByBlock         map[string]*blockVotes // string(blockHash|blockParts) -> blockVotes
+	peerMaj23s           map[P2PID]BlockID      // Maj23 for each peer
 }
 
 // Constructs a new VoteSet struct used to accumulate votes for given height/round.
@@ -271,6 +272,7 @@ func (voteSet *VoteSet) addVerifiedVote(vote *Vote, blockKey string, votingPower
 		if voteSet.maj23 == nil {
 			maj23BlockID := vote.BlockID
 			voteSet.maj23 = &maj23BlockID
+			voteSet.maj23ProposalAddress = vote.ProposerAddress
 			// And also copy votes over to voteSet.votes
 			for i, vote := range votesByBlock.votes {
 				if vote != nil {
@@ -406,16 +408,16 @@ func (voteSet *VoteSet) HasAll() bool {
 
 // If there was a +2/3 majority for blockID, return blockID and true.
 // Else, return the empty BlockID{} and false.
-func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, ok bool) {
+func (voteSet *VoteSet) TwoThirdsMajority() (blockID BlockID, proposalAddress Address,ok bool) {
 	if voteSet == nil {
-		return BlockID{}, false
+		return BlockID{}, nil,false
 	}
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 	if voteSet.maj23 != nil {
-		return *voteSet.maj23, true
+		return *voteSet.maj23, voteSet.maj23ProposalAddress,true
 	}
-	return BlockID{}, false
+	return BlockID{}, nil,false
 }
 
 //--------------------------------------------------------------------------------
@@ -529,9 +531,9 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Commit
 
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.type_ != VoteTypePrecommit {
-		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is VoteTypePrecommit")
-	}
+	/*if voteSet.type_ != VoteTypePrecommit {
+		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is VoteTypePrecommit or round==0")
+	}	controlled by uplevel */
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 
