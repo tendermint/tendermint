@@ -351,6 +351,11 @@ func TestTxSearch(t *testing.T) {
 			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
 		}
 
+		// query by height
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= %d", txHeight), true, 1, 30)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, result.Txs, 1)
+
 		// we query for non existing tx
 		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)
 		require.Nil(t, err, "%+v", err)

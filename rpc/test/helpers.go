@@ -85,7 +85,7 @@ func GetConfig() *cfg.Config {
 		globalConfig.P2P.ListenAddress = tm
 		globalConfig.RPC.ListenAddress = rpc
 		globalConfig.RPC.GRPCListenAddress = grpc
-		globalConfig.TxIndex.IndexTags = "app.creator" // see kvstore application
+		globalConfig.TxIndex.IndexTags = "app.creator,tx.height" // see kvstore application
 	}
 	return globalConfig
 }
