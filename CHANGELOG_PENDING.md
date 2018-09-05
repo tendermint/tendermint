@@ -23,6 +23,7 @@ BREAKING CHANGES:
 - [state] Implement BFT time    
 - [p2p] update secret connection to use a little endian encoded nonce
 - [libs/clist] Panics if list extends beyond MaxLength
+- [common] SplitAndTrim was deleted
 
 FEATURES:
 - [types] allow genesis file to have 0 validators ([#2015](https://github.com/tendermint/tendermint/issues/2015))
