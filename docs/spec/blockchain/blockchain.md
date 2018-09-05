@@ -42,29 +42,29 @@ the data in the current block, the previous block, and the results returned by t
 ```go
 type Header struct {
 	// basic block info
-	ChainID  string    `json:"chain_id"`
-	Height   int64     `json:"height"`
-	Time     time.Time `json:"time"`
-	NumTxs   int64     `json:"num_txs"`
-	TotalTxs int64     `json:"total_txs"`
+	ChainID  string
+	Height   int64
+	Time     time.Time
+	NumTxs   int64
+	TotalTxs int64
 
 	// prev block info
-	LastBlockID BlockID `json:"last_block_id"`
+	LastBlockID BlockID
 
 	// hashes of block data
-	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
+	LastCommitHash []byte // commit from validators from the last block
+	DataHash       []byte // Merkle root of transactions
 
 	// hashes from the app output from the prev block
-	ValidatorsHash     cmn.HexBytes `json:"validators_hash"`      // validators for the current block
-	NextValidatorsHash cmn.HexBytes `json:"next_validators_hash"` // validators for the next block
-	ConsensusHash      cmn.HexBytes `json:"consensus_hash"`       // consensus params for current block
-	AppHash            cmn.HexBytes `json:"app_hash"`             // state after txs from the previous block
-	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
+	ValidatorsHash     []byte // validators for the current block
+	NextValidatorsHash []byte // validators for the next block
+	ConsensusHash      []byte // consensus params for current block
+	AppHash            []byte // state after txs from the previous block
+	LastResultsHash    []byte // root hash of all results from the txs from the previous block
 
 	// consensus info
-	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+	EvidenceHash    []byte // evidence included in the block
+	ProposerAddress []byte // original proposer of the block
 ```
 
 Further details on each of these fields is described below.
