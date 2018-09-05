@@ -8,9 +8,9 @@ The Tendermint blockchains consists of a short list of basic data types:
 
 - `Block`
 - `Header`
-- `Vote`
 - `BlockID`
-- `Signature`
+- `Time`
+- `Vote`
 - `Evidence`
 
 ## Block
@@ -42,29 +42,29 @@ the data in the current block, the previous block, and the results returned by t
 ```go
 type Header struct {
 	// basic block info
-	ChainID  string    `json:"chain_id"`
-	Height   int64     `json:"height"`
-	Time     time.Time `json:"time"`
-	NumTxs   int64     `json:"num_txs"`
-	TotalTxs int64     `json:"total_txs"`
+	ChainID  string
+	Height   int64
+	Time     time.Time
+	NumTxs   int64
+	TotalTxs int64
 
 	// prev block info
-	LastBlockID BlockID `json:"last_block_id"`
+	LastBlockID BlockID
 
 	// hashes of block data
-	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
-	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
+	LastCommitHash []byte // commit from validators from the last block
+	DataHash       []byte // Merkle root of transactions
 
 	// hashes from the app output from the prev block
-	ValidatorsHash     cmn.HexBytes `json:"validators_hash"`      // validators for the current block
-	NextValidatorsHash cmn.HexBytes `json:"next_validators_hash"` // validators for the next block
-	ConsensusHash      cmn.HexBytes `json:"consensus_hash"`       // consensus params for current block
-	AppHash            cmn.HexBytes `json:"app_hash"`             // state after txs from the previous block
-	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
+	ValidatorsHash     []byte // validators for the current block
+	NextValidatorsHash []byte // validators for the next block
+	ConsensusHash      []byte // consensus params for current block
+	AppHash            []byte // state after txs from the previous block
+	LastResultsHash    []byte // root hash of all results from the txs from the previous block
 
 	// consensus info
-	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+	EvidenceHash    []byte // evidence included in the block
+	ProposerAddress []byte // original proposer of the block
 ```
 
 Further details on each of these fields is described below.
@@ -90,6 +90,16 @@ type PartsHeader struct {
 }
 ```
 
+## Time
+
+Tendermint uses the
+[Google.Protobuf.WellKnownTypes.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/timestamp)
+format, which uses two integers, one for Seconds and for Nanoseconds.
+
+TODO: clarify exact format and reconcile [this
+comment](https://github.com/tendermint/tendermint/blob/892b170818cd3be4cd3f919d72dde1ad60c28bbb/types/proto3/block.proto#L43).
+
+
 ## Vote
 
 A vote is a signed message from a validator for a particular block.
@@ -97,14 +107,14 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
-    Timestamp   int64
-    Address     []byte
-    Index       int
-    Height      int64
-    Round       int
-    Type        int8
-    BlockID     BlockID
-    Signature   Signature
+    ValidatorAddress    []byte
+    ValidatorIndex      int
+    Height              int64
+    Round               int
+    Timestamp           Time
+    Type                int8
+    BlockID             BlockID
+    Signature           []byte
 }
 ```
 
@@ -114,41 +124,9 @@ a _precommit_ has `vote.Type == 2`.
 
 ## Signature
 
-Tendermint allows for multiple signature schemes to be used by prepending a single type-byte
-to the signature bytes. Different signatures may also come with fixed or variable lengths.
-Currently, Tendermint supports Ed25519 and Secp256k1.
-
-### ED25519
-
-An ED25519 signature has `Type == 0x1`. It looks like:
-
-```go
-// Implements Signature
-type Ed25519Signature struct {
-    Type        int8        = 0x1
-    Signature   [64]byte
-}
-```
-
-where `Signature` is the 64 byte signature.
-
-### Secp256k1
-
-A `Secp256k1` signature has `Type == 0x2`. It looks like:
-
-```go
-// Implements Signature
-type Secp256k1Signature struct {
-    Type        int8        = 0x2
-    Signature   []byte
-}
-```
-
-where `Signature` is the DER encoded signature, ie:
-
-```hex
-0x30 <length of whole message> <0x02> <length of R> <R> 0x2 <length of S> <S>.
-```
+Signatures in Tendermint are raw bytes representing the underlying signature.
+The only signature scheme currently supported for Tendermint validators is
+ED25519. The signature is the raw 64-byte ED25519 signature.
 
 ## Evidence
 

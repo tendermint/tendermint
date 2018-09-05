@@ -1,5 +1,8 @@
 # Pending
 
+Special thanks to external contributors with PRs included in this release: ackratos, james-ray, bradyjoestar,
+peerlink, Ahmah2009, bluele, b00f
+
 BREAKING CHANGES:
 
 * CLI/RPC/Config
@@ -21,9 +24,11 @@ BREAKING CHANGES:
 
 * Go API
   - [lite] \#1815 Complete refactor of the package
-  - [node] \#2212 NewNode now accepts a `*p2p.NodeKey`
+  - [node] \#2212 NewNode now accepts a `*p2p.NodeKey` (@bradyjoestar)
   - [libs/common] \#2199 Remove Fmt, in favor of fmt.Sprintf
   - [libs/common] SplitAndTrim was deleted
+  - [libs/common] \#2274 Remove unused Math functions like MaxInt, MaxInt64,
+    MinInt, MinInt64 (@Ahmah2009)
   - [libs/clist] Panics if list extends beyond MaxLength
   - [crypto] \#2205 Rename AminoRoute variables to no longer be prefixed by signature type.
 
@@ -49,10 +54,11 @@ BREAKING CHANGES:
 * P2P Protocol
   - [p2p] \#2263 Update secret connection to use a little endian encoded nonce
   - [blockchain] \#2213 Fix Amino routes for blockchain reactor messages
+    (@peerlink)
 
 
 FEATURES:
-- [types] \#2015 Allow genesis file to have 0 validators
+- [types] \#2015 Allow genesis file to have 0 validators (@b00f)
   - Initial validator set can be determined by the app in ResponseInitChain
 - [rpc] \#2161 New event `ValidatorSetUpdates` for when the validator set changes
 - [crypto/multisig] \#2164 Introduce multisig pubkey and signature format
@@ -60,14 +66,15 @@ FEATURES:
 
 IMPROVEMENTS:
 - [docs] Lint documentation with `write-good` and `stop-words`.
-- [scripts] Added json2wal tool, which is supposed to help our users restore
+- [scripts] \#2196 Added json2wal tool, which is supposed to help our users restore (@bradyjoestar)
   corrupted WAL files and compose test WAL files (@bradyjoestar)
 - [mempool] \#2234 Now stores txs by hash inside of the cache, to mitigate memory leakage
+- [mempool] \#2166 Set explicit capacity for map when updating txs (@bluele)
 
 BUG FIXES:
 - [config] \#2284 Replace `db_path` with `db_dir` from automatically generated configuration files.
 - [mempool] \#2188 Fix OOM issue from cache map and list getting out of sync
-- [state] \#2051 KV store index supports searching by `tx.height`
+- [state] \#2051 KV store index supports searching by `tx.height` (@ackratos)
 - [rpc] \#2327 `/dial_peers` does not try to dial existing peers
-- [node] \#2323 Filter empty strings from config lists
-- [abci/client] \#2236 Fix closing GRPC connection
+- [node] \#2323 Filter empty strings from config lists (@james-ray)
+- [abci/client] \#2236 Fix closing GRPC connection (@bradyjoestar)

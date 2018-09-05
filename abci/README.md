@@ -17,10 +17,10 @@ The community has provided a number of addtional implementations, see the [Tende
 A detailed description of the ABCI methods and message types is contained in:
 
 - [A prose specification](specification.md)
-- [A protobuf file](https://github.com/tendermint/abci/blob/master/types/types.proto)
-- [A Go interface](https://github.com/tendermint/abci/blob/master/types/application.go).
+- [A protobuf file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto)
+- [A Go interface](https://github.com/tendermint/tendermint/blob/master/abci/types/application.go).
 
-For more background information on ABCI, motivations, and tendermint, please visit [the documentation](http://tendermint.readthedocs.io/en/master/).
+For more background information on ABCI, motivations, and tendermint, please visit [the documentation](https://tendermint.com/docs/).
 The two guides to focus on are the `Application Development Guide` and `Using ABCI-CLI`.
 
 
@@ -94,7 +94,7 @@ Note the length-prefixing used in the socket implementation does not apply for G
 The `abci-cli` tool wraps an ABCI client and can be used for probing/testing an ABCI server.
 For instance, `abci-cli test` will run a test sequence against a listening server running the Counter application (see below).
 It can also be used to run some example applications.
-See [the documentation](http://tendermint.readthedocs.io/en/master/) for more details.
+See [the documentation](https://tendermint.com/docs/) for more details.
 
 ### Examples
 
