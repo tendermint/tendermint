@@ -26,7 +26,6 @@ BREAKING CHANGES:
 - [tools] Removed `make ensure_deps` in favor of `make get_vendor_deps`
 - [types] CanonicalTime uses nanoseconds instead of clipping to ms
     - breaks serialization/signing of all messages with a timestamp
-- [common] SplitAndTrim was deleted
 
 FEATURES:
 - [tools] Added `make check_dep`

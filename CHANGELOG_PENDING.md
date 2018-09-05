@@ -9,6 +9,7 @@ BREAKING CHANGES:
   top-level
 - [abci] Added address of the original proposer of the block to Header.
 - [abci] Change ABCI Header to match Tendermint exactly
+- [common] SplitAndTrim was deleted
 
 FEATURES:
 
