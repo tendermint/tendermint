@@ -39,8 +39,3 @@
 ## Block Store
 
 - persists blocks to disk
-
-# TODO
-
-- How does the switch from bcR to conR happen? Does conR persist blocks to disk too?
-- What is the interaction between the consensus and blockchain reactors?
