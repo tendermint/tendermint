@@ -13,7 +13,10 @@ import (
 )
 
 func cleanupDBDir(dir, name string) {
-	os.RemoveAll(filepath.Join(dir, name) + ".db")
+	err := os.RemoveAll(filepath.Join(dir, name) + ".db")
+	if err != nil {
+		panic(err)
+	}
 }
 
 func testBackendGetSetDelete(t *testing.T, backend DBBackendType) {
@@ -21,6 +24,7 @@ func testBackendGetSetDelete(t *testing.T, backend DBBackendType) {
 	dirname, err := ioutil.TempDir("", fmt.Sprintf("test_backend_%s_", backend))
 	require.Nil(t, err)
 	db := NewDB("testdb", backend, dirname)
+	defer cleanupDBDir(dirname, "testdb")
 
 	// A nonexistent key should return nil, even if the key is empty
 	require.Nil(t, db.Get([]byte("")))
