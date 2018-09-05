@@ -188,7 +188,7 @@ jobs:
               make get_tools
               make get_vendor_deps
               make build-linux
-              nohup make localnet-start &
+              make localnet-start &
               ./scripts/localnet-blocks-test.sh 40 5 10 localhost
 
   test_p2p:
