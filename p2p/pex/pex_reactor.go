@@ -392,10 +392,7 @@ func (r *PEXReactor) ensurePeers() {
 		if _, selected := toDial[try.ID]; selected {
 			continue
 		}
-		if dialling := r.Switch.IsDialing(try.ID); dialling {
-			continue
-		}
-		if connected := r.Switch.Peers().Has(try.ID); connected {
+		if r.Switch.IsDialingOrExistingAddress(try) {
 			continue
 		}
 		// TODO: consider moving some checks from toDial into here

@@ -376,11 +376,6 @@ func (sw *Switch) MarkPeerAsGood(peer Peer) {
 //---------------------------------------------------------------------
 // Dialing
 
-// IsDialing returns true if the switch is currently dialing the given ID.
-func (sw *Switch) IsDialing(id ID) bool {
-	return sw.dialing.Has(string(id))
-}
-
 // DialPeersAsync dials a list of peers asynchronously in random order (optionally, making them persistent).
 // Used to dial peers from config on startup or from unsafe-RPC (trusted sources).
 // TODO: remove addrBook arg since it's now set on the switch
@@ -417,10 +412,13 @@ func (sw *Switch) DialPeersAsync(addrBook AddrBook, peers []string, persistent b
 	for i := 0; i < len(perm); i++ {
 		go func(i int) {
 			j := perm[i]
-
 			addr := netAddrs[j]
-			// do not dial ourselves
+
 			if addr.Same(ourAddr) {
+				sw.Logger.Debug("Ignore attempt to connect to ourselves", "addr", addr, "ourAddr", ourAddr)
+				return
+			} else if sw.IsDialingOrExistingAddress(addr) {
+				sw.Logger.Debug("Ignore attempt to connect to an existing peer", "addr", addr)
 				return
 			}
 
@@ -451,6 +449,14 @@ func (sw *Switch) DialPeerWithAddress(addr *NetAddress, persistent bool) error {
 func (sw *Switch) randomSleep(interval time.Duration) {
 	r := time.Duration(sw.rng.Int63n(dialRandomizerIntervalMilliseconds)) * time.Millisecond
 	time.Sleep(r + interval)
+}
+
+// IsDialingOrExistingAddress returns true if switch has a peer with the given
+// address or dialing it at the moment.
+func (sw *Switch) IsDialingOrExistingAddress(addr *NetAddress) bool {
+	return sw.dialing.Has(string(addr.ID)) ||
+		sw.peers.Has(addr.ID) ||
+		(!sw.config.AllowDuplicateIP && sw.peers.HasIP(addr.IP))
 }
 
 //------------------------------------------------------------------------------------
@@ -607,8 +613,10 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		addr := peerNodeInfo.NetAddress()
 		// remove the given address from the address book
 		// and add to our addresses to avoid dialing again
-		sw.addrBook.RemoveAddress(addr)
-		sw.addrBook.AddOurAddress(addr)
+		if sw.addrBook != nil {
+			sw.addrBook.RemoveAddress(addr)
+			sw.addrBook.AddOurAddress(addr)
+		}
 		return ErrSwitchConnectToSelf{addr}
 	}
 
