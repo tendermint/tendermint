@@ -2,6 +2,13 @@
 
 
 [[projects]]
+  digest = "1:5da259989116f6ab5e05a80086c639c82efdbdb799ca07183eb0b660edfd91fe"
+  name = "github.com/DataDog/leveldb"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "12a0b6e10a5bf779330ed8b7c0f1f39f212d34e2"
+
+[[projects]]
   branch = "master"
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
   name = "github.com/beorn7/perks"
@@ -160,13 +167,6 @@
   pruneopts = "UT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
-
-[[projects]]
-  digest = "1:39b27d1381a30421f9813967a5866fba35dc1d4df43a6eefe3b7a5444cb07214"
-  name = "github.com/jmhodges/levigo"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
 
 [[projects]]
   branch = "master"
@@ -511,6 +511,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/DataDog/leveldb",
     "github.com/btcsuite/btcutil/base58",
     "github.com/btcsuite/btcutil/bech32",
     "github.com/ebuchman/fail-test",
@@ -529,7 +530,6 @@
     "github.com/golang/protobuf/proto",
     "github.com/golang/protobuf/ptypes/timestamp",
     "github.com/gorilla/websocket",
-    "github.com/jmhodges/levigo",
     "github.com/pkg/errors",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",

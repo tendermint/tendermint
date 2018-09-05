@@ -5,9 +5,11 @@ package db
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -88,8 +90,9 @@ func bytes2Int64(buf []byte) int64 {
 
 func TestCLevelDBBackend(t *testing.T) {
 	name := fmt.Sprintf("test_%x", cmn.RandStr(12))
-	db := NewDB(name, LevelDBBackend, "")
-	defer cleanupDBDir("", name)
+	dir := os.TempDir()
+	db := NewDB(name, LevelDBBackend, dir)
+	defer cleanupDBDir(dir, name)
 
 	_, ok := db.(*CLevelDB)
 	assert.True(t, ok)

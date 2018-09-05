@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/jmhodges/levigo"
+	levigo "github.com/DataDog/leveldb"
 )
 
 func init() {

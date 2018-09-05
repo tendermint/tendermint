@@ -73,8 +73,8 @@
 ## Pin to revision
 
 [[override]]
-  name = "github.com/jmhodges/levigo"
-  revision = "c42d9e0ca023e2198120196f842701bb4c55d7b9"
+  name = "github.com/DataDog/leveldb"
+  revision = "12a0b6e10a5bf779330ed8b7c0f1f39f212d34e2"
 
 [[constraint]]
   name = "github.com/ebuchman/fail-test"

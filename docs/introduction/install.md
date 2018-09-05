@@ -48,6 +48,15 @@ to put the binary in `./build`.
 
 The latest `tendermint version` is now installed.
 
+## Run
+
+To start a one-node blockchain with a simple in-process application:
+
+```
+tendermint init
+tendermint node --proxy_app=kvstore
+```
+
 ## Reinstall
 
 If you already have Tendermint installed, and you make updates, simply
@@ -66,11 +75,35 @@ make get_vendor_deps
 make install
 ```
 
-## Run
+## Compile with CLevelDB support
 
-To start a one-node blockchain with a simple in-process application:
+Make sure you have a roughly compatible version of libstdc++ (tested with
+5.3.1). For example, on Ubuntu:
 
 ```
-tendermint init
-tendermint node --proxy_app=kvstore
+sudo apt-get update
+sudo apt-get install gcc
+sudo apt-cache show libstdc++6
+Version: 5.3.1-14ubuntu2
+```
+
+Check out leveldb dependency using git (for some reason dep does not check out
+submodules):
+
+```
+cd vendor/github.com/DataDog && rm -rf leveldb
+git clone https://github.com/DataDog/leveldb.git
+```
+
+Set database backend to cleveldb:
+
+```
+# config/config.toml
+db_backend = "cleveldb"
+```
+
+To build Tendermint, run
+
+```
+CGO_ENABLED=1 CGO_CXXFLAGS_ALLOW="(-fno-builtin-memcmp|-lpthread)" CGO_CFLAGS_ALLOW="-fno-builtin-memcmp" go build -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`" -tags "tendermint gcc" -o build/tendermint ./cmd/tendermint/
 ```
