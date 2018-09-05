@@ -165,7 +165,7 @@ upnp = {{ .P2P.UPNP }}
 addr_book_file = "{{ js .P2P.AddrBook }}"
 
 # Set true for strict address routability rules
-# Set false for local networks
+# Set false for private or local networks
 addr_book_strict = {{ .P2P.AddrBookStrict }}
 
 # Time to wait before flushing messages out on the connection, in ms

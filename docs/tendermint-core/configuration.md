@@ -112,7 +112,7 @@ upnp = false
 addr_book_file = "addrbook.json"
 
 # Set true for strict address routability rules
-# Set false for local networks
+# Set false for private or local networks
 addr_book_strict = true
 
 # Time to wait before flushing messages out on the connection, in ms
