@@ -85,6 +85,10 @@
   name = "github.com/btcsuite/btcutil"
   revision = "d4cc87b860166d00d6b5b9e0d3b3d71d6088d4d4"
 
+[[constraint]]
+  name = "github.com/tendermint/btcd"
+  revision = "e5840949ff4fff0c56f9b6a541e22b63581ea9df"
+
 # Haven't made a release since 2016.
 [[constraint]]
   name = "github.com/prometheus/client_golang"

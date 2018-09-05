@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // database keys
@@ -115,6 +116,16 @@ func (state State) MakeBlock(
 	// Fill rest of header with state data.
 	block.ChainID = state.ChainID
 
+	// Set time
+	if height == 1 {
+		block.Time = tmtime.Now()
+		if block.Time.Before(state.LastBlockTime) {
+			block.Time = state.LastBlockTime // state.LastBlockTime for height == 1 is genesis time
+		}
+	} else {
+		block.Time = MedianTime(commit, state.LastValidators)
+	}
+
 	block.LastBlockID = state.LastBlockID
 	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
 
@@ -129,6 +140,26 @@ func (state State) MakeBlock(
 	block.ProposerAddress = proposerAddress
 
 	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+}
+
+// MedianTime computes a median time for a given Commit (based on Timestamp field of votes messages) and the
+// corresponding validator set. The computed time is always between timestamps of
+// the votes sent by honest processes, i.e., a faulty processes can not arbitrarily increase or decrease the
+// computed value.
+func MedianTime(commit *types.Commit, validators *types.ValidatorSet) time.Time {
+
+	weightedTimes := make([]*tmtime.WeightedTime, len(commit.Precommits))
+	totalVotingPower := int64(0)
+
+	for i, vote := range commit.Precommits {
+		if vote != nil {
+			_, validator := validators.GetByIndex(vote.ValidatorIndex)
+			totalVotingPower += validator.VotingPower
+			weightedTimes[i] = tmtime.NewWeightedTime(vote.Timestamp, validator.VotingPower)
+		}
+	}
+
+	return tmtime.WeightedMedian(weightedTimes, totalVotingPower)
 }
 
 //------------------------------------------------------------------------

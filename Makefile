@@ -3,13 +3,14 @@ GOTOOLS = \
 	github.com/golang/dep/cmd/dep \
 	gopkg.in/alecthomas/gometalinter.v2 \
 	github.com/gogo/protobuf/protoc-gen-gogo \
-	github.com/gogo/protobuf/gogoproto \
 	github.com/square/certstrap
 PACKAGES=$(shell go list ./...)
 
 INCLUDE = -I=. -I=${GOPATH}/src -I=${GOPATH}/src/github.com/gogo/protobuf/protobuf
 BUILD_TAGS?='tendermint'
 BUILD_FLAGS = -ldflags "-X github.com/tendermint/tendermint/version.GitCommit=`git rev-parse --short=8 HEAD`"
+
+LINT_FLAGS = --exclude '.*\.pb\.go' --vendor --deadline=600s
 
 all: check build test install
 
@@ -37,13 +38,14 @@ protoc_all: protoc_libs protoc_abci protoc_grpc
 	## If you get the following error,
 	## "error while loading shared libraries: libprotobuf.so.14: cannot open shared object file: No such file or directory"
 	## See https://stackoverflow.com/a/25518702
+	## Note the $< here is substituted for the %.proto
+	## Note the $@ here is substituted for the %.pb.go
 	protoc $(INCLUDE) $< --gogo_out=Mgoogle/protobuf/timestamp.proto=github.com/golang/protobuf/ptypes/timestamp,plugins=grpc:.
-	@echo "--> adding nolint declarations to protobuf generated files"
-	@awk -i inplace '/^\s*package \w+/ { print "//nolint" }1' $@
 
 ########################################
 ### Build ABCI
 
+# see protobuf section above
 protoc_abci: abci/types/types.pb.go
 
 build_abci:
@@ -75,7 +77,7 @@ get_tools:
 
 update_tools:
 	@echo "--> Updating tools"
-	@go get -u $(GOTOOLS)
+	go get -u -v $(GOTOOLS)
 
 #Update dependencies
 get_vendor_deps:
@@ -85,13 +87,15 @@ get_vendor_deps:
 #For ABCI and libs
 get_protoc:
 	@# https://github.com/google/protobuf/releases
-	curl -L https://github.com/google/protobuf/releases/download/v3.4.1/protobuf-cpp-3.4.1.tar.gz | tar xvz && \
-		cd protobuf-3.4.1 && \
+	curl -L https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz | tar xvz && \
+		cd protobuf-3.6.1 && \
 		DIST_LANG=cpp ./configure && \
 		make && \
-		make install && \
+		make check && \
+		sudo make install && \
+		sudo ldconfig && \
 		cd .. && \
-		rm -rf protobuf-3.4.1
+		rm -rf protobuf-3.6.1
 
 draw_deps:
 	@# requires brew install graphviz or apt-get install graphviz
@@ -215,7 +219,7 @@ fmt:
 
 metalinter:
 	@echo "--> Running linter"
-	@gometalinter.v2 --vendor --deadline=600s --disable-all  \
+	@gometalinter.v2 $(LINT_FLAGS) --disable-all  \
 		--enable=deadcode \
 		--enable=gosimple \
 	 	--enable=misspell \
@@ -244,7 +248,7 @@ metalinter:
 
 metalinter_all:
 	@echo "--> Running linter (all)"
-	gometalinter.v2 --vendor --deadline=600s --enable-all --disable=lll ./...
+	gometalinter.v2 $(LINT_FLAGS) --enable-all --disable=lll ./...
 
 DESTINATION = ./index.html.md
 

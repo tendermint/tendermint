@@ -1,13 +1,12 @@
 package lite
 
 import (
-	"time"
-
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/crypto/secp256k1"
 
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // privKeys is a helper type for testing.
@@ -97,7 +96,7 @@ func makeVote(header *types.Header, valset *types.ValidatorSet, key crypto.PrivK
 		ValidatorIndex:   idx,
 		Height:           header.Height,
 		Round:            1,
-		Timestamp:        time.Now().Round(0).UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             types.VoteTypePrecommit,
 		BlockID:          types.BlockID{Hash: header.Hash()},
 	}
@@ -119,7 +118,7 @@ func genHeader(chainID string, height int64, txs types.Txs,
 	return &types.Header{
 		ChainID:  chainID,
 		Height:   height,
-		Time:     time.Now().Round(0).UTC(),
+		Time:     tmtime.Now(),
 		NumTxs:   int64(len(txs)),
 		TotalTxs: int64(len(txs)),
 		// LastBlockID

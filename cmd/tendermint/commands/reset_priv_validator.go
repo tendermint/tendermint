@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tendermint/tendermint/privval"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/privval"
 )
 
 // ResetAllCmd removes the database of this Tendermint core

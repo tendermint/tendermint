@@ -239,6 +239,8 @@ type RPCConfig struct {
 	// If you want to accept more significant number than the default, make sure
 	// you increase your OS limits.
 	// 0 - unlimited.
+	// Should be < {ulimit -Sn} - {MaxNumInboundPeers} - {MaxNumOutboundPeers} - {N of wal, db and other open files}
+	// 1024 - 40 - 10 - 50 = 924 = ~900
 	MaxOpenConnections int `mapstructure:"max_open_connections"`
 }
 
@@ -248,11 +250,9 @@ func DefaultRPCConfig() *RPCConfig {
 		ListenAddress: "tcp://0.0.0.0:26657",
 
 		GRPCListenAddress:      "",
-		GRPCMaxOpenConnections: 900, // no ipv4
+		GRPCMaxOpenConnections: 900,
 
-		Unsafe: false,
-		// should be < {ulimit -Sn} - {MaxNumPeers} - {N of wal, db and other open files}
-		// 1024 - 50 - 50 = 924 = ~900
+		Unsafe:             false,
 		MaxOpenConnections: 900,
 	}
 }
@@ -295,8 +295,11 @@ type P2PConfig struct {
 	// Set true for strict address routability rules
 	AddrBookStrict bool `mapstructure:"addr_book_strict"`
 
-	// Maximum number of peers to connect to
-	MaxNumPeers int `mapstructure:"max_num_peers"`
+	// Maximum number of inbound peers
+	MaxNumInboundPeers int `mapstructure:"max_num_inbound_peers"`
+
+	// Maximum number of outbound peers to connect to, excluding persistent peers
+	MaxNumOutboundPeers int `mapstructure:"max_num_outbound_peers"`
 
 	// Time to wait before flushing messages out on the connection, in ms
 	FlushThrottleTimeout int `mapstructure:"flush_throttle_timeout"`
@@ -346,7 +349,8 @@ func DefaultP2PConfig() *P2PConfig {
 		UPNP:                    false,
 		AddrBook:                defaultAddrBookPath,
 		AddrBookStrict:          true,
-		MaxNumPeers:             50,
+		MaxNumInboundPeers:      40,
+		MaxNumOutboundPeers:     10,
 		FlushThrottleTimeout:    100,
 		MaxPacketMsgPayloadSize: 1024,    // 1 kB
 		SendRate:                5120000, // 5 mB/s
@@ -417,8 +421,10 @@ func DefaultMempoolConfig() *MempoolConfig {
 		RecheckEmpty: true,
 		Broadcast:    true,
 		WalPath:      filepath.Join(defaultDataDir, "mempool.wal"),
-		Size:         100000,
-		CacheSize:    100000,
+		// Each signature verification takes .5ms, size reduced until we implement
+		// ABCI Recheck
+		Size:      5000,
+		CacheSize: 10000,
 	}
 }
 
@@ -463,6 +469,9 @@ type ConsensusConfig struct {
 	// Reactor sleep duration parameters are in milliseconds
 	PeerGossipSleepDuration     int `mapstructure:"peer_gossip_sleep_duration"`
 	PeerQueryMaj23SleepDuration int `mapstructure:"peer_query_maj23_sleep_duration"`
+
+	// Block time parameters in milliseconds. Corresponds to the minimum time increment between consecutive blocks.
+	BlockTimeIota int `mapstructure:"blocktime_iota"`
 }
 
 // DefaultConsensusConfig returns a default configuration for the consensus service
@@ -481,6 +490,7 @@ func DefaultConsensusConfig() *ConsensusConfig {
 		CreateEmptyBlocksInterval:   0,
 		PeerGossipSleepDuration:     100,
 		PeerQueryMaj23SleepDuration: 2000,
+		BlockTimeIota:               1000,
 	}
 }
 
@@ -497,7 +507,15 @@ func TestConsensusConfig() *ConsensusConfig {
 	cfg.SkipTimeoutCommit = true
 	cfg.PeerGossipSleepDuration = 5
 	cfg.PeerQueryMaj23SleepDuration = 250
+	cfg.BlockTimeIota = 10
 	return cfg
+}
+
+// MinValidVoteTime returns the minimum acceptable block time.
+// See the [BFT time spec](https://godoc.org/github.com/tendermint/tendermint/docs/spec/consensus/bft-time.md).
+func (cfg *ConsensusConfig) MinValidVoteTime(lastBlockTime time.Time) time.Time {
+	return lastBlockTime.
+		Add(time.Duration(cfg.BlockTimeIota) * time.Millisecond)
 }
 
 // WaitForTxs returns true if the consensus should wait for transactions before entering the propose step
