@@ -610,8 +610,10 @@ func (sw *Switch) addPeer(pc peerConn) error {
 		addr := peerNodeInfo.NetAddress()
 		// remove the given address from the address book
 		// and add to our addresses to avoid dialing again
-		sw.addrBook.RemoveAddress(addr)
-		sw.addrBook.AddOurAddress(addr)
+		if sw.addrBook != nil {
+			sw.addrBook.RemoveAddress(addr)
+			sw.addrBook.AddOurAddress(addr)
+		}
 		return ErrSwitchConnectToSelf{addr}
 	}
 
