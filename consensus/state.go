@@ -1501,11 +1501,11 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		if err != nil {
 			return true, err
 		}
-		if cs.ProposalBlock.Round == 0 && (len(cs.ProposalBlock.Signature) == 0 || !cs.Validators.ProposerOfHeight.PubKey.VerifyBytes(cs.ProposalBlock.SignBytes(cs.state.ChainID),cs.ProposalBlock.Signature)) {
+		if cs.ProposalBlock.Round == 0 && (len(cs.ProposalBlock.Signature) == 0 || !cs.Validators.ProposerOfHeight.PubKey.VerifyBytes(cs.ProposalBlock.SignBytes(cs.state.ChainID), cs.ProposalBlock.Signature)) {
 			cs.Logger.Info("Received an invalid block claimed from round 0 proposer but not with valid signature",
 				"height", height, "round", round, "signature", cs.ProposalBlock.Signature, "peer", peerID)
 			cs.ProposalBlock = nil //invalid round 0 proposal block
-			return false,nil
+			return false, nil
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
