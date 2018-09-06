@@ -418,11 +418,11 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 	}
 
 	for i, c := range cases {
-		err := vset.VerifyCommit(c.chainID, c.blockID, c.height, c.commit)
+		err := vset.VerifyCommit(c.chainID, c.blockID,false, c.height, c.commit)
 		assert.NotNil(t, err, i)
 	}
 
 	// test a good one
-	err = vset.VerifyCommit(chainID, blockID, height, commit)
+	err = vset.VerifyCommit(chainID, blockID, false,height, commit)
 	assert.Nil(t, err)
 }
