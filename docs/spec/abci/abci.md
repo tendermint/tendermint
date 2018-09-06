@@ -1,9 +1,5 @@
 # ABCI Specification
 
-### XXX
-
-DEPRECATED: Moved [here](../spec/abci/abci.md)
-
 ## Message Types
 
 ABCI requests/responses are defined as simple Protobuf messages in [this
