@@ -76,13 +76,15 @@ func TestABCIConsensusParams(t *testing.T) {
 
 func TestABCIHeader(t *testing.T) {
 	header := &Header{
-		Height: int64(3),
-		Time:   time.Now(),
-		NumTxs: int64(10),
+		Height:          int64(3),
+		Time:            time.Now(),
+		NumTxs:          int64(10),
+		ProposerAddress: []byte("cloak"),
 	}
 	abciHeader := TM2PB.Header(header)
 
 	assert.Equal(t, int64(3), abciHeader.Height)
+	assert.Equal(t, []byte("cloak"), abciHeader.ProposerAddress)
 }
 
 func TestABCIEvidence(t *testing.T) {

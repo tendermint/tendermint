@@ -298,7 +298,7 @@ FOR_LOOP:
 			// first.Hash() doesn't verify the tx contents, so MakePartSet() is
 			// currently necessary.
 			err := state.Validators.VerifyCommit(
-				chainID, firstID, first.Height, second.LastCommit)
+				chainID, firstID,state.LastProposeInRound0, first.Height, second.LastCommit)
 			if err != nil {
 				bcR.Logger.Error("Error in validation", "err", err)
 				peerID := bcR.pool.RedoRequest(first.Height)

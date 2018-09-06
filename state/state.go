@@ -24,24 +24,25 @@ var (
 // Instead, use state.Copy() or state.NextState(...).
 // NOTE: not goroutine-safe.
 type State struct {
-	// Immutable
+	// immutable
 	ChainID string
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight  int64
-	LastBlockTotalTx int64
-	LastBlockID      types.BlockID
-	LastBlockTime    time.Time
+	LastBlockHeight     int64
+	LastBlockTotalTx    int64
+	LastBlockID         types.BlockID
+	LastBlockTime       time.Time
+	LastProposeInRound0 bool
 
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
 	// so we can query for historical validator sets.
 	// Note that if s.LastBlockHeight causes a valset change,
 	// we set s.LastHeightValidatorsChanged = s.LastBlockHeight + 1
+	NextValidators              *types.ValidatorSet
 	Validators                  *types.ValidatorSet
 	LastValidators              *types.ValidatorSet
 	LastHeightValidatorsChanged int64
-
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
 	ConsensusParams                  types.ConsensusParams
@@ -50,7 +51,7 @@ type State struct {
 	// Merkle root of the results from executing prev block
 	LastResultsHash []byte
 
-	// The latest AppHash we've received from calling abci.Commit()
+	// the latest AppHash we've received from calling abci.Commit()
 	AppHash []byte
 }
 
@@ -63,7 +64,9 @@ func (state State) Copy() State {
 		LastBlockTotalTx: state.LastBlockTotalTx,
 		LastBlockID:      state.LastBlockID,
 		LastBlockTime:    state.LastBlockTime,
+		LastProposeInRound0: state.LastProposeInRound0,
 
+		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
 		LastValidators:              state.LastValidators.Copy(),
 		LastHeightValidatorsChanged: state.LastHeightValidatorsChanged,
@@ -93,21 +96,19 @@ func (state State) IsEmpty() bool {
 	return state.Validators == nil // XXX can't compare to Empty
 }
 
-// GetValidators returns the last and current validator sets.
-func (state State) GetValidators() (last *types.ValidatorSet, current *types.ValidatorSet) {
-	return state.LastValidators, state.Validators
-}
-
 //------------------------------------------------------------------------
 // Create a block from the latest state
 
-// MakeBlock builds a block from the current state with the given txs, commit, and evidence.
+// MakeBlock builds a block from the current state with the given txs, commit,
+// and evidence. Note it also takes a proposerAddress because the state does not
+// track rounds, and hence doesn't know the correct proposer. TODO: alleviate this!
 func (state State) MakeBlock(
 	height int64,
 	txs []types.Tx,
 	commit *types.Commit,
 	evidence []types.Evidence,
-) (*types.Block, *types.PartSet) {
+	proposerAddress []byte,
+) (*types.Block) {
 
 	// Build base block with block data.
 	block := types.MakeBlock(height, txs, commit, evidence)
@@ -119,11 +120,16 @@ func (state State) MakeBlock(
 	block.TotalTxs = state.LastBlockTotalTx + block.NumTxs
 
 	block.ValidatorsHash = state.Validators.Hash()
+	block.NextValidatorsHash = state.NextValidators.Hash()
 	block.ConsensusHash = state.ConsensusParams.Hash()
 	block.AppHash = state.AppHash
 	block.LastResultsHash = state.LastResultsHash
 
-	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+	// NOTE: we can't use the state.Validators because we don't
+	// IncrementAccum for rounds there.
+	block.ProposerAddress = proposerAddress
+
+	return block
 }
 
 //------------------------------------------------------------------------
@@ -183,6 +189,7 @@ func MakeGenesisState(genDoc *types.GenesisDoc) (State, error) {
 		LastBlockID:     types.BlockID{},
 		LastBlockTime:   genDoc.GenesisTime,
 
+		NextValidators:              types.NewValidatorSet(validators).CopyIncrementAccum(1),
 		Validators:                  types.NewValidatorSet(validators),
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: 1,

@@ -169,6 +169,17 @@ func (pv *FilePV) SignProposal(chainID string, proposal *types.Proposal) error {
 	return nil
 }
 
+// SignProposal signs a canonical representation of the proposal, along with
+// the chainID. Implements PrivValidator.
+func (pv *FilePV) SignBlock(chainID string, block *types.Block) error {
+	pv.mtx.Lock()
+	defer pv.mtx.Unlock()
+	if err := pv.signBlock(chainID, block); err != nil {
+		return fmt.Errorf("Error signing block: %v", err)
+	}
+	return nil
+}
+
 // returns error if HRS regression or no LastSignBytes. returns true if HRS is unchanged
 func (pv *FilePV) checkHRS(height int64, round int, step int8) (bool, error) {
 	if pv.LastHeight > height {
@@ -272,6 +283,42 @@ func (pv *FilePV) signProposal(chainID string, proposal *types.Proposal) error {
 	}
 	pv.saveSigned(height, round, step, signBytes, sig)
 	proposal.Signature = sig
+	return nil
+}
+
+func (pv *FilePV) signBlock(chainID string, block *types.Block) error {
+	height, round, step := block.Height, block.Round, stepNone
+	signBytes := block.SignBytes(chainID)
+
+	sameHRS, err := pv.checkHRS(height, round, step)
+	if err != nil {
+		return err
+	}
+
+	// We might crash before writing to the wal,
+	// causing us to try to re-sign for the same HRS.
+	// If signbytes are the same, use the last signature.
+	// If they only differ by timestamp, use last timestamp and signature
+	// Otherwise, return error
+	if sameHRS {
+		if bytes.Equal(signBytes, pv.LastSignBytes) {
+			block.Signature = pv.LastSignature
+		} else if timestamp, ok := checkProposalsOnlyDifferByTimestamp(pv.LastSignBytes, signBytes); ok {
+			block.Time = timestamp
+			block.Signature = pv.LastSignature
+		} else {
+			err = fmt.Errorf("Conflicting data")
+		}
+		return err
+	}
+
+	// It passed the checks. Sign the proposal
+	sig, err := pv.PrivKey.Sign(signBytes)
+	if err != nil {
+		return err
+	}
+	pv.saveSigned(height, round, step, signBytes, sig)
+	block.Signature = sig
 	return nil
 }
 

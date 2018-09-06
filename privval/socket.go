@@ -185,6 +185,25 @@ func (sc *SocketPV) SignProposal(
 	return nil
 }
 
+func (sc *SocketPV) SignBlock(
+	chainID string,
+	block *types.Block,
+) error {
+	err := writeMsg(sc.conn, &SignBlockMsg{Block: block})
+	if err != nil {
+		return err
+	}
+
+	res, err := readMsg(sc.conn)
+	if err != nil {
+		return err
+	}
+
+	*block = *res.(*SignBlockMsg).Block
+
+	return nil
+}
+
 // SignHeartbeat implements PrivValidator.
 func (sc *SocketPV) SignHeartbeat(
 	chainID string,
@@ -514,6 +533,10 @@ type SignVoteMsg struct {
 // SignProposalMsg is a PrivValidatorSocket message containing a Proposal.
 type SignProposalMsg struct {
 	Proposal *types.Proposal
+}
+
+type SignBlockMsg struct {
+	Block *types.Block
 }
 
 // SignHeartbeatMsg is a PrivValidatorSocket message containing a Heartbeat.

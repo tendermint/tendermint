@@ -16,6 +16,12 @@ type CanonicalJSONBlockID struct {
 	PartsHeader CanonicalJSONPartSetHeader `json:"parts,omitempty"`
 }
 
+type CanonicalJSONBlock struct {
+	ChainID string       `json:"@chain_id"`
+	Type    string       `json:"@type"`
+	Hash    cmn.HexBytes `json:"hash,omitempty"`
+}
+
 type CanonicalJSONPartSetHeader struct {
 	Hash  cmn.HexBytes `json:"hash,omitempty"`
 	Total int          `json:"total,omitempty"`
@@ -59,6 +65,14 @@ func CanonicalBlockID(blockID BlockID) CanonicalJSONBlockID {
 	return CanonicalJSONBlockID{
 		Hash:        blockID.Hash,
 		PartsHeader: CanonicalPartSetHeader(blockID.PartsHeader),
+	}
+}
+
+func CanonicalBlock(chainID string, block *Block) CanonicalJSONBlock {
+	return CanonicalJSONBlock{
+		ChainID: chainID,
+		Type:    "block",
+		Hash:    block.Hash(),
 	}
 }
 
@@ -110,5 +124,5 @@ func CanonicalTime(t time.Time) string {
 	// Note that sending time over amino resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
-	return t.UTC().Format(TimeFormat)
+	return t.Round(0).UTC().Format(TimeFormat)
 }

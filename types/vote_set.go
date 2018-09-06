@@ -170,7 +170,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 			"Cannot find validator %d in valSet of size %d", valIndex, voteSet.valSet.Size())
 	}
 
-	// Ensure that the signer has the right address
+	// Ensure that the signer has the right address.
 	if !bytes.Equal(valAddr, lookupAddr) {
 		return false, errors.Wrapf(ErrVoteInvalidValidatorAddress,
 			"vote.ValidatorAddress (%X) does not match address (%X) for vote.ValidatorIndex (%d)\nEnsure the genesis file is correct across all validators.",
@@ -190,7 +190,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 		return false, errors.Wrapf(err, "Failed to verify vote with ChainID %s and PubKey %s", voteSet.chainID, val.PubKey)
 	}
 
-	// Add vote and get conflicting vote if any
+	// Add vote and get conflicting vote if any.
 	added, conflicting := voteSet.addVerifiedVote(vote, blockKey, val.VotingPower)
 	if conflicting != nil {
 		return added, NewConflictingVoteError(val, conflicting, vote)
@@ -201,7 +201,7 @@ func (voteSet *VoteSet) addVote(vote *Vote) (added bool, err error) {
 	return added, nil
 }
 
-// Returns (vote, true) if vote exists for valIndex and blockKey
+// Returns (vote, true) if vote exists for valIndex and blockKey.
 func (voteSet *VoteSet) getVote(valIndex int, blockKey string) (vote *Vote, ok bool) {
 	if existing := voteSet.votes[valIndex]; existing != nil && existing.BlockID.Key() == blockKey {
 		return existing, true
@@ -529,9 +529,9 @@ func (voteSet *VoteSet) sumTotalFrac() (int64, int64, float64) {
 // Commit
 
 func (voteSet *VoteSet) MakeCommit() *Commit {
-	if voteSet.type_ != VoteTypePrecommit {
-		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is VoteTypePrecommit")
-	}
+	/*if voteSet.type_ != VoteTypePrecommit {
+		cmn.PanicSanity("Cannot MakeCommit() unless VoteSet.Type is VoteTypePrecommit or round==0")
+	}	controlled by uplevel */
 	voteSet.mtx.Lock()
 	defer voteSet.mtx.Unlock()
 

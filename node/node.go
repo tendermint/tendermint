@@ -40,6 +40,7 @@ import (
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
+	"strings"
 )
 
 //------------------------------------------------------------------------------
@@ -312,7 +313,7 @@ func NewNode(config *cfg.Config,
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:    cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
+				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
 			})
 		pexReactor.SetLogger(p2pLogger)
@@ -364,7 +365,7 @@ func NewNode(config *cfg.Config,
 			return nil, err
 		}
 		if config.TxIndex.IndexTags != "" {
-			txIndexer = kv.NewTxIndex(store, kv.IndexTags(cmn.SplitAndTrim(config.TxIndex.IndexTags, ",", " ")))
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
 		} else if config.TxIndex.IndexAllTags {
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
 		} else {
@@ -440,7 +441,7 @@ func (n *Node) OnStart() error {
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
 
 	// Add private IDs to addrbook to block those peers being added
-	n.addrBook.AddPrivateIDs(cmn.SplitAndTrim(n.config.P2P.PrivatePeerIDs, ",", " "))
+	n.addrBook.AddPrivateIDs(splitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
@@ -465,7 +466,7 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, cmn.SplitAndTrim(n.config.P2P.PersistentPeers, ",", " "), true)
+		err = n.sw.DialPeersAsync(n.addrBook, splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
@@ -547,7 +548,7 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := cmn.SplitAndTrim(n.config.RPC.ListenAddress, ",", " ")
+	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
 	coreCodec := amino.NewCodec()
 	ctypes.RegisterAmino(coreCodec)
 
@@ -744,4 +745,26 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}
 	db.SetSync(genesisDocKey, bytes)
+}
+
+
+// splitAndTrimEmpty slices s into all subslices separated by sep and returns a
+// slice of the string s with all leading and trailing Unicode code points
+// contained in cutset removed. If sep is empty, SplitAndTrim splits after each
+// UTF-8 sequence. First part is equivalent to strings.SplitN with a count of
+// -1.  also filter out empty strings, only return non-empty strings.
+func splitAndTrimEmpty(s, sep, cutset string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	spl := strings.Split(s, sep)
+	nonEmptyStrings := make([]string, 0, len(spl))
+	for i := 0; i < len(spl); i++ {
+		element := strings.Trim(spl[i], cutset)
+		if element != "" {
+			nonEmptyStrings = append(nonEmptyStrings, element)
+		}
+	}
+	return nonEmptyStrings
 }

@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	fail "github.com/ebuchman/fail-test"
+	"github.com/ebuchman/fail-test"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -74,14 +74,13 @@ type ConsensusState struct {
 	privValidator types.PrivValidator // for signing votes
 
 	// services for creating and executing blocks
-	// TODO: encapsulate all of this in one "BlockManager"
 	blockExec  *sm.BlockExecutor
 	blockStore sm.BlockStore
 	mempool    sm.Mempool
 	evpool     sm.EvidencePool
 
 	// internal state
-	mtx sync.RWMutex
+	mtx   sync.RWMutex
 	cstypes.RoundState
 	state sm.State // State until height-1.
 
@@ -195,6 +194,15 @@ func (cs *ConsensusState) GetState() sm.State {
 	cs.mtx.RLock()
 	defer cs.mtx.RUnlock()
 	return cs.state.Copy()
+}
+
+// GetLastHeight returns the last height committed.
+// If there were no blocks, returns 0.
+func (cs *ConsensusState) GetLastHeight() int64 {
+	cs.mtx.Lock()
+	defer cs.mtx.Unlock()
+
+	return cs.RoundState.Height - 1
 }
 
 // GetRoundState returns a shallow copy of the internal consensus state.
@@ -444,7 +452,10 @@ func (cs *ConsensusState) reconstructLastCommit(state sm.State) {
 		return
 	}
 	seenCommit := cs.blockStore.LoadSeenCommit(state.LastBlockHeight)
-	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), types.VoteTypePrecommit, state.LastValidators)
+	if len(seenCommit.Precommits) == 0 {
+		cmn.PanicCrisis("Failed to reconstruct LastCommit, lastCommit empty")
+	}
+	lastPrecommits := types.NewVoteSet(state.ChainID, state.LastBlockHeight, seenCommit.Round(), seenCommit.Precommits[0].Type, state.LastValidators)
 	for _, precommit := range seenCommit.Precommits {
 		if precommit == nil {
 			continue
@@ -489,10 +500,13 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	validators := state.Validators
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
-		if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
+		if cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
+			lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		} else if cs.Votes.Prevotes(cs.CommitRound).HasTwoThirdsMajority() && cs.ProposalBlock.Round == 0 {
+			lastPrecommits = cs.Votes.Prevotes(cs.CommitRound)
+		} else {
 			cmn.PanicSanity("updateToState(state) called but last Precommit round didn't have +2/3")
 		}
-		lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
 	}
 
 	// Next desired block height
@@ -742,11 +756,14 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		// We've already reset these upon new height,
 		// and meanwhile we might have received a proposal
 		// for round 0.
+		cs.Validators.ProposerOfHeight = cs.Validators.GetProposer().Copy()
 	} else {
 		logger.Info("Resetting Proposal info")
-		cs.Proposal = nil
-		cs.ProposalBlock = nil
-		cs.ProposalBlockParts = nil
+		if cs.ProposalBlock == nil || cs.ProposalBlock.Round != 0 { //retain round 0 proposal
+			cs.Proposal = nil
+			cs.ProposalBlock = nil
+			cs.ProposalBlockParts = nil
+		}
 	}
 	cs.Votes.SetRound(round + 1) // also track next round (round+1) to allow round-skipping
 
@@ -941,8 +958,13 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	// Mempool validated transactions
 	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
 	evidence := cs.evpool.PendingEvidence()
-	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence)
-	return block, parts
+	proposerAddr := cs.privValidator.GetAddress()
+	block = cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
+	if cs.Round == 0 {
+		cs.privValidator.SignBlock(cs.state.ChainID, block)
+	}
+
+	return block, block.MakePartSet(cs.state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -956,19 +978,23 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 		return
 	}
 
+	// fire event for how we got here
+	if cs.isProposalComplete() {
+		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+	} else {
+		if cs.Proposal.Round == 0 {
+			//round 0 proposal, must receive complete before send prevote
+			return
+		}
+		// we received +2/3 prevotes for a future round
+		// TODO: catchup event?
+	}
+
 	defer func() {
 		// Done enterPrevote:
 		cs.updateRoundStep(round, cstypes.RoundStepPrevote)
 		cs.newStep()
 	}()
-
-	// fire event for how we got here
-	if cs.isProposalComplete() {
-		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
-	} else {
-		// we received +2/3 prevotes for a future round
-		// TODO: catchup event?
-	}
 
 	cs.Logger.Info(cmn.Fmt("enterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -1181,9 +1207,15 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 		cs.tryFinalizeCommit(height)
 	}()
 
-	blockID, ok := cs.Votes.Precommits(commitRound).TwoThirdsMajority()
+	var blockID types.BlockID
+	var ok bool
+	blockID, ok = cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
-		cmn.PanicSanity("RunActionCommit() expects +2/3 precommits")
+		blockID, ok = cs.Votes.Prevotes(commitRound).TwoThirdsMajority()
+		if !ok || !cs.ProposalBlock.HashesTo(blockID.Hash) || cs.ProposalBlock.Round != 0 {
+			cmn.PanicSanity("enterCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
+
+		}
 	}
 
 	// The Locked* fields no longer matter.
@@ -1217,8 +1249,17 @@ func (cs *ConsensusState) tryFinalizeCommit(height int64) {
 		cmn.PanicSanity(cmn.Fmt("tryFinalizeCommit() cs.Height: %v vs height: %v", cs.Height, height))
 	}
 
-	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
-	if !ok || len(blockID.Hash) == 0 {
+	var blockID types.BlockID
+	var ok bool
+	blockID, ok = cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
+	if !ok {
+		blockID, ok = cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
+		if !ok || cs.ProposalBlock.Round != 0 {
+			cmn.PanicSanity("tryFinalizeCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
+
+		}
+	}
+	if len(blockID.Hash) == 0 {
 		logger.Error("Attempt to finalize failed. There was no +2/3 majority, or +2/3 was for <nil>.")
 		return
 	}
@@ -1240,12 +1281,20 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 		return
 	}
 
-	blockID, ok := cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
-	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
-
+	var blockID types.BlockID
+	var ok bool
+	var proposeInRound0 bool
+	blockID, ok = cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok {
-		cmn.PanicSanity(cmn.Fmt("Cannot finalizeCommit, commit does not have two thirds majority"))
+		blockID, ok = cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
+		if !ok || cs.ProposalBlock.Round != 0 {
+			cmn.PanicSanity("finalizeCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
+
+		}
+		proposeInRound0 = true
 	}
+
+	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
 	if !blockParts.HasHeader(blockID.PartsHeader) {
 		cmn.PanicSanity(cmn.Fmt("Expected ProposalBlockParts header to be commit header"))
 	}
@@ -1266,8 +1315,14 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 	if cs.blockStore.Height() < block.Height {
 		// NOTE: the seenCommit is local justification to commit this block,
 		// but may differ from the LastCommit included in the next block
-		precommits := cs.Votes.Precommits(cs.CommitRound)
-		seenCommit := precommits.MakeCommit()
+		var voteSet *types.VoteSet
+		if proposeInRound0 {
+			voteSet = cs.Votes.Prevotes(cs.CommitRound)
+		} else {
+			voteSet = cs.Votes.Precommits(cs.CommitRound)
+		}
+
+		seenCommit := voteSet.MakeCommit()
 		cs.blockStore.SaveBlock(block, blockParts, seenCommit)
 	} else {
 		// Happens during replay if we already saved the block but didn't commit
@@ -1293,6 +1348,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
+	cs.state.LastProposeInRound0 = proposeInRound0
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
 
@@ -1373,11 +1429,17 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	// Already have one
 	// TODO: possibly catch double proposals
 	if cs.Proposal != nil {
+		if cs.Proposal.Round == 0 { //already received highest priority proposal
+			return nil
+		}
+		if proposal.Round != 0 {
+			return nil
+		}
 		return nil
 	}
 
 	// Does not apply
-	if proposal.Height != cs.Height || proposal.Round != cs.Round {
+	if (proposal.Height != cs.Height || proposal.Round != cs.Round) && proposal.Round != 0 {
 		return nil
 	}
 
@@ -1393,8 +1455,14 @@ func (cs *ConsensusState) defaultSetProposal(proposal *types.Proposal) error {
 	}
 
 	// Verify signature
-	if !cs.Validators.GetProposer().PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
-		return ErrInvalidProposalSignature
+	if proposal.Round == 0 {
+		if !cs.Validators.ProposerOfHeight.PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
+			return ErrInvalidProposalSignature
+		}
+	} else {
+		if !cs.Validators.GetProposer().PubKey.VerifyBytes(proposal.SignBytes(cs.state.ChainID), proposal.Signature) {
+			return ErrInvalidProposalSignature
+		}
 	}
 
 	cs.Proposal = proposal
@@ -1432,6 +1500,12 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		_, err = cdc.UnmarshalBinaryReader(cs.ProposalBlockParts.GetReader(), &cs.ProposalBlock, int64(cs.state.ConsensusParams.BlockSize.MaxBytes))
 		if err != nil {
 			return true, err
+		}
+		if cs.ProposalBlock.Round == 0 && (len(cs.ProposalBlock.Signature) == 0 || !cs.Validators.ProposerOfHeight.PubKey.VerifyBytes(cs.ProposalBlock.SignBytes(cs.state.ChainID),cs.ProposalBlock.Signature)) {
+			cs.Logger.Info("Received an invalid block claimed from round 0 proposer but not with valid signature",
+				"height", height, "round", round, "signature", cs.ProposalBlock.Signature, "peer", peerID)
+			cs.ProposalBlock = nil //invalid round 0 proposal block
+			return false,nil
 		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
@@ -1587,8 +1661,18 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
 			// Round-skip over to PrevoteWait or goto Precommit.
 			cs.enterNewRound(height, vote.Round) // if the vote is ahead of us
-			if prevotes.HasTwoThirdsMajority() {
-				cs.enterPrecommit(height, vote.Round)
+			blockID, ok := prevotes.TwoThirdsMajority()
+			if ok {
+				if len(blockID.Hash) == 0 {
+					cs.enterNewRound(height, vote.Round+1)
+				} else {
+					if cs.ProposalBlock != nil && cs.ProposalBlock.Round == 0 && cs.ProposalBlock.HashesTo(blockID.Hash) { //has received round 0 proposal and round 0 block is ready
+						cs.enterPrevote(height, vote.Round) //send our prevote too
+						cs.enterCommit(height, vote.Round)  //round 0 proposal , skip precommit , commit directly
+					} else {
+						cs.enterPrecommit(height, vote.Round)
+					}
+				}
 			} else {
 				cs.enterPrevote(height, vote.Round) // if the vote is ahead of us
 				cs.enterPrevoteWait(height, vote.Round)
