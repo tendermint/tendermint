@@ -1666,7 +1666,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 				if len(blockID.Hash) == 0 {
 					cs.enterNewRound(height, vote.Round+1)
 				} else {
-					if cs.ProposalBlock != nil && cs.Proposal != nil && cs.Proposal.Round == 0 && cs.ProposalBlock.HashesTo(blockID.Hash) { //has received round 0 proposal and round 0 block is ready
+					if cs.ProposalBlock != nil && cs.ProposalBlock.Round == 0 && cs.ProposalBlock.HashesTo(blockID.Hash) { //has received round 0 proposal and round 0 block is ready
 						cs.enterPrevote(height, vote.Round) //send our prevote too
 						cs.enterCommit(height, vote.Round)  //round 0 proposal , skip precommit , commit directly
 					} else {
