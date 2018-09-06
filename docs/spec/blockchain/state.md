@@ -8,10 +8,10 @@ transactions are never included in blocks, but their Merkle roots are - the stat
 
 Note that the `State` object itself is an implementation detail, since it is never
 included in a block or gossipped over the network, and we never compute
-its hash. However, the types it contains are part of the specification, since
-their Merkle roots are included in blocks.
-
-Details on an implementation of `State` with persistence is forthcoming, see [this issue](https://github.com/tendermint/tendermint/issues/1152)
+its hash. Thus we do not include here details of how the `State` object is
+persisted or queried. That said, the types it contains are part of the specification, since
+their Merkle roots are included in blocks and their values are used in
+validation.
 
 ```go
 type State struct {
@@ -32,20 +32,15 @@ type State struct {
 type Result struct {
     Code uint32
     Data []byte
-    Tags []KVPair
-}
-
-type KVPair struct {
-    Key     []byte
-    Value   []byte
 }
 ```
 
 `Result` is the result of executing a transaction against the application.
-It returns a result code, an arbitrary byte array (ie. a return value),
-and a list of key-value pairs ordered by key. The key-value pairs, or tags,
-can be used to index transactions according to their "effects", which are
-represented in the tags.
+It returns a result code and an arbitrary byte array (ie. a return value).
+
+NOTE: the Result needs to be updated to include more fields returned from
+processing transactions, like gas variables and tags - see
+[issue 1007](https://github.com/tendermint/tendermint/issues/1007).
 
 ### Validator
 
