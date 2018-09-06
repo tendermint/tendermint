@@ -181,6 +181,14 @@ func (b *Block) StringIndented(indent string) string {
 		indent, b.Hash())
 }
 
+func (b *Block) SignBytes(chainID string) []byte {
+	bz, err := cdc.MarshalJSON(CanonicalBlock(chainID, b))
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}
+
 // StringShort returns a shortened string representation of the block
 func (b *Block) StringShort() string {
 	if b == nil {
@@ -198,6 +206,7 @@ type Header struct {
 	// basic block info
 	ChainID  string    `json:"chain_id"`
 	Height   int64     `json:"height"`
+	Round    int       `json:"round"`  //it is not vote round, it is propose round
 	Time     time.Time `json:"time"`
 	NumTxs   int64     `json:"num_txs"`
 	TotalTxs int64     `json:"total_txs"`
@@ -217,8 +226,9 @@ type Header struct {
 	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
 
 	// consensus info
-	EvidenceHash      cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
-	ProposerAddress   Address      `json:"proposer_address"` // original proposer of the block
+	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
+	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
+	Signature       []byte       `json:"signature"`
 }
 
 // Hash returns the hash of the header.
@@ -395,11 +405,11 @@ func (commit *Commit) ValidateBasic() error {
 			continue
 		}
 		// Ensure that all votes are precommits.
-/*		if precommit.Type != VoteTypePrecommit {
-			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
-				precommit.Type)
-		}
-*/
+		/*		if precommit.Type != VoteTypePrecommit {
+					return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
+						precommit.Type)
+				}
+		*/
 		// Ensure that all heights are the same.
 		if precommit.Height != height {
 			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",

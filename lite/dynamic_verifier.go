@@ -135,7 +135,7 @@ func (ic *DynamicVerifier) verifyAndSave(trustedFC, sourceFC FullCommit) error {
 	}
 	err := trustedFC.NextValidators.VerifyFutureCommit(
 		sourceFC.Validators,
-		ic.chainID, sourceFC.SignedHeader.Commit.BlockID,
+		ic.chainID, false,sourceFC.SignedHeader.Commit.BlockID,
 		sourceFC.SignedHeader.Height, sourceFC.SignedHeader.Commit,
 	)
 	if err != nil {

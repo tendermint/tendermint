@@ -259,7 +259,7 @@ func (vals *ValidatorSet) Iterate(fn func(index int, val *Validator) bool) {
 }
 
 // Verify that +2/3 of the set had signed the given signBytes.
-func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height int64, commit *Commit) error {
+func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, lastProposeInRound0 bool, height int64, commit *Commit) error {
 	if vals.Size() != len(commit.Precommits) {
 		return fmt.Errorf("Invalid commit -- wrong set size: %v vs %v", vals.Size(), len(commit.Precommits))
 	}
@@ -286,9 +286,10 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 		}
 		if precommit.Type != VoteTypePrecommit {
 			if precommit.Type == VoteTypePrevote {
-				if !bytes.Equal(vals.ProposerOfHeight.Address, precommit.ProposerAddress) {
-					return fmt.Errorf("Invalid commit -- type is prevote, but not signed from last round 0 proposer, want %v got %v", vals.ProposerOfHeight.Address, precommit.ProposerAddress)
-
+				if !lastProposeInRound0 {
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer, %v", vals.ProposerOfHeight.Address)
+				}else{
+					//passed check
 				}
 			} else {
 				return fmt.Errorf("Invalid commit -- invalid vote type @ index %v", idx)
@@ -346,11 +347,11 @@ func (vals *ValidatorSet) VerifyCommit(chainID string, blockID BlockID, height i
 // current height isn't part of the ValidatorSet.  Caller must check that the
 // commit height is greater than the height for this validator set.
 func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID string,
-	blockID BlockID, height int64, commit *Commit) error {
+	lastProposeInRound0 bool, blockID BlockID, height int64, commit *Commit) error {
 	oldVals := vals
 
 	// Commit must be a valid commit for newSet.
-	err := newSet.VerifyCommit(chainID, blockID, height, commit)
+	err := newSet.VerifyCommit(chainID, blockID, lastProposeInRound0, height, commit)
 	if err != nil {
 		return err
 	}
@@ -372,9 +373,10 @@ func (vals *ValidatorSet) VerifyFutureCommit(newSet *ValidatorSet, chainID strin
 		}
 		if precommit.Type != VoteTypePrecommit {
 			if precommit.Type == VoteTypePrevote {
-				if !bytes.Equal(vals.ProposerOfHeight.Address, precommit.ProposerAddress) {
-					return fmt.Errorf("Invalid commit -- type is prevote, but not signed from last round 0 proposer, want %v got %v", vals.ProposerOfHeight.Address, precommit.ProposerAddress)
-
+				if !lastProposeInRound0 {
+					return fmt.Errorf("Invalid commit -- type is prevote, but not signed for the block of last round 0 proposer, %v", vals.ProposerOfHeight.Address)
+				}else{
+					//passed check
 				}
 			} else {
 				return fmt.Errorf("Invalid commit -- invalid vote type @ index %v", idx)

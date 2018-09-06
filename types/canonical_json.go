@@ -16,11 +16,11 @@ type CanonicalJSONBlockID struct {
 	PartsHeader CanonicalJSONPartSetHeader `json:"parts,omitempty"`
 }
 
-/*type CanonicalJSONBlock struct {
+type CanonicalJSONBlock struct {
 	ChainID string       `json:"@chain_id"`
 	Type    string       `json:"@type"`
 	Hash    cmn.HexBytes `json:"hash,omitempty"`
-}*/
+}
 
 type CanonicalJSONPartSetHeader struct {
 	Hash  cmn.HexBytes `json:"hash,omitempty"`
@@ -39,14 +39,13 @@ type CanonicalJSONProposal struct {
 }
 
 type CanonicalJSONVote struct {
-	ChainID         string               `json:"@chain_id"`
-	Type            string               `json:"@type"`
-	BlockID         CanonicalJSONBlockID `json:"block_id"`
-	ProposerAddress Address              `json:"proposer_address"`
-	Height          int64                `json:"height"`
-	Round           int                  `json:"round"`
-	Timestamp       string               `json:"timestamp"`
-	VoteType        byte                 `json:"type"`
+	ChainID   string               `json:"@chain_id"`
+	Type      string               `json:"@type"`
+	BlockID   CanonicalJSONBlockID `json:"block_id"`
+	Height    int64                `json:"height"`
+	Round     int                  `json:"round"`
+	Timestamp string               `json:"timestamp"`
+	VoteType  byte                 `json:"type"`
 }
 
 type CanonicalJSONHeartbeat struct {
@@ -69,13 +68,13 @@ func CanonicalBlockID(blockID BlockID) CanonicalJSONBlockID {
 	}
 }
 
-/*func CanonicalBlock(chainID string, block *Block) CanonicalJSONBlock {
+func CanonicalBlock(chainID string, block *Block) CanonicalJSONBlock {
 	return CanonicalJSONBlock{
 		ChainID: chainID,
 		Type:    "block",
 		Hash:    block.Hash(),
 	}
-}*/
+}
 
 func CanonicalPartSetHeader(psh PartSetHeader) CanonicalJSONPartSetHeader {
 	return CanonicalJSONPartSetHeader{
@@ -99,14 +98,13 @@ func CanonicalProposal(chainID string, proposal *Proposal) CanonicalJSONProposal
 
 func CanonicalVote(chainID string, vote *Vote) CanonicalJSONVote {
 	return CanonicalJSONVote{
-		ChainID:      chainID,
-		Type:         "vote",
-		ProposerAddress: vote.ProposerAddress,
-		BlockID:      CanonicalBlockID(vote.BlockID),
-		Height:       vote.Height,
-		Round:        vote.Round,
-		Timestamp:    CanonicalTime(vote.Timestamp),
-		VoteType:     vote.Type,
+		ChainID:   chainID,
+		Type:      "vote",
+		BlockID:   CanonicalBlockID(vote.BlockID),
+		Height:    vote.Height,
+		Round:     vote.Round,
+		Timestamp: CanonicalTime(vote.Timestamp),
+		VoteType:  vote.Type,
 	}
 }
 

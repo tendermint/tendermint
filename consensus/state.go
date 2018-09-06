@@ -500,18 +500,13 @@ func (cs *ConsensusState) updateToState(state sm.State) {
 	validators := state.Validators
 	lastPrecommits := (*types.VoteSet)(nil)
 	if cs.CommitRound > -1 && cs.Votes != nil {
-		if (cs.CommitRound == 0) {
-			if !cs.Votes.Prevotes(cs.CommitRound).HasTwoThirdsMajority() {
-				cmn.PanicSanity("updateToState(state) called but last Precommit round didn't have +2/3")
-			}
+		if cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
+			lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+		} else if cs.Votes.Prevotes(cs.CommitRound).HasTwoThirdsMajority() && cs.ProposalBlock.Round == 0 {
 			lastPrecommits = cs.Votes.Prevotes(cs.CommitRound)
 		} else {
-			if !cs.Votes.Precommits(cs.CommitRound).HasTwoThirdsMajority() {
-				cmn.PanicSanity("updateToState(state) called but last Precommit round didn't have +2/3")
-			}
-			lastPrecommits = cs.Votes.Precommits(cs.CommitRound)
+			cmn.PanicSanity("updateToState(state) called but last Precommit round didn't have +2/3")
 		}
-
 	}
 
 	// Next desired block height
@@ -764,7 +759,7 @@ func (cs *ConsensusState) enterNewRound(height int64, round int) {
 		cs.Validators.ProposerOfHeight = cs.Validators.GetProposer().Copy()
 	} else {
 		logger.Info("Resetting Proposal info")
-		if cs.Proposal != nil && cs.Proposal.Round != 0 { //retain round 0 proposal
+		if cs.ProposalBlock == nil || cs.ProposalBlock.Round != 0 { //retain round 0 proposal
 			cs.Proposal = nil
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = nil
@@ -908,12 +903,6 @@ func (cs *ConsensusState) defaultDecideProposal(height int64, round int) {
 		cs.ProposalBlock = block
 		cs.ProposalBlockParts = blockParts
 		*/
-		if round == 0 {
-			/*	block.Signature = cs.privValidator.SignProposal(cs.state.ChainID, proposal);
-				err == nil{
-					//could use block.ProposerSignature to determine the lastcommits' type should be prevote or precommit
-				}*/
-		}
 
 		// send proposal and block parts on internal msg queue
 		cs.sendInternalMessage(msgInfo{&ProposalMessage{proposal}, ""})
@@ -970,8 +959,12 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	txs := cs.mempool.Reap(cs.state.ConsensusParams.BlockSize.MaxTxs)
 	evidence := cs.evpool.PendingEvidence()
 	proposerAddr := cs.privValidator.GetAddress()
-	block, parts := cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
-	return block, parts
+	block = cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
+	if cs.Round == 0 {
+		cs.privValidator.SignBlock(cs.state.ChainID, block)
+	}
+
+	return block, block.MakePartSet(cs.state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
 }
 
 // Enter: `timeoutPropose` after entering Propose.
@@ -985,19 +978,23 @@ func (cs *ConsensusState) enterPrevote(height int64, round int) {
 		return
 	}
 
+	// fire event for how we got here
+	if cs.isProposalComplete() {
+		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
+	} else {
+		if cs.Proposal.Round == 0 {
+			//round 0 proposal, must receive complete before send prevote
+			return
+		}
+		// we received +2/3 prevotes for a future round
+		// TODO: catchup event?
+	}
+
 	defer func() {
 		// Done enterPrevote:
 		cs.updateRoundStep(round, cstypes.RoundStepPrevote)
 		cs.newStep()
 	}()
-
-	// fire event for how we got here
-	if cs.isProposalComplete() {
-		cs.eventBus.PublishEventCompleteProposal(cs.RoundStateEvent())
-	} else {
-		// we received +2/3 prevotes for a future round
-		// TODO: catchup event?
-	}
 
 	cs.Logger.Info(cmn.Fmt("enterPrevote(%v/%v). Current: %v/%v/%v", height, round, cs.Height, cs.Round, cs.Step))
 
@@ -1013,14 +1010,14 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 	// If a block is locked, prevote that.
 	if cs.LockedBlock != nil {
 		logger.Info("enterPrevote: Block was locked")
-		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header(), cs.LockedBlock.ProposerAddress)
+		cs.signAddVote(types.VoteTypePrevote, cs.LockedBlock.Hash(), cs.LockedBlockParts.Header())
 		return
 	}
 
 	// If ProposalBlock is nil, prevote nil.
 	if cs.ProposalBlock == nil {
 		logger.Info("enterPrevote: ProposalBlock is nil")
-		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{}, nil)
+		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1029,7 +1026,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 	if err != nil {
 		// ProposalBlock is invalid, prevote nil.
 		logger.Error("enterPrevote: ProposalBlock is invalid", "err", err)
-		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{}, nil)
+		cs.signAddVote(types.VoteTypePrevote, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1037,7 +1034,7 @@ func (cs *ConsensusState) defaultDoPrevote(height int64, round int) {
 	// NOTE: the proposal signature is validated when it is received,
 	// and the proposal block parts are validated as they are received (against the merkle hash in the proposal)
 	logger.Info("enterPrevote: ProposalBlock is valid")
-	cs.signAddVote(types.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header(), cs.ProposalBlock.ProposerAddress)
+	cs.signAddVote(types.VoteTypePrevote, cs.ProposalBlock.Hash(), cs.ProposalBlockParts.Header())
 }
 
 // Enter: any +2/3 prevotes at next round.
@@ -1086,7 +1083,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 	}()
 
 	// check for a polka
-	blockID, _, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
+	blockID, ok := cs.Votes.Prevotes(round).TwoThirdsMajority()
 
 	// If we don't have a polka, we must precommit nil.
 	if !ok {
@@ -1095,7 +1092,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		} else {
 			logger.Info("enterPrecommit: No +2/3 prevotes during enterPrecommit. Precommitting nil.")
 		}
-		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{}, nil)
+		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1119,7 +1116,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 			cs.LockedBlockParts = nil
 			cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
 		}
-		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{}, nil)
+		cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 		return
 	}
 
@@ -1130,7 +1127,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		logger.Info("enterPrecommit: +2/3 prevoted locked block. Relocking")
 		cs.LockedRound = round
 		cs.eventBus.PublishEventRelock(cs.RoundStateEvent())
-		cs.signAddVote(types.VoteTypePrecommit, blockID.Hash, blockID.PartsHeader, cs.LockedBlock.ProposerAddress)
+		cs.signAddVote(types.VoteTypePrecommit, blockID.Hash, blockID.PartsHeader)
 		return
 	}
 
@@ -1145,7 +1142,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		cs.LockedBlock = cs.ProposalBlock
 		cs.LockedBlockParts = cs.ProposalBlockParts
 		cs.eventBus.PublishEventLock(cs.RoundStateEvent())
-		cs.signAddVote(types.VoteTypePrecommit, blockID.Hash, blockID.PartsHeader, cs.ProposalBlock.ProposerAddress)
+		cs.signAddVote(types.VoteTypePrecommit, blockID.Hash, blockID.PartsHeader)
 		return
 	}
 
@@ -1161,7 +1158,7 @@ func (cs *ConsensusState) enterPrecommit(height int64, round int) {
 		cs.ProposalBlockParts = types.NewPartSetFromHeader(blockID.PartsHeader)
 	}
 	cs.eventBus.PublishEventUnlock(cs.RoundStateEvent())
-	cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{}, nil)
+	cs.signAddVote(types.VoteTypePrecommit, nil, types.PartSetHeader{})
 }
 
 // Enter: any +2/3 precommits for next round.
@@ -1212,11 +1209,10 @@ func (cs *ConsensusState) enterCommit(height int64, commitRound int) {
 
 	var blockID types.BlockID
 	var ok bool
-	blockID, _, ok = cs.Votes.Precommits(commitRound).TwoThirdsMajority()
+	blockID, ok = cs.Votes.Precommits(commitRound).TwoThirdsMajority()
 	if !ok {
-		var proposerAddress types.Address
-		blockID, proposerAddress, ok = cs.Votes.Prevotes(commitRound).TwoThirdsMajority()
-		if !ok || !bytes.Equal(proposerAddress, cs.ProposalBlock.ProposerAddress) {
+		blockID, ok = cs.Votes.Prevotes(commitRound).TwoThirdsMajority()
+		if !ok || !cs.ProposalBlock.HashesTo(blockID.Hash) || cs.ProposalBlock.Round != 0 {
 			cmn.PanicSanity("enterCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
 
 		}
@@ -1255,11 +1251,10 @@ func (cs *ConsensusState) tryFinalizeCommit(height int64) {
 
 	var blockID types.BlockID
 	var ok bool
-	blockID, _, ok = cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
+	blockID, ok = cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok {
-		var proposerAddress types.Address
-		blockID, proposerAddress, ok = cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
-		if !ok || !bytes.Equal(proposerAddress, cs.ProposalBlock.ProposerAddress) {
+		blockID, ok = cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
+		if !ok || cs.ProposalBlock.Round != 0 {
 			cmn.PanicSanity("tryFinalizeCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
 
 		}
@@ -1288,14 +1283,15 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	var blockID types.BlockID
 	var ok bool
-	blockID, _, ok = cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
+	var proposeInRound0 bool
+	blockID, ok = cs.Votes.Precommits(cs.CommitRound).TwoThirdsMajority()
 	if !ok {
-		var proposerAddress types.Address
-		blockID, proposerAddress, ok = cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
-		if !ok || !bytes.Equal(proposerAddress, cs.ProposalBlock.ProposerAddress) || !bytes.Equal(cs.Validators.ProposerOfHeight.Address, cs.ProposalBlock.ProposerAddress) {
-			cmn.PanicSanity("Cannot finalizeCommit, expects +2/3 precommits or prevotes(if round 0 proposer)")
+		blockID, ok = cs.Votes.Prevotes(cs.CommitRound).TwoThirdsMajority()
+		if !ok || cs.ProposalBlock.Round != 0 {
+			cmn.PanicSanity("finalizeCommit expects +2/3 precommits or prevotes(if round 0 proposer)")
 
 		}
+		proposeInRound0 = true
 	}
 
 	block, blockParts := cs.ProposalBlock, cs.ProposalBlockParts
@@ -1320,8 +1316,8 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 		// NOTE: the seenCommit is local justification to commit this block,
 		// but may differ from the LastCommit included in the next block
 		var voteSet *types.VoteSet
-		if cs.CommitRound == 0 {
-			voteSet = cs.Votes.Prevotes(0)
+		if proposeInRound0 {
+			voteSet = cs.Votes.Prevotes(cs.CommitRound)
 		} else {
 			voteSet = cs.Votes.Precommits(cs.CommitRound)
 		}
@@ -1352,6 +1348,7 @@ func (cs *ConsensusState) finalizeCommit(height int64) {
 
 	fail.Fail() // XXX
 
+	cs.state.LastProposeInRound0 = proposeInRound0
 	// Create a copy of the state for staging and an event cache for txs.
 	stateCopy := cs.state.Copy()
 
@@ -1504,14 +1501,20 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		if err != nil {
 			return true, err
 		}
+		if cs.ProposalBlock.Round == 0 && (len(cs.ProposalBlock.Signature) == 0 || !cs.Validators.ProposerOfHeight.PubKey.VerifyBytes(cs.ProposalBlock.SignBytes(cs.state.ChainID),cs.ProposalBlock.Signature)) {
+			cs.Logger.Info("Received an invalid block claimed from round 0 proposer but not with valid signature",
+				"height", height, "round", round, "signature", cs.ProposalBlock.Signature, "peer", peerID)
+			cs.ProposalBlock = nil //invalid round 0 proposal block
+			return false,nil
+		}
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 
 		// Update Valid* if we can.
 		prevotes := cs.Votes.Prevotes(cs.Round)
-		blockID, proposerAddress, hasTwoThirds := prevotes.TwoThirdsMajority()
+		blockID, hasTwoThirds := prevotes.TwoThirdsMajority()
 		if hasTwoThirds && !blockID.IsZero() && (cs.ValidRound < cs.Round) {
-			if cs.ProposalBlock.HashesTo(blockID.Hash) && bytes.Equal(proposerAddress, cs.ProposalBlock.ProposerAddress) {
+			if cs.ProposalBlock.HashesTo(blockID.Hash) {
 				cs.Logger.Info("Updating valid block to new proposal block",
 					"valid-round", cs.Round, "valid-block-hash", cs.ProposalBlock.Hash())
 				cs.ValidRound = cs.Round
@@ -1619,7 +1622,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		cs.Logger.Info("Added to prevote", "vote", vote, "prevotes", prevotes.StringShort())
 
 		// If +2/3 prevotes for a block or nil for *any* round:
-		if blockID, _, ok := prevotes.TwoThirdsMajority(); ok {
+		if blockID, ok := prevotes.TwoThirdsMajority(); ok {
 
 			// There was a polka!
 			// If we're locked but this is a recent polka, unlock.
@@ -1658,13 +1661,14 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 		if cs.Round <= vote.Round && prevotes.HasTwoThirdsAny() {
 			// Round-skip over to PrevoteWait or goto Precommit.
 			cs.enterNewRound(height, vote.Round) // if the vote is ahead of us
-			blockID, proposerAddress, ok := prevotes.TwoThirdsMajority()
+			blockID, ok := prevotes.TwoThirdsMajority()
 			if ok {
 				if len(blockID.Hash) == 0 {
 					cs.enterNewRound(height, vote.Round+1)
 				} else {
-					if bytes.Equal(proposerAddress, cs.Validators.ProposerOfHeight.Address) {
-						cs.enterCommit(height, vote.Round)
+					if cs.ProposalBlock != nil && cs.Proposal != nil && cs.Proposal.Round == 0 && cs.ProposalBlock.HashesTo(blockID.Hash) { //has received round 0 proposal and round 0 block is ready
+						cs.enterPrevote(height, vote.Round) //send our prevote too
+						cs.enterCommit(height, vote.Round)  //round 0 proposal , skip precommit , commit directly
 					} else {
 						cs.enterPrecommit(height, vote.Round)
 					}
@@ -1683,7 +1687,7 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	case types.VoteTypePrecommit:
 		precommits := cs.Votes.Precommits(vote.Round)
 		cs.Logger.Info("Added to precommit", "vote", vote, "precommits", precommits.StringShort())
-		blockID, _, ok := precommits.TwoThirdsMajority()
+		blockID, ok := precommits.TwoThirdsMajority()
 		if ok {
 			if len(blockID.Hash) == 0 {
 				cs.enterNewRound(height, vote.Round+1)
@@ -1712,12 +1716,11 @@ func (cs *ConsensusState) addVote(vote *types.Vote, peerID p2p.ID) (added bool, 
 	return
 }
 
-func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader, proposerAddr types.Address) (*types.Vote, error) {
+func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSetHeader) (*types.Vote, error) {
 	addr := cs.privValidator.GetAddress()
 	valIndex, _ := cs.Validators.GetByAddress(addr)
 	vote := &types.Vote{
 		ValidatorAddress: addr,
-		ProposerAddress:  proposerAddr,
 		ValidatorIndex:   valIndex,
 		Height:           cs.Height,
 		Round:            cs.Round,
@@ -1730,12 +1733,12 @@ func (cs *ConsensusState) signVote(type_ byte, hash []byte, header types.PartSet
 }
 
 // sign the vote and publish on internalMsgQueue
-func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader, proposerAddr types.Address) *types.Vote {
+func (cs *ConsensusState) signAddVote(type_ byte, hash []byte, header types.PartSetHeader) *types.Vote {
 	// if we don't have a key or we're not in the validator set, do nothing
 	if cs.privValidator == nil || !cs.Validators.HasAddress(cs.privValidator.GetAddress()) {
 		return nil
 	}
-	vote, err := cs.signVote(type_, hash, header, proposerAddr)
+	vote, err := cs.signVote(type_, hash, header)
 	if err == nil {
 		cs.sendInternalMessage(msgInfo{&VoteMessage{vote}, ""})
 		cs.Logger.Info("Signed and pushed vote", "height", cs.Height, "round", cs.Round, "vote", vote, "err", err)

@@ -62,7 +62,6 @@ type Address = cmn.HexBytes
 // Represents a prevote, precommit, or commit vote from validators for consensus.
 type Vote struct {
 	ValidatorAddress Address   `json:"validator_address"`
-	ProposerAddress  Address   `json:"proposer_address"`
 	ValidatorIndex   int       `json:"validator_index"`
 	Height           int64     `json:"height"`
 	Round            int       `json:"round"`

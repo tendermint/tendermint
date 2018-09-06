@@ -62,7 +62,7 @@ func (bc *BaseVerifier) Certify(signedHeader types.SignedHeader) error {
 
 	// Check commit signatures.
 	err = bc.valset.VerifyCommit(
-		bc.chainID, signedHeader.Commit.BlockID,
+		bc.chainID, signedHeader.Commit.BlockID,false,
 		signedHeader.Height, signedHeader.Commit)
 	if err != nil {
 		return cmn.ErrorWrap(err, "in certify")

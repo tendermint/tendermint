@@ -117,7 +117,7 @@ func validateBlock(stateDB dbm.DB, state State, block *types.Block) error {
 			)
 		}
 		err := state.LastValidators.VerifyCommit(
-			state.ChainID, state.LastBlockID, block.Height-1, block.LastCommit)
+			state.ChainID, state.LastBlockID, state.LastProposeInRound0, block.Height-1, block.LastCommit)
 		if err != nil {
 			return err
 		}

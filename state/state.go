@@ -28,10 +28,11 @@ type State struct {
 	ChainID string
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight  int64
-	LastBlockTotalTx int64
-	LastBlockID      types.BlockID
-	LastBlockTime    time.Time
+	LastBlockHeight     int64
+	LastBlockTotalTx    int64
+	LastBlockID         types.BlockID
+	LastBlockTime       time.Time
+	LastProposeInRound0 bool
 
 	// LastValidators is used to validate block.LastCommit.
 	// Validators are persisted to the database separately every time they change,
@@ -63,6 +64,7 @@ func (state State) Copy() State {
 		LastBlockTotalTx: state.LastBlockTotalTx,
 		LastBlockID:      state.LastBlockID,
 		LastBlockTime:    state.LastBlockTime,
+		LastProposeInRound0: state.LastProposeInRound0,
 
 		NextValidators:              state.NextValidators.Copy(),
 		Validators:                  state.Validators.Copy(),
@@ -106,7 +108,7 @@ func (state State) MakeBlock(
 	commit *types.Commit,
 	evidence []types.Evidence,
 	proposerAddress []byte,
-) (*types.Block, *types.PartSet) {
+) (*types.Block) {
 
 	// Build base block with block data.
 	block := types.MakeBlock(height, txs, commit, evidence)
@@ -127,7 +129,7 @@ func (state State) MakeBlock(
 	// IncrementAccum for rounds there.
 	block.ProposerAddress = proposerAddress
 
-	return block, block.MakePartSet(state.ConsensusParams.BlockGossip.BlockPartSizeBytes)
+	return block
 }
 
 //------------------------------------------------------------------------

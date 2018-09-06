@@ -16,6 +16,7 @@ type PrivValidator interface {
 
 	SignVote(chainID string, vote *Vote) error
 	SignProposal(chainID string, proposal *Proposal) error
+	SignBlock(chainID string, block *Block) error
 	SignHeartbeat(chainID string, heartbeat *Heartbeat) error
 }
 
@@ -80,6 +81,16 @@ func (pv *MockPV) SignProposal(chainID string, proposal *Proposal) error {
 		return err
 	}
 	proposal.Signature = sig
+	return nil
+}
+
+func (pv *MockPV) SignBlock(chainID string, block *Block) error {
+	signBytes := block.SignBytes(chainID)
+	sig, err := pv.privKey.Sign(signBytes)
+	if err != nil {
+		return err
+	}
+	block.Signature = sig
 	return nil
 }
 
