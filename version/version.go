@@ -16,6 +16,9 @@ var (
 	GitCommit string
 )
 
+// ABCIVersion is the version of the ABCI library
+const ABCIVersion = "0.14.0"
+
 func init() {
 	if GitCommit != "" {
 		Version += "-" + GitCommit
