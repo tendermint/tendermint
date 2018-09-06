@@ -150,7 +150,7 @@ func (hvs *HeightVoteSet) POLInfo() (polRound int, polBlockID types.BlockID) {
 	defer hvs.mtx.Unlock()
 	for r := hvs.round; r >= 0; r-- {
 		rvs := hvs.getVoteSet(r, types.VoteTypePrevote)
-		polBlockID, _, ok := rvs.TwoThirdsMajority()
+		polBlockID, ok := rvs.TwoThirdsMajority()
 		if ok {
 			return r, polBlockID
 		}
