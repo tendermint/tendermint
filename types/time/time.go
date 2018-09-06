@@ -11,6 +11,8 @@ func Now() time.Time {
 }
 
 // Canonical returns UTC time with no monotonic component.
+// Stripping the monotonic component is for time equality.
+// See https://github.com/tendermint/tendermint/pull/2203#discussion_r215064334
 func Canonical(t time.Time) time.Time {
 	return t.Round(0).UTC()
 }
