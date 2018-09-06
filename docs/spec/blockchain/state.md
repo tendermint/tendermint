@@ -60,7 +60,7 @@ type Validator struct {
 }
 ```
 
-The `state.Validators` and `state.LastValidators` must always by sorted by validator address,
+The `state.Validators`, `state.LastValidators`, and `state.NextValidators`, must always by sorted by validator address,
 so that there is a canonical order for computing the SimpleMerkleRoot.
 
 We also define a `TotalVotingPower` function, to return the total voting power:
@@ -77,4 +77,59 @@ func TotalVotingPower(vals []Validators) int64{
 
 ### ConsensusParams
 
-This section is forthcoming. See [this issue](https://github.com/tendermint/tendermint/issues/1152).
+ConsensusParams define various limits for blockchain data structures.
+Like validator sets, they are set during genesis and can be updated by the application through ABCI.
+
+```
+type ConsensusParams struct {
+	BlockSize
+	TxSize
+	BlockGossip
+	EvidenceParams
+}
+
+type BlockSize struct {
+	MaxBytes        int
+	MaxGas          int64
+}
+
+type TxSize struct {
+	MaxBytes int
+	MaxGas   int64
+}
+
+type BlockGossip struct {
+	BlockPartSizeBytes int
+}
+
+type EvidenceParams struct {
+	MaxAge int64
+}
+```
+
+#### BlockSize
+
+The total size of a block is limitted in bytes by the `ConsensusParams.BlockSize.MaxBytes`.
+Proposed blocks must be less than this size, and will be considered invalid
+otherwise.
+
+Blocks should additionally be limitted by the amount of "gas" consumed by the
+transactions in the block, though this is not yet implemented.
+
+#### TxSize
+
+These parameters are not yet enforced and may disappear. See [issue
+#2347](https://github.com/tendermint/tendermint/issues/2347).
+
+#### BlockGossip
+
+When gossipping blocks in the consensus, they are first split into parts. The
+size of each part is `ConsensusParams.BlockGossip.BlockPartSizeBytes`.
+
+#### EvidenceParams
+
+For evidence in a block to be valid, it must satisfy:
+
+```
+block.Header.Height - evidence.Height < ConsensusParams.EvidenceParams.MaxAge
+```
