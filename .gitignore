@@ -25,6 +25,8 @@ scripts/cutWALUntil/cutWALUntil
 .idea/
 *.iml
 
+.vscode/
+
 libs/pubsub/query/fuzz_test/output
 shunit2
 
