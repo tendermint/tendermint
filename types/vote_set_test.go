@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/crypto"
+	crypto "github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
 	tst "github.com/tendermint/tendermint/libs/test"
 )
@@ -72,7 +72,7 @@ func TestAddVote(t *testing.T) {
 	if voteSet.BitArray().GetIndex(0) {
 		t.Errorf("Expected BitArray.GetIndex(0) to be false")
 	}
-	blockID, _,ok := voteSet.TwoThirdsMajority()
+	blockID, ok := voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
 		t.Errorf("There should be no 2/3 majority")
 	}
@@ -97,7 +97,7 @@ func TestAddVote(t *testing.T) {
 	if !voteSet.BitArray().GetIndex(0) {
 		t.Errorf("Expected BitArray.GetIndex(0) to be true")
 	}
-	blockID, _,ok = voteSet.TwoThirdsMajority()
+	blockID, ok = voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
 		t.Errorf("There should be no 2/3 majority")
 	}
@@ -124,7 +124,7 @@ func Test2_3Majority(t *testing.T) {
 			t.Error(err)
 		}
 	}
-	blockID, _, ok := voteSet.TwoThirdsMajority()
+	blockID, ok := voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
 		t.Errorf("There should be no 2/3 majority")
 	}
@@ -136,7 +136,7 @@ func Test2_3Majority(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		blockID, _, ok = voteSet.TwoThirdsMajority()
+		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority")
 		}
@@ -149,7 +149,7 @@ func Test2_3Majority(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		blockID, _, ok = voteSet.TwoThirdsMajority()
+		blockID, ok = voteSet.TwoThirdsMajority()
 		if !ok || !blockID.IsZero() {
 			t.Errorf("There should be 2/3 majority for nil")
 		}
@@ -182,7 +182,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 			t.Error(err)
 		}
 	}
-	blockID, _, ok := voteSet.TwoThirdsMajority()
+	blockID, ok := voteSet.TwoThirdsMajority()
 	if ok || !blockID.IsZero() {
 		t.Errorf("There should be no 2/3 majority")
 	}
@@ -194,7 +194,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		blockID, _, ok = voteSet.TwoThirdsMajority()
+		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority: last vote added was nil")
 		}
@@ -208,7 +208,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		blockID, _, ok = voteSet.TwoThirdsMajority()
+		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority: last vote added had different PartSetHeader Hash")
 		}
@@ -222,7 +222,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		blockID, _, ok = voteSet.TwoThirdsMajority()
+		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority: last vote added had different PartSetHeader Total")
 		}
@@ -235,7 +235,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		blockID, _, ok = voteSet.TwoThirdsMajority()
+		blockID, ok = voteSet.TwoThirdsMajority()
 		if ok || !blockID.IsZero() {
 			t.Errorf("There should be no 2/3 majority: last vote added had different BlockHash")
 		}
@@ -248,7 +248,7 @@ func Test2_3MajorityRedux(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		blockID, _, ok = voteSet.TwoThirdsMajority()
+		blockID, ok = voteSet.TwoThirdsMajority()
 		if !ok || !blockID.Equals(BlockID{blockHash, blockPartsHeader}) {
 			t.Errorf("There should be 2/3 majority")
 		}
@@ -435,7 +435,7 @@ func TestConflicts(t *testing.T) {
 	if !voteSet.HasTwoThirdsMajority() {
 		t.Errorf("We should have 2/3 majority for blockHash1")
 	}
-	blockIDMaj23, _ ,_:= voteSet.TwoThirdsMajority()
+	blockIDMaj23, _ := voteSet.TwoThirdsMajority()
 	if !bytes.Equal(blockIDMaj23.Hash, blockHash1) {
 		t.Errorf("Got the wrong 2/3 majority blockhash")
 	}
