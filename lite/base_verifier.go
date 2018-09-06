@@ -18,7 +18,7 @@ var _ Verifier = (*BaseVerifier)(nil)
 type BaseVerifier struct {
 	chainID             string
 	height              int64
-	lastProposeInRound0 bool
+	round 				int   //propose round, not vote consensus round
 	valset              *types.ValidatorSet
 }
 
@@ -31,7 +31,7 @@ func NewBaseVerifier(chainID string, height int64, valset *types.ValidatorSet) *
 	return &BaseVerifier{
 		chainID:             chainID,
 		height:              height,
-		lastProposeInRound0: false,
+		round: 					0,
 		valset:              valset,
 	}
 }
@@ -64,11 +64,11 @@ func (bc *BaseVerifier) Certify(signedHeader types.SignedHeader) error {
 
 	// Check commit signatures.
 	err = bc.valset.VerifyCommit(
-		bc.chainID, signedHeader.Commit.BlockID, bc.lastProposeInRound0,
+		bc.chainID, signedHeader.Commit.BlockID, bc.round==0,
 		signedHeader.Height, signedHeader.Commit)
 	if err != nil {
 		return cmn.ErrorWrap(err, "in certify")
 	}
-	bc.lastProposeInRound0 = signedHeader.Round == 0
+	bc.round = signedHeader.Round
 	return nil
 }

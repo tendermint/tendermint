@@ -960,6 +960,7 @@ func (cs *ConsensusState) createProposalBlock() (block *types.Block, blockParts 
 	evidence := cs.evpool.PendingEvidence()
 	proposerAddr := cs.privValidator.GetAddress()
 	block = cs.state.MakeBlock(cs.Height, txs, commit, evidence, proposerAddr)
+	block.Round = cs.Round
 	if cs.Round == 0 {
 		cs.privValidator.SignBlock(cs.state.ChainID, block)
 	}
