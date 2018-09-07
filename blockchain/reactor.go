@@ -318,13 +318,13 @@ FOR_LOOP:
 				// TODO: same thing for app - but we would need a way to
 				// get the hash without persisting the state
 				var err error
-				state.LastProposeInRound0 = bcR.store.LoadBlock(first.Height - 1).Round == 0
 				state, err = bcR.blockExec.ApplyBlock(state, firstID, first)
 				if err != nil {
 					// TODO This is bad, are we zombie?
 					cmn.PanicQ(cmn.Fmt("Failed to process committed block (%d:%X): %v",
 						first.Height, first.Hash(), err))
 				}
+				state.LastProposeInRound0 = first.Round == 0
 				blocksSynced++
 
 				if blocksSynced%100 == 0 {
