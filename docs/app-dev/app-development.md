@@ -1,5 +1,10 @@
 # Application Development Guide
 
+## XXX
+
+This page is undergoing deprecation. All content is being moved to the new [home
+of the ABCI specification](../spec/abci/README.md).
+
 ## ABCI Design
 
 The purpose of ABCI is to provide a clean interface between state

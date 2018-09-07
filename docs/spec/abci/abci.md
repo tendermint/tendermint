@@ -1,12 +1,6 @@
-# Application Blockchain Interface (ABCI)
+# ABCI Methods and Types
 
 ## Overview
-
-ABCI is the interface between Tendermint (a state-machine replication engine)
-and an application (the actual state machine). It consists of a set of
-*methods*, where each method has a corresponding `Request` and `Response` type.
-Tendermint calls the methods on the ABCI application by sending the `Request*`
-messages and receiving the `Response*` messages in return.
 
 The ABCI message types are defined in a [protobuf
 file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
@@ -25,7 +19,6 @@ The `Info Connection` is for initialization and for queries from the user.
 
 Additionally, there is a `Flush` method that is called on every connection,
 and an `Echo` method that is just for debugging.
-
 
 ## Errors
 
