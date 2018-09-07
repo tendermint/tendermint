@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -82,8 +81,11 @@ func TestOpenAutoFilePerms(t *testing.T) {
 	// reopen and expect an PermissionsChangedErr as Cause
 	af, err = OpenAutoFile(name)
 	require.Error(t, err)
-	t.Log(err)
-	require.Equal(t, errors.Cause(err), PermissionsChangedErr)
+	if e, ok := err.(PermissionsChangedErr); ok {
+		t.Logf("%v", e)
+	} else {
+		t.Errorf("unexpected error %v", e)
+	}
 
 	err = af.Close()
 	require.NoError(t, err)

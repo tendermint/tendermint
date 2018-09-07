@@ -6,8 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
@@ -38,7 +36,12 @@ const (
 	autoFilePerms        = os.FileMode(0600)
 )
 
-var PermissionsChangedErr = errors.New("file permissions changed")
+// PermissionsChangedErr occurs if the file permission have changed since the file was created.
+type PermissionsChangedErr string
+
+func (e PermissionsChangedErr) Error() string {
+	return string(e)
+}
 
 // Automatically closes and re-opens file for writing.
 // This is useful for using a log file with the logrotate tool.
@@ -131,8 +134,8 @@ func (af *AutoFile) openFile() error {
 		return err
 	}
 	if fileInfo.Mode() != autoFilePerms {
-		return errors.WithMessage(PermissionsChangedErr,
-			fmt.Sprintf("expected file permissions: %v, got: %v", autoFilePerms, fileInfo.Mode()))
+		return PermissionsChangedErr(fmt.Sprintf("file: [%v]\nexpected file permissions: %v, got: %v",
+			file.Name(), autoFilePerms, fileInfo.Mode()))
 	}
 	af.file = file
 	return nil
