@@ -160,6 +160,20 @@ func (vals *ValidatorSet) GetProposer() (proposer *Validator) {
 	return vals.Proposer.Copy()
 }
 
+func (vals *ValidatorSet) GetProposerOfHeight() (proposer *Validator) {
+	if len(vals.Validators) == 0 {
+		return nil
+	}
+	if vals.ProposerOfHeight == nil {
+		if vals.Proposer != nil {
+			vals.ProposerOfHeight = vals.Proposer
+		} else {
+			vals.ProposerOfHeight = vals.findProposer()
+		}
+	}
+	return vals.ProposerOfHeight.Copy()
+}
+
 func (vals *ValidatorSet) findProposer() *Validator {
 	var proposer *Validator
 	for _, val := range vals.Validators {
