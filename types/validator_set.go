@@ -24,7 +24,7 @@ type ValidatorSet struct {
 	// NOTE: persisted via reflect, must be exported.
 	Validators       []*Validator `json:"validators"`
 	Proposer         *Validator   `json:"proposer"`
-
+	ProposerOfHeight *Validator   `json:"proposer_of_height"`
 	// cached (unexported)
 	totalVotingPower int64
 }
