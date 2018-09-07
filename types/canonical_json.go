@@ -4,6 +4,7 @@ import (
 	"time"
 
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // Canonical json is amino's json for structs with fields in alphabetical order
@@ -110,5 +111,5 @@ func CanonicalTime(t time.Time) string {
 	// Note that sending time over amino resets it to
 	// local time, we need to force UTC here, so the
 	// signatures match
-	return t.UTC().Format(TimeFormat)
+	return tmtime.Canonical(t).Format(TimeFormat)
 }

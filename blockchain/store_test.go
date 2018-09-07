@@ -6,7 +6,6 @@ import (
 	"runtime/debug"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -14,6 +13,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestLoadBlockStoreStateJSON(t *testing.T) {
@@ -49,7 +49,7 @@ func TestNewBlockStore(t *testing.T) {
 			return nil, nil
 		})
 		require.NotNil(t, panicErr, "#%d panicCauser: %q expected a panic", i, tt.data)
-		assert.Contains(t, panicErr.Error(), tt.wantErr, "#%d data: %q", i, tt.data)
+		assert.Contains(t, fmt.Sprintf("%#v", panicErr), tt.wantErr, "#%d data: %q", i, tt.data)
 	}
 
 	db.Set(blockStoreKey, nil)
@@ -70,7 +70,7 @@ var (
 	part1       = partSet.GetPart(0)
 	part2       = partSet.GetPart(1)
 	seenCommit1 = &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: time.Now().UTC()}}}
+		Timestamp: tmtime.Now()}}}
 )
 
 // TODO: This test should be simplified ...
@@ -91,7 +91,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	block := makeBlock(bs.Height()+1, state)
 	validPartSet := block.MakePartSet(2)
 	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: time.Now().UTC()}}}
+		Timestamp: tmtime.Now()}}}
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")
 
@@ -103,7 +103,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		Height:  1,
 		NumTxs:  100,
 		ChainID: "block_test",
-		Time:    time.Now(),
+		Time:    tmtime.Now(),
 	}
 	header2 := header1
 	header2.Height = 4
@@ -111,7 +111,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 	// End of setup, test data
 
 	commitAtH10 := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: time.Now().UTC()}}}
+		Timestamp: tmtime.Now()}}}
 	tuples := []struct {
 		block      *types.Block
 		parts      *types.PartSet
@@ -238,7 +238,7 @@ func TestBlockStoreSaveLoadBlock(t *testing.T) {
 		if subStr := tuple.wantPanic; subStr != "" {
 			if panicErr == nil {
 				t.Errorf("#%d: want a non-nil panic", i)
-			} else if got := panicErr.Error(); !strings.Contains(got, subStr) {
+			} else if got := fmt.Sprintf("%#v", panicErr); !strings.Contains(got, subStr) {
 				t.Errorf("#%d:\n\tgotErr: %q\nwant substring: %q", i, got, subStr)
 			}
 			continue
@@ -335,7 +335,7 @@ func TestBlockFetchAtHeight(t *testing.T) {
 
 	partSet := block.MakePartSet(2)
 	seenCommit := &types.Commit{Precommits: []*types.Vote{{Height: 10,
-		Timestamp: time.Now().UTC()}}}
+		Timestamp: tmtime.Now()}}}
 
 	bs.SaveBlock(block, partSet, seenCommit)
 	require.Equal(t, bs.Height(), block.Header.Height, "expecting the new height to be changed")

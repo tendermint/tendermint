@@ -28,7 +28,7 @@ send & receive rate per connection (`SendRate`, `RecvRate`).
 ### RPC
 
 Endpoints returning multiple entries are limited by default to return 30
-elements (100 max).
+elements (100 max). See [here](./rpc.md) for more information about the RPC.
 
 Rate-limiting and authentication are another key aspects to help protect
 against DOS attacks. While in the future we may implement these
@@ -40,12 +40,12 @@ to achieve the same things.
 ## Debugging Tendermint
 
 If you ever have to debug Tendermint, the first thing you should
-probably do is to check out the logs. See ["How to read
-logs"](./how-to-read-logs.md), where we explain what certain log
+probably do is to check out the logs. See [How to read
+logs](./how-to-read-logs.md), where we explain what certain log
 statements mean.
 
 If, after skimming through the logs, things are not clear still, the
-second TODO is to query the /status RPC endpoint. It provides the
+next thing to try is query the /status RPC endpoint. It provides the
 necessary info: whenever the node is syncing or not, what height it is
 on, etc.
 
@@ -80,7 +80,7 @@ Other useful endpoints include mentioned earlier `/status`, `/net_info` and
 
 We have a small tool, called `tm-monitor`, which outputs information from
 the endpoints above plus some statistics. The tool can be found
-[here](https://github.com/tendermint/tools/tree/master/tm-monitor).
+[here](https://github.com/tendermint/tendermint/tree/master/tools/tm-monitor).
 
 Tendermint also can report and serve Prometheus metrics. See
 [Metrics](./metrics.md).
@@ -135,36 +135,37 @@ Tendermint, replay will fail with panic.
 
 Recovering from data corruption can be hard and time-consuming. Here are two approaches you can take:
 
-1) Delete the WAL file and restart Tendermint. It will attempt to sync with other peers.
-2) Try to repair the WAL file manually:
+1. Delete the WAL file and restart Tendermint. It will attempt to sync with other peers.
+2. Try to repair the WAL file manually:
 
-  1. Create a backup of the corrupted WAL file:
+1) Create a backup of the corrupted WAL file:
 
 ```
 cp "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal_backup
 ```
 
-  2. Use `./scripts/wal2json` to create a human-readable version
+2. Use `./scripts/wal2json` to create a human-readable version
 
 ```
 ./scripts/wal2json/wal2json "$TMHOME/data/cs.wal/wal" > /tmp/corrupted_wal
 ```
 
-  3. Search for a "CORRUPTED MESSAGE" line.
-  4. By looking at the previous message and the message after the corrupted one
-       and looking at the logs, try to rebuild the message. If the consequent
-       messages are marked as corrupted too (this may happen if length header
-       got corrupted or some writes did not make it to the WAL ~ truncation),
-       then remove all the lines starting from the corrupted one and restart
-       Tendermint.
+3. Search for a "CORRUPTED MESSAGE" line.
+4. By looking at the previous message and the message after the corrupted one
+   and looking at the logs, try to rebuild the message. If the consequent
+   messages are marked as corrupted too (this may happen if length header
+   got corrupted or some writes did not make it to the WAL ~ truncation),
+   then remove all the lines starting from the corrupted one and restart
+   Tendermint.
 
 ```
 $EDITOR /tmp/corrupted_wal
 ```
-  5. After editing, convert this file back into binary form by running:
+
+5. After editing, convert this file back into binary form by running:
 
 ```
-./scripts/json2wal/json2wal /tmp/corrupted_wal > "$TMHOME/data/cs.wal/wal"
+./scripts/json2wal/json2wal /tmp/corrupted_wal  $TMHOME/data/cs.wal/wal
 ```
 
 ## Hardware
@@ -206,14 +207,15 @@ operation systems (like Mac OS).
 ### Miscellaneous
 
 NOTE: if you are going to use Tendermint in a public domain, make sure
-you read [hardware recommendations (see "4.
-Hardware")](https://cosmos.network/validators) for a validator in the
+you read [hardware recommendations](https://cosmos.network/validators) for a validator in the
 Cosmos network.
 
 ## Configuration parameters
 
-- `p2p.flush_throttle_timeout` `p2p.max_packet_msg_payload_size`
-  `p2p.send_rate` `p2p.recv_rate`
+- `p2p.flush_throttle_timeout`
+- `p2p.max_packet_msg_payload_size`
+- `p2p.send_rate`
+- `p2p.recv_rate`
 
 If you are going to use Tendermint in a private domain and you have a
 private high-speed network among your peers, it makes sense to lower
@@ -268,9 +270,9 @@ saving it to the address book. The address is considered as routable if the IP
 is [valid and within allowed
 ranges](https://github.com/tendermint/tendermint/blob/27bd1deabe4ba6a2d9b463b8f3e3f1e31b993e61/p2p/netaddress.go#L209).
 
-This may not be the case for private networks, where your IP range is usually
+This may not be the case for private or local networks, where your IP range is usually
 strictly limited and private. If that case, you need to set `addr_book_strict`
-to `false` (turn off).
+to `false` (turn it off).
 
 - `rpc.max_open_connections`
 

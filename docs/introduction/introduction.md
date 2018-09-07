@@ -90,7 +90,7 @@ it can be used as a plug-and-play replacement for the consensus engines
 of other blockchain software. So one can take the current Ethereum code
 base, whether in Rust, or Go, or Haskell, and run it as a ABCI
 application using Tendermint consensus. Indeed, [we did that with
-Ethereum](https://github.com/tendermint/ethermint). And we plan to do
+Ethereum](https://github.com/cosmos/ethermint). And we plan to do
 the same for Bitcoin, ZCash, and various other deterministic
 applications as well.
 
@@ -227,7 +227,7 @@ design their message handlers to create a blockchain that does anything
 useful but this architecture provides a place to start. The diagram
 below illustrates the flow of messages via ABCI.
 
-![](assets/abci.png)
+![](../imgs/abci.png)
 
 ## A Note on Determinism
 
@@ -263,7 +263,7 @@ Tendermint is an easy-to-understand, mostly asynchronous, BFT consensus
 protocol. The protocol follows a simple state machine that looks like
 this:
 
-![](assets/consensus_logic.png)
+![](../imgs/consensus_logic.png)
 
 Participants in the protocol are called **validators**; they take turns
 proposing blocks of transactions and voting on them. Blocks are
@@ -321,7 +321,7 @@ consensus protocol. This adds an economic element to the security of the
 protocol, allowing one to quantify the cost of violating the assumption
 that less than one-third of voting power is Byzantine.
 
-The [Cosmos Network](http://cosmos.network) is designed to use this
+The [Cosmos Network](https://cosmos.network) is designed to use this
 Proof-of-Stake mechanism across an array of cryptocurrencies implemented
 as ABCI applications.
 
@@ -329,4 +329,4 @@ The following diagram is Tendermint in a (technical) nutshell. [See here
 for high resolution
 version](https://github.com/mobfoundry/hackatom/blob/master/tminfo.pdf).
 
-![](assets/tm-transaction-flow.png)
+![](../imgs/tm-transaction-flow.png)

@@ -13,6 +13,20 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+const (
+	// MaxHeaderBytes is a maximum header size (including amino overhead).
+	MaxHeaderBytes = 511
+
+	// MaxAminoOverheadForBlock - maximum amino overhead to encode a block (up to
+	// MaxBlockSizeBytes in size) not including it's parts except Data.
+	//
+	// Uvarint length of MaxBlockSizeBytes: 4 bytes
+	// 2 fields (2 embedded):               2 bytes
+	// Uvarint length of Data.Txs:          4 bytes
+	// Data.Txs field:                      1 byte
+	MaxAminoOverheadForBlock = 11
+)
+
 // Block defines the atomic unit of a Tendermint blockchain.
 // TODO: add Version byte
 type Block struct {
@@ -23,20 +37,20 @@ type Block struct {
 	LastCommit *Commit      `json:"last_commit"`
 }
 
-// MakeBlock returns a new block with an empty header, except what can be computed from itself.
-// It populates the same set of fields validated by ValidateBasic
-func MakeBlock(height int64, txs []Tx, commit *Commit, evidence []Evidence) *Block {
+// MakeBlock returns a new block with an empty header, except what can be
+// computed from itself.
+// It populates the same set of fields validated by ValidateBasic.
+func MakeBlock(height int64, txs []Tx, lastCommit *Commit, evidence []Evidence) *Block {
 	block := &Block{
 		Header: Header{
 			Height: height,
-			Time:   time.Now(),
 			NumTxs: int64(len(txs)),
 		},
 		Data: Data{
 			Txs: txs,
 		},
 		Evidence:   EvidenceData{Evidence: evidence},
-		LastCommit: commit,
+		LastCommit: lastCommit,
 	}
 	block.fillHeader()
 	return block
@@ -53,10 +67,18 @@ func (b *Block) ValidateBasic() error {
 
 	newTxs := int64(len(b.Data.Txs))
 	if b.NumTxs != newTxs {
-		return fmt.Errorf("Wrong Block.Header.NumTxs. Expected %v, got %v", newTxs, b.NumTxs)
+		return fmt.Errorf(
+			"Wrong Block.Header.NumTxs. Expected %v, got %v",
+			newTxs,
+			b.NumTxs,
+		)
 	}
 	if !bytes.Equal(b.LastCommitHash, b.LastCommit.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.LastCommitHash.  Expected %v, got %v", b.LastCommitHash, b.LastCommit.Hash())
+		return fmt.Errorf(
+			"Wrong Block.Header.LastCommitHash.  Expected %v, got %v",
+			b.LastCommitHash,
+			b.LastCommit.Hash(),
+		)
 	}
 	if b.Header.Height != 1 {
 		if err := b.LastCommit.ValidateBasic(); err != nil {
@@ -64,10 +86,18 @@ func (b *Block) ValidateBasic() error {
 		}
 	}
 	if !bytes.Equal(b.DataHash, b.Data.Hash()) {
-		return fmt.Errorf("Wrong Block.Header.DataHash.  Expected %v, got %v", b.DataHash, b.Data.Hash())
+		return fmt.Errorf(
+			"Wrong Block.Header.DataHash.  Expected %v, got %v",
+			b.DataHash,
+			b.Data.Hash(),
+		)
 	}
 	if !bytes.Equal(b.EvidenceHash, b.Evidence.Hash()) {
-		return errors.New(cmn.Fmt("Wrong Block.Header.EvidenceHash.  Expected %v, got %v", b.EvidenceHash, b.Evidence.Hash()))
+		return fmt.Errorf(
+			"Wrong Block.Header.EvidenceHash.  Expected %v, got %v",
+			b.EvidenceHash,
+			b.Evidence.Hash(),
+		)
 	}
 	return nil
 }
@@ -177,29 +207,32 @@ func (b *Block) StringShort() string {
 // Header defines the structure of a Tendermint block header
 // TODO: limit header size
 // NOTE: changes to the Header should be duplicated in the abci Header
+// and in /docs/spec/blockchain/blockchain.md
 type Header struct {
 	// basic block info
-	ChainID string    `json:"chain_id"`
-	Height  int64     `json:"height"`
-	Time    time.Time `json:"time"`
-	NumTxs  int64     `json:"num_txs"`
+	ChainID  string    `json:"chain_id"`
+	Height   int64     `json:"height"`
+	Time     time.Time `json:"time"`
+	NumTxs   int64     `json:"num_txs"`
+	TotalTxs int64     `json:"total_txs"`
 
 	// prev block info
 	LastBlockID BlockID `json:"last_block_id"`
-	TotalTxs    int64   `json:"total_txs"`
 
 	// hashes of block data
 	LastCommitHash cmn.HexBytes `json:"last_commit_hash"` // commit from validators from the last block
 	DataHash       cmn.HexBytes `json:"data_hash"`        // transactions
 
 	// hashes from the app output from the prev block
-	ValidatorsHash  cmn.HexBytes `json:"validators_hash"`   // validators for the current block
-	ConsensusHash   cmn.HexBytes `json:"consensus_hash"`    // consensus params for current block
-	AppHash         cmn.HexBytes `json:"app_hash"`          // state after txs from the previous block
-	LastResultsHash cmn.HexBytes `json:"last_results_hash"` // root hash of all results from the txs from the previous block
+	ValidatorsHash     cmn.HexBytes `json:"validators_hash"`      // validators for the current block
+	NextValidatorsHash cmn.HexBytes `json:"next_validators_hash"` // validators for the next block
+	ConsensusHash      cmn.HexBytes `json:"consensus_hash"`       // consensus params for current block
+	AppHash            cmn.HexBytes `json:"app_hash"`             // state after txs from the previous block
+	LastResultsHash    cmn.HexBytes `json:"last_results_hash"`    // root hash of all results from the txs from the previous block
 
 	// consensus info
-	EvidenceHash cmn.HexBytes `json:"evidence_hash"` // evidence included in the block
+	EvidenceHash    cmn.HexBytes `json:"evidence_hash"`    // evidence included in the block
+	ProposerAddress Address      `json:"proposer_address"` // original proposer of the block
 }
 
 // Hash returns the hash of the header.
@@ -211,19 +244,21 @@ func (h *Header) Hash() cmn.HexBytes {
 		return nil
 	}
 	return merkle.SimpleHashFromMap(map[string]merkle.Hasher{
-		"ChainID":     aminoHasher(h.ChainID),
-		"Height":      aminoHasher(h.Height),
-		"Time":        aminoHasher(h.Time),
-		"NumTxs":      aminoHasher(h.NumTxs),
-		"TotalTxs":    aminoHasher(h.TotalTxs),
-		"LastBlockID": aminoHasher(h.LastBlockID),
-		"LastCommit":  aminoHasher(h.LastCommitHash),
-		"Data":        aminoHasher(h.DataHash),
-		"Validators":  aminoHasher(h.ValidatorsHash),
-		"App":         aminoHasher(h.AppHash),
-		"Consensus":   aminoHasher(h.ConsensusHash),
-		"Results":     aminoHasher(h.LastResultsHash),
-		"Evidence":    aminoHasher(h.EvidenceHash),
+		"ChainID":        aminoHasher(h.ChainID),
+		"Height":         aminoHasher(h.Height),
+		"Time":           aminoHasher(h.Time),
+		"NumTxs":         aminoHasher(h.NumTxs),
+		"TotalTxs":       aminoHasher(h.TotalTxs),
+		"LastBlockID":    aminoHasher(h.LastBlockID),
+		"LastCommit":     aminoHasher(h.LastCommitHash),
+		"Data":           aminoHasher(h.DataHash),
+		"Validators":     aminoHasher(h.ValidatorsHash),
+		"NextValidators": aminoHasher(h.NextValidatorsHash),
+		"App":            aminoHasher(h.AppHash),
+		"Consensus":      aminoHasher(h.ConsensusHash),
+		"Results":        aminoHasher(h.LastResultsHash),
+		"Evidence":       aminoHasher(h.EvidenceHash),
+		"Proposer":       aminoHasher(h.ProposerAddress),
 	})
 }
 
@@ -242,10 +277,12 @@ func (h *Header) StringIndented(indent string) string {
 %s  LastCommit:     %v
 %s  Data:           %v
 %s  Validators:     %v
+%s  NextValidators: %v
 %s  App:            %v
 %s  Consensus:       %v
 %s  Results:        %v
 %s  Evidence:       %v
+%s  Proposer:       %v
 %s}#%v`,
 		indent, h.ChainID,
 		indent, h.Height,
@@ -256,10 +293,12 @@ func (h *Header) StringIndented(indent string) string {
 		indent, h.LastCommitHash,
 		indent, h.DataHash,
 		indent, h.ValidatorsHash,
+		indent, h.NextValidatorsHash,
 		indent, h.AppHash,
 		indent, h.ConsensusHash,
 		indent, h.LastResultsHash,
 		indent, h.EvidenceHash,
+		indent, h.ProposerAddress,
 		indent, h.Hash())
 }
 
@@ -353,6 +392,7 @@ func (commit *Commit) IsCommit() bool {
 }
 
 // ValidateBasic performs basic validation that doesn't involve state data.
+// Does not actually check the cryptographic signatures.
 func (commit *Commit) ValidateBasic() error {
 	if commit.BlockID.IsZero() {
 		return errors.New("Commit cannot be for nil block")
@@ -362,23 +402,23 @@ func (commit *Commit) ValidateBasic() error {
 	}
 	height, round := commit.Height(), commit.Round()
 
-	// validate the precommits
+	// Validate the precommits.
 	for _, precommit := range commit.Precommits {
 		// It's OK for precommits to be missing.
 		if precommit == nil {
 			continue
 		}
-		// Ensure that all votes are precommits
+		// Ensure that all votes are precommits.
 		if precommit.Type != VoteTypePrecommit {
 			return fmt.Errorf("Invalid commit vote. Expected precommit, got %v",
 				precommit.Type)
 		}
-		// Ensure that all heights are the same
+		// Ensure that all heights are the same.
 		if precommit.Height != height {
 			return fmt.Errorf("Invalid commit precommit height. Expected %v, got %v",
 				height, precommit.Height)
 		}
-		// Ensure that all rounds are the same
+		// Ensure that all rounds are the same.
 		if precommit.Round != round {
 			return fmt.Errorf("Invalid commit precommit round. Expected %v, got %v",
 				round, precommit.Round)
@@ -413,19 +453,77 @@ func (commit *Commit) StringIndented(indent string) string {
 	}
 	return fmt.Sprintf(`Commit{
 %s  BlockID:    %v
-%s  Precommits: %v
+%s  Precommits:
+%s    %v
 %s}#%v`,
 		indent, commit.BlockID,
-		indent, strings.Join(precommitStrings, "\n"+indent+"  "),
+		indent,
+		indent, strings.Join(precommitStrings, "\n"+indent+"    "),
 		indent, commit.hash)
 }
 
 //-----------------------------------------------------------------------------
 
-// SignedHeader is a header along with the commits that prove it
+// SignedHeader is a header along with the commits that prove it.
 type SignedHeader struct {
-	Header *Header `json:"header"`
-	Commit *Commit `json:"commit"`
+	*Header `json:"header"`
+	Commit  *Commit `json:"commit"`
+}
+
+// ValidateBasic does basic consistency checks and makes sure the header
+// and commit are consistent.
+//
+// NOTE: This does not actually check the cryptographic signatures.  Make
+// sure to use a Verifier to validate the signatures actually provide a
+// significantly strong proof for this header's validity.
+func (sh SignedHeader) ValidateBasic(chainID string) error {
+
+	// Make sure the header is consistent with the commit.
+	if sh.Header == nil {
+		return errors.New("SignedHeader missing header.")
+	}
+	if sh.Commit == nil {
+		return errors.New("SignedHeader missing commit (precommit votes).")
+	}
+	// Check ChainID.
+	if sh.ChainID != chainID {
+		return fmt.Errorf("Header belongs to another chain '%s' not '%s'",
+			sh.ChainID, chainID)
+	}
+	// Check Height.
+	if sh.Commit.Height() != sh.Height {
+		return fmt.Errorf("SignedHeader header and commit height mismatch: %v vs %v",
+			sh.Height, sh.Commit.Height())
+	}
+	// Check Hash.
+	hhash := sh.Hash()
+	chash := sh.Commit.BlockID.Hash
+	if !bytes.Equal(hhash, chash) {
+		return fmt.Errorf("SignedHeader commit signs block %X, header is block %X",
+			chash, hhash)
+	}
+	// ValidateBasic on the Commit.
+	err := sh.Commit.ValidateBasic()
+	if err != nil {
+		return cmn.ErrorWrap(err, "commit.ValidateBasic failed during SignedHeader.ValidateBasic")
+	}
+	return nil
+}
+
+func (sh SignedHeader) String() string {
+	return sh.StringIndented("")
+}
+
+// StringIndented returns a string representation of the SignedHeader.
+func (sh SignedHeader) StringIndented(indent string) string {
+	return fmt.Sprintf(`SignedHeader{
+%s  %v
+%s  %v
+%s}`,
+		indent, sh.Header.StringIndented(indent+"  "),
+		indent, sh.Commit.StringIndented(indent+"  "),
+		indent)
+	return ""
 }
 
 //-----------------------------------------------------------------------------

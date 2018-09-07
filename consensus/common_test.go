@@ -25,6 +25,7 @@ import (
 	"github.com/tendermint/tendermint/privval"
 	sm "github.com/tendermint/tendermint/state"
 	"github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 
 	"github.com/tendermint/tendermint/abci/example/counter"
 	"github.com/tendermint/tendermint/abci/example/kvstore"
@@ -75,7 +76,7 @@ func (vs *validatorStub) signVote(voteType byte, hash []byte, header types.PartS
 		ValidatorAddress: vs.PrivValidator.GetAddress(),
 		Height:           vs.Height,
 		Round:            vs.Round,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             voteType,
 		BlockID:          types.BlockID{hash, header},
 	}
@@ -348,13 +349,13 @@ func randConsensusNet(nValidators int, testName string, tickerFunc func() Timeou
 	for i := 0; i < nValidators; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		for _, opt := range configOpts {
 			opt(thisConfig)
 		}
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		app := appFunc()
-		vals := types.TM2PB.Validators(state.Validators)
+		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVals[i], app)
@@ -372,7 +373,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 	for i := 0; i < nPeers; i++ {
 		stateDB := dbm.NewMemDB() // each state needs its own db
 		state, _ := sm.LoadStateFromDBOrGenesisDoc(stateDB, genDoc)
-		thisConfig := ResetConfig(cmn.Fmt("%s_%d", testName, i))
+		thisConfig := ResetConfig(fmt.Sprintf("%s_%d", testName, i))
 		ensureDir(path.Dir(thisConfig.Consensus.WalFile()), 0700) // dir for wal
 		var privVal types.PrivValidator
 		if i < nValidators {
@@ -386,7 +387,7 @@ func randConsensusNetWithPeers(nValidators, nPeers int, testName string, tickerF
 		}
 
 		app := appFunc()
-		vals := types.TM2PB.Validators(state.Validators)
+		vals := types.TM2PB.ValidatorUpdates(state.Validators)
 		app.InitChain(abci.RequestInitChain{Validators: vals})
 
 		css[i] = newConsensusStateWithConfig(thisConfig, state, privVal, app)
@@ -423,7 +424,7 @@ func randGenesisDoc(numValidators int, randPower bool, minPower int64) (*types.G
 	sort.Sort(types.PrivValidatorsByAddress(privValidators))
 
 	return &types.GenesisDoc{
-		GenesisTime: time.Now(),
+		GenesisTime: tmtime.Now(),
 		ChainID:     config.ChainID(),
 		Validators:  validators,
 	}, privValidators

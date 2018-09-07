@@ -40,6 +40,7 @@ import (
 	"github.com/tendermint/tendermint/version"
 
 	_ "net/http/pprof"
+	"strings"
 )
 
 //------------------------------------------------------------------------------
@@ -80,8 +81,14 @@ type NodeProvider func(*cfg.Config, log.Logger) (*Node, error)
 // PrivValidator, ClientCreator, GenesisDoc, and DBProvider.
 // It implements NodeProvider.
 func DefaultNewNode(config *cfg.Config, logger log.Logger) (*Node, error) {
+	// Generate node PrivKey
+	nodeKey, err := p2p.LoadOrGenNodeKey(config.NodeKeyFile())
+	if err != nil {
+		return nil, err
+	}
 	return NewNode(config,
 		privval.LoadOrGenFilePV(config.PrivValidatorFile()),
+		nodeKey,
 		proxy.DefaultClientCreator(config.ProxyApp, config.ABCI, config.DBDir()),
 		DefaultGenesisDocProviderFunc(config),
 		DefaultDBProvider,
@@ -119,6 +126,7 @@ type Node struct {
 	// network
 	sw       *p2p.Switch  // p2p connections
 	addrBook pex.AddrBook // known peers
+	nodeKey  *p2p.NodeKey // our node privkey
 
 	// services
 	eventBus         *types.EventBus // pub/sub for services
@@ -139,6 +147,7 @@ type Node struct {
 // NewNode returns a new, ready to go, Tendermint Node.
 func NewNode(config *cfg.Config,
 	privValidator types.PrivValidator,
+	nodeKey *p2p.NodeKey,
 	clientCreator proxy.ClientCreator,
 	genesisDocProvider GenesisDocProvider,
 	dbProvider DBProvider,
@@ -232,13 +241,15 @@ func NewNode(config *cfg.Config,
 	csMetrics, p2pMetrics, memplMetrics := metricsProvider()
 
 	// Make MempoolReactor
-	mempoolLogger := logger.With("module", "mempool")
+	maxBytes := state.ConsensusParams.TxSize.MaxBytes
 	mempool := mempl.NewMempool(
 		config.Mempool,
 		proxyApp.Mempool(),
 		state.LastBlockHeight,
 		mempl.WithMetrics(memplMetrics),
+		mempl.WithFilter(func(tx types.Tx) bool { return len(tx) <= maxBytes }),
 	)
+	mempoolLogger := logger.With("module", "mempool")
 	mempool.SetLogger(mempoolLogger)
 	mempool.InitWAL() // no need to have the mempool wal during tests
 	mempoolReactor := mempl.NewMempoolReactor(config.Mempool, mempool)
@@ -293,6 +304,7 @@ func NewNode(config *cfg.Config,
 	sw.AddReactor("BLOCKCHAIN", bcReactor)
 	sw.AddReactor("CONSENSUS", consensusReactor)
 	sw.AddReactor("EVIDENCE", evidenceReactor)
+	p2pLogger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", config.NodeKeyFile())
 
 	// Optionally, start the pex reactor
 	//
@@ -312,7 +324,7 @@ func NewNode(config *cfg.Config,
 		// TODO persistent peers ? so we can have their DNS addrs saved
 		pexReactor := pex.NewPEXReactor(addrBook,
 			&pex.PEXReactorConfig{
-				Seeds:    cmn.SplitAndTrim(config.P2P.Seeds, ",", " "),
+				Seeds:    splitAndTrimEmpty(config.P2P.Seeds, ",", " "),
 				SeedMode: config.P2P.SeedMode,
 			})
 		pexReactor.SetLogger(p2pLogger)
@@ -327,7 +339,7 @@ func NewNode(config *cfg.Config,
 	if config.FilterPeers {
 		// NOTE: addr is ip:port
 		sw.SetAddrFilter(func(addr net.Addr) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/addr/%s", addr.String())})
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: fmt.Sprintf("/p2p/filter/addr/%s", addr.String())})
 			if err != nil {
 				return err
 			}
@@ -337,7 +349,7 @@ func NewNode(config *cfg.Config,
 			return nil
 		})
 		sw.SetIDFilter(func(id p2p.ID) error {
-			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: cmn.Fmt("/p2p/filter/id/%s", id)})
+			resQuery, err := proxyApp.Query().QuerySync(abci.RequestQuery{Path: fmt.Sprintf("/p2p/filter/id/%s", id)})
 			if err != nil {
 				return err
 			}
@@ -364,7 +376,7 @@ func NewNode(config *cfg.Config,
 			return nil, err
 		}
 		if config.TxIndex.IndexTags != "" {
-			txIndexer = kv.NewTxIndex(store, kv.IndexTags(cmn.SplitAndTrim(config.TxIndex.IndexTags, ",", " ")))
+			txIndexer = kv.NewTxIndex(store, kv.IndexTags(splitAndTrimEmpty(config.TxIndex.IndexTags, ",", " ")))
 		} else if config.TxIndex.IndexAllTags {
 			txIndexer = kv.NewTxIndex(store, kv.IndexAllTags())
 		} else {
@@ -392,6 +404,7 @@ func NewNode(config *cfg.Config,
 
 		sw:       sw,
 		addrBook: addrBook,
+		nodeKey:  nodeKey,
 
 		stateDB:          stateDB,
 		blockStore:       blockStore,
@@ -424,23 +437,15 @@ func (n *Node) OnStart() error {
 		n.Logger.With("module", "p2p"))
 	n.sw.AddListener(l)
 
-	// Generate node PrivKey
-	// TODO: pass in like privValidator
-	nodeKey, err := p2p.LoadOrGenNodeKey(n.config.NodeKeyFile())
-	if err != nil {
-		return err
-	}
-	n.Logger.Info("P2P Node ID", "ID", nodeKey.ID(), "file", n.config.NodeKeyFile())
-
-	nodeInfo := n.makeNodeInfo(nodeKey.ID())
+	nodeInfo := n.makeNodeInfo(n.nodeKey.ID())
 	n.sw.SetNodeInfo(nodeInfo)
-	n.sw.SetNodeKey(nodeKey)
+	n.sw.SetNodeKey(n.nodeKey)
 
 	// Add ourselves to addrbook to prevent dialing ourselves
 	n.addrBook.AddOurAddress(nodeInfo.NetAddress())
 
 	// Add private IDs to addrbook to block those peers being added
-	n.addrBook.AddPrivateIDs(cmn.SplitAndTrim(n.config.P2P.PrivatePeerIDs, ",", " "))
+	n.addrBook.AddPrivateIDs(splitAndTrimEmpty(n.config.P2P.PrivatePeerIDs, ",", " "))
 
 	// Start the RPC server before the P2P server
 	// so we can eg. receive txs for the first block
@@ -465,7 +470,7 @@ func (n *Node) OnStart() error {
 
 	// Always connect to persistent peers
 	if n.config.P2P.PersistentPeers != "" {
-		err = n.sw.DialPeersAsync(n.addrBook, cmn.SplitAndTrim(n.config.P2P.PersistentPeers, ",", " "), true)
+		err = n.sw.DialPeersAsync(n.addrBook, splitAndTrimEmpty(n.config.P2P.PersistentPeers, ",", " "), true)
 		if err != nil {
 			return err
 		}
@@ -547,7 +552,7 @@ func (n *Node) ConfigureRPC() {
 
 func (n *Node) startRPC() ([]net.Listener, error) {
 	n.ConfigureRPC()
-	listenAddrs := cmn.SplitAndTrim(n.config.RPC.ListenAddress, ",", " ")
+	listenAddrs := splitAndTrimEmpty(n.config.RPC.ListenAddress, ",", " ")
 	coreCodec := amino.NewCodec()
 	ctypes.RegisterAmino(coreCodec)
 
@@ -683,11 +688,11 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 		},
 		Moniker: n.config.Moniker,
 		Other: []string{
-			cmn.Fmt("amino_version=%v", amino.Version),
-			cmn.Fmt("p2p_version=%v", p2p.Version),
-			cmn.Fmt("consensus_version=%v", cs.Version),
-			cmn.Fmt("rpc_version=%v/%v", rpc.Version, rpccore.Version),
-			cmn.Fmt("tx_index=%v", txIndexerStatus),
+			fmt.Sprintf("amino_version=%v", amino.Version),
+			fmt.Sprintf("p2p_version=%v", p2p.Version),
+			fmt.Sprintf("consensus_version=%v", cs.Version),
+			fmt.Sprintf("rpc_version=%v/%v", rpc.Version, rpccore.Version),
+			fmt.Sprintf("tx_index=%v", txIndexerStatus),
 		},
 	}
 
@@ -696,7 +701,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	}
 
 	rpcListenAddr := n.config.RPC.ListenAddress
-	nodeInfo.Other = append(nodeInfo.Other, cmn.Fmt("rpc_addr=%v", rpcListenAddr))
+	nodeInfo.Other = append(nodeInfo.Other, fmt.Sprintf("rpc_addr=%v", rpcListenAddr))
 
 	if !n.sw.IsListening() {
 		return nodeInfo
@@ -705,7 +710,7 @@ func (n *Node) makeNodeInfo(nodeID p2p.ID) p2p.NodeInfo {
 	p2pListener := n.sw.Listeners()[0]
 	p2pHost := p2pListener.ExternalAddressHost()
 	p2pPort := p2pListener.ExternalAddress().Port
-	nodeInfo.ListenAddr = cmn.Fmt("%v:%v", p2pHost, p2pPort)
+	nodeInfo.ListenAddr = fmt.Sprintf("%v:%v", p2pHost, p2pPort)
 
 	return nodeInfo
 }
@@ -744,4 +749,26 @@ func saveGenesisDoc(db dbm.DB, genDoc *types.GenesisDoc) {
 		cmn.PanicCrisis(fmt.Sprintf("Failed to save genesis doc due to marshaling error: %v", err))
 	}
 	db.SetSync(genesisDocKey, bytes)
+}
+
+
+// splitAndTrimEmpty slices s into all subslices separated by sep and returns a
+// slice of the string s with all leading and trailing Unicode code points
+// contained in cutset removed. If sep is empty, SplitAndTrim splits after each
+// UTF-8 sequence. First part is equivalent to strings.SplitN with a count of
+// -1.  also filter out empty strings, only return non-empty strings.
+func splitAndTrimEmpty(s, sep, cutset string) []string {
+	if s == "" {
+		return []string{}
+	}
+
+	spl := strings.Split(s, sep)
+	nonEmptyStrings := make([]string, 0, len(spl))
+	for i := 0; i < len(spl); i++ {
+		element := strings.Trim(spl[i], cutset)
+		if element != "" {
+			nonEmptyStrings = append(nonEmptyStrings, element)
+		}
+	}
+	return nonEmptyStrings
 }

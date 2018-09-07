@@ -1,8 +1,8 @@
-# ADR 015: Crypto encoding 
+# ADR 015: Crypto encoding
 
 ## Context
 
-We must standardize our method for encoding public keys and signatures on chain. 
+We must standardize our method for encoding public keys and signatures on chain.
 Currently we amino encode the public keys and signatures.
 The reason we are using amino here is primarily due to ease of support in
 parsing for other languages.
@@ -54,9 +54,11 @@ When placed in state, signatures will still be amino encoded, but it will be the
 primitive type `[]byte` getting encoded.
 
 #### Ed25519
+
 Use the canonical representation for signatures.
 
 #### Secp256k1
+
 There isn't a clear canonical representation here.
 Signatures have two elements `r,s`.
 These bytes are encoded as `r || s`, where `r` and `s` are both exactly
@@ -65,16 +67,18 @@ This is basically Ethereum's encoding, but without the leading recovery bit.
 
 ## Status
 
-Proposed. The signature section seems to be agreed upon for the most part.
-Needs decision on Enum types.
+Implemented
 
 ## Consequences
 
 ### Positive
-* More space efficient signatures
+
+- More space efficient signatures
 
 ### Negative
-* We have an amino dependency for cryptography.
+
+- We have an amino dependency for cryptography.
 
 ### Neutral
-* No change to public keys
+
+- No change to public keys

@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tendermint/types"
 	dbm "github.com/tendermint/tendermint/libs/db"
+	"github.com/tendermint/tendermint/types"
 )
 
 //-------------------------------------------
@@ -35,7 +35,7 @@ func TestStoreMark(t *testing.T) {
 
 	// before we do anything, priority/pending are empty
 	priorityEv := store.PriorityEvidence()
-	pendingEv := store.PendingEvidence()
+	pendingEv := store.PendingEvidence(-1)
 	assert.Equal(0, len(priorityEv))
 	assert.Equal(0, len(pendingEv))
 
@@ -53,21 +53,21 @@ func TestStoreMark(t *testing.T) {
 
 	// new evidence should be returns in priority/pending
 	priorityEv = store.PriorityEvidence()
-	pendingEv = store.PendingEvidence()
+	pendingEv = store.PendingEvidence(-1)
 	assert.Equal(1, len(priorityEv))
 	assert.Equal(1, len(pendingEv))
 
 	// priority is now empty
 	store.MarkEvidenceAsBroadcasted(ev)
 	priorityEv = store.PriorityEvidence()
-	pendingEv = store.PendingEvidence()
+	pendingEv = store.PendingEvidence(-1)
 	assert.Equal(0, len(priorityEv))
 	assert.Equal(1, len(pendingEv))
 
 	// priority and pending are now empty
 	store.MarkEvidenceAsCommitted(ev)
 	priorityEv = store.PriorityEvidence()
-	pendingEv = store.PendingEvidence()
+	pendingEv = store.PendingEvidence(-1)
 	assert.Equal(0, len(priorityEv))
 	assert.Equal(0, len(pendingEv))
 

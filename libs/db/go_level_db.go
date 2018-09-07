@@ -28,8 +28,12 @@ type GoLevelDB struct {
 }
 
 func NewGoLevelDB(name string, dir string) (*GoLevelDB, error) {
+	return NewGoLevelDBWithOpts(name, dir, nil)
+}
+
+func NewGoLevelDBWithOpts(name string, dir string, o *opt.Options) (*GoLevelDB, error) {
 	dbPath := filepath.Join(dir, name+".db")
-	db, err := leveldb.OpenFile(dbPath, nil)
+	db, err := leveldb.OpenFile(dbPath, o)
 	if err != nil {
 		return nil, err
 	}

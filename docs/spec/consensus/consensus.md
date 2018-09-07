@@ -2,31 +2,31 @@
 
 ## Terms
 
--   The network is composed of optionally connected *nodes*. Nodes
-    directly connected to a particular node are called *peers*.
--   The consensus process in deciding the next block (at some *height*
-    `H`) is composed of one or many *rounds*.
--   `NewHeight`, `Propose`, `Prevote`, `Precommit`, and `Commit`
-    represent state machine states of a round. (aka `RoundStep` or
-    just "step").
--   A node is said to be *at* a given height, round, and step, or at
-    `(H,R,S)`, or at `(H,R)` in short to omit the step.
--   To *prevote* or *precommit* something means to broadcast a [prevote
-    vote](https://godoc.org/github.com/tendermint/tendermint/types#Vote)
-    or [first precommit
-    vote](https://godoc.org/github.com/tendermint/tendermint/types#FirstPrecommit)
-    for something.
--   A vote *at* `(H,R)` is a vote signed with the bytes for `H` and `R`
-    included in its [sign-bytes](block-structure.html#vote-sign-bytes).
--   *+2/3* is short for "more than 2/3"
--   *1/3+* is short for "1/3 or more"
--   A set of +2/3 of prevotes for a particular block or `<nil>` at
-    `(H,R)` is called a *proof-of-lock-change* or *PoLC* for short.
+- The network is composed of optionally connected _nodes_. Nodes
+  directly connected to a particular node are called _peers_.
+- The consensus process in deciding the next block (at some _height_
+  `H`) is composed of one or many _rounds_.
+- `NewHeight`, `Propose`, `Prevote`, `Precommit`, and `Commit`
+  represent state machine states of a round. (aka `RoundStep` or
+  just "step").
+- A node is said to be _at_ a given height, round, and step, or at
+  `(H,R,S)`, or at `(H,R)` in short to omit the step.
+- To _prevote_ or _precommit_ something means to broadcast a [prevote
+  vote](https://godoc.org/github.com/tendermint/tendermint/types#Vote)
+  or [first precommit
+  vote](https://godoc.org/github.com/tendermint/tendermint/types#FirstPrecommit)
+  for something.
+- A vote _at_ `(H,R)` is a vote signed with the bytes for `H` and `R`
+  included in its [sign-bytes](../blockchain/blockchain.md).
+- _+2/3_ is short for "more than 2/3"
+- _1/3+_ is short for "1/3 or more"
+- A set of +2/3 of prevotes for a particular block or `<nil>` at
+  `(H,R)` is called a _proof-of-lock-change_ or _PoLC_ for short.
 
 ## State Machine Overview
 
 At each height of the blockchain a round-based protocol is run to
-determine the next block. Each round is composed of three *steps*
+determine the next block. Each round is composed of three _steps_
 (`Propose`, `Prevote`, and `Precommit`), along with two special steps
 `Commit` and `NewHeight`.
 
@@ -36,22 +36,22 @@ In the optimal scenario, the order of steps is:
 NewHeight -> (Propose -> Prevote -> Precommit)+ -> Commit -> NewHeight ->...
 ```
 
-The sequence `(Propose -> Prevote -> Precommit)` is called a *round*.
+The sequence `(Propose -> Prevote -> Precommit)` is called a _round_.
 There may be more than one round required to commit a block at a given
 height. Examples for why more rounds may be required include:
 
--   The designated proposer was not online.
--   The block proposed by the designated proposer was not valid.
--   The block proposed by the designated proposer did not propagate
-    in time.
--   The block proposed was valid, but +2/3 of prevotes for the proposed
-    block were not received in time for enough validator nodes by the
-    time they reached the `Precommit` step. Even though +2/3 of prevotes
-    are necessary to progress to the next step, at least one validator
-    may have voted `<nil>` or maliciously voted for something else.
--   The block proposed was valid, and +2/3 of prevotes were received for
-    enough nodes, but +2/3 of precommits for the proposed block were not
-    received for enough validator nodes.
+- The designated proposer was not online.
+- The block proposed by the designated proposer was not valid.
+- The block proposed by the designated proposer did not propagate
+  in time.
+- The block proposed was valid, but +2/3 of prevotes for the proposed
+  block were not received in time for enough validator nodes by the
+  time they reached the `Precommit` step. Even though +2/3 of prevotes
+  are necessary to progress to the next step, at least one validator
+  may have voted `<nil>` or maliciously voted for something else.
+- The block proposed was valid, and +2/3 of prevotes were received for
+  enough nodes, but +2/3 of precommits for the proposed block were not
+  received for enough validator nodes.
 
 Some of these problems are resolved by moving onto the next round &
 proposer. Others are resolved by increasing certain round timeout
@@ -80,14 +80,13 @@ parameters over each successive round.
        +--------------------------------------------------------------------+
 ```
 
-Background Gossip
-=================
+# Background Gossip
 
 A node may not have a corresponding validator private key, but it
 nevertheless plays an active role in the consensus process by relaying
 relevant meta-data, proposals, blocks, and votes to its peers. A node
 that has the private keys of an active validator and is engaged in
-signing votes is called a *validator-node*. All nodes (not just
+signing votes is called a _validator-node_. All nodes (not just
 validator-nodes) have an associated state (the current height, round,
 and step) and work to make progress.
 
@@ -97,21 +96,21 @@ epidemic gossip protocol is implemented among some of these channels to
 bring peers up to speed on the most recent state of consensus. For
 example,
 
--   Nodes gossip `PartSet` parts of the current round's proposer's
-    proposed block. A LibSwift inspired algorithm is used to quickly
-    broadcast blocks across the gossip network.
--   Nodes gossip prevote/precommit votes. A node `NODE_A` that is ahead
-    of `NODE_B` can send `NODE_B` prevotes or precommits for `NODE_B`'s
-    current (or future) round to enable it to progress forward.
--   Nodes gossip prevotes for the proposed PoLC (proof-of-lock-change)
-    round if one is proposed.
--   Nodes gossip to nodes lagging in blockchain height with block
-    [commits](https://godoc.org/github.com/tendermint/tendermint/types#Commit)
-    for older blocks.
--   Nodes opportunistically gossip `HasVote` messages to hint peers what
-    votes it already has.
--   Nodes broadcast their current state to all neighboring peers. (but
-    is not gossiped further)
+- Nodes gossip `PartSet` parts of the current round's proposer's
+  proposed block. A LibSwift inspired algorithm is used to quickly
+  broadcast blocks across the gossip network.
+- Nodes gossip prevote/precommit votes. A node `NODE_A` that is ahead
+  of `NODE_B` can send `NODE_B` prevotes or precommits for `NODE_B`'s
+  current (or future) round to enable it to progress forward.
+- Nodes gossip prevotes for the proposed PoLC (proof-of-lock-change)
+  round if one is proposed.
+- Nodes gossip to nodes lagging in blockchain height with block
+  [commits](https://godoc.org/github.com/tendermint/tendermint/types#Commit)
+  for older blocks.
+- Nodes opportunistically gossip `HasVote` messages to hint peers what
+  votes it already has.
+- Nodes broadcast their current state to all neighboring peers. (but
+  is not gossiped further)
 
 There's more, but let's not get ahead of ourselves here.
 
@@ -144,14 +143,14 @@ and all prevotes at `PoLC-Round`. --> goto `Prevote(H,R)` - After
 
 Upon entering `Prevote`, each validator broadcasts its prevote vote.
 
--   First, if the validator is locked on a block since `LastLockRound`
-    but now has a PoLC for something else at round `PoLC-Round` where
-    `LastLockRound < PoLC-Round < R`, then it unlocks.
--   If the validator is still locked on a block, it prevotes that.
--   Else, if the proposed block from `Propose(H,R)` is good, it
-    prevotes that.
--   Else, if the proposal is invalid or wasn't received on time, it
-    prevotes `<nil>`.
+- First, if the validator is locked on a block since `LastLockRound`
+  but now has a PoLC for something else at round `PoLC-Round` where
+  `LastLockRound < PoLC-Round < R`, then it unlocks.
+- If the validator is still locked on a block, it prevotes that.
+- Else, if the proposed block from `Propose(H,R)` is good, it
+  prevotes that.
+- Else, if the proposal is invalid or wasn't received on time, it
+  prevotes `<nil>`.
 
 The `Prevote` step ends: - After +2/3 prevotes for a particular block or
 `<nil>`. -->; goto `Precommit(H,R)` - After `timeoutPrevote` after
@@ -161,11 +160,12 @@ receiving any +2/3 prevotes. --> goto `Precommit(H,R)` - After
 ### Precommit Step (height:H,round:R)
 
 Upon entering `Precommit`, each validator broadcasts its precommit vote.
+
 - If the validator has a PoLC at `(H,R)` for a particular block `B`, it
-(re)locks (or changes lock to) and precommits `B` and sets
-`LastLockRound = R`. - Else, if the validator has a PoLC at `(H,R)` for
-`<nil>`, it unlocks and precommits `<nil>`. - Else, it keeps the lock
-unchanged and precommits `<nil>`.
+  (re)locks (or changes lock to) and precommits `B` and sets
+  `LastLockRound = R`. - Else, if the validator has a PoLC at `(H,R)` for
+  `<nil>`, it unlocks and precommits `<nil>`. - Else, it keeps the lock
+  unchanged and precommits `<nil>`.
 
 A precommit for `<nil>` means "I didn’t see a PoLC for this round, but I
 did get +2/3 prevotes and waited a bit".
@@ -177,24 +177,24 @@ conditions](#common-exit-conditions)
 
 ### Common exit conditions
 
--   After +2/3 precommits for a particular block. --> goto
-    `Commit(H)`
--   After any +2/3 prevotes received at `(H,R+x)`. --> goto
-    `Prevote(H,R+x)`
--   After any +2/3 precommits received at `(H,R+x)`. --> goto
-    `Precommit(H,R+x)`
+- After +2/3 precommits for a particular block. --> goto
+  `Commit(H)`
+- After any +2/3 prevotes received at `(H,R+x)`. --> goto
+  `Prevote(H,R+x)`
+- After any +2/3 precommits received at `(H,R+x)`. --> goto
+  `Precommit(H,R+x)`
 
 ### Commit Step (height:H)
 
--   Set `CommitTime = now()`
--   Wait until block is received. --> goto `NewHeight(H+1)`
+- Set `CommitTime = now()`
+- Wait until block is received. --> goto `NewHeight(H+1)`
 
 ### NewHeight Step (height:H)
 
--   Move `Precommits` to `LastCommit` and increment height.
--   Set `StartTime = CommitTime+timeoutCommit`
--   Wait until `StartTime` to receive straggler commits. --> goto
-    `Propose(H,0)`
+- Move `Precommits` to `LastCommit` and increment height.
+- Set `StartTime = CommitTime+timeoutCommit`
+- Wait until `StartTime` to receive straggler commits. --> goto
+  `Propose(H,0)`
 
 ## Proofs
 
@@ -236,20 +236,20 @@ Further, define the JSet at height `H` of a set of validators `VSet` to
 be the union of the JSets for each validator in `VSet`. For a given
 commit by honest validators at round `R` for block `B` we can construct
 a JSet to justify the commit for `B` at `R`. We say that a JSet
-*justifies* a commit at `(H,R)` if all the committers (validators in the
+_justifies_ a commit at `(H,R)` if all the committers (validators in the
 commit-set) are each justified in the JSet with no duplicitous vote
 signatures (by the committers).
 
--   **Lemma**: When a fork is detected by the existence of two
-    conflicting [commits](./validators.html#commiting-a-block), the
-    union of the JSets for both commits (if they can be compiled) must
-    include double-signing by at least 1/3+ of the validator set.
-    **Proof**: The commit cannot be at the same round, because that
-    would immediately imply double-signing by 1/3+. Take the union of
-    the JSets of both commits. If there is no double-signing by at least
-    1/3+ of the validator set in the union, then no honest validator
-    could have precommitted any different block after the first commit.
-    Yet, +2/3 did. Reductio ad absurdum.
+- **Lemma**: When a fork is detected by the existence of two
+  conflicting [commits](./validators.html#commiting-a-block), the
+  union of the JSets for both commits (if they can be compiled) must
+  include double-signing by at least 1/3+ of the validator set.
+  **Proof**: The commit cannot be at the same round, because that
+  would immediately imply double-signing by 1/3+. Take the union of
+  the JSets of both commits. If there is no double-signing by at least
+  1/3+ of the validator set in the union, then no honest validator
+  could have precommitted any different block after the first commit.
+  Yet, +2/3 did. Reductio ad absurdum.
 
 As a corollary, when there is a fork, an external process can determine
 the blame by requiring each validator to justify all of its round votes.

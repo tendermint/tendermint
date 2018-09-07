@@ -2,71 +2,73 @@ package types
 
 import (
 	"bytes"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
 	"testing/quick"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 
-	crypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	cmn "github.com/tendermint/tendermint/libs/common"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 func TestValidatorSetBasic(t *testing.T) {
-	for _, vset := range []*ValidatorSet{NewValidatorSet([]*Validator{}), NewValidatorSet(nil)} {
-		assert.Panics(t, func() { vset.IncrementAccum(1) })
+	assert.Panics(t, func() { NewValidatorSet([]*Validator{}) })
 
-		assert.EqualValues(t, vset, vset.Copy())
-		assert.False(t, vset.HasAddress([]byte("some val")))
-		idx, val := vset.GetByAddress([]byte("some val"))
-		assert.Equal(t, -1, idx)
-		assert.Nil(t, val)
-		addr, val := vset.GetByIndex(-100)
-		assert.Nil(t, addr)
-		assert.Nil(t, val)
-		addr, val = vset.GetByIndex(0)
-		assert.Nil(t, addr)
-		assert.Nil(t, val)
-		addr, val = vset.GetByIndex(100)
-		assert.Nil(t, addr)
-		assert.Nil(t, val)
-		assert.Zero(t, vset.Size())
-		assert.Equal(t, int64(0), vset.TotalVotingPower())
-		assert.Nil(t, vset.GetProposer())
-		assert.Nil(t, vset.Hash())
+	vset := NewValidatorSet(nil)
+	assert.Panics(t, func() { vset.IncrementAccum(1) })
 
-		// add
-		val = randValidator_()
-		assert.True(t, vset.Add(val))
-		assert.True(t, vset.HasAddress(val.Address))
-		idx, val2 := vset.GetByAddress(val.Address)
-		assert.Equal(t, 0, idx)
-		assert.Equal(t, val, val2)
-		addr, val2 = vset.GetByIndex(0)
-		assert.Equal(t, []byte(val.Address), addr)
-		assert.Equal(t, val, val2)
-		assert.Equal(t, 1, vset.Size())
-		assert.Equal(t, val.VotingPower, vset.TotalVotingPower())
-		assert.Equal(t, val, vset.GetProposer())
-		assert.NotNil(t, vset.Hash())
-		assert.NotPanics(t, func() { vset.IncrementAccum(1) })
+	assert.EqualValues(t, vset, vset.Copy())
+	assert.False(t, vset.HasAddress([]byte("some val")))
+	idx, val := vset.GetByAddress([]byte("some val"))
+	assert.Equal(t, -1, idx)
+	assert.Nil(t, val)
+	addr, val := vset.GetByIndex(-100)
+	assert.Nil(t, addr)
+	assert.Nil(t, val)
+	addr, val = vset.GetByIndex(0)
+	assert.Nil(t, addr)
+	assert.Nil(t, val)
+	addr, val = vset.GetByIndex(100)
+	assert.Nil(t, addr)
+	assert.Nil(t, val)
+	assert.Zero(t, vset.Size())
+	assert.Equal(t, int64(0), vset.TotalVotingPower())
+	assert.Nil(t, vset.GetProposer())
+	assert.Nil(t, vset.Hash())
 
-		// update
-		assert.False(t, vset.Update(randValidator_()))
-		val.VotingPower = 100
-		assert.True(t, vset.Update(val))
+	// add
+	val = randValidator_()
+	assert.True(t, vset.Add(val))
+	assert.True(t, vset.HasAddress(val.Address))
+	idx, val2 := vset.GetByAddress(val.Address)
+	assert.Equal(t, 0, idx)
+	assert.Equal(t, val, val2)
+	addr, val2 = vset.GetByIndex(0)
+	assert.Equal(t, []byte(val.Address), addr)
+	assert.Equal(t, val, val2)
+	assert.Equal(t, 1, vset.Size())
+	assert.Equal(t, val.VotingPower, vset.TotalVotingPower())
+	assert.Equal(t, val, vset.GetProposer())
+	assert.NotNil(t, vset.Hash())
+	assert.NotPanics(t, func() { vset.IncrementAccum(1) })
 
-		// remove
-		val2, removed := vset.Remove(randValidator_().Address)
-		assert.Nil(t, val2)
-		assert.False(t, removed)
-		val2, removed = vset.Remove(val.Address)
-		assert.Equal(t, val.Address, val2.Address)
-		assert.True(t, removed)
-	}
+	// update
+	assert.False(t, vset.Update(randValidator_()))
+	val.VotingPower = 100
+	assert.True(t, vset.Update(val))
+
+	// remove
+	val2, removed := vset.Remove(randValidator_().Address)
+	assert.Nil(t, val2)
+	assert.False(t, removed)
+	val2, removed = vset.Remove(val.Address)
+	assert.Equal(t, val.Address, val2.Address)
+	assert.True(t, removed)
 }
 
 func TestCopy(t *testing.T) {
@@ -218,7 +220,7 @@ func TestProposerSelection3(t *testing.T) {
 		got := vset.GetProposer().Address
 		expected := proposerOrder[j%4].Address
 		if !bytes.Equal(got, expected) {
-			t.Fatalf(cmn.Fmt("vset.Proposer (%X) does not match expected proposer (%X) for (%d, %d)", got, expected, i, j))
+			t.Fatalf(fmt.Sprintf("vset.Proposer (%X) does not match expected proposer (%X) for (%d, %d)", got, expected, i, j))
 		}
 
 		// serialize, deserialize, check proposer
@@ -228,7 +230,7 @@ func TestProposerSelection3(t *testing.T) {
 		computed := vset.GetProposer() // findGetProposer()
 		if i != 0 {
 			if !bytes.Equal(got, computed.Address) {
-				t.Fatalf(cmn.Fmt("vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)", got, computed.Address, i, j))
+				t.Fatalf(fmt.Sprintf("vset.Proposer (%X) does not match computed proposer (%X) for (%d, %d)", got, computed.Address, i, j))
 			}
 		}
 
@@ -382,7 +384,7 @@ func TestValidatorSetVerifyCommit(t *testing.T) {
 		ValidatorIndex:   0,
 		Height:           height,
 		Round:            0,
-		Timestamp:        time.Now().UTC(),
+		Timestamp:        tmtime.Now(),
 		Type:             VoteTypePrecommit,
 		BlockID:          blockID,
 	}

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	dbm "github.com/tendermint/tendermint/libs/db"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -63,6 +64,15 @@ func TestValidateBlock(t *testing.T) {
 	// wrong validators hash fails
 	block = makeBlock(state, 1)
 	block.ValidatorsHash = []byte("wrong validators hash")
+	err = blockExec.ValidateBlock(state, block)
+	require.Error(t, err)
+
+	// wrong proposer address
+	block = makeBlock(state, 1)
+	block.ProposerAddress = ed25519.GenPrivKey().PubKey().Address()
+	err = blockExec.ValidateBlock(state, block)
+	require.Error(t, err)
+	block.ProposerAddress = []byte("wrong size")
 	err = blockExec.ValidateBlock(state, block)
 	require.Error(t, err)
 }

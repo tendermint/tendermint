@@ -53,24 +53,27 @@ func ExamplePrintRegisteredTypes() {
 	//| ---- | ---- | ------ | ----- | ------ |
 	//| PubKeyEd25519 | tendermint/PubKeyEd25519 | 0x1624DE64 | 0x20 |  |
 	//| PubKeySecp256k1 | tendermint/PubKeySecp256k1 | 0xEB5AE987 | 0x21 |  |
+	//| PubKeyMultisigThreshold | tendermint/PubKeyMultisigThreshold | 0x22C1F7E2 | variable |  |
 	//| PrivKeyEd25519 | tendermint/PrivKeyEd25519 | 0xA3288910 | 0x40 |  |
 	//| PrivKeySecp256k1 | tendermint/PrivKeySecp256k1 | 0xE1B0F79B | 0x20 |  |
 }
 
 func TestKeyEncodings(t *testing.T) {
 	cases := []struct {
-		privKey           crypto.PrivKey
-		privSize, pubSize int // binary sizes
+		privKey                    crypto.PrivKey
+		privSize, pubSize, sigSize int // binary sizes
 	}{
 		{
 			privKey:  ed25519.GenPrivKey(),
 			privSize: 69,
 			pubSize:  37,
+			sigSize:  65,
 		},
 		{
 			privKey:  secp256k1.GenPrivKey(),
 			privSize: 37,
 			pubSize:  38,
+			sigSize:  65,
 		},
 	}
 
@@ -87,7 +90,7 @@ func TestKeyEncodings(t *testing.T) {
 		var sig1, sig2 []byte
 		sig1, err := tc.privKey.Sign([]byte("something"))
 		assert.NoError(t, err, "tc #%d", tcIndex)
-		checkAminoBinary(t, sig1, &sig2, -1) // Signature size changes for Secp anyways.
+		checkAminoBinary(t, sig1, &sig2, tc.sigSize)
 		assert.EqualValues(t, sig1, sig2, "tc #%d", tcIndex)
 
 		// Check (de/en)codings of PubKeys.

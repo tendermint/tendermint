@@ -31,25 +31,6 @@ func TestIsHex(t *testing.T) {
 	}
 }
 
-func TestSplitAndTrim(t *testing.T) {
-	testCases := []struct {
-		s        string
-		sep      string
-		cutset   string
-		expected []string
-	}{
-		{"a,b,c", ",", " ", []string{"a", "b", "c"}},
-		{" a , b , c ", ",", " ", []string{"a", "b", "c"}},
-		{" a, b, c ", ",", " ", []string{"a", "b", "c"}},
-		{" , ", ",", " ", []string{"", ""}},
-		{"   ", ",", " ", []string{""}},
-	}
-
-	for _, tc := range testCases {
-		assert.Equal(t, tc.expected, SplitAndTrim(tc.s, tc.sep, tc.cutset), "%s", tc.s)
-	}
-}
-
 func TestIsASCIIText(t *testing.T) {
 	notASCIIText := []string{
 		"", "\xC2", "\xC2\xA2", "\xFF", "\x80", "\xF0", "\n", "\t",

@@ -2,6 +2,7 @@ package xsalsa20symmetric
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/tendermint/tendermint/crypto"
 	cmn "github.com/tendermint/tendermint/libs/common"
@@ -18,7 +19,7 @@ const secretLen = 32
 // NOTE: call crypto.MixEntropy() first.
 func EncryptSymmetric(plaintext []byte, secret []byte) (ciphertext []byte) {
 	if len(secret) != secretLen {
-		cmn.PanicSanity(cmn.Fmt("Secret must be 32 bytes long, got len %v", len(secret)))
+		cmn.PanicSanity(fmt.Sprintf("Secret must be 32 bytes long, got len %v", len(secret)))
 	}
 	nonce := crypto.CRandBytes(nonceLen)
 	nonceArr := [nonceLen]byte{}
@@ -35,7 +36,7 @@ func EncryptSymmetric(plaintext []byte, secret []byte) (ciphertext []byte) {
 // The ciphertext is (secretbox.Overhead + 24) bytes longer than the plaintext.
 func DecryptSymmetric(ciphertext []byte, secret []byte) (plaintext []byte, err error) {
 	if len(secret) != secretLen {
-		cmn.PanicSanity(cmn.Fmt("Secret must be 32 bytes long, got len %v", len(secret)))
+		cmn.PanicSanity(fmt.Sprintf("Secret must be 32 bytes long, got len %v", len(secret)))
 	}
 	if len(ciphertext) <= secretbox.Overhead+nonceLen {
 		return nil, errors.New("Ciphertext is too short")

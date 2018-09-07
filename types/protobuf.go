@@ -1,7 +1,6 @@
 package types
 
 import (
-	"bytes"
 	"fmt"
 	"reflect"
 	"time"
@@ -35,34 +34,53 @@ type tm2pb struct{}
 
 func (tm2pb) Header(header *Header) abci.Header {
 	return abci.Header{
-		ChainID: header.ChainID,
-		Height:  header.Height,
-
+		ChainID:  header.ChainID,
+		Height:   header.Height,
 		Time:     header.Time,
-		NumTxs:   int32(header.NumTxs), // XXX: overflow
+		NumTxs:   header.NumTxs,
 		TotalTxs: header.TotalTxs,
 
-		LastBlockHash:  header.LastBlockID.Hash,
-		ValidatorsHash: header.ValidatorsHash,
-		AppHash:        header.AppHash,
+		LastBlockId: TM2PB.BlockID(header.LastBlockID),
 
-		// Proposer: TODO
+		LastCommitHash: header.LastCommitHash,
+		DataHash:       header.DataHash,
+
+		ValidatorsHash:  header.ValidatorsHash,
+		ConsensusHash:   header.ConsensusHash,
+		AppHash:         header.AppHash,
+		LastResultsHash: header.LastResultsHash,
+
+		EvidenceHash:    header.EvidenceHash,
+		ProposerAddress: header.ProposerAddress,
 	}
 }
 
-func (tm2pb) ValidatorWithoutPubKey(val *Validator) abci.Validator {
+func (tm2pb) Validator(val *Validator) abci.Validator {
 	return abci.Validator{
 		Address: val.PubKey.Address(),
 		Power:   val.VotingPower,
+	}
+}
+
+func (tm2pb) BlockID(blockID BlockID) abci.BlockID {
+	return abci.BlockID{
+		Hash:        blockID.Hash,
+		PartsHeader: TM2PB.PartSetHeader(blockID.PartsHeader),
+	}
+}
+
+func (tm2pb) PartSetHeader(header PartSetHeader) abci.PartSetHeader {
+	return abci.PartSetHeader{
+		Total: int32(header.Total),
+		Hash:  header.Hash,
 	}
 }
 
 // XXX: panics on unknown pubkey type
-func (tm2pb) Validator(val *Validator) abci.Validator {
-	return abci.Validator{
-		Address: val.PubKey.Address(),
-		PubKey:  TM2PB.PubKey(val.PubKey),
-		Power:   val.VotingPower,
+func (tm2pb) ValidatorUpdate(val *Validator) abci.ValidatorUpdate {
+	return abci.ValidatorUpdate{
+		PubKey: TM2PB.PubKey(val.PubKey),
+		Power:  val.VotingPower,
 	}
 }
 
@@ -86,10 +104,10 @@ func (tm2pb) PubKey(pubKey crypto.PubKey) abci.PubKey {
 }
 
 // XXX: panics on nil or unknown pubkey type
-func (tm2pb) Validators(vals *ValidatorSet) []abci.Validator {
-	validators := make([]abci.Validator, vals.Size())
+func (tm2pb) ValidatorUpdates(vals *ValidatorSet) []abci.ValidatorUpdate {
+	validators := make([]abci.ValidatorUpdate, vals.Size())
 	for i, val := range vals.Validators {
-		validators[i] = TM2PB.Validator(val)
+		validators[i] = TM2PB.ValidatorUpdate(val)
 	}
 	return validators
 }
@@ -97,10 +115,8 @@ func (tm2pb) Validators(vals *ValidatorSet) []abci.Validator {
 func (tm2pb) ConsensusParams(params *ConsensusParams) *abci.ConsensusParams {
 	return &abci.ConsensusParams{
 		BlockSize: &abci.BlockSize{
-
-			MaxBytes: int32(params.BlockSize.MaxBytes),
-			MaxTxs:   int32(params.BlockSize.MaxTxs),
-			MaxGas:   params.BlockSize.MaxGas,
+			MaxBytes:        int32(params.BlockSize.MaxBytes),
+			MaxGas:          params.BlockSize.MaxGas,
 		},
 		TxSize: &abci.TxSize{
 			MaxBytes: int32(params.TxSize.MaxBytes),
@@ -136,7 +152,7 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 
 	return abci.Evidence{
 		Type:             evType,
-		Validator:        TM2PB.ValidatorWithoutPubKey(val),
+		Validator:        TM2PB.Validator(val),
 		Height:           ev.Height(),
 		Time:             evTime,
 		TotalVotingPower: valSet.TotalVotingPower(),
@@ -144,12 +160,11 @@ func (tm2pb) Evidence(ev Evidence, valSet *ValidatorSet, evTime time.Time) abci.
 }
 
 // XXX: panics on nil or unknown pubkey type
-func (tm2pb) ValidatorFromPubKeyAndPower(pubkey crypto.PubKey, power int64) abci.Validator {
+func (tm2pb) NewValidatorUpdate(pubkey crypto.PubKey, power int64) abci.ValidatorUpdate {
 	pubkeyABCI := TM2PB.PubKey(pubkey)
-	return abci.Validator{
-		Address: pubkey.Address(),
-		PubKey:  pubkeyABCI,
-		Power:   power,
+	return abci.ValidatorUpdate{
+		PubKey: pubkeyABCI,
+		Power:  power,
 	}
 }
 
@@ -185,26 +200,14 @@ func (pb2tm) PubKey(pubKey abci.PubKey) (crypto.PubKey, error) {
 	}
 }
 
-func (pb2tm) Validators(vals []abci.Validator) ([]*Validator, error) {
+func (pb2tm) ValidatorUpdates(vals []abci.ValidatorUpdate) ([]*Validator, error) {
 	tmVals := make([]*Validator, len(vals))
 	for i, v := range vals {
 		pub, err := PB2TM.PubKey(v.PubKey)
 		if err != nil {
 			return nil, err
 		}
-		// If the app provided an address too, it must match.
-		// This is just a sanity check.
-		if len(v.Address) > 0 {
-			if !bytes.Equal(pub.Address(), v.Address) {
-				return nil, fmt.Errorf("Validator.Address (%X) does not match PubKey.Address (%X)",
-					v.Address, pub.Address())
-			}
-		}
-		tmVals[i] = &Validator{
-			Address:     pub.Address(),
-			PubKey:      pub,
-			VotingPower: v.Power,
-		}
+		tmVals[i] = NewValidator(pub, v.Power)
 	}
 	return tmVals, nil
 }
@@ -212,9 +215,8 @@ func (pb2tm) Validators(vals []abci.Validator) ([]*Validator, error) {
 func (pb2tm) ConsensusParams(csp *abci.ConsensusParams) ConsensusParams {
 	return ConsensusParams{
 		BlockSize: BlockSize{
-			MaxBytes: int(csp.BlockSize.MaxBytes), // XXX
-			MaxTxs:   int(csp.BlockSize.MaxTxs),   // XXX
-			MaxGas:   csp.BlockSize.MaxGas,
+			MaxBytes:        int(csp.BlockSize.MaxBytes), // XXX
+			MaxGas:          csp.BlockSize.MaxGas,
 		},
 		TxSize: TxSize{
 			MaxBytes: int(csp.TxSize.MaxBytes), // XXX

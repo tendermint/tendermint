@@ -16,16 +16,21 @@ Let's take a look at the `[tx_index]` config section:
 #   2) "kv" - the simplest possible indexer, backed by key-value storage (defaults to levelDB; see DBBackend).
 indexer = "kv"
 
-# Comma-separated list of tags to index (by default the only tag is tx hash)
+# Comma-separated list of tags to index (by default the only tag is "tx.hash")
+#
+# You can also index transactions by height by adding "tx.height" tag here.
 #
 # It's recommended to index only a subset of tags due to possible memory
 # bloat. This is, of course, depends on the indexer's DB and the volume of
 # transactions.
 index_tags = ""
 
-# When set to true, tells indexer to index all tags. Note this may be not
-# desirable (see the comment above). IndexTags has a precedence over
-# IndexAllTags (i.e. when given both, IndexTags will be indexed).
+# When set to true, tells indexer to index all tags (predefined tags:
+# "tx.hash", "tx.height" and all tags from DeliverTx responses).
+#
+# Note this may be not desirable (see the comment above). IndexTags has a
+# precedence over IndexAllTags (i.e. when given both, IndexTags will be
+# indexed).
 index_all_tags = false
 ```
 
@@ -59,7 +64,6 @@ all tags, set `index_all_tags=true`
 
 Note, there are a few predefined tags:
 
-- `tm.event` (event type)
 - `tx.hash` (transaction's hash)
 - `tx.height` (height of the block transaction was committed in)
 

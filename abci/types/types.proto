@@ -60,7 +60,7 @@ message RequestInitChain {
   google.protobuf.Timestamp time = 1  [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
   string chain_id = 2;
   ConsensusParams consensus_params = 3;
-  repeated Validator validators = 4  [(gogoproto.nullable)=false];
+  repeated ValidatorUpdate validators = 4  [(gogoproto.nullable)=false];
   bytes app_state_bytes = 5;
 }
 
@@ -143,7 +143,7 @@ message ResponseSetOption {
 
 message ResponseInitChain {
   ConsensusParams consensus_params = 1;
-  repeated Validator validators = 2 [(gogoproto.nullable)=false];
+  repeated ValidatorUpdate validators = 2 [(gogoproto.nullable)=false];
 }
 
 message ResponseQuery {
@@ -183,7 +183,7 @@ message ResponseDeliverTx {
 }
 
 message ResponseEndBlock {
-  repeated Validator validator_updates = 1 [(gogoproto.nullable)=false];
+  repeated ValidatorUpdate validator_updates = 1 [(gogoproto.nullable)=false];
   ConsensusParams consensus_param_updates = 2;
   repeated common.KVPair tags = 3 [(gogoproto.nullable)=false, (gogoproto.jsontag)="tags,omitempty"];
 }
@@ -207,8 +207,7 @@ message ConsensusParams {
 // BlockSize contains limits on the block size.
 message BlockSize {
   int32 max_bytes = 1;
-  int32 max_txs = 2;
-  int64 max_gas = 3;
+  int64 max_gas = 2;
 }
 
 // TxSize contains limits on the tx size.
@@ -225,42 +224,65 @@ message BlockGossip {
 }
 
 message LastCommitInfo {
-  int32 commit_round = 1;
-  repeated SigningValidator validators = 2 [(gogoproto.nullable)=false];
+  int32 round = 1;
+  repeated VoteInfo votes = 2 [(gogoproto.nullable)=false];
 }
 
 //----------------------------------------
 // Blockchain Types
 
-// just the minimum the app might need
 message Header {
-  // basics
+  // basic block info
   string chain_id = 1 [(gogoproto.customname)="ChainID"];
   int64 height = 2;
   google.protobuf.Timestamp time = 3 [(gogoproto.nullable)=false, (gogoproto.stdtime)=true];
-
-  // txs
-  int32 num_txs = 4;
+  int64 num_txs = 4;
   int64 total_txs = 5;
 
-  // hashes
-  bytes last_block_hash = 6;
-  bytes validators_hash = 7;
-  bytes app_hash = 8;
+  // prev block info
+  BlockID last_block_id = 6 [(gogoproto.nullable)=false];
 
-  // consensus
-  Validator proposer = 9 [(gogoproto.nullable)=false];
+  // hashes of block data
+  bytes last_commit_hash = 7; // commit from validators from the last block
+  bytes data_hash = 8;        // transactions
+
+  // hashes from the app output from the prev block
+  bytes validators_hash = 9;   // validators for the current block
+  bytes next_validators_hash = 10;   // validators for the next block
+  bytes consensus_hash = 11;   // consensus params for current block
+  bytes app_hash = 12;         // state after txs from the previous block
+  bytes last_results_hash = 13;// root hash of all results from the txs from the previous block
+
+  // consensus info
+  bytes evidence_hash = 14;    // evidence included in the block
+  bytes proposer_address = 15; // original proposer of the block
+}
+
+message BlockID {
+  bytes hash = 1;
+  PartSetHeader parts_header = 2 [(gogoproto.nullable)=false];
+}
+
+message PartSetHeader {
+  int32 total = 1;
+  bytes hash = 2;
 }
 
 // Validator
 message Validator {
   bytes address = 1;
-  PubKey pub_key = 2 [(gogoproto.nullable)=false];
+  //PubKey pub_key = 2 [(gogoproto.nullable)=false];
   int64 power = 3;
 }
 
-// Validator with an extra bool
-message SigningValidator {
+// ValidatorUpdate
+message ValidatorUpdate {
+  PubKey pub_key = 1 [(gogoproto.nullable)=false];
+  int64 power = 2;
+}
+
+// VoteInfo
+message VoteInfo {
   Validator validator = 1 [(gogoproto.nullable)=false];
   bool signed_last_block = 2;
 }

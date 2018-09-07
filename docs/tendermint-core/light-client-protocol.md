@@ -18,13 +18,13 @@ proofs](./merkle.md#iavl-tree).
 
 ## Properties
 
--   You get the full collateralized security benefits of Tendermint; No
-    need to wait for confirmations.
--   You get the full speed benefits of Tendermint; transactions
-    commit instantly.
--   You can get the most recent version of the application state
-    non-interactively (without committing anything to the blockchain).
-    For example, this means that you can get the most recent value of a
-    name from the name-registry without worrying about fork censorship
-    attacks, without posting a commit and waiting for confirmations.
-    It's fast, secure, and free!
+- You get the full collateralized security benefits of Tendermint; No
+  need to wait for confirmations.
+- You get the full speed benefits of Tendermint; transactions
+  commit instantly.
+- You can get the most recent version of the application state
+  non-interactively (without committing anything to the blockchain).
+  For example, this means that you can get the most recent value of a
+  name from the name-registry without worrying about fork censorship
+  attacks, without posting a commit and waiting for confirmations.
+  It's fast, secure, and free!

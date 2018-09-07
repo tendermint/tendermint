@@ -242,7 +242,7 @@ func TestBroadcastTxSync(t *testing.T) {
 
 		require.Equal(initMempoolSize+1, mempool.Size())
 
-		txs := mempool.Reap(1)
+		txs := mempool.ReapMaxTxs(len(tx))
 		require.EqualValues(tx, txs[0])
 		mempool.Flush()
 	}
@@ -350,6 +350,11 @@ func TestTxSearch(t *testing.T) {
 		if assert.EqualValues(t, tx, proof.Data) {
 			assert.True(t, proof.Proof.Verify(proof.Index, proof.Total, txHash, proof.RootHash))
 		}
+
+		// query by height
+		result, err = c.TxSearch(fmt.Sprintf("tx.height >= %d", txHeight), true, 1, 30)
+		require.Nil(t, err, "%+v", err)
+		require.Len(t, result.Txs, 1)
 
 		// we query for non existing tx
 		result, err = c.TxSearch(fmt.Sprintf("tx.hash='%X'", anotherTxHash), false, 1, 30)

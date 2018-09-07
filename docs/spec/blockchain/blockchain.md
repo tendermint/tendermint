@@ -8,24 +8,27 @@ The Tendermint blockchains consists of a short list of basic data types:
 
 - `Block`
 - `Header`
-- `Vote`
 - `BlockID`
-- `Signature`
-- `Evidence`
+- `Time`
+- `Data` (for transactions)
+- `Commit` and `Vote`
+- `EvidenceData` and `Evidence`
 
 ## Block
 
-A block consists of a header, a list of transactions, a list of votes (the commit),
+A block consists of a header, transactions, votes (the commit),
 and a list of evidence of malfeasance (ie. signing conflicting votes).
 
 ```go
 type Block struct {
     Header      Header
-    Txs         [][]byte
-    LastCommit  []Vote
-    Evidence    []Evidence
+    Txs         Data
+    Evidence    EvidenceData
+    LastCommit  Commit
 }
 ```
+
+Note the `LastCommit` is the set of  votes that committed the last block.
 
 ## Header
 
@@ -34,32 +37,30 @@ the data in the current block, the previous block, and the results returned by t
 
 ```go
 type Header struct {
-    // block metadata
-    Version             string  // Version string
-    ChainID             string  // ID of the chain
-    Height              int64   // Current block height
-    Time                int64   // UNIX time, in millisconds
+	// basic block info
+	ChainID  string
+	Height   int64
+	Time     Time
+	NumTxs   int64
+	TotalTxs int64
 
-    // current block
-    NumTxs              int64   // Number of txs in this block
-    TxHash              []byte  // SimpleMerkle of the block.Txs
-    LastCommitHash      []byte  // SimpleMerkle of the block.LastCommit
+	// prev block info
+	LastBlockID BlockID
 
-    // previous block
-    TotalTxs            int64   // prevBlock.TotalTxs + block.NumTxs
-    LastBlockID         BlockID // BlockID of prevBlock
+	// hashes of block data
+	LastCommitHash []byte // commit from validators from the last block
+	DataHash       []byte // Merkle root of transactions
 
-    // application
-    ResultsHash         []byte  // SimpleMerkle of []abci.Result from prevBlock
-    AppHash             []byte  // Arbitrary state digest
-    ValidatorsHash      []byte  // SimpleMerkle of the current ValidatorSet
-    NextValidatorsHash  []byte  // SimpleMerkle of the next ValidatorSet
-    ConsensusParamsHash []byte  // SimpleMerkle of the ConsensusParams
+	// hashes from the app output from the prev block
+	ValidatorsHash     []byte // validators for the current block
+	NextValidatorsHash []byte // validators for the next block
+	ConsensusHash      []byte // consensus params for current block
+	AppHash            []byte // state after txs from the previous block
+	LastResultsHash    []byte // root hash of all results from the txs from the previous block
 
-    // consensus
-    Proposer            []byte  // Address of the block proposer
-    EvidenceHash        []byte  // SimpleMerkle of []Evidence
-}
+	// consensus info
+	EvidenceHash    []byte // evidence included in the block
+	ProposerAddress []byte // original proposer of the block
 ```
 
 Further details on each of these fields is described below.
@@ -85,6 +86,44 @@ type PartsHeader struct {
 }
 ```
 
+TODO: link to details of merkle sums.
+
+## Time
+
+Tendermint uses the
+[Google.Protobuf.WellKnownTypes.Timestamp](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/timestamp)
+format, which uses two integers, one for Seconds and for Nanoseconds.
+
+NOTE: there is currently a small divergence between Tendermint and the
+Google.Protobuf.WellKnownTypes.Timestamp that should be resolved. See [this
+issue](https://github.com/tendermint/go-amino/issues/223) for details.
+
+## Data
+
+Data is just a wrapper for a list of transactions, where transactions are
+arbitrary byte arrays:
+
+```
+type Data struct {
+    Txs [][]byte
+}
+```
+
+## Commit
+
+Commit is a simple wrapper for a list of votes, with one vote for each
+validator. It also contains the relevant BlockID:
+
+```
+type Commit struct {
+    BlockID     BlockID
+    Precommits  []Vote
+}
+```
+
+NOTE: this will likely change to reduce the commit size by eliminating redundant
+information - see [issue #1648](https://github.com/tendermint/tendermint/issues/1648).
+
 ## Vote
 
 A vote is a signed message from a validator for a particular block.
@@ -92,62 +131,51 @@ The vote includes information about the validator signing it.
 
 ```go
 type Vote struct {
-    Timestamp   int64
-    Address     []byte
-    Index       int
-    Height      int64
-    Round       int
-    Type        int8
-    BlockID     BlockID
-    Signature   Signature
+    ValidatorAddress    []byte
+    ValidatorIndex      int
+    Height              int64
+    Round               int
+    Timestamp           Time
+    Type                int8
+    BlockID             BlockID
+    Signature           []byte
 }
 ```
 
 There are two types of votes:
-a *prevote* has `vote.Type == 1` and
-a *precommit* has `vote.Type == 2`.
+a _prevote_ has `vote.Type == 1` and
+a _precommit_ has `vote.Type == 2`.
 
 ## Signature
 
-Tendermint allows for multiple signature schemes to be used by prepending a single type-byte
-to the signature bytes. Different signatures may also come with fixed or variable lengths.
-Currently, Tendermint supports Ed25519 and Secp256k1.
+Signatures in Tendermint are raw bytes representing the underlying signature.
+The only signature scheme currently supported for Tendermint validators is
+ED25519. The signature is the raw 64-byte ED25519 signature.
 
-### ED25519
+## EvidenceData
 
-An ED25519 signature has `Type == 0x1`. It looks like:
+EvidenceData is a simple wrapper for a list of evidence:
 
-```go
-// Implements Signature
-type Ed25519Signature struct {
-    Type        int8        = 0x1
-    Signature   [64]byte
-}
 ```
-
-where `Signature` is the 64 byte signature.
-
-### Secp256k1
-
-A `Secp256k1` signature has `Type == 0x2`. It looks like:
-
-```go
-// Implements Signature
-type Secp256k1Signature struct {
-    Type        int8        = 0x2
-    Signature   []byte
+type EvidenceData struct {
+    Evidence []Evidence
 }
-```
-
-where `Signature` is the DER encoded signature, ie:
-
-```hex
-0x30 <length of whole message> <0x02> <length of R> <R> 0x2 <length of S> <S>.
 ```
 
 ## Evidence
 
-TODO
+Evidence in Tendermint is implemented as an interface.
+This means any evidence is encoded using its Amino prefix.
+There is currently only a single type, the `DuplicateVoteEvidence`.
+
+```
+// amino name: "tendermint/DuplicateVoteEvidence"
+type DuplicateVoteEvidence struct {
+	PubKey PubKey
+	VoteA  Vote
+	VoteB  Vote
+}
+```
 
 ## Validation
 
@@ -162,23 +190,23 @@ We refer to certain globally available objects:
 `prevBlock` is the `block` at the previous height,
 and `state` keeps track of the validator set, the consensus parameters
 and other results from the application. At the point when `block` is the block under consideration,
-the current version of the `state` corresponds to the state 
-after executing transactions from the `prevBlock`. 
+the current version of the `state` corresponds to the state
+after executing transactions from the `prevBlock`.
 Elements of an object are accessed as expected,
-ie. `block.Header`. 
+ie. `block.Header`.
 See [here](https://github.com/tendermint/tendermint/blob/master/docs/spec/blockchain/state.md) for the definition of `state`.
 
 ### Header
 
 A Header is valid if its corresponding fields are valid.
 
-### Version
-
-Arbitrary string.
-
 ### ChainID
 
-Arbitrary constant string.
+```
+len(block.ChainID) < 50
+```
+
+ChainID must be maximum 50 UTF-8 symbols.
 
 ### Height
 
@@ -191,38 +219,26 @@ The height is an incrementing integer. The first block has `block.Header.Height 
 
 ### Time
 
-The median of the timestamps of the valid votes in the block.LastCommit.
-Corresponds to the number of nanoseconds, with millisecond resolution, since January 1, 1970.
+```
+block.Header.Timestamp >= prevBlock.Header.Timestamp + 1 ms
+block.Header.Timestamp == MedianTime(block.LastCommit, state.LastValidators)
+```
+
+The block timestamp must be monotonic.
+It must equal the weighted median of the timestamps of the valid votes in the block.LastCommit.
 
 Note: the timestamp of a vote must be greater by at least one millisecond than that of the
 block being voted on.
 
+See the section on [BFT time](../consensus/bft-time.md) for more details.
+
 ### NumTxs
 
 ```go
-block.Header.NumTxs == len(block.Txs)
+block.Header.NumTxs == len(block.Txs.Txs)
 ```
 
 Number of transactions included in the block.
-
-### TxHash
-
-```go
-block.Header.TxHash == SimpleMerkleRoot(block.Txs)
-```
-
-Simple Merkle root of the transactions in the block.
-
-### LastCommitHash
-
-```go
-block.Header.LastCommitHash == SimpleMerkleRoot(block.LastCommit)
-```
-
-Simple Merkle root of the votes included in the block.
-These are the votes that committed the previous block.
-
-The first block has `block.Header.LastCommitHash == []byte{}`
 
 ### TotalTxs
 
@@ -254,25 +270,24 @@ which are held in the `state` and may be updated by the application.
 
 The first block has `block.Header.LastBlockID == BlockID{}`.
 
-### ResultsHash
+### LastCommitHash
 
 ```go
-block.ResultsHash == SimpleMerkleRoot(state.LastResults)
+block.Header.LastCommitHash == SimpleMerkleRoot(block.LastCommit)
 ```
 
-Simple Merkle root of the results of the transactions in the previous block.
+Simple Merkle root of the votes included in the block.
+These are the votes that committed the previous block.
 
-The first block has `block.Header.ResultsHash == []byte{}`.
+The first block has `block.Header.LastCommitHash == []byte{}`
 
-### AppHash
+### DataHash
 
 ```go
-block.AppHash == state.AppHash
+block.Header.DataHash == SimpleMerkleRoot(block.Txs.Txs)
 ```
 
-Arbitrary byte array returned by the application after executing and commiting the previous block.
-
-The first block has `block.Header.AppHash == []byte{}`.
+Simple Merkle root of the transactions included in the block.
 
 ### ValidatorsHash
 
@@ -288,8 +303,10 @@ This can be used to validate the `LastCommit` included in the next block.
 ```go
 block.NextValidatorsHash == SimpleMerkleRoot(state.NextValidators)
 ```
+
 Simple Merkle root of the next validator set that will be the validator set that commits the next block.
-Modifications to the validator set are defined by the application.
+This is included so that the current validator set gets a chance to sign the
+next validator sets Merkle root.
 
 ### ConsensusParamsHash
 
@@ -298,17 +315,26 @@ block.ConsensusParamsHash == SimpleMerkleRoot(state.ConsensusParams)
 ```
 
 Simple Merkle root of the consensus parameters.
-May be updated by the application.
 
-### Proposer
+### AppHash
 
 ```go
-block.Header.Proposer in state.Validators
+block.AppHash == state.AppHash
 ```
 
-Original proposer of the block. Must be a current validator.
+Arbitrary byte array returned by the application after executing and commiting the previous block. It serves as the basis for validating any merkle proofs that comes from the ABCI application and represents the state of the actual application rather than the state of the blockchain itself.
 
-NOTE: we also need to track the round.
+The first block has `block.Header.AppHash == []byte{}`.
+
+### LastResultsHash
+
+```go
+block.ResultsHash == SimpleMerkleRoot(state.LastResults)
+```
+
+Simple Merkle root of the results of the transactions in the previous block.
+
+The first block has `block.Header.ResultsHash == []byte{}`.
 
 ## EvidenceHash
 
@@ -317,6 +343,14 @@ block.EvidenceHash == SimpleMerkleRoot(block.Evidence)
 ```
 
 Simple Merkle root of the evidence of Byzantine behaviour included in this block.
+
+### ProposerAddress
+
+```go
+block.Header.ProposerAddress in state.Validators
+```
+
+Address of the original proposer of the block. Must be a current validator.
 
 ## Txs
 
@@ -366,7 +400,7 @@ must be greater than 2/3 of the total voting power of the complete validator set
 ### Vote
 
 A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
-When stored in the blockchain or propagated over the network, votes are encoded in TMBIN.
+When stored in the blockchain or propagated over the network, votes are encoded in Amino.
 For signing, votes are encoded in JSON, and the ChainID is included, in the form of the `CanonicalSignBytes`.
 
 We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the CanonicalSignBytes
@@ -383,16 +417,7 @@ against the given signature and message bytes.
 
 ## Evidence
 
-There is currently only one kind of evidence:
-
-```
-// amino: "tendermint/DuplicateVoteEvidence"
-type DuplicateVoteEvidence struct {
-	PubKey crypto.PubKey
-	VoteA  *Vote
-	VoteB  *Vote
-}
-```
+There is currently only one kind of evidence, `DuplicateVoteEvidence`.
 
 DuplicateVoteEvidence `ev` is valid if
 
@@ -427,11 +452,8 @@ Execute(s State, app ABCIApp, block Block) State {
         AppHash: AppHash,
         LastValidators: state.Validators,
         Validators: state.NextValidators,
-        NextValidators: UpdateValidators(state.NextValidators, ValidatorChanges), 
+        NextValidators: UpdateValidators(state.NextValidators, ValidatorChanges),
         ConsensusParams: UpdateConsensusParams(state.ConsensusParams, ConsensusParamChanges),
     }
 }
-
 ```
-
-

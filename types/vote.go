@@ -10,6 +10,11 @@ import (
 	cmn "github.com/tendermint/tendermint/libs/common"
 )
 
+const (
+	// MaxVoteBytes is a maximum vote size (including amino overhead).
+	MaxVoteBytes = 200
+)
+
 var (
 	ErrVoteUnexpectedStep            = errors.New("Unexpected step")
 	ErrVoteInvalidValidatorIndex     = errors.New("Invalid validator index")
