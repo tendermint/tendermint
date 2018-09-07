@@ -5,7 +5,7 @@ is to run [this script](https://github.com/tendermint/tendermint/blob/develop/sc
 a fresh Ubuntu instance,
 or [this script](https://github.com/tendermint/tendermint/blob/develop/scripts/install/install_tendermint_bsd.sh)
 on a fresh FreeBSD instance. Read the comments / instructions carefully (i.e., reset your terminal after running the script,
-make sure your okay with the network connections being made).
+make sure you are okay with the network connections being made).
 
 ## From Binary
 
