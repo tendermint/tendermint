@@ -1,9 +1,9 @@
 package version
 
-// NOTE: we should probably be versioning the ABCI and the abci-cli separately
+import (
+	"github.com/tendermint/tendermint/version"
+)
 
-const Maj = "0"
-const Min = "12"
-const Fix = "0"
+// TODO: eliminate this after some version refactor
 
-const Version = "0.12.0"
+const Version = version.ABCIVersion

@@ -8,10 +8,10 @@ transactions are never included in blocks, but their Merkle roots are - the stat
 
 Note that the `State` object itself is an implementation detail, since it is never
 included in a block or gossipped over the network, and we never compute
-its hash. However, the types it contains are part of the specification, since
-their Merkle roots are included in blocks.
-
-Details on an implementation of `State` with persistence is forthcoming, see [this issue](https://github.com/tendermint/tendermint/issues/1152)
+its hash. Thus we do not include here details of how the `State` object is
+persisted or queried. That said, the types it contains are part of the specification, since
+their Merkle roots are included in blocks and their values are used in
+validation.
 
 ```go
 type State struct {
@@ -32,20 +32,15 @@ type State struct {
 type Result struct {
     Code uint32
     Data []byte
-    Tags []KVPair
-}
-
-type KVPair struct {
-    Key     []byte
-    Value   []byte
 }
 ```
 
 `Result` is the result of executing a transaction against the application.
-It returns a result code, an arbitrary byte array (ie. a return value),
-and a list of key-value pairs ordered by key. The key-value pairs, or tags,
-can be used to index transactions according to their "effects", which are
-represented in the tags.
+It returns a result code and an arbitrary byte array (ie. a return value).
+
+NOTE: the Result needs to be updated to include more fields returned from
+processing transactions, like gas variables and tags - see
+[issue 1007](https://github.com/tendermint/tendermint/issues/1007).
 
 ### Validator
 
@@ -60,7 +55,7 @@ type Validator struct {
 }
 ```
 
-The `state.Validators` and `state.LastValidators` must always by sorted by validator address,
+The `state.Validators`, `state.LastValidators`, and `state.NextValidators`, must always by sorted by validator address,
 so that there is a canonical order for computing the SimpleMerkleRoot.
 
 We also define a `TotalVotingPower` function, to return the total voting power:
@@ -77,4 +72,59 @@ func TotalVotingPower(vals []Validators) int64{
 
 ### ConsensusParams
 
-This section is forthcoming. See [this issue](https://github.com/tendermint/tendermint/issues/1152).
+ConsensusParams define various limits for blockchain data structures.
+Like validator sets, they are set during genesis and can be updated by the application through ABCI.
+
+```
+type ConsensusParams struct {
+	BlockSize
+	TxSize
+	BlockGossip
+	EvidenceParams
+}
+
+type BlockSize struct {
+	MaxBytes        int
+	MaxGas          int64
+}
+
+type TxSize struct {
+	MaxBytes int
+	MaxGas   int64
+}
+
+type BlockGossip struct {
+	BlockPartSizeBytes int
+}
+
+type EvidenceParams struct {
+	MaxAge int64
+}
+```
+
+#### BlockSize
+
+The total size of a block is limitted in bytes by the `ConsensusParams.BlockSize.MaxBytes`.
+Proposed blocks must be less than this size, and will be considered invalid
+otherwise.
+
+Blocks should additionally be limitted by the amount of "gas" consumed by the
+transactions in the block, though this is not yet implemented.
+
+#### TxSize
+
+These parameters are not yet enforced and may disappear. See [issue
+#2347](https://github.com/tendermint/tendermint/issues/2347).
+
+#### BlockGossip
+
+When gossipping blocks in the consensus, they are first split into parts. The
+size of each part is `ConsensusParams.BlockGossip.BlockPartSizeBytes`.
+
+#### EvidenceParams
+
+For evidence in a block to be valid, it must satisfy:
+
+```
+block.Header.Height - evidence.Height < ConsensusParams.EvidenceParams.MaxAge
+```

@@ -275,13 +275,11 @@ Because Tendermint only uses a Simple Merkle Tree, application developers are ex
 
 ### Amino
 
-This section is pending an update, see [this issue](https://github.com/tendermint/tendermint/issues/1749).
-
 Amino also supports JSON encoding - registered types are simply encoded as:
 
 ```
 {
-  "type": "<DisfixBytes>",
+  "type": "<amino type name>",
   "value": <JSON>
 }
 ```
@@ -296,19 +294,18 @@ For instance, an ED25519 PubKey would look like:
 ```
 
 Where the `"value"` is the base64 encoding of the raw pubkey bytes, and the
-`"type"` is the full disfix bytes for Ed25519 pubkeys.
+`"type"` is the amino name for Ed25519 pubkeys.
 
 ### Signed Messages
 
-Signed messages (eg. votes, proposals) in the consensus are encoded using Amino-JSON, rather than in the standard binary format.
+Signed messages (eg. votes, proposals) in the consensus are encoded using Amino-JSON, rather than in the standard binary format
+(NOTE: this is subject to change: https://github.com/tendermint/tendermint/issues/1622)
 
-When signing, the elements of a message are sorted by key and the sorted message is embedded in an
-outer JSON that includes a `chain_id` field.
+When signing, the elements of a message are sorted by key and prepended with
+a `@chain_id` and `@type` field.
 We call this encoding the CanonicalSignBytes. For instance, CanonicalSignBytes for a vote would look
 like:
 
 ```json
-{"chain_id":"my-chain-id","vote":{"block_id":{"hash":DEADBEEF,"parts":{"hash":BEEFDEAD,"total":3}},"height":3,"round":2,"timestamp":1234567890, "type":2}
+{"@chain_id":"test_chain_id","@type":"vote","block_id":{"hash":"8B01023386C371778ECB6368573E539AFC3CC860","parts":{"hash":"72DB3D959635DFF1BB567BEDAA70573392C51596","total":"1000000"}},"height":"12345","round":"2","timestamp":"2017-12-25T03:00:01.234Z","type":2}
 ```
-
-Note how the fields within each level are sorted.

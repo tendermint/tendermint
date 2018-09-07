@@ -42,7 +42,7 @@ definition](https://github.com/tendermint/tendermint/blob/master/types/genesis.g
 - `genesis_time`: Official time of blockchain start.
 - `chain_id`: ID of the blockchain. This must be unique for
   every blockchain. If your testnet blockchains do not have unique
-  chain IDs, you will have a bad time. The ChainID must be less than 50 bytes.
+  chain IDs, you will have a bad time. The ChainID must be less than 50 symbols.
 - `validators`: List of initial validators. Note this may be overridden entirely by the
   application, and may be left empty to make explicit that the
   application will initialize the validator set with ResponseInitChain.

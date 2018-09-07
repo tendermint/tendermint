@@ -1,60 +1,75 @@
-# ABCI Specification
+# ABCI Methods and Types
 
-### XXX
+## Overview
 
-DEPRECATED: Moved [here](../spec/abci/abci.md)
+The ABCI message types are defined in a [protobuf
+file](https://github.com/tendermint/tendermint/blob/develop/abci/types/types.proto).
 
-## Message Types
+ABCI methods are split across 3 separate ABCI *connections*:
 
-ABCI requests/responses are defined as simple Protobuf messages in [this
-schema file](https://github.com/tendermint/tendermint/blob/master/abci/types/types.proto).
-TendermintCore sends the requests, and the ABCI application sends the
-responses. Here, we provide an overview of the messages types and how
-they are used by Tendermint. Then we describe each request-response pair
-as a function with arguments and return values, and add some notes on
-usage.
+- `Consensus Connection: InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
+- `Mempool Connection: CheckTx`
+- `Info Connection: Info, SetOption, Query`
 
-Some messages (`Echo, Info, InitChain, BeginBlock, EndBlock, Commit`),
+The `Consensus Connection` is driven by a consensus protocol and is responsible
+for block exection.
+The `Mempool Connection` is for validating new transactions, before they're
+shared or included in a block.
+The `Info Connection` is for initialization and for queries from the user.
+
+Additionally, there is a `Flush` method that is called on every connection,
+and an `Echo` method that is just for debugging.
+
+## Errors
+
+Some methods (`Echo, Info, InitChain, BeginBlock, EndBlock, Commit`),
 don't return errors because an error would indicate a critical failure
 in the application and there's nothing Tendermint can do. The problem
 should be addressed and both Tendermint and the application restarted.
-All other messages (`SetOption, Query, CheckTx, DeliverTx`) return an
+All other methods (`SetOption, Query, CheckTx, DeliverTx`) return an
 application-specific response `Code uint32`, where only `0` is reserved
 for `OK`.
 
-Some messages (`SetOption, Query, CheckTx, DeliverTx`) return
+## Tags
+
+Some methods (`CheckTx, BeginBlock, DeliverTx, EndBlock`)
+include a `Tags` field in their `Response*`. Each tag is key-value pair denoting
+something about what happened during the methods execution.
+
+Tags can be used to index transactions and blocks according to what happened
+during their execution.
+
+Keys and values in tags must be UTF-8 encoded strings (e.g.
+"account.owner": "Bob", "balance": "100.0",
+"time": "2018-01-02T12:30:00Z")
+
+## Determinism
+
+Some methods (`SetOption, Query, CheckTx, DeliverTx`) return
 non-deterministic data in the form of `Info` and `Log`. The `Log` is
 intended for the literal output from the application's logger, while the
 `Info` is any additional info that should be returned.
 
+All other fields in the `Response*` of all methods must be strictly deterministic.
+
+For this reason, it is recommended that applications not be exposed to any
+external user or process except via the ABCI connections to a consensus engine
+like Tendermint Core.
+
+## Block Execution
+
 The first time a new blockchain is started, Tendermint calls
-`InitChain`. From then on, the Block Execution Sequence that causes the
-committed state to be updated is as follows:
+`InitChain`. From then on, the follow sequence of methods is executed for each
+block:
 
 `BeginBlock, [DeliverTx], EndBlock, Commit`
 
 where one `DeliverTx` is called for each transaction in the block.
+The result is an updated application state.
 Cryptographic commitments to the results of DeliverTx, EndBlock, and
 Commit are included in the header of the next block.
 
-Tendermint opens three connections to the application to handle the
-different message types:
-
-- `Consensus Connection - InitChain, BeginBlock, DeliverTx, EndBlock, Commit`
-- `Mempool Connection - CheckTx`
-- `Info Connection - Info, SetOption, Query`
-
-The `Flush` message is used on every connection, and the `Echo` message
-is only used for debugging.
-
-Note that messages may be sent concurrently across all connections -a
-typical application will thus maintain a distinct state for each
-connection. They may be referred to as the `DeliverTx state`, the
-`CheckTx state`, and the `Commit state` respectively.
-
-See below for more details on the message types and how they are used.
-
-## Request/Response Messages
+## Messages
 
 ### Echo
 
@@ -202,26 +217,17 @@ See below for more details on the message types and how they are used.
   - `GasUsed (int64)`: Amount of gas consumed by transaction.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
-- **Usage**: Validate a mempool transaction, prior to broadcasting
-  or proposing. CheckTx should perform stateful but light-weight
-  checks of the validity of the transaction (like checking signatures
-  and account balances), but need not execute in full (like running a
-  smart contract).
-
-  Tendermint runs CheckTx and DeliverTx concurrently with eachother,
-  though on distinct ABCI connections - the mempool connection and the
-  consensus connection, respectively.
-
-  The application should maintain a separate state to support CheckTx.
-  This state can be reset to the latest committed state during
-  `Commit`. Before calling Commit, Tendermint will lock and flush the mempool,
-  ensuring that all existing CheckTx are responded to and no new ones can
-  begin. After `Commit`, the mempool will rerun
-  CheckTx for all remaining transactions, throwing out any that are no longer valid.
-  Then the mempool will unlock and start sending CheckTx again.
-
-  Keys and values in Tags must be UTF-8 encoded strings (e.g.
-  "account.owner": "Bob", "balance": "100.0", "date": "2018-01-02")
+- **Usage**:
+  - Technically optional - not involved in processing blocks.
+  - Guardian of the mempool: every node runs CheckTx before letting a
+    transaction into its local mempool.
+  - The transaction may come from an external user or another node
+  - CheckTx need not execute the transaction in full, but rather a light-weight
+    yet stateful validation, like checking signatures and account balances, but
+    not running code in a virtual machine.
+  - Transactions where `ResponseCheckTx.Code != 0` will be rejected - they will not be broadcast to
+    other nodes or included in a proposal block.
+  - Tendermint attributes no other value to the response code
 
 ### DeliverTx
 
@@ -239,11 +245,9 @@ See below for more details on the message types and how they are used.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
     transactions (eg. by account).
 - **Usage**:
-  - Deliver a transaction to be executed in full by the application.
-    If the transaction is valid, returns CodeType.OK.
-  - Keys and values in Tags must be UTF-8 encoded strings (e.g.
-    "account.owner": "Bob", "balance": "100.0",
-    "time": "2018-01-02T12:30:00Z")
+  - The workhorse of the application - non-optional.
+  - Execute the transaction in full.
+  - `ResponseDeliverTx.Code == 0` only if the transaction is fully valid.
 
 ### EndBlock
 
@@ -257,12 +261,13 @@ See below for more details on the message types and how they are used.
   - `Tags ([]cmn.KVPair)`: Key-Value tags for filtering and indexing
 - **Usage**:
   - Signals the end of a block.
-  - Called prior to each Commit, after all transactions.
-  - Validator updates returned for block H:
-    - apply to the NextValidatorsHash of block H+1
-    - apply to the ValidatorsHash (and thus the validator set) for block H+2
-    - apply to the RequestBeginBlock.LastCommitInfo (ie. the last validator set) for block H+3
-  - Consensus params returned for block H apply for block H+1
+  - Called after all transactions, prior to each Commit.
+  - Validator updates returned by block `H` impact blocks `H+1`, `H+2`, and
+    `H+3`, but only effects changes on the validator set of `H+2`:
+    - `H+1`: NextValidatorsHash
+    - `H+2`: ValidatorsHash (and thus the validator set)
+    - `H+3`: LastCommitInfo (ie. the last validator set)
+  - Consensus params returned for block `H` apply for block `H+1`
 
 ### Commit
 
@@ -275,7 +280,7 @@ See below for more details on the message types and how they are used.
     same hash. If not, they will not be able to agree on the next
     block, because the hash is included in the next block!
 
-## Data Messages
+## Data Types
 
 ### Header
 
