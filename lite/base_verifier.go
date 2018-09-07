@@ -31,7 +31,7 @@ func NewBaseVerifier(chainID string, height int64, valset *types.ValidatorSet) *
 	return &BaseVerifier{
 		chainID: chainID,
 		height:  height,
-		round:   0,
+		lastRound:   0,
 		valset:  valset,
 	}
 }
