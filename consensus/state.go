@@ -1507,12 +1507,12 @@ func (cs *ConsensusState) addProposalBlockPart(msg *BlockPartMessage, peerID p2p
 		if err != nil {
 			return true, err
 		}
-		if cs.ProposalBlock.ProposeRound != cs.Proposal.Round {
+		/*if cs.ProposalBlock.ProposeRound != cs.Proposal.Round { //we may don't have the proposal new, can cause nil pointer
 			cs.Logger.Error("Received block which has unmatched round with proposal , bad peer?", "height", height, "round", round, "roundInProposal", cs.Proposal.Round, "roundInBlock", cs.ProposalBlock.ProposeRound, "peer", peerID)
 			cs.ProposalBlock = nil
 			cs.ProposalBlockParts = nil
 			return false, nil
-		}
+		}*/
 		// NOTE: it's possible to receive complete proposal blocks for future rounds without having the proposal
 		cs.Logger.Info("Received complete proposal block", "height", cs.ProposalBlock.Height, "hash", cs.ProposalBlock.Hash())
 
