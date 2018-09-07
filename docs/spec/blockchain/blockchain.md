@@ -400,7 +400,7 @@ must be greater than 2/3 of the total voting power of the complete validator set
 ### Vote
 
 A vote is a signed message broadcast in the consensus for a particular block at a particular height and round.
-When stored in the blockchain or propagated over the network, votes are encoded in TMBIN.
+When stored in the blockchain or propagated over the network, votes are encoded in Amino.
 For signing, votes are encoded in JSON, and the ChainID is included, in the form of the `CanonicalSignBytes`.
 
 We define a method `Verify` that returns `true` if the signature verifies against the pubkey for the CanonicalSignBytes

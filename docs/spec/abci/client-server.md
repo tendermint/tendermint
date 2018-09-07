@@ -1,4 +1,4 @@
-# ABCI Client and Server
+# Client and Server
 
 This section is for those looking to implement their own ABCI Server, perhaps in
 a new programming language.
@@ -88,7 +88,7 @@ The main ABCI server (ie. non-GRPC) provides ordered asynchronous messages.
 This is useful for DeliverTx and CheckTx, since it allows Tendermint to forward
 transactions to the app before it's finished processing previous ones.
 
-Thus, DeliverTx and CheckTx messages are sent asycnhronously, while all other
+Thus, DeliverTx and CheckTx messages are sent asynchronously, while all other
 messages are sent synchronously.
 
 ## Client

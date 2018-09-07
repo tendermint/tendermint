@@ -53,7 +53,11 @@ the `ValidatorUpdate` type, which contains just the `PubKey`.
 Validator set updates returned in ResponseEndBlock for height `H` used to take
 effect immediately at height `H+1`. Now they will be delayed one block, to take
 effect at height `H+2`. Note this means that the change will be seen by the ABCI
-app in the `RequestBeginBlock.LastCommitInfo` at block `H+3`.
+app in the `RequestBeginBlock.LastCommitInfo` at block `H+3`. Apps were already
+required to maintain a map from validator addresses to pubkeys since v0.23 (when
+pubkeys were removed from RequestBeginBlock), but now they may need to track
+multiple validator sets at once to accomodate this delay.
+
 
 ### Block Size
 
